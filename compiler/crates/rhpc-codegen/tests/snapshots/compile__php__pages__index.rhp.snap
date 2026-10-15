@@ -9,7 +9,7 @@ namespace App\Pages;
 use App\Components\Counter;
 use Rephp\Attribute\{Component, State};
 use Symfony\Component\Routing\Attribute\Route;
-use function App\Components\{MyButton, Card, Badge};
+use function App\Components\{MyButton, Card, Badge, Tag};
 
 function Toolbar(string $theme = 'light') {
     return new \Rephp\Element('pages/index.0.twig', ['theme' => $theme ?? null]);
@@ -81,6 +81,8 @@ final class Home
 
         return (
             new \Rephp\Element('pages/index.6.twig', ['count' => $this->count, 'handleClick' => $this->handleClick(...), 'products' => $products ?? null, 'listItems' => $listItems ?? null, 'add' => $this->add(...), 'items' => $this->items])
+
+
 
 
 

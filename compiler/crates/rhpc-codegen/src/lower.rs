@@ -64,10 +64,13 @@ impl<'a> Lowerer<'a> {
                     return;
                 }
                 let code = o.expr.code();
-                let name = code.trim();
+                let code = code.trim();
+                // `{{ children }}`, or `{{ children ?? 'default' }}`: the default is the content
+                // of the block, so it shows when the caller gives no children.
+                let name = code.split_once("??").map_or(code, |(slot, _)| slot.trim());
                 if self.slots.iter().any(|s| s == name) {
                     if self.slots_defined.insert(name.to_string()) {
-                        out.push_str(&format!("{{% block {name} %}}{{{{ {name} }}}}{{% endblock %}}"));
+                        out.push_str(&format!("{{% block {name} %}}{{{{ {code} }}}}{{% endblock %}}"));
                     } else {
                         out.push_str(&format!("{{{{ block('{name}') }}}}"));
                     }

@@ -70,6 +70,8 @@ final class AppTest extends TestCase
         self::assertStringContainsString('<p class="theme-dark">Theme: dark</p>', $html, 'template component prop');
         self::assertStringContainsString('<p class="theme-light">Theme: light</p>', $html, 'template component default');
         self::assertStringContainsString('<p class="greeting">Hello, ADA!</p>', $html, 'function component');
+        self::assertStringContainsString('<span class="tag">untagged</span>', $html, 'slot default without children');
+        self::assertStringContainsString('<span class="tag">urgent</span>', $html, 'slot default with children');
         self::assertStringContainsString('<span id="items">item1</span>', $html, 'mount() sets the first state');
         self::assertCount(5, $this->handlers);
     }

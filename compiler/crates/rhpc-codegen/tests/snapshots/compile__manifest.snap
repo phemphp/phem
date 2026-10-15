@@ -69,6 +69,20 @@ expression: out.manifest.to_json()
       ],
       "rest": false
     },
+    "App\\Components\\Tag": {
+      "fqcn": "App\\Components\\Tag",
+      "kind": "template",
+      "file": "components/Buttons.rhp",
+      "template": "components/Buttons.3.twig",
+      "props": [
+        "children"
+      ],
+      "slots": [
+        "children"
+      ],
+      "required": [],
+      "rest": false
+    },
     "App\\Pages\\About": {
       "fqcn": "App\\Pages\\About",
       "kind": "template",
@@ -139,6 +153,10 @@ expression: out.manifest.to_json()
     "components/Buttons.2.twig": {
       "source": "components/Buttons.rhp",
       "line": 27
+    },
+    "components/Buttons.3.twig": {
+      "source": "components/Buttons.rhp",
+      "line": 31
     },
     "components/Counter.0.twig": {
       "source": "components/Counter.rhp",

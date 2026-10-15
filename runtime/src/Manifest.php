@@ -17,6 +17,7 @@ final class Manifest
 
     /** @var array<string, mixed>|null */
     private ?array $data = null;
+    private ?string $twigSignature = null;
 
     public function __construct(
         private readonly string $buildDir,
@@ -60,6 +61,27 @@ final class Manifest
     public function templates(): array
     {
         return array_keys($this->data()['templates'] ?? []);
+    }
+
+    /**
+     * A hash of what Twig reads from the manifest when it compiles `{% component %}`: the kind
+     * and the template of each component. It is empty without a build.
+     */
+    public function twigSignature(): string
+    {
+        if (null !== $this->twigSignature) {
+            return $this->twigSignature;
+        }
+        if (!$this->exists()) {
+            return '';
+        }
+        $parts = [];
+        foreach ($this->data()['components'] ?? [] as $fqcn => $def) {
+            $parts[$fqcn] = [$def['kind'] ?? null, $def['template'] ?? null];
+        }
+        ksort($parts);
+
+        return $this->twigSignature = hash('xxh128', serialize($parts));
     }
 
     /** The Twig name of a compiled template: `@rhp/pages/index.0.twig`. */

@@ -14,6 +14,7 @@ use Rephp\Rendering\PropBinder;
 use Rephp\Rendering\Renderer;
 use Rephp\Routing\PageLoader;
 use Rephp\StateCodec;
+use Rephp\Twig\CacheKeyLoader;
 use Rephp\Twig\RephpExtension;
 use Rephp\Twig\RephpRuntime;
 use Rephp\Twig\TemplateLoader;
@@ -52,6 +53,9 @@ return static function (ContainerConfigurator $container): void {
         ->set('rephp.twig.loader', TemplateLoader::class)
             ->args(['%rephp.build_dir%/templates'])
             ->tag('twig.loader')
+        ->set('rephp.twig.cache_key_loader', CacheKeyLoader::class)
+            ->decorate('twig.loader')
+            ->args([service('.inner'), service('rephp.manifest')])
         ->set('rephp.twig.template_warmer', TemplateWarmer::class)
             ->args([service('twig'), service('rephp.manifest')])
             ->tag('kernel.cache_warmer')

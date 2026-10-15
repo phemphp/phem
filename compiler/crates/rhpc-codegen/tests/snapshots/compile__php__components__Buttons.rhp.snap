@@ -30,3 +30,7 @@ function Card(string $title, ?Html $children = null, ?Html $footer = null) {
 function Badge(string $label, string $tone = 'info') {
     return new \Rephp\Element('components/Buttons.2.twig', ['tone' => $tone ?? null, 'label' => $label ?? null]);
 }
+
+function Tag(?Html $children = null) {
+    return new \Rephp\Element('components/Buttons.3.twig', ['children' => $children ?? null]);
+}

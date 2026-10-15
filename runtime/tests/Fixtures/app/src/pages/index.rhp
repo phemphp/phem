@@ -5,7 +5,7 @@ namespace App\Pages;
 use App\Components\Counter;
 use Rephp\Attribute\{Component, State};
 use Symfony\Component\Routing\Attribute\Route;
-use function App\Components\{MyButton, Card, Badge};
+use function App\Components\{MyButton, Card, Badge, Tag};
 
 function Toolbar(string $theme = 'light') {
     return <p className="theme-{{ theme }}">Theme: {{ theme }}</p>;
@@ -98,6 +98,8 @@ final class Home
                 <Toolbar theme="dark" />
                 <Toolbar />
                 <Greeting name="ada" />
+                <Tag />
+                <Tag>urgent</Tag>
             </main>
         );
     }
