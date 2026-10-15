@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace Rephp;
 
+use Doctrine\ORM\EntityManagerInterface;
 use Rephp\DependencyInjection\ComponentPass;
+use Rephp\Doctrine\DoctrineTransactionRunner;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
+
+use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 
 /**
  * Integrates `.rhp` components in a Symfony application.
@@ -58,6 +62,15 @@ final class RephpBundle extends AbstractBundle
             ->set('rephp.build_dir', $config['build_dir']);
         $container->import('../config/services.php');
         $container->services()->get('rephp.state_codec')->arg(0, $config['secret']);
+
+        // The handlers of #[Transactional] components run in a Doctrine ORM transaction.
+        if (isset($builder->getParameter('kernel.bundles')['DoctrineBundle']) && interface_exists(EntityManagerInterface::class)) {
+            $container->services()
+                ->set('rephp.transaction_runner', DoctrineTransactionRunner::class)
+                    ->args([service('doctrine')])
+                ->get('rephp.renderer')
+                    ->arg(4, service('rephp.transaction_runner'));
+        }
     }
 
     public function build(ContainerBuilder $container): void

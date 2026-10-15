@@ -266,6 +266,47 @@ request. To configure a component service (for example to bind a scalar argument
 `config/services.yaml` with its class name as the id. rephp keeps your definition and only makes
 it not shared.
 
+### Transactions
+
+Add `#[Transactional]` to a class component to run each of its event handlers in a Doctrine ORM
+transaction (this needs DoctrineBundle). When the handler returns, rephp flushes and commits.
+When the handler throws an exception, rephp rolls back all of its changes. Thus the handler
+does not call `flush()`:
+
+- To add an entity, call `persist()` (for example through a repository method).
+- To delete an entity, call `remove()`.
+- To change an entity that Doctrine loaded, set its properties. The flush finds the changes.
+
+```php
+use Rephp\Attribute\{Component, Transactional};
+
+#[Component]
+#[Transactional]
+final class TodoItem
+{
+    public Todo $todo;                     // prop: a managed entity
+
+    public function __construct(private readonly EntityManagerInterface $em)
+    {
+    }
+
+    public function toggle(): void
+    {
+        $this->todo->done = !$this->todo->done;   // saved at the commit
+    }
+
+    public function delete(): void
+    {
+        $this->em->remove($this->todo);           // deleted at the commit
+    }
+
+    // render() ...
+}
+```
+
+The transaction contains only the handler. `render()` and `mount()` run outside of it. A handler
+that a parent passes as a prop belongs to the parent: the parent's attribute applies.
+
 ## 9. Props and lifting state up
 
 The props of a function component are its named parameters. A function component has no state.

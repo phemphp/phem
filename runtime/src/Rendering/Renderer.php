@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Rephp\Rendering;
 
 use Psr\Container\ContainerInterface;
+use Rephp\Attribute\Transactional;
 use Rephp\Element;
 use Rephp\Event;
 use Rephp\Html;
@@ -23,6 +24,9 @@ use Twig\Template;
  * or calls `mount()`, and calls `render()`. Function components are called with their props.
  * Template components render as plain Twig.
  *
+ * The event handlers of a `#[Transactional]` component run in a transaction of the
+ * TransactionRunner (Doctrine ORM, when DoctrineBundle is installed).
+ *
  * While a tree renders, it is the current tree of the Renderer: the compiled templates call
  * back into it (through the Twig runtime) for nested components and event handlers.
  */
@@ -38,6 +42,7 @@ final class Renderer implements ResetInterface
         private readonly Manifest $manifest,
         private readonly ContainerInterface $components,
         private readonly PropBinder $props = new PropBinder(),
+        private readonly ?TransactionRunner $transactions = null,
     ) {
     }
 
@@ -62,7 +67,8 @@ final class Renderer implements ResetInterface
         if (null === $handler) {
             return false;
         }
-        $this->within($tree, static fn (): mixed => $handler($event));
+        $call = static fn (): mixed => $handler($event);
+        $this->within($tree, self::isTransactional($handler) ? fn (): mixed => $this->transactions()->run($call) : $call);
 
         return true;
     }
@@ -261,6 +267,22 @@ final class Renderer implements ResetInterface
         }
 
         return $this->components->get($fqcn);
+    }
+
+    private function transactions(): TransactionRunner
+    {
+        return $this->transactions ?? throw new \LogicException('A #[Transactional] component needs Doctrine ORM: install doctrine/orm and doctrine/doctrine-bundle.');
+    }
+
+    /**
+     * The component of a handler is the object of its closure: a method (`$this->add(...)`) or
+     * a closure in `render()`. A handler that a parent passes as a prop runs with the parent.
+     */
+    private static function isTransactional(\Closure $handler): bool
+    {
+        $component = new \ReflectionFunction($handler)->getClosureThis();
+
+        return null !== $component && [] !== new \ReflectionObject($component)->getAttributes(Transactional::class);
     }
 
     /** Adds `data-rh-key` to the first element of an HTML fragment. */

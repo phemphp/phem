@@ -18,6 +18,9 @@
     "require-dev": {
         "phpunit/phpunit": "^12.0"
     },
+    "suggest": {
+        "doctrine/doctrine-bundle": "To run the event handlers of #[Transactional] components in a Doctrine ORM transaction"
+    },
     "autoload": {
         "psr-4": { "Rephp\\": "src/" }
     },
