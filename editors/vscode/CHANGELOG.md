@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Bracket pair colorization treats `{{ }}` and `{% %}` as one pair, so both delimiters show in
+  the same color.
+
 ## 0.2.0
 
 - Completion for component tags, with the required props and the import of the component.
