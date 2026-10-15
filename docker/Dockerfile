@@ -50,6 +50,10 @@ RUN printf 'APP_SECRET=%s\n' "$(od -An -tx1 -N32 /dev/urandom | tr -d ' \n')" > 
  && rm -rf var/cache/prod \
  && php bin/console cache:warmup
 COPY docker/php-prod.ini /usr/local/etc/php/conf.d/zz-rephp.ini
+COPY docker/init-db.sh /usr/local/bin/init-db
+COPY docker/prod-entrypoint.sh /usr/local/bin/prod-entrypoint
 EXPOSE 8080
+# The entrypoint makes the database in the volume on the first start.
+ENTRYPOINT ["prod-entrypoint"]
 # The Caddyfile runs public/index.php in FrankenPHP worker mode.
 CMD ["frankenphp", "run", "--config", "Caddyfile"]

@@ -4,9 +4,6 @@ namespace App\Components;
 use App\Model\Scientist;
 use Rephp\Attribute\{Component, Transactional};
 
-// The scientist prop is the Doctrine entity that the page loaded. The handler changes it, and
-// #[Transactional] flushes and commits the change. Then the server renders the page again and
-// morphs only this button. No state is kept in the browser.
 #[Component]
 #[Transactional]
 final class LikeCounter

@@ -10,6 +10,7 @@ case "$1" in
     # from older sources can make it fail.
     rhpc build src --out var/cache/rhp --no-warmup
     composer install --quiet --no-interaction
+    /app/docker/init-db.sh
     # rhpc restarts FrankenPHP after each build of the .rhp files. The workers also restart
     # when a PHP class in src/ changes (for example a repository).
     export FRANKENPHP_WORKER_CONFIG="${FRANKENPHP_WORKER_CONFIG-watch ./src/**/*.php}"
