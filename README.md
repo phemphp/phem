@@ -40,26 +40,32 @@ final class MyApp
 ```
 
 A component with state is an object: a `#[Component]` class is a Symfony service, so its
-constructor gets the services that it needs (autowiring):
+constructor gets the services that it needs (autowiring). With `#[Transactional]`, each event
+handler runs in a Doctrine ORM transaction: rephp flushes and commits when the handler returns.
 
 ```php
 #[Component]
-final class LikeCounter
+#[Transactional]
+final class AddScientist
 {
-    public int $id;                    // a prop
-
     public function __construct(private readonly ScientistRepository $scientists)
     {
     }
 
-    public function like(): void       // an event handler
+    public function add(Event $e): void   // an event handler
     {
-        $this->scientists->like($this->id);
+        $this->scientists->add(new Scientist($e->form['name'], $e->form['profession']));
     }
 
     public function render()
     {
-        return <button onClick={{ like }}>Like</button>;
+        return (
+            <form onSubmit={{ add }}>
+                <input name="name" />
+                <input name="profession" />
+                <button type="submit">Add</button>
+            </form>
+        );
     }
 }
 ```
@@ -76,10 +82,13 @@ make up      # http://localhost:8080/learn — rhpc watch + FrankenPHP (worker m
 make test    # cargo test + PHPUnit
 make check   # rhpc diagnostics for the quickstart sources
 make prod    # the production image on http://localhost:8081
-make vscode  # the VS Code extension for .rhp syntax highlighting (editors/vscode/rhp-0.1.0.vsix)
+make vscode  # the VS Code extension for .rhp files (editors/vscode/rhp-0.2.0.vsix)
 ```
 
-To install the VS Code extension, run `code --install-extension editors/vscode/rhp-0.1.0.vsix`.
+`make up` and `make prod` also make the SQLite database of the quickstart on the first start:
+`docker/init-db.sh` makes the schema from the Doctrine mapping and loads the Doctrine fixtures.
+
+To build and install the VS Code extension, run `make vscode-install`.
 See [editors/vscode/README.md](editors/vscode/README.md).
 
 - `/learn` is the Quick Start page (static HTML + CSS, like react.dev/learn).
@@ -87,8 +96,8 @@ See [editors/vscode/README.md](editors/vscode/README.md).
   Its `#[Route]` attribute serves it at `/examples/<Name>`.
 - `/learn/describing-the-ui.html` has a multi-file example: the page `Gallery.rhp` uses
   components from `examples/quickstart/src/components/`. The page `DurableGallery.rhp` reads and
-  writes its data in SQLite through a repository service (Doctrine DBAL, DoctrineBundle), so the
-  data stays after a reload.
+  writes its data in SQLite through a Doctrine ORM entity and its repository. Its handlers are
+  `#[Transactional]`, and a Symfony form adds a scientist. The data stays after a reload.
 
 ## How it works
 
@@ -132,8 +141,9 @@ See [editors/vscode/README.md](editors/vscode/README.md).
    page root keeps the `#[State]` properties of all components in a signed JSON value. The
    signature is an HMAC (`kernel.secret`, from `APP_SECRET`) of the state and its page
    component. An event sends the state back.
-   The server makes the components again, restores their state, renders, runs the PHP handler,
-   renders again, and compares the two renders. It answers with a Turbo Stream `update`
+   The server makes the components again, restores their state, renders, runs the PHP handler
+   (in a Doctrine transaction for a `#[Transactional]` class), renders again, and compares the
+   two renders. It answers with a Turbo Stream `update`
    (`method="morph"`) for each component that changed, plus the new state. Events wait in a
    queue, so each event uses the newest state.
 5. **Server.** [FrankenPHP](https://frankenphp.dev) runs `public/index.php` in worker mode
@@ -153,6 +163,7 @@ See [editors/vscode/README.md](editors/vscode/README.md).
 | `onClick={handleClick}` | `onClick={{ handleClick }}` (the handler runs on the server) |
 | `useState` | a `#[State]` property of a `#[Component]` class; a method changes it |
 | initial state from props or data | `mount()`, called when the component has no state yet |
+| a form `onSubmit` handler | a Symfony form: `$form->handleRequest($e->request)` in the handler |
 | `useContext`, imported modules | services, injected in the constructor |
 | props, `children`, lifting state up | parameters or public properties, `?Html $children`, the same pattern |
 
@@ -161,12 +172,13 @@ See [editors/vscode/README.md](editors/vscode/README.md).
 ```
 compiler/            Rust workspace: rhpc-syntax, rhpc-twig-scan, rhpc-analyze, rhpc-codegen, rhpc-cli
 runtime/             rephp/runtime (Composer): RephpBundle, Renderer, Twig extension, controllers,
-                     route loader, console commands, rhp.js (public/)
+                     route loader, Doctrine transaction runner, console commands, rhp.js (public/)
 examples/quickstart/ a Symfony application: the react.dev/learn-style site (public/), its
                      runnable .rhp examples (src/), and its FrankenPHP Caddyfile
-docker/              Dockerfile (FrankenPHP: dev, prod), dev entrypoint
-editors/vscode/      VS Code extension: .rhp syntax highlighting (TextMate grammar)
+docker/              Dockerfile (FrankenPHP: dev, prod), dev and prod entrypoints, init-db.sh
+editors/vscode/      VS Code extension: .rhp syntax highlighting (TextMate grammar) and completion
 docs/rhp-syntax.md   the .rhp syntax
+docs/compiling.md    how to build, check, watch, and run .rhp files
 ```
 
 ## Diagnostics

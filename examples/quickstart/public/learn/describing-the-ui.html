@@ -143,14 +143,15 @@
 
 <h2 id="data-from-a-database" class="heading">Reading data from a database<a class="heading-anchor" href="#data-from-a-database" aria-label="Link to this section">#</a></h2>
 <p>In <code>Gallery.rhp</code>, the scientists are a PHP array, and each like is browser state: a reload clears it. In a real app, the data comes from a database. Components render on the server, so a component can read the database directly. You do not need an API between them.</p>
-<p>The page <code>DurableGallery.rhp</code> below is the same gallery, with the data in SQLite. It uses <a href="https://www.doctrine-project.org/projects/dbal.html">Doctrine DBAL</a> through DoctrineBundle:</p>
+<p>The page <code>DurableGallery.rhp</code> below is the same gallery, with the data in SQLite. It uses <a href="https://www.doctrine-project.org/projects/orm.html">Doctrine ORM</a> through DoctrineBundle:</p>
 <ul>
-    <li><code>src/Repository/ScientistRepository.php</code> is the data layer: a normal Symfony service, with the DBAL connection in its constructor. It does not make the database: the Docker entrypoint makes <code>var/data/gallery.sqlite</code> and loads the fixtures of <code>src/DataFixtures/</code>.</li>
-    <li>The page is a class component. The container injects the repository in its constructor, and the page reads the rows with <code>$this-&gt;repository-&gt;all()</code> while it renders. It reuses <code>Layout</code> and <code>Avatar</code> from the files above.</li>
-    <li>The handlers write to the database. <code>LikeCounter</code> calls <code>like()</code>, and <code>AddScientist</code> calls <code>add()</code> on the same service.</li>
+    <li><code>src/Model/Scientist.php</code> is a Doctrine entity: one row of the <code>scientist</code> table.</li>
+    <li><code>src/Repository/ScientistRepository.php</code> is the data layer: a <code>ServiceEntityRepository</code> of the entity. It only reads and adds rows. It does not make the database: the Docker entrypoint makes <code>var/data/gallery.sqlite</code> and loads the fixtures of <code>src/DataFixtures/</code>.</li>
+    <li>The page is a class component. The container injects the repository in its constructor, and the page reads the entities with <code>$this-&gt;scientists-&gt;all()</code> while it renders. It reuses <code>Layout</code> and <code>Avatar</code> from the files above.</li>
+    <li>The handlers write to the database. <code>LikeCounter</code> gets the <code>Scientist</code> entity as a prop and increments its likes. <code>AddScientist</code> reads a Symfony form from <code>$e-&gt;request</code> and calls <code>add()</code> on the repository. Both components are <code>#[Transactional]</code>: rephp flushes and commits when the handler returns, so the handlers do not call <code>flush()</code>.</li>
     <li>After a handler, the server renders the page again. It reads the new rows and morphs only the components that changed.</li>
 </ul>
-<p>Click a like button, add a scientist, then click <strong>Reset</strong> or open the page in another browser. The data stays. Only the error message of the form is browser state (a <code>#[State]</code> property), because it is for one visitor only.</p>
+<p>Click a like button, add a scientist, then click <strong>Reset</strong> or open the page in another browser. The data stays. Submit an empty form: the validation errors of the form show in the render after the handler. They are not state, so they go away on the next event.</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="DurableGallery">
     <div class="sandbox-bar">
         <div class="sandbox-tabs" role="tablist" aria-label="Files">
@@ -172,7 +173,7 @@
 <aside class="callout callout-note">
     <h3 class="callout-title">One connection for each worker</h3>
     <div class="callout-body">
-        <p>FrankenPHP runs the application in worker mode: each worker boots the kernel once and handles many requests. The repository service opens the connection once in each worker and keeps it. The kernel resets the other services between requests. A worker handles one request at a time, so a slow query blocks only its worker. SQLite on a local file is fast. For a remote database, keep the queries short.</p>
+        <p>FrankenPHP runs the application in worker mode: each worker boots the kernel once and handles many requests. Doctrine opens the connection once in each worker and keeps it. The kernel resets the services between requests, and the reset clears the entity manager, so a request never gets the entities of an earlier request. A worker handles one request at a time, so a slow query blocks only its worker. SQLite on a local file is fast. For a remote database, keep the queries short.</p>
     </div>
 </aside>
 

@@ -170,6 +170,29 @@ public function add(Event $e): void
 }
 ```
 
+To render the form, keep it in a property. A `get` hook (PHP 8.4 property hooks) makes a new
+form when no handler made one, so `render()` shows the validation errors after a failed submit
+and an empty form in the other renders:
+
+```php
+private ?FormInterface $form = null {
+    get => $this->form ??= $this->forms->create(ScientistType::class);
+}
+
+public function render()
+{
+    $view = $this->form->createView();
+
+    return (
+        <form onSubmit={{ add }}>
+            {{ form_widget(view.name) }}
+            {{ form_errors(view.name) }}
+            <button type="submit">Add</button>
+        </form>
+    );
+}
+```
+
 ## 7. State: class components
 
 A component with state is a class with the `#[Component]` attribute and a `render()` method.
@@ -344,6 +367,7 @@ final class MyApp
 - `prop="text"` passes a string, `prop={{ expr }}` passes any value, and a bare `prop` passes `true`.
 - Children go to the `?Html $children` parameter (or public property): `<Card>...</Card>`.
 - Named slots: `<Card:footer>...</Card:footer>` goes to the `?Html $footer` parameter.
+- A default for children or a slot: `{{ footer ?? 'No footer' }}` shows when the caller gives none.
 - An unknown prop is an error, unless the function has a variadic `...$rest` parameter.
 
 ### Rest props
@@ -378,6 +402,6 @@ Components also work in the normal Twig templates of the application, without st
 
 ## 11. Template components (fast path)
 
-A component whose body is only `return <markup>;` (no hooks, no PHP statements) compiles to a
+A component whose body is only `return <markup>;` (no PHP statements) compiles to a
 plain Twig template. It renders through Twig `include` (no children) or `embed` (children and
 slots, as Twig blocks), with no PHP call. You write it in the same way as other components.

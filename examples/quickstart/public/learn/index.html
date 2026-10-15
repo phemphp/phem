@@ -163,7 +163,11 @@
 .avatar {
     border-radius: 50%;
 }</code></pre></div>
-<p>The rephp runtime adds a link to <code>/app.css</code> to each page for you. When the class depends on a value, give <code>className</code> a list. rephp joins the items with spaces and drops the empty items:</p>
+<p>To link the CSS file on each page, override the page document of the bundle in <code>templates/bundles/RephpBundle/page.html.twig</code>:</p>
+<div class="code-block"><div class="code-title">templates/bundles/RephpBundle/page.html.twig</div><pre class="code" data-controller="highlight"><code>{% extends '@!Rephp/page.html.twig' %}
+
+{% block stylesheets %}&lt;link rel="stylesheet" href="/app.css"&gt;{% endblock %}</code></pre></div>
+<p>When the class depends on a value, give <code>className</code> a list. rephp joins the items with spaces and drops the empty items:</p>
 <div class="code-block"><pre class="code" data-controller="highlight"><code>&lt;li className={{ ['item', isActive ? 'active' : ''] }}&gt;
     {{ item.title }}
 &lt;/li&gt;</code></pre></div>
@@ -302,7 +306,7 @@ return &lt;ul&gt;{{ listItems }}&lt;/ul&gt;;</code></pre></div>
     <li><code>onFocus</code></li>
     <li><code>onBlur</code></li>
 </ul>
-<p>The handler receives a <code>Rephp\Event</code> object. It has <code>$e-&gt;value</code>, <code>$e-&gt;checked</code>, <code>$e-&gt;key</code>, and <code>$e-&gt;form</code> (an array, for <code>onSubmit</code>). As in React, <code>onChange</code> on a text input fires on each key. Type in the box:</p>
+<p>The handler receives a <code>Rephp\Event</code> object. It has <code>$e-&gt;value</code>, <code>$e-&gt;checked</code>, <code>$e-&gt;key</code>, <code>$e-&gt;form</code> (an array, for <code>onSubmit</code>), and <code>$e-&gt;request</code> (the Symfony request of the event, for Symfony forms). As in React, <code>onChange</code> on a text input fires on each key. Type in the box:</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="SearchBox">
     <div class="sandbox-bar">
         <span class="sandbox-tab">SearchBox.rhp</span>
@@ -372,23 +376,29 @@ final class Counter
 <h2 id="services" class="heading">Services and initialization<a class="heading-anchor" href="#services" aria-label="Link to this section">#</a></h2>
 <p>A rephp application is a Symfony application, and each class component is a service. The container makes a new object for each component on the page, so the constructor gets the services that the component needs (autowiring), as in a Symfony controller:</p>
 <div class="code-block"><pre class="code" data-controller="highlight"><code>#[Component]
-final class LikeCounter
+#[Transactional]
+final class AddScientist
 {
-    public int $id;     // a prop
-    public int $likes;  // a prop
+    public string $label = 'Add';  // a prop
 
     public function __construct(private readonly ScientistRepository $scientists)
     {
     }
 
-    public function like(): void
+    public function add(Event $e): void
     {
-        $this-&gt;scientists-&gt;like($this-&gt;id);
+        $this-&gt;scientists-&gt;add(new Scientist($e-&gt;form['name'], $e-&gt;form['profession']));
     }
 
     public function render()
     {
-        return &lt;button onClick={{ like }}&gt;&#9829; {{ likes }}&lt;/button&gt;;
+        return (
+            &lt;form onSubmit={{ add }}&gt;
+                &lt;input name="name" /&gt;
+                &lt;input name="profession" /&gt;
+                &lt;button type="submit"&gt;{{ label }}&lt;/button&gt;
+            &lt;/form&gt;
+        );
     }
 }</code></pre></div>
 <p>The parts of a class component:</p>
@@ -399,6 +409,7 @@ final class LikeCounter
     <li><strong><code>mount()</code></strong> (optional) sets the first state. It runs after the props are set, when the component has no state yet: on its first render. For example, <code>$this-&gt;items = $this-&gt;repository-&gt;latest($this-&gt;limit);</code>.</li>
     <li><strong>Methods</strong> are event handlers. A handler can change the state and call the services.</li>
     <li><strong><code>render()</code></strong> returns markup.</li>
+    <li><strong><code>#[Transactional]</code></strong> (optional) runs each handler in a Doctrine ORM transaction. When the handler returns, rephp flushes and commits. Thus the repository only calls <code>persist()</code>, and the handler does not call <code>flush()</code>.</li>
 </ul>
 <p>A component without state does not need a class. A function that returns markup is a component too, and its parameters are its props. If its body is only <code>return &lt;markup&gt;;</code>, it compiles to a plain Twig template, with no PHP call. Here is a page that is a class with a prop and state:</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="StarRating">
@@ -478,11 +489,11 @@ final class CounterTogether
     );
 }</code></pre></div>
 <p>When you click a button, the <code>onClick</code> handler runs. It is the <code>handleClick()</code> method of the parent, so it changes the state of the parent. The parent renders again with the new <code>$count</code> and passes it to both buttons. A prop with an unknown name is an error, and PHP checks the types of the parameters as usual.</p>
-<p>A generic component cannot know all the attributes that its callers want to give. Add a variadic parameter: it collects the props that no other parameter takes, as <code>...rest</code> does in React. Then spread them on the element with <code>{{ ...rest }}</code>. The handlers go through too, so <code>onClick</code> does not need its own parameter:</p>
-<div class="code-block"><pre class="code" data-controller="highlight"><code>function CountButton(int $count, mixed ...$rest)
+<p>A generic component cannot know all the attributes that its callers want to give. Add a variadic parameter: it collects the props that no other parameter takes, as <code>...rest</code> does in React. Then spread them on the element with <code>{{ ...props }}</code>. The handlers go through too, so <code>onClick</code> does not need its own parameter:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>function CountButton(int $count, mixed ...$props)
 {
     return (
-        &lt;button type="button" {{ ...rest }}&gt;
+        &lt;button type="button" {{ ...props }}&gt;
             Clicked {{ count }} times
         &lt;/button&gt;
     );

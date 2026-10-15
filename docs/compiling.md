@@ -17,13 +17,15 @@ my-app/
 ├── Caddyfile              FrankenPHP: public/index.php in worker mode, and the static files
 ├── bin/console
 ├── config/
-│   ├── bundles.php        FrameworkBundle, TwigBundle, RephpBundle
+│   ├── bundles.php        FrameworkBundle, TwigBundle, RephpBundle (and DoctrineBundle for #[Transactional])
 │   ├── packages/rephp.yaml   optional: source_dir, build_dir, secret
 │   ├── routes/rephp.yaml     { resource: ., type: rephp }: the #[Route] attributes of the pages
 │   └── services.yaml      your services (for example repositories)
 ├── src/                   the .rhp sources (the "source root"), and your PHP classes
 │   ├── Kernel.php
+│   ├── Model/             optional: Doctrine entities
 │   ├── Repository/        normal PHP services, injected into components
+│   ├── DataFixtures/      optional: Doctrine fixtures, the first rows of a new database
 │   ├── components/        components that are not pages
 │   └── pages/             the components with a #[Route] attribute
 │       ├── index.rhp      #[Route('/')]
@@ -147,6 +149,10 @@ frankenphp run --config Caddyfile
 - `FRANKENPHP_WORKER_CONFIG` adds options to the worker. For example, `watch ./src/**/*.php`
   restarts the workers when a PHP class changes.
 - `APP_ENV=dev` (the default in `.env`) shows the Symfony error pages, with the `.rhp` location.
+- The application assumes that the database exists. Make it before the first run, for example
+  `bin/console doctrine:schema:create` and `bin/console doctrine:fixtures:load`. In Docker, the
+  quickstart entrypoints run `docker/init-db.sh` for this. The script changes nothing when the
+  database already exists.
 
 With PHP-FPM, use `public/index.php` as the front controller, as for any Symfony application.
 
@@ -195,4 +201,5 @@ opcache.preload_user=root
 `make prod` builds and runs the production image on http://localhost:8081. The image is based
 on the FrankenPHP image. It builds `rhpc` in a Rust stage, compiles the project and the caches
 at image build time, preloads the compiled components and templates, and runs
-`frankenphp run --config Caddyfile` (worker mode).
+`frankenphp run --config Caddyfile` (worker mode). On each start, its entrypoint runs
+`docker/init-db.sh`: a new volume gets the schema and the fixtures.
