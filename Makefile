@@ -13,8 +13,9 @@ prod:   ## Build and run the production image on http://localhost:8081
 	docker compose up --build prod
 
 vscode: ## Build the VS Code extension: editors/vscode/rhp-<version>.vsix
-	docker run --rm -v "$(CURDIR)/editors/vscode:/ext" -w /ext node:22-alpine \
-		npx --yes @vscode/vsce@3.6.2 package --skip-license --allow-missing-repository
+	docker run --rm -e NPM_CONFIG_UPDATE_NOTIFIER=false -e NPM_CONFIG_LOGLEVEL=warn -v "$(CURDIR)/editors/vscode:/ext" -w /ext node:22-alpine sh -c ' \
+		npm install --global --no-fund --no-audit npm@12.2.0 > /dev/null && \
+		npx --yes @vscode/vsce@4.0.0 package --skip-license --allow-missing-repository'
 
 VSCODE_VERSION = $(shell sed -n 's/^    "version": "\(.*\)",/\1/p' editors/vscode/package.json)
 
