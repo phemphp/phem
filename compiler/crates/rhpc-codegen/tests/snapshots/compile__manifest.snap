@@ -1,0 +1,167 @@
+---
+source: crates/rhpc-codegen/tests/compile.rs
+expression: out.manifest.to_json()
+---
+{
+  "version": "0.1.0",
+  "components": {
+    "App\\Components\\Badge": {
+      "fqcn": "App\\Components\\Badge",
+      "kind": "template",
+      "file": "components/Buttons.rhp",
+      "template": "components/Buttons.2.twig",
+      "props": [
+        "label",
+        "tone"
+      ],
+      "slots": [],
+      "required": [
+        "label"
+      ],
+      "rest": false
+    },
+    "App\\Components\\Card": {
+      "fqcn": "App\\Components\\Card",
+      "kind": "template",
+      "file": "components/Buttons.rhp",
+      "template": "components/Buttons.1.twig",
+      "props": [
+        "title",
+        "children",
+        "footer"
+      ],
+      "slots": [
+        "children",
+        "footer"
+      ],
+      "required": [
+        "title"
+      ],
+      "rest": false
+    },
+    "App\\Components\\Counter": {
+      "fqcn": "App\\Components\\Counter",
+      "kind": "class",
+      "file": "components/Counter.rhp",
+      "props": [
+        "label",
+        "children"
+      ],
+      "slots": [
+        "children"
+      ],
+      "required": [],
+      "rest": false
+    },
+    "App\\Components\\MyButton": {
+      "fqcn": "App\\Components\\MyButton",
+      "kind": "template",
+      "file": "components/Buttons.rhp",
+      "template": "components/Buttons.0.twig",
+      "props": [
+        "count",
+        "onClick"
+      ],
+      "slots": [],
+      "required": [
+        "count",
+        "onClick"
+      ],
+      "rest": false
+    },
+    "App\\Pages\\Home": {
+      "fqcn": "App\\Pages\\Home",
+      "kind": "function",
+      "file": "pages/index.rhp",
+      "props": [],
+      "slots": [],
+      "required": [],
+      "rest": false
+    },
+    "App\\Pages\\Toggle": {
+      "fqcn": "App\\Pages\\Toggle",
+      "kind": "function",
+      "file": "pages/index.rhp",
+      "props": [],
+      "slots": [],
+      "required": [],
+      "rest": false
+    },
+    "App\\Pages\\Toolbar": {
+      "fqcn": "App\\Pages\\Toolbar",
+      "kind": "function",
+      "file": "pages/index.rhp",
+      "props": [],
+      "slots": [],
+      "required": [],
+      "rest": false
+    },
+    "Rephp\\Provider": {
+      "fqcn": "Rephp\\Provider",
+      "kind": "function",
+      "file": "",
+      "props": [
+        "context",
+        "value",
+        "children"
+      ],
+      "slots": [
+        "children"
+      ],
+      "required": [
+        "context"
+      ],
+      "rest": false
+    }
+  },
+  "routes": {
+    "/": "App\\Pages\\Home"
+  },
+  "templates": {
+    "components/Buttons.0.twig": {
+      "source": "components/Buttons.rhp",
+      "line": 10
+    },
+    "components/Buttons.1.twig": {
+      "source": "components/Buttons.rhp",
+      "line": 18
+    },
+    "components/Buttons.2.twig": {
+      "source": "components/Buttons.rhp",
+      "line": 27
+    },
+    "components/Counter.0.twig": {
+      "source": "components/Counter.rhp",
+      "line": 23
+    },
+    "pages/index.0.twig": {
+      "source": "pages/index.rhp",
+      "line": 16
+    },
+    "pages/index.1.twig": {
+      "source": "pages/index.rhp",
+      "line": 23
+    },
+    "pages/index.2.twig": {
+      "source": "pages/index.rhp",
+      "line": 25
+    },
+    "pages/index.3.twig": {
+      "source": "pages/index.rhp",
+      "line": 28
+    },
+    "pages/index.4.twig": {
+      "source": "pages/index.rhp",
+      "line": 54
+    },
+    "pages/index.5.twig": {
+      "source": "pages/index.rhp",
+      "line": 57
+    }
+  },
+  "files": [
+    "php/components/Buttons.php",
+    "php/components/Counter.php",
+    "php/pages/index.php"
+  ]
+}

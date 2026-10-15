@@ -1,0 +1,4 @@
+<?php // expect: E052
+use Rephp\Attribute\Page;
+#[Page]
+function helper() { return 1; }

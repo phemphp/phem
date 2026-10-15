@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>Quick Start – rephp</title>
+    <meta name="description" content="A short tour of the rephp ideas that you use every day: components, markup, Twig, state, Hooks and props.">
+    <link rel="stylesheet" href="/css/site.css">
+    <script type="module" src="/js/site.js"></script>
+</head>
+<body>
+<div class="site">
+    <header class="topnav">
+        <div class="topnav-inner">
+            <a class="brand" href="/">
+            <svg class="logo" width="30" height="30" viewBox="-16 -16 32 32" aria-hidden="true">
+                <circle r="3" fill="currentColor"></circle>
+                <g fill="none" stroke="currentColor" stroke-width="1.6">
+                    <ellipse rx="13" ry="5.5" transform="rotate(35)"></ellipse>
+                    <ellipse rx="13" ry="5.5" transform="rotate(-35)"></ellipse>
+                    <rect x="-14" y="-14" width="28" height="28" rx="8" opacity="0.35"></rect>
+                </g>
+            </svg>
+                <span class="brand-name">rephp</span>
+                <span class="brand-version">v0.1</span>
+            </a>
+            <div class="search" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+                </svg>
+                <span class="search-text">Search</span>
+                <kbd class="search-kbd">Ctrl K</kbd>
+            </div>
+            <nav class="topnav-links" aria-label="Main">
+                <a class="topnav-link active" href="/learn/">Learn</a>
+                <a class="topnav-link" href="/reference.html">Reference</a>
+                <a class="topnav-link" href="/community.html">Community</a>
+                <a class="topnav-link" href="/blog.html">Blog</a>
+            </nav>
+        </div>
+    </header>
+    <div class="docs">
+        <aside class="sidebar">
+            <nav class="sidebar-nav" aria-label="Docs">
+                <div class="sidebar-group">
+                    <h3 class="sidebar-title">GET STARTED</h3>
+                    <ul class="sidebar-list">
+                        <li><a class="sidebar-link active" aria-current="page" href="/learn/">Quick Start</a></li>
+                        <li><a class="sidebar-link" href="/learn/tutorial.html">Tutorial: Tic-Tac-Toe</a></li>
+                        <li><a class="sidebar-link" href="/learn/thinking-in-rephp.html">Thinking in rephp</a></li>
+                        <li><a class="sidebar-link" href="/learn/installation.html">Installation</a></li>
+                        <li><a class="sidebar-link" href="/learn/setup.html">Setup</a></li>
+                    </ul>
+                </div>
+                <div class="sidebar-group">
+                    <h3 class="sidebar-title">LEARN REPHP</h3>
+                    <ul class="sidebar-list">
+                        <li><a class="sidebar-link" href="/learn/describing-the-ui.html">Describing the UI</a></li>
+                        <li><a class="sidebar-link" href="/learn/adding-interactivity.html">Adding Interactivity</a></li>
+                        <li><a class="sidebar-link" href="/learn/managing-state.html">Managing State</a></li>
+                        <li><a class="sidebar-link" href="/learn/escape-hatches.html">Escape Hatches</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+        <main class="docs-main">
+            <details class="mobile-nav">
+                <summary>Menu</summary>
+                <nav class="sidebar-nav" aria-label="Docs">
+                    <div class="sidebar-group">
+                        <h3 class="sidebar-title">GET STARTED</h3>
+                        <ul class="sidebar-list">
+                            <li><a class="sidebar-link active" aria-current="page" href="/learn/">Quick Start</a></li>
+                            <li><a class="sidebar-link" href="/learn/tutorial.html">Tutorial: Tic-Tac-Toe</a></li>
+                            <li><a class="sidebar-link" href="/learn/thinking-in-rephp.html">Thinking in rephp</a></li>
+                            <li><a class="sidebar-link" href="/learn/installation.html">Installation</a></li>
+                            <li><a class="sidebar-link" href="/learn/setup.html">Setup</a></li>
+                        </ul>
+                    </div>
+                    <div class="sidebar-group">
+                        <h3 class="sidebar-title">LEARN REPHP</h3>
+                        <ul class="sidebar-list">
+                            <li><a class="sidebar-link" href="/learn/describing-the-ui.html">Describing the UI</a></li>
+                            <li><a class="sidebar-link" href="/learn/adding-interactivity.html">Adding Interactivity</a></li>
+                            <li><a class="sidebar-link" href="/learn/managing-state.html">Managing State</a></li>
+                            <li><a class="sidebar-link" href="/learn/escape-hatches.html">Escape Hatches</a></li>
+                        </ul>
+                    </div>
+                </nav>
+            </details>
+            <article class="article">
+<header id="overview" class="article-header">
+    <p class="breadcrumb">Learn rephp</p>
+    <h1>Quick Start</h1>
+    <p class="lead">Welcome to the rephp documentation. This page is a short tour of the rephp ideas that you will use every day. If you know React, most of it will look familiar: rephp is React for PHP and Twig.</p>
+</header>
+
+<aside class="callout callout-learn">
+    <h3 class="callout-title">You will learn</h3>
+    <div class="callout-body">
+        <ul>
+            <li>How to create and nest components</li>
+            <li>How to add markup and styles</li>
+            <li>How to display data</li>
+            <li>How to render conditions and lists</li>
+            <li>How to respond to events and update the screen</li>
+            <li>How to share data between components</li>
+        </ul>
+    </div>
+</aside>
+
+<h2 id="components" class="heading">Creating and nesting components<a class="heading-anchor" href="#components" aria-label="Link to this section">#</a></h2>
+<p>A rephp app is made of <em>components</em>. A component is a piece of the UI with its own logic and look. A component can be as small as a button or as large as a full page.</p>
+<p>A rephp component is a PHP function that returns markup. You write it in a <code>.rhp</code> file:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>function MyButton()
+{
+    return (
+        &lt;button&gt;I'm a button&lt;/button&gt;
+    );
+}</code></pre></div>
+<p>Now that you declared <code>MyButton</code>, you can nest it into another component:</p>
+<div class="sandbox" data-controller="sandbox" data-sandbox-example-value="MyButton">
+    <div class="sandbox-bar">
+        <span class="sandbox-tab">MyButton.rhp</span>
+        <div class="sandbox-actions">
+            <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
+            <a class="sandbox-button" href="/examples/MyButton" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
+        </div>
+    </div>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/pages/examples/MyButton.rhp...</code></pre>
+    <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
+    <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/MyButton" loading="lazy" title="MyButton preview"></iframe>
+</div>
+<p>Look at <code>&lt;MyButton /&gt;</code>: it starts with a capital letter. That is how you know it is a rephp component. Component names always start with a capital letter. HTML tags are always lowercase.</p>
+<p>The <code>#[Page]</code> attribute marks the page component of the file. React uses <code>export default</code> for this. <code>#[Page]</code> is the PHP way, so the code stays valid PHP. A file in <code>src/pages/</code> with a <code>#[Page]</code> component is a page: the file <code>src/pages/examples/MyButton.rhp</code> above is the page <a href="/examples/MyButton"><code>/examples/MyButton</code></a>. To find the component of a tag, the compiler uses the PHP rules: first a <code>use function</code> import, then a <code>use</code> import of a class, then the current namespace.</p>
+
+<h2 id="writing-markup" class="heading">Writing markup with rhp<a class="heading-anchor" href="#writing-markup" aria-label="Link to this section">#</a></h2>
+<p>The markup above is a <em>markup literal</em>. React uses JSX for this. rephp uses the same idea in PHP: a markup literal is a PHP expression, and its value is a <code>Rephp\Html</code> object. The <code>rhpc</code> compiler turns each markup literal into a Twig template at build time. Nothing is parsed when a request comes in.</p>
+<p>Markup is stricter than HTML. You must close all tags, for example <code>&lt;br /&gt;</code>. A component also cannot return more than one root tag. Wrap the tags in a shared parent, such as a <code>&lt;div&gt;</code> or an empty fragment <code>&lt;&gt;...&lt;/&gt;</code>:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>function AboutPage()
+{
+    return (
+        &lt;&gt;
+            &lt;h1&gt;About&lt;/h1&gt;
+            &lt;p&gt;Hello there.&lt;br /&gt;How do you do?&lt;/p&gt;
+        &lt;/&gt;
+    );
+}</code></pre></div>
+<aside class="callout callout-note">
+    <h3 class="callout-title">Note</h3>
+    <div class="callout-body">
+        <p>A markup literal can start anywhere a PHP expression can start: after <code>return</code>, <code>(</code>, <code>=</code>, <code>,</code>, <code>=&gt;</code>, <code>?</code>, <code>:</code>, <code>??</code>, <code>[</code> and <code>echo</code>.</p>
+    </div>
+</aside>
+
+<h2 id="adding-styles" class="heading">Adding styles<a class="heading-anchor" href="#adding-styles" aria-label="Link to this section">#</a></h2>
+<p>To give a tag a CSS class, use <code>className</code>. It works the same way as the HTML <code>class</code> attribute. (You can also write <code>class</code>. The two names are aliases, like <code>htmlFor</code> and <code>for</code>.)</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>&lt;img className="avatar" /&gt;</code></pre></div>
+<p>Then write the CSS rules in a separate CSS file:</p>
+<div class="code-block"><div class="code-title">public/app.css</div><pre class="code" data-controller="highlight"><code>/* In your CSS */
+.avatar {
+    border-radius: 50%;
+}</code></pre></div>
+<p>The rephp runtime adds a link to <code>/app.css</code> to each page for you. When the class depends on a value, give <code>className</code> a list. rephp joins the items with spaces and drops the empty items:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>&lt;li className={{ ['item', isActive ? 'active' : ''] }}&gt;
+    {{ item.title }}
+&lt;/li&gt;</code></pre></div>
+
+<h2 id="displaying-data" class="heading">Displaying data<a class="heading-anchor" href="#displaying-data" aria-label="Link to this section">#</a></h2>
+<p>In JSX, curly braces like <code>{user.name}</code> take you back into JavaScript. In rephp, the text and the attribute values of markup are <strong>Twig</strong>. Use the Twig syntax <code>{{ }}</code> to print a value. The Twig variables are the PHP variables of the function: <code>$user</code> is <code>user</code> in Twig, and <code>{{ user.name }}</code> prints the <code>name</code> key of the array.</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>return (
+    &lt;h1&gt;
+        {{ user.name }}
+    &lt;/h1&gt;
+);</code></pre></div>
+<p>Twig escapes the value when it prints it, so text from users is safe. The only exception is markup: an <code>Html</code> value prints as HTML.</p>
+<p>An attribute can also take a value from PHP. Write <code>src={{ user.imageUrl }}</code> to pass the value of the variable. A quoted value such as <code>src="/img/avatar.svg"</code> is a plain string. A quoted value can also contain Twig, for example <code>alt="Photo of {{ user.name }}"</code>:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>return (
+    &lt;img
+        className="avatar"
+        src={{ user.imageUrl }}
+        alt="Photo of {{ user.name }}"
+    /&gt;
+);</code></pre></div>
+<p>Twig expressions can be more complex too. You can join strings with the <code>~</code> operator, and use all the Twig filters and tests:</p>
+<div class="sandbox" data-controller="sandbox" data-sandbox-example-value="Profile">
+    <div class="sandbox-bar">
+        <span class="sandbox-tab">Profile.rhp</span>
+        <div class="sandbox-actions">
+            <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
+            <a class="sandbox-button" href="/examples/Profile" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
+        </div>
+    </div>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/pages/examples/Profile.rhp...</code></pre>
+    <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
+    <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/Profile" loading="lazy" title="Profile preview"></iframe>
+</div>
+<p>In this example, <code>style={{ {width: user.imageSize} }}</code> is not a special syntax. It is a Twig hash inside the <code>{{ }}</code> braces. rephp changes camelCase keys to kebab-case and adds <code>px</code> to numbers.</p>
+<aside class="callout callout-pitfall">
+    <h3 class="callout-title">Compute first, then return</h3>
+    <div class="callout-body">
+        <p>Do not put PHP code in markup. Compute the values in PHP before the <code>return</code>, then print them with Twig. This keeps the template simple, and the compiler can make it into fast Twig code.</p>
+    </div>
+</aside>
+
+<h2 id="conditional-rendering" class="heading">Conditional rendering<a class="heading-anchor" href="#conditional-rendering" aria-label="Link to this section">#</a></h2>
+<p>rephp has no special syntax for conditions. Use the same code that you use in plain PHP. For example, use an <code>if</code> statement to select the markup. A markup literal is a value, so you can keep it in a variable:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>if ($isLoggedIn) {
+    $content = &lt;AdminPanel /&gt;;
+} else {
+    $content = &lt;LoginForm /&gt;;
+}
+
+return (
+    &lt;div&gt;
+        {{ content }}
+    &lt;/div&gt;
+);</code></pre></div>
+<p>For a shorter form, use a Twig expression inside the markup. The Twig ternary operator and the <code>and</code> operator take markup too. The Twig <code>{% if %}</code> tag also works:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>{# The ternary operator #}
+&lt;div&gt;{{ isLoggedIn ? &lt;AdminPanel /&gt; : &lt;LoginForm /&gt; }}&lt;/div&gt;
+
+{# Like &amp;&amp; in JSX: render the panel or nothing #}
+&lt;div&gt;{{ isLoggedIn and &lt;AdminPanel /&gt; }}&lt;/div&gt;
+
+{# A Twig if tag #}
+&lt;div&gt;{% if isLoggedIn %}&lt;AdminPanel /&gt;{% else %}&lt;LoginForm /&gt;{% endif %}&lt;/div&gt;</code></pre></div>
+<p>Click the button in the preview to log in and out:</p>
+<div class="sandbox" data-controller="sandbox" data-sandbox-example-value="LoginStatus">
+    <div class="sandbox-bar">
+        <span class="sandbox-tab">LoginStatus.rhp</span>
+        <div class="sandbox-actions">
+            <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
+            <a class="sandbox-button" href="/examples/LoginStatus" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
+        </div>
+    </div>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/pages/examples/LoginStatus.rhp...</code></pre>
+    <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
+    <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/LoginStatus" loading="lazy" title="LoginStatus preview"></iframe>
+</div>
+
+<h2 id="rendering-lists" class="heading">Rendering lists<a class="heading-anchor" href="#rendering-lists" aria-label="Link to this section">#</a></h2>
+<p>To render a list of items, use the Twig <code>{% for %}</code> tag or the PHP <code>array_map()</code> function. For example, you have an array of products:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>$products = [
+    ['title' =&gt; 'Cabbage', 'id' =&gt; 1],
+    ['title' =&gt; 'Garlic', 'id' =&gt; 2],
+    ['title' =&gt; 'Apple', 'id' =&gt; 3],
+];</code></pre></div>
+<p>Loop over the array in the markup with a <code>{% for %}</code> tag:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>return (
+    &lt;ul&gt;
+        {% for product in products %}
+            &lt;li key={{ product.id }}&gt;{{ product.title }}&lt;/li&gt;
+        {% endfor %}
+    &lt;/ul&gt;
+);</code></pre></div>
+<p>Or do the same as <code>map()</code> in React. An array of markup prints as a list:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>$listItems = array_map(
+    fn($product) =&gt; &lt;li key={{ product.id }}&gt;{{ product.title }}&lt;/li&gt;,
+    $products,
+);
+
+return &lt;ul&gt;{{ listItems }}&lt;/ul&gt;;</code></pre></div>
+<p>Each <code>&lt;li&gt;</code> has a <code>key</code> attribute. For each item in a list, give a string or a number that identifies it among its siblings, for example <code>key={{ product.id }}</code>. Usually a key comes from your data, such as a database ID. rephp uses the keys to know what changed when it updates the page.</p>
+<div class="sandbox" data-controller="sandbox" data-sandbox-example-value="ShoppingList">
+    <div class="sandbox-bar">
+        <span class="sandbox-tab">ShoppingList.rhp</span>
+        <div class="sandbox-actions">
+            <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
+            <a class="sandbox-button" href="/examples/ShoppingList" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
+        </div>
+    </div>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/pages/examples/ShoppingList.rhp...</code></pre>
+    <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
+    <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/ShoppingList" loading="lazy" title="ShoppingList preview"></iframe>
+</div>
+
+<h2 id="responding-to-events" class="heading">Responding to events<a class="heading-anchor" href="#responding-to-events" aria-label="Link to this section">#</a></h2>
+<p>You respond to events with <em>event handler</em> functions. Declare the handler in the component, then pass it to an event attribute:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>function MyButton()
+{
+    $handleClick = fn() =&gt; error_log('You clicked me!');
+
+    return (
+        &lt;button onClick={{ handleClick }}&gt;
+            Click me
+        &lt;/button&gt;
+    );
+}</code></pre></div>
+<p>Look at <code>onClick={{ handleClick }}</code>: there are no parentheses at the end. Do not <em>call</em> the handler function, as in <code>onClick={{ handleClick() }}</code>. Only <em>pass it down</em>. rephp calls the handler when the user clicks the button.</p>
+<p>rephp supports these events:</p>
+<ul class="tag-list">
+    <li><code>onClick</code></li>
+    <li><code>onDoubleClick</code></li>
+    <li><code>onChange</code></li>
+    <li><code>onInput</code></li>
+    <li><code>onSubmit</code></li>
+    <li><code>onKeyDown</code></li>
+    <li><code>onKeyUp</code></li>
+    <li><code>onFocus</code></li>
+    <li><code>onBlur</code></li>
+</ul>
+<p>The handler receives a <code>Rephp\Event</code> object. It has <code>$e-&gt;value</code>, <code>$e-&gt;checked</code>, <code>$e-&gt;key</code>, and <code>$e-&gt;form</code> (an array, for <code>onSubmit</code>). As in React, <code>onChange</code> on a text input fires on each key. Type in the box:</p>
+<div class="sandbox" data-controller="sandbox" data-sandbox-example-value="SearchBox">
+    <div class="sandbox-bar">
+        <span class="sandbox-tab">SearchBox.rhp</span>
+        <div class="sandbox-actions">
+            <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
+            <a class="sandbox-button" href="/examples/SearchBox" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
+        </div>
+    </div>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/pages/examples/SearchBox.rhp...</code></pre>
+    <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
+    <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/SearchBox" loading="lazy" title="SearchBox preview"></iframe>
+</div>
+<aside class="callout callout-deep">
+    <h3 class="callout-title">Where does the handler run?</h3>
+    <div class="callout-body">
+        <p>This is the largest difference from React. A rephp event handler is PHP, so it runs <strong>on the server</strong>. When you click, the browser sends the event and the state of the component to the server. The server runs the handler, renders the component again, and sends back Turbo Streams. Turbo morphs only the parts of the page that changed. You do not write any JavaScript for this. In the <code>MyButton</code> code above, <code>error_log()</code> writes to the server log, not to the browser console.</p>
+    </div>
+</aside>
+
+<h2 id="updating-the-screen" class="heading">Updating the screen<a class="heading-anchor" href="#updating-the-screen" aria-label="Link to this section">#</a></h2>
+<p>Often, you want your component to "remember" some information and show it. For example, you want to count the number of times that a button is clicked. To do this, add <em>state</em> to your component.</p>
+<p>First, import <code>useState</code> from rephp:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>use function Rephp\useState;</code></pre></div>
+<p>Now you can declare a <em>state variable</em> in your component:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>function MyButton()
+{
+    [$count, $setCount] = useState(0);
+    // ...
+}</code></pre></div>
+<p>You get two things from <code>useState</code>: the current state (<code>$count</code>), and the function that changes it (<code>$setCount</code>). You can give them any names, but the convention is <code>[$something, $setSomething]</code>.</p>
+<p>The first time the button shows, <code>$count</code> is <code>0</code>, because you passed <code>0</code> to <code>useState()</code>. To change the state, call <code>$setCount()</code> with a new value. rephp then calls your component function again, and <code>$count</code> is <code>1</code>. Then it is <code>2</code>, and so on. The setter also takes an updater function, for example <code>$setCount(fn($c) =&gt; $c + 1)</code>.</p>
+<p>If you render the same component more than one time, each one gets its own state. Click each button separately:</p>
+<div class="sandbox" data-controller="sandbox" data-sandbox-example-value="CounterSeparate">
+    <div class="sandbox-bar">
+        <span class="sandbox-tab">CounterSeparate.rhp</span>
+        <div class="sandbox-actions">
+            <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
+            <a class="sandbox-button" href="/examples/CounterSeparate" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
+        </div>
+    </div>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/pages/examples/CounterSeparate.rhp...</code></pre>
+    <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
+    <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/CounterSeparate" loading="lazy" title="CounterSeparate preview"></iframe>
+</div>
+<p>Each button "remembers" its own <code>$count</code> state and does not change the other buttons.</p>
+<aside class="callout callout-deep">
+    <h3 class="callout-title">Where does the state live?</h3>
+    <div class="callout-body">
+        <p>In React, the state lives in the memory of the browser tab. In rephp, the state lives <strong>in the browser</strong> too, but in a different form: the <code>rhp</code> Stimulus controller keeps it in the page, and the server signs it. Each event sends the state to the server, and the server sends back the new state with the new markup. The server keeps nothing between requests. For this reason, state values must be JSON values: scalars and arrays. Click <strong>Reset</strong> on a sandbox: the page loads again, and the state goes back to its first value.</p>
+    </div>
+</aside>
+
+<h2 id="using-hooks" class="heading">Using Hooks<a class="heading-anchor" href="#using-hooks" aria-label="Link to this section">#</a></h2>
+<p>Functions whose names start with <code>use</code> are called <em>Hooks</em>. <code>useState</code> is a built-in Hook from rephp. These are all the built-in Hooks:</p>
+<ul class="tag-list">
+    <li><code>useState</code></li>
+    <li><code>useReducer</code></li>
+    <li><code>useMemo</code></li>
+    <li><code>useCallback</code></li>
+    <li><code>useRef</code></li>
+    <li><code>useId</code></li>
+    <li><code>useContext</code></li>
+</ul>
+<p>You can also write your own Hooks: a function whose name starts with <code>use</code> and that calls other Hooks.</p>
+<p>Hooks are more restrictive than other functions. These are the <strong>Rules of Hooks</strong>: call Hooks only at the top level of a component or of another Hook. Do not call Hooks in an <code>if</code>, a loop, a <code>match</code>, a closure, or after an early <code>return</code>. Unlike in React, you do not need a linter for this: the <code>rhpc</code> compiler finds these errors at build time.</p>
+<div class="code-block"><div class="code-title">Wrong</div><pre class="code" data-controller="highlight"><code>function Greeting(bool $showName)
+{
+    if ($showName) {
+        // Error: the compiler rejects a Hook inside an if.
+        [$name, $setName] = useState('');
+    }
+    // ...
+}</code></pre></div>
+<div class="code-block"><div class="code-title">Right</div><pre class="code" data-controller="highlight"><code>function Greeting(bool $showName)
+{
+    // Good: the Hook is at the top level, before any return.
+    [$name, $setName] = useState('');
+
+    if (!$showName) {
+        return &lt;p&gt;Hello!&lt;/p&gt;;
+    }
+
+    return &lt;p&gt;Hello, {{ name }}!&lt;/p&gt;;
+}</code></pre></div>
+<h3 id="class-components">Class components</h3>
+<p>If you prefer classes, rephp also has class components. Mark the class with <code>#[Component]</code>. A public property is a prop, and a property with <code>#[State]</code> is state. A method changes the state, and the <code>render()</code> method returns markup. In the markup of a class, a name is first a local variable, then a property (<code>$this-&gt;name</code>), then a method. So you can pass a method as an event handler:</p>
+<div class="sandbox" data-controller="sandbox" data-sandbox-example-value="StarRating">
+    <div class="sandbox-bar">
+        <span class="sandbox-tab">StarRating.rhp</span>
+        <div class="sandbox-actions">
+            <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
+            <a class="sandbox-button" href="/examples/StarRating" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
+        </div>
+    </div>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/pages/examples/StarRating.rhp...</code></pre>
+    <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
+    <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/StarRating" loading="lazy" title="StarRating preview"></iframe>
+</div>
+
+<h2 id="sharing-data" class="heading">Sharing data between components<a class="heading-anchor" href="#sharing-data" aria-label="Link to this section">#</a></h2>
+<p>In the previous example, each <code>Counter</code> had its own independent <code>$count</code>. When you clicked one button, only the <code>$count</code> of that button changed. But often you need components to <em>share data and always update together</em>.</p>
+<p>To make both buttons show the same count and update together, move the state from the buttons "upward" to the nearest component that contains all of them. Then pass the state down to each button. This is called <strong>lifting state up</strong>.</p>
+<div class="diagrams">
+    <figure class="diagram">
+        <div class="tree">
+            <div class="node">CounterSeparate</div>
+            <div class="branches">
+                <div class="node node-state">Counter<small>count: 0</small></div>
+                <div class="node node-state">Counter<small>count: 1</small></div>
+            </div>
+        </div>
+        <figcaption>Before: each button keeps its own <code>count</code>. A click changes only one button.</figcaption>
+    </figure>
+    <figure class="diagram">
+        <div class="tree">
+            <div class="node node-state">CounterTogether<small>count: 1</small></div>
+            <div class="branches">
+                <div class="node node-prop">CountButton<small>prop count: 1</small></div>
+                <div class="node node-prop">CountButton<small>prop count: 1</small></div>
+            </div>
+        </div>
+        <figcaption>After: the parent keeps <code>count</code> and passes it down as a prop. A click changes both buttons.</figcaption>
+    </figure>
+</div>
+<p>First, move the state up from the button into the parent component. Then pass the state down from the parent, together with the click handler. You pass information down as <em>props</em>, with the same Twig syntax as attributes:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>#[Page]
+function CounterTogether()
+{
+    [$count, $setCount] = useState(0);
+
+    $handleClick = fn() =&gt; $setCount($count + 1);
+
+    return (
+        &lt;div&gt;
+            &lt;h1&gt;Counters that update together&lt;/h1&gt;
+            &lt;CountButton count={{ count }} onClick={{ handleClick }} /&gt;
+            &lt;CountButton count={{ count }} onClick={{ handleClick }} /&gt;
+        &lt;/div&gt;
+    );
+}</code></pre></div>
+<p>In rephp, props are the named parameters of the function. Change the button to read the props that its parent passes:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>function CountButton(int $count, Closure $onClick)
+{
+    return (
+        &lt;button onClick={{ onClick }}&gt;
+            Clicked {{ count }} times
+        &lt;/button&gt;
+    );
+}</code></pre></div>
+<p>When you click a button, the <code>onClick</code> handler runs. It is the <code>$handleClick</code> function of the parent, so it changes the state of the parent. The parent renders again with the new <code>$count</code> and passes it to both buttons. A prop with an unknown name is an error, and PHP checks the types of the parameters as usual.</p>
+<div class="sandbox" data-controller="sandbox" data-sandbox-example-value="CounterTogether">
+    <div class="sandbox-bar">
+        <span class="sandbox-tab">CounterTogether.rhp</span>
+        <div class="sandbox-actions">
+            <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
+            <a class="sandbox-button" href="/examples/CounterTogether" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
+        </div>
+    </div>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/pages/examples/CounterTogether.rhp...</code></pre>
+    <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
+    <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/CounterTogether" loading="lazy" title="CounterTogether preview"></iframe>
+</div>
+<aside class="callout callout-note">
+    <h3 class="callout-title">Children and slots</h3>
+    <div class="callout-body">
+        <p>A component can also receive markup. The content between the tags goes to the <code>?Html $children</code> parameter: <code>&lt;Card&gt;...&lt;/Card&gt;</code>. A named slot, such as <code>&lt;Card:footer&gt;...&lt;/Card:footer&gt;</code>, goes to the <code>?Html $footer</code> parameter.</p>
+    </div>
+</aside>
+
+<h2 id="next-steps" class="heading">Next Steps<a class="heading-anchor" href="#next-steps" aria-label="Link to this section">#</a></h2>
+<p>You now know the basics of how to write rephp code!</p>
+<p>Go to the <a href="/learn/tutorial.html">Tutorial</a> to use them in practice and build your first mini-app with rephp. Or read <a href="/learn/thinking-in-rephp.html">Thinking in rephp</a> to learn how to design a UI as a tree of components.</p>
+
+            </article>
+            <nav class="pager" aria-label="Pages">
+                <span></span>
+                <a class="pager-link pager-next" href="/learn/tutorial.html"><span class="pager-label">Next</span><span class="pager-title">Tutorial: Tic-Tac-Toe</span></a>
+            </nav>
+            <footer class="footer">
+                <p>This site is a demo built with rephp: .rhp components, Twig, Stimulus and Turbo. It is not affiliated with the React team.</p>
+            </footer>
+        </main>
+            <aside class="toc">
+                <nav class="toc-nav" aria-label="On this page" data-controller="toc">
+                    <h2 class="toc-title">On this page</h2>
+                    <ul class="toc-list">
+                    <li><a class="toc-link" data-toc-target="link" href="#overview">Overview</a></li>
+                    <li><a class="toc-link" data-toc-target="link" href="#components">Creating and nesting components</a></li>
+                    <li><a class="toc-link" data-toc-target="link" href="#writing-markup">Writing markup with rhp</a></li>
+                    <li><a class="toc-link" data-toc-target="link" href="#adding-styles">Adding styles</a></li>
+                    <li><a class="toc-link" data-toc-target="link" href="#displaying-data">Displaying data</a></li>
+                    <li><a class="toc-link" data-toc-target="link" href="#conditional-rendering">Conditional rendering</a></li>
+                    <li><a class="toc-link" data-toc-target="link" href="#rendering-lists">Rendering lists</a></li>
+                    <li><a class="toc-link" data-toc-target="link" href="#responding-to-events">Responding to events</a></li>
+                    <li><a class="toc-link" data-toc-target="link" href="#updating-the-screen">Updating the screen</a></li>
+                    <li><a class="toc-link" data-toc-target="link" href="#using-hooks">Using Hooks</a></li>
+                    <li><a class="toc-link" data-toc-target="link" href="#sharing-data">Sharing data between components</a></li>
+                    <li><a class="toc-link" data-toc-target="link" href="#next-steps">Next Steps</a></li>
+                    </ul>
+                </nav>
+            </aside>
+    </div>
+</div>
+</body>
+</html>

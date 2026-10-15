@@ -1,0 +1,82 @@
+<?php
+
+namespace App\Pages;
+
+use App\Components\Counter;
+use Rephp\Attribute\Page;
+use Rephp\Context;
+use Rephp\Provider;
+use function Rephp\{useState, useContext, useReducer};
+use function App\Components\{MyButton, Card, Badge};
+
+const ThemeContext = new Context('light');
+
+function Toolbar() {
+    $theme = useContext(ThemeContext);
+    return <p className="theme-{{ theme }}">Theme: {{ theme }}</p>;
+}
+
+function Toggle() {
+    [$on, $setOn] = useState(false);
+    $toggle = fn() => $setOn(fn($v) => !$v);
+    if ($on) {
+        $content = <Badge label="on" tone="ok" />;
+    } else {
+        $content = <Badge label="off" />;
+    }
+    return (
+        <div class="toggle">
+            <button id="toggle" onClick={{ toggle }}>Toggle</button>
+            {{ content }}
+            {{ on ? <strong id="yes">Yes</strong> : <em id="no">No</em> }}
+            {{ on and <span id="and">and-shown</span> }}
+        </div>
+    );
+}
+
+function reducer(array $state, string $action): array {
+    return match ($action) {
+        'add' => [...$state, 'item'.(count($state) + 1)],
+        'clear' => [],
+    };
+}
+
+#[Page]
+function Home() {
+    [$count, $setCount] = useState(0);
+    [$items, $dispatch] = useReducer(reducer(...), []);
+    $handleClick = fn() => $setCount($count + 1);
+    $add = fn() => $dispatch('add');
+    $products = [
+        ['title' => 'Cabbage', 'isFruit' => false, 'id' => 1],
+        ['title' => 'Apple', 'isFruit' => true, 'id' => 3],
+    ];
+    $listItems = array_map(fn($p) => <li key={{ p.id }}>{{ p.title }}</li>, $products);
+
+    return (
+        <main>
+            <title>Fixture Home</title>
+            <h1>Counters that update together</h1>
+            <MyButton count={{ count }} onClick={{ handleClick }} />
+            <MyButton count={{ count }} onClick={{ handleClick }} />
+            <ul id="shopping">
+                {% for product in products %}
+                    <li key={{ product.id }} style={{ {color: product.isFruit ? 'magenta' : 'darkgreen', fontWeight: 700} }}>{{ product.title }}</li>
+                {% endfor %}
+            </ul>
+            <ol id="mapped">{{ listItems }}</ol>
+            <Card title="Hello">
+                <p>Body {{ count }}</p>
+                <Card:footer><Badge label="foot" /></Card:footer>
+            </Card>
+            <Counter label="Hits">!</Counter>
+            <Toggle />
+            <button id="add" onClick={{ add }}>Add</button>
+            <span id="items">{{ items|join(',') }}</span>
+            <Provider context="App\Pages\ThemeContext" value="dark">
+                <Toolbar />
+            </Provider>
+            <Toolbar />
+        </main>
+    );
+}

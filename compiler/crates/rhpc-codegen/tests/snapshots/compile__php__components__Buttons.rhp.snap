@@ -1,0 +1,32 @@
+---
+source: crates/rhpc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by rhpc from components/Buttons.rhp; do not edit */
+
+namespace App\Components;
+
+use Closure;
+use Rephp\Html;
+
+function MyButton(int $count, Closure $onClick) {
+    return (
+        \Rephp\Rt::render('components/Buttons.0.twig', ['onClick' => $onClick ?? null, 'count' => $count ?? null])
+
+
+    );
+}
+
+function Card(string $title, ?Html $children = null, ?Html $footer = null) {
+    return (
+        \Rephp\Rt::render('components/Buttons.1.twig', ['title' => $title ?? null, 'children' => $children ?? null, 'footer' => $footer ?? null])
+
+
+
+
+    );
+}
+
+function Badge(string $label, string $tone = 'info') {
+    return \Rephp\Rt::render('components/Buttons.2.twig', ['tone' => $tone ?? null, 'label' => $label ?? null]);
+}

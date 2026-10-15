@@ -1,0 +1,8 @@
+/compiler/target/
+vendor/
+var/
+composer.lock
+.phpunit.cache/
+.phpunit.result.cache
+.playwright-mcp/
+*.vsix

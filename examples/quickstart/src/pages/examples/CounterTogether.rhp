@@ -1,0 +1,32 @@
+<?php
+namespace App\Pages\Examples;
+
+use Closure;
+use Rephp\Attribute\Page;
+use function Rephp\useState;
+
+function CountButton(int $count, Closure $onClick)
+{
+    return (
+        <button onClick={{ onClick }}>
+            Clicked {{ count }} times
+        </button>
+    );
+}
+
+#[Page]
+function CounterTogether()
+{
+    [$count, $setCount] = useState(0);
+
+    $handleClick = fn() => $setCount($count + 1);
+
+    return (
+        <div>
+            <title>CounterTogether</title>
+            <h1>Counters that update together</h1>
+            <CountButton count={{ count }} onClick={{ handleClick }} />
+            <CountButton count={{ count }} onClick={{ handleClick }} />
+        </div>
+    );
+}

@@ -1,0 +1,32 @@
+---
+source: crates/rhpc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by rhpc from components/Counter.rhp; do not edit */
+
+namespace App\Components;
+
+use Rephp\Attribute\{Component, State};
+use Rephp\Html;
+
+#[Component]
+final class Counter
+{
+    public string $label = 'Clicked';
+    public ?Html $children = null;
+    #[State] public int $count = 0;
+
+    public function increment(): void
+    {
+        $this->count = clamp($this->count + 1, 0, 3);
+    }
+
+    public function render()
+    {
+        return (
+            \Rephp\Rt::render('components/Counter.0.twig', ['increment' => $this->increment(...), 'count' => $this->count, 'label' => $this->label, 'children' => $this->children])
+
+
+        );
+    }
+}

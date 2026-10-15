@@ -1,0 +1,32 @@
+<?php
+namespace App\Pages\Examples;
+
+use Rephp\Attribute\Page;
+
+use function Rephp\useState;
+
+function Counter()
+{
+    [$count, $setCount] = useState(0);
+
+    $handleClick = fn() => $setCount($count + 1);
+
+    return (
+        <button onClick={{ handleClick }}>
+            Clicked {{ count }} times
+        </button>
+    );
+}
+
+#[Page]
+function CounterSeparate()
+{
+    return (
+        <div>
+            <title>CounterSeparate</title>
+            <h1>Counters that update separately</h1>
+            <Counter />
+            <Counter />
+        </div>
+    );
+}

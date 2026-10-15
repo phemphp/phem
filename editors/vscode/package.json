@@ -1,0 +1,58 @@
+{
+    "name": "rhp",
+    "displayName": "RHP (rephp)",
+    "description": "Syntax highlighting for .rhp files: PHP with markup literals and Twig.",
+    "version": "0.1.0",
+    "publisher": "rephp",
+    "license": "MIT",
+    "engines": {
+        "vscode": "^1.75.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "keywords": [
+        "rhp",
+        "rephp",
+        "php",
+        "twig",
+        "jsx"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "rhp",
+                "aliases": [
+                    "RHP",
+                    "rhp"
+                ],
+                "extensions": [
+                    ".rhp"
+                ],
+                "firstLine": "^<\\?php",
+                "icon": {
+                    "light": "./icons/rhp.svg",
+                    "dark": "./icons/rhp.svg"
+                },
+                "configuration": "./language-configuration.json"
+            },
+            {
+                "id": "rhp-markup",
+                "aliases": [],
+                "configuration": "./markup-language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "rhp",
+                "scopeName": "source.rhp",
+                "path": "./syntaxes/rhp.tmLanguage.json",
+                "embeddedLanguages": {
+                    "meta.markup.rhp": "rhp-markup",
+                    "source.js.embedded.rhp": "javascript",
+                    "source.css.embedded.rhp": "css"
+                }
+            }
+        ]
+    }
+}

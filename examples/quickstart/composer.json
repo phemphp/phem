@@ -1,0 +1,14 @@
+{
+    "name": "rephp/quickstart",
+    "description": "The rephp Quick Start: a react.dev/learn-style page whose examples are real .rhp files.",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.6",
+        "rephp/runtime": "@dev"
+    },
+    "repositories": [
+        { "type": "path", "url": "../../runtime" }
+    ],
+    "config": { "sort-packages": true }
+}

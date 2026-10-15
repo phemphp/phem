@@ -1,0 +1,23 @@
+[package]
+name = "rhpc-cli"
+description = "rhpc: the .rhp compiler"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "rhpc"
+path = "src/main.rs"
+
+[dependencies]
+rhpc-syntax.workspace = true
+rhpc-analyze.workspace = true
+rhpc-codegen.workspace = true
+anyhow.workspace = true
+blake3.workspace = true
+clap.workspace = true
+miette.workspace = true
+notify.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+walkdir.workspace = true

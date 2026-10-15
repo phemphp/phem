@@ -1,0 +1,27 @@
+<?php
+namespace App\Pages\Examples;
+
+use Rephp\Attribute\Page;
+use Rephp\Event;
+use function Rephp\useId;
+use function Rephp\useState;
+
+#[Page]
+function SearchBox()
+{
+    [$name, $setName] = useState('');
+    $inputId = useId();
+
+    $handleChange = fn(Event $e) => $setName($e->value);
+    $handleClear = fn() => $setName('');
+
+    return (
+        <div>
+            <title>SearchBox</title>
+            <label htmlFor={{ inputId }}>Your name</label>
+            <input id={{ inputId }} value={{ name }} onChange={{ handleChange }} />
+            <button onClick={{ handleClear }}>Clear</button>
+            <p>{{ name ? 'Hello, ' ~ name ~ '!' : 'Type your name.' }}</p>
+        </div>
+    );
+}

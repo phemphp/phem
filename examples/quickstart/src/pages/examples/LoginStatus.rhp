@@ -1,0 +1,51 @@
+<?php
+namespace App\Pages\Examples;
+
+use Rephp\Attribute\Page;
+
+use function Rephp\useState;
+
+function AdminPanel()
+{
+    return (
+        <div className="panel">
+            <h2>Admin panel</h2>
+            <p>Welcome back. You can edit the site.</p>
+        </div>
+    );
+}
+
+function LoginForm()
+{
+    return (
+        <div className="panel">
+            <h2>Please log in</h2>
+            <p>Log in to see the admin panel.</p>
+        </div>
+    );
+}
+
+#[Page]
+function LoginStatus()
+{
+    [$isLoggedIn, $setIsLoggedIn] = useState(false);
+
+    $toggle = fn() => $setIsLoggedIn(!$isLoggedIn);
+
+    if ($isLoggedIn) {
+        $content = <AdminPanel />;
+    } else {
+        $content = <LoginForm />;
+    }
+
+    return (
+        <div>
+            <title>LoginStatus</title>
+            {{ content }}
+            <button onClick={{ toggle }}>
+                {{ isLoggedIn ? 'Log out' : 'Log in' }}
+            </button>
+            {{ isLoggedIn and <p>You have admin rights.</p> }}
+        </div>
+    );
+}

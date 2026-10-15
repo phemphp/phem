@@ -1,0 +1,114 @@
+/* Style of the example previews (each /examples/<Name> page), like a default sandbox. */
+
+:root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --text: #23272f;
+    --muted: #5e687e;
+    --border: #d0d3dc;
+    --button-bg: #f6f7f9;
+    --button-hover: #ebecf0;
+    --accent: #087ea4;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #23272f;
+        --text: #f6f7f9;
+        --muted: #99a1b3;
+        --border: #4e5769;
+        --button-bg: #343a46;
+        --button-hover: #404756;
+        --accent: #58c4dc;
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 20px;
+    padding: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text);
+    background: var(--bg);
+}
+
+h1 {
+    margin-top: 0;
+    font-size: 22px;
+}
+
+h2 {
+    margin-top: 0;
+    font-size: 18px;
+}
+
+ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+button {
+    display: block;
+    margin-bottom: 5px;
+    padding: 4px 10px;
+    font: inherit;
+    font-size: 15px;
+    color: var(--text);
+    background: var(--button-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: var(--button-hover);
+    border-color: var(--accent);
+}
+
+label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+input {
+    display: block;
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    font: inherit;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+.avatar {
+    border-radius: 50%;
+}
+
+.panel {
+    margin-bottom: 10px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.panel p {
+    margin: 0;
+}
+
+.stars {
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: #f0b400;
+}

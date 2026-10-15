@@ -1,0 +1,92 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/*
+ * rephp — the runtime CLI.
+ *
+ *   rephp warmup [--cache=var/cache/rhp]            compile all templates into the Twig cache
+ *   rephp render <path> [--cache=...]               print the HTML of a page
+ *   rephp serve [--host=127.0.0.1] [--port=8080]    run the Io\Poll HTTP server
+ *               [--cache=...] [--mount=/url/=dir]...
+ */
+
+use Rephp\App;
+use Rephp\Runtime;
+use Rephp\Server\HttpServer;
+
+foreach ([getcwd().'/vendor/autoload.php', __DIR__.'/../vendor/autoload.php', __DIR__.'/../../../autoload.php'] as $autoload) {
+    if (is_file($autoload)) {
+        require $autoload;
+        break;
+    }
+}
+
+$args = array_slice($argv, 1);
+$command = array_shift($args) ?? 'help';
+$options = ['mount' => []];
+$positional = [];
+foreach ($args as $arg) {
+    if (preg_match('/^--([a-z-]+)(?:=(.*))?$/', $arg, $m)) {
+        if ('mount' === $m[1]) {
+            $options['mount'][] = $m[2] ?? '';
+        } else {
+            $options[$m[1]] = $m[2] ?? true;
+        }
+    } else {
+        $positional[] = $arg;
+    }
+}
+
+$fail = static function (string $message): never {
+    fwrite(STDERR, "rephp: {$message}\n");
+    exit(1);
+};
+
+try {
+    switch ($command) {
+        case 'warmup':
+            $runtime = Runtime::boot($options['cache'] ?? null);
+            $start = hrtime(true);
+            $n = $runtime->warmup();
+            fwrite(STDERR, sprintf("rephp: compiled %d template(s) into the Twig cache in %d ms\n", $n, (hrtime(true) - $start) / 1e6));
+            break;
+
+        case 'render':
+            $runtime = Runtime::boot($options['cache'] ?? null);
+            $path = $positional[0] ?? '/';
+            $page = $runtime->route($path) ?? $fail("no page for {$path}");
+            echo (new App($runtime))->page($path, $page);
+            break;
+
+        case 'serve':
+            $runtime = Runtime::boot($options['cache'] ?? null);
+            $host = (string) ($options['host'] ?? '127.0.0.1');
+            $port = (int) ($options['port'] ?? 8080);
+            $mounts = ['/_rhp/assets/' => dirname(__DIR__).'/resources/assets'];
+            foreach ($options['mount'] as $mount) {
+                [$url, $dir] = explode('=', $mount, 2) + [1 => ''];
+                $mounts[$url] = str_starts_with($dir, '/') ? $dir : $runtime->projectDir.'/'.$dir;
+            }
+            if (is_dir($runtime->projectDir.'/public')) {
+                $mounts['/'] = $runtime->projectDir.'/public';
+            }
+            $server = new HttpServer(new App($runtime), $host, $port, $mounts);
+            if (function_exists('pcntl_async_signals')) {
+                pcntl_async_signals(true);
+                pcntl_signal(SIGINT, $server->stop(...));
+                pcntl_signal(SIGTERM, $server->stop(...));
+            }
+            fwrite(STDERR, sprintf("rephp: listening on http://%s:%d (Io\\Poll backend: %s, %d route(s))\n", $host, $server->getPort(), (new Io\Poll\Context())->getBackend()->name, count($runtime->manifest['routes'])));
+            $server->run();
+            break;
+
+        default:
+            fwrite(STDERR, "Usage: rephp warmup|render <path>|serve [--host=] [--port=] [--cache=] [--mount=/url/=dir]\n");
+            exit('help' === $command ? 0 : 1);
+    }
+} catch (Throwable $e) {
+    $where = isset($runtime) ? (Rephp\ErrorPage::location($e, $runtime) ?? $e->getFile().':'.$e->getLine()) : $e->getFile().':'.$e->getLine();
+    $fail(get_debug_type($e).': '.$e->getMessage()." ({$where})");
+}

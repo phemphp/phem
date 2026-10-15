@@ -1,0 +1,4 @@
+<?php // expect: W003
+use Rephp\Attribute\Page;
+#[Page]
+function App() { return <div />; }

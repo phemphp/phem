@@ -1,0 +1,8 @@
+[package]
+name = "rhpc-syntax"
+description = "Lexer and markup parser for .rhp files"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]

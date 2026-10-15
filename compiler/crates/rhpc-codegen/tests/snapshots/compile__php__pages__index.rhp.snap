@@ -1,0 +1,86 @@
+---
+source: crates/rhpc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by rhpc from pages/index.rhp; do not edit */
+
+namespace App\Pages;
+
+use App\Components\Counter;
+use Rephp\Attribute\Page;
+use Rephp\Context;
+use Rephp\Provider;
+use function Rephp\{useState, useContext, useReducer};
+use function App\Components\{MyButton, Card, Badge};
+
+const ThemeContext = new Context('light');
+
+function Toolbar() {
+    $theme = useContext(ThemeContext);
+    return \Rephp\Rt::render('pages/index.0.twig', ['theme' => $theme ?? null]);
+}
+
+function Toggle() {
+    [$on, $setOn] = useState(false);
+    $toggle = fn() => $setOn(fn($v) => !$v);
+    if ($on) {
+        $content = \Rephp\Rt::render('pages/index.1.twig', []);
+    } else {
+        $content = \Rephp\Rt::render('pages/index.2.twig', []);
+    }
+    return (
+        \Rephp\Rt::render('pages/index.3.twig', ['toggle' => $toggle ?? null, 'content' => $content ?? null, 'on' => $on ?? null])
+
+
+
+
+
+    );
+}
+
+function reducer(array $state, string $action): array {
+    return match ($action) {
+        'add' => [...$state, 'item'.(count($state) + 1)],
+        'clear' => [],
+    };
+}
+
+#[Page]
+function Home() {
+    [$count, $setCount] = useState(0);
+    [$items, $dispatch] = useReducer(reducer(...), []);
+    $handleClick = fn() => $setCount($count + 1);
+    $add = fn() => $dispatch('add');
+    $products = [
+        ['title' => 'Cabbage', 'isFruit' => false, 'id' => 1],
+        ['title' => 'Apple', 'isFruit' => true, 'id' => 3],
+    ];
+    $listItems = array_map(fn($p) => \Rephp\Rt::render('pages/index.4.twig', ['p' => $p ?? null]), $products);
+
+    return (
+        \Rephp\Rt::render('pages/index.5.twig', ['count' => $count ?? null, 'handleClick' => $handleClick ?? null, 'products' => $products ?? null, 'listItems' => $listItems ?? null, 'add' => $add ?? null, 'items' => $items ?? null])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    );
+}

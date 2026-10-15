@@ -1,0 +1,2 @@
+<?php // expect: E010
+function App() { return <Missing />; }

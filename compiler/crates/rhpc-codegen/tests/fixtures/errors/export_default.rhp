@@ -1,0 +1,2 @@
+<?php // expect: E050
+export default function App() { return <div />; }

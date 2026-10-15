@@ -1,0 +1,28 @@
+<?php
+
+namespace App\Components;
+
+use Rephp\Attribute\{Component, State};
+use Rephp\Html;
+
+#[Component]
+final class Counter
+{
+    public string $label = 'Clicked';
+    public ?Html $children = null;
+    #[State] public int $count = 0;
+
+    public function increment(): void
+    {
+        $this->count = clamp($this->count + 1, 0, 3);
+    }
+
+    public function render()
+    {
+        return (
+            <button onClick={{ increment }} data-count={{ count }}>
+                {{ label }} {{ count }} times {{ children }}
+            </button>
+        );
+    }
+}

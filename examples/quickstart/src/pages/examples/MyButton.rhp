@@ -1,0 +1,23 @@
+<?php
+namespace App\Pages\Examples;
+
+use Rephp\Attribute\Page;
+
+function MyButton()
+{
+    return (
+        <button>I'm a button</button>
+    );
+}
+
+#[Page]
+function MyApp()
+{
+    return (
+        <div>
+            <title>MyButton</title>
+            <h1>Welcome to my app</h1>
+            <MyButton />
+        </div>
+    );
+}

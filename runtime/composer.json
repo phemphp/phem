@@ -1,0 +1,22 @@
+{
+    "name": "rephp/runtime",
+    "description": "Runtime for .rhp components: Twig rendering, hooks, Turbo/Stimulus state, and an Io\\Poll HTTP server.",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.6",
+        "twig/twig": "^3.21"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.0"
+    },
+    "autoload": {
+        "psr-4": { "Rephp\\": "src/" },
+        "files": ["src/functions.php"]
+    },
+    "autoload-dev": {
+        "psr-4": { "Rephp\\Tests\\": "tests/" }
+    },
+    "bin": ["bin/rephp"],
+    "config": { "sort-packages": true }
+}

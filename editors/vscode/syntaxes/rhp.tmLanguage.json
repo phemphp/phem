@@ -1,0 +1,617 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "RHP",
+    "scopeName": "source.rhp",
+    "patterns": [
+        {
+            "match": "<\\?php\\b|<\\?=",
+            "name": "punctuation.section.embedded.begin.php"
+        },
+        {
+            "include": "source.php"
+        }
+    ],
+    "injections": {
+        "L:source.rhp -comment -string -meta.markup.rhp": {
+            "patterns": [
+                {
+                    "include": "#markup-literal"
+                }
+            ]
+        }
+    },
+    "repository": {
+        "markup-literal": {
+            "name": "meta.markup.rhp meta.tag.rhp",
+            "begin": "(?:(?<=[(\\[,=>?:!.|&]|\\{\\{|\\{\\{-|\\{\\{~|\\breturn|\\byield|\\becho|\\bprint|\\band|\\bor|\\bxor|\\bnot)|^)\\s*(?=<(?:>|[A-Za-z\\\\]))",
+            "end": "(/>)|(?:(</)\\s*(?:(\\\\?[A-Z][\\w\\\\.-]*|[\\w.-]*\\\\[\\w\\\\.-]*)(?:(:)([\\w-]+))?|([a-z][\\w.:-]*))?\\s*(>))",
+            "endCaptures": {
+                "1": {
+                    "name": "punctuation.definition.tag.end.html"
+                },
+                "2": {
+                    "name": "punctuation.definition.tag.begin.html"
+                },
+                "3": {
+                    "name": "support.class.component.rhp"
+                },
+                "4": {
+                    "name": "punctuation.separator.slot.rhp"
+                },
+                "5": {
+                    "name": "entity.name.tag.slot.rhp"
+                },
+                "6": {
+                    "name": "entity.name.tag.html"
+                },
+                "7": {
+                    "name": "punctuation.definition.tag.end.html"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#tag-head"
+                },
+                {
+                    "include": "#tag-children"
+                }
+            ]
+        },
+        "markup-child": {
+            "patterns": [
+                {
+                    "name": "meta.markup.rhp meta.tag.rhp",
+                    "begin": "(?=<script(?=[\\s/>]))",
+                    "end": "(/>)|(?:(</)\\s*(script)\\s*(>))",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.tag.end.html"
+                        },
+                        "2": {
+                            "name": "punctuation.definition.tag.begin.html"
+                        },
+                        "3": {
+                            "name": "entity.name.tag.html"
+                        },
+                        "4": {
+                            "name": "punctuation.definition.tag.end.html"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#tag-head"
+                        },
+                        {
+                            "begin": ">",
+                            "beginCaptures": {
+                                "0": {
+                                    "name": "punctuation.definition.tag.end.html"
+                                }
+                            },
+                            "end": "(?=</\\s*script\\s*>)",
+                            "contentName": "source.js.embedded.rhp",
+                            "patterns": [
+                                {
+                                    "include": "source.js"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "meta.markup.rhp meta.tag.rhp",
+                    "begin": "(?=<style(?=[\\s/>]))",
+                    "end": "(/>)|(?:(</)\\s*(style)\\s*(>))",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.tag.end.html"
+                        },
+                        "2": {
+                            "name": "punctuation.definition.tag.begin.html"
+                        },
+                        "3": {
+                            "name": "entity.name.tag.html"
+                        },
+                        "4": {
+                            "name": "punctuation.definition.tag.end.html"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#tag-head"
+                        },
+                        {
+                            "begin": ">",
+                            "beginCaptures": {
+                                "0": {
+                                    "name": "punctuation.definition.tag.end.html"
+                                }
+                            },
+                            "end": "(?=</\\s*style\\s*>)",
+                            "contentName": "source.css.embedded.rhp",
+                            "patterns": [
+                                {
+                                    "include": "source.css"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "name": "meta.markup.rhp meta.tag.rhp",
+                    "begin": "(?=<(?:>|[A-Za-z\\\\]))",
+                    "end": "(/>)|(?:(</)\\s*(?:(\\\\?[A-Z][\\w\\\\.-]*|[\\w.-]*\\\\[\\w\\\\.-]*)(?:(:)([\\w-]+))?|([a-z][\\w.:-]*))?\\s*(>))",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.tag.end.html"
+                        },
+                        "2": {
+                            "name": "punctuation.definition.tag.begin.html"
+                        },
+                        "3": {
+                            "name": "support.class.component.rhp"
+                        },
+                        "4": {
+                            "name": "punctuation.separator.slot.rhp"
+                        },
+                        "5": {
+                            "name": "entity.name.tag.slot.rhp"
+                        },
+                        "6": {
+                            "name": "entity.name.tag.html"
+                        },
+                        "7": {
+                            "name": "punctuation.definition.tag.end.html"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#tag-head"
+                        },
+                        {
+                            "include": "#tag-children"
+                        }
+                    ]
+                }
+            ]
+        },
+        "tag-head": {
+            "begin": "(<)(?:(\\\\?[A-Z][\\w\\\\.-]*|[\\w.-]*\\\\[\\w\\\\.-]*)(?:(:)([\\w-]+))?|([a-z][\\w.:-]*))?",
+            "beginCaptures": {
+                "1": {
+                    "name": "punctuation.definition.tag.begin.html"
+                },
+                "2": {
+                    "name": "support.class.component.rhp"
+                },
+                "3": {
+                    "name": "punctuation.separator.slot.rhp"
+                },
+                "4": {
+                    "name": "entity.name.tag.slot.rhp"
+                },
+                "5": {
+                    "name": "entity.name.tag.html"
+                }
+            },
+            "end": "(?=/?>)",
+            "patterns": [
+                {
+                    "include": "#twig-output"
+                },
+                {
+                    "match": "(?<==)\\s*((?:[^\\s>\"'{/]|/(?!>))+)",
+                    "captures": {
+                        "1": {
+                            "name": "string.unquoted.html"
+                        }
+                    }
+                },
+                {
+                    "match": "on[A-Z][A-Za-z]*\\b(?=\\s*=)",
+                    "name": "entity.other.attribute-name.event.rhp entity.other.attribute-name.html"
+                },
+                {
+                    "match": "(?:[^\\s=>\"'{/]|/(?!>))+",
+                    "name": "entity.other.attribute-name.html"
+                },
+                {
+                    "match": "=",
+                    "name": "punctuation.separator.key-value.html"
+                },
+                {
+                    "name": "string.quoted.double.html",
+                    "begin": "\"",
+                    "end": "\"",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.html"
+                        }
+                    },
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.html"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#twig-output"
+                        },
+                        {
+                            "include": "#entity"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.html",
+                    "begin": "'",
+                    "end": "'",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.html"
+                        }
+                    },
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.html"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#twig-output"
+                        },
+                        {
+                            "include": "#entity"
+                        }
+                    ]
+                }
+            ]
+        },
+        "tag-children": {
+            "begin": ">",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.tag.end.html"
+                }
+            },
+            "end": "(?=</)",
+            "contentName": "meta.markup.children.rhp",
+            "patterns": [
+                {
+                    "include": "#twig"
+                },
+                {
+                    "name": "comment.block.html",
+                    "begin": "<!--",
+                    "end": "-->",
+                    "captures": {
+                        "0": {
+                            "name": "punctuation.definition.comment.html"
+                        }
+                    }
+                },
+                {
+                    "include": "#markup-child"
+                },
+                {
+                    "include": "#entity"
+                }
+            ]
+        },
+        "entity": {
+            "match": "(&)(?:[A-Za-z][A-Za-z0-9]*|#\\d+|#x[0-9A-Fa-f]+)(;)",
+            "name": "constant.character.entity.html",
+            "captures": {
+                "1": {
+                    "name": "punctuation.definition.entity.html"
+                },
+                "2": {
+                    "name": "punctuation.definition.entity.html"
+                }
+            }
+        },
+        "twig": {
+            "patterns": [
+                {
+                    "include": "#twig-comment"
+                },
+                {
+                    "include": "#twig-tag"
+                },
+                {
+                    "include": "#twig-output"
+                }
+            ]
+        },
+        "twig-comment": {
+            "name": "comment.block.twig",
+            "begin": "\\{#",
+            "end": "#\\}",
+            "captures": {
+                "0": {
+                    "name": "punctuation.definition.comment.twig"
+                }
+            }
+        },
+        "twig-output": {
+            "name": "meta.embedded.expression.twig",
+            "begin": "\\{\\{[-~]?",
+            "end": "[-~]?\\}\\}",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.section.embedded.begin.twig"
+                }
+            },
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.section.embedded.end.twig"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#twig-expression"
+                }
+            ]
+        },
+        "twig-tag": {
+            "name": "meta.embedded.tag.twig",
+            "begin": "(\\{%[-~]?)\\s*(\\w+)?",
+            "end": "[-~]?%\\}",
+            "beginCaptures": {
+                "1": {
+                    "name": "punctuation.section.embedded.begin.twig"
+                },
+                "2": {
+                    "name": "keyword.control.twig"
+                }
+            },
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.section.embedded.end.twig"
+                }
+            },
+            "patterns": [
+                {
+                    "match": "\\b(?:as|with|only|from|import|ignore|missing|context)\\b",
+                    "name": "keyword.control.twig"
+                },
+                {
+                    "include": "#twig-expression"
+                }
+            ]
+        },
+        "twig-expression": {
+            "patterns": [
+                {
+                    "include": "#markup-literal"
+                },
+                {
+                    "include": "#twig-string"
+                },
+                {
+                    "match": "\\b\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?\\b",
+                    "name": "constant.numeric.twig"
+                },
+                {
+                    "match": "\\b(?:true|false|null|none|TRUE|FALSE|NULL|NONE)\\b",
+                    "name": "constant.language.twig"
+                },
+                {
+                    "name": "meta.mapping.twig",
+                    "begin": "\\{",
+                    "end": "\\}",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.mapping.begin.twig"
+                        }
+                    },
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.mapping.end.twig"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "match": "(?<=[{,])\\s*([A-Za-z_]\\w*|'[^']*'|\"[^\"]*\")\\s*(:)",
+                            "captures": {
+                                "1": {
+                                    "name": "support.type.property-name.twig"
+                                },
+                                "2": {
+                                    "name": "punctuation.separator.key-value.twig"
+                                }
+                            }
+                        },
+                        {
+                            "include": "#twig-expression"
+                        }
+                    ]
+                },
+                {
+                    "name": "meta.sequence.twig",
+                    "begin": "\\[",
+                    "end": "\\]",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.sequence.begin.twig"
+                        }
+                    },
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.sequence.end.twig"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#twig-expression"
+                        }
+                    ]
+                },
+                {
+                    "begin": "\\(",
+                    "end": "\\)",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.begin.bracket.round.twig"
+                        }
+                    },
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.end.bracket.round.twig"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#twig-expression"
+                        }
+                    ]
+                },
+                {
+                    "match": "(\\|)\\s*([A-Za-z_]\\w*)",
+                    "captures": {
+                        "1": {
+                            "name": "punctuation.separator.filter.twig"
+                        },
+                        "2": {
+                            "name": "support.function.filter.twig"
+                        }
+                    }
+                },
+                {
+                    "match": "\\b(is)(?:\\s+(not))?\\s+([A-Za-z_]\\w*)",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.operator.word.twig"
+                        },
+                        "2": {
+                            "name": "keyword.operator.word.twig"
+                        },
+                        "3": {
+                            "name": "support.function.test.twig"
+                        }
+                    }
+                },
+                {
+                    "match": "\\b(?:and|or|not|in|xor|b-and|b-or|b-xor|matches|starts\\s+with|ends\\s+with|has\\s+some|has\\s+every)\\b",
+                    "name": "keyword.operator.word.twig"
+                },
+                {
+                    "match": "\\.\\.\\.",
+                    "name": "keyword.operator.spread.twig"
+                },
+                {
+                    "match": "\\.\\.",
+                    "name": "keyword.operator.range.twig"
+                },
+                {
+                    "match": "(\\.)\\s*([A-Za-z_]\\w*)(?=\\s*\\()",
+                    "captures": {
+                        "1": {
+                            "name": "punctuation.accessor.twig"
+                        },
+                        "2": {
+                            "name": "entity.name.function.twig"
+                        }
+                    }
+                },
+                {
+                    "match": "(\\.)\\s*([A-Za-z_]\\w*|\\d+)",
+                    "captures": {
+                        "1": {
+                            "name": "punctuation.accessor.twig"
+                        },
+                        "2": {
+                            "name": "variable.other.property.twig"
+                        }
+                    }
+                },
+                {
+                    "match": "=>",
+                    "name": "storage.type.function.arrow.twig"
+                },
+                {
+                    "match": "\\?\\?|\\?:|\\*\\*|//|===?|!==?|<=>|<=|>=|[-+*/%~?:<>=]",
+                    "name": "keyword.operator.twig"
+                },
+                {
+                    "match": "\\b[A-Za-z_]\\w*(?=\\s*\\()",
+                    "name": "support.function.twig"
+                },
+                {
+                    "match": "\\b[A-Za-z_]\\w*\\b",
+                    "name": "variable.other.twig"
+                },
+                {
+                    "match": ",",
+                    "name": "punctuation.separator.comma.twig"
+                }
+            ]
+        },
+        "twig-string": {
+            "patterns": [
+                {
+                    "name": "string.quoted.single.twig",
+                    "begin": "'",
+                    "end": "'",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.twig"
+                        }
+                    },
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.twig"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "match": "\\\\.",
+                            "name": "constant.character.escape.twig"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.double.twig",
+                    "begin": "\"",
+                    "end": "\"",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.twig"
+                        }
+                    },
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.twig"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "match": "\\\\.",
+                            "name": "constant.character.escape.twig"
+                        },
+                        {
+                            "name": "meta.interpolation.twig",
+                            "begin": "#\\{",
+                            "end": "\\}",
+                            "beginCaptures": {
+                                "0": {
+                                    "name": "punctuation.section.interpolation.begin.twig"
+                                }
+                            },
+                            "endCaptures": {
+                                "0": {
+                                    "name": "punctuation.section.interpolation.end.twig"
+                                }
+                            },
+                            "patterns": [
+                                {
+                                    "include": "#twig-expression"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}
