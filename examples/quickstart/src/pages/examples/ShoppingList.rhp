@@ -1,9 +1,9 @@
 <?php
 namespace App\Pages\Examples;
 
-use Rephp\Attribute\Page;
+use Symfony\Component\Routing\Attribute\Route;
 
-#[Page]
+#[Route('/examples/ShoppingList')]
 function ShoppingList()
 {
     $products = [

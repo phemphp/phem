@@ -8,11 +8,19 @@ use Rephp\Manifest;
 use Symfony\Component\Config\Loader\Loader;
 use Symfony\Component\Config\Resource\FileExistenceResource;
 use Symfony\Component\Config\Resource\FileResource;
+use Symfony\Component\Routing\Attribute\DeprecatedAlias;
+use Symfony\Component\Routing\Attribute\Route as RouteAttribute;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
 
 /**
- * The routes of the `#[Page]` components (from the rhpc manifest) and the event endpoint.
+ * The routes of the pages and the event endpoint.
+ *
+ * A page is a component with the Symfony `#[Route]` attribute (rhpc lists them in the
+ * manifest). The attribute works as on a controller: path (or localized paths), name,
+ * requirements, defaults, methods, host, schemes, condition, priority, env and aliases.
+ * Without a name, the route name comes from the component: `App\Pages\Counter` →
+ * `app_pages_counter`.
  *
  * Import them in the application routes:
  *
@@ -41,12 +49,15 @@ final class PageLoader extends Loader
         }
         $routes->addResource(new FileResource($this->manifest->file()));
 
-        foreach ($this->manifest->routes() as $path => $page) {
-            $routes->add(self::routeName($path), new Route($path, [
-                '_controller' => 'rephp.controller.page',
-                '_rephp_page' => $page,
-                '_rephp_route' => $path,
-            ], methods: ['GET', 'HEAD']));
+        foreach ($this->manifest->pages() as $page) {
+            $reflection = class_exists($page, false) ? new \ReflectionClass($page) : new \ReflectionFunction($page);
+            // A route change does not change the manifest, only the compiled file.
+            $routes->addResource(new FileResource((string) $reflection->getFileName()));
+            foreach ($reflection->getAttributes(RouteAttribute::class, \ReflectionAttribute::IS_INSTANCEOF) as $i => $attribute) {
+                // Not newInstance(): the attribute allows only classes and methods, not functions.
+                $class = $attribute->getName();
+                $this->addRoute($routes, new $class(...$attribute->getArguments()), $page, $i);
+            }
         }
 
         return $routes;
@@ -57,11 +68,42 @@ final class PageLoader extends Loader
         return 'rephp' === $type;
     }
 
-    /** `/` → `rephp_page_index`, `/examples/Counter` → `rephp_page_examples_counter`. */
-    public static function routeName(string $path): string
+    /** `App\Pages\Counter` → `app_pages_counter` (the Symfony convention for an invokable controller). */
+    public static function routeName(string $page): string
     {
-        $slug = trim((string) preg_replace('/[^a-z0-9]+/', '_', strtolower($path)), '_');
+        return strtolower(str_replace('\\', '_', $page));
+    }
 
-        return 'rephp_page_'.('' === $slug ? 'index' : $slug);
+    private function addRoute(RouteCollection $routes, RouteAttribute $attr, string $page, int $index): void
+    {
+        if ($attr->envs && !\in_array($this->env, $attr->envs, true)) {
+            return;
+        }
+        $name = $attr->name ?? self::routeName($page).($index > 0 ? '_'.$index : '');
+        $defaults = array_replace($attr->defaults, ['_controller' => 'rephp.controller.page', '_rephp_page' => $page]);
+        $paths = \is_array($attr->path) ? $attr->path : [0 => (string) $attr->path];
+
+        foreach ($paths as $locale => $path) {
+            $route = new Route($path, $defaults, $attr->requirements, $attr->options, $attr->host ?? '', $attr->schemes, $attr->methods, $attr->condition ?? '');
+            if (0 === $locale) {
+                $routes->add($name, $route, $attr->priority ?? 0);
+                continue;
+            }
+            $route->setDefault('_locale', $locale);
+            $route->setRequirement('_locale', preg_quote((string) $locale));
+            $route->setDefault('_canonical_route', $name);
+            $routes->add($name.'.'.$locale, $route, $attr->priority ?? 0);
+        }
+
+        foreach ($attr->aliases as $alias) {
+            $aliasName = $alias instanceof DeprecatedAlias ? $alias->aliasName : $alias;
+            foreach (array_keys($paths) as $locale) {
+                $suffix = 0 !== $locale ? '.'.$locale : '';
+                $added = $routes->addAlias($aliasName.$suffix, $name.$suffix);
+                if ($alias instanceof DeprecatedAlias) {
+                    $added->setDeprecated($alias->package, $alias->version, $alias->message);
+                }
+            }
+        }
     }
 }

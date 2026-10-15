@@ -1,6 +1,6 @@
 # The `.rhp` file format
 
-A `.rhp` file is a PHP 8.6 file that can contain **markup literals**, the same way a `.jsx` file is a
+A `.rhp` file is a PHP 8.5 file that can contain **markup literals**, the same way a `.jsx` file is a
 JavaScript file that contains JSX. The `rhpc` compiler turns each markup literal into a Twig
 template and turns the PHP code into plain PHP. All parsing happens at build time.
 
@@ -23,15 +23,14 @@ function MyButton() {
 Use a component with a tag: `<MyButton />`. The compiler resolves the tag with the PHP rules:
 a `use function` import, then a `use` (class) import, then the current namespace.
 
-The `#[Page]` attribute marks the page component of a file in `src/pages/`. The file path is
-the route: `src/pages/index.rhp` → `/`, `src/pages/learn/index.rhp` → `/learn`,
-`src/pages/learn/thinking.rhp` → `/learn/thinking`. A file has at most one `#[Page]`.
-React uses `export default` for this. `#[Page]` is the PHP way, so the file stays valid PHP.
+A page is a component with the Symfony `#[Route]` attribute. React uses `export default` for
+the page component of a file. In rephp, the route attribute exposes a component at a URL, as it
+does for a Symfony controller. The file stays valid PHP.
 
 ```php
-use Rephp\Attribute\Page;
+use Symfony\Component\Routing\Attribute\Route;
 
-#[Page]
+#[Route('/', name: 'home')]
 function MyApp() {
     return (
         <div>
@@ -41,6 +40,13 @@ function MyApp() {
     );
 }
 ```
+
+The attribute has the usual options: `name`, `methods`, `requirements`, `defaults`, `host`,
+`schemes`, `condition`, `priority`, `env`, `alias`, and localized paths. Use it more than once to
+give a page more than one URL. Without a `name`, the route name comes from the component:
+`App\Pages\Examples\Counter` → `app_pages_examples_counter`. A file can have any number of
+pages, in any directory. A page gets no props: a placeholder such as `{id}` in the path is not a
+prop of the page.
 
 ## 2. Markup rules (the same as JSX)
 
@@ -162,7 +168,7 @@ final class Counter
 
     public function increment(): void
     {
-        $this->count = clamp($this->count + 1, 0, 10);
+        $this->count = min($this->count + 1, 10);
     }
 
     public function render()
@@ -254,7 +260,7 @@ function MyButton(int $count, Closure $onClick) {
 }
 
 #[Component]
-#[Page]
+#[Route('/counters')]
 final class MyApp
 {
     #[State] public int $count = 0;

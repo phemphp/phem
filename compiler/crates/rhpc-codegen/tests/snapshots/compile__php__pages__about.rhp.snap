@@ -1,0 +1,15 @@
+---
+source: crates/rhpc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by rhpc from pages/about.rhp; do not edit */
+
+namespace App\Pages;
+
+use Symfony\Component\Routing\Attribute\Route;
+
+#[Route('/about')]
+#[Route('/about-us', name: 'about_us')]
+function About() {
+    return new \Rephp\Element('pages/about.0.twig', []);
+}

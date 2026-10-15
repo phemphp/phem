@@ -3,7 +3,8 @@
 namespace App\Pages;
 
 use App\Components\Counter;
-use Rephp\Attribute\{Component, Page, State};
+use Rephp\Attribute\{Component, State};
+use Symfony\Component\Routing\Attribute\Route;
 use function App\Components\{MyButton, Card, Badge};
 
 function Toolbar(string $theme = 'light') {
@@ -45,7 +46,7 @@ final class Toggle
 }
 
 #[Component]
-#[Page]
+#[Route('/', name: 'home', methods: ['GET', 'HEAD'])]
 final class Home
 {
     #[State] public int $count = 0;

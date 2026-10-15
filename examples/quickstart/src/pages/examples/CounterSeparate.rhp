@@ -1,7 +1,8 @@
 <?php
 namespace App\Pages\Examples;
 
-use Rephp\Attribute\{Component, Page, State};
+use Rephp\Attribute\{Component, State};
+use Symfony\Component\Routing\Attribute\Route;
 
 #[Component]
 final class Counter
@@ -23,7 +24,7 @@ final class Counter
     }
 }
 
-#[Page]
+#[Route('/examples/CounterSeparate')]
 function CounterSeparate()
 {
     return (

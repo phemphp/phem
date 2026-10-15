@@ -134,7 +134,7 @@
     <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/MyButton" loading="lazy" title="MyButton preview"></iframe>
 </div>
 <p>Look at <code>&lt;MyButton /&gt;</code>: it starts with a capital letter. That is how you know it is a rephp component. Component names always start with a capital letter. HTML tags are always lowercase.</p>
-<p>The <code>#[Page]</code> attribute marks the page component of the file. React uses <code>export default</code> for this. <code>#[Page]</code> is the PHP way, so the code stays valid PHP. A file in <code>src/pages/</code> with a <code>#[Page]</code> component is a page: the file <code>src/pages/examples/MyButton.rhp</code> above is the page <a href="/examples/MyButton"><code>/examples/MyButton</code></a>. To find the component of a tag, the compiler uses the PHP rules: first a <code>use function</code> import, then a <code>use</code> import of a class, then the current namespace.</p>
+<p>The Symfony <code>#[Route]</code> attribute makes a component a page. React uses <code>export default</code> for the page component. In rephp, the route attribute exposes the component at a URL, as it does for a Symfony controller, and the code stays valid PHP. The component <code>MyApp</code> above has <code>#[Route('/examples/MyButton')]</code>, so it is the page <a href="/examples/MyButton"><code>/examples/MyButton</code></a>. To find the component of a tag, the compiler uses the PHP rules: first a <code>use function</code> import, then a <code>use</code> import of a class, then the current namespace.</p>
 
 <h2 id="writing-markup" class="heading">Writing markup with rhp<a class="heading-anchor" href="#writing-markup" aria-label="Link to this section">#</a></h2>
 <p>The markup above is a <em>markup literal</em>. React uses JSX for this. rephp uses the same idea in PHP: a markup literal is a PHP expression, and its value is a <code>Rephp\Html</code> object. The <code>rhpc</code> compiler turns each markup literal into a Twig template at build time. Nothing is parsed when a request comes in.</p>
@@ -446,8 +446,8 @@ final class LikeCounter
     </figure>
 </div>
 <p>First, move the state up from the button into the parent component. Then pass the state down from the parent, together with the click handler. You pass information down as <em>props</em>, with the same Twig syntax as attributes:</p>
-<div class="code-block"><pre class="code" data-controller="highlight"><code>#[Component]
-#[Page]
+<div class="code-block"><pre class="code" data-controller="highlight"><code>#[Route('/examples/CounterTogether')]
+#[Component]
 final class CounterTogether
 {
     #[State] public int $count = 0;

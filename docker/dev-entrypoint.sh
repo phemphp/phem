@@ -7,8 +7,10 @@ case "$1" in
   serve)
     cd /app/examples/quickstart
     composer install --quiet --no-interaction
-    exec rhpc watch src --out var/cache/rhp \
-      --exec "php bin/console rephp:serve --host=0.0.0.0 --port=8080 --mount=/examples-src/=src/pages/examples --mount=/components-src/=src/components --mount=/repository-src/=src/Repository"
+    # rhpc restarts FrankenPHP after each build of the .rhp files. The workers also restart
+    # when a PHP class in src/ changes (for example a repository).
+    export FRANKENPHP_WORKER_CONFIG="${FRANKENPHP_WORKER_CONFIG-watch ./src/**/*.php}"
+    exec rhpc watch src --out var/cache/rhp --exec "frankenphp run --config Caddyfile"
     ;;
   test)
     cargo test --quiet --manifest-path /app/compiler/Cargo.toml

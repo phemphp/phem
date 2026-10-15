@@ -2,7 +2,7 @@
 // the component state in the browser.
 //
 // The server renders the page with the state in `data-rhp-state-value` (signed JSON).
-// On an event, the controller posts {route, state, signature, handler, event}. The server runs
+// On an event, the controller posts {page, state, signature, handler, event}. The server runs
 // the PHP handler and answers with Turbo Streams (morph of the changed components) and the
 // new state. Events wait in a queue, so each one uses the newest state.
 
@@ -16,7 +16,7 @@ function isTextLike(el) {
 }
 
 class RhpController extends Controller {
-  static values = { route: String, endpoint: String, state: String, signature: String }
+  static values = { page: String, endpoint: String, state: String, signature: String }
 
   connect() {
     this.queue = Promise.resolve()
@@ -68,7 +68,7 @@ class RhpController extends Controller {
     const response = await fetch(this.endpointValue, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ route: this.routeValue, state: this.stateValue, signature: this.signatureValue, handler, event }),
+      body: JSON.stringify({ page: this.pageValue, state: this.stateValue, signature: this.signatureValue, handler, event }),
     })
     if (response.status === 409) {
       // The state is not valid any more (a new build, or a new secret): load the page again.

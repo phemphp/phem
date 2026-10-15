@@ -116,7 +116,7 @@
 <h2 id="importing-and-exporting" class="heading">Importing and exporting components<a class="heading-anchor" href="#importing-and-exporting" aria-label="Link to this section">#</a></h2>
 <p>You can declare many components in one file. When an app grows, put the reusable components in their own files and compose them in a page. React uses <code>export</code> and <code>import</code> for this. rephp uses PHP namespaces:</p>
 <ul>
-    <li>Put the shared components in <code>src/components/</code>, in the namespace <code>App\Components</code>. Files outside <code>src/pages/</code> are not routes.</li>
+    <li>Put the shared components in <code>src/components/</code>, in the namespace <code>App\Components</code>. They have no <code>#[Route]</code> attribute, so they are not pages.</li>
     <li>In the page file, import a function component with <code>use function App\Components\{Layout, Profile};</code>.</li>
     <li>Import a class component with <code>use App\Components\LikeButton;</code>.</li>
     <li>A component in the same namespace needs no import. <code>Profile</code> uses <code>&lt;LikeButton /&gt;</code> without an import.</li>
@@ -170,9 +170,9 @@
 </div>
 <p>The <code>key</code> on <code>LikeCounter</code> is the row id. The server finds the handler of an event by the position of the component in the tree. With a key, a click goes to the correct row, also when the rows change between the page load and the click (for example, when a row is deleted).</p>
 <aside class="callout callout-note">
-    <h3 class="callout-title">One connection for each server process</h3>
+    <h3 class="callout-title">One connection for each worker</h3>
     <div class="callout-body">
-        <p><code>bin/console rephp:serve</code> is one long-running process, so the repository service opens the connection once and keeps it. The kernel resets the other services between requests. The queries are synchronous: a slow query blocks the event loop. SQLite on a local file is fast. For a remote database, keep the queries short.</p>
+        <p>FrankenPHP runs the application in worker mode: each worker boots the kernel once and handles many requests. The repository service opens the connection once in each worker and keeps it. The kernel resets the other services between requests. A worker handles one request at a time, so a slow query blocks only its worker. SQLite on a local file is fast. For a remote database, keep the queries short.</p>
     </div>
 </aside>
 

@@ -69,6 +69,16 @@ expression: out.manifest.to_json()
       ],
       "rest": false
     },
+    "App\\Pages\\About": {
+      "fqcn": "App\\Pages\\About",
+      "kind": "template",
+      "file": "pages/about.rhp",
+      "template": "pages/about.0.twig",
+      "props": [],
+      "slots": [],
+      "required": [],
+      "rest": false
+    },
     "App\\Pages\\Greeting": {
       "fqcn": "App\\Pages\\Greeting",
       "kind": "function",
@@ -113,9 +123,10 @@ expression: out.manifest.to_json()
       "rest": false
     }
   },
-  "routes": {
-    "/": "App\\Pages\\Home"
-  },
+  "pages": [
+    "App\\Pages\\About",
+    "App\\Pages\\Home"
+  ],
   "templates": {
     "components/Buttons.0.twig": {
       "source": "components/Buttons.rhp",
@@ -133,38 +144,43 @@ expression: out.manifest.to_json()
       "source": "components/Counter.rhp",
       "line": 28
     },
+    "pages/about.0.twig": {
+      "source": "pages/about.rhp",
+      "line": 10
+    },
     "pages/index.0.twig": {
       "source": "pages/index.rhp",
-      "line": 10
+      "line": 11
     },
     "pages/index.1.twig": {
       "source": "pages/index.rhp",
-      "line": 15
+      "line": 16
     },
     "pages/index.2.twig": {
       "source": "pages/index.rhp",
-      "line": 31
+      "line": 32
     },
     "pages/index.3.twig": {
       "source": "pages/index.rhp",
-      "line": 33
+      "line": 34
     },
     "pages/index.4.twig": {
       "source": "pages/index.rhp",
-      "line": 37
+      "line": 38
     },
     "pages/index.5.twig": {
       "source": "pages/index.rhp",
-      "line": 75
+      "line": 76
     },
     "pages/index.6.twig": {
       "source": "pages/index.rhp",
-      "line": 78
+      "line": 79
     }
   },
   "files": [
     "php/components/Buttons.php",
     "php/components/Counter.php",
+    "php/pages/about.php",
     "php/pages/index.php"
   ]
 }

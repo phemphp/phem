@@ -1,4 +1,4 @@
-# One route for each #[Page] component (src/pages/), and the event endpoint.
+# The #[Route] attributes of the page components, and the event endpoint.
 rephp:
     resource: .
     type: rephp

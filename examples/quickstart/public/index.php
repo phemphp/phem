@@ -1,18 +1,11 @@
 <?php
 
-// The front controller for PHP-FPM, FrankenPHP or `php -S`. `bin/console rephp:serve` does
-// not need it: it runs the kernel on the Io\Poll server.
+// The front controller. FrankenPHP runs it in worker mode (see the Caddyfile): the kernel
+// boots once, handles many requests, and resets the services (`kernel.reset`) between them.
+// It also works with PHP-FPM.
 
 use App\Kernel;
-use Symfony\Component\Dotenv\Dotenv;
-use Symfony\Component\HttpFoundation\Request;
 
-require dirname(__DIR__).'/vendor/autoload.php';
+require_once dirname(__DIR__).'/vendor/autoload_runtime.php';
 
-(new Dotenv())->bootEnv(dirname(__DIR__).'/.env');
-
-$kernel = new Kernel($_SERVER['APP_ENV'], (bool) $_SERVER['APP_DEBUG']);
-$request = Request::createFromGlobals();
-$response = $kernel->handle($request);
-$response->send();
-$kernel->terminate($request, $response);
+return static fn (array $context): Kernel => new Kernel($context['APP_ENV'], (bool) $context['APP_DEBUG']);

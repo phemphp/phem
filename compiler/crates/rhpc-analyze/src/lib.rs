@@ -3,7 +3,7 @@
 mod hooks;
 mod scan;
 
-pub use scan::{scan, Class, FileInfo, Func, MarkupScope, PageDecl, Param, Prop};
+pub use scan::{scan, Class, FileInfo, Func, MarkupScope, Param, Prop, RouteDecl};
 
 use rhpc_syntax::diag::codes;
 use rhpc_syntax::Diagnostic;
@@ -12,7 +12,8 @@ use std::collections::BTreeMap;
 
 pub const ATTR_COMPONENT: &str = "Rephp\\Attribute\\Component";
 pub const ATTR_STATE: &str = "Rephp\\Attribute\\State";
-pub const ATTR_PAGE: &str = "Rephp\\Attribute\\Page";
+/// The Symfony route attribute: it exposes a component as a page.
+pub const ATTR_ROUTE: &str = "Symfony\\Component\\Routing\\Attribute\\Route";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -95,42 +96,28 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
     out
 }
 
-/// File-level checks: removed hooks, class component rules, and `#[Page]`.
+/// File-level checks: removed hooks, class component rules, and `#[Route]`.
 pub fn check(file: &FileInfo, src: &str) -> Vec<Diagnostic> {
     let mut diags = hooks::check(file, src);
     for span in &file.export_defaults {
         diags.push(
             Diagnostic::error(codes::EXPORT_DEFAULT, "`export default` is not PHP", *span)
                 .with_label("not PHP")
-                .with_help("mark the page component with an attribute: `#[Page]` on the line before it, and `use Rephp\\Attribute\\Page;`"),
+                .with_help("expose the page with a Symfony route: `#[Route('/path')]` on the line before it, and `use Symfony\\Component\\Routing\\Attribute\\Route;`"),
         );
     }
-    for p in &file.pages {
-        if !p.is_component {
+    for r in &file.routes {
+        if !r.is_component {
             diags.push(
-                Diagnostic::error(codes::PAGE_NOT_COMPONENT, format!("`#[Page]` must mark a component, and `{}` is not one", p.fqn), p.span)
+                Diagnostic::error(codes::ROUTE_NOT_COMPONENT, format!("`#[Route]` must mark a component, and `{}` is not one", r.fqn), r.span)
                     .with_help("a component is a function with a capitalized name, or a `#[Component]` class"),
             );
         }
     }
-    for p in file.pages.iter().skip(1) {
+    for (short, expected, resolved, span) in &file.foreign_attrs {
         diags.push(
-            Diagnostic::error(codes::MULTIPLE_PAGES, "a file can have only one `#[Page]` component", p.span)
-                .with_help(format!("`{}` is already the page of this file; move the other page to its own file", file.pages[0].fqn)),
-        );
-    }
-    if let Some(p) = file.pages.first() {
-        if !file.rel.starts_with("pages/") {
-            diags.push(
-                Diagnostic::warning(codes::PAGE_OUTSIDE_PAGES, format!("`#[Page]` has no route here: `{}` is not in `pages/`", file.rel), p.span)
-                    .with_help("move the file into `src/pages/`, or remove `#[Page]`"),
-            );
-        }
-    }
-    for (short, resolved, span) in &file.foreign_attrs {
-        diags.push(
-            Diagnostic::warning(codes::FOREIGN_ATTRIBUTE, format!("`#[{short}]` resolves to `{resolved}`, not to `Rephp\\Attribute\\{short}`"), *span)
-                .with_help(format!("add `use Rephp\\Attribute\\{short};` (or `use Rephp\\Attribute\\{{Page, Component, State}};`)")),
+            Diagnostic::warning(codes::FOREIGN_ATTRIBUTE, format!("`#[{short}]` resolves to `{resolved}`, not to `{expected}`"), *span)
+                .with_help(format!("add `use {expected};`")),
         );
     }
     for c in &file.classes {

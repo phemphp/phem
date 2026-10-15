@@ -1,11 +1,12 @@
 <?php
 namespace App\Pages\Examples;
 
-use Rephp\Attribute\{Component, Page, State};
+use Rephp\Attribute\{Component, State};
 use Rephp\Event;
+use Symfony\Component\Routing\Attribute\Route;
 
+#[Route('/examples/SearchBox')]
 #[Component]
-#[Page]
 final class SearchBox
 {
     #[State] public string $name = '';

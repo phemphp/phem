@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Rephp;
 
 /**
- * Signs the state that the browser keeps, so a client cannot forge it.
+ * Signs the state that the browser keeps, so a client cannot forge it. A signature is valid
+ * only for its page component.
  */
 final class StateCodec
 {
@@ -24,17 +25,17 @@ final class StateCodec
      *
      * @return array{0: string, 1: string} the JSON and its signature
      */
-    public function encode(array $state, string $route): array
+    public function encode(array $state, string $page): array
     {
         $json = json_encode((object) $state, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_PRESERVE_ZERO_FRACTION);
 
-        return [$json, $this->sign($json, $route)];
+        return [$json, $this->sign($json, $page)];
     }
 
     /** @return array<string, mixed>|null null when the signature is not valid */
-    public function decode(string $json, string $signature, string $route): ?array
+    public function decode(string $json, string $signature, string $page): ?array
     {
-        if (!hash_equals($this->sign($json, $route), $signature)) {
+        if (!hash_equals($this->sign($json, $page), $signature)) {
             return null;
         }
         $state = json_decode($json, true, 512, \JSON_THROW_ON_ERROR);
@@ -42,8 +43,8 @@ final class StateCodec
         return \is_array($state) ? $state : null;
     }
 
-    private function sign(string $json, string $route): string
+    private function sign(string $json, string $page): string
     {
-        return hash_hmac('sha256', $route."\n".$json, $this->secret);
+        return hash_hmac('sha256', $page."\n".$json, $this->secret);
     }
 }

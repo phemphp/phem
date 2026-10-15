@@ -29,7 +29,6 @@ return array(
     'vendor/acme/lib/functions.php': '<?php\nnamespace Acme;\n\nfunction slugify(string $s): string { return $s; }\n',
     'vendor/rephp/runtime/src/Html.php': '<?php\n',
     'vendor/rephp/runtime/src/Attribute/Component.php': '<?php\n',
-    'vendor/rephp/runtime/src/Attribute/Page.php': '<?php\n',
     'vendor/rephp/runtime/src/Attribute/State.php': '<?php\n',
     'vendor/rephp/runtime/tests/HtmlTest.php': '<?php\n',
     'src/Repository/TodoRepository.php': '<?php\n',
@@ -46,6 +45,17 @@ function Layout(string $title, ?Html $children = null, ?Html $footer = null)
 function Avatar(string $name, int $size = 64)
 {
     return <img alt={{ name }} width={{ size }} />;
+}
+`,
+    'src/pages/about.rhp': `<?php
+namespace App\\Pages;
+
+use Symfony\\Component\\Routing\\Attribute\\Route;
+
+#[Route('/about')]
+function About()
+{
+    return <p>About</p>;
 }
 `,
     'src/components/Counter.rhp': `<?php
@@ -130,6 +140,12 @@ test('a component tag adds a use function import', () => {
     assert.equal(apply(text, item), PAGE.replace('\n\n', '\n\nuse function App\\Components\\Layout;\n\n') + 'function Home()\n{\n    return <Lay\n}\n');
 });
 
+test('a page of another file is not a component tag', () => {
+    assert.equal(run(PAGE + 'function Home()\n{\n    return <Ab|\n}\n').find('About'), undefined);
+    const about = PAGE + "use Symfony\\Component\\Routing\\Attribute\\Route;\n\n#[Route('/about')]\nfunction About()\n{\n    return <p><Ab|</p>;\n}\n";
+    assert.equal(run(about, 'src/pages/about.rhp').find('About').detail, 'App\\Pages\\About (page)');
+});
+
 test('a class component adds a use import', () => {
     const { text, find } = run(PAGE + 'use function App\\Components\\Layout;\n\nfunction Home()\n{\n    return <Layout title="x"><Cou|</Layout>;\n}\n');
     const item = find('Counter');
@@ -184,7 +200,7 @@ test('use statements complete namespaces and symbols', () => {
     assert.equal(r.find('Html').insert, 'Html;');
 
     r = run(PAGE + 'use Rephp\\Attribute\\{Component, |};\n');
-    assert.deepEqual(r.items.map((i) => i.label).sort(), ['Component', 'Page', 'State']);
+    assert.deepEqual(r.items.map((i) => i.label).sort(), ['Component', 'State']);
 
     r = run(PAGE + 'use function Acme\\|\n');
     assert.deepEqual(r.items.map((i) => i.label), ['slugify']);

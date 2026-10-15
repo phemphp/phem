@@ -1,7 +1,7 @@
 <?php
 namespace App\Pages\Examples;
 
-use Rephp\Attribute\Page;
+use Symfony\Component\Routing\Attribute\Route;
 
 function MyButton()
 {
@@ -10,7 +10,7 @@ function MyButton()
     );
 }
 
-#[Page]
+#[Route('/examples/MyButton')]
 function MyApp()
 {
     return (

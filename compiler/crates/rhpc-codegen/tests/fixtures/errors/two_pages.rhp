@@ -1,6 +1,0 @@
-<?php // expect: E051
-use Rephp\Attribute\Page;
-#[Page]
-function One() { return <div />; }
-#[Page]
-function Two() { return <div />; }

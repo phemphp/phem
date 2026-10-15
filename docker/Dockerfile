@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-ARG PHP_IMAGE=php:8.6-rc-cli
+ARG FRANKENPHP_IMAGE=dunglas/frankenphp:1-php8.5
 ARG RUST_IMAGE=rust:1-bookworm
 
 # --- Build the rhpc compiler ---------------------------------------------
@@ -10,16 +10,15 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \
     cargo build --release -p rhpc-cli && cp target/release/rhpc /usr/local/bin/rhpc
 
-# --- PHP 8.6 base with Composer -------------------------------------------
-FROM ${PHP_IMAGE} AS php-base
+# --- FrankenPHP (PHP 8.5) with Composer ------------------------------------
+FROM ${FRANKENPHP_IMAGE} AS php-base
 RUN apt-get update \
- && apt-get install -y --no-install-recommends git unzip libonig-dev \
- && docker-php-ext-install -j"$(nproc)" mbstring pcntl \
+ && apt-get install -y --no-install-recommends git unzip \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# --- Dev: PHP 8.6 + Rust toolchain (cargo, rhpc watch) ---------------------
+# --- Dev: FrankenPHP + Rust toolchain (cargo, rhpc watch) ------------------
 FROM php-base AS dev
 RUN apt-get update \
  && apt-get install -y --no-install-recommends gcc libc6-dev \
@@ -52,4 +51,5 @@ RUN printf 'APP_SECRET=%s\n' "$(od -An -tx1 -N32 /dev/urandom | tr -d ' \n')" > 
  && php bin/console cache:warmup
 COPY docker/php-prod.ini /usr/local/etc/php/conf.d/zz-rephp.ini
 EXPOSE 8080
-CMD ["php", "bin/console", "rephp:serve", "--host=0.0.0.0", "--port=8080", "--mount=/examples-src/=src/pages/examples", "--mount=/components-src/=src/components", "--mount=/repository-src/=src/Repository"]
+# The Caddyfile runs public/index.php in FrankenPHP worker mode.
+CMD ["frankenphp", "run", "--config", "Caddyfile"]

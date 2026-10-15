@@ -14,8 +14,8 @@ use Twig\Environment;
 /**
  * Renders a page (server-side) in the `@Rephp/page.html.twig` document.
  *
- * The route loader gives each `#[Page]` a route with the `_rephp_page` (component) and
- * `_rephp_route` (path) attributes.
+ * The route loader gives each `#[Route]` of a page component a route with the `_rephp_page`
+ * (component) attribute.
  */
 final class PageController
 {
@@ -31,10 +31,10 @@ final class PageController
 
     public function __invoke(Request $request): Response
     {
-        $route = (string) $request->attributes->get('_rephp_route');
-        $tree = new Tree((string) $request->attributes->get('_rephp_page'));
+        $page = (string) $request->attributes->get('_rephp_page');
+        $tree = new Tree($page);
         $html = $this->renderer->render($tree);
-        [$state, $signature] = $this->codec->encode($this->renderer->exportState($tree), $route);
+        [$state, $signature] = $this->codec->encode($this->renderer->exportState($tree), $page);
 
         // React 19 style: a <title> anywhere in the page goes into <head>.
         $title = 'rephp';
@@ -46,7 +46,7 @@ final class PageController
         return new Response($this->twig->render('@Rephp/page.html.twig', [
             'title' => $title,
             'body' => $html,
-            'route' => $route,
+            'page' => $page,
             'state' => $state,
             'signature' => $signature,
             'actions' => implode(' ', array_map(static fn (string $a): string => $a.'->rhp#dispatch', self::ACTIONS)),

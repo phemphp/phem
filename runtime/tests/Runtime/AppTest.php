@@ -32,10 +32,10 @@ final class AppTest extends TestCase
     }
 
     /** @return array{status: int, data: array<string, mixed>} */
-    private function click(int $handler, ?string $state = null): array
+    private function click(int $handler, ?string $state = null, string $page = 'App\\Pages\\Home'): array
     {
         $response = $this->request('POST', '/_rhp/event', json_encode([
-            'route' => '/',
+            'page' => $page,
             'state' => $state ?? $this->state,
             'signature' => $this->signature,
             'handler' => $this->handlers[$handler],
@@ -58,6 +58,7 @@ final class AppTest extends TestCase
         self::assertStringContainsString('<title>Fixture Home</title>', $html);
         self::assertStringContainsString('<script type="module" src="/bundles/rephp/rhp.js"></script>', $html);
         self::assertStringContainsString('data-rhp-endpoint-value="/_rhp/event"', $html);
+        self::assertStringContainsString('data-rhp-page-value="App\\Pages\\Home"', $html);
         self::assertSame(2, substr_count($html, 'Clicked 0 times'));
         self::assertStringContainsString('style="color: magenta; font-weight: 700">Apple', $html);
         self::assertStringContainsString('<ol id="mapped"><li data-rh-key="1">Cabbage</li><li data-rh-key="3">Apple</li></ol>', $html);
@@ -114,11 +115,34 @@ final class AppTest extends TestCase
         self::assertTrue($r['data']['reload']);
     }
 
+    public function testStateIsSignedForItsPage(): void
+    {
+        $r = $this->click(0, page: 'App\\Pages\\About');
+        self::assertSame(409, $r['status']);
+        self::assertTrue($r['data']['reload']);
+    }
+
     public function testBadEventAndUnknownRoute(): void
     {
         self::assertSame(400, $this->request('POST', '/_rhp/event', '{}')->getStatusCode());
         self::assertSame(405, $this->request('GET', '/_rhp/event')->getStatusCode());
+        self::assertSame(405, $this->request('POST', '/')->getStatusCode(), 'the methods of the #[Route]');
         self::assertSame(404, $this->request('GET', '/nope')->getStatusCode());
+    }
+
+    public function testRouteAttributesExposeThePages(): void
+    {
+        $router = $this->fixtureKernel()->getContainer()->get('test.service_container')->get('router');
+
+        self::assertSame('/', $router->generate('home'), 'the name of the #[Route]');
+        self::assertSame('/about', $router->generate('app_pages_about'), 'the default name');
+        self::assertSame('/about-us', $router->generate('about_us'), 'a repeated #[Route]');
+
+        foreach (['/about', '/about-us'] as $path) {
+            $response = $this->request('GET', $path);
+            self::assertSame(200, $response->getStatusCode());
+            self::assertStringContainsString('<p id="about">About</p>', (string) $response->getContent(), 'a function component page');
+        }
     }
 
     public function testComponentInAPlainTwigTemplate(): void

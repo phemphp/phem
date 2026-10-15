@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Rephp;
 
 /**
- * The output of `rhpc build`: the components, the routes, and the template line map.
+ * The output of `rhpc build`: the components, the pages, and the template line map.
  *
  * It loads the manifest and the compiled PHP files on first use, so an application without a
  * build can still boot (for example to run `cache:clear`).
@@ -50,16 +50,10 @@ final class Manifest
         return $this->data()['components'][ltrim($fqcn, '\\')] ?? null;
     }
 
-    /** @return array<string, string> route path => page component */
-    public function routes(): array
+    /** @return list<string> the page components: the components with a `#[Route]` attribute */
+    public function pages(): array
     {
-        return $this->data()['routes'] ?? [];
-    }
-
-    /** The page component of a route path, or null. */
-    public function page(string $path): ?string
-    {
-        return $this->routes()['/'.trim($path, '/')] ?? null;
+        return $this->data()['pages'] ?? [];
     }
 
     /** @return list<string> the template names, without the Twig namespace */

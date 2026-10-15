@@ -64,8 +64,8 @@ pub struct ProjectOutput {
 pub struct Manifest {
     pub version: String,
     pub components: Registry,
-    /// URL path → page component FQCN.
-    pub routes: BTreeMap<String, String>,
+    /// The components with a `#[Route]` attribute (the runtime reads the routes from them).
+    pub pages: Vec<String>,
     pub templates: BTreeMap<String, TemplateOutput>,
     /// Compiled PHP files, relative to the output directory.
     pub files: Vec<String>,
@@ -96,7 +96,7 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
     let (registry, dup) = rhpc_analyze::registry(parsed.iter().map(|p| &p.info));
 
     // Pass 2: generate each file.
-    let results: Vec<(Option<FileOutput>, FileDiagnostics, Option<String>)> = parsed
+    let results: Vec<(Option<FileOutput>, FileDiagnostics, Vec<String>)> = parsed
         .into_par_iter()
         .map(|p| {
             let mut diags = p.diags;
@@ -107,19 +107,17 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
                 out
             });
             diags.sort_by_key(|d| d.span.start);
-            let page = p.info.pages.first().map(|e| e.fqn.clone());
-            (out, FileDiagnostics { rel: p.input.rel.clone(), text: p.input.text, diags }, page)
+            let pages = p.info.routes.iter().map(|r| r.fqn.clone()).collect();
+            (out, FileDiagnostics { rel: p.input.rel.clone(), text: p.input.text, diags }, pages)
         })
         .collect();
 
     let has_errors = results.iter().any(|(_, d, _)| d.diags.iter().any(Diagnostic::is_error));
     let mut files = Vec::new();
     let mut all_diags = Vec::new();
-    let mut routes = BTreeMap::new();
-    for (out, d, page) in results {
-        if let (Some(fqn), Some(route)) = (page, route_of(&d.rel)) {
-            routes.insert(route, fqn);
-        }
+    let mut pages = Vec::new();
+    for (out, d, p) in results {
+        pages.extend(p);
         if let Some(o) = out {
             files.push(o);
         }
@@ -129,6 +127,7 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
         return (None, all_diags);
     }
     files.sort_by(|a, b| a.rel.cmp(&b.rel));
+    pages.sort();
 
     let mut templates = BTreeMap::new();
     for f in &files {
@@ -139,21 +138,11 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
     let manifest = Manifest {
         version: VERSION.into(),
         components: registry,
-        routes,
+        pages,
         templates,
         files: files.iter().map(|f| f.php_path.clone()).collect(),
     };
     (Some(ProjectOutput { files, manifest }), all_diags)
-}
-
-/// The route of a `#[Page]` component: `pages/index.rhp` → `/`, `pages/learn/index.rhp` → `/learn`, `pages/examples/Counter.rhp` → `/examples/Counter`.
-pub fn route_of(rel: &str) -> Option<String> {
-    let path = rel.strip_prefix("pages/")?.strip_suffix(".rhp")?;
-    let path = path.strip_suffix("/index").unwrap_or(path);
-    if path == "index" {
-        return Some("/".into());
-    }
-    Some(format!("/{path}"))
 }
 
 fn has_variable(text: &str, name: &str) -> bool {

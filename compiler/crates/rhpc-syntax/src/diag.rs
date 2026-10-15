@@ -60,10 +60,8 @@ pub mod codes {
     pub const CLASS_WITHOUT_RENDER: &str = "E040";
     pub const READONLY_STATE: &str = "E041";
     pub const EXPORT_DEFAULT: &str = "E050";
-    pub const MULTIPLE_PAGES: &str = "E051";
-    pub const PAGE_NOT_COMPONENT: &str = "E052";
+    pub const ROUTE_NOT_COMPONENT: &str = "E052";
     pub const HANDLER_CALLED: &str = "W001";
     pub const MISSING_KEY: &str = "W002";
-    pub const PAGE_OUTSIDE_PAGES: &str = "W003";
     pub const FOREIGN_ATTRIBUTE: &str = "W004";
 }

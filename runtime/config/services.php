@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
 use Rephp\Command\RenderCommand;
-use Rephp\Command\ServeCommand;
 use Rephp\Command\WarmupCommand;
 use Rephp\Controller\EventController;
 use Rephp\Controller\PageController;
@@ -78,9 +77,6 @@ return static function (ContainerConfigurator $container): void {
             ->tag('console.command')
         ->set('rephp.command.render', RenderCommand::class)
             ->args([service('http_kernel')])
-            ->tag('console.command')
-        ->set('rephp.command.serve', ServeCommand::class)
-            ->args([service('kernel'), param('kernel.project_dir'), param('kernel.debug')])
             ->tag('console.command')
     ;
 };

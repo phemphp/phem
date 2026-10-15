@@ -1,0 +1,5 @@
+---
+source: crates/rhpc-codegen/tests/compile.rs
+expression: t.content
+---
+<p id="about">About</p>

@@ -2,7 +2,8 @@
 namespace App\Pages\Examples;
 
 use Closure;
-use Rephp\Attribute\{Component, Page, State};
+use Rephp\Attribute\{Component, State};
+use Symfony\Component\Routing\Attribute\Route;
 
 function CountButton(int $count, Closure $onClick)
 {
@@ -13,8 +14,8 @@ function CountButton(int $count, Closure $onClick)
     );
 }
 
+#[Route('/examples/CounterTogether')]
 #[Component]
-#[Page]
 final class CounterTogether
 {
     #[State] public int $count = 0;

@@ -1,11 +1,11 @@
 <?php
 namespace App\Pages\Examples;
 
-use Rephp\Attribute\Page;
+use Symfony\Component\Routing\Attribute\Route;
 
 use function App\Components\{Layout, Profile};
 
-#[Page]
+#[Route('/examples/Gallery')]
 function Gallery()
 {
     $scientists = [

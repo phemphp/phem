@@ -39,7 +39,7 @@ enum Cmd {
 
 #[derive(Args, Clone)]
 struct BuildArgs {
-    /// The source directory (it contains `pages/`).
+    /// The source directory.
     src: PathBuf,
     /// The output directory.
     #[arg(long, default_value = "var/cache/rhp")]
@@ -138,9 +138,9 @@ fn build(args: &BuildArgs) -> Result<bool> {
     };
     let written = write_output(args, &project)?;
     eprintln!(
-        "rhpc: compiled {count} file(s), {} template(s), {} route(s); {written} file(s) changed, {warnings} warning(s) in {} ms",
+        "rhpc: compiled {count} file(s), {} template(s), {} page(s); {written} file(s) changed, {warnings} warning(s) in {} ms",
         project.manifest.templates.len(),
-        project.manifest.routes.len(),
+        project.manifest.pages.len(),
         started.elapsed().as_millis()
     );
     if !args.no_warmup {

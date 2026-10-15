@@ -32,13 +32,12 @@ final class EventController
     public function __invoke(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        if (!\is_array($data) || !\is_string($data['route'] ?? null) || !\is_string($data['handler'] ?? null)) {
-            throw new BadRequestHttpException('An event needs a route and a handler.');
+        if (!\is_array($data) || !\is_string($data['page'] ?? null) || !\is_string($data['handler'] ?? null)) {
+            throw new BadRequestHttpException('An event needs a page and a handler.');
         }
-        $route = '/'.trim($data['route'], '/');
-        $page = $this->manifest->page($route);
-        $state = $this->codec->decode((string) ($data['state'] ?? '{}'), (string) ($data['signature'] ?? ''), $route);
-        if (null === $page || null === $state) {
+        $page = $data['page'];
+        $state = $this->codec->decode((string) ($data['state'] ?? '{}'), (string) ($data['signature'] ?? ''), $page);
+        if (null === $state || !\in_array($page, $this->manifest->pages(), true)) {
             // The state is not valid any more (a new build, or a new secret).
             return new JsonResponse(['reload' => true], 409);
         }
@@ -57,7 +56,7 @@ final class EventController
             $html = preg_replace('#<title>.*?</title>#s', '', $fiber->html, 1);
             $streams .= \sprintf('<turbo-stream action="update" method="morph" target="%s"><template>%s</template></turbo-stream>', $fiber->id, $html);
         }
-        [$json, $signature] = $this->codec->encode($this->renderer->exportState($tree), $route);
+        [$json, $signature] = $this->codec->encode($this->renderer->exportState($tree), $page);
 
         return new JsonResponse(['streams' => $streams, 'state' => $json, 'signature' => $signature]);
     }

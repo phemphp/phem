@@ -19,7 +19,7 @@ final class Counter
 
     public function increment(): void
     {
-        $this->count = clamp($this->count + 1, 0, $this->limits->max);
+        $this->count = min($this->count + 1, $this->limits->max);
     }
 
     public function render()

@@ -1,10 +1,11 @@
 <?php
 namespace App\Pages\Examples;
 
-use Rephp\Attribute\{Component, Page, State};
+use Rephp\Attribute\{Component, State};
+use Symfony\Component\Routing\Attribute\Route;
 
 #[Component]
-#[Page]
+#[Route('/examples/StarRating')]
 final class StarRating
 {
     public string $label = 'Rate this page';  // prop

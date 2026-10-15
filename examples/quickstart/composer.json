@@ -4,11 +4,12 @@
     "type": "project",
     "license": "MIT",
     "require": {
-        "php": ">=8.6",
+        "php": ">=8.5",
         "doctrine/dbal": "^4.5",
         "doctrine/doctrine-bundle": "^3.0",
         "rephp/runtime": "@dev",
         "symfony/dotenv": "^7.4|^8.0",
+        "symfony/runtime": "^7.4|^8.0",
         "symfony/yaml": "^7.4|^8.0"
     },
     "repositories": [
@@ -21,5 +22,8 @@
         "post-install-cmd": ["@php bin/console assets:install public"],
         "post-update-cmd": ["@php bin/console assets:install public"]
     },
-    "config": { "sort-packages": true }
+    "config": {
+        "allow-plugins": { "symfony/runtime": true },
+        "sort-packages": true
+    }
 }
