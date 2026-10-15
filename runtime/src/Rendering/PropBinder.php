@@ -55,7 +55,8 @@ final class PropBinder
     }
 
     /**
-     * The context of a template component: the props, then the parameter defaults.
+     * The context of a template component: the props, then the parameter defaults. As in a
+     * PHP call, the variadic parameter (`...$rest`) gets the props that no parameter takes.
      *
      * @param array<string, mixed> $props
      *
@@ -63,9 +64,20 @@ final class PropBinder
      */
     public function templateContext(string $fqcn, array $props): array
     {
-        $vars = $this->arguments($fqcn, $props);
-        foreach ($this->params($fqcn) as $name => $p) {
-            if (!\array_key_exists($name, $vars) && !$p['variadic']) {
+        $params = $this->params($fqcn);
+        $vars = [];
+        $rest = [];
+        foreach ($this->arguments($fqcn, $props) as $name => $value) {
+            if (isset($params[$name]) && !$params[$name]['variadic']) {
+                $vars[$name] = $value;
+            } else {
+                $rest[$name] = $value;
+            }
+        }
+        foreach ($params as $name => $p) {
+            if ($p['variadic']) {
+                $vars[$name] = $rest;
+            } elseif (!\array_key_exists($name, $vars)) {
                 $vars[$name] = $p['default'];
             }
         }

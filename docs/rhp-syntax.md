@@ -85,7 +85,9 @@ function Profile() {
   boolean attribute. For `class`, a list is joined with spaces (empty items are dropped).
 - `style={{ {...} }}` takes a hash. camelCase keys become kebab-case. Numbers get `px`
   (except unitless properties such as `opacity`, `zIndex`, `fontWeight`, `lineHeight`, `flex`).
-- `{{ ...props }}` in a tag spreads a hash of attributes (or props, on a component).
+- `{{ ...props }}` in a tag spreads a hash of attributes (or props, on a component). As in JSX,
+  the order counts: a later value replaces an earlier one. `<button type="button" {{ ...rest }}>`
+  gives a default that `rest` can replace. `on*` keys (`onClick`, ...) bind handlers.
 - All Twig filters, tests, and tags work: `|upper`, `|length`, `{% set %}`, `{% for %}`, and more.
 - Do not put PHP code in markup. Compute values in PHP before the `return`.
 
@@ -302,6 +304,26 @@ final class MyApp
 - Children go to the `?Html $children` parameter (or public property): `<Card>...</Card>`.
 - Named slots: `<Card:footer>...</Card:footer>` goes to the `?Html $footer` parameter.
 - An unknown prop is an error, unless the function has a variadic `...$rest` parameter.
+
+### Rest props
+
+A variadic parameter collects the props that no other parameter takes, as a hash. This is
+`function CountButton({ count, ...rest })` in React. Spread it on an element to forward the
+attributes and the handlers:
+
+```php
+function CountButton(int $count, mixed ...$rest) {
+    return <button type="button" {{ ...rest }}>Clicked {{ count }} times</button>;
+}
+
+<CountButton count={{ count }} onClick={{ handleClick }} className="primary" aria-label="Count" />
+```
+
+The button gets `class`, `aria-label`, and the click handler. The caller can also replace
+`type`, because the spread comes after it. Put an attribute after the spread to make it fixed.
+Use `mixed` (or no type) for the variadic parameter, because the values can be strings,
+booleans, or handlers. To forward the props to another component, spread them on its tag:
+`<CountButton count={{ 1 }} {{ ...rest }} />`.
 
 ## 10. Markup values
 

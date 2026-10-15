@@ -106,8 +106,12 @@ impl<'a> Lowerer<'a> {
     fn element(&mut self, e: &Element, out: &mut String) {
         out.push('<');
         out.push_str(&e.name);
-        for a in &e.attrs {
-            self.dom_attr(a, out);
+        if e.attrs.iter().any(|a| matches!(a.kind, AttrKind::Spread(_))) {
+            self.merged_attrs(&e.attrs, out);
+        } else {
+            for a in &e.attrs {
+                self.dom_attr(a, out);
+            }
         }
         let void = rhpc_syntax::markup::VOID_ELEMENTS.contains(&e.name.to_ascii_lowercase().as_str());
         out.push('>');
@@ -154,13 +158,67 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// The attributes of an element with a spread, in one call: `<a x="1" {{ ...rest }} y={{ v }}>`
+    /// → `rhp_attrs({'x': '1'}, rest, {'y': (v)})`. A later value replaces an earlier one, as in React.
+    fn merged_attrs(&mut self, attrs: &[Attr], out: &mut String) {
+        let mut args: Vec<String> = Vec::new();
+        let mut hash: Vec<String> = Vec::new();
+        for a in attrs {
+            match &a.kind {
+                AttrKind::Spread(x) => {
+                    if !hash.is_empty() {
+                        args.push(format!("{{{}}}", hash.join(", ")));
+                        hash.clear();
+                    }
+                    args.push(self.expr_code(x));
+                }
+                AttrKind::Plain { name, name_span, value } => {
+                    let is_event = event_name(name).is_some();
+                    let v = match value {
+                        AttrValue::Expr(x) => {
+                            let c = self.expr_code(x);
+                            if is_event {
+                                self.check_handler(name, &c, x.span);
+                            }
+                            format!("({c})")
+                        }
+                        _ if is_event => {
+                            self.handler_not_function(name, *name_span);
+                            continue;
+                        }
+                        AttrValue::None => "true".to_string(),
+                        AttrValue::Quoted { parts, .. } => self.quoted_expr(parts, a.span),
+                    };
+                    hash.push(format!("{}: {v}", twig_str(name)));
+                }
+            }
+        }
+        if !hash.is_empty() {
+            args.push(format!("{{{}}}", hash.join(", ")));
+        }
+        let ws = attrs.first().map_or(" ", |a| if a.ws_before.is_empty() { " " } else { a.ws_before.as_str() });
+        out.push_str(&format!("{ws}{{{{ rhp_attrs({}) }}}}", args.join(", ")));
+    }
+
+    /// Warns about `onClick={{ handle() }}`: it calls the handler during render.
+    fn check_handler(&mut self, name: &str, code: &str, span: Span) {
+        if rhpc_twig_scan::is_call(code) {
+            self.diags.push(
+                Diagnostic::warning(codes::HANDLER_CALLED, format!("`{name}` calls the handler during render"), span)
+                    .with_label("this is a call")
+                    .with_help(format!("pass the function, do not call it: `{name}={{{{ {} }}}}`", code.split('(').next().unwrap_or("").trim())),
+            );
+        }
+    }
+
+    fn handler_not_function(&mut self, name: &str, span: Span) {
+        self.error(codes::BAD_ATTRIBUTE, format!("`{name}` takes a function"), span).help = Some(format!("write `{name}={{{{ handleIt }}}}`"));
+    }
+
     fn dom_attr(&mut self, a: &Attr, out: &mut String) {
         let ws = if a.ws_before.is_empty() { " " } else { a.ws_before.as_str() };
         match &a.kind {
-            AttrKind::Spread(x) => {
-                let c = self.expr_code(x);
-                out.push_str(&format!("{ws}{{{{ rhp_attrs({c}) }}}}"));
-            }
+            AttrKind::Spread(_) => unreachable!("an element with a spread uses merged_attrs()"),
             AttrKind::Plain { name, name_span, value } => {
                 let html_name = match name.as_str() {
                     "className" => "class",
@@ -180,19 +238,10 @@ impl<'a> Lowerer<'a> {
                     match value {
                         AttrValue::Expr(x) => {
                             let c = self.expr_code(x);
-                            if rhpc_twig_scan::is_call(&c) {
-                                self.diags.push(
-                                    Diagnostic::warning(codes::HANDLER_CALLED, format!("`{name}` calls the handler during render"), x.span)
-                                        .with_label("this is a call")
-                                        .with_help(format!("pass the function, do not call it: `{name}={{{{ {} }}}}`", c.split('(').next().unwrap_or("").trim())),
-                                );
-                            }
+                            self.check_handler(name, &c, x.span);
                             out.push_str(&format!("{ws}{{{{ rhp_on('{event}', {c}) }}}}"));
                         }
-                        _ => {
-                            self.error(codes::BAD_ATTRIBUTE, format!("`{name}` takes a function"), *name_span)
-                                .help = Some(format!("write `{name}={{{{ handleIt }}}}`"));
-                        }
+                        _ => self.handler_not_function(name, *name_span),
                     }
                     return;
                 }

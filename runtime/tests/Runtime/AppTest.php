@@ -86,6 +86,28 @@ final class AppTest extends TestCase
         self::assertSame(2, substr_count($r['data']['streams'], 'Clicked 2 times'));
     }
 
+    public function testRestPropsSpreadOnAnElement(): void
+    {
+        $html = (string) $this->request('GET', '/rest')->getContent();
+        preg_match('/data-rhp-state-value="([^"]*)" data-rhp-signature-value="([^"]*)"/', $html, $m);
+        $this->state = html_entity_decode($m[1]);
+        $this->signature = $m[2];
+        preg_match_all('/data-rh-on-(?:click|dblclick)="([^"]+)"/', $html, $h);
+        $this->handlers = $h[1];
+
+        self::assertMatchesRegularExpression('#<button type="submit" data-rh-on-click="[^"]+" id="a" data-role="counter" aria-label="Count">Clicked 0 times</button>#', $html, 'a template component; the spread replaces type');
+        self::assertMatchesRegularExpression('#<button class="override" data-rh-on-dblclick="[^"]+">HI</button>#', $html, 'a function component; the spread replaces className');
+        self::assertStringContainsString('<button type="button" id="forwarded">Clicked 7 times</button>', $html, 'rest props forwarded to a component');
+        self::assertStringContainsString('<button type="button">Clicked 0 times</button>', $html, 'no rest props');
+        self::assertCount(2, $this->handlers);
+
+        $r = $this->click(0, page: 'App\\Pages\\RestPage');
+        self::assertSame(200, $r['status']);
+        self::assertSame(2, substr_count($r['data']['streams'], 'Clicked 1 times'), 'onClick in the rest props');
+        $r = $this->click(1, page: 'App\\Pages\\RestPage');
+        self::assertSame(2, substr_count($r['data']['streams'], 'Clicked 2 times'), 'onDoubleClick in the rest props');
+    }
+
     public function testClassComponentUsesItsInjectedService(): void
     {
         for ($i = 1; $i <= 3; ++$i) {

@@ -69,6 +69,20 @@ expression: out.manifest.to_json()
       ],
       "rest": false
     },
+    "App\\Components\\RestButton": {
+      "fqcn": "App\\Components\\RestButton",
+      "kind": "template",
+      "file": "components/Rest.rhp",
+      "template": "components/Rest.0.twig",
+      "props": [
+        "count"
+      ],
+      "slots": [],
+      "required": [
+        "count"
+      ],
+      "rest": true
+    },
     "App\\Components\\Tag": {
       "fqcn": "App\\Components\\Tag",
       "kind": "template",
@@ -82,6 +96,15 @@ expression: out.manifest.to_json()
       ],
       "required": [],
       "rest": false
+    },
+    "App\\Components\\Toolbar": {
+      "fqcn": "App\\Components\\Toolbar",
+      "kind": "function",
+      "file": "components/Rest.rhp",
+      "props": [],
+      "slots": [],
+      "required": [],
+      "rest": true
     },
     "App\\Pages\\About": {
       "fqcn": "App\\Pages\\About",
@@ -162,6 +185,14 @@ expression: out.manifest.to_json()
       "source": "components/Counter.rhp",
       "line": 28
     },
+    "components/Rest.0.twig": {
+      "source": "components/Rest.rhp",
+      "line": 7
+    },
+    "components/Rest.1.twig": {
+      "source": "components/Rest.rhp",
+      "line": 15
+    },
     "pages/about.0.twig": {
       "source": "pages/about.rhp",
       "line": 10
@@ -198,6 +229,7 @@ expression: out.manifest.to_json()
   "files": [
     "php/components/Buttons.php",
     "php/components/Counter.php",
+    "php/components/Rest.php",
     "php/pages/about.php",
     "php/pages/index.php"
   ]

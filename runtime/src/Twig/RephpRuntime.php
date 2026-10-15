@@ -55,17 +55,27 @@ final class RephpRuntime implements RuntimeExtensionInterface
         return new Markup(\sprintf('data-rh-on-%s="%s"', $event, RephpExtension::e($id)), 'UTF-8');
     }
 
-    /** `{{ ...props }}` on an HTML element. */
-    public function attrs(mixed $attrs): Markup
+    /**
+     * The attributes of an HTML element with a spread: `<button type="button" {{ ...rest }}>`
+     * → `rhp_attrs({'type': 'button'}, rest)`. As in React, a later value replaces an earlier
+     * value of the same attribute. `onClick` (and the other `on*` names) binds a handler.
+     */
+    public function attrs(mixed ...$groups): Markup
     {
+        $merged = [];
+        foreach ($groups as $attrs) {
+            foreach ((array) $attrs as $name => $value) {
+                $name = (string) $name;
+                $merged[['className' => 'class', 'htmlFor' => 'for'][$name] ?? $name] = $value;
+            }
+        }
         $out = [];
-        foreach ((array) $attrs as $name => $value) {
-            $name = (string) $name;
+        foreach ($merged as $name => $value) {
             $out[] = (string) match (true) {
                 'key' === $name => RephpExtension::key($value),
                 'style' === $name => RephpExtension::style($value),
                 1 === preg_match('/^on[A-Z]/', $name) => $this->on(strtolower(substr($name, 2)), $value),
-                default => RephpExtension::attr(['className' => 'class', 'htmlFor' => 'for'][$name] ?? $name, $value),
+                default => RephpExtension::attr($name, $value),
             };
         }
 

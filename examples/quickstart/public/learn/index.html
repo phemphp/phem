@@ -478,6 +478,16 @@ final class CounterTogether
     );
 }</code></pre></div>
 <p>When you click a button, the <code>onClick</code> handler runs. It is the <code>handleClick()</code> method of the parent, so it changes the state of the parent. The parent renders again with the new <code>$count</code> and passes it to both buttons. A prop with an unknown name is an error, and PHP checks the types of the parameters as usual.</p>
+<p>A generic component cannot know all the attributes that its callers want to give. Add a variadic parameter: it collects the props that no other parameter takes, as <code>...rest</code> does in React. Then spread them on the element with <code>{{ ...rest }}</code>. The handlers go through too, so <code>onClick</code> does not need its own parameter:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>function CountButton(int $count, mixed ...$rest)
+{
+    return (
+        &lt;button type="button" {{ ...rest }}&gt;
+            Clicked {{ count }} times
+        &lt;/button&gt;
+    );
+}</code></pre></div>
+<p>As in JSX, the order counts: a later value replaces an earlier one. Here <code>type="button"</code> is a default, and a caller can replace it with <code>type="submit"</code>.</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="CounterTogether">
     <div class="sandbox-bar">
         <span class="sandbox-tab">CounterTogether.rhp</span>

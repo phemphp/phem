@@ -1,14 +1,13 @@
 <?php
 namespace App\Pages\Examples;
 
-use Closure;
 use Rephp\Attribute\{Component, State};
 use Symfony\Component\Routing\Attribute\Route;
 
-function CountButton(int $count, Closure $onClick)
+function CountButton(int $count, mixed ...$props)
 {
     return (
-        <button onClick={{ onClick }}>
+        <button type="button" {{ ...props }}>
             Clicked {{ count }} times
         </button>
     );

@@ -1,0 +1,7 @@
+---
+source: crates/rhpc-codegen/tests/compile.rs
+expression: t.content
+---
+<button {{ rhp_attrs({'type': 'button'}, rest, {'className': 'btn btn-' ~ (count), 'disabled': true}) }}>
+            Clicked {{ count }} times
+        </button>
