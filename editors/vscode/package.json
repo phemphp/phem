@@ -1,10 +1,11 @@
 {
     "name": "rhp",
     "displayName": "RHP (rephp)",
-    "description": "Syntax highlighting for .rhp files: PHP with markup literals and Twig.",
-    "version": "0.1.0",
+    "description": "Syntax highlighting and completion for .rhp files: PHP with markup literals and Twig.",
+    "version": "0.2.0",
     "publisher": "rephp",
     "license": "MIT",
+    "icon": "icons/icon.png",
     "engines": {
         "vscode": "^1.75.0"
     },
@@ -17,6 +18,10 @@
         "php",
         "twig",
         "jsx"
+    ],
+    "main": "./src/extension.js",
+    "activationEvents": [
+        "onLanguage:rhp"
     ],
     "contributes": {
         "languages": [
