@@ -8,7 +8,7 @@ case "$1" in
     cd /app/examples/quickstart
     composer install --quiet --no-interaction
     exec rhpc watch src --out var/cache/rhp \
-      --exec "php vendor/bin/rephp serve --host=0.0.0.0 --port=8080 --mount=/examples-src/=src/pages/examples"
+      --exec "php vendor/bin/rephp serve --host=0.0.0.0 --port=8080 --mount=/examples-src/=src/pages/examples --mount=/components-src/=src/components"
     ;;
   test)
     cargo test --quiet --manifest-path /app/compiler/Cargo.toml

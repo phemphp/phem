@@ -1,0 +1,31 @@
+<?php
+namespace App\Components;
+
+// More than one component can go in one file.
+function Avatar(string $name, int $size = 64)
+{
+    return (
+        <img
+            className="avatar"
+            src="/img/avatar.svg"
+            alt={{ name }}
+            width={{ size }}
+            height={{ size }}
+        />
+    );
+}
+
+function Profile(array $person)
+{
+    // LikeButton is in this namespace too, so it needs no import.
+    return (
+        <section className="profile">
+            <Avatar name={{ person.name }} />
+            <div>
+                <h2>{{ person.name }}</h2>
+                <p>{{ person.profession }}</p>
+                <LikeButton />
+            </div>
+        </section>
+    );
+}

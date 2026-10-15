@@ -112,3 +112,41 @@ input:focus {
     letter-spacing: 2px;
     color: #f0b400;
 }
+
+.layout-header {
+    margin-bottom: 12px;
+}
+
+.layout-main {
+    display: grid;
+    gap: 10px;
+}
+
+.layout-footer {
+    margin-top: 12px;
+    font-size: 14px;
+    color: var(--muted);
+}
+
+.profile {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.profile h2 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.profile p {
+    margin: 0 0 6px;
+    color: var(--muted);
+}
+
+.profile button {
+    margin: 0;
+}

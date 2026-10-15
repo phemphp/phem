@@ -612,8 +612,36 @@ svg {
     border-bottom: 2px solid var(--tok-component);
 }
 
+/* A multi-file example: one tab button for each file */
+.sandbox-tabs {
+    display: flex;
+    gap: 12px;
+    min-width: 0;
+    overflow-x: auto;
+}
+
+button.sandbox-tab {
+    flex: none;
+    font-family: var(--font-mono);
+    color: var(--tok-punct);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+}
+
+button.sandbox-tab:hover {
+    color: #ffffff;
+}
+
+button.sandbox-tab[aria-selected="true"] {
+    color: var(--tok-component);
+    border-bottom-color: var(--tok-component);
+}
+
 .sandbox-actions {
     display: flex;
+    flex: none;
     gap: 4px;
 }
 

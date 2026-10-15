@@ -113,6 +113,34 @@
     </div>
 </aside>
 
+<h2 id="importing-and-exporting" class="heading">Importing and exporting components<a class="heading-anchor" href="#importing-and-exporting" aria-label="Link to this section">#</a></h2>
+<p>You can declare many components in one file. When an app grows, put the reusable components in their own files and compose them in a page. React uses <code>export</code> and <code>import</code> for this. rephp uses PHP namespaces:</p>
+<ul>
+    <li>Put the shared components in <code>src/components/</code>, in the namespace <code>App\Components</code>. Files outside <code>src/pages/</code> are not routes.</li>
+    <li>In the page file, import a function component with <code>use function App\Components\{Layout, Profile};</code>.</li>
+    <li>Import a class component with <code>use App\Components\LikeButton;</code>.</li>
+    <li>A component in the same namespace needs no import. <code>Profile</code> uses <code>&lt;LikeButton /&gt;</code> without an import.</li>
+</ul>
+<p>The page <code>Gallery.rhp</code> below uses components from three other files. <code>Layout</code> is the page shell: it gets the page content as <code>children</code> and a named slot <code>&lt;Layout:footer&gt;</code>. Each <code>LikeButton</code> keeps its own state. Click the tabs to see each file:</p>
+<div class="sandbox" data-controller="sandbox" data-sandbox-example-value="Gallery">
+    <div class="sandbox-bar">
+        <div class="sandbox-tabs" role="tablist" aria-label="Files">
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="true" data-sandbox-target="tab" data-action="sandbox#select" data-src="/examples-src/Gallery.rhp" title="src/pages/examples/Gallery.rhp">Gallery.rhp</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/Layout.rhp" title="src/components/Layout.rhp">Layout.rhp</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/Profile.rhp" title="src/components/Profile.rhp">Profile.rhp</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/LikeButton.rhp" title="src/components/LikeButton.rhp">LikeButton.rhp</button>
+        </div>
+        <div class="sandbox-actions">
+            <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
+            <a class="sandbox-button" href="/examples/Gallery" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
+        </div>
+    </div>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/pages/examples/Gallery.rhp...</code></pre>
+    <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
+    <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/Gallery" loading="lazy" title="Gallery preview"></iframe>
+</div>
+<p>The compiler finds the component of each tag at build time, with the PHP rules: first a <code>use function</code> import, then a <code>use</code> import of a class, then the current namespace. It checks the props across files too: an unknown component or prop is an error (E010, E011), with the <code>.rhp</code> line of the tag.</p>
+
 <h2 id="status" class="heading">Status<a class="heading-anchor" href="#status" aria-label="Link to this section">#</a></h2>
 <aside class="callout callout-note">
     <h3 class="callout-title">Work in progress</h3>
@@ -134,6 +162,7 @@
                     <h2 class="toc-title">On this page</h2>
                     <ul class="toc-list">
                     <li><a class="toc-link" data-toc-target="link" href="#overview">Overview</a></li>
+                    <li><a class="toc-link" data-toc-target="link" href="#importing-and-exporting">Importing and exporting components</a></li>
                     <li><a class="toc-link" data-toc-target="link" href="#status">Status</a></li>
                     </ul>
                 </nav>

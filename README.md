@@ -52,6 +52,8 @@ See [editors/vscode/README.md](editors/vscode/README.md).
 - `/learn` is the Quick Start page (static HTML + CSS, like react.dev/learn).
 - Each sandbox in it runs a real `.rhp` file from `examples/quickstart/src/pages/examples/`,
   served at `/examples/<Name>`.
+- `/learn/describing-the-ui.html` has a multi-file example: the page `Gallery.rhp` uses
+  components from `examples/quickstart/src/components/`.
 
 ## How it works
 
