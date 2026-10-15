@@ -84,7 +84,7 @@ final class Manifest
         return $this->twigSignature = hash('xxh128', serialize($parts));
     }
 
-    /** The Twig name of a compiled template: `@rhp/pages/index.0.twig`. */
+    /** The Twig name of a compiled template: `@rhp/Pages/index.0.twig`. */
     public static function templateName(string $template): string
     {
         return '@'.self::TEMPLATE_NAMESPACE.'/'.$template;

@@ -8,5 +8,5 @@ services:
         resource: '../src/'
         exclude:
             - '../src/Kernel.php'
-            - '../src/components/'
-            - '../src/pages/'
+            - '../src/Components/'
+            - '../src/Pages/'

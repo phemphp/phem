@@ -22,11 +22,11 @@
 	@sources path /examples-src/* /components-src/* /repository-src/*
 	header @sources Content-Type "text/plain; charset=utf-8"
 	handle_path /examples-src/* {
-		root * src/pages/examples
+		root * src/Pages/Examples
 		file_server
 	}
 	handle_path /components-src/* {
-		root * src/components
+		root * src/Components
 		file_server
 	}
 	handle_path /repository-src/* {

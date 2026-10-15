@@ -92,10 +92,10 @@ To build and install the VS Code extension, run `make vscode-install`.
 See [editors/vscode/README.md](editors/vscode/README.md).
 
 - `/learn` is the Quick Start page (static HTML + CSS, like react.dev/learn).
-- Each sandbox in it runs a real `.rhp` file from `examples/quickstart/src/pages/examples/`.
+- Each sandbox in it runs a real `.rhp` file from `examples/quickstart/src/Pages/Examples/`.
   Its `#[Route]` attribute serves it at `/examples/<Name>`.
 - `/learn/describing-the-ui.html` has a multi-file example: the page `Gallery.rhp` uses
-  components from `examples/quickstart/src/components/`. The page `DurableGallery.rhp` reads and
+  components from `examples/quickstart/src/Components/`. The page `DurableGallery.rhp` reads and
   writes its data in SQLite through a Doctrine ORM entity and its repository. Its handlers are
   `#[Transactional]`, and a Symfony form adds a scientist. The data stays after a reload.
 

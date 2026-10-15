@@ -26,10 +26,10 @@ my-app/
 │   ├── Model/             optional: Doctrine entities
 │   ├── Repository/        normal PHP services, injected into components
 │   ├── DataFixtures/      optional: Doctrine fixtures, the first rows of a new database
-│   ├── components/        components that are not pages
-│   └── pages/             the components with a #[Route] attribute
+│   ├── Components/        components that are not pages
+│   └── Pages/             the components with a #[Route] attribute
 │       ├── index.rhp      #[Route('/')]
-│       └── examples/
+│       └── Examples/
 │           └── Counter.rhp #[Route('/examples/Counter')]
 ├── templates/bundles/RephpBundle/page.html.twig   optional: override the page document
 ├── public/                static files, index.php (Symfony Runtime: FrankenPHP worker mode, PHP-FPM)
@@ -95,8 +95,8 @@ page, or route needs no `cache:clear`.
 
 ```
 var/cache/rhp/
-├── php/pages/index.php          the PHP code; each markup literal becomes new \Rephp\Element('pages/index.0.twig', [...])
-├── templates/pages/index.0.twig one Twig template for each markup literal (Twig name: @rhp/pages/index.0.twig)
+├── php/Pages/index.php          the PHP code; each markup literal becomes new \Rephp\Element('Pages/index.0.twig', [...])
+├── templates/Pages/index.0.twig one Twig template for each markup literal (Twig name: @rhp/Pages/index.0.twig)
 ├── manifest.php / manifest.json components (kind, props, slots), pages, template → .rhp line map
 ├── autoload.php                 requires all compiled PHP files
 └── preload.php                  for opcache.preload (production)
@@ -120,7 +120,7 @@ Each diagnostic shows the `.rhp` line and column, a label, and a hint:
 E011
 
   × `<Profile>` has no prop `persn`
-    ╭─[src/pages/App.rhp:16:22]
+    ╭─[src/Pages/App.rhp:16:22]
  15 │         <div>
  16 │             <Profile persn={{ user }} />
     ·                      ─────

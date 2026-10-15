@@ -11,7 +11,7 @@ use Twig\Error\Error as TwigError;
 use Twig\Source;
 
 /**
- * Points errors in compiled templates to the `.rhp` source: `src/pages/x.rhp` at line 12.
+ * Points errors in compiled templates to the `.rhp` source: `src/Pages/x.rhp` at line 12.
  * The Symfony error page and the console then show the `.rhp` file and line.
  */
 final class SourceMapListener
