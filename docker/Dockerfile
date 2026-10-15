@@ -45,4 +45,4 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction \
  && rhpc build src --out var/cache/rhp --prod
 COPY docker/php-prod.ini /usr/local/etc/php/conf.d/zz-rephp.ini
 EXPOSE 8080
-CMD ["php", "vendor/bin/rephp", "serve", "--host=0.0.0.0", "--port=8080", "--mount=/examples-src/=src/pages/examples", "--mount=/components-src/=src/components"]
+CMD ["php", "vendor/bin/rephp", "serve", "--host=0.0.0.0", "--port=8080", "--mount=/examples-src/=src/pages/examples", "--mount=/components-src/=src/components", "--mount=/data-src/=src/data"]

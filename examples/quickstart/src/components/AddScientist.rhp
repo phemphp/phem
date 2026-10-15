@@ -1,0 +1,35 @@
+<?php
+namespace App\Components;
+
+use App\Data\Scientists;
+use Rephp\Event;
+
+use function Rephp\useState;
+
+// A form that inserts a row. The error message is browser state (useState): it is
+// only for this visitor. The new scientist is in the database: all visitors see it.
+function AddScientist()
+{
+    [$error, $setError] = useState(null);
+
+    $add = function (Event $e) use ($setError) {
+        $name = mb_substr(trim((string) ($e->form['name'] ?? '')), 0, 80);
+        $profession = mb_substr(trim((string) ($e->form['profession'] ?? '')), 0, 80);
+        if ('' === $name || '' === $profession) {
+            $setError('Type a name and a profession.');
+
+            return;
+        }
+        Scientists::add($name, $profession);
+        $setError(null);
+    };
+
+    return (
+        <form className="add-scientist" onSubmit={{ add }}>
+            <input name="name" placeholder="Name" maxlength="80" />
+            <input name="profession" placeholder="Profession" maxlength="80" />
+            <button type="submit">Add</button>
+            {% if error %}<p className="form-error">{{ error }}</p>{% endif %}
+        </form>
+    );
+}

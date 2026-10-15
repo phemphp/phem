@@ -150,3 +150,32 @@ input:focus {
 .profile button {
     margin: 0;
 }
+
+.add-scientist {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.add-scientist input,
+.add-scientist button {
+    margin: 0;
+}
+
+.add-scientist input {
+    flex: 1 1 160px;
+}
+
+.form-error {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 14px;
+    color: #c1341c;
+}
+
+@media (prefers-color-scheme: dark) {
+    .form-error {
+        color: #ff8a73;
+    }
+}

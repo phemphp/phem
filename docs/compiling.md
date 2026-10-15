@@ -106,7 +106,7 @@ The README has the list of codes.
 ## 4. Run
 
 ```sh
-php vendor/bin/rephp serve --host=0.0.0.0 --port=8080 --mount=/examples-src/=src/pages/examples --mount=/components-src/=src/components
+php vendor/bin/rephp serve --host=0.0.0.0 --port=8080 --mount=/examples-src/=src/pages/examples --mount=/components-src/=src/components --mount=/data-src/=src/data
 ```
 
 - `--mount=/url/=dir` serves one more static directory (repeat the option for more).

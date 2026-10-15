@@ -141,6 +141,41 @@
 </div>
 <p>The compiler finds the component of each tag at build time, with the PHP rules: first a <code>use function</code> import, then a <code>use</code> import of a class, then the current namespace. It checks the props across files too: an unknown component or prop is an error (E010, E011), with the <code>.rhp</code> line of the tag.</p>
 
+<h2 id="data-from-a-database" class="heading">Reading data from a database<a class="heading-anchor" href="#data-from-a-database" aria-label="Link to this section">#</a></h2>
+<p>In <code>Gallery.rhp</code>, the scientists are a PHP array, and each like is browser state: a reload clears it. In a real app, the data comes from a database. Components render on the server, so a component can read the database directly. You do not need an API between them.</p>
+<p>The page <code>DurableGallery.rhp</code> below is the same gallery, with the data in SQLite. It uses <a href="https://www.doctrine-project.org/projects/dbal.html">Doctrine DBAL</a>:</p>
+<ul>
+    <li><code>src/data/Scientists.rhp</code> is the data layer. It is plain PHP, with no markup. It makes the database file <code>var/data/gallery.sqlite</code> on the first call.</li>
+    <li>The page reads the rows with <code>Scientists::all()</code> while it renders. It reuses <code>Layout</code> and <code>Avatar</code> from the files above.</li>
+    <li>The handlers write to the database. <code>LikeCounter</code> calls <code>Scientists::like()</code>, and <code>AddScientist</code> calls <code>Scientists::add()</code>.</li>
+    <li>After a handler, the server renders the page again. It reads the new rows and morphs only the components that changed.</li>
+</ul>
+<p>Click a like button, add a scientist, then click <strong>Reset</strong> or open the page in another browser. The data stays. Only the error message of the form is browser state (<code>useState</code>), because it is for one visitor only.</p>
+<div class="sandbox" data-controller="sandbox" data-sandbox-example-value="DurableGallery">
+    <div class="sandbox-bar">
+        <div class="sandbox-tabs" role="tablist" aria-label="Files">
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="true" data-sandbox-target="tab" data-action="sandbox#select" data-src="/examples-src/DurableGallery.rhp" title="src/pages/examples/DurableGallery.rhp">DurableGallery.rhp</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/data-src/Scientists.rhp" title="src/data/Scientists.rhp">Scientists.rhp</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/ScientistCard.rhp" title="src/components/ScientistCard.rhp">ScientistCard.rhp</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/AddScientist.rhp" title="src/components/AddScientist.rhp">AddScientist.rhp</button>
+        </div>
+        <div class="sandbox-actions">
+            <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
+            <a class="sandbox-button" href="/examples/DurableGallery" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
+        </div>
+    </div>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/pages/examples/DurableGallery.rhp...</code></pre>
+    <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
+    <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/DurableGallery" loading="lazy" title="DurableGallery preview"></iframe>
+</div>
+<p>The <code>key</code> on <code>LikeCounter</code> is the row id. The server finds the handler of an event by the position of the component in the tree. With a key, a click goes to the correct row, also when the rows change between the page load and the click (for example, when a row is deleted).</p>
+<aside class="callout callout-note">
+    <h3 class="callout-title">One connection for each server process</h3>
+    <div class="callout-body">
+        <p><code>rephp serve</code> is one long-running process, so <code>Scientists</code> opens the connection once and keeps it. The queries are synchronous: a slow query blocks the event loop. SQLite on a local file is fast. For a remote database, keep the queries short.</p>
+    </div>
+</aside>
+
 <h2 id="status" class="heading">Status<a class="heading-anchor" href="#status" aria-label="Link to this section">#</a></h2>
 <aside class="callout callout-note">
     <h3 class="callout-title">Work in progress</h3>
@@ -163,6 +198,7 @@
                     <ul class="toc-list">
                     <li><a class="toc-link" data-toc-target="link" href="#overview">Overview</a></li>
                     <li><a class="toc-link" data-toc-target="link" href="#importing-and-exporting">Importing and exporting components</a></li>
+                    <li><a class="toc-link" data-toc-target="link" href="#data-from-a-database">Reading data from a database</a></li>
                     <li><a class="toc-link" data-toc-target="link" href="#status">Status</a></li>
                     </ul>
                 </nav>

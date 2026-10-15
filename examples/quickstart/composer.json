@@ -5,6 +5,7 @@
     "license": "MIT",
     "require": {
         "php": ">=8.6",
+        "doctrine/dbal": "^4.5",
         "rephp/runtime": "@dev"
     },
     "repositories": [

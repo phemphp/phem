@@ -1,0 +1,30 @@
+<?php
+namespace App\Components;
+
+use App\Data\Scientists;
+
+// The handler writes to the database. Then the server renders the page again, reads the
+// new count, and morphs only this button. No state is kept in the browser.
+function LikeCounter(int $id, int $likes)
+{
+    $like = fn() => Scientists::like($id);
+
+    return (
+        <button onClick={{ like }}>♥ {{ likes }}</button>
+    );
+}
+
+// Avatar is in Profile.rhp, in this namespace: it needs no import.
+function ScientistCard(array $scientist)
+{
+    return (
+        <section className="profile">
+            <Avatar name={{ scientist.name }} />
+            <div>
+                <h2>{{ scientist.name }}</h2>
+                <p>{{ scientist.profession }}</p>
+                <LikeCounter key={{ scientist.id }} id={{ scientist.id }} likes={{ scientist.likes }} />
+            </div>
+        </section>
+    );
+}

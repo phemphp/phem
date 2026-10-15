@@ -1,0 +1,25 @@
+<?php
+namespace App\Pages\Examples;
+
+use App\Data\Scientists;
+use Rephp\Attribute\Page;
+
+use function App\Components\{AddScientist, Layout, ScientistCard};
+
+#[Page]
+function DurableGallery()
+{
+    // The same Gallery, but the data comes from SQLite. Each render reads it again,
+    // so the likes and the new scientists stay after a reload.
+    $scientists = Scientists::all();
+
+    return (
+        <Layout title="Amazing scientists">
+            {% for scientist in scientists %}
+                <ScientistCard key={{ scientist.id }} scientist={{ scientist }} />
+            {% endfor %}
+            <AddScientist />
+            <Layout:footer>{{ scientists|length }} profiles in var/data/gallery.sqlite</Layout:footer>
+        </Layout>
+    );
+}

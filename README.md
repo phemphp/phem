@@ -53,7 +53,9 @@ See [editors/vscode/README.md](editors/vscode/README.md).
 - Each sandbox in it runs a real `.rhp` file from `examples/quickstart/src/pages/examples/`,
   served at `/examples/<Name>`.
 - `/learn/describing-the-ui.html` has a multi-file example: the page `Gallery.rhp` uses
-  components from `examples/quickstart/src/components/`.
+  components from `examples/quickstart/src/components/`. The page `DurableGallery.rhp` reads and
+  writes its data in SQLite with Doctrine DBAL (`examples/quickstart/src/data/`), so the data
+  stays after a reload.
 
 ## How it works
 
