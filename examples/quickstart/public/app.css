@@ -154,7 +154,7 @@ input:focus {
 .add-scientist {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
 }
 
@@ -163,12 +163,14 @@ input:focus {
     margin: 0;
 }
 
-.add-scientist input {
+.add-scientist .field {
+    display: flex;
     flex: 1 1 160px;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .form-error {
-    flex-basis: 100%;
     margin: 0;
     font-size: 14px;
     color: #c1341c;

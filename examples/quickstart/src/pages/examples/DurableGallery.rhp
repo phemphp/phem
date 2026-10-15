@@ -8,8 +8,6 @@ use Symfony\Component\Routing\Attribute\Route;
 
 use function App\Components\{Layout, ScientistCard};
 
-// The same Gallery, but the data comes from SQLite, through a service that the container
-// injects. Each render reads it again, so the likes and the new scientists stay after a reload.
 #[Route('/examples/DurableGallery')]
 #[Component]
 final class DurableGallery

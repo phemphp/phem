@@ -1,43 +1,56 @@
 <?php
 namespace App\Components;
 
+use App\Dto\NewScientist;
+use App\Form\ScientistType;
 use App\Repository\ScientistRepository;
-use Rephp\Attribute\{Component, State};
+use Rephp\Attribute\Component;
 use Rephp\Event;
+use Symfony\Component\Form\FormFactoryInterface;
+use Symfony\Component\Form\FormInterface;
 
-// A form that inserts a row. The error message is browser state (#[State]): it is only
-// for this visitor. The new scientist is in the database: all visitors see it.
 #[Component]
 final class AddScientist
 {
-    #[State] public ?string $error = null;
+    private ?FormInterface $form = null {
+        get => $this->form ??= $this->forms->create(ScientistType::class);
+    }
 
     public function __construct(
         private readonly ScientistRepository $scientists,
+        private readonly FormFactoryInterface $forms,
     ) {
     }
 
     public function add(Event $e): void
     {
-        $name = mb_substr(trim((string) ($e->form['name'] ?? '')), 0, 80);
-        $profession = mb_substr(trim((string) ($e->form['profession'] ?? '')), 0, 80);
-        if ('' === $name || '' === $profession) {
-            $this->error = 'Type a name and a profession.';
+        $scientist = new NewScientist();
 
-            return;
+        $this->form = $this->forms->create(ScientistType::class, $scientist)
+            ->handleRequest($e->request);
+
+        if ($this->form->isSubmitted() && $this->form->isValid()) {
+            $this->scientists->add($scientist->name, $scientist->profession);
+
+            $this->form = null;
         }
-        $this->scientists->add($name, $profession);
-        $this->error = null;
     }
 
     public function render()
     {
+        $view = $this->form->createView();
+
         return (
             <form className="add-scientist" onSubmit={{ add }}>
-                <input name="name" placeholder="Name" maxlength="80" />
-                <input name="profession" placeholder="Profession" maxlength="80" />
+                <div className="field">
+                    {{ form_widget(view.name) }}
+                    {{ form_errors(view.name) }}
+                </div>
+                <div className="field">
+                    {{ form_widget(view.profession) }}
+                    {{ form_errors(view.profession) }}
+                </div>
                 <button type="submit">Add</button>
-                {% if error %}<p className="form-error">{{ error }}</p>{% endif %}
             </form>
         );
     }

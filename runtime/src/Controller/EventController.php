@@ -44,7 +44,7 @@ final class EventController
 
         $tree = new Tree($page, $state);
         $this->renderer->render($tree);
-        $event = Event::fromArray(\is_array($data['event'] ?? null) ? $data['event'] : []);
+        $event = Event::fromArray(\is_array($data['event'] ?? null) ? $data['event'] : [], $request);
         if (!$this->renderer->dispatch($tree, $data['handler'], $event)) {
             // The page changed since the browser rendered it (for example after a deploy).
             return new JsonResponse(['reload' => true], 409);

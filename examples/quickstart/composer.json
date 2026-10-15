@@ -9,7 +9,9 @@
         "doctrine/doctrine-bundle": "^3.0",
         "rephp/runtime": "@dev",
         "symfony/dotenv": "^7.4|^8.0",
+        "symfony/form": "^7.4|^8.0",
         "symfony/runtime": "^7.4|^8.0",
+        "symfony/validator": "^7.4|^8.0",
         "symfony/yaml": "^7.4|^8.0"
     },
     "repositories": [

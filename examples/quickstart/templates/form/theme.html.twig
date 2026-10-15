@@ -1,0 +1,6 @@
+{# The form theme of the quickstart: form_errors() shows each message as a <p class="form-error">. #}
+{%- block form_errors -%}
+    {%- for error in errors -%}
+        <p class="form-error">{{ error.message }}</p>
+    {%- endfor -%}
+{%- endblock form_errors -%}

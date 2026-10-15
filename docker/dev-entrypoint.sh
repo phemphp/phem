@@ -6,6 +6,9 @@ cargo build --release --quiet --manifest-path /app/compiler/Cargo.toml -p rhpc-c
 case "$1" in
   serve)
     cd /app/examples/quickstart
+    # Build the .rhp files first: the Composer scripts boot the kernel, and a stale cache
+    # from older sources can make it fail.
+    rhpc build src --out var/cache/rhp --no-warmup
     composer install --quiet --no-interaction
     # rhpc restarts FrankenPHP after each build of the .rhp files. The workers also restart
     # when a PHP class in src/ changes (for example a repository).

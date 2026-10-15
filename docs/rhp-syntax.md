@@ -150,8 +150,23 @@ function MyButton() {
 
 Supported events: `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`, `onKeyDown`, `onKeyUp`,
 `onFocus`, `onBlur`. The handler runs on the server. It receives a `Rephp\Event` object with
-`$e->value`, `$e->checked`, `$e->key`, and `$e->form` (an array, for `onSubmit`).
+`$e->value`, `$e->checked`, `$e->key`, `$e->form` (an array, for `onSubmit`), and `$e->request`.
 `onChange` on a text input fires on each key (as in React).
+
+`$e->request` is the Symfony `Request` of the event, with the form fields as its POST data.
+The keys with brackets become nested arrays (`scientist[name]` → `['scientist' => ['name' => ...]]`),
+as in a normal POST. A Symfony form can read it directly:
+
+```php
+public function add(Event $e): void
+{
+    $form = $this->forms->create(ScientistType::class);
+    $form->handleRequest($e->request);
+    if ($form->isSubmitted() && $form->isValid()) {
+        // $form->getData()
+    }
+}
+```
 
 ## 7. State: class components
 

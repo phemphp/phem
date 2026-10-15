@@ -563,7 +563,14 @@ fn parse_class(toks: &Toks, at: usize, info: &FileInfo, attrs: Vec<String>) -> (
                 span: t.span,
             });
             while i < close && !toks.is_op(i, ";") {
-                if toks.is_op(i, "(") || toks.is_op(i, "[") || toks.is_op(i, "{") {
+                if toks.is_op(i, "{") {
+                    i = toks.matching(i);
+                    // A hook list (`$x { get => ...; }`) ends the declaration without `;`. A
+                    // closure body in the default value is followed by `;` or `,`.
+                    if !toks.is_op(i + 1, ";") && !toks.is_op(i + 1, ",") {
+                        break;
+                    }
+                } else if toks.is_op(i, "(") || toks.is_op(i, "[") {
                     i = toks.matching(i);
                 }
                 i += 1;
@@ -655,5 +662,27 @@ final class Counter {
         assert_eq!(props, &["label"], "state, private and constructor properties are not props");
         assert_eq!(c.methods.len(), 3);
         assert_eq!(f.markup_scopes, vec![MarkupScope::Method(0, 2)]);
+    }
+
+    #[test]
+    fn property_hooks_and_closure_defaults() {
+        let f = scan_src(
+            r#"<?php
+#[Component]
+final class Form {
+    private Form $form {
+        get => $this->form ??= new Form();
+    }
+    public int $n = 1 { set => $this->n = $value; }
+    private \Closure $f = static function () { return 1; };
+    public function render() { return <div />; }
+}
+"#,
+        );
+        let c = &f.classes[0];
+        let props: Vec<_> = c.props.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(props, ["form", "n", "f"]);
+        assert_eq!(c.methods.len(), 1);
+        assert_eq!(f.markup_scopes, vec![MarkupScope::Method(0, 0)]);
     }
 }
