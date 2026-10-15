@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-- Bracket pair colorization treats `{{ }}` and `{% %}` as one pair, so both delimiters show in
-  the same color.
+- The Twig delimiters `{{ }}` and `{% %}` are one bracket pair, and they always have the color of
+  the first bracket level. Before, the two braces of a delimiter had different colors, and the
+  color changed with the depth (yellow in a template, blue in a function body).
 
 ## 0.2.0
 

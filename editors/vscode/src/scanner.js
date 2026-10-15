@@ -8,7 +8,9 @@
 //   - context: where the end of the text is (the cursor, when the text is the
 //     part of the document before the cursor);
 //   - masks: the [start, end) ranges that are not PHP code (strings, comments,
-//     and markup literals).
+//     and markup literals);
+//   - delimiters: the [start, end) ranges of the Twig delimiters in markup
+//     (`{{`, `}}`, `{%`, and `%}`).
 
 // A markup literal can start after one of these characters or words.
 const START_CHARS = new Set(['(', '[', ',', '=', '>', '?', ':', '!', '.', '|', '&']);
@@ -23,6 +25,7 @@ class Scanner {
         this.text = text;
         this.i = 0;
         this.masks = [];
+        this.delimiters = [];
         this.context = null;
     }
 
@@ -83,7 +86,7 @@ class Scanner {
                 throw e;
             }
         }
-        return { context: this.context, masks: this.masks };
+        return { context: this.context, masks: this.masks, delimiters: this.delimiters };
     }
 
     php() {
@@ -207,12 +210,12 @@ class Scanner {
             } else if (c === '{') {
                 const next = text[this.i + 1];
                 if (next === '{') {
-                    this.i += 2;
+                    this.delimiter();
                     this.twig('}}');
                     continue;
                 }
                 if (next === '%') {
-                    this.i += 2;
+                    this.delimiter();
                     this.twig('%}');
                     continue;
                 }
@@ -224,6 +227,12 @@ class Scanner {
             }
             this.i++;
         }
+    }
+
+    // Moves past a two-character Twig delimiter and records it.
+    delimiter() {
+        this.delimiters.push([this.i, this.i + 2]);
+        this.i += 2;
     }
 
     // Reads `<name attrs>` or `<name attrs />`. Returns the name of an open
@@ -253,7 +262,7 @@ class Scanner {
                 return null;
             }
             if (this.startsWith('{{')) {
-                this.i += 2;
+                this.delimiter();
                 this.twig('}}');
                 continue;
             }
@@ -317,7 +326,7 @@ class Scanner {
             }
             const c = text[this.i];
             if (depth === 0 && this.startsWith(close)) {
-                this.i += 2;
+                this.delimiter();
                 return;
             }
             if (c === ' ' || c === '\t' || c === '\r' || c === '\n') {

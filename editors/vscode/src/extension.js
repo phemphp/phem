@@ -4,6 +4,7 @@ const path = require('path');
 const vscode = require('vscode');
 const { Project, findRoot } = require('./project');
 const { complete } = require('./complete');
+const { scan } = require('./scanner');
 
 const KINDS = {
     class: vscode.CompletionItemKind.Class,
@@ -73,9 +74,63 @@ const provider = {
     },
 };
 
+// Bracket pair colorization gives a bracket the color of its depth, so the
+// Twig delimiters were yellow in a template and blue in a function body. The
+// delimiters are not colorized brackets (see colorizedBracketPairs); they
+// always get the color of the first bracket level.
+const delimiterType = vscode.window.createTextEditorDecorationType({
+    color: new vscode.ThemeColor('editorBracketHighlight.foreground1'),
+});
+
+function decorate(editor) {
+    if (editor.document.languageId !== 'rhp') {
+        return;
+    }
+    const enabled = vscode.workspace
+        .getConfiguration('editor.bracketPairColorization', editor.document)
+        .get('enabled', true);
+    const ranges = enabled
+        ? scan(editor.document.getText()).delimiters.map(([start, end]) => new vscode.Range(
+            editor.document.positionAt(start),
+            editor.document.positionAt(end),
+        ))
+        : [];
+    editor.setDecorations(delimiterType, ranges);
+}
+
 function activate(context) {
     context.subscriptions.push(
         vscode.languages.registerCompletionItemProvider({ language: 'rhp' }, provider, '<', '\\', ':', '/'),
+    );
+
+    // Color the Twig delimiters.
+    const timers = new Map();   // document -> timer
+    const decorateAll = (document) => {
+        for (const editor of vscode.window.visibleTextEditors) {
+            if (!document || editor.document === document) {
+                decorate(editor);
+            }
+        }
+    };
+    vscode.window.visibleTextEditors.forEach(decorate);
+    context.subscriptions.push(
+        delimiterType,
+        vscode.window.onDidChangeVisibleTextEditors((editors) => editors.forEach(decorate)),
+        vscode.workspace.onDidChangeTextDocument(({ document }) => {
+            if (document.languageId !== 'rhp') {
+                return;
+            }
+            clearTimeout(timers.get(document));
+            timers.set(document, setTimeout(() => {
+                timers.delete(document);
+                decorateAll(document);
+            }, 100));
+        }),
+        vscode.workspace.onDidChangeConfiguration((e) => {
+            if (e.affectsConfiguration('editor.bracketPairColorization')) {
+                decorateAll();
+            }
+        }),
     );
 
     // Keep the index up to date.
