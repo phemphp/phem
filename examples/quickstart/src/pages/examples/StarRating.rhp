@@ -4,13 +4,15 @@ namespace App\Pages\Examples;
 use Rephp\Attribute\{Component, State};
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Component]
 #[Route('/examples/StarRating')]
+#[Component]
 final class StarRating
 {
     public string $label = 'Rate this page';  // prop
     public int $maxStars = 5;                 // prop
-    #[State] public int $stars = 0;           // state
+
+    #[State] 
+    public int $stars = 0;                    // state
 
     public function addStar(): void
     {

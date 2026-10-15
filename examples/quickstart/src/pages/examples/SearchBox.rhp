@@ -9,7 +9,8 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Component]
 final class SearchBox
 {
-    #[State] public string $name = '';
+    #[State]
+    public string $name = '';
 
     public function handleChange(Event $e): void
     {
