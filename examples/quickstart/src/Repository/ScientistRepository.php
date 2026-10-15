@@ -12,9 +12,10 @@ final class ScientistRepository
 {
     private bool $ready = false;
 
-    public function __construct(private readonly Connection $db)
-    {
-    }
+    public function __construct(
+        private readonly Connection $db,
+    ) {
+    } 
 
     /** @return list<array{id: int, name: string, profession: string, likes: int}> */
     public function all(): array

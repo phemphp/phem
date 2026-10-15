@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Components;
 
 use Rephp\Attribute\{Component, State};
@@ -7,7 +8,8 @@ use Rephp\Attribute\{Component, State};
 #[Component]
 final class LikeButton
 {
-    #[State] public bool $liked = false;
+    #[State] 
+    public bool $liked = false;
 
     public function toggle(): void
     {
