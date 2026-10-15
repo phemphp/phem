@@ -62,17 +62,6 @@ pub struct Func {
     pub template_markup: Option<usize>,
 }
 
-impl Func {
-    pub fn is_hook(&self) -> bool {
-        is_hook_name(&self.name)
-    }
-}
-
-pub fn is_hook_name(name: &str) -> bool {
-    let n = name.rsplit('\\').next().unwrap_or(name);
-    n.len() > 3 && n.starts_with("use") && n.as_bytes()[3].is_ascii_uppercase()
-}
-
 #[derive(Clone, Debug)]
 pub struct Param {
     pub name: String,
@@ -102,6 +91,8 @@ pub struct Prop {
     pub is_readonly: bool,
     pub is_static: bool,
     pub is_state: bool,
+    /// A promoted constructor parameter: a service that the container injects, not a prop.
+    pub is_promoted: bool,
     pub has_default: bool,
     pub span: Span,
 }
@@ -540,6 +531,7 @@ fn parse_class(toks: &Toks, at: usize, info: &FileInfo, attrs: Vec<String>) -> (
                         is_readonly: false,
                         is_static: false,
                         is_state: false,
+                        is_promoted: true,
                         has_default: p.default.is_some(),
                         span: m.name_span,
                     });
@@ -562,6 +554,7 @@ fn parse_class(toks: &Toks, at: usize, info: &FileInfo, attrs: Vec<String>) -> (
                 is_readonly: mods.iter().any(|m| m == "readonly"),
                 is_static: mods.iter().any(|m| m == "static"),
                 is_state: member_attrs.iter().any(|a| resolve_class(info, a) == ATTR_STATE),
+                is_promoted: false,
                 has_default,
                 span: t.span,
             });
@@ -643,7 +636,7 @@ final class Counter {
     public string $label = 'Clicked';
     #[State] public int $count = 0;
     private int $x;
-    public function __construct(public ?Html $children = null) {}
+    public function __construct(public readonly Clock $clock) {}
     public function increment(): void { $this->count++; }
     public function render() { return <button>{{ label }}</button>; }
 }
@@ -653,7 +646,9 @@ final class Counter {
         assert!(c.is_component);
         assert_eq!(c.fqn, "App\\Counter");
         let names: Vec<_> = c.props.iter().map(|p| (p.name.as_str(), p.is_public, p.is_state)).collect();
-        assert_eq!(names, [("label", true, false), ("count", true, true), ("x", false, false), ("children", true, false)]);
+        assert_eq!(names, [("label", true, false), ("count", true, true), ("x", false, false), ("clock", true, false)]);
+        let props = &crate::components(&f)[0].props;
+        assert_eq!(props, &["label"], "state, private and constructor properties are not props");
         assert_eq!(c.methods.len(), 3);
         assert_eq!(f.markup_scopes, vec![MarkupScope::Method(0, 2)]);
     }

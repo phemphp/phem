@@ -1,6 +1,0 @@
-<?php // expect: E021
-use function Rephp\useState;
-function App() {
-    $f = fn() => useState(0);
-    return <div />;
-}

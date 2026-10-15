@@ -19,7 +19,14 @@ final class Request
         public readonly array $query = [],
         public readonly array $headers = [],
         public readonly string $body = '',
+        public readonly string $remoteAddress = '',
     ) {
+    }
+
+    /** The same request, with the address of the client ("ip:port", from the accepted socket). */
+    public function withRemoteAddress(string $address): self
+    {
+        return new self($this->method, $this->path, $this->query, $this->headers, $this->body, $address);
     }
 
     public function header(string $name): ?string

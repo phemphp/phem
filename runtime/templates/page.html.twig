@@ -1,0 +1,19 @@
+{# The document of a page. Override it in templates/bundles/RephpBundle/page.html.twig:
+   {% extends '@!Rephp/page.html.twig' %}{% block stylesheets %}<link rel="stylesheet" href="/app.css">{% endblock %} #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title|raw }}</title>
+{% block head %}
+<link rel="icon" href="data:,">
+<style>rh-c{display:contents}</style>
+{% block stylesheets %}{% endblock %}
+<script type="module" src="/bundles/rephp/rhp.js"></script>
+{% endblock %}
+</head>
+<body>
+<div id="rh-root" data-controller="rhp" data-action="{{ actions }}" data-rhp-route-value="{{ route }}" data-rhp-endpoint-value="{{ path('rephp_event') }}" data-rhp-state-value="{{ state }}" data-rhp-signature-value="{{ signature }}">{{ body|raw }}</div>
+</body>
+</html>

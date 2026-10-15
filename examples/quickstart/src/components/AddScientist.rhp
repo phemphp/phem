@@ -1,35 +1,44 @@
 <?php
 namespace App\Components;
 
-use App\Data\Scientists;
+use App\Repository\ScientistRepository;
+use Rephp\Attribute\{Component, State};
 use Rephp\Event;
 
-use function Rephp\useState;
-
-// A form that inserts a row. The error message is browser state (useState): it is
-// only for this visitor. The new scientist is in the database: all visitors see it.
-function AddScientist()
+// A form that inserts a row. The error message is browser state (#[State]): it is only
+// for this visitor. The new scientist is in the database: all visitors see it.
+#[Component]
+final class AddScientist
 {
-    [$error, $setError] = useState(null);
+    #[State] public ?string $error = null;
 
-    $add = function (Event $e) use ($setError) {
+    public function __construct(
+        private readonly ScientistRepository $scientists,
+    ) {
+    }
+
+    public function add(Event $e): void
+    {
         $name = mb_substr(trim((string) ($e->form['name'] ?? '')), 0, 80);
         $profession = mb_substr(trim((string) ($e->form['profession'] ?? '')), 0, 80);
         if ('' === $name || '' === $profession) {
-            $setError('Type a name and a profession.');
+            $this->error = 'Type a name and a profession.';
 
             return;
         }
-        Scientists::add($name, $profession);
-        $setError(null);
-    };
+        $this->scientists->add($name, $profession);
+        $this->error = null;
+    }
 
-    return (
-        <form className="add-scientist" onSubmit={{ add }}>
-            <input name="name" placeholder="Name" maxlength="80" />
-            <input name="profession" placeholder="Profession" maxlength="80" />
-            <button type="submit">Add</button>
-            {% if error %}<p className="form-error">{{ error }}</p>{% endif %}
-        </form>
-    );
+    public function render()
+    {
+        return (
+            <form className="add-scientist" onSubmit={{ add }}>
+                <input name="name" placeholder="Name" maxlength="80" />
+                <input name="profession" placeholder="Profession" maxlength="80" />
+                <button type="submit">Add</button>
+                {% if error %}<p className="form-error">{{ error }}</p>{% endif %}
+            </form>
+        );
+    }
 }

@@ -53,10 +53,7 @@ pub mod codes {
     pub const NO_CHILDREN: &str = "E012";
     pub const UNKNOWN_SLOT: &str = "E013";
     pub const DUPLICATE_COMPONENT: &str = "E014";
-    pub const HOOK_CONDITIONAL: &str = "E020";
-    pub const HOOK_IN_CLOSURE: &str = "E021";
-    pub const HOOK_AFTER_RETURN: &str = "E022";
-    pub const HOOK_OUTSIDE_COMPONENT: &str = "E023";
+    pub const HOOK_REMOVED: &str = "E020";
     pub const UNDEFINED_VARIABLE: &str = "E030";
     pub const MARKUP_IN_EXPRESSION: &str = "E031";
     pub const BAD_ATTRIBUTE: &str = "E032";

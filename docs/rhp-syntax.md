@@ -7,6 +7,7 @@ template and turns the PHP code into plain PHP. All parsing happens at build tim
 ## 1. Components
 
 A component is a PHP function whose name starts with a capital letter. It returns markup.
+A component with state is a `#[Component]` class (see section 7).
 
 ```php
 <?php
@@ -146,65 +147,9 @@ Supported events: `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`,
 `$e->value`, `$e->checked`, `$e->key`, and `$e->form` (an array, for `onSubmit`).
 `onChange` on a text input fires on each key (as in React).
 
-## 7. State: `useState`
+## 7. State: class components
 
-```php
-use function Rephp\useState;
-
-function MyButton() {
-    [$count, $setCount] = useState(0);
-
-    $handleClick = fn() => $setCount($count + 1);
-
-    return <button onClick={{ handleClick }}>Clicked {{ count }} times</button>;
-}
-```
-
-- The setter takes a value or an updater: `$setCount(fn($c) => $c + 1)`.
-- Each component instance has its own state.
-- The state lives in the browser. The `rhp` Stimulus controller keeps it, and the server signs it.
-  An event sends the state to the server. The server runs the handler, renders again, and sends
-  back Turbo Streams that morph only the components that changed.
-- State values must be JSON values (scalars and arrays).
-- Other hooks: `useReducer($reducer, $initial)`, `useMemo($fn, $deps)`, `useCallback($fn, $deps)`,
-  `useRef($initial)`, `useId()`, `useContext($context)`.
-
-### Rules of Hooks
-
-Call hooks only at the top level of a component (or of a custom hook, a function whose name
-starts with `use`). Do not call hooks in `if`, loops, `match`, closures, or after an early
-`return`. The compiler reports these errors.
-
-## 8. Props and lifting state up
-
-Props are named parameters.
-
-```php
-function MyButton(int $count, Closure $onClick) {
-    return <button onClick={{ onClick }}>Clicked {{ count }} times</button>;
-}
-
-#[Page]
-function MyApp() {
-    [$count, $setCount] = useState(0);
-    $handleClick = fn() => $setCount($count + 1);
-
-    return (
-        <div>
-            <h1>Counters that update together</h1>
-            <MyButton count={{ count }} onClick={{ handleClick }} />
-            <MyButton count={{ count }} onClick={{ handleClick }} />
-        </div>
-    );
-}
-```
-
-- `prop="text"` passes a string, `prop={{ expr }}` passes any value, and a bare `prop` passes `true`.
-- Children go to the `?Html $children` parameter: `<Card>...</Card>`.
-- Named slots: `<Card:footer>...</Card:footer>` goes to the `?Html $footer` parameter.
-- An unknown prop is an error, unless the function has a variadic `...$rest` parameter.
-
-## 9. Class components
+A component with state is a class with the `#[Component]` attribute and a `render()` method.
 
 ```php
 use Rephp\Attribute\{Component, State};
@@ -227,33 +172,125 @@ final class Counter
 }
 ```
 
-In the markup of a class, a name is a local variable, then a property (`$this->name`),
-then a method (`$this->name(...)`, so a method passes as a handler).
+- A public property is a prop. A property without a default value (and not nullable) is a
+  required prop.
+- A `#[State]` property is state. A method changes it, and rephp calls `render()` again.
+- In the markup of a class, a name is a local variable, then a property (`$this->name`),
+  then a method (`$this->name(...)`, so a method passes as a handler).
+- Each component instance has its own state.
+- The state lives in the browser. The `rhp` Stimulus controller keeps it, and the server signs it.
+  An event sends the state to the server. The server makes the component again, restores the
+  state, runs the handler, renders again, and sends back Turbo Streams that morph only the
+  components that changed.
+- State values must be JSON values (scalars and arrays).
 
-## 10. Context
+rephp has no Hooks. A call to `Rephp\useState` (or `useReducer`, `useRef`, `useMemo`,
+`useCallback`, `useId`, `useContext`) is the compiler error E020.
+
+## 8. Services and `mount()`
+
+A class component is a Symfony service. The container makes a new object for each component
+instance, and the constructor gets its dependencies (autowiring). Constructor parameters are
+never props.
 
 ```php
-use Rephp\Attribute\Page;
-use Rephp\Context;
-use Rephp\Provider;
-use function Rephp\useContext;
+use App\Repository\TodoRepository;
+use Rephp\Attribute\{Component, State};
 
-const ThemeContext = new Context('light');
+#[Component]
+final class TodoList
+{
+    public int $limit = 10;                // prop
+    #[State] public array $todos = [];     // state
 
-function Toolbar() {
-    $theme = useContext(ThemeContext);
-    return <p className="theme-{{ theme }}">The theme is {{ theme }}</p>;
-}
+    public function __construct(private readonly TodoRepository $repository)
+    {
+    }
 
-#[Page]
-function App() {
-    return (
-        <Provider context="App\ThemeContext" value="dark">
-            <Toolbar />
-        </Provider>
-    );
+    // Runs when the component has no state yet: on its first render. The props are set.
+    public function mount(): void
+    {
+        $this->todos = $this->repository->latest($this->limit);
+    }
+
+    public function refresh(): void
+    {
+        $this->todos = $this->repository->latest($this->limit);
+    }
+
+    public function render()
+    {
+        return (
+            <section>
+                <ul>{% for todo in todos %}<li key={{ todo.id }}>{{ todo.title }}</li>{% endfor %}</ul>
+                <button onClick={{ refresh }}>Refresh</button>
+            </section>
+        );
+    }
 }
 ```
+
+The order for each component in a request:
+
+1. The container makes the object (constructor injection).
+2. rephp writes the props into the public properties.
+3. If the browser sent state for this component, rephp writes it into the `#[State]`
+   properties. If not, rephp calls `mount()` (when the class has it).
+4. rephp calls the event handler (for an event), then `render()`.
+
+A component without `#[State]` properties has no state in the browser, so `mount()` runs on each
+request. To configure a component service (for example to bind a scalar argument), define it in
+`config/services.yaml` with its class name as the id. rephp keeps your definition and only makes
+it not shared.
+
+## 9. Props and lifting state up
+
+The props of a function component are its named parameters. A function component has no state.
+It can receive a handler as a prop.
+
+```php
+function MyButton(int $count, Closure $onClick) {
+    return <button onClick={{ onClick }}>Clicked {{ count }} times</button>;
+}
+
+#[Component]
+#[Page]
+final class MyApp
+{
+    #[State] public int $count = 0;
+
+    public function handleClick(): void
+    {
+        ++$this->count;
+    }
+
+    public function render()
+    {
+        return (
+            <div>
+                <h1>Counters that update together</h1>
+                <MyButton count={{ count }} onClick={{ handleClick }} />
+                <MyButton count={{ count }} onClick={{ handleClick }} />
+            </div>
+        );
+    }
+}
+```
+
+- `prop="text"` passes a string, `prop={{ expr }}` passes any value, and a bare `prop` passes `true`.
+- Children go to the `?Html $children` parameter (or public property): `<Card>...</Card>`.
+- Named slots: `<Card:footer>...</Card:footer>` goes to the `?Html $footer` parameter.
+- An unknown prop is an error, unless the function has a variadic `...$rest` parameter.
+
+## 10. Markup values
+
+A markup literal is a value, like a React element: rhpc compiles `<p>{{ x }}</p>` to
+`new \Rephp\Element('file.0.twig', ['x' => $x])`. rephp renders it when the component returns
+it, or when markup prints it (`{{ content }}`). An array of markup prints as a list. Do not cast
+a markup literal to a string in PHP.
+
+Components also work in the normal Twig templates of the application, without state:
+`{% component 'App\\Components\\Profile' with {person: person} %}`.
 
 ## 11. Template components (fast path)
 

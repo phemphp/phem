@@ -1,0 +1,4 @@
+# All options have these defaults. rhpc reads src/ and writes var/cache/rhp/.
+rephp:
+    source_dir: '%kernel.project_dir%/src'
+    build_dir: '%kernel.project_dir%/var/cache/rhp'

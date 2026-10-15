@@ -1,3 +1,0 @@
-<?php // expect: E023
-use function Rephp\useState;
-function helper() { return useState(0); }

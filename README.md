@@ -1,33 +1,65 @@
 # rephp
 
-rephp brings the React model to PHP 8.6 + Twig + Stimulus. A `.rhp` file is a PHP file that
-contains markup literals, the same way a `.jsx` file contains JSX:
+rephp brings the React component model to PHP 8.6, Symfony, Twig and Stimulus. A `.rhp` file
+is a PHP file that contains markup literals, the same way a `.jsx` file contains JSX:
 
 ```php
 <?php
 namespace App\Pages\Examples;
 
 use Closure;
-use Rephp\Attribute\Page;
-use function Rephp\useState;
+use Rephp\Attribute\{Component, Page, State};
 
 function MyButton(int $count, Closure $onClick) {
     return <button onClick={{ onClick }}>Clicked {{ count }} times</button>;
 }
 
+#[Component]
 #[Page]
-function MyApp() {
-    [$count, $setCount] = useState(0);
+final class MyApp
+{
+    #[State] public int $count = 0;
 
-    $handleClick = fn() => $setCount($count + 1);
+    public function handleClick(): void
+    {
+        ++$this->count;
+    }
 
-    return (
-        <div>
-            <h1>Counters that update together</h1>
-            <MyButton count={{ count }} onClick={{ handleClick }} />
-            <MyButton count={{ count }} onClick={{ handleClick }} />
-        </div>
-    );
+    public function render()
+    {
+        return (
+            <div>
+                <h1>Counters that update together</h1>
+                <MyButton count={{ count }} onClick={{ handleClick }} />
+                <MyButton count={{ count }} onClick={{ handleClick }} />
+            </div>
+        );
+    }
+}
+```
+
+A component with state is an object: a `#[Component]` class is a Symfony service, so its
+constructor gets the services that it needs (autowiring):
+
+```php
+#[Component]
+final class LikeCounter
+{
+    public int $id;                    // a prop
+
+    public function __construct(private readonly ScientistRepository $scientists)
+    {
+    }
+
+    public function like(): void       // an event handler
+    {
+        $this->scientists->like($this->id);
+    }
+
+    public function render()
+    {
+        return <button onClick={{ like }}>Like</button>;
+    }
 }
 ```
 
@@ -39,7 +71,7 @@ function MyApp() {
 You need only Docker.
 
 ```sh
-make up      # http://localhost:8080/learn — rhpc watch + the Io\Poll server
+make up      # http://localhost:8080/learn — rhpc watch + bin/console rephp:serve
 make test    # cargo test + PHPUnit
 make check   # rhpc diagnostics for the quickstart sources
 make prod    # the production image on http://localhost:8081
@@ -54,45 +86,58 @@ See [editors/vscode/README.md](editors/vscode/README.md).
   served at `/examples/<Name>`.
 - `/learn/describing-the-ui.html` has a multi-file example: the page `Gallery.rhp` uses
   components from `examples/quickstart/src/components/`. The page `DurableGallery.rhp` reads and
-  writes its data in SQLite with Doctrine DBAL (`examples/quickstart/src/data/`), so the data
-  stays after a reload.
+  writes its data in SQLite through a repository service (Doctrine DBAL, DoctrineBundle), so the
+  data stays after a reload.
 
 ## How it works
 
 ```
- .rhp ──► rhpc (Rust) ──► php/*.php        markup replaced by \Rephp\Rt::render('x.0.twig', [...])
-                     ├──► templates/*.twig one template for each markup literal
+ .rhp ──► rhpc (Rust) ──► php/*.php        markup replaced by new \Rephp\Element('x.0.twig', [...])
+                     ├──► templates/*.twig one template for each markup literal (@rhp/x.0.twig)
                      └──► manifest.php, autoload.php, preload.php
                               │
-             rephp warmup ──► var/cache/twig  (Twig compiles at build time, not at runtime)
+     bin/console rephp:warmup ──► the Twig cache (compiled at build time, not at runtime)
                               │
- Browser ◄── HTML ─────── rephp serve (PHP 8.6, Io\Poll event loop)
+ RephpBundle ── class components → services (autowired, not shared)
+             ── #[Page] components → routes ── PageController / EventController
+                              │
+ Browser ◄── HTML ─────── HttpKernel (bin/console rephp:serve on Io\Poll, or PHP-FPM, FrankenPHP)
    rhp Stimulus controller ── POST /_rhp/event {route, state, signature, handler, event}
    ◄── Turbo Streams (morph of the changed components) + the new signed state
 ```
 
 1. **Compile time.** `rhpc` parses each `.rhp` file. It finds the markup literals in the PHP
-   code, checks them (closed tags, one root, known components and props, Rules of Hooks), and
-   writes PHP + Twig. Then `rephp warmup` compiles all templates into the Twig cache. At
-   runtime, nothing parses `.rhp` or `.twig` sources. The production image also uses OPcache
-   preload.
-2. **Components.** A component tag becomes the `{% component %}` Twig tag. It has two forms:
+   code, checks them (closed tags, one root, known components and props), and writes PHP +
+   Twig. A markup literal becomes a value, `new \Rephp\Element(template, vars)`, like a React
+   element: the renderer renders it. Then `bin/console rephp:warmup` compiles all templates
+   into the Twig cache. At runtime, nothing parses `.rhp` or `.twig` sources. The production
+   image also uses OPcache preload.
+2. **Symfony.** `RephpBundle` reads the rhpc manifest. Its compiler pass registers each
+   `#[Component]` class as an autowired service that is not shared, so each component on a page
+   is a new object with its dependencies. Its route loader adds a route for each `#[Page]`.
+   The compiled templates use the application Twig environment, so Twig extensions such as
+   `path()` work in markup. In debug mode, the container and the routes are built again after
+   each `rhpc build`.
+3. **Components.** A component tag becomes the `{% component %}` Twig tag. It has two forms:
    - The include form is for a self-closing tag.
    - The embed form is for a tag with children. The children and the named slots
      (`<Card:footer>`) are Twig blocks.
 
    A component whose body is only `return <markup>;` is a *template component*: it renders
    as plain Twig, with no PHP call. Other function components and `#[Component]` classes go
-   through the renderer.
-3. **State in the browser.** The server keeps no session. The `rhp` Stimulus controller on the
-   page root keeps the state of all components in a signed JSON value. The signature is an
-   HMAC (`RHP_SECRET`). An event sends the state back. The server renders with it, runs the
-   PHP handler, renders again, and compares the two renders. It answers with a Turbo Stream
-   `update` (`method="morph"`) for each component that changed, plus the new state. Events
-   wait in a queue, so each event uses the newest state.
-4. **Server.** `rephp serve` is an HTTP/1.1 server on the native PHP 8.6 `Io\Poll` API (epoll
-   on Linux, kqueue on macOS). It supports keep-alive, pipelining, static files with ETags,
-   and timers.
+   through the `Renderer` service.
+4. **State in the browser.** The server keeps no session. The `rhp` Stimulus controller on the
+   page root keeps the `#[State]` properties of all components in a signed JSON value. The
+   signature is an HMAC (`kernel.secret`, from `APP_SECRET`). An event sends the state back.
+   The server makes the components again, restores their state, renders, runs the PHP handler,
+   renders again, and compares the two renders. It answers with a Turbo Stream `update`
+   (`method="morph"`) for each component that changed, plus the new state. Events wait in a
+   queue, so each event uses the newest state.
+5. **Server.** `bin/console rephp:serve` is an HTTP/1.1 server on the native PHP 8.6 `Io\Poll`
+   API (epoll on Linux, kqueue on macOS). It supports keep-alive, pipelining, static files with
+   ETags, and timers. It gives each request to the Symfony kernel, which resets the services
+   (`kernel.reset`) between requests. `public/index.php` runs the same application on PHP-FPM
+   or FrankenPHP.
 
 | React (react.dev/learn) | rephp |
 |---|---|
@@ -103,16 +148,19 @@ See [editors/vscode/README.md](editors/vscode/README.md).
 | `cond ? <A/> : <B/>`, `cond && <A/>` | `{{ cond ? <A /> : <B /> }}`, `{{ cond and <A /> }}`, `{% if %}` |
 | `items.map(i => <li key={i.id}>…)` | `{% for i in items %}<li key={{ i.id }}>…{% endfor %}` or `array_map(fn($i) => <li …>, $items)` |
 | `onClick={handleClick}` | `onClick={{ handleClick }}` (the handler runs on the server) |
-| `useState`, `useReducer`, `useRef`, `useMemo`, `useCallback`, `useId`, `useContext` | the same names, in `Rephp\` |
-| props, `children`, lifting state up | named parameters, `?Html $children`, the same pattern |
-| class components | `#[Component]` classes with `#[State]` properties |
+| `useState` | a `#[State]` property of a `#[Component]` class; a method changes it |
+| initial state from props or data | `mount()`, called when the component has no state yet |
+| `useContext`, imported modules | services, injected in the constructor |
+| props, `children`, lifting state up | parameters or public properties, `?Html $children`, the same pattern |
 
 ## Repository layout
 
 ```
 compiler/            Rust workspace: rhpc-syntax, rhpc-twig-scan, rhpc-analyze, rhpc-codegen, rhpc-cli
-runtime/             rephp/runtime (Composer): Twig extension, renderer + hooks, App, Io\Poll server, rhp.js
-examples/quickstart/ the react.dev/learn-style site (public/) and its runnable .rhp examples (src/)
+runtime/             rephp/runtime (Composer): RephpBundle, Renderer, Twig extension, controllers,
+                     console commands, Io\Poll server, rhp.js (public/)
+examples/quickstart/ a Symfony application: the react.dev/learn-style site (public/) and its
+                     runnable .rhp examples (src/)
 docker/              Dockerfile (dev, prod), dev entrypoint
 editors/vscode/      VS Code extension: .rhp syntax highlighting (TextMate grammar)
 docs/rhp-syntax.md   the .rhp syntax
@@ -127,7 +175,7 @@ finds an error:
 |---|---|
 | E001–E005 | Syntax: unclosed or mismatched tags, a void element that is not self-closed, more than one root |
 | E010–E014 | Unknown component, unknown or missing prop, children or slot not accepted, duplicate component |
-| E020–E023 | Rules of Hooks: a hook in a condition or loop, in a closure, after an early return, or outside a component |
+| E020 | A call to a React Hook (`Rephp\useState`, ...): rephp keeps state in `#[Component]` classes |
 | E030–E032 | Undefined variable in markup, markup in an unsupported expression, invalid attribute |
 | E040–E041 | Class component without `render()`, readonly `#[State]` property |
 | E050–E052 | `export default` (not PHP; use `#[Page]`), more than one `#[Page]` in a file, `#[Page]` on a function that is not a component |
@@ -138,7 +186,9 @@ finds an error:
 
 - Each event is a round trip to the server (about 1 ms on the server, plus network time).
   Logic that must run only in the browser goes into a normal Stimulus controller.
-- State values must be JSON values. Closures and objects are not state.
-- `useEffect` is not available, because the server keeps no session between events.
+- State values must be JSON values. Closures, objects and services are not state.
+- There is no `useEffect`, because the server keeps no session between events.
+- A markup literal is rendered when a component returns it or when markup prints it. Do not
+  cast it to a string in PHP.
 - A component that is not a template component is wrapped in an `<rh-c>` element (CSS `display: contents`).
   This wrapper is not valid inside `<table>`, `<tr>`, or `<select>`.

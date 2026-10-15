@@ -1,0 +1,30 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Rephp;
+
+/**
+ * A markup literal, like a React element: a template and its variables.
+ *
+ * rhpc compiles `<div>{{ x }}</div>` to `new Element('file.0.twig', ['x' => $x])`. The value is
+ * not rendered yet: the Renderer renders it when the component returns it, or when a
+ * template prints it.
+ */
+final class Element
+{
+    /**
+     * @param string               $template the template name in the rhpc output
+     * @param array<string, mixed> $vars
+     */
+    public function __construct(
+        public readonly string $template,
+        public readonly array $vars = [],
+    ) {
+    }
+
+    public function __toString(): string
+    {
+        throw new \LogicException(\sprintf('The markup of "%s" is not rendered yet. Return it from the component, or print it in markup.', $this->template));
+    }
+}

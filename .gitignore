@@ -6,3 +6,5 @@ composer.lock
 .phpunit.result.cache
 .playwright-mcp/
 *.vsix
+/examples/quickstart/public/bundles/
+.env.local

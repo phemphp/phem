@@ -1,25 +1,35 @@
 <?php
 namespace App\Pages\Examples;
 
-use App\Data\Scientists;
-use Rephp\Attribute\Page;
+use App\Components\AddScientist;
+use App\Repository\ScientistRepository;
+use Rephp\Attribute\{Component, Page};
 
-use function App\Components\{AddScientist, Layout, ScientistCard};
+use function App\Components\{Layout, ScientistCard};
 
+// The same Gallery, but the data comes from SQLite, through a service that the container
+// injects. Each render reads it again, so the likes and the new scientists stay after a reload.
 #[Page]
-function DurableGallery()
+#[Component]
+final class DurableGallery
 {
-    // The same Gallery, but the data comes from SQLite. Each render reads it again,
-    // so the likes and the new scientists stay after a reload.
-    $scientists = Scientists::all();
+    public function __construct(
+        private readonly ScientistRepository $repository,
+    ) {
+    }
 
-    return (
-        <Layout title="Amazing scientists">
-            {% for scientist in scientists %}
-                <ScientistCard key={{ scientist.id }} scientist={{ scientist }} />
-            {% endfor %}
-            <AddScientist />
-            <Layout:footer>{{ scientists|length }} profiles in var/data/gallery.sqlite</Layout:footer>
-        </Layout>
-    );
+    public function render()
+    {
+        $scientists = $this->repository->all();
+
+        return (
+            <Layout title="Amazing scientists">
+                {% for scientist in scientists %}
+                    <ScientistCard key={{ scientist.id }} scientist={{ scientist }} />
+                {% endfor %}
+                <AddScientist />
+                <Layout:footer>{{ scientists|length }} profiles in var/data/gallery.sqlite</Layout:footer>
+            </Layout>
+        );
+    }
 }

@@ -2,27 +2,4 @@
 source: crates/rhpc-codegen/tests/compile.rs
 expression: t.content
 ---
-<main>
-            <title>Fixture Home</title>
-            <h1>Counters that update together</h1>
-            {% component 'App\\Components\\MyButton' with {'count': (count), 'onClick': (handleClick)} only %}
-            {% component 'App\\Components\\MyButton' with {'count': (count), 'onClick': (handleClick)} only %}
-            <ul id="shopping">
-                {% for product in products %}
-                    <li {{ rhp_key(product.id) }} {{ rhp_style({color: product.isFruit ? 'magenta' : 'darkgreen', fontWeight: 700}) }}>{{ product.title }}</li>
-                {% endfor %}
-            </ul>
-            <ol id="mapped">{{ listItems }}</ol>
-            {% component embed 'App\\Components\\Card' with {'title': 'Hello'} only %}{% block children %}{% with _rhp_caller only %}
-                <p>Body {{ count }}</p>
-                
-            {% endwith %}{% endblock %}{% block footer %}{% with _rhp_caller only %}{% component 'App\\Components\\Badge' with {'label': 'foot'} only %}{% endwith %}{% endblock %}{% endcomponent %}
-            {% component embed 'App\\Components\\Counter' with {'label': 'Hits'} only %}{% block children %}{% with _rhp_caller only %}!{% endwith %}{% endblock %}{% endcomponent %}
-            {% component 'App\\Pages\\Toggle' only %}
-            <button id="add" {{ rhp_on('click', add) }}>Add</button>
-            <span id="items">{{ items|join(',') }}</span>
-            {% component embed 'Rephp\\Provider' with {'context': 'App\\Pages\\ThemeContext', 'value': 'dark'} only %}{% block children %}{% with _rhp_caller only %}
-                {% component 'App\\Pages\\Toolbar' only %}
-            {% endwith %}{% endblock %}{% endcomponent %}
-            {% component 'App\\Pages\\Toolbar' only %}
-        </main>
+<li {{ rhp_key(p.id) }}>{{ p.title }}</li>

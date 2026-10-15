@@ -2,8 +2,7 @@
 namespace App\Pages\Examples;
 
 use Closure;
-use Rephp\Attribute\Page;
-use function Rephp\useState;
+use Rephp\Attribute\{Component, Page, State};
 
 function CountButton(int $count, Closure $onClick)
 {
@@ -14,19 +13,26 @@ function CountButton(int $count, Closure $onClick)
     );
 }
 
+#[Component]
 #[Page]
-function CounterTogether()
+final class CounterTogether
 {
-    [$count, $setCount] = useState(0);
+    #[State] public int $count = 0;
 
-    $handleClick = fn() => $setCount($count + 1);
+    public function handleClick(): void
+    {
+        ++$this->count;
+    }
 
-    return (
-        <div>
-            <title>CounterTogether</title>
-            <h1>Counters that update together</h1>
-            <CountButton count={{ count }} onClick={{ handleClick }} />
-            <CountButton count={{ count }} onClick={{ handleClick }} />
-        </div>
-    );
+    public function render()
+    {
+        return (
+            <div>
+                <title>CounterTogether</title>
+                <h1>Counters that update together</h1>
+                <CountButton count={{ count }} onClick={{ handleClick }} />
+                <CountButton count={{ count }} onClick={{ handleClick }} />
+            </div>
+        );
+    }
 }

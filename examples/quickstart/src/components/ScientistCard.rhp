@@ -1,17 +1,33 @@
 <?php
 namespace App\Components;
 
-use App\Data\Scientists;
+use App\Repository\ScientistRepository;
+use Rephp\Attribute\Component;
 
 // The handler writes to the database. Then the server renders the page again, reads the
 // new count, and morphs only this button. No state is kept in the browser.
-function LikeCounter(int $id, int $likes)
+#[Component]
+final class LikeCounter
 {
-    $like = fn() => Scientists::like($id);
+    public int $id;     // prop
+    public int $likes;  // prop
 
-    return (
-        <button onClick={{ like }}>♥ {{ likes }}</button>
-    );
+    public function __construct(
+        private readonly ScientistRepository $scientists,
+    ) {
+    }
+
+    public function like(): void
+    {
+        $this->scientists->like($this->id);
+    }
+
+    public function render()
+    {
+        return (
+            <button onClick={{ like }}>♥ {{ likes }}</button>
+        );
+    }
 }
 
 // Avatar is in Profile.rhp, in this namespace: it needs no import.

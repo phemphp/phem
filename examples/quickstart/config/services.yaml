@@ -1,0 +1,12 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # The PHP classes in src/ (the .rhp components are registered by RephpBundle).
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'
+            - '../src/components/'
+            - '../src/pages/'

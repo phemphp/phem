@@ -29,8 +29,9 @@ final class MimeTypes
         'woff' => 'font/woff',
         'woff2' => 'font/woff2',
         'txt' => 'text/plain; charset=UTF-8',
-        // .rhp sources, so the docs site can show the examples.
+        // .rhp and .php sources, so the docs site can show the examples (never run).
         'rhp' => 'text/plain; charset=UTF-8',
+        'php' => 'text/plain; charset=UTF-8',
     ];
 
     public static function forPath(string $path): string

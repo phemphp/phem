@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Rephp\Twig;
 
-use Rephp\Runtime;
+use Rephp\Manifest;
 use Twig\Error\SyntaxError;
 use Twig\Node\Node;
 use Twig\Token;
@@ -27,9 +27,9 @@ use Twig\TokenParser\AbstractTokenParser;
  */
 final class ComponentTokenParser extends AbstractTokenParser
 {
-    public const SLOT_HOST = '@rephp/slot_host.twig';
+    public const SLOT_HOST = '@Rephp/slot_host.twig';
 
-    public function __construct(private readonly Runtime $runtime)
+    public function __construct(private readonly Manifest $manifest)
     {
     }
 
@@ -39,7 +39,7 @@ final class ComponentTokenParser extends AbstractTokenParser
         $line = $token->getLine();
         $embed = null !== $stream->nextIf(Token::NAME_TYPE, 'embed');
         $fqcn = ltrim((string) $stream->expect(Token::STRING_TYPE)->getValue(), '\\');
-        $def = $this->runtime->component($fqcn)
+        $def = $this->manifest->component($fqcn)
             ?? throw new SyntaxError(\sprintf('Unknown component "%s". Run `rhpc build` again.', $fqcn), $line, $stream->getSourceContext());
 
         $variables = null !== $stream->nextIf(Token::NAME_TYPE, 'with') ? $this->parser->parseExpression() : null;
@@ -48,7 +48,7 @@ final class ComponentTokenParser extends AbstractTokenParser
         $stream->expect(Token::BLOCK_END_TYPE);
 
         $kind = (string) $def['kind'];
-        $template = 'template' === $kind ? (string) $def['template'] : null;
+        $template = 'template' === $kind ? Manifest::templateName((string) $def['template']) : null;
         if (!$embed) {
             return new ComponentIncludeNode($fqcn, $kind, $template, $variables, $key, $line);
         }

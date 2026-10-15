@@ -1,4 +1,4 @@
-import { Controller } from "/_rhp/assets/vendor/stimulus.js";
+import { Controller } from "/bundles/rephp/vendor/stimulus.js";
 
 // Marks the "On this page" link of the section that is at the top of the screen.
 export default class extends Controller {

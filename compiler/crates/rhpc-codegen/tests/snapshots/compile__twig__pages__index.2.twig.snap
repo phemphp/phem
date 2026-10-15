@@ -2,4 +2,4 @@
 source: crates/rhpc-codegen/tests/compile.rs
 expression: t.content
 ---
-{% component 'App\\Components\\Badge' with {'label': 'off'} only %}
+{% component 'App\\Components\\Badge' with {'label': 'on', 'tone': 'ok'} only %}

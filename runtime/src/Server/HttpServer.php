@@ -52,6 +52,7 @@ final class HttpServer
         ?\Closure $logger = null,
         private readonly int $maxBodyBytes = 1_048_576,
         private readonly float $idleTimeout = 15.0,
+        private readonly bool $debug = false,
     ) {
         $this->poll = new Context(Backend::Auto);
         $this->timers = new TimerQueue();
@@ -226,7 +227,7 @@ final class HttpServer
                 break;
             }
 
-            $connection->send($this->respond($parsed->request, $parsed->keepAlive));
+            $connection->send($this->respond($parsed->request->withRemoteAddress($connection->peer), $parsed->keepAlive));
             $connection->closeAfterFlush = !$parsed->keepAlive || $this->stopRequested;
         }
 
@@ -267,7 +268,7 @@ final class HttpServer
     {
         $body = "Internal Server Error\n";
 
-        if (getenv('RHP_DEBUG') === '1') {
+        if ($this->debug) {
             $body .= \sprintf("\n%s: %s\n", $e::class, $e->getMessage());
         }
 

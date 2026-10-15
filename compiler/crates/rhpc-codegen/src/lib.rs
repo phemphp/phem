@@ -1,8 +1,8 @@
 //! Emits PHP and Twig from `.rhp` files, and the project manifest.
 //!
 //! [`compile`] runs in two passes: it scans all files to build the component registry, then
-//! it generates each file. Markup literals become Twig templates, and the PHP code renders
-//! them with `\Rephp\Rt::render()`.
+//! it generates each file. Markup literals become Twig templates. In the PHP code, each markup
+//! literal becomes a value, `new \Rephp\Element(template, vars)`, that the runtime renders.
 
 mod lower;
 mod vars;
@@ -219,7 +219,7 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
         }
 
         let newlines = m.span.text(src).matches('\n').count();
-        let call = format!("\\Rephp\\Rt::render({}, [{}]){}", php_str(&name), vars.join(", "), "\n".repeat(newlines));
+        let call = format!("new \\Rephp\\Element({}, [{}]){}", php_str(&name), vars.join(", "), "\n".repeat(newlines));
         replacements.push((m.span, call));
         templates.push(TemplateOutput { name, content, source: input.rel.clone(), line: line_col(src, m.span.start).0 });
     }

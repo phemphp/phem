@@ -15,7 +15,9 @@ use Twig\Node\IncludeNode;
  *
  * - A template component renders its template like `include ... only`, with the props and
  *   the parameter defaults as the context. There is no PHP call.
- * - A function or class component goes through the Renderer (state, hooks, handlers).
+ * - A function or class component goes through the Renderer (services, state, handlers).
+ *
+ * Both call the RephpRuntime of the Twig environment.
  */
 #[YieldReady]
 class ComponentIncludeNode extends IncludeNode
@@ -33,12 +35,13 @@ class ComponentIncludeNode extends IncludeNode
     public function compile(Compiler $compiler): void
     {
         $compiler->addDebugInfo($this);
+        $compiler->write('yield $this->env->getRuntime(')->string(RephpRuntime::class)->raw(')');
         if ('template' === $this->getAttribute('kind')) {
-            $compiler->write('yield \Rephp\Runtime\Renderer::template(');
+            $compiler->raw('->template(');
             $this->addGetTemplate($compiler);
             $compiler->raw(', ');
         } else {
-            $compiler->write('yield \Rephp\Runtime\Renderer::component(');
+            $compiler->raw('->component(');
         }
         $compiler->string($this->getAttribute('fqcn'))->raw(', ');
         $this->addProps($compiler);

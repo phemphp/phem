@@ -24,7 +24,9 @@ final class StaticFilesTest extends TestCase
         file_put_contents($this->dir.'/public/index.html', '<h1>Home</h1>');
         file_put_contents($this->dir.'/public/docs/index.html', '<h1>Docs</h1>');
         file_put_contents($this->dir.'/public/.env', 'SECRET=1');
+        file_put_contents($this->dir.'/public/index.php', '<?php // the front controller');
         file_put_contents($this->dir.'/assets/turbo.js', 'export {}');
+        file_put_contents($this->dir.'/assets/Source.php', '<?php // source');
         file_put_contents($this->dir.'/secret.txt', 'top secret');
         symlink($this->dir.'/secret.txt', $this->dir.'/public/link.txt');
     }
@@ -103,6 +105,9 @@ final class StaticFilesTest extends TestCase
         self::assertNull($files->serve(new Request('GET', '/_rhp/assets/../public/app.css')));
         self::assertNull($files->serve(new Request('GET', '/link.txt')), 'A symlink that leaves the root is blocked.');
         self::assertNull($files->serve(new Request('GET', '/.env')), 'Hidden files are not served.');
+        self::assertNull($files->serve(new Request('GET', '/index.php')), 'PHP files are not served from the document root.');
+        self::assertNull($files->serve(new Request('GET', '/INDEX.PHP')), 'PHP files are not served from the document root.');
+        self::assertSame('<?php // source', $files->serve(new Request('GET', '/_rhp/assets/Source.php'))?->body, 'other mounts serve PHP files');
     }
 
     public function testFallsThroughWhenNoFileExists(): void

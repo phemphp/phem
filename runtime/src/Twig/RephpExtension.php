@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace Rephp\Twig;
 
-use Rephp\Runtime;
-use Rephp\Runtime\Renderer;
+use Rephp\Manifest;
 use Twig\Extension\AbstractExtension;
 use Twig\Markup;
 use Twig\TwigFunction;
 
 /**
  * The `{% component %}` tag and the `rhp_*` functions that compiled templates use.
+ *
+ * The functions that need the current render tree (`rhp_on`, `rhp_attrs`) are in RephpRuntime.
  */
 final class RephpExtension extends AbstractExtension
 {
@@ -22,16 +23,13 @@ final class RephpExtension extends AbstractExtension
         'scale', 'tabSize', 'widows', 'zIndex', 'zoom',
     ];
 
-    /** React event names → DOM event names. */
-    private const EVENTS = ['doubleclick' => 'dblclick', 'focus' => 'focusin', 'blur' => 'focusout'];
-
-    public function __construct(private readonly Runtime $runtime)
+    public function __construct(private readonly Manifest $manifest)
     {
     }
 
     public function getTokenParsers(): array
     {
-        return [new ComponentTokenParser($this->runtime)];
+        return [new ComponentTokenParser($this->manifest)];
     }
 
     public function getFunctions(): array
@@ -39,32 +37,17 @@ final class RephpExtension extends AbstractExtension
         $safe = ['is_safe' => ['html']];
 
         return [
-            new TwigFunction('rhp_on', $this->on(...), $safe),
+            new TwigFunction('rhp_on', [RephpRuntime::class, 'on'], $safe),
             new TwigFunction('rhp_key', self::key(...), $safe),
             new TwigFunction('rhp_attr', self::attr(...), $safe),
             new TwigFunction('rhp_style', self::style(...), $safe),
-            new TwigFunction('rhp_attrs', $this->attrs(...), $safe),
+            new TwigFunction('rhp_attrs', [RephpRuntime::class, 'attrs'], $safe),
         ];
     }
 
-    private static function e(string $s): string
+    public static function e(string $s): string
     {
         return htmlspecialchars($s, \ENT_QUOTES | \ENT_SUBSTITUTE, 'UTF-8');
-    }
-
-    /** `onClick={{ f }}` → `data-rh-on-click="<handler id>"`. */
-    public function on(string $event, mixed $handler): Markup
-    {
-        if (null === $handler || false === $handler) {
-            return new Markup('', 'UTF-8');
-        }
-        if (!\is_callable($handler)) {
-            throw new \InvalidArgumentException(\sprintf('The "%s" handler must be a function, "%s" given. Pass the function, do not call it.', $event, get_debug_type($handler)));
-        }
-        $id = Renderer::current()?->registerHandler(\Closure::fromCallable($handler)) ?? 'static';
-        $event = self::EVENTS[$event] ?? $event;
-
-        return new Markup(\sprintf('data-rh-on-%s="%s"', $event, self::e($id)), 'UTF-8');
     }
 
     public static function key(mixed $key): Markup
@@ -110,22 +93,5 @@ final class RephpExtension extends AbstractExtension
         }
 
         return new Markup('style="'.self::e((string) $style).'"', 'UTF-8');
-    }
-
-    /** `{{ ...props }}` on an HTML element. */
-    public function attrs(mixed $attrs): Markup
-    {
-        $out = [];
-        foreach ((array) $attrs as $name => $value) {
-            $name = (string) $name;
-            $out[] = (string) match (true) {
-                'key' === $name => self::key($value),
-                'style' === $name => self::style($value),
-                1 === preg_match('/^on[A-Z]/', $name) => $this->on(strtolower(substr($name, 2)), $value),
-                default => self::attr(['className' => 'class', 'htmlFor' => 'for'][$name] ?? $name, $value),
-            };
-        }
-
-        return new Markup(implode(' ', array_filter($out)), 'UTF-8');
     }
 }

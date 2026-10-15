@@ -8,6 +8,7 @@ namespace App\Components;
 
 use Rephp\Attribute\{Component, State};
 use Rephp\Html;
+use Rephp\Tests\Fixtures\Limits;
 
 #[Component]
 final class Counter
@@ -16,15 +17,19 @@ final class Counter
     public ?Html $children = null;
     #[State] public int $count = 0;
 
+    public function __construct(private readonly Limits $limits)
+    {
+    }
+
     public function increment(): void
     {
-        $this->count = clamp($this->count + 1, 0, 3);
+        $this->count = clamp($this->count + 1, 0, $this->limits->max);
     }
 
     public function render()
     {
         return (
-            \Rephp\Rt::render('components/Counter.0.twig', ['increment' => $this->increment(...), 'count' => $this->count, 'label' => $this->label, 'children' => $this->children])
+            new \Rephp\Element('components/Counter.0.twig', ['increment' => $this->increment(...), 'count' => $this->count, 'label' => $this->label, 'children' => $this->children])
 
 
         );

@@ -9,27 +9,14 @@ namespace Rephp;
  */
 final class StateCodec
 {
+    /**
+     * @param string $secret the `rephp.secret` option (by default `kernel.secret`, from APP_SECRET)
+     */
     public function __construct(private readonly string $secret)
     {
-    }
-
-    /**
-     * Uses RHP_SECRET, or a random secret stored in the cache directory (it survives restarts).
-     */
-    public static function fromEnvironment(string $cacheDir): self
-    {
-        $secret = getenv('RHP_SECRET') ?: null;
-        if (null === $secret) {
-            $file = \dirname($cacheDir).'/secret';
-            if (!is_file($file)) {
-                @mkdir(\dirname($file), 0o777, true);
-                file_put_contents($file, bin2hex(random_bytes(32)));
-                chmod($file, 0o600);
-            }
-            $secret = trim((string) file_get_contents($file));
+        if ('' === $secret) {
+            throw new \InvalidArgumentException('rephp needs a secret to sign the browser state: set APP_SECRET (framework.secret) or the rephp.secret option.');
         }
-
-        return new self($secret);
     }
 
     /**

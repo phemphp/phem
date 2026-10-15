@@ -35,14 +35,21 @@ WORKDIR /app
 ENTRYPOINT ["/app/docker/dev-entrypoint.sh"]
 CMD ["serve"]
 
-# --- Prod: compiled app only (rhpc + Twig cache + OPcache preload) ---------
+# --- Prod: compiled app only (rhpc + Symfony and Twig caches + OPcache preload)
 FROM php-base AS prod
+ENV APP_ENV=prod APP_DEBUG=0
 COPY --from=rhpc-build /usr/local/bin/rhpc /usr/local/bin/rhpc
 COPY runtime/ /app/runtime/
 COPY examples/quickstart/ /app/examples/quickstart/
 WORKDIR /app/examples/quickstart
-RUN composer install --no-dev --optimize-autoloader --no-interaction \
- && rhpc build src --out var/cache/rhp --prod
+# A random APP_SECRET for this image (it signs the component state in the browser).
+# The prod container does not see changes: build it again after rhpc build. cache:warmup
+# also compiles the rhpc templates into the Twig cache.
+RUN printf 'APP_SECRET=%s\n' "$(od -An -tx1 -N32 /dev/urandom | tr -d ' \n')" > .env.local \
+ && composer install --no-dev --optimize-autoloader --no-interaction \
+ && rhpc build src --out var/cache/rhp --no-warmup \
+ && rm -rf var/cache/prod \
+ && php bin/console cache:warmup
 COPY docker/php-prod.ini /usr/local/etc/php/conf.d/zz-rephp.ini
 EXPOSE 8080
-CMD ["php", "vendor/bin/rephp", "serve", "--host=0.0.0.0", "--port=8080", "--mount=/examples-src/=src/pages/examples", "--mount=/components-src/=src/components", "--mount=/data-src/=src/data"]
+CMD ["php", "bin/console", "rephp:serve", "--host=0.0.0.0", "--port=8080", "--mount=/examples-src/=src/pages/examples", "--mount=/components-src/=src/components", "--mount=/repository-src/=src/Repository"]

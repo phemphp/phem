@@ -69,9 +69,22 @@ expression: out.manifest.to_json()
       ],
       "rest": false
     },
+    "App\\Pages\\Greeting": {
+      "fqcn": "App\\Pages\\Greeting",
+      "kind": "function",
+      "file": "pages/index.rhp",
+      "props": [
+        "name"
+      ],
+      "slots": [],
+      "required": [
+        "name"
+      ],
+      "rest": false
+    },
     "App\\Pages\\Home": {
       "fqcn": "App\\Pages\\Home",
-      "kind": "function",
+      "kind": "class",
       "file": "pages/index.rhp",
       "props": [],
       "slots": [],
@@ -80,7 +93,7 @@ expression: out.manifest.to_json()
     },
     "App\\Pages\\Toggle": {
       "fqcn": "App\\Pages\\Toggle",
-      "kind": "function",
+      "kind": "class",
       "file": "pages/index.rhp",
       "props": [],
       "slots": [],
@@ -89,28 +102,14 @@ expression: out.manifest.to_json()
     },
     "App\\Pages\\Toolbar": {
       "fqcn": "App\\Pages\\Toolbar",
-      "kind": "function",
+      "kind": "template",
       "file": "pages/index.rhp",
-      "props": [],
+      "template": "pages/index.0.twig",
+      "props": [
+        "theme"
+      ],
       "slots": [],
       "required": [],
-      "rest": false
-    },
-    "Rephp\\Provider": {
-      "fqcn": "Rephp\\Provider",
-      "kind": "function",
-      "file": "",
-      "props": [
-        "context",
-        "value",
-        "children"
-      ],
-      "slots": [
-        "children"
-      ],
-      "required": [
-        "context"
-      ],
       "rest": false
     }
   },
@@ -132,31 +131,35 @@ expression: out.manifest.to_json()
     },
     "components/Counter.0.twig": {
       "source": "components/Counter.rhp",
-      "line": 23
+      "line": 28
     },
     "pages/index.0.twig": {
       "source": "pages/index.rhp",
-      "line": 16
+      "line": 10
     },
     "pages/index.1.twig": {
       "source": "pages/index.rhp",
-      "line": 23
+      "line": 15
     },
     "pages/index.2.twig": {
       "source": "pages/index.rhp",
-      "line": 25
+      "line": 31
     },
     "pages/index.3.twig": {
       "source": "pages/index.rhp",
-      "line": 28
+      "line": 33
     },
     "pages/index.4.twig": {
       "source": "pages/index.rhp",
-      "line": 54
+      "line": 37
     },
     "pages/index.5.twig": {
       "source": "pages/index.rhp",
-      "line": 57
+      "line": 75
+    },
+    "pages/index.6.twig": {
+      "source": "pages/index.rhp",
+      "line": 78
     }
   },
   "files": [

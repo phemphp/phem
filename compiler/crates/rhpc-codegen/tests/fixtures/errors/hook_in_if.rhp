@@ -1,6 +1,0 @@
-<?php // expect: E020
-use function Rephp\useState;
-function App($ok) {
-    if ($ok) { [$a] = useState(0); }
-    return <div />;
-}

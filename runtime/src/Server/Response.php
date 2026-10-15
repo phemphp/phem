@@ -10,7 +10,7 @@ namespace Rephp\Server;
 final class Response
 {
     /**
-     * @param array<string, string> $headers
+     * @param array<string, string|list<string>> $headers
      */
     public function __construct(
         public int $status = 200,

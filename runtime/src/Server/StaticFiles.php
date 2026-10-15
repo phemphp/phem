@@ -8,6 +8,8 @@ namespace Rephp\Server;
  * Serves files from mounted directories for GET and HEAD requests.
  *
  * It returns null when no real file matches, so the request goes on to the RequestHandler.
+ * It does not serve PHP files from the document root (the `/` mount, which has the front
+ * controller). Other mounts serve them as text.
  */
 final class StaticFiles
 {
@@ -37,6 +39,10 @@ final class StaticFiles
             }
 
             $file = $this->resolve($directory, $relative);
+
+            if ($file !== null && rtrim((string) $prefix, '/') === '' && str_ends_with(strtolower($file), '.php')) {
+                return null;
+            }
 
             if ($file !== null) {
                 return $this->respond($file, $request);

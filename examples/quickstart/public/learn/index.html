@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
     <title>Quick Start – rephp</title>
-    <meta name="description" content="A short tour of the rephp ideas that you use every day: components, markup, Twig, state, Hooks and props.">
+    <meta name="description" content="A short tour of the rephp ideas that you use every day: components, markup, Twig, state, services and props.">
     <link rel="stylesheet" href="/css/site.css">
     <script type="module" src="/js/site.js"></script>
 </head>
@@ -324,16 +324,30 @@ return &lt;ul&gt;{{ listItems }}&lt;/ul&gt;;</code></pre></div>
 
 <h2 id="updating-the-screen" class="heading">Updating the screen<a class="heading-anchor" href="#updating-the-screen" aria-label="Link to this section">#</a></h2>
 <p>Often, you want your component to "remember" some information and show it. For example, you want to count the number of times that a button is clicked. To do this, add <em>state</em> to your component.</p>
-<p>First, import <code>useState</code> from rephp:</p>
-<div class="code-block"><pre class="code" data-controller="highlight"><code>use function Rephp\useState;</code></pre></div>
-<p>Now you can declare a <em>state variable</em> in your component:</p>
-<div class="code-block"><pre class="code" data-controller="highlight"><code>function MyButton()
+<p>A component with state is a class. Mark it with <code>#[Component]</code>, and mark each state property with <code>#[State]</code>:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>use Rephp\Attribute\{Component, State};
+
+#[Component]
+final class Counter
 {
-    [$count, $setCount] = useState(0);
+    #[State] public int $count = 0;
     // ...
 }</code></pre></div>
-<p>You get two things from <code>useState</code>: the current state (<code>$count</code>), and the function that changes it (<code>$setCount</code>). You can give them any names, but the convention is <code>[$something, $setSomething]</code>.</p>
-<p>The first time the button shows, <code>$count</code> is <code>0</code>, because you passed <code>0</code> to <code>useState()</code>. To change the state, call <code>$setCount()</code> with a new value. rephp then calls your component function again, and <code>$count</code> is <code>1</code>. Then it is <code>2</code>, and so on. The setter also takes an updater function, for example <code>$setCount(fn($c) =&gt; $c + 1)</code>.</p>
+<p>The first time the button shows, <code>$count</code> is <code>0</code>, its default value. To change the state, write a method that changes the property, and pass the method as the event handler. In the markup of a class, a name is first a local variable, then a property (<code>$this-&gt;count</code>), then a method (<code>$this-&gt;handleClick(...)</code>):</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>    public function handleClick(): void
+    {
+        ++$this-&gt;count;
+    }
+
+    public function render()
+    {
+        return (
+            &lt;button onClick={{ handleClick }}&gt;
+                Clicked {{ count }} times
+            &lt;/button&gt;
+        );
+    }</code></pre></div>
+<p>After the handler runs, rephp calls <code>render()</code> again, and <code>$count</code> is <code>1</code>. Then it is <code>2</code>, and so on.</p>
 <p>If you render the same component more than one time, each one gets its own state. Click each button separately:</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="CounterSeparate">
     <div class="sandbox-bar">
@@ -355,40 +369,38 @@ return &lt;ul&gt;{{ listItems }}&lt;/ul&gt;;</code></pre></div>
     </div>
 </aside>
 
-<h2 id="using-hooks" class="heading">Using Hooks<a class="heading-anchor" href="#using-hooks" aria-label="Link to this section">#</a></h2>
-<p>Functions whose names start with <code>use</code> are called <em>Hooks</em>. <code>useState</code> is a built-in Hook from rephp. These are all the built-in Hooks:</p>
-<ul class="tag-list">
-    <li><code>useState</code></li>
-    <li><code>useReducer</code></li>
-    <li><code>useMemo</code></li>
-    <li><code>useCallback</code></li>
-    <li><code>useRef</code></li>
-    <li><code>useId</code></li>
-    <li><code>useContext</code></li>
+<h2 id="services" class="heading">Services and initialization<a class="heading-anchor" href="#services" aria-label="Link to this section">#</a></h2>
+<p>A rephp application is a Symfony application, and each class component is a service. The container makes a new object for each component on the page, so the constructor gets the services that the component needs (autowiring), as in a Symfony controller:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>#[Component]
+final class LikeCounter
+{
+    public int $id;     // a prop
+    public int $likes;  // a prop
+
+    public function __construct(private readonly ScientistRepository $scientists)
+    {
+    }
+
+    public function like(): void
+    {
+        $this-&gt;scientists-&gt;like($this-&gt;id);
+    }
+
+    public function render()
+    {
+        return &lt;button onClick={{ like }}&gt;&#9829; {{ likes }}&lt;/button&gt;;
+    }
+}</code></pre></div>
+<p>The parts of a class component:</p>
+<ul>
+    <li><strong>The constructor</strong> gets the services. Its parameters are never props.</li>
+    <li><strong>Public properties</strong> are the props. A property without a default value is a required prop.</li>
+    <li><strong><code>#[State]</code> properties</strong> are the state. The browser keeps them, so they must be JSON values.</li>
+    <li><strong><code>mount()</code></strong> (optional) sets the first state. It runs after the props are set, when the component has no state yet: on its first render. For example, <code>$this-&gt;items = $this-&gt;repository-&gt;latest($this-&gt;limit);</code>.</li>
+    <li><strong>Methods</strong> are event handlers. A handler can change the state and call the services.</li>
+    <li><strong><code>render()</code></strong> returns markup.</li>
 </ul>
-<p>You can also write your own Hooks: a function whose name starts with <code>use</code> and that calls other Hooks.</p>
-<p>Hooks are more restrictive than other functions. These are the <strong>Rules of Hooks</strong>: call Hooks only at the top level of a component or of another Hook. Do not call Hooks in an <code>if</code>, a loop, a <code>match</code>, a closure, or after an early <code>return</code>. Unlike in React, you do not need a linter for this: the <code>rhpc</code> compiler finds these errors at build time.</p>
-<div class="code-block"><div class="code-title">Wrong</div><pre class="code" data-controller="highlight"><code>function Greeting(bool $showName)
-{
-    if ($showName) {
-        // Error: the compiler rejects a Hook inside an if.
-        [$name, $setName] = useState('');
-    }
-    // ...
-}</code></pre></div>
-<div class="code-block"><div class="code-title">Right</div><pre class="code" data-controller="highlight"><code>function Greeting(bool $showName)
-{
-    // Good: the Hook is at the top level, before any return.
-    [$name, $setName] = useState('');
-
-    if (!$showName) {
-        return &lt;p&gt;Hello!&lt;/p&gt;;
-    }
-
-    return &lt;p&gt;Hello, {{ name }}!&lt;/p&gt;;
-}</code></pre></div>
-<h3 id="class-components">Class components</h3>
-<p>If you prefer classes, rephp also has class components. Mark the class with <code>#[Component]</code>. A public property is a prop, and a property with <code>#[State]</code> is state. A method changes the state, and the <code>render()</code> method returns markup. In the markup of a class, a name is first a local variable, then a property (<code>$this-&gt;name</code>), then a method. So you can pass a method as an event handler:</p>
+<p>A component without state does not need a class. A function that returns markup is a component too, and its parameters are its props. If its body is only <code>return &lt;markup&gt;;</code>, it compiles to a plain Twig template, with no PHP call. Here is a page that is a class with a prop and state:</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="StarRating">
     <div class="sandbox-bar">
         <span class="sandbox-tab">StarRating.rhp</span>
@@ -401,6 +413,12 @@ return &lt;ul&gt;{{ listItems }}&lt;/ul&gt;;</code></pre></div>
     <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
     <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/StarRating" loading="lazy" title="StarRating preview"></iframe>
 </div>
+<aside class="callout callout-deep">
+    <h3 class="callout-title">What about Hooks?</h3>
+    <div class="callout-body">
+        <p>React keeps state in Hooks such as <code>useState</code>. A Hook needs a global "current component", so rephp uses objects instead: a <code>#[State]</code> property for <code>useState</code>, a method for an event handler, <code>mount()</code> for the first state, and constructor injection for shared things that React puts in a context. If a file calls <code>useState</code> or another React Hook name from rephp, the <code>rhpc</code> compiler reports the error <code>E020</code>.</p>
+    </div>
+</aside>
 
 <h2 id="sharing-data" class="heading">Sharing data between components<a class="heading-anchor" href="#sharing-data" aria-label="Link to this section">#</a></h2>
 <p>In the previous example, each <code>Counter</code> had its own independent <code>$count</code>. When you clicked one button, only the <code>$count</code> of that button changed. But often you need components to <em>share data and always update together</em>.</p>
@@ -428,20 +446,27 @@ return &lt;ul&gt;{{ listItems }}&lt;/ul&gt;;</code></pre></div>
     </figure>
 </div>
 <p>First, move the state up from the button into the parent component. Then pass the state down from the parent, together with the click handler. You pass information down as <em>props</em>, with the same Twig syntax as attributes:</p>
-<div class="code-block"><pre class="code" data-controller="highlight"><code>#[Page]
-function CounterTogether()
+<div class="code-block"><pre class="code" data-controller="highlight"><code>#[Component]
+#[Page]
+final class CounterTogether
 {
-    [$count, $setCount] = useState(0);
+    #[State] public int $count = 0;
 
-    $handleClick = fn() =&gt; $setCount($count + 1);
+    public function handleClick(): void
+    {
+        ++$this-&gt;count;
+    }
 
-    return (
-        &lt;div&gt;
-            &lt;h1&gt;Counters that update together&lt;/h1&gt;
-            &lt;CountButton count={{ count }} onClick={{ handleClick }} /&gt;
-            &lt;CountButton count={{ count }} onClick={{ handleClick }} /&gt;
-        &lt;/div&gt;
-    );
+    public function render()
+    {
+        return (
+            &lt;div&gt;
+                &lt;h1&gt;Counters that update together&lt;/h1&gt;
+                &lt;CountButton count={{ count }} onClick={{ handleClick }} /&gt;
+                &lt;CountButton count={{ count }} onClick={{ handleClick }} /&gt;
+            &lt;/div&gt;
+        );
+    }
 }</code></pre></div>
 <p>In rephp, props are the named parameters of the function. Change the button to read the props that its parent passes:</p>
 <div class="code-block"><pre class="code" data-controller="highlight"><code>function CountButton(int $count, Closure $onClick)
@@ -452,7 +477,7 @@ function CounterTogether()
         &lt;/button&gt;
     );
 }</code></pre></div>
-<p>When you click a button, the <code>onClick</code> handler runs. It is the <code>$handleClick</code> function of the parent, so it changes the state of the parent. The parent renders again with the new <code>$count</code> and passes it to both buttons. A prop with an unknown name is an error, and PHP checks the types of the parameters as usual.</p>
+<p>When you click a button, the <code>onClick</code> handler runs. It is the <code>handleClick()</code> method of the parent, so it changes the state of the parent. The parent renders again with the new <code>$count</code> and passes it to both buttons. A prop with an unknown name is an error, and PHP checks the types of the parameters as usual.</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="CounterTogether">
     <div class="sandbox-bar">
         <span class="sandbox-tab">CounterTogether.rhp</span>
@@ -498,7 +523,7 @@ function CounterTogether()
                     <li><a class="toc-link" data-toc-target="link" href="#rendering-lists">Rendering lists</a></li>
                     <li><a class="toc-link" data-toc-target="link" href="#responding-to-events">Responding to events</a></li>
                     <li><a class="toc-link" data-toc-target="link" href="#updating-the-screen">Updating the screen</a></li>
-                    <li><a class="toc-link" data-toc-target="link" href="#using-hooks">Using Hooks</a></li>
+                    <li><a class="toc-link" data-toc-target="link" href="#services">Services and initialization</a></li>
                     <li><a class="toc-link" data-toc-target="link" href="#sharing-data">Sharing data between components</a></li>
                     <li><a class="toc-link" data-toc-target="link" href="#next-steps">Next Steps</a></li>
                     </ul>

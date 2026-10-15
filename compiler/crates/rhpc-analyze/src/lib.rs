@@ -35,7 +35,7 @@ pub struct ComponentDef {
     /// The Twig template of a template component.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub template: Option<String>,
-    /// All prop names (parameters, or public properties of a class).
+    /// All prop names (parameters, or public properties of a class; constructor parameters are services).
     pub props: Vec<String>,
     /// Props that receive markup (`Html`): `children` and the named slots.
     pub slots: Vec<String>,
@@ -43,20 +43,6 @@ pub struct ComponentDef {
     pub required: Vec<String>,
     /// The function has a variadic parameter, so unknown props are allowed.
     pub rest: bool,
-}
-
-/// Built-in components of the runtime.
-pub fn builtins() -> Vec<ComponentDef> {
-    vec![ComponentDef {
-        fqcn: "Rephp\\Provider".into(),
-        kind: Kind::Function,
-        file: String::new(),
-        template: None,
-        props: vec!["context".into(), "value".into(), "children".into()],
-        slots: vec!["children".into()],
-        required: vec!["context".into()],
-        rest: false,
-    }]
 }
 
 /// The template name of the markup literal `index` of a source file.
@@ -94,7 +80,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
         });
     }
     for c in file.classes.iter().filter(|c| c.is_component) {
-        let props: Vec<&Prop> = c.props.iter().filter(|p| p.is_public && !p.is_static && !p.is_state).collect();
+        let props: Vec<&Prop> = c.props.iter().filter(|p| p.is_public && !p.is_static && !p.is_state && !p.is_promoted).collect();
         out.push(ComponentDef {
             fqcn: c.fqn.clone(),
             kind: Kind::Class,
@@ -109,7 +95,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
     out
 }
 
-/// File-level checks: Rules of Hooks, class component rules, and `#[Page]`.
+/// File-level checks: removed hooks, class component rules, and `#[Page]`.
 pub fn check(file: &FileInfo, src: &str) -> Vec<Diagnostic> {
     let mut diags = hooks::check(file, src);
     for span in &file.export_defaults {
@@ -171,7 +157,7 @@ pub fn check(file: &FileInfo, src: &str) -> Vec<Diagnostic> {
 pub type Registry = BTreeMap<String, ComponentDef>;
 
 pub fn registry<'a>(files: impl IntoIterator<Item = &'a FileInfo>) -> (Registry, Vec<(String, Diagnostic)>) {
-    let mut reg: Registry = builtins().into_iter().map(|c| (c.fqcn.clone(), c)).collect();
+    let mut reg = Registry::new();
     let mut diags = Vec::new();
     for f in files {
         for c in components(f) {

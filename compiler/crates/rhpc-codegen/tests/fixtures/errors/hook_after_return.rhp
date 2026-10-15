@@ -1,7 +1,0 @@
-<?php // expect: E022
-use function Rephp\useState;
-function App($ok) {
-    if ($ok) { return <p />; }
-    [$a] = useState(0);
-    return <div />;
-}
