@@ -5,12 +5,15 @@ use App\Dto\NewScientist;
 use App\Form\ScientistType;
 use App\Model\Scientist;
 use App\Repository\ScientistRepository;
-use Rephp\Attribute\Component;
+use Rephp\Attribute\{Component, Transactional};
 use Rephp\Event;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 
+// #[Transactional]: the add() handler runs in a Doctrine transaction. The repository only
+// persists the new scientist; rephp flushes and commits when the handler returns.
 #[Component]
+#[Transactional]
 final class AddScientist
 {
     private ?FormInterface $form = null {

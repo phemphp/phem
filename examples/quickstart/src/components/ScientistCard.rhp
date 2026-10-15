@@ -2,31 +2,26 @@
 namespace App\Components;
 
 use App\Model\Scientist;
-use App\Repository\ScientistRepository;
-use Rephp\Attribute\Component;
+use Rephp\Attribute\{Component, Transactional};
 
-// The handler writes to the database. Then the server renders the page again, reads the
-// new count, and morphs only this button. No state is kept in the browser.
+// The scientist prop is the Doctrine entity that the page loaded. The handler changes it, and
+// #[Transactional] flushes and commits the change. Then the server renders the page again and
+// morphs only this button. No state is kept in the browser.
 #[Component]
+#[Transactional]
 final class LikeCounter
 {
-    public int $id;     // prop
-    public int $likes;  // prop
-
-    public function __construct(
-        private readonly ScientistRepository $scientists,
-    ) {
-    }
+    public Scientist $scientist;    // prop
 
     public function like(): void
     {
-        $this->scientists->like($this->id);
+        ++$this->scientist->likes;
     }
 
     public function render()
     {
         return (
-            <button onClick={{ like }}>♥ {{ likes }}</button>
+            <button onClick={{ like }}>♥ {{ scientist.likes }}</button>
         );
     }
 }
@@ -40,7 +35,7 @@ function ScientistCard(Scientist $scientist)
             <div>
                 <h2>{{ scientist.name }}</h2>
                 <p>{{ scientist.profession }}</p>
-                <LikeCounter key={{ scientist.id }} id={{ scientist.id }} likes={{ scientist.likes }} />
+                <LikeCounter key={{ scientist.id }} scientist={{ scientist }} />
             </div>
         </section>
     );
