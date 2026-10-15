@@ -1,3 +1,9 @@
 doctrine:
     dbal:
         url: '%env(resolve:DATABASE_URL)%'
+    orm:
+        mappings:
+            App:
+                type: attribute
+                dir: '%kernel.project_dir%/src/Model'
+                prefix: 'App\Model'

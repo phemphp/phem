@@ -13,13 +13,13 @@ use function App\Components\{Layout, ScientistCard};
 final class DurableGallery
 {
     public function __construct(
-        private readonly ScientistRepository $repository,
+        private readonly ScientistRepository $scientists,
     ) {
     }
 
     public function render()
     {
-        $scientists = $this->repository->all();
+        $scientists = $this->scientists->all();
 
         return (
             <Layout title="Amazing scientists">

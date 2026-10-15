@@ -3,6 +3,7 @@ namespace App\Components;
 
 use App\Dto\NewScientist;
 use App\Form\ScientistType;
+use App\Model\Scientist;
 use App\Repository\ScientistRepository;
 use Rephp\Attribute\Component;
 use Rephp\Event;
@@ -30,7 +31,7 @@ final class AddScientist
             ->handleRequest($e->request);
 
         if ($this->form->isSubmitted() && $this->form->isValid()) {
-            $this->scientists->add($scientist->name, $scientist->profession);
+            $this->scientists->add(new Scientist($scientist->name, $scientist->profession));
 
             $this->form = null;
         }

@@ -1,6 +1,7 @@
 <?php
 namespace App\Components;
 
+use App\Model\Scientist;
 use App\Repository\ScientistRepository;
 use Rephp\Attribute\Component;
 
@@ -31,7 +32,7 @@ final class LikeCounter
 }
 
 // Avatar is in Profile.rhp, in this namespace: it needs no import.
-function ScientistCard(array $scientist)
+function ScientistCard(Scientist $scientist)
 {
     return (
         <section className="profile">

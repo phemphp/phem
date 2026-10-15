@@ -7,6 +7,7 @@
         "php": ">=8.5",
         "doctrine/dbal": "^4.5",
         "doctrine/doctrine-bundle": "^3.0",
+        "doctrine/orm": "^3.7",
         "rephp/runtime": "@dev",
         "symfony/dotenv": "^7.4|^8.0",
         "symfony/form": "^7.4|^8.0",
