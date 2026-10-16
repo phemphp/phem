@@ -2,11 +2,11 @@
 //!
 //! - `rhpc build <src>`: compiles to PHP + Twig, writes the manifest, and warms up the Twig cache
 //!   (`bin/console rephp:warmup` of the Symfony application).
-//! - `rhpc check <src>`: reports diagnostics only.
+//! - `rhpc check <src>`: reports diagnostics only. `--format json` prints them as JSON (for editors).
 //! - `rhpc watch <src> --exec <cmd>`: rebuilds on change and restarts `<cmd>`.
 
 use anyhow::{bail, Context, Result};
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use rhpc_codegen::{FileDiagnostics, ProjectOutput, SourceInput};
 use rhpc_syntax::Severity;
 use std::path::{Path, PathBuf};
@@ -26,7 +26,12 @@ enum Cmd {
     /// Compile a source directory.
     Build(BuildArgs),
     /// Report diagnostics, write nothing.
-    Check { src: PathBuf },
+    Check {
+        src: PathBuf,
+        /// The output format: `text` (on stderr) or `json` (on stdout, for editors).
+        #[arg(long, value_enum, default_value_t = Format::Text)]
+        format: Format,
+    },
     /// Build, run a command, and rebuild + restart it when a source file changes.
     Watch {
         #[command(flatten)]
@@ -35,6 +40,12 @@ enum Cmd {
         #[arg(long)]
         exec: Option<String>,
     },
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum Format {
+    Text,
+    Json,
 }
 
 #[derive(Args, Clone)]
@@ -56,7 +67,8 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
     let result = match cli.cmd {
         Cmd::Build(args) => build(&args),
-        Cmd::Check { src } => check(&src),
+        Cmd::Check { src, format: Format::Text } => check(&src),
+        Cmd::Check { src, format: Format::Json } => check_json(&src),
         Cmd::Watch { build, exec } => watch(&build, exec.as_deref()).map(|_| true),
     };
     match result {
@@ -127,6 +139,69 @@ fn check(src: &Path) -> Result<bool> {
     let (_, count, errors, warnings) = compile(src)?;
     eprintln!("rhpc: checked {count} file(s): {errors} error(s), {warnings} warning(s)");
     Ok(errors == 0)
+}
+
+/// `rhpc check --format json`: prints the diagnostics to stdout. The exit code is the same as
+/// with `--format text`.
+fn check_json(src: &Path) -> Result<bool> {
+    let (_, diags) = rhpc_codegen::compile(read_sources(src)?);
+    println!("{}", diagnostics_json(&diags));
+    Ok(!diags.iter().flat_map(|f| &f.diags).any(|d| d.is_error()))
+}
+
+/// The diagnostics as JSON:
+/// `{"files": [{"file": "Pages/index.rhp", "diagnostics": [{"severity", "code", "message", "label",
+/// "help", "start": {"line", "character"}, "end": {...}}]}]}`.
+/// The file is relative to the source directory. The lines start at 0, and the characters count
+/// UTF-16 code units, as the Language Server Protocol and VS Code do.
+fn diagnostics_json(files: &[FileDiagnostics]) -> serde_json::Value {
+    let files: Vec<_> = files
+        .iter()
+        .filter(|f| !f.diags.is_empty())
+        .map(|f| {
+            let diags: Vec<_> = f
+                .diags
+                .iter()
+                .map(|d| {
+                    serde_json::json!({
+                        "severity": if d.is_error() { "error" } else { "warning" },
+                        "code": d.code,
+                        "message": d.message,
+                        "label": d.label,
+                        "help": d.help,
+                        "start": position(&f.text, d.span.start),
+                        "end": position(&f.text, end_of(&f.text, d.span.start, d.span.end)),
+                    })
+                })
+                .collect();
+            serde_json::json!({ "file": f.rel, "diagnostics": diags })
+        })
+        .collect();
+    serde_json::json!({ "files": files })
+}
+
+/// The end of a span. An empty span gets the next character, as in the text format.
+fn end_of(text: &str, start: usize, end: usize) -> usize {
+    if end > start {
+        return end;
+    }
+    text.get(start..).and_then(|rest| rest.chars().next()).map_or(start, |c| start + c.len_utf8())
+}
+
+/// The 0-based line and the UTF-16 column of a byte offset. Editors do not keep the byte order
+/// mark in the text, so it does not count.
+fn position(text: &str, offset: usize) -> serde_json::Value {
+    let mut offset = offset.min(text.len());
+    while !text.is_char_boundary(offset) {
+        offset -= 1;
+    }
+    let before = &text[..offset];
+    let line_start = before.rfind('\n').map_or(0, |i| i + 1);
+    let line = &before[line_start..];
+    serde_json::json!({
+        "line": before.matches('\n').count(),
+        "character": line.strip_prefix('\u{feff}').unwrap_or(line).encode_utf16().count(),
+    })
 }
 
 fn build(args: &BuildArgs) -> Result<bool> {
@@ -277,5 +352,58 @@ fn watch(args: &BuildArgs, exec: Option<&str>) -> Result<()> {
             Ok(false) => eprintln!("rhpc: the previous build keeps running"),
             Err(e) => eprintln!("rhpc: {e:#}"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rhpc_syntax::{Diagnostic, Span};
+    use serde_json::json;
+
+    #[test]
+    fn position_counts_utf16_units() {
+        // `♥` is 3 bytes and 1 UTF-16 unit; `😀` is 4 bytes and 2 UTF-16 units.
+        let text = "a\n♥ 😀x";
+        let offset = text.find('x').unwrap();
+        assert_eq!(position(text, offset), json!({"line": 1, "character": 4}));
+        assert_eq!(position(text, 0), json!({"line": 0, "character": 0}));
+        assert_eq!(position(text, text.len() + 10), json!({"line": 1, "character": 5}));
+        assert_eq!(position("\u{feff}<?php", 4), json!({"line": 0, "character": 1}));
+    }
+
+    #[test]
+    fn an_empty_span_gets_the_next_character() {
+        assert_eq!(end_of("a♥b", 1, 1), 4);
+        assert_eq!(end_of("ab", 0, 2), 2);
+        assert_eq!(end_of("ab", 2, 2), 2);
+    }
+
+    #[test]
+    fn json_lists_the_files_with_diagnostics() {
+        let text = "<?php\nreturn <Foo />;\n".to_string();
+        let start = text.find("Foo").unwrap();
+        let files = vec![
+            FileDiagnostics {
+                rel: "Pages/index.rhp".into(),
+                text: text.clone(),
+                diags: vec![Diagnostic::error("E001", "Unknown component", Span::new(start, start + 3))
+                    .with_label("here")
+                    .with_help("Import it")],
+            },
+            FileDiagnostics { rel: "Pages/ok.rhp".into(), text: String::new(), diags: vec![] },
+        ];
+        assert_eq!(
+            diagnostics_json(&files),
+            json!({"files": [{"file": "Pages/index.rhp", "diagnostics": [{
+                "severity": "error",
+                "code": "E001",
+                "message": "Unknown component",
+                "label": "here",
+                "help": "Import it",
+                "start": {"line": 1, "character": 8},
+                "end": {"line": 1, "character": 11},
+            }]}]})
+        );
     }
 }

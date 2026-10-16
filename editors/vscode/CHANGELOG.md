@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Completion for class members after `->`, `?->`, and `::`, with the parents, the traits, the
+  interfaces, and the docblock types. Completion for variables after `$`.
+- Twig completion: variables (PHP scope, class properties and methods, `{% for %}`,
+  `{% set %}`, `loop`), attributes after a dot (properties, methods, getters, array keys),
+  filters, tests, functions (Twig and Symfony), tags with the end tags of the open blocks, and
+  the route names in `path('...')` and `url('...')`.
+- HTML completion: element names, attributes per element, global and ARIA attributes, and the
+  values of the enumerated attributes.
+- Go to definition and hover for components, slots, props, classes, functions, members, PHP
+  variables, Twig variables and attributes, handlers, and route names. Hover for the Twig
+  filters, functions, tests, tags, and the HTML elements and attributes.
+- An outline: the namespace, the components with their props and slots, the pages with their
+  paths, and the classes with their members.
+- rhpc diagnostics on save, with the new `rhp.rhpc.path` and `rhp.rhpc.sourceDir` settings. It
+  uses `rhpc check --format json`.
+- The `.`, `>`, `|`, `$`, `%`, `'`, and `"` characters start the completion where it applies.
+
 - The Twig delimiters `{{ }}` and `{% %}` are one bracket pair, and they always have the color of
   the first bracket level. Before, the two braces of a delimiter had different colors, and the
   color changed with the depth (yellow in a template, blue in a function body).

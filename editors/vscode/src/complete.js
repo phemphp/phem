@@ -6,12 +6,18 @@
 //
 // An item is:
 //   { label, kind, detail, documentation, insert, snippet, range: [start, end],
-//     edits: [{ offset, text }], sortText, retrigger }
+//     edits: [{ offset, text }], sortText, filterText, retrigger }
+//
+// `trigger` is the character that started the completion, if any.
 
 const path = require('path');
 const { scan } = require('./scanner');
-const { parse, shortName } = require('./php');
+const { parse, shortName, paramText } = require('./php');
 const { importFor, resolveComponent } = require('./imports');
+const { scopeAt, codeOf, chainStart } = require('./scope');
+const { twigEnv } = require('./twig');
+const html = require('./data/html');
+const twig = require('./data/twig');
 
 const EVENTS = ['onClick', 'onDoubleClick', 'onChange', 'onInput', 'onSubmit', 'onKeyDown', 'onKeyUp', 'onFocus', 'onBlur'];
 const DECLARING_WORDS = /\b(namespace|function|class|interface|trait|enum|const|fn|as|goto|case)\s+$/i;
@@ -32,6 +38,18 @@ function propSnippet(prop, n) {
     return `${esc(prop.name)}={{ \${${n}} }}`;
 }
 
+// Documentation for a member: its signature and its summary.
+function memberDoc(m, root) {
+    const lines = ['```php', m.signature.trim(), '```'];
+    if (m.doc) {
+        lines.push('', m.doc);
+    }
+    if (m.file) {
+        lines.push('', 'Defined in `' + (root ? path.relative(root, m.file) : m.file) + '`');
+    }
+    return lines.join('\n');
+}
+
 function componentDoc(comp, root) {
     const lines = ['```php', comp.signature, '```'];
     if (comp.file) {
@@ -44,13 +62,23 @@ function componentDoc(comp, root) {
 }
 
 class Completer {
-    constructor({ text, offset, file, project }) {
+    constructor({ text, offset, file, project, trigger }) {
         this.text = text;
         this.offset = offset;
+        this.trigger = trigger;
         this.file = file;
         this.project = project;
         this.parsed = parse(text);
         this.root = project ? project.root : null;
+        this.source = { file, text, parsed: this.parsed };
+    }
+
+    // The start and the end of the word at the cursor. `chars` is a regexp
+    // character class of the word characters.
+    word(chars = '\\w') {
+        const before = new RegExp('[' + chars + ']*$').exec(this.text.slice(0, this.offset))[0];
+        const after = new RegExp('^[' + chars + ']*').exec(this.text.slice(this.offset))[0];
+        return [this.offset - before.length, this.offset + after.length];
     }
 
     components() {
@@ -72,18 +100,42 @@ class Completer {
         return '2';
     }
 
-    run() {
+    // A trigger character is also an operator. It opens the list only in its
+    // own context: `->`, `{%`, `</`, `<Tag`, and `$` in PHP.
+    triggerFits(context) {
+        const before = this.text.slice(Math.max(0, this.offset - 2), this.offset);
+        switch (this.trigger) {
+            case '>':
+                return before.endsWith('->');
+            case '%':
+                return before.endsWith('{%');
+            case '/':
+                return context.kind === 'closeTag';
+            case '<':
+                return context.kind === 'tagName';
+            case '$':
+                return context.kind === 'php';
+            default:
+                return true;
+        }
+    }
+
+    async run() {
         const { context } = scan(this.text.slice(0, this.offset));
-        if (!context) {
+        if (!context || !this.triggerFits(context)) {
             return [];
         }
         switch (context.kind) {
             case 'tagName':
-                return context.partial.includes(':') ? this.slots(context) : this.tags(context);
+                return context.partial.includes(':') ? this.slots(context) : [...this.tags(context), ...this.elements(context)];
             case 'closeTag':
                 return this.closeTag(context);
             case 'attr':
                 return this.attrs(context);
+            case 'attrValue':
+                return this.attrValues(context);
+            case 'twig':
+                return this.twig(context);
             case 'php':
                 return context.string || context.comment ? [] : this.php();
             default:
@@ -135,6 +187,25 @@ class Completer {
             });
         }
         return items;
+    }
+
+    // <name: HTML elements.
+    elements(ctx) {
+        if (/^[A-Z\\]/.test(ctx.partial)) {
+            return [];
+        }
+        const end = this.offset + wordAfter(this.text, this.offset);
+        const rest = this.text.slice(end);
+        const nameOnly = /^[\w:\\.-]*([ \t]+[\w{]|\s*\/?>)/.test(rest);
+        return Object.entries(html.ELEMENTS).map(([name, [description, isVoid]]) => ({
+            label: name,
+            kind: 'element',
+            detail: description,
+            snippet: nameOnly ? name : isVoid ? `${name}$1 />$0` : `${name}$1>$0</${name}>`,
+            range: [ctx.start, end],
+            edits: [],
+            sortText: '5' + name,
+        }));
     }
 
     // <Name:slot named slots.
@@ -212,11 +283,44 @@ class Completer {
                 add('htmlFor', 'htmlFor="${1}"', 'Alias for for', '0htmlFor');
             }
             add('key', 'key={{ ${1} }}', 'The key of the item in a list', '2key');
+            const attrSnippet = (name) => (html.BOOLEAN.has(name) ? name : `${name}="\${1}"`);
+            for (const name of html.attributesFor(tag)) {
+                add(name, attrSnippet(name), `<${tag}> attribute`, '0' + name);
+            }
+            for (const [name, description] of Object.entries(html.GLOBAL_ATTRIBUTES)) {
+                if (name === 'data-') {
+                    add(name, 'data-${1:name}="${2}"', description, '3' + name);
+                } else if (name === 'style') {
+                    add(name, 'style={{ {${1}} }}', description, '2' + name);
+                } else {
+                    add(name, attrSnippet(name), description, '2' + name);
+                }
+            }
+            for (const name of html.ARIA_ATTRIBUTES) {
+                add(name, `${name}="\${1}"`, 'ARIA attribute', '4' + name);
+            }
         }
         return items;
     }
 
-    php() {
+    // attr="...: the values of an enumerated HTML attribute.
+    attrValues(ctx) {
+        if (!ctx.attr || !/^[a-z]/.test(ctx.tag) || /[{}]/.test(this.text.slice(ctx.quote + 1, this.offset))) {
+            return [];
+        }
+        const [start, end] = this.word('\\w+/.-');
+        return html.valuesFor(ctx.tag, ctx.attr).map((value, i) => ({
+            label: value,
+            kind: 'value',
+            detail: `${ctx.attr} value`,
+            insert: value,
+            range: [Math.max(start, ctx.quote + 1), end],
+            edits: [],
+            sortText: String(i).padStart(3, '0'),
+        }));
+    }
+
+    async php() {
         const before = this.text.slice(0, this.offset);
         // The text of the current statement, up to the cursor.
         const open = before.lastIndexOf('<?php');
@@ -234,6 +338,17 @@ class Completer {
         }
 
         const line = before.slice(before.lastIndexOf('\n') + 1);
+        // $a->b, $a?->b, Foo::b
+        m = /(->|\?->|::)\s*(\$?\w*)$/.exec(line);
+        if (m) {
+            return this.members(m[1], this.offset - m[0].length, m[2]);
+        }
+        // $name: a variable.
+        m = /(?:^|[^\w\\$])\$(\w*)$/.exec(line);
+        if (m) {
+            return this.variables(m[1]);
+        }
+
         // \Foo\Bar: a fully qualified name.
         m = /(?:^|[^\w\\$])\\((?:\w+\\)*)(\w*)$/.exec(line);
         if (m) {
@@ -253,6 +368,199 @@ class Completer {
             return [];
         }
         return this.nameItems(m[1].length);
+    }
+
+    // $x->, Foo::: the members of the type of the expression before `op`.
+    async members(op, opStart, typed) {
+        if (!this.project) {
+            return [];
+        }
+        const code = codeOf(this.source);
+        const start = chainStart(code, opStart);
+        const exprText = code.slice(start, opStart).trim();
+        const scope = await scopeAt(this.source, this.offset, this.project);
+        const type = /^\\?[A-Za-z_][\w\\]*$/.test(exprText) ? scope.classType(exprText) : await scope.typeOfRange(start, opStart);
+        if (!type || !type.fqn) {
+            return [];
+        }
+        const isStatic = op === '::';
+        const isParent = /^parent$/i.test(exprText);
+        const isSelf = /^(self|static|parent|\$this)$/i.test(exprText);
+        const from = scope.cls ? scope.cls.fqn : null;
+        const members = await this.project.classes.members(type.fqn, this.source);
+        const rangeStart = this.offset - typed.length;
+        const end = this.offset + wordAfter(this.text, this.offset);
+        const items = [];
+        for (const mem of members) {
+            if (mem.visibility === 'private' && mem.owner !== from) {
+                continue;
+            }
+            if (mem.visibility === 'protected' && !(from && (isSelf || await this.project.classes.isA(from, mem.owner, this.source)))) {
+                continue;
+            }
+            if (mem.kind === 'method' && mem.name.startsWith('__') && !(isParent && /^__construct$/i.test(mem.name))) {
+                continue;
+            }
+            const doc = memberDoc(mem, this.root);
+            if (isStatic) {
+                if (mem.kind === 'property' && mem.static) {
+                    items.push({ label: '$' + mem.name, kind: 'field', detail: mem.typeText, documentation: doc, insert: '$' + mem.name, range: [rangeStart, end], edits: [], sortText: '1' + mem.name });
+                } else if (mem.kind === 'constant') {
+                    items.push({ label: mem.name, kind: mem.enumCase ? 'enumMember' : 'constant', detail: mem.signature, documentation: doc, insert: mem.name, range: [rangeStart, end], edits: [], sortText: '0' + mem.name });
+                } else if (mem.kind === 'method' && (mem.static || isParent || isSelf)) {
+                    items.push(this.methodItem(mem, doc, rangeStart, end));
+                }
+            } else if (mem.kind === 'property' && !mem.static) {
+                items.push({ label: mem.name, kind: 'field', detail: mem.typeText, documentation: doc, insert: mem.name, range: [rangeStart, end], edits: [], sortText: '0' + mem.name });
+            } else if (mem.kind === 'method' && !mem.static) {
+                items.push(this.methodItem(mem, doc, rangeStart, end));
+            }
+        }
+        if (isStatic && !typed.startsWith('$')) {
+            items.push({ label: 'class', kind: 'keyword', detail: 'The fully qualified class name', insert: 'class', range: [rangeStart, end], edits: [], sortText: '2class' });
+        }
+        return items;
+    }
+
+    methodItem(mem, doc, start, end) {
+        const hasParams = (mem.params && mem.params.length > 0) || !!mem.paramsText;
+        const call = this.text.slice(end, end + 1) === '(';
+        return {
+            label: mem.name,
+            kind: 'method',
+            detail: (mem.params ? `(${mem.params.map(paramText).join(', ')})` : `(${mem.paramsText || ''})`) + (mem.typeText ? ': ' + mem.typeText : ''),
+            documentation: doc,
+            snippet: call ? mem.name : hasParams ? `${mem.name}($1)$0` : `${mem.name}()$0`,
+            range: [start, end],
+            edits: [],
+            sortText: '1' + mem.name,
+        };
+    }
+
+    // $name: the variables of the scope.
+    async variables(typed) {
+        const scope = await scopeAt(this.source, this.offset, this.project);
+        const start = this.offset - typed.length - 1;
+        const end = this.offset + wordAfter(this.text, this.offset);
+        const items = [];
+        const add = (name, detail, sortText) => items.push({ label: '$' + name, kind: 'variable', detail, insert: '$' + name, filterText: '$' + name, range: [start, end], edits: [], sortText });
+        for (const v of scope.vars.values()) {
+            if (v.offset !== this.offset - typed.length - 1) {
+                add(v.name, v.typeText || '', '0' + v.name);
+            }
+        }
+        if (scope.thisType) {
+            add('this', scope.cls.name, '1this');
+        }
+        return items;
+    }
+
+    // Twig code: tags, filters, tests, attributes, variables, and route names.
+    async twig(ctx) {
+        if (ctx.string) {
+            return this.routeItems(ctx);
+        }
+        const expr = this.text.slice(ctx.start, this.offset);
+        const tagStart = ctx.start - 2;
+        let m;
+        if (ctx.open === '{%' && (m = /^[-~]?\s*(\w*)$/.exec(expr))) {
+            return this.twigTags(ctx, m[1], await twigEnv(this.source, ctx.literal, tagStart, this.project));
+        }
+        const [start, end] = this.word();
+        const item = (label, kind, detail, documentation, sortText, insert, snippet) => ({ label, kind, detail, documentation, insert, snippet, range: [start, end], edits: [], sortText });
+        if (/\|\s*\w*$/.test(expr)) {
+            return Object.entries(twig.FILTERS).map(([name, [sig, doc]]) => item(name, 'function', sig, doc, '0' + name, name));
+        }
+        if (/(?:^|[^\w.])is\s+(?:not\s+)?\w*$/.test(expr)) {
+            return Object.entries(twig.TESTS).map(([name, [snippet, doc]]) => item(name, 'function', 'test', doc, '0' + name, undefined, snippet));
+        }
+        const env = await twigEnv(this.source, ctx.literal, tagStart, this.project);
+        if ((m = /([A-Za-z_][\w.]*(?:\[[^\]]*\])*(?:\s*\|\s*\w+)*)\s*\.\s*\w*$/.exec(expr)) && !/\.\.\s*\w*$/.test(expr)) {
+            const type = await env.typeOf(m[1]);
+            return (await env.attributes(type)).map((a) => {
+                const mem = a.member;
+                const detail = a.kind === 'key' ? (a.key.doc || 'key') : a.getter ? `${mem.name}()${mem.typeText ? ': ' + mem.typeText : ''}` : mem.typeText;
+                const documentation = mem ? memberDoc(mem, this.root) : undefined;
+                if (a.kind === 'method') {
+                    return item(a.name, 'method', detail, documentation, '1' + a.name, undefined, a.required > 0 ? `${a.name}($1)$0` : a.name);
+                }
+                return item(a.name, a.kind === 'key' ? 'field' : 'field', detail, documentation, '0' + a.name, a.name);
+            });
+        }
+        // A new variable name: {% for x in, {% set x
+        if (ctx.open === '{%' && /^[-~]?\s*(for\s+(\w+\s*,\s*)?|set\s+)\w*$/.test(expr)) {
+            return [];
+        }
+        if (/[^\w\s(\[{,:?~+\-*\/%<>=!|]\s*\w*$/.test(expr.replace(/^\s*[-~]?/, ' '))) {
+            return [];
+        }
+        const items = [];
+        for (const v of await env.variables()) {
+            const kind = v.kind === 'method' ? 'method' : v.kind === 'property' ? 'field' : 'variable';
+            const detail = v.kind === 'method' ? 'handler' + (v.typeText ? ': ' + v.typeText : '') : v.detail || v.typeText || v.kind;
+            items.push(item(v.name, kind, detail, v.member ? memberDoc(v.member, this.root) : undefined, (v.kind === 'twig' ? '0' : v.kind === 'method' ? '2' : '1') + v.name, v.name));
+        }
+        for (const [name, [sig, doc]] of Object.entries(twig.FUNCTIONS)) {
+            items.push(item(name, 'function', sig, doc, '3' + name, undefined, `${name}($1)$0`));
+        }
+        for (const word of twig.KEYWORDS) {
+            items.push(item(word, 'keyword', 'Twig', undefined, '4' + word, word));
+        }
+        return items;
+    }
+
+    // {% name: the tags, and the end tags of the open blocks first. An item
+    // writes the full tag, with ` %}`. It replaces the ` %}` that follows on the
+    // same line, or the `}` that VS Code adds when it closes the `{`.
+    twigTags(ctx, typed, env) {
+        const start = this.offset - typed.length;
+        const wordEnd = this.offset + wordAfter(this.text, this.offset);
+        const close = /^[ \t]*([-~]?)%\}|^\}/.exec(this.text.slice(wordEnd));
+        const end = close ? wordEnd + close[0].length : wordEnd;
+        const tail = ' ' + (close && close[1] ? close[1] : '') + '%}';
+        const items = [];
+        const add = (label, detail, documentation, snippet, sortText) => {
+            if (!items.some((it) => it.label === label)) {
+                items.push({ label, kind: 'keyword', detail, documentation, snippet, range: [start, end], edits: [], sortText, filterText: label });
+            }
+        };
+        env.openTags().forEach((tag, i) => {
+            const endTag = twig.BLOCK_TAGS[tag];
+            if (endTag) {
+                add(endTag, `Close the {% ${tag} %} block`, undefined, endTag + tail, '0' + i);
+            }
+            if (tag === 'if' || tag === 'for') {
+                add('else', twig.TAGS.else[1], undefined, 'else' + tail, '1else');
+            }
+            if (tag === 'if') {
+                add('elseif', twig.TAGS.elseif[1], undefined, 'elseif ${1}' + tail, '1elseif');
+            }
+        });
+        for (const [name, [snippet, doc, endTag]] of Object.entries(twig.TAGS)) {
+            if (name !== 'else' && name !== 'elseif') {
+                add(name, endTag ? `{% ${name} %} ... {% ${endTag} %}` : `{% ${name} %}`, doc, snippet + ' %}', '2' + name);
+            }
+        }
+        return items;
+    }
+
+    // path('...') and url('...'): the route names of the pages.
+    routeItems(ctx) {
+        const before = this.text.slice(ctx.start, ctx.quote);
+        if (!this.project || !/\b(path|url)\s*\(\s*$/.test(before)) {
+            return [];
+        }
+        const [start, end] = this.word('\\w.\\-');
+        return this.project.routes(this.file, this.parsed).map((r) => ({
+            label: r.name,
+            kind: 'value',
+            detail: r.path,
+            documentation: '`' + r.fqn + '`' + (this.root ? '\n\nDefined in `' + path.relative(this.root, r.file) + '`' : ''),
+            insert: r.name,
+            range: [Math.max(start, ctx.quote + 1), end],
+            edits: [],
+            sortText: '0' + r.name,
+        }));
     }
 
     // Items for one level of a namespace: sub-namespaces and symbols.
@@ -337,7 +645,7 @@ class Completer {
     }
 }
 
-function complete(options) {
+async function complete(options) {
     return new Completer(options).run();
 }
 

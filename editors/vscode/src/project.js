@@ -5,10 +5,12 @@
 //     class map). For speed, the index reads only the file names here.
 //   - the functions and constants of the Composer "files" autoload entries;
 //   - the components, functions, and classes of the .rhp files.
+// The members of the classes come from the class index (classes.js), on demand.
 
 const fs = require('fs');
 const path = require('path');
-const { parse } = require('./php');
+const { parse, hasAttr } = require('./php');
+const { ClassIndex } = require('./classes');
 
 const SKIP_DIRS = new Set(['vendor', 'node_modules', 'var', '.git', 'target', 'cache']);
 const SKIP_VENDOR_DIRS = new Set(['Tests', 'tests', 'Test', 'test', 'Fixtures', 'fixtures', 'stubs']);
@@ -59,6 +61,7 @@ class Project {
         this.root = root;
         this.symbols = new Map();   // "kind:fqn" -> { kind, fqn, file }
         this.rhp = new Map();       // file -> parsed .rhp file
+        this.classes = new ClassIndex(this);
         this.loading = null;
     }
 
@@ -263,6 +266,49 @@ class Project {
         }
         return [...map.values()];
     }
+
+    // The routes of the pages (`#[Route]` components) of the .rhp files:
+    //   [{ name, path, fqn, file, offset }]
+    routes(currentFile, current) {
+        const list = [];
+        for (const [file, parsed] of this.rhp) {
+            if (file !== currentFile) {
+                list.push(...routesOf(parsed, file));
+            }
+        }
+        if (current) {
+            list.push(...routesOf(current, currentFile));
+        }
+        return list;
+    }
+}
+
+// The routes of the pages of one parsed file.
+function routesOf(parsed, file) {
+    const list = [];
+    for (const decl of [...parsed.functions, ...parsed.classes]) {
+        const attrs = (decl.attributes || []).filter((a) => a.name === 'Route' || a.name.endsWith('\\Route'));
+        if (attrs.length === 0 || (decl.kind && !hasAttr(decl.attrs, 'Component'))) {
+            continue;
+        }
+        attrs.forEach((attr, i) => {
+            const name = /\bname\s*:\s*(['"])(.*?)\1/.exec(attr.args);
+            const route = /^\s*(?:path\s*:\s*)?(['"])(.*?)\1/.exec(attr.args) || /\bpath\s*:\s*(['"])(.*?)\1/.exec(attr.args);
+            list.push({
+                name: name ? name[2] : routeName(decl.fqn) + (i > 0 ? '_' + i : ''),
+                path: route ? route[2] : '',
+                fqn: decl.fqn,
+                file,
+                offset: decl.offset,
+            });
+        });
+    }
+    return list;
+}
+
+// `App\Pages\Counter` → `app_pages_counter`, as in runtime/src/Routing/PageLoader.php.
+function routeName(fqn) {
+    return fqn.replace(/\\/g, '_').toLowerCase();
 }
 
 // Returns the directory of the nearest composer.json file, or `fallback`.
@@ -280,4 +326,4 @@ async function findRoot(file, fallback) {
     }
 }
 
-module.exports = { Project, findRoot, parseAutoloadMap };
+module.exports = { Project, findRoot, parseAutoloadMap, routesOf };

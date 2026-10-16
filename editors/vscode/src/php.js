@@ -47,6 +47,7 @@ class Parser {
         this.namespace = '';
         this.result = {
             namespace: '',
+            namespaceStart: -1,     // offset of the name in `namespace X;`
             namespaceEnd: -1,       // offset after `namespace X;`
             openTagEnd: -1,         // offset after `<?php`
             uses: [],
@@ -84,23 +85,80 @@ class Parser {
         }
     }
 
-    // Reads `#[A, B(...)]` and returns the attribute names.
+    // Returns the index of the token that closes the group at token `k`, or -1.
+    matchIndex(k) {
+        const open = this.tokens[k].v;
+        const close = { '(': ')', '[': ']', '{': '}', '#[': ']' }[open];
+        const opens = close === ']' ? ['[', '#['] : [open];
+        let depth = 0;
+        for (let j = k; j < this.tokens.length; j++) {
+            const v = this.tokens[j].v;
+            if (opens.includes(v)) {
+                depth++;
+            } else if (v === close && --depth === 0) {
+                return j;
+            }
+        }
+        return -1;
+    }
+
+    // Reads `#[A, B(...)]` and returns the attributes: [{ name, args }]. `args`
+    // is the text between the parentheses, or ''.
     attribute() {
         const startK = this.k;
         this.skipGroup();
-        const names = [];
+        const list = [];
         let depth = 0;
         for (let j = startK + 1; j < this.k - 1; j++) {
             const tok = this.tokens[j];
             if (tok.v === '(' || tok.v === '[') {
+                if (depth === 0 && tok.v === '(' && list.length > 0) {
+                    const close = this.matchIndex(j);
+                    list[list.length - 1].args = this.text.slice(tok.end, close < 0 ? this.text.length : this.tokens[close].start);
+                }
                 depth++;
             } else if (tok.v === ')' || tok.v === ']') {
                 depth--;
             } else if (depth === 0 && tok.t === 'id') {
-                names.push(tok.v.replace(/^\\/, ''));
+                list.push({ name: tok.v.replace(/^\\/, ''), args: '' });
             }
         }
-        return names;
+        return list;
+    }
+
+    // Reads `: Type` after the parameters. Returns the type, or ''.
+    returnType() {
+        if (!this.peek() || this.peek().v !== ':') {
+            return '';
+        }
+        this.next();
+        let start = -1;
+        let end = -1;
+        while (this.k < this.tokens.length) {
+            const tok = this.peek();
+            if (tok.v === '{' || tok.v === ';' || tok.v === '=>' || (tok.t === 'id' && /^(use)$/i.test(tok.v))) {
+                break;
+            }
+            if (tok.t !== 'id' && !['?', '|', '&', '(', ')', 'static'].includes(tok.v)) {
+                break;
+            }
+            start = start < 0 ? tok.start : start;
+            end = tok.end;
+            this.next();
+        }
+        return start < 0 ? '' : this.text.slice(start, end).replace(/\s+/g, '');
+    }
+
+    // The range of the body that starts at the current token, if it is `{`.
+    // It does not move. A body that does not close (the user types in it) ends
+    // at the end of the text.
+    bodyRange() {
+        const tok = this.peek();
+        if (!tok || tok.v !== '{') {
+            return { bodyStart: -1, bodyEnd: -1 };
+        }
+        const close = this.matchIndex(this.k);
+        return { bodyStart: tok.start, bodyEnd: close < 0 ? this.text.length : this.tokens[close].end };
     }
 
     parse() {
@@ -126,6 +184,7 @@ class Parser {
                 this.namespace = name;
                 if (!this.result.namespace) {
                     this.result.namespace = name;
+                    this.result.namespaceStart = name ? this.tokens[this.k - 1].start : -1;
                     const end = this.peek();
                     this.result.namespaceEnd = end ? end.end : tok.end;
                 }
@@ -139,26 +198,32 @@ class Parser {
                 this.next();
                 const name = this.next();
                 const params = this.params();
+                const returnType = this.returnType();
+                const body = this.bodyRange();
                 this.result.functions.push({
                     name: name.v,
                     fqn: joinName(this.namespace, name.v),
                     namespace: this.namespace,
                     params,
-                    attrs,
+                    returnType,
+                    attrs: attrs.map((a) => a.name),
+                    attributes: attrs,
+                    doc: docBefore(this.text, tok.start),
                     offset: name.start,
+                    start: tok.start,
+                    ...body,
+                    end: body.bodyEnd >= 0 ? body.bodyEnd : name.end,
                 });
                 attrs = [];
                 continue;
             }
-            if (['class', 'interface', 'trait', 'enum'].includes(word) && !(prev && (prev.v === '::' || prev.v.toLowerCase() === 'new'))) {
+            // `$a->class`, `Foo::class`, and `f(class: 1)` are not declarations.
+            const name = this.peek(1);
+            if (['class', 'interface', 'trait', 'enum'].includes(word) && !(prev && ['::', '->', '?->'].includes(prev.v))
+                && !(prev && prev.v.toLowerCase() === 'new') && name && name.t === 'id' && !/^(extends|implements)$/i.test(name.v)) {
                 this.next();
-                const name = this.peek();
-                if (name && name.t === 'id' && !/^(extends|implements)$/i.test(name.v)) {
-                    this.next();
-                    this.classLike(word, name, attrs);
-                } else if (word === 'class') {
-                    this.skipToBody();
-                }
+                this.next();
+                this.classLike(word, name, attrs, tok);
                 attrs = [];
                 continue;
             }
@@ -171,7 +236,7 @@ class Parser {
             if (word === 'const' && this.peek(1) && this.peek(1).t === 'id' && this.peek(2) && this.peek(2).v === '=') {
                 this.next();
                 const name = this.next();
-                this.result.constants.push({ name: name.v, fqn: joinName(this.namespace, name.v), offset: name.start });
+                this.result.constants.push({ name: name.v, fqn: joinName(this.namespace, name.v), offset: name.start, doc: docBefore(this.text, tok.start) });
                 continue;
             }
             if (word === 'define' && this.peek(1) && this.peek(1).v === '(') {
@@ -230,7 +295,7 @@ class Parser {
                     }
                     let itemKind = kind;
                     let name = it.v;
-                    if (/^(function|const)$/i.test(name) && this.peek().t === 'id') {
+                    if (/^(function|const)$/i.test(name) && this.peek() && this.peek().t === 'id') {
                         itemKind = name.toLowerCase();
                         name = this.next().v;
                     }
@@ -282,9 +347,9 @@ class Parser {
                 break;
             }
             if (tok.v === '#[') {
-                const names = this.attribute();
+                const list = this.attribute();
                 current = current || newParam();
-                current.attrs.push(...names);
+                current.attrs.push(...list.map((a) => a.name));
                 continue;
             }
             this.next();
@@ -309,6 +374,7 @@ class Parser {
             current = current || newParam();
             if (tok.t === 'var') {
                 current.name = tok.v.slice(1);
+                current.offset = tok.start;
             } else if (tok.v === '=') {
                 defaultStart = tok.end;
             } else if (tok.v === '...') {
@@ -317,6 +383,7 @@ class Parser {
                 current.byRef = true;
             } else if (tok.t === 'id' && MODIFIERS.has(tok.v.toLowerCase())) {
                 current.promoted = true;
+                current.modifiers.push(tok.v.toLowerCase());
             } else if (!current.name) {
                 current.typeStart = current.typeStart ?? tok.start;
                 current.typeEnd = tok.end;
@@ -331,41 +398,75 @@ class Parser {
     }
 
     // Reads a class, an interface, a trait, or an enum.
-    classLike(kind, name, attrs) {
+    classLike(kind, name, attrs, keyword) {
         const cls = {
             kind,
             name: name.v,
             fqn: joinName(this.namespace, name.v),
             namespace: this.namespace,
-            attrs,
+            attrs: attrs.map((a) => a.name),
+            attributes: attrs,
+            doc: docBefore(this.text, keyword.start),
+            extends: [],
+            implements: [],
+            traits: [],
             properties: [],
             methods: [],
+            constants: [],
             offset: name.start,
+            start: keyword.start,
+            bodyStart: -1,
+            end: name.end,
         };
         this.result.classes.push(cls);
 
+        // extends A, implements B, C (an interface can extend more than one).
+        let list = null;
         while (this.k < this.tokens.length && this.peek().v !== '{') {
-            this.next();
+            const tok = this.next();
+            if (tok.t !== 'id') {
+                continue;
+            }
+            if (/^extends$/i.test(tok.v)) {
+                list = cls.extends;
+            } else if (/^implements$/i.test(tok.v)) {
+                list = cls.implements;
+            } else if (list) {
+                list.push(tok.v);
+            }
         }
         if (this.k >= this.tokens.length) {
             return;
         }
+        const body = this.bodyRange();
+        cls.bodyStart = body.bodyStart;
+        cls.end = body.bodyEnd;
         this.next();
 
         let memberAttrs = [];
         let modifiers = [];
+        let memberStart = -1;
+        const reset = () => {
+            memberAttrs = [];
+            modifiers = [];
+            memberStart = -1;
+        };
         while (this.k < this.tokens.length) {
             const tok = this.peek();
             if (tok.v === '}') {
                 this.next();
                 return;
             }
+            if (memberStart < 0) {
+                memberStart = tok.start;
+            }
             if (tok.v === '#[') {
-                memberAttrs.push(...this.attribute());
+                memberAttrs.push(...this.attribute().map((a) => a.name));
                 continue;
             }
             if (tok.v === '{') {
                 this.skipGroup();
+                reset();
                 continue;
             }
             if (tok.t === 'id' && MODIFIERS.has(tok.v.toLowerCase())) {
@@ -374,35 +475,134 @@ class Parser {
             }
             if (tok.t === 'id' && tok.v.toLowerCase() === 'function') {
                 this.next();
+                const byRef = this.peek() && this.peek().v === '&' ? this.next() : null;
+                if (!this.peek() || this.peek().t !== 'id') {
+                    // `function` with no name yet (the user types it).
+                    reset();
+                    continue;
+                }
                 const fname = this.next();
                 const params = this.peek() && this.peek().v === '(' ? this.params() : [];
-                cls.methods.push({ name: fname ? fname.v : '', params, modifiers, attrs: memberAttrs });
+                const returnType = this.returnType();
+                const range = this.bodyRange();
+                const method = {
+                    name: fname ? fname.v : '',
+                    params,
+                    returnType,
+                    modifiers,
+                    visibility: visibilityOf(modifiers),
+                    static: modifiers.includes('static'),
+                    byRef: byRef !== null,
+                    attrs: memberAttrs,
+                    doc: docBefore(this.text, memberStart),
+                    offset: fname ? fname.start : tok.start,
+                    start: memberStart,
+                    ...range,
+                    end: range.bodyEnd >= 0 ? range.bodyEnd : (fname ? fname.end : tok.end),
+                };
+                cls.methods.push(method);
+                if (method.name.toLowerCase() === '__construct') {
+                    for (const p of params.filter((q) => q.promoted)) {
+                        cls.properties.push({
+                            name: p.name,
+                            type: p.type,
+                            modifiers: p.modifiers,
+                            visibility: visibilityOf(p.modifiers),
+                            static: false,
+                            attrs: p.attrs,
+                            doc: docBefore(this.text, p.offset),
+                            default: p.default,
+                            promoted: true,
+                            offset: p.offset,
+                        });
+                    }
+                }
                 // Skip the body (or the `;` of an abstract method).
-                while (this.k < this.tokens.length && this.peek().v !== '{' && this.peek().v !== ';') {
+                while (this.k < this.tokens.length && this.peek().v !== '{' && this.peek().v !== ';' && this.peek().v !== '}') {
                     this.next();
                 }
                 if (this.peek() && this.peek().v === '{') {
                     this.skipGroup();
-                } else {
+                } else if (this.peek() && this.peek().v === ';') {
                     this.next();
                 }
-                memberAttrs = [];
-                modifiers = [];
+                reset();
                 continue;
             }
-            if (tok.t === 'id' && /^(const|case|use)$/i.test(tok.v)) {
-                this.skipStatement();
-                memberAttrs = [];
-                modifiers = [];
+            if (tok.t === 'id' && /^use$/i.test(tok.v)) {
+                // Traits: use A, B; or use A, B { ... }
+                this.next();
+                while (this.k < this.tokens.length && !/^[;{}]$/.test(this.peek().v)) {
+                    const t = this.next();
+                    if (t.t === 'id') {
+                        cls.traits.push(t.v);
+                    }
+                }
+                if (this.peek() && this.peek().v === '{') {
+                    this.skipGroup();
+                } else if (this.peek() && this.peek().v === ';') {
+                    this.next();
+                }
+                reset();
+                continue;
+            }
+            if (tok.t === 'id' && /^(const|case)$/i.test(tok.v)) {
+                this.constants(cls, tok.v.toLowerCase(), modifiers, memberStart);
+                reset();
                 continue;
             }
             if (modifiers.length > 0) {
-                this.property(cls, modifiers, memberAttrs);
-                memberAttrs = [];
-                modifiers = [];
+                this.property(cls, modifiers, memberAttrs, memberStart);
+                reset();
                 continue;
             }
             this.next();
+            reset();
+        }
+    }
+
+    // Reads `const [type] A = 1, B = 2;` or `case A = 'a';`. The current token is
+    // `const` or `case`.
+    constants(cls, keyword, modifiers, memberStart) {
+        this.next();
+        const doc = docBefore(this.text, memberStart);
+        let expectName = true;
+        let last = null;
+        while (this.k < this.tokens.length) {
+            const tok = this.peek();
+            if (tok.v === ';' || tok.v === '}') {
+                if (tok.v === ';') {
+                    this.next();
+                }
+                break;
+            }
+            if (tok.v === '(' || tok.v === '[' || tok.v === '{') {
+                this.skipGroup();
+                continue;
+            }
+            this.next();
+            if (expectName && tok.t === 'id') {
+                last = tok;
+                continue;
+            }
+            if (expectName && (tok.v === '=' || keyword === 'case') && last) {
+                cls.constants.push({
+                    name: last.v,
+                    kind: keyword,
+                    visibility: visibilityOf(modifiers),
+                    doc,
+                    value: '',
+                    offset: last.start,
+                });
+                expectName = false;
+                last = null;
+            }
+            if (tok.v === ',') {
+                expectName = true;
+            }
+        }
+        if (expectName && last && keyword === 'case') {
+            cls.constants.push({ name: last.v, kind: keyword, visibility: 'public', doc, value: '', offset: last.start });
         }
     }
 
@@ -425,7 +625,8 @@ class Parser {
     }
 
     // Reads `public ?Type $a = 1, $b;`. The current token is after the modifiers.
-    property(cls, modifiers, attrs) {
+    property(cls, modifiers, attrs, memberStart) {
+        const doc = docBefore(this.text, memberStart);
         let typeStart = -1;
         let typeEnd = -1;
         let current = null;
@@ -471,7 +672,11 @@ class Parser {
                     name: tok.v.slice(1),
                     type: typeStart >= 0 ? this.text.slice(typeStart, typeEnd).replace(/\s+/g, '') : '',
                     modifiers,
+                    visibility: visibilityOf(modifiers),
+                    static: modifiers.includes('static'),
                     attrs,
+                    doc,
+                    offset: tok.start,
                 };
             } else if (tok.v === '=') {
                 defaultStart = tok.end;
@@ -486,7 +691,26 @@ class Parser {
 }
 
 function newParam() {
-    return { name: '', attrs: [], variadic: false, byRef: false, promoted: false };
+    return { name: '', attrs: [], modifiers: [], variadic: false, byRef: false, promoted: false, offset: -1 };
+}
+
+// Returns the `/** ... */` block just before a declaration, or ''. Only
+// modifiers, attributes, and a type can be between the block and `offset`.
+function docBefore(text, offset) {
+    const before = text.slice(Math.max(0, offset - 4000), offset);
+    const close = before.lastIndexOf('*/');
+    if (close < 0) {
+        return '';
+    }
+    const open = before.lastIndexOf('/**', close);
+    if (open < 0 || before.slice(open, close).includes('*/') || /[;{}$]/.test(before.slice(close + 2).replace(/#\[[^\]]*\]/g, ''))) {
+        return '';
+    }
+    return before.slice(open, close + 2);
+}
+
+function visibilityOf(modifiers) {
+    return modifiers.find((m) => m === 'public' || m === 'protected' || m === 'private') || 'public';
 }
 
 function hasAttr(attrs, name) {
@@ -549,7 +773,7 @@ function components(parsed) {
         };
         const lines = [];
         for (const p of cls.properties) {
-            if (!p.modifiers.includes('public') || p.modifiers.includes('static') || hasAttr(p.attrs, 'State')) {
+            if (p.promoted || !p.modifiers.includes('public') || p.modifiers.includes('static') || hasAttr(p.attrs, 'State')) {
                 continue;
             }
             if (p.name === 'children') {
@@ -594,4 +818,4 @@ function parse(text) {
     return parsed;
 }
 
-module.exports = { parse, shortName, namespaceOf, joinName };
+module.exports = { parse, tokenize, docBefore, hasAttr, paramText, shortName, namespaceOf, joinName };

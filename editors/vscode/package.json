@@ -1,7 +1,7 @@
 {
     "name": "rhp",
     "displayName": "RHP (rephp)",
-    "description": "Syntax highlighting and completion for .rhp files: PHP with markup literals and Twig.",
+    "description": "Syntax highlighting, completion, go to definition, hover, outline, and rhpc diagnostics for .rhp files: PHP with markup literals and Twig.",
     "version": "0.2.0",
     "publisher": "rephp",
     "license": "MIT",
@@ -20,6 +20,15 @@
         "jsx"
     ],
     "main": "./src/extension.js",
+    "capabilities": {
+        "untrustedWorkspaces": {
+            "supported": "limited",
+            "description": "In an untrusted workspace, the extension does not use the rhp.rhpc.path setting of the workspace.",
+            "restrictedConfigurations": [
+                "rhp.rhpc.path"
+            ]
+        }
+    },
     "activationEvents": [
         "onLanguage:rhp"
     ],
@@ -47,6 +56,23 @@
                 "configuration": "./markup-language-configuration.json"
             }
         ],
+        "configuration": {
+            "title": "RHP",
+            "properties": {
+                "rhp.rhpc.path": {
+                    "type": "string",
+                    "default": "",
+                    "scope": "machine-overridable",
+                    "markdownDescription": "The path of the `rhpc` binary. When it is set, the extension runs `rhpc check <sourceDir> --format json` on save and shows the diagnostics. Empty: no diagnostics."
+                },
+                "rhp.rhpc.sourceDir": {
+                    "type": "string",
+                    "default": "src",
+                    "scope": "resource",
+                    "markdownDescription": "The source directory of the `.rhp` files, relative to the project root (the directory with `composer.json`)."
+                }
+            }
+        },
         "grammars": [
             {
                 "language": "rhp",

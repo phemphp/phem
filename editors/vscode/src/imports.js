@@ -130,4 +130,4 @@ function resolveComponent(parsed, components, tag) {
     return byFqn.get(local.toLowerCase()) || null;
 }
 
-module.exports = { importFor, useEdit, resolveComponent };
+module.exports = { importFor, useEdit, resolveComponent, importsOf };

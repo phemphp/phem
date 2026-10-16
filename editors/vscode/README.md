@@ -1,7 +1,11 @@
 # RHP for Visual Studio Code
 
-Syntax highlighting and completion for rephp `.rhp` files. A `.rhp` file is a PHP file
-that contains markup literals, the same way a `.jsx` file contains JSX.
+Syntax highlighting, completion, go to definition, hover, outline, and compiler diagnostics for
+rephp `.rhp` files. A `.rhp` file is a PHP file that contains markup literals, the same way a
+`.jsx` file contains JSX.
+
+The PHP extensions (Intelephense, PHP Tools) do not read `.rhp` files, so this extension has its
+own small PHP, Twig, and HTML support.
 
 The extension highlights:
 
@@ -31,10 +35,31 @@ is not there). A project is the nearest directory with a `composer.json` file.
   component has `$children` or slots. If the component is not in scope, the extension adds the
   import: `use function App\Components\Layout;` or `use App\Components\Counter;`. It uses the
   rules of rhpc: a `use function` import, then a `use` import, then the current namespace.
+- **HTML elements**: after `<`, it also suggests the HTML elements. A void element gets ` />`
+  (`<img />`); the others get a closing tag.
 - **Props and slots**: in a component tag, it suggests the props that are not set yet (required
-  props first). After `<Layout:`, it suggests the named slots. In an HTML tag, it suggests the
-  rephp events (`onClick`, `onSubmit`, ...), `className`, and `key`.
+  props first). After `<Layout:`, it suggests the named slots.
+- **HTML attributes**: in an HTML tag, it suggests the attributes of the element, the global
+  attributes, the `aria-*` attributes, the rephp events (`onClick`, `onSubmit`, ...),
+  `className`, and `key`. In the value of an enumerated attribute (`type="`, `target="`,
+  `rel="`, `loading="`, ...), it suggests the values.
 - **Closing tags**: after `</`, it suggests the name of the open element.
+- **Members**: after `->`, `?->`, and `::`, it suggests the properties, the methods, and the
+  constants of the class, with its parents, traits, and interfaces. Private and protected
+  members show only where PHP allows them. The type of an expression comes from the parameter
+  types, `new Foo()`, the property types, the return types, `foreach`, and the docblocks
+  (`@var`, `@param`, `@return`, `@property`, `@method`, `list<Foo>`, `Foo[]`).
+- **Variables**: after `$`, it suggests the variables of the function.
+- **Twig**: in `{{ }}` and `{% %}`, it suggests:
+  - the variables: the PHP variables of the scope, the properties and the methods of the class
+    (in a `#[Component]` class), and the `{% for %}` and `{% set %}` variables (with `loop`);
+  - the attributes after a dot, with the Twig rules: `scientist.` gives the public properties,
+    the public methods, and the getters as names (`getFullName()` is `fullName`). An array
+    literal (`$user = ['name' => ...]`) gives its keys;
+  - the filters after `|`, the tests after `is`, and the functions of Twig and Symfony
+    (`path`, `asset`, `form_widget`, `is_granted`, ...);
+  - the tags after `{%`, with the end tags of the open blocks first (`endfor`, `endif`);
+  - the route names of the pages in `path('` and `url('`.
 - **Imports**: in `use`, `use function`, and `use const` statements (and in groups,
   `use App\{...}`), it suggests the next part of the namespace and the symbols.
 - **Classes and functions**: in PHP code, it suggests the classes and the namespaced functions
@@ -42,6 +67,55 @@ is not there). A project is the nearest directory with a `composer.json` file.
   leading `\` (`\Rephp\Html`) completes part by part, with no import.
 
 The index updates when you save a `.rhp` file, add or remove a `.php` file, or run Composer.
+The extension reads a class file when it needs the members of the class, and reads it again when
+the file changes.
+
+## Go to definition and hover
+
+**Go to Definition** (`F12` or `Cmd`+click) and the hover work on:
+
+- component tags (`<Layout>`, `</Layout>`), named slots (`<Layout:footer>`), and props;
+- class names, function names, members (`$this->repo->all()`, `Status::Active`), and variables
+  in PHP code;
+- Twig variables (they go to the PHP variable, parameter, property, or method), attributes
+  (`scientist.name` goes to the property or the getter), and handlers (`onClick={{ like }}`);
+- route names in `path('...')`: they go to the page.
+
+The hover also shows the description of the Twig filters, functions, tests, and tags, and of the
+HTML elements and attributes.
+
+## Outline
+
+The **Outline** view, the breadcrumbs, and **Go to Symbol in Editor** (`Cmd+Shift+O`) show the
+namespace, the components (with their props and slots), the pages (with their paths), and the
+classes with their members.
+
+## Diagnostics
+
+The extension can show the errors and the warnings of rhpc in the editor. Set the path of the
+`rhpc` binary (it must run on the host, not in Docker):
+
+```json
+{
+    "rhp.rhpc.path": "/path/to/rhpc",
+    "rhp.rhpc.sourceDir": "src"
+}
+```
+
+When you open or save a `.rhp` file, the extension runs `rhpc check <sourceDir> --format json`
+in the project root and shows the diagnostics of all the files. `rhp.rhpc.sourceDir` is relative
+to the project root (default: `src`). With an empty `rhp.rhpc.path` (the default), there are no
+diagnostics. In an untrusted workspace, VS Code ignores the `rhp.rhpc.path` value of the
+workspace settings.
+
+## Limits
+
+- The extension has no stubs for the PHP built-in classes (`DateTime`, `ArrayObject`, ...), so
+  their members do not show.
+- It does not read the generic templates of a class (`@extends ServiceEntityRepository<Scientist>`
+  does not make `find()` return a `Scientist`). Add a `@return` or a `@var` tag for these cases.
+- A Twig attribute resolves only from a known type. An array without an array literal
+  (`array $items`) gives no keys.
 
 ## Install
 

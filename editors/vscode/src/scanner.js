@@ -27,6 +27,7 @@ class Scanner {
         this.masks = [];
         this.delimiters = [];
         this.context = null;
+        this.literal = -1;      // the start of the current markup literal
     }
 
     // Stops the scan: the end of the text is in the given context.
@@ -153,6 +154,7 @@ class Scanner {
                 }
             }
             if (c === '<' && (newline || START_CHARS.has(last) || START_WORDS.has(last)) && this.opensTag()) {
+                this.literal = start;
                 this.mask(start, () => this.markup());
                 last = 'value';
                 newline = false;
@@ -179,7 +181,7 @@ class Scanner {
 
         while (true) {
             if (this.i >= text.length) {
-                this.eof({ kind: 'text', tags: tags.slice() });
+                this.eof({ kind: 'text', tags: tags.slice(), literal: this.literal });
             }
             const c = text[this.i];
 
@@ -272,7 +274,7 @@ class Scanner {
                 continue;
             }
             if (c === '"' || c === '\'') {
-                this.skipQuoted({ kind: 'attrValue', tag: name, attr: attrs[attrs.length - 1] ?? null });
+                this.skipQuoted({ kind: 'attrValue', tag: name, attr: attrs[attrs.length - 1] ?? null, quote: this.i, attrs });
                 continue;
             }
             const attr = /^[^\s=/>"'{]+/.exec(text.slice(this.i, this.i + 256));
@@ -315,14 +317,19 @@ class Scanner {
 
     // Reads Twig code up to `close` (`}}` or `%}`). Twig code can contain
     // hashes ({a: 1}) and markup literals (ok ? <A /> : <B />).
+    //
+    // The `twig` context has `open` (`{{` or `{%`), `start` (the offset after
+    // the delimiter), and `literal` (the start of the markup literal). In a
+    // string, it also has `quote` (the offset of the quote).
     twig(close) {
         const text = this.text;
+        const base = { kind: 'twig', open: close === '}}' ? '{{' : '{%', start: this.i, literal: this.literal };
         let depth = 0;
         let last = '(';
 
         while (true) {
             if (this.i >= text.length) {
-                this.eof({ kind: 'twig' });
+                this.eof(base);
             }
             const c = text[this.i];
             if (depth === 0 && this.startsWith(close)) {
@@ -334,7 +341,7 @@ class Scanner {
                 continue;
             }
             if (c === '\'' || c === '"') {
-                this.skipQuoted({ kind: 'twig', string: true });
+                this.skipQuoted({ ...base, string: true, quote: this.i });
                 last = 'value';
                 continue;
             }

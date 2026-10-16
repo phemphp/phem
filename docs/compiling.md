@@ -131,6 +131,24 @@ E011
 
 The README has the list of codes.
 
+For editors and other tools, `--format json` prints the diagnostics to stdout as JSON. The exit
+code does not change:
+
+```sh
+rhpc check src --format json
+```
+
+```json
+{"files": [{"file": "Components/ScientistCard.rhp", "diagnostics": [{"severity": "error",
+  "code": "E010", "message": "unknown component `<Avatr>` (resolved to `App\\Components\\Avatr`)",
+  "label": null, "help": "declare `function Avatr()` in a .rhp file, or check the `use` imports",
+  "start": {"line": 30, "character": 13}, "end": {"line": 30, "character": 18}}]}]}
+```
+
+`file` is relative to the source directory. `line` starts at 0, and `character` counts UTF-16
+code units, as the Language Server Protocol does. The VS Code extension uses this output (see
+`editors/vscode/README.md`).
+
 ## 4. Run
 
 With FrankenPHP in worker mode, in the project directory:
