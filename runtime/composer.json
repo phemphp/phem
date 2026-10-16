@@ -19,7 +19,7 @@
         "phpunit/phpunit": "^12.0"
     },
     "suggest": {
-        "doctrine/doctrine-bundle": "To run the event handlers of #[Transactional] components in a Doctrine ORM transaction"
+        "doctrine/doctrine-bundle": "To run the event handlers of #[Transactional] components in a Doctrine ORM transaction, and to give #[Path] props the entities of their route values"
     },
     "autoload": {
         "psr-4": { "Rephp\\": "src/" }

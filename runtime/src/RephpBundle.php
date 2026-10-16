@@ -6,6 +6,7 @@ namespace Rephp;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Rephp\DependencyInjection\ComponentPass;
+use Rephp\Doctrine\DoctrineEntityFinder;
 use Rephp\Doctrine\DoctrineTransactionRunner;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
@@ -63,13 +64,18 @@ final class RephpBundle extends AbstractBundle
         $container->import('../config/services.php');
         $container->services()->get('rephp.state_codec')->arg(0, $config['secret']);
 
-        // The handlers of #[Transactional] components run in a Doctrine ORM transaction.
+        // The handlers of #[Transactional] components run in a Doctrine ORM transaction, and
+        // the #[Path] props with an entity type get their entity.
         if (isset($builder->getParameter('kernel.bundles')['DoctrineBundle']) && interface_exists(EntityManagerInterface::class)) {
             $container->services()
                 ->set('rephp.transaction_runner', DoctrineTransactionRunner::class)
                     ->args([service('doctrine')])
                 ->get('rephp.renderer')
-                    ->arg(4, service('rephp.transaction_runner'));
+                    ->arg(4, service('rephp.transaction_runner'))
+                ->set('rephp.entity_finder', DoctrineEntityFinder::class)
+                    ->args([service('doctrine')])
+                ->get('rephp.prop_binder')
+                    ->arg(0, service('rephp.entity_finder'));
         }
     }
 

@@ -33,23 +33,51 @@ final class PathPageTest extends TestCase
     public function testEventKeepsTheRouteValue(): void
     {
         [$state, $signature, $handler] = $this->page('/items/3');
-        self::assertSame(['id' => 3], json_decode($state, true)['_props']);
+        self::assertSame(['id' => '3'], json_decode($state, true)['_path']);
 
-        $response = $this->click($state, $signature, $handler);
+        $response = $this->click('ItemPage', $state, $signature, $handler);
         $data = json_decode((string) $response->getContent(), true);
 
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('Item 3: 1', $data['streams']);
-        self::assertSame(['id' => 3], json_decode($data['state'], true)['_props']);
+        self::assertSame(['id' => '3'], json_decode($data['state'], true)['_path']);
     }
 
     public function testForgedRouteValueIsRejected(): void
     {
         [$state, $signature, $handler] = $this->page('/items/3');
-        $forged = str_replace('"_props":{"id":3}', '"_props":{"id":4}', $state);
+        $forged = str_replace('"_path":{"id":"3"}', '"_path":{"id":"4"}', $state);
         self::assertNotSame($state, $forged);
 
-        self::assertSame(409, $this->click($forged, $signature, $handler)->getStatusCode());
+        self::assertSame(409, $this->click('ItemPage', $forged, $signature, $handler)->getStatusCode());
+    }
+
+    public function testMappedRouteValueFindsTheEntity(): void
+    {
+        self::assertStringContainsString('>Ada: 0</button>', (string) $this->request('GET', '/scientists/1')->getContent());
+        self::assertStringContainsString('>Marie: 0</button>', (string) $this->request('GET', '/scientists/by-name/Marie')->getContent());
+    }
+
+    public function testRouteValueOfAnEntityThatDoesNotExistIsNotFound(): void
+    {
+        self::assertSame(404, $this->request('GET', '/scientists/9')->getStatusCode());
+    }
+
+    public function testNullableEntityGetsNull(): void
+    {
+        self::assertStringContainsString('<p id="maybe">Marie</p>', (string) $this->request('GET', '/maybe/2')->getContent());
+        self::assertStringContainsString('<p id="maybe">Nobody</p>', (string) $this->request('GET', '/maybe/9')->getContent());
+    }
+
+    public function testEventFindsTheEntityAgain(): void
+    {
+        [$state, $signature, $handler] = $this->page('/scientists/1');
+        self::assertSame(['scientist' => ['id' => '1']], json_decode($state, true)['_path'], 'the criteria, not the entity');
+
+        $response = $this->click('ScientistPage', $state, $signature, $handler);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('Ada: 1', json_decode((string) $response->getContent(), true)['streams']);
     }
 
     /** @return array{0: string, 1: string, 2: string} the state, its signature, and the click handler */
@@ -62,10 +90,10 @@ final class PathPageTest extends TestCase
         return [html_entity_decode($m[1]), $m[2], $h[1]];
     }
 
-    private function click(string $state, string $signature, string $handler): Response
+    private function click(string $page, string $state, string $signature, string $handler): Response
     {
         return $this->request('POST', '/_rhp/event', json_encode([
-            'page' => 'App\\Pages\\ItemPage',
+            'page' => 'App\\Pages\\'.$page,
             'state' => $state,
             'signature' => $signature,
             'handler' => $handler,

@@ -69,7 +69,7 @@ return static function (ContainerConfigurator $container): void {
             ->args([service('rephp.renderer'), service('rephp.state_codec'), service('twig'), service('rephp.prop_binder')])
         ->set('rephp.controller.event', EventController::class)
             ->public()
-            ->args([service('rephp.renderer'), service('rephp.state_codec'), service('rephp.manifest')])
+            ->args([service('rephp.renderer'), service('rephp.state_codec'), service('rephp.manifest'), service('rephp.prop_binder')])
         ->set('rephp.listener.source_map', SourceMapListener::class)
             ->args([service('rephp.manifest')])
             ->tag('kernel.event_listener', ['event' => 'kernel.exception', 'method' => 'onKernelException', 'priority' => 128])

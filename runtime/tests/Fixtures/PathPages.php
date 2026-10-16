@@ -7,6 +7,7 @@ namespace Rephp\Tests\Fixtures\PathPages;
 use Rephp\Attribute\Component;
 use Rephp\Attribute\Path;
 use Rephp\Attribute\State;
+use Rephp\Tests\Fixtures\Scientist;
 use Symfony\Component\Routing\Attribute\Route;
 
 // Pages for the tests of the #[Path] route values (plain PHP, not compiled by rhpc).
@@ -54,4 +55,37 @@ final class WithoutPath
 final class StatePath
 {
     #[Path, State] public int $id = 0;
+}
+
+#[Component]
+#[Route('/scientists/{id:scientist}')]
+final class EntityPath
+{
+    #[Path] public Scientist $scientist;
+}
+
+#[Route('/maybe/{scientist}')]
+function NullableEntity(#[Path] ?Scientist $scientist)
+{
+}
+
+#[Component]
+#[Route('/missing/{id:scientist}')]
+final class MappedToNothing
+{
+    #[Path] public int $id = 0;
+}
+
+#[Component]
+#[Route('/builtin/{slug:id}')]
+final class MappedToBuiltin
+{
+    #[Path] public int $id = 0;
+}
+
+#[Component]
+#[Route('/object/{at}')]
+final class ObjectPath
+{
+    #[Path] public \DateTimeImmutable $at;
 }

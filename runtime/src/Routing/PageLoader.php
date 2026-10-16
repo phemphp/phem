@@ -25,7 +25,8 @@ use Symfony\Component\Routing\RouteCollection;
  *
  * A route value (`{id}`, or a `defaults` key) goes to the #[Path] property or parameter with
  * the same name. A route value without one is an error. The keys that start with `_` are not
- * route values.
+ * route values. As for the Doctrine controller arguments, `{slug:post}` maps the value `slug`
+ * to the entity prop `post`.
  *
  * Import them in the application routes:
  *
@@ -82,16 +83,33 @@ final class PageLoader extends Loader
         return strtolower(str_replace('\\', '_', $page));
     }
 
-    /** Each route value needs a #[Path] property or parameter. */
+    /**
+     * Each route value needs a #[Path] property or parameter. A mapped value (`{slug:post}`)
+     * needs a #[Path] prop with an entity type.
+     */
     private function checkValues(Route $route, string $name, string $page): void
     {
         $paths = $this->props->pathProps($page);
+        $kind = class_exists($page, false) ? 'property' : 'parameter';
+        $mapping = (array) ($route->getDefault('_route_mapping') ?? []);
         foreach (array_unique([...$route->compile()->getVariables(), ...array_keys($route->getDefaults())]) as $value) {
-            if (str_starts_with($value, '_') || isset($paths[$value])) {
+            if (str_starts_with($value, '_')) {
                 continue;
             }
-            $kind = class_exists($page, false) ? 'property' : 'parameter';
-            throw new \InvalidArgumentException(\sprintf('The route "%s" has the value "%s", but the page "%s" has no #[Path] %s "%s". Add one, or remove the value from the route.', $name, $value, $page, $kind, $value));
+            if (isset($mapping[$value])) {
+                $prop = \is_array($mapping[$value]) ? $mapping[$value][0] : $mapping[$value];
+                if (!\array_key_exists($prop, $paths)) {
+                    throw new \InvalidArgumentException(\sprintf('The route "%s" maps the value "%s" to "%s", but the page "%s" has no #[Path] %s "%s".', $name, $value, $prop, $page, $kind, $prop));
+                }
+                $type = $paths[$prop];
+                if (!$type instanceof \ReflectionNamedType || $type->isBuiltin()) {
+                    throw new \InvalidArgumentException(\sprintf('The route "%s" maps the value "%s" to the #[Path] %s "%s" of the page "%s", but its type is not an entity class.', $name, $value, $kind, $prop, $page));
+                }
+                continue;
+            }
+            if (!\array_key_exists($value, $paths)) {
+                throw new \InvalidArgumentException(\sprintf('The route "%s" has the value "%s", but the page "%s" has no #[Path] %s "%s". Add one, or remove the value from the route.', $name, $value, $page, $kind, $value));
+            }
         }
     }
 

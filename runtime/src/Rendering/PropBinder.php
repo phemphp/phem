@@ -12,6 +12,9 @@ use Rephp\Html;
  * Binds props to the parameters of a function component or to the public properties of a
  * class component, with defaults and clear errors. It also reads and writes the #[State]
  * properties. It keeps the reflection data for the life of the service.
+ *
+ * A #[Path] prop with an entity class type gets the entity of its route value, from the
+ * EntityFinder (Doctrine ORM, when DoctrineBundle is installed).
  */
 final class PropBinder
 {
@@ -26,6 +29,10 @@ final class PropBinder
 
     /** @var array<string, array<string, ?\ReflectionType>> */
     private array $paths = [];
+
+    public function __construct(private readonly ?EntityFinder $entities = null)
+    {
+    }
 
     /**
      * Named arguments for a function component.
@@ -162,30 +169,22 @@ final class PropBinder
     /**
      * The props of a page from its route values: the values of the #[Path] properties or
      * parameters. A string goes to an `int`, `float` or `bool` type as a value of that type.
+     * An entity type gets the entity: an identifier goes to `find()`, and criteria
+     * (field => value, from `{slug:post}`) go to `findOneBy()`.
      *
      * @param array<string, mixed> $values the route values
      *
      * @return array<string, mixed>
      *
-     * @throws \UnexpectedValueException when a value does not match its type (`abc` for `int $id`)
+     * @throws \UnexpectedValueException when a value does not match its type (`abc` for `int $id`), or no entity matches it
      */
     public function pathValues(string $page, array $values): array
     {
         $out = [];
         foreach ($this->pathProps($page) as $name => $type) {
-            if (!\array_key_exists($name, $values)) {
-                continue;
+            if (\array_key_exists($name, $values)) {
+                $out[$name] = $this->pathValue($page, $name, $type, $values[$name]);
             }
-            $value = $values[$name];
-            if (\is_string($value) && $type instanceof \ReflectionNamedType && $type->isBuiltin()) {
-                $value = match ($type->getName()) {
-                    'int' => filter_var($value, \FILTER_VALIDATE_INT, \FILTER_NULL_ON_FAILURE),
-                    'float' => filter_var($value, \FILTER_VALIDATE_FLOAT, \FILTER_NULL_ON_FAILURE),
-                    'bool' => filter_var($value, \FILTER_VALIDATE_BOOL, \FILTER_NULL_ON_FAILURE),
-                    default => $value,
-                } ?? throw new \UnexpectedValueException(\sprintf('The route value "%s" of <%s> is not a valid %s: "%s".', $name, self::short($page), $type->getName(), $values[$name]));
-            }
-            $out[$name] = $value;
         }
 
         return $out;
@@ -221,6 +220,40 @@ final class PropBinder
     public static function short(string $fqcn): string
     {
         return substr(strrchr('\\'.$fqcn, '\\'), 1);
+    }
+
+    private function pathValue(string $page, string $name, ?\ReflectionType $type, mixed $value): mixed
+    {
+        if (!$type instanceof \ReflectionNamedType || \is_object($value)) {
+            return $value;
+        }
+        if (!$type->isBuiltin()) {
+            return $this->entity($page, $name, $type, $value);
+        }
+        if (!\is_string($value)) {
+            return $value;
+        }
+
+        return match ($type->getName()) {
+            'int' => filter_var($value, \FILTER_VALIDATE_INT, \FILTER_NULL_ON_FAILURE),
+            'float' => filter_var($value, \FILTER_VALIDATE_FLOAT, \FILTER_NULL_ON_FAILURE),
+            'bool' => filter_var($value, \FILTER_VALIDATE_BOOL, \FILTER_NULL_ON_FAILURE),
+            default => $value,
+        } ?? throw new \UnexpectedValueException(\sprintf('The route value "%s" of <%s> is not a valid %s: "%s".', $name, self::short($page), $type->getName(), $value));
+    }
+
+    private function entity(string $page, string $name, \ReflectionNamedType $type, mixed $value): ?object
+    {
+        $class = $type->getName();
+        if (null === $this->entities || !$this->entities->supports($class)) {
+            throw new PropError(\sprintf('The #[Path] prop "%s" of <%s> has the type %s, which is not a Doctrine entity. A #[Path] prop is an int, float, bool, string, or a Doctrine entity (install doctrine/orm and doctrine/doctrine-bundle).', $name, self::short($page), $class));
+        }
+        $entity = null !== $value ? $this->entities->find($class, $value) : null;
+        if (null === $entity && !$type->allowsNull()) {
+            throw new \UnexpectedValueException(\sprintf('No %s matches the route value "%s" of <%s>.', self::short($class), $name, self::short($page)));
+        }
+
+        return $entity;
     }
 
     /** @return array<string, array{optional: bool, default: mixed, hasDefault: bool, nullable: bool, variadic: bool}> */

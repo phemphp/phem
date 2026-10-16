@@ -79,14 +79,14 @@ final class Renderer implements ResetInterface
     }
 
     /**
-     * The state that the browser keeps. The `_props` key keeps the props of the page for the
-     * events (a fiber id starts with `rh`).
+     * The state that the browser keeps. The `_path` key keeps the route values of the page for
+     * the events (a fiber id starts with `rh`). The events find the entities again from them.
      *
      * @return array<string, mixed> fiber id => state, for the fibers of the last pass
      */
     public function exportState(Tree $tree): array
     {
-        $out = [] !== $tree->props ? ['_props' => $tree->props] : [];
+        $out = [] !== $tree->values ? ['_path' => $tree->values] : [];
         foreach ($tree->mounted() as $fiber) {
             if (null !== $fiber->instance && [] !== $state = $this->props->exportState($fiber->instance)) {
                 $out[$fiber->id] = $state;

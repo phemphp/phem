@@ -3,6 +3,7 @@
 namespace App\Pages;
 
 use Rephp\Attribute\{Component, Path, State};
+use Rephp\Tests\Fixtures\Scientist;
 use Symfony\Component\Routing\Attribute\Route;
 
 // A class page: the {id} route value goes to the #[Path] property.
@@ -29,4 +30,30 @@ final class ItemPage
 #[Route('/hello/{name}', defaults: ['name' => 'World'])]
 function Hello(#[Path] string $name) {
     return <p id="hello">Hello {{ name }}</p>;
+}
+
+// An entity page: {id:scientist} finds the scientist by its id, {name:scientist} by its name.
+#[Component]
+#[Route('/scientists/{id:scientist}')]
+#[Route('/scientists/by-name/{name:scientist}')]
+final class ScientistPage
+{
+    #[Path] public Scientist $scientist;
+    #[State] public int $likes = 0;
+
+    public function like(): void
+    {
+        ++$this->likes;
+    }
+
+    public function render()
+    {
+        return <button id="scientist" onClick={{ like }}>{{ scientist.name }}: {{ likes }}</button>;
+    }
+}
+
+// A nullable entity parameter: {scientist} finds the scientist by its id, or gives null.
+#[Route('/maybe/{scientist}')]
+function MaybeScientist(#[Path] ?Scientist $scientist) {
+    return <p id="maybe">{{ scientist ? scientist.name : 'Nobody' }}</p>;
 }

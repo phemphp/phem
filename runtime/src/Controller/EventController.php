@@ -6,6 +6,7 @@ namespace Rephp\Controller;
 
 use Rephp\Event;
 use Rephp\Manifest;
+use Rephp\Rendering\PropBinder;
 use Rephp\Rendering\Renderer;
 use Rephp\Rendering\Tree;
 use Rephp\StateCodec;
@@ -27,6 +28,7 @@ final class EventController
         private readonly Renderer $renderer,
         private readonly StateCodec $codec,
         private readonly Manifest $manifest,
+        private readonly PropBinder $props = new PropBinder(),
     ) {
     }
 
@@ -43,10 +45,16 @@ final class EventController
             return new JsonResponse(['reload' => true], 409);
         }
 
-        // The props of the page (its #[Path] route values) are in the signed state.
-        $props = \is_array($state['_props'] ?? null) ? $state['_props'] : [];
-        unset($state['_props']);
-        $tree = new Tree($page, $state, $props);
+        // The route values of the page are in the signed state. The entities come from them again.
+        $values = \is_array($state['_path'] ?? null) ? $state['_path'] : [];
+        unset($state['_path']);
+        try {
+            $props = $this->props->pathValues($page, $values);
+        } catch (\UnexpectedValueException) {
+            // An entity of the page is not there any more: the page shows a 404 response.
+            return new JsonResponse(['reload' => true], 409);
+        }
+        $tree = new Tree($page, $state, $props, $values);
         $this->renderer->render($tree);
         $event = Event::fromArray(\is_array($data['event'] ?? null) ? $data['event'] : [], $request);
         if (!$this->renderer->dispatch($tree, $data['handler'], $event)) {

@@ -17,7 +17,7 @@ my-app/
 ├── Caddyfile              FrankenPHP: public/index.php in worker mode, and the static files
 ├── bin/console
 ├── config/
-│   ├── bundles.php        FrameworkBundle, TwigBundle, RephpBundle (and DoctrineBundle for #[Transactional])
+│   ├── bundles.php        FrameworkBundle, TwigBundle, RephpBundle (and DoctrineBundle for #[Transactional] and #[Path] entities)
 │   ├── packages/rephp.yaml   optional: source_dir, build_dir, secret
 │   ├── routes/rephp.yaml     { resource: ., type: rephp }: the #[Route] attributes of the pages
 │   └── services.yaml      your services (for example repositories)

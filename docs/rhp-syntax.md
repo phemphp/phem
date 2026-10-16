@@ -54,33 +54,24 @@ class page, or a parameter of a function page. The name of the prop is the name 
 value.
 
 ```php
-use App\Repository\ScientistRepository;
 use Rephp\Attribute\{Component, Path};
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
-
-#[Route('/scientists/{id}', requirements: ['id' => '\d+'])]
-#[Component]
-final class ScientistPage
-{
-    #[Path] public int $id;
-
-    public function __construct(private readonly ScientistRepository $scientists)
-    {
-    }
-
-    public function render()
-    {
-        $scientist = $this->scientists->find($this->id)
-            ?? throw new NotFoundHttpException('No scientist with this id.');
-
-        return <h1>{{ scientist.name }}</h1>;
-    }
-}
 
 #[Route('/hello/{name}', defaults: ['name' => 'World'])]
 function Hello(#[Path] string $name) {
     return <p>Hello {{ name }}</p>;
+}
+
+#[Route('/items/{id}', requirements: ['id' => '\d+'])]
+#[Component]
+final class ItemPage
+{
+    #[Path] public int $id;
+
+    public function render()
+    {
+        return <h1>Item {{ id }}</h1>;
+    }
 }
 ```
 
@@ -89,12 +80,47 @@ function Hello(#[Path] string $name) {
 - Each route value needs a `#[Path]` prop. A route value without one is an error when Symfony
   loads the routes.
 - A prop without `#[Path]` gets no route value.
-- A string goes to an `int`, `float` or `bool` prop as a value of that type: `/scientists/3`
+- A string goes to an `int`, `float` or `bool` prop as a value of that type: `/items/3`
   gives `$id = 3`. A value that does not match the type gives a 404 response. Use
   `requirements` to reject it before.
 - The events of the page get the same route values. They go into the signed state of the page,
   so a client cannot change them.
 - A `#[Path]` property cannot be `#[State]`, and a `#[Path]` parameter cannot be variadic.
+
+### Entities from route values
+
+A `#[Path]` prop with a Doctrine entity type gets the entity. The rules are the same as for the
+entity arguments of a Symfony controller. Install `doctrine/orm` and `doctrine/doctrine-bundle`.
+
+```php
+use App\Model\Scientist;
+use Rephp\Attribute\{Component, Path};
+use Symfony\Component\Routing\Attribute\Route;
+
+#[Route('/scientists/{id:scientist}', requirements: ['id' => '\d+'])]
+#[Component]
+final class ScientistPage
+{
+    #[Path] public Scientist $scientist;
+
+    public function render()
+    {
+        return <h1>{{ scientist.name }}</h1>;
+    }
+}
+```
+
+- `{scientist}` (the name of the prop) finds the entity by its identifier: `find($value)`.
+- `{id:scientist}` maps the route value `id` to the prop `scientist`, and finds the entity by
+  the field `id`: `findOneBy(['id' => $value])`. `{slug:scientist}` finds it by the field
+  `slug`.
+- `{slug:post.title}` finds the `post` entity by the field `title`. Use more than one mapping
+  for more than one field: `/{year:post.year}/{slug:post.slug}`.
+- When no entity matches, the response is a 404. A nullable prop (`?Scientist`) gets `null`.
+- The signed state keeps the route values, not the entity. Each event finds the entity again.
+  When the entity is not there any more, the browser loads the page again.
+- A mapped route value needs a `#[Path]` prop with an entity type. Other class types are an
+  error.
 
 ## 2. Markup rules (the same as JSX)
 

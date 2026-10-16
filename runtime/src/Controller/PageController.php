@@ -17,7 +17,9 @@ use Twig\Environment;
  * Renders a page (server-side) in the `@Rephp/page.html.twig` document.
  *
  * The route loader gives each `#[Route]` of a page component a route with the `_rephp_page`
- * (component) attribute. The route values go to the #[Path] props of the page.
+ * (component) attribute. The route values go to the #[Path] props of the page. As for the
+ * Doctrine controller arguments, `{slug:post}` gives the `post` entity prop the criteria
+ * `['slug' => value]`, and `{name:post.title}` gives it `['title' => value]`.
  */
 final class PageController
 {
@@ -35,12 +37,13 @@ final class PageController
     public function __invoke(Request $request): Response
     {
         $page = (string) $request->attributes->get('_rephp_page');
+        $values = array_intersect_key(self::routeValues($request), $this->props->pathProps($page));
         try {
-            $props = $this->props->pathValues($page, (array) $request->attributes->get('_route_params', []));
+            $props = $this->props->pathValues($page, $values);
         } catch (\UnexpectedValueException $e) {
             throw new NotFoundHttpException($e->getMessage(), $e);
         }
-        $tree = new Tree($page, props: $props);
+        $tree = new Tree($page, props: $props, values: $values);
         $html = $this->renderer->render($tree);
         [$state, $signature] = $this->codec->encode($this->renderer->exportState($tree), $page);
 
@@ -59,5 +62,27 @@ final class PageController
             'signature' => $signature,
             'actions' => implode(' ', array_map(static fn (string $a): string => $a.'->rhp#dispatch', self::ACTIONS)),
         ]));
+    }
+
+    /**
+     * The route values by prop name. A mapped value (`{slug:post}`) goes into the criteria of
+     * its prop.
+     *
+     * @return array<string, mixed>
+     */
+    private static function routeValues(Request $request): array
+    {
+        $values = (array) $request->attributes->get('_route_params', []);
+        $criteria = [];
+        foreach ((array) $request->attributes->get('_route_mapping', []) as $parameter => $target) {
+            if (!\array_key_exists($parameter, $values)) {
+                continue;
+            }
+            [$prop, $field] = \is_array($target) ? $target : [$target, $parameter];
+            $criteria[$prop][$field] = $values[$parameter];
+            unset($values[$parameter]);
+        }
+
+        return $criteria + $values;
     }
 }
