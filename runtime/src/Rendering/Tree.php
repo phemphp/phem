@@ -22,6 +22,8 @@ final class Tree
     private array $stack = [];
     /** @var array<string, \Closure> */
     private array $handlers = [];
+    /** @var array<string, int> handler id => the number of handlers with this id */
+    private array $handlerCounts = [];
 
     /**
      * @param string                              $page  the page component, or '' for a tree without a page
@@ -43,6 +45,7 @@ final class Tree
         ++$this->pass;
         $this->rootIndex = 0;
         $this->handlers = [];
+        $this->handlerCounts = [];
     }
 
     /**
@@ -76,11 +79,16 @@ final class Tree
         array_pop($this->stack);
     }
 
-    /** Registers an event handler of the current fiber. Its id is stable between requests. */
-    public function addHandler(\Closure $handler): string
+    /**
+     * Registers an event handler of the current fiber. Its id is stable between requests: the
+     * fiber and the fingerprint of the handler (see HandlerFingerprint), not its position. Only
+     * handlers with the same fingerprint (the same method twice) get a number in their order.
+     */
+    public function addHandler(\Closure $handler, string $fingerprint): string
     {
-        $fiber = $this->top();
-        $id = null === $fiber ? 'x.'.\count($this->handlers) : $fiber->id.'.'.$fiber->handlerIndex++;
+        $base = ($this->top()?->id ?? 'x').'.'.$fingerprint;
+        $n = $this->handlerCounts[$base] = ($this->handlerCounts[$base] ?? 0) + 1;
+        $id = 1 === $n ? $base : $base.'~'.$n;
         $this->handlers[$id] = $handler;
 
         return $id;

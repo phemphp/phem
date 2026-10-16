@@ -6,6 +6,7 @@ namespace Rephp\Rendering;
 
 use Rephp\Binding\PropError;
 use Rephp\Event;
+use Rephp\Handler\HandlerFingerprint;
 use Rephp\Handler\HandlerInvoker;
 use Rephp\Html;
 use Rephp\Manifest\ComponentDefinition;
@@ -36,6 +37,7 @@ final class Renderer implements ResetInterface
         private readonly MarkupResolver $markup,
         private readonly iterable $renderers,
         private readonly HandlerInvoker $handlers = new HandlerInvoker(),
+        private readonly HandlerFingerprint $fingerprints = new HandlerFingerprint(),
     ) {
     }
 
@@ -88,7 +90,7 @@ final class Renderer implements ResetInterface
     /** Registers an event handler of the current fiber. Null outside a page. */
     public function addHandler(\Closure $handler): ?string
     {
-        return $this->tree?->addHandler($handler);
+        return $this->tree?->addHandler($handler, $this->fingerprints->of($handler));
     }
 
     // -------------------------------------------------------------------------------------

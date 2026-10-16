@@ -67,9 +67,9 @@ final class EventController
 
         $payload = EventPayload::fromRequest($request);
         $page = (string) $request->attributes->get('_rephp_page');
-        $data = $this->codec->decode($payload->state, $payload->signature, $page);
+        $data = $this->codec->decode($payload->state, $payload->signature, $page, $request);
         if (null === $data) {
-            // The state is not valid any more (a new build, or a new secret).
+            // The state is not valid any more (a new build, a new secret, too old, or another session).
             return self::reload();
         }
 
@@ -98,7 +98,7 @@ final class EventController
             return new JsonResponse(['redirect' => self::redirectUrl($result)]);
         }
         $this->renderer->render($tree);
-        [$json, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page);
+        [$json, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page, $request);
 
         return new JsonResponse(['streams' => $this->streams->updates($tree->changedFibers()), 'state' => $json, 'signature' => $signature]);
     }

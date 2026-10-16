@@ -11,6 +11,7 @@ use Rephp\Controller\EventController;
 use Rephp\Controller\PageController;
 use Rephp\EventListener\PageAttributesListener;
 use Rephp\EventListener\SourceMapListener;
+use Rephp\Handler\HandlerFingerprint;
 use Rephp\Handler\HandlerInvoker;
 use Rephp\Handler\TransactionalMiddleware;
 use Rephp\Http\TurboStreams;
@@ -52,7 +53,7 @@ return static function (ContainerConfigurator $container): void {
         ->set('rephp.state_accessor', StateAccessor::class)
             ->args([service('rephp.metadata')])
         ->set('rephp.state_codec', StateCodec::class)
-            ->args([abstract_arg('secret, set by RephpBundle')])
+            ->args([abstract_arg('secret, set by RephpBundle'), 86400, false])
         ->alias(StateCodec::class, 'rephp.state_codec')
 
         // Path values: the converters of the #[Path] props
@@ -65,6 +66,8 @@ return static function (ContainerConfigurator $container): void {
             ->tag('rephp.path_converter', ['priority' => -100])
 
         // Event handlers: the middleware around them
+        ->set('rephp.handler_fingerprint', HandlerFingerprint::class)
+            ->args([service('rephp.object_identifier')->nullOnInvalid()])
         ->set('rephp.handler_invoker', HandlerInvoker::class)
             ->args([tagged_iterator('rephp.handler_middleware')])
         ->set('rephp.handler_middleware.transactional', TransactionalMiddleware::class)
@@ -90,6 +93,7 @@ return static function (ContainerConfigurator $container): void {
                 service('rephp.markup_resolver'),
                 tagged_iterator('rephp.component_renderer'),
                 service('rephp.handler_invoker'),
+                service('rephp.handler_fingerprint'),
             ])
             ->tag('kernel.reset', ['method' => 'reset'])
         ->alias(Renderer::class, 'rephp.renderer')

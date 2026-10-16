@@ -232,6 +232,12 @@ Supported events: `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`,
 `$e->value`, `$e->checked`, `$e->key`, `$e->form` (an array, for `onSubmit`), and `$e->request`.
 `onChange` on a text input fires on each key (as in React).
 
+The id of a handler comes from the handler (its method or closure, and the values that it
+captures, such as `fn () => $this->remove($scientist)`), not from its position. When the data
+changes before a click (another user removes a row), a click never runs the handler of
+another row: the page reloads when its handler is not there any more. A captured Doctrine
+entity counts by its identifier.
+
 An event is a `POST` request to the URL of the page, with the `X-Rhp-Event` header. Thus the
 access rules of the page apply to its events too: `access_control`, the firewall, and the host
 and condition of the `#[Route]`. The controller attributes of Symfony (`#[IsGranted]`, `#[Cache]`)
@@ -328,6 +334,13 @@ final class Counter
   state, runs the handler, renders again, and sends back Turbo Streams that morph only the
   components that changed.
 - State values must be JSON values (scalars and arrays).
+- The state is UI state, not trusted data. The signature stops a forged state, but the browser
+  can send back any state that the server signed for the page before: an older state (so a
+  user can undo a change), or the state of another visitor. Keep limits (tries, votes) and
+  security decisions in the database or the session, not in `#[State]`. Two options make the
+  window smaller: a signed state is valid for `rephp.state_max_age` seconds (default 86400; 0
+  for no limit), and `rephp.state_bind_session: true` makes it valid only in its session (a
+  login then reloads the open pages on their next event). An invalid state reloads the page.
 
 rephp has no Hooks. A call to `Rephp\useState` (or `useReducer`, `useRef`, `useMemo`,
 `useCallback`, `useId`, `useContext`) is the compiler error E020.

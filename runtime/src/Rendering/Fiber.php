@@ -32,7 +32,6 @@ final class Fiber
     public array $children = [];
     /** @var array<string, int> */
     private array $childIndexes = [];
-    public int $handlerIndex = 0;
 
     public int $pass = 0;
     /** The inner HTML of the last render. */
@@ -59,7 +58,6 @@ final class Fiber
     public function begin(int $pass): void
     {
         $this->pass = $pass;
-        $this->handlerIndex = 0;
         $this->children = [];
         $this->childIndexes = [];
     }

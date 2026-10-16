@@ -22,6 +22,8 @@ use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
  *         source_dir: '%kernel.project_dir%/src'
  *         build_dir: '%kernel.project_dir%/var/cache/rhp'
  *         secret: '%kernel.secret%'
+ *         state_max_age: 86400       # seconds; 0 for no limit
+ *         state_bind_session: false
  *
  *     # config/routes/rephp.yaml
  *     rephp:
@@ -31,7 +33,9 @@ use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
  * Extension points (autoconfigured services):
  *
  * - a Rephp\Path\PathValueConverter converts the route values of other #[Path] prop types;
- * - a Rephp\Handler\HandlerMiddleware runs code around the event handlers.
+ * - a Rephp\Handler\HandlerMiddleware runs code around the event handlers;
+ * - the `rephp.object_identifier` service (a Rephp\Handler\ObjectIdentifier) identifies the
+ *   objects that the handlers capture (Doctrine entities, when DoctrineBundle is installed).
  */
 final class RephpBundle extends AbstractBundle
 {
@@ -53,11 +57,20 @@ final class RephpBundle extends AbstractBundle
                     ->info('The key that signs the component state in the browser')
                     ->defaultValue('%kernel.secret%')
                 ->end()
+                ->integerNode('state_max_age')
+                    ->info('The seconds that a signed state is valid (0 for no limit). An older state reloads the page.')
+                    ->defaultValue(86400)
+                    ->min(0)
+                ->end()
+                ->booleanNode('state_bind_session')
+                    ->info('Sign the session id with the state, so the state of a session is not valid in another session. A login makes the open pages reload on their next event.')
+                    ->defaultFalse()
+                ->end()
             ->end();
     }
 
     /** 
-     * @param array{source_dir: string, build_dir: string, secret: string} $config 
+     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool} $config 
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
@@ -65,7 +78,10 @@ final class RephpBundle extends AbstractBundle
             ->set('rephp.source_dir', $config['source_dir'])
             ->set('rephp.build_dir', $config['build_dir']);
         $container->import('../config/services.php');
-        $container->services()->get('rephp.state_codec')->arg(0, $config['secret']);
+        $container->services()->get('rephp.state_codec')
+            ->arg(0, $config['secret'])
+            ->arg(1, $config['state_max_age'])
+            ->arg(2, $config['state_bind_session']);
 
         if (isset($builder->getParameter('kernel.bundles')['DoctrineBundle']) && interface_exists(EntityManagerInterface::class)) {
             $container->import('../config/doctrine.php');

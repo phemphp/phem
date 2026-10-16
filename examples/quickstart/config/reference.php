@@ -928,6 +928,8 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     source_dir?: scalar|Param|null, // The .rhp sources (the directory that you pass to `rhpc build`) // Default: "%kernel.project_dir%/src"
  *     build_dir?: scalar|Param|null, // The rhpc output (`rhpc build --out`) // Default: "%kernel.project_dir%/var/cache/rhp"
  *     secret?: scalar|Param|null, // The key that signs the component state in the browser // Default: "%kernel.secret%"
+ *     state_max_age?: int|Param, // The seconds that a signed state is valid (0 for no limit). An older state reloads the page. // Default: 86400
+ *     state_bind_session?: bool|Param, // Sign the session id with the state, so the state of a session is not valid in another session. A login makes the open pages reload on their next event. // Default: false
  * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,

@@ -47,7 +47,7 @@ final class PageController
         }
         $tree = new Tree($page, props: $props, values: $values);
         [$title, $html] = Title::extract($this->renderer->render($tree));
-        [$state, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page);
+        [$state, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page, $request);
 
         return new Response($this->twig->render('@Rephp/page.html.twig', [
             'title' => $title ?? 'rephp',

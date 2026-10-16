@@ -1,0 +1,29 @@
+<?php
+
+namespace App\Pages;
+
+use Rephp\Attribute\Component;
+use Rephp\Tests\Fixtures\{Rows, Scientist};
+use Symfony\Component\Routing\Attribute\Route;
+
+// One component with a handler for each row: a closure that captures the row.
+#[Component]
+#[Route('/rows')]
+final class RowsPage
+{
+    public function remove(Scientist $scientist): void
+    {
+        Rows::remove($scientist->id);
+    }
+
+    public function render()
+    {
+        $items = [];
+        foreach (Rows::$scientists as $scientist) {
+            $remove = fn () => $this->remove($scientist);
+            $items[] = <li key={{ scientist.id }}>{{ scientist.name }} <button onClick={{ remove }}>Remove</button></li>;
+        }
+
+        return <ul id="rows">{{ items }}</ul>;
+    }
+}
