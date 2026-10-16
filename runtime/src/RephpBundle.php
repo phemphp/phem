@@ -6,15 +6,13 @@ namespace Rephp;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Rephp\DependencyInjection\ComponentPass;
-use Rephp\Doctrine\DoctrineEntityFinder;
-use Rephp\Doctrine\DoctrineTransactionRunner;
+use Rephp\Handler\HandlerMiddleware;
+use Rephp\Path\PathValueConverter;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
-
-use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 
 /**
  * Integrates `.rhp` components in a Symfony application.
@@ -29,6 +27,11 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
  *     rephp:
  *         resource: .
  *         type: rephp
+ *
+ * Extension points (autoconfigured services):
+ *
+ * - a Rephp\Path\PathValueConverter converts the route values of other #[Path] prop types;
+ * - a Rephp\Handler\HandlerMiddleware runs code around the event handlers.
  */
 final class RephpBundle extends AbstractBundle
 {
@@ -64,23 +67,15 @@ final class RephpBundle extends AbstractBundle
         $container->import('../config/services.php');
         $container->services()->get('rephp.state_codec')->arg(0, $config['secret']);
 
-        // The handlers of #[Transactional] components run in a Doctrine ORM transaction, and
-        // the #[Path] props with an entity type get their entity.
         if (isset($builder->getParameter('kernel.bundles')['DoctrineBundle']) && interface_exists(EntityManagerInterface::class)) {
-            $container->services()
-                ->set('rephp.transaction_runner', DoctrineTransactionRunner::class)
-                    ->args([service('doctrine')])
-                ->get('rephp.renderer')
-                    ->arg(4, service('rephp.transaction_runner'))
-                ->set('rephp.entity_finder', DoctrineEntityFinder::class)
-                    ->args([service('doctrine')])
-                ->get('rephp.prop_binder')
-                    ->arg(0, service('rephp.entity_finder'));
+            $container->import('../config/doctrine.php');
         }
     }
 
     public function build(ContainerBuilder $container): void
     {
+        $container->registerForAutoconfiguration(PathValueConverter::class)->addTag('rephp.path_converter');
+        $container->registerForAutoconfiguration(HandlerMiddleware::class)->addTag('rephp.handler_middleware');
         // Before the autoconfiguration passes, so the component services are autoconfigured.
         $container->addCompilerPass(new ComponentPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 200);
     }

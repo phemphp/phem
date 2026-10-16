@@ -7,14 +7,10 @@ namespace Rephp\Tests\Runtime;
 use PHPUnit\Framework\TestCase;
 use Rephp\Attribute\Transactional;
 use Rephp\Event;
-use Rephp\Manifest;
-use Rephp\Rendering\Renderer;
-use Rephp\Rendering\TransactionRunner;
-use Rephp\Rendering\Tree;
-use Symfony\Component\DependencyInjection\ServiceLocator;
+use Rephp\Handler\HandlerInvoker;
+use Rephp\Handler\TransactionalMiddleware;
+use Rephp\Handler\TransactionRunner;
 use Symfony\Component\HttpFoundation\RedirectResponse;
-use Twig\Environment;
-use Twig\Loader\ArrayLoader;
 
 final class TransactionalTest extends TestCase
 {
@@ -28,7 +24,7 @@ final class TransactionalTest extends TestCase
 
     public function testHandlerOfATransactionalComponentRunsInATransaction(): void
     {
-        self::assertTrue($this->dispatch(new TransactionalComponent($this->log)->add(...)));
+        $this->dispatch(new TransactionalComponent($this->log)->add(...));
         self::assertSame(['begin', 'add', 'commit'], $this->log->getArrayCopy());
     }
 
@@ -56,12 +52,12 @@ final class TransactionalTest extends TestCase
         self::assertSame(['begin', 'fail', 'rollback'], $this->log->getArrayCopy());
     }
 
-    public function testRedirectOfATransactionalHandlerGoesToTheTree(): void
+    public function testResultOfATransactionalHandlerComesBack(): void
     {
-        $tree = new Tree();
-        $this->dispatch(new TransactionalComponent($this->log)->leave(...), tree: $tree);
+        $result = $this->dispatch(new TransactionalComponent($this->log)->leave(...));
         self::assertSame(['begin', 'leave', 'commit'], $this->log->getArrayCopy());
-        self::assertSame('/done', $tree->redirect);
+        self::assertInstanceOf(RedirectResponse::class, $result);
+        self::assertSame('/done', $result->getTargetUrl());
     }
 
     public function testTransactionalComponentNeedsARunner(): void
@@ -72,13 +68,11 @@ final class TransactionalTest extends TestCase
         $this->dispatch(new TransactionalComponent($this->log)->add(...), withRunner: false);
     }
 
-    private function dispatch(\Closure $handler, bool $withRunner = true, Tree $tree = new Tree()): bool
+    private function dispatch(\Closure $handler, bool $withRunner = true): mixed
     {
         $runner = $withRunner ? new RecordingRunner($this->log) : null;
-        $renderer = new Renderer(new Environment(new ArrayLoader()), new Manifest('/nonexistent', '/nonexistent'), new ServiceLocator([]), transactions: $runner);
-        $id = $tree->addHandler($handler);
 
-        return $renderer->dispatch($tree, $id, new Event('click'));
+        return new HandlerInvoker([new TransactionalMiddleware($runner)])->invoke($handler, new Event('click'));
     }
 }
 

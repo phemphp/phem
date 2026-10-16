@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp;
+namespace Rephp\State;
 
 /**
  * Signs the state that the browser keeps, so a client cannot forge it. A signature is valid

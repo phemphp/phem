@@ -6,7 +6,8 @@ namespace Rephp\Tests\Runtime;
 
 use PHPUnit\Framework\TestCase;
 use Rephp\EventListener\SourceMapListener;
-use Rephp\Manifest;
+use Rephp\Manifest\Manifest;
+use Rephp\Manifest\SourceMap;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 use Twig\Error\RuntimeError;
@@ -183,7 +184,7 @@ final class AppTest extends TestCase
         $manifest = $this->fixtureKernel()->getContainer()->get('rephp.manifest');
         $error = new \RuntimeException('outer', 0, new RuntimeError('Boom.', 3, new Source('', '@rhp/pages/index.6.twig')));
 
-        (new SourceMapListener($manifest))->map($error);
+        (new SourceMapListener(new SourceMap($manifest)))->map($error);
 
         $twigError = $error->getPrevious();
         self::assertSame('src/pages/index.rhp', $twigError->getSourceContext()->getName());

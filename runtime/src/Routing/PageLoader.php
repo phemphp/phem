@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Rephp\Routing;
 
-use Rephp\Manifest;
-use Rephp\Rendering\PropBinder;
+use Rephp\Manifest\Manifest;
+use Rephp\Metadata\ComponentMetadata;
 use Symfony\Component\Config\Loader\Loader;
 use Symfony\Component\Config\Resource\FileExistenceResource;
 use Symfony\Component\Config\Resource\FileResource;
@@ -41,7 +41,7 @@ final class PageLoader extends Loader
     public function __construct(
         private readonly Manifest $manifest,
         ?string $env = null,
-        private readonly PropBinder $props = new PropBinder(),
+        private readonly ComponentMetadata $metadata = new ComponentMetadata(),
     ) {
         parent::__construct($env);
     }
@@ -89,7 +89,7 @@ final class PageLoader extends Loader
      */
     private function checkValues(Route $route, string $name, string $page): void
     {
-        $paths = $this->props->pathProps($page);
+        $paths = $this->metadata->pathProps($page);
         $kind = class_exists($page, false) ? 'property' : 'parameter';
         $mapping = (array) ($route->getDefault('_route_mapping') ?? []);
         foreach (array_unique([...$route->compile()->getVariables(), ...array_keys($route->getDefaults())]) as $value) {

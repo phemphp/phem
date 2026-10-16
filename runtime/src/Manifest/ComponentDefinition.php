@@ -1,0 +1,36 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Rephp\Manifest;
+
+/**
+ * The definition of a component in the rhpc manifest.
+ */
+final class ComponentDefinition
+{
+    /**
+     * @param string|null  $template the template name of a template component, without the Twig namespace
+     * @param list<string> $slots    the slot names (`children` and the named slots)
+     */
+    public function __construct(
+        public readonly string $fqcn,
+        public readonly ComponentKind $kind,
+        public readonly ?string $template = null,
+        public readonly array $slots = [],
+    ) {
+    }
+
+    /** @param array<string, mixed> $data an entry of the `components` list of the manifest */
+    public static function fromArray(string $fqcn, array $data): self
+    {
+        $kind = (string) ($data['kind'] ?? '');
+
+        return new self(
+            $fqcn,
+            ComponentKind::tryFrom($kind) ?? throw new \UnexpectedValueException(\sprintf('The component "%s" has the unknown kind "%s". Use the same version of rhpc and rephp/runtime.', $fqcn, $kind)),
+            isset($data['template']) ? (string) $data['template'] : null,
+            array_values($data['slots'] ?? []),
+        );
+    }
+}

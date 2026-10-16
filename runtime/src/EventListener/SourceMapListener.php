@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Rephp\EventListener;
 
-use Rephp\Manifest;
+use Rephp\Manifest\SourceMap;
 use Symfony\Component\Console\Event\ConsoleErrorEvent;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Twig\Error\Error as TwigError;
@@ -16,7 +16,7 @@ use Twig\Source;
  */
 final class SourceMapListener
 {
-    public function __construct(private readonly Manifest $manifest)
+    public function __construct(private readonly SourceMap $sourceMap)
     {
     }
 
@@ -32,12 +32,9 @@ final class SourceMapListener
 
     public function map(\Throwable $error): void
     {
-        if (!$this->manifest->exists()) {
-            return;
-        }
         for ($e = $error; null !== $e; $e = $e->getPrevious()) {
             $source = $e instanceof TwigError ? $e->getSourceContext() : null;
-            $location = null !== $source ? $this->manifest->location($source->getName(), $e->getTemplateLine()) : null;
+            $location = null !== $source ? $this->sourceMap->location($source->getName(), $e->getTemplateLine()) : null;
             if (null !== $location) {
                 $e->setSourceContext(new Source('', $location['file'], $location['path']));
                 $e->setTemplateLine($location['line']);

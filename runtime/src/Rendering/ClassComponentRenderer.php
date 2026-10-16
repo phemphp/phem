@@ -1,0 +1,48 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Rephp\Rendering;
+
+use Rephp\Binding\PropBinder;
+use Rephp\Manifest\ComponentDefinition;
+use Rephp\Manifest\ComponentKind;
+use Rephp\State\StateAccessor;
+
+/**
+ * Renders a class component. The first time a fiber renders in a request, the factory makes its
+ * instance, and the props go into it. Then the state that the browser sent back is restored;
+ * without one, `mount()` initializes it. Each render writes the props again and calls `render()`.
+ */
+final class ClassComponentRenderer implements ComponentRenderer
+{
+    public function __construct(
+        private readonly ComponentFactory $factory,
+        private readonly PropBinder $props = new PropBinder(),
+        private readonly StateAccessor $state = new StateAccessor(),
+    ) {
+    }
+
+    public function supports(ComponentDefinition $definition): bool
+    {
+        return ComponentKind::ClassComponent === $definition->kind;
+    }
+
+    public function render(Fiber $fiber, array $slots): mixed
+    {
+        $component = $fiber->instance;
+        if (null === $component) {
+            $component = $fiber->instance = $this->factory->create($fiber->fqcn);
+            $this->props->assign($component, $fiber->props, $slots);
+            if (null !== $fiber->restored) {
+                $this->state->restore($component, $fiber->restored);
+            } elseif (method_exists($component, 'mount')) {
+                $component->mount();
+            }
+        } else {
+            $this->props->assign($component, $fiber->props, $slots);
+        }
+
+        return $component->render();
+    }
+}

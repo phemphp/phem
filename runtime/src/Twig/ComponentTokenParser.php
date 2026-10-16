@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Rephp\Twig;
 
-use Rephp\Manifest;
+use Rephp\Manifest\ComponentKind;
+use Rephp\Manifest\Manifest;
 use Twig\Error\SyntaxError;
 use Twig\Node\Node;
 use Twig\Token;
@@ -47,8 +48,8 @@ final class ComponentTokenParser extends AbstractTokenParser
         $stream->nextIf(Token::NAME_TYPE, 'only');
         $stream->expect(Token::BLOCK_END_TYPE);
 
-        $kind = (string) $def['kind'];
-        $template = 'template' === $kind ? Manifest::templateName((string) $def['template']) : null;
+        $kind = $def->kind->value;
+        $template = ComponentKind::TemplateComponent === $def->kind ? Manifest::templateName((string) $def->template) : null;
         if (!$embed) {
             return new ComponentIncludeNode($fqcn, $kind, $template, $variables, $key, $line);
         }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Rephp\Tests\Runtime;
 
 use PHPUnit\Framework\TestCase;
-use Rephp\Manifest;
+use Rephp\Manifest\Manifest;
 use Rephp\Twig\CacheKeyLoader;
 use Twig\Loader\ArrayLoader;
 

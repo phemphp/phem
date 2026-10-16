@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Rephp\Tests\Fixtures;
 
-use Rephp\Rendering\EntityFinder;
+use Rephp\Path\EntityFinder;
 
 /** Finds the Scientist entities in memory, as Doctrine does: by identifier, or by criteria. */
 final class ScientistFinder implements EntityFinder

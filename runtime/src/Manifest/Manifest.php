@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp;
+namespace Rephp\Manifest;
 
 /**
  * The output of `rhpc build`: the components, the pages, and the template line map.
@@ -18,6 +18,8 @@ final class Manifest
     /** @var array<string, mixed>|null */
     private ?array $data = null;
     private ?string $twigSignature = null;
+    /** @var array<string, ComponentDefinition|null> */
+    private array $definitions = [];
 
     public function __construct(
         private readonly string $buildDir,
@@ -45,10 +47,23 @@ final class Manifest
         return is_file($this->file());
     }
 
-    /** @return array<string, mixed>|null the definition of a component (kind, props, slots, template) */
-    public function component(string $fqcn): ?array
+    public function component(string $fqcn): ?ComponentDefinition
     {
-        return $this->data()['components'][ltrim($fqcn, '\\')] ?? null;
+        $fqcn = ltrim($fqcn, '\\');
+        if (\array_key_exists($fqcn, $this->definitions)) {
+            return $this->definitions[$fqcn];
+        }
+        $data = $this->data()['components'][$fqcn] ?? null;
+
+        return $this->definitions[$fqcn] = null !== $data ? ComponentDefinition::fromArray($fqcn, $data) : null;
+    }
+
+    /** @return iterable<ComponentDefinition> */
+    public function components(): iterable
+    {
+        foreach (array_keys($this->data()['components'] ?? []) as $fqcn) {
+            yield $this->component($fqcn);
+        }
     }
 
     /** @return list<string> the page components: the components with a `#[Route]` attribute */
@@ -91,26 +106,15 @@ final class Manifest
     }
 
     /**
-     * The `.rhp` source and line of a line in a compiled template.
+     * The `.rhp` source of a compiled template.
      *
-     * @return array{file: string, path: string, line: int}|null
+     * @param string $template the template name, without the Twig namespace
+     *
+     * @return array{source: string, line: int}|null
      */
-    public function location(string $twigName, int $templateLine): ?array
+    public function template(string $template): ?array
     {
-        $prefix = '@'.self::TEMPLATE_NAMESPACE.'/';
-        if (!str_starts_with($twigName, $prefix)) {
-            return null;
-        }
-        $tpl = $this->data()['templates'][substr($twigName, \strlen($prefix))] ?? null;
-        if (null === $tpl) {
-            return null;
-        }
-
-        return [
-            'file' => 'src/'.$tpl['source'],
-            'path' => $this->sourceDir.'/'.$tpl['source'],
-            'line' => $tpl['line'] + max(0, $templateLine - 1),
-        ];
+        return $this->data()['templates'][$template] ?? null;
     }
 
     /** @return list<string> the absolute paths of the compiled PHP files */

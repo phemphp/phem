@@ -6,7 +6,7 @@ namespace Rephp\Doctrine;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
-use Rephp\Rendering\TransactionRunner;
+use Rephp\Handler\TransactionRunner;
 
 /**
  * Runs a handler in a transaction of the default entity manager. `wrapInTransaction()` flushes

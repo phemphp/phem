@@ -7,7 +7,7 @@ namespace Rephp\Doctrine;
 use Doctrine\DBAL\Types\ConversionException;
 use Doctrine\ORM\NoResultException;
 use Doctrine\Persistence\ManagerRegistry;
-use Rephp\Rendering\EntityFinder;
+use Rephp\Path\EntityFinder;
 
 /**
  * Finds the entities of the `#[Path]` props with the entity manager of their class, as the

@@ -4,29 +4,22 @@ declare(strict_types=1);
 
 namespace Rephp\Rendering;
 
-use Psr\Container\ContainerInterface;
-use Rephp\Attribute\Transactional;
-use Rephp\Element;
+use Rephp\Binding\PropError;
 use Rephp\Event;
+use Rephp\Handler\HandlerInvoker;
 use Rephp\Html;
-use Rephp\HtmlList;
-use Rephp\Manifest;
+use Rephp\Manifest\ComponentDefinition;
+use Rephp\Manifest\Manifest;
 use Rephp\Slot;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Contracts\Service\ResetInterface;
-use Twig\Environment;
 use Twig\Template;
 
 /**
  * Renders component trees.
  *
- * Class components are services: the container makes a new instance for each fiber (the
- * constructor gets the dependencies), then the Renderer writes the props, restores the state
- * or calls `mount()`, and calls `render()`. Function components are called with their props.
- * Template components render as plain Twig.
- *
- * The event handlers of a `#[Transactional]` component run in a transaction of the
- * TransactionRunner (Doctrine ORM, when DoctrineBundle is installed).
+ * The Renderer keeps the fibers: their ids, their props and slots, and the HTML of each pass.
+ * A ComponentRenderer renders the body of each kind of component (class or function). The
+ * template components render as plain Twig (TemplateComponentRenderer), with no fiber.
  *
  * While a tree renders, it is the current tree of the Renderer: the compiled templates call
  * back into it (through the Twig runtime) for nested components and event handlers.
@@ -36,14 +29,13 @@ final class Renderer implements ResetInterface
     private ?Tree $tree = null;
 
     /**
-     * @param ContainerInterface $components class component FQCN => service (not shared)
+     * @param iterable<ComponentRenderer> $renderers
      */
     public function __construct(
-        private readonly Environment $twig,
         private readonly Manifest $manifest,
-        private readonly ContainerInterface $components,
-        private readonly PropBinder $props = new PropBinder(),
-        private readonly ?TransactionRunner $transactions = null,
+        private readonly MarkupResolver $markup,
+        private readonly iterable $renderers,
+        private readonly HandlerInvoker $handlers = new HandlerInvoker(),
     ) {
     }
 
@@ -58,60 +50,13 @@ final class Renderer implements ResetInterface
     }
 
     /**
-     * Runs an event handler of the last pass. When the handler returns a RedirectResponse,
-     * its URL goes to `$tree->redirect`.
+     * Runs an event handler of the last pass (see Tree::handler()) through the handler middleware.
      *
-     * @return bool false when the tree has no handler with this id
+     * @return mixed the result of the handler (for example a RedirectResponse)
      */
-    public function dispatch(Tree $tree, string $handlerId, Event $event): bool
+    public function dispatch(Tree $tree, \Closure $handler, Event $event): mixed
     {
-        $handler = $tree->handler($handlerId);
-        if (null === $handler) {
-            return false;
-        }
-        $call = static fn (): mixed => $handler($event);
-        $result = $this->within($tree, self::isTransactional($handler) ? fn (): mixed => $this->transactions()->run($call) : $call);
-        if ($result instanceof RedirectResponse) {
-            $tree->redirect = $result->getTargetUrl();
-        }
-
-        return true;
-    }
-
-    /**
-     * The state that the browser keeps. The `_path` key keeps the route values of the page for
-     * the events (a fiber id starts with `rh`). The events find the entities again from them.
-     *
-     * @return array<string, mixed> fiber id => state, for the fibers of the last pass
-     */
-    public function exportState(Tree $tree): array
-    {
-        $out = [] !== $tree->values ? ['_path' => $tree->values] : [];
-        foreach ($tree->mounted() as $fiber) {
-            if (null !== $fiber->instance && [] !== $state = $this->props->exportState($fiber->instance)) {
-                $out[$fiber->id] = $state;
-            }
-        }
-
-        return $out;
-    }
-
-    /**
-     * Renders markup values: an Element becomes Html, and a list of markup becomes an HtmlList.
-     * Other values do not change.
-     */
-    public function resolve(mixed $value): mixed
-    {
-        if ($value instanceof Element) {
-            return new Html($this->twig->render(Manifest::templateName($value->template), array_map($this->resolve(...), $value->vars)));
-        }
-        if (\is_array($value)) {
-            $value = array_map($this->resolve(...), $value);
-
-            return HtmlList::accepts($value) ? new HtmlList($value) : $value;
-        }
-
-        return $value;
+        return $this->within($tree, fn (): mixed => $this->handlers->invoke($handler, $event));
     }
 
     public function reset(): void
@@ -138,21 +83,6 @@ final class Renderer implements ResetInterface
         }
 
         return $this->renderComponent($this->tree, $fqcn, $props, $key, $slots, $caller);
-    }
-
-    /**
-     * Renders a template component: plain Twig, no fiber.
-     *
-     * @param array<string, mixed> $props
-     * @param array<string, mixed> $caller
-     */
-    public function template(Template $template, string $fqcn, array $props, mixed $key, array $caller): string
-    {
-        $vars = $this->props->templateContext($fqcn, $props);
-        $vars['_rhp_caller'] = $caller;
-        $html = $template->render($vars);
-
-        return null === $key ? $html : self::withKey($html, (string) $key);
     }
 
     /** Registers an event handler of the current fiber. Null outside a page. */
@@ -188,11 +118,12 @@ final class Renderer implements ResetInterface
     private function renderComponent(Tree $tree, string $fqcn, array $props, mixed $key, ?Template $slots, array $caller): string
     {
         $def = $this->manifest->component($fqcn) ?? throw new PropError(\sprintf('Unknown component "%s".', $fqcn));
+        $renderer = $this->renderer($def);
         $parent = $tree->top();
-        $index = null !== $key ? '@'.$key : '#'.(null !== $parent ? $parent->nextIndex($fqcn) : $tree->rootIndex++);
+        $index = null !== $key ? '@'.$key : '#'.(null !== $parent ? $parent->nextIndex($fqcn) : $tree->nextRootIndex());
         $path = ($parent?->path ?? '').'/'.$fqcn.$index;
         $id = Fiber::idOf($path);
-        $fiber = $tree->fibers[$id] ??= new Fiber($id, $path, $fqcn, (string) $def['kind'], $tree->restored($id));
+        $fiber = $tree->fiber($id, static fn (?array $restored): Fiber => new Fiber($id, $path, $fqcn, $restored));
         $fiber->parent = $parent;
         $fiber->props = $props;
         $fiber->slots = $slots;
@@ -201,11 +132,8 @@ final class Renderer implements ResetInterface
         $fiber->begin($tree->pass);
         $tree->push($fiber);
         try {
-            $slotValues = $this->slots($fiber, $def['slots'] ?? []);
-            $out = 'class' === $fiber->kind
-                ? $this->renderClass($fiber, $slotValues)
-                : $fqcn(...$this->props->arguments($fqcn, $props, $slotValues));
-            $html = (string) ($this->resolve($out) ?? '');
+            $out = $renderer->render($fiber, $this->slots($fiber, $def->slots));
+            $html = (string) ($this->markup->resolve($out) ?? '');
         } finally {
             $tree->pop();
         }
@@ -221,6 +149,17 @@ final class Renderer implements ResetInterface
         }
 
         return $fiber->wrapped();
+    }
+
+    private function renderer(ComponentDefinition $definition): ComponentRenderer
+    {
+        foreach ($this->renderers as $renderer) {
+            if ($renderer->supports($definition)) {
+                return $renderer;
+            }
+        }
+
+        throw new \LogicException(\sprintf('No component renderer renders the %s component "%s".', $definition->kind->value, $definition->fqcn));
     }
 
     /**
@@ -244,62 +183,5 @@ final class Renderer implements ResetInterface
         }
 
         return $out;
-    }
-
-    /**
-     * The first time a fiber renders in a request, the container makes its instance. Then the
-     * state that the browser sent back is restored; without one, `mount()` initializes it.
-     *
-     * @param array<string, Html> $slots
-     */
-    private function renderClass(Fiber $fiber, array $slots): mixed
-    {
-        $component = $fiber->instance;
-        if (null === $component) {
-            $component = $fiber->instance = $this->create($fiber->fqcn);
-            $this->props->assign($component, $fiber->props, $slots);
-            if (null !== $fiber->restored) {
-                $this->props->restoreState($component, $fiber->restored);
-            } elseif (method_exists($component, 'mount')) {
-                $component->mount();
-            }
-        } else {
-            $this->props->assign($component, $fiber->props, $slots);
-        }
-
-        return $component->render();
-    }
-
-    private function create(string $fqcn): object
-    {
-        if (!$this->components->has($fqcn)) {
-            throw new \LogicException(\sprintf('The component "%s" is not a service. Run `bin/console cache:clear` after `rhpc build`.', $fqcn));
-        }
-
-        return $this->components->get($fqcn);
-    }
-
-    private function transactions(): TransactionRunner
-    {
-        return $this->transactions ?? throw new \LogicException('A #[Transactional] component needs Doctrine ORM: install doctrine/orm and doctrine/doctrine-bundle.');
-    }
-
-    /**
-     * The component of a handler is the object of its closure: a method (`$this->add(...)`) or
-     * a closure in `render()`. A handler that a parent passes as a prop runs with the parent.
-     */
-    private static function isTransactional(\Closure $handler): bool
-    {
-        $component = new \ReflectionFunction($handler)->getClosureThis();
-
-        return null !== $component && [] !== new \ReflectionObject($component)->getAttributes(Transactional::class);
-    }
-
-    /** Adds `data-rh-key` to the first element of an HTML fragment. */
-    private static function withKey(string $html, string $key): string
-    {
-        $attr = ' data-rh-key="'.htmlspecialchars($key, \ENT_QUOTES, 'UTF-8').'"';
-
-        return preg_replace('/^(\s*<[a-zA-Z][\w:-]*)/', '$1'.$attr, $html, 1) ?? $html;
     }
 }

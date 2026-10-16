@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Rephp\DependencyInjection;
 
+use Rephp\Manifest\ComponentKind;
+use Rephp\Manifest\Manifest;
 use Symfony\Component\Config\Resource\FileExistenceResource;
 use Symfony\Component\Config\Resource\FileResource;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
@@ -13,8 +15,8 @@ use Symfony\Component\DependencyInjection\Reference;
 
 /**
  * Registers each `#[Component]` class of the rhpc manifest as a service: autowired,
- * autoconfigured, and not shared (each component instance is a new object). The Renderer gets
- * them through a service locator.
+ * autoconfigured, and not shared (each component instance is a new object). The
+ * ContainerComponentFactory gets them through a service locator.
  *
  * An application can define a component service itself (for example to bind an argument);
  * the pass keeps that definition and only makes it not shared.
@@ -27,7 +29,7 @@ final class ComponentPass implements CompilerPassInterface
 
     public function process(ContainerBuilder $container): void
     {
-        if (!$container->hasDefinition('rephp.renderer')) {
+        if (!$container->hasDefinition('rephp.component_factory')) {
             return;
         }
         $buildDir = $container->getParameterBag()->resolveValue($container->getParameter('rephp.build_dir'));
@@ -35,16 +37,15 @@ final class ComponentPass implements CompilerPassInterface
         $container->addResource(new FileExistenceResource($manifestFile));
 
         $components = [];
-        if (is_file($manifestFile)) {
+        $manifest = new Manifest($buildDir, '');
+        if ($manifest->exists()) {
             $container->addResource(new FileResource($manifestFile));
-            $manifest = require $manifestFile;
-            // The classes must exist for autowiring. They are not PSR-4 classes.
-            require_once $buildDir.'/autoload.php';
-
-            foreach ($manifest['components'] ?? [] as $fqcn => $def) {
-                if ('class' !== ($def['kind'] ?? null)) {
+            // The manifest also loads the classes: they must exist for autowiring. They are not PSR-4 classes.
+            foreach ($manifest->components() as $def) {
+                if (ComponentKind::ClassComponent !== $def->kind) {
                     continue;
                 }
+                $fqcn = $def->fqcn;
                 $definition = $container->hasDefinition($fqcn)
                     ? $container->getDefinition($fqcn)
                     : $container->register($fqcn, $fqcn)->setAutowired(true)->setAutoconfigured(true);
@@ -53,6 +54,6 @@ final class ComponentPass implements CompilerPassInterface
             }
         }
 
-        $container->getDefinition('rephp.renderer')->replaceArgument(2, ServiceLocatorTagPass::register($container, $components));
+        $container->getDefinition('rephp.component_factory')->replaceArgument(0, ServiceLocatorTagPass::register($container, $components));
     }
 }

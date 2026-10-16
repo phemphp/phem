@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Rephp\Twig;
 
-use Rephp\Manifest;
+use Rephp\Manifest\Manifest;
 use Twig\Error\LoaderError;
 use Twig\Loader\FilesystemLoader;
 use Twig\Loader\LoaderInterface;

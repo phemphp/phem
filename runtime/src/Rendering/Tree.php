@@ -13,13 +13,11 @@ namespace Rephp\Rendering;
  */
 final class Tree
 {
-    /** @var array<string, Fiber> */
-    public array $fibers = [];
     public int $pass = 0;
-    public int $rootIndex = 0;
-    /** The URL that the event handler redirects to (it returned a RedirectResponse). */
-    public ?string $redirect = null;
 
+    /** @var array<string, Fiber> */
+    private array $fibers = [];
+    private int $rootIndex = 0;
     /** @var list<Fiber> */
     private array $stack = [];
     /** @var array<string, \Closure> */
@@ -47,10 +45,20 @@ final class Tree
         $this->handlers = [];
     }
 
-    /** @return array<string, mixed>|null the state that the browser sent back for a fiber */
-    public function restored(string $id): ?array
+    /**
+     * The fiber with this id. A new fiber starts from the state that the browser sent back.
+     *
+     * @param \Closure(?array<string, mixed>): Fiber $create makes the fiber from its restored state
+     */
+    public function fiber(string $id, \Closure $create): Fiber
     {
-        return $this->state[$id] ?? null;
+        return $this->fibers[$id] ??= $create($this->state[$id] ?? null);
+    }
+
+    /** The index of the next component at the root of the tree. */
+    public function nextRootIndex(): int
+    {
+        return $this->rootIndex++;
     }
 
     public function top(): ?Fiber

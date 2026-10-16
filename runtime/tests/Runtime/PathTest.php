@@ -5,9 +5,15 @@ declare(strict_types=1);
 namespace Rephp\Tests\Runtime;
 
 use PHPUnit\Framework\TestCase;
-use Rephp\Manifest;
-use Rephp\Rendering\PropBinder;
-use Rephp\Rendering\PropError;
+use Rephp\Binding\PropError;
+use Rephp\Manifest\Manifest;
+use Rephp\Metadata\ComponentMetadata;
+use Rephp\Path\EntityFinder;
+use Rephp\Path\EntityPathConverter;
+use Rephp\Path\PathProp;
+use Rephp\Path\PathResolver;
+use Rephp\Path\PathValueConverter;
+use Rephp\Path\ScalarPathConverter;
 use Rephp\Routing\PageLoader;
 use Rephp\Tests\Fixtures\PathPages\EntityPath;
 use Rephp\Tests\Fixtures\PathPages\ObjectPath;
@@ -86,18 +92,18 @@ final class PathTest extends TestCase
 
     public function testPathValuesHaveTheTypesOfTheProps(): void
     {
-        $values = (new PropBinder())->pathValues(Typed::class, ['id' => '42', 'price' => '9.5', 'draft' => 'true', 'slug' => '007', 'label' => 'not a path value']);
+        $values = self::resolver()->resolve(Typed::class, ['id' => '42', 'price' => '9.5', 'draft' => 'true', 'slug' => '007', 'label' => 'not a path value']);
 
         self::assertSame(['id' => 42, 'price' => 9.5, 'draft' => true, 'slug' => '007'], $values);
     }
 
     public function testPathValuesOfAFunctionPage(): void
     {
-        $binder = new PropBinder();
+        $binder = self::resolver();
 
-        self::assertSame(['id' => 7], $binder->pathValues(self::NS.'Known', ['id' => '7', 'label' => 'y']));
-        self::assertSame(['id' => 1], $binder->pathValues(self::NS.'Known', ['id' => 1]), 'a default keeps its type');
-        self::assertSame([], $binder->pathValues(self::NS.'Known', []));
+        self::assertSame(['id' => 7], $binder->resolve(self::NS.'Known', ['id' => '7', 'label' => 'y']));
+        self::assertSame(['id' => 1], $binder->resolve(self::NS.'Known', ['id' => 1]), 'a default keeps its type');
+        self::assertSame([], $binder->resolve(self::NS.'Known', []));
     }
 
     public function testPathValueThatDoesNotMatchItsType(): void
@@ -105,7 +111,7 @@ final class PathTest extends TestCase
         $this->expectException(\UnexpectedValueException::class);
         $this->expectExceptionMessage('The route value "id" of <Typed> is not a valid int: "abc".');
 
-        (new PropBinder())->pathValues(Typed::class, ['id' => 'abc']);
+        self::resolver()->resolve(Typed::class, ['id' => 'abc']);
     }
 
     public function testRouteValueMappedToAnEntityLoads(): void
@@ -134,15 +140,15 @@ final class PathTest extends TestCase
 
     public function testEntityPropGetsTheEntityOfItsIdentifierOrCriteria(): void
     {
-        $binder = new PropBinder(new ScientistFinder());
+        $binder = self::resolver(new ScientistFinder());
 
-        self::assertEquals(['scientist' => new Scientist(1, 'Ada')], $binder->pathValues(EntityPath::class, ['scientist' => '1']));
-        self::assertEquals(['scientist' => new Scientist(2, 'Marie')], $binder->pathValues(EntityPath::class, ['scientist' => ['name' => 'Marie']]));
+        self::assertEquals(['scientist' => new Scientist(1, 'Ada')], $binder->resolve(EntityPath::class, ['scientist' => '1']));
+        self::assertEquals(['scientist' => new Scientist(2, 'Marie')], $binder->resolve(EntityPath::class, ['scientist' => ['name' => 'Marie']]));
     }
 
     public function testNullableEntityPropGetsNullWhenNoEntityMatches(): void
     {
-        self::assertSame(['scientist' => null], (new PropBinder(new ScientistFinder()))->pathValues(self::NS.'NullableEntity', ['scientist' => '9']));
+        self::assertSame(['scientist' => null], self::resolver(new ScientistFinder())->resolve(self::NS.'NullableEntity', ['scientist' => '9']));
     }
 
     public function testEntityThatDoesNotExist(): void
@@ -150,7 +156,7 @@ final class PathTest extends TestCase
         $this->expectException(\UnexpectedValueException::class);
         $this->expectExceptionMessage('No Scientist matches the route value "scientist" of <EntityPath>.');
 
-        (new PropBinder(new ScientistFinder()))->pathValues(EntityPath::class, ['scientist' => ['id' => '9']]);
+        self::resolver(new ScientistFinder())->resolve(EntityPath::class, ['scientist' => ['id' => '9']]);
     }
 
     public function testClassTypeThatIsNotAnEntityIsAnError(): void
@@ -158,7 +164,7 @@ final class PathTest extends TestCase
         $this->expectException(PropError::class);
         $this->expectExceptionMessage('The #[Path] prop "at" of <ObjectPath> has the type DateTimeImmutable, which is not a Doctrine entity.');
 
-        (new PropBinder(new ScientistFinder()))->pathValues(ObjectPath::class, ['at' => '2026-10-16']);
+        self::resolver(new ScientistFinder())->resolve(ObjectPath::class, ['at' => '2026-10-16']);
     }
 
     public function testEntityPropNeedsAFinder(): void
@@ -166,7 +172,30 @@ final class PathTest extends TestCase
         $this->expectException(PropError::class);
         $this->expectExceptionMessage('install doctrine/orm and doctrine/doctrine-bundle');
 
-        (new PropBinder())->pathValues(EntityPath::class, ['scientist' => '1']);
+        self::resolver()->resolve(EntityPath::class, ['scientist' => '1']);
+    }
+
+    public function testConverterOfTheApplicationConvertsOtherTypes(): void
+    {
+        $dates = new class implements PathValueConverter {
+            public function supports(PathProp $prop): bool
+            {
+                return \DateTimeImmutable::class === $prop->type->getName();
+            }
+
+            public function convert(PathProp $prop, mixed $value): \DateTimeImmutable
+            {
+                return new \DateTimeImmutable((string) $value);
+            }
+        };
+        $resolver = new PathResolver(new ComponentMetadata(), [$dates, new ScalarPathConverter(), new EntityPathConverter()]);
+
+        self::assertEquals(['at' => new \DateTimeImmutable('2026-10-16')], $resolver->resolve(ObjectPath::class, ['at' => '2026-10-16']));
+    }
+
+    private static function resolver(?EntityFinder $finder = null): PathResolver
+    {
+        return new PathResolver(new ComponentMetadata(), [new ScalarPathConverter(), new EntityPathConverter($finder)]);
     }
 
     private function load(string $page): RouteCollection

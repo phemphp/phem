@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Rephp\Twig;
 
+use Rephp\Dom\Attributes;
+use Rephp\Dom\DomEvents;
 use Rephp\Rendering\Renderer;
+use Rephp\Rendering\TemplateComponentRenderer;
 use Twig\Extension\RuntimeExtensionInterface;
 use Twig\Markup;
 use Twig\Template;
@@ -15,11 +18,10 @@ use Twig\Template;
  */
 final class RephpRuntime implements RuntimeExtensionInterface
 {
-    /** React event names → DOM event names. */
-    private const EVENTS = ['doubleclick' => 'dblclick', 'focus' => 'focusin', 'blur' => 'focusout'];
-
-    public function __construct(private readonly Renderer $renderer)
-    {
+    public function __construct(
+        private readonly Renderer $renderer,
+        private readonly TemplateComponentRenderer $templates = new TemplateComponentRenderer(),
+    ) {
     }
 
     /**
@@ -37,7 +39,7 @@ final class RephpRuntime implements RuntimeExtensionInterface
      */
     public function template(Template $template, string $fqcn, array $props, mixed $key, array $caller): string
     {
-        return $this->renderer->template($template, $fqcn, $props, $key, $caller);
+        return $this->templates->render($template, $fqcn, $props, $key, $caller);
     }
 
     /** `onClick={{ f }}` → `data-rh-on-click="<handler id>"`. */
@@ -50,9 +52,8 @@ final class RephpRuntime implements RuntimeExtensionInterface
             throw new \InvalidArgumentException(\sprintf('The "%s" handler must be a function, "%s" given. Pass the function, do not call it.', $event, get_debug_type($handler)));
         }
         $id = $this->renderer->addHandler(\Closure::fromCallable($handler)) ?? 'static';
-        $event = self::EVENTS[$event] ?? $event;
 
-        return new Markup(\sprintf('data-rh-on-%s="%s"', $event, RephpExtension::e($id)), 'UTF-8');
+        return new Markup(\sprintf('data-rh-on-%s="%s"', DomEvents::name($event), Attributes::e($id)), 'UTF-8');
     }
 
     /**
@@ -65,17 +66,16 @@ final class RephpRuntime implements RuntimeExtensionInterface
         $merged = [];
         foreach ($groups as $attrs) {
             foreach ((array) $attrs as $name => $value) {
-                $name = (string) $name;
-                $merged[['className' => 'class', 'htmlFor' => 'for'][$name] ?? $name] = $value;
+                $merged[Attributes::name((string) $name)] = $value;
             }
         }
         $out = [];
         foreach ($merged as $name => $value) {
             $out[] = (string) match (true) {
-                'key' === $name => RephpExtension::key($value),
-                'style' === $name => RephpExtension::style($value),
+                'key' === $name => Attributes::key($value),
+                'style' === $name => Attributes::style($value),
                 1 === preg_match('/^on[A-Z]/', $name) => $this->on(strtolower(substr($name, 2)), $value),
-                default => RephpExtension::attr($name, $value),
+                default => Attributes::attr($name, $value),
             };
         }
 

@@ -1,0 +1,35 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Rephp\Path;
+
+use Rephp\Binding\ComponentName;
+
+/**
+ * An entity prop gets the entity of its route value from the EntityFinder (Doctrine ORM, when
+ * DoctrineBundle is installed): an identifier goes to `find()`, and criteria (field => value,
+ * from `{slug:post}`) go to `findOneBy()`.
+ */
+final class EntityPathConverter implements PathValueConverter
+{
+    public function __construct(private readonly ?EntityFinder $entities = null)
+    {
+    }
+
+    public function supports(PathProp $prop): bool
+    {
+        return !$prop->type->isBuiltin() && null !== $this->entities && $this->entities->supports($prop->type->getName());
+    }
+
+    public function convert(PathProp $prop, mixed $value): ?object
+    {
+        $class = $prop->type->getName();
+        $entity = null !== $value ? $this->entities?->find($class, $value) : null;
+        if (null === $entity && !$prop->type->allowsNull()) {
+            throw new \UnexpectedValueException(\sprintf('No %s matches the route value "%s" of <%s>.', ComponentName::short($class), $prop->name, ComponentName::short($prop->page)));
+        }
+
+        return $entity;
+    }
+}

@@ -1,0 +1,35 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Rephp\Metadata;
+
+/**
+ * A parameter of a function component: a prop.
+ */
+final class Parameter
+{
+    public function __construct(
+        public readonly string $name,
+        public readonly bool $optional,
+        public readonly mixed $default,
+        public readonly bool $hasDefault,
+        public readonly bool $nullable,
+        public readonly bool $variadic,
+    ) {
+    }
+
+    public static function fromReflection(\ReflectionParameter $p): self
+    {
+        $hasDefault = $p->isDefaultValueAvailable();
+
+        return new self(
+            $p->getName(),
+            $p->isOptional(),
+            $hasDefault ? $p->getDefaultValue() : null,
+            $hasDefault,
+            $p->allowsNull(),
+            $p->isVariadic(),
+        );
+    }
+}

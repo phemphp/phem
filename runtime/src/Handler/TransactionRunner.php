@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Rendering;
+namespace Rephp\Handler;
 
 /**
  * Runs the event handlers of `#[Transactional]` components.

@@ -47,7 +47,6 @@ final class Fiber
         public readonly string $id,
         public readonly string $path,
         public readonly string $fqcn,
-        public readonly string $kind,
         public readonly ?array $restored = null,
     ) {
     }
@@ -70,11 +69,6 @@ final class Fiber
         $this->childIndexes[$fqcn] ??= 0;
 
         return $this->childIndexes[$fqcn]++;
-    }
-
-    public function name(): string
-    {
-        return substr(strrchr('\\'.$this->fqcn, '\\'), 1);
     }
 
     public function wrapped(): string
