@@ -8,7 +8,6 @@ use Doctrine\ORM\Mapping\Entity;
 use Doctrine\ORM\Mapping\GeneratedValue;
 use Doctrine\ORM\Mapping\Id;
 
-// One row of the scientist table. Doctrine ORM maps each row to this class and back.
 #[Entity(repositoryClass: ScientistRepository::class)]
 class Scientist
 {
