@@ -2,9 +2,10 @@
 // the component state in the browser.
 //
 // The server renders the page with the state in `data-rhp-state-value` (signed JSON).
-// On an event, the controller posts {page, state, signature, handler, event}. The server runs
-// the PHP handler and answers with Turbo Streams (morph of the changed components) and the
-// new state. Events wait in a queue, so each one uses the newest state.
+// On an event, the controller posts {state, signature, handler, event} to the URL of the page,
+// so the access rules of the page apply. The server runs the PHP handler and answers with
+// Turbo Streams (morph of the changed components) and the new state. Events wait in a queue,
+// so each one uses the newest state.
 
 import * as Turbo from "./vendor/turbo.js"
 import { Application, Controller } from "./vendor/stimulus.js"
@@ -16,7 +17,7 @@ function isTextLike(el) {
 }
 
 class RhpController extends Controller {
-  static values = { page: String, endpoint: String, state: String, signature: String }
+  static values = { state: String, signature: String }
 
   connect() {
     this.queue = Promise.resolve()
@@ -65,10 +66,11 @@ class RhpController extends Controller {
   }
 
   async send(handler, event) {
-    const response = await fetch(this.endpointValue, {
+    // The URL of the page, from the browser: always the same origin.
+    const response = await fetch(window.location.href, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ page: this.pageValue, state: this.stateValue, signature: this.signatureValue, handler, event }),
+      headers: { "Content-Type": "application/json", Accept: "application/json", "X-Rhp-Event": "1" },
+      body: JSON.stringify({ state: this.stateValue, signature: this.signatureValue, handler, event }),
     })
     if (response.status === 409) {
       // The state is not valid any more (a new build, or a new secret): load the page again.

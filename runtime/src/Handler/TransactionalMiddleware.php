@@ -13,8 +13,9 @@ use Rephp\Event;
  */
 final class TransactionalMiddleware implements HandlerMiddleware
 {
-    public function __construct(private readonly ?TransactionRunner $transactions = null)
-    {
+    public function __construct(
+        private readonly ?TransactionRunner $transactions = null,
+    ) {
     }
 
     public function handle(\Closure $handler, Event $event, \Closure $next): mixed

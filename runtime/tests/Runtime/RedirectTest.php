@@ -16,13 +16,12 @@ final class RedirectTest extends TestCase
         preg_match('/data-rhp-state-value="([^"]*)" data-rhp-signature-value="([^"]*)"/', $html, $m);
         preg_match('/data-rh-on-click="([^"]+)"/', $html, $h);
 
-        $response = $this->request('POST', '/_rhp/event', json_encode([
-            'page' => 'App\\Pages\\LeavePage',
+        $response = $this->event('/leave', [
             'state' => html_entity_decode($m[1]),
             'signature' => $m[2],
             'handler' => $h[1],
             'event' => ['type' => 'click'],
-        ]));
+        ]);
 
         self::assertSame(200, $response->getStatusCode());
         self::assertSame(['redirect' => '/about'], json_decode((string) $response->getContent(), true), 'no streams and no state: the page does not render again');

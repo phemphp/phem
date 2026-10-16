@@ -179,7 +179,7 @@ Other commands:
 ```sh
 php bin/console rephp:warmup                          # compile the templates into the Twig cache again
 php bin/console rephp:render /examples/CounterTogether   # print the HTML of a page (no server)
-php bin/console debug:router                          # the routes of the pages and rephp_event
+php bin/console debug:router                          # the routes of the pages and their events (rephp_event.*)
 ```
 
 ## 5. Watch mode (development)

@@ -42,6 +42,9 @@ final class TestKernel extends Kernel
         $container->extension('twig', ['strict_variables' => true]);
         $container->services()
             ->set(Limits::class)->autowire()
+            ->set(AccessListener::class)
+                ->tag('kernel.event_listener', ['event' => 'kernel.request', 'method' => 'onKernelRequest', 'priority' => 8])
+                ->tag('kernel.event_listener', ['event' => 'kernel.controller_arguments', 'method' => 'onKernelControllerArguments'])
             ->set(ScientistFinder::class)
             // The #[Path] entity props of the fixture pages get their entities from ScientistFinder.
             ->alias('rephp.entity_finder', ScientistFinder::class)

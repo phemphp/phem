@@ -33,15 +33,14 @@ final class AppTest extends TestCase
     }
 
     /** @return array{status: int, data: array<string, mixed>} */
-    private function click(int $handler, ?string $state = null, string $page = 'App\\Pages\\Home'): array
+    private function click(int $handler, ?string $state = null, string $uri = '/'): array
     {
-        $response = $this->request('POST', '/_rhp/event', json_encode([
-            'page' => $page,
+        $response = $this->event($uri, [
             'state' => $state ?? $this->state,
             'signature' => $this->signature,
             'handler' => $this->handlers[$handler],
             'event' => ['type' => 'click'],
-        ]));
+        ]);
         $data = json_decode((string) $response->getContent(), true);
         if (200 === $response->getStatusCode()) {
             $this->state = $data['state'];
@@ -58,8 +57,8 @@ final class AppTest extends TestCase
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('<title>Fixture Home</title>', $html);
         self::assertStringContainsString('<script type="module" src="/bundles/rephp/rhp.js"></script>', $html);
-        self::assertStringContainsString('data-rhp-endpoint-value="/_rhp/event"', $html);
-        self::assertStringContainsString('data-rhp-page-value="App\\Pages\\Home"', $html);
+        self::assertStringContainsString('<div id="rh-root" data-controller="rhp" data-action="click->rhp#dispatch', html_entity_decode($html));
+        self::assertStringNotContainsString('data-rhp-page-value', $html, 'the page comes from the route of the event');
         self::assertSame(2, substr_count($html, 'Clicked 0 times'));
         self::assertStringContainsString('style="color: magenta; font-weight: 700">Apple', $html);
         self::assertStringContainsString('<ol id="mapped"><li data-rh-key="1">Cabbage</li><li data-rh-key="3">Apple</li></ol>', $html);
@@ -102,10 +101,10 @@ final class AppTest extends TestCase
         self::assertStringContainsString('<button type="button">Clicked 0 times</button>', $html, 'no rest props');
         self::assertCount(2, $this->handlers);
 
-        $r = $this->click(0, page: 'App\\Pages\\RestPage');
+        $r = $this->click(0, uri: '/rest');
         self::assertSame(200, $r['status']);
         self::assertSame(2, substr_count($r['data']['streams'], 'Clicked 1 times'), 'onClick in the rest props');
-        $r = $this->click(1, page: 'App\\Pages\\RestPage');
+        $r = $this->click(1, uri: '/rest');
         self::assertSame(2, substr_count($r['data']['streams'], 'Clicked 2 times'), 'onDoubleClick in the rest props');
     }
 
@@ -142,16 +141,16 @@ final class AppTest extends TestCase
 
     public function testStateIsSignedForItsPage(): void
     {
-        $r = $this->click(0, page: 'App\\Pages\\About');
+        $r = $this->click(0, uri: '/about');
         self::assertSame(409, $r['status']);
         self::assertTrue($r['data']['reload']);
     }
 
     public function testBadEventAndUnknownRoute(): void
     {
-        self::assertSame(400, $this->request('POST', '/_rhp/event', '{}')->getStatusCode());
-        self::assertSame(405, $this->request('GET', '/_rhp/event')->getStatusCode());
-        self::assertSame(405, $this->request('POST', '/')->getStatusCode(), 'the methods of the #[Route]');
+        self::assertSame(400, $this->event('/', '{}')->getStatusCode());
+        self::assertSame(404, $this->event('/_rhp/event', '{}')->getStatusCode(), 'no shared event route');
+        self::assertSame(405, $this->request('POST', '/')->getStatusCode(), 'the methods of the #[Route], without the event header');
         self::assertSame(404, $this->request('GET', '/nope')->getStatusCode());
     }
 

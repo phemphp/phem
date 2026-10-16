@@ -44,13 +44,12 @@ final class UnsafeTest extends TestCase
         $html = (string) $this->request('GET', '/unsafe')->getContent();
         preg_match('/data-rhp-state-value="([^"]*)" data-rhp-signature-value="([^"]*)"/', $html, $m);
         preg_match('/<button id="go" data-rh-on-click="([^"]+)"/', $html, $h);
-        $response = $this->request('POST', '/_rhp/event', json_encode([
-            'page' => 'App\\Pages\\UnsafePage',
+        $response = $this->event('/unsafe', [
             'state' => html_entity_decode($m[1]),
             'signature' => $m[2],
             'handler' => $h[1],
             'event' => ['type' => 'click', 'value' => $url],
-        ]));
+        ]);
 
         return ['status' => $response->getStatusCode(), 'data' => json_decode((string) $response->getContent(), true)];
     }

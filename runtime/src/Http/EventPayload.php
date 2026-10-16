@@ -8,7 +8,8 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 /**
- * The JSON body of `POST /_rhp/event`, from the `rhp` Stimulus controller.
+ * The JSON body of an event (`POST <page URL>`), from the `rhp` Stimulus controller. The page
+ * comes from the route, not from the body.
  */
 final class EventPayload
 {
@@ -17,7 +18,6 @@ final class EventPayload
      * @param array<string, mixed> $event     the DOM event (type, value, checked, key, form)
      */
     public function __construct(
-        public readonly string $page,
         public readonly string $handler,
         public readonly string $state,
         public readonly string $signature,
@@ -25,16 +25,17 @@ final class EventPayload
     ) {
     }
 
-    /** @throws BadRequestHttpException when the body has no page or no handler */
+    /** 
+     * @throws BadRequestHttpException when the body has no handler 
+     */
     public static function fromRequest(Request $request): self
     {
         $data = json_decode($request->getContent(), true);
-        if (!\is_array($data) || !\is_string($data['page'] ?? null) || !\is_string($data['handler'] ?? null)) {
-            throw new BadRequestHttpException('An event needs a page and a handler.');
+        if (!\is_array($data) || !\is_string($data['handler'] ?? null)) {
+            throw new BadRequestHttpException('An event needs a handler.');
         }
 
         return new self(
-            $data['page'],
             $data['handler'],
             (string) ($data['state'] ?? '{}'),
             (string) ($data['signature'] ?? ''),

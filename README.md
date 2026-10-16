@@ -112,7 +112,7 @@ See [editors/vscode/README.md](editors/vscode/README.md).
              ── #[Route] components → routes ── PageController / EventController
                               │
  Browser ◄── HTML ─────── HttpKernel (FrankenPHP in worker mode, or PHP-FPM)
-   rhp Stimulus controller ── POST /_rhp/event {route, state, signature, handler, event}
+   rhp Stimulus controller ── POST <page URL> {state, signature, handler, event}
    ◄── Turbo Streams (morph of the changed components) + the new signed state
 ```
 

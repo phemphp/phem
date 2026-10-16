@@ -23,6 +23,12 @@ use Symfony\Component\Routing\RouteCollection;
  * Without a name, the route name comes from the component: `App\Pages\Counter` →
  * `app_pages_counter`.
  *
+ * The events of a page go to the URL of the page (`POST`, see EventController), so the access
+ * rules of the page (`access_control`, the firewall, the host and the condition of the route)
+ * apply to them too. Each page route has an event route (`rephp_event.<name>`) with the same
+ * path and the `POST` method. It comes first, so a page route without methods does not take
+ * the events.
+ *
  * A route value (`{id}`, or a `defaults` key) goes to the #[Path] property or parameter with
  * the same name. A route value without one is an error. The keys that start with `_` are not
  * route values. As for the Doctrine controller arguments, `{slug:post}` maps the value `slug`
@@ -36,6 +42,7 @@ use Symfony\Component\Routing\RouteCollection;
  */
 final class PageLoader extends Loader
 {
+    /** The prefix of the event route names: `rephp_event.app_pages_counter`. */
     public const EVENT_ROUTE = 'rephp_event';
 
     public function __construct(
@@ -49,7 +56,6 @@ final class PageLoader extends Loader
     public function load(mixed $resource, ?string $type = null): RouteCollection
     {
         $routes = new RouteCollection();
-        $routes->add(self::EVENT_ROUTE, new Route('/_rhp/event', ['_controller' => 'rephp.controller.event'], methods: ['POST']));
 
         // The router cache is rebuilt after the next `rhpc build`.
         $routes->addResource(new FileExistenceResource($this->manifest->file()));
@@ -125,14 +131,20 @@ final class PageLoader extends Loader
         foreach ($paths as $locale => $path) {
             $route = new Route($path, $defaults, $attr->requirements, $attr->options, $attr->host ?? '', $attr->schemes, $attr->methods, $attr->condition ?? '');
             $this->checkValues($route, $name, $page);
-            if (0 === $locale) {
-                $routes->add($name, $route, $attr->priority ?? 0);
-                continue;
+            $routeName = $name;
+            if (0 !== $locale) {
+                $route->setDefault('_locale', $locale);
+                $route->setRequirement('_locale', preg_quote((string) $locale));
+                $route->setDefault('_canonical_route', $name);
+                $routeName .= '.'.$locale;
             }
-            $route->setDefault('_locale', $locale);
-            $route->setRequirement('_locale', preg_quote((string) $locale));
-            $route->setDefault('_canonical_route', $name);
-            $routes->add($name.'.'.$locale, $route, $attr->priority ?? 0);
+            // The event route first: it takes the POST requests of the page URL.
+            $event = (clone $route)
+                ->setMethods(['POST'])
+                ->setDefault('_controller', 'rephp.controller.event')
+                ->setDefault('_rephp_methods', $route->getMethods());
+            $routes->add(self::EVENT_ROUTE.'.'.$routeName, $event, $attr->priority ?? 0);
+            $routes->add($routeName, $route, $attr->priority ?? 0);
         }
 
         foreach ($attr->aliases as $alias) {

@@ -14,8 +14,9 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
 #[AsCommand('rephp:render', 'Prints the HTML of a page (no server)')]
 final class RenderCommand
 {
-    public function __construct(private readonly HttpKernelInterface $httpKernel)
-    {
+    public function __construct(
+        private readonly HttpKernelInterface $httpKernel,
+    ) {
     }
 
     public function __invoke(

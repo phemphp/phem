@@ -9,6 +9,7 @@ use Rephp\Command\RenderCommand;
 use Rephp\Command\WarmupCommand;
 use Rephp\Controller\EventController;
 use Rephp\Controller\PageController;
+use Rephp\EventListener\PageAttributesListener;
 use Rephp\EventListener\SourceMapListener;
 use Rephp\Handler\HandlerInvoker;
 use Rephp\Handler\TransactionalMiddleware;
@@ -130,11 +131,14 @@ return static function (ContainerConfigurator $container): void {
             ->args([
                 service('rephp.renderer'),
                 service('rephp.state_codec'),
-                service('rephp.manifest'),
+                service('rephp.controller.page'),
+                service('rephp.metadata'),
                 service('rephp.path_resolver'),
                 service('rephp.state_accessor'),
                 service('rephp.turbo_streams'),
             ])
+        ->set('rephp.listener.page_attributes', PageAttributesListener::class)
+            ->tag('kernel.event_listener', ['event' => 'kernel.controller', 'method' => 'onKernelController'])
         ->set('rephp.listener.source_map', SourceMapListener::class)
             ->args([service('rephp.source_map')])
             ->tag('kernel.event_listener', ['event' => 'kernel.exception', 'method' => 'onKernelException', 'priority' => 128])

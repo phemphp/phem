@@ -232,6 +232,13 @@ Supported events: `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`,
 `$e->value`, `$e->checked`, `$e->key`, `$e->form` (an array, for `onSubmit`), and `$e->request`.
 `onChange` on a text input fires on each key (as in React).
 
+An event is a `POST` request to the URL of the page, with the `X-Rhp-Event` header. Thus the
+access rules of the page apply to its events too: `access_control`, the firewall, and the host
+and condition of the `#[Route]`. The controller attributes of Symfony (`#[IsGranted]`, `#[Cache]`)
+apply to a page class or function, for the page and for its events. rephp accepts an event only
+as JSON from the same origin (`Sec-Fetch-Site`, or `Origin`), so another site cannot send one
+(CSRF). A `POST` request without the header renders the page, if its route accepts `POST`.
+
 `$e->request` is the Symfony `Request` of the event, with the form fields as its POST data.
 The keys with brackets become nested arrays (`scientist[name]` → `['scientist' => ['name' => ...]]`),
 as in a normal POST. A Symfony form can read it directly:

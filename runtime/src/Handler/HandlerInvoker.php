@@ -15,8 +15,9 @@ final class HandlerInvoker
     /**
      * @param iterable<HandlerMiddleware> $middlewares
      */
-    public function __construct(private readonly iterable $middlewares = [])
-    {
+    public function __construct(
+        private readonly iterable $middlewares = [],
+    ) {
     }
 
     public function invoke(\Closure $handler, Event $event): mixed
