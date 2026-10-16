@@ -1,0 +1,6 @@
+{# A page template of the application (the `_rephp_template` default of a route): the body is the root element. #}
+<!DOCTYPE html>
+<html lang="es">
+<head><title>{{ page.title ?? 'Custom' }}</title></head>
+<body {{ rephp_root_attributes(page, {class: ['custom', 'page'], 'data-controller': 'extra'}) }}>{{ page.body }}</body>
+</html>

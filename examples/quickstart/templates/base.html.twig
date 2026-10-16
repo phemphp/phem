@@ -1,0 +1,15 @@
+{# The document of the pages. rephp renders each page in the `body` block (see the
+   rephp.page_template option), and its <title> goes in the `title` block. #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}rephp{% endblock %}</title>
+<link rel="icon" href="data:,">
+{% block javascripts %}{{ importmap('app') }}{% endblock %}
+</head>
+<body>
+{% block body %}{% endblock %}
+</body>
+</html>

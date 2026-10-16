@@ -8,6 +8,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Rephp\DependencyInjection\ComponentPass;
 use Rephp\Handler\HandlerMiddleware;
 use Rephp\Path\PathValueConverter;
+use Symfony\Component\AssetMapper\AssetMapperInterface;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -24,11 +25,18 @@ use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
  *         secret: '%kernel.secret%'
  *         state_max_age: 86400       # seconds; 0 for no limit
  *         state_bind_session: false
+ *         page_template: '@Rephp/page.html.twig'   # extends the base.html.twig of the app
  *
  *     # config/routes/rephp.yaml
  *     rephp:
  *         resource: .
  *         type: rephp
+ *
+ * The page template belongs to the application: it gets the page as `page`, and it prints
+ * the root element with `{{ rephp_root(page) }}` (see Rephp\Http\PageView). The client (the
+ * `rhp` Stimulus controller and its CSS) is a Symfony UX package in assets/: with AssetMapper,
+ * its files are in the `@rephp/runtime` namespace, and StimulusBundle loads the controller
+ * from the `assets/controllers.json` of the application.
  *
  * Extension points (autoconfigured services):
  *
@@ -66,17 +74,23 @@ final class RephpBundle extends AbstractBundle
                     ->info('Sign the session id with the state, so the state of a session is not valid in another session. A login makes the open pages reload on their next event.')
                     ->defaultFalse()
                 ->end()
+                ->scalarNode('page_template')
+                    ->info('The Twig template of the pages. It gets the page as `page`. The default template extends the base.html.twig of the application. The `_rephp_template` default of a route changes it for one page.')
+                    ->defaultValue('@Rephp/page.html.twig')
+                    ->cannotBeEmpty()
+                ->end()
             ->end();
     }
 
-    /** 
-     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool} $config 
+    /**
+     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, page_template: string} $config
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
         $container->parameters()
             ->set('rephp.source_dir', $config['source_dir'])
-            ->set('rephp.build_dir', $config['build_dir']);
+            ->set('rephp.build_dir', $config['build_dir'])
+            ->set('rephp.page_template', $config['page_template']);
         $container->import('../config/services.php');
         $container->services()->get('rephp.state_codec')
             ->arg(0, $config['secret'])
@@ -86,6 +100,18 @@ final class RephpBundle extends AbstractBundle
         if (isset($builder->getParameter('kernel.bundles')['DoctrineBundle']) && interface_exists(EntityManagerInterface::class)) {
             $container->import('../config/doctrine.php');
         }
+    }
+
+    public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
+    {
+        if (!interface_exists(AssetMapperInterface::class)) {
+            return;
+        }
+        $builder->prependExtensionConfig('framework', [
+            'asset_mapper' => [
+                'paths' => [\dirname(__DIR__).'/assets/dist' => '@rephp/runtime'],
+            ],
+        ]);
     }
 
     public function build(ContainerBuilder $container): void

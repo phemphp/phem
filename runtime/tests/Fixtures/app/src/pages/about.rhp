@@ -5,7 +5,7 @@ namespace App\Pages;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/about')]
-#[Route('/about-us', name: 'about_us')]
+#[Route('/about-us', name: 'about_us', defaults: ['_rephp_template' => 'custom_page.html.twig'])]
 function About() {
     return <p id="about">About</p>;
 }

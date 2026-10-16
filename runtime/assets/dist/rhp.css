@@ -1,0 +1,2 @@
+/* A component boundary (<rh-c>) does not change the layout. */
+rh-c{display:contents}

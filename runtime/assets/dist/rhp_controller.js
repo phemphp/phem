@@ -1,5 +1,8 @@
-// rephp client: Turbo (navigation + stream morphing) and one Stimulus controller that keeps
-// the component state in the browser.
+// The `rhp` Stimulus controller: it keeps the component state in the browser, and it morphs
+// the page with Turbo Streams. Turbo also gives the navigation (Turbo Drive).
+//
+// StimulusBundle registers it from the assets/controllers.json of the application (see
+// ../package.json). Without StimulusBundle, register it: `application.register("rhp", RhpController)`.
 //
 // The server renders the page with the state in `data-rhp-state-value` (signed JSON).
 // On an event, the controller posts {state, signature, handler, event} to the URL of the page,
@@ -7,8 +10,8 @@
 // Turbo Streams (morph of the changed components) and the new state. Events wait in a queue,
 // so each one uses the newest state.
 
-import * as Turbo from "./vendor/turbo.js"
-import { Application, Controller } from "./vendor/stimulus.js"
+import * as Turbo from "@hotwired/turbo"
+import { Controller } from "@hotwired/stimulus"
 
 const TEXT_INPUTS = new Set(["text", "search", "email", "url", "tel", "password", "number", "date", "time", "datetime-local", "month", "week", "color", "range"])
 
@@ -16,7 +19,7 @@ function isTextLike(el) {
   return el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && TEXT_INPUTS.has(el.type))
 }
 
-class RhpController extends Controller {
+export default class RhpController extends Controller {
   static values = { state: String, signature: String }
 
   connect() {
@@ -96,6 +99,3 @@ class RhpController extends Controller {
     if (data.streams) Turbo.renderStreamMessage(data.streams)
   }
 }
-
-window.Stimulus ??= Application.start()
-window.Stimulus.register("rhp", RhpController)

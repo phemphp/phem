@@ -14,6 +14,7 @@ use Rephp\EventListener\SourceMapListener;
 use Rephp\Handler\HandlerFingerprint;
 use Rephp\Handler\HandlerInvoker;
 use Rephp\Handler\TransactionalMiddleware;
+use Rephp\Http\PageRenderer;
 use Rephp\Http\TurboStreams;
 use Rephp\Manifest\Manifest;
 use Rephp\Manifest\SourceMap;
@@ -120,16 +121,18 @@ return static function (ContainerConfigurator $container): void {
             ->args([service('rephp.manifest'), param('kernel.environment'), service('rephp.metadata')])
             ->tag('routing.loader')
         ->set('rephp.turbo_streams', TurboStreams::class)
-        ->set('rephp.controller.page', PageController::class)
-            ->public()
+        ->set('rephp.page_renderer', PageRenderer::class)
             ->args([
                 service('rephp.renderer'),
                 service('rephp.state_codec'),
-                service('twig'),
                 service('rephp.metadata'),
                 service('rephp.path_resolver'),
                 service('rephp.state_accessor'),
             ])
+        ->alias(PageRenderer::class, 'rephp.page_renderer')
+        ->set('rephp.controller.page', PageController::class)
+            ->public()
+            ->args([service('rephp.page_renderer'), service('twig'), param('rephp.page_template')])
         ->set('rephp.controller.event', EventController::class)
             ->public()
             ->args([

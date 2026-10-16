@@ -1,4 +1,4 @@
-import { Controller } from "/bundles/rephp/vendor/stimulus.js";
+import { Controller } from "/vendor/@hotwired/stimulus/stimulus.index.js";
 import { highlight } from "../highlight.js";
 
 // Highlights a short static code fragment of the docs: <pre data-controller="highlight">.

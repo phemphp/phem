@@ -56,8 +56,7 @@ final class AppTest extends TestCase
         $html = (string) $response->getContent();
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('<title>Fixture Home</title>', $html);
-        self::assertStringContainsString('<script type="module" src="/bundles/rephp/rhp.js"></script>', $html);
-        self::assertStringContainsString('<div id="rh-root" data-controller="rhp" data-action="click->rhp#dispatch', html_entity_decode($html));
+        self::assertStringContainsString('<body class="fixture"><div id="rh-root" data-controller="rhp" data-action="click->rhp#dispatch', html_entity_decode($html), 'the default page template extends base.html.twig');
         self::assertStringNotContainsString('data-rhp-page-value', $html, 'the page comes from the route of the event');
         self::assertSame(2, substr_count($html, 'Clicked 0 times'));
         self::assertStringContainsString('style="color: magenta; font-weight: 700">Apple', $html);
@@ -167,6 +166,32 @@ final class AppTest extends TestCase
             self::assertSame(200, $response->getStatusCode());
             self::assertStringContainsString('<p id="about">About</p>', (string) $response->getContent(), 'a function component page');
         }
+    }
+
+    public function testRouteDefaultSetsThePageTemplate(): void
+    {
+        $html = html_entity_decode((string) $this->request('GET', '/about-us')->getContent());
+
+        self::assertStringContainsString('<html lang="es">', $html);
+        self::assertStringContainsString('<title>Custom</title>', $html, 'a page without <title>');
+        self::assertMatchesRegularExpression('#<body id="rh-root" data-controller="rhp extra" data-action="click->rhp\#dispatch [^"]*" data-rhp-state-value="[^"]*" data-rhp-signature-value="[^"]*" class="custom page"><rh-c id="rh[0-9a-f]+"><p id="about">About</p></rh-c></body>#', $html);
+        self::assertStringContainsString('<body class="fixture">', (string) $this->request('GET', '/about')->getContent(), 'the other route of the page');
+    }
+
+    public function testAssetMapperHasTheClient(): void
+    {
+        $container = $this->fixtureKernel()->getContainer()->get('test.service_container');
+
+        $controller = $container->get('asset_mapper')->getAsset('@rephp/runtime/rhp_controller.js');
+        self::assertNotNull($controller);
+        self::assertStringEndsWith('/assets/dist/rhp_controller.js', $controller->sourcePath);
+        self::assertNotNull($container->get('asset_mapper')->getAsset('@rephp/runtime/rhp.css'));
+
+        $map = $container->get('stimulus.asset_mapper.controllers_map_generator')->getControllersMap();
+        self::assertArrayHasKey('rhp', $map, 'the name of the controller in assets/package.json');
+        self::assertSame($controller->sourcePath, $map['rhp']->asset->sourcePath);
+        self::assertFalse($map['rhp']->isLazy);
+        self::assertStringEndsWith('/assets/dist/rhp.css', $map['rhp']->autoImports[0]->path);
     }
 
     public function testComponentInAPlainTwigTemplate(): void

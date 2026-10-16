@@ -12,13 +12,14 @@ it can run:
 
 ```
 my-app/
-├── composer.json          requires rephp/runtime (and symfony/runtime, symfony/yaml, symfony/dotenv)
+├── composer.json          requires rephp/runtime, symfony/asset-mapper, symfony/stimulus-bundle (and symfony/runtime, symfony/yaml, symfony/dotenv)
 ├── .env                   APP_ENV, APP_SECRET (it signs the component state in the browser)
 ├── Caddyfile              FrankenPHP: public/index.php in worker mode, and the static files
 ├── bin/console
 ├── config/
-│   ├── bundles.php        FrameworkBundle, TwigBundle, RephpBundle (and DoctrineBundle for #[Transactional] and #[Path] entities)
-│   ├── packages/rephp.yaml   optional: source_dir, build_dir, secret
+│   ├── bundles.php        FrameworkBundle, TwigBundle, StimulusBundle, RephpBundle (and DoctrineBundle for #[Transactional] and #[Path] entities)
+│   ├── packages/rephp.yaml   optional: source_dir, build_dir, secret, page_template
+│   ├── packages/asset_mapper.yaml   the assets/ directory
 │   ├── routes/rephp.yaml     { resource: ., type: rephp }: the #[Route] attributes of the pages
 │   └── services.yaml      your services (for example repositories)
 ├── src/                   the .rhp sources (the "source root"), and your PHP classes
@@ -31,19 +32,87 @@ my-app/
 │       ├── index.rhp      #[Route('/')]
 │       └── Examples/
 │           └── Counter.rhp #[Route('/examples/Counter')]
-├── templates/bundles/RephpBundle/page.html.twig   optional: override the page document
+├── templates/base.html.twig   the document of the pages (the default page template extends it)
+├── assets/                the JavaScript and CSS of the pages (AssetMapper)
+│   ├── app.js             the `app` entry of the importmap: bootstrap.js and styles/app.css
+│   ├── bootstrap.js       starts Stimulus (StimulusBundle)
+│   └── controllers.json   enables the `rhp` controller of @rephp/runtime
+├── importmap.php          app, @hotwired/stimulus, @hotwired/turbo, @symfony/stimulus-bundle
 ├── public/                static files, index.php (Symfony Runtime: FrankenPHP worker mode, PHP-FPM)
 └── var/cache/             build output (do not commit)
 ```
 
 The directories are only a convention: a page is a component with the Symfony `#[Route]`
-attribute, in any file. The page document is `@Rephp/page.html.twig`. To add a stylesheet, override it:
+attribute, in any file.
+
+### The page template
+
+The application owns the HTML document. By default, rephp renders a page in the `body` block
+of `templates/base.html.twig`, and the `<title>` of the page goes in the `title` block. This is
+the base template of a Symfony application:
 
 ```twig
-{% extends '@!Rephp/page.html.twig' %}
-
-{% block stylesheets %}<link rel="stylesheet" href="/app.css">{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>{% block title %}My app{% endblock %}</title>
+{% block javascripts %}{{ importmap('app') }}{% endblock %}
+</head>
+<body>{% block body %}{% endblock %}</body>
+</html>
 ```
+
+For full control, write a page template, and set it in `rephp.page_template`, or in the
+`_rephp_template` default of one route
+(`#[Route('/admin', defaults: ['_rephp_template' => 'admin/page.html.twig'])]`). The template
+gets the page as `page` (`Rephp\Http\PageView`):
+
+| In the template | Gives |
+|---|---|
+| `page.title` | the `<title>` of the page (HTML), or null |
+| `{{ rephp_root(page) }}` | the root element: `<div id="rh-root" data-controller="rhp" …>` with the page |
+| `{{ rephp_root(page, {class: 'app'}, 'main') }}` | the same, with more attributes and another tag |
+| `<body {{ rephp_root_attributes(page) }}>{{ page.body }}</body>` | only the attributes, for your own root element |
+
+The root element must have the attributes of `rephp_root_attributes()`: they give the
+component state to the `rhp` Stimulus controller. Your `data-controller` and `data-action`
+values come after the values of rephp. You cannot change the state attributes.
+
+A controller of the application can render a page too, with the `Rephp\Http\PageRenderer`
+service: `$this->render('page.html.twig', ['page' => $pages->render(Counter::class, $request)])`.
+The browser sends the events of a page to the URL of the page, and only a page route runs
+them. Thus, render a page with event handlers on its page route.
+
+### The client assets
+
+The client of rephp is the `rhp` Stimulus controller, and the `rh-c{display:contents}` CSS. The
+bundle gives them as a Symfony UX package (`runtime/assets/package.json`). With AssetMapper,
+they are in the `@rephp/runtime` namespace. The controller imports `@hotwired/stimulus` and
+`@hotwired/turbo` from the importmap of the application, so the page has one Turbo and one
+Stimulus. To set up an application:
+
+```sh
+composer require symfony/asset-mapper symfony/stimulus-bundle
+php bin/console importmap:require @hotwired/stimulus @hotwired/turbo
+```
+
+Then enable the controller in `assets/controllers.json` (Symfony Flex does it when it installs
+the bundle):
+
+```json
+{
+    "controllers": {
+        "@rephp/runtime": {
+            "rhp": { "enabled": true, "fetch": "eager", "autoimport": { "@rephp/runtime/dist/rhp.css": true } }
+        }
+    },
+    "entrypoints": []
+}
+```
+
+Without StimulusBundle, add `'@rephp/runtime' => ['path' => '@rephp/runtime/rhp_controller.js']`
+to `importmap.php`, register the controller (`application.register('rhp', RhpController)`),
+and import `@rephp/runtime/rhp.css`.
 
 ## 1. Get the tools
 
@@ -60,7 +129,7 @@ Without Docker, you need PHP 8.5, [FrankenPHP](https://frankenphp.dev), and Rust
 ```sh
 cargo build --release --manifest-path compiler/Cargo.toml -p rhpc-cli
 export PATH="$PWD/compiler/target/release:$PATH"
-cd examples/quickstart && composer install   # also runs assets:install (public/bundles/rephp/)
+cd examples/quickstart && composer install   # also runs importmap:install (assets/vendor/)
 ```
 
 ## 2. Build
@@ -161,7 +230,8 @@ frankenphp run --config Caddyfile
   kernel once and gives it many requests. The kernel resets the services (`kernel.reset`)
   between requests.
 - Caddy serves the static files of `public/` at `/`. A directory serves its `index.html`.
-  The runtime assets are in `public/bundles/rephp/` (`bin/console assets:install public`).
+  In development, Symfony serves the AssetMapper assets at `/assets/`. The quickstart also
+  serves `assets/vendor/` at `/vendor/`, for the Stimulus controllers of its static pages.
 - A `handle_path` block serves one more static directory. The quickstart uses it to show the
   example sources in the sandboxes (`/examples-src/`, `/components-src/`, `/repository-src/`).
 - `FRANKENPHP_WORKER_CONFIG` adds options to the worker. For example, `watch ./src/**/*.php`
@@ -200,12 +270,13 @@ export APP_ENV=prod APP_DEBUG=0
 composer install --no-dev --optimize-autoloader
 rhpc build src --no-warmup
 rm -rf var/cache/prod && php bin/console cache:warmup
+php bin/console asset-map:compile
 ```
 
 In production, Symfony does not check the cache for changes. Build the cache again after each
 `rhpc build`: `cache:warmup` builds the container (with the component services), the routes,
-and the Twig cache of the rhpc templates. Set a random `APP_SECRET` (for example in
-`.env.local`).
+and the Twig cache of the rhpc templates. `asset-map:compile` writes the assets to
+`public/assets/`. Set a random `APP_SECRET` (for example in `.env.local`).
 
 Then enable the preload (see `docker/php-prod.ini`). `config/preload.php` loads the Symfony
 container and the compiled components:

@@ -172,7 +172,8 @@ See [editors/vscode/README.md](editors/vscode/README.md).
 ```
 compiler/            Rust workspace: rhpc-syntax, rhpc-twig-scan, rhpc-analyze, rhpc-codegen, rhpc-cli
 runtime/             rephp/runtime (Composer): RephpBundle, Renderer, Twig extension, controllers,
-                     route loader, Doctrine transaction runner, console commands, rhp.js (public/)
+                     route loader, Doctrine transaction runner, console commands, and the rhp
+                     Stimulus controller (assets/: a Symfony UX package for AssetMapper)
 examples/quickstart/ a Symfony application: the react.dev/learn-style site (public/), its
                      runnable .rhp examples (src/), and its FrankenPHP Caddyfile
 docker/              Dockerfile (FrankenPHP: dev, prod), dev and prod entrypoints, init-db.sh

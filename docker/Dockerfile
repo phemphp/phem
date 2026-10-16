@@ -43,12 +43,14 @@ COPY examples/quickstart/ /app/examples/quickstart/
 WORKDIR /app/examples/quickstart
 # A random APP_SECRET for this image (it signs the component state in the browser).
 # The prod container does not see changes: build it again after rhpc build. cache:warmup
-# also compiles the rhpc templates into the Twig cache.
+# also compiles the rhpc templates into the Twig cache. asset-map:compile writes the JavaScript
+# and CSS of the importmap to public/assets/ (composer install downloads the packages).
 RUN printf 'APP_SECRET=%s\n' "$(od -An -tx1 -N32 /dev/urandom | tr -d ' \n')" > .env.local \
  && composer install --no-dev --optimize-autoloader --no-interaction \
  && rhpc build src --out var/cache/rhp --no-warmup \
  && rm -rf var/cache/prod \
- && php bin/console cache:warmup
+ && php bin/console cache:warmup \
+ && php bin/console asset-map:compile
 COPY docker/php-prod.ini /usr/local/etc/php/conf.d/zz-rephp.ini
 COPY docker/init-db.sh /usr/local/bin/init-db
 COPY docker/prod-entrypoint.sh /usr/local/bin/prod-entrypoint

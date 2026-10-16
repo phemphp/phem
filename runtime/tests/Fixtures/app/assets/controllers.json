@@ -1,0 +1,14 @@
+{
+    "controllers": {
+        "@rephp/runtime": {
+            "rhp": {
+                "enabled": true,
+                "fetch": "eager",
+                "autoimport": {
+                    "@rephp/runtime/dist/rhp.css": true
+                }
+            }
+        }
+    },
+    "entrypoints": []
+}

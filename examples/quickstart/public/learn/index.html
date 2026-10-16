@@ -159,14 +159,22 @@
 <p>To give a tag a CSS class, use <code>className</code>. It works the same way as the HTML <code>class</code> attribute. (You can also write <code>class</code>. The two names are aliases, like <code>htmlFor</code> and <code>for</code>.)</p>
 <div class="code-block"><pre class="code" data-controller="highlight"><code>&lt;img className="avatar" /&gt;</code></pre></div>
 <p>Then write the CSS rules in a separate CSS file:</p>
-<div class="code-block"><div class="code-title">public/app.css</div><pre class="code" data-controller="highlight"><code>/* In your CSS */
+<div class="code-block"><div class="code-title">assets/styles/app.css</div><pre class="code" data-controller="highlight"><code>/* In your CSS */
 .avatar {
     border-radius: 50%;
 }</code></pre></div>
-<p>To link the CSS file on each page, override the page document of the bundle in <code>templates/bundles/RephpBundle/page.html.twig</code>:</p>
-<div class="code-block"><div class="code-title">templates/bundles/RephpBundle/page.html.twig</div><pre class="code" data-controller="highlight"><code>{% extends '@!Rephp/page.html.twig' %}
-
-{% block stylesheets %}&lt;link rel="stylesheet" href="/app.css"&gt;{% endblock %}</code></pre></div>
+<p>Import the CSS file in <code>assets/app.js</code>, the JavaScript of the pages. AssetMapper links it on each page:</p>
+<div class="code-block"><div class="code-title">assets/app.js</div><pre class="code" data-controller="highlight"><code>import './bootstrap.js';
+import './styles/app.css';</code></pre></div>
+<p>Your application owns the HTML document of the pages. rephp renders each page in the <code>body</code> block of <code>templates/base.html.twig</code>, and <code>{{ importmap('app') }}</code> loads the assets:</p>
+<div class="code-block"><div class="code-title">templates/base.html.twig</div><pre class="code" data-controller="highlight"><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+&lt;title&gt;{% block title %}My app{% endblock %}&lt;/title&gt;
+{% block javascripts %}{{ importmap('app') }}{% endblock %}
+&lt;/head&gt;
+&lt;body&gt;{% block body %}{% endblock %}&lt;/body&gt;
+&lt;/html&gt;</code></pre></div>
 <p>When the class depends on a value, give <code>className</code> a list. rephp joins the items with spaces and drops the empty items:</p>
 <div class="code-block"><pre class="code" data-controller="highlight"><code>&lt;li className={{ ['item', isActive ? 'active' : ''] }}&gt;
     {{ item.title }}

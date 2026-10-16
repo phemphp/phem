@@ -103,7 +103,8 @@
         <ul>
             <li>Put your pages in <code>src/Pages/</code>. Expose each page with the Symfony <code>#[Route]</code> attribute.</li>
             <li>Put shared components in <code>src/Components/</code>.</li>
-            <li>Put the style of your pages in <code>public/app.css</code>. Link it in <code>templates/bundles/RephpBundle/page.html.twig</code>, which overrides the page document of the bundle.</li>
+            <li>Put the style of your pages in <code>assets/styles/app.css</code>, and import it in <code>assets/app.js</code>. AssetMapper links it on each page.</li>
+            <li>Write the HTML document of your pages in <code>templates/base.html.twig</code>. rephp renders each page in its <code>body</code> block.</li>
             <li>Put images and other static files in <code>public/</code>.</li>
         </ul>
     </div>

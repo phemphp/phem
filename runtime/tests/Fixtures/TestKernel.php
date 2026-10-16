@@ -12,6 +12,7 @@ use Symfony\Bundle\TwigBundle\TwigBundle;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Kernel;
 use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
+use Symfony\UX\StimulusBundle\StimulusBundle;
 
 /**
  * A Symfony application for the fixture project in tests/Fixtures/app.
@@ -22,7 +23,7 @@ final class TestKernel extends Kernel
 
     public function registerBundles(): iterable
     {
-        return [new FrameworkBundle(), new TwigBundle(), new RephpBundle()];
+        return [new FrameworkBundle(), new TwigBundle(), new StimulusBundle(), new RephpBundle()];
     }
 
     public function getProjectDir(): string

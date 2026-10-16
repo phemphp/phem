@@ -1,19 +1,8 @@
-{# The document of a page. Override it in templates/bundles/RephpBundle/page.html.twig:
-   {% extends '@!Rephp/page.html.twig' %}{% block stylesheets %}<link rel="stylesheet" href="/app.css">{% endblock %} #}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ title|raw }}</title>
-{% block head %}
-<link rel="icon" href="data:,">
-<style>rh-c{display:contents}</style>
-{% block stylesheets %}{% endblock %}
-<script type="module" src="/bundles/rephp/rhp.js"></script>
-{% endblock %}
-</head>
-<body>
-<div id="rh-root" data-controller="rhp" data-action="{{ actions }}" data-rhp-state-value="{{ state }}" data-rhp-signature-value="{{ signature }}">{{ body|raw }}</div>
-</body>
-</html>
+{# The default page template: the page in the `body` block of the base.html.twig of the application.
+   For another template, set the `rephp.page_template` option, or the `_rephp_template` default
+   of a route. The template gets the page as `page` (Rephp\Http\PageView). #}
+{% extends 'base.html.twig' %}
+
+{% block title %}{% if page.title is not null %}{{ page.title }}{% else %}{{ parent() }}{% endif %}{% endblock %}
+
+{% block body %}{{ rephp_root(page) }}{% endblock %}

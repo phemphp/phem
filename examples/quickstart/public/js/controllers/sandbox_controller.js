@@ -1,4 +1,4 @@
-import { Controller } from "/bundles/rephp/vendor/stimulus.js";
+import { Controller } from "/vendor/@hotwired/stimulus/stimulus.index.js";
 import { highlight, escapeHtml } from "../highlight.js";
 
 // A live example: the real source of src/Pages/Examples/<Name>.rhp (highlighted)

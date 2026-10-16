@@ -34,6 +34,13 @@
 		file_server
 	}
 
+	# The JavaScript packages of importmap.php (`bin/console importmap:install`), for the
+	# Stimulus controllers of the static learn pages.
+	handle_path /vendor/* {
+		root * assets/vendor
+		file_server
+	}
+
 	# The static files of public/ (a directory serves its index.html), then the Symfony
 	# application.
 	handle {

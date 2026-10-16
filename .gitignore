@@ -6,5 +6,7 @@ composer.lock
 .phpunit.result.cache
 .playwright-mcp/
 *.vsix
-/examples/quickstart/public/bundles/
+/examples/quickstart/public/assets/
 .env.local
+# The client of the runtime (a global dist/ rule must not ignore it).
+!/runtime/assets/dist/

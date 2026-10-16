@@ -10,9 +10,12 @@
         "doctrine/doctrine-fixtures-bundle": "^4.3",
         "doctrine/orm": "^3.7",
         "rephp/runtime": "@dev",
+        "symfony/asset": "^7.4|^8.0",
+        "symfony/asset-mapper": "^7.4|^8.0",
         "symfony/dotenv": "^7.4|^8.0",
         "symfony/form": "^7.4|^8.0",
         "symfony/runtime": "^7.4|^8.0",
+        "symfony/stimulus-bundle": "^2.20",
         "symfony/validator": "^7.4|^8.0",
         "symfony/yaml": "^7.4|^8.0"
     },
@@ -23,8 +26,8 @@
         "psr-4": { "App\\": "src/" }
     },
     "scripts": {
-        "post-install-cmd": ["@php bin/console assets:install public"],
-        "post-update-cmd": ["@php bin/console assets:install public"]
+        "post-install-cmd": ["@php bin/console importmap:install"],
+        "post-update-cmd": ["@php bin/console importmap:install"]
     },
     "config": {
         "allow-plugins": { "symfony/runtime": true },

@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Rephp\Twig;
 
 use Rephp\Dom\Attributes;
+use Rephp\Http\PageView;
 use Rephp\Manifest\Manifest;
 use Twig\Extension\AbstractExtension;
+use Twig\Markup;
 use Twig\TwigFunction;
 
 /**
- * The `{% component %}` tag and the `rhp_*` functions that compiled templates use.
+ * The `{% component %}` tag and the `rhp_*` functions that compiled templates use, and the
+ * `rephp_*` functions of the page templates (see PageView).
  *
  * The functions that need the current render tree (`rhp_on`, `rhp_attrs`) are in RephpRuntime.
  * The attribute functions render with Rephp\Dom\Attributes.
@@ -36,6 +39,8 @@ final class RephpExtension extends AbstractExtension
             new TwigFunction('rhp_attr', Attributes::attr(...), $safe),
             new TwigFunction('rhp_style', Attributes::style(...), $safe),
             new TwigFunction('rhp_attrs', [RephpRuntime::class, 'attrs'], $safe),
+            new TwigFunction('rephp_root', static fn (PageView $page, array $attributes = [], string $tag = 'div'): Markup => $page->root($attributes, $tag), $safe),
+            new TwigFunction('rephp_root_attributes', static fn (PageView $page, array $attributes = []): Markup => $page->attributes($attributes), $safe),
         ];
     }
 }
