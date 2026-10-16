@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Rephp\Routing;
 
 use Rephp\Manifest;
+use Rephp\Rendering\PropBinder;
 use Symfony\Component\Config\Loader\Loader;
 use Symfony\Component\Config\Resource\FileExistenceResource;
 use Symfony\Component\Config\Resource\FileResource;
@@ -22,6 +23,10 @@ use Symfony\Component\Routing\RouteCollection;
  * Without a name, the route name comes from the component: `App\Pages\Counter` →
  * `app_pages_counter`.
  *
+ * A route value (`{id}`, or a `defaults` key) goes to the #[Path] property or parameter with
+ * the same name. A route value without one is an error. The keys that start with `_` are not
+ * route values.
+ *
  * Import them in the application routes:
  *
  *     rephp:
@@ -32,8 +37,11 @@ final class PageLoader extends Loader
 {
     public const EVENT_ROUTE = 'rephp_event';
 
-    public function __construct(private readonly Manifest $manifest, ?string $env = null)
-    {
+    public function __construct(
+        private readonly Manifest $manifest,
+        ?string $env = null,
+        private readonly PropBinder $props = new PropBinder(),
+    ) {
         parent::__construct($env);
     }
 
@@ -74,6 +82,19 @@ final class PageLoader extends Loader
         return strtolower(str_replace('\\', '_', $page));
     }
 
+    /** Each route value needs a #[Path] property or parameter. */
+    private function checkValues(Route $route, string $name, string $page): void
+    {
+        $paths = $this->props->pathProps($page);
+        foreach (array_unique([...$route->compile()->getVariables(), ...array_keys($route->getDefaults())]) as $value) {
+            if (str_starts_with($value, '_') || isset($paths[$value])) {
+                continue;
+            }
+            $kind = class_exists($page, false) ? 'property' : 'parameter';
+            throw new \InvalidArgumentException(\sprintf('The route "%s" has the value "%s", but the page "%s" has no #[Path] %s "%s". Add one, or remove the value from the route.', $name, $value, $page, $kind, $value));
+        }
+    }
+
     private function addRoute(RouteCollection $routes, RouteAttribute $attr, string $page, int $index): void
     {
         if ($attr->envs && !\in_array($this->env, $attr->envs, true)) {
@@ -85,6 +106,7 @@ final class PageLoader extends Loader
 
         foreach ($paths as $locale => $path) {
             $route = new Route($path, $defaults, $attr->requirements, $attr->options, $attr->host ?? '', $attr->schemes, $attr->methods, $attr->condition ?? '');
+            $this->checkValues($route, $name, $page);
             if (0 === $locale) {
                 $routes->add($name, $route, $attr->priority ?? 0);
                 continue;

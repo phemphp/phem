@@ -62,11 +62,11 @@ return static function (ContainerConfigurator $container): void {
 
         // HTTP
         ->set('rephp.route_loader', PageLoader::class)
-            ->args([service('rephp.manifest'), param('kernel.environment')])
+            ->args([service('rephp.manifest'), param('kernel.environment'), service('rephp.prop_binder')])
             ->tag('routing.loader')
         ->set('rephp.controller.page', PageController::class)
             ->public()
-            ->args([service('rephp.renderer'), service('rephp.state_codec'), service('twig')])
+            ->args([service('rephp.renderer'), service('rephp.state_codec'), service('twig'), service('rephp.prop_binder')])
         ->set('rephp.controller.event', EventController::class)
             ->public()
             ->args([service('rephp.renderer'), service('rephp.state_codec'), service('rephp.manifest')])

@@ -1,0 +1,36 @@
+<?php
+namespace App\Pages\Examples;
+
+use App\Repository\ScientistRepository;
+use Rephp\Attribute\{Component, Path};
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Routing\Attribute\Route;
+
+use function App\Components\{Layout, ScientistCard};
+
+// The {id} route value goes to the #[Path] property: /examples/ScientistPage/1 gives $id = 1.
+#[Route('/examples/ScientistPage/{id}', requirements: ['id' => '\d+'])]
+#[Component]
+final class ScientistPage
+{
+    #[Path]
+    public int $id;
+
+    public function __construct(
+        private readonly ScientistRepository $scientists,
+    ) {
+    }
+
+    public function render()
+    {
+        $scientist = $this->scientists->find($this->id)
+            ?? throw new NotFoundHttpException('No scientist with this id.');
+
+        return (
+            <Layout title={{ scientist.name }}>
+                <ScientistCard scientist={{ scientist }} />
+                <Layout:footer><a href="/examples/DurableGallery">All the scientists</a></Layout:footer>
+            </Layout>
+        );
+    }
+}

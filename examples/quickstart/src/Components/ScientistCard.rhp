@@ -30,7 +30,7 @@ function ScientistCard(Scientist $scientist)
         <section className="profile">
             <Avatar name={{ scientist.name }} />
             <div>
-                <h2>{{ scientist.name }}</h2>
+                <h2><a href={{ path('app_pages_examples_scientistpage', {id: scientist.id}) }}>{{ scientist.name }}</a></h2>
                 <p>{{ scientist.profession }}</p>
                 <LikeCounter key={{ scientist.id }} scientist={{ scientist }} />
             </div>

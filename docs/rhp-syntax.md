@@ -45,8 +45,56 @@ The attribute has the usual options: `name`, `methods`, `requirements`, `default
 `schemes`, `condition`, `priority`, `env`, `alias`, and localized paths. Use it more than once to
 give a page more than one URL. Without a `name`, the route name comes from the component:
 `App\Pages\Examples\Counter` → `app_pages_examples_counter`. A file can have any number of
-pages, in any directory. A page gets no props: a placeholder such as `{id}` in the path is not a
-prop of the page.
+pages, in any directory.
+
+### Route values
+
+A route value goes to the page as a prop. Mark the prop with `#[Path]`: a public property of a
+class page, or a parameter of a function page. The name of the prop is the name of the route
+value.
+
+```php
+use App\Repository\ScientistRepository;
+use Rephp\Attribute\{Component, Path};
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Routing\Attribute\Route;
+
+#[Route('/scientists/{id}', requirements: ['id' => '\d+'])]
+#[Component]
+final class ScientistPage
+{
+    #[Path] public int $id;
+
+    public function __construct(private readonly ScientistRepository $scientists)
+    {
+    }
+
+    public function render()
+    {
+        $scientist = $this->scientists->find($this->id)
+            ?? throw new NotFoundHttpException('No scientist with this id.');
+
+        return <h1>{{ scientist.name }}</h1>;
+    }
+}
+
+#[Route('/hello/{name}', defaults: ['name' => 'World'])]
+function Hello(#[Path] string $name) {
+    return <p>Hello {{ name }}</p>;
+}
+```
+
+- The route values are the placeholders (`{id}`) and the `defaults` keys. The keys that start
+  with `_` (`_locale`, `_format`, ...) are not route values.
+- Each route value needs a `#[Path]` prop. A route value without one is an error when Symfony
+  loads the routes.
+- A prop without `#[Path]` gets no route value.
+- A string goes to an `int`, `float` or `bool` prop as a value of that type: `/scientists/3`
+  gives `$id = 3`. A value that does not match the type gives a 404 response. Use
+  `requirements` to reject it before.
+- The events of the page get the same route values. They go into the signed state of the page,
+  so a client cannot change them.
+- A `#[Path]` property cannot be `#[State]`, and a `#[Path]` parameter cannot be variadic.
 
 ## 2. Markup rules (the same as JSX)
 

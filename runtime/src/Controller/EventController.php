@@ -42,7 +42,10 @@ final class EventController
             return new JsonResponse(['reload' => true], 409);
         }
 
-        $tree = new Tree($page, $state);
+        // The props of the page (its #[Path] route values) are in the signed state.
+        $props = \is_array($state['_props'] ?? null) ? $state['_props'] : [];
+        unset($state['_props']);
+        $tree = new Tree($page, $state, $props);
         $this->renderer->render($tree);
         $event = Event::fromArray(\is_array($data['event'] ?? null) ? $data['event'] : [], $request);
         if (!$this->renderer->dispatch($tree, $data['handler'], $event)) {

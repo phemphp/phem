@@ -53,7 +53,7 @@ final class Renderer implements ResetInterface
     {
         $tree->begin();
 
-        return $this->within($tree, fn (): string => $this->renderComponent($tree, $tree->page, [], null, null, []));
+        return $this->within($tree, fn (): string => $this->renderComponent($tree, $tree->page, $tree->props, null, null, []));
     }
 
     /**
@@ -73,10 +73,15 @@ final class Renderer implements ResetInterface
         return true;
     }
 
-    /** @return array<string, array<string, mixed>> fiber id => state, for the fibers of the last pass */
+    /**
+     * The state that the browser keeps. The `_props` key keeps the props of the page for the
+     * events (a fiber id starts with `rh`).
+     *
+     * @return array<string, mixed> fiber id => state, for the fibers of the last pass
+     */
     public function exportState(Tree $tree): array
     {
-        $out = [];
+        $out = [] !== $tree->props ? ['_props' => $tree->props] : [];
         foreach ($tree->mounted() as $fiber) {
             if (null !== $fiber->instance && [] !== $state = $this->props->exportState($fiber->instance)) {
                 $out[$fiber->id] = $state;

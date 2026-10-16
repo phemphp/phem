@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Rephp\Rendering;
 
+use Rephp\Attribute\Path;
 use Rephp\Attribute\State;
 use Rephp\Html;
 
@@ -22,6 +23,9 @@ final class PropBinder
 
     /** @var array<string, list<\ReflectionProperty>> */
     private array $states = [];
+
+    /** @var array<string, array<string, ?\ReflectionType>> */
+    private array $paths = [];
 
     /**
      * Named arguments for a function component.
@@ -115,6 +119,76 @@ final class PropBinder
                 throw new PropError(\sprintf('<%s> needs the prop "%s".', self::short($class), $name));
             }
         }
+    }
+
+    /**
+     * The #[Path] public properties of a class page, or the #[Path] parameters of a function
+     * page: they get the route values.
+     *
+     * @return array<string, ?\ReflectionType> name => type
+     */
+    public function pathProps(string $page): array
+    {
+        if (isset($this->paths[$page])) {
+            return $this->paths[$page];
+        }
+        $out = [];
+        if (class_exists($page)) {
+            foreach ((new \ReflectionClass($page))->getProperties() as $p) {
+                if ([] === $p->getAttributes(Path::class)) {
+                    continue;
+                }
+                if (!isset($this->properties($page)[$p->getName()])) {
+                    throw new PropError(\sprintf('The #[Path] property "%s" of <%s> must be a prop: public, not static, not promoted, and not #[State].', $p->getName(), self::short($page)));
+                }
+                $out[$p->getName()] = $p->getType();
+            }
+        } else {
+            $this->params($page);
+            foreach ((new \ReflectionFunction($page))->getParameters() as $p) {
+                if ([] === $p->getAttributes(Path::class)) {
+                    continue;
+                }
+                if ($p->isVariadic()) {
+                    throw new PropError(\sprintf('The #[Path] parameter "%s" of <%s> cannot be variadic.', $p->getName(), self::short($page)));
+                }
+                $out[$p->getName()] = $p->getType();
+            }
+        }
+
+        return $this->paths[$page] = $out;
+    }
+
+    /**
+     * The props of a page from its route values: the values of the #[Path] properties or
+     * parameters. A string goes to an `int`, `float` or `bool` type as a value of that type.
+     *
+     * @param array<string, mixed> $values the route values
+     *
+     * @return array<string, mixed>
+     *
+     * @throws \UnexpectedValueException when a value does not match its type (`abc` for `int $id`)
+     */
+    public function pathValues(string $page, array $values): array
+    {
+        $out = [];
+        foreach ($this->pathProps($page) as $name => $type) {
+            if (!\array_key_exists($name, $values)) {
+                continue;
+            }
+            $value = $values[$name];
+            if (\is_string($value) && $type instanceof \ReflectionNamedType && $type->isBuiltin()) {
+                $value = match ($type->getName()) {
+                    'int' => filter_var($value, \FILTER_VALIDATE_INT, \FILTER_NULL_ON_FAILURE),
+                    'float' => filter_var($value, \FILTER_VALIDATE_FLOAT, \FILTER_NULL_ON_FAILURE),
+                    'bool' => filter_var($value, \FILTER_VALIDATE_BOOL, \FILTER_NULL_ON_FAILURE),
+                    default => $value,
+                } ?? throw new \UnexpectedValueException(\sprintf('The route value "%s" of <%s> is not a valid %s: "%s".', $name, self::short($page), $type->getName(), $values[$name]));
+            }
+            $out[$name] = $value;
+        }
+
+        return $out;
     }
 
     /**

@@ -1,0 +1,32 @@
+<?php
+
+namespace App\Pages;
+
+use Rephp\Attribute\{Component, Path, State};
+use Symfony\Component\Routing\Attribute\Route;
+
+// A class page: the {id} route value goes to the #[Path] property.
+#[Component]
+#[Route('/items/{id}')]
+final class ItemPage
+{
+    #[Path] public int $id;
+    public string $label = 'Item';
+    #[State] public int $count = 0;
+
+    public function increment(): void
+    {
+        ++$this->count;
+    }
+
+    public function render()
+    {
+        return <button id="item" onClick={{ increment }}>{{ label }} {{ id }}: {{ count }}</button>;
+    }
+}
+
+// A function page: the {name} route value (or its default) goes to the #[Path] parameter.
+#[Route('/hello/{name}', defaults: ['name' => 'World'])]
+function Hello(#[Path] string $name) {
+    return <p id="hello">Hello {{ name }}</p>;
+}

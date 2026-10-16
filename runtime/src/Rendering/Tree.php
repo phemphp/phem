@@ -26,10 +26,12 @@ final class Tree
     /**
      * @param string                              $page  the page component, or '' for a tree without a page
      * @param array<string, array<string, mixed>> $state fiber id => state that the browser sent back
+     * @param array<string, mixed>                $props the props of the page: its #[Path] route values
      */
     public function __construct(
         public readonly string $page = '',
         private readonly array $state = [],
+        public readonly array $props = [],
     ) {
     }
 
