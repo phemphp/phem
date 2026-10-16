@@ -4,7 +4,7 @@ namespace App\Components;
 
 function RestButton(int $count, mixed ...$rest) {
     return (
-        <button type="button" {{ ...rest }} className="btn btn-{{ count }}" disabled>
+        <button type="button" {{ ...rest }} onclick="track()" className="btn btn-{{ count }}" disabled>
             Clicked {{ count }} times
         </button>
     );

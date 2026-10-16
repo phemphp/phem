@@ -46,9 +46,19 @@ final class Attributes
         return preg_replace('/^(\s*<[a-zA-Z][\w:-]*)/', '$1'.$attr, $html, 1) ?? $html;
     }
 
+    /**
+     * Whether an attribute name is valid HTML: no space, quote, `<`, `>`, `/`, `=` or control
+     * character, which could end the name and start another attribute.
+     */
+    public static function isValidName(string $name): bool
+    {
+        return 1 === preg_match('/^[^\s\x00-\x1F\x7F"\'<>\/=]+$/', $name);
+    }
+
+    /** An attribute with an invalid name (see isValidName()) is not rendered, as in React. */
     public static function attr(string $name, mixed $value): Markup
     {
-        if (null === $value || false === $value) {
+        if (null === $value || false === $value || !self::isValidName($name)) {
             return new Markup('', 'UTF-8');
         }
         if (true === $value) {

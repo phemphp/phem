@@ -172,6 +172,9 @@ impl<'a> Lowerer<'a> {
                     }
                     args.push(self.expr_code(x));
                 }
+                // An inline script (`onclick="..."`) of the markup: the runtime does not render
+                // `on*` names from rhp_attrs(), because a spread can contain data.
+                AttrKind::Plain { name, .. } if is_inline_script(name) => self.dom_attr(a, out),
                 AttrKind::Plain { name, name_span, value } => {
                     let is_event = event_name(name).is_some();
                     let v = match value {
@@ -451,6 +454,11 @@ fn event_name(attr: &str) -> Option<String> {
         "DoubleClick" => "dblclick".into(),
         r => r.to_ascii_lowercase(),
     })
+}
+
+/// `onclick`, `ONLOAD`: an HTML event attribute with inline script, not a handler (`onClick`).
+fn is_inline_script(attr: &str) -> bool {
+    event_name(attr).is_none() && attr.get(..2).is_some_and(|p| p.eq_ignore_ascii_case("on"))
 }
 
 pub fn twig_str(s: &str) -> String {

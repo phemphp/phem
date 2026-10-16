@@ -66,12 +66,33 @@ final class EventController
         $result = $this->renderer->dispatch($tree, $handler, Event::fromArray($payload->event, $request));
         if ($result instanceof RedirectResponse) {
             // The browser visits the URL: the page does not render again.
-            return new JsonResponse(['redirect' => $result->getTargetUrl()]);
+            return new JsonResponse(['redirect' => self::redirectUrl($result)]);
         }
         $this->renderer->render($tree);
         [$json, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page);
 
         return new JsonResponse(['streams' => $this->streams->updates($tree->changedFibers()), 'state' => $json, 'signature' => $signature]);
+    }
+
+    /**
+     * The URL of a redirect: a relative URL, or an `http:` or `https:` URL.
+     *
+     * The browser goes to the URL with a Turbo visit, which sets `window.location` for a URL that
+     * it cannot visit. Thus a `javascript:` URL (for example from a `?next=` value) would run
+     * as a script. A Location header never runs it.
+     *
+     * @throws \UnexpectedValueException for another scheme
+     */
+    private static function redirectUrl(RedirectResponse $response): string
+    {
+        $url = $response->getTargetUrl();
+        // As the browser parses the URL: no control characters or spaces at the ends, and no tabs or line breaks.
+        $normalized = str_replace(["\t", "\n", "\r"], '', trim($url, "\x00..\x20"));
+        if (1 === preg_match('/^([a-z][a-z0-9+.\-]*):/i', $normalized, $m) && !\in_array(strtolower($m[1]), ['http', 'https'], true)) {
+            throw new \UnexpectedValueException(\sprintf('An event handler can redirect only to a relative, http or https URL, "%s:" given.', $m[1]));
+        }
+
+        return $url;
     }
 
     private static function reload(): JsonResponse

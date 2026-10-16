@@ -82,8 +82,11 @@ class RhpController extends Controller {
     }
     const data = await response.json()
     if (data.redirect) {
-      // The handler returned a RedirectResponse.
-      Turbo.visit(data.redirect)
+      // The handler returned a RedirectResponse. Turbo sets window.location for a URL that it
+      // cannot visit, so a javascript: URL would run: visit only http(s) URLs.
+      const url = new URL(data.redirect, window.location.href)
+      if (url.protocol === "http:" || url.protocol === "https:") Turbo.visit(url.href)
+      else console.error("[rephp] redirect to a URL that is not http(s) was blocked", data.redirect)
       return
     }
     this.stateValue = data.state

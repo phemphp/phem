@@ -48,10 +48,12 @@ final class RephpRuntime implements RuntimeExtensionInterface
         if (null === $handler || false === $handler) {
             return new Markup('', 'UTF-8');
         }
-        if (!\is_callable($handler)) {
-            throw new \InvalidArgumentException(\sprintf('The "%s" handler must be a function, "%s" given. Pass the function, do not call it.', $event, get_debug_type($handler)));
+        // Only a Closure: a string or an array can also be callable (`'system'`), and it can come
+        // from data in a spread.
+        if (!$handler instanceof \Closure) {
+            throw new \InvalidArgumentException(\sprintf('The "%s" handler must be a function, "%s" given. Pass the function (`$this->name(...)`, `fn () => ...`), do not call it.', $event, get_debug_type($handler)));
         }
-        $id = $this->renderer->addHandler(\Closure::fromCallable($handler)) ?? 'static';
+        $id = $this->renderer->addHandler($handler) ?? 'static';
 
         return new Markup(\sprintf('data-rh-on-%s="%s"', DomEvents::name($event), Attributes::e($id)), 'UTF-8');
     }
@@ -60,12 +62,20 @@ final class RephpRuntime implements RuntimeExtensionInterface
      * The attributes of an HTML element with a spread: `<button type="button" {{ ...rest }}>`
      * → `rhp_attrs({'type': 'button'}, rest)`. As in React, a later value replaces an earlier
      * value of the same attribute. `onClick` (and the other `on*` names) binds a handler.
+     *
+     * A spread can contain data, so its names are not trusted: an invalid name is not rendered,
+     * and an `on*` name is never an inline script (`onclick="..."`), as in React. rhpc writes
+     * the static `onclick="..."` of the markup outside of this call.
      */
     public function attrs(mixed ...$groups): Markup
     {
         $merged = [];
         foreach ($groups as $attrs) {
-            foreach ((array) $attrs as $name => $value) {
+            if (null !== $attrs && !is_iterable($attrs)) {
+                // Not (array) $object: that gives all of its properties, also the private ones.
+                throw new \InvalidArgumentException(\sprintf('A spread (`{{ ...attrs }}`) needs a hash of attributes, "%s" given.', get_debug_type($attrs)));
+            }
+            foreach ($attrs ?? [] as $name => $value) {
                 $merged[Attributes::name((string) $name)] = $value;
             }
         }
@@ -75,6 +85,7 @@ final class RephpRuntime implements RuntimeExtensionInterface
                 'key' === $name => Attributes::key($value),
                 'style' === $name => Attributes::style($value),
                 1 === preg_match('/^on[A-Z]/', $name) => $this->on(strtolower(substr($name, 2)), $value),
+                0 === stripos($name, 'on') => '',
                 default => Attributes::attr($name, $value),
             };
         }

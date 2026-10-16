@@ -7,6 +7,7 @@ template and turns the PHP code into plain PHP. All parsing happens at build tim
 ## 1. Components
 
 A component is a PHP function whose name starts with a capital letter. It returns markup.
+As in React, a string that it returns is text: rephp escapes it.
 A component with state is a `#[Component]` class (see section 7).
 
 ```php
@@ -162,6 +163,8 @@ function Profile() {
 - `{{ ...props }}` in a tag spreads a hash of attributes (or props, on a component). As in JSX,
   the order counts: a later value replaces an earlier one. `<button type="button" {{ ...rest }}>`
   gives a default that `rest` can replace. `on*` keys (`onClick`, ...) bind handlers.
+  A spread can contain data, so it does not render an invalid attribute name or an inline
+  script (`onclick`, with a string). A static `onclick="..."` in the markup stays.
 - All Twig filters, tests, and tags work: `|upper`, `|length`, `{% set %}`, `{% for %}`, and more.
 - Do not put PHP code in markup. Compute values in PHP before the `return`.
 
@@ -268,7 +271,8 @@ public function render()
 ```
 
 A handler can return a Symfony `RedirectResponse`. Then the page does not render again: the
-browser goes to its URL (a Turbo visit). For example, after a delete:
+browser goes to its URL (a Turbo visit). The URL is relative, or an `http:` or `https:` URL:
+another scheme (`javascript:`) is an error. For example, after a delete:
 
 ```php
 use Symfony\Component\HttpFoundation\RedirectResponse;

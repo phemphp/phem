@@ -133,7 +133,7 @@ final class Renderer implements ResetInterface
         $tree->push($fiber);
         try {
             $out = $renderer->render($fiber, $this->slots($fiber, $def->slots));
-            $html = (string) ($this->markup->resolve($out) ?? '');
+            $html = $this->markup->html($out);
         } finally {
             $tree->pop();
         }

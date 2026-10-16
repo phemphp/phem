@@ -18,7 +18,7 @@ interface ComponentRenderer
     /**
      * @param array<string, Html> $slots
      *
-     * @return mixed the output of the component: markup (Element, Html, a list of them), a string, or null
+     * @return mixed the output of the component: markup (Element, Html, a list of them), a string (text: it is escaped), or null
      */
     public function render(Fiber $fiber, array $slots): mixed;
 }
