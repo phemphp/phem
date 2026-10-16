@@ -28,4 +28,9 @@ final class ScientistRepository extends ServiceEntityRepository
     {
         $this->getEntityManager()->persist($scientist);
     }
+
+    public function remove(Scientist $scientist): void
+    {
+        $this->getEntityManager()->remove($scientist);
+    }
 }

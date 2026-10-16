@@ -12,6 +12,7 @@ use Rephp\Html;
 use Rephp\HtmlList;
 use Rephp\Manifest;
 use Rephp\Slot;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Contracts\Service\ResetInterface;
 use Twig\Environment;
 use Twig\Template;
@@ -57,7 +58,8 @@ final class Renderer implements ResetInterface
     }
 
     /**
-     * Runs an event handler of the last pass.
+     * Runs an event handler of the last pass. When the handler returns a RedirectResponse,
+     * its URL goes to `$tree->redirect`.
      *
      * @return bool false when the tree has no handler with this id
      */
@@ -68,7 +70,10 @@ final class Renderer implements ResetInterface
             return false;
         }
         $call = static fn (): mixed => $handler($event);
-        $this->within($tree, self::isTransactional($handler) ? fn (): mixed => $this->transactions()->run($call) : $call);
+        $result = $this->within($tree, self::isTransactional($handler) ? fn (): mixed => $this->transactions()->run($call) : $call);
+        if ($result instanceof RedirectResponse) {
+            $tree->redirect = $result->getTargetUrl();
+        }
 
         return true;
     }

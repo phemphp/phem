@@ -18,7 +18,8 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
  *
  * The `rhp` Stimulus controller sends the signed state of the page and the handler id. The
  * server renders with that state, runs the handler, renders again, and answers with Turbo
- * Streams that morph the components that changed, plus the new state.
+ * Streams that morph the components that changed, plus the new state. When the handler returns
+ * a RedirectResponse, the server answers with its URL, and the browser visits it.
  */
 final class EventController
 {
@@ -51,6 +52,10 @@ final class EventController
         if (!$this->renderer->dispatch($tree, $data['handler'], $event)) {
             // The page changed since the browser rendered it (for example after a deploy).
             return new JsonResponse(['reload' => true], 409);
+        }
+        if (null !== $tree->redirect) {
+            // The browser visits the URL: the page does not render again.
+            return new JsonResponse(['redirect' => $tree->redirect]);
         }
         $this->renderer->render($tree);
 

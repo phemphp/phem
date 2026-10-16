@@ -241,6 +241,20 @@ public function render()
 }
 ```
 
+A handler can return a Symfony `RedirectResponse`. Then the page does not render again: the
+browser goes to its URL (a Turbo visit). For example, after a delete:
+
+```php
+use Symfony\Component\HttpFoundation\RedirectResponse;
+
+public function delete(): RedirectResponse
+{
+    $this->scientists->remove($this->scientist);
+
+    return new RedirectResponse('/scientists');
+}
+```
+
 ## 7. State: class components
 
 A component with state is a class with the `#[Component]` attribute and a `render()` method.

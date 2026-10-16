@@ -81,6 +81,11 @@ class RhpController extends Controller {
       return
     }
     const data = await response.json()
+    if (data.redirect) {
+      // The handler returned a RedirectResponse.
+      Turbo.visit(data.redirect)
+      return
+    }
     this.stateValue = data.state
     this.signatureValue = data.signature
     if (data.streams) Turbo.renderStreamMessage(data.streams)

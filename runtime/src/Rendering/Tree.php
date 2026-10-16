@@ -17,6 +17,8 @@ final class Tree
     public array $fibers = [];
     public int $pass = 0;
     public int $rootIndex = 0;
+    /** The URL that the event handler redirects to (it returned a RedirectResponse). */
+    public ?string $redirect = null;
 
     /** @var list<Fiber> */
     private array $stack = [];

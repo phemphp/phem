@@ -1,16 +1,18 @@
 <?php
 namespace App\Pages\Examples;
 
+use App\Model\Scientist;
 use App\Repository\ScientistRepository;
-use Rephp\Attribute\{Component, Path};
+use Rephp\Attribute\{Component, Path, Transactional};
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 use function App\Components\{Layout, ScientistCard};
 
-// The {id} route value goes to the #[Path] property: /examples/ScientistPage/1 gives $id = 1.
 #[Route('/examples/ScientistPage/{id}', requirements: ['id' => '\d+'])]
 #[Component]
+#[Transactional]
 final class ScientistPage
 {
     #[Path]
@@ -21,16 +23,28 @@ final class ScientistPage
     ) {
     }
 
+    public function delete(): RedirectResponse
+    {
+        $this->scientists->remove($this->scientist());
+
+        return new RedirectResponse('/examples/DurableGallery');
+    }
+
     public function render()
     {
-        $scientist = $this->scientists->find($this->id)
-            ?? throw new NotFoundHttpException('No scientist with this id.');
+        $scientist = $this->scientist();
 
         return (
             <Layout title={{ scientist.name }}>
                 <ScientistCard scientist={{ scientist }} />
+                <button onClick={{ delete }}>Delete</button>
                 <Layout:footer><a href="/examples/DurableGallery">All the scientists</a></Layout:footer>
             </Layout>
         );
+    }
+
+    private function scientist(): Scientist
+    {
+        return $this->scientists->find($this->id) ?? throw new NotFoundHttpException('No scientist with this id.');
     }
 }

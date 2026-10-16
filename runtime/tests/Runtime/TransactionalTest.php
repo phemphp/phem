@@ -12,6 +12,7 @@ use Rephp\Rendering\Renderer;
 use Rephp\Rendering\TransactionRunner;
 use Rephp\Rendering\Tree;
 use Symfony\Component\DependencyInjection\ServiceLocator;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Twig\Environment;
 use Twig\Loader\ArrayLoader;
 
@@ -55,6 +56,14 @@ final class TransactionalTest extends TestCase
         self::assertSame(['begin', 'fail', 'rollback'], $this->log->getArrayCopy());
     }
 
+    public function testRedirectOfATransactionalHandlerGoesToTheTree(): void
+    {
+        $tree = new Tree();
+        $this->dispatch(new TransactionalComponent($this->log)->leave(...), tree: $tree);
+        self::assertSame(['begin', 'leave', 'commit'], $this->log->getArrayCopy());
+        self::assertSame('/done', $tree->redirect);
+    }
+
     public function testTransactionalComponentNeedsARunner(): void
     {
         $this->expectException(\LogicException::class);
@@ -63,11 +72,10 @@ final class TransactionalTest extends TestCase
         $this->dispatch(new TransactionalComponent($this->log)->add(...), withRunner: false);
     }
 
-    private function dispatch(\Closure $handler, bool $withRunner = true): bool
+    private function dispatch(\Closure $handler, bool $withRunner = true, Tree $tree = new Tree()): bool
     {
         $runner = $withRunner ? new RecordingRunner($this->log) : null;
         $renderer = new Renderer(new Environment(new ArrayLoader()), new Manifest('/nonexistent', '/nonexistent'), new ServiceLocator([]), transactions: $runner);
-        $tree = new Tree();
         $id = $tree->addHandler($handler);
 
         return $renderer->dispatch($tree, $id, new Event('click'));
@@ -85,6 +93,13 @@ final class TransactionalComponent
     public function add(): void
     {
         $this->log[] = 'add';
+    }
+
+    public function leave(): RedirectResponse
+    {
+        $this->log[] = 'leave';
+
+        return new RedirectResponse('/done');
     }
 
     public function fail(): void
