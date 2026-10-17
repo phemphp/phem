@@ -30,11 +30,11 @@ final class CounterTogether extends Document
     public function render()
     {
         return (
-            <div>
+            <>
                 <h1>Counters that update together</h1>
                 <CountButton count={{ count }} onClick={{ handleClick }} />
                 <CountButton count={{ count }} onClick={{ handleClick }} />
-            </div>
+            </>
         );
     }
 }

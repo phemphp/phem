@@ -9,8 +9,8 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 
 use function App\Components\{Layout, ScientistCard};
 
-#[Page('/examples/ScientistPage/{id:scientist}', requirements: ['id' => '\d+'])]
 #[Transactional]
+#[Page('/examples/ScientistPage/{id:scientist}', requirements: ['id' => '\d+'])]
 final class ScientistPage extends Document
 {
     #[Path]
