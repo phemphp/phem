@@ -14,7 +14,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 final class WarmupCommand
 {
     public function __construct(
-        private readonly TemplateWarmer $warmer
+        private readonly TemplateWarmer $warmer,
     ) {
     }
 

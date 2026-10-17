@@ -25,6 +25,9 @@ final class EntityPathConverter implements PathValueConverter
     public function convert(PathProp $prop, mixed $value): ?object
     {
         $class = $prop->type->getName();
+        if (!class_exists($class) && !interface_exists($class)) {
+            throw new \LogicException(\sprintf('The type "%s" of the route value "%s" of <%s> is not a class.', $class, $prop->name, ComponentName::short($prop->page)));
+        }
         $entity = null !== $value ? $this->entities?->find($class, $value) : null;
         if (null === $entity && !$prop->type->allowsNull()) {
             throw new \UnexpectedValueException(\sprintf('No %s matches the route value "%s" of <%s>.', ComponentName::short($class), $prop->name, ComponentName::short($prop->page)));

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Mamu\Tests\Runtime;
 
-use PHPUnit\Framework\TestCase;
 use Mamu\State\StateCodec;
+use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;

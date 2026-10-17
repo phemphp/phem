@@ -4,6 +4,7 @@ var/
 composer.lock
 .phpunit.cache/
 .phpunit.result.cache
+.php-cs-fixer.cache
 .playwright-mcp/
 *.vsix
 /examples/quickstart/public/assets/

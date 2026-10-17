@@ -1,0 +1,28 @@
+includes:
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+    - vendor/phpstan/phpstan-phpunit/rules.neon
+
+parameters:
+    level: 8
+    paths:
+        - src
+        - config
+        - tests
+    excludePaths:
+        - tests/Fixtures/app/var
+    # The runtime supports Symfony 7.4 and later: do not read the version of the installed one.
+    dynamicConstantNames:
+        - Symfony\Component\HttpKernel\Kernel::VERSION_ID
+    ignoreErrors:
+        # A helper trait for the class components of the applications.
+        -
+            identifier: trait.unused
+            path: src/Component.php
+        # Twig prints a Markup without escaping. Twig\Markup is @final since Twig 3.28.
+        -
+            identifier: class.extendsFinalByPhpDoc
+            path: src/Html.php
+        # Function pages take #[Route]: the runtime reads its arguments and does not call newInstance().
+        -
+            identifier: attribute.target
+            message: '#^Attribute class Symfony\\Component\\Routing\\Attribute\\Route does not have the function target\.$#'

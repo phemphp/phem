@@ -9,13 +9,21 @@ namespace Mamu\Manifest;
  *
  * It loads the manifest and the compiled PHP files on first use, so an application without a
  * build can still boot (for example to run `cache:clear`).
+ *
+ * @phpstan-type ManifestData array{
+ *     version?: string,
+ *     components?: array<string, array<string, mixed>>,
+ *     pages?: list<string>,
+ *     templates?: array<string, array{source: string, line: int}>,
+ *     files?: list<string>,
+ * }
  */
 final class Manifest
 {
     /** The Twig namespace of the compiled templates. */
     public const TEMPLATE_NAMESPACE = 'phpm';
 
-    /** @var array<string, mixed>|null */
+    /** @var ManifestData|null */
     private ?array $data = null;
     private ?string $twigSignature = null;
     /** @var array<string, ComponentDefinition|null> */
@@ -62,7 +70,9 @@ final class Manifest
     public function components(): iterable
     {
         foreach (array_keys($this->data()['components'] ?? []) as $fqcn) {
-            yield $this->component($fqcn);
+            if (null !== $definition = $this->component($fqcn)) {
+                yield $definition;
+            }
         }
     }
 
@@ -129,7 +139,7 @@ final class Manifest
         $this->data();
     }
 
-    /** @return array<string, mixed> */
+    /** @return ManifestData */
     private function data(): array
     {
         if (null !== $this->data) {

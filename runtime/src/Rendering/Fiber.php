@@ -36,7 +36,11 @@ final class Fiber
     public int $pass = 0;
     /** The inner HTML of the last render. */
     public string $html = '';
-    /** The HTML without the child fibers' content, by pass. @var array<int, string> */
+    /**
+     * The HTML without the child fibers' content, by pass.
+     *
+     * @var array<int, string>
+     */
     public array $ownHtml = [];
 
     /**

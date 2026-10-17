@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Mamu\Tests\Runtime;
 
-use PHPUnit\Framework\TestCase;
 use Mamu\Dom\Attributes;
 use Mamu\Html;
 use Mamu\Manifest\Manifest;
 use Mamu\Rendering\MarkupResolver;
 use Mamu\Rendering\Renderer;
 use Mamu\Twig\MamuRuntime;
+use PHPUnit\Framework\TestCase;
 use Twig\Environment;
 use Twig\Loader\ArrayLoader;
 
@@ -47,7 +47,7 @@ final class TwigFunctionsTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         $this->runtime()->attrs(new class {
-            private string $password = 'hash';
+            public string $password = 'hash';
         });
     }
 

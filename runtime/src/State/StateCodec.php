@@ -21,10 +21,10 @@ use Symfony\Component\HttpFoundation\Request;
 final class StateCodec
 {
     /**
-     * @param string                $secret      the `mamu.secret` option (by default `kernel.secret`, from APP_SECRET)
-     * @param int                   $maxAge      the `mamu.state_max_age` option: the seconds that a signature is valid, 0 for no limit
-     * @param bool                  $bindSession the `mamu.state_bind_session` option
-     * @param (\Closure(): int)|null $clock      the time now (tests)
+     * @param string                 $secret      the `mamu.secret` option (by default `kernel.secret`, from APP_SECRET)
+     * @param int                    $maxAge      the `mamu.state_max_age` option: the seconds that a signature is valid, 0 for no limit
+     * @param bool                   $bindSession the `mamu.state_bind_session` option
+     * @param (\Closure(): int)|null $clock       the time now (tests)
      */
     public function __construct(
         private readonly string $secret,

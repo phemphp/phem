@@ -1,4 +1,5 @@
 <?phpm
+
 namespace App\Pages\Examples;
 
 use Mamu\Attribute\{Component, State};

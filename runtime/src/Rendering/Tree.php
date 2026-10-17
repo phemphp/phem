@@ -26,8 +26,8 @@ final class Tree
     private array $handlerCounts = [];
 
     /**
-     * @param string                              $page  the page component, or '' for a tree without a page
-     * @param array<string, array<string, mixed>> $state fiber id => state that the browser sent back
+     * @param string                              $page   the page component, or '' for a tree without a page
+     * @param array<string, array<string, mixed>> $state  fiber id => state that the browser sent back
      * @param array<string, mixed>                $props  the props of the page: its #[Path] route values (an entity for an entity prop)
      * @param array<string, mixed>                $values the route values of the #[Path] props, as the route gives them (an identifier or criteria for an entity prop)
      */
@@ -86,7 +86,7 @@ final class Tree
      */
     public function addHandler(\Closure $handler, string $fingerprint): string
     {
-        $base = ($this->top()?->id ?? 'x').'.'.$fingerprint;
+        $base = ($this->top()->id ?? 'x').'.'.$fingerprint;
         $n = $this->handlerCounts[$base] = ($this->handlerCounts[$base] ?? 0) + 1;
         $id = 1 === $n ? $base : $base.'~'.$n;
         $this->handlers[$id] = $handler;

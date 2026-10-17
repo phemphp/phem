@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Mamu\Tests\Runtime;
 
-use PHPUnit\Framework\TestCase;
 use Mamu\Event;
+use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 
 final class EventTest extends TestCase
@@ -16,6 +16,7 @@ final class EventTest extends TestCase
         $event = Event::fromArray(['type' => 'submit', 'form' => ['name' => 'Ada', 'profession' => 'mathematician']], $request);
 
         self::assertSame(['name' => 'Ada', 'profession' => 'mathematician'], $event->form);
+        self::assertNotNull($event->request);
         self::assertNotSame($request, $event->request);
         self::assertSame('POST', $event->request->getMethod());
         self::assertSame(['name' => 'Ada', 'profession' => 'mathematician'], $event->request->request->all());
@@ -28,6 +29,7 @@ final class EventTest extends TestCase
         $event = Event::fromArray(['type' => 'submit', 'form' => ['scientist[name]' => 'Ada', 'scientist[profession]' => 'mathematician']], $request);
 
         self::assertSame(['scientist[name]' => 'Ada', 'scientist[profession]' => 'mathematician'], $event->form);
+        self::assertNotNull($event->request);
         self::assertSame(['scientist' => ['name' => 'Ada', 'profession' => 'mathematician']], $event->request->request->all());
     }
 

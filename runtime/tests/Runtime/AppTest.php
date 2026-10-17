@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace Mamu\Tests\Runtime;
 
-use PHPUnit\Framework\TestCase;
 use Mamu\EventListener\SourceMapListener;
 use Mamu\Manifest\Manifest;
 use Mamu\Manifest\SourceMap;
+use PHPUnit\Framework\TestCase;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Symfony\Component\AssetMapper\AssetMapperInterface;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\Routing\RouterInterface;
+use Symfony\UX\StimulusBundle\AssetMapper\ControllersMapGenerator;
+use Twig\Environment;
 use Twig\Error\RuntimeError;
 use Twig\Source;
 
@@ -25,7 +29,7 @@ final class AppTest extends TestCase
     protected function setUp(): void
     {
         $html = (string) $this->request('GET', '/')->getContent();
-        preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m);
+        self::assertSame(1, preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m));
         $this->state = html_entity_decode($m[1]);
         $this->signature = $m[2];
         preg_match_all('/data-mamu-on-click="([^"]+)"/', $html, $h);
@@ -88,7 +92,7 @@ final class AppTest extends TestCase
     public function testRestPropsSpreadOnAnElement(): void
     {
         $html = (string) $this->request('GET', '/rest')->getContent();
-        preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m);
+        self::assertSame(1, preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m));
         $this->state = html_entity_decode($m[1]);
         $this->signature = $m[2];
         preg_match_all('/data-mamu-on-(?:click|dblclick)="([^"]+)"/', $html, $h);
@@ -155,7 +159,7 @@ final class AppTest extends TestCase
 
     public function testRouteAttributesExposeThePages(): void
     {
-        $router = $this->fixtureKernel()->getContainer()->get('test.service_container')->get('router');
+        $router = $this->service('router', RouterInterface::class);
 
         self::assertSame('/', $router->generate('home'), 'the name of the #[Route]');
         self::assertSame('/about', $router->generate('app_pages_about'), 'the default name');
@@ -180,14 +184,14 @@ final class AppTest extends TestCase
 
     public function testAssetMapperHasTheClient(): void
     {
-        $container = $this->fixtureKernel()->getContainer()->get('test.service_container');
+        $assets = $this->service('asset_mapper', AssetMapperInterface::class);
 
-        $controller = $container->get('asset_mapper')->getAsset('mamujs/mamu_controller.js');
+        $controller = $assets->getAsset('mamujs/mamu_controller.js');
         self::assertNotNull($controller);
         self::assertStringEndsWith('/assets/dist/mamu_controller.js', $controller->sourcePath);
-        self::assertNotNull($container->get('asset_mapper')->getAsset('mamujs/mamu.css'));
+        self::assertNotNull($assets->getAsset('mamujs/mamu.css'));
 
-        $map = $container->get('stimulus.asset_mapper.controllers_map_generator')->getControllersMap();
+        $map = $this->service('stimulus.asset_mapper.controllers_map_generator', ControllersMapGenerator::class)->getControllersMap();
         self::assertArrayHasKey('mamu', $map, 'the name of the controller in assets/package.json');
         self::assertSame($controller->sourcePath, $map['mamu']->asset->sourcePath);
         self::assertFalse($map['mamu']->isLazy);
@@ -196,7 +200,7 @@ final class AppTest extends TestCase
 
     public function testComponentInAPlainTwigTemplate(): void
     {
-        $twig = $this->fixtureKernel()->getContainer()->get('test.service_container')->get('twig');
+        $twig = $this->service('twig', Environment::class);
         $html = $twig->createTemplate("{% component 'App\\\\Pages\\\\Greeting' with {name: 'twig'} %}")->render();
 
         self::assertMatchesRegularExpression('#^<mamu-c id="mamu[0-9a-f]+"><p class="greeting">Hello, TWIG!</p></mamu-c>$#', $html);
@@ -211,6 +215,8 @@ final class AppTest extends TestCase
         (new SourceMapListener(new SourceMap($manifest)))->map($error);
 
         $twigError = $error->getPrevious();
+        self::assertInstanceOf(RuntimeError::class, $twigError);
+        self::assertNotNull($twigError->getSourceContext());
         self::assertSame('src/pages/index.phpm', $twigError->getSourceContext()->getName());
         self::assertSame($manifest->sourceDir().'/pages/index.phpm', $twigError->getFile());
         $templateLine = (require $manifest->file())['templates']['pages/index.6.twig']['line'];

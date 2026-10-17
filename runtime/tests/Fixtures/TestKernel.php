@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Mamu\Tests\Fixtures;
 
-use Psr\Log\NullLogger;
 use Mamu\MamuBundle;
+use Psr\Log\NullLogger;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Bundle\TwigBundle\TwigBundle;

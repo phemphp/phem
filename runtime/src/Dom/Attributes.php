@@ -84,7 +84,7 @@ final class Attributes
                 if (null === $value || false === $value) {
                     continue;
                 }
-                $css = str_starts_with($prop, '--') ? $prop : strtolower(preg_replace('/[A-Z]/', '-$0', $prop));
+                $css = str_starts_with($prop, '--') ? $prop : strtolower(preg_replace('/[A-Z]/', '-$0', $prop) ?? $prop);
                 if ((\is_int($value) || \is_float($value)) && 0 != $value && !\in_array($prop, self::UNITLESS, true)) {
                     $value .= 'px';
                 }

@@ -13,22 +13,22 @@ use Symfony\Component\Routing\Attribute\Route;
 // Pages for the tests of the #[Path] route values (plain PHP, not compiled by mamuc).
 
 #[Route('/known/{id}', defaults: ['id' => 1])]
-function Known(#[Path] int $id, string $label = 'x')
+function Known(#[Path] int $id, string $label = 'x'): void
 {
 }
 
 #[Route('/unknown/{slug}')]
-function UnknownValue(#[Path] int $id = 0)
+function UnknownValue(#[Path] int $id = 0): void
 {
 }
 
 #[Route('/default', defaults: ['mode' => 'dark'])]
-function UnknownDefault()
+function UnknownDefault(): void
 {
 }
 
 #[Route('/rest/{tag}')]
-function VariadicPath(#[Path] string ...$tag)
+function VariadicPath(#[Path] string ...$tag): void
 {
 }
 
@@ -65,7 +65,7 @@ final class EntityPath
 }
 
 #[Route('/maybe/{scientist}')]
-function NullableEntity(#[Path] ?Scientist $scientist)
+function NullableEntity(#[Path] ?Scientist $scientist): void
 {
 }
 

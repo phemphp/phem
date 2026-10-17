@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Mamu\Tests\Runtime;
 
-use PHPUnit\Framework\TestCase;
 use Mamu\Tests\Fixtures\TestKernel;
+use PHPUnit\Framework\TestCase;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -46,13 +47,13 @@ trait FixtureApp
      * Sends an event to the URL of a page, as the mamu Stimulus controller does.
      *
      * @param array<string, mixed>|string $payload the JSON body, or its data
-     * @param array<string, string|null> $server  more headers (`HTTP_ORIGIN`) or other values; null removes a default
+     * @param array<string, string|null>  $server  more headers (`HTTP_ORIGIN`) or other values; null removes a default
      */
     private function event(string $uri, array|string $payload, array $server = []): Response
     {
         $server += ['HTTP_X_MAMU_EVENT' => '1', 'HTTP_SEC_FETCH_SITE' => 'same-origin'];
 
-        return $this->request('POST', $uri, \is_string($payload) ? $payload : json_encode($payload), array_filter($server, static fn (?string $v): bool => null !== $v));
+        return $this->request('POST', $uri, \is_string($payload) ? $payload : json_encode($payload, \JSON_THROW_ON_ERROR), array_filter($server, static fn (?string $v): bool => null !== $v));
     }
 
     /**
@@ -68,6 +69,25 @@ trait FixtureApp
         $kernel->terminate($request, $response);
 
         return $response;
+    }
+
+    /**
+     * A service of the fixture app, also a private one.
+     *
+     * @template T of object
+     *
+     * @param class-string<T> $class
+     *
+     * @return T
+     */
+    private function service(string $id, string $class): object
+    {
+        $container = $this->fixtureKernel()->getContainer()->get('test.service_container');
+        TestCase::assertInstanceOf(ContainerInterface::class, $container);
+        $service = $container->get($id);
+        TestCase::assertInstanceOf($class, $service);
+
+        return $service;
     }
 
     protected function tearDown(): void

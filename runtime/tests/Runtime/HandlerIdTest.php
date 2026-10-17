@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Mamu\Tests\Runtime;
 
-use PHPUnit\Framework\TestCase;
 use Mamu\Handler\HandlerFingerprint;
 use Mamu\Handler\ObjectIdentifier;
 use Mamu\Rendering\Tree;
 use Mamu\Tests\Fixtures\Rows;
 use Mamu\Tests\Fixtures\Scientist;
+use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -91,7 +91,7 @@ final class HandlerIdTest extends TestCase
     private function rows(): array
     {
         $html = (string) $this->request('GET', '/rows')->getContent();
-        preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m);
+        self::assertSame(1, preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m));
         preg_match_all('#<li data-mamu-key="\d+">(\w+) <button data-mamu-on-click="([^"]+)"#', $html, $rows, \PREG_SET_ORDER);
         self::assertCount(4, $rows);
 

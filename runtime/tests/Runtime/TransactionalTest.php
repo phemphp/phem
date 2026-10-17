@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Mamu\Tests\Runtime;
 
-use PHPUnit\Framework\TestCase;
 use Mamu\Attribute\Transactional;
 use Mamu\Event;
 use Mamu\Handler\HandlerInvoker;
 use Mamu\Handler\TransactionalMiddleware;
 use Mamu\Handler\TransactionRunner;
+use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 final class TransactionalTest extends TestCase

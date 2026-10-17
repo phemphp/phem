@@ -27,6 +27,11 @@ final class FunctionComponentRenderer implements ComponentRenderer
 
     public function render(Fiber $fiber, array $slots): mixed
     {
-        return ($fiber->fqcn)(...$this->props->arguments($fiber->fqcn, $fiber->props, $slots));
+        $function = $fiber->fqcn;
+        if (!\is_callable($function)) {
+            throw new \LogicException(\sprintf('The function component "%s" is not loaded. Run `mamuc build` again.', $function));
+        }
+
+        return $function(...$this->props->arguments($function, $fiber->props, $slots));
     }
 }

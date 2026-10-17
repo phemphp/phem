@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Mamu\EventListener;
 
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
+use Symfony\Component\HttpKernel\Kernel;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -26,10 +27,18 @@ final class PageAttributesListener
         if (!\is_string($page) || '' === $page) {
             return;
         }
+        $own = $this->attributesOf($page);
+        if (Kernel::VERSION_ID >= 80100) {
+            // Symfony 8.1 takes a flat list of attributes.
+            $event->setController($event->getController(), [...array_merge(...array_values($own)), ...$event->getAttributes('*')]);
+
+            return;
+        }
         $attributes = $event->getAttributes();
-        foreach ($this->attributesOf($page) as $class => $instances) {
+        foreach ($own as $class => $instances) {
             $attributes[$class] = [...$instances, ...($attributes[$class] ?? [])];
         }
+        // @phpstan-ignore argument.type (Symfony 7.4 and 8.0 take the attributes grouped by class)
         $event->setController($event->getController(), $attributes);
     }
 

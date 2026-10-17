@@ -17,12 +17,17 @@ final class HtmlList extends Html implements \IteratorAggregate
         parent::__construct(implode('', array_map(strval(...), $items)));
     }
 
+    /** @return \ArrayIterator<int, Html> */
     public function getIterator(): \ArrayIterator
     {
         return new \ArrayIterator($this->items);
     }
 
-    /** True for a non-empty list of Html values. */
+    /**
+     * True for a non-empty list of Html values.
+     *
+     * @phpstan-assert-if-true list<Html> $value
+     */
     public static function accepts(mixed $value): bool
     {
         if (!\is_array($value) || [] === $value || !array_is_list($value)) {

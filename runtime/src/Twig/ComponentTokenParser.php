@@ -66,7 +66,7 @@ final class ComponentTokenParser extends AbstractTokenParser
         $this->parser->embedTemplate($module);
         $stream->expect(Token::BLOCK_END_TYPE);
 
-        return new ComponentEmbedNode($fqcn, $kind, $module->getTemplateName(), $module->getAttribute('index'), $variables, $key, $line);
+        return new ComponentEmbedNode($fqcn, $kind, $stream->getSourceContext()->getName(), $module->getAttribute('index'), $variables, $key, $line);
     }
 
     public function getTag(): string

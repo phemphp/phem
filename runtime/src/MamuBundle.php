@@ -7,6 +7,7 @@ namespace Mamu;
 use Doctrine\ORM\EntityManagerInterface;
 use Mamu\DependencyInjection\ComponentPass;
 use Mamu\Handler\HandlerMiddleware;
+use Mamu\Manifest\Manifest;
 use Mamu\Path\PathValueConverter;
 use Symfony\Component\AssetMapper\AssetMapperInterface;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
@@ -97,7 +98,8 @@ final class MamuBundle extends AbstractBundle
             ->arg(1, $config['state_max_age'])
             ->arg(2, $config['state_bind_session']);
 
-        if (isset($builder->getParameter('kernel.bundles')['DoctrineBundle']) && interface_exists(EntityManagerInterface::class)) {
+        $bundles = $builder->getParameter('kernel.bundles');
+        if (\is_array($bundles) && isset($bundles['DoctrineBundle']) && interface_exists(EntityManagerInterface::class)) {
             $container->import('../config/doctrine.php');
         }
     }
@@ -125,8 +127,8 @@ final class MamuBundle extends AbstractBundle
     public function boot(): void
     {
         // Function components cannot be autoloaded: load the compiled code once per boot.
-        $manifest = $this->container->get('mamu.manifest');
-        if ($manifest->exists()) {
+        $manifest = $this->container?->get('mamu.manifest');
+        if ($manifest instanceof Manifest && $manifest->exists()) {
             $manifest->load();
         }
     }

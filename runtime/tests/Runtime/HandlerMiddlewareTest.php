@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace Mamu\Tests\Runtime;
 
-use PHPUnit\Framework\TestCase;
 use Mamu\Event;
 use Mamu\Handler\HandlerInvoker;
 use Mamu\Handler\HandlerMiddleware;
+use PHPUnit\Framework\TestCase;
 
 final class HandlerMiddlewareTest extends TestCase
 {
     public function testMiddlewaresRunAroundTheHandlerInOrder(): void
     {
+        /** @var \ArrayObject<int, string> $log */
         $log = new \ArrayObject();
         $invoker = new HandlerInvoker([new LoggingMiddleware($log, 'a'), new LoggingMiddleware($log, 'b')]);
 
@@ -44,6 +45,7 @@ final class HandlerMiddlewareTest extends TestCase
 
     public function testMiddlewaresFromAnIterator(): void
     {
+        /** @var \ArrayObject<int, string> $log */
         $log = new \ArrayObject();
         $invoker = new HandlerInvoker(new \ArrayIterator([new LoggingMiddleware($log, 'a')]));
 

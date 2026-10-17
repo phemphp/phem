@@ -42,8 +42,8 @@ final class UnsafeTest extends TestCase
     private function go(string $url): array
     {
         $html = (string) $this->request('GET', '/unsafe')->getContent();
-        preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m);
-        preg_match('/<button id="go" data-mamu-on-click="([^"]+)"/', $html, $h);
+        self::assertSame(1, preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m));
+        self::assertSame(1, preg_match('/<button id="go" data-mamu-on-click="([^"]+)"/', $html, $h));
         $response = $this->event('/unsafe', [
             'state' => html_entity_decode($m[1]),
             'signature' => $m[2],

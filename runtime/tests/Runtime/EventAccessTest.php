@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Mamu\Tests\Runtime;
 
-use PHPUnit\Framework\TestCase;
 use Mamu\Handler\HandlerFingerprint;
+use Mamu\State\StateCodec;
+use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -69,7 +70,7 @@ final class EventAccessTest extends TestCase
      */
     private function click(string $uri, string $page, string $method, array $server = []): Response
     {
-        [$state, $signature] = $this->fixtureKernel()->getContainer()->get('test.service_container')->get('mamu.state_codec')->encode([], $page);
+        [$state, $signature] = $this->service('mamu.state_codec', StateCodec::class)->encode([], $page);
         $handler = 'mamu'.substr(hash('xxh128', '/'.$page.'#0'), 0, 12).'.'.new HandlerFingerprint()->of(new $page()->{$method}(...));
 
         return $this->event($uri, ['state' => $state, 'signature' => $signature, 'handler' => $handler, 'event' => ['type' => 'click']], $server);

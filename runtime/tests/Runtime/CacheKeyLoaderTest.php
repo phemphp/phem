@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Mamu\Tests\Runtime;
 
-use PHPUnit\Framework\TestCase;
 use Mamu\Manifest\Manifest;
 use Mamu\Twig\CacheKeyLoader;
+use PHPUnit\Framework\TestCase;
 use Twig\Loader\ArrayLoader;
 
 final class CacheKeyLoaderTest extends TestCase

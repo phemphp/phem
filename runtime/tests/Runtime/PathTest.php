@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Mamu\Tests\Runtime;
 
-use PHPUnit\Framework\TestCase;
 use Mamu\Binding\PropError;
 use Mamu\Manifest\Manifest;
 use Mamu\Metadata\ComponentMetadata;
@@ -20,6 +19,7 @@ use Mamu\Tests\Fixtures\PathPages\ObjectPath;
 use Mamu\Tests\Fixtures\PathPages\Typed;
 use Mamu\Tests\Fixtures\Scientist;
 use Mamu\Tests\Fixtures\ScientistFinder;
+use PHPUnit\Framework\TestCase;
 use Symfony\Component\Routing\RouteCollection;
 
 require_once \dirname(__DIR__).'/Fixtures/PathPages.php';

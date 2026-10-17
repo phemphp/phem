@@ -14,8 +14,8 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 final class EventPayload
 {
     /**
-     * @param string               $state     the signed JSON of the page state
-     * @param array<string, mixed> $event     the DOM event (type, value, checked, key, form)
+     * @param string               $state the signed JSON of the page state
+     * @param array<string, mixed> $event the DOM event (type, value, checked, key, form)
      */
     public function __construct(
         public readonly string $handler,
@@ -25,8 +25,8 @@ final class EventPayload
     ) {
     }
 
-    /** 
-     * @throws BadRequestHttpException when the body has no handler 
+    /**
+     * @throws BadRequestHttpException when the body has no handler
      */
     public static function fromRequest(Request $request): self
     {

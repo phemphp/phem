@@ -123,7 +123,7 @@ final class Renderer implements ResetInterface
         $renderer = $this->renderer($def);
         $parent = $tree->top();
         $index = null !== $key ? '@'.$key : '#'.(null !== $parent ? $parent->nextIndex($fqcn) : $tree->nextRootIndex());
-        $path = ($parent?->path ?? '').'/'.$fqcn.$index;
+        $path = ($parent->path ?? '').'/'.$fqcn.$index;
         $id = Fiber::idOf($path);
         $fiber = $tree->fiber($id, static fn (?array $restored): Fiber => new Fiber($id, $path, $fqcn, $restored));
         $fiber->parent = $parent;

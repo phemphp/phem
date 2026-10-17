@@ -11,6 +11,8 @@ final class ComponentName
 {
     public static function short(string $fqcn): string
     {
-        return substr(strrchr('\\'.$fqcn, '\\'), 1);
+        $pos = strrpos($fqcn, '\\');
+
+        return false === $pos ? $fqcn : substr($fqcn, $pos + 1);
     }
 }

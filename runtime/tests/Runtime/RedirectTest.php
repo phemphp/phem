@@ -13,8 +13,8 @@ final class RedirectTest extends TestCase
     public function testHandlerThatReturnsARedirectResponseSendsItsUrl(): void
     {
         $html = (string) $this->request('GET', '/leave')->getContent();
-        preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m);
-        preg_match('/data-mamu-on-click="([^"]+)"/', $html, $h);
+        self::assertSame(1, preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m));
+        self::assertSame(1, preg_match('/data-mamu-on-click="([^"]+)"/', $html, $h));
 
         $response = $this->event('/leave', [
             'state' => html_entity_decode($m[1]),

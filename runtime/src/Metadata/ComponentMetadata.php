@@ -53,6 +53,8 @@ final class ComponentMetadata
      * The props of a class component: its public properties that are not static, not
      * promoted, and not #[State].
      *
+     * @param class-string $class
+     *
      * @return array<string, \ReflectionProperty>
      */
     public function props(string $class): array
@@ -72,6 +74,8 @@ final class ComponentMetadata
 
     /**
      * The #[State] properties of a class component: the state that the browser keeps.
+     *
+     * @param class-string $class
      *
      * @return list<\ReflectionProperty>
      */

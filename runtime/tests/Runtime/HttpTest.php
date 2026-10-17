@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Mamu\Tests\Runtime;
 
-use PHPUnit\Framework\TestCase;
 use Mamu\Http\PageView;
 use Mamu\Http\Title;
 use Mamu\Http\TurboStreams;
 use Mamu\Rendering\Fiber;
 use Mamu\State\PageState;
+use PHPUnit\Framework\TestCase;
 use Twig\Markup;
 
 final class HttpTest extends TestCase

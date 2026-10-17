@@ -42,6 +42,9 @@ final class ClassComponentRenderer implements ComponentRenderer
         } else {
             $this->props->assign($component, $fiber->props, $slots);
         }
+        if (!method_exists($component, 'render')) {
+            throw new \LogicException(\sprintf('The class component "%s" has no render() method. Run `mamuc build` again.', $fiber->fqcn));
+        }
 
         return $component->render();
     }
