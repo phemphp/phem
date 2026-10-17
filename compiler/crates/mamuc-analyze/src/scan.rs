@@ -105,7 +105,8 @@ pub struct Class {
     pub traits: Vec<String>,
     pub props: Vec<Prop>,
     pub methods: Vec<Func>,
-    /// The properties from the parent classes and the traits in the sources (see `resolve_inheritance()`).
+    /// The properties from the parent classes and the traits in the sources that the class can
+    /// read (see `resolve_inheritance()`).
     pub inherited_props: Vec<Prop>,
     /// The method names from the parent classes and the traits in the sources.
     pub inherited_methods: Vec<String>,
@@ -115,9 +116,9 @@ pub struct Class {
 }
 
 impl Class {
-    /// The properties of the class, then the inherited ones that it can read.
+    /// The properties of the class, then the inherited ones.
     pub fn all_props(&self) -> impl Iterator<Item = &Prop> {
-        self.props.iter().chain(self.inherited_props.iter().filter(|p| !p.is_private))
+        self.props.iter().chain(&self.inherited_props)
     }
 
     pub fn has_method(&self, name: &str) -> bool {
@@ -130,7 +131,7 @@ pub struct Prop {
     pub name: String,
     pub ty: String,
     pub is_public: bool,
-    /// `private`: a child class cannot read it.
+    /// `private`: a child class cannot read it, but a class that uses its trait can.
     pub is_private: bool,
     pub is_readonly: bool,
     pub is_static: bool,

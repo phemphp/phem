@@ -28,9 +28,11 @@ final class TemplateComponentRenderer
     }
 
     /**
-     * With children or slots, $template is the embedded template of the caller: its blocks
-     * override the slot blocks of the component template. The slots are also props, so the
-     * template can test them (`{% if footer %}`) and a required slot is given.
+     * With children or slots, $template is the embedded template of the caller, and its
+     * blocks are the slots. The slots are props, so the template can test them
+     * (`{% if footer %}`) and a required slot is given. The component template (the parent of
+     * $template) renders, not $template: its slot blocks print the slot props, so each slot
+     * renders once. With block inheritance, a slot that the template tests renders two times.
      *
      * @param array<string, mixed> $props
      * @param array<string, mixed> $caller the Twig context of the caller (for slots)
@@ -44,7 +46,8 @@ final class TemplateComponentRenderer
         }
         $vars = $this->props->templateContext($fqcn, $props, $given);
         $vars['_mamu_caller'] = $caller;
-        $html = $template->render($vars);
+        $parent = [] !== $slots ? $template->getParent($vars) : false;
+        $html = ($parent ?: $template)->render($vars);
 
         return null === $key ? $html : Attributes::keyed($html, (string) $key);
     }

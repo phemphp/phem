@@ -14,6 +14,8 @@ declare(strict_types=1);
 namespace Mamu\Binding;
 
 use Mamu\Html;
+use Mamu\HtmlList;
+use Mamu\LazyHtml;
 use Mamu\Metadata\ComponentMetadata;
 use Mamu\Metadata\Parameter;
 
@@ -44,7 +46,7 @@ final class PropBinder
             if (!isset($params[$name]) && !$variadic) {
                 throw new PropError(\sprintf('<%s> has no prop "%s". Its props are: %s.', ComponentName::short($fqcn), $name, implode(', ', array_keys($params)) ?: 'none'));
             }
-            $args[$name] = $value;
+            $args[$name] = $value instanceof HtmlList && ($params[$name]->wantsArray ?? false) ? $value->toArray() : $value;
         }
         foreach ($params as $name => $p) {
             if (!$p->variadic && !\array_key_exists($name, $args) && !$p->optional) {
@@ -94,6 +96,9 @@ final class PropBinder
      * Whether a readonly prop of a class component that is set gets another value: assign()
      * cannot write it, so the component needs a new instance.
      *
+     * Markup that renders on first use (a slot, a markup literal) counts as another value: to
+     * compare it, it must render before render(), so its components get other fiber ids.
+     *
      * @param array<string, mixed> $props
      * @param array<string, Html>  $slots
      */
@@ -105,7 +110,10 @@ final class PropBinder
                 continue;
             }
             $old = $p->getValue($component);
-            $new = $all[$name];
+            $new = self::value($p, $all[$name]);
+            if ($old instanceof LazyHtml || $new instanceof LazyHtml) {
+                return true;
+            }
             if ($old instanceof Html && $new instanceof Html ? (string) $old !== (string) $new : $old !== $new) {
                 return true;
             }
@@ -136,7 +144,7 @@ final class PropBinder
                 continue;
             }
             if (\array_key_exists($name, $all)) {
-                $p->setValue($component, $all[$name]);
+                $p->setValue($component, self::value($p, $all[$name]));
             } elseif ($p->hasDefaultValue()) {
                 $p->setValue($component, $p->getDefaultValue());
             } elseif ($p->getType()?->allowsNull() ?? true) {
@@ -145,5 +153,11 @@ final class PropBinder
                 throw new PropError(\sprintf('<%s> needs the prop "%s".', ComponentName::short($class), $name));
             }
         }
+    }
+
+    /** The value of a prop for a property: a list of markup is an array for an `array` property. */
+    private static function value(\ReflectionProperty $p, mixed $value): mixed
+    {
+        return $value instanceof HtmlList && HtmlList::wantsArray($p->getType()) ? $value->toArray() : $value;
     }
 }

@@ -23,9 +23,18 @@ use Twig\Source;
  * Twig resolves `{% component %}` from the manifest when it compiles a template. When a
  * component changes its kind (for example from a template component to a function component),
  * the caller templates must compile again, also when their source did not change.
+ *
+ * The key also has the format of the templates that the runtime compiles, so a new runtime
+ * does not use the templates of an older one.
  */
 final class CacheKeyLoader implements LoaderInterface
 {
+    /**
+     * Change it when the compiled templates change: a Twig node, or a template that they use.
+     * 2: the embedded templates of function and class components have no parent.
+     */
+    public const FORMAT = 2;
+
     public function __construct(
         private readonly LoaderInterface $loader,
         private readonly Manifest $manifest,
@@ -39,7 +48,7 @@ final class CacheKeyLoader implements LoaderInterface
 
     public function getCacheKey(string $name): string
     {
-        return $this->loader->getCacheKey($name).':'.$this->manifest->twigSignature();
+        return $this->loader->getCacheKey($name).':'.$this->manifest->twigSignature().':'.self::FORMAT;
     }
 
     public function isFresh(string $name, int $time): bool

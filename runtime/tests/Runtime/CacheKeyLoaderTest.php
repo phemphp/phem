@@ -47,12 +47,25 @@ final class CacheKeyLoaderTest extends TestCase
         self::assertSame($template, $otherProps, 'props are checked at runtime, not compiled into the template');
     }
 
+    public function testCacheKeyChangesWithTheRuntime(): void
+    {
+        file_put_contents($this->dir.'/manifest.php', '<?php return '.var_export(['components' => []], true).';');
+        $inner = new ArrayLoader(['page.twig' => '']);
+        $manifest = new Manifest($this->dir, $this->dir);
+
+        // The key of the runtime before it removed @Mamu/slot_host.twig. Its compiled templates
+        // extend that template, so the new runtime must not use them.
+        $old = $inner->getCacheKey('page.twig').':'.$manifest->twigSignature();
+
+        self::assertNotSame($old, (new CacheKeyLoader($inner, $manifest))->getCacheKey('page.twig'));
+    }
+
     public function testCacheKeyWithoutBuild(): void
     {
         $inner = new ArrayLoader(['page.twig' => '']);
         $loader = new CacheKeyLoader($inner, new Manifest($this->dir.'/missing', $this->dir));
 
-        self::assertSame($inner->getCacheKey('page.twig').':', $loader->getCacheKey('page.twig'));
+        self::assertSame($inner->getCacheKey('page.twig').'::'.CacheKeyLoader::FORMAT, $loader->getCacheKey('page.twig'));
     }
 
     /** @param array<string, array<string, mixed>> $components */

@@ -117,7 +117,9 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
 
 /// Adds to each class the members of its parent classes and traits in the sources, so a class
 /// component sees the props and methods that it inherits. A class member replaces a member of a
-/// trait, and a trait member replaces a member of the parent class, as in PHP.
+/// trait, and a trait member replaces a member of the parent class, as in PHP. A private
+/// property of a trait is a property of the class, but a private property of a parent class
+/// (or of its traits) is not visible.
 pub fn resolve_inheritance<'a>(files: impl IntoIterator<Item = &'a mut FileInfo>) {
     let mut files: Vec<&mut FileInfo> = files.into_iter().collect();
     let mut declared: HashMap<String, Class> = HashMap::new();
@@ -128,9 +130,10 @@ pub fn resolve_inheritance<'a>(files: impl IntoIterator<Item = &'a mut FileInfo>
     }
     for f in &mut files {
         for c in &mut f.classes {
-            let mut queue: VecDeque<String> = c.traits.iter().chain(&c.parent).cloned().collect();
+            // Each base, and whether it comes through a parent class.
+            let mut queue: VecDeque<(String, bool)> = c.traits.iter().map(|t| (t.clone(), false)).chain(c.parent.iter().map(|p| (p.clone(), true))).collect();
             let mut seen = HashSet::new();
-            while let Some(name) = queue.pop_front() {
+            while let Some((name, from_parent)) = queue.pop_front() {
                 if !seen.insert(name.to_ascii_lowercase()) {
                     continue;
                 }
@@ -139,6 +142,9 @@ pub fn resolve_inheritance<'a>(files: impl IntoIterator<Item = &'a mut FileInfo>
                     continue;
                 };
                 for p in &base.props {
+                    if from_parent && p.is_private {
+                        continue;
+                    }
                     if !c.props.iter().chain(&c.inherited_props).any(|x| x.name == p.name) {
                         c.inherited_props.push(p.clone());
                     }
@@ -148,7 +154,7 @@ pub fn resolve_inheritance<'a>(files: impl IntoIterator<Item = &'a mut FileInfo>
                         c.inherited_methods.push(m.name.clone());
                     }
                 }
-                queue.extend(base.traits.iter().chain(&base.parent).cloned());
+                queue.extend(base.traits.iter().map(|t| (t.clone(), from_parent)).chain(base.parent.iter().map(|p| (p.clone(), true))));
             }
         }
     }

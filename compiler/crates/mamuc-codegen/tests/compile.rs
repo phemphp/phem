@@ -89,6 +89,34 @@ fn a_set_in_an_if_branch_or_an_element_binds_after_it() {
 }
 
 #[test]
+fn a_set_in_only_some_branches_keeps_the_php_variable() {
+    // Without `else`, or with a set in one branch only, the PHP value shows when no set runs.
+    for tags in ["{% if off %}{% set variant = 'b' %}{% endif %}", "{% if off %}{% set variant = 'b' %}{% else %}x{% endif %}"] {
+        let src = format!("<?phpm\nfunction App() {{ $variant = 'a'; $off = true;\n    return <p>{tags}{{{{ variant }}}}</p>;\n}}\n");
+        let (out, diags) = compile(vec![SourceInput { rel: "App.phpm".into(), text: src }]);
+        assert!(diags.iter().all(|f| f.diags.is_empty()), "unexpected diagnostics");
+        let php = &out.expect("output").files[0].php;
+        assert!(php.contains("'variant' => $variant"), "{php}");
+    }
+
+    let src = "<?phpm\nnamespace App;\nuse Mamu\\Attribute\\Component;\n#[Component]\nfinal class Btn {\n    public string $title = 'a';\n    public bool $off = false;\n    public function render() { return <b>{% if off %}{% set title = 'b' %}{% endif %}{{ title }}</b>; }\n}\n";
+    let (out, diags) = compile(vec![SourceInput { rel: "Btn.phpm".into(), text: src.into() }]);
+    assert!(diags.iter().all(|f| f.diags.is_empty()), "unexpected diagnostics");
+    let php = &out.expect("output").files[0].php;
+    assert!(php.contains("'title' => $this->title"), "{php}");
+}
+
+#[test]
+fn a_class_component_reads_the_private_properties_of_its_traits() {
+    let src = "<?phpm\nnamespace App;\nuse Mamu\\Attribute\\Component;\ntrait Paginates { private int $page = 1; }\n#[Component]\nfinal class Results {\n    use Paginates;\n    public function render() { return <p>{{ page }}</p>; }\n}\n";
+    let (out, diags) = compile(vec![SourceInput { rel: "Results.phpm".into(), text: src.into() }]);
+    let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
+    assert!(msgs.is_empty(), "{msgs:?}");
+    let php = &out.expect("output").files[0].php;
+    assert!(php.contains("'page' => $this->page"), "{php}");
+}
+
+#[test]
 fn a_prop_whose_type_accepts_null_is_optional() {
     let src = "<?phpm\nfunction Box($a, mixed $b, int|null $c) { return <b>{{ a }}{{ b }}{{ c }}</b>; }\nfunction App() { return <Box />; }\n";
     assert_eq!(codes(src), Vec::<&str>::new());

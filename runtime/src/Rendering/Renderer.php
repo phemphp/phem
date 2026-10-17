@@ -143,7 +143,7 @@ final class Renderer implements ResetInterface
         $fiber->begin($tree->pass);
         $tree->push($fiber);
         try {
-            $out = $renderer->render($fiber, $this->slots($fiber, $def->slots));
+            $out = $renderer->render($fiber, $this->slots($fiber));
             $html = $this->markup->html($out);
         } finally {
             $tree->pop();
@@ -174,23 +174,22 @@ final class Renderer implements ResetInterface
     }
 
     /**
-     * @param list<string> $names
+     * The slots that the caller gives: each block of its embedded template. They are not only
+     * the slots of the manifest: the props of a parent class that mamuc does not see can be
+     * slots too. An unknown slot is a PropError of the props.
      *
      * @return array<string, Html>
      */
-    private function slots(Fiber $fiber, array $names): array
+    private function slots(Fiber $fiber): array
     {
         $template = $fiber->slots;
         if (null === $template) {
             return [];
         }
-        $blocks = $template->getBlockNames([]);
         $caller = $fiber->caller;
         $out = [];
-        foreach ($names as $name) {
-            if (\in_array($name, $blocks, true)) {
-                $out[$name] = new Slot(static fn (): string => $template->renderBlock($name, ['_mamu_caller' => $caller]));
-            }
+        foreach ($template->getBlockNames([]) as $name) {
+            $out[$name] = new Slot(static fn (): string => $template->renderBlock($name, ['_mamu_caller' => $caller]));
         }
 
         return $out;

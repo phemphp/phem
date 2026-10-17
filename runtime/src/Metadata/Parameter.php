@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Mamu\Metadata;
 
+use Mamu\HtmlList;
+
 /**
  * A parameter of a function component: a prop.
  */
@@ -25,6 +27,8 @@ final class Parameter
         public readonly bool $hasDefault,
         public readonly bool $nullable,
         public readonly bool $variadic,
+        /** The type takes an array, but not an HtmlList (see HtmlList::wantsArray()). */
+        public readonly bool $wantsArray = false,
     ) {
     }
 
@@ -39,6 +43,7 @@ final class Parameter
             $hasDefault,
             $p->allowsNull(),
             $p->isVariadic(),
+            HtmlList::wantsArray($p->getType()),
         );
     }
 }

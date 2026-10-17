@@ -22,10 +22,43 @@ use Mamu\Dom\Attributes;
  */
 final class HtmlList extends LazyHtml implements \IteratorAggregate
 {
-    /** @param list<Html> $items */
-    public function __construct(private readonly array $items)
+    /**
+     * @param list<Html>       $items
+     * @param list<mixed>|null $values the list that the items come from (see of()), or null for the items
+     */
+    public function __construct(private readonly array $items, private readonly ?array $values = null)
     {
         parent::__construct(static fn (): string => implode('', array_map(strval(...), $items)));
+    }
+
+    /**
+     * The list as an array, with its null and boolean items. A prop with the type `array` gets
+     * it (see wantsArray()).
+     *
+     * @return list<mixed>
+     */
+    public function toArray(): array
+    {
+        return $this->values ?? $this->items;
+    }
+
+    /** Whether a prop of this type takes an array, but not an HtmlList (`array`, `?array`). */
+    public static function wantsArray(?\ReflectionType $type): bool
+    {
+        $array = false;
+        foreach ($type instanceof \ReflectionUnionType ? $type->getTypes() : [$type] as $t) {
+            if (!$t instanceof \ReflectionNamedType) {
+                continue;
+            }
+            $name = $t->getName();
+            if ('array' === $name) {
+                $array = true;
+            } elseif (\in_array($name, ['mixed', 'object', 'iterable'], true) || (!$t->isBuiltin() && is_a(self::class, $name, true))) {
+                return false;
+            }
+        }
+
+        return $array;
     }
 
     /** @return \ArrayIterator<int, Html> */
@@ -54,6 +87,6 @@ final class HtmlList extends LazyHtml implements \IteratorAggregate
             }
         }
 
-        return new self($items);
+        return new self($items, $value);
     }
 }

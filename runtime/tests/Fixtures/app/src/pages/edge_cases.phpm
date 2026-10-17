@@ -1,0 +1,129 @@
+<?phpm
+
+namespace App\Pages;
+
+use Mamu\Attribute\{Component, State};
+use Mamu\Html;
+use Mamu\Tests\Fixtures\Framed;
+use Symfony\Component\Routing\Attribute\Route;
+
+function Tally(array $items) {
+    $n = count($items);
+    return <p id="count">{{ n }}</p>;
+}
+
+#[Component]
+final class Chip
+{
+    public string $label = '';
+    #[State] public int $hits = 0;
+
+    public function hit(): void
+    {
+        ++$this->hits;
+    }
+
+    public function render()
+    {
+        return <button onClick={{ hit }}>{{ label }} {{ hits }}</button>;
+    }
+}
+
+// A readonly slot, after a component of its own.
+#[Component]
+final class Shelf
+{
+    public readonly Html $children;
+
+    public function render()
+    {
+        return <div id="shelf"><Chip label="own" />{{ children }}</div>;
+    }
+}
+
+// A stateless component whose mount() reads a readonly prop.
+#[Component]
+final class Gauge
+{
+    public readonly int $n;
+    private string $text = '';
+
+    public function mount(): void
+    {
+        $this->text = 'n'.$this->n;
+    }
+
+    public function render()
+    {
+        return <span id="gauge">{{ text }}</span>;
+    }
+}
+
+// The slots come from a parent class that mamuc does not see.
+#[Component]
+final class Boxed extends Framed
+{
+    public function render()
+    {
+        return <div id="boxed">{{ children }}|{{ footer }}</div>;
+    }
+}
+
+#[Component]
+#[Route('/edge/readonly-slot')]
+final class ReadonlySlotPage
+{
+    public function render()
+    {
+        return <main><Shelf><Chip label="slot" /></Shelf></main>;
+    }
+}
+
+#[Component]
+#[Route('/edge/mount')]
+final class MountPage
+{
+    #[State] public int $n = 0;
+
+    public function bump(): void
+    {
+        ++$this->n;
+    }
+
+    public function render()
+    {
+        return <main><button onClick={{ bump }}>Bump</button><Gauge n={{ n }} /></main>;
+    }
+}
+
+#[Component]
+#[Route('/edge/open-slots')]
+final class OpenSlotsPage
+{
+    public function render()
+    {
+        return <main><Boxed><b>kid</b><Boxed:footer>f</Boxed:footer></Boxed></main>;
+    }
+}
+
+#[Component]
+#[Route('/edge/if-slot')]
+final class IfSlotPage
+{
+    public function render()
+    {
+        return <main><Panel>x<Panel:footer><Chip label="foot" /></Panel:footer></Panel></main>;
+    }
+}
+
+#[Component]
+#[Route('/edge/list-prop')]
+final class ListPropPage
+{
+    public function render()
+    {
+        $items = [null, <i>b</i>];
+
+        return <main><Tally items={{ items }} /></main>;
+    }
+}

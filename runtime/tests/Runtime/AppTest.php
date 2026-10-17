@@ -63,6 +63,21 @@ final class AppTest extends TestCase
         return ['status' => $response->getStatusCode(), 'data' => $data];
     }
 
+    /** Loads a page, with its state and its click handlers for click(). */
+    private function open(string $uri): string
+    {
+        $response = $this->request('GET', $uri);
+        $html = (string) $response->getContent();
+        self::assertSame(200, $response->getStatusCode(), $html);
+        self::assertSame(1, preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m));
+        $this->state = html_entity_decode($m[1]);
+        $this->signature = $m[2];
+        preg_match_all('/data-mamu-on-click="([^"]+)"/', $html, $h);
+        $this->handlers = $h[1];
+
+        return $html;
+    }
+
     public function testPageRendersComponentsTemplatesAndSlots(): void
     {
         $response = $this->request('GET', '/');
@@ -146,6 +161,47 @@ final class AppTest extends TestCase
 
         $r = $this->click(1, uri: '/edge');
         self::assertStringContainsString('Edge 1</h3>', $r['data']['streams'], 'a handler of the parent class');
+    }
+
+    public function testAReadonlySlotKeepsTheFiberOrder(): void
+    {
+        $html = $this->open('/edge/readonly-slot');
+        self::assertMatchesRegularExpression('#<div id="shelf"><mamu-c id="mamu[0-9a-f]+"><button data-mamu-on-click="[^"]+">own 0</button></mamu-c><mamu-c id="mamu[0-9a-f]+"><button data-mamu-on-click="[^"]+">slot 0</button></mamu-c></div>#', $html);
+
+        $r = $this->click(0, uri: '/edge/readonly-slot');
+        self::assertSame(200, $r['status']);
+        self::assertStringContainsString('own 1', $r['data']['streams'], 'the click goes to the chip of the shelf');
+        self::assertStringNotContainsString('slot 1', $r['data']['streams']);
+    }
+
+    public function testANewInstanceForAReadonlyPropIsMounted(): void
+    {
+        self::assertStringContainsString('<span id="gauge">n0</span>', $this->open('/edge/mount'));
+
+        $r = $this->click(0, uri: '/edge/mount');
+        self::assertSame(200, $r['status']);
+        self::assertStringContainsString('<span id="gauge">n1</span>', $r['data']['streams']);
+    }
+
+    public function testTheSlotsOfAParentClassOutsideTheSources(): void
+    {
+        self::assertStringContainsString('<div id="boxed"><b>kid</b>|f</div>', $this->open('/edge/open-slots'));
+    }
+
+    public function testASlotThatATemplateTestsRendersOnce(): void
+    {
+        $html = $this->open('/edge/if-slot');
+        self::assertSame(1, substr_count($html, 'foot 0'));
+
+        preg_match_all('/<mamu-c id="(mamu[0-9a-f]+)">/', $html, $ids);
+        $state = json_decode($this->state, true, flags: \JSON_THROW_ON_ERROR);
+        self::assertIsArray($state);
+        self::assertSame([], array_values(array_diff(array_keys($state), $ids[1])), 'each fiber of the state is in the page');
+    }
+
+    public function testAListWithNullItemsIsAnArrayProp(): void
+    {
+        self::assertStringContainsString('<p id="count">2</p>', $this->open('/edge/list-prop'));
     }
 
     public function testClassComponentUsesItsInjectedService(): void
