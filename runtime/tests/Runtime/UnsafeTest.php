@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Runtime;
+namespace Mamu\Tests\Runtime;
 
 use PHPUnit\Framework\TestCase;
 
 /**
- * Data in a page cannot add HTML or script (tests/Fixtures/app/src/pages/unsafe.rhp).
+ * Data in a page cannot add HTML or script (tests/Fixtures/app/src/pages/unsafe.phpm).
  */
 final class UnsafeTest extends TestCase
 {
@@ -17,7 +17,7 @@ final class UnsafeTest extends TestCase
     {
         $html = (string) $this->request('GET', '/unsafe')->getContent();
 
-        self::assertStringContainsString('&lt;b&gt;Ada&lt;/b&gt;</rh-c>', $html);
+        self::assertStringContainsString('&lt;b&gt;Ada&lt;/b&gt;</mamu-c>', $html);
         self::assertStringNotContainsString('<b>Ada</b>', $html);
     }
 
@@ -42,8 +42,8 @@ final class UnsafeTest extends TestCase
     private function go(string $url): array
     {
         $html = (string) $this->request('GET', '/unsafe')->getContent();
-        preg_match('/data-rhp-state-value="([^"]*)" data-rhp-signature-value="([^"]*)"/', $html, $m);
-        preg_match('/<button id="go" data-rh-on-click="([^"]+)"/', $html, $h);
+        preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m);
+        preg_match('/<button id="go" data-mamu-on-click="([^"]+)"/', $html, $h);
         $response = $this->event('/unsafe', [
             'state' => html_entity_decode($m[1]),
             'signature' => $m[2],

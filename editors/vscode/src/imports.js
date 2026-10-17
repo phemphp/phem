@@ -1,6 +1,6 @@
 'use strict';
 
-// Name resolution and `use` statements, with the PHP rules that rhpc uses for
+// Name resolution and `use` statements, with the PHP rules that mamuc uses for
 // a component tag: a `use function` import, then a `use` (class) import, then
 // the current namespace.
 
@@ -108,7 +108,7 @@ function useEdit(text, parsed, kind, fqn) {
     return { offset: 0, text: statement + '\n\n' };
 }
 
-// Finds the component for a tag name, with the rules of rhpc.
+// Finds the component for a tag name, with the rules of mamuc.
 function resolveComponent(parsed, components, tag) {
     const byFqn = new Map(components.map((c) => [c.fqn.toLowerCase(), c]));
     if (tag.startsWith('\\')) {

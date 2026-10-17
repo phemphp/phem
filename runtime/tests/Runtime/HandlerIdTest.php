@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Runtime;
+namespace Mamu\Tests\Runtime;
 
 use PHPUnit\Framework\TestCase;
-use Rephp\Handler\HandlerFingerprint;
-use Rephp\Handler\ObjectIdentifier;
-use Rephp\Rendering\Tree;
-use Rephp\Tests\Fixtures\Rows;
-use Rephp\Tests\Fixtures\Scientist;
+use Mamu\Handler\HandlerFingerprint;
+use Mamu\Handler\ObjectIdentifier;
+use Mamu\Rendering\Tree;
+use Mamu\Tests\Fixtures\Rows;
+use Mamu\Tests\Fixtures\Scientist;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * A handler id comes from the handler, not from its position: a click never runs the handler
- * of another row (tests/Fixtures/app/src/pages/rows.rhp).
+ * of another row (tests/Fixtures/app/src/pages/rows.phpm).
  */
 final class HandlerIdTest extends TestCase
 {
@@ -91,8 +91,8 @@ final class HandlerIdTest extends TestCase
     private function rows(): array
     {
         $html = (string) $this->request('GET', '/rows')->getContent();
-        preg_match('/data-rhp-state-value="([^"]*)" data-rhp-signature-value="([^"]*)"/', $html, $m);
-        preg_match_all('#<li data-rh-key="\d+">(\w+) <button data-rh-on-click="([^"]+)"#', $html, $rows, \PREG_SET_ORDER);
+        preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m);
+        preg_match_all('#<li data-mamu-key="\d+">(\w+) <button data-mamu-on-click="([^"]+)"#', $html, $rows, \PREG_SET_ORDER);
         self::assertCount(4, $rows);
 
         return [html_entity_decode($m[1]), $m[2], array_column($rows, 2, 1)];

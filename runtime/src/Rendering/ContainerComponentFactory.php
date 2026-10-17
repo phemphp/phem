@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Rendering;
+namespace Mamu\Rendering;
 
 use Psr\Container\ContainerInterface;
 
@@ -22,7 +22,7 @@ final class ContainerComponentFactory implements ComponentFactory
     public function create(string $fqcn): object
     {
         if (!$this->components->has($fqcn)) {
-            throw new \LogicException(\sprintf('The component "%s" is not a service. Run `bin/console cache:clear` after `rhpc build`.', $fqcn));
+            throw new \LogicException(\sprintf('The component "%s" is not a service. Run `bin/console cache:clear` after `mamuc build`.', $fqcn));
         }
 
         return $this->components->get($fqcn);

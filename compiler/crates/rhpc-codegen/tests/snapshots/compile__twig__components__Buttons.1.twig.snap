@@ -1,9 +1,0 @@
----
-source: crates/rhpc-codegen/tests/compile.rs
-expression: t.content
----
-<section class="card">
-            <h2>{{ title }}</h2>
-            <div class="body">{% block children %}{{ children }}{% endblock %}</div>
-            <footer>{% block footer %}{{ footer }}{% endblock %}</footer>
-        </section>

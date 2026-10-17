@@ -1,0 +1,36 @@
+<?phpm
+namespace App\Pages\Examples;
+
+use Mamu\Html;
+use Symfony\Component\Routing\Attribute\Route;
+
+function MyButton()
+{
+    return (
+        <button>I'm a button</button>
+    );
+}
+
+function IconButton(string $icon, ?Html $children = null, mixed ...$props)
+{
+    return (
+        <button type="button" onclick="alert('Clicked!')" {{ ...props }}>
+            <span aria-hidden="true">{{ icon }}</span> {{ children }}
+        </button>
+    );
+}
+
+#[Route('/examples/MyButton')]
+function MyApp()
+{
+    return (
+        <div>
+            <title>MyButton</title>
+            <h1>Welcome to my app</h1>
+            <MyButton />
+            <IconButton icon="★" title="Add to favorites" aria-label="Add to favorites">
+                Favorite
+            </IconButton>
+        </div>
+    );
+}

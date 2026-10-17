@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Manifest;
+namespace Mamu\Manifest;
 
 /**
- * The definition of a component in the rhpc manifest.
+ * The definition of a component in the mamuc manifest.
  */
 final class ComponentDefinition
 {
@@ -28,7 +28,7 @@ final class ComponentDefinition
 
         return new self(
             $fqcn,
-            ComponentKind::tryFrom($kind) ?? throw new \UnexpectedValueException(\sprintf('The component "%s" has the unknown kind "%s". Use the same version of rhpc and rephp/runtime.', $fqcn, $kind)),
+            ComponentKind::tryFrom($kind) ?? throw new \UnexpectedValueException(\sprintf('The component "%s" has the unknown kind "%s". Use the same version of mamuc and mamuphp/runtime.', $fqcn, $kind)),
             isset($data['template']) ? (string) $data['template'] : null,
             array_values($data['slots'] ?? []),
         );

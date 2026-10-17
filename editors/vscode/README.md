@@ -1,10 +1,10 @@
-# RHP for Visual Studio Code
+# Mamu for Visual Studio Code
 
 Syntax highlighting, completion, go to definition, hover, outline, and compiler diagnostics for
-rephp `.rhp` files. A `.rhp` file is a PHP file that contains markup literals, the same way a
+Mamu `.phpm` files. A `.phpm` file is a PHP file that contains markup literals, the same way a
 `.jsx` file contains JSX.
 
-The PHP extensions (Intelephense, PHP Tools) do not read `.rhp` files, so this extension has its
+The PHP extensions (Intelephense, PHP Tools) do not read `.phpm` files, so this extension has its
 own small PHP, Twig, and HTML support.
 
 The extension highlights:
@@ -26,7 +26,7 @@ A markup literal starts where a PHP expression starts: after `return`, `(`, `=`,
 
 ## Completion
 
-The extension reads the `.rhp` files of the project and the Composer autoload maps
+The extension reads the `.phpm` files of the project and the Composer autoload maps
 (`vendor/composer/autoload_*.php`, or the `autoload` section of `composer.json` when `vendor/`
 is not there). A project is the nearest directory with a `composer.json` file.
 
@@ -34,13 +34,13 @@ is not there). A project is the nearest directory with a `composer.json` file.
   and `#[Component]` classes). The tag gets the required props, and a closing tag when the
   component has `$children` or slots. If the component is not in scope, the extension adds the
   import: `use function App\Components\Layout;` or `use App\Components\Counter;`. It uses the
-  rules of rhpc: a `use function` import, then a `use` import, then the current namespace.
+  rules of mamuc: a `use function` import, then a `use` import, then the current namespace.
 - **HTML elements**: after `<`, it also suggests the HTML elements. A void element gets ` />`
   (`<img />`); the others get a closing tag.
 - **Props and slots**: in a component tag, it suggests the props that are not set yet (required
   props first). After `<Layout:`, it suggests the named slots.
 - **HTML attributes**: in an HTML tag, it suggests the attributes of the element, the global
-  attributes, the `aria-*` attributes, the rephp events (`onClick`, `onSubmit`, ...),
+  attributes, the `aria-*` attributes, the Mamu events (`onClick`, `onSubmit`, ...),
   `className`, and `key`. In the value of an enumerated attribute (`type="`, `target="`,
   `rel="`, `loading="`, ...), it suggests the values.
 - **Closing tags**: after `</`, it suggests the name of the open element.
@@ -64,9 +64,9 @@ is not there). A project is the nearest directory with a `composer.json` file.
   `use App\{...}`), it suggests the next part of the namespace and the symbols.
 - **Classes and functions**: in PHP code, it suggests the classes and the namespaced functions
   of the project and of `vendor/`, and adds the `use` statement when you accept one. A name with a
-  leading `\` (`\Rephp\Html`) completes part by part, with no import.
+  leading `\` (`\Mamu\Html`) completes part by part, with no import.
 
-The index updates when you save a `.rhp` file, add or remove a `.php` file, or run Composer.
+The index updates when you save a `.phpm` file, add or remove a `.php` file, or run Composer.
 The extension reads a class file when it needs the members of the class, and reads it again when
 the file changes.
 
@@ -92,20 +92,20 @@ classes with their members.
 
 ## Diagnostics
 
-The extension can show the errors and the warnings of rhpc in the editor. Set the path of the
-`rhpc` binary (it must run on the host, not in Docker):
+The extension can show the errors and the warnings of mamuc in the editor. Set the path of the
+`mamuc` binary (it must run on the host, not in Docker):
 
 ```json
 {
-    "rhp.rhpc.path": "/path/to/rhpc",
-    "rhp.rhpc.sourceDir": "src"
+    "mamu.mamuc.path": "/path/to/mamuc",
+    "mamu.mamuc.sourceDir": "src"
 }
 ```
 
-When you open or save a `.rhp` file, the extension runs `rhpc check <sourceDir> --format json`
-in the project root and shows the diagnostics of all the files. `rhp.rhpc.sourceDir` is relative
-to the project root (default: `src`). With an empty `rhp.rhpc.path` (the default), there are no
-diagnostics. In an untrusted workspace, VS Code ignores the `rhp.rhpc.path` value of the
+When you open or save a `.phpm` file, the extension runs `mamuc check <sourceDir> --format json`
+in the project root and shows the diagnostics of all the files. `mamu.mamuc.sourceDir` is relative
+to the project root (default: `src`). With an empty `mamu.mamuc.path` (the default), there are no
+diagnostics. In an untrusted workspace, VS Code ignores the `mamu.mamuc.path` value of the
 workspace settings.
 
 ## Limits
@@ -122,7 +122,7 @@ workspace settings.
 Build and install the package (you need Docker and the `code` command):
 
 ```sh
-make vscode-install    # builds editors/vscode/rhp-0.2.0.vsix and installs it
+make vscode-install    # builds editors/vscode/mamu-0.3.0.vsix and installs it
 ```
 
 Then run **Developer: Reload Window** in VS Code. To only build the package, run `make vscode`.
@@ -130,7 +130,7 @@ Then run **Developer: Reload Window** in VS Code. To only build the package, run
 an installed version:
 
 ```sh
-code --install-extension editors/vscode/rhp-0.2.0.vsix --force
+code --install-extension editors/vscode/mamu-0.3.0.vsix --force
 ```
 
 Or, in VS Code, open the Extensions view, select **...** > **Install from VSIX...**, and select the file.

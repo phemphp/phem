@@ -1,7 +1,7 @@
 import { Controller } from "/vendor/@hotwired/stimulus/stimulus.index.js";
 import { highlight, escapeHtml } from "../highlight.js";
 
-// A live example: the real source of src/Pages/Examples/<Name>.rhp (highlighted)
+// A live example: the real source of src/Pages/Examples/<Name>.phpm (highlighted)
 // and a preview iframe of the page /examples/<Name>.
 // A multi-file example has one tab for each file: <button data-sandbox-target="tab" data-src="/url">.
 export default class extends Controller {
@@ -25,7 +25,7 @@ export default class extends Controller {
     }
 
     get url() {
-        return this.hasTabTarget ? this.selectedTab.dataset.src : `/examples-src/${this.exampleValue}.rhp`;
+        return this.hasTabTarget ? this.selectedTab.dataset.src : `/examples-src/${this.exampleValue}.phpm`;
     }
 
     select(event) {
@@ -55,7 +55,7 @@ export default class extends Controller {
     }
 
     reset() {
-        // A new load of the page drops the state that the rhp controller keeps in the page.
+        // A new load of the page drops the state that the mamu controller keeps in the page.
         this.previewTarget.src = `/examples/${this.exampleValue}`;
     }
 

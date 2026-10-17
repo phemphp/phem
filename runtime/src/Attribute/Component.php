@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Attribute;
+namespace Mamu\Attribute;
 
 /**
  * Marks a class as a component. The class must have a `render()` method; its public

@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Path;
+namespace Mamu\Path;
 
 /**
  * Converts a route value to the type of its #[Path] prop.
  *
  * A service that implements this interface is a converter (it is autoconfigured with the
- * `rephp.path_converter` tag). The first converter that supports a prop converts its value.
+ * `mamu.path_converter` tag). The first converter that supports a prop converts its value.
  * The built-in converters have the priority -100, so the converters of an application go first.
  */
 interface PathValueConverter

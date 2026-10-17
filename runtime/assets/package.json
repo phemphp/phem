@@ -1,18 +1,18 @@
 {
-    "name": "@rephp/runtime",
-    "description": "The rephp client: the rhp Stimulus controller, which keeps the component state in the browser and morphs the page with Turbo Streams.",
+    "name": "mamujs",
+    "description": "The Mamu client: the mamu Stimulus controller, which keeps the component state in the browser and morphs the page with Turbo Streams.",
     "version": "0.1.0",
     "license": "MIT",
     "type": "module",
     "symfony": {
         "controllers": {
-            "rhp": {
-                "name": "rhp",
-                "main": "dist/rhp_controller.js",
+            "mamu": {
+                "name": "mamu",
+                "main": "dist/mamu_controller.js",
                 "fetch": "eager",
                 "enabled": true,
                 "autoimport": {
-                    "@rephp/runtime/dist/rhp.css": true
+                    "@mamuphp/runtime/dist/mamu.css": true
                 }
             }
         },

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Fixtures;
+namespace Mamu\Tests\Fixtures;
 
 use Psr\Log\NullLogger;
-use Rephp\RephpBundle;
+use Mamu\MamuBundle;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Bundle\TwigBundle\TwigBundle;
@@ -23,7 +23,7 @@ final class TestKernel extends Kernel
 
     public function registerBundles(): iterable
     {
-        return [new FrameworkBundle(), new TwigBundle(), new StimulusBundle(), new RephpBundle()];
+        return [new FrameworkBundle(), new TwigBundle(), new StimulusBundle(), new MamuBundle()];
     }
 
     public function getProjectDir(): string
@@ -48,12 +48,12 @@ final class TestKernel extends Kernel
                 ->tag('kernel.event_listener', ['event' => 'kernel.controller_arguments', 'method' => 'onKernelControllerArguments'])
             ->set(ScientistFinder::class)
             // The #[Path] entity props of the fixture pages get their entities from ScientistFinder.
-            ->alias('rephp.entity_finder', ScientistFinder::class)
+            ->alias('mamu.entity_finder', ScientistFinder::class)
             ->set('logger', NullLogger::class);
     }
 
     protected function configureRoutes(RoutingConfigurator $routes): void
     {
-        $routes->import('.', 'rephp');
+        $routes->import('.', 'mamu');
     }
 }

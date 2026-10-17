@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Manifest;
+namespace Mamu\Manifest;
 
 /**
- * Maps the lines of the compiled templates to the lines of the `.rhp` sources.
+ * Maps the lines of the compiled templates to the lines of the `.phpm` sources.
  */
 final class SourceMap
 {
@@ -14,7 +14,7 @@ final class SourceMap
     }
 
     /**
-     * The `.rhp` source and line of a line in a compiled template.
+     * The `.phpm` source and line of a line in a compiled template.
      *
      * @return array{file: string, path: string, line: int}|null
      */

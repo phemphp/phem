@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\EventListener;
+namespace Mamu\EventListener;
 
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
 use Symfony\Component\Routing\Attribute\Route;
@@ -22,7 +22,7 @@ final class PageAttributesListener
 
     public function onKernelController(ControllerEvent $event): void
     {
-        $page = $event->getRequest()->attributes->get('_rephp_page');
+        $page = $event->getRequest()->attributes->get('_mamu_page');
         if (!\is_string($page) || '' === $page) {
             return;
         }

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Http;
+namespace Mamu\Http;
 
-use Rephp\Rendering\Fiber;
+use Mamu\Rendering\Fiber;
 
 /**
  * The Turbo Streams that morph the fibers that changed in the browser.

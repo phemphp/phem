@@ -16,7 +16,7 @@ test.before(async () => {
 test.after(() => fixture.cleanup());
 
 // Resolves the symbol at the `‸` of `source`.
-async function at(source, file = 'src/pages/index.rhp') {
+async function at(source, file = 'src/pages/index.phpm') {
     const { text, offset } = helpers.cursor(source);
     return symbolAt({ text, offset, file: path.join(fixture.root, file), project: fixture.project });
 }
@@ -28,29 +28,29 @@ function target(result) {
     return [path.relative(fixture.root, result.location.file), text.split('\n')[result.location.line].slice(result.location.character)];
 }
 
-const USES = '<?php\nnamespace App\\Pages;\n\nuse App\\Model\\Scientist;\nuse App\\Repository\\ScientistRepository;\n\nuse function App\\Components\\Layout;\n\n';
+const USES = '<?phpm\nnamespace App\\Pages;\n\nuse App\\Model\\Scientist;\nuse App\\Repository\\ScientistRepository;\n\nuse function App\\Components\\Layout;\n\n';
 const fn = (markup, body = '') => USES + `function Home(Scientist $s, ScientistRepository $repo)\n{\n${body}    return ${markup};\n}\n`;
 
 test('a component tag goes to the component', async () => {
     const r = await at(fn('<Lay‸out title="x"></Layout>'));
-    assert.deepEqual(target(r), ['src/components/Layout.rhp', 'Layout(string $title, ?Html $children = null, ?Html $footer = null)']);
+    assert.deepEqual(target(r), ['src/components/Layout.phpm', 'Layout(string $title, ?Html $children = null, ?Html $footer = null)']);
     assert.match(r.hover, /function Layout\(string \$title/);
 
     assert.deepEqual(target(await at(fn('<Layout title="x"></Lay‸out>'))), target(r));
-    assert.deepEqual(target(await at(fn('<Layout title="x"><Layout:foo‸ter>a</Layout:footer></Layout>'))), ['src/components/Layout.rhp', '$footer = null)']);
+    assert.deepEqual(target(await at(fn('<Layout title="x"><Layout:foo‸ter>a</Layout:footer></Layout>'))), ['src/components/Layout.phpm', '$footer = null)']);
 });
 
 test('a prop goes to the parameter or the property', async () => {
-    assert.deepEqual(target(await at(fn('<Layout ti‸tle="x" />'))), ['src/components/Layout.rhp', '$title, ?Html $children = null, ?Html $footer = null)']);
+    assert.deepEqual(target(await at(fn('<Layout ti‸tle="x" />'))), ['src/components/Layout.phpm', '$title, ?Html $children = null, ?Html $footer = null)']);
     const r = await at(USES + 'use App\\Components\\Counter;\n\nfunction Home()\n{\n    return <Counter ma‸x={{ 3 }} />;\n}\n');
-    assert.deepEqual(target(r), ['src/components/Counter.rhp', '$max;']);
+    assert.deepEqual(target(r), ['src/components/Counter.phpm', '$max;']);
     assert.match(r.hover, /int \$max/);
     assert.match(r.hover, /required/);
 });
 
 test('a Twig variable goes to its PHP declaration', async () => {
     let r = await at(fn('<p>{{ s‸.name }}</p>'));
-    assert.equal(r.location.file, path.join(fixture.root, 'src/pages/index.rhp'));
+    assert.equal(r.location.file, path.join(fixture.root, 'src/pages/index.phpm'));
     assert.match(r.hover, /Scientist \$s/);
 
     r = await at(fn('<p>{{ s.prof‸ession }}</p>'));
@@ -68,8 +68,8 @@ test('a Twig variable goes to its PHP declaration', async () => {
 });
 
 test('a handler goes to the method', async () => {
-    const src = '<?php\nnamespace App\\Components;\n\nuse Rephp\\Attribute\\Component;\n\n#[Component]\nfinal class Counter3\n{\n    public function increment(): void\n    {\n    }\n\n    public function render()\n    {\n        return <button onClick={{ incre‸ment }}>+</button>;\n    }\n}\n';
-    const r = await at(src, 'src/components/Counter3.rhp');
+    const src = '<?phpm\nnamespace App\\Components;\n\nuse Mamu\\Attribute\\Component;\n\n#[Component]\nfinal class Counter3\n{\n    public function increment(): void\n    {\n    }\n\n    public function render()\n    {\n        return <button onClick={{ incre‸ment }}>+</button>;\n    }\n}\n';
+    const r = await at(src, 'src/components/Counter3.phpm');
     assert.equal(r.location.line, 8);
     assert.match(r.hover, /public function increment\(\): void/);
 });
@@ -101,10 +101,10 @@ test('PHP names: classes, members, functions, and variables', async () => {
     r = await at(fn('<p />', '    $x = 1;\n    echo $‸x;\n'));
     assert.equal(r.location.line, 10);
 
-    r = await at('<?php\nnamespace App\\Pages;\n\nuse App\\Model\\Scien‸tist;\n');
+    r = await at('<?phpm\nnamespace App\\Pages;\n\nuse App\\Model\\Scien‸tist;\n');
     assert.deepEqual(target(r), ['src/Model/Scientist.php', 'Scientist extends Person']);
 
-    r = await at('<?php\nnamespace App\\Pages;\n\nuse function Acme\\slugify;\n\n$a = slug‸ify("x");\n');
+    r = await at('<?phpm\nnamespace App\\Pages;\n\nuse function Acme\\slugify;\n\n$a = slug‸ify("x");\n');
     assert.deepEqual(target(r), ['vendor/acme/lib/functions.php', 'slugify(string $s): string { return $s; }']);
 });
 
@@ -115,11 +115,11 @@ test('hover for Twig filters, functions, tests, tags, and HTML', async () => {
     assert.match((await at(fn('<p>{% fo‸r a in b %}{% endfor %}</p>'))).hover, /Loop over/);
     assert.match((await at(fn('<p>{% for a in b %}{% endf‸or %}</p>'))).hover, /end of the \{% for %\} block/);
     assert.match((await at(fn('<sec‸tion />'))).hover, /A generic section/);
-    assert.match((await at(fn('<button onCl‸ick={{ x }} />'))).hover, /rephp event/);
+    assert.match((await at(fn('<button onCl‸ick={{ x }} />'))).hover, /Mamu event/);
 });
 
 test('a route name goes to the page', async () => {
     const r = await at(fn("<a href={{ path('gall‸ery') }}>x</a>"));
-    assert.deepEqual(target(r), ['src/pages/gallery.rhp', 'Gallery']);
+    assert.deepEqual(target(r), ['src/pages/gallery.phpm', 'Gallery']);
     assert.match(r.hover, /\/gallery/);
 });

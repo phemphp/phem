@@ -1,6 +1,6 @@
 'use strict';
 
-// A small lexer for .rhp files. It follows the rules of the TextMate grammar:
+// A small lexer for .phpm files. It follows the rules of the TextMate grammar:
 // a markup literal starts where a PHP (or Twig) expression starts, and it ends
 // when its root element closes.
 //
@@ -109,8 +109,9 @@ class Scanner {
                 continue;
             }
 
+            // `<?phpm` in a .phpm file, `<?php` in the PHP classes that the project reads.
             if (this.startsWith('<?php') || this.startsWith('<?=')) {
-                this.i += this.startsWith('<?=') ? 3 : 5;
+                this.i += this.startsWith('<?=') ? 3 : this.startsWith('<?phpm') ? 6 : 5;
                 last = '';
                 newline = true;
                 continue;

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Binding;
+namespace Mamu\Binding;
 
-use Rephp\Html;
-use Rephp\Metadata\ComponentMetadata;
-use Rephp\Metadata\Parameter;
+use Mamu\Html;
+use Mamu\Metadata\ComponentMetadata;
+use Mamu\Metadata\Parameter;
 
 /**
  * Binds props to the parameters of a function component or to the public properties of a

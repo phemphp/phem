@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Rendering;
+namespace Mamu\Rendering;
 
 /**
  * The fibers of one page for one request.

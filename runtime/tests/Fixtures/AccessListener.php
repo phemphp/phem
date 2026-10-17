@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Fixtures;
+namespace Mamu\Tests\Fixtures;
 
 use Symfony\Component\HttpKernel\Event\ControllerArgumentsEvent;
 use Symfony\Component\HttpKernel\Event\RequestEvent;

@@ -1,2 +1,0 @@
-<?php // expect: E032
-function App() { return <button onClick="alert(1)">x</button>; }

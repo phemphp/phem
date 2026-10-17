@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Twig;
+namespace Mamu\Twig;
 
-use Rephp\Manifest\ComponentKind;
-use Rephp\Manifest\Manifest;
+use Mamu\Manifest\ComponentKind;
+use Mamu\Manifest\Manifest;
 use Twig\Error\SyntaxError;
 use Twig\Node\Node;
 use Twig\Token;
 use Twig\TokenParser\AbstractTokenParser;
 
 /**
- * `{% component %}`: renders a component. rhpc emits it for each component tag.
+ * `{% component %}`: renders a component. mamuc emits it for each component tag.
  *
  * Include form (a self-closing tag, `<MyButton count={{ n }} />`), built on `include`:
  *
@@ -21,14 +21,14 @@ use Twig\TokenParser\AbstractTokenParser;
  * Embed form (a tag with children or slots), built on `embed`; the blocks are the slots:
  *
  *     {% component embed 'App\\Card' with {title: 'Hi'} only %}
- *         {% block children %}{% with _rhp_caller only %}<p>Body</p>{% endwith %}{% endblock %}
+ *         {% block children %}{% with _mamu_caller only %}<p>Body</p>{% endwith %}{% endblock %}
  *     {% endcomponent %}
  *
  * The component is resolved from the manifest when Twig compiles the template.
  */
 final class ComponentTokenParser extends AbstractTokenParser
 {
-    public const SLOT_HOST = '@Rephp/slot_host.twig';
+    public const SLOT_HOST = '@Mamu/slot_host.twig';
 
     public function __construct(private readonly Manifest $manifest)
     {
@@ -41,7 +41,7 @@ final class ComponentTokenParser extends AbstractTokenParser
         $embed = null !== $stream->nextIf(Token::NAME_TYPE, 'embed');
         $fqcn = ltrim((string) $stream->expect(Token::STRING_TYPE)->getValue(), '\\');
         $def = $this->manifest->component($fqcn)
-            ?? throw new SyntaxError(\sprintf('Unknown component "%s". Run `rhpc build` again.', $fqcn), $line, $stream->getSourceContext());
+            ?? throw new SyntaxError(\sprintf('Unknown component "%s". Run `mamuc build` again.', $fqcn), $line, $stream->getSourceContext());
 
         $variables = null !== $stream->nextIf(Token::NAME_TYPE, 'with') ? $this->parser->parseExpression() : null;
         $key = null !== $stream->nextIf(Token::NAME_TYPE, 'key') ? $this->parser->parseExpression() : null;

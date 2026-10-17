@@ -1,0 +1,27 @@
+<?phpm
+namespace App\Pages\Examples;
+
+use Symfony\Component\Routing\Attribute\Route;
+
+#[Route('/examples/Profile')]
+function Profile()
+{
+    $user = [
+        'name' => 'Hedy Lamarr',
+        'imageUrl' => '/img/avatar.svg',
+        'imageSize' => 90,
+    ];
+
+    return (
+        <>
+            <title>Profile</title>
+            <h1>{{ user.name }}</h1>
+            <img
+                className="avatar"
+                src={{ user.imageUrl }}
+                alt="Photo of {{ user.name }}"
+                style={{ {width: user.imageSize, height: user.imageSize} }}
+            />
+        </>
+    );
+}

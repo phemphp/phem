@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Path;
+namespace Mamu\Path;
 
 /**
  * Finds the entity of a `#[Path]` prop with a class type, from its route value.

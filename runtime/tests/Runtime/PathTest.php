@@ -2,37 +2,37 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Runtime;
+namespace Mamu\Tests\Runtime;
 
 use PHPUnit\Framework\TestCase;
-use Rephp\Binding\PropError;
-use Rephp\Manifest\Manifest;
-use Rephp\Metadata\ComponentMetadata;
-use Rephp\Path\EntityFinder;
-use Rephp\Path\EntityPathConverter;
-use Rephp\Path\PathProp;
-use Rephp\Path\PathResolver;
-use Rephp\Path\PathValueConverter;
-use Rephp\Path\ScalarPathConverter;
-use Rephp\Routing\PageLoader;
-use Rephp\Tests\Fixtures\PathPages\EntityPath;
-use Rephp\Tests\Fixtures\PathPages\ObjectPath;
-use Rephp\Tests\Fixtures\PathPages\Typed;
-use Rephp\Tests\Fixtures\Scientist;
-use Rephp\Tests\Fixtures\ScientistFinder;
+use Mamu\Binding\PropError;
+use Mamu\Manifest\Manifest;
+use Mamu\Metadata\ComponentMetadata;
+use Mamu\Path\EntityFinder;
+use Mamu\Path\EntityPathConverter;
+use Mamu\Path\PathProp;
+use Mamu\Path\PathResolver;
+use Mamu\Path\PathValueConverter;
+use Mamu\Path\ScalarPathConverter;
+use Mamu\Routing\PageLoader;
+use Mamu\Tests\Fixtures\PathPages\EntityPath;
+use Mamu\Tests\Fixtures\PathPages\ObjectPath;
+use Mamu\Tests\Fixtures\PathPages\Typed;
+use Mamu\Tests\Fixtures\Scientist;
+use Mamu\Tests\Fixtures\ScientistFinder;
 use Symfony\Component\Routing\RouteCollection;
 
 require_once \dirname(__DIR__).'/Fixtures/PathPages.php';
 
 final class PathTest extends TestCase
 {
-    private const NS = 'Rephp\\Tests\\Fixtures\\PathPages\\';
+    private const NS = 'Mamu\\Tests\\Fixtures\\PathPages\\';
 
     private string $dir;
 
     protected function setUp(): void
     {
-        $this->dir = sys_get_temp_dir().'/rephp-path-'.bin2hex(random_bytes(4));
+        $this->dir = sys_get_temp_dir().'/mamu-path-'.bin2hex(random_bytes(4));
         mkdir($this->dir);
         file_put_contents($this->dir.'/autoload.php', '<?php');
     }
@@ -47,13 +47,13 @@ final class PathTest extends TestCase
     {
         $routes = $this->load('Known');
 
-        self::assertSame('/known/{id}', $routes->get('rephp_tests_fixtures_pathpages_known')?->getPath());
+        self::assertSame('/known/{id}', $routes->get('mamu_tests_fixtures_pathpages_known')?->getPath());
     }
 
     public function testPathVariableWithoutPathParameterIsAnError(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('The route "rephp_tests_fixtures_pathpages_unknownvalue" has the value "slug", but the page "Rephp\\Tests\\Fixtures\\PathPages\\UnknownValue" has no #[Path] parameter "slug".');
+        $this->expectExceptionMessage('The route "mamu_tests_fixtures_pathpages_unknownvalue" has the value "slug", but the page "Mamu\\Tests\\Fixtures\\PathPages\\UnknownValue" has no #[Path] parameter "slug".');
 
         $this->load('UnknownValue');
     }
@@ -116,7 +116,7 @@ final class PathTest extends TestCase
 
     public function testRouteValueMappedToAnEntityLoads(): void
     {
-        $route = $this->load('EntityPath')->get('rephp_tests_fixtures_pathpages_entitypath');
+        $route = $this->load('EntityPath')->get('mamu_tests_fixtures_pathpages_entitypath');
 
         self::assertSame('/scientists/{id}', $route?->getPath());
         self::assertSame(['id' => 'scientist'], $route->getDefault('_route_mapping'));
@@ -125,7 +125,7 @@ final class PathTest extends TestCase
     public function testRouteValueMappedToNoPathPropIsAnError(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('maps the value "id" to "scientist", but the page "Rephp\\Tests\\Fixtures\\PathPages\\MappedToNothing" has no #[Path] property "scientist".');
+        $this->expectExceptionMessage('maps the value "id" to "scientist", but the page "Mamu\\Tests\\Fixtures\\PathPages\\MappedToNothing" has no #[Path] property "scientist".');
 
         $this->load('MappedToNothing');
     }
@@ -133,7 +133,7 @@ final class PathTest extends TestCase
     public function testRouteValueMappedToABuiltinTypeIsAnError(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('maps the value "slug" to the #[Path] property "id" of the page "Rephp\\Tests\\Fixtures\\PathPages\\MappedToBuiltin", but its type is not an entity class.');
+        $this->expectExceptionMessage('maps the value "slug" to the #[Path] property "id" of the page "Mamu\\Tests\\Fixtures\\PathPages\\MappedToBuiltin", but its type is not an entity class.');
 
         $this->load('MappedToBuiltin');
     }
@@ -202,6 +202,6 @@ final class PathTest extends TestCase
     {
         file_put_contents($this->dir.'/manifest.php', '<?php return '.var_export(['pages' => [self::NS.$page]], true).';');
 
-        return (new PageLoader(new Manifest($this->dir, $this->dir)))->load('.', 'rephp');
+        return (new PageLoader(new Manifest($this->dir, $this->dir)))->load('.', 'mamu');
     }
 }

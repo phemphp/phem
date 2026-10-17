@@ -1,0 +1,39 @@
+<?phpm
+namespace App\Components;
+
+use App\Model\Scientist;
+use Mamu\Attribute\{Component, Transactional};
+
+#[Component]
+#[Transactional]
+final class LikeCounter
+{
+    public Scientist $scientist;    // prop
+
+    public function like(): void
+    {
+        ++$this->scientist->likes;
+    }
+
+    public function render()
+    {
+        return (
+            <button onClick={{ like }}>♥ {{ scientist.likes }}</button>
+        );
+    }
+}
+
+// Avatar is in Profile.phpm, in this namespace: it needs no import.
+function ScientistCard(Scientist $scientist)
+{
+    return (
+        <section className="profile">
+            <Avatar name={{ scientist.name }} />
+            <div>
+                <h2><a href={{ path('app_pages_examples_scientistpage', {id: scientist.id}) }}>{{ scientist.name }}</a></h2>
+                <p>{{ scientist.profession }}</p>
+                <LikeCounter key={{ scientist.id }} scientist={{ scientist }} />
+            </div>
+        </section>
+    );
+}

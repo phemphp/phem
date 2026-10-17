@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Handler;
+namespace Mamu\Handler;
 
-use Rephp\Event;
+use Mamu\Event;
 
 /**
  * Runs code around the event handlers (a transaction, a security check, a log entry).
  *
  * A service that implements this interface is a middleware (it is autoconfigured with the
- * `rephp.handler_middleware` tag). A middleware calls `$next()` to run the next middleware and
+ * `mamu.handler_middleware` tag). A middleware calls `$next()` to run the next middleware and
  * then the handler, or returns without a call to stop the event.
  */
 interface HandlerMiddleware

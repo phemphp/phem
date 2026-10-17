@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Twig;
+namespace Mamu\Twig;
 
-use Rephp\Manifest\Manifest;
+use Mamu\Manifest\Manifest;
 use Twig\Loader\LoaderInterface;
 use Twig\Source;
 

@@ -1,0 +1,39 @@
+<?phpm
+
+namespace App\Pages;
+
+use Mamu\Attribute\Component;
+use Mamu\Event;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\Routing\Attribute\Route;
+
+// A function component that returns a string: it is text, as in React.
+function PlainText(string $value) {
+    return $value;
+}
+
+// Data in the output: Mamu escapes it, and a spread of data adds no script.
+#[Component]
+#[Route('/unsafe')]
+final class UnsafePage
+{
+    // Redirects to a URL from the browser (for example a `?next=` value).
+    public function go(Event $e): RedirectResponse
+    {
+        return new RedirectResponse((string) $e->value);
+    }
+
+    public function render()
+    {
+        $name = '<b>Ada</b>';
+        $data = ['x onfocus=alert(1) autofocus' => 'y', 'onclick' => 'alert(2)', 'title' => 'ok'];
+
+        return (
+            <main>
+                <PlainText value={{ name }} />
+                <a id="spread" {{ ...data }} onclick="track()">link</a>
+                <button id="go" onClick={{ go }}>Go</button>
+            </main>
+        );
+    }
+}

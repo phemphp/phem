@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Rendering;
+namespace Mamu\Rendering;
 
 /**
  * Makes the object of a class component: a new instance for each fiber.

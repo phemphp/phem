@@ -1,4 +1,4 @@
-// A small regex tokenizer for .rhp source: PHP code, markup tags and Twig.
+// A small regex tokenizer for .phpm source: PHP code, markup tags and Twig.
 // Every piece of text is HTML-escaped before it goes into a span.
 
 const PHP_KEYWORDS = [
@@ -12,7 +12,7 @@ const TWIG_KEYWORDS = "in|and|or|not|is|if|else|true|false|null";
 const MAIN = new RegExp([
     String.raw`(?<comment>\/\*[\s\S]*?\*\/|\/\/[^\n]*|\{#[\s\S]*?#\})`,
     String.raw`(?<twig>\{\{[\s\S]*?\}\}|\{%[\s\S]*?%\})`,
-    String.raw`(?<open><\?php)`,
+    String.raw`(?<open><\?phpm)`,
     String.raw`(?<tag><\/?>|<\/?[A-Za-z][\w:.-]*(?:[^<>{}"]|"[^"]*"|\{\{[\s\S]*?\}\})*\/?>)`,
     String.raw`(?<string>'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*")`,
     String.raw`(?<variable>\$[A-Za-z_]\w*)`,

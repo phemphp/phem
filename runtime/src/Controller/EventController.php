@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Controller;
+namespace Mamu\Controller;
 
-use Rephp\Event;
-use Rephp\Http\EventPayload;
-use Rephp\Http\RouteValues;
-use Rephp\Http\TurboStreams;
-use Rephp\Metadata\ComponentMetadata;
-use Rephp\Path\PathResolver;
-use Rephp\Rendering\Renderer;
-use Rephp\Rendering\Tree;
-use Rephp\State\PageState;
-use Rephp\State\StateAccessor;
-use Rephp\State\StateCodec;
+use Mamu\Event;
+use Mamu\Http\EventPayload;
+use Mamu\Http\RouteValues;
+use Mamu\Http\TurboStreams;
+use Mamu\Metadata\ComponentMetadata;
+use Mamu\Path\PathResolver;
+use Mamu\Rendering\Renderer;
+use Mamu\Rendering\Tree;
+use Mamu\State\PageState;
+use Mamu\State\StateAccessor;
+use Mamu\State\StateCodec;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -24,23 +24,23 @@ use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
 
 /**
- * `POST <page URL>` with the `X-Rhp-Event` header: runs an event handler of the page.
+ * `POST <page URL>` with the `X-Mamu-Event` header: runs an event handler of the page.
  *
  * The events go to the URL of the page, so the access rules of the page apply to them too
  * (see PageLoader). The page comes from the route, not from the browser.
  *
- * The `rhp` Stimulus controller sends the signed state of the page and the handler id. The
+ * The `mamu` Stimulus controller sends the signed state of the page and the handler id. The
  * server renders with that state, runs the handler, renders again, and answers with Turbo
  * Streams that morph the components that changed, plus the new state. When the handler returns
  * a RedirectResponse, the server answers with its URL, and the browser visits it.
  *
- * Against CSRF, an event is JSON with the `X-Rhp-Event` header (a cross-site request with them
+ * Against CSRF, an event is JSON with the `X-Mamu-Event` header (a cross-site request with them
  * needs a CORS preflight), and it comes from the same origin (`Sec-Fetch-Site`, or `Origin`).
  */
 final class EventController
 {
     /** The header of an event request. */
-    public const HEADER = 'X-Rhp-Event';
+    public const HEADER = 'X-Mamu-Event';
 
     public function __construct(
         private readonly Renderer $renderer,
@@ -66,7 +66,7 @@ final class EventController
         }
 
         $payload = EventPayload::fromRequest($request);
-        $page = (string) $request->attributes->get('_rephp_page');
+        $page = (string) $request->attributes->get('_mamu_page');
         $data = $this->codec->decode($payload->state, $payload->signature, $page, $request);
         if (null === $data) {
             // The state is not valid any more (a new build, a new secret, too old, or another session).
@@ -109,7 +109,7 @@ final class EventController
      */
     private function notAnEvent(Request $request): Response
     {
-        $methods = (array) $request->attributes->get('_rephp_methods', []);
+        $methods = (array) $request->attributes->get('_mamu_methods', []);
         if (null === $this->pages || ([] !== $methods && !\in_array('POST', $methods, true))) {
             throw new MethodNotAllowedHttpException($methods ?: ['GET'], \sprintf('An event needs the %s header.', self::HEADER));
         }

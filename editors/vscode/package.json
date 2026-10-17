@@ -1,9 +1,9 @@
 {
-    "name": "rhp",
-    "displayName": "RHP (rephp)",
-    "description": "Syntax highlighting, completion, go to definition, hover, outline, and rhpc diagnostics for .rhp files: PHP with markup literals and Twig.",
-    "version": "0.2.0",
-    "publisher": "rephp",
+    "name": "mamu",
+    "displayName": "Mamu",
+    "description": "Syntax highlighting, completion, go to definition, hover, outline, and mamuc diagnostics for .phpm files: PHP with markup literals and Twig.",
+    "version": "0.3.0",
+    "publisher": "mamuphp",
     "license": "MIT",
     "icon": "icons/icon.png",
     "engines": {
@@ -13,8 +13,8 @@
         "Programming Languages"
     ],
     "keywords": [
-        "rhp",
-        "rephp",
+        "phpm",
+        "mamu",
         "php",
         "twig",
         "jsx"
@@ -23,65 +23,65 @@
     "capabilities": {
         "untrustedWorkspaces": {
             "supported": "limited",
-            "description": "In an untrusted workspace, the extension does not use the rhp.rhpc.path setting of the workspace.",
+            "description": "In an untrusted workspace, the extension does not use the mamu.mamuc.path setting of the workspace.",
             "restrictedConfigurations": [
-                "rhp.rhpc.path"
+                "mamu.mamuc.path"
             ]
         }
     },
     "activationEvents": [
-        "onLanguage:rhp"
+        "onLanguage:phpm"
     ],
     "contributes": {
         "languages": [
             {
-                "id": "rhp",
+                "id": "phpm",
                 "aliases": [
-                    "RHP",
-                    "rhp"
+                    "PHPM",
+                    "phpm"
                 ],
                 "extensions": [
-                    ".rhp"
+                    ".phpm"
                 ],
-                "firstLine": "^<\\?php",
+                "firstLine": "^<\\?phpm\\b",
                 "icon": {
-                    "light": "./icons/rhp.svg",
-                    "dark": "./icons/rhp.svg"
+                    "light": "./icons/phpm.svg",
+                    "dark": "./icons/phpm.svg"
                 },
                 "configuration": "./language-configuration.json"
             },
             {
-                "id": "rhp-markup",
+                "id": "phpm-markup",
                 "aliases": [],
                 "configuration": "./markup-language-configuration.json"
             }
         ],
         "configuration": {
-            "title": "RHP",
+            "title": "Mamu",
             "properties": {
-                "rhp.rhpc.path": {
+                "mamu.mamuc.path": {
                     "type": "string",
                     "default": "",
                     "scope": "machine-overridable",
-                    "markdownDescription": "The path of the `rhpc` binary. When it is set, the extension runs `rhpc check <sourceDir> --format json` on save and shows the diagnostics. Empty: no diagnostics."
+                    "markdownDescription": "The path of the `mamuc` binary. When it is set, the extension runs `mamuc check <sourceDir> --format json` on save and shows the diagnostics. Empty: no diagnostics."
                 },
-                "rhp.rhpc.sourceDir": {
+                "mamu.mamuc.sourceDir": {
                     "type": "string",
                     "default": "src",
                     "scope": "resource",
-                    "markdownDescription": "The source directory of the `.rhp` files, relative to the project root (the directory with `composer.json`)."
+                    "markdownDescription": "The source directory of the `.phpm` files, relative to the project root (the directory with `composer.json`)."
                 }
             }
         },
         "grammars": [
             {
-                "language": "rhp",
-                "scopeName": "source.rhp",
-                "path": "./syntaxes/rhp.tmLanguage.json",
+                "language": "phpm",
+                "scopeName": "source.phpm",
+                "path": "./syntaxes/phpm.tmLanguage.json",
                 "embeddedLanguages": {
-                    "meta.markup.rhp": "rhp-markup",
-                    "source.js.embedded.rhp": "javascript",
-                    "source.css.embedded.rhp": "css"
+                    "meta.markup.phpm": "phpm-markup",
+                    "source.js.embedded.phpm": "javascript",
+                    "source.css.embedded.phpm": "css"
                 }
             }
         ]

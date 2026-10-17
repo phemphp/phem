@@ -1,6 +1,6 @@
 {
-    "name": "rephp/runtime",
-    "description": "Runtime for .rhp components: a Symfony bundle with Twig rendering, class components as services, pages as Symfony routes, and Turbo/Stimulus state.",
+    "name": "mamuphp/runtime",
+    "description": "Runtime for .phpm components: a Symfony bundle with Twig rendering, class components as services, pages as Symfony routes, and Turbo/Stimulus state.",
     "type": "symfony-bundle",
     "license": "MIT",
     "require": {
@@ -22,14 +22,14 @@
     },
     "suggest": {
         "doctrine/doctrine-bundle": "To run the event handlers of #[Transactional] components in a Doctrine ORM transaction, and to give #[Path] props the entities of their route values",
-        "symfony/asset-mapper": "To load the rhp Stimulus controller and its CSS with an importmap (the @rephp/runtime assets)",
-        "symfony/stimulus-bundle": "To register the rhp Stimulus controller from assets/controllers.json"
+        "symfony/asset-mapper": "To load the mamu Stimulus controller and its CSS with an importmap (the mamujs assets)",
+        "symfony/stimulus-bundle": "To register the mamu Stimulus controller from assets/controllers.json"
     },
     "autoload": {
-        "psr-4": { "Rephp\\": "src/" }
+        "psr-4": { "Mamu\\": "src/" }
     },
     "autoload-dev": {
-        "psr-4": { "Rephp\\Tests\\": "tests/" }
+        "psr-4": { "Mamu\\Tests\\": "tests/" }
     },
     "config": { "sort-packages": true }
 }

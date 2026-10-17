@@ -249,7 +249,7 @@ class Completer {
         }];
     }
 
-    // Props of a component, or rhp attributes of an HTML element.
+    // Props of a component, or Mamu attributes of an HTML element.
     attrs(ctx) {
         const start = this.offset - ctx.partial.length;
         const end = this.offset + wordAfter(this.text, this.offset);
@@ -276,7 +276,7 @@ class Completer {
         }
         if (/^[a-z]/.test(tag)) {
             for (const event of EVENTS) {
-                add(event, `${event}={{ \${1} }}`, 'rephp event: the handler runs on the server', '1' + event);
+                add(event, `${event}={{ \${1} }}`, 'Mamu event: the handler runs on the server', '1' + event);
             }
             add('className', 'className="${1}"', 'Alias for class', '0className');
             if (tag === 'label') {
@@ -323,8 +323,8 @@ class Completer {
     async php() {
         const before = this.text.slice(0, this.offset);
         // The text of the current statement, up to the cursor.
-        const open = before.lastIndexOf('<?php');
-        const stmt = before.slice(Math.max(before.lastIndexOf(';') + 1, before.lastIndexOf('}') + 1, open < 0 ? 0 : open + 5));
+        const open = before.lastIndexOf('<?phpm');
+        const stmt = before.slice(Math.max(before.lastIndexOf(';') + 1, before.lastIndexOf('}') + 1, open < 0 ? 0 : open + 6));
 
         // use Foo\Bar; use function Foo\{bar, baz};
         let m = /^\s*use\s+(?:(function|const)\s+)?\\?((?:\w+\\)*)(\w*)$/i.exec(stmt);

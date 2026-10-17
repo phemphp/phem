@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Handler;
+namespace Mamu\Handler;
 
 /**
  * The fingerprint of an event handler: its function (class, method or closure, with its line)

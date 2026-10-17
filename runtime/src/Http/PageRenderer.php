@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Http;
+namespace Mamu\Http;
 
-use Rephp\Metadata\ComponentMetadata;
-use Rephp\Path\PathResolver;
-use Rephp\Rendering\Renderer;
-use Rephp\Rendering\Tree;
-use Rephp\State\StateAccessor;
-use Rephp\State\StateCodec;
+use Mamu\Metadata\ComponentMetadata;
+use Mamu\Path\PathResolver;
+use Mamu\Rendering\Renderer;
+use Mamu\Rendering\Tree;
+use Mamu\State\StateAccessor;
+use Mamu\State\StateCodec;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Twig\Markup;

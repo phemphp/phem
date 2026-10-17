@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Runtime;
+namespace Mamu\Tests\Runtime;
 
 use PHPUnit\Framework\TestCase;
-use Rephp\EventListener\SourceMapListener;
-use Rephp\Manifest\Manifest;
-use Rephp\Manifest\SourceMap;
+use Mamu\EventListener\SourceMapListener;
+use Mamu\Manifest\Manifest;
+use Mamu\Manifest\SourceMap;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 use Twig\Error\RuntimeError;
@@ -25,10 +25,10 @@ final class AppTest extends TestCase
     protected function setUp(): void
     {
         $html = (string) $this->request('GET', '/')->getContent();
-        preg_match('/data-rhp-state-value="([^"]*)" data-rhp-signature-value="([^"]*)"/', $html, $m);
+        preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m);
         $this->state = html_entity_decode($m[1]);
         $this->signature = $m[2];
-        preg_match_all('/data-rh-on-click="([^"]+)"/', $html, $h);
+        preg_match_all('/data-mamu-on-click="([^"]+)"/', $html, $h);
         $this->handlers = $h[1];
     }
 
@@ -56,11 +56,11 @@ final class AppTest extends TestCase
         $html = (string) $response->getContent();
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('<title>Fixture Home</title>', $html);
-        self::assertStringContainsString('<body class="fixture"><div id="rh-root" data-controller="rhp" data-action="click->rhp#dispatch', html_entity_decode($html), 'the default page template extends base.html.twig');
-        self::assertStringNotContainsString('data-rhp-page-value', $html, 'the page comes from the route of the event');
+        self::assertStringContainsString('<body class="fixture"><div id="mamu-root" data-controller="mamu" data-action="click->mamu#dispatch', html_entity_decode($html), 'the default page template extends base.html.twig');
+        self::assertStringNotContainsString('data-mamu-page-value', $html, 'the page comes from the route of the event');
         self::assertSame(2, substr_count($html, 'Clicked 0 times'));
         self::assertStringContainsString('style="color: magenta; font-weight: 700">Apple', $html);
-        self::assertStringContainsString('<ol id="mapped"><li data-rh-key="1">Cabbage</li><li data-rh-key="3">Apple</li></ol>', $html);
+        self::assertStringContainsString('<ol id="mapped"><li data-mamu-key="1">Cabbage</li><li data-mamu-key="3">Apple</li></ol>', $html);
         self::assertStringContainsString('<p>Body 0</p>', $html, 'children slot sees the caller variables');
         self::assertStringContainsString('<footer><span class="badge badge-info">FOOT</span></footer>', $html, 'named slot');
         self::assertStringContainsString('Hits 0 times !', $html, 'class component with children');
@@ -88,14 +88,14 @@ final class AppTest extends TestCase
     public function testRestPropsSpreadOnAnElement(): void
     {
         $html = (string) $this->request('GET', '/rest')->getContent();
-        preg_match('/data-rhp-state-value="([^"]*)" data-rhp-signature-value="([^"]*)"/', $html, $m);
+        preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m);
         $this->state = html_entity_decode($m[1]);
         $this->signature = $m[2];
-        preg_match_all('/data-rh-on-(?:click|dblclick)="([^"]+)"/', $html, $h);
+        preg_match_all('/data-mamu-on-(?:click|dblclick)="([^"]+)"/', $html, $h);
         $this->handlers = $h[1];
 
-        self::assertMatchesRegularExpression('#<button type="submit" data-rh-on-click="[^"]+" id="a" data-role="counter" aria-label="Count">Clicked 0 times</button>#', $html, 'a template component; the spread replaces type');
-        self::assertMatchesRegularExpression('#<button class="override" data-rh-on-dblclick="[^"]+">HI</button>#', $html, 'a function component; the spread replaces className');
+        self::assertMatchesRegularExpression('#<button type="submit" data-mamu-on-click="[^"]+" id="a" data-role="counter" aria-label="Count">Clicked 0 times</button>#', $html, 'a template component; the spread replaces type');
+        self::assertMatchesRegularExpression('#<button class="override" data-mamu-on-dblclick="[^"]+">HI</button>#', $html, 'a function component; the spread replaces className');
         self::assertStringContainsString('<button type="button" id="forwarded">Clicked 7 times</button>', $html, 'rest props forwarded to a component');
         self::assertStringContainsString('<button type="button">Clicked 0 times</button>', $html, 'no rest props');
         self::assertCount(2, $this->handlers);
@@ -148,7 +148,7 @@ final class AppTest extends TestCase
     public function testBadEventAndUnknownRoute(): void
     {
         self::assertSame(400, $this->event('/', '{}')->getStatusCode());
-        self::assertSame(404, $this->event('/_rhp/event', '{}')->getStatusCode(), 'no shared event route');
+        self::assertSame(404, $this->event('/_mamu/event', '{}')->getStatusCode(), 'no shared event route');
         self::assertSame(405, $this->request('POST', '/')->getStatusCode(), 'the methods of the #[Route], without the event header');
         self::assertSame(404, $this->request('GET', '/nope')->getStatusCode());
     }
@@ -174,7 +174,7 @@ final class AppTest extends TestCase
 
         self::assertStringContainsString('<html lang="es">', $html);
         self::assertStringContainsString('<title>Custom</title>', $html, 'a page without <title>');
-        self::assertMatchesRegularExpression('#<body id="rh-root" data-controller="rhp extra" data-action="click->rhp\#dispatch [^"]*" data-rhp-state-value="[^"]*" data-rhp-signature-value="[^"]*" class="custom page"><rh-c id="rh[0-9a-f]+"><p id="about">About</p></rh-c></body>#', $html);
+        self::assertMatchesRegularExpression('#<body id="mamu-root" data-controller="mamu extra" data-action="click->mamu\#dispatch [^"]*" data-mamu-state-value="[^"]*" data-mamu-signature-value="[^"]*" class="custom page"><mamu-c id="mamu[0-9a-f]+"><p id="about">About</p></mamu-c></body>#', $html);
         self::assertStringContainsString('<body class="fixture">', (string) $this->request('GET', '/about')->getContent(), 'the other route of the page');
     }
 
@@ -182,16 +182,16 @@ final class AppTest extends TestCase
     {
         $container = $this->fixtureKernel()->getContainer()->get('test.service_container');
 
-        $controller = $container->get('asset_mapper')->getAsset('@rephp/runtime/rhp_controller.js');
+        $controller = $container->get('asset_mapper')->getAsset('mamujs/mamu_controller.js');
         self::assertNotNull($controller);
-        self::assertStringEndsWith('/assets/dist/rhp_controller.js', $controller->sourcePath);
-        self::assertNotNull($container->get('asset_mapper')->getAsset('@rephp/runtime/rhp.css'));
+        self::assertStringEndsWith('/assets/dist/mamu_controller.js', $controller->sourcePath);
+        self::assertNotNull($container->get('asset_mapper')->getAsset('mamujs/mamu.css'));
 
         $map = $container->get('stimulus.asset_mapper.controllers_map_generator')->getControllersMap();
-        self::assertArrayHasKey('rhp', $map, 'the name of the controller in assets/package.json');
-        self::assertSame($controller->sourcePath, $map['rhp']->asset->sourcePath);
-        self::assertFalse($map['rhp']->isLazy);
-        self::assertStringEndsWith('/assets/dist/rhp.css', $map['rhp']->autoImports[0]->path);
+        self::assertArrayHasKey('mamu', $map, 'the name of the controller in assets/package.json');
+        self::assertSame($controller->sourcePath, $map['mamu']->asset->sourcePath);
+        self::assertFalse($map['mamu']->isLazy);
+        self::assertStringEndsWith('/assets/dist/mamu.css', $map['mamu']->autoImports[0]->path);
     }
 
     public function testComponentInAPlainTwigTemplate(): void
@@ -199,27 +199,27 @@ final class AppTest extends TestCase
         $twig = $this->fixtureKernel()->getContainer()->get('test.service_container')->get('twig');
         $html = $twig->createTemplate("{% component 'App\\\\Pages\\\\Greeting' with {name: 'twig'} %}")->render();
 
-        self::assertMatchesRegularExpression('#^<rh-c id="rh[0-9a-f]+"><p class="greeting">Hello, TWIG!</p></rh-c>$#', $html);
+        self::assertMatchesRegularExpression('#^<mamu-c id="mamu[0-9a-f]+"><p class="greeting">Hello, TWIG!</p></mamu-c>$#', $html);
     }
 
-    public function testTwigErrorsPointToTheRhpSource(): void
+    public function testTwigErrorsPointToThePhpmSource(): void
     {
         /** @var Manifest $manifest */
-        $manifest = $this->fixtureKernel()->getContainer()->get('rephp.manifest');
-        $error = new \RuntimeException('outer', 0, new RuntimeError('Boom.', 3, new Source('', '@rhp/pages/index.6.twig')));
+        $manifest = $this->fixtureKernel()->getContainer()->get('mamu.manifest');
+        $error = new \RuntimeException('outer', 0, new RuntimeError('Boom.', 3, new Source('', '@phpm/pages/index.6.twig')));
 
         (new SourceMapListener(new SourceMap($manifest)))->map($error);
 
         $twigError = $error->getPrevious();
-        self::assertSame('src/pages/index.rhp', $twigError->getSourceContext()->getName());
-        self::assertSame($manifest->sourceDir().'/pages/index.rhp', $twigError->getFile());
+        self::assertSame('src/pages/index.phpm', $twigError->getSourceContext()->getName());
+        self::assertSame($manifest->sourceDir().'/pages/index.phpm', $twigError->getFile());
         $templateLine = (require $manifest->file())['templates']['pages/index.6.twig']['line'];
         self::assertSame($templateLine + 2, $twigError->getLine(), 'line 3 of the template');
     }
 
     public function testRenderCommandPrintsAPage(): void
     {
-        $tester = new CommandTester((new Application($this->fixtureKernel()))->find('rephp:render'));
+        $tester = new CommandTester((new Application($this->fixtureKernel()))->find('mamu:render'));
 
         self::assertSame(0, $tester->execute(['path' => '/']));
         self::assertStringContainsString('<title>Fixture Home</title>', $tester->getDisplay());

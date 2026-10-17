@@ -1,4 +1,0 @@
-<?php // expect: E052
-use Symfony\Component\Routing\Attribute\Route;
-#[Route('/')]
-function helper() { return 1; }

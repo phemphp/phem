@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Fixtures;
+namespace Mamu\Tests\Fixtures;
 
 /** An entity for the tests of the #[Path] entity props. ScientistFinder finds it. */
 final class Scientist

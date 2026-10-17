@@ -2,7 +2,7 @@
 
 // The tags, filters, functions, and tests of Twig 3 and of the Symfony Twig
 // bridge, for completion and hover. Each entry is [signature, description].
-// The rhp_* functions are internal to rhpc, so they are not here.
+// The mamu_* functions are internal to mamuc, so they are not here.
 
 // name: [snippet, description, end tag]. The snippet goes after `{% `.
 // A lookup table with no prototype: a key such as `constructor` is not in it.

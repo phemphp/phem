@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Rendering;
+namespace Mamu\Rendering;
 
-use Rephp\Html;
-use Rephp\Manifest\ComponentDefinition;
+use Mamu\Html;
+use Mamu\Manifest\ComponentDefinition;
 
 /**
- * Renders the body of one kind of fiber component (tag `rephp.component_renderer`). The
+ * Renders the body of one kind of fiber component (tag `mamu.component_renderer`). The
  * Renderer keeps the fibers; a ComponentRenderer only makes the output of one render.
  */
 interface ComponentRenderer

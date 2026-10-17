@@ -1,0 +1,40 @@
+<?phpm
+namespace App\Pages\Examples;
+
+use Mamu\Attribute\{Component, State};
+use Symfony\Component\Routing\Attribute\Route;
+
+#[Route('/examples/StarRating')]
+#[Component]
+final class StarRating
+{
+    public string $label = 'Rate this page';  // prop
+    public int $maxStars = 5;                 // prop
+
+    #[State] 
+    public int $stars = 0;                    // state
+
+    public function addStar(): void
+    {
+        $this->stars = min($this->stars + 1, $this->maxStars);
+    }
+
+    public function clear(): void
+    {
+        $this->stars = 0;
+    }
+
+    public function render()
+    {
+        $display = str_repeat('★', $this->stars) . str_repeat('☆', $this->maxStars - $this->stars);
+
+        return (
+            <div>
+                <title>StarRating</title>
+                <p>{{ label }}: <span className="stars">{{ display }}</span></p>
+                <button onClick={{ addStar }}>Add a star</button>
+                <button onClick={{ clear }}>Clear</button>
+            </div>
+        );
+    }
+}

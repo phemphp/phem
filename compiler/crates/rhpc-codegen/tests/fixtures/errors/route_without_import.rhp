@@ -1,3 +1,0 @@
-<?php // expect: W004
-#[Route('/')]
-function App() { return <div />; }

@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <title>Describing the UI – rephp</title>
-    <meta name="description" content="rephp is a library for rendering user interfaces. A UI is built from small units like buttons, text and images. rephp lets you combine them into reusable, nestable components.">
+    <title>Describing the UI – Mamu</title>
+    <meta name="description" content="Mamu is a library for rendering user interfaces. A UI is built from small units like buttons, text and images. Mamu lets you combine them into reusable, nestable components.">
     <link rel="stylesheet" href="/css/site.css">
     <script type="module" src="/js/site.js"></script>
 </head>
@@ -22,7 +22,7 @@
                     <rect x="-14" y="-14" width="28" height="28" rx="8" opacity="0.35"></rect>
                 </g>
             </svg>
-                <span class="brand-name">rephp</span>
+                <span class="brand-name">Mamu</span>
                 <span class="brand-version">v0.1</span>
             </a>
             <div class="search" aria-hidden="true">
@@ -49,13 +49,13 @@
                     <ul class="sidebar-list">
                         <li><a class="sidebar-link" href="/learn/">Quick Start</a></li>
                         <li><a class="sidebar-link" href="/learn/tutorial.html">Tutorial: Tic-Tac-Toe</a></li>
-                        <li><a class="sidebar-link" href="/learn/thinking-in-rephp.html">Thinking in rephp</a></li>
+                        <li><a class="sidebar-link" href="/learn/thinking-in-mamu.html">Thinking in Mamu</a></li>
                         <li><a class="sidebar-link" href="/learn/installation.html">Installation</a></li>
                         <li><a class="sidebar-link" href="/learn/setup.html">Setup</a></li>
                     </ul>
                 </div>
                 <div class="sidebar-group">
-                    <h3 class="sidebar-title">LEARN REPHP</h3>
+                    <h3 class="sidebar-title">LEARN MAMU</h3>
                     <ul class="sidebar-list">
                         <li><a class="sidebar-link active" aria-current="page" href="/learn/describing-the-ui.html">Describing the UI</a></li>
                         <li><a class="sidebar-link" href="/learn/adding-interactivity.html">Adding Interactivity</a></li>
@@ -74,13 +74,13 @@
                         <ul class="sidebar-list">
                             <li><a class="sidebar-link" href="/learn/">Quick Start</a></li>
                             <li><a class="sidebar-link" href="/learn/tutorial.html">Tutorial: Tic-Tac-Toe</a></li>
-                            <li><a class="sidebar-link" href="/learn/thinking-in-rephp.html">Thinking in rephp</a></li>
+                            <li><a class="sidebar-link" href="/learn/thinking-in-mamu.html">Thinking in Mamu</a></li>
                             <li><a class="sidebar-link" href="/learn/installation.html">Installation</a></li>
                             <li><a class="sidebar-link" href="/learn/setup.html">Setup</a></li>
                         </ul>
                     </div>
                     <div class="sidebar-group">
-                        <h3 class="sidebar-title">LEARN REPHP</h3>
+                        <h3 class="sidebar-title">LEARN MAMU</h3>
                         <ul class="sidebar-list">
                             <li><a class="sidebar-link active" aria-current="page" href="/learn/describing-the-ui.html">Describing the UI</a></li>
                             <li><a class="sidebar-link" href="/learn/adding-interactivity.html">Adding Interactivity</a></li>
@@ -92,9 +92,9 @@
             </details>
             <article class="article">
 <header id="overview" class="article-header">
-    <p class="breadcrumb">Learn rephp</p>
+    <p class="breadcrumb">Learn Mamu</p>
     <h1>Describing the UI</h1>
-    <p class="lead">rephp is a library for rendering user interfaces. A UI is built from small units like buttons, text and images. rephp lets you combine them into reusable, nestable components.</p>
+    <p class="lead">Mamu is a library for rendering user interfaces. A UI is built from small units like buttons, text and images. Mamu lets you combine them into reusable, nestable components.</p>
 </header>
 
 <aside class="callout callout-learn">
@@ -103,7 +103,7 @@
         <ul>
             <li>Your first component</li>
             <li>Importing and exporting components</li>
-            <li>Writing markup with rhp</li>
+            <li>Writing markup with Mamu</li>
             <li>Twig expressions in markup</li>
             <li>Passing props to a component</li>
             <li>Conditional rendering</li>
@@ -114,58 +114,58 @@
 </aside>
 
 <h2 id="importing-and-exporting" class="heading">Importing and exporting components<a class="heading-anchor" href="#importing-and-exporting" aria-label="Link to this section">#</a></h2>
-<p>You can declare many components in one file. When an app grows, put the reusable components in their own files and compose them in a page. React uses <code>export</code> and <code>import</code> for this. rephp uses PHP namespaces:</p>
+<p>You can declare many components in one file. When an app grows, put the reusable components in their own files and compose them in a page. React uses <code>export</code> and <code>import</code> for this. Mamu uses PHP namespaces:</p>
 <ul>
     <li>Put the shared components in <code>src/Components/</code>, in the namespace <code>App\Components</code>. They have no <code>#[Route]</code> attribute, so they are not pages.</li>
     <li>In the page file, import a function component with <code>use function App\Components\{Layout, Profile};</code>.</li>
     <li>Import a class component with <code>use App\Components\LikeButton;</code>.</li>
     <li>A component in the same namespace needs no import. <code>Profile</code> uses <code>&lt;LikeButton /&gt;</code> without an import.</li>
 </ul>
-<p>The page <code>Gallery.rhp</code> below uses components from three other files. <code>Layout</code> is the page shell: it gets the page content as <code>children</code> and a named slot <code>&lt;Layout:footer&gt;</code>. Each <code>LikeButton</code> keeps its own state. Click the tabs to see each file:</p>
+<p>The page <code>Gallery.phpm</code> below uses components from three other files. <code>Layout</code> is the page shell: it gets the page content as <code>children</code> and a named slot <code>&lt;Layout:footer&gt;</code>. Each <code>LikeButton</code> keeps its own state. Click the tabs to see each file:</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="Gallery">
     <div class="sandbox-bar">
         <div class="sandbox-tabs" role="tablist" aria-label="Files">
-            <button type="button" class="sandbox-tab" role="tab" aria-selected="true" data-sandbox-target="tab" data-action="sandbox#select" data-src="/examples-src/Gallery.rhp" title="src/Pages/Examples/Gallery.rhp">Gallery.rhp</button>
-            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/Layout.rhp" title="src/Components/Layout.rhp">Layout.rhp</button>
-            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/Profile.rhp" title="src/Components/Profile.rhp">Profile.rhp</button>
-            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/LikeButton.rhp" title="src/Components/LikeButton.rhp">LikeButton.rhp</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="true" data-sandbox-target="tab" data-action="sandbox#select" data-src="/examples-src/Gallery.phpm" title="src/Pages/Examples/Gallery.phpm">Gallery.phpm</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/Layout.phpm" title="src/Components/Layout.phpm">Layout.phpm</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/Profile.phpm" title="src/Components/Profile.phpm">Profile.phpm</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/LikeButton.phpm" title="src/Components/LikeButton.phpm">LikeButton.phpm</button>
         </div>
         <div class="sandbox-actions">
             <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
             <a class="sandbox-button" href="/examples/Gallery" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
         </div>
     </div>
-    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/Gallery.rhp...</code></pre>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/Gallery.phpm...</code></pre>
     <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
     <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/Gallery" loading="lazy" title="Gallery preview"></iframe>
 </div>
-<p>The compiler finds the component of each tag at build time, with the PHP rules: first a <code>use function</code> import, then a <code>use</code> import of a class, then the current namespace. It checks the props across files too: an unknown component or prop is an error (E010, E011), with the <code>.rhp</code> line of the tag.</p>
+<p>The compiler finds the component of each tag at build time, with the PHP rules: first a <code>use function</code> import, then a <code>use</code> import of a class, then the current namespace. It checks the props across files too: an unknown component or prop is an error (E010, E011), with the <code>.phpm</code> line of the tag.</p>
 
 <h2 id="data-from-a-database" class="heading">Reading data from a database<a class="heading-anchor" href="#data-from-a-database" aria-label="Link to this section">#</a></h2>
-<p>In <code>Gallery.rhp</code>, the scientists are a PHP array, and each like is browser state: a reload clears it. In a real app, the data comes from a database. Components render on the server, so a component can read the database directly. You do not need an API between them.</p>
-<p>The page <code>DurableGallery.rhp</code> below is the same gallery, with the data in SQLite. It uses <a href="https://www.doctrine-project.org/projects/orm.html">Doctrine ORM</a> through DoctrineBundle:</p>
+<p>In <code>Gallery.phpm</code>, the scientists are a PHP array, and each like is browser state: a reload clears it. In a real app, the data comes from a database. Components render on the server, so a component can read the database directly. You do not need an API between them.</p>
+<p>The page <code>DurableGallery.phpm</code> below is the same gallery, with the data in SQLite. It uses <a href="https://www.doctrine-project.org/projects/orm.html">Doctrine ORM</a> through DoctrineBundle:</p>
 <ul>
     <li><code>src/Model/Scientist.php</code> is a Doctrine entity: one row of the <code>scientist</code> table.</li>
     <li><code>src/Repository/ScientistRepository.php</code> is the data layer: a <code>ServiceEntityRepository</code> of the entity. It only reads and adds rows. It does not make the database: the Docker entrypoint makes <code>var/data/gallery.sqlite</code> and loads the fixtures of <code>src/DataFixtures/</code>.</li>
     <li>The page is a class component. The container injects the repository in its constructor, and the page reads the entities with <code>$this-&gt;scientists-&gt;all()</code> while it renders. It reuses <code>Layout</code> and <code>Avatar</code> from the files above.</li>
-    <li>The handlers write to the database. <code>LikeCounter</code> gets the <code>Scientist</code> entity as a prop and increments its likes. <code>AddScientist</code> reads a Symfony form from <code>$e-&gt;request</code> and calls <code>add()</code> on the repository. Both components are <code>#[Transactional]</code>: rephp flushes and commits when the handler returns, so the handlers do not call <code>flush()</code>.</li>
+    <li>The handlers write to the database. <code>LikeCounter</code> gets the <code>Scientist</code> entity as a prop and increments its likes. <code>AddScientist</code> reads a Symfony form from <code>$e-&gt;request</code> and calls <code>add()</code> on the repository. Both components are <code>#[Transactional]</code>: Mamu flushes and commits when the handler returns, so the handlers do not call <code>flush()</code>.</li>
     <li>After a handler, the server renders the page again. It reads the new rows and morphs only the components that changed.</li>
 </ul>
 <p>Click a like button, add a scientist, then click <strong>Reset</strong> or open the page in another browser. The data stays. Submit an empty form: the validation errors of the form show in the render after the handler. They are not state, so they go away on the next event.</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="DurableGallery">
     <div class="sandbox-bar">
         <div class="sandbox-tabs" role="tablist" aria-label="Files">
-            <button type="button" class="sandbox-tab" role="tab" aria-selected="true" data-sandbox-target="tab" data-action="sandbox#select" data-src="/examples-src/DurableGallery.rhp" title="src/Pages/Examples/DurableGallery.rhp">DurableGallery.rhp</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="true" data-sandbox-target="tab" data-action="sandbox#select" data-src="/examples-src/DurableGallery.phpm" title="src/Pages/Examples/DurableGallery.phpm">DurableGallery.phpm</button>
             <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/repository-src/ScientistRepository.php" title="src/Repository/ScientistRepository.php">ScientistRepository.php</button>
-            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/ScientistCard.rhp" title="src/Components/ScientistCard.rhp">ScientistCard.rhp</button>
-            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/AddScientist.rhp" title="src/Components/AddScientist.rhp">AddScientist.rhp</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/ScientistCard.phpm" title="src/Components/ScientistCard.phpm">ScientistCard.phpm</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/AddScientist.phpm" title="src/Components/AddScientist.phpm">AddScientist.phpm</button>
         </div>
         <div class="sandbox-actions">
             <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
             <a class="sandbox-button" href="/examples/DurableGallery" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
         </div>
     </div>
-    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/DurableGallery.rhp...</code></pre>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/DurableGallery.phpm...</code></pre>
     <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
     <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/DurableGallery" loading="lazy" title="DurableGallery preview"></iframe>
 </div>
@@ -181,7 +181,7 @@
 <aside class="callout callout-note">
     <h3 class="callout-title">Work in progress</h3>
     <div class="callout-body">
-        <p>This page is a stub. The full chapter is not written yet. Start with the <a href="/learn/">Quick Start</a>: it shows all the main ideas of rephp with live examples.</p>
+        <p>This page is a stub. The full chapter is not written yet. Start with the <a href="/learn/">Quick Start</a>: it shows all the main ideas of Mamu with live examples.</p>
     </div>
 </aside>
             </article>
@@ -190,7 +190,7 @@
                 <a class="pager-link pager-next" href="/learn/adding-interactivity.html"><span class="pager-label">Next</span><span class="pager-title">Adding Interactivity</span></a>
             </nav>
             <footer class="footer">
-                <p>This site is a demo built with rephp: .rhp components, Twig, Stimulus and Turbo. It is not affiliated with the React team.</p>
+                <p>This site is a demo built with Mamu: .phpm components, Twig, Stimulus and Turbo. It is not affiliated with the React team.</p>
             </footer>
         </main>
             <aside class="toc">

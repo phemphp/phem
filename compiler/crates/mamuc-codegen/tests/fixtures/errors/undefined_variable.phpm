@@ -1,0 +1,2 @@
+<?phpm // expect: E030
+function App() { $user = []; return <h1>{{ usr.name }}</h1>; }

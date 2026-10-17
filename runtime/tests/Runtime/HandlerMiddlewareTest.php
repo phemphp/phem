@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Runtime;
+namespace Mamu\Tests\Runtime;
 
 use PHPUnit\Framework\TestCase;
-use Rephp\Event;
-use Rephp\Handler\HandlerInvoker;
-use Rephp\Handler\HandlerMiddleware;
+use Mamu\Event;
+use Mamu\Handler\HandlerInvoker;
+use Mamu\Handler\HandlerMiddleware;
 
 final class HandlerMiddlewareTest extends TestCase
 {

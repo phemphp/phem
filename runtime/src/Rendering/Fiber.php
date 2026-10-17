@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Rendering;
+namespace Mamu\Rendering;
 
 use Twig\Template;
 
@@ -52,7 +52,7 @@ final class Fiber
 
     public static function idOf(string $path): string
     {
-        return 'rh'.substr(hash('xxh128', $path), 0, 12);
+        return 'mamu'.substr(hash('xxh128', $path), 0, 12);
     }
 
     public function begin(int $pass): void
@@ -71,6 +71,6 @@ final class Fiber
 
     public function wrapped(): string
     {
-        return '<rh-c id="'.$this->id.'">'.$this->html.'</rh-c>';
+        return '<mamu-c id="'.$this->id.'">'.$this->html.'</mamu-c>';
     }
 }

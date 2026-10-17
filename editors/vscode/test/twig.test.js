@@ -14,7 +14,7 @@ test.after(() => fixture.cleanup());
 
 const run = (source, file) => helpers.run(fixture, source, file);
 
-const USES = '<?php\nnamespace App\\Pages;\n\nuse App\\Model\\Scientist;\nuse App\\Repository\\ScientistRepository;\n\n';
+const USES = '<?phpm\nnamespace App\\Pages;\n\nuse App\\Model\\Scientist;\nuse App\\Repository\\ScientistRepository;\n\n';
 const fn = (body, markup) => USES + `function Home(Scientist $s, ScientistRepository $repo)\n{\n${body}    return <div>${markup}</div>;\n}\n`;
 
 test('{{ shows the variables of the scope and the functions', async () => {
@@ -24,7 +24,7 @@ test('{{ shows the variables of the scope and the functions', async () => {
     assert.ok(r.find('count'));
     assert.ok(r.find('path'));
     assert.ok(r.find('form_widget'));
-    assert.equal(r.find('rhp_attr'), undefined);
+    assert.equal(r.find('mamu_attr'), undefined);
     assert.equal(r.find('path').snippet, 'path($1)$0');
 });
 
@@ -67,8 +67,8 @@ test('the keys of an array shape', async () => {
 });
 
 test('the properties and the methods of a class component', async () => {
-    const src = '<?php\nnamespace App\\Components;\n\nuse Rephp\\Attribute\\Component;\n\n#[Component]\nfinal class Counter2\n{\n    public int $count = 0;\n    private string $label = "x";\n\n    public function increment(): void\n    {\n    }\n\n    public function render()\n    {\n        $double = $this->count * 2;\n\n        return <button onClick={{ |}}>{{ count }}</button>;\n    }\n}\n';
-    const r = await run(src, 'src/components/Counter2.rhp');
+    const src = '<?phpm\nnamespace App\\Components;\n\nuse Mamu\\Attribute\\Component;\n\n#[Component]\nfinal class Counter2\n{\n    public int $count = 0;\n    private string $label = "x";\n\n    public function increment(): void\n    {\n    }\n\n    public function render()\n    {\n        $double = $this->count * 2;\n\n        return <button onClick={{ |}}>{{ count }}</button>;\n    }\n}\n';
+    const r = await run(src, 'src/components/Counter2.phpm');
     assert.ok(r.find('double'));
     assert.ok(r.find('count'));
     assert.ok(r.find('label'), 'a private property works in the markup of the class');

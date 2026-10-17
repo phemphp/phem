@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Attribute;
+namespace Mamu\Attribute;
 
 /**
  * Marks a public property of a class page, or a parameter of a function page, as a route

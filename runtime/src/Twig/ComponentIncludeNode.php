@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Twig;
+namespace Mamu\Twig;
 
 use Twig\Attribute\YieldReady;
 use Twig\Compiler;
@@ -17,7 +17,7 @@ use Twig\Node\IncludeNode;
  *   the parameter defaults as the context. There is no PHP call.
  * - A function or class component goes through the Renderer (services, state, handlers).
  *
- * Both call the RephpRuntime of the Twig environment.
+ * Both call the MamuRuntime of the Twig environment.
  */
 #[YieldReady]
 class ComponentIncludeNode extends IncludeNode
@@ -35,7 +35,7 @@ class ComponentIncludeNode extends IncludeNode
     public function compile(Compiler $compiler): void
     {
         $compiler->addDebugInfo($this);
-        $compiler->write('yield $this->env->getRuntime(')->string(RephpRuntime::class)->raw(')');
+        $compiler->write('yield $this->env->getRuntime(')->string(MamuRuntime::class)->raw(')');
         if ('template' === $this->getAttribute('kind')) {
             $compiler->raw('->template(');
             $this->addGetTemplate($compiler);

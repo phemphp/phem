@@ -19,18 +19,18 @@ const run = (source, file) => helpers.run(fixture, source, file);
 
 test('the scanner finds the context at the end of the text', async () => {
     const ctx = (s) => scan(s).context;
-    assert.equal(ctx('<?php\n$a = $b < ').kind, 'php');
-    assert.equal(ctx('<?php\nreturn <').kind, 'tagName');
-    assert.equal(ctx('<?php\nreturn <Lay').partial, 'Lay');
-    assert.equal(ctx('<?php\nreturn <div>{{ ok ? <Ca').partial, 'Ca');
-    assert.equal(ctx('<?php\nreturn <div className="a">I\'m <b>x</b> <Lay').kind, 'tagName');
-    assert.deepEqual(ctx('<?php\nreturn <Layout title="x" ').attrs, ['title']);
-    assert.equal(ctx('<?php\nreturn <Layout style={{ {a: 1} }} ').tag, 'Layout');
-    assert.equal(ctx('<?php\nreturn <div><p></').expected, 'p');
-    assert.equal(ctx('<?php\n$x = <p>a</p>;\n$y = 1').kind, 'php');
-    assert.equal(ctx('<?php\n$x = "<p>').string, true);
-    assert.equal(ctx('<?php\nreturn <ul>{% for a in b %}<li>{{ a').kind, 'twig');
-    assert.equal(ctx('<?php\nreturn <script>if (a < b) {').kind, 'raw');
+    assert.equal(ctx('<?phpm\n$a = $b < ').kind, 'php');
+    assert.equal(ctx('<?phpm\nreturn <').kind, 'tagName');
+    assert.equal(ctx('<?phpm\nreturn <Lay').partial, 'Lay');
+    assert.equal(ctx('<?phpm\nreturn <div>{{ ok ? <Ca').partial, 'Ca');
+    assert.equal(ctx('<?phpm\nreturn <div className="a">I\'m <b>x</b> <Lay').kind, 'tagName');
+    assert.deepEqual(ctx('<?phpm\nreturn <Layout title="x" ').attrs, ['title']);
+    assert.equal(ctx('<?phpm\nreturn <Layout style={{ {a: 1} }} ').tag, 'Layout');
+    assert.equal(ctx('<?phpm\nreturn <div><p></').expected, 'p');
+    assert.equal(ctx('<?phpm\n$x = <p>a</p>;\n$y = 1').kind, 'php');
+    assert.equal(ctx('<?phpm\n$x = "<p>').string, true);
+    assert.equal(ctx('<?phpm\nreturn <ul>{% for a in b %}<li>{{ a').kind, 'twig');
+    assert.equal(ctx('<?phpm\nreturn <script>if (a < b) {').kind, 'raw');
 });
 
 test('a component tag adds a use function import', async () => {
@@ -44,7 +44,7 @@ test('a component tag adds a use function import', async () => {
 test('a page of another file is not a component tag', async () => {
     assert.equal((await run(PAGE + 'function Home()\n{\n    return <Ab|\n}\n')).find('About'), undefined);
     const about = PAGE + "use Symfony\\Component\\Routing\\Attribute\\Route;\n\n#[Route('/about')]\nfunction About()\n{\n    return <p><Ab|</p>;\n}\n";
-    assert.equal((await run(about, 'src/pages/about.rhp')).find('About').detail, 'App\\Pages\\About (page)');
+    assert.equal((await run(about, 'src/pages/about.phpm')).find('About').detail, 'App\\Pages\\About (page)');
 });
 
 test('a class component adds a use import', async () => {
@@ -60,7 +60,7 @@ test('an import goes into a group on one line', async () => {
 });
 
 test('a component of the same namespace needs no import', async () => {
-    const { find } = (await run('<?php\nnamespace App\\Components;\n\nfunction Home()\n{\n    return <Av|\n}\n', 'src/components/Home.rhp'));
+    const { find } = (await run('<?phpm\nnamespace App\\Components;\n\nfunction Home()\n{\n    return <Av|\n}\n', 'src/components/Home.phpm'));
     assert.deepEqual(find('Avatar').edits, []);
     assert.equal(find('Avatar').sortText[0], '0');
 });
@@ -95,12 +95,12 @@ test('props, slots, and closing tags', async () => {
 });
 
 test('use statements complete namespaces and symbols', async () => {
-    let r = (await run(PAGE + 'use Rephp\\|\n'));
+    let r = (await run(PAGE + 'use Mamu\\|\n'));
     assert.deepEqual(r.items.map((i) => i.label).sort(), ['Attribute', 'Html']);
     assert.equal(r.find('Attribute').insert, 'Attribute\\');
     assert.equal(r.find('Html').insert, 'Html;');
 
-    r = (await run(PAGE + 'use Rephp\\Attribute\\{Component, |};\n'));
+    r = (await run(PAGE + 'use Mamu\\Attribute\\{Component, |};\n'));
     assert.deepEqual(r.items.map((i) => i.label).sort(), ['Component', 'State']);
 
     r = (await run(PAGE + 'use function Acme\\|\n'));
@@ -111,11 +111,11 @@ test('use statements complete namespaces and symbols', async () => {
 });
 
 test('a class name adds an import', async () => {
-    const src = PAGE + 'use Rephp\\Html;\n\nfunction Home()\n{\n    $r = new TodoRe|\n}\n';
+    const src = PAGE + 'use Mamu\\Html;\n\nfunction Home()\n{\n    $r = new TodoRe|\n}\n';
     const { text, find } = (await run(src));
     const item = find('TodoRepository');
     assert.equal(item.insert, 'TodoRepository');
-    assert.match(apply(text, item), /namespace App\\Pages;\n\nuse App\\Repository\\TodoRepository;\nuse Rephp\\Html;\n/);
+    assert.match(apply(text, item), /namespace App\\Pages;\n\nuse App\\Repository\\TodoRepository;\nuse Mamu\\Html;\n/);
     assert.equal(find('HtmlTest'), undefined);
     assert.deepEqual(find('Html').edits, []);
 

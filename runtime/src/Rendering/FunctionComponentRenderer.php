@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Rendering;
+namespace Mamu\Rendering;
 
-use Rephp\Binding\PropBinder;
-use Rephp\Manifest\ComponentDefinition;
-use Rephp\Manifest\ComponentKind;
+use Mamu\Binding\PropBinder;
+use Mamu\Manifest\ComponentDefinition;
+use Mamu\Manifest\ComponentKind;
 
 /**
  * Renders a function component: a call with the props (and slots) as named arguments.

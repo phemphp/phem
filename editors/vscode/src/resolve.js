@@ -17,7 +17,7 @@ const { resolveName, docTags } = require('./types');
 const html = require('./data/html');
 const twig = require('./data/twig');
 
-const EVENT_DOC = 'rephp event: the handler runs on the server. It receives a `Rephp\\Event`.';
+const EVENT_DOC = 'Mamu event: the handler runs on the server. It receives a `Mamu\\Event`.';
 
 function code(lang, text) {
     return '```' + lang + '\n' + text + '\n```';

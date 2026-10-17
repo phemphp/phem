@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Fixtures;
+namespace Mamu\Tests\Fixtures;
 
-use Rephp\Path\EntityFinder;
+use Mamu\Path\EntityFinder;
 
 /** Finds the Scientist entities in memory, as Doctrine does: by identifier, or by criteria. */
 final class ScientistFinder implements EntityFinder

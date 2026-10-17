@@ -1,0 +1,59 @@
+<?phpm
+
+namespace App\Pages;
+
+use Mamu\Attribute\{Component, Path, State};
+use Mamu\Tests\Fixtures\Scientist;
+use Symfony\Component\Routing\Attribute\Route;
+
+// A class page: the {id} route value goes to the #[Path] property.
+#[Component]
+#[Route('/items/{id}')]
+final class ItemPage
+{
+    #[Path] public int $id;
+    public string $label = 'Item';
+    #[State] public int $count = 0;
+
+    public function increment(): void
+    {
+        ++$this->count;
+    }
+
+    public function render()
+    {
+        return <button id="item" onClick={{ increment }}>{{ label }} {{ id }}: {{ count }}</button>;
+    }
+}
+
+// A function page: the {name} route value (or its default) goes to the #[Path] parameter.
+#[Route('/hello/{name}', defaults: ['name' => 'World'])]
+function Hello(#[Path] string $name) {
+    return <p id="hello">Hello {{ name }}</p>;
+}
+
+// An entity page: {id:scientist} finds the scientist by its id, {name:scientist} by its name.
+#[Component]
+#[Route('/scientists/{id:scientist}')]
+#[Route('/scientists/by-name/{name:scientist}')]
+final class ScientistPage
+{
+    #[Path] public Scientist $scientist;
+    #[State] public int $likes = 0;
+
+    public function like(): void
+    {
+        ++$this->likes;
+    }
+
+    public function render()
+    {
+        return <button id="scientist" onClick={{ like }}>{{ scientist.name }}: {{ likes }}</button>;
+    }
+}
+
+// A nullable entity parameter: {scientist} finds the scientist by its id, or gives null.
+#[Route('/maybe/{scientist}')]
+function MaybeScientist(#[Path] ?Scientist $scientist) {
+    return <p id="maybe">{{ scientist ? scientist.name : 'Nobody' }}</p>;
+}

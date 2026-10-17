@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Fixtures\PathPages;
+namespace Mamu\Tests\Fixtures\PathPages;
 
-use Rephp\Attribute\Component;
-use Rephp\Attribute\Path;
-use Rephp\Attribute\State;
-use Rephp\Tests\Fixtures\Scientist;
+use Mamu\Attribute\Component;
+use Mamu\Attribute\Path;
+use Mamu\Attribute\State;
+use Mamu\Tests\Fixtures\Scientist;
 use Symfony\Component\Routing\Attribute\Route;
 
-// Pages for the tests of the #[Path] route values (plain PHP, not compiled by rhpc).
+// Pages for the tests of the #[Path] route values (plain PHP, not compiled by mamuc).
 
 #[Route('/known/{id}', defaults: ['id' => 1])]
 function Known(#[Path] int $id, string $label = 'x')

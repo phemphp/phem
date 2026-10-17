@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Metadata;
+namespace Mamu\Metadata;
 
 /**
  * A parameter of a function component: a prop.

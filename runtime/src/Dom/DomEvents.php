@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Dom;
+namespace Mamu\Dom;
 
 /**
  * The DOM events of the event handlers (`onClick={{ f }}`).
  */
 final class DomEvents
 {
-    /** The DOM events that the `rhp` Stimulus controller listens to. */
+    /** The DOM events that the `mamu` Stimulus controller listens to. */
     public const LISTENED = ['click', 'dblclick', 'input', 'change', 'submit', 'keydown', 'keyup', 'focusin', 'focusout'];
 
     /** React event names → DOM event names. */
@@ -21,9 +21,9 @@ final class DomEvents
         return self::ALIASES[$event] ?? $event;
     }
 
-    /** The `data-action` value of the page root: `click->rhp#dispatch dblclick->rhp#dispatch …`. */
+    /** The `data-action` value of the page root: `click->mamu#dispatch dblclick->mamu#dispatch …`. */
     public static function stimulusActions(): string
     {
-        return implode(' ', array_map(static fn (string $a): string => $a.'->rhp#dispatch', self::LISTENED));
+        return implode(' ', array_map(static fn (string $a): string => $a.'->mamu#dispatch', self::LISTENED));
     }
 }

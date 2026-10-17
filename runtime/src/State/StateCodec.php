@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\State;
+namespace Mamu\State;
 
 use Symfony\Component\HttpFoundation\Request;
 
@@ -21,9 +21,9 @@ use Symfony\Component\HttpFoundation\Request;
 final class StateCodec
 {
     /**
-     * @param string                $secret      the `rephp.secret` option (by default `kernel.secret`, from APP_SECRET)
-     * @param int                   $maxAge      the `rephp.state_max_age` option: the seconds that a signature is valid, 0 for no limit
-     * @param bool                  $bindSession the `rephp.state_bind_session` option
+     * @param string                $secret      the `mamu.secret` option (by default `kernel.secret`, from APP_SECRET)
+     * @param int                   $maxAge      the `mamu.state_max_age` option: the seconds that a signature is valid, 0 for no limit
+     * @param bool                  $bindSession the `mamu.state_bind_session` option
      * @param (\Closure(): int)|null $clock      the time now (tests)
      */
     public function __construct(
@@ -33,7 +33,7 @@ final class StateCodec
         private readonly ?\Closure $clock = null,
     ) {
         if ('' === $secret) {
-            throw new \InvalidArgumentException('rephp needs a secret to sign the browser state: set APP_SECRET (framework.secret) or the rephp.secret option.');
+            throw new \InvalidArgumentException('Mamu needs a secret to sign the browser state: set APP_SECRET (framework.secret) or the mamu.secret option.');
         }
     }
 

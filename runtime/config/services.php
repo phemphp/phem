@@ -4,158 +4,158 @@ declare(strict_types=1);
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
-use Rephp\Binding\PropBinder;
-use Rephp\Command\RenderCommand;
-use Rephp\Command\WarmupCommand;
-use Rephp\Controller\EventController;
-use Rephp\Controller\PageController;
-use Rephp\EventListener\PageAttributesListener;
-use Rephp\EventListener\SourceMapListener;
-use Rephp\Handler\HandlerFingerprint;
-use Rephp\Handler\HandlerInvoker;
-use Rephp\Handler\TransactionalMiddleware;
-use Rephp\Http\PageRenderer;
-use Rephp\Http\TurboStreams;
-use Rephp\Manifest\Manifest;
-use Rephp\Manifest\SourceMap;
-use Rephp\Metadata\ComponentMetadata;
-use Rephp\Path\EntityPathConverter;
-use Rephp\Path\PathResolver;
-use Rephp\Path\ScalarPathConverter;
-use Rephp\Rendering\ClassComponentRenderer;
-use Rephp\Rendering\ContainerComponentFactory;
-use Rephp\Rendering\FunctionComponentRenderer;
-use Rephp\Rendering\MarkupResolver;
-use Rephp\Rendering\Renderer;
-use Rephp\Rendering\TemplateComponentRenderer;
-use Rephp\Routing\PageLoader;
-use Rephp\State\StateAccessor;
-use Rephp\State\StateCodec;
-use Rephp\Twig\CacheKeyLoader;
-use Rephp\Twig\RephpExtension;
-use Rephp\Twig\RephpRuntime;
-use Rephp\Twig\TemplateLoader;
-use Rephp\Twig\TemplateWarmer;
+use Mamu\Binding\PropBinder;
+use Mamu\Command\RenderCommand;
+use Mamu\Command\WarmupCommand;
+use Mamu\Controller\EventController;
+use Mamu\Controller\PageController;
+use Mamu\EventListener\PageAttributesListener;
+use Mamu\EventListener\SourceMapListener;
+use Mamu\Handler\HandlerFingerprint;
+use Mamu\Handler\HandlerInvoker;
+use Mamu\Handler\TransactionalMiddleware;
+use Mamu\Http\PageRenderer;
+use Mamu\Http\TurboStreams;
+use Mamu\Manifest\Manifest;
+use Mamu\Manifest\SourceMap;
+use Mamu\Metadata\ComponentMetadata;
+use Mamu\Path\EntityPathConverter;
+use Mamu\Path\PathResolver;
+use Mamu\Path\ScalarPathConverter;
+use Mamu\Rendering\ClassComponentRenderer;
+use Mamu\Rendering\ContainerComponentFactory;
+use Mamu\Rendering\FunctionComponentRenderer;
+use Mamu\Rendering\MarkupResolver;
+use Mamu\Rendering\Renderer;
+use Mamu\Rendering\TemplateComponentRenderer;
+use Mamu\Routing\PageLoader;
+use Mamu\State\StateAccessor;
+use Mamu\State\StateCodec;
+use Mamu\Twig\CacheKeyLoader;
+use Mamu\Twig\MamuExtension;
+use Mamu\Twig\MamuRuntime;
+use Mamu\Twig\TemplateLoader;
+use Mamu\Twig\TemplateWarmer;
 
 return static function (ContainerConfigurator $container): void {
     $container->services()
         // Build
-        ->set('rephp.manifest', Manifest::class)
+        ->set('mamu.manifest', Manifest::class)
             ->public()
-            ->args([param('rephp.build_dir'), param('rephp.source_dir')])
-        ->alias(Manifest::class, 'rephp.manifest')
-        ->set('rephp.source_map', SourceMap::class)
-            ->args([service('rephp.manifest')])
+            ->args([param('mamu.build_dir'), param('mamu.source_dir')])
+        ->alias(Manifest::class, 'mamu.manifest')
+        ->set('mamu.source_map', SourceMap::class)
+            ->args([service('mamu.manifest')])
 
         // Props and state
-        ->set('rephp.metadata', ComponentMetadata::class)
-        ->set('rephp.prop_binder', PropBinder::class)
-            ->args([service('rephp.metadata')])
-        ->set('rephp.state_accessor', StateAccessor::class)
-            ->args([service('rephp.metadata')])
-        ->set('rephp.state_codec', StateCodec::class)
-            ->args([abstract_arg('secret, set by RephpBundle'), 86400, false])
-        ->alias(StateCodec::class, 'rephp.state_codec')
+        ->set('mamu.metadata', ComponentMetadata::class)
+        ->set('mamu.prop_binder', PropBinder::class)
+            ->args([service('mamu.metadata')])
+        ->set('mamu.state_accessor', StateAccessor::class)
+            ->args([service('mamu.metadata')])
+        ->set('mamu.state_codec', StateCodec::class)
+            ->args([abstract_arg('secret, set by MamuBundle'), 86400, false])
+        ->alias(StateCodec::class, 'mamu.state_codec')
 
         // Path values: the converters of the #[Path] props
-        ->set('rephp.path_resolver', PathResolver::class)
-            ->args([service('rephp.metadata'), tagged_iterator('rephp.path_converter')])
-        ->set('rephp.path_converter.scalar', ScalarPathConverter::class)
-            ->tag('rephp.path_converter', ['priority' => -100])
-        ->set('rephp.path_converter.entity', EntityPathConverter::class)
-            ->args([service('rephp.entity_finder')->nullOnInvalid()])
-            ->tag('rephp.path_converter', ['priority' => -100])
+        ->set('mamu.path_resolver', PathResolver::class)
+            ->args([service('mamu.metadata'), tagged_iterator('mamu.path_converter')])
+        ->set('mamu.path_converter.scalar', ScalarPathConverter::class)
+            ->tag('mamu.path_converter', ['priority' => -100])
+        ->set('mamu.path_converter.entity', EntityPathConverter::class)
+            ->args([service('mamu.entity_finder')->nullOnInvalid()])
+            ->tag('mamu.path_converter', ['priority' => -100])
 
         // Event handlers: the middleware around them
-        ->set('rephp.handler_fingerprint', HandlerFingerprint::class)
-            ->args([service('rephp.object_identifier')->nullOnInvalid()])
-        ->set('rephp.handler_invoker', HandlerInvoker::class)
-            ->args([tagged_iterator('rephp.handler_middleware')])
-        ->set('rephp.handler_middleware.transactional', TransactionalMiddleware::class)
-            ->args([service('rephp.transaction_runner')->nullOnInvalid()])
-            ->tag('rephp.handler_middleware', ['priority' => -100])
+        ->set('mamu.handler_fingerprint', HandlerFingerprint::class)
+            ->args([service('mamu.object_identifier')->nullOnInvalid()])
+        ->set('mamu.handler_invoker', HandlerInvoker::class)
+            ->args([tagged_iterator('mamu.handler_middleware')])
+        ->set('mamu.handler_middleware.transactional', TransactionalMiddleware::class)
+            ->args([service('mamu.transaction_runner')->nullOnInvalid()])
+            ->tag('mamu.handler_middleware', ['priority' => -100])
 
         // Rendering
-        ->set('rephp.component_factory', ContainerComponentFactory::class)
+        ->set('mamu.component_factory', ContainerComponentFactory::class)
             ->args([abstract_arg('class components, set by ComponentPass')])
-        ->set('rephp.component_renderer.class', ClassComponentRenderer::class)
-            ->args([service('rephp.component_factory'), service('rephp.prop_binder'), service('rephp.state_accessor')])
-            ->tag('rephp.component_renderer')
-        ->set('rephp.component_renderer.function', FunctionComponentRenderer::class)
-            ->args([service('rephp.prop_binder')])
-            ->tag('rephp.component_renderer')
-        ->set('rephp.template_renderer', TemplateComponentRenderer::class)
-            ->args([service('rephp.prop_binder')])
-        ->set('rephp.markup_resolver', MarkupResolver::class)
+        ->set('mamu.component_renderer.class', ClassComponentRenderer::class)
+            ->args([service('mamu.component_factory'), service('mamu.prop_binder'), service('mamu.state_accessor')])
+            ->tag('mamu.component_renderer')
+        ->set('mamu.component_renderer.function', FunctionComponentRenderer::class)
+            ->args([service('mamu.prop_binder')])
+            ->tag('mamu.component_renderer')
+        ->set('mamu.template_renderer', TemplateComponentRenderer::class)
+            ->args([service('mamu.prop_binder')])
+        ->set('mamu.markup_resolver', MarkupResolver::class)
             ->args([service('twig')])
-        ->set('rephp.renderer', Renderer::class)
+        ->set('mamu.renderer', Renderer::class)
             ->args([
-                service('rephp.manifest'),
-                service('rephp.markup_resolver'),
-                tagged_iterator('rephp.component_renderer'),
-                service('rephp.handler_invoker'),
-                service('rephp.handler_fingerprint'),
+                service('mamu.manifest'),
+                service('mamu.markup_resolver'),
+                tagged_iterator('mamu.component_renderer'),
+                service('mamu.handler_invoker'),
+                service('mamu.handler_fingerprint'),
             ])
             ->tag('kernel.reset', ['method' => 'reset'])
-        ->alias(Renderer::class, 'rephp.renderer')
+        ->alias(Renderer::class, 'mamu.renderer')
 
         // Twig
-        ->set('rephp.twig.extension', RephpExtension::class)
-            ->args([service('rephp.manifest')])
+        ->set('mamu.twig.extension', MamuExtension::class)
+            ->args([service('mamu.manifest')])
             ->tag('twig.extension')
-        ->set('rephp.twig.runtime', RephpRuntime::class)
-            ->args([service('rephp.renderer'), service('rephp.template_renderer')])
+        ->set('mamu.twig.runtime', MamuRuntime::class)
+            ->args([service('mamu.renderer'), service('mamu.template_renderer')])
             ->tag('twig.runtime')
-        ->set('rephp.twig.loader', TemplateLoader::class)
-            ->args(['%rephp.build_dir%/templates'])
+        ->set('mamu.twig.loader', TemplateLoader::class)
+            ->args(['%mamu.build_dir%/templates'])
             ->tag('twig.loader')
-        ->set('rephp.twig.cache_key_loader', CacheKeyLoader::class)
+        ->set('mamu.twig.cache_key_loader', CacheKeyLoader::class)
             ->decorate('twig.loader')
-            ->args([service('.inner'), service('rephp.manifest')])
-        ->set('rephp.twig.template_warmer', TemplateWarmer::class)
-            ->args([service('twig'), service('rephp.manifest')])
+            ->args([service('.inner'), service('mamu.manifest')])
+        ->set('mamu.twig.template_warmer', TemplateWarmer::class)
+            ->args([service('twig'), service('mamu.manifest')])
             ->tag('kernel.cache_warmer')
 
         // HTTP
-        ->set('rephp.route_loader', PageLoader::class)
-            ->args([service('rephp.manifest'), param('kernel.environment'), service('rephp.metadata')])
+        ->set('mamu.route_loader', PageLoader::class)
+            ->args([service('mamu.manifest'), param('kernel.environment'), service('mamu.metadata')])
             ->tag('routing.loader')
-        ->set('rephp.turbo_streams', TurboStreams::class)
-        ->set('rephp.page_renderer', PageRenderer::class)
+        ->set('mamu.turbo_streams', TurboStreams::class)
+        ->set('mamu.page_renderer', PageRenderer::class)
             ->args([
-                service('rephp.renderer'),
-                service('rephp.state_codec'),
-                service('rephp.metadata'),
-                service('rephp.path_resolver'),
-                service('rephp.state_accessor'),
+                service('mamu.renderer'),
+                service('mamu.state_codec'),
+                service('mamu.metadata'),
+                service('mamu.path_resolver'),
+                service('mamu.state_accessor'),
             ])
-        ->alias(PageRenderer::class, 'rephp.page_renderer')
-        ->set('rephp.controller.page', PageController::class)
+        ->alias(PageRenderer::class, 'mamu.page_renderer')
+        ->set('mamu.controller.page', PageController::class)
             ->public()
-            ->args([service('rephp.page_renderer'), service('twig'), param('rephp.page_template')])
-        ->set('rephp.controller.event', EventController::class)
+            ->args([service('mamu.page_renderer'), service('twig'), param('mamu.page_template')])
+        ->set('mamu.controller.event', EventController::class)
             ->public()
             ->args([
-                service('rephp.renderer'),
-                service('rephp.state_codec'),
-                service('rephp.controller.page'),
-                service('rephp.metadata'),
-                service('rephp.path_resolver'),
-                service('rephp.state_accessor'),
-                service('rephp.turbo_streams'),
+                service('mamu.renderer'),
+                service('mamu.state_codec'),
+                service('mamu.controller.page'),
+                service('mamu.metadata'),
+                service('mamu.path_resolver'),
+                service('mamu.state_accessor'),
+                service('mamu.turbo_streams'),
             ])
-        ->set('rephp.listener.page_attributes', PageAttributesListener::class)
+        ->set('mamu.listener.page_attributes', PageAttributesListener::class)
             ->tag('kernel.event_listener', ['event' => 'kernel.controller', 'method' => 'onKernelController'])
-        ->set('rephp.listener.source_map', SourceMapListener::class)
-            ->args([service('rephp.source_map')])
+        ->set('mamu.listener.source_map', SourceMapListener::class)
+            ->args([service('mamu.source_map')])
             ->tag('kernel.event_listener', ['event' => 'kernel.exception', 'method' => 'onKernelException', 'priority' => 128])
             ->tag('kernel.event_listener', ['event' => 'console.error', 'method' => 'onConsoleError', 'priority' => 128])
 
         // Console
-        ->set('rephp.command.warmup', WarmupCommand::class)
-            ->args([service('rephp.twig.template_warmer')])
+        ->set('mamu.command.warmup', WarmupCommand::class)
+            ->args([service('mamu.twig.template_warmer')])
             ->tag('console.command')
-        ->set('rephp.command.render', RenderCommand::class)
+        ->set('mamu.command.render', RenderCommand::class)
             ->args([service('http_kernel')])
             ->tag('console.command')
     ;

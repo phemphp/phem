@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Rendering;
+namespace Mamu\Rendering;
 
-use Rephp\Dom\Attributes;
-use Rephp\Element;
-use Rephp\Html;
-use Rephp\HtmlList;
-use Rephp\Manifest\Manifest;
+use Mamu\Dom\Attributes;
+use Mamu\Element;
+use Mamu\Html;
+use Mamu\HtmlList;
+use Mamu\Manifest\Manifest;
 use Twig\Environment;
 use Twig\Markup;
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Http;
+namespace Mamu\Http;
 
 /**
  * React 19 style: a `<title>` anywhere in a page goes into `<head>`.

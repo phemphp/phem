@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp;
+namespace Mamu;
 
 /**
  * Children (or a named slot) passed to a component. It renders on first use, with the

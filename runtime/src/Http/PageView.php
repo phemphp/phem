@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Http;
+namespace Mamu\Http;
 
-use Rephp\Dom\Attributes;
-use Rephp\Dom\DomEvents;
+use Mamu\Dom\Attributes;
+use Mamu\Dom\DomEvents;
 use Twig\Markup;
 
 /**
@@ -13,17 +13,17 @@ use Twig\Markup;
  *
  *     <title>{{ page.title ?? 'My app' }}</title>
  *     …
- *     {{ rephp_root(page) }}                    {# <div data-controller="rhp" …>…</div> #}
- *     {{ rephp_root(page, {class: 'app'}) }}
- *     <body {{ rephp_root_attributes(page) }}>{{ page.body }}</body>
+ *     {{ mamu_root(page) }}                    {# <div data-controller="mamu" …>…</div> #}
+ *     {{ mamu_root(page, {class: 'app'}) }}
+ *     <body {{ mamu_root_attributes(page) }}>{{ page.body }}</body>
  *
- * The root element of the page needs the attributes of the `rhp` Stimulus controller (the
+ * The root element of the page needs the attributes of the `mamu` Stimulus controller (the
  * state, its signature, and the DOM events), and it contains the body.
  */
 final class PageView
 {
     /** The attributes that the application cannot change. */
-    private const OWN = ['data-rhp-state-value' => true, 'data-rhp-signature-value' => true];
+    private const OWN = ['data-mamu-state-value' => true, 'data-mamu-signature-value' => true];
 
     /**
      * @param string      $component the page component
@@ -41,18 +41,18 @@ final class PageView
 
     /**
      * The attributes of the root element. The `data-controller` and `data-action` values of the
-     * application come after the values of rephp. The `id` is `rh-root` (null removes it).
+     * application come after the values of Mamu. The `id` is `mamu-root` (null removes it).
      *
      * @param array<string, mixed> $attributes more attributes, as in a component (`class` can be a list)
      */
     public function attributes(array $attributes = []): Markup
     {
         $own = [
-            'id' => \array_key_exists('id', $attributes) ? $attributes['id'] : 'rh-root',
-            'data-controller' => self::join('rhp', $attributes['data-controller'] ?? null),
+            'id' => \array_key_exists('id', $attributes) ? $attributes['id'] : 'mamu-root',
+            'data-controller' => self::join('mamu', $attributes['data-controller'] ?? null),
             'data-action' => self::join(DomEvents::stimulusActions(), $attributes['data-action'] ?? null),
-            'data-rhp-state-value' => $this->state,
-            'data-rhp-signature-value' => $this->signature,
+            'data-mamu-state-value' => $this->state,
+            'data-mamu-signature-value' => $this->signature,
         ];
         $html = [];
         foreach ($own + array_diff_key($attributes, self::OWN) as $name => $value) {

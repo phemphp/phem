@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Dom;
+namespace Mamu\Dom;
 
 use Twig\Markup;
 
@@ -35,13 +35,13 @@ final class Attributes
 
     public static function key(mixed $key): Markup
     {
-        return new Markup(null === $key ? '' : 'data-rh-key="'.self::e((string) $key).'"', 'UTF-8');
+        return new Markup(null === $key ? '' : 'data-mamu-key="'.self::e((string) $key).'"', 'UTF-8');
     }
 
-    /** Adds `data-rh-key` to the first element of an HTML fragment. */
+    /** Adds `data-mamu-key` to the first element of an HTML fragment. */
     public static function keyed(string $html, string $key): string
     {
-        $attr = ' data-rh-key="'.htmlspecialchars($key, \ENT_QUOTES, 'UTF-8').'"';
+        $attr = ' data-mamu-key="'.htmlspecialchars($key, \ENT_QUOTES, 'UTF-8').'"';
 
         return preg_replace('/^(\s*<[a-zA-Z][\w:-]*)/', '$1'.$attr, $html, 1) ?? $html;
     }

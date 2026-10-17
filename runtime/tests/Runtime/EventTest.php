@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Runtime;
+namespace Mamu\Tests\Runtime;
 
 use PHPUnit\Framework\TestCase;
-use Rephp\Event;
+use Mamu\Event;
 use Symfony\Component\HttpFoundation\Request;
 
 final class EventTest extends TestCase
 {
     public function testRequestHasTheFormFieldsAsPostData(): void
     {
-        $request = Request::create('/_rhp/event', 'POST', content: '{"handler":"h"}');
+        $request = Request::create('/_mamu/event', 'POST', content: '{"handler":"h"}');
         $event = Event::fromArray(['type' => 'submit', 'form' => ['name' => 'Ada', 'profession' => 'mathematician']], $request);
 
         self::assertSame(['name' => 'Ada', 'profession' => 'mathematician'], $event->form);
@@ -24,7 +24,7 @@ final class EventTest extends TestCase
 
     public function testRequestNestsTheFieldsOfANamedForm(): void
     {
-        $request = Request::create('/_rhp/event', 'POST');
+        $request = Request::create('/_mamu/event', 'POST');
         $event = Event::fromArray(['type' => 'submit', 'form' => ['scientist[name]' => 'Ada', 'scientist[profession]' => 'mathematician']], $request);
 
         self::assertSame(['scientist[name]' => 'Ada', 'scientist[profession]' => 'mathematician'], $event->form);

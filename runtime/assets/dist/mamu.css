@@ -1,0 +1,2 @@
+/* A component boundary (<mamu-c>) does not change the layout. */
+mamu-c{display:contents}

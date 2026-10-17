@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Runtime;
+namespace Mamu\Tests\Runtime;
 
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Response;
@@ -91,8 +91,8 @@ final class PathPageTest extends TestCase
     private function page(string $uri): array
     {
         $html = (string) $this->request('GET', $uri)->getContent();
-        preg_match('/data-rhp-state-value="([^"]*)" data-rhp-signature-value="([^"]*)"/', $html, $m);
-        preg_match('/data-rh-on-click="([^"]+)"/', $html, $h);
+        preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m);
+        preg_match('/data-mamu-on-click="([^"]+)"/', $html, $h);
 
         return [html_entity_decode($m[1]), $m[2], $h[1]];
     }

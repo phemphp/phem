@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Path;
+namespace Mamu\Path;
 
-use Rephp\Binding\ComponentName;
-use Rephp\Binding\PropError;
-use Rephp\Metadata\ComponentMetadata;
+use Mamu\Binding\ComponentName;
+use Mamu\Binding\PropError;
+use Mamu\Metadata\ComponentMetadata;
 
 /**
  * The props of a page from its route values: the values of the #[Path] properties or

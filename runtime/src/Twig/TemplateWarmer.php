@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Twig;
+namespace Mamu\Twig;
 
-use Rephp\Manifest\Manifest;
+use Mamu\Manifest\Manifest;
 use Symfony\Component\HttpKernel\CacheWarmer\CacheWarmerInterface;
 use Twig\Environment;
 
 /**
- * Compiles all rhpc templates into the Twig cache, so no template is parsed at runtime.
+ * Compiles all mamuc templates into the Twig cache, so no template is parsed at runtime.
  *
- * `cache:warmup` runs it, and `rephp:warmup` (which `rhpc build` calls) runs it alone.
+ * `cache:warmup` runs it, and `mamu:warmup` (which `mamuc build` calls) runs it alone.
  */
 final class TemplateWarmer implements CacheWarmerInterface
 {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Twig;
+namespace Mamu\Twig;
 
 use Twig\Attribute\YieldReady;
 use Twig\Compiler;
@@ -17,7 +17,7 @@ use Twig\Node\Expression\AbstractExpression;
  * - A function or class component: the Renderer receives the embedded template and renders
  *   each block lazily as a Slot value.
  *
- * The blocks run `{% with _rhp_caller only %}`, so they see the variables of the caller,
+ * The blocks run `{% with _mamu_caller only %}`, so they see the variables of the caller,
  * not the props of the component.
  */
 #[YieldReady]

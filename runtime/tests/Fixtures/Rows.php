@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Fixtures;
+namespace Mamu\Tests\Fixtures;
 
 /** Rows that other users change too (as a database table), for the tests of the handler ids. */
 final class Rows

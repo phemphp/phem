@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Twig;
+namespace Mamu\Twig;
 
-use Rephp\Manifest\Manifest;
+use Mamu\Manifest\Manifest;
 use Twig\Error\LoaderError;
 use Twig\Loader\FilesystemLoader;
 use Twig\Loader\LoaderInterface;
 use Twig\Source;
 
 /**
- * Loads the templates that rhpc compiled, as `@rhp/<file>.<n>.twig`.
+ * Loads the templates that mamuc compiled, as `@phpm/<file>.<n>.twig`.
  *
- * The directory exists only after the first `rhpc build`, so the loader opens it on first use.
+ * The directory exists only after the first `mamuc build`, so the loader opens it on first use.
  */
 final class TemplateLoader implements LoaderInterface
 {
@@ -45,7 +45,7 @@ final class TemplateLoader implements LoaderInterface
 
     private function loader(string $name): FilesystemLoader
     {
-        return $this->open() ?? throw new LoaderError(\sprintf('Template "%s" is not defined: no rhpc build in "%s". Run `rhpc build src` first.', $name, $this->templateDir));
+        return $this->open() ?? throw new LoaderError(\sprintf('Template "%s" is not defined: no mamuc build in "%s". Run `mamuc build src` first.', $name, $this->templateDir));
     }
 
     private function open(): ?FilesystemLoader

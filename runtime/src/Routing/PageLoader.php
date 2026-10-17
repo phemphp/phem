@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Routing;
+namespace Mamu\Routing;
 
-use Rephp\Manifest\Manifest;
-use Rephp\Metadata\ComponentMetadata;
+use Mamu\Manifest\Manifest;
+use Mamu\Metadata\ComponentMetadata;
 use Symfony\Component\Config\Loader\Loader;
 use Symfony\Component\Config\Resource\FileExistenceResource;
 use Symfony\Component\Config\Resource\FileResource;
@@ -17,7 +17,7 @@ use Symfony\Component\Routing\RouteCollection;
 /**
  * The routes of the pages and the event endpoint.
  *
- * A page is a component with the Symfony `#[Route]` attribute (rhpc lists them in the
+ * A page is a component with the Symfony `#[Route]` attribute (mamuc lists them in the
  * manifest). The attribute works as on a controller: path (or localized paths), name,
  * requirements, defaults, methods, host, schemes, condition, priority, env and aliases.
  * Without a name, the route name comes from the component: `App\Pages\Counter` →
@@ -25,7 +25,7 @@ use Symfony\Component\Routing\RouteCollection;
  *
  * The events of a page go to the URL of the page (`POST`, see EventController), so the access
  * rules of the page (`access_control`, the firewall, the host and the condition of the route)
- * apply to them too. Each page route has an event route (`rephp_event.<name>`) with the same
+ * apply to them too. Each page route has an event route (`mamu_event.<name>`) with the same
  * path and the `POST` method. It comes first, so a page route without methods does not take
  * the events.
  *
@@ -36,14 +36,14 @@ use Symfony\Component\Routing\RouteCollection;
  *
  * Import them in the application routes:
  *
- *     rephp:
+ *     mamu:
  *         resource: .
- *         type: rephp
+ *         type: mamu
  */
 final class PageLoader extends Loader
 {
-    /** The prefix of the event route names: `rephp_event.app_pages_counter`. */
-    public const EVENT_ROUTE = 'rephp_event';
+    /** The prefix of the event route names: `mamu_event.app_pages_counter`. */
+    public const EVENT_ROUTE = 'mamu_event';
 
     public function __construct(
         private readonly Manifest $manifest,
@@ -57,7 +57,7 @@ final class PageLoader extends Loader
     {
         $routes = new RouteCollection();
 
-        // The router cache is rebuilt after the next `rhpc build`.
+        // The router cache is rebuilt after the next `mamuc build`.
         $routes->addResource(new FileExistenceResource($this->manifest->file()));
         if (!$this->manifest->exists()) {
             return $routes;
@@ -80,7 +80,7 @@ final class PageLoader extends Loader
 
     public function supports(mixed $resource, ?string $type = null): bool
     {
-        return 'rephp' === $type;
+        return 'mamu' === $type;
     }
 
     /** `App\Pages\Counter` → `app_pages_counter` (the Symfony convention for an invokable controller). */
@@ -125,7 +125,7 @@ final class PageLoader extends Loader
             return;
         }
         $name = $attr->name ?? self::routeName($page).($index > 0 ? '_'.$index : '');
-        $defaults = array_replace($attr->defaults, ['_controller' => 'rephp.controller.page', '_rephp_page' => $page]);
+        $defaults = array_replace($attr->defaults, ['_controller' => 'mamu.controller.page', '_mamu_page' => $page]);
         $paths = \is_array($attr->path) ? $attr->path : [0 => (string) $attr->path];
 
         foreach ($paths as $locale => $path) {
@@ -141,8 +141,8 @@ final class PageLoader extends Loader
             // The event route first: it takes the POST requests of the page URL.
             $event = (clone $route)
                 ->setMethods(['POST'])
-                ->setDefault('_controller', 'rephp.controller.event')
-                ->setDefault('_rephp_methods', $route->getMethods());
+                ->setDefault('_controller', 'mamu.controller.event')
+                ->setDefault('_mamu_methods', $route->getMethods());
             $routes->add(self::EVENT_ROUTE.'.'.$routeName, $event, $attr->priority ?? 0);
             $routes->add($routeName, $route, $attr->priority ?? 0);
         }

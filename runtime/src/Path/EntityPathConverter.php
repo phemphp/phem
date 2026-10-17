@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Path;
+namespace Mamu\Path;
 
-use Rephp\Binding\ComponentName;
+use Mamu\Binding\ComponentName;
 
 /**
  * An entity prop gets the entity of its route value from the EntityFinder (Doctrine ORM, when

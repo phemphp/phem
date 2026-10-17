@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Rendering;
+namespace Mamu\Rendering;
 
-use Rephp\Binding\PropBinder;
-use Rephp\Manifest\ComponentDefinition;
-use Rephp\Manifest\ComponentKind;
-use Rephp\State\StateAccessor;
+use Mamu\Binding\PropBinder;
+use Mamu\Manifest\ComponentDefinition;
+use Mamu\Manifest\ComponentKind;
+use Mamu\State\StateAccessor;
 
 /**
  * Renders a class component. The first time a fiber renders in a request, the factory makes its

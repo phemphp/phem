@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\State;
+namespace Mamu\State;
 
 /**
  * The state that the browser keeps for a page: the state of each fiber, and the route values

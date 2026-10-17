@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Rendering;
+namespace Mamu\Rendering;
 
-use Rephp\Binding\PropError;
-use Rephp\Event;
-use Rephp\Handler\HandlerFingerprint;
-use Rephp\Handler\HandlerInvoker;
-use Rephp\Html;
-use Rephp\Manifest\ComponentDefinition;
-use Rephp\Manifest\Manifest;
-use Rephp\Slot;
+use Mamu\Binding\PropError;
+use Mamu\Event;
+use Mamu\Handler\HandlerFingerprint;
+use Mamu\Handler\HandlerInvoker;
+use Mamu\Html;
+use Mamu\Manifest\ComponentDefinition;
+use Mamu\Manifest\Manifest;
+use Mamu\Slot;
 use Symfony\Contracts\Service\ResetInterface;
 use Twig\Template;
 
@@ -143,7 +143,7 @@ final class Renderer implements ResetInterface
         $fiber->html = $html;
         $own = $html;
         foreach ($fiber->children as $child) {
-            $own = str_replace($child->wrapped(), '<rh-c id="'.$child->id.'"></rh-c>', $own);
+            $own = str_replace($child->wrapped(), '<mamu-c id="'.$child->id.'"></mamu-c>', $own);
         }
         $fiber->ownHtml[$tree->pass] = $own;
         if (null !== $parent) {
@@ -180,7 +180,7 @@ final class Renderer implements ResetInterface
         $out = [];
         foreach ($names as $name) {
             if (\in_array($name, $blocks, true)) {
-                $out[$name] = new Slot(static fn (): string => $template->renderBlock($name, ['_rhp_caller' => $caller]));
+                $out[$name] = new Slot(static fn (): string => $template->renderBlock($name, ['_mamu_caller' => $caller]));
             }
         }
 

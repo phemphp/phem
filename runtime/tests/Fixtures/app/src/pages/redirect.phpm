@@ -1,0 +1,27 @@
+<?phpm
+
+namespace App\Pages;
+
+use Mamu\Attribute\{Component, State};
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\Routing\Attribute\Route;
+
+// A handler that returns a RedirectResponse: the browser goes to its URL.
+#[Component]
+#[Route('/leave')]
+final class LeavePage
+{
+    #[State] public int $count = 0;
+
+    public function leave(): RedirectResponse
+    {
+        ++$this->count;
+
+        return new RedirectResponse('/about');
+    }
+
+    public function render()
+    {
+        return <button id="leave" onClick={{ leave }}>Leave {{ count }}</button>;
+    }
+}

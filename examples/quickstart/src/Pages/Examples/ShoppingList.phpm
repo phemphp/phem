@@ -1,0 +1,28 @@
+<?phpm
+namespace App\Pages\Examples;
+
+use Symfony\Component\Routing\Attribute\Route;
+
+#[Route('/examples/ShoppingList')]
+function ShoppingList()
+{
+    $products = [
+        ['title' => 'Cabbage', 'isFruit' => false, 'id' => 1],
+        ['title' => 'Garlic', 'isFruit' => false, 'id' => 2],
+        ['title' => 'Apple', 'isFruit' => true, 'id' => 3],
+    ];
+
+    return (
+        <ul>
+            <title>ShoppingList</title>
+            {% for product in products %}
+                <li
+                    key={{ product.id }}
+                    style={{ {color: product.isFruit ? 'magenta' : 'darkgreen'} }}
+                >
+                    {{ product.title }}
+                </li>
+            {% endfor %}
+        </ul>
+    );
+}

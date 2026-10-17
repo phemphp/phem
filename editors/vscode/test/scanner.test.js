@@ -9,7 +9,7 @@ function delimiters(text) {
 }
 
 test('records the Twig delimiters in markup', () => {
-    const text = '<?php\nfunction A($s)\n{\n    if ($s) { x(); }}\n    return <p a={{ s.a }}>{{ {b: 1}.b }}{% if x %}<B c={{ 1 }} />{% endif %}</p>;\n}\n';
+    const text = '<?phpm\nfunction A($s)\n{\n    if ($s) { x(); }}\n    return <p a={{ s.a }}>{{ {b: 1}.b }}{% if x %}<B c={{ 1 }} />{% endif %}</p>;\n}\n';
     const at = (s, from = 0) => text.indexOf(s, from);
     assert.deepEqual(delimiters(text), [
         [at('{{ s.a'), '{{'],
@@ -26,5 +26,5 @@ test('records the Twig delimiters in markup', () => {
 });
 
 test('ignores braces in PHP code, strings, and comments', () => {
-    assert.deepEqual(delimiters("<?php\n$a = '{{ x }}'; // {{ y }}\nif ($a) { if ($b) { f(); }}\n"), []);
+    assert.deepEqual(delimiters("<?phpm\n$a = '{{ x }}'; // {{ y }}\nif ($a) { if ($b) { f(); }}\n"), []);
 });

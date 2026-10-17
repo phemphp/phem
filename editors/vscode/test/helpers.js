@@ -14,7 +14,7 @@ const FILES = {
 $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 return array(
-    'Rephp\\\\' => array($vendorDir . '/rephp/runtime/src'),
+    'Mamu\\\\' => array($vendorDir . '/mamuphp/runtime/src'),
     'App\\\\' => array($baseDir . '/src'),
 );
 `,
@@ -26,15 +26,15 @@ return array(
 );
 `,
     'vendor/acme/lib/functions.php': '<?php\nnamespace Acme;\n\nfunction slugify(string $s): string { return $s; }\n',
-    'vendor/rephp/runtime/src/Html.php': '<?php\n',
-    'vendor/rephp/runtime/src/Attribute/Component.php': '<?php\n',
-    'vendor/rephp/runtime/src/Attribute/State.php': '<?php\n',
-    'vendor/rephp/runtime/tests/HtmlTest.php': '<?php\n',
+    'vendor/mamuphp/runtime/src/Html.php': '<?php\n',
+    'vendor/mamuphp/runtime/src/Attribute/Component.php': '<?php\n',
+    'vendor/mamuphp/runtime/src/Attribute/State.php': '<?php\n',
+    'vendor/mamuphp/runtime/tests/HtmlTest.php': '<?php\n',
     'src/Repository/TodoRepository.php': '<?php\n',
-    'src/components/Layout.rhp': `<?php
+    'src/components/Layout.phpm': `<?phpm
 namespace App\\Components;
 
-use Rephp\\Html;
+use Mamu\\Html;
 
 function Layout(string $title, ?Html $children = null, ?Html $footer = null)
 {
@@ -46,7 +46,7 @@ function Avatar(string $name, int $size = 64)
     return <img alt={{ name }} width={{ size }} />;
 }
 `,
-    'src/pages/about.rhp': `<?php
+    'src/pages/about.phpm': `<?phpm
 namespace App\\Pages;
 
 use Symfony\\Component\\Routing\\Attribute\\Route;
@@ -57,10 +57,10 @@ function About()
     return <p>About</p>;
 }
 `,
-    'src/components/Counter.rhp': `<?php
+    'src/components/Counter.phpm': `<?phpm
 namespace App\\Components;
 
-use Rephp\\Attribute\\{Component, State};
+use Mamu\\Attribute\\{Component, State};
 
 #[Component]
 final class Counter
@@ -211,10 +211,10 @@ final class ScientistRepository
     }
 }
 `,
-    'src/pages/gallery.rhp': `<?php
+    'src/pages/gallery.phpm': `<?phpm
 namespace App\\Pages;
 
-use Rephp\\Attribute\\Component;
+use Mamu\\Attribute\\Component;
 use Symfony\\Component\\Routing\\Attribute\\Route;
 
 #[Route('/gallery', name: 'gallery')]
@@ -231,7 +231,7 @@ final class Gallery
 };
 
 async function createProject() {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rhp-test-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mamu-test-'));
     for (const [name, content] of Object.entries(FILES)) {
         fs.mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
         fs.writeFileSync(path.join(root, name), content);
@@ -248,7 +248,7 @@ function cursor(source) {
 }
 
 // Runs the completion at the cursor mark of `source`.
-async function run(fixture, source, file = 'src/pages/index.rhp', trigger = undefined) {
+async function run(fixture, source, file = 'src/pages/index.phpm', trigger = undefined) {
     const { text, offset } = cursor(source);
     const items = await complete({ text, offset, file: path.join(fixture.root, file), project: fixture.project, trigger });
     return { text, items, labels: items.map((i) => i.label), find: (label) => items.find((i) => i.label === label) };
@@ -262,6 +262,6 @@ function apply(text, item) {
     return out;
 }
 
-const PAGE = '<?php\nnamespace App\\Pages;\n\n';
+const PAGE = '<?phpm\nnamespace App\\Pages;\n\n';
 
 module.exports = { FILES, createProject, cursor, run, apply, PAGE };

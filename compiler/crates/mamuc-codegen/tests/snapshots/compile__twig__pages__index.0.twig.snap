@@ -1,0 +1,5 @@
+---
+source: crates/mamuc-codegen/tests/compile.rs
+expression: t.content
+---
+<p class="theme-{{ theme }}">Theme: {{ theme }}</p>

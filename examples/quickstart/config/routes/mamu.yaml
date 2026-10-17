@@ -1,0 +1,4 @@
+# The #[Route] attributes of the page components, and the event endpoint.
+mamu:
+    resource: .
+    type: mamu

@@ -1,0 +1,7 @@
+---
+source: crates/mamuc-codegen/tests/compile.rs
+expression: t.content
+---
+<button onclick="track()" {{ mamu_attrs({'type': 'button'}, rest, {'className': 'btn btn-' ~ (count), 'disabled': true}) }}>
+            Clicked {{ count }} times
+        </button>

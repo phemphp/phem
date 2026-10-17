@@ -1,5 +1,0 @@
----
-source: crates/rhpc-codegen/tests/compile.rs
-expression: t.content
----
-<p class="greeting">Hello, {{ upper }}!</p>

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Runtime;
+namespace Mamu\Tests\Runtime;
 
 use PHPUnit\Framework\TestCase;
-use Rephp\Attribute\Transactional;
-use Rephp\Event;
-use Rephp\Handler\HandlerInvoker;
-use Rephp\Handler\TransactionalMiddleware;
-use Rephp\Handler\TransactionRunner;
+use Mamu\Attribute\Transactional;
+use Mamu\Event;
+use Mamu\Handler\HandlerInvoker;
+use Mamu\Handler\TransactionalMiddleware;
+use Mamu\Handler\TransactionRunner;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 final class TransactionalTest extends TestCase

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Doctrine;
+namespace Mamu\Doctrine;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
-use Rephp\Handler\TransactionRunner;
+use Mamu\Handler\TransactionRunner;
 
 /**
  * Runs a handler in a transaction of the default entity manager. `wrapInTransaction()` flushes

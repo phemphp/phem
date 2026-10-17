@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- The project is now Mamu. The extension id is `mamuphp.mamu`, the language id is `phpm`, and
+  the files are `.phpm` files that open with `<?phpm`. The compiler is `mamuc`, and the settings
+  are `mamu.mamuc.path` and `mamu.mamuc.sourceDir`.
 - Completion for class members after `->`, `?->`, and `::`, with the parents, the traits, the
   interfaces, and the docblock types. Completion for variables after `$`.
 - Twig completion: variables (PHP scope, class properties and methods, `{% for %}`,
@@ -15,8 +18,8 @@
   filters, functions, tests, tags, and the HTML elements and attributes.
 - An outline: the namespace, the components with their props and slots, the pages with their
   paths, and the classes with their members.
-- rhpc diagnostics on save, with the new `rhp.rhpc.path` and `rhp.rhpc.sourceDir` settings. It
-  uses `rhpc check --format json`.
+- mamuc diagnostics on save, with the new `mamu.mamuc.path` and `mamu.mamuc.sourceDir` settings. It
+  uses `mamuc check --format json`.
 - The `.`, `>`, `|`, `$`, `%`, `'`, and `"` characters start the completion where it applies.
 
 - The Twig delimiters `{{ }}` and `{% %}` are one bracket pair, and they always have the color of
@@ -26,13 +29,13 @@
 ## 0.2.0
 
 - Completion for component tags, with the required props and the import of the component.
-- Completion for props, named slots (`<Card:footer>`), rephp events, and closing tags.
-- Completion for `use`, `use function`, and `use const` statements, from the `.rhp` files and the
+- Completion for props, named slots (`<Card:footer>`), Mamu events, and closing tags.
+- Completion for `use`, `use function`, and `use const` statements, from the `.phpm` files and the
   Composer autoload maps.
 - Completion for class and function names in PHP code, with the `use` statement.
 - A new icon: the elePHPant with a Twig sprig. The extension has a 128x128 icon too.
 
 ## 0.1.0
 
-- First release: syntax highlighting for `.rhp` files (PHP, markup literals, Twig), and comments
+- First release: syntax highlighting for `.phpm` files (PHP, markup literals, Twig), and comments
   that use `{# #}` inside markup.

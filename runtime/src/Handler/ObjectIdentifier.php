@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Handler;
+namespace Mamu\Handler;
 
 /**
  * Identifies an object that a handler captures (`fn () => $this->remove($scientist)`), for

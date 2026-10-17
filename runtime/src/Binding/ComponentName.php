@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Binding;
+namespace Mamu\Binding;
 
 /**
  * The name of a component in the error messages: `App\Pages\Counter` → `Counter`.

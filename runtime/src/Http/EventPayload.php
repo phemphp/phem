@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Http;
+namespace Mamu\Http;
 
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 /**
- * The JSON body of an event (`POST <page URL>`), from the `rhp` Stimulus controller. The page
+ * The JSON body of an event (`POST <page URL>`), from the `mamu` Stimulus controller. The page
  * comes from the route, not from the body.
  */
 final class EventPayload

@@ -1,0 +1,46 @@
+<?phpm
+
+namespace App\Pages;
+
+use Mamu\Attribute\{Component, State};
+use Symfony\Component\Routing\Attribute\Route;
+
+// A template component: the extra props go to `$rest`.
+function RestButton(int $count, mixed ...$rest) {
+    return <button type="button" {{ ...rest }}>Clicked {{ count }} times</button>;
+}
+
+// A function component (PHP code before the markup).
+function LoudButton(string $label, mixed ...$rest) {
+    $text = strtoupper($label);
+    return <button className="loud" {{ ...rest }}>{{ text }}</button>;
+}
+
+// Forwards its extra props to another component.
+function Forward(mixed ...$rest) {
+    return <RestButton count={{ 7 }} {{ ...rest }} />;
+}
+
+#[Component]
+#[Route('/rest')]
+final class RestPage
+{
+    #[State] public int $count = 0;
+
+    public function increment(): void
+    {
+        ++$this->count;
+    }
+
+    public function render()
+    {
+        return (
+            <main>
+                <RestButton count={{ count }} onClick={{ increment }} id="a" type="submit" data-role="counter" aria-label="Count" disabled={{ false }} />
+                <LoudButton label="hi" className="override" onDoubleClick={{ increment }} />
+                <Forward id="forwarded" />
+                <RestButton count={{ count }} />
+            </main>
+        );
+    }
+}

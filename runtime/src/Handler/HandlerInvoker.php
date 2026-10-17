@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Handler;
+namespace Mamu\Handler;
 
-use Rephp\Event;
+use Mamu\Event;
 
 /**
  * Runs an event handler through the HandlerMiddleware chain. The first middleware is the

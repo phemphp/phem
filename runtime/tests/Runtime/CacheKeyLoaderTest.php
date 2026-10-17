@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Runtime;
+namespace Mamu\Tests\Runtime;
 
 use PHPUnit\Framework\TestCase;
-use Rephp\Manifest\Manifest;
-use Rephp\Twig\CacheKeyLoader;
+use Mamu\Manifest\Manifest;
+use Mamu\Twig\CacheKeyLoader;
 use Twig\Loader\ArrayLoader;
 
 final class CacheKeyLoaderTest extends TestCase
@@ -15,7 +15,7 @@ final class CacheKeyLoaderTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->dir = sys_get_temp_dir().'/rephp-cache-key-'.bin2hex(random_bytes(4));
+        $this->dir = sys_get_temp_dir().'/mamu-cache-key-'.bin2hex(random_bytes(4));
         mkdir($this->dir);
         file_put_contents($this->dir.'/autoload.php', '<?php');
     }

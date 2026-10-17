@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp;
+namespace Mamu;
 
 /**
  * A list of markup (like an array of JSX elements). It prints as one block, and it is iterable.

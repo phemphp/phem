@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Runtime;
+namespace Mamu\Tests\Runtime;
 
 use PHPUnit\Framework\TestCase;
 
@@ -13,8 +13,8 @@ final class RedirectTest extends TestCase
     public function testHandlerThatReturnsARedirectResponseSendsItsUrl(): void
     {
         $html = (string) $this->request('GET', '/leave')->getContent();
-        preg_match('/data-rhp-state-value="([^"]*)" data-rhp-signature-value="([^"]*)"/', $html, $m);
-        preg_match('/data-rh-on-click="([^"]+)"/', $html, $h);
+        preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m);
+        preg_match('/data-mamu-on-click="([^"]+)"/', $html, $h);
 
         $response = $this->event('/leave', [
             'state' => html_entity_decode($m[1]),

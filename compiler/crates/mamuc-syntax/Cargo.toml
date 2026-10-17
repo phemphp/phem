@@ -1,0 +1,8 @@
+[package]
+name = "mamuc-syntax"
+description = "Lexer and markup parser for .phpm files"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]

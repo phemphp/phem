@@ -1,0 +1,37 @@
+<?phpm
+namespace App\Pages\Examples;
+
+use Mamu\Attribute\{Component, State};
+use Mamu\Event;
+use Symfony\Component\Routing\Attribute\Route;
+
+#[Route('/examples/SearchBox')]
+#[Component]
+final class SearchBox
+{
+    #[State]
+    public string $name = '';
+
+    public function handleChange(Event $e): void
+    {
+        $this->name = (string) $e->value;
+    }
+
+    public function handleClear(): void
+    {
+        $this->name = '';
+    }
+
+    public function render()
+    {
+        return (
+            <div>
+                <title>SearchBox</title>
+                <label htmlFor="search-name">Your name</label>
+                <input id="search-name" value={{ name }} onChange={{ handleChange }} />
+                <button onClick={{ handleClear }}>Clear</button>
+                <p>{{ name ? 'Hello, ' ~ name ~ '!' : 'Type your name.' }}</p>
+            </div>
+        );
+    }
+}

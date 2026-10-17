@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Doctrine;
+namespace Mamu\Doctrine;
 
 use Doctrine\Persistence\ManagerRegistry;
-use Rephp\Handler\ObjectIdentifier;
+use Mamu\Handler\ObjectIdentifier;
 
 /**
  * Identifies an entity by its identifier values, from the metadata of its entity manager. It

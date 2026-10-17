@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Rephp\State;
+namespace Mamu\State;
 
-use Rephp\Metadata\ComponentMetadata;
-use Rephp\Rendering\Tree;
+use Mamu\Metadata\ComponentMetadata;
+use Mamu\Rendering\Tree;
 
 /**
  * Reads and writes the #[State] properties of the class components.

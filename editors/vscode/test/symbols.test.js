@@ -5,11 +5,11 @@ const assert = require('node:assert/strict');
 const { parse } = require('../src/php');
 const { documentSymbols } = require('../src/symbols');
 
-const SOURCE = `<?php
+const SOURCE = `<?phpm
 namespace App\\Pages;
 
-use Rephp\\Attribute\\{Component, State};
-use Rephp\\Html;
+use Mamu\\Attribute\\{Component, State};
+use Mamu\\Html;
 use Symfony\\Component\\Routing\\Attribute\\Route;
 
 function Card(string $title, ?Html $footer = null, ?Html $children = null, mixed ...$rest)

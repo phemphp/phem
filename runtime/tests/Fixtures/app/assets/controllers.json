@@ -1,11 +1,11 @@
 {
     "controllers": {
-        "@rephp/runtime": {
-            "rhp": {
+        "@mamuphp/runtime": {
+            "mamu": {
                 "enabled": true,
                 "fetch": "eager",
                 "autoimport": {
-                    "@rephp/runtime/dist/rhp.css": true
+                    "@mamuphp/runtime/dist/mamu.css": true
                 }
             }
         }

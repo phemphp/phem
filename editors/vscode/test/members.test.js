@@ -14,7 +14,7 @@ test.after(() => fixture.cleanup());
 
 const run = (source, file) => helpers.run(fixture, source, file);
 
-const USES = '<?php\nnamespace App\\Pages;\n\nuse App\\Model\\Scientist;\nuse App\\Model\\Status;\nuse App\\Repository\\ScientistRepository;\n\n';
+const USES = '<?phpm\nnamespace App\\Pages;\n\nuse App\\Model\\Scientist;\nuse App\\Model\\Status;\nuse App\\Repository\\ScientistRepository;\n\n';
 
 test('$x-> shows the public members of the type, with inheritance', async () => {
     const r = await run(USES + 'function Home(Scientist $s)\n{\n    $s->|\n}\n');
@@ -64,7 +64,7 @@ test('Foo:: shows the static members and the constants', async () => {
 });
 
 test('$this-> in a class shows all its members', async () => {
-    const r = await run('<?php\nnamespace App\\Model;\n\nclass Chemist extends Scientist\n{\n    private int $lab = 1;\n\n    public function render()\n    {\n        $this->|\n    }\n}\n', 'src/Model/Chemist.rhp');
+    const r = await run('<?phpm\nnamespace App\\Model;\n\nclass Chemist extends Scientist\n{\n    private int $lab = 1;\n\n    public function render()\n    {\n        $this->|\n    }\n}\n', 'src/Model/Chemist.phpm');
     for (const label of ['lab', 'name', 'born', 'age', 'render']) {
         assert.ok(r.find(label), label);
     }
@@ -73,8 +73,8 @@ test('$this-> in a class shows all its members', async () => {
 });
 
 test('promoted constructor properties are members, not props', async () => {
-    const src = '<?php\nnamespace App\\Components;\n\nuse App\\Repository\\ScientistRepository;\nuse Rephp\\Attribute\\Component;\n\n#[Component]\nfinal class List1\n{\n    public int $limit = 3;\n\n    public function __construct(private readonly ScientistRepository $repo)\n    {\n    }\n\n    public function render()\n    {\n        $this->repo->|\n    }\n}\n';
-    const r = await run(src, 'src/components/List1.rhp');
+    const src = '<?phpm\nnamespace App\\Components;\n\nuse App\\Repository\\ScientistRepository;\nuse Mamu\\Attribute\\Component;\n\n#[Component]\nfinal class List1\n{\n    public int $limit = 3;\n\n    public function __construct(private readonly ScientistRepository $repo)\n    {\n    }\n\n    public function render()\n    {\n        $this->repo->|\n    }\n}\n';
+    const r = await run(src, 'src/components/List1.phpm');
     assert.deepEqual(r.labels.sort(), ['all', 'find', 'load']);
     const { parse } = require('../src/php');
     assert.deepEqual(parse(src.replace('|', '')).components[0].props.map((p) => p.name), ['limit']);
@@ -91,14 +91,14 @@ test('an unknown type gives no members', async () => {
 });
 
 test('a private member of a trait is a member of the class that uses it', async () => {
-    const r = await run('<?php\nnamespace App\\Model;\n\nclass Writer\n{\n    use HasSlug;\n\n    public function render()\n    {\n        $this->|\n    }\n}\n', 'src/Model/Writer.rhp');
+    const r = await run('<?phpm\nnamespace App\\Model;\n\nclass Writer\n{\n    use HasSlug;\n\n    public function render()\n    {\n        $this->|\n    }\n}\n', 'src/Model/Writer.phpm');
     assert.ok(r.find('slugBase'));
     assert.equal((await run(USES + 'function Home(Scientist $s)\n{\n    $s->|\n}\n')).find('slugBase'), undefined);
 });
 
 test('`->class` and named arguments are not declarations', async () => {
     const { parse } = require('../src/php');
-    const parsed = parse('<?php\nfunction A($p) { return $p->class; }\nfunction B() { f(class: 1); $o->enum instanceof X; }\nfunction C() { return <p />; }\n');
+    const parsed = parse('<?phpm\nfunction A($p) { return $p->class; }\nfunction B() { f(class: 1); $o->enum instanceof X; }\nfunction C() { return <p />; }\n');
     assert.deepEqual(parsed.functions.map((f) => f.name), ['A', 'B', 'C']);
     assert.deepEqual(parsed.classes, []);
 });

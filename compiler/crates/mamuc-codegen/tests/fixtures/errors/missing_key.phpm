@@ -1,0 +1,2 @@
+<?phpm // expect: W002
+function App() { $xs = [1, 2]; return <ul>{% for x in xs %}<li>{{ x }}</li>{% endfor %}</ul>; }

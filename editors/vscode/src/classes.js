@@ -64,7 +64,7 @@ class ClassIndex {
         if (exact) {
             return exact.file;
         }
-        for (const [file, parsed] of project.rhp) {
+        for (const [file, parsed] of project.phpm) {
             const decls = kind === 'class' ? parsed.classes : parsed.functions;
             if (decls.some((d) => sameName(d.fqn, fqn))) {
                 return file;

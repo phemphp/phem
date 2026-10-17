@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Handler;
+namespace Mamu\Handler;
 
-use Rephp\Attribute\Transactional;
-use Rephp\Event;
+use Mamu\Attribute\Transactional;
+use Mamu\Event;
 
 /**
  * Runs the event handlers of a `#[Transactional]` component in a transaction of the

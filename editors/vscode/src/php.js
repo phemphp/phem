@@ -1,6 +1,6 @@
 'use strict';
 
-// Reads the declarations of a PHP or .rhp file: the namespace, the `use`
+// Reads the declarations of a PHP or .phpm file: the namespace, the `use`
 // imports, the functions, the classes, and the constants. For components, it
 // also reads the props and the slots.
 
@@ -49,13 +49,13 @@ class Parser {
             namespace: '',
             namespaceStart: -1,     // offset of the name in `namespace X;`
             namespaceEnd: -1,       // offset after `namespace X;`
-            openTagEnd: -1,         // offset after `<?php`
+            openTagEnd: -1,         // offset after `<?phpm` (or `<?php` in a PHP class)
             uses: [],
             functions: [],
             classes: [],
             constants: [],
         };
-        const open = /<\?php\b/.exec(text);
+        const open = /<\?phpm?\b/.exec(text);
         if (open) {
             this.result.openTagEnd = open.index + open[0].length;
         }
@@ -718,7 +718,7 @@ function hasAttr(attrs, name) {
 }
 
 function isHtmlType(type) {
-    return /^\\?(Rephp\\)?Html$/.test(type.replace(/^\?/, '').replace(/^null\||\|null$/i, ''));
+    return /^\\?(Mamu\\)?Html$/.test(type.replace(/^\?/, '').replace(/^null\||\|null$/i, ''));
 }
 
 // Turns the parsed functions and classes into components.

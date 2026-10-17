@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Path;
+namespace Mamu\Path;
 
-use Rephp\Binding\ComponentName;
+use Mamu\Binding\ComponentName;
 
 /**
  * A string goes to an `int`, `float` or `bool` prop as a value of that type. The other

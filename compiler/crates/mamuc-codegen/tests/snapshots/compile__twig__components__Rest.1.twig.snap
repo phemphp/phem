@@ -1,0 +1,5 @@
+---
+source: crates/mamuc-codegen/tests/compile.rs
+expression: t.content
+---
+{% component 'App\\Components\\RestButton' with {'count': (count), ...(rest)} only %}

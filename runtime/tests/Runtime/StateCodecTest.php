@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Runtime;
+namespace Mamu\Tests\Runtime;
 
 use PHPUnit\Framework\TestCase;
-use Rephp\State\StateCodec;
+use Mamu\State\StateCodec;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
@@ -17,13 +17,13 @@ final class StateCodecTest extends TestCase
     public function testStateIsValidForItsPage(): void
     {
         $codec = $this->codec();
-        [$json, $signature] = $codec->encode(['rh1' => ['n' => 1]], 'App\\A');
+        [$json, $signature] = $codec->encode(['mamu1' => ['n' => 1]], 'App\\A');
 
-        self::assertSame('{"rh1":{"n":1}}', $json);
+        self::assertSame('{"mamu1":{"n":1}}', $json);
         self::assertMatchesRegularExpression('/^1000000\.[0-9a-f]{64}$/', $signature, 'the time it was issued, and the HMAC');
-        self::assertSame(['rh1' => ['n' => 1]], $codec->decode($json, $signature, 'App\\A'));
+        self::assertSame(['mamu1' => ['n' => 1]], $codec->decode($json, $signature, 'App\\A'));
         self::assertNull($codec->decode($json, $signature, 'App\\B'));
-        self::assertNull($codec->decode('{"rh1":{"n":2}}', $signature, 'App\\A'));
+        self::assertNull($codec->decode('{"mamu1":{"n":2}}', $signature, 'App\\A'));
     }
 
     public function testSignatureWithAnotherTimeIsNotValid(): void

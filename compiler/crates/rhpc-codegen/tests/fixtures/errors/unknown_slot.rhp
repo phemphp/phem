@@ -1,3 +1,0 @@
-<?php // expect: E013
-function Card(?\Rephp\Html $children = null) { return <div>{{ children }}</div>; }
-function App() { return <Card><Card:footer>x</Card:footer></Card>; }

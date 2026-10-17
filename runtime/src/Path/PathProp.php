@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Path;
+namespace Mamu\Path;
 
 /**
  * A #[Path] property or parameter of a page, with a named type.

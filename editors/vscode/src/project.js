@@ -4,7 +4,7 @@
 //   - the classes from the Composer autoload maps (PSR-4 directories and the
 //     class map). For speed, the index reads only the file names here.
 //   - the functions and constants of the Composer "files" autoload entries;
-//   - the components, functions, and classes of the .rhp files.
+//   - the components, functions, and classes of the .phpm files.
 // The members of the classes come from the class index (classes.js), on demand.
 
 const fs = require('fs');
@@ -60,7 +60,7 @@ class Project {
     constructor(root) {
         this.root = root;
         this.symbols = new Map();   // "kind:fqn" -> { kind, fqn, file }
-        this.rhp = new Map();       // file -> parsed .rhp file
+        this.phpm = new Map();       // file -> parsed .phpm file
         this.classes = new ClassIndex(this);
         this.loading = null;
     }
@@ -78,7 +78,7 @@ class Project {
 
     async build() {
         this.symbols = new Map();
-        this.rhp = new Map();
+        this.phpm = new Map();
         const vendorDir = path.join(this.root, 'vendor');
         const composerDir = path.join(vendorDir, 'composer');
 
@@ -87,7 +87,7 @@ class Project {
         } else {
             await this.loadComposerJson();
         }
-        await this.walkRhp(this.root, true);
+        await this.walkPhpm(this.root, true);
         return this;
     }
 
@@ -187,9 +187,9 @@ class Project {
         await Promise.all(subdirs.map(([d, p]) => this.walkPsr4(d, p, isVendor, counter)));
     }
 
-    // Finds the .rhp files of the project. A subdirectory with its own
+    // Finds the .phpm files of the project. A subdirectory with its own
     // composer.json file is another project.
-    async walkRhp(dir, top) {
+    async walkPhpm(dir, top) {
         if (!top && (await exists(path.join(dir, 'composer.json')))) {
             return;
         }
@@ -204,33 +204,33 @@ class Project {
             const full = path.join(dir, entry.name);
             if (entry.isDirectory()) {
                 if (!SKIP_DIRS.has(entry.name) && !entry.name.startsWith('.')) {
-                    work.push(this.walkRhp(full, false));
+                    work.push(this.walkPhpm(full, false));
                 }
-            } else if (entry.name.endsWith('.rhp')) {
-                work.push(this.updateRhp(full));
+            } else if (entry.name.endsWith('.phpm')) {
+                work.push(this.updatePhpm(full));
             }
         }
         await Promise.all(work);
     }
 
-    async updateRhp(file, text) {
+    async updatePhpm(file, text) {
         text = text ?? (await readText(file));
         if (text === null) {
-            this.rhp.delete(file);
+            this.phpm.delete(file);
             return;
         }
-        this.rhp.set(file, parse(text));
+        this.phpm.set(file, parse(text));
     }
 
-    deleteRhp(file) {
-        this.rhp.delete(file);
+    deletePhpm(file) {
+        this.phpm.delete(file);
     }
 
     // All the components of the project. `current` replaces the parsed
     // version of one file (the open document, which can be unsaved).
     components(currentFile, current) {
         const list = [];
-        for (const [file, parsed] of this.rhp) {
+        for (const [file, parsed] of this.phpm) {
             if (file !== currentFile) {
                 list.push(...parsed.components.map((c) => ({ ...c, file })));
             }
@@ -242,7 +242,7 @@ class Project {
     }
 
     // All the symbols of a kind ('class', 'function', 'const'), with the
-    // declarations of the .rhp files.
+    // declarations of the .phpm files.
     allSymbols(kind, currentFile, current) {
         const map = new Map();
         for (const s of this.symbols.values()) {
@@ -256,7 +256,7 @@ class Project {
                 map.set(d.fqn, { kind, fqn: d.fqn, file });
             }
         };
-        for (const [file, parsed] of this.rhp) {
+        for (const [file, parsed] of this.phpm) {
             if (file !== currentFile) {
                 addParsed(parsed, file);
             }
@@ -267,11 +267,11 @@ class Project {
         return [...map.values()];
     }
 
-    // The routes of the pages (`#[Route]` components) of the .rhp files:
+    // The routes of the pages (`#[Route]` components) of the .phpm files:
     //   [{ name, path, fqn, file, offset }]
     routes(currentFile, current) {
         const list = [];
-        for (const [file, parsed] of this.rhp) {
+        for (const [file, parsed] of this.phpm) {
             if (file !== currentFile) {
                 list.push(...routesOf(parsed, file));
             }

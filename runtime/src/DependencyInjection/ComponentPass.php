@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Rephp\DependencyInjection;
+namespace Mamu\DependencyInjection;
 
-use Rephp\Manifest\ComponentKind;
-use Rephp\Manifest\Manifest;
+use Mamu\Manifest\ComponentKind;
+use Mamu\Manifest\Manifest;
 use Symfony\Component\Config\Resource\FileExistenceResource;
 use Symfony\Component\Config\Resource\FileResource;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
@@ -14,25 +14,25 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
 
 /**
- * Registers each `#[Component]` class of the rhpc manifest as a service: autowired,
+ * Registers each `#[Component]` class of the mamuc manifest as a service: autowired,
  * autoconfigured, and not shared (each component instance is a new object). The
  * ContainerComponentFactory gets them through a service locator.
  *
  * An application can define a component service itself (for example to bind an argument);
  * the pass keeps that definition and only makes it not shared.
  *
- * In debug mode, the container is rebuilt when `rhpc build` writes a new manifest.
+ * In debug mode, the container is rebuilt when `mamuc build` writes a new manifest.
  */
 final class ComponentPass implements CompilerPassInterface
 {
-    public const TAG = 'rephp.component';
+    public const TAG = 'mamu.component';
 
     public function process(ContainerBuilder $container): void
     {
-        if (!$container->hasDefinition('rephp.component_factory')) {
+        if (!$container->hasDefinition('mamu.component_factory')) {
             return;
         }
-        $buildDir = $container->getParameterBag()->resolveValue($container->getParameter('rephp.build_dir'));
+        $buildDir = $container->getParameterBag()->resolveValue($container->getParameter('mamu.build_dir'));
         $manifestFile = $buildDir.'/manifest.php';
         $container->addResource(new FileExistenceResource($manifestFile));
 
@@ -54,6 +54,6 @@ final class ComponentPass implements CompilerPassInterface
             }
         }
 
-        $container->getDefinition('rephp.component_factory')->replaceArgument(0, ServiceLocatorTagPass::register($container, $components));
+        $container->getDefinition('mamu.component_factory')->replaceArgument(0, ServiceLocatorTagPass::register($container, $components));
     }
 }

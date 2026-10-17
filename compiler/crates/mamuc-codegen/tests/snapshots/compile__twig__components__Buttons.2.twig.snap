@@ -1,0 +1,5 @@
+---
+source: crates/mamuc-codegen/tests/compile.rs
+expression: t.content
+---
+<span class="badge badge-{{ tone }}">{{ label|upper }}</span>

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Http;
+namespace Mamu\Http;
 
 use Symfony\Component\HttpFoundation\Request;
 

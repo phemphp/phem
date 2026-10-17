@@ -1,4 +1,0 @@
-<?php // expect: E040
-use Rephp\Attribute\Component;
-#[Component]
-final class Counter { public int $count = 0; }

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Manifest;
+namespace Mamu\Manifest;
 
 /**
- * How a component renders. rhpc writes the kind of each component in the manifest.
+ * How a component renders. mamuc writes the kind of each component in the manifest.
  */
 enum ComponentKind: string
 {

@@ -1,0 +1,3 @@
+<?phpm // expect: E011
+function Btn(int $count) { return <b>{{ count }}</b>; }
+function App() { return <Btn />; }

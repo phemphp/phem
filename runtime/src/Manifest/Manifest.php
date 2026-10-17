@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Manifest;
+namespace Mamu\Manifest;
 
 /**
- * The output of `rhpc build`: the components, the pages, and the template line map.
+ * The output of `mamuc build`: the components, the pages, and the template line map.
  *
  * It loads the manifest and the compiled PHP files on first use, so an application without a
  * build can still boot (for example to run `cache:clear`).
@@ -13,7 +13,7 @@ namespace Rephp\Manifest;
 final class Manifest
 {
     /** The Twig namespace of the compiled templates. */
-    public const TEMPLATE_NAMESPACE = 'rhp';
+    public const TEMPLATE_NAMESPACE = 'phpm';
 
     /** @var array<string, mixed>|null */
     private ?array $data = null;
@@ -99,14 +99,14 @@ final class Manifest
         return $this->twigSignature = hash('xxh128', serialize($parts));
     }
 
-    /** The Twig name of a compiled template: `@rhp/Pages/index.0.twig`. */
+    /** The Twig name of a compiled template: `@phpm/Pages/index.0.twig`. */
     public static function templateName(string $template): string
     {
         return '@'.self::TEMPLATE_NAMESPACE.'/'.$template;
     }
 
     /**
-     * The `.rhp` source of a compiled template.
+     * The `.phpm` source of a compiled template.
      *
      * @param string $template the template name, without the Twig namespace
      *
@@ -136,7 +136,7 @@ final class Manifest
             return $this->data;
         }
         if (!$this->exists()) {
-            throw new \RuntimeException(\sprintf('No compiled project in "%s". Run `rhpc build src` first.', $this->buildDir));
+            throw new \RuntimeException(\sprintf('No compiled project in "%s". Run `mamuc build src` first.', $this->buildDir));
         }
         $data = require $this->file();
         require_once $this->buildDir.'/autoload.php';

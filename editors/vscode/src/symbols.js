@@ -1,6 +1,6 @@
 'use strict';
 
-// The outline of a .rhp file: the namespace, the classes and their members,
+// The outline of a .phpm file: the namespace, the classes and their members,
 // and the functions. A component, a page, a prop, a slot, and a state
 // property get a detail text.
 //
@@ -13,7 +13,7 @@ const { hasAttr } = require('./php');
 const { routesOf } = require('./project');
 
 function isHtmlType(type) {
-    return /^\??\\?(Rephp\\)?Html(\|null)?$/i.test(type);
+    return /^\??\\?(Mamu\\)?Html(\|null)?$/i.test(type);
 }
 
 function symbol(name, detail, kind, start, end, offset, children = []) {

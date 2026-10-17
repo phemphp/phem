@@ -128,7 +128,7 @@ class TwigEnv {
         return this.blocks.slice(1).map((b) => b.tag).reverse();
     }
 
-    // All the variables, in the order of the rhp rule:
+    // All the variables, in the order of the Mamu rule:
     //   [{ name, kind: twig|param|local|property|method, type, offset, file, member }]
     async variables() {
         const list = [];

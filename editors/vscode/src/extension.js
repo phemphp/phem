@@ -152,8 +152,8 @@ const symbolProvider = {
     },
 };
 
-// Diagnostics: `rhpc check --format json`, on save. It is off when the
-// `rhp.rhpc.path` setting is empty.
+// Diagnostics: `mamuc check --format json`, on save. It is off when the
+// `mamu.mamuc.path` setting is empty.
 let diagnostics = null;          // created in activate()
 const checks = new Map();       // root -> { timer, busy, again, files }
 let generation = 0;             // changes with the settings; a late result of an old run is dropped
@@ -163,7 +163,7 @@ function toDiagnostic(d) {
     const range = new vscode.Range(d.start.line, d.start.character, d.end.line, d.end.character);
     const diagnostic = new vscode.Diagnostic(range, d.message, d.severity === 'warning' ? vscode.DiagnosticSeverity.Warning : vscode.DiagnosticSeverity.Error);
     diagnostic.code = d.code;
-    diagnostic.source = 'rhpc';
+    diagnostic.source = 'mamuc';
     return diagnostic;
 }
 
@@ -180,8 +180,8 @@ function setDiagnostics(state, map) {
 }
 
 async function runCheck(root, uri) {
-    const config = vscode.workspace.getConfiguration('rhp', uri);
-    const command = config.get('rhpc.path', '');
+    const config = vscode.workspace.getConfiguration('mamu', uri);
+    const command = config.get('mamuc.path', '');
     if (!command) {
         return;
     }
@@ -193,7 +193,7 @@ async function runCheck(root, uri) {
     state.busy = true;
     const started = generation;
     try {
-        const map = await check(command, root, config.get('rhpc.sourceDir', 'src'));
+        const map = await check(command, root, config.get('mamuc.sourceDir', 'src'));
         if (started === generation) {
             setDiagnostics(state, map);
         }
@@ -203,7 +203,7 @@ async function runCheck(root, uri) {
             setDiagnostics(state, new Map());
             if (!warned) {
                 warned = true;
-                vscode.window.showWarningMessage(`rhpc check failed (rhp.rhpc.path = ${command}): ${e.message}`);
+                vscode.window.showWarningMessage(`mamuc check failed (mamu.mamuc.path = ${command}): ${e.message}`);
             }
         }
     } finally {
@@ -223,7 +223,7 @@ function scheduleCheck(root, uri) {
 }
 
 async function checkDocument(document) {
-    if (document.languageId === 'rhp' && document.uri.scheme === 'file') {
+    if (document.languageId === 'phpm' && document.uri.scheme === 'file') {
         scheduleCheck(await rootFor(document.uri.fsPath), document.uri);
     }
 }
@@ -237,7 +237,7 @@ const delimiterType = vscode.window.createTextEditorDecorationType({
 });
 
 function decorate(editor) {
-    if (editor.document.languageId !== 'rhp') {
+    if (editor.document.languageId !== 'phpm') {
         return;
     }
     const enabled = vscode.workspace
@@ -253,7 +253,7 @@ function decorate(editor) {
 }
 
 function activate(context) {
-    const selector = { language: 'rhp' };
+    const selector = { language: 'phpm' };
     context.subscriptions.push(
         vscode.languages.registerCompletionItemProvider(selector, provider, '<', '\\', ':', '/', '.', '>', '|', '$', '%', '\'', '"'),
         vscode.languages.registerDefinitionProvider(selector, definitionProvider),
@@ -262,13 +262,13 @@ function activate(context) {
     );
 
     // Diagnostics.
-    diagnostics = vscode.languages.createDiagnosticCollection('rhpc');
+    diagnostics = vscode.languages.createDiagnosticCollection('mamuc');
     vscode.workspace.textDocuments.forEach(checkDocument);
     context.subscriptions.push(
         diagnostics,
         vscode.workspace.onDidSaveTextDocument(checkDocument),
         vscode.workspace.onDidChangeConfiguration((e) => {
-            if (e.affectsConfiguration('rhp.rhpc')) {
+            if (e.affectsConfiguration('mamu.mamuc')) {
                 warned = false;
                 generation++;
                 diagnostics.clear();
@@ -292,7 +292,7 @@ function activate(context) {
         delimiterType,
         vscode.window.onDidChangeVisibleTextEditors((editors) => editors.forEach(decorate)),
         vscode.workspace.onDidChangeTextDocument(({ document }) => {
-            if (document.languageId !== 'rhp') {
+            if (document.languageId !== 'phpm') {
                 return;
             }
             clearTimeout(timers.get(document));
@@ -309,11 +309,11 @@ function activate(context) {
     );
 
     // Keep the index up to date.
-    const rhp = vscode.workspace.createFileSystemWatcher('**/*.rhp');
-    const onRhp = (uri) => {
+    const phpm = vscode.workspace.createFileSystemWatcher('**/*.phpm');
+    const onPhpm = (uri) => {
         const project = loadedProjectFor(uri.fsPath);
         if (project) {
-            project.updateRhp(uri.fsPath);
+            project.updatePhpm(uri.fsPath);
         } else {
             for (const p of projects.values()) {
                 if (uri.fsPath.startsWith(p.root + path.sep)) {
@@ -322,11 +322,11 @@ function activate(context) {
             }
         }
     };
-    rhp.onDidChange(onRhp);
-    rhp.onDidCreate(onRhp);
-    rhp.onDidDelete((uri) => {
+    phpm.onDidChange(onPhpm);
+    phpm.onDidCreate(onPhpm);
+    phpm.onDidDelete((uri) => {
         for (const p of projects.values()) {
-            p.deleteRhp(uri.fsPath);
+            p.deletePhpm(uri.fsPath);
         }
     });
 
@@ -354,7 +354,7 @@ function activate(context) {
     composer.onDidCreate(resetAll);
     composer.onDidDelete(resetAll);
 
-    context.subscriptions.push(rhp, php, composer);
+    context.subscriptions.push(phpm, php, composer);
 }
 
 function deactivate() {}

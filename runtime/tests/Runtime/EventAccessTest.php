@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Runtime;
+namespace Mamu\Tests\Runtime;
 
 use PHPUnit\Framework\TestCase;
-use Rephp\Handler\HandlerFingerprint;
+use Mamu\Handler\HandlerFingerprint;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * The events of a page go to its URL: the access rules of the page apply to them, and a
- * request from another site is not an event (tests/Fixtures/app/src/pages/access.rhp).
+ * request from another site is not an event (tests/Fixtures/app/src/pages/access.phpm).
  */
 final class EventAccessTest extends TestCase
 {
@@ -69,8 +69,8 @@ final class EventAccessTest extends TestCase
      */
     private function click(string $uri, string $page, string $method, array $server = []): Response
     {
-        [$state, $signature] = $this->fixtureKernel()->getContainer()->get('test.service_container')->get('rephp.state_codec')->encode([], $page);
-        $handler = 'rh'.substr(hash('xxh128', '/'.$page.'#0'), 0, 12).'.'.new HandlerFingerprint()->of(new $page()->{$method}(...));
+        [$state, $signature] = $this->fixtureKernel()->getContainer()->get('test.service_container')->get('mamu.state_codec')->encode([], $page);
+        $handler = 'mamu'.substr(hash('xxh128', '/'.$page.'#0'), 0, 12).'.'.new HandlerFingerprint()->of(new $page()->{$method}(...));
 
         return $this->event($uri, ['state' => $state, 'signature' => $signature, 'handler' => $handler, 'event' => ['type' => 'click']], $server);
     }

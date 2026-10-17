@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Rendering;
+namespace Mamu\Rendering;
 
-use Rephp\Binding\PropBinder;
-use Rephp\Dom\Attributes;
+use Mamu\Binding\PropBinder;
+use Mamu\Dom\Attributes;
 use Twig\Template;
 
 /**
@@ -24,7 +24,7 @@ final class TemplateComponentRenderer
     public function render(Template $template, string $fqcn, array $props, mixed $key, array $caller): string
     {
         $vars = $this->props->templateContext($fqcn, $props);
-        $vars['_rhp_caller'] = $caller;
+        $vars['_mamu_caller'] = $caller;
         $html = $template->render($vars);
 
         return null === $key ? $html : Attributes::keyed($html, (string) $key);

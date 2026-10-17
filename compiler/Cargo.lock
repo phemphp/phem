@@ -494,6 +494,53 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 
 [[package]]
+name = "mamuc-analyze"
+version = "0.1.0"
+dependencies = [
+ "mamuc-syntax",
+ "mamuc-twig-scan",
+ "serde",
+]
+
+[[package]]
+name = "mamuc-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "blake3",
+ "clap",
+ "mamuc-analyze",
+ "mamuc-codegen",
+ "mamuc-syntax",
+ "miette",
+ "notify",
+ "serde",
+ "serde_json",
+ "walkdir",
+]
+
+[[package]]
+name = "mamuc-codegen"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "mamuc-analyze",
+ "mamuc-syntax",
+ "mamuc-twig-scan",
+ "rayon",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "mamuc-syntax"
+version = "0.1.0"
+
+[[package]]
+name = "mamuc-twig-scan"
+version = "0.1.0"
+
+[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -658,53 +705,6 @@ dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
 ]
-
-[[package]]
-name = "rhpc-analyze"
-version = "0.1.0"
-dependencies = [
- "rhpc-syntax",
- "rhpc-twig-scan",
- "serde",
-]
-
-[[package]]
-name = "rhpc-cli"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "blake3",
- "clap",
- "miette",
- "notify",
- "rhpc-analyze",
- "rhpc-codegen",
- "rhpc-syntax",
- "serde",
- "serde_json",
- "walkdir",
-]
-
-[[package]]
-name = "rhpc-codegen"
-version = "0.1.0"
-dependencies = [
- "insta",
- "rayon",
- "rhpc-analyze",
- "rhpc-syntax",
- "rhpc-twig-scan",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "rhpc-syntax"
-version = "0.1.0"
-
-[[package]]
-name = "rhpc-twig-scan"
-version = "0.1.0"
 
 [[package]]
 name = "rustc-demangle"

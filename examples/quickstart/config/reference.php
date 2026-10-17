@@ -928,13 +928,13 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     controller_paths?: list<scalar|Param|null>,
  *     controllers_json?: scalar|Param|null, // Default: "%kernel.project_dir%/assets/controllers.json"
  * }
- * @psalm-type RephpConfig = array{
- *     source_dir?: scalar|Param|null, // The .rhp sources (the directory that you pass to `rhpc build`) // Default: "%kernel.project_dir%/src"
- *     build_dir?: scalar|Param|null, // The rhpc output (`rhpc build --out`) // Default: "%kernel.project_dir%/var/cache/rhp"
+ * @psalm-type MamuConfig = array{
+ *     source_dir?: scalar|Param|null, // The .phpm sources (the directory that you pass to `mamuc build`) // Default: "%kernel.project_dir%/src"
+ *     build_dir?: scalar|Param|null, // The mamuc output (`mamuc build --out`) // Default: "%kernel.project_dir%/var/cache/mamu"
  *     secret?: scalar|Param|null, // The key that signs the component state in the browser // Default: "%kernel.secret%"
  *     state_max_age?: int|Param, // The seconds that a signed state is valid (0 for no limit). An older state reloads the page. // Default: 86400
  *     state_bind_session?: bool|Param, // Sign the session id with the state, so the state of a session is not valid in another session. A login makes the open pages reload on their next event. // Default: false
- *     page_template?: scalar|Param|null, // The Twig template of the pages. It gets the page as `page`. The default template extends the base.html.twig of the application. The `_rephp_template` default of a route changes it for one page. // Default: "@Rephp/page.html.twig"
+ *     page_template?: scalar|Param|null, // The Twig template of the pages. It gets the page as `page`. The default template extends the base.html.twig of the application. The `_mamu_template` default of a route changes it for one page. // Default: "@Mamu/page.html.twig"
  * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,
@@ -944,7 +944,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     twig?: TwigConfig,
  *     doctrine?: DoctrineConfig,
  *     stimulus?: StimulusConfig,
- *     rephp?: RephpConfig,
+ *     mamu?: MamuConfig,
  *     "when@dev"?: array{
  *         imports?: ImportsConfig,
  *         parameters?: ParametersConfig,
@@ -953,7 +953,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         twig?: TwigConfig,
  *         doctrine?: DoctrineConfig,
  *         stimulus?: StimulusConfig,
- *         rephp?: RephpConfig,
+ *         mamu?: MamuConfig,
  *     },
  *     ...<string, ExtensionType|array{ // extra keys must follow the when@%env% pattern or match an extension alias
  *         imports?: ImportsConfig,

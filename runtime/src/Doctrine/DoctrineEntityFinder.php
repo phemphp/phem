@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Doctrine;
+namespace Mamu\Doctrine;
 
 use Doctrine\DBAL\Types\ConversionException;
 use Doctrine\ORM\NoResultException;
 use Doctrine\Persistence\ManagerRegistry;
-use Rephp\Path\EntityFinder;
+use Mamu\Path\EntityFinder;
 
 /**
  * Finds the entities of the `#[Path]` props with the entity manager of their class, as the

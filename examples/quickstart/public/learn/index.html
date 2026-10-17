@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <title>Quick Start – rephp</title>
-    <meta name="description" content="A short tour of the rephp ideas that you use every day: components, markup, Twig, state, services and props.">
+    <title>Quick Start – Mamu</title>
+    <meta name="description" content="A short tour of the Mamu ideas that you use every day: components, markup, Twig, state, services and props.">
     <link rel="stylesheet" href="/css/site.css">
     <script type="module" src="/js/site.js"></script>
 </head>
@@ -22,7 +22,7 @@
                     <rect x="-14" y="-14" width="28" height="28" rx="8" opacity="0.35"></rect>
                 </g>
             </svg>
-                <span class="brand-name">rephp</span>
+                <span class="brand-name">Mamu</span>
                 <span class="brand-version">v0.1</span>
             </a>
             <div class="search" aria-hidden="true">
@@ -49,13 +49,13 @@
                     <ul class="sidebar-list">
                         <li><a class="sidebar-link active" aria-current="page" href="/learn/">Quick Start</a></li>
                         <li><a class="sidebar-link" href="/learn/tutorial.html">Tutorial: Tic-Tac-Toe</a></li>
-                        <li><a class="sidebar-link" href="/learn/thinking-in-rephp.html">Thinking in rephp</a></li>
+                        <li><a class="sidebar-link" href="/learn/thinking-in-mamu.html">Thinking in Mamu</a></li>
                         <li><a class="sidebar-link" href="/learn/installation.html">Installation</a></li>
                         <li><a class="sidebar-link" href="/learn/setup.html">Setup</a></li>
                     </ul>
                 </div>
                 <div class="sidebar-group">
-                    <h3 class="sidebar-title">LEARN REPHP</h3>
+                    <h3 class="sidebar-title">LEARN MAMU</h3>
                     <ul class="sidebar-list">
                         <li><a class="sidebar-link" href="/learn/describing-the-ui.html">Describing the UI</a></li>
                         <li><a class="sidebar-link" href="/learn/adding-interactivity.html">Adding Interactivity</a></li>
@@ -74,13 +74,13 @@
                         <ul class="sidebar-list">
                             <li><a class="sidebar-link active" aria-current="page" href="/learn/">Quick Start</a></li>
                             <li><a class="sidebar-link" href="/learn/tutorial.html">Tutorial: Tic-Tac-Toe</a></li>
-                            <li><a class="sidebar-link" href="/learn/thinking-in-rephp.html">Thinking in rephp</a></li>
+                            <li><a class="sidebar-link" href="/learn/thinking-in-mamu.html">Thinking in Mamu</a></li>
                             <li><a class="sidebar-link" href="/learn/installation.html">Installation</a></li>
                             <li><a class="sidebar-link" href="/learn/setup.html">Setup</a></li>
                         </ul>
                     </div>
                     <div class="sidebar-group">
-                        <h3 class="sidebar-title">LEARN REPHP</h3>
+                        <h3 class="sidebar-title">LEARN MAMU</h3>
                         <ul class="sidebar-list">
                             <li><a class="sidebar-link" href="/learn/describing-the-ui.html">Describing the UI</a></li>
                             <li><a class="sidebar-link" href="/learn/adding-interactivity.html">Adding Interactivity</a></li>
@@ -92,9 +92,9 @@
             </details>
             <article class="article">
 <header id="overview" class="article-header">
-    <p class="breadcrumb">Learn rephp</p>
+    <p class="breadcrumb">Learn Mamu</p>
     <h1>Quick Start</h1>
-    <p class="lead">Welcome to the rephp documentation. This page is a short tour of the rephp ideas that you will use every day. If you know React, most of it will look familiar: rephp is React for PHP and Twig.</p>
+    <p class="lead">Welcome to the Mamu documentation. This page is a short tour of the Mamu ideas that you will use every day. If you know React, most of it will look familiar: Mamu is React for PHP and Twig.</p>
 </header>
 
 <aside class="callout callout-learn">
@@ -112,8 +112,8 @@
 </aside>
 
 <h2 id="components" class="heading">Creating and nesting components<a class="heading-anchor" href="#components" aria-label="Link to this section">#</a></h2>
-<p>A rephp app is made of <em>components</em>. A component is a piece of the UI with its own logic and look. A component can be as small as a button or as large as a full page.</p>
-<p>A rephp component is a PHP function that returns markup. You write it in a <code>.rhp</code> file:</p>
+<p>A Mamu app is made of <em>components</em>. A component is a piece of the UI with its own logic and look. A component can be as small as a button or as large as a full page.</p>
+<p>A Mamu component is a PHP function that returns markup. You write it in a <code>.phpm</code> file:</p>
 <div class="code-block"><pre class="code" data-controller="highlight"><code>function MyButton()
 {
     return (
@@ -123,21 +123,21 @@
 <p>Now that you declared <code>MyButton</code>, you can nest it into another component:</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="MyButton">
     <div class="sandbox-bar">
-        <span class="sandbox-tab">MyButton.rhp</span>
+        <span class="sandbox-tab">MyButton.phpm</span>
         <div class="sandbox-actions">
             <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
             <a class="sandbox-button" href="/examples/MyButton" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
         </div>
     </div>
-    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/MyButton.rhp...</code></pre>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/MyButton.phpm...</code></pre>
     <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
     <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/MyButton" loading="lazy" title="MyButton preview"></iframe>
 </div>
-<p>Look at <code>&lt;MyButton /&gt;</code>: it starts with a capital letter. That is how you know it is a rephp component. Component names always start with a capital letter. HTML tags are always lowercase.</p>
-<p>The Symfony <code>#[Route]</code> attribute makes a component a page. React uses <code>export default</code> for the page component. In rephp, the route attribute exposes the component at a URL, as it does for a Symfony controller, and the code stays valid PHP. The component <code>MyApp</code> above has <code>#[Route('/examples/MyButton')]</code>, so it is the page <a href="/examples/MyButton"><code>/examples/MyButton</code></a>. To find the component of a tag, the compiler uses the PHP rules: first a <code>use function</code> import, then a <code>use</code> import of a class, then the current namespace.</p>
+<p>Look at <code>&lt;MyButton /&gt;</code>: it starts with a capital letter. That is how you know it is a Mamu component. Component names always start with a capital letter. HTML tags are always lowercase.</p>
+<p>The Symfony <code>#[Route]</code> attribute makes a component a page. React uses <code>export default</code> for the page component. In Mamu, the route attribute exposes the component at a URL, as it does for a Symfony controller, and the code stays valid PHP. The component <code>MyApp</code> above has <code>#[Route('/examples/MyButton')]</code>, so it is the page <a href="/examples/MyButton"><code>/examples/MyButton</code></a>. To find the component of a tag, the compiler uses the PHP rules: first a <code>use function</code> import, then a <code>use</code> import of a class, then the current namespace.</p>
 
-<h2 id="writing-markup" class="heading">Writing markup with rhp<a class="heading-anchor" href="#writing-markup" aria-label="Link to this section">#</a></h2>
-<p>The markup above is a <em>markup literal</em>. React uses JSX for this. rephp uses the same idea in PHP: a markup literal is a PHP expression, and its value is a <code>Rephp\Html</code> object. The <code>rhpc</code> compiler turns each markup literal into a Twig template at build time. Nothing is parsed when a request comes in.</p>
+<h2 id="writing-markup" class="heading">Writing markup with Mamu<a class="heading-anchor" href="#writing-markup" aria-label="Link to this section">#</a></h2>
+<p>The markup above is a <em>markup literal</em>. React uses JSX for this. Mamu uses the same idea in PHP: a markup literal is a PHP expression, and its value is a <code>Mamu\Html</code> object. The <code>mamuc</code> compiler turns each markup literal into a Twig template at build time. Nothing is parsed when a request comes in.</p>
 <p>Markup is stricter than HTML. You must close all tags, for example <code>&lt;br /&gt;</code>. A component also cannot return more than one root tag. Wrap the tags in a shared parent, such as a <code>&lt;div&gt;</code> or an empty fragment <code>&lt;&gt;...&lt;/&gt;</code>:</p>
 <div class="code-block"><pre class="code" data-controller="highlight"><code>function AboutPage()
 {
@@ -166,7 +166,7 @@
 <p>Import the CSS file in <code>assets/app.js</code>, the JavaScript of the pages. AssetMapper links it on each page:</p>
 <div class="code-block"><div class="code-title">assets/app.js</div><pre class="code" data-controller="highlight"><code>import './bootstrap.js';
 import './styles/app.css';</code></pre></div>
-<p>Your application owns the HTML document of the pages. rephp renders each page in the <code>body</code> block of <code>templates/base.html.twig</code>, and <code>{{ importmap('app') }}</code> loads the assets:</p>
+<p>Your application owns the HTML document of the pages. Mamu renders each page in the <code>body</code> block of <code>templates/base.html.twig</code>, and <code>{{ importmap('app') }}</code> loads the assets:</p>
 <div class="code-block"><div class="code-title">templates/base.html.twig</div><pre class="code" data-controller="highlight"><code>&lt;!DOCTYPE html&gt;
 &lt;html lang="en"&gt;
 &lt;head&gt;
@@ -175,13 +175,13 @@ import './styles/app.css';</code></pre></div>
 &lt;/head&gt;
 &lt;body&gt;{% block body %}{% endblock %}&lt;/body&gt;
 &lt;/html&gt;</code></pre></div>
-<p>When the class depends on a value, give <code>className</code> a list. rephp joins the items with spaces and drops the empty items:</p>
+<p>When the class depends on a value, give <code>className</code> a list. Mamu joins the items with spaces and drops the empty items:</p>
 <div class="code-block"><pre class="code" data-controller="highlight"><code>&lt;li className={{ ['item', isActive ? 'active' : ''] }}&gt;
     {{ item.title }}
 &lt;/li&gt;</code></pre></div>
 
 <h2 id="displaying-data" class="heading">Displaying data<a class="heading-anchor" href="#displaying-data" aria-label="Link to this section">#</a></h2>
-<p>In JSX, curly braces like <code>{user.name}</code> take you back into JavaScript. In rephp, the text and the attribute values of markup are <strong>Twig</strong>. Use the Twig syntax <code>{{ }}</code> to print a value. The Twig variables are the PHP variables of the function: <code>$user</code> is <code>user</code> in Twig, and <code>{{ user.name }}</code> prints the <code>name</code> key of the array.</p>
+<p>In JSX, curly braces like <code>{user.name}</code> take you back into JavaScript. In Mamu, the text and the attribute values of markup are <strong>Twig</strong>. Use the Twig syntax <code>{{ }}</code> to print a value. The Twig variables are the PHP variables of the function: <code>$user</code> is <code>user</code> in Twig, and <code>{{ user.name }}</code> prints the <code>name</code> key of the array.</p>
 <div class="code-block"><pre class="code" data-controller="highlight"><code>return (
     &lt;h1&gt;
         {{ user.name }}
@@ -199,17 +199,17 @@ import './styles/app.css';</code></pre></div>
 <p>Twig expressions can be more complex too. You can join strings with the <code>~</code> operator, and use all the Twig filters and tests:</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="Profile">
     <div class="sandbox-bar">
-        <span class="sandbox-tab">Profile.rhp</span>
+        <span class="sandbox-tab">Profile.phpm</span>
         <div class="sandbox-actions">
             <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
             <a class="sandbox-button" href="/examples/Profile" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
         </div>
     </div>
-    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/Profile.rhp...</code></pre>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/Profile.phpm...</code></pre>
     <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
     <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/Profile" loading="lazy" title="Profile preview"></iframe>
 </div>
-<p>In this example, <code>style={{ {width: user.imageSize} }}</code> is not a special syntax. It is a Twig hash inside the <code>{{ }}</code> braces. rephp changes camelCase keys to kebab-case and adds <code>px</code> to numbers.</p>
+<p>In this example, <code>style={{ {width: user.imageSize} }}</code> is not a special syntax. It is a Twig hash inside the <code>{{ }}</code> braces. Mamu changes camelCase keys to kebab-case and adds <code>px</code> to numbers.</p>
 <aside class="callout callout-pitfall">
     <h3 class="callout-title">Compute first, then return</h3>
     <div class="callout-body">
@@ -218,7 +218,7 @@ import './styles/app.css';</code></pre></div>
 </aside>
 
 <h2 id="conditional-rendering" class="heading">Conditional rendering<a class="heading-anchor" href="#conditional-rendering" aria-label="Link to this section">#</a></h2>
-<p>rephp has no special syntax for conditions. Use the same code that you use in plain PHP. For example, use an <code>if</code> statement to select the markup. A markup literal is a value, so you can keep it in a variable:</p>
+<p>Mamu has no special syntax for conditions. Use the same code that you use in plain PHP. For example, use an <code>if</code> statement to select the markup. A markup literal is a value, so you can keep it in a variable:</p>
 <div class="code-block"><pre class="code" data-controller="highlight"><code>if ($isLoggedIn) {
     $content = &lt;AdminPanel /&gt;;
 } else {
@@ -242,13 +242,13 @@ return (
 <p>Click the button in the preview to log in and out:</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="LoginStatus">
     <div class="sandbox-bar">
-        <span class="sandbox-tab">LoginStatus.rhp</span>
+        <span class="sandbox-tab">LoginStatus.phpm</span>
         <div class="sandbox-actions">
             <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
             <a class="sandbox-button" href="/examples/LoginStatus" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
         </div>
     </div>
-    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/LoginStatus.rhp...</code></pre>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/LoginStatus.phpm...</code></pre>
     <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
     <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/LoginStatus" loading="lazy" title="LoginStatus preview"></iframe>
 </div>
@@ -275,16 +275,16 @@ return (
 );
 
 return &lt;ul&gt;{{ listItems }}&lt;/ul&gt;;</code></pre></div>
-<p>Each <code>&lt;li&gt;</code> has a <code>key</code> attribute. For each item in a list, give a string or a number that identifies it among its siblings, for example <code>key={{ product.id }}</code>. Usually a key comes from your data, such as a database ID. rephp uses the keys to know what changed when it updates the page.</p>
+<p>Each <code>&lt;li&gt;</code> has a <code>key</code> attribute. For each item in a list, give a string or a number that identifies it among its siblings, for example <code>key={{ product.id }}</code>. Usually a key comes from your data, such as a database ID. Mamu uses the keys to know what changed when it updates the page.</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="ShoppingList">
     <div class="sandbox-bar">
-        <span class="sandbox-tab">ShoppingList.rhp</span>
+        <span class="sandbox-tab">ShoppingList.phpm</span>
         <div class="sandbox-actions">
             <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
             <a class="sandbox-button" href="/examples/ShoppingList" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
         </div>
     </div>
-    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/ShoppingList.rhp...</code></pre>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/ShoppingList.phpm...</code></pre>
     <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
     <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/ShoppingList" loading="lazy" title="ShoppingList preview"></iframe>
 </div>
@@ -301,8 +301,8 @@ return &lt;ul&gt;{{ listItems }}&lt;/ul&gt;;</code></pre></div>
         &lt;/button&gt;
     );
 }</code></pre></div>
-<p>Look at <code>onClick={{ handleClick }}</code>: there are no parentheses at the end. Do not <em>call</em> the handler function, as in <code>onClick={{ handleClick() }}</code>. Only <em>pass it down</em>. rephp calls the handler when the user clicks the button.</p>
-<p>rephp supports these events:</p>
+<p>Look at <code>onClick={{ handleClick }}</code>: there are no parentheses at the end. Do not <em>call</em> the handler function, as in <code>onClick={{ handleClick() }}</code>. Only <em>pass it down</em>. Mamu calls the handler when the user clicks the button.</p>
+<p>Mamu supports these events:</p>
 <ul class="tag-list">
     <li><code>onClick</code></li>
     <li><code>onDoubleClick</code></li>
@@ -314,30 +314,30 @@ return &lt;ul&gt;{{ listItems }}&lt;/ul&gt;;</code></pre></div>
     <li><code>onFocus</code></li>
     <li><code>onBlur</code></li>
 </ul>
-<p>The handler receives a <code>Rephp\Event</code> object. It has <code>$e-&gt;value</code>, <code>$e-&gt;checked</code>, <code>$e-&gt;key</code>, <code>$e-&gt;form</code> (an array, for <code>onSubmit</code>), and <code>$e-&gt;request</code> (the Symfony request of the event, for Symfony forms). As in React, <code>onChange</code> on a text input fires on each key. Type in the box:</p>
+<p>The handler receives a <code>Mamu\Event</code> object. It has <code>$e-&gt;value</code>, <code>$e-&gt;checked</code>, <code>$e-&gt;key</code>, <code>$e-&gt;form</code> (an array, for <code>onSubmit</code>), and <code>$e-&gt;request</code> (the Symfony request of the event, for Symfony forms). As in React, <code>onChange</code> on a text input fires on each key. Type in the box:</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="SearchBox">
     <div class="sandbox-bar">
-        <span class="sandbox-tab">SearchBox.rhp</span>
+        <span class="sandbox-tab">SearchBox.phpm</span>
         <div class="sandbox-actions">
             <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
             <a class="sandbox-button" href="/examples/SearchBox" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
         </div>
     </div>
-    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/SearchBox.rhp...</code></pre>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/SearchBox.phpm...</code></pre>
     <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
     <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/SearchBox" loading="lazy" title="SearchBox preview"></iframe>
 </div>
 <aside class="callout callout-deep">
     <h3 class="callout-title">Where does the handler run?</h3>
     <div class="callout-body">
-        <p>This is the largest difference from React. A rephp event handler is PHP, so it runs <strong>on the server</strong>. When you click, the browser sends the event and the state of the component to the server. The server runs the handler, renders the component again, and sends back Turbo Streams. Turbo morphs only the parts of the page that changed. You do not write any JavaScript for this. In the <code>MyButton</code> code above, <code>error_log()</code> writes to the server log, not to the browser console.</p>
+        <p>This is the largest difference from React. A Mamu event handler is PHP, so it runs <strong>on the server</strong>. When you click, the browser sends the event and the state of the component to the server. The server runs the handler, renders the component again, and sends back Turbo Streams. Turbo morphs only the parts of the page that changed. You do not write any JavaScript for this. In the <code>MyButton</code> code above, <code>error_log()</code> writes to the server log, not to the browser console.</p>
     </div>
 </aside>
 
 <h2 id="updating-the-screen" class="heading">Updating the screen<a class="heading-anchor" href="#updating-the-screen" aria-label="Link to this section">#</a></h2>
 <p>Often, you want your component to "remember" some information and show it. For example, you want to count the number of times that a button is clicked. To do this, add <em>state</em> to your component.</p>
 <p>A component with state is a class. Mark it with <code>#[Component]</code>, and mark each state property with <code>#[State]</code>:</p>
-<div class="code-block"><pre class="code" data-controller="highlight"><code>use Rephp\Attribute\{Component, State};
+<div class="code-block"><pre class="code" data-controller="highlight"><code>use Mamu\Attribute\{Component, State};
 
 #[Component]
 final class Counter
@@ -359,17 +359,17 @@ final class Counter
             &lt;/button&gt;
         );
     }</code></pre></div>
-<p>After the handler runs, rephp calls <code>render()</code> again, and <code>$count</code> is <code>1</code>. Then it is <code>2</code>, and so on.</p>
+<p>After the handler runs, Mamu calls <code>render()</code> again, and <code>$count</code> is <code>1</code>. Then it is <code>2</code>, and so on.</p>
 <p>If you render the same component more than one time, each one gets its own state. Click each button separately:</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="CounterSeparate">
     <div class="sandbox-bar">
-        <span class="sandbox-tab">CounterSeparate.rhp</span>
+        <span class="sandbox-tab">CounterSeparate.phpm</span>
         <div class="sandbox-actions">
             <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
             <a class="sandbox-button" href="/examples/CounterSeparate" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
         </div>
     </div>
-    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/CounterSeparate.rhp...</code></pre>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/CounterSeparate.phpm...</code></pre>
     <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
     <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/CounterSeparate" loading="lazy" title="CounterSeparate preview"></iframe>
 </div>
@@ -377,12 +377,12 @@ final class Counter
 <aside class="callout callout-deep">
     <h3 class="callout-title">Where does the state live?</h3>
     <div class="callout-body">
-        <p>In React, the state lives in the memory of the browser tab. In rephp, the state lives <strong>in the browser</strong> too, but in a different form: the <code>rhp</code> Stimulus controller keeps it in the page, and the server signs it. Each event sends the state to the server, and the server sends back the new state with the new markup. The server keeps nothing between requests. For this reason, state values must be JSON values: scalars and arrays. Click <strong>Reset</strong> on a sandbox: the page loads again, and the state goes back to its first value.</p>
+        <p>In React, the state lives in the memory of the browser tab. In Mamu, the state lives <strong>in the browser</strong> too, but in a different form: the <code>mamu</code> Stimulus controller keeps it in the page, and the server signs it. Each event sends the state to the server, and the server sends back the new state with the new markup. The server keeps nothing between requests. For this reason, state values must be JSON values: scalars and arrays. Click <strong>Reset</strong> on a sandbox: the page loads again, and the state goes back to its first value.</p>
     </div>
 </aside>
 
 <h2 id="services" class="heading">Services and initialization<a class="heading-anchor" href="#services" aria-label="Link to this section">#</a></h2>
-<p>A rephp application is a Symfony application, and each class component is a service. The container makes a new object for each component on the page, so the constructor gets the services that the component needs (autowiring), as in a Symfony controller:</p>
+<p>A Mamu application is a Symfony application, and each class component is a service. The container makes a new object for each component on the page, so the constructor gets the services that the component needs (autowiring), as in a Symfony controller:</p>
 <div class="code-block"><pre class="code" data-controller="highlight"><code>#[Component]
 #[Transactional]
 final class AddScientist
@@ -417,25 +417,25 @@ final class AddScientist
     <li><strong><code>mount()</code></strong> (optional) sets the first state. It runs after the props are set, when the component has no state yet: on its first render. For example, <code>$this-&gt;items = $this-&gt;repository-&gt;latest($this-&gt;limit);</code>.</li>
     <li><strong>Methods</strong> are event handlers. A handler can change the state and call the services.</li>
     <li><strong><code>render()</code></strong> returns markup.</li>
-    <li><strong><code>#[Transactional]</code></strong> (optional) runs each handler in a Doctrine ORM transaction. When the handler returns, rephp flushes and commits. Thus the repository only calls <code>persist()</code>, and the handler does not call <code>flush()</code>.</li>
+    <li><strong><code>#[Transactional]</code></strong> (optional) runs each handler in a Doctrine ORM transaction. When the handler returns, Mamu flushes and commits. Thus the repository only calls <code>persist()</code>, and the handler does not call <code>flush()</code>.</li>
 </ul>
 <p>A component without state does not need a class. A function that returns markup is a component too, and its parameters are its props. If its body is only <code>return &lt;markup&gt;;</code>, it compiles to a plain Twig template, with no PHP call. Here is a page that is a class with a prop and state:</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="StarRating">
     <div class="sandbox-bar">
-        <span class="sandbox-tab">StarRating.rhp</span>
+        <span class="sandbox-tab">StarRating.phpm</span>
         <div class="sandbox-actions">
             <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
             <a class="sandbox-button" href="/examples/StarRating" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
         </div>
     </div>
-    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/StarRating.rhp...</code></pre>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/StarRating.phpm...</code></pre>
     <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
     <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/StarRating" loading="lazy" title="StarRating preview"></iframe>
 </div>
 <aside class="callout callout-deep">
     <h3 class="callout-title">What about Hooks?</h3>
     <div class="callout-body">
-        <p>React keeps state in Hooks such as <code>useState</code>. A Hook needs a global "current component", so rephp uses objects instead: a <code>#[State]</code> property for <code>useState</code>, a method for an event handler, <code>mount()</code> for the first state, and constructor injection for shared things that React puts in a context. If a file calls <code>useState</code> or another React Hook name from rephp, the <code>rhpc</code> compiler reports the error <code>E020</code>.</p>
+        <p>React keeps state in Hooks such as <code>useState</code>. A Hook needs a global "current component", so Mamu uses objects instead: a <code>#[State]</code> property for <code>useState</code>, a method for an event handler, <code>mount()</code> for the first state, and constructor injection for shared things that React puts in a context. If a file calls <code>useState</code> or another React Hook name from Mamu, the <code>mamuc</code> compiler reports the error <code>E020</code>.</p>
     </div>
 </aside>
 
@@ -487,7 +487,7 @@ final class CounterTogether
         );
     }
 }</code></pre></div>
-<p>In rephp, props are the named parameters of the function. Change the button to read the props that its parent passes:</p>
+<p>In Mamu, props are the named parameters of the function. Change the button to read the props that its parent passes:</p>
 <div class="code-block"><pre class="code" data-controller="highlight"><code>function CountButton(int $count, Closure $onClick)
 {
     return (
@@ -509,13 +509,13 @@ final class CounterTogether
 <p>As in JSX, the order counts: a later value replaces an earlier one. Here <code>type="button"</code> is a default, and a caller can replace it with <code>type="submit"</code>.</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="CounterTogether">
     <div class="sandbox-bar">
-        <span class="sandbox-tab">CounterTogether.rhp</span>
+        <span class="sandbox-tab">CounterTogether.phpm</span>
         <div class="sandbox-actions">
             <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
             <a class="sandbox-button" href="/examples/CounterTogether" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
         </div>
     </div>
-    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/CounterTogether.rhp...</code></pre>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/CounterTogether.phpm...</code></pre>
     <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
     <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/CounterTogether" loading="lazy" title="CounterTogether preview"></iframe>
 </div>
@@ -527,8 +527,8 @@ final class CounterTogether
 </aside>
 
 <h2 id="next-steps" class="heading">Next Steps<a class="heading-anchor" href="#next-steps" aria-label="Link to this section">#</a></h2>
-<p>You now know the basics of how to write rephp code!</p>
-<p>Go to the <a href="/learn/tutorial.html">Tutorial</a> to use them in practice and build your first mini-app with rephp. Or read <a href="/learn/thinking-in-rephp.html">Thinking in rephp</a> to learn how to design a UI as a tree of components.</p>
+<p>You now know the basics of how to write Mamu code!</p>
+<p>Go to the <a href="/learn/tutorial.html">Tutorial</a> to use them in practice and build your first mini-app with Mamu. Or read <a href="/learn/thinking-in-mamu.html">Thinking in Mamu</a> to learn how to design a UI as a tree of components.</p>
 
             </article>
             <nav class="pager" aria-label="Pages">
@@ -536,7 +536,7 @@ final class CounterTogether
                 <a class="pager-link pager-next" href="/learn/tutorial.html"><span class="pager-label">Next</span><span class="pager-title">Tutorial: Tic-Tac-Toe</span></a>
             </nav>
             <footer class="footer">
-                <p>This site is a demo built with rephp: .rhp components, Twig, Stimulus and Turbo. It is not affiliated with the React team.</p>
+                <p>This site is a demo built with Mamu: .phpm components, Twig, Stimulus and Turbo. It is not affiliated with the React team.</p>
             </footer>
         </main>
             <aside class="toc">
@@ -545,7 +545,7 @@ final class CounterTogether
                     <ul class="toc-list">
                     <li><a class="toc-link" data-toc-target="link" href="#overview">Overview</a></li>
                     <li><a class="toc-link" data-toc-target="link" href="#components">Creating and nesting components</a></li>
-                    <li><a class="toc-link" data-toc-target="link" href="#writing-markup">Writing markup with rhp</a></li>
+                    <li><a class="toc-link" data-toc-target="link" href="#writing-markup">Writing markup with Mamu</a></li>
                     <li><a class="toc-link" data-toc-target="link" href="#adding-styles">Adding styles</a></li>
                     <li><a class="toc-link" data-toc-target="link" href="#displaying-data">Displaying data</a></li>
                     <li><a class="toc-link" data-toc-target="link" href="#conditional-rendering">Conditional rendering</a></li>

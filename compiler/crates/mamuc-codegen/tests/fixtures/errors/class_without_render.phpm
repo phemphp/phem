@@ -1,0 +1,4 @@
+<?phpm // expect: E040
+use Mamu\Attribute\Component;
+#[Component]
+final class Counter { public int $count = 0; }

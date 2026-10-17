@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Tests\Runtime;
+namespace Mamu\Tests\Runtime;
 
 use PHPUnit\Framework\TestCase;
-use Rephp\Dom\Attributes;
-use Rephp\Html;
-use Rephp\Manifest\Manifest;
-use Rephp\Rendering\MarkupResolver;
-use Rephp\Rendering\Renderer;
-use Rephp\Twig\RephpRuntime;
+use Mamu\Dom\Attributes;
+use Mamu\Html;
+use Mamu\Manifest\Manifest;
+use Mamu\Rendering\MarkupResolver;
+use Mamu\Rendering\Renderer;
+use Mamu\Twig\MamuRuntime;
 use Twig\Environment;
 use Twig\Loader\ArrayLoader;
 
@@ -53,7 +53,7 @@ final class TwigFunctionsTest extends TestCase
 
     public function testHandlerMustBeAClosure(): void
     {
-        self::assertSame('data-rh-on-click="static"', (string) $this->runtime()->attrs(['onClick' => static fn () => null]));
+        self::assertSame('data-mamu-on-click="static"', (string) $this->runtime()->attrs(['onClick' => static fn () => null]));
 
         $this->expectException(\InvalidArgumentException::class);
         $this->runtime()->attrs(['onClick' => 'var_dump']);
@@ -69,11 +69,11 @@ final class TwigFunctionsTest extends TestCase
         self::assertSame('', $markup->html(null));
     }
 
-    private function runtime(): RephpRuntime
+    private function runtime(): MamuRuntime
     {
         $twig = new Environment(new ArrayLoader());
 
-        return new RephpRuntime(new Renderer(new Manifest('/nonexistent', ''), new MarkupResolver($twig), []));
+        return new MamuRuntime(new Renderer(new Manifest('/nonexistent', ''), new MarkupResolver($twig), []));
     }
 
     public function testStyle(): void
@@ -84,6 +84,6 @@ final class TwigFunctionsTest extends TestCase
 
     public function testKey(): void
     {
-        self::assertSame('data-rh-key="a&quot;b"', (string) Attributes::key('a"b'));
+        self::assertSame('data-mamu-key="a&quot;b"', (string) Attributes::key('a"b'));
     }
 }

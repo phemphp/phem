@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Attribute;
+namespace Mamu\Attribute;
 
 /**
  * Runs each event handler of a class component in a database transaction (Doctrine ORM).

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Rephp\Metadata;
+namespace Mamu\Metadata;
 
-use Rephp\Attribute\Path;
-use Rephp\Attribute\State;
-use Rephp\Binding\ComponentName;
-use Rephp\Binding\PropError;
+use Mamu\Attribute\Path;
+use Mamu\Attribute\State;
+use Mamu\Binding\ComponentName;
+use Mamu\Binding\PropError;
 
 /**
  * The reflection data of the components: the parameters of a function component, and the
@@ -39,7 +39,7 @@ final class ComponentMetadata
             return $this->parameters[$function];
         }
         if (!\function_exists($function)) {
-            throw new PropError(\sprintf('Component function "%s" does not exist. Run `rhpc build` again.', $function));
+            throw new PropError(\sprintf('Component function "%s" does not exist. Run `mamuc build` again.', $function));
         }
         $out = [];
         foreach ((new \ReflectionFunction($function))->getParameters() as $p) {

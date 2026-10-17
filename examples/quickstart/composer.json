@@ -1,6 +1,6 @@
 {
-    "name": "rephp/quickstart",
-    "description": "The rephp Quick Start: a react.dev/learn-style page whose examples are real .rhp files, in a Symfony application.",
+    "name": "mamuphp/quickstart",
+    "description": "The Mamu Quick Start: a react.dev/learn-style page whose examples are real .phpm files, in a Symfony application.",
     "type": "project",
     "license": "MIT",
     "require": {
@@ -9,7 +9,7 @@
         "doctrine/doctrine-bundle": "^3.0",
         "doctrine/doctrine-fixtures-bundle": "^4.3",
         "doctrine/orm": "^3.7",
-        "rephp/runtime": "@dev",
+        "mamuphp/runtime": "@dev",
         "symfony/asset": "^7.4|^8.0",
         "symfony/asset-mapper": "^7.4|^8.0",
         "symfony/dotenv": "^7.4|^8.0",
