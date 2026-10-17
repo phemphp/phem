@@ -53,3 +53,18 @@ fn reports_each_diagnostic() {
         }
     }
 }
+
+#[test]
+fn passes_the_variables_of_extension_tags() {
+    let src = "<?phpm\nfunction App() { $user = []; $locale = 'fr';\n    return <p>{% trans with {'%name%': user.name} into locale %}Hi %name%{% endtrans %}</p>;\n}\n";
+    let (out, diags) = compile(vec![SourceInput { rel: "App.phpm".into(), text: src.into() }]);
+    assert!(diags.iter().all(|f| f.diags.is_empty()), "unexpected diagnostics");
+    let php = &out.expect("output").files[0].php;
+    assert!(php.contains("['user' => $user ?? null, 'locale' => $locale ?? null]"), "{php}");
+
+    // A guessed name is still an error when an expression uses it.
+    let src = "<?phpm\nfunction App() { return <p>{% trans into into %}x{% endtrans %}{{ into }}</p>; }\n";
+    let (_, diags) = compile(vec![SourceInput { rel: "App.phpm".into(), text: src.into() }]);
+    let codes: Vec<&str> = diags.iter().flat_map(|f| f.diags.iter().map(|d| d.code)).collect();
+    assert_eq!(codes, ["E030"]);
+}

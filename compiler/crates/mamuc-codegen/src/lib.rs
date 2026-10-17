@@ -197,11 +197,15 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
                 } else if c.methods.iter().any(|f| f.name == v.name) {
                     format!("$this->{}(...)", v.name)
                 } else {
-                    diags.push(undefined(&v.name, v.offset, " or a property or method of the class"));
+                    if v.strict {
+                        diags.push(undefined(&v.name, v.offset, " or a property or method of the class"));
+                    }
                     continue;
                 }
             } else {
-                diags.push(undefined(&v.name, v.offset, ""));
+                if v.strict {
+                    diags.push(undefined(&v.name, v.offset, ""));
+                }
                 continue;
             };
             vars.push(format!("{} => {php}", php_str(&v.name)));

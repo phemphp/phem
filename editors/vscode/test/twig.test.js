@@ -94,6 +94,12 @@ test('filters, tests, and tags', async () => {
     assert.ok(r.find('endfor'));
     assert.ok(r.find('else'));
 
+    // A tag that is not in the table opens a block when its end tag follows.
+    r = await run(fn('', "{% component 'A' %}{% | %}{% endcomponent %}"));
+    assert.equal(r.items[0].label, 'endcomponent');
+    r = await run(fn('', '{% props a %}{% |'));
+    assert.equal(r.find('endprops'), undefined);
+
     // The item replaces the ` %}` after the cursor, or the `}` of an auto-closed `{`.
     r = await run(fn('', '{% for a in b %}{% end| -%}'));
     assert.equal(r.find('endfor').snippet, 'endfor -%}');

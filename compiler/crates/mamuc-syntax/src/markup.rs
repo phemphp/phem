@@ -13,7 +13,8 @@ pub const VOID_ELEMENTS: &[&str] = &[
 
 const RAW_TEXT_ELEMENTS: &[&str] = &["script", "style"];
 
-/// Twig tags that have a body and an `end<tag>` closing tag.
+/// Twig core tags that have a body and an `end<tag>` closing tag. Other tags (new Twig tags, or
+/// tags of extensions like `{% trans %}`) have a body when an `end<tag>` follows them.
 const BLOCK_TAGS: &[&str] = &[
     "if", "for", "with", "apply", "autoescape", "block", "embed", "cache", "guard", "sandbox", "macro",
     "spaceless", "filter", "set",
@@ -563,7 +564,7 @@ impl<'a> Parser<'a> {
                 }
                 if n == "verbatim" {
                     children.push(self.parse_verbatim(tag)?);
-                } else if is_block_tag(&tag) {
+                } else if is_block_tag(&tag) || self.has_end_tag(&tag.name) {
                     children.push(self.parse_block(tag)?);
                 } else {
                     children.push(Node::Tag(tag));
@@ -627,6 +628,30 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+    }
+
+    /// True when an `{% end<name> %}` tag closes a tag `name` that is not a core tag. Nested
+    /// `{% name %}` tags need their own `end<name>`.
+    fn has_end_tag(&self, name: &str) -> bool {
+        if BLOCK_TAGS.contains(&name) || name == "verbatim" {
+            return false;
+        }
+        let end = format!("end{name}");
+        let mut p = Parser { src: self.src, b: self.b, pos: self.pos };
+        let mut depth = 0;
+        while let Some(rel) = p.src[p.pos..].find("{%") {
+            p.pos += rel;
+            let Ok(tag) = p.parse_tag() else { return false };
+            if tag.name == name {
+                depth += 1;
+            } else if tag.name == end {
+                if depth == 0 {
+                    return true;
+                }
+                depth -= 1;
+            }
+        }
+        false
     }
 
     fn parse_verbatim(&mut self, open: Tag) -> Result<Node, Diagnostic> {
@@ -872,6 +897,23 @@ mod tests {
         let Node::Block(b) = &f.children[0] else { panic!() };
         assert_eq!(b.name(), "for");
         assert_eq!(b.branches.len(), 2);
+    }
+
+    #[test]
+    fn extension_block_tags() {
+        let Node::Element(e) = parse("<p>{% trans with {'%n%': n} %}Hi %n%{% endtrans %}{% stopwatch 'a' %}<b>x</b>{% endstopwatch %}</p>") else {
+            panic!()
+        };
+        let names: Vec<_> = e.children.iter().map(|c| if let Node::Block(b) = c { b.name() } else { panic!("expected a block") }).collect();
+        assert_eq!(names, ["trans", "stopwatch"]);
+
+        // Nested tags with the same name, and a tag without a body.
+        let Node::Element(e) = parse("<div>{% x %}{% x %}<i />{% endx %}{% endx %}{% y 1 %}</div>") else { panic!() };
+        let Node::Block(outer) = &e.children[0] else { panic!() };
+        assert!(matches!(&outer.branches[0].children[0], Node::Block(b) if b.name() == "x"));
+        assert!(matches!(&e.children[1], Node::Tag(t) if t.name == "y"));
+
+        assert_eq!(parse_err("<div>{% trans %}<p>{% endtrans %}</p></div>").code, codes::MISMATCHED_CLOSE);
     }
 
     #[test]

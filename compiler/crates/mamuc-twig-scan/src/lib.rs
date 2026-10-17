@@ -220,6 +220,9 @@ pub struct TagVars {
     pub bound: Vec<String>,
     /// Free variables that the tag reads.
     pub used: Vec<Name>,
+    /// True for a tag that is not a core Twig tag. Its head can contain keywords of the tag
+    /// (`{% trans into 'fr' %}`), so the names in `used` are only guesses.
+    pub guessed: bool,
 }
 
 /// Scans the head of a Twig tag (`for p in products`, `set x = 1`, `if a > b`).
@@ -231,24 +234,32 @@ pub fn tag_vars(tag: &str, head: &str) -> TagVars {
             let bound = head[..in_pos].split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
             let mut used = Vec::new();
             collect(&head[in_pos + 2..], in_pos + 2, &[], &mut used);
-            TagVars { bound, used: dedup(used) }
+            TagVars { bound, used: dedup(used), ..Default::default() }
         }
         "set" => match head.find('=') {
             Some(eq) => {
                 let bound = head[..eq].split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
                 let mut used = Vec::new();
                 collect(&head[eq + 1..], eq + 1, &[], &mut used);
-                TagVars { bound, used: dedup(used) }
+                TagVars { bound, used: dedup(used), ..Default::default() }
             }
-            None => TagVars { bound: vec![head.trim().to_string()], used: vec![] },
+            None => TagVars { bound: vec![head.trim().to_string()], ..Default::default() },
         },
         "if" | "elseif" | "do" | "with" | "include" | "embed" | "cache" => {
             let mut used = Vec::new();
             collect(head, 0, &["only", "ignore", "missing", "sandboxed", "key"], &mut used);
-            TagVars { bound: vec![], used: dedup(used) }
+            TagVars { bound: vec![], used: dedup(used), ..Default::default() }
         }
-        // Tags whose heads do not read variables: else, apply (filter names), block, macro, ...
-        _ => TagVars::default(),
+        // Core tags whose heads do not read variables: filter, block, macro, and template names.
+        "else" | "apply" | "filter" | "block" | "macro" | "autoescape" | "sandbox" | "guard" | "spaceless" | "verbatim"
+        | "flush" | "deprecated" | "extends" | "use" | "import" | "from" | "types" => TagVars::default(),
+        _ if tag.starts_with("end") => TagVars::default(),
+        // Other tags (new Twig tags, or tags of extensions): read the head like an expression.
+        _ => {
+            let mut used = Vec::new();
+            collect(head, 0, &[], &mut used);
+            TagVars { bound: vec![], used: dedup(used), guessed: true }
+        }
     }
 }
 
@@ -347,6 +358,12 @@ mod tests {
         assert_eq!(t.used.iter().map(|n| n.name.as_str()).collect::<Vec<_>>(), ["products", "product"]);
         assert_eq!(tag_vars("set", "total = a + b").bound, ["total"]);
         assert_eq!(tag_vars("set", "body").bound, ["body"]);
+        assert!(!tag_vars("if", "a").guessed);
+        assert_eq!(tag_vars("block", "content"), TagVars::default());
+        assert_eq!(tag_vars("endtrans", ""), TagVars::default());
+        let t = tag_vars("trans", "with {'%name%': user.name} into locale");
+        assert!(t.guessed);
+        assert_eq!(t.used.iter().map(|n| n.name.as_str()).collect::<Vec<_>>(), ["user", "into", "locale"]);
     }
 
     #[test]

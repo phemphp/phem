@@ -220,7 +220,8 @@ class Resolver {
         const head = expr.slice(0, expr.length - word[0].length);
         if (ctx.open === '{%' && /^[-~]?\s*$/.test(head)) {
             const tag = twig.TAGS[word[0]];
-            const opener = Object.keys(twig.BLOCK_TAGS).find((k) => twig.BLOCK_TAGS[k] === word[0]);
+            // Each end tag is `end` and the name of the tag that it closes.
+            const opener = !tag && /^end\w/.test(word[0]) ? word[0].slice(3) : null;
             if (!tag && !opener) {
                 return null;
             }

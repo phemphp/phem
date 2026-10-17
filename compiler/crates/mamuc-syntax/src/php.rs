@@ -288,8 +288,14 @@ impl<'a> Lexer<'a> {
         let start = self.pos;
         self.pos += 1;
         while let Some(c) = self.peek_at(0) {
-            if c == b'\\' {
+            // `{` cannot be escaped: `"\{$a}"` is a backslash and an interpolation.
+            if c == b'\\' && !(q != b'\'' && self.peek_at(1) == Some(b'{')) {
                 self.pos += 2;
+                continue;
+            }
+            // `"{$a["key"]}"` and `"${a}"`: the interpolation is PHP code, and it can contain strings.
+            if q != b'\'' && (self.starts_with("{$") || self.starts_with("${")) {
+                self.interpolation(start)?;
                 continue;
             }
             self.pos += 1;
@@ -298,6 +304,30 @@ impl<'a> Lexer<'a> {
             }
         }
         Err(Diagnostic::error(codes::UNCLOSED, "unclosed string", Span::new(start, start + 1)))
+    }
+
+    /// Skips a `{$...}` or `${...}` interpolation, up to its closing brace.
+    fn interpolation(&mut self, string_start: usize) -> Result<(), Diagnostic> {
+        let mut depth = 0;
+        while let Some(c) = self.peek_at(0) {
+            match c {
+                b'\'' | b'"' | b'`' => {
+                    self.string(c)?;
+                    continue;
+                }
+                b'{' => depth += 1,
+                b'}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        self.pos += 1;
+                        return Ok(());
+                    }
+                }
+                _ => {}
+            }
+            self.pos += 1;
+        }
+        Err(Diagnostic::error(codes::UNCLOSED, "unclosed string", Span::new(string_start, string_start + 1)))
     }
 
     fn heredoc(&mut self) -> Result<(), Diagnostic> {
@@ -404,6 +434,18 @@ mod tests {
     fn strings_and_heredoc_hide_markup() {
         let l = lex("<?phpm $s = '<div>'; $t = \"<b>\"; $h = <<<EOT\n  <div>\n  EOT;\n $n = <<<'X'\n<p>\nX;\n").unwrap();
         assert!(l.markups.is_empty());
+    }
+
+    #[test]
+    fn quotes_in_string_interpolation() {
+        let src = r#"<?phpm $s = "{$a["k"]} and ${b['x']}"; $t = `{$c["<p>"]}`; return <p>{{ x }}</p>;"#;
+        let l = lex(src).unwrap();
+        let strs: Vec<_> = l.tokens.iter().filter(|t| t.kind == TokKind::Str).map(|t| t.text(src)).collect();
+        assert_eq!(strs, [r#""{$a["k"]} and ${b['x']}""#, r#"`{$c["<p>"]}`"#]);
+        assert_eq!(l.markups.len(), 1);
+        // `{` cannot be escaped. `{` without `$` is text, and `{$` in a single-quoted string is text.
+        let l = lex(r#"<?phpm $s = "\{$a["k"]} { a}"; $t = '{$a"'; return <b />;"#).unwrap();
+        assert_eq!(l.markups.len(), 1);
     }
 
     #[test]

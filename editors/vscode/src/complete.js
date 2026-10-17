@@ -525,10 +525,8 @@ class Completer {
             }
         };
         env.openTags().forEach((tag, i) => {
-            const endTag = twig.BLOCK_TAGS[tag];
-            if (endTag) {
-                add(endTag, `Close the {% ${tag} %} block`, undefined, endTag + tail, '0' + i);
-            }
+            const endTag = 'end' + tag;
+            add(endTag, `Close the {% ${tag} %} block`, undefined, endTag + tail, '0' + i);
             if (tag === 'if' || tag === 'for') {
                 add('else', twig.TAGS.else[1], undefined, 'else' + tail, '1else');
             }

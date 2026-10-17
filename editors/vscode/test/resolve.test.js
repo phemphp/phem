@@ -114,6 +114,7 @@ test('hover for Twig filters, functions, tests, tags, and HTML', async () => {
     assert.match((await at(fn('<p>{% if s is emp‸ty %}{% endif %}</p>'))).hover, /empty/);
     assert.match((await at(fn('<p>{% fo‸r a in b %}{% endfor %}</p>'))).hover, /Loop over/);
     assert.match((await at(fn('<p>{% for a in b %}{% endf‸or %}</p>'))).hover, /end of the \{% for %\} block/);
+    assert.match((await at(fn("<p>{% component 'A' %}{% endcomp‸onent %}</p>"))).hover, /end of the \{% component %\} block/);
     assert.match((await at(fn('<sec‸tion />'))).hover, /A generic section/);
     assert.match((await at(fn('<button onCl‸ick={{ x }} />'))).hover, /Mamu event/);
 });

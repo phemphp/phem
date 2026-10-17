@@ -11,6 +11,9 @@
   `{% set %}`, `loop`), attributes after a dot (properties, methods, getters, array keys),
   filters, tests, functions (Twig and Symfony), tags with the end tags of the open blocks, and
   the route names in `path('...')` and `url('...')`.
+- Twig tags that the extension does not know (new Twig tags, or tags of extensions like
+  `{% component %}`) open a block when their end tag follows. Completion gives their end tag,
+  and hover shows the block of an end tag.
 - HTML completion: element names, attributes per element, global and ARIA attributes, and the
   values of the enumerated attributes.
 - Go to definition and hover for components, slots, props, classes, functions, members, PHP

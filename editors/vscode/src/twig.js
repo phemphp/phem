@@ -9,13 +9,33 @@
 // adds the variables of `{% for %}` and `{% set %}`.
 
 const { scopeAt } = require('./scope');
-const { BLOCK_TAGS, LOOP } = require('./data/twig');
+const { TAGS, BLOCK_TAGS, LOOP } = require('./data/twig');
 
 const LOOP_TYPE = { keys: Object.keys(LOOP).map((name) => ({ name, offset: -1, type: null, doc: LOOP[name] })) };
 
 // Replaces the Twig comments with spaces.
 function stripComments(s) {
     return s.replace(/\{#[\s\S]*?#\}/g, (c) => c.replace(/[^\n]/g, ' '));
+}
+
+// True when an `{% end<tag> %}` after `from` closes the tag. Nested tags with
+// the same name need their own end tag.
+function hasEndTag(text, from, tag) {
+    const re = /\{%[-~]?\s*(\w+)/g;
+    re.lastIndex = from;
+    let depth = 0;
+    let m;
+    while ((m = re.exec(text))) {
+        if (m[1] === tag) {
+            depth++;
+        } else if (m[1] === 'end' + tag) {
+            if (depth === 0) {
+                return true;
+            }
+            depth--;
+        }
+    }
+    return false;
 }
 
 // The open blocks before `end` in the markup that starts at `from`:
@@ -40,7 +60,9 @@ function openBlocks(text, from, end) {
             }
             continue;
         }
-        if (BLOCK_TAGS[tag]) {
+        // A tag that is not in the table (a new Twig tag, or a tag of an
+        // extension) opens a block when its end tag follows.
+        if (BLOCK_TAGS[tag] || (!TAGS[tag] && !tag.startsWith('end') && hasEndTag(text, from + m.index + m[0].length, tag))) {
             stack.push({ tag, args, offset, sets: [] });
             continue;
         }
