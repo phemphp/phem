@@ -30,6 +30,21 @@ final class HttpTest extends TestCase
         self::assertSame('<p>a</p><title>B</title>', Title::strip('<title>A</title><p>a</p><title>B</title>'));
     }
 
+    public function testTheTitleOfAnSvgStays(): void
+    {
+        self::assertSame(['Page', '<svg><title>Icon</title></svg>'], Title::extract('<svg><title>Icon</title></svg><title>Page</title>'));
+        self::assertSame(['Page', '<svg><svg><title>a</title></svg><title>b</title></svg>'], Title::extract('<svg><svg><title>a</title></svg><title>b</title></svg><title>Page</title>'), 'nested');
+        self::assertSame(['Page', '<SVG viewBox="0 0 1 1"><title>a</title></SVG >'], Title::extract('<SVG viewBox="0 0 1 1"><title>a</title></SVG ><title>Page</title>'));
+        self::assertSame([null, '<svg><title>Icon</title></svg>'], Title::extract('<svg><title>Icon</title></svg>'));
+        self::assertSame(['Page', '<svgx></svgx>'], Title::extract('<svgx></svgx><title>Page</title>'), 'not an <svg>');
+    }
+
+    public function testASelfClosingSvgHasNoTitle(): void
+    {
+        self::assertSame(['Page', '<svg/><p>a</p>'], Title::extract('<svg/><title>Page</title><p>a</p>'));
+        self::assertSame(['Page', '<svg viewBox="0 0 1 1" />'], Title::extract('<svg viewBox="0 0 1 1" /><title>Page</title>'));
+    }
+
     public function testTurboStreamsMorphTheFibers(): void
     {
         $fiber = new Fiber('mamu1', '/A#0', 'A');

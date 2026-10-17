@@ -19,7 +19,7 @@ namespace Mamu\Http;
  */
 final class Title
 {
-    private const PATTERN = '#<title>(.*?)</title>#s';
+    private const PATTERN = '#<(?i:svg)(?:\s[^>]*?)?(?<self>/?)>|</(?i:svg)\s*>|<title>(?<text>.*?)</title>#s';
 
     /**
      * @return array{0: string|null, 1: string} the title (null without one), and the HTML without the title
@@ -47,11 +47,19 @@ final class Title
      */
     private static function find(string $html): ?array
     {
-        preg_match_all(self::PATTERN, $html, $matches, \PREG_SET_ORDER | \PREG_OFFSET_CAPTURE);
+        // The <svg> tags and the <title> elements, in their order. A self-closing <svg/> has
+        // no content.
+        preg_match_all(self::PATTERN, $html, $matches, \PREG_SET_ORDER | \PREG_OFFSET_CAPTURE | \PREG_UNMATCHED_AS_NULL);
+        $depth = 0;
         foreach ($matches as $m) {
-            $before = substr($html, 0, $m[0][1]);
-            if (preg_match_all('#<svg[\s>/]#i', $before) <= preg_match_all('#</svg\s*>#i', $before)) {
-                return [$m[0], $m[1]];
+            if (isset($m['text'][0])) {
+                if (0 === $depth) {
+                    return [[(string) $m[0][0], $m[0][1]], [$m['text'][0], $m['text'][1]]];
+                }
+            } elseif (str_starts_with((string) $m[0][0], '</')) {
+                $depth = max(0, $depth - 1);
+            } elseif ('/' !== $m['self'][0]) {
+                ++$depth;
             }
         }
 

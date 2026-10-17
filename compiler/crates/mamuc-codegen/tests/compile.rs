@@ -153,6 +153,20 @@ fn a_class_component_gets_the_members_of_its_parent_and_traits() {
 }
 
 #[test]
+fn a_class_component_does_not_see_the_private_members_of_its_parent() {
+    let base = "<?phpm\nnamespace App;\nabstract class Base {\n    public function __construct(private int $secret = 1) {}\n    private function hidden(): void {}\n}\ntrait Tools { private function tool(): void {} }\n";
+    let codes = |body: &str| -> Vec<&'static str> {
+        let card = format!("<?phpm\nnamespace App;\nuse Mamu\\Attribute\\Component;\n#[Component]\nfinal class Card extends Base {{\n    use Tools;\n    public function render() {{ return <i>{body}</i>; }}\n}}\n");
+        let (_, diags) = compile(vec![SourceInput { rel: "Base.phpm".into(), text: base.into() }, SourceInput { rel: "Card.phpm".into(), text: card }]);
+        diags.iter().flat_map(|f| f.diags.iter().map(|d| d.code)).collect()
+    };
+
+    assert_eq!(codes("{{ secret }}"), ["E030"], "a private promoted property");
+    assert_eq!(codes("<b onClick={{ hidden }}>x</b>"), ["E030"], "a private method");
+    assert_eq!(codes("<b onClick={{ tool }}>x</b>"), Vec::<&str>::new(), "a private method of a trait");
+}
+
+#[test]
 fn a_class_with_a_parent_outside_the_sources_is_not_checked() {
     let src = "<?phpm\nnamespace App;\nuse Mamu\\Attribute\\Component;\n#[Component]\nfinal class Box extends \\Vendor\\Base {\n    public function view() { return <b>{{ title }}</b>; }\n}\nfunction Page() { return <Box title=\"a\"><p>kid</p><Box:footer>f</Box:footer></Box>; }\n";
     let (out, diags) = compile(vec![SourceInput { rel: "Box.phpm".into(), text: src.into() }]);

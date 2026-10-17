@@ -162,6 +162,9 @@ function Profile() {
 - `attr="text {{ expr }}"` is a string with interpolation.
 - `attr={{ expr }}` is a dynamic value. `null` and `false` remove the attribute. `true` makes a
   boolean attribute. For `class`, a list is joined with spaces (empty items are dropped).
+  As in React, `data-*`, `aria-*`, `contenteditable`, `draggable`, `spellcheck` and `value`
+  take the text of a boolean: `data-open={{ false }}` gives `data-open="false"`. A CSS selector
+  `[data-open]` and `hasAttribute()` find it; use `null` to remove the attribute.
 - `style={{ {...} }}` takes a hash. camelCase keys become kebab-case. Numbers get `px`
   (except unitless properties such as `opacity`, `zIndex`, `fontWeight`, `lineHeight`, `flex`).
 - `{{ ...props }}` in a tag spreads a hash of attributes (or props, on a component). As in JSX,

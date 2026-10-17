@@ -118,8 +118,8 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
 /// Adds to each class the members of its parent classes and traits in the sources, so a class
 /// component sees the props and methods that it inherits. A class member replaces a member of a
 /// trait, and a trait member replaces a member of the parent class, as in PHP. A private
-/// property of a trait is a property of the class, but a private property of a parent class
-/// (or of its traits) is not visible.
+/// member of a trait is a member of the class, but a private member of a parent class (or of
+/// its traits) is not visible.
 pub fn resolve_inheritance<'a>(files: impl IntoIterator<Item = &'a mut FileInfo>) {
     let mut files: Vec<&mut FileInfo> = files.into_iter().collect();
     let mut declared: HashMap<String, Class> = HashMap::new();
@@ -150,6 +150,9 @@ pub fn resolve_inheritance<'a>(files: impl IntoIterator<Item = &'a mut FileInfo>
                     }
                 }
                 for m in &base.methods {
+                    if from_parent && m.is_private {
+                        continue;
+                    }
                     if !c.has_method(&m.name) {
                         c.inherited_methods.push(m.name.clone());
                     }

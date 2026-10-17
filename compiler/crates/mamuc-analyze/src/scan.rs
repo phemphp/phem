@@ -78,6 +78,8 @@ pub struct Func {
     pub component_kind: Option<Kind>,
     /// For a template component, the index of its markup literal.
     pub template_markup: Option<usize>,
+    /// A `private` method: a child class cannot call it, but a class that uses its trait can.
+    pub is_private: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -88,6 +90,7 @@ pub struct Param {
     pub variadic: bool,
     pub promoted: bool,
     pub promoted_public: bool,
+    pub promoted_private: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -435,6 +438,7 @@ fn parse_function(toks: &Toks, at: usize, ns: &str) -> (Func, usize) {
         params,
         component_kind,
         template_markup: None,
+        is_private: false,
     };
     (f, end)
 }
@@ -451,7 +455,7 @@ fn parse_params(toks: &Toks, from: usize, to: usize) -> Vec<Param> {
             }
             j += 1;
         }
-        let mut p = Param { name: String::new(), ty: String::new(), default: None, variadic: false, promoted: false, promoted_public: false };
+        let mut p = Param { name: String::new(), ty: String::new(), default: None, variadic: false, promoted: false, promoted_public: false, promoted_private: false };
         let mut ty_start: Option<usize> = None;
         let mut k = i;
         while k < j {
@@ -465,6 +469,7 @@ fn parse_params(toks: &Toks, from: usize, to: usize) -> Vec<Param> {
             if t.kind == TokKind::Ident && matches!(lower.as_str(), "public" | "private" | "protected" | "readonly") {
                 p.promoted = true;
                 p.promoted_public |= lower == "public";
+                p.promoted_private |= lower == "private";
             } else if t.kind == TokKind::Var {
                 p.name = text[1..].to_string();
                 if let Some(s) = ty_start {
@@ -589,7 +594,7 @@ fn parse_class(toks: &Toks, at: usize, info: &FileInfo, attrs: Vec<String>) -> (
                         name: p.name.clone(),
                         ty: p.ty.clone(),
                         is_public: p.promoted_public,
-                        is_private: false,
+                        is_private: p.promoted_private,
                         is_readonly: false,
                         is_static: false,
                         is_state: false,
@@ -599,7 +604,7 @@ fn parse_class(toks: &Toks, at: usize, info: &FileInfo, attrs: Vec<String>) -> (
                     });
                 }
             }
-            class.methods.push(Func { fqn: format!("{}::{}", class.fqn, m.name), component_kind: None, ..m });
+            class.methods.push(Func { fqn: format!("{}::{}", class.fqn, m.name), component_kind: None, is_private: mods.iter().any(|x| x == "private"), ..m });
             member_attrs.clear();
             mods.clear();
             ty_start = None;
