@@ -137,7 +137,8 @@ final class ScientistPage
 ## 3. Twig in markup
 
 Inside markup, the text and the attribute values are Twig. The Twig variables are the PHP
-variables of the scope that contains the markup (`$user` is `user` in Twig).
+variables of the scope that contains the markup (`$user` is `user` in Twig). The Twig global
+`app` of Symfony is also available (`{{ app.user.userIdentifier }}`).
 
 ```php
 function Profile() {
@@ -231,9 +232,14 @@ function MyButton() {
 ```
 
 Supported events: `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`, `onKeyDown`, `onKeyUp`,
-`onFocus`, `onBlur`. The handler runs on the server. It receives a `Mamu\Event` object with
-`$e->value`, `$e->checked`, `$e->key`, `$e->form` (an array, for `onSubmit`), and `$e->request`.
+`onFocus`, `onBlur`. mamuc warns about another event (W003): the browser does not send it.
+The handler runs on the server. It receives a `Mamu\Event` object with `$e->value`,
+`$e->checked`, `$e->key`, `$e->form` (an array, for `onSubmit`), and `$e->request`.
 `onChange` on a text input fires on each key (as in React).
+
+`$e->form` has the fields of the form by name. A name with more than one value (a
+`<select multiple>`, checkboxes) has the list of its values. The button that submits the form
+is a field too. The browser does not send the files of a form.
 
 The id of a handler comes from the handler (its method or closure, and the values that it
 captures, such as `fn () => $this->remove($scientist)`), not from its position. When the data
@@ -331,6 +337,10 @@ final class Counter
 - A `#[State]` property is state. A method changes it, and Mamu calls `render()` again.
 - In the markup of a class, a name is a local variable, then a property (`$this->name`),
   then a method (`$this->name(...)`, so a method passes as a handler).
+- The props, the properties and the methods of a parent class (`extends`) and of the traits
+  are also available. When the parent class or a trait is not in a `.phpm` file, mamuc does not
+  see it: it does not check the props and the slots of the component, and it does not report
+  the names that it cannot find.
 - Each component instance has its own state.
 - The state lives in the browser. The `mamu` Stimulus controller keeps it, and the server signs it.
   An event sends the state to the server. The server makes the component again, restores the
@@ -508,9 +518,10 @@ booleans, or handlers. To forward the props to another component, spread them on
 ## 10. Markup values
 
 A markup literal is a value, like a React element: mamuc compiles `<p>{{ x }}</p>` to
-`new \Mamu\Element('file.0.twig', ['x' => $x])`. Mamu renders it when the component returns
-it, or when markup prints it (`{{ content }}`). An array of markup prints as a list. Do not cast
-a markup literal to a string in PHP.
+`new \Mamu\Element('file.0.twig', ['x' => $x])`. Mamu renders it when markup prints it
+(`{{ content }}`), or when the component returns it. Markup that does not print (the other
+branch of `{{ on ? yes : no }}`) renders no component. An array of markup prints as a list,
+and its `null` and `false` items print nothing. Do not cast a markup literal to a string in PHP.
 
 Components also work in the normal Twig templates of the application, without state:
 `{% component 'App\\Components\\Profile' with {person: person} %}`.

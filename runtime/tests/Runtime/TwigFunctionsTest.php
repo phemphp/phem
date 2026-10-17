@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Mamu\Tests\Runtime;
 
 use Mamu\Dom\Attributes;
+use Mamu\Element;
 use Mamu\Html;
 use Mamu\Manifest\Manifest;
 use Mamu\Rendering\MarkupResolver;
@@ -32,6 +33,17 @@ final class TwigFunctionsTest extends TestCase
         self::assertSame('disabled', (string) Attributes::attr('disabled', true));
         self::assertSame('src="/a.png?x=1&amp;y=&quot;2&quot;"', (string) Attributes::attr('src', '/a.png?x=1&y="2"'));
         self::assertSame('class="a c"', (string) Attributes::attr('class', ['a', '', 'c']));
+    }
+
+    public function testBooleanOfAnAttributeThatTakesTrueOrFalseIsText(): void
+    {
+        self::assertSame('aria-expanded="false"', (string) Attributes::attr('aria-expanded', false));
+        self::assertSame('aria-hidden="true"', (string) Attributes::attr('aria-hidden', true));
+        self::assertSame('data-open="false"', (string) Attributes::attr('data-open', false));
+        self::assertSame('spellcheck="false"', (string) Attributes::attr('spellcheck', false));
+        self::assertSame('contentEditable="true"', (string) Attributes::attr('contentEditable', true));
+        self::assertSame('draggable="false"', (string) Attributes::attr('draggable', false));
+        self::assertSame('', (string) Attributes::attr('aria-label', null));
     }
 
     public function testAttrWithAnInvalidNameIsNotRendered(): void
@@ -76,6 +88,18 @@ final class TwigFunctionsTest extends TestCase
         self::assertSame('<b>Ada</b>', $markup->html(new Html('<b>Ada</b>')));
         self::assertSame('&lt;i&gt;<b>x</b>3', $markup->html(['<i>', new Html('<b>x</b>'), 3]));
         self::assertSame('', $markup->html(null));
+        self::assertSame('<b>x</b><b>y</b>', $markup->html([new Html('<b>x</b>'), null, false, new Html('<b>y</b>')]), 'null and false render nothing');
+        self::assertInstanceOf(Html::class, $markup->resolve([null, new Html('<b>x</b>')]), 'a list with markup is markup');
+        self::assertSame(['a', 'b'], $markup->resolve(['a', 'b']), 'a list without markup is data');
+    }
+
+    public function testMarkupRendersWhenATemplatePrintsIt(): void
+    {
+        $twig = new Environment(new ArrayLoader(['@phpm/a.twig' => '<p>{{ on ? yes : no }}</p>', '@phpm/yes.twig' => '<b>yes</b>', '@phpm/no.twig' => '{{ fail() }}']));
+        $twig->addFunction(new \Twig\TwigFunction('fail', static fn () => throw new \LogicException('The hidden branch rendered.')));
+        $markup = new MarkupResolver($twig);
+
+        self::assertSame('<p><b>yes</b></p>', $markup->html(new Element('a.twig', ['on' => true, 'yes' => new Element('yes.twig'), 'no' => new Element('no.twig')])));
     }
 
     private function runtime(): MamuRuntime
@@ -91,8 +115,31 @@ final class TwigFunctionsTest extends TestCase
         self::assertSame('', (string) Attributes::style(null));
     }
 
+    public function testStyleOfDataAddsNoDeclaration(): void
+    {
+        $style = Attributes::style([
+            'color' => 'red; position: fixed',
+            'background' => 'url("data:image/png;base64,AA==")',
+            'content' => "'a;b'",
+            'width' => 'calc(1px',
+            'margin' => '0) ; top: 0; (',
+            'x: 1; top' => '0',
+            'fontFamily' => 'serif',
+        ]);
+
+        self::assertSame('style="background: url(&quot;data:image/png;base64,AA==&quot;); content: &#039;a;b&#039;; font-family: serif"', (string) $style);
+    }
+
     public function testKey(): void
     {
         self::assertSame('data-mamu-key="a&quot;b"', (string) Attributes::key('a"b'));
+    }
+
+    public function testKeyedAddsTheKeyAsText(): void
+    {
+        self::assertSame(' <li data-mamu-key="$10">x</li>', Attributes::keyed(' <li>x</li>', '$10'));
+        self::assertSame('<li data-mamu-key="a\\1&amp;$1">x</li>', Attributes::keyed('<li>x</li>', 'a\\1&$1'));
+        self::assertSame('<li data-mamu-key="a'."\u{FFFD}".'">x</li>', Attributes::keyed('<li>x</li>', "a\xFF"), 'invalid UTF-8');
+        self::assertSame('text', Attributes::keyed('text', 'k'));
     }
 }

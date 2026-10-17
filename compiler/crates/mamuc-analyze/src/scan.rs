@@ -29,6 +29,24 @@ pub struct FileInfo {
     pub markup_scopes: Vec<MarkupScope>,
 }
 
+impl FileInfo {
+    /// A class name as PHP resolves it: a fully qualified name (`\A\B`), an imported first
+    /// segment (`use App\Ui;` → `Ui\Card`), or a name in the namespace.
+    pub fn resolve_class(&self, name: &str) -> String {
+        if let Some(rest) = name.strip_prefix('\\') {
+            return rest.to_string();
+        }
+        let (first, tail) = name.split_once('\\').map_or((name, None), |(a, b)| (a, Some(b)));
+        if let Some(fqn) = self.class_uses.get(&first.to_ascii_lowercase()) {
+            return match tail {
+                Some(t) => format!("{fqn}\\{t}"),
+                None => fqn.clone(),
+            };
+        }
+        qualify(&self.namespace, name)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MarkupScope {
     TopLevel,
@@ -79,8 +97,32 @@ pub struct Class {
     pub name_span: Span,
     pub span: Span,
     pub is_component: bool,
+    /// A `trait`: its members go into the classes that use it.
+    pub is_trait: bool,
+    /// The parent class (`extends`), resolved.
+    pub parent: Option<String>,
+    /// The traits that the class uses, resolved.
+    pub traits: Vec<String>,
     pub props: Vec<Prop>,
     pub methods: Vec<Func>,
+    /// The properties from the parent classes and the traits in the sources (see `resolve_inheritance()`).
+    pub inherited_props: Vec<Prop>,
+    /// The method names from the parent classes and the traits in the sources.
+    pub inherited_methods: Vec<String>,
+    /// A parent class or a trait is not in the sources (a `.php` file, a library), so the class
+    /// can have more members than the compiler sees.
+    pub open: bool,
+}
+
+impl Class {
+    /// The properties of the class, then the inherited ones that it can read.
+    pub fn all_props(&self) -> impl Iterator<Item = &Prop> {
+        self.props.iter().chain(self.inherited_props.iter().filter(|p| !p.is_private))
+    }
+
+    pub fn has_method(&self, name: &str) -> bool {
+        self.methods.iter().any(|m| m.name.eq_ignore_ascii_case(name)) || self.inherited_methods.iter().any(|m| m.eq_ignore_ascii_case(name))
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -88,6 +130,8 @@ pub struct Prop {
     pub name: String,
     pub ty: String,
     pub is_public: bool,
+    /// `private`: a child class cannot read it.
+    pub is_private: bool,
     pub is_readonly: bool,
     pub is_static: bool,
     pub is_state: bool,
@@ -197,6 +241,14 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                             i = end + 1;
                             continue;
                         }
+                    }
+                    "trait" if toks.t.get(i + 1).is_some_and(|x| x.kind == TokKind::Ident) => {
+                        attrs.clear();
+                        let (mut c, end) = parse_class(&toks, i, &info, vec![]);
+                        c.is_trait = true;
+                        info.classes.push(c);
+                        i = end + 1;
+                        continue;
                     }
                     "interface" | "trait" | "enum" => {
                         // Skip the whole declaration.
@@ -438,7 +490,7 @@ fn parse_params(toks: &Toks, from: usize, to: usize) -> Vec<Param> {
 
 /// The span of the first `#[Route]` attribute in a list of attributes (it is repeatable).
 fn route_attr(info: &FileInfo, attrs: &[(String, Span)]) -> Option<Span> {
-    attrs.iter().find(|(a, _)| resolve_class(info, a) == ATTR_ROUTE).map(|(_, s)| *s)
+    attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_ROUTE).map(|(_, s)| *s)
 }
 
 /// Records `#[Route]` / `#[Component]` / `#[State]` that do not resolve to the expected
@@ -452,44 +504,41 @@ fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
             "State" => ATTR_STATE,
             _ => continue,
         };
-        let resolved = resolve_class(info, a);
+        let resolved = info.resolve_class(a);
         if resolved != expected {
             info.foreign_attrs.push((short.to_string(), expected, resolved, *span));
         }
     }
 }
 
-fn resolve_class(info: &FileInfo, name: &str) -> String {
-    if let Some(rest) = name.strip_prefix('\\') {
-        return rest.to_string();
-    }
-    let (first, tail) = name.split_once('\\').map_or((name, None), |(a, b)| (a, Some(b)));
-    if let Some(fqn) = info.class_uses.get(&first.to_ascii_lowercase()) {
-        return match tail {
-            Some(t) => format!("{fqn}\\{t}"),
-            None => fqn.clone(),
-        };
-    }
-    qualify(&info.namespace, name)
-}
 
 fn parse_class(toks: &Toks, at: usize, info: &FileInfo, attrs: Vec<String>) -> (Class, usize) {
     let name = toks.text(at + 1).to_string();
     let name_span = toks.t[at + 1].span;
     let mut j = at + 2;
+    let mut parent = None;
     while j < toks.t.len() && !toks.is_op(j, "{") {
+        if toks.is_word(j, "extends") && toks.t.get(j + 1).is_some_and(|x| x.kind == TokKind::Ident) {
+            parent = Some(info.resolve_class(toks.text(j + 1)));
+        }
         j += 1;
     }
     let close = toks.matching(j);
-    let is_component = attrs.iter().any(|a| resolve_class(info, a) == ATTR_COMPONENT);
+    let is_component = attrs.iter().any(|a| info.resolve_class(a) == ATTR_COMPONENT);
     let mut class = Class {
         fqn: qualify(&info.namespace, &name),
         name,
         name_span,
         span: Span::new(toks.t[at].span.start, toks.t[close].span.end),
         is_component,
+        is_trait: false,
+        parent,
+        traits: vec![],
         props: vec![],
         methods: vec![],
+        inherited_props: vec![],
+        inherited_methods: vec![],
+        open: false,
     };
 
     let mut i = j + 1;
@@ -512,9 +561,16 @@ fn parse_class(toks: &Toks, at: usize, info: &FileInfo, attrs: Vec<String>) -> (
             continue;
         }
         if t.kind == TokKind::Ident && (lower == "const" || lower == "use" || lower == "case") {
+            let is_use = lower == "use";
+            i += 1;
             while i < close && !toks.is_op(i, ";") {
                 if toks.is_op(i, "{") {
+                    // `use A, B { A::x insteadof B; }` ends without `;`.
                     i = toks.matching(i);
+                    break;
+                }
+                if is_use && toks.t[i].kind == TokKind::Ident {
+                    class.traits.push(info.resolve_class(toks.text(i)));
                 }
                 i += 1;
             }
@@ -532,6 +588,7 @@ fn parse_class(toks: &Toks, at: usize, info: &FileInfo, attrs: Vec<String>) -> (
                         name: p.name.clone(),
                         ty: p.ty.clone(),
                         is_public: p.promoted_public,
+                        is_private: false,
                         is_readonly: false,
                         is_static: false,
                         is_state: false,
@@ -555,9 +612,10 @@ fn parse_class(toks: &Toks, at: usize, info: &FileInfo, attrs: Vec<String>) -> (
                 name: text[1..].to_string(),
                 ty,
                 is_public: mods.iter().any(|m| m == "public" || m == "var") || !mods.iter().any(|m| m == "private" || m == "protected"),
+                is_private: mods.iter().any(|m| m == "private"),
                 is_readonly: mods.iter().any(|m| m == "readonly"),
                 is_static: mods.iter().any(|m| m == "static"),
-                is_state: member_attrs.iter().any(|a| resolve_class(info, a) == ATTR_STATE),
+                is_state: member_attrs.iter().any(|a| info.resolve_class(a) == ATTR_STATE),
                 is_promoted: false,
                 has_default,
                 span: t.span,

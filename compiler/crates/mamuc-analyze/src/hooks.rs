@@ -3,14 +3,13 @@
 
 use crate::scan::FileInfo;
 use mamuc_syntax::diag::codes;
-use mamuc_syntax::php::{lex, TokKind, Token};
+use mamuc_syntax::php::{Lexed, TokKind, Token};
 use mamuc_syntax::Diagnostic;
 
 const REMOVED: &[&str] = &["usestate", "usereducer", "useref", "usememo", "usecallback", "useid", "usecontext"];
 
-pub fn check(file: &FileInfo, src: &str) -> Vec<Diagnostic> {
-    let Ok(lexed) = lex(src) else { return vec![] };
-    let toks: Vec<Token> = lexed.tokens.into_iter().filter(|t| !t.is_trivia()).collect();
+pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
+    let toks: Vec<Token> = lexed.tokens.iter().copied().filter(|t| !t.is_trivia()).collect();
     let is_op = |i: usize, op: &str| toks.get(i).is_some_and(|t| t.kind == TokKind::Op && t.text(src) == op);
     let is_word = |i: usize, w: &str| toks.get(i).is_some_and(|t| t.kind == TokKind::Ident && t.text(src).eq_ignore_ascii_case(w));
 
@@ -65,7 +64,7 @@ mod tests {
     fn codes(src: &str) -> Vec<&'static str> {
         let lexed = lex(src).unwrap();
         let info = scan("a.phpm", src, &lexed);
-        super::check(&info, src).into_iter().map(|d| d.code).collect()
+        super::check(&info, src, &lexed).into_iter().map(|d| d.code).collect()
     }
 
     #[test]

@@ -21,7 +21,8 @@ use Symfony\Component\HttpFoundation\Request;
 final class Event
 {
     /**
-     * @param array<string, mixed> $form    the form fields, for `submit`
+     * @param array<string, mixed> $form    the form fields, for `submit`: name => value, or the
+     *                                      list of values of a name with more than one value
      * @param Request|null         $request the HTTP request of the event, with the form fields
      *                                      as its POST data (`$form->handleRequest($e->request)`)
      */
@@ -38,10 +39,14 @@ final class Event
     /** @param array<string, mixed> $data */
     public static function fromArray(array $data, ?Request $request = null): self
     {
-        $form = \is_array($data['form'] ?? null) ? $data['form'] : [];
-        // FormData gives flat keys ("scientist[name]"). PHP makes nested arrays of them, as it
-        // does for the body of a normal POST.
-        parse_str(http_build_query($form), $post);
+        $fields = self::fields($data['form'] ?? null);
+        $form = [];
+        foreach ($fields as [$name, $value]) {
+            $form[$name] = \array_key_exists($name, $form) ? [...(array) $form[$name], $value] : $value;
+        }
+        // FormData gives flat keys ("scientist[name]", "tags[]"). PHP makes nested arrays of
+        // them, as it does for the body of a normal POST.
+        parse_str(implode('&', array_map(static fn (array $f): string => rawurlencode($f[0]).'='.rawurlencode($f[1]), $fields)), $post);
 
         return new self(
             (string) ($data['type'] ?? ''),
@@ -53,5 +58,28 @@ final class Event
             // as POST data lets a Symfony form read them like a normal form submission.
             $request?->duplicate(request: $post),
         );
+    }
+
+    /**
+     * The form fields in their order. The browser sends [name, value] pairs, so a name can have
+     * more than one value (`<select multiple>`, checkboxes). A hash of name => value also works.
+     *
+     * @return list<array{string, string}>
+     */
+    private static function fields(mixed $form): array
+    {
+        if (!\is_array($form)) {
+            return [];
+        }
+        $fields = [];
+        foreach ($form as $name => $value) {
+            if (\is_int($name) && \is_array($value) && \is_string($value[0] ?? null) && \is_scalar($value[1] ?? null)) {
+                $fields[] = [$value[0], (string) $value[1]];
+            } elseif (\is_string($name) && \is_scalar($value)) {
+                $fields[] = [$name, (string) $value];
+            }
+        }
+
+        return $fields;
     }
 }

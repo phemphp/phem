@@ -63,15 +63,16 @@ final class PropBinder
      * PHP call, the variadic parameter (`...$rest`) gets the props that no parameter takes.
      *
      * @param array<string, mixed> $props
+     * @param array<string, Html>  $slots
      *
      * @return array<string, mixed>
      */
-    public function templateContext(string $fqcn, array $props): array
+    public function templateContext(string $fqcn, array $props, array $slots = []): array
     {
         $params = $this->metadata->parameters($fqcn);
         $vars = [];
         $rest = [];
-        foreach ($this->arguments($fqcn, $props) as $name => $value) {
+        foreach ($this->arguments($fqcn, $props, $slots) as $name => $value) {
             if (isset($params[$name]) && !$params[$name]->variadic) {
                 $vars[$name] = $value;
             } else {
@@ -90,7 +91,32 @@ final class PropBinder
     }
 
     /**
+     * Whether a readonly prop of a class component that is set gets another value: assign()
+     * cannot write it, so the component needs a new instance.
+     *
+     * @param array<string, mixed> $props
+     * @param array<string, Html>  $slots
+     */
+    public function changesReadonly(object $component, array $props, array $slots = []): bool
+    {
+        $all = $props + $slots;
+        foreach ($this->metadata->props($component::class) as $name => $p) {
+            if (!$p->isReadOnly() || !$p->isInitialized($component) || !\array_key_exists($name, $all)) {
+                continue;
+            }
+            $old = $p->getValue($component);
+            $new = $all[$name];
+            if ($old instanceof Html && $new instanceof Html ? (string) $old !== (string) $new : $old !== $new) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Writes the props (and slots) into a class component. A missing prop gets its default.
+     * A readonly prop that is set keeps its value (see changesReadonly()).
      *
      * @param array<string, mixed> $props
      * @param array<string, Html>  $slots

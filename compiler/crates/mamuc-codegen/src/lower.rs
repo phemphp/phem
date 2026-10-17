@@ -6,6 +6,8 @@ use mamuc_syntax::markup::{Attr, AttrKind, AttrValue, Element, ExprPart, Node, S
 use mamuc_syntax::{Diagnostic, Span};
 use std::collections::HashSet;
 
+use crate::php_str;
+
 pub struct Lowerer<'a> {
     pub info: &'a FileInfo,
     pub reg: &'a Registry,
@@ -143,7 +145,7 @@ impl<'a> Lowerer<'a> {
                         self.error(codes::BAD_ATTRIBUTE, "Twig tags are not allowed in this attribute value", span)
                             .help = Some("use an expression: `name={{ ok ? 'a' : 'b' }}`".into());
                     }
-                    items.push(twig_str(s));
+                    items.push(php_str(s));
                 }
                 StrPart::Expr(x) => {
                     let c = self.expr_code(x);
@@ -176,7 +178,11 @@ impl<'a> Lowerer<'a> {
                 // `on*` names from mamu_attrs(), because a spread can contain data.
                 AttrKind::Plain { name, .. } if is_inline_script(name) => self.dom_attr(a, out),
                 AttrKind::Plain { name, name_span, value } => {
-                    let is_event = event_name(name).is_some();
+                    let event = event_name(name);
+                    let is_event = event.is_some();
+                    if let Some(event) = &event {
+                        self.check_event(name, event, *name_span);
+                    }
                     let v = match value {
                         AttrValue::Expr(x) => {
                             let c = self.expr_code(x);
@@ -192,7 +198,7 @@ impl<'a> Lowerer<'a> {
                         AttrValue::None => "true".to_string(),
                         AttrValue::Quoted { parts, .. } => self.quoted_expr(parts, a.span),
                     };
-                    hash.push(format!("{}: {v}", twig_str(name)));
+                    hash.push(format!("{}: {v}", php_str(name)));
                 }
             }
         }
@@ -210,6 +216,16 @@ impl<'a> Lowerer<'a> {
                 Diagnostic::warning(codes::HANDLER_CALLED, format!("`{name}` calls the handler during render"), span)
                     .with_label("this is a call")
                     .with_help(format!("pass the function, do not call it: `{name}={{{{ {} }}}}`", code.split('(').next().unwrap_or("").trim())),
+            );
+        }
+    }
+
+    /// W003: the `mamu` client listens only to some events (`DomEvents::LISTENED` of the runtime).
+    fn check_event(&mut self, name: &str, event: &str, span: Span) {
+        if !LISTENED_EVENTS.contains(&event) {
+            self.diags.push(
+                Diagnostic::warning(codes::UNKNOWN_EVENT, format!("`{name}` never runs: the browser does not send `{event}` events"), span)
+                    .with_help("use one of: onClick, onDoubleClick, onChange, onInput, onSubmit, onKeyDown, onKeyUp, onFocus, onBlur"),
             );
         }
     }
@@ -238,6 +254,7 @@ impl<'a> Lowerer<'a> {
                     return;
                 }
                 if let Some(event) = event_name(name) {
+                    self.check_event(name, &event, *name_span);
                     match value {
                         AttrValue::Expr(x) => {
                             let c = self.expr_code(x);
@@ -264,29 +281,14 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// The FQN of a component tag: a function imported with `use function`, or a class name.
     pub fn resolve_component(&self, name: &str) -> String {
-        let info = self.info;
-        if let Some(rest) = name.strip_prefix('\\') {
-            return rest.to_string();
-        }
-        if let Some((first, tail)) = name.split_once('\\') {
-            if let Some(fqn) = info.class_uses.get(&first.to_ascii_lowercase()) {
-                return format!("{fqn}\\{tail}");
-            }
-        } else {
-            let lower = name.to_ascii_lowercase();
-            if let Some(f) = info.function_uses.get(&lower) {
+        if !name.contains('\\') {
+            if let Some(f) = self.info.function_uses.get(&name.to_ascii_lowercase()) {
                 return f.clone();
             }
-            if let Some(c) = info.class_uses.get(&lower) {
-                return c.clone();
-            }
         }
-        if info.namespace.is_empty() {
-            name.to_string()
-        } else {
-            format!("{}\\{name}", info.namespace)
-        }
+        self.info.resolve_class(name)
     }
 
     fn component(&mut self, e: &Element, out: &mut String) {
@@ -323,13 +325,13 @@ impl<'a> Lowerer<'a> {
                         key = Some(v);
                         continue;
                     }
-                    if !def.rest && !def.props.iter().any(|p| p == name) {
+                    if !def.rest && !def.open && !def.props.iter().any(|p| p == name) {
                         let list = if def.props.is_empty() { "none".to_string() } else { def.props.join(", ") };
                         self.error(codes::UNKNOWN_PROP, format!("`<{}>` has no prop `{name}`", e.name), *name_span).help =
                             Some(format!("its props are: {list}"));
                     }
                     given.insert(name.clone());
-                    props.push(format!("{}: {v}", twig_str(name)));
+                    props.push(format!("{}: {v}", php_str(name)));
                 }
             }
         }
@@ -342,7 +344,7 @@ impl<'a> Lowerer<'a> {
             match c {
                 Node::Element(s) if s.name.starts_with(&slot_prefix) => {
                     let slot = s.name[slot_prefix.len()..].to_string();
-                    if !def.slots.contains(&slot) {
+                    if !def.open && !def.slots.contains(&slot) {
                         self.error(codes::UNKNOWN_SLOT, format!("`<{}>` has no slot `{slot}`", e.name), s.name_span).help =
                             Some(format!("add a `?Html ${slot} = null` parameter to `{}`", def.fqcn));
                     }
@@ -355,7 +357,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         if default_children.iter().any(|n| !n.is_blank() && !matches!(n, Node::TwigComment(_))) {
-            if !def.slots.iter().any(|s| s == "children") {
+            if !def.open && !def.slots.iter().any(|s| s == "children") {
                 self.error(codes::NO_CHILDREN, format!("`<{}>` does not accept children", e.name), e.name_span).help =
                     Some(format!("add a `?Html $children = null` parameter to `{}`", def.fqcn));
             }
@@ -372,7 +374,7 @@ impl<'a> Lowerer<'a> {
             }
         }
 
-        let mut head = format!("component {}", twig_str(&fqcn));
+        let mut head = format!("component {}", php_str(&fqcn));
         if !props.is_empty() {
             head.push_str(&format!(" with {{{}}}", props.join(", ")));
         }
@@ -444,6 +446,10 @@ impl<'a> Lowerer<'a> {
     }
 }
 
+/// The events of `event_name()` that the `mamu` client listens to. The runtime makes `focus`
+/// and `blur` the `focusin` and `focusout` events.
+const LISTENED_EVENTS: &[&str] = &["click", "dblclick", "input", "change", "submit", "keydown", "keyup", "focus", "blur", "focusin", "focusout"];
+
 /// `onClick` → `click`, `onDoubleClick` → `dblclick`.
 fn event_name(attr: &str) -> Option<String> {
     let rest = attr.strip_prefix("on")?;
@@ -461,9 +467,6 @@ fn is_inline_script(attr: &str) -> bool {
     event_name(attr).is_none() && attr.get(..2).is_some_and(|p| p.eq_ignore_ascii_case("on"))
 }
 
-pub fn twig_str(s: &str) -> String {
-    format!("'{}'", s.replace('\\', "\\\\").replace('\'', "\\'"))
-}
 
 fn placeholder(t: &str) -> Option<usize> {
     t.strip_prefix('\u{1}')?.strip_suffix('\u{2}')?.parse().ok()

@@ -52,7 +52,6 @@ final class TemplateWarmer implements CacheWarmerInterface
             $this->twig->load(Manifest::templateName($template));
             ++$n;
         }
-        $this->twig->load(ComponentTokenParser::SLOT_HOST);
 
         return $n;
     }

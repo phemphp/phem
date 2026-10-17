@@ -64,5 +64,6 @@ pub mod codes {
     pub const ROUTE_NOT_COMPONENT: &str = "E052";
     pub const HANDLER_CALLED: &str = "W001";
     pub const MISSING_KEY: &str = "W002";
+    pub const UNKNOWN_EVENT: &str = "W003";
     pub const FOREIGN_ATTRIBUTE: &str = "W004";
 }

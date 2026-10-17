@@ -22,6 +22,7 @@ use Mamu\State\StateAccessor;
  * Renders a class component. The first time a fiber renders in a request, the factory makes its
  * instance, and the props go into it. Then the state that the browser sent back is restored;
  * without one, `mount()` initializes it. Each render writes the props again and calls `render()`.
+ * When a readonly prop changes, a new instance replaces the old one and keeps its state.
  */
 final class ClassComponentRenderer implements ComponentRenderer
 {
@@ -48,6 +49,12 @@ final class ClassComponentRenderer implements ComponentRenderer
             } elseif (method_exists($component, 'mount')) {
                 $component->mount();
             }
+        } elseif ($this->props->changesReadonly($component, $fiber->props, $slots)) {
+            // A readonly prop cannot change: a new instance gets the props, and the state of the old one.
+            $state = $this->state->export($component);
+            $component = $fiber->instance = $this->factory->create($fiber->fqcn);
+            $this->props->assign($component, $fiber->props, $slots);
+            $this->state->restore($component, $state);
         } else {
             $this->props->assign($component, $fiber->props, $slots);
         }

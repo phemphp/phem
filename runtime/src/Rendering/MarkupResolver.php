@@ -15,14 +15,15 @@ namespace Mamu\Rendering;
 
 use Mamu\Dom\Attributes;
 use Mamu\Element;
-use Mamu\Html;
 use Mamu\HtmlList;
+use Mamu\LazyHtml;
 use Mamu\Manifest\Manifest;
 use Twig\Environment;
 use Twig\Markup;
 
 /**
- * Renders markup values: an Element becomes Html, and a list of markup becomes an HtmlList.
+ * Renders markup values: an Element becomes Html that renders on first use, and a list of
+ * markup becomes an HtmlList.
  * Other values do not change.
  */
 final class MarkupResolver
@@ -34,12 +35,14 @@ final class MarkupResolver
     public function resolve(mixed $value): mixed
     {
         if ($value instanceof Element) {
-            return new Html($this->twig->render(Manifest::templateName($value->template), array_map($this->resolve(...), $value->vars)));
+            // The markup renders when a template prints it. Thus the markup of a branch that does
+            // not show (`{{ on ? yes : no }}`) mounts no component and adds no handler.
+            return new LazyHtml(fn (): string => $this->twig->render(Manifest::templateName($value->template), array_map($this->resolve(...), $value->vars)));
         }
         if (\is_array($value)) {
             $value = array_map($this->resolve(...), $value);
 
-            return HtmlList::accepts($value) ? new HtmlList($value) : $value;
+            return HtmlList::of($value) ?? $value;
         }
 
         return $value;

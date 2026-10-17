@@ -7,8 +7,6 @@
 mod lower;
 mod vars;
 
-pub use lower::twig_str;
-
 use rayon::prelude::*;
 use mamuc_analyze::{FileInfo, Kind, MarkupScope, Registry};
 use mamuc_syntax::diag::codes;
@@ -80,18 +78,24 @@ struct Parsed {
 
 /// Compiles a project. Returns the output when there is no error, and the diagnostics of each file.
 pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiagnostics>) {
-    // Pass 1: lex and scan each file.
-    let parsed: Vec<Parsed> = inputs
+    // Pass 1: lex and scan each file. The classes get the members that they inherit, then the
+    // file checks run.
+    let mut parsed: Vec<Parsed> = inputs
         .into_par_iter()
         .map(|input| match lex(&input.text) {
             Ok(lexed) => {
                 let info = mamuc_analyze::scan(&input.rel, &input.text, &lexed);
-                let diags = mamuc_analyze::check(&info, &input.text);
-                Parsed { input, lexed: Some(lexed), info, diags }
+                Parsed { input, lexed: Some(lexed), info, diags: vec![] }
             }
             Err(d) => Parsed { info: FileInfo { rel: input.rel.clone(), ..Default::default() }, input, lexed: None, diags: vec![d] },
         })
         .collect();
+    mamuc_analyze::resolve_inheritance(parsed.iter_mut().map(|p| &mut p.info));
+    parsed.par_iter_mut().for_each(|p| {
+        if let Some(lexed) = &p.lexed {
+            p.diags = mamuc_analyze::check(&p.info, &p.input.text, lexed);
+        }
+    });
 
     let (registry, dup) = mamuc_analyze::registry(parsed.iter().map(|p| &p.info));
 
@@ -145,6 +149,10 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
     (Some(ProjectOutput { files, manifest }), all_diags)
 }
 
+/// The global variables of Twig in a Symfony application. Markup can read them without a PHP
+/// variable.
+const TWIG_GLOBALS: &[&str] = &["app"];
+
 fn has_variable(text: &str, name: &str) -> bool {
     let needle = format!("${name}");
     let b = text.as_bytes();
@@ -192,10 +200,15 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
             } else if let Some(c) = class {
                 if v.name == "this" {
                     "$this".to_string()
-                } else if c.props.iter().any(|p| p.name == v.name && !p.is_static) {
+                } else if c.all_props().any(|p| p.name == v.name && !p.is_static) {
                     format!("$this->{}", v.name)
-                } else if c.methods.iter().any(|f| f.name == v.name) {
+                } else if c.has_method(&v.name) {
                     format!("$this->{}(...)", v.name)
+                } else if TWIG_GLOBALS.contains(&v.name.as_str()) {
+                    continue;
+                } else if c.open && v.strict {
+                    // A property or a method of a parent class that the compiler does not see.
+                    format!("$this->{0} ?? (method_exists($this, {1}) ? $this->{0}(...) : null)", v.name, php_str(&v.name))
                 } else {
                     if v.strict {
                         diags.push(undefined(&v.name, v.offset, " or a property or method of the class"));
@@ -203,7 +216,7 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
                     continue;
                 }
             } else {
-                if v.strict {
+                if v.strict && !TWIG_GLOBALS.contains(&v.name.as_str()) {
                     diags.push(undefined(&v.name, v.offset, ""));
                 }
                 continue;
@@ -243,6 +256,7 @@ fn undefined(name: &str, offset: usize, extra: &str) -> Diagnostic {
         .with_help(format!("markup reads the PHP variables of the enclosing function{extra}: define `${name}` before the markup"))
 }
 
+/// A single-quoted string literal. PHP and Twig escape it the same way.
 pub fn php_str(s: &str) -> String {
     format!("'{}'", s.replace('\\', "\\\\").replace('\'', "\\'"))
 }

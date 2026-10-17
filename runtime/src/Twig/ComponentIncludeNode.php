@@ -56,16 +56,26 @@ class ComponentIncludeNode extends IncludeNode
         $this->addProps($compiler);
         $compiler->raw(', ');
         $this->addKey($compiler);
-        if ('template' !== $this->getAttribute('kind')) {
+        if ('template' === $this->getAttribute('kind')) {
+            $compiler->raw(', $context');
+            $this->addSlotNames($compiler);
+        } else {
             $compiler->raw(', ');
             $this->addSlots($compiler);
+            $compiler->raw(', $context');
         }
-        $compiler->raw(", \$context);\n");
+        $compiler->raw(");\n");
     }
 
+    /** The slots of a function or class component: the embedded template, or null. */
     protected function addSlots(Compiler $compiler): void
     {
         $compiler->raw('null');
+    }
+
+    /** The names of the slots that the caller gives to a template component. */
+    protected function addSlotNames(Compiler $compiler): void
+    {
     }
 
     protected function addProps(Compiler $compiler): void

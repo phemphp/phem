@@ -19,6 +19,13 @@ function isTextLike(el) {
   return el instanceof HTMLTextAreaElement || (el instanceof HTMLInputElement && TEXT_INPUTS.has(el.type))
 }
 
+// The fields of a form as [name, value] pairs, so a name can have more than one value
+// (`<select multiple>`, checkboxes). The button that submits the form is a field too. A file
+// cannot go in the JSON body, so it is left out.
+function formFields(form, submitter) {
+  return [...new FormData(form, submitter ?? null)].filter(([, value]) => typeof value === "string")
+}
+
 export default class MamuController extends Controller {
   static values = { state: String, signature: String }
 
@@ -37,7 +44,7 @@ export default class MamuController extends Controller {
       value: "value" in el ? el.value : null,
       checked: "checked" in el ? el.checked : null,
       key: event.key ?? null,
-      form: el instanceof HTMLFormElement ? Object.fromEntries(new FormData(el)) : null,
+      form: el instanceof HTMLFormElement ? formFields(el, event.submitter) : null,
     }
     this.queue = this.queue.then(() => this.send(handler, payload)).catch((e) => console.error("[mamu]", e))
   }

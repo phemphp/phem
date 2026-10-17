@@ -42,6 +42,16 @@ final class EventTest extends TestCase
         self::assertSame(['scientist' => ['name' => 'Ada', 'profession' => 'mathematician']], $event->request->request->all());
     }
 
+    public function testFieldPairsKeepEachValueOfAName(): void
+    {
+        $request = Request::create('/_mamu/event', 'POST');
+        $event = Event::fromArray(['type' => 'submit', 'form' => [['tags[]', 'a'], ['tags[]', 'b'], ['role', 'x'], ['role', 'y'], ['action', 'delete']]], $request);
+
+        self::assertSame(['tags[]' => ['a', 'b'], 'role' => ['x', 'y'], 'action' => 'delete'], $event->form);
+        self::assertNotNull($event->request);
+        self::assertSame(['tags' => ['a', 'b'], 'role' => 'y', 'action' => 'delete'], $event->request->request->all(), 'as PHP parses a POST body');
+    }
+
     public function testRequestIsNullWithoutAnHttpRequest(): void
     {
         $event = Event::fromArray(['type' => 'click']);

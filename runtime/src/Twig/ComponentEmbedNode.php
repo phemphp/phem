@@ -23,8 +23,8 @@ use Twig\Node\Expression\AbstractExpression;
  *
  * - A template component: the embedded template extends the component template, so its blocks
  *   override the slot blocks (real Twig inheritance, as with `embed`).
- * - A function or class component: the Renderer receives the embedded template and renders
- *   each block lazily as a Slot value.
+ * - A function or class component: the embedded template has no parent. The Renderer
+ *   receives it and renders each block lazily as a Slot value.
  *
  * The blocks run `{% with _mamu_caller only %}`, so they see the variables of the caller,
  * not the props of the component.
@@ -32,11 +32,15 @@ use Twig\Node\Expression\AbstractExpression;
 #[YieldReady]
 final class ComponentEmbedNode extends ComponentIncludeNode
 {
-    public function __construct(string $fqcn, string $kind, string $name, int $index, ?AbstractExpression $variables, ?AbstractExpression $key, int $lineno)
+    /**
+     * @param list<string> $slots the names of the blocks
+     */
+    public function __construct(string $fqcn, string $kind, string $name, int $index, array $slots, ?AbstractExpression $variables, ?AbstractExpression $key, int $lineno)
     {
         parent::__construct($fqcn, $kind, null, $variables, $key, $lineno);
         $this->setAttribute('name', $name);
         $this->setAttribute('index', $index);
+        $this->setAttribute('slots', $slots);
     }
 
     protected function addGetTemplate(Compiler $compiler, string $template = ''): void
@@ -54,5 +58,10 @@ final class ComponentEmbedNode extends ComponentIncludeNode
     protected function addSlots(Compiler $compiler): void
     {
         $this->addGetTemplate($compiler);
+    }
+
+    protected function addSlotNames(Compiler $compiler): void
+    {
+        $compiler->raw(', ')->repr($this->getAttribute('slots'));
     }
 }

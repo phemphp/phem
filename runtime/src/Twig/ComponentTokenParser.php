@@ -37,8 +37,6 @@ use Twig\TokenParser\AbstractTokenParser;
  */
 final class ComponentTokenParser extends AbstractTokenParser
 {
-    public const SLOT_HOST = '@Mamu/slot_host.twig';
-
     public function __construct(private readonly Manifest $manifest)
     {
     }
@@ -63,19 +61,25 @@ final class ComponentTokenParser extends AbstractTokenParser
             return new ComponentIncludeNode($fqcn, $kind, $template, $variables, $key, $line);
         }
 
-        // Like `embed`: the body is a child template of the component template (or of an
-        // empty host template, for function and class components, which render the blocks as slots).
-        $stream->injectTokens([
-            new Token(Token::BLOCK_START_TYPE, '', $line),
-            new Token(Token::NAME_TYPE, 'extends', $line),
-            new Token(Token::STRING_TYPE, $template ?? self::SLOT_HOST, $line),
-            new Token(Token::BLOCK_END_TYPE, '', $line),
-        ]);
+        // Like `embed`: for a template component, the body is a child template of the component
+        // template. For a function or class component, it has no parent: the Renderer renders
+        // only its blocks, as slots.
+        if (null !== $template) {
+            $stream->injectTokens([
+                new Token(Token::BLOCK_START_TYPE, '', $line),
+                new Token(Token::NAME_TYPE, 'extends', $line),
+                new Token(Token::STRING_TYPE, $template, $line),
+                new Token(Token::BLOCK_END_TYPE, '', $line),
+            ]);
+        }
         $module = $this->parser->parse($stream, static fn (Token $t): bool => $t->test('endcomponent'), true);
         $this->parser->embedTemplate($module);
         $stream->expect(Token::BLOCK_END_TYPE);
 
-        return new ComponentEmbedNode($fqcn, $kind, $stream->getSourceContext()->getName(), $module->getAttribute('index'), $variables, $key, $line);
+        // The blocks of the body are the slots that the caller gives.
+        $slots = array_map(strval(...), array_keys(iterator_to_array($module->getNode('blocks'))));
+
+        return new ComponentEmbedNode($fqcn, $kind, $stream->getSourceContext()->getName(), $module->getAttribute('index'), $slots, $variables, $key, $line);
     }
 
     public function getTag(): string

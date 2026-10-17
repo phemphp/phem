@@ -120,6 +120,34 @@ final class AppTest extends TestCase
         self::assertSame(2, substr_count($r['data']['streams'], 'Clicked 2 times'), 'onDoubleClick in the rest props');
     }
 
+    public function testSlotsListsTitlesAndReadonlyProps(): void
+    {
+        $html = (string) $this->request('GET', '/edge')->getContent();
+        self::assertSame(1, preg_match('/data-mamu-state-value="([^"]*)" data-mamu-signature-value="([^"]*)"/', $html, $m));
+        $this->state = html_entity_decode($m[1]);
+        $this->signature = $m[2];
+        preg_match_all('/data-mamu-on-click="([^"]+)"/', $html, $h);
+        $this->handlers = $h[1];
+
+        self::assertStringContainsString('<title>Fixture</title>', $html, 'the <title> of an SVG is not the title of the page');
+        self::assertStringContainsString('<svg id="icon"><title>Icon</title></svg>', $html);
+        self::assertStringContainsString('<p id="body">Body</p>', $html, 'a required slot of a template component');
+        self::assertStringContainsString('<footer>Foot 0</footer>', $html, 'the template tests a given slot');
+        self::assertSame(1, substr_count($html, '<footer>'), 'no footer without the slot');
+        self::assertStringContainsString('<ul id="odd"><li data-mamu-key="1">1</li><li data-mamu-key="3">3</li></ul>', $html, 'a list of markup with null items');
+        self::assertStringContainsString('<span id="label">n=0</span>', $html);
+        self::assertMatchesRegularExpression('#<h3 id="heading" data-mamu-on-click="[^"]+">Edge 0</h3>#', $html, 'the members of a parent class outside the sources');
+        self::assertStringContainsString('<p id="path">/edge</p>', $html, 'the app global of Twig');
+
+        $r = $this->click(0, uri: '/edge');
+        self::assertSame(200, $r['status']);
+        self::assertStringContainsString('<span id="label">n=1</span>', $r['data']['streams'], 'a readonly prop gets the new value of the second pass');
+        self::assertStringContainsString('<footer>Foot 1</footer>', $r['data']['streams']);
+
+        $r = $this->click(1, uri: '/edge');
+        self::assertStringContainsString('Edge 1</h3>', $r['data']['streams'], 'a handler of the parent class');
+    }
+
     public function testClassComponentUsesItsInjectedService(): void
     {
         for ($i = 1; $i <= 3; ++$i) {

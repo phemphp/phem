@@ -24,6 +24,12 @@ final class Attributes
     /** React prop names → HTML attribute names. */
     public const ALIASES = ['className' => 'class', 'htmlFor' => 'for'];
 
+    /**
+     * The attributes that take the text "true" or "false" (lowercase), as in React: a boolean
+     * value is not a boolean attribute for them. Also `aria-*` and `data-*`.
+     */
+    private const BOOLEANISH = ['autoreverse', 'contenteditable', 'draggable', 'externalresourcesrequired', 'focusable', 'preservealpha', 'spellcheck', 'value'];
+
     /** Unitless CSS properties (camelCase), as in React. */
     private const UNITLESS = [
         'animationIterationCount', 'aspectRatio', 'columnCount', 'columns', 'flex', 'flexGrow', 'flexShrink',
@@ -50,9 +56,11 @@ final class Attributes
     /** Adds `data-mamu-key` to the first element of an HTML fragment. */
     public static function keyed(string $html, string $key): string
     {
-        $attr = ' data-mamu-key="'.htmlspecialchars($key, \ENT_QUOTES, 'UTF-8').'"';
+        if (1 !== preg_match('/^\s*<[a-zA-Z][\w:-]*/', $html, $m)) {
+            return $html;
+        }
 
-        return preg_replace('/^(\s*<[a-zA-Z][\w:-]*)/', '$1'.$attr, $html, 1) ?? $html;
+        return $m[0].' data-mamu-key="'.self::e($key).'"'.substr($html, \strlen($m[0]));
     }
 
     /**
@@ -67,6 +75,9 @@ final class Attributes
     /** An attribute with an invalid name (see isValidName()) is not rendered, as in React. */
     public static function attr(string $name, mixed $value): Markup
     {
+        if (\is_bool($value) && self::isBooleanish($name)) {
+            $value = $value ? 'true' : 'false';
+        }
         if (null === $value || false === $value || !self::isValidName($name)) {
             return new Markup('', 'UTF-8');
         }
@@ -82,6 +93,13 @@ final class Attributes
         return new Markup(\sprintf('%s="%s"', self::e($name), self::e((string) $value)), 'UTF-8');
     }
 
+    private static function isBooleanish(string $name): bool
+    {
+        $name = strtolower($name);
+
+        return str_starts_with($name, 'aria-') || str_starts_with($name, 'data-') || \in_array($name, self::BOOLEANISH, true);
+    }
+
     public static function style(mixed $style): Markup
     {
         if (null === $style || false === $style || [] === $style) {
@@ -90,7 +108,10 @@ final class Attributes
         if (\is_array($style)) {
             $rules = [];
             foreach ($style as $prop => $value) {
-                if (null === $value || false === $value) {
+                $prop = (string) $prop;
+                // A style object can come from data: a name or a value that adds another
+                // declaration (`red; position: fixed`) is not rendered.
+                if (null === $value || false === $value || 1 !== preg_match('/^-?-?[a-zA-Z][\w-]*$/', $prop) || !self::isCssValue((string) $value)) {
                     continue;
                 }
                 $css = str_starts_with($prop, '--') ? $prop : strtolower(preg_replace('/[A-Z]/', '-$0', $prop) ?? $prop);
@@ -103,5 +124,37 @@ final class Attributes
         }
 
         return new Markup('style="'.self::e((string) $style).'"', 'UTF-8');
+    }
+
+    /**
+     * Whether a CSS value is one value: no `;`, `{` or `}` outside of quotes and parentheses
+     * (`url("data:image/png;base64,...")` is valid), and the quotes and parentheses are closed.
+     */
+    private static function isCssValue(string $value): bool
+    {
+        $quote = null;
+        $depth = 0;
+        for ($i = 0, $n = \strlen($value); $i < $n; ++$i) {
+            $c = $value[$i];
+            if (null !== $quote) {
+                if ('\\' === $c) {
+                    ++$i;
+                } elseif ($c === $quote) {
+                    $quote = null;
+                }
+            } elseif ('"' === $c || "'" === $c) {
+                $quote = $c;
+            } elseif ('(' === $c) {
+                ++$depth;
+            } elseif (')' === $c) {
+                if (--$depth < 0) {
+                    return false;
+                }
+            } elseif (0 === $depth && (';' === $c || '{' === $c || '}' === $c)) {
+                return false;
+            }
+        }
+
+        return null === $quote && 0 === $depth;
     }
 }

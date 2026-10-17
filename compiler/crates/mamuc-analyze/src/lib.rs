@@ -6,9 +6,10 @@ mod scan;
 pub use scan::{scan, Class, FileInfo, Func, MarkupScope, Param, Prop, RouteDecl};
 
 use mamuc_syntax::diag::codes;
+use mamuc_syntax::php::Lexed;
 use mamuc_syntax::Diagnostic;
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 pub const ATTR_COMPONENT: &str = "Mamu\\Attribute\\Component";
 pub const ATTR_STATE: &str = "Mamu\\Attribute\\State";
@@ -40,10 +41,14 @@ pub struct ComponentDef {
     pub props: Vec<String>,
     /// Props that receive markup (`Html`): `children` and the named slots.
     pub slots: Vec<String>,
-    /// Props without a default value.
+    /// Props without a default value, whose type does not accept null.
     pub required: Vec<String>,
     /// The function has a variadic parameter, so unknown props are allowed.
     pub rest: bool,
+    /// A class component with a parent class or a trait outside the sources: it can have props
+    /// that the compiler does not see, so the compiler does not check its props and slots.
+    #[serde(skip)]
+    pub open: bool,
 }
 
 /// The template name of the markup literal `index` of a source file.
@@ -57,6 +62,18 @@ fn is_html_type(ty: &str) -> bool {
         let t = t.trim().trim_start_matches('?').trim_start_matches('\\');
         t == "Html" || t.ends_with("\\Html")
     })
+}
+
+/// Whether a PHP type accepts null: no type, `?T`, `mixed`, `null`, or a union with `null`. A prop
+/// with such a type is optional: the runtime gives it null.
+fn allows_null(ty: &str) -> bool {
+    let ty = ty.trim();
+    ty.is_empty()
+        || ty.starts_with('?')
+        || ty.split('|').any(|t| {
+            let t = t.trim().trim_matches(|c| c == '(' || c == ')').trim();
+            t.eq_ignore_ascii_case("null") || t.eq_ignore_ascii_case("mixed")
+        })
 }
 
 /// The components that a scanned file declares.
@@ -74,14 +91,15 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
             required: f
                 .params
                 .iter()
-                .filter(|p| p.default.is_none() && !p.variadic && !p.ty.trim_start().starts_with('?'))
+                .filter(|p| p.default.is_none() && !p.variadic && !allows_null(&p.ty))
                 .map(|p| p.name.clone())
                 .collect(),
             rest: f.params.iter().any(|p| p.variadic),
+            open: false,
         });
     }
     for c in file.classes.iter().filter(|c| c.is_component) {
-        let props: Vec<&Prop> = c.props.iter().filter(|p| p.is_public && !p.is_static && !p.is_state && !p.is_promoted).collect();
+        let props: Vec<&Prop> = c.all_props().filter(|p| p.is_public && !p.is_static && !p.is_state && !p.is_promoted).collect();
         out.push(ComponentDef {
             fqcn: c.fqn.clone(),
             kind: Kind::Class,
@@ -89,16 +107,57 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
             template: None,
             props: props.iter().map(|p| p.name.clone()).collect(),
             slots: props.iter().filter(|p| is_html_type(&p.ty)).map(|p| p.name.clone()).collect(),
-            required: props.iter().filter(|p| !p.has_default && !p.ty.trim_start().starts_with('?')).map(|p| p.name.clone()).collect(),
+            required: props.iter().filter(|p| !p.has_default && !allows_null(&p.ty)).map(|p| p.name.clone()).collect(),
             rest: false,
+            open: c.open,
         });
     }
     out
 }
 
-/// File-level checks: removed hooks, class component rules, and `#[Route]`.
-pub fn check(file: &FileInfo, src: &str) -> Vec<Diagnostic> {
-    let mut diags = hooks::check(file, src);
+/// Adds to each class the members of its parent classes and traits in the sources, so a class
+/// component sees the props and methods that it inherits. A class member replaces a member of a
+/// trait, and a trait member replaces a member of the parent class, as in PHP.
+pub fn resolve_inheritance<'a>(files: impl IntoIterator<Item = &'a mut FileInfo>) {
+    let mut files: Vec<&mut FileInfo> = files.into_iter().collect();
+    let mut declared: HashMap<String, Class> = HashMap::new();
+    for f in &files {
+        for c in &f.classes {
+            declared.insert(c.fqn.to_ascii_lowercase(), c.clone());
+        }
+    }
+    for f in &mut files {
+        for c in &mut f.classes {
+            let mut queue: VecDeque<String> = c.traits.iter().chain(&c.parent).cloned().collect();
+            let mut seen = HashSet::new();
+            while let Some(name) = queue.pop_front() {
+                if !seen.insert(name.to_ascii_lowercase()) {
+                    continue;
+                }
+                let Some(base) = declared.get(&name.to_ascii_lowercase()) else {
+                    c.open = true;
+                    continue;
+                };
+                for p in &base.props {
+                    if !c.props.iter().chain(&c.inherited_props).any(|x| x.name == p.name) {
+                        c.inherited_props.push(p.clone());
+                    }
+                }
+                for m in &base.methods {
+                    if !c.has_method(&m.name) {
+                        c.inherited_methods.push(m.name.clone());
+                    }
+                }
+                queue.extend(base.traits.iter().chain(&base.parent).cloned());
+            }
+        }
+    }
+}
+
+/// File-level checks: removed hooks, class component rules, and `#[Route]`. Run it after
+/// `resolve_inheritance()`.
+pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
+    let mut diags = hooks::check(file, src, lexed);
     for span in &file.export_defaults {
         diags.push(
             Diagnostic::error(codes::EXPORT_DEFAULT, "`export default` is not PHP", *span)
@@ -124,7 +183,7 @@ pub fn check(file: &FileInfo, src: &str) -> Vec<Diagnostic> {
         if !c.is_component {
             continue;
         }
-        if !c.methods.iter().any(|m| m.name.eq_ignore_ascii_case("render")) {
+        if !c.open && !c.has_method("render") {
             diags.push(
                 Diagnostic::error(codes::CLASS_WITHOUT_RENDER, format!("component class `{}` has no `render()` method", c.name), c.name_span)
                     .with_help("add `public function render() { return <div>...</div>; }`"),
@@ -162,4 +221,19 @@ pub fn registry<'a>(files: impl IntoIterator<Item = &'a FileInfo>) -> (Registry,
         }
     }
     (reg, diags)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nullable_types() {
+        for ty in ["", "?int", "mixed", "null", "int|null", "NULL|string", "(A&B)|null", " ?\\Closure"] {
+            assert!(allows_null(ty), "{ty}");
+        }
+        for ty in ["int", "string|int", "Html", "(A&B)|C", "nullable"] {
+            assert!(!allows_null(ty), "{ty}");
+        }
+    }
 }

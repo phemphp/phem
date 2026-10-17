@@ -49,12 +49,20 @@ fn expr(x: &TwigExpr, bound: &mut Vec<String>, out: &mut Vec<FreeVar>) {
     }
 }
 
+/// The Twig tags with their own scope: a `{% set %}` in their body does not bind after them.
+/// Other tags (`if`, `apply`, `autoescape`) and HTML elements share the scope of their parent.
+const SCOPED_TAGS: &[&str] = &["for", "with", "block", "embed", "macro"];
+
 fn children(nodes: &[Node], bound: &mut Vec<String>, out: &mut Vec<FreeVar>) {
-    // `{% set %}` binds for the following siblings (and their descendants) only.
-    let mark = bound.len();
     for n in nodes {
         node(n, bound, out);
     }
+}
+
+/// Nodes with their own scope: a `{% set %}` binds for the following nodes in it only.
+fn scoped(nodes: &[Node], bound: &mut Vec<String>, out: &mut Vec<FreeVar>) {
+    let mark = bound.len();
+    children(nodes, bound, out);
     bound.truncate(mark);
 }
 
@@ -75,7 +83,12 @@ fn node(n: &Node, bound: &mut Vec<String>, out: &mut Vec<FreeVar>) {
                     AttrKind::Plain { value: AttrValue::None, .. } => {}
                 }
             }
-            children(&e.children, bound, out);
+            // The children of a component are slots: blocks with `{% with _mamu_caller only %}`.
+            if e.is_component() {
+                scoped(&e.children, bound, out);
+            } else {
+                children(&e.children, bound, out);
+            }
         }
         Node::Fragment(f) => children(&f.children, bound, out),
         Node::Output(o) => expr(&o.expr, bound, out),
@@ -89,6 +102,10 @@ fn node(n: &Node, bound: &mut Vec<String>, out: &mut Vec<FreeVar>) {
             }
         }
         Node::Block(b) => {
+            let shares_scope = !SCOPED_TAGS.contains(&b.name());
+            // The names that a `{% set %}` binds in a branch of `if` (or of another tag without
+            // a scope). They bind after the tag too: Twig does not know which branch runs.
+            let mut set_in_branches = Vec::new();
             for (i, br) in b.branches.iter().enumerate() {
                 let tv = tag_vars(&br.tag.name, &br.tag.head);
                 for u in tv.used {
@@ -99,12 +116,17 @@ fn node(n: &Node, bound: &mut Vec<String>, out: &mut Vec<FreeVar>) {
                 if br.tag.name == "for" && i == 0 {
                     bound.extend(tv.bound.iter().cloned());
                 }
+                let start = bound.len();
                 children(&br.children, bound, out);
+                if shares_scope {
+                    set_in_branches.extend(bound.drain(start..));
+                }
                 bound.truncate(mark);
                 if br.tag.name == "set" {
                     bound.extend(tv.bound);
                 }
             }
+            bound.extend(set_in_branches);
         }
         Node::Text(_) | Node::HtmlComment(_) | Node::Verbatim(_) | Node::TwigComment(_) => {}
     }

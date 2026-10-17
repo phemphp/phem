@@ -195,7 +195,7 @@ finds an error:
 | E030–E032 | Undefined variable in markup, markup in an unsupported expression, invalid attribute |
 | E040–E041 | Class component without `render()`, readonly `#[State]` property |
 | E050, E052 | `export default` (not PHP; use `#[Route]`), `#[Route]` on a function or class that is not a component |
-| W001, W002 | A handler is called instead of passed; a list item without `key` |
+| W001–W003 | A handler is called instead of passed; a list item without `key`; an event that the browser does not send (`onMouseEnter`) |
 | W004 | `#[Route]`, `#[Component]` or `#[State]` without its `use` import (`Symfony\Component\Routing\Attribute\Route`, `Mamu\Attribute\...`) |
 
 ## Limits

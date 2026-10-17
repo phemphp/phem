@@ -15,6 +15,7 @@ namespace Mamu\Rendering;
 
 use Mamu\Binding\PropBinder;
 use Mamu\Dom\Attributes;
+use Mamu\Slot;
 use Twig\Template;
 
 /**
@@ -27,12 +28,21 @@ final class TemplateComponentRenderer
     }
 
     /**
+     * With children or slots, $template is the embedded template of the caller: its blocks
+     * override the slot blocks of the component template. The slots are also props, so the
+     * template can test them (`{% if footer %}`) and a required slot is given.
+     *
      * @param array<string, mixed> $props
      * @param array<string, mixed> $caller the Twig context of the caller (for slots)
+     * @param list<string>         $slots  the slots that the caller gives
      */
-    public function render(Template $template, string $fqcn, array $props, mixed $key, array $caller): string
+    public function render(Template $template, string $fqcn, array $props, mixed $key, array $caller, array $slots = []): string
     {
-        $vars = $this->props->templateContext($fqcn, $props);
+        $given = [];
+        foreach ($slots as $name) {
+            $given[$name] = new Slot(static fn (): string => $template->renderBlock($name, ['_mamu_caller' => $caller]));
+        }
+        $vars = $this->props->templateContext($fqcn, $props, $given);
         $vars['_mamu_caller'] = $caller;
         $html = $template->render($vars);
 

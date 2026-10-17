@@ -45,10 +45,11 @@ final class MamuRuntime implements RuntimeExtensionInterface
     /**
      * @param array<string, mixed> $props
      * @param array<string, mixed> $caller
+     * @param list<string>         $slots
      */
-    public function template(Template $template, string $fqcn, array $props, mixed $key, array $caller): string
+    public function template(Template $template, string $fqcn, array $props, mixed $key, array $caller, array $slots = []): string
     {
-        return $this->templates->render($template, $fqcn, $props, $key, $caller);
+        return $this->templates->render($template, $fqcn, $props, $key, $caller, $slots);
     }
 
     /** `onClick={{ f }}` → `data-mamu-on-click="<handler id>"`. */
