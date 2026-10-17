@@ -29,7 +29,8 @@ final class LoginStatus extends Document
 {
     protected string $title = 'LoginStatus';
 
-    #[State] public bool $isLoggedIn = false;
+    #[State]
+    public bool $isLoggedIn = false;
 
     public function toggle(): void
     {
