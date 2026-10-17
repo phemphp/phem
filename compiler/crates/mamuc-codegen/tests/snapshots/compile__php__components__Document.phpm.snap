@@ -1,0 +1,36 @@
+---
+source: crates/mamuc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by mamuc from components/Document.phpm; do not edit */
+
+namespace App\Components;
+
+use Mamu\Http\PageView;
+
+// The default document of the fixture pages (the mamu.document option). A class page that
+// extends it is its own document.
+class Document implements \Mamu\Document
+{
+    protected string $title = 'Fixture';
+
+    public function title(): string
+    {
+        return $this->title;
+    }
+
+    public function document(PageView $page)
+    {
+        $title = $this->title();
+
+        return (
+            new \Mamu\Element('components/Document.0.twig', ['title' => $title ?? null, 'page' => $page ?? null])
+
+
+
+
+
+
+        );
+    }
+}

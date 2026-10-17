@@ -134,6 +134,7 @@ return static function (ContainerConfigurator $container): void {
             ->args([
                 service('mamu.renderer'),
                 service('mamu.state_codec'),
+                service('mamu.markup_resolver'),
                 service('mamu.metadata'),
                 service('mamu.path_resolver'),
                 service('mamu.state_accessor'),
@@ -141,7 +142,7 @@ return static function (ContainerConfigurator $container): void {
         ->alias(PageRenderer::class, 'mamu.page_renderer')
         ->set('mamu.controller.page', PageController::class)
             ->public()
-            ->args([service('mamu.page_renderer'), service('twig'), param('mamu.page_template')])
+            ->args([service('mamu.page_renderer')])
         ->set('mamu.controller.event', EventController::class)
             ->public()
             ->args([

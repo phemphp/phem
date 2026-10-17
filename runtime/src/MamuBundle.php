@@ -35,15 +35,15 @@ use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
  *         secret: '%kernel.secret%'
  *         state_max_age: 86400       # seconds; 0 for no limit
  *         state_bind_session: false
- *         page_template: '@Mamu/page.html.twig'   # extends the base.html.twig of the app
  *
  *     # config/routes/mamu.yaml
  *     mamu:
  *         resource: .
  *         type: mamu
  *
- * The page template belongs to the application: it gets the page as `page`, and it prints
- * the root element with `{{ mamu_root(page) }}` (see Mamu\Http\PageView). The client (the
+ * A page is a class component with `#[Route]` that extends the document of the application
+ * (`<html>`, `<head>`, `<body>`): a .phpm class that implements Mamu\Document, and prints the
+ * page with `{{ mamu_root(page) }}`. The client (the
  * `mamu` Stimulus controller and its CSS) is a Symfony UX package in assets/: with AssetMapper,
  * its files are in the `mamujs` namespace, and StimulusBundle loads the controller
  * from the `assets/controllers.json` of the application.
@@ -84,23 +84,17 @@ final class MamuBundle extends AbstractBundle
                     ->info('Sign the session id with the state, so the state of a session is not valid in another session. A login makes the open pages reload on their next event.')
                     ->defaultFalse()
                 ->end()
-                ->scalarNode('page_template')
-                    ->info('The Twig template of the pages. It gets the page as `page`. The default template extends the base.html.twig of the application. The `_mamu_template` default of a route changes it for one page.')
-                    ->defaultValue('@Mamu/page.html.twig')
-                    ->cannotBeEmpty()
-                ->end()
             ->end();
     }
 
     /**
-     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, page_template: string} $config
+     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool} $config
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
         $container->parameters()
             ->set('mamu.source_dir', $config['source_dir'])
-            ->set('mamu.build_dir', $config['build_dir'])
-            ->set('mamu.page_template', $config['page_template']);
+            ->set('mamu.build_dir', $config['build_dir']);
         $container->import('../config/services.php');
         $container->services()->get('mamu.state_codec')
             ->arg(0, $config['secret'])

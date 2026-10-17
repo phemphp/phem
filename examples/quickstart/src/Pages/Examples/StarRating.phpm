@@ -1,13 +1,14 @@
 <?phpm
 namespace App\Pages\Examples;
 
-use Mamu\Attribute\{Component, State};
-use Symfony\Component\Routing\Attribute\Route;
+use App\Pages\Document;
+use Mamu\Attribute\{Page, State};
 
-#[Route('/examples/StarRating')]
-#[Component]
-final class StarRating
+#[Page('/examples/StarRating')]
+final class StarRating extends Document
 {
+    protected string $title = 'StarRating';
+
     public string $label = 'Rate this page';  // prop
     public int $maxStars = 5;                 // prop
 
@@ -30,7 +31,6 @@ final class StarRating
 
         return (
             <div>
-                <title>StarRating</title>
                 <p>{{ label }}: <span className="stars">{{ display }}</span></p>
                 <button onClick={{ addStar }}>Add a star</button>
                 <button onClick={{ clear }}>Clear</button>

@@ -2,16 +2,17 @@
 namespace App\Pages\Examples;
 
 use App\Components\AddScientist;
+use App\Pages\Document;
 use App\Repository\ScientistRepository;
-use Mamu\Attribute\Component;
-use Symfony\Component\Routing\Attribute\Route;
+use Mamu\Attribute\Page;
 
 use function App\Components\{Layout, ScientistCard};
 
-#[Route('/examples/DurableGallery')]
-#[Component]
-final class DurableGallery
+#[Page('/examples/DurableGallery')]
+final class DurableGallery extends Document
 {
+    protected string $title = 'Amazing scientists';
+
     public function __construct(
         private readonly ScientistRepository $scientists,
     ) {

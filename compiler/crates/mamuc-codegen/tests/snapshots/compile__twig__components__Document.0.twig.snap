@@ -1,0 +1,11 @@
+---
+source: crates/mamuc-codegen/tests/compile.rs
+expression: t.content
+---
+<html lang="en">
+                <head>
+                    <meta charset="utf-8">
+                    <title>{{ title }}</title>
+                </head>
+                <body class="fixture">{{ mamu_root(page) }}</body>
+            </html>

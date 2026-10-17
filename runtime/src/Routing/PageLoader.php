@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Mamu\Routing;
 
+use Mamu\Document;
 use Mamu\Manifest\Manifest;
 use Mamu\Metadata\ComponentMetadata;
 use Symfony\Component\Config\Loader\Loader;
@@ -26,8 +27,9 @@ use Symfony\Component\Routing\RouteCollection;
 /**
  * The routes of the pages and the event endpoint.
  *
- * A page is a component with the Symfony `#[Route]` attribute (mamuc lists them in the
- * manifest). The attribute works as on a controller: path (or localized paths), name,
+ * A page is a class component with the `#[Page]` attribute (or the Symfony `#[Route]` attribute;
+ * mamuc lists them in the manifest), and it extends the document of the application (see
+ * Mamu\Document). The attribute works as on a controller: path (or localized paths), name,
  * requirements, defaults, methods, host, schemes, condition, priority, env and aliases.
  * Without a name, the route name comes from the component: `App\Pages\Counter` →
  * `app_pages_counter`.
@@ -38,8 +40,7 @@ use Symfony\Component\Routing\RouteCollection;
  * path and the `POST` method. It comes first, so a page route without methods does not take
  * the events.
  *
- * A route value (`{id}`, or a `defaults` key) goes to the #[Path] property or parameter with
- * the same name. A route value without one is an error. The keys that start with `_` are not
+ * A route value (`{id}`, or a `defaults` key) goes to the #[Path] property with the same name. A route value without one is an error. The keys that start with `_` are not
  * route values. As for the Doctrine controller arguments, `{slug:post}` maps the value `slug`
  * to the entity prop `post`.
  *
@@ -74,13 +75,17 @@ final class PageLoader extends Loader
         $routes->addResource(new FileResource($this->manifest->file()));
 
         foreach ($this->manifest->pages() as $page) {
-            $reflection = class_exists($page, false) ? new \ReflectionClass($page) : new \ReflectionFunction($page);
+            if (!class_exists($page, false)) {
+                throw new \InvalidArgumentException(\sprintf('The page "%s" must be a class component: a function cannot be a page.', $page));
+            }
+            $reflection = new \ReflectionClass($page);
+            if (!$reflection->implementsInterface(Document::class)) {
+                throw new \InvalidArgumentException(\sprintf('The page "%s" must implement "%s": make it extend the document of the application.', $page, Document::class));
+            }
             // A route change does not change the manifest, only the compiled file.
             $routes->addResource(new FileResource((string) $reflection->getFileName()));
             foreach ($reflection->getAttributes(RouteAttribute::class, \ReflectionAttribute::IS_INSTANCEOF) as $i => $attribute) {
-                // Not newInstance(): the attribute allows only classes and methods, not functions.
-                $class = $attribute->getName();
-                $this->addRoute($routes, new $class(...$attribute->getArguments()), $page, $i);
+                $this->addRoute($routes, $attribute->newInstance(), $page, $i);
             }
         }
 
@@ -99,13 +104,12 @@ final class PageLoader extends Loader
     }
 
     /**
-     * Each route value needs a #[Path] property or parameter. A mapped value (`{slug:post}`)
+     * Each route value needs a #[Path] property. A mapped value (`{slug:post}`)
      * needs a #[Path] prop with an entity type.
      */
     private function checkValues(Route $route, string $name, string $page): void
     {
         $paths = $this->metadata->pathProps($page);
-        $kind = class_exists($page, false) ? 'property' : 'parameter';
         $mapping = (array) ($route->getDefault('_route_mapping') ?? []);
         foreach (array_unique([...$route->compile()->getVariables(), ...array_keys($route->getDefaults())]) as $value) {
             if (str_starts_with($value, '_')) {
@@ -114,16 +118,16 @@ final class PageLoader extends Loader
             if (isset($mapping[$value])) {
                 $prop = \is_array($mapping[$value]) ? $mapping[$value][0] : $mapping[$value];
                 if (!\array_key_exists($prop, $paths)) {
-                    throw new \InvalidArgumentException(\sprintf('The route "%s" maps the value "%s" to "%s", but the page "%s" has no #[Path] %s "%s".', $name, $value, $prop, $page, $kind, $prop));
+                    throw new \InvalidArgumentException(\sprintf('The route "%s" maps the value "%s" to "%s", but the page "%s" has no #[Path] property "%s".', $name, $value, $prop, $page, $prop));
                 }
                 $type = $paths[$prop];
                 if (!$type instanceof \ReflectionNamedType || $type->isBuiltin()) {
-                    throw new \InvalidArgumentException(\sprintf('The route "%s" maps the value "%s" to the #[Path] %s "%s" of the page "%s", but its type is not an entity class.', $name, $value, $kind, $prop, $page));
+                    throw new \InvalidArgumentException(\sprintf('The route "%s" maps the value "%s" to the #[Path] property "%s" of the page "%s", but its type is not an entity class.', $name, $value, $prop, $page));
                 }
                 continue;
             }
             if (!\array_key_exists($value, $paths)) {
-                throw new \InvalidArgumentException(\sprintf('The route "%s" has the value "%s", but the page "%s" has no #[Path] %s "%s". Add one, or remove the value from the route.', $name, $value, $page, $kind, $value));
+                throw new \InvalidArgumentException(\sprintf('The route "%s" has the value "%s", but the page "%s" has no #[Path] property "%s". Add one, or remove the value from the route.', $name, $value, $page, $value));
             }
         }
     }

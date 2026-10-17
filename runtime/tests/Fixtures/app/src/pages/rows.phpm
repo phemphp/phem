@@ -2,14 +2,13 @@
 
 namespace App\Pages;
 
-use Mamu\Attribute\Component;
+use App\Components\Document;
+use Mamu\Attribute\Page;
 use Mamu\Tests\Fixtures\{Rows, Scientist};
-use Symfony\Component\Routing\Attribute\Route;
 
 // One component with a handler for each row: a closure that captures the row.
-#[Component]
-#[Route('/rows')]
-final class RowsPage
+#[Page('/rows')]
+final class RowsPage extends Document
 {
     public function remove(Scientist $scientist): void
     {

@@ -14,7 +14,7 @@ use mamuc_syntax::php::{lex, Lexed, TokKind};
 use mamuc_syntax::span::line_col;
 use mamuc_syntax::{Diagnostic, Span};
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -62,7 +62,7 @@ pub struct ProjectOutput {
 pub struct Manifest {
     pub version: String,
     pub components: Registry,
-    /// The components with a `#[Route]` attribute (the runtime reads the routes from them).
+    /// The class components with a `#[Page]` or `#[Route]` attribute (the runtime reads the routes from them).
     pub pages: Vec<String>,
     pub templates: BTreeMap<String, TemplateOutput>,
     /// Compiled PHP files, relative to the output directory.
@@ -98,6 +98,7 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
     });
 
     let (registry, dup) = mamuc_analyze::registry(parsed.iter().map(|p| &p.info));
+    let bases = base_files(&parsed);
 
     // Pass 2: generate each file.
     let results: Vec<(Option<FileOutput>, FileDiagnostics, Vec<String>)> = parsed
@@ -131,6 +132,7 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
         return (None, all_diags);
     }
     files.sort_by(|a, b| a.rel.cmp(&b.rel));
+    let files = load_order(files, &bases);
     pages.sort();
 
     let mut templates = BTreeMap::new();
@@ -257,6 +259,53 @@ fn undefined(name: &str, offset: usize, extra: &str) -> Diagnostic {
 }
 
 /// A single-quoted string literal. PHP and Twig escape it the same way.
+/// For each file, the other files that declare the parent classes and the traits of its classes.
+fn base_files(parsed: &[Parsed]) -> HashMap<String, Vec<String>> {
+    let declared: HashMap<&str, &str> = parsed.iter().flat_map(|p| p.info.classes.iter().map(move |c| (c.fqn.as_str(), p.input.rel.as_str()))).collect();
+    parsed
+        .iter()
+        .map(|p| {
+            let mut bases: Vec<String> = p
+                .info
+                .classes
+                .iter()
+                .flat_map(|c| c.parent.iter().chain(&c.traits))
+                .filter_map(|b| declared.get(b.as_str()).copied())
+                .filter(|rel| *rel != p.input.rel)
+                .map(String::from)
+                .collect();
+            bases.sort();
+            bases.dedup();
+            (p.input.rel.clone(), bases)
+        })
+        .collect()
+}
+
+/// The files in an order that PHP can load: a file comes after the files that declare the
+/// parent classes and the traits of its classes (see [`base_files`]). Otherwise, the order
+/// does not change.
+fn load_order(files: Vec<FileOutput>, bases: &HashMap<String, Vec<String>>) -> Vec<FileOutput> {
+    fn visit(i: usize, files: &[FileOutput], index: &HashMap<&str, usize>, bases: &HashMap<String, Vec<String>>, seen: &mut [bool], order: &mut Vec<usize>) {
+        if std::mem::replace(&mut seen[i], true) {
+            return;
+        }
+        for rel in bases.get(&files[i].rel).into_iter().flatten() {
+            if let Some(&j) = index.get(rel.as_str()) {
+                visit(j, files, index, bases, seen, order);
+            }
+        }
+        order.push(i);
+    }
+    let index: HashMap<&str, usize> = files.iter().enumerate().map(|(i, f)| (f.rel.as_str(), i)).collect();
+    let mut seen = vec![false; files.len()];
+    let mut order = Vec::with_capacity(files.len());
+    for i in 0..files.len() {
+        visit(i, &files, &index, bases, &mut seen, &mut order);
+    }
+    let mut slots: Vec<Option<FileOutput>> = files.into_iter().map(Some).collect();
+    order.into_iter().filter_map(|i| slots[i].take()).collect()
+}
+
 pub fn php_str(s: &str) -> String {
     format!("'{}'", s.replace('\\', "\\\\").replace('\'', "\\'"))
 }

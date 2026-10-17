@@ -18,8 +18,8 @@ use Mamu\Binding\PropError;
 use Mamu\Metadata\ComponentMetadata;
 
 /**
- * The props of a page from its route values: the values of the #[Path] properties or
- * parameters, converted to their types by the PathValueConverters.
+ * The props of a page from its route values: the values of the #[Path] properties, converted
+ * to their types by the PathValueConverters.
  */
 final class PathResolver
 {

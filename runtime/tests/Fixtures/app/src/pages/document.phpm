@@ -1,0 +1,76 @@
+<?phpm
+
+namespace App\Pages;
+
+use App\Components\Document;
+use Mamu\Attribute\{Component, Page, State};
+use Mamu\Http\PageView;
+use Symfony\Component\Routing\Attribute\Route;
+
+use function App\Components\Badge;
+
+// Another document: a subclass of the default document, as another base template.
+abstract class SpanishDocument extends Document
+{
+    public function document(PageView $page)
+    {
+        $title = $this->title();
+
+        return (
+            <html lang="es">
+                <head><title>{{ title }}</title></head>
+                <body>
+                    {{ mamu_root(page, {class: ['custom', 'page'], 'data-controller': 'extra'}, 'main') }}
+                    <footer id="doc-footer"><Badge label="es" /><Toggle /></footer>
+                </body>
+            </html>
+        );
+    }
+}
+
+// A page with a dynamic title: its state is in the title. It has the Symfony #[Route] and
+// #[Component], not #[Page].
+#[Component]
+#[Route('/document')]
+final class DocumentPage extends SpanishDocument
+{
+    #[State] public int $count = 0;
+
+    public function mount(): void
+    {
+        $this->count = 3;
+    }
+
+    public function title(): string
+    {
+        return 'Documento '.$this->count;
+    }
+
+    public function render()
+    {
+        return <p id="document">Document</p>;
+    }
+}
+
+// A title with HTML characters, from the title() of the parent and the state of the page.
+#[Page('/document/escaped')]
+final class EscapedTitlePage extends Document
+{
+    protected string $title = 'Tom & Jerry <script>';
+    #[State] public int $n = 0;
+
+    public function title(): string
+    {
+        return parent::title().' '.$this->n;
+    }
+
+    public function increment(): void
+    {
+        ++$this->n;
+    }
+
+    public function render()
+    {
+        return <button id="increment" onClick={{ increment }}>{{ n }}</button>;
+    }
+}

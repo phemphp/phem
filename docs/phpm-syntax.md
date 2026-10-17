@@ -27,48 +27,62 @@ function MyButton() {
 Use a component with a tag: `<MyButton />`. The compiler resolves the tag with the PHP rules:
 a `use function` import, then a `use` (class) import, then the current namespace.
 
-A page is a component with the Symfony `#[Route]` attribute. React uses `export default` for
-the page component of a file. In Mamu, the route attribute exposes a component at a URL, as it
-does for a Symfony controller. The file stays valid PHP.
+A page is a class with the `#[Page]` attribute. React uses `export default` for the page
+component of a file. In Mamu, `#[Page]` exposes a class at a URL, as `#[Route]` does for a
+Symfony controller. The file stays valid PHP. A page class is a component: it needs no
+`#[Component]`. It extends the document of the application, which renders the `<html>`
+element of the page (see [compiling.md](compiling.md#the-document-of-the-pages)). A function
+cannot be a page.
 
 ```php
-use Symfony\Component\Routing\Attribute\Route;
+use App\Pages\Document;
+use Mamu\Attribute\Page;
 
-#[Route('/', name: 'home')]
-function MyApp() {
-    return (
-        <div>
-            <h1>Welcome to my app</h1>
-            <MyButton />
-        </div>
-    );
+#[Page('/', name: 'home')]
+final class MyApp extends Document
+{
+    protected string $title = 'Home';
+
+    public function render()
+    {
+        return (
+            <div>
+                <h1>Welcome to my app</h1>
+                <MyButton />
+            </div>
+        );
+    }
 }
 ```
 
-The attribute has the usual options: `name`, `methods`, `requirements`, `defaults`, `host`,
+`#[Page]` extends the Symfony `#[Route]` attribute, and it has the same options: `name`, `methods`, `requirements`, `defaults`, `host`,
 `schemes`, `condition`, `priority`, `env`, `alias`, and localized paths. Use it more than once to
 give a page more than one URL. Without a `name`, the route name comes from the component:
 `App\Pages\Examples\Counter` → `app_pages_examples_counter`. A file can have any number of
-pages, in any directory.
+pages, in any directory. The Symfony `#[Route]` attribute works too, on a `#[Component]` class.
 
 ### Route values
 
-A route value goes to the page as a prop. Mark the prop with `#[Path]`: a public property of a
-class page, or a parameter of a function page. The name of the prop is the name of the route
-value.
+A route value goes to the page as a prop. Mark the public property with `#[Path]`. The name of
+the property is the name of the route value.
 
 ```php
-use Mamu\Attribute\{Component, Path};
-use Symfony\Component\Routing\Attribute\Route;
+use App\Pages\Document;
+use Mamu\Attribute\{Page, Path};
 
-#[Route('/hello/{name}', defaults: ['name' => 'World'])]
-function Hello(#[Path] string $name) {
-    return <p>Hello {{ name }}</p>;
+#[Page('/hello/{name}', defaults: ['name' => 'World'])]
+final class Hello extends Document
+{
+    #[Path] public string $name;
+
+    public function render()
+    {
+        return <p>Hello {{ name }}</p>;
+    }
 }
 
-#[Route('/items/{id}', requirements: ['id' => '\d+'])]
-#[Component]
-final class ItemPage
+#[Page('/items/{id}', requirements: ['id' => '\d+'])]
+final class ItemPage extends Document
 {
     #[Path] public int $id;
 
@@ -89,7 +103,7 @@ final class ItemPage
   `requirements` to reject it before.
 - The events of the page get the same route values. They go into the signed state of the page,
   so a client cannot change them.
-- A `#[Path]` property cannot be `#[State]`, and a `#[Path]` parameter cannot be variadic.
+- A `#[Path]` property cannot be `#[State]`.
 
 ### Entities from route values
 
@@ -98,14 +112,18 @@ entity arguments of a Symfony controller. Install `doctrine/orm` and `doctrine/d
 
 ```php
 use App\Model\Scientist;
-use Mamu\Attribute\{Component, Path};
-use Symfony\Component\Routing\Attribute\Route;
+use App\Pages\Document;
+use Mamu\Attribute\{Page, Path};
 
-#[Route('/scientists/{id:scientist}', requirements: ['id' => '\d+'])]
-#[Component]
-final class ScientistPage
+#[Page('/scientists/{id:scientist}', requirements: ['id' => '\d+'])]
+final class ScientistPage extends Document
 {
     #[Path] public Scientist $scientist;
+
+    public function title(): string
+    {
+        return $this->scientist->name;
+    }
 
     public function render()
     {
@@ -252,8 +270,8 @@ entity counts by its identifier.
 
 An event is a `POST` request to the URL of the page, with the `X-Mamu-Event` header. Thus the
 access rules of the page apply to its events too: `access_control`, the firewall, and the host
-and condition of the `#[Route]`. The controller attributes of Symfony (`#[IsGranted]`, `#[Cache]`)
-apply to a page class or function, for the page and for its events. Mamu accepts an event only
+and condition of the `#[Page]`. The controller attributes of Symfony (`#[IsGranted]`, `#[Cache]`)
+apply to a page class, for the page and for its events. Mamu accepts an event only
 as JSON from the same origin (`Sec-Fetch-Site`, or `Origin`), so another site cannot send one
 (CSRF). A `POST` request without the header renders the page, if its route accepts `POST`.
 
@@ -313,6 +331,7 @@ public function delete(): RedirectResponse
 ## 7. State: class components
 
 A component with state is a class with the `#[Component]` attribute and a `render()` method.
+A page class (`#[Page]`) is a component too, with no `#[Component]`.
 
 ```php
 use Mamu\Attribute\{Component, State};
@@ -468,9 +487,8 @@ function MyButton(int $count, Closure $onClick) {
     return <button onClick={{ onClick }}>Clicked {{ count }} times</button>;
 }
 
-#[Component]
-#[Route('/counters')]
-final class MyApp
+#[Page('/counters')]
+final class MyApp extends Document
 {
     #[State] public int $count = 0;
 

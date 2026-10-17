@@ -25,7 +25,7 @@ final class TurboStreams
     {
         $streams = '';
         foreach ($fibers as $fiber) {
-            $streams .= \sprintf('<turbo-stream action="update" method="morph" target="%s"><template>%s</template></turbo-stream>', $fiber->id, Title::strip($fiber->html));
+            $streams .= \sprintf('<turbo-stream action="update" method="morph" target="%s"><template>%s</template></turbo-stream>', $fiber->id, $fiber->html);
         }
 
         return $streams;

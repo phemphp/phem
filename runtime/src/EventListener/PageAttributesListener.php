@@ -57,15 +57,16 @@ final class PageAttributesListener
         if (isset($this->attributes[$page])) {
             return $this->attributes[$page];
         }
-        $reflection = class_exists($page) ? new \ReflectionClass($page) : new \ReflectionFunction($page);
+        if (!class_exists($page)) {
+            return $this->attributes[$page] = [];
+        }
         $out = [];
-        foreach ($reflection->getAttributes() as $attribute) {
+        foreach ((new \ReflectionClass($page))->getAttributes() as $attribute) {
             $class = $attribute->getName();
-            if (Route::class === $class || !class_exists($class)) {
+            if (!class_exists($class) || is_a($class, Route::class, true)) {
                 continue;
             }
-            // Not newInstance(): an attribute for classes and methods can be on a function page.
-            $out[$class][] = new $class(...$attribute->getArguments());
+            $out[$class][] = $attribute->newInstance();
         }
 
         return $this->attributes[$page] = $out;

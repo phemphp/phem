@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Mamu\Path;
 
 /**
- * A #[Path] property or parameter of a page, with a named type.
+ * A #[Path] property of a page, with a named type.
  */
 final class PathProp
 {

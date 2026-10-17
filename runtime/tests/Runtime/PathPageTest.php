@@ -28,7 +28,7 @@ final class PathPageTest extends TestCase
         self::assertStringContainsString('>Item 3: 0</button>', (string) $response->getContent());
     }
 
-    public function testFunctionPageGetsTheRouteValueOrItsDefault(): void
+    public function testRouteValueOrItsDefaultGoesToThePathProperty(): void
     {
         self::assertStringContainsString('<p id="hello">Hello Ada</p>', (string) $this->request('GET', '/hello/Ada')->getContent());
         self::assertStringContainsString('<p id="hello">Hello World</p>', (string) $this->request('GET', '/hello')->getContent());
@@ -70,8 +70,12 @@ final class PathPageTest extends TestCase
 
     public function testMappedRouteValueFindsTheEntity(): void
     {
-        self::assertStringContainsString('>Ada: 0</button>', (string) $this->request('GET', '/scientists/1')->getContent());
-        self::assertStringContainsString('>Marie: 0</button>', (string) $this->request('GET', '/scientists/by-name/Marie')->getContent());
+        $html = (string) $this->request('GET', '/scientists/1')->getContent();
+        self::assertStringContainsString('>Ada: 0</button>', $html);
+        self::assertStringContainsString('<title>Ada</title>', $html, 'the title() of the page reads the entity');
+        $html = (string) $this->request('GET', '/scientists/by-name/Marie')->getContent();
+        self::assertStringContainsString('>Marie: 0</button>', $html);
+        self::assertStringContainsString('<title>Marie</title>', $html);
     }
 
     public function testRouteValueOfAnEntityThatDoesNotExistIsNotFound(): void
@@ -93,7 +97,9 @@ final class PathPageTest extends TestCase
         $response = $this->click('/scientists/1', $state, $signature, $handler);
 
         self::assertSame(200, $response->getStatusCode());
-        self::assertStringContainsString('Ada: 1', json_decode((string) $response->getContent(), true)['streams']);
+        $data = json_decode((string) $response->getContent(), true);
+        self::assertStringContainsString('Ada: 1', $data['streams']);
+        self::assertSame(['streams', 'state', 'signature'], array_keys($data), 'the document does not render again');
     }
 
     /** @return array{0: string, 1: string, 2: string} the state, its signature, and the click handler */

@@ -6,9 +6,8 @@ expression: f.php
 
 namespace App\Pages;
 
-use App\Components\Counter;
-use Mamu\Attribute\{Component, State};
-use Symfony\Component\Routing\Attribute\Route;
+use App\Components\{Counter, Document};
+use Mamu\Attribute\{Component, Page, State};
 use function App\Components\{MyButton, Card, Badge, Tag};
 
 function Toolbar(string $theme = 'light') {
@@ -49,10 +48,11 @@ final class Toggle
     }
 }
 
-#[Component]
-#[Route('/', name: 'home', methods: ['GET', 'HEAD'])]
-final class Home
+#[Page('/', name: 'home', methods: ['GET', 'HEAD'])]
+final class Home extends Document
 {
+    protected string $title = 'Fixture Home';
+
     #[State] public int $count = 0;
     #[State] public array $items = [];
 
@@ -81,7 +81,6 @@ final class Home
 
         return (
             new \Mamu\Element('pages/index.6.twig', ['count' => $this->count, 'handleClick' => $this->handleClick(...), 'products' => $products ?? null, 'listItems' => $listItems ?? null, 'add' => $this->add(...), 'items' => $this->items])
-
 
 
 

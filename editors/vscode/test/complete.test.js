@@ -43,7 +43,7 @@ test('a component tag adds a use function import', async () => {
 
 test('a page of another file is not a component tag', async () => {
     assert.equal((await run(PAGE + 'function Home()\n{\n    return <Ab|\n}\n')).find('About'), undefined);
-    const about = PAGE + "use Symfony\\Component\\Routing\\Attribute\\Route;\n\n#[Route('/about')]\nfunction About()\n{\n    return <p><Ab|</p>;\n}\n";
+    const about = PAGE + "use Mamu\\Attribute\\Page;\n\n#[Page('/about')]\nfinal class About extends Document\n{\n    public function render()\n    {\n        return <p><Ab|</p>;\n    }\n}\n";
     assert.equal((await run(about, 'src/pages/about.phpm')).find('About').detail, 'App\\Pages\\About (page)');
 });
 

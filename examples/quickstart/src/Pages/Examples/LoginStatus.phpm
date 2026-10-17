@@ -1,8 +1,8 @@
 <?phpm
 namespace App\Pages\Examples;
 
-use Mamu\Attribute\{Component, State};
-use Symfony\Component\Routing\Attribute\Route;
+use App\Pages\Document;
+use Mamu\Attribute\{Page, State};
 
 function AdminPanel()
 {
@@ -24,10 +24,11 @@ function LoginForm()
     );
 }
 
-#[Route('/examples/LoginStatus')]
-#[Component]
-final class LoginStatus
+#[Page('/examples/LoginStatus')]
+final class LoginStatus extends Document
 {
+    protected string $title = 'LoginStatus';
+
     #[State] public bool $isLoggedIn = false;
 
     public function toggle(): void
@@ -45,7 +46,6 @@ final class LoginStatus
 
         return (
             <div>
-                <title>LoginStatus</title>
                 {{ content }}
                 <button onClick={{ toggle }}>
                     {{ isLoggedIn ? 'Log out' : 'Log in' }}

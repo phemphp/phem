@@ -1,3 +1,3 @@
 <?phpm // expect: W004
-#[Route('/')]
-function App() { return <div />; }
+#[Page('/')]
+final class App { public function render() { return <div />; } }

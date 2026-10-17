@@ -83,8 +83,9 @@ final class AppTest extends TestCase
         $response = $this->request('GET', '/');
         $html = (string) $response->getContent();
         self::assertSame(200, $response->getStatusCode());
-        self::assertStringContainsString('<title>Fixture Home</title>', $html);
-        self::assertStringContainsString('<body class="fixture"><div id="mamu-root" data-controller="mamu" data-action="click->mamu#dispatch', html_entity_decode($html), 'the default page template extends base.html.twig');
+        self::assertStringStartsWith("<!DOCTYPE html>\n<html lang=\"en\">", $html);
+        self::assertStringContainsString('<title>Fixture Home</title>', $html, 'the page extends the document, and changes its title');
+        self::assertStringContainsString('<body class="fixture"><div id="mamu-root" data-controller="mamu" data-action="click->mamu#dispatch', html_entity_decode($html));
         self::assertStringNotContainsString('data-mamu-page-value', $html, 'the page comes from the route of the event');
         self::assertSame(2, substr_count($html, 'Clicked 0 times'));
         self::assertStringContainsString('style="color: magenta; font-weight: 700">Apple', $html);
@@ -265,14 +266,17 @@ final class AppTest extends TestCase
         }
     }
 
-    public function testRouteDefaultSetsThePageTemplate(): void
+    public function testAPageIsItsOwnDocument(): void
     {
-        $html = html_entity_decode((string) $this->request('GET', '/about-us')->getContent());
+        $html = html_entity_decode((string) $this->request('GET', '/document')->getContent());
 
-        self::assertStringContainsString('<html lang="es">', $html);
-        self::assertStringContainsString('<title>Custom</title>', $html, 'a page without <title>');
-        self::assertMatchesRegularExpression('#<body id="mamu-root" data-controller="mamu extra" data-action="click->mamu\#dispatch [^"]*" data-mamu-state-value="[^"]*" data-mamu-signature-value="[^"]*" class="custom page"><mamu-c id="mamu[0-9a-f]+"><p id="about">About</p></mamu-c></body>#', $html);
-        self::assertStringContainsString('<body class="fixture">', (string) $this->request('GET', '/about')->getContent(), 'the other route of the page');
+        self::assertStringContainsString('<html lang="es">', $html, 'a subclass of the document');
+        self::assertStringContainsString('<title>Documento 3</title>', $html, 'the title() method of the page, with its state');
+        self::assertMatchesRegularExpression('#<body>\s*<main id="mamu-root" data-controller="mamu extra" data-action="click->mamu\#dispatch [^"]*" data-mamu-state-value="\{"mamu[0-9a-f]+":\{"count":3\}\}" data-mamu-signature-value="[^"]*" class="custom page"><mamu-c id="mamu[0-9a-f]+"><p id="document">Document</p></mamu-c></main>\s*<footer id="doc-footer">#', $html);
+
+        $html = (string) $this->request('GET', '/about')->getContent();
+        self::assertStringContainsString('<title>Fixture</title>', $html, 'a page with the title of the document');
+        self::assertStringContainsString('<body class="fixture">', $html);
     }
 
     public function testAssetMapperHasTheClient(): void
@@ -321,6 +325,7 @@ final class AppTest extends TestCase
         $tester = new CommandTester((new Application($this->fixtureKernel()))->find('mamu:render'));
 
         self::assertSame(0, $tester->execute(['path' => '/']));
+        self::assertStringStartsWith('<!DOCTYPE html>', $tester->getDisplay());
         self::assertStringContainsString('<title>Fixture Home</title>', $tester->getDisplay());
     }
 }

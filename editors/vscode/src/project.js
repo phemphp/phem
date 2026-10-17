@@ -267,7 +267,7 @@ class Project {
         return [...map.values()];
     }
 
-    // The routes of the pages (`#[Route]` components) of the .phpm files:
+    // The routes of the pages (`#[Page]` or `#[Route]` class components) of the .phpm files:
     //   [{ name, path, fqn, file, offset }]
     routes(currentFile, current) {
         const list = [];
@@ -286,9 +286,9 @@ class Project {
 // The routes of the pages of one parsed file.
 function routesOf(parsed, file) {
     const list = [];
-    for (const decl of [...parsed.functions, ...parsed.classes]) {
-        const attrs = (decl.attributes || []).filter((a) => a.name === 'Route' || a.name.endsWith('\\Route'));
-        if (attrs.length === 0 || (decl.kind && !hasAttr(decl.attrs, 'Component'))) {
+    for (const decl of parsed.classes) {
+        const attrs = (decl.attributes || []).filter((a) => /(^|\\)(Page|Route)$/.test(a.name));
+        if (attrs.length === 0 || !(hasAttr(decl.attrs, 'Component') || hasAttr(decl.attrs, 'Page'))) {
             continue;
         }
         attrs.forEach((attr, i) => {

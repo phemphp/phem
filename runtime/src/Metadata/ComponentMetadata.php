@@ -97,8 +97,8 @@ final class ComponentMetadata
     }
 
     /**
-     * The #[Path] public properties of a class page, or the #[Path] parameters of a function
-     * page: they get the route values.
+     * The #[Path] public properties of a page: they get the route values. A function component
+     * has none.
      *
      * @return array<string, ?\ReflectionType> name => type
      */
@@ -115,17 +115,6 @@ final class ComponentMetadata
                 }
                 if (!isset($this->props($page)[$p->getName()])) {
                     throw new PropError(\sprintf('The #[Path] property "%s" of <%s> must be a prop: public, not static, not promoted, and not #[State].', $p->getName(), ComponentName::short($page)));
-                }
-                $out[$p->getName()] = $p->getType();
-            }
-        } else {
-            $this->parameters($page);
-            foreach ((new \ReflectionFunction($page))->getParameters() as $p) {
-                if ([] === $p->getAttributes(Path::class)) {
-                    continue;
-                }
-                if ($p->isVariadic()) {
-                    throw new PropError(\sprintf('The #[Path] parameter "%s" of <%s> cannot be variadic.', $p->getName(), ComponentName::short($page)));
                 }
                 $out[$p->getName()] = $p->getType();
             }

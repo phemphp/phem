@@ -2,10 +2,10 @@
 
 namespace App\Pages;
 
-use Mamu\Attribute\{Component, State};
+use App\Components\Document;
+use Mamu\Attribute\{Component, Page, State};
 use Mamu\Html;
 use Mamu\Tests\Fixtures\Framed;
-use Symfony\Component\Routing\Attribute\Route;
 
 function Tally(array $items) {
     $n = count($items);
@@ -69,9 +69,8 @@ final class Boxed extends Framed
     }
 }
 
-#[Component]
-#[Route('/edge/readonly-slot')]
-final class ReadonlySlotPage
+#[Page('/edge/readonly-slot')]
+final class ReadonlySlotPage extends Document
 {
     public function render()
     {
@@ -79,9 +78,8 @@ final class ReadonlySlotPage
     }
 }
 
-#[Component]
-#[Route('/edge/mount')]
-final class MountPage
+#[Page('/edge/mount')]
+final class MountPage extends Document
 {
     #[State] public int $n = 0;
 
@@ -96,9 +94,8 @@ final class MountPage
     }
 }
 
-#[Component]
-#[Route('/edge/open-slots')]
-final class OpenSlotsPage
+#[Page('/edge/open-slots')]
+final class OpenSlotsPage extends Document
 {
     public function render()
     {
@@ -106,9 +103,8 @@ final class OpenSlotsPage
     }
 }
 
-#[Component]
-#[Route('/edge/if-slot')]
-final class IfSlotPage
+#[Page('/edge/if-slot')]
+final class IfSlotPage extends Document
 {
     public function render()
     {
@@ -116,9 +112,8 @@ final class IfSlotPage
     }
 }
 
-#[Component]
-#[Route('/edge/list-prop')]
-final class ListPropPage
+#[Page('/edge/list-prop')]
+final class ListPropPage extends Document
 {
     public function render()
     {

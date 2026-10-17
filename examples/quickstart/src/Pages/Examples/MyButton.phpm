@@ -1,8 +1,9 @@
 <?phpm
 namespace App\Pages\Examples;
 
+use App\Pages\Document;
+use Mamu\Attribute\Page;
 use Mamu\Html;
-use Symfony\Component\Routing\Attribute\Route;
 
 function MyButton()
 {
@@ -20,17 +21,21 @@ function IconButton(string $icon, ?Html $children = null, mixed ...$props)
     );
 }
 
-#[Route('/examples/MyButton')]
-function MyApp()
+#[Page('/examples/MyButton')]
+final class MyApp extends Document
 {
-    return (
-        <div>
-            <title>MyButton</title>
-            <h1>Welcome to my app</h1>
-            <MyButton />
-            <IconButton icon="★" title="Add to favorites" aria-label="Add to favorites">
-                Favorite
-            </IconButton>
-        </div>
-    );
+    protected string $title = 'MyButton';
+
+    public function render()
+    {
+        return (
+            <div>
+                <h1>Welcome to my app</h1>
+                <MyButton />
+                <IconButton icon="★" title="Add to favorites" aria-label="Add to favorites">
+                    Favorite
+                </IconButton>
+            </div>
+        );
+    }
 }

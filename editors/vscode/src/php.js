@@ -733,7 +733,7 @@ function components(parsed) {
             name: fn.name,
             fqn: fn.fqn,
             namespace: fn.namespace,
-            page: hasAttr(fn.attrs, 'Route'),
+            page: false,
             props: [],
             slots: [],
             children: false,
@@ -755,7 +755,7 @@ function components(parsed) {
         list.push(comp);
     }
     for (const cls of parsed.classes) {
-        if (cls.kind !== 'class' || !hasAttr(cls.attrs, 'Component')) {
+        if (cls.kind !== 'class' || !(hasAttr(cls.attrs, 'Component') || hasAttr(cls.attrs, 'Page'))) {
             continue;
         }
         const comp = {
@@ -763,7 +763,7 @@ function components(parsed) {
             name: cls.name,
             fqn: cls.fqn,
             namespace: cls.namespace,
-            page: hasAttr(cls.attrs, 'Route'),
+            page: hasAttr(cls.attrs, 'Page') || hasAttr(cls.attrs, 'Route'),
             props: [],
             slots: [],
             children: false,

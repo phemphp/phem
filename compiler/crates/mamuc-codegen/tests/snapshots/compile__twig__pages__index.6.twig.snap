@@ -3,7 +3,6 @@ source: crates/mamuc-codegen/tests/compile.rs
 expression: t.content
 ---
 <main>
-                <title>Fixture Home</title>
                 <h1>Counters that update together</h1>
                 {% component 'App\\Components\\MyButton' with {'count': (count), 'onClick': (handleClick)} only %}
                 {% component 'App\\Components\\MyButton' with {'count': (count), 'onClick': (handleClick)} only %}

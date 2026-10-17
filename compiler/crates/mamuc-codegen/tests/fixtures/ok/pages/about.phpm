@@ -2,10 +2,15 @@
 
 namespace App\Pages;
 
-use Symfony\Component\Routing\Attribute\Route;
+use App\Components\Document;
+use Mamu\Attribute\Page;
 
-#[Route('/about')]
-#[Route('/about-us', name: 'about_us')]
-function About() {
-    return <p id="about">About</p>;
+#[Page('/about')]
+#[Page('/about-us', name: 'about_us')]
+final class About extends Document
+{
+    public function render()
+    {
+        return <p id="about">About</p>;
+    }
 }

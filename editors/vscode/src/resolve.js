@@ -208,7 +208,7 @@ class Resolver {
             return {
                 range: [ctx.quote + 1, ctx.quote + 1 + name.length],
                 location: await this.location(route.file, route.offset),
-                hover: code('php', `#[Route('${route.path}')]`) + `\n\nThe route of \`${route.fqn}\`` + this.definedIn(route.file),
+                hover: code('php', `#[Page('${route.path}')]`) + `\n\nThe route of \`${route.fqn}\`` + this.definedIn(route.file),
             };
         }
         const expr = t.slice(ctx.start, end);

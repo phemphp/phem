@@ -7,17 +7,16 @@ is a PHP file that contains markup literals, the same way a `.jsx` file contains
 <?phpm
 namespace App\Pages\Examples;
 
+use App\Pages\Document;
 use Closure;
-use Mamu\Attribute\{Component, State};
-use Symfony\Component\Routing\Attribute\Route;
+use Mamu\Attribute\{Page, State};
 
 function MyButton(int $count, Closure $onClick) {
     return <button onClick={{ onClick }}>Clicked {{ count }} times</button>;
 }
 
-#[Route('/counters')]
-#[Component]
-final class MyApp
+#[Page('/counters')]
+final class MyApp extends Document
 {
     #[State] public int $count = 0;
 
@@ -39,7 +38,9 @@ final class MyApp
 }
 ```
 
-A component with state is an object: a `#[Component]` class is a Symfony service, so its
+A page is a class with `#[Page]` (a Symfony route). It extends the document of the application:
+a class that renders the `<html>` element and the title of the page. A component with state is
+an object: a `#[Component]` (or `#[Page]`) class is a Symfony service, so its
 constructor gets the services that it needs (autowiring). With `#[Transactional]`, each event
 handler runs in a Doctrine ORM transaction: Mamu flushes and commits when the handler returns.
 
@@ -93,7 +94,7 @@ See [editors/vscode/README.md](editors/vscode/README.md).
 
 - `/learn` is the Quick Start page (static HTML + CSS, like react.dev/learn).
 - Each sandbox in it runs a real `.phpm` file from `examples/quickstart/src/Pages/Examples/`.
-  Its `#[Route]` attribute serves it at `/examples/<Name>`.
+  Its `#[Page]` attribute serves it at `/examples/<Name>`.
 - `/learn/describing-the-ui.html` has a multi-file example: the page `Gallery.phpm` uses
   components from `examples/quickstart/src/Components/`. The page `DurableGallery.phpm` reads and
   writes its data in SQLite through a Doctrine ORM entity and its repository. Its handlers are
@@ -109,7 +110,7 @@ See [editors/vscode/README.md](editors/vscode/README.md).
      bin/console mamu:warmup ──► the Twig cache (compiled at build time, not at runtime)
                               │
  MamuBundle ── class components → services (autowired, not shared)
-             ── #[Route] components → routes ── PageController / EventController
+             ── #[Page] classes → routes ── PageController / EventController
                               │
  Browser ◄── HTML ─────── HttpKernel (FrankenPHP in worker mode, or PHP-FPM)
    mamu Stimulus controller ── POST <page URL> {state, signature, handler, event}
@@ -123,9 +124,10 @@ See [editors/vscode/README.md](editors/vscode/README.md).
    into the Twig cache. At runtime, nothing parses `.phpm` or `.twig` sources. The production
    image also uses OPcache preload.
 2. **Symfony.** `MamuBundle` reads the mamuc manifest. Its compiler pass registers each
-   `#[Component]` class as an autowired service that is not shared, so each component on a page
-   is a new object with its dependencies. Its route loader reads the Symfony `#[Route]`
-   attributes of the page components, as the attribute loader does for controllers.
+   `#[Component]` and `#[Page]` class as an autowired service that is not shared, so each
+   component on a page is a new object with its dependencies. Its route loader reads the
+   `#[Page]` attributes (a Symfony `#[Route]`) of the pages, as the attribute loader does for
+   controllers. A page renders in its document (`Mamu\Document`).
    The compiled templates use the application Twig environment, so Twig extensions such as
    `path()` work in markup. In debug mode, the container and the routes are built again after
    each `mamuc build`.
@@ -155,7 +157,8 @@ See [editors/vscode/README.md](editors/vscode/README.md).
 | React (react.dev/learn) | Mamu |
 |---|---|
 | `function MyButton() { return <button/> }` | the same, in PHP |
-| `export default function MyApp()` | `#[Route('/')] function MyApp()`: the Symfony route attribute |
+| `export default function MyApp()` | `#[Page('/')] final class MyApp extends Document`: a Symfony route |
+| the root layout (`<html>`, metadata) | the `Document` class of the app: each page extends it, and sets `$title` or `title()` |
 | `{user.name}`, `src={user.imageUrl}` | `{{ user.name }}`, `src={{ user.imageUrl }}` |
 | `className`, `style={{ width: 90 }}` | `className`, `style={{ {width: 90} }}` |
 | `cond ? <A/> : <B/>`, `cond && <A/>` | `{{ cond ? <A /> : <B /> }}`, `{{ cond and <A /> }}`, `{% if %}` |
@@ -194,9 +197,10 @@ finds an error:
 | E020 | A call to a React Hook (`Mamu\useState`, ...): Mamu keeps state in `#[Component]` classes |
 | E030–E032 | Undefined variable in markup, markup in an unsupported expression, invalid attribute |
 | E040–E041 | Class component without `render()`, readonly `#[State]` property |
-| E050, E052 | `export default` (not PHP; use `#[Route]`), `#[Route]` on a function or class that is not a component |
+| E050, E052 | `export default` (not PHP; use `#[Page]`), `#[Page]` or `#[Route]` on a function, or on a class that is not a component |
 | W001–W003 | A handler is called instead of passed; a list item without `key`; an event that the browser does not send (`onMouseEnter`) |
-| W004 | `#[Route]`, `#[Component]` or `#[State]` without its `use` import (`Symfony\Component\Routing\Attribute\Route`, `Mamu\Attribute\...`) |
+| W004 | `#[Page]`, `#[Route]`, `#[Component]` or `#[State]` without its `use` import (`Mamu\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
+| W005 | a `<title>` outside `<head>` and `<svg>`: the document of the page prints the title |
 
 ## Limits
 

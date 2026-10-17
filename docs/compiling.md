@@ -18,9 +18,9 @@ my-app/
 ├── bin/console
 ├── config/
 │   ├── bundles.php        FrameworkBundle, TwigBundle, StimulusBundle, MamuBundle (and DoctrineBundle for #[Transactional] and #[Path] entities)
-│   ├── packages/mamu.yaml   optional: source_dir, build_dir, secret, page_template
+│   ├── packages/mamu.yaml   optional: source_dir, build_dir, secret
 │   ├── packages/asset_mapper.yaml   the assets/ directory
-│   ├── routes/mamu.yaml     { resource: ., type: mamu }: the #[Route] attributes of the pages
+│   ├── routes/mamu.yaml     { resource: ., type: mamu }: the #[Page] attributes of the pages
 │   └── services.yaml      your services (for example repositories)
 ├── src/                   the .phpm sources (the "source root"), and your PHP classes
 │   ├── Kernel.php
@@ -28,11 +28,11 @@ my-app/
 │   ├── Repository/        normal PHP services, injected into components
 │   ├── DataFixtures/      optional: Doctrine fixtures, the first rows of a new database
 │   ├── Components/        components that are not pages
-│   └── Pages/             the components with a #[Route] attribute
-│       ├── index.phpm      #[Route('/')]
+│   └── Pages/             the pages: classes with a #[Page] attribute
+│       ├── Document.phpm   the HTML document: each page extends it (Mamu\Document)
+│       ├── index.phpm      #[Page('/')]
 │       └── Examples/
-│           └── Counter.phpm #[Route('/examples/Counter')]
-├── templates/base.html.twig   the document of the pages (the default page template extends it)
+│           └── Counter.phpm #[Page('/examples/Counter')]
 ├── assets/                the JavaScript and CSS of the pages (AssetMapper)
 │   ├── app.js             the `app` entry of the importmap: bootstrap.js and styles/app.css
 │   ├── bootstrap.js       starts Stimulus (StimulusBundle)
@@ -42,46 +42,92 @@ my-app/
 └── var/cache/             build output (do not commit)
 ```
 
-The directories are only a convention: a page is a component with the Symfony `#[Route]`
-attribute, in any file.
+The directories are only a convention: a page is a class with the `#[Page]` attribute that
+extends the document, in any file.
 
-### The page template
+### The document of the pages
 
-The application owns the HTML document. By default, Mamu renders a page in the `body` block
-of `templates/base.html.twig`, and the `<title>` of the page goes in the `title` block. This is
-the base template of a Symfony application:
+The application owns the HTML document: a class in the .phpm sources that implements
+`Mamu\Document`. Its `document()` method gets the rendered page (`Mamu\Http\PageView`), and it
+returns the `<html>` element. Mamu adds the `<!DOCTYPE html>`.
 
-```twig
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<title>{% block title %}My app{% endblock %}</title>
-{% block javascripts %}{{ importmap('app') }}{% endblock %}
-</head>
-<body>{% block body %}{% endblock %}</body>
-</html>
+```php
+<?phpm
+
+namespace App\Pages;
+
+use Mamu\Http\PageView;
+
+class Document implements \Mamu\Document
+{
+    protected string $title = 'My app';
+
+    public function title(): string
+    {
+        return $this->title;
+    }
+
+    public function document(PageView $page)
+    {
+        $title = $this->title();
+
+        return (
+            <html lang="en">
+                <head>
+                    <title>{{ title }}</title>
+                    {{ importmap('app') }}
+                </head>
+                <body>{{ mamu_root(page) }}</body>
+            </html>
+        );
+    }
+}
 ```
 
-For full control, write a page template, and set it in `mamu.page_template`, or in the
-`_mamu_template` default of one route
-(`#[Route('/admin', defaults: ['_mamu_template' => 'admin/page.html.twig'])]`). The template
-gets the page as `page` (`Mamu\Http\PageView`):
+Each page extends it. A page changes the title with the `$title` property, or with a `title()`
+method for a dynamic title:
 
-| In the template | Gives |
+```php
+#[Page('/scientists/{id:scientist}')]
+final class ScientistPage extends Document
+{
+    #[Path] public Scientist $scientist;
+
+    public function title(): string
+    {
+        return $this->scientist->name;
+    }
+
+    public function render() { ... }
+}
+```
+
+For another layout (an admin area, for example), write a subclass of the document that
+changes `document()`, and make the pages of that area extend it. A page that does not
+implement `Mamu\Document` is an error when Symfony loads the routes.
+
+The document renders once, after the page, with the state of the page. The events do not
+render it again. A `<title>` in the markup of a page is not the title of the page: mamuc
+reports it (W005). A `<title>` in `<head>` or in an `<svg>` is correct.
+
+The document prints the page with these functions:
+
+| In the document | Gives |
 |---|---|
-| `page.title` | the `<title>` of the page (HTML), or null |
 | `{{ mamu_root(page) }}` | the root element: `<div id="mamu-root" data-controller="mamu" …>` with the page |
 | `{{ mamu_root(page, {class: 'app'}, 'main') }}` | the same, with more attributes and another tag |
-| `<body {{ mamu_root_attributes(page) }}>{{ page.body }}</body>` | only the attributes, for your own root element |
 
-The root element must have the attributes of `mamu_root_attributes()`: they give the
-component state to the `mamu` Stimulus controller. Your `data-controller` and `data-action`
-values come after the values of Mamu. You cannot change the state attributes.
+The root element has the attributes of the `mamu` Stimulus controller: they give the component
+state to the controller. Your `data-controller` and `data-action` values come after the values
+of Mamu. You cannot change the state attributes.
 
-A controller of the application can render a page too, with the `Mamu\Http\PageRenderer`
-service: `$this->render('page.html.twig', ['page' => $pages->render(Counter::class, $request)])`.
-The browser sends the events of a page to the URL of the page, and only a page route runs
-them. Thus, render a page with event handlers on its page route.
+A controller of the application can render a page in a Twig template too, with the
+`Mamu\Http\PageRenderer` service:
+`$this->render('page.html.twig', ['page' => $pages->render(Counter::class, $request)])`. In
+Twig, `<body {{ mamu_root_attributes(page) }}>{{ page.body }}</body>` gives only the
+attributes, for your own root element. The browser sends the events of a page to the URL of
+the page, and only a page route runs them. Thus, render a page with event handlers on its page
+route.
 
 ### The client assets
 

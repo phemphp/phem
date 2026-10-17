@@ -39,7 +39,7 @@ final class EventAccessTest extends TestCase
 
         $response = $this->request('GET', '/cached');
         self::assertSame(200, $response->getStatusCode());
-        self::assertSame('max-age=60, public', $response->headers->get('Cache-Control'), '#[Cache] on a function page');
+        self::assertSame('max-age=60, public', $response->headers->get('Cache-Control'), '#[Cache] on a page');
     }
 
     public function testEventFromAnotherSiteIsRejected(): void

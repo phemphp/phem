@@ -15,11 +15,14 @@ pub struct Lowerer<'a> {
     /// When lowering the template of a template component: its slot names.
     pub slots: Vec<String>,
     slots_defined: HashSet<String>,
+    /// The number of open `<head>` and `<svg>` elements: a `<title>` in one is the title of the
+    /// document, or the name of an image.
+    title_scopes: usize,
 }
 
 impl<'a> Lowerer<'a> {
     pub fn new(info: &'a FileInfo, reg: &'a Registry) -> Self {
-        Self { info, reg, diags: vec![], slots: vec![], slots_defined: HashSet::new() }
+        Self { info, reg, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0 }
     }
 
     pub fn lower_root(&mut self, node: &Node, slots: Vec<String>) -> String {
@@ -106,6 +109,13 @@ impl<'a> Lowerer<'a> {
     }
 
     fn element(&mut self, e: &Element, out: &mut String) {
+        let name = e.name.to_ascii_lowercase();
+        if name == "title" && self.title_scopes == 0 {
+            self.diags.push(
+                Diagnostic::warning(codes::TITLE_IN_MARKUP, "a `<title>` outside `<head>` is not the title of the page", e.name_span)
+                    .with_help("the document of the page prints the title in `<head>` (see Mamu\\Document): change it in the page class, for example `protected string $title = '...';`"),
+            );
+        }
         out.push('<');
         out.push_str(&e.name);
         if e.attrs.iter().any(|a| matches!(a.kind, AttrKind::Spread(_))) {
@@ -115,12 +125,15 @@ impl<'a> Lowerer<'a> {
                 self.dom_attr(a, out);
             }
         }
-        let void = mamuc_syntax::markup::VOID_ELEMENTS.contains(&e.name.to_ascii_lowercase().as_str());
+        let void = mamuc_syntax::markup::VOID_ELEMENTS.contains(&name.as_str());
         out.push('>');
         if void {
             return;
         }
+        let scope = usize::from(name == "head" || name == "svg");
+        self.title_scopes += scope;
         self.nodes(&e.children, out);
+        self.title_scopes -= scope;
         out.push_str("</");
         out.push_str(&e.name);
         out.push('>');

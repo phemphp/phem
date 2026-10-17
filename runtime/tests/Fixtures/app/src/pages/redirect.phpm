@@ -2,14 +2,13 @@
 
 namespace App\Pages;
 
-use Mamu\Attribute\{Component, State};
+use App\Components\Document;
+use Mamu\Attribute\{Page, State};
 use Symfony\Component\HttpFoundation\RedirectResponse;
-use Symfony\Component\Routing\Attribute\Route;
 
 // A handler that returns a RedirectResponse: the browser goes to its URL.
-#[Component]
-#[Route('/leave')]
-final class LeavePage
+#[Page('/leave')]
+final class LeavePage extends Document
 {
     #[State] public int $count = 0;
 

@@ -13,7 +13,10 @@ use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 pub const ATTR_COMPONENT: &str = "Mamu\\Attribute\\Component";
 pub const ATTR_STATE: &str = "Mamu\\Attribute\\State";
-/// The Symfony route attribute: it exposes a component as a page.
+/// The Mamu page attribute: it exposes a class as a page (it extends `Route`). The class is a
+/// component, with no `#[Component]`.
+pub const ATTR_PAGE: &str = "Mamu\\Attribute\\Page";
+/// The Symfony route attribute: it exposes a class component as a page too.
 pub const ATTR_ROUTE: &str = "Symfony\\Component\\Routing\\Attribute\\Route";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -163,7 +166,7 @@ pub fn resolve_inheritance<'a>(files: impl IntoIterator<Item = &'a mut FileInfo>
     }
 }
 
-/// File-level checks: removed hooks, class component rules, and `#[Route]`. Run it after
+/// File-level checks: removed hooks, class component rules, and `#[Page]` / `#[Route]`. Run it after
 /// `resolve_inheritance()`.
 pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
     let mut diags = hooks::check(file, src, lexed);
@@ -171,14 +174,14 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
         diags.push(
             Diagnostic::error(codes::EXPORT_DEFAULT, "`export default` is not PHP", *span)
                 .with_label("not PHP")
-                .with_help("expose the page with a Symfony route: `#[Route('/path')]` on the line before it, and `use Symfony\\Component\\Routing\\Attribute\\Route;`"),
+                .with_help("expose the page with `#[Page('/path')]` on the line before it, and `use Mamu\\Attribute\\Page;`"),
         );
     }
     for r in &file.routes {
         if !r.is_component {
             diags.push(
-                Diagnostic::error(codes::ROUTE_NOT_COMPONENT, format!("`#[Route]` must mark a component, and `{}` is not one", r.fqn), r.span)
-                    .with_help("a component is a function with a capitalized name, or a `#[Component]` class"),
+                Diagnostic::error(codes::ROUTE_NOT_COMPONENT, format!("`#[{}]` must mark a class component, and `{}` is not one", r.attr, r.fqn), r.span)
+                    .with_help("a page is a class with `#[Page]` that extends the document of the application (see Mamu\\Document)"),
             );
         }
     }

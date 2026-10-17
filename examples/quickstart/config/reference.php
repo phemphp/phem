@@ -934,7 +934,6 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     secret?: scalar|Param|null, // The key that signs the component state in the browser // Default: "%kernel.secret%"
  *     state_max_age?: int|Param, // The seconds that a signed state is valid (0 for no limit). An older state reloads the page. // Default: 86400
  *     state_bind_session?: bool|Param, // Sign the session id with the state, so the state of a session is not valid in another session. A login makes the open pages reload on their next event. // Default: false
- *     page_template?: scalar|Param|null, // The Twig template of the pages. It gets the page as `page`. The default template extends the base.html.twig of the application. The `_mamu_template` default of a route changes it for one page. // Default: "@Mamu/page.html.twig"
  * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,

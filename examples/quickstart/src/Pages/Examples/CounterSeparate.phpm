@@ -2,8 +2,8 @@
 
 namespace App\Pages\Examples;
 
-use Mamu\Attribute\{Component, State};
-use Symfony\Component\Routing\Attribute\Route;
+use App\Pages\Document;
+use Mamu\Attribute\{Component, Page, State};
 
 #[Component]
 final class Counter
@@ -26,15 +26,19 @@ final class Counter
     }
 }
 
-#[Route('/examples/CounterSeparate')]
-function CounterSeparate()
+#[Page('/examples/CounterSeparate')]
+final class CounterSeparate extends Document
 {
-    return (
-        <div>
-            <title>CounterSeparate</title>
-            <h1>Counters that update separately</h1>
-            <Counter />
-            <Counter />
-        </div>
-    );
+    protected string $title = 'CounterSeparate';
+
+    public function render()
+    {
+        return (
+            <div>
+                <h1>Counters that update separately</h1>
+                <Counter />
+                <Counter />
+            </div>
+        );
+    }
 }

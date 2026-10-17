@@ -66,4 +66,5 @@ pub mod codes {
     pub const MISSING_KEY: &str = "W002";
     pub const UNKNOWN_EVENT: &str = "W003";
     pub const FOREIGN_ATTRIBUTE: &str = "W004";
+    pub const TITLE_IN_MARKUP: &str = "W005";
 }

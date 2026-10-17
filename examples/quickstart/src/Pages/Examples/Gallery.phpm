@@ -1,25 +1,31 @@
 <?phpm
 namespace App\Pages\Examples;
 
-use Symfony\Component\Routing\Attribute\Route;
+use App\Pages\Document;
+use Mamu\Attribute\Page;
 
 use function App\Components\{Layout, Profile};
 
-#[Route('/examples/Gallery')]
-function Gallery()
+#[Page('/examples/Gallery')]
+final class Gallery extends Document
 {
-    $scientists = [
-        ['id' => 1, 'name' => 'Maria Skłodowska-Curie', 'profession' => 'physicist and chemist'],
-        ['id' => 2, 'name' => 'Katsuko Saruhashi', 'profession' => 'geochemist'],
-        ['id' => 3, 'name' => 'Lise Meitner', 'profession' => 'physicist'],
-    ];
+    protected string $title = 'Amazing scientists';
 
-    return (
-        <Layout title="Amazing scientists">
-            {% for person in scientists %}
-                <Profile key={{ person.id }} person={{ person }} />
-            {% endfor %}
-            <Layout:footer>{{ scientists|length }} profiles</Layout:footer>
-        </Layout>
-    );
+    public function render()
+    {
+        $scientists = [
+            ['id' => 1, 'name' => 'Maria Skłodowska-Curie', 'profession' => 'physicist and chemist'],
+            ['id' => 2, 'name' => 'Katsuko Saruhashi', 'profession' => 'geochemist'],
+            ['id' => 3, 'name' => 'Lise Meitner', 'profession' => 'physicist'],
+        ];
+
+        return (
+            <Layout title="Amazing scientists">
+                {% for person in scientists %}
+                    <Profile key={{ person.id }} person={{ person }} />
+                {% endfor %}
+                <Layout:footer>{{ scientists|length }} profiles</Layout:footer>
+            </Layout>
+        );
+    }
 }

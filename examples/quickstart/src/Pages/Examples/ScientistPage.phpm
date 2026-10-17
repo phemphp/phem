@@ -2,17 +2,16 @@
 namespace App\Pages\Examples;
 
 use App\Model\Scientist;
+use App\Pages\Document;
 use App\Repository\ScientistRepository;
-use Mamu\Attribute\{Component, Path, Transactional};
+use Mamu\Attribute\{Page, Path, Transactional};
 use Symfony\Component\HttpFoundation\RedirectResponse;
-use Symfony\Component\Routing\Attribute\Route;
 
 use function App\Components\{Layout, ScientistCard};
 
-#[Route('/examples/ScientistPage/{id:scientist}', requirements: ['id' => '\d+'])]
-#[Component]
+#[Page('/examples/ScientistPage/{id:scientist}', requirements: ['id' => '\d+'])]
 #[Transactional]
-final class ScientistPage
+final class ScientistPage extends Document
 {
     #[Path]
     public Scientist $scientist;
@@ -20,6 +19,11 @@ final class ScientistPage
     public function __construct(
         private readonly ScientistRepository $scientists,
     ) {
+    }
+
+    public function title(): string
+    {
+        return $this->scientist->name;
     }
 
     public function delete(): RedirectResponse

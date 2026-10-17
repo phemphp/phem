@@ -2,10 +2,10 @@
 
 namespace App\Pages;
 
-use Mamu\Attribute\{Component, State};
+use App\Components\Document;
+use Mamu\Attribute\{Component, Page, State};
 use Mamu\Html;
 use Mamu\Tests\Fixtures\Titled;
-use Symfony\Component\Routing\Attribute\Route;
 
 // A template component with a required slot, and a slot that the template tests.
 function Panel(Html $children, ?Html $footer = null) {
@@ -38,9 +38,8 @@ final class Heading extends Titled
     }
 }
 
-#[Component]
-#[Route('/edge')]
-final class Edge
+#[Page('/edge')]
+final class Edge extends Document
 {
     #[State] public int $n = 0;
 

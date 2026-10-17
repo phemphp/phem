@@ -175,3 +175,67 @@ fn a_class_with_a_parent_outside_the_sources_is_not_checked() {
     let php = &out.expect("output").files[0].php;
     assert!(php.contains("'title' => $this->title ?? (method_exists($this, 'title') ? $this->title(...) : null)"), "{php}");
 }
+
+#[test]
+fn a_parent_class_loads_before_its_subclasses() {
+    let about = "<?phpm\nnamespace App;\nuse Mamu\\Attribute\\Component;\n#[Component]\nfinal class About extends Document {\n    public function render() { return <p>About</p>; }\n}\n";
+    let document = "<?phpm\nnamespace App;\nuse Mamu\\Http\\PageView;\nclass Document implements \\Mamu\\Document {\n    protected string $title = 'App';\n    public function document(PageView $page) {\n        $title = $this->title;\n        return <html><head><title>{{ title }}</title></head><body>{{ mamu_root(page) }}</body></html>;\n    }\n}\n";
+    let (out, diags) = compile(vec![SourceInput { rel: "About.phpm".into(), text: about.into() }, SourceInput { rel: "Page/Document.phpm".into(), text: document.into() }]);
+    let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
+    assert!(msgs.is_empty(), "a <title> in <head> is the title of the document: {msgs:?}");
+    assert_eq!(out.expect("output").manifest.files, ["php/Page/Document.php", "php/About.php"]);
+}
+
+#[test]
+fn a_title_outside_head_and_svg_is_a_warning() {
+    let w005 = |markup: &str| codes(&format!("<?phpm\nfunction App() {{ $on = true; return {markup}; }}\n")).iter().filter(|c| **c == "W005").count();
+
+    assert_eq!(w005("<main><title>Home</title></main>"), 1);
+    assert_eq!(w005("<html><head><title>Home</title></head><body /></html>"), 0, "the title of a document");
+    assert_eq!(w005("<main><svg><title>Icon</title></svg></main>"), 0, "the name of an image");
+    assert_eq!(w005("<main><svg><svg><title>a</title></svg><title>b</title></svg></main>"), 0, "nested <svg> elements");
+    assert_eq!(w005("<main><svg><title>Icon</title></svg><title>Home</title></main>"), 1, "after the </svg>");
+    assert_eq!(w005("<main><head></head><title>Home</title></main>"), 1, "after the </head>");
+    assert_eq!(w005("<main>{{ on ? <title>Home</title> : '' }}</main>"), 1, "in a branch of an expression");
+    assert_eq!(w005("<main><svg /><title>Home</title></main>"), 1, "a self-closing <svg>");
+}
+
+#[test]
+fn a_parent_class_and_a_trait_load_before_the_classes_that_use_them() {
+    let file = |rel: &str, text: &str| SourceInput { rel: rel.into(), text: format!("<?phpm\nnamespace App;\n{text}\n") };
+    let inputs = vec![
+        file("a/C.phpm", "final class C extends B {}"),
+        file("b/B.phpm", "abstract class B extends A { use T; }"),
+        file("c/T.phpm", "trait T {}"),
+        file("d/A.phpm", "abstract class A extends \\Exception {}"),
+        file("e/Free.phpm", "final class Free extends \\Exception {}"),
+    ];
+    let (out, diags) = compile(inputs);
+    assert!(diags.iter().all(|f| f.diags.is_empty()), "unexpected diagnostics");
+    let files = out.expect("output").manifest.files;
+    assert_eq!(files, ["php/c/T.php", "php/d/A.php", "php/b/B.php", "php/a/C.php", "php/e/Free.php"], "a parent outside the sources changes nothing");
+}
+
+#[test]
+fn a_page_class_is_a_component_with_a_route() {
+    let page = |attrs: &str, class: &str| {
+        let src = format!("<?phpm\nnamespace App;\nuse Mamu\\Attribute\\{{Component, Page}};\nuse Symfony\\Component\\Routing\\Attribute\\Route;\n{attrs}\n{class}\n");
+        compile(vec![SourceInput { rel: "Home.phpm".into(), text: src }])
+    };
+    let render = "final class Home extends Document { public function render() { return <p>Home</p>; } }";
+
+    for attrs in ["#[Page('/')]", "#[\\Mamu\\Attribute\\Page('/')]", "#[Page('/')]\n#[Component]", "#[Route('/')]\n#[Component]", "#[Page('/a')]\n#[Page('/b', name: 'b')]"] {
+        let (out, diags) = page(attrs, render);
+        assert!(diags.iter().all(|f| f.diags.is_empty()), "{attrs}: {:?}", diags[0].diags);
+        let out = out.expect("output");
+        assert_eq!(out.manifest.pages, ["App\\Home"], "{attrs}");
+        assert_eq!(out.manifest.components["App\\Home"].kind, mamuc_analyze::Kind::Class, "{attrs}");
+    }
+
+    let codes = |attrs: &str, class: &str| page(attrs, class).1.iter().flat_map(|f| f.diags.iter().map(|d| d.code)).collect::<Vec<_>>();
+    assert_eq!(codes("#[Route('/')]", "final class Home extends Document { public function render() { return <p />; } }"), ["E052"], "#[Route] needs #[Component]");
+    assert_eq!(codes("#[Page('/')]", "final class Home {}"), ["E040"], "a page needs render()");
+    assert_eq!(codes("#[Page('/')]", "final class Home extends Document {}"), Vec::<&str>::new(), "the parent outside the sources can have render()");
+    assert_eq!(codes("#[Page('/')]", "function Home() { return <p />; }"), ["E052"], "a function component is not a page");
+    assert_eq!(codes("#[Route('/')]", "function Home() { return <p />; }"), ["E052"]);
+}

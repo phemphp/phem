@@ -108,6 +108,18 @@ final class Tree
         return $this->handlers[$id] ?? null;
     }
 
+    /** The fiber of the page: the first fiber of the last pass at the root of the tree. */
+    public function root(): ?Fiber
+    {
+        foreach ($this->mounted() as $f) {
+            if (null === $f->parent) {
+                return $f;
+            }
+        }
+
+        return null;
+    }
+
     /** @return list<Fiber> the fibers of the last pass */
     public function mounted(): array
     {

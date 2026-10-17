@@ -108,9 +108,8 @@ expression: out.manifest.to_json()
     },
     "App\\Pages\\About": {
       "fqcn": "App\\Pages\\About",
-      "kind": "template",
+      "kind": "class",
       "file": "pages/about.phpm",
-      "template": "pages/about.0.twig",
       "props": [],
       "slots": [],
       "required": [],
@@ -185,6 +184,10 @@ expression: out.manifest.to_json()
       "source": "components/Counter.phpm",
       "line": 28
     },
+    "components/Document.0.twig": {
+      "source": "components/Document.phpm",
+      "line": 23
+    },
     "components/Rest.0.twig": {
       "source": "components/Rest.phpm",
       "line": 7
@@ -195,27 +198,27 @@ expression: out.manifest.to_json()
     },
     "pages/about.0.twig": {
       "source": "pages/about.phpm",
-      "line": 10
+      "line": 14
     },
     "pages/index.0.twig": {
       "source": "pages/index.phpm",
-      "line": 11
+      "line": 10
     },
     "pages/index.1.twig": {
       "source": "pages/index.phpm",
-      "line": 16
+      "line": 15
     },
     "pages/index.2.twig": {
       "source": "pages/index.phpm",
-      "line": 32
+      "line": 31
     },
     "pages/index.3.twig": {
       "source": "pages/index.phpm",
-      "line": 34
+      "line": 33
     },
     "pages/index.4.twig": {
       "source": "pages/index.phpm",
-      "line": 38
+      "line": 37
     },
     "pages/index.5.twig": {
       "source": "pages/index.phpm",
@@ -229,6 +232,7 @@ expression: out.manifest.to_json()
   "files": [
     "php/components/Buttons.php",
     "php/components/Counter.php",
+    "php/components/Document.php",
     "php/components/Rest.php",
     "php/pages/about.php",
     "php/pages/index.php"

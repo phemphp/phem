@@ -121,6 +121,6 @@ test('hover for Twig filters, functions, tests, tags, and HTML', async () => {
 
 test('a route name goes to the page', async () => {
     const r = await at(fn("<a href={{ path('gall‸ery') }}>x</a>"));
-    assert.deepEqual(target(r), ['src/pages/gallery.phpm', 'Gallery']);
+    assert.deepEqual(target(r), ['src/pages/gallery.phpm', 'Gallery extends Document']);
     assert.match(r.hover, /\/gallery/);
 });

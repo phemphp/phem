@@ -1,7 +1,7 @@
 <?php
 
 /**
- * The importmap of the pages: `{{ importmap('app') }}` in templates/base.html.twig.
+ * The importmap of the pages: `{{ importmap('app') }}` in src/Pages/Document.phpm.
  *
  * `bin/console importmap:install` downloads the packages with a version to assets/vendor/
  * (Composer runs it after `composer install`).

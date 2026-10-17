@@ -18,10 +18,9 @@ use Mamu\Dom\DomEvents;
 use Twig\Markup;
 
 /**
- * A rendered page, for the page template of the application (the `page` variable).
+ * A rendered page, for the document of the page (see Mamu\Document), or for a Twig template
+ * (the `page` variable).
  *
- *     <title>{{ page.title ?? 'My app' }}</title>
- *     …
  *     {{ mamu_root(page) }}                    {# <div data-controller="mamu" …>…</div> #}
  *     {{ mamu_root(page, {class: 'app'}) }}
  *     <body {{ mamu_root_attributes(page) }}>{{ page.body }}</body>
@@ -35,13 +34,11 @@ final class PageView
     private const OWN = ['data-mamu-state-value' => true, 'data-mamu-signature-value' => true];
 
     /**
-     * @param string      $component the page component
-     * @param Markup|null $title     the `<title>` of the page (HTML), or null without one
-     * @param Markup      $body      the HTML of the page
+     * @param string $component the page component
+     * @param Markup $body      the HTML of the page
      */
     public function __construct(
         public readonly string $component,
-        public readonly ?Markup $title,
         public readonly Markup $body,
         public readonly string $state,
         public readonly string $signature,

@@ -49,12 +49,15 @@ function Avatar(string $name, int $size = 64)
     'src/pages/about.phpm': `<?phpm
 namespace App\\Pages;
 
-use Symfony\\Component\\Routing\\Attribute\\Route;
+use Mamu\\Attribute\\Page;
 
-#[Route('/about')]
-function About()
+#[Page('/about')]
+final class About extends Document
 {
-    return <p>About</p>;
+    public function render()
+    {
+        return <p>About</p>;
+    }
 }
 `,
     'src/components/Counter.phpm': `<?phpm
@@ -214,13 +217,11 @@ final class ScientistRepository
     'src/pages/gallery.phpm': `<?phpm
 namespace App\\Pages;
 
-use Mamu\\Attribute\\Component;
-use Symfony\\Component\\Routing\\Attribute\\Route;
+use Mamu\\Attribute\\Page;
 
-#[Route('/gallery', name: 'gallery')]
-#[Route('/scientists/{id}')]
-#[Component]
-final class Gallery
+#[Page('/gallery', name: 'gallery')]
+#[Page('/scientists/{id}')]
+final class Gallery extends Document
 {
     public function render()
     {

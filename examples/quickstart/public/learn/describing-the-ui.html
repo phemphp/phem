@@ -116,7 +116,7 @@
 <h2 id="importing-and-exporting" class="heading">Importing and exporting components<a class="heading-anchor" href="#importing-and-exporting" aria-label="Link to this section">#</a></h2>
 <p>You can declare many components in one file. When an app grows, put the reusable components in their own files and compose them in a page. React uses <code>export</code> and <code>import</code> for this. Mamu uses PHP namespaces:</p>
 <ul>
-    <li>Put the shared components in <code>src/Components/</code>, in the namespace <code>App\Components</code>. They have no <code>#[Route]</code> attribute, so they are not pages.</li>
+    <li>Put the shared components in <code>src/Components/</code>, in the namespace <code>App\Components</code>. They have no <code>#[Page]</code> attribute, so they are not pages.</li>
     <li>In the page file, import a function component with <code>use function App\Components\{Layout, Profile};</code>.</li>
     <li>Import a class component with <code>use App\Components\LikeButton;</code>.</li>
     <li>A component in the same namespace needs no import. <code>Profile</code> uses <code>&lt;LikeButton /&gt;</code> without an import.</li>

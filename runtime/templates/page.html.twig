@@ -1,8 +1,0 @@
-{# The default page template: the page in the `body` block of the base.html.twig of the application.
-   For another template, set the `mamu.page_template` option, or the `_mamu_template` default
-   of a route. The template gets the page as `page` (Mamu\Http\PageView). #}
-{% extends 'base.html.twig' %}
-
-{% block title %}{% if page.title is not null %}{{ page.title }}{% else %}{{ parent() }}{% endif %}{% endblock %}
-
-{% block body %}{{ mamu_root(page) }}{% endblock %}

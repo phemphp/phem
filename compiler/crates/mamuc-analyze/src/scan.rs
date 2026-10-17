@@ -2,7 +2,7 @@
 //! function that contains each markup literal. It is not a PHP parser; it reads only the
 //! declarations that the compiler needs.
 
-use crate::{Kind, ATTR_COMPONENT, ATTR_ROUTE, ATTR_STATE};
+use crate::{Kind, ATTR_COMPONENT, ATTR_PAGE, ATTR_ROUTE, ATTR_STATE};
 use mamuc_syntax::php::{Lexed, TokKind, Token};
 use mamuc_syntax::Span;
 use std::collections::HashMap;
@@ -18,11 +18,11 @@ pub struct FileInfo {
     pub function_uses: HashMap<String, String>,
     pub functions: Vec<Func>,
     pub classes: Vec<Class>,
-    /// The declarations marked with `#[Route]`: the pages.
+    /// The declarations marked with `#[Page]` or `#[Route]`: the pages.
     pub routes: Vec<RouteDecl>,
     /// `export default` keywords (not PHP; the compiler reports them).
     pub export_defaults: Vec<Span>,
-    /// Attributes with a known short name (`Route`, `Component`, `State`) that resolve to
+    /// Attributes with a known short name (`Page`, `Route`, `Component`, `State`) that resolve to
     /// another class: (short name, expected name, resolved name, span).
     pub foreign_attrs: Vec<(String, &'static str, String, Span)>,
     /// For each markup literal (by index), the function or method that contains it.
@@ -55,13 +55,15 @@ pub enum MarkupScope {
     Method(usize, usize),
 }
 
-/// A declaration marked with the Symfony `#[Route]` attribute: a page.
+/// A declaration marked with the `#[Page]` or the Symfony `#[Route]` attribute: a page.
 #[derive(Clone, Debug)]
 pub struct RouteDecl {
     pub fqn: String,
-    /// The `Route` attribute name.
+    /// The short name of the attribute: `Page` or `Route`.
+    pub attr: &'static str,
+    /// The attribute name.
     pub span: Span,
-    /// False for a function that is not a component (a lowercase name).
+    /// False for a function, or a class without `#[Component]`: a page is a class component.
     pub is_component: bool,
 }
 
@@ -221,8 +223,8 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                         let (f, end) = parse_function(&toks, i, &info.namespace);
                         let attrs = std::mem::take(&mut attrs);
                         check_attrs(&mut info, &attrs);
-                        if let Some(span) = route_attr(&info, &attrs) {
-                            info.routes.push(RouteDecl { fqn: f.fqn.clone(), span, is_component: f.component_kind.is_some() });
+                        if let Some((attr, span)) = route_attr(&info, &attrs) {
+                            info.routes.push(RouteDecl { fqn: f.fqn.clone(), attr, span, is_component: false });
                         }
                         info.functions.push(f);
                         i = end + 1;
@@ -238,8 +240,8 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                             check_attrs(&mut info, &attrs);
                             let route = route_attr(&info, &attrs);
                             let (c, end) = parse_class(&toks, i, &info, attrs.into_iter().map(|(a, _)| a).collect());
-                            if let Some(span) = route {
-                                info.routes.push(RouteDecl { fqn: c.fqn.clone(), span, is_component: c.is_component });
+                            if let Some((attr, span)) = route {
+                                info.routes.push(RouteDecl { fqn: c.fqn.clone(), attr, span, is_component: c.is_component });
                             }
                             info.classes.push(c);
                             i = end + 1;
@@ -494,17 +496,23 @@ fn parse_params(toks: &Toks, from: usize, to: usize) -> Vec<Param> {
     out
 }
 
-/// The span of the first `#[Route]` attribute in a list of attributes (it is repeatable).
-fn route_attr(info: &FileInfo, attrs: &[(String, Span)]) -> Option<Span> {
-    attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_ROUTE).map(|(_, s)| *s)
+/// The first `#[Page]` or `#[Route]` attribute in a list of attributes (they are repeatable):
+/// its short name and its span.
+fn route_attr(info: &FileInfo, attrs: &[(String, Span)]) -> Option<(&'static str, Span)> {
+    attrs.iter().find_map(|(a, s)| match info.resolve_class(a).as_str() {
+        ATTR_PAGE => Some(("Page", *s)),
+        ATTR_ROUTE => Some(("Route", *s)),
+        _ => None,
+    })
 }
 
-/// Records `#[Route]` / `#[Component]` / `#[State]` that do not resolve to the expected
+/// Records `#[Page]` / `#[Route]` / `#[Component]` / `#[State]` that do not resolve to the expected
 /// attributes (usually a missing `use ...;`).
 fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
     for (a, span) in attrs {
         let short = a.rsplit('\\').next().unwrap_or(a);
         let expected = match short {
+            "Page" => ATTR_PAGE,
             "Route" => ATTR_ROUTE,
             "Component" => ATTR_COMPONENT,
             "State" => ATTR_STATE,
@@ -530,7 +538,8 @@ fn parse_class(toks: &Toks, at: usize, info: &FileInfo, attrs: Vec<String>) -> (
         j += 1;
     }
     let close = toks.matching(j);
-    let is_component = attrs.iter().any(|a| info.resolve_class(a) == ATTR_COMPONENT);
+    // A `#[Page]` class is a component too.
+    let is_component = attrs.iter().any(|a| matches!(info.resolve_class(a).as_str(), ATTR_COMPONENT | ATTR_PAGE));
     let mut class = Class {
         fqn: qualify(&info.namespace, &name),
         name,
@@ -696,8 +705,15 @@ function helper() {}
         assert_eq!(f.functions[2].component_kind, None);
         assert_eq!(f.routes.len(), 1);
         assert_eq!(f.routes[0].fqn, "App\\Components\\Card");
-        assert!(f.routes[0].is_component);
+        assert!(!f.routes[0].is_component, "a function is not a page");
         assert_eq!(f.markup_scopes, vec![MarkupScope::Function(0), MarkupScope::Function(1)]);
+    }
+
+    #[test]
+    fn a_page_class_is_a_component() {
+        let f = scan_src("<?phpm\nnamespace App;\nuse Mamu\\Attribute\\Page;\n#[Page('/')]\nfinal class Home extends Document { public function render() { return <p />; } }\n");
+        assert!(f.classes[0].is_component, "#[Page] needs no #[Component]");
+        assert_eq!((f.routes[0].attr, f.routes[0].is_component), ("Page", true));
     }
 
     #[test]

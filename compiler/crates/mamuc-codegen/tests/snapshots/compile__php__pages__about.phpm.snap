@@ -6,10 +6,15 @@ expression: f.php
 
 namespace App\Pages;
 
-use Symfony\Component\Routing\Attribute\Route;
+use App\Components\Document;
+use Mamu\Attribute\Page;
 
-#[Route('/about')]
-#[Route('/about-us', name: 'about_us')]
-function About() {
-    return new \Mamu\Element('pages/about.0.twig', []);
+#[Page('/about')]
+#[Page('/about-us', name: 'about_us')]
+final class About extends Document
+{
+    public function render()
+    {
+        return new \Mamu\Element('pages/about.0.twig', []);
+    }
 }

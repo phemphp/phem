@@ -2,8 +2,8 @@
 
 namespace App\Pages;
 
-use Mamu\Attribute\{Component, State};
-use Symfony\Component\Routing\Attribute\Route;
+use App\Components\Document;
+use Mamu\Attribute\{Page, State};
 
 // A template component: the extra props go to `$rest`.
 function RestButton(int $count, mixed ...$rest) {
@@ -21,9 +21,8 @@ function Forward(mixed ...$rest) {
     return <RestButton count={{ 7 }} {{ ...rest }} />;
 }
 
-#[Component]
-#[Route('/rest')]
-final class RestPage
+#[Page('/rest')]
+final class RestPage extends Document
 {
     #[State] public int $count = 0;
 

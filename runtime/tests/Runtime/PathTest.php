@@ -59,15 +59,15 @@ final class PathTest extends TestCase
         self::assertSame('/known/{id}', $routes->get('mamu_tests_fixtures_pathpages_known')?->getPath());
     }
 
-    public function testPathVariableWithoutPathParameterIsAnError(): void
+    public function testPathVariableWithoutPathPropertyIsAnError(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('The route "mamu_tests_fixtures_pathpages_unknownvalue" has the value "slug", but the page "Mamu\\Tests\\Fixtures\\PathPages\\UnknownValue" has no #[Path] parameter "slug".');
+        $this->expectExceptionMessage('The route "mamu_tests_fixtures_pathpages_unknownvalue" has the value "slug", but the page "Mamu\\Tests\\Fixtures\\PathPages\\UnknownValue" has no #[Path] property "slug".');
 
         $this->load('UnknownValue');
     }
 
-    public function testDefaultWithoutPathParameterIsAnError(): void
+    public function testDefaultWithoutPathPropertyIsAnError(): void
     {
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('has the value "mode"');
@@ -91,12 +91,37 @@ final class PathTest extends TestCase
         $this->load('StatePath');
     }
 
-    public function testPathOnVariadicParameterIsAnError(): void
+    public function testAFunctionIsNotAPage(): void
     {
-        $this->expectException(PropError::class);
-        $this->expectExceptionMessage('The #[Path] parameter "tag" of <VariadicPath> cannot be variadic.');
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The page "Mamu\\Tests\\Fixtures\\PathPages\\FunctionPage" must be a class component: a function cannot be a page.');
 
-        $this->load('VariadicPath');
+        $this->load('FunctionPage');
+    }
+
+    public function testAPageExtendsADocument(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The page "Mamu\\Tests\\Fixtures\\PathPages\\NoDocument" must implement "Mamu\\Document": make it extend the document of the application.');
+
+        $this->load('NoDocument');
+    }
+
+    public function testPageAttributeIsARoute(): void
+    {
+        $routes = $this->load('Paged');
+
+        self::assertSame('/paged', $routes->get('paged')?->getPath());
+        self::assertSame(self::NS.'Paged', $routes->get('paged')->getDefault('_mamu_page'));
+        self::assertSame(['POST'], $routes->get('mamu_event.paged')?->getMethods(), 'the event route of the page');
+        self::assertSame('/es/paged', $routes->get('paged_i18n.es')?->getPath(), 'a localized path');
+        self::assertSame('es', $routes->get('paged_i18n.es')->getDefault('_locale'));
+        self::assertSame('/en/paged', $routes->get('mamu_event.paged_i18n.en')?->getPath());
+    }
+
+    public function testAFunctionComponentHasNoPathProps(): void
+    {
+        self::assertSame([], (new ComponentMetadata())->pathProps(self::NS.'FunctionPage'));
     }
 
     public function testPathValuesHaveTheTypesOfTheProps(): void
@@ -106,7 +131,7 @@ final class PathTest extends TestCase
         self::assertSame(['id' => 42, 'price' => 9.5, 'draft' => true, 'slug' => '007'], $values);
     }
 
-    public function testPathValuesOfAFunctionPage(): void
+    public function testPathValuesKeepTheOtherPropsOut(): void
     {
         $binder = self::resolver();
 

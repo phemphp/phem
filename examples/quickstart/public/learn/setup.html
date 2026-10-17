@@ -101,10 +101,10 @@
     <h3 class="callout-title">In this chapter</h3>
     <div class="callout-body">
         <ul>
-            <li>Put your pages in <code>src/Pages/</code>. Expose each page with the Symfony <code>#[Route]</code> attribute.</li>
+            <li>Put your pages in <code>src/Pages/</code>. Make each page a class with the <code>#[Page]</code> attribute (a Symfony route) that extends <code>App\Pages\Document</code>.</li>
             <li>Put shared components in <code>src/Components/</code>.</li>
             <li>Put the style of your pages in <code>assets/styles/app.css</code>, and import it in <code>assets/app.js</code>. AssetMapper links it on each page.</li>
-            <li>Write the HTML document of your pages in <code>templates/base.html.twig</code>. Mamu renders each page in its <code>body</code> block.</li>
+            <li>Write the HTML document of your pages in <code>src/Pages/Document.phpm</code>, a class that implements <code>Mamu\Document</code>. A class page that extends it sets its own title.</li>
             <li>Put images and other static files in <code>public/</code>.</li>
         </ul>
     </div>
