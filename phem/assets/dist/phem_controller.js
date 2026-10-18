@@ -18,6 +18,10 @@
 // controls are disabled, and its text fields are read-only (so they keep the focus). A second
 // submit of a locked form is ignored. The lock ends when the response arrives, before the morph,
 // so the server render has the last word. `data-phem-disable="false"` on the form turns it off.
+//
+// A handler can send browser events (`$e->dispatcher->dispatch('toast', ['message' => 'Saved'])`).
+// After the morph, the controller dispatches each one on `window` as a CustomEvent named
+// `phem:<name>`, with the detail: `data-action="phem:toast@window->toast#show"`.
 
 import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
@@ -33,6 +37,13 @@ function isTextLike(el) {
 // cannot go in the JSON body, so it is left out.
 function formFields(form, submitter) {
   return [...new FormData(form, submitter ?? null)].filter(([, value]) => typeof value === "string")
+}
+
+// Resolves after Turbo renders the streams of renderStreamMessage(): a <turbo-stream> waits for
+// the next repaint (an animation frame, or a task when the page is hidden), then it renders.
+// A callback of the same kind that starts later runs after it.
+function afterStreams() {
+  return new Promise((resolve) => (document.visibilityState === "hidden" ? setTimeout(resolve, 0) : requestAnimationFrame(() => setTimeout(resolve, 0))))
 }
 
 function showLoading(el, on) {
@@ -200,5 +211,11 @@ export default class PhemController extends Controller {
     this.stateValue = data.state
     this.signatureValue = data.signature
     if (data.streams) Turbo.renderStreamMessage(data.streams)
+    if (data.events?.length) {
+      // After the morph, so a listener sees the new page.
+      afterStreams().then(() => {
+        for (const { name, detail } of data.events) window.dispatchEvent(new CustomEvent(`phem:${name}`, { detail }))
+      })
+    }
   }
 }

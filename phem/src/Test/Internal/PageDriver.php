@@ -99,7 +99,7 @@ final class PageDriver implements Driver
         $this->state = (string) $data['state'];
         $this->signature = (string) $data['signature'];
 
-        return EventResult::updates(self::streams((string) $data['streams']));
+        return EventResult::updates(self::streams((string) $data['streams']), self::events($data['events'] ?? []));
     }
 
     public function state(?string $fiber = null): array
@@ -162,6 +162,23 @@ final class PageDriver implements Driver
         }
 
         return [$request, $response];
+    }
+
+    /** @return list<array{name: string, detail: mixed}> */
+    private static function events(mixed $events): array
+    {
+        if (!\is_array($events)) {
+            throw new \UnexpectedValueException('The browser events of an event answer are not a list.');
+        }
+        $list = [];
+        foreach ($events as $event) {
+            if (!\is_array($event) || !\is_string($event['name'] ?? null)) {
+                throw new \UnexpectedValueException('A browser event of an event answer has no name.');
+            }
+            $list[] = ['name' => $event['name'], 'detail' => $event['detail'] ?? null];
+        }
+
+        return $list;
     }
 
     /**

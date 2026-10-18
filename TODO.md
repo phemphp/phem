@@ -237,8 +237,16 @@ third-party JS library), except with a redirect.
 
 - **Best peer:** LV `push_event` + `handleEvent` in a hook. LW `$this->dispatch()` (browser
   event) and `$this->js()`.
-- **Proposal:** `$e->dispatch('toast', ['message' => 'Saved'])` (or an injected service) adds a
-  browser `CustomEvent` to the response. Stimulus controllers and plain JS listen to it.
+
+Done: `$e->dispatcher->dispatch('toast', ['message' => 'Saved'])` (a `BrowserEventDispatcher`) adds a browser event to the response.
+After the morph, the browser dispatches a `CustomEvent` named `phem:toast` on `window`, with the
+detail. A handler that redirects sends no events. Test: `->assertDispatched('toast')`.
+
+Not done yet:
+
+- [ ] An injected service to dispatch from a handler with no `Event` parameter, or from a
+      service that the handler calls.
+- [ ] Dispatch to an element (the component root) instead of `window`, so the event bubbles.
 
 ### [ ] Real-time push — P2
 
@@ -327,7 +335,7 @@ over HTTP, so the access rules and the signature are tested too. Also `->change(
 
 Not done yet:
 
-- [ ] `->assertDispatched('toast')`: it needs the item "Server-to-browser events" first.
+- [x] `->assertDispatched('toast')`, with the detail, and `->assertNotDispatched()`.
 - [x] `->assertState()` for a child component: `->assertState('on', true, in: '#toggle')`.
 
 ### [ ] Symfony profiler panel — P2

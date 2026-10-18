@@ -43,6 +43,8 @@ final class ComponentTester
     private int $status;
     private ?string $redirect;
     private bool $reload = false;
+    /** @var list<array{name: string, detail: mixed}> */
+    private array $dispatched = [];
 
     /**
      * @param \Closure(string): self|null $visit opens a URL (for followRedirect())
@@ -325,6 +327,30 @@ final class ComponentTester
         return $this;
     }
 
+    /**
+     * Asserts that the last action sent a browser event (see Phem\BrowserEventDispatcher). With
+     * `$detail`, an event with this name has this detail, as JSON gives it to the browser.
+     *
+     *     ->assertDispatched('toast', ['message' => 'Saved'])
+     */
+    public function assertDispatched(string $name, mixed $detail = null): self
+    {
+        $details = array_column(array_filter($this->dispatched, static fn (array $e): bool => $name === $e['name']), 'detail');
+        Assert::assertNotEmpty($details, \sprintf('The last action did not dispatch the browser event "%s"%s.', $name, $this->dispatchedNames()));
+        if (\func_num_args() > 1) {
+            Assert::assertContains($detail, $details, \sprintf('The detail of the browser event "%s".', $name));
+        }
+
+        return $this;
+    }
+
+    public function assertNotDispatched(string $name): self
+    {
+        Assert::assertNotContains($name, array_column($this->dispatched, 'name'), \sprintf('The last action dispatched the browser event "%s".', $name));
+
+        return $this;
+    }
+
     // --- The browser -----------------------------------------------------------------------
 
     /**
@@ -335,16 +361,20 @@ final class ComponentTester
      */
     private function send(array ...$events): self
     {
+        $this->dispatched = [];
         foreach ($events as [$handler, $event]) {
             $result = $this->driver->dispatch($handler, $event);
             $this->status = $result->status;
             $this->redirect = $result->redirect;
             $this->reload = $result->reload;
             if (200 !== $result->status || null !== $result->redirect) {
-                // The browser leaves the page, or the event failed: the next events do not run.
+                // The browser leaves the page, or the event failed: the next events do not run,
+                // and the browser events of the action are lost.
+                $this->dispatched = [];
                 break;
             }
             $this->morph($result);
+            array_push($this->dispatched, ...$result->dispatched);
         }
 
         return $this;
@@ -634,6 +664,11 @@ final class ComponentTester
     }
 
     /** The status of the last response, for the message of a failed assertion. */
+    private function dispatchedNames(): string
+    {
+        return [] === $this->dispatched ? '' : \sprintf(' (it dispatched "%s")', implode('", "', array_unique(array_column($this->dispatched, 'name'))));
+    }
+
     private function context(): string
     {
         return match (true) {

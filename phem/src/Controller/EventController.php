@@ -40,7 +40,8 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
  *
  * The `phem` Stimulus controller sends the signed state of the page and the handler id. The
  * server renders with that state, runs the handler, renders again, and answers with Turbo
- * Streams that morph the components that changed, plus the new state. When the handler returns
+ * Streams that morph the components that changed, the new state, and the browser events of the
+ * handler (see BrowserEventDispatcher). When the handler returns
  * a RedirectResponse, the server answers with its URL, and the browser visits it.
  *
  * Against CSRF, an event is JSON with the `X-Phem-Event` header (a cross-site request with them
@@ -101,15 +102,17 @@ final class EventController
             // The page changed since the browser rendered it (for example after a deploy).
             return self::reload();
         }
-        $result = $this->renderer->dispatch($tree, $handler, Event::fromArray($payload->event, $request));
+        $event = Event::fromArray($payload->event, $request);
+        $result = $this->renderer->dispatch($tree, $handler, $event);
         if ($result instanceof RedirectResponse) {
-            // The browser visits the URL: the page does not render again.
+            // The browser visits the URL: the page does not render again, and the browser
+            // events of the handler are dropped (the new page has other listeners).
             return new JsonResponse(['redirect' => self::redirectUrl($result)]);
         }
         $this->renderer->render($tree);
         [$json, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page, $request);
 
-        return new JsonResponse(['streams' => $this->streams->updates($tree->changedFibers()), 'state' => $json, 'signature' => $signature]);
+        return new JsonResponse(['streams' => $this->streams->updates($tree->changedFibers()), 'state' => $json, 'signature' => $signature, 'events' => $event->dispatcher->dispatched()]);
     }
 
     /**

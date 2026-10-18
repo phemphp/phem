@@ -88,7 +88,8 @@ final class ComponentDriver implements Driver
             if (null === $closure) {
                 return EventResult::reload();
             }
-            $result = $this->renderer->dispatch($tree, $closure, Event::fromArray($event, $request));
+            $e = Event::fromArray($event, $request);
+            $result = $this->renderer->dispatch($tree, $closure, $e);
             if ($result instanceof RedirectResponse) {
                 return EventResult::redirect($this->redirect = $result->getTargetUrl());
             }
@@ -101,7 +102,8 @@ final class ComponentDriver implements Driver
                 $updates[$fiber->id] = $fiber->html;
             }
 
-            return EventResult::updates($updates);
+            // As the browser gets them: JSON values.
+            return EventResult::updates($updates, json_decode(json_encode($e->dispatcher->dispatched(), \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR));
         });
     }
 

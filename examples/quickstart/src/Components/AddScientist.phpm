@@ -32,6 +32,7 @@ final class AddScientist
 
         if ($this->form->isSubmitted() && $this->form->isValid()) {
             $this->scientists->add(new Scientist($scientist->name, $scientist->profession));
+            $e->dispatcher->dispatch('toast', ['message' => \sprintf('%s was added.', $scientist->name)]);
 
             $this->form = null;
         }

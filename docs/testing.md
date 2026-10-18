@@ -108,6 +108,7 @@ Each assertion returns the tester, so you can chain the actions and the assertio
 | `assertStatus($status)` | the HTTP status of the last response |
 | `assertRedirect($url)`, `assertNoRedirect()` | a handler that returns a `RedirectResponse`, or a page that redirects |
 | `assertReload()` | the last event answered 409: the browser loads the page again |
+| `assertDispatched($name)`, `assertDispatched($name, $detail)`, `assertNotDispatched($name)` | a browser event of the last action (`$e->dispatcher->dispatch()`), and its detail as JSON gives it |
 
 To read the values, use `html()`, `text()`, `state()`, and `document()` (a `Dom\HTMLDocument`).
 

@@ -27,6 +27,7 @@ final class InteractsWithPhemTest extends KernelTestCase
     // Compiled from tests/Fixtures/app by phemc (PHPStan does not see them).
     private const COUNTER = 'App\Components\Counter';
     private const SIGNUP = 'App\Pages\Signup';
+    private const NOTIFIER = 'App\Pages\Notifier';
 
     public static function setUpBeforeClass(): void
     {
@@ -198,6 +199,50 @@ final class InteractsWithPhemTest extends KernelTestCase
     {
         $this->visit('/private/counter')->assertStatus(403);
         $this->visit('/denied')->assertStatus(403);
+    }
+
+    public function testAssertDispatchedChecksTheBrowserEventsOfTheLastAction(): void
+    {
+        $tester = $this->mount(self::NOTIFIER)
+            ->click('#save')
+            ->assertDispatched('toast')
+            ->assertDispatched('toast', ['message' => 'Saved 1'])
+            ->assertDispatched('saved', 1)
+            ->assertNotDispatched('clicked');
+
+        $this->assertFails(static fn () => $tester->assertDispatched('clicked'), 'The last action did not dispatch the browser event "clicked" (it dispatched "toast", "saved")');
+        $this->assertFails(static fn () => $tester->assertDispatched('saved', 2), 'The detail of the browser event "saved"');
+        $this->assertFails(static fn () => $tester->assertNotDispatched('toast'), 'The last action dispatched the browser event "toast"');
+
+        // Each action starts with no browser events.
+        $tester->click('#quiet')->assertNotDispatched('toast');
+        $this->assertFails(static fn () => $tester->assertDispatched('toast'), 'The last action did not dispatch the browser event "toast".');
+    }
+
+    public function testAssertDispatchedSeesTheEventsOfEachHandlerOfAnAction(): void
+    {
+        $this->mount(self::NOTIFIER)
+            ->click('#send')
+            ->assertDispatched('clicked', null)
+            ->assertDispatched('submitted', ['action' => 'send']);
+    }
+
+    public function testAHandlerThatRedirectsDispatchesNoBrowserEvents(): void
+    {
+        $this->mount(self::NOTIFIER)->click('#leave')->assertRedirect('/about')->assertNotDispatched('toast');
+        $this->visit('/notify')->click('#leave')->assertRedirect('/about')->assertNotDispatched('toast');
+    }
+
+    public function testVisitGetsTheBrowserEventsOverHttp(): void
+    {
+        $this->visit('/notify')
+            ->click('#save')
+            ->assertSee('Save 1')
+            ->assertDispatched('toast', ['message' => 'Saved 1'])
+            ->assertDispatched('saved', 1)
+            ->click('#send')
+            ->assertDispatched('submitted', ['action' => 'send'])
+            ->assertNotDispatched('toast');
     }
 
     private function assertFails(\Closure $action, string $message): void

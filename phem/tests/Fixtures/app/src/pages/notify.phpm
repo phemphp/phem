@@ -1,0 +1,72 @@
+<?phpm
+
+namespace App\Pages;
+
+use Phem\Attribute\{Component, Page, State};
+use Phem\Event;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+
+use function App\Components\Document;
+
+// Handlers that send browser events (see Phem\BrowserEventDispatcher).
+#[Component]
+final class Notifier
+{
+    #[State] public int $count = 0;
+
+    public function save(Event $e): void
+    {
+        ++$this->count;
+        $e->dispatcher->dispatch('toast', ['message' => 'Saved '.$this->count]);
+        $e->dispatcher->dispatch('saved', $this->count);
+    }
+
+    public function quiet(): void
+    {
+        ++$this->count;
+    }
+
+    public function leave(Event $e): RedirectResponse
+    {
+        $e->dispatcher->dispatch('toast', ['message' => 'Bye']);
+
+        return new RedirectResponse('/about');
+    }
+
+    public function clicked(Event $e): void
+    {
+        $e->dispatcher->dispatch('clicked');
+    }
+
+    public function submitted(Event $e): void
+    {
+        $e->dispatcher->dispatch('submitted', $e->form);
+    }
+
+    public function render()
+    {
+        return (
+            <div>
+                <button id="save" onClick={{ save }}>Save {{ count }}</button>
+                <button id="quiet" onClick={{ quiet }}>Quiet</button>
+                <button id="leave" onClick={{ leave }}>Leave</button>
+                <form onSubmit={{ submitted }}>
+                    <button type="submit" id="send" name="action" value="send" onClick={{ clicked }}>Send</button>
+                </form>
+            </div>
+        );
+    }
+}
+
+#[Page('/notify')]
+final class NotifyPage
+{
+    public function render()
+    {
+        return (
+            <Document>
+                <Notifier />
+            </Document>
+        );
+    }
+}

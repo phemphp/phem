@@ -14,27 +14,33 @@ declare(strict_types=1);
 namespace Phem\Test\Internal;
 
 /**
- * The answer to an event: the components to morph, a redirect, or a reload (409).
+ * The answer to an event: the components to morph and the browser events, a redirect, or a
+ * reload (409).
  *
  * @internal
  */
 final class EventResult
 {
     /**
-     * @param array<string, string> $updates fiber id => the new inner HTML of its `<phem-c>`
+     * @param array<string, string>                    $updates    fiber id => the new inner HTML of its `<phem-c>`
+     * @param list<array{name: string, detail: mixed}> $dispatched the browser events of the handler (see Phem\BrowserEventDispatcher)
      */
     private function __construct(
         public readonly array $updates = [],
+        public readonly array $dispatched = [],
         public readonly ?string $redirect = null,
         public readonly bool $reload = false,
         public readonly int $status = 200,
     ) {
     }
 
-    /** @param array<string, string> $updates */
-    public static function updates(array $updates): self
+    /**
+     * @param array<string, string>                    $updates
+     * @param list<array{name: string, detail: mixed}> $dispatched
+     */
+    public static function updates(array $updates, array $dispatched = []): self
     {
-        return new self($updates);
+        return new self($updates, $dispatched);
     }
 
     public static function redirect(string $url): self

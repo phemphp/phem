@@ -21,10 +21,12 @@ use Symfony\Component\HttpFoundation\Request;
 final class Event
 {
     /**
-     * @param array<string, mixed> $form    the form fields, for `submit`: name => value, or the
-     *                                      list of values of a name with more than one value
-     * @param Request|null         $request the HTTP request of the event, with the form fields
-     *                                      as its POST data (`$form->handleRequest($e->request)`)
+     * @param array<string, mixed>   $form       the form fields, for `submit`: name => value, or the
+     *                                           list of values of a name with more than one value
+     * @param Request|null           $request    the HTTP request of the event, with the form fields
+     *                                           as its POST data (`$form->handleRequest($e->request)`)
+     * @param BrowserEventDispatcher $dispatcher sends browser events with the response
+     *                                           (`$e->dispatcher->dispatch('toast', [...])`)
      */
     public function __construct(
         public readonly string $type,
@@ -33,6 +35,7 @@ final class Event
         public readonly ?string $key = null,
         public readonly array $form = [],
         public readonly ?Request $request = null,
+        public readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
     ) {
     }
 

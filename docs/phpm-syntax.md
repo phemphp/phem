@@ -346,6 +346,26 @@ public function delete(): RedirectResponse
 }
 ```
 
+A handler can send browser events with the dispatcher of its event:
+`$e->dispatcher->dispatch($name, $detail)`. After the morph, the
+browser dispatches each one on `window` as a `CustomEvent` named `phem:<name>`. The detail is
+any value that JSON can encode. A Stimulus controller or plain JS listens to it:
+
+```php
+public function save(Event $e): void
+{
+    $this->scientists->save($this->scientist);
+    $e->dispatcher->dispatch('toast', ['message' => 'Saved']);
+}
+```
+
+```html
+<div data-controller="toast" data-action="phem:toast@window->toast#show"></div>
+```
+
+The events go in their order. A handler that fails, or that returns a `RedirectResponse`,
+sends no events: the browser leaves the page.
+
 ## 7. State: class components
 
 A component with state is a class with the `#[Component]` attribute and a `render()` method.
