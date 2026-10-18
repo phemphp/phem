@@ -5,13 +5,12 @@ use App\Dto\NewScientist;
 use App\Form\ScientistType;
 use App\Model\Scientist;
 use App\Repository\ScientistRepository;
-use Mamu\Attribute\{Component, Transactional};
+use Mamu\Attribute\Component;
 use Mamu\Event;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 
 #[Component]
-#[Transactional]
 final class AddScientist
 {
     private ?FormInterface $form = null {

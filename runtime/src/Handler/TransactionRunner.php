@@ -14,7 +14,8 @@ declare(strict_types=1);
 namespace Mamu\Handler;
 
 /**
- * Runs the event handlers of `#[Transactional]` components.
+ * Runs the event handlers of `#[Transactional]` components, or of all components with the
+ * `mamu.transactional` option.
  */
 interface TransactionRunner
 {

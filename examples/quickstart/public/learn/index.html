@@ -403,7 +403,6 @@ final class Counter
 <h2 id="services" class="heading">Services and initialization<a class="heading-anchor" href="#services" aria-label="Link to this section">#</a></h2>
 <p>A Mamu application is a Symfony application, and each class component is a service. The container makes a new object for each component on the page, so the constructor gets the services that the component needs (autowiring), as in a Symfony controller:</p>
 <div class="code-block"><pre class="code" data-controller="highlight"><code>#[Component]
-#[Transactional]
 final class AddScientist
 {
     #[Prop] public string $label = 'Add';  // a prop
@@ -436,8 +435,8 @@ final class AddScientist
     <li><strong><code>mount()</code></strong> (optional) sets the first state. It runs after the props are set, when the component has no state yet: on its first render. For example, <code>$this-&gt;items = $this-&gt;repository-&gt;latest($this-&gt;limit);</code>.</li>
     <li><strong>Methods</strong> are event handlers. A handler can change the state and call the services.</li>
     <li><strong><code>render()</code></strong> returns markup.</li>
-    <li><strong><code>#[Transactional]</code></strong> (optional) runs each handler in a Doctrine ORM transaction. When the handler returns, Mamu flushes and commits. Thus the repository only calls <code>persist()</code>, and the handler does not call <code>flush()</code>.</li>
 </ul>
+<p>With Doctrine ORM, each handler runs in a transaction. When the handler returns, Mamu flushes and commits. Thus the repository only calls <code>persist()</code>, and the handler does not call <code>flush()</code>. To select the components that use a transaction, set the <code>mamu.transactional</code> option to <code>false</code> and add <code>#[Transactional]</code> to these components.</p>
 <p>A component without state does not need a class. A function that returns markup is a component too, and its parameters are its props. If its body is only <code>return &lt;markup&gt;;</code>, it compiles to a plain Twig template, with no PHP call. Here is a page that is a class with a prop and state:</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="StarRating">
     <div class="sandbox-bar">

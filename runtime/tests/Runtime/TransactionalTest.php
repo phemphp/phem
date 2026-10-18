@@ -77,11 +77,20 @@ final class TransactionalTest extends TestCase
         $this->dispatch(new TransactionalComponent($this->log)->add(...), withRunner: false);
     }
 
-    private function dispatch(\Closure $handler, bool $withRunner = true): mixed
+    public function testAllHandlersRunInATransactionWithTheOption(): void
+    {
+        $log = $this->log;
+        $this->dispatch(new PlainComponent($log)->add(...), all: true);
+        $this->dispatch(static function () use ($log): void { $log[] = 'static'; }, all: true);
+        $this->dispatch(new TransactionalComponent($log)->add(...), all: true);
+        self::assertSame(['begin', 'add', 'commit', 'begin', 'static', 'commit', 'begin', 'add', 'commit'], $log->getArrayCopy());
+    }
+
+    private function dispatch(\Closure $handler, bool $withRunner = true, bool $all = false): mixed
     {
         $runner = $withRunner ? new RecordingRunner($this->log) : null;
 
-        return new HandlerInvoker([new TransactionalMiddleware($runner)])->invoke($handler, new Event('click'));
+        return new HandlerInvoker([new TransactionalMiddleware($runner, $all)])->invoke($handler, new Event('click'));
     }
 }
 

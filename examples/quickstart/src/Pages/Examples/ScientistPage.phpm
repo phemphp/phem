@@ -3,12 +3,11 @@ namespace App\Pages\Examples;
 
 use App\Model\Scientist;
 use App\Repository\ScientistRepository;
-use Mamu\Attribute\{Page, Path, Transactional};
+use Mamu\Attribute\{Page, Path};
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 use function App\Components\{Layout, ScientistCard, Document};
 
-#[Transactional]
 #[Page('/examples/ScientistPage/{id:scientist}', requirements: ['id' => '\d+'])]
 final class ScientistPage
 {

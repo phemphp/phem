@@ -19,6 +19,9 @@ namespace Mamu\Attribute;
  * When the handler returns, the entity manager flushes and commits: new entities (`persist()`),
  * removed entities (`remove()`) and the changes to managed entities. When the handler throws,
  * the transaction rolls back. The handler does not call `flush()`.
+ *
+ * When Doctrine ORM is enabled, the `mamu.transactional` option runs the handlers of all
+ * components in a transaction, so this attribute is necessary only when the option is false.
  */
 #[\Attribute(\Attribute::TARGET_CLASS)]
 final class Transactional

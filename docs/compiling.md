@@ -17,7 +17,7 @@ my-app/
 ├── Caddyfile              FrankenPHP: public/index.php in worker mode, and the static files
 ├── bin/console
 ├── config/
-│   ├── bundles.php        FrameworkBundle, TwigBundle, StimulusBundle, MamuBundle (and DoctrineBundle for #[Transactional] and #[Path] entities)
+│   ├── bundles.php        FrameworkBundle, TwigBundle, StimulusBundle, MamuBundle (and DoctrineBundle for transactions and #[Path] entities)
 │   ├── packages/mamu.yaml   optional: source_dir, build_dir, secret
 │   ├── packages/asset_mapper.yaml   the assets/ directory
 │   ├── routes/mamu.yaml     { resource: ., type: mamu }: the #[Page] attributes of the pages

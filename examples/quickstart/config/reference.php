@@ -934,6 +934,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     secret?: scalar|Param|null, // The key that signs the component state in the browser // Default: "%kernel.secret%"
  *     state_max_age?: int|Param, // The seconds that a signed state is valid (0 for no limit). An older state reloads the page. // Default: 86400
  *     state_bind_session?: bool|Param, // Sign the session id with the state, so the state of a session is not valid in another session. A login makes the open pages reload on their next event. // Default: false
+ *     transactional?: bool|Param|null, // Run the event handlers of all components in a Doctrine ORM transaction. Set it to false to use #[Transactional] on each component instead. Default: true when Doctrine ORM is installed and enabled. // Default: null
  * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,

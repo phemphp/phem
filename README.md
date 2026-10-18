@@ -44,12 +44,11 @@ final class MyApp
 A page is a class with `#[Page]` (a Symfony route). It extends the document of the application:
 a class that renders the `<html>` element and the title of the page. A component with state is
 an object: a `#[Component]` (or `#[Page]`) class is a Symfony service, so its
-constructor gets the services that it needs (autowiring). With `#[Transactional]`, each event
-handler runs in a Doctrine ORM transaction: Mamu flushes and commits when the handler returns.
+constructor gets the services that it needs (autowiring). With Doctrine ORM, each event
+handler runs in a transaction: Mamu flushes and commits when the handler returns.
 
 ```php
 #[Component]
-#[Transactional]
 final class AddScientist
 {
     public function __construct(private readonly ScientistRepository $scientists)
@@ -100,8 +99,8 @@ See [editors/vscode/README.md](editors/vscode/README.md).
   Its `#[Page]` attribute serves it at `/examples/<Name>`.
 - `/learn/describing-the-ui.html` has a multi-file example: the page `Gallery.phpm` uses
   components from `examples/quickstart/src/Components/`. The page `DurableGallery.phpm` reads and
-  writes its data in SQLite through a Doctrine ORM entity and its repository. Its handlers are
-  `#[Transactional]`, and a Symfony form adds a scientist. The data stays after a reload.
+  writes its data in SQLite through a Doctrine ORM entity and its repository. Its handlers run in
+  a Doctrine transaction, and a Symfony form adds a scientist. The data stays after a reload.
 
 ## How it works
 
@@ -148,7 +147,7 @@ See [editors/vscode/README.md](editors/vscode/README.md).
    signature is an HMAC (`kernel.secret`, from `APP_SECRET`) of the state and its page
    component. An event sends the state back.
    The server makes the components again, restores their state, renders, runs the PHP handler
-   (in a Doctrine transaction for a `#[Transactional]` class), renders again, and compares the
+   (in a Doctrine transaction, when Doctrine ORM is enabled), renders again, and compares the
    two renders. It answers with a Turbo Stream `update`
    (`method="morph"`) for each component that changed, plus the new state. Only the content
    of the `<Root>` changes: the document around it (for example the title) stays the same.

@@ -20,6 +20,7 @@ use Mamu\Manifest\Manifest;
 use Mamu\Path\PathValueConverter;
 use Symfony\Component\AssetMapper\AssetMapperInterface;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
@@ -35,6 +36,7 @@ use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
  *         secret: '%kernel.secret%'
  *         state_max_age: 86400       # seconds; 0 for no limit
  *         state_bind_session: false
+ *         transactional: ~           # true when Doctrine ORM is installed and enabled
  *
  *     # config/routes/mamu.yaml
  *     mamu:
@@ -84,11 +86,15 @@ final class MamuBundle extends AbstractBundle
                     ->info('Sign the session id with the state, so the state of a session is not valid in another session. A login makes the open pages reload on their next event.')
                     ->defaultFalse()
                 ->end()
+                ->booleanNode('transactional')
+                    ->info('Run the event handlers of all components in a Doctrine ORM transaction. Set it to false to use #[Transactional] on each component instead. Default: true when Doctrine ORM is installed and enabled.')
+                    ->defaultNull()
+                ->end()
             ->end();
     }
 
     /**
-     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool} $config
+     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, transactional: bool|null} $config
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
@@ -102,9 +108,17 @@ final class MamuBundle extends AbstractBundle
             ->arg(2, $config['state_bind_session']);
 
         $bundles = $builder->getParameter('kernel.bundles');
-        if (\is_array($bundles) && isset($bundles['DoctrineBundle']) && interface_exists(EntityManagerInterface::class)) {
+        $doctrine = \is_array($bundles) && isset($bundles['DoctrineBundle']) && interface_exists(EntityManagerInterface::class);
+        if ($doctrine) {
             $container->import('../config/doctrine.php');
         }
+
+        $transactional = $config['transactional'] ?? $doctrine;
+        if ($transactional && !$doctrine) {
+            throw new InvalidConfigurationException('The "mamu.transactional" option needs Doctrine ORM: install doctrine/orm and doctrine/doctrine-bundle, or set the option to false.');
+        }
+        $container->services()->get('mamu.handler_middleware.transactional')
+            ->arg(1, $transactional);
     }
 
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void

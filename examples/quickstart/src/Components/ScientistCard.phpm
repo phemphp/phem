@@ -2,10 +2,9 @@
 namespace App\Components;
 
 use App\Model\Scientist;
-use Mamu\Attribute\{Component, Prop, Transactional};
+use Mamu\Attribute\{Component, Prop};
 
 #[Component]
-#[Transactional]
 final class LikeCounter
 {
     #[Prop]

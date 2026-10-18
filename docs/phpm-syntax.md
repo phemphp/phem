@@ -457,20 +457,18 @@ it not shared.
 
 ### Transactions
 
-Add `#[Transactional]` to a class component to run each of its event handlers in a Doctrine ORM
-transaction (this needs DoctrineBundle). When the handler returns, Mamu flushes and commits.
-When the handler throws an exception, Mamu rolls back all of its changes. Thus the handler
-does not call `flush()`:
+When DoctrineBundle is installed, Mamu runs each event handler in a Doctrine ORM transaction.
+When the handler returns, Mamu flushes and commits. When the handler throws an exception, Mamu
+rolls back all of its changes. Thus the handler does not call `flush()`:
 
 - To add an entity, call `persist()` (for example through a repository method).
 - To delete an entity, call `remove()`.
 - To change an entity that Doctrine loaded, set its properties. The flush finds the changes.
 
 ```php
-use Mamu\Attribute\{Component, Prop, Transactional};
+use Mamu\Attribute\{Component, Prop};
 
 #[Component]
-#[Transactional]
 final class TodoItem
 {
     #[Prop] public Todo $todo;             // prop: a managed entity
@@ -493,8 +491,30 @@ final class TodoItem
 }
 ```
 
-The transaction contains only the handler. `render()` and `mount()` run outside of it. A handler
-that a parent passes as a prop belongs to the parent: the parent's attribute applies.
+The transaction contains only the handler. `render()` and `mount()` run outside of it.
+
+The `transactional` option controls this behavior. Its default is `true` when Doctrine ORM is
+installed and enabled, and `false` if not. To select the components that use a transaction, set
+the option to `false` and add `#[Transactional]` to each of these class components:
+
+```yaml
+# config/packages/mamu.yaml
+mamu:
+    transactional: false
+```
+
+```php
+use Mamu\Attribute\{Component, Transactional};
+
+#[Component]
+#[Transactional]
+final class TodoItem
+{
+    // ...
+}
+```
+
+A handler that a parent passes as a prop belongs to the parent: the parent's attribute applies.
 
 ## 9. Props and lifting state up
 
