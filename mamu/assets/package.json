@@ -12,7 +12,7 @@
                 "fetch": "eager",
                 "enabled": true,
                 "autoimport": {
-                    "@mamuphp/runtime/dist/mamu.css": true
+                    "@mamuphp/mamu/dist/mamu.css": true
                 }
             }
         },

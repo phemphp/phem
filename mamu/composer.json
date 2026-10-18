@@ -1,5 +1,5 @@
 {
-    "name": "mamuphp/runtime",
+    "name": "mamuphp/mamu",
     "description": "Runtime for .phpm components: a Symfony bundle with Twig rendering, class components as services, pages as Symfony routes, and Turbo/Stimulus state.",
     "type": "symfony-bundle",
     "license": "MIT",

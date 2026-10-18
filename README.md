@@ -178,7 +178,7 @@ See [editors/vscode/README.md](editors/vscode/README.md).
 
 ```
 compiler/            Rust workspace: mamuc-syntax, mamuc-twig-scan, mamuc-analyze, mamuc-codegen, mamuc-cli
-runtime/             mamuphp/runtime (Composer): MamuBundle, Renderer, Twig extension, controllers,
+mamu/                mamuphp/mamu (Composer): MamuBundle, Renderer, Twig extension, controllers,
                      route loader, Doctrine transaction runner, console commands, and the mamu
                      Stimulus controller (assets/: a Symfony UX package for AssetMapper)
 examples/quickstart/ a Symfony application: the react.dev/learn-style site (public/), its

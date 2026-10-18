@@ -18,7 +18,7 @@ case "$1" in
     ;;
   test)
     cargo test --quiet --manifest-path /app/compiler/Cargo.toml
-    cd /app/runtime
+    cd /app/mamu
     composer install --quiet --no-interaction
     exec vendor/bin/phpunit
     ;;

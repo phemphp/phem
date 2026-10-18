@@ -38,7 +38,7 @@ CMD ["serve"]
 FROM php-base AS prod
 ENV APP_ENV=prod APP_DEBUG=0
 COPY --from=mamuc-build /usr/local/bin/mamuc /usr/local/bin/mamuc
-COPY runtime/ /app/runtime/
+COPY mamu/ /app/mamu/
 COPY examples/quickstart/ /app/examples/quickstart/
 WORKDIR /app/examples/quickstart
 # A random APP_SECRET for this image (it signs the component state in the browser).

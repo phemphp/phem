@@ -12,7 +12,7 @@ it can run:
 
 ```
 my-app/
-├── composer.json          requires mamuphp/runtime, symfony/asset-mapper, symfony/stimulus-bundle (and symfony/runtime, symfony/yaml, symfony/dotenv)
+├── composer.json          requires mamuphp/mamu, symfony/asset-mapper, symfony/stimulus-bundle (and symfony/runtime, symfony/yaml, symfony/dotenv)
 ├── .env                   APP_ENV, APP_SECRET (it signs the component state in the browser)
 ├── Caddyfile              FrankenPHP: public/index.php in worker mode, and the static files
 ├── bin/console
@@ -36,7 +36,7 @@ my-app/
 ├── assets/                the JavaScript and CSS of the pages (AssetMapper)
 │   ├── app.js             the `app` entry of the importmap: bootstrap.js and styles/app.css
 │   ├── bootstrap.js       starts Stimulus (StimulusBundle)
-│   └── controllers.json   enables the `mamu` controller of mamuphp/runtime
+│   └── controllers.json   enables the `mamu` controller of mamuphp/mamu
 ├── importmap.php          app, @hotwired/stimulus, @hotwired/turbo, @symfony/stimulus-bundle
 ├── public/                static files, index.php (Symfony Runtime: FrankenPHP worker mode, PHP-FPM)
 └── var/cache/             build output (do not commit)
@@ -130,7 +130,7 @@ them.
 ### The client assets
 
 The client of Mamu is the `mamu` Stimulus controller, and the `mamu-c{display:contents}` CSS. The
-bundle gives them as a Symfony UX package (`runtime/assets/package.json`). With AssetMapper,
+bundle gives them as a Symfony UX package (`mamu/assets/package.json`). With AssetMapper,
 they are in the `mamujs` namespace. The controller imports `@hotwired/stimulus` and
 `@hotwired/turbo` from the importmap of the application, so the page has one Turbo and one
 Stimulus. To set up an application:
@@ -146,8 +146,8 @@ the bundle):
 ```json
 {
     "controllers": {
-        "@mamuphp/runtime": {
-            "mamu": { "enabled": true, "fetch": "eager", "autoimport": { "@mamuphp/runtime/dist/mamu.css": true } }
+        "@mamuphp/mamu": {
+            "mamu": { "enabled": true, "fetch": "eager", "autoimport": { "@mamuphp/mamu/dist/mamu.css": true } }
         }
     },
     "entrypoints": []

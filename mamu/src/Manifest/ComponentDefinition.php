@@ -37,7 +37,7 @@ final class ComponentDefinition
 
         return new self(
             $fqcn,
-            ComponentKind::tryFrom($kind) ?? throw new \UnexpectedValueException(\sprintf('The component "%s" has the unknown kind "%s". Use the same version of mamuc and mamuphp/runtime.', $fqcn, $kind)),
+            ComponentKind::tryFrom($kind) ?? throw new \UnexpectedValueException(\sprintf('The component "%s" has the unknown kind "%s". Use the same version of mamuc and mamuphp/mamu.', $fqcn, $kind)),
             isset($data['template']) ? (string) $data['template'] : null,
             array_values($data['slots'] ?? []),
         );

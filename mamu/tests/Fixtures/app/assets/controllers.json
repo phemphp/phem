@@ -1,11 +1,11 @@
 {
     "controllers": {
-        "@mamuphp/runtime": {
+        "@mamuphp/mamu": {
             "mamu": {
                 "enabled": true,
                 "fetch": "eager",
                 "autoimport": {
-                    "@mamuphp/runtime/dist/mamu.css": true
+                    "@mamuphp/mamu/dist/mamu.css": true
                 }
             }
         }
