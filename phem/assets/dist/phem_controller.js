@@ -20,8 +20,10 @@
 // so the server render has the last word. `data-phem-disable="false"` on the form turns it off.
 //
 // A handler can send browser events (`$e->dispatcher->dispatch('toast', ['message' => 'Saved'])`).
-// After the morph, the controller dispatches each one on `window` as a CustomEvent named
-// `phem:<name>`, with the detail: `data-action="phem:toast@window->toast#show"`.
+// After the morph, the controller dispatches each one as a CustomEvent named `phem:<name>`, with
+// the detail. The event starts on the root of the component of the handler (its <phem-c>, or the
+// root element) and bubbles up to `window`: `data-action="phem:toast->toast#show"` on an
+// ancestor, or `data-action="phem:toast@window->toast#show"` anywhere.
 
 import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
@@ -214,8 +216,16 @@ export default class PhemController extends Controller {
     if (data.events?.length) {
       // After the morph, so a listener sees the new page.
       afterStreams().then(() => {
-        for (const { name, detail } of data.events) window.dispatchEvent(new CustomEvent(`phem:${name}`, { detail }))
+        const target = this.componentRoot(handler)
+        for (const { name, detail } of data.events) target.dispatchEvent(new CustomEvent(`phem:${name}`, { detail, bubbles: true }))
       })
     }
+  }
+
+  // The root of the component of a handler: the <phem-c> with the fiber id at the start of the
+  // handler id. The root element when the component is the page, or when the morph removed it.
+  componentRoot(handler) {
+    const el = document.getElementById(handler.slice(0, handler.indexOf(".")))
+    return el?.localName === "phem-c" && this.element.contains(el) ? el : this.element
   }
 }

@@ -239,14 +239,14 @@ third-party JS library), except with a redirect.
   event) and `$this->js()`.
 
 Done: `$e->dispatcher->dispatch('toast', ['message' => 'Saved'])` (a `BrowserEventDispatcher`) adds a browser event to the response.
-After the morph, the browser dispatches a `CustomEvent` named `phem:toast` on `window`, with the
-detail. A handler that redirects sends no events. Test: `->assertDispatched('toast')`.
+After the morph, the browser dispatches a `CustomEvent` named `phem:toast` on the root of the
+component of the handler, with the detail. It bubbles up to `window`. A handler that redirects sends no events. Test: `->assertDispatched('toast')`.
 
 Not done yet:
 
 - [x] An injected service to dispatch from a handler with no `Event` parameter, or from a
       service that the handler calls: autowire `Phem\BrowserEventDispatcher`.
-- [ ] Dispatch to an element (the component root) instead of `window`, so the event bubbles.
+- [x] Dispatch to an element (the component root) instead of `window`, so the event bubbles.
 
 ### [ ] Real-time push — P2
 

@@ -348,8 +348,8 @@ public function delete(): RedirectResponse
 
 A handler can send browser events with the dispatcher of its event:
 `$e->dispatcher->dispatch($name, $detail)`. After the morph, the
-browser dispatches each one on `window` as a `CustomEvent` named `phem:<name>`. The detail is
-any value that JSON can encode. A Stimulus controller or plain JS listens to it:
+browser dispatches each one as a `CustomEvent` named `phem:<name>`. The detail is any value that
+JSON can encode. A Stimulus controller or plain JS listens to it:
 
 ```php
 public function save(Event $e): void
@@ -361,6 +361,17 @@ public function save(Event $e): void
 
 ```html
 <div data-controller="toast" data-action="phem:toast@window->toast#show"></div>
+```
+
+The event starts on the root of the component of the handler (its `<phem-c>`, or the root
+element for the page component), and it bubbles. An ancestor of the component gets it with no
+`@window`, and `event.target` tells which component sent it. If the morph removed the component,
+the event starts on the root element. It always reaches `window`.
+
+```html
+<section data-controller="cart" data-action="phem:added->cart#refresh">
+    <ProductList />
+</section>
 ```
 
 The dispatcher is also a service (`Phem\BrowserEventDispatcher`). A handler with no `Event`
