@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Phem\Tests\Fixtures;
 
 use Phem\PhemBundle;
+use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
@@ -29,6 +30,27 @@ use Symfony\UX\StimulusBundle\StimulusBundle;
 final class TestKernel extends Kernel
 {
     use MicroKernelTrait;
+
+    private static bool $built = false;
+
+    /** Compiles tests/Fixtures/app with phemc, once per test run. */
+    public static function compileSources(): void
+    {
+        if (self::$built) {
+            return;
+        }
+        $dir = __DIR__.'/app';
+        $phemc = getenv('PHEMC_BIN') ?: trim((string) shell_exec('command -v phemc'));
+        if ('' === $phemc) {
+            TestCase::markTestSkipped('phemc is not installed (build it with cargo, or set PHEMC_BIN).');
+        }
+        exec(\sprintf('cd %s && %s build src --no-warmup 2>&1', escapeshellarg($dir), escapeshellarg($phemc)), $out, $code);
+        if (0 !== $code) {
+            TestCase::fail("phemc build failed:\n".implode("\n", $out));
+        }
+        exec('rm -rf '.escapeshellarg($dir.'/var/cache/test'));
+        self::$built = true;
+    }
 
     public function registerBundles(): iterable
     {

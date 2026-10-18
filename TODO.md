@@ -313,17 +313,19 @@ The controller logs a failed event to the console only.
 
 ## 8. Developer experience
 
-### [ ] Test helpers — P1
+### [x] Test helpers — P1
 
-There is no API to test a component without a browser.
+Done: `Phem\Test\InteractsWithPhem` (see [docs/testing.md](docs/testing.md)).
+`$this->mount(Counter::class, ['label' => 'Clicks'])->click('button')->assertSee('Clicks 1 times')`
+renders a component in the test process. `$this->visit('/x')` loads a page and sends its events
+over HTTP, so the access rules and the signature are tested too. Also `->change()`, `->submit()`,
+`->assertState()`, `->assertRedirect()` and `->followRedirect()`.
 
-- **Best peer:** LW `Livewire::test(Counter::class)->set('count', 1)->call('increment')->assertSee('2')`.
-  LC `InteractsWithLiveComponents`. LV `live/2` + `render_click/2` + `render_change/2`.
-- **Proposal:** a `PhemTestCase` (or a trait for `KernelTestCase`):
-  `$this->mount(Counter::class, ['label' => 'Clicks'])->click('increment')->assertSee('Clicks 1 times')`.
-  Also `->change('[name=q]', 'Curie')`, `->submit('form', [...])`, `->assertState('count', 1)`,
-  `->assertRedirect('/x')`, and `->assertDispatched('toast')`. It uses the real HTTP event
-  path, so access rules and the signature are tested too.
+Not done yet:
+
+- [ ] `->assertDispatched('toast')`: it needs the item "Server-to-browser events" first.
+- [ ] `->assertState()` for a child component: today it reads only the page or the mounted
+      component.
 
 ### [ ] Symfony profiler panel — P2
 

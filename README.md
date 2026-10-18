@@ -75,6 +75,7 @@ final class AddScientist
 
 - The full syntax is in [docs/phpm-syntax.md](docs/phpm-syntax.md).
 - How to compile, check, watch, and run `.phpm` files: [docs/compiling.md](docs/compiling.md).
+- How to test components and pages with PHPUnit: [docs/testing.md](docs/testing.md).
 
 ## Quick start
 
@@ -187,6 +188,7 @@ docker/              Dockerfile (FrankenPHP: dev, prod), dev and prod entrypoint
 editors/vscode/      VS Code extension: .phpm syntax highlighting (TextMate grammar) and completion
 docs/phpm-syntax.md   the .phpm syntax
 docs/compiling.md    how to build, check, watch, and run .phpm files
+docs/testing.md      how to test components and pages (Phem\Test\InteractsWithPhem)
 ```
 
 ## Diagnostics

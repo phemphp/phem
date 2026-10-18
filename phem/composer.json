@@ -29,6 +29,7 @@
     },
     "suggest": {
         "doctrine/doctrine-bundle": "To run the event handlers in a Doctrine ORM transaction, and to give #[Path] props the entities of their route values",
+        "phpunit/phpunit": "To test the components and the pages with Phem\\Test\\InteractsWithPhem",
         "symfony/asset-mapper": "To load the phem Stimulus controller and its CSS with an importmap (the phemjs assets)",
         "symfony/stimulus-bundle": "To register the phem Stimulus controller from assets/controllers.json"
     },

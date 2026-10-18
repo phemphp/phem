@@ -1,0 +1,619 @@
+<?php
+
+/*
+ * This file is part of the Phem package.
+ *
+ * (c) Yonel Ceruto <open@yceruto.dev>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+declare(strict_types=1);
+
+namespace Phem\Test;
+
+use Dom\Element;
+use Dom\HTMLDocument;
+use Phem\Test\Internal\Driver;
+use Phem\Test\Internal\EventResult;
+use PHPUnit\Framework\Assert;
+
+/**
+ * A rendered component or page in a test, with the actions of a user and assertions.
+ *
+ *     $this->mount(Counter::class, ['label' => 'Clicks'])
+ *         ->click('button')
+ *         ->assertSee('Clicks 1 times')
+ *         ->assertState('count', 1);
+ *
+ * The tester keeps the HTML in a DOM, as a browser does. An action finds the element with a
+ * CSS selector, and sends the event as the `phem` Stimulus controller does: the handler of the
+ * element or of its closest ancestor, the value of the element, and the fields of a form. The
+ * answer morphs the components that changed. An action fails when no handler gets the event,
+ * or when the element is disabled: a browser would do nothing.
+ *
+ * Get one from InteractsWithPhem: mount() for a component, visit() for a page.
+ */
+final class ComponentTester
+{
+    private const TEXT_INPUTS = ['text', 'search', 'email', 'url', 'tel', 'password', 'number', 'date', 'time', 'datetime-local', 'month', 'week', 'color', 'range'];
+
+    private HTMLDocument $document;
+    private int $status;
+    private ?string $redirect;
+    private bool $reload = false;
+
+    /**
+     * @param \Closure(string): self|null $visit opens a URL (for followRedirect())
+     *
+     * @internal use InteractsWithPhem::mount() or InteractsWithPhem::visit()
+     */
+    public function __construct(
+        private readonly Driver $driver,
+        private readonly ?\Closure $visit = null,
+    ) {
+        $html = $driver->html();
+        $this->document = HTMLDocument::createFromString($driver->isDocument() ? $html : '<!DOCTYPE html><html><head></head><body>'.$html.'</body></html>', \LIBXML_NOERROR, 'UTF-8');
+        $this->status = $driver->status();
+        $this->redirect = $driver->redirect();
+    }
+
+    // --- Actions ---------------------------------------------------------------------------
+
+    /**
+     * Clicks an element (`onClick`). A submit button also submits its form (`onSubmit`), with
+     * the button as a field.
+     */
+    public function click(string $selector): self
+    {
+        $element = $this->enabled($selector);
+        $form = self::formOf($element);
+        // The browser makes both events before the answer of the first one.
+        $events = array_filter([$this->event($element, 'click'), null !== $form ? $this->event($form, 'submit', $element) : null]);
+        if ([] === $events) {
+            Assert::fail(\sprintf('The element "%s" has no onClick handler, and it does not submit a form with an onSubmit handler.', $selector));
+        }
+
+        return $this->send(...$events);
+    }
+
+    public function doubleClick(string $selector): self
+    {
+        return $this->fire($selector, 'dblclick');
+    }
+
+    /**
+     * Changes the value of a field (`onChange`, `onInput`), as a user does: types a text, checks a
+     * checkbox (true or false) or a radio button (true, or the value of a button of its group),
+     * or selects options (a value, or a list of values for `<select multiple>`).
+     *
+     * As in React, `onChange` of a text field gets each change, not only the last one.
+     *
+     * @param string|int|float|bool|list<string> $value
+     */
+    public function change(string $selector, string|int|float|bool|array $value): self
+    {
+        $element = $this->setValue($this->enabled($selector), $value, $selector);
+        // A text field sends `input` (for onInput and onChange), other fields `input` and `change`.
+        $types = self::isTextLike($element) ? ['input'] : ['input', 'change'];
+        $events = array_filter(array_map(fn (string $type): ?array => $this->event($element, $type), $types));
+        if ([] === $events) {
+            Assert::fail(\sprintf('The element "%s" has no onChange or onInput handler.', $selector));
+        }
+
+        return $this->send(...$events);
+    }
+
+    /**
+     * Submits a form (`onSubmit`). The selector is the form, or the button that submits it.
+     * The fields get the values first, as change() does: field name => value.
+     *
+     * @param array<string, string|int|float|bool|list<string>> $fields
+     */
+    public function submit(string $selector = 'form', array $fields = []): self
+    {
+        $element = $this->enabled($selector);
+        $submitter = 'form' === $element->localName ? null : $element;
+        $form = null === $submitter ? $element : self::formOf($submitter);
+        if (null === $form) {
+            Assert::fail(\sprintf('The element "%s" is not a form or a button that submits a form.', $selector));
+        }
+        foreach ($fields as $name => $value) {
+            $this->fill($form, $name, $value);
+        }
+        $event = $this->event($form, 'submit', $submitter) ?? Assert::fail(\sprintf('The form "%s" has no onSubmit handler.', $selector));
+
+        return $this->send($event);
+    }
+
+    public function keyDown(string $selector, string $key): self
+    {
+        return $this->fire($selector, 'keydown', ['key' => $key]);
+    }
+
+    public function keyUp(string $selector, string $key): self
+    {
+        return $this->fire($selector, 'keyup', ['key' => $key]);
+    }
+
+    public function focus(string $selector): self
+    {
+        return $this->fire($selector, 'focusin');
+    }
+
+    public function blur(string $selector): self
+    {
+        return $this->fire($selector, 'focusout');
+    }
+
+    /**
+     * Sends a DOM event to the handler of an element (`dblclick` for `onDoubleClick`).
+     *
+     * @param array<string, mixed> $event values that replace the values of the element (value, checked, key, form)
+     */
+    public function fire(string $selector, string $type, array $event = []): self
+    {
+        $data = $this->event($this->enabled($selector), $type) ?? Assert::fail(\sprintf('The element "%s" has no handler for the "%s" event.', $selector, $type));
+        $data[1] = $event + $data[1];
+
+        return $this->send($data);
+    }
+
+    /** Opens the URL of the last redirect (a page only). */
+    public function followRedirect(): self
+    {
+        if (null === $this->redirect) {
+            Assert::fail('The last response is not a redirect.');
+        }
+        if (null === $this->visit) {
+            Assert::fail('A mounted component cannot follow a redirect: use visit() to test the page.');
+        }
+
+        return ($this->visit)($this->redirect);
+    }
+
+    // --- Values ----------------------------------------------------------------------------
+
+    /** The HTML: the document of a page, or the HTML of a component. */
+    public function html(): string
+    {
+        $body = $this->document->body;
+
+        return $this->driver->isDocument() || null === $body ? $this->document->saveHtml() : $body->innerHTML;
+    }
+
+    /** The text in the body, with the white space of the HTML as one space. */
+    public function text(): string
+    {
+        return self::normalize($this->document->body->textContent ?? '');
+    }
+
+    /** The DOM of the HTML. Change it only as a user does. */
+    public function document(): HTMLDocument
+    {
+        return $this->document;
+    }
+
+    /**
+     * The #[State] properties of the page, or of the mounted component, as the browser keeps
+     * them (JSON values).
+     *
+     * @return array<string, mixed>
+     */
+    public function state(): array
+    {
+        return $this->driver->state();
+    }
+
+    // --- Assertions ------------------------------------------------------------------------
+
+    public function assertSee(string $text): self
+    {
+        Assert::assertStringContainsString(self::normalize($text), $this->text(), $this->context());
+
+        return $this;
+    }
+
+    public function assertDontSee(string $text): self
+    {
+        Assert::assertStringNotContainsString(self::normalize($text), $this->text(), $this->context());
+
+        return $this;
+    }
+
+    public function assertSeeHtml(string $html): self
+    {
+        Assert::assertStringContainsString($html, $this->html(), $this->context());
+
+        return $this;
+    }
+
+    public function assertDontSeeHtml(string $html): self
+    {
+        Assert::assertStringNotContainsString($html, $this->html(), $this->context());
+
+        return $this;
+    }
+
+    public function assertSelectorExists(string $selector): self
+    {
+        Assert::assertNotNull($this->document->querySelector($selector), \sprintf('No element matches "%s". %s', $selector, $this->context()));
+
+        return $this;
+    }
+
+    public function assertSelectorNotExists(string $selector): self
+    {
+        Assert::assertNull($this->document->querySelector($selector), \sprintf('An element matches "%s". %s', $selector, $this->context()));
+
+        return $this;
+    }
+
+    public function assertSelectorCount(int $count, string $selector): self
+    {
+        Assert::assertCount($count, $this->document->querySelectorAll($selector), \sprintf('The number of elements that match "%s". %s', $selector, $this->context()));
+
+        return $this;
+    }
+
+    public function assertSelectorTextContains(string $selector, string $text): self
+    {
+        $element = $this->document->querySelector($selector) ?? Assert::fail(\sprintf('No element matches "%s". %s', $selector, $this->context()));
+        Assert::assertStringContainsString(self::normalize($text), self::normalize($element->textContent ?? ''), \sprintf('The text of "%s".', $selector));
+
+        return $this;
+    }
+
+    /** Asserts the value of a #[State] property of the page, or of the mounted component. */
+    public function assertState(string $name, mixed $expected): self
+    {
+        $state = $this->driver->state();
+        Assert::assertArrayHasKey($name, $state, \sprintf('The state has no "%s" property.', $name));
+        Assert::assertSame($expected, $state[$name], \sprintf('The "%s" state property.', $name));
+
+        return $this;
+    }
+
+    /** Asserts the HTTP status of the last response (the page, or the last event). */
+    public function assertStatus(int $status): self
+    {
+        Assert::assertSame($status, $this->status, 'The status of the last response.');
+
+        return $this;
+    }
+
+    /**
+     * Asserts that the last response is a redirect: a handler that returns a RedirectResponse,
+     * or a page that redirects.
+     */
+    public function assertRedirect(?string $url = null): self
+    {
+        Assert::assertNotNull($this->redirect, 'The last response is not a redirect.');
+        if (null !== $url) {
+            Assert::assertSame($url, $this->redirect, 'The URL of the redirect.');
+        }
+
+        return $this;
+    }
+
+    public function assertNoRedirect(): self
+    {
+        Assert::assertNull($this->redirect, \sprintf('The last response is a redirect to "%s".', $this->redirect));
+
+        return $this;
+    }
+
+    /**
+     * Asserts that the browser loads the page again after the last event (409): the state is not
+     * valid any more, or the handler is not on the page any more.
+     */
+    public function assertReload(): self
+    {
+        Assert::assertTrue($this->reload, 'The last event does not reload the page.');
+
+        return $this;
+    }
+
+    // --- The browser -----------------------------------------------------------------------
+
+    /**
+     * Sends events in their order, as the queue of the `phem` Stimulus controller does, and
+     * morphs the components that changed.
+     *
+     * @param array{0: string, 1: array<string, mixed>} ...$events handler id, DOM event
+     */
+    private function send(array ...$events): self
+    {
+        foreach ($events as [$handler, $event]) {
+            $result = $this->driver->dispatch($handler, $event);
+            $this->status = $result->status;
+            $this->redirect = $result->redirect;
+            $this->reload = $result->reload;
+            if (200 !== $result->status || null !== $result->redirect) {
+                // The browser leaves the page, or the event failed: the next events do not run.
+                break;
+            }
+            $this->morph($result);
+        }
+
+        return $this;
+    }
+
+    private function morph(EventResult $result): void
+    {
+        foreach ($result->updates as $id => $html) {
+            $element = $this->document->getElementById($id);
+            if (null === $element) {
+                Assert::fail(\sprintf('The event updates the component "%s", but the page has no element with this id.', $id));
+            }
+            $element->innerHTML = $html;
+        }
+    }
+
+    /**
+     * The handler id and the DOM event of an element, as the `phem` Stimulus controller makes
+     * them, or null when no handler gets the event.
+     *
+     * @return array{0: string, 1: array<string, mixed>}|null
+     */
+    private function event(Element $target, string $type, ?Element $submitter = null): ?array
+    {
+        $element = match ($type) {
+            // React's onChange gets each key of a text field.
+            'input' => $this->handlerElement($target, 'input') ?? (null !== ($e = $this->handlerElement($target, 'change')) && self::isTextLike($e) ? $e : null),
+            'change' => null !== ($e = $this->handlerElement($target, 'change')) && !self::isTextLike($e) ? $e : null,
+            default => $this->handlerElement($target, $type),
+        };
+        if (null === $element) {
+            return null;
+        }
+        $handler = (string) $element->getAttribute('data-phem-on-'.('input' === $type && !$element->hasAttribute('data-phem-on-input') ? 'change' : $type));
+
+        return [$handler, [
+            'type' => $type,
+            'value' => self::valueOf($element),
+            'checked' => 'input' === $element->localName ? $element->hasAttribute('checked') : null,
+            'key' => null,
+            'form' => 'form' === $element->localName ? self::fields($element, $submitter) : null,
+        ]];
+    }
+
+    /** The closest element with a handler for the event, in the root element of the page. */
+    private function handlerElement(Element $target, string $type): ?Element
+    {
+        $element = $target->closest('[data-phem-on-'.$type.']');
+        $root = $this->document->querySelector('[data-phem-state-value]') ?? $this->document->body;
+
+        return null !== $element && null !== $root && $root->contains($element) ? $element : null;
+    }
+
+    private function enabled(string $selector): Element
+    {
+        $element = $this->document->querySelector($selector) ?? Assert::fail(\sprintf('No element matches "%s". %s', $selector, $this->context()));
+        if ($element->hasAttribute('disabled') || null !== $element->closest('fieldset[disabled]')) {
+            Assert::fail(\sprintf('The element "%s" is disabled: a browser sends no event.', $selector));
+        }
+
+        return $element;
+    }
+
+    /**
+     * @param string|int|float|bool|list<string> $value
+     *
+     * @return Element the element that changed (a radio button of the group)
+     */
+    private function setValue(Element $element, string|int|float|bool|array $value, string $selector): Element
+    {
+        $type = strtolower($element->getAttribute('type') ?? 'text');
+        switch (true) {
+            case 'input' === $element->localName && 'radio' === $type:
+                if (!\is_bool($value)) {
+                    $element = $this->radio($element, self::scalar($value, $selector), $selector);
+                    $value = true;
+                }
+                if ($value) {
+                    foreach ($this->radioGroup($element) as $radio) {
+                        $radio->removeAttribute('checked');
+                    }
+                }
+                $element->toggleAttribute('checked', $value);
+                break;
+            case 'input' === $element->localName && 'checkbox' === $type:
+                if (!\is_bool($value)) {
+                    Assert::fail(\sprintf('The checkbox "%s" takes true or false.', $selector));
+                }
+                $element->toggleAttribute('checked', $value);
+                break;
+            case 'select' === $element->localName:
+                $values = array_map(strval(...), (array) $value);
+                $found = [];
+                foreach ($element->querySelectorAll('option') as $option) {
+                    $selected = \in_array(self::optionValue($option), $values, true);
+                    $option->toggleAttribute('selected', $selected);
+                    if ($selected) {
+                        $found[] = self::optionValue($option);
+                    }
+                }
+                if ([] !== $missing = array_diff($values, $found)) {
+                    Assert::fail(\sprintf('The select "%s" has no option "%s".', $selector, implode('", "', $missing)));
+                }
+                break;
+            case 'textarea' === $element->localName:
+                $element->textContent = self::scalar($value, $selector);
+                break;
+            case 'input' === $element->localName:
+                $element->setAttribute('value', self::scalar($value, $selector));
+                break;
+            default:
+                Assert::fail(\sprintf('The element "%s" is not a form field.', $selector));
+        }
+
+        return $element;
+    }
+
+    /** @param string|int|float|bool|list<string> $value */
+    private function fill(Element $form, string $name, string|int|float|bool|array $value): void
+    {
+        $fields = array_values(array_filter(
+            iterator_to_array($form->querySelectorAll('[name="'.addcslashes($name, '"\\').'"]'), false),
+            static fn (Element $e): bool => \in_array($e->localName, ['input', 'select', 'textarea'], true),
+        ));
+        if ([] === $fields) {
+            Assert::fail(\sprintf('The form has no field "%s".', $name));
+        }
+        $type = strtolower($fields[0]->getAttribute('type') ?? '');
+        if ('checkbox' === $type && \count($fields) > 1) {
+            // A group of checkboxes (`tags[]`): the values to check.
+            $values = array_map(strval(...), (array) $value);
+            foreach ($fields as $checkbox) {
+                $checkbox->toggleAttribute('checked', \in_array($checkbox->getAttribute('value') ?? 'on', $values, true));
+            }
+
+            return;
+        }
+        $this->setValue($fields[0], $value, \sprintf('[name="%s"]', $name));
+    }
+
+    private function radio(Element $radio, string $value, string $selector): Element
+    {
+        foreach ([$radio, ...$this->radioGroup($radio)] as $button) {
+            if (($button->getAttribute('value') ?? 'on') === $value) {
+                return $button;
+            }
+        }
+
+        Assert::fail(\sprintf('The radio group "%s" has no button with the value "%s".', $selector, $value));
+    }
+
+    /** @return list<Element> */
+    private function radioGroup(Element $radio): array
+    {
+        $name = $radio->getAttribute('name');
+        if (null === $name) {
+            return [];
+        }
+        $scope = $radio->closest('form') ?? $this->document;
+
+        return iterator_to_array($scope->querySelectorAll('input[type="radio"][name="'.addcslashes($name, '"\\').'"]'), false);
+    }
+
+    /** The form that a submit button submits. */
+    private static function formOf(Element $element): ?Element
+    {
+        $submits = match ($element->localName) {
+            'button' => 'submit' === strtolower($element->getAttribute('type') ?? 'submit'),
+            'input' => \in_array(strtolower($element->getAttribute('type') ?? ''), ['submit', 'image'], true),
+            default => false,
+        };
+
+        return $submits ? $element->closest('form') : null;
+    }
+
+    /**
+     * The fields of a form as [name, value] pairs, as `new FormData(form, submitter)` makes them,
+     * without the files.
+     *
+     * @return list<array{string, string}>
+     */
+    private static function fields(Element $form, ?Element $submitter): array
+    {
+        $fields = [];
+        foreach ($form->querySelectorAll('input, select, textarea, button') as $field) {
+            $name = $field->getAttribute('name');
+            if (null === $name || '' === $name || $field->hasAttribute('disabled') || null !== $field->closest('fieldset[disabled]')) {
+                continue;
+            }
+            $type = strtolower($field->getAttribute('type') ?? ('button' === $field->localName ? 'submit' : 'text'));
+            switch (true) {
+                case 'button' === $field->localName || \in_array($type, ['submit', 'image', 'reset', 'button'], true):
+                    if ($field === $submitter) {
+                        $fields[] = [$name, $field->getAttribute('value') ?? ''];
+                    }
+                    break;
+                case 'file' === $type:
+                    break;
+                case 'checkbox' === $type || 'radio' === $type:
+                    if ($field->hasAttribute('checked')) {
+                        $fields[] = [$name, $field->getAttribute('value') ?? 'on'];
+                    }
+                    break;
+                case 'select' === $field->localName:
+                    foreach (self::selectedOptions($field) as $option) {
+                        $fields[] = [$name, self::optionValue($option)];
+                    }
+                    break;
+                default:
+                    $fields[] = [$name, (string) self::valueOf($field)];
+            }
+        }
+
+        return $fields;
+    }
+
+    /** The value of an element, as `el.value` in the browser; null for an element without a value. */
+    private static function valueOf(Element $element): ?string
+    {
+        return match ($element->localName) {
+            'input' => $element->getAttribute('value') ?? (\in_array(strtolower($element->getAttribute('type') ?? ''), ['checkbox', 'radio'], true) ? 'on' : ''),
+            'textarea' => $element->textContent ?? '',
+            'select' => null !== ($option = self::selectedOptions($element)[0] ?? null) ? self::optionValue($option) : '',
+            'button', 'option' => 'option' === $element->localName ? self::optionValue($element) : ($element->getAttribute('value') ?? ''),
+            default => null,
+        };
+    }
+
+    /** @return list<Element> the selected options; the first option of a single select without one */
+    private static function selectedOptions(Element $select): array
+    {
+        $options = iterator_to_array($select->querySelectorAll('option'), false);
+        $selected = array_values(array_filter($options, static fn (Element $o): bool => $o->hasAttribute('selected') && !$o->hasAttribute('disabled')));
+        if ([] !== $selected || $select->hasAttribute('multiple')) {
+            return $selected;
+        }
+        foreach ($options as $option) {
+            if (!$option->hasAttribute('disabled')) {
+                return [$option];
+            }
+        }
+
+        return [];
+    }
+
+    private static function optionValue(Element $option): string
+    {
+        return $option->getAttribute('value') ?? self::normalize($option->textContent ?? '');
+    }
+
+    private static function isTextLike(Element $element): bool
+    {
+        return 'textarea' === $element->localName
+            || ('input' === $element->localName && \in_array(strtolower($element->getAttribute('type') ?? 'text'), self::TEXT_INPUTS, true));
+    }
+
+    /** @param string|int|float|bool|list<string> $value */
+    private static function scalar(string|int|float|bool|array $value, string $selector): string
+    {
+        if (\is_array($value) || \is_bool($value)) {
+            Assert::fail(\sprintf('The field "%s" takes a string.', $selector));
+        }
+
+        return (string) $value;
+    }
+
+    private static function normalize(string $text): string
+    {
+        return trim((string) preg_replace('/\s+/u', ' ', $text));
+    }
+
+    /** The status of the last response, for the message of a failed assertion. */
+    private function context(): string
+    {
+        return match (true) {
+            $this->reload => 'The last event reloads the page (409).',
+            null !== $this->redirect => \sprintf('The last response redirects to "%s".', $this->redirect),
+            200 !== $this->status => \sprintf('The status of the last response is %d.', $this->status),
+            default => '',
+        };
+    }
+}
