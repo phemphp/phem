@@ -1,4 +1,5 @@
 <?phpm
+
 namespace App\Components;
 
 use App\Model\Scientist;
