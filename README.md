@@ -153,6 +153,10 @@ See [editors/vscode/README.md](editors/vscode/README.md).
    (`method="morph"`) for each component that changed, plus the new state. Only the content
    of the `<Root>` changes: the document around it (for example the title) stays the same.
    Events wait in a queue, so each event uses the newest state.
+   While an event runs, the element that sent it and its component get `aria-busy="true"` and
+   the `phem-loading` class, after a delay of 200 ms (`data-phem-loading-delay-value` on the
+   `<Root>` element changes it). Use CSS to style them, for example
+   `.phem-loading { opacity: .5 }`.
 5. **Server.** [FrankenPHP](https://frankenphp.dev) runs `public/index.php` in worker mode
    (see `examples/quickstart/Caddyfile`). Each worker boots the Symfony kernel once and keeps
    it in memory for many requests. Symfony Runtime gives each request to the kernel, which

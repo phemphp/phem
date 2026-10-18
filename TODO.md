@@ -118,12 +118,15 @@ The user does not see that an event runs.
 - **Best peer:** LV adds `phx-click-loading`, `phx-submit-loading` and `phx-change-loading`
   classes to the element and its form automatically, with no code. LC 3.1 uses the standard
   `aria-busy` attribute. LW `wire:loading` with `wire:target` and a delay.
-- **Proposal:**
-  - Automatically: `aria-busy="true"` on the element that sent the event and on its component
-    root, and a `phem-loading` class. Remove them when the response arrives. CSS does the rest.
-  - Disable a submit button and its form inputs during a submit (as LV does), with an opt-out.
-  - A small delay (for example 200 ms) before the states show, to stop flicker.
-  - Sketch for custom markup: `<Spinner phem:loading={{ save }} />` shows only while `save` runs.
+
+Done: while an event runs, the element that sent it and its component root (the closest
+`<phem-c>`, or the `<Root>` element) get `aria-busy="true"` and the `phem-loading` class. They
+show after a delay of 200 ms (`data-phem-loading-delay-value`), to stop flicker.
+
+Not done yet:
+
+- [ ] Disable a submit button and its form inputs during a submit (as LV does), with an opt-out.
+- [ ] Custom markup: `<Spinner phem:loading={{ save }} />` shows only while `save` runs.
 
 ### [ ] Optimistic UI and client commands — P2
 

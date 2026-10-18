@@ -9,6 +9,10 @@
 // so the access rules of the page apply. The server runs the PHP handler and answers with
 // Turbo Streams (morph of the changed components) and the new state. Events wait in a queue,
 // so each one uses the newest state.
+//
+// While an event runs, the element that sent it and its component (the closest <phem-c>, or the
+// root element) get `aria-busy="true"` and the `phem-loading` class. They show after a delay
+// (`data-phem-loading-delay-value`, 200 ms by default), so a fast response does not flicker.
 
 import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
@@ -26,11 +30,29 @@ function formFields(form, submitter) {
   return [...new FormData(form, submitter ?? null)].filter(([, value]) => typeof value === "string")
 }
 
+function showLoading(el, on) {
+  if (on) el.setAttribute("aria-busy", "true")
+  else el.removeAttribute("aria-busy")
+  el.classList.toggle("phem-loading", on)
+}
+
 export default class PhemController extends Controller {
-  static values = { state: String, signature: String }
+  static values = { state: String, signature: String, loadingDelay: { type: Number, default: 200 } }
 
   connect() {
     this.queue = Promise.resolve()
+    // element => the number of its events that show the loading state
+    this.loading = new Map()
+    // The morph of an earlier event sets the attributes of the server render: show the loading
+    // state again on an element with an event that still runs.
+    this.keepLoading = (event) => {
+      if (this.loading.has(event.target)) showLoading(event.target, true)
+    }
+    this.element.addEventListener("turbo:morph-element", this.keepLoading)
+  }
+
+  disconnect() {
+    this.element.removeEventListener("turbo:morph-element", this.keepLoading)
   }
 
   // data-action="click->phem#dispatch input->phem#dispatch ..." on the root element.
@@ -46,7 +68,32 @@ export default class PhemController extends Controller {
       key: event.key ?? null,
       form: el instanceof HTMLFormElement ? formFields(el, event.submitter) : null,
     }
-    this.queue = this.queue.then(() => this.send(handler, payload)).catch((e) => console.error("[phem]", e))
+    const done = this.startLoading(el)
+    this.queue = this.queue
+      .then(() => this.send(handler, payload))
+      .catch((e) => console.error("[phem]", e))
+      .finally(done)
+  }
+
+  // Shows the loading state of an event after the delay. Returns the function that ends it.
+  startLoading(el) {
+    const targets = new Set([el, el.closest("phem-c") ?? this.element])
+    let shown = false
+    const timer = setTimeout(() => {
+      shown = true
+      targets.forEach((t) => this.markLoading(t, 1))
+    }, this.loadingDelayValue)
+    return () => {
+      clearTimeout(timer)
+      if (shown) targets.forEach((t) => this.markLoading(t, -1))
+    }
+  }
+
+  markLoading(el, delta) {
+    const count = (this.loading.get(el) ?? 0) + delta
+    if (count > 0) this.loading.set(el, count)
+    else this.loading.delete(el)
+    showLoading(el, count > 0)
   }
 
   handlerElement(event) {
