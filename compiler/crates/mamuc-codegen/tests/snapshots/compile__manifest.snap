@@ -85,6 +85,16 @@ expression: out.manifest.to_json()
       ],
       "rest": false
     },
+    "App\\Components\\Nav": {
+      "fqcn": "App\\Components\\Nav",
+      "kind": "template",
+      "file": "components/Rest.phpm",
+      "template": "components/Rest.3.twig",
+      "props": [],
+      "slots": [],
+      "required": [],
+      "rest": false
+    },
     "App\\Components\\RestButton": {
       "fqcn": "App\\Components\\RestButton",
       "kind": "template",
@@ -97,6 +107,17 @@ expression: out.manifest.to_json()
       "required": [
         "count"
       ],
+      "rest": true
+    },
+    "App\\Components\\RestLink": {
+      "fqcn": "App\\Components\\RestLink",
+      "kind": "class",
+      "file": "components/Rest.phpm",
+      "props": [
+        "label"
+      ],
+      "slots": [],
+      "required": [],
       "rest": true
     },
     "App\\Components\\Tag": {
@@ -211,6 +232,14 @@ expression: out.manifest.to_json()
     "components/Rest.1.twig": {
       "source": "components/Rest.phpm",
       "line": 19
+    },
+    "components/Rest.2.twig": {
+      "source": "components/Rest.phpm",
+      "line": 30
+    },
+    "components/Rest.3.twig": {
+      "source": "components/Rest.phpm",
+      "line": 36
     },
     "pages/about.0.twig": {
       "source": "pages/about.phpm",

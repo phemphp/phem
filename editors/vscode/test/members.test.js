@@ -80,6 +80,15 @@ test('promoted constructor properties and properties without #[Prop] are members
     assert.deepEqual(parse(src.replace('|', '')).components[0].props.map((p) => p.name), ['limit']);
 });
 
+test('the rest prop of a class component is not a named prop', () => {
+    const { parse } = require('../src/php');
+    const src = '<?phpm\nnamespace App\\Components;\n\nuse Mamu\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class Link\n{\n    #[Prop] public string $label = \'\';\n    #[Prop(rest: true)] public array $attrs = [];\n    #[Prop(rest: false)] public string $title = \'\';\n\n    public function render()\n    {\n        return <a {{ ...attrs }}>{{ label }}</a>;\n    }\n}\n';
+    const [link] = parse(src).components;
+    assert.deepEqual(link.props.map((p) => p.name), ['label', 'title']);
+    assert.equal(link.rest, true);
+    assert.match(link.signature, /#\[Prop\(rest: true\)\] public array \$attrs = \[\];/);
+});
+
 test('$ shows the variables of the scope', async () => {
     const r = await run(USES + 'function Home(Scientist $s, int $n = 1)\n{\n    $total = 3;\n    echo $|\n}\n');
     assert.deepEqual(r.labels.sort(), ['$n', '$s', '$total']);

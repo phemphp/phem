@@ -375,6 +375,8 @@ final class Counter
 - A `#[Prop]` property is a prop. It must be public, not static, not promoted, and not
   `#[State]` (compiler error E042). A prop without a default value (and not nullable) is a
   required prop. A public property without `#[Prop]` is not a prop: the markup cannot set it.
+- A `#[Prop(rest: true)]` property is the rest prop: it gets the props that no other prop
+  takes (see [Rest props](#rest-props)).
 - A `#[State]` property is state. A method changes it, and Mamu calls `render()` again.
 - In the markup of a class, a name is a local variable, then a property (`$this->name`),
   then a method (`$this->name(...)`, so a method passes as a handler).
@@ -555,7 +557,8 @@ final class MyApp
 - Children go to the `?Html $children` parameter (or `#[Prop]` property): `<Card>...</Card>`.
 - Named slots: `<Card:footer>...</Card:footer>` goes to the `?Html $footer` parameter.
 - A default for children or a slot: `{{ footer ?? 'No footer' }}` shows when the caller gives none.
-- An unknown prop is an error, unless the function has a variadic `...$rest` parameter.
+- An unknown prop is an error, unless the function has a variadic `...$rest` parameter (or
+  the class a `#[Prop(rest: true)]` property).
 - `<Root>` (`use Mamu\Root;`) is a built-in component: the root element of a page, in the
   document. It takes `tag` and any attribute (see [compiling.md](compiling.md#the-document-of-the-pages)).
 
@@ -579,6 +582,27 @@ The button gets `class`, `aria-label`, and the click handler. The caller can als
 Use `mixed` (or no type) for the variadic parameter, because the values can be strings,
 booleans, or handlers. To forward the props to another component, spread them on its tag:
 `<CountButton count={{ 1 }} {{ ...rest }} />`.
+
+A class component has a rest prop for this: a `#[Prop(rest: true)]` property. It gets the same
+hash, and it is empty when the caller gives no other props. You choose its name:
+
+```php
+#[Component]
+final class CountButton
+{
+    #[Prop] public int $count = 0;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function render()
+    {
+        return <button type="button" {{ ...attrs }}>Clicked {{ count }} times</button>;
+    }
+}
+```
+
+A class has at most one rest prop, and its type must accept an array: `array`, `iterable`,
+`mixed`, or no type (compiler error E043). The other rules of a prop also apply to it (E042).
+The rest prop is not a named prop: `<CountButton attrs="x" />` puts `attrs` in the hash.
 
 ## 10. Markup values
 

@@ -25,6 +25,7 @@ final class Counter
     public const MAX = 10;
 
     #[Prop] public string $label = 'Clicked';
+    #[Prop(rest: true)] public array $attrs = [];
     #[State] public int $count = 0;
 
     public function __construct(private readonly \\App\\Repository\\TodoRepository $todos)
@@ -64,6 +65,7 @@ test('the outline has the namespace, the components, and the members', () => {
     assert.deepEqual(counter.children.map((c) => [c.name, c.kind, c.detail]), [
         ['MAX', 'constant', ''],
         ['label', 'property', 'prop: string'],
+        ['attrs', 'property', 'rest props'],
         ['count', 'property', 'state: int'],
         ['todos', 'property', '\\App\\Repository\\TodoRepository'],
         ['__construct', 'constructor', ''],
@@ -72,6 +74,6 @@ test('the outline has the namespace, the components, and the members', () => {
     ]);
     const label = counter.children[1];
     assert.equal(SOURCE.slice(...label.selection), 'label');
-    const increment = counter.children[5];
+    const increment = counter.children[6];
     assert.match(SOURCE.slice(...increment.range), /^public function increment\(\): void\n    \{\n        \+\+\$this->count;\n    \}$/);
 });

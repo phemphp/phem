@@ -62,4 +62,48 @@ final class ComponentMetadataTest extends TestCase
 
         (new ComponentMetadata())->props($component::class);
     }
+
+    public function testTheRestPropIsNotInTheProps(): void
+    {
+        $component = new class {
+            #[Prop] public string $label = '';
+            /** @var array<string, mixed> */
+            #[Prop(rest: true)] public array $attrs = [];
+        };
+
+        $metadata = new ComponentMetadata();
+        self::assertSame(['label'], array_keys($metadata->props($component::class)));
+        self::assertSame('attrs', $metadata->restProp($component::class)?->getName());
+        self::assertNull($metadata->restProp(\get_class(new class {
+            #[Prop] public string $label = '';
+        })));
+    }
+
+    public function testTwoRestPropsAreAnError(): void
+    {
+        $component = new class {
+            /** @var array<string, mixed> */
+            #[Prop(rest: true)] public array $a = [];
+            /** @var array<string, mixed> */
+            #[Prop(rest: true)] public array $b = [];
+        };
+
+        $this->expectException(PropError::class);
+        $this->expectExceptionMessage('has two rest props, "a" and "b". A class component has at most one.');
+
+        (new ComponentMetadata())->restProp($component::class);
+    }
+
+    public function testARestPropThatCannotGetAnArrayIsAnError(): void
+    {
+        $component = new class {
+            #[Prop(rest: true)] public string $attrs = '';
+        };
+
+        $this->expectException(PropError::class);
+        $this->expectExceptionMessage('The rest prop "attrs" of <');
+        $this->expectExceptionMessage('gets a hash of props, so its type must accept an array.');
+
+        (new ComponentMetadata())->props($component::class);
+    }
 }

@@ -2,7 +2,7 @@
 
 namespace App\Pages;
 
-use Mamu\Attribute\{Component, Page, State};
+use Mamu\Attribute\{Component, Page, Prop, State};
 
 use function App\Components\Document;
 
@@ -25,6 +25,19 @@ function Forward(mixed ...$rest) {
     return <RestButton count={{ 7 }} {{ ...rest }} />;
 }
 
+// A class component: the extra props go to the rest prop.
+#[Component]
+final class RestLink
+{
+    #[Prop] public string $label = '';
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function render()
+    {
+        return <a className="link" {{ ...attrs }}>{{ label }}</a>;
+    }
+}
+
 #[Page('/rest')]
 final class RestPage
 {
@@ -44,6 +57,8 @@ final class RestPage
                     <LoudButton label="hi" className="override" onDoubleClick={{ increment }} />
                     <Forward id="forwarded" />
                     <RestButton count={{ count }} />
+                    <RestLink label="Home {{ count }}" href="/" className="primary" onClick={{ increment }} />
+                    <RestLink label="Plain" />
                 </main>
             </Document>
         );

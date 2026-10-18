@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A `#[Prop(rest: true)]` property of a class component is its rest prop. Completion and hover
+  do not show it as a named prop, and the outline shows it as "rest props".
 - A property of a class component is a prop only with `#[Prop]` (or `#[Path]` on a page).
   Completion, hover, and the outline do not show the other public properties as props.
 - A function is a component only with `#[Component]`, as a class. The other functions of a

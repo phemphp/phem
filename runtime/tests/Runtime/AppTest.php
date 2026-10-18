@@ -127,13 +127,17 @@ final class AppTest extends TestCase
         self::assertMatchesRegularExpression('#<button class="override" data-mamu-on-dblclick="[^"]+">HI</button>#', $html, 'a function component; the spread replaces className');
         self::assertStringContainsString('<button type="button" id="forwarded">Clicked 7 times</button>', $html, 'rest props forwarded to a component');
         self::assertStringContainsString('<button type="button">Clicked 0 times</button>', $html, 'no rest props');
-        self::assertCount(2, $this->handlers);
+        self::assertMatchesRegularExpression('#<a class="primary" href="/" data-mamu-on-click="[^"]+">Home 0</a>#', $html, 'a class component; the rest prop replaces className');
+        self::assertStringContainsString('<a class="link">Plain</a>', $html, 'a class component without rest props');
+        self::assertCount(3, $this->handlers);
 
         $r = $this->click(0, uri: '/rest');
         self::assertSame(200, $r['status']);
         self::assertSame(2, substr_count($r['data']['streams'], 'Clicked 1 times'), 'onClick in the rest props');
         $r = $this->click(1, uri: '/rest');
         self::assertSame(2, substr_count($r['data']['streams'], 'Clicked 2 times'), 'onDoubleClick in the rest props');
+        $r = $this->click(2, uri: '/rest');
+        self::assertStringContainsString('Home 3', $r['data']['streams'], 'onClick in the rest prop of a class component');
     }
 
     public function testSlotsListsTitlesAndReadonlyProps(): void

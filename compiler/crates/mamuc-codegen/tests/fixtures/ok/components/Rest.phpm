@@ -2,7 +2,7 @@
 
 namespace App\Components;
 
-use Mamu\Attribute\Component;
+use Mamu\Attribute\{Component, Prop};
 
 #[Component]
 function RestButton(int $count, mixed ...$rest) {
@@ -17,4 +17,21 @@ function RestButton(int $count, mixed ...$rest) {
 function Toolbar(mixed ...$rest) {
     $count = 1;
     return <RestButton count={{ count }} {{ ...rest }} />;
+}
+
+#[Component]
+final class RestLink
+{
+    #[Prop] public string $label = '';
+    #[Prop(rest: true)] public array $attrs = [];
+ 
+    public function render()
+    {
+        return <a className="link" {{ ...attrs }}>{{ label }}</a>;
+    }
+}
+
+#[Component]
+function Nav() {
+    return <RestLink label="Home" href="/" aria-current="page" />;
 }

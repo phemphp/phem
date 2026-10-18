@@ -32,6 +32,9 @@ final class ComponentMetadata
     /** @var array<string, array<string, \ReflectionProperty>> */
     private array $props = [];
 
+    /** @var array<string, ?\ReflectionProperty> */
+    private array $rests = [];
+
     /** @var array<string, list<\ReflectionProperty>> */
     private array $states = [];
 
@@ -61,7 +64,8 @@ final class ComponentMetadata
 
     /**
      * The props of a class component: its #[Prop] properties, and the #[Path] properties of a
-     * page. A prop is public, not static, not promoted, and not #[State].
+     * page. A prop is public, not static, not promoted, and not #[State]. The rest prop is not
+     * in the list (see restProp()).
      *
      * @param class-string $class
      *
@@ -73,18 +77,46 @@ final class ComponentMetadata
             return $this->props[$class];
         }
         $out = [];
+        $rest = null;
         foreach ((new \ReflectionClass($class))->getProperties() as $p) {
-            if ([] === $p->getAttributes(Prop::class) && [] === $p->getAttributes(Path::class)) {
+            $prop = $p->getAttributes(Prop::class)[0] ?? null;
+            if (null === $prop && [] === $p->getAttributes(Path::class)) {
                 continue;
             }
             if (!$p->isPublic() || $p->isStatic() || $p->isPromoted() || [] !== $p->getAttributes(State::class)) {
-                $attribute = [] !== $p->getAttributes(Prop::class) ? 'Prop' : 'Path';
+                $attribute = null !== $prop ? 'Prop' : 'Path';
                 throw new PropError(\sprintf('The #[%s] property "%s" of <%s> must be a prop: public, not static, not promoted, and not #[State].', $attribute, $p->getName(), ComponentName::short($class)));
             }
-            $out[$p->getName()] = $p;
+            if (!($prop?->newInstance()->rest ?? false)) {
+                $out[$p->getName()] = $p;
+                continue;
+            }
+            if (null !== $rest) {
+                throw new PropError(\sprintf('<%s> has two rest props, "%s" and "%s". A class component has at most one.', ComponentName::short($class), $rest->getName(), $p->getName()));
+            }
+            if (!self::acceptsArray($p->getType())) {
+                throw new PropError(\sprintf('The rest prop "%s" of <%s> gets a hash of props, so its type must accept an array.', $p->getName(), ComponentName::short($class)));
+            }
+            $rest = $p;
         }
+        $this->rests[$class] = $rest;
 
         return $this->props[$class] = $out;
+    }
+
+    /**
+     * The rest prop of a class component (`#[Prop(rest: true)]`): it gets the props that no
+     * other prop takes, as a hash.
+     *
+     * @param class-string $class
+     */
+    public function restProp(string $class): ?\ReflectionProperty
+    {
+        if (!\array_key_exists($class, $this->rests)) {
+            $this->props($class);
+        }
+
+        return $this->rests[$class];
     }
 
     /**
@@ -123,5 +155,16 @@ final class ComponentMetadata
         }
 
         return $this->paths[$page] = $out;
+    }
+
+    /** Whether a property of this type can get an array: no type, `array`, `iterable`, `mixed`, or a union with one. */
+    private static function acceptsArray(?\ReflectionType $type): bool
+    {
+        return match (true) {
+            null === $type => true,
+            $type instanceof \ReflectionNamedType => \in_array($type->getName(), ['array', 'iterable', 'mixed'], true),
+            $type instanceof \ReflectionUnionType => array_any($type->getTypes(), self::acceptsArray(...)),
+            default => false,
+        };
     }
 }

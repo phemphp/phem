@@ -52,7 +52,8 @@ pub struct ComponentDef {
     pub slots: Vec<String>,
     /// Props without a default value, whose type does not accept null.
     pub required: Vec<String>,
-    /// The function has a variadic parameter, so unknown props are allowed.
+    /// The function has a variadic parameter (or the class a `#[Prop(rest: true)]` property), so
+    /// unknown props are allowed.
     pub rest: bool,
     /// A class component with a parent class or a trait outside the sources: it can have props
     /// that the compiler does not see, so the compiler does not check its props and slots.
@@ -85,6 +86,16 @@ fn allows_null(ty: &str) -> bool {
         })
 }
 
+/// Whether a PHP type accepts an array: no type, `array`, `iterable`, `mixed`, or a union with one.
+fn accepts_array(ty: &str) -> bool {
+    let ty = ty.trim();
+    ty.is_empty()
+        || ty.split('|').any(|t| {
+            let t = t.trim().trim_start_matches('?').trim();
+            ["array", "iterable", "mixed"].iter().any(|a| t.eq_ignore_ascii_case(a))
+        })
+}
+
 /// The components that a scanned file declares.
 pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
     let mut out = Vec::new();
@@ -108,7 +119,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
         });
     }
     for c in file.classes.iter().filter(|c| c.is_component) {
-        let props: Vec<&Prop> = c.all_props().filter(|p| p.is_prop()).collect();
+        let props: Vec<&Prop> = c.all_props().filter(|p| p.is_prop() && !p.is_rest).collect();
         out.push(ComponentDef {
             fqcn: c.fqn.clone(),
             kind: Kind::Class,
@@ -117,7 +128,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
             props: props.iter().map(|p| p.name.clone()).collect(),
             slots: props.iter().filter(|p| is_html_type(&p.ty)).map(|p| p.name.clone()).collect(),
             required: props.iter().filter(|p| !p.has_default && !allows_null(&p.ty)).map(|p| p.name.clone()).collect(),
-            rest: false,
+            rest: c.all_props().any(|p| p.is_prop() && p.is_rest),
             open: c.open,
         });
     }
@@ -218,6 +229,22 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
             diags.push(
                 Diagnostic::error(codes::INVALID_PROP, format!("`#[{attr}]` property `${}` is not a prop", p.name), p.span)
                     .with_help("a prop is public, not static, not promoted, and not `#[State]`"),
+            );
+        }
+        // Two rest props: the error is on the second one of the class (or on the class, when
+        // both are inherited).
+        let rests: Vec<&Prop> = c.all_props().filter(|p| p.is_prop() && p.is_rest).collect();
+        if let [first, second, ..] = rests[..] {
+            let span = c.props.iter().filter(|p| p.is_rest && p.name != first.name).chain(c.props.iter().filter(|p| p.is_rest)).next().map_or(c.name_span, |p| p.span);
+            diags.push(
+                Diagnostic::error(codes::INVALID_REST_PROP, format!("`{}` has two rest props, `${}` and `${}`", c.name, first.name, second.name), span)
+                    .with_help("a class component has at most one `#[Prop(rest: true)]` property"),
+            );
+        }
+        for p in c.props.iter().filter(|p| p.is_prop() && p.is_rest && !accepts_array(&p.ty)) {
+            diags.push(
+                Diagnostic::error(codes::INVALID_REST_PROP, format!("rest prop `${}` cannot get an array", p.name), p.span)
+                    .with_help("the rest prop gets a hash of props: use `public array $attrs = [];`"),
             );
         }
     }

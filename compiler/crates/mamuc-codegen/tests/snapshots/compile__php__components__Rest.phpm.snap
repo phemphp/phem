@@ -6,7 +6,7 @@ expression: f.php
 
 namespace App\Components;
 
-use Mamu\Attribute\Component;
+use Mamu\Attribute\{Component, Prop};
 
 #[Component]
 function RestButton(int $count, mixed ...$rest) {
@@ -21,4 +21,21 @@ function RestButton(int $count, mixed ...$rest) {
 function Toolbar(mixed ...$rest) {
     $count = 1;
     return new \Mamu\Element('components/Rest.1.twig', ['count' => $count ?? null, 'rest' => $rest ?? null]);
+}
+
+#[Component]
+final class RestLink
+{
+    #[Prop] public string $label = '';
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function render()
+    {
+        return new \Mamu\Element('components/Rest.2.twig', ['attrs' => $this->attrs, 'label' => $this->label]);
+    }
+}
+
+#[Component]
+function Nav() {
+    return new \Mamu\Element('components/Rest.3.twig', []);
 }

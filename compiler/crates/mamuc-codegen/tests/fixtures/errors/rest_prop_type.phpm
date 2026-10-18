@@ -1,0 +1,4 @@
+<?phpm // expect: E043
+use Mamu\Attribute\{Component, Prop};
+#[Component]
+final class Link { #[Prop(rest: true)] public string $attrs = ''; public function render() { return <a>{{ attrs }}</a>; } }

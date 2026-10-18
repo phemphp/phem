@@ -525,7 +525,7 @@ function CountButton(int $count, mixed ...$props)
         &lt;/button&gt;
     );
 }</code></pre></div>
-<p>As in JSX, the order counts: a later value replaces an earlier one. Here <code>type="button"</code> is a default, and a caller can replace it with <code>type="submit"</code>.</p>
+<p>As in JSX, the order counts: a later value replaces an earlier one. Here <code>type="button"</code> is a default, and a caller can replace it with <code>type="submit"</code>. A class component collects these props in a rest prop: <code>#[Prop(rest: true)] public array $props = [];</code>.</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="CounterTogether">
     <div class="sandbox-bar">
         <span class="sandbox-tab">CounterTogether.phpm</span>

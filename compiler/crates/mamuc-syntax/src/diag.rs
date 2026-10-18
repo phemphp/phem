@@ -61,6 +61,7 @@ pub mod codes {
     pub const CLASS_WITHOUT_RENDER: &str = "E040";
     pub const READONLY_STATE: &str = "E041";
     pub const INVALID_PROP: &str = "E042";
+    pub const INVALID_REST_PROP: &str = "E043";
     pub const EXPORT_DEFAULT: &str = "E050";
     pub const ROUTE_NOT_COMPONENT: &str = "E052";
     pub const HANDLER_CALLED: &str = "W001";

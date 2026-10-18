@@ -1,0 +1,5 @@
+---
+source: crates/mamuc-codegen/tests/compile.rs
+expression: t.content
+---
+<a {{ mamu_attrs({'className': 'link'}, attrs) }}>{{ label }}</a>

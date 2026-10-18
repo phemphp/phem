@@ -444,10 +444,12 @@ class Parser {
         this.next();
 
         let memberAttrs = [];
+        let memberRest = false;
         let modifiers = [];
         let memberStart = -1;
         const reset = () => {
             memberAttrs = [];
+            memberRest = false;
             modifiers = [];
             memberStart = -1;
         };
@@ -461,7 +463,9 @@ class Parser {
                 memberStart = tok.start;
             }
             if (tok.v === '#[') {
-                memberAttrs.push(...this.attribute().map((a) => a.name));
+                const list = this.attribute();
+                memberAttrs.push(...list.map((a) => a.name));
+                memberRest = memberRest || list.some(isRestAttr);
                 continue;
             }
             if (tok.v === '{') {
@@ -552,7 +556,7 @@ class Parser {
                 continue;
             }
             if (modifiers.length > 0) {
-                this.property(cls, modifiers, memberAttrs, memberStart);
+                this.property(cls, modifiers, memberAttrs, memberStart, memberRest);
                 reset();
                 continue;
             }
@@ -624,8 +628,9 @@ class Parser {
         }
     }
 
-    // Reads `public ?Type $a = 1, $b;`. The current token is after the modifiers.
-    property(cls, modifiers, attrs, memberStart) {
+    // Reads `public ?Type $a = 1, $b;`. The current token is after the modifiers. `rest` is
+    // true after `#[Prop(rest: true)]`.
+    property(cls, modifiers, attrs, memberStart, rest) {
         const doc = docBefore(this.text, memberStart);
         let typeStart = -1;
         let typeEnd = -1;
@@ -675,6 +680,7 @@ class Parser {
                     visibility: visibilityOf(modifiers),
                     static: modifiers.includes('static'),
                     attrs,
+                    rest,
                     doc,
                     offset: tok.start,
                 };
@@ -721,6 +727,11 @@ function hasAttr(attrs, name) {
 // static, not promoted, and not `#[State]`.
 function isProp(p) {
     return (hasAttr(p.attrs, 'Prop') || hasAttr(p.attrs, 'Path')) && !p.promoted && p.modifiers.includes('public') && !p.modifiers.includes('static') && !hasAttr(p.attrs, 'State');
+}
+
+// `#[Prop(rest: true)]` (or `#[Prop(true)]`): the prop gets the props that no other prop takes.
+function isRestAttr(a) {
+    return hasAttr([a.name], 'Prop') && /^\s*(rest\s*:\s*)?true\s*$/i.test(a.args);
 }
 
 function isHtmlType(type) {
@@ -781,6 +792,11 @@ function components(parsed) {
         const lines = [];
         for (const p of cls.properties) {
             if (!isProp(p)) {
+                continue;
+            }
+            if (p.rest) {
+                comp.rest = true;
+                lines.push(`    #[Prop(rest: true)] public ${p.type ? p.type + ' ' : ''}$${p.name}${p.default !== undefined ? ' = ' + p.default : ''};`);
                 continue;
             }
             if (p.name === 'children') {

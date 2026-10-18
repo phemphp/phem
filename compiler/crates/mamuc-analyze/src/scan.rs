@@ -144,6 +144,8 @@ pub struct Prop {
     pub is_state: bool,
     /// The attribute that marks the property as a prop: `Prop`, or `Path` on a page.
     pub prop_attr: Option<&'static str>,
+    /// `#[Prop(rest: true)]`: the prop gets the props that no other prop takes.
+    pub is_rest: bool,
     /// A promoted constructor parameter: a service that the container injects, not a prop.
     pub is_promoted: bool,
     pub has_default: bool,
@@ -344,6 +346,29 @@ fn attr_names(toks: &Toks, from: usize, to: usize) -> Vec<(String, Span)> {
             i = toks.matching(i);
         } else if toks.is_op(i, ",") {
             expect_name = true;
+        }
+        i += 1;
+    }
+    out
+}
+
+/// The attributes of a list whose only argument is `rest: true` (or `true`): `#[Prop(rest: true)]`.
+fn rest_attrs(toks: &Toks, from: usize, to: usize) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut i = from;
+    let mut name = None;
+    while i < to {
+        if name.is_none() && toks.t[i].kind == TokKind::Ident {
+            name = Some(toks.text(i));
+        } else if toks.is_op(i, "(") || toks.is_op(i, "[") {
+            let end = toks.matching(i);
+            let args: Vec<String> = (i + 1..end).map(|k| toks.text(k).to_ascii_lowercase()).collect();
+            if toks.is_op(i, "(") && matches!(args.iter().map(String::as_str).collect::<Vec<_>>()[..], ["true"] | ["rest", ":", "true"]) {
+                out.extend(name.map(str::to_string));
+            }
+            i = end;
+        } else if toks.is_op(i, ",") {
+            name = None;
         }
         i += 1;
     }
@@ -575,6 +600,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
 
     let mut i = j + 1;
     let mut member_attrs: Vec<(String, Span)> = Vec::new();
+    let mut member_rest: Vec<String> = Vec::new();
     let mut mods: Vec<String> = Vec::new();
     let mut ty_start: Option<usize> = None;
     while i < close {
@@ -584,6 +610,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
         if t.kind == TokKind::AttrOpen {
             let end = toks.matching(i);
             member_attrs.extend(attr_names(toks, i + 1, end));
+            member_rest.extend(rest_attrs(toks, i + 1, end));
             i = end + 1;
             continue;
         }
@@ -607,6 +634,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
                 i += 1;
             }
             member_attrs.clear();
+            member_rest.clear();
             mods.clear();
             ty_start = None;
             i += 1;
@@ -625,6 +653,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
                         is_static: false,
                         is_state: false,
                         prop_attr: None,
+                        is_rest: false,
                         is_promoted: true,
                         has_default: p.default.is_some(),
                         span: m.name_span,
@@ -633,6 +662,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
             }
             class.methods.push(Func { fqn: format!("{}::{}", class.fqn, m.name), is_private: mods.iter().any(|x| x == "private"), ..m });
             member_attrs.clear();
+            member_rest.clear();
             mods.clear();
             ty_start = None;
             i = end + 1;
@@ -658,6 +688,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
                 } else {
                     None
                 },
+                is_rest: member_rest.iter().any(|a| info.resolve_class(a) == ATTR_PROP),
                 is_promoted: false,
                 has_default,
                 span: t.span,
@@ -676,6 +707,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
                 i += 1;
             }
             member_attrs.clear();
+            member_rest.clear();
             mods.clear();
             ty_start = None;
             i += 1;
@@ -813,5 +845,28 @@ final class Form {
         assert_eq!(props, ["form", "n", "f"]);
         assert_eq!(c.methods.len(), 1);
         assert_eq!(f.markup_scopes, vec![MarkupScope::Method(0, 0)]);
+    }
+
+    #[test]
+    fn rest_props() {
+        let f = scan_src(
+            r#"<?phpm
+use Mamu\Attribute\{Component, Prop, State};
+#[Component]
+final class Link {
+    #[Prop] public string $label = '';
+    #[Prop(rest: false)] public string $title = '';
+    #[State, Prop(rest: true)] public array $attrs = [];
+    #[Prop(true)] public array $more = [];
+    #[State(rest: true)] public array $other = [];
+    public function render() { return <a />; }
+}
+"#,
+        );
+        let rest: Vec<_> = f.classes[0].props.iter().map(|p| (p.name.as_str(), p.is_rest)).collect();
+        assert_eq!(rest, [("label", false), ("title", false), ("attrs", true), ("more", true), ("other", false)]);
+        let def = &crate::components(&f)[0];
+        assert_eq!(def.props, ["label", "title"], "a rest prop is not a named prop");
+        assert!(def.rest);
     }
 }

@@ -50,7 +50,7 @@ function documentSymbols(parsed, text) {
         for (const p of cls.properties) {
             let detail = p.type;
             if (comp && isProp(p)) {
-                detail = (p.name === 'children' ? 'children' : isHtmlType(p.type) ? 'slot' : 'prop') + (p.type ? ': ' + p.type : '');
+                detail = p.rest ? 'rest props' : (p.name === 'children' ? 'children' : isHtmlType(p.type) ? 'slot' : 'prop') + (p.type ? ': ' + p.type : '');
             } else if (comp && hasAttr(p.attrs, 'State') && !p.static) {
                 detail = 'state' + (p.type ? ': ' + p.type : '');
             }

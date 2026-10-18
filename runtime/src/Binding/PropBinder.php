@@ -105,26 +105,25 @@ final class PropBinder
     public function changesReadonly(object $component, array $props, array $slots = []): bool
     {
         $all = $props + $slots;
-        foreach ($this->metadata->props($component::class) as $name => $p) {
+        $properties = $this->metadata->props($component::class);
+        foreach ($properties as $name => $p) {
             if (!$p->isReadOnly() || !$p->isInitialized($component) || !\array_key_exists($name, $all)) {
                 continue;
             }
-            $old = $p->getValue($component);
-            $new = self::value($p, $all[$name]);
-            if ($old instanceof LazyHtml || $new instanceof LazyHtml) {
-                return true;
-            }
-            if ($old instanceof Html && $new instanceof Html ? (string) $old !== (string) $new : $old !== $new) {
+            if (self::differs($p->getValue($component), self::value($p, $all[$name]))) {
                 return true;
             }
         }
+        $rest = $this->metadata->restProp($component::class);
 
-        return false;
+        return null !== $rest && $rest->isReadOnly() && $rest->isInitialized($component)
+            && self::differs($rest->getValue($component), array_diff_key($all, $properties));
     }
 
     /**
-     * Writes the props (and slots) into a class component. A missing prop gets its default.
-     * A readonly prop that is set keeps its value (see changesReadonly()).
+     * Writes the props (and slots) into a class component. A missing prop gets its default,
+     * and the rest prop gets the props that no other prop takes. A readonly prop that is set
+     * keeps its value (see changesReadonly()).
      *
      * @param array<string, mixed> $props
      * @param array<string, Html>  $slots
@@ -134,8 +133,9 @@ final class PropBinder
         $class = $component::class;
         $all = $props + $slots;
         $properties = $this->metadata->props($class);
+        $rest = $this->metadata->restProp($class);
         foreach ($all as $name => $_) {
-            if (!isset($properties[$name])) {
+            if (!isset($properties[$name]) && null === $rest) {
                 throw new PropError(\sprintf('<%s> has no prop "%s". Its props are: %s.', ComponentName::short($class), $name, implode(', ', array_keys($properties)) ?: 'none'));
             }
         }
@@ -153,6 +153,28 @@ final class PropBinder
                 throw new PropError(\sprintf('<%s> needs the prop "%s".', ComponentName::short($class), $name));
             }
         }
+        if (null !== $rest && !($rest->isReadOnly() && $rest->isInitialized($component))) {
+            $rest->setValue($component, array_diff_key($all, $properties));
+        }
+    }
+
+    /**
+     * Whether a readonly prop gets another value. Markup that renders on first use counts as
+     * another value, and a hash (the rest prop) differs when one of its values differs.
+     */
+    private static function differs(mixed $old, mixed $new): bool
+    {
+        if ($old instanceof LazyHtml || $new instanceof LazyHtml) {
+            return true;
+        }
+        if ($old instanceof Html && $new instanceof Html) {
+            return (string) $old !== (string) $new;
+        }
+        if (\is_array($old) && \is_array($new) && array_keys($old) === array_keys($new)) {
+            return array_any($old, static fn (mixed $v, int|string $k): bool => self::differs($v, $new[$k]));
+        }
+
+        return $old !== $new;
     }
 
     /** The value of a prop for a property: a list of markup is an array for an `array` property. */
