@@ -1,14 +1,13 @@
 <?phpm
 namespace App\Pages\Examples;
 
-use App\Pages\Document;
 use Mamu\Attribute\Page;
 
-#[Page('/examples/ShoppingList')]
-final class ShoppingList extends Document
-{
-    protected string $title = 'ShoppingList';
+use function App\Components\Document;
 
+#[Page('/examples/ShoppingList')]
+final class ShoppingList
+{
     public function render()
     {
         $products = [
@@ -18,16 +17,19 @@ final class ShoppingList extends Document
         ];
 
         return (
-            <ul>
-                {% for product in products %}
-                    <li
-                        key={{ product.id }}
-                        style={{ {color: product.isFruit ? 'magenta' : 'darkgreen'} }}
-                    >
-                        {{ product.title }}
-                    </li>
-                {% endfor %}
-            </ul>
+            <Document>
+                <Document:title>ShoppingList</Document:title>
+                <ul>
+                    {% for product in products %}
+                        <li
+                            key={{ product.id }}
+                            style={{ {color: product.isFruit ? 'magenta' : 'darkgreen'} }}
+                        >
+                            {{ product.title }}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </Document>
         );
     }
 }

@@ -43,6 +43,11 @@ final class Fiber
     private array $childIndexes = [];
 
     public int $pass = 0;
+    /**
+     * The fiber renders the `<Root>` of the page in this pass (the page, the document): it is
+     * around the root element, so it has no `<mamu-c>` and the events do not update it.
+     */
+    public bool $holdsRoot = false;
     /** The inner HTML of the last render. */
     public string $html = '';
     /**
@@ -71,6 +76,7 @@ final class Fiber
     public function begin(int $pass): void
     {
         $this->pass = $pass;
+        $this->holdsRoot = false;
         $this->children = [];
         $this->childIndexes = [];
     }
@@ -85,5 +91,11 @@ final class Fiber
     public function wrapped(): string
     {
         return '<mamu-c id="'.$this->id.'">'.$this->html.'</mamu-c>';
+    }
+
+    /** The HTML in the parent: wrapped(), or the HTML alone around the root of the page. */
+    public function output(): string
+    {
+        return $this->holdsRoot ? $this->html : $this->wrapped();
     }
 }

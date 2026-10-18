@@ -43,7 +43,7 @@ test('a component tag adds a use function import', async () => {
 
 test('a page of another file is not a component tag', async () => {
     assert.equal((await run(PAGE + 'function Home()\n{\n    return <Ab|\n}\n')).find('About'), undefined);
-    const about = PAGE + "use Mamu\\Attribute\\Page;\n\n#[Page('/about')]\nfinal class About extends Document\n{\n    public function render()\n    {\n        return <p><Ab|</p>;\n    }\n}\n";
+    const about = PAGE + "use Mamu\\Attribute\\Page;\n\n#[Page('/about')]\nfinal class About\n{\n    public function render()\n    {\n        return <p><Ab|</p>;\n    }\n}\n";
     assert.equal((await run(about, 'src/pages/about.phpm')).find('About').detail, 'App\\Pages\\About (page)');
 });
 
@@ -52,6 +52,15 @@ test('a class component adds a use import', async () => {
     const item = find('Counter');
     assert.equal(item.snippet, 'Counter max={{ ${1} }} />$0');
     assert.match(apply(text, item), /namespace App\\Pages;\n\nuse App\\Components\\Counter;\n\nuse function App\\Components\\Layout;\n/);
+});
+
+test('the built-in Root tag adds a use import', async () => {
+    const { text, find } = (await run(PAGE + 'function Document()\n{\n    return <body><Ro|</body>;\n}\n'));
+    const item = find('Root');
+    assert.equal(item.detail, 'Mamu\\Root');
+    assert.equal(item.snippet, 'Root>$0</Root>');
+    assert.match(item.documentation, /root element of the page/);
+    assert.match(apply(text, item), /namespace App\\Pages;\n\nuse Mamu\\Root;\n/);
 });
 
 test('an import goes into a group on one line', async () => {

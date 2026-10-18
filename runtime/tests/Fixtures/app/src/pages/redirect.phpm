@@ -2,13 +2,14 @@
 
 namespace App\Pages;
 
-use App\Components\Document;
 use Mamu\Attribute\{Page, State};
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
+use function App\Components\Document;
+
 // A handler that returns a RedirectResponse: the browser goes to its URL.
 #[Page('/leave')]
-final class LeavePage extends Document
+final class LeavePage
 {
     #[State] public int $count = 0;
 
@@ -21,6 +22,10 @@ final class LeavePage extends Document
 
     public function render()
     {
-        return <button id="leave" onClick={{ leave }}>Leave {{ count }}</button>;
+        return (
+            <Document>
+                <button id="leave" onClick={{ leave }}>Leave {{ count }}</button>
+            </Document>
+        );
     }
 }

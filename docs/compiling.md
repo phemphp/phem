@@ -28,8 +28,8 @@ my-app/
 │   ├── Repository/        normal PHP services, injected into components
 │   ├── DataFixtures/      optional: Doctrine fixtures, the first rows of a new database
 │   ├── Components/        components that are not pages
+│   │   └── Document.phpm   the HTML document: each page renders in it, with a <Root>
 │   └── Pages/             the pages: classes with a #[Page] attribute
-│       ├── Document.phpm   the HTML document: each page extends it (Mamu\Document)
 │       ├── index.phpm      #[Page('/')]
 │       └── Examples/
 │           └── Counter.phpm #[Page('/examples/Counter')]
@@ -42,92 +42,88 @@ my-app/
 └── var/cache/             build output (do not commit)
 ```
 
-The directories are only a convention: a page is a class with the `#[Page]` attribute that
-extends the document, in any file.
+The directories are only a convention: a page is a class with the `#[Page]` attribute and a
+`render()` method, in any file.
 
 ### The document of the pages
 
-The application owns the HTML document: a class in the .phpm sources that implements
-`Mamu\Document`. Its `document()` method gets the rendered page (`Mamu\Http\PageView`), and it
-returns the `<html>` element. Mamu adds the `<!DOCTYPE html>`.
+The application owns the HTML document: a component in the .phpm sources, as the others. It
+returns the `<html>` element, and it prints the content of the page in a `<Root>`. Mamu adds
+the `<!DOCTYPE html>`.
 
 ```php
 <?phpm
 
-namespace App\Pages;
+namespace App\Components;
 
-use Mamu\Http\PageView;
+use Mamu\{Html, Root};
 
-class Document implements \Mamu\Document
+function Document(?Html $title = null, ?Html $children = null)
 {
-    protected string $title = 'My app';
+    return (
+        <html lang="en">
+            <head>
+                <title>{{ title ?? 'My app' }}</title>
+                {{ importmap('app') }}
+            </head>
+            <body><Root>{{ children }}</Root></body>
+        </html>
+    );
+}
+```
 
-    public function title(): string
+Each page renders its content in it. A page gives the title with the `title` slot:
+
+```php
+use function App\Components\Document;
+
+#[Page('/scientists/{id:scientist}')]
+final class ScientistPage
+{
+    #[Path] public Scientist $scientist;
+
+    public function render()
     {
-        return $this->title;
-    }
-
-    public function document(PageView $page)
-    {
-        $title = $this->title();
-
         return (
-            <html lang="en">
-                <head>
-                    <title>{{ title }}</title>
-                    {{ importmap('app') }}
-                </head>
-                <body>{{ mamu_root(page) }}</body>
-            </html>
+            <Document>
+                <Document:title>{{ scientist.name }}</Document:title>
+                <h1>{{ scientist.name }}</h1>
+            </Document>
         );
     }
 }
 ```
 
-Each page extends it. A page changes the title with the `$title` property, or with a `title()`
-method for a dynamic title:
+The document can have more slots, for example a `?Html $head` slot for the `<meta>` tags of a
+page. For another layout (an admin area, for example), write another document component, and
+use it in the pages of that area.
 
-```php
-#[Page('/scientists/{id:scientist}')]
-final class ScientistPage extends Document
-{
-    #[Path] public Scientist $scientist;
-
-    public function title(): string
-    {
-        return $this->scientist->name;
-    }
-
-    public function render() { ... }
-}
-```
-
-For another layout (an admin area, for example), write a subclass of the document that
-changes `document()`, and make the pages of that area extend it. A page that does not
-implement `Mamu\Document` is an error when Symfony loads the routes.
-
-The document renders once, after the page, with the state of the page. The events do not
-render it again. A `<title>` in the markup of a page is not the title of the page: mamuc
-reports it (W005). A `<title>` in `<head>` or in an `<svg>` is correct.
-
-The document prints the page with these functions:
+`<Root>` (`Mamu\Root`) is a built-in component: import it with `use Mamu\Root;`. It is the
+root element of the page:
 
 | In the document | Gives |
 |---|---|
-| `{{ mamu_root(page) }}` | the root element: `<div id="mamu-root" data-controller="mamu" …>` with the page |
-| `{{ mamu_root(page, {class: 'app'}, 'main') }}` | the same, with more attributes and another tag |
+| `<Root>{{ children }}</Root>` | `<div id="mamu-root" data-controller="mamu" …>` with the page |
+| `<Root tag="main" className="app">{{ children }}</Root>` | the same, with more attributes and another tag |
 
 The root element has the attributes of the `mamu` Stimulus controller: they give the component
-state to the controller. Your `data-controller` and `data-action` values come after the values
-of Mamu. You cannot change the state attributes.
+state to the controller. `tag` is the tag name (`div` by default). The other props are
+attributes, as on an element (`className`, a class list, `style`, `data-*`). The `id` is
+`mamu-root` (`id={{ null }}` removes it). Your `data-controller` and `data-action` values come
+after the values of Mamu. You cannot change the state attributes, and the root element cannot
+have an event handler.
 
-A controller of the application can render a page in a Twig template too, with the
-`Mamu\Http\PageRenderer` service:
-`$this->render('page.html.twig', ['page' => $pages->render(Counter::class, $request)])`. In
-Twig, `<body {{ mamu_root_attributes(page) }}>{{ page.body }}</body>` gives only the
-attributes, for your own root element. The browser sends the events of a page to the URL of
-the page, and only a page route runs them. Thus, render a page with event handlers on its page
-route.
+A page renders one `<Root>`. A page with no `<Root>` or with two is an error, and a `<Root>` in
+a Twig template outside a page is an error too.
+
+The events render the whole page again, but they update only the content of the `<Root>` in
+the browser. The document around it (the title, a footer) does not change. A component after
+the root element renders, but the `mamu` controller does not get its DOM events. A `<title>`
+in the markup of a page is not the title of the page: mamuc reports it (W005). A `<title>` in
+`<head>` or in an `<svg>` is correct.
+
+The browser sends the events of a page to the URL of the page, and only a page route runs
+them.
 
 ### The client assets
 

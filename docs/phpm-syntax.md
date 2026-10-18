@@ -30,26 +30,27 @@ a `use function` import, then a `use` (class) import, then the current namespace
 A page is a class with the `#[Page]` attribute. React uses `export default` for the page
 component of a file. In Mamu, `#[Page]` exposes a class at a URL, as `#[Route]` does for a
 Symfony controller. The file stays valid PHP. A page class is a component: it needs no
-`#[Component]`. It extends the document of the application, which renders the `<html>`
-element of the page (see [compiling.md](compiling.md#the-document-of-the-pages)). A function
-cannot be a page.
+`#[Component]`. It renders its content in the document of the application, a component that
+renders the `<html>` element and the `<Root>` of the page (see
+[compiling.md](compiling.md#the-document-of-the-pages)). The page gives the title with the
+`title` slot of the document. A function cannot be a page.
 
 ```php
-use App\Pages\Document;
 use Mamu\Attribute\Page;
 
-#[Page('/', name: 'home')]
-final class MyApp extends Document
-{
-    protected string $title = 'Home';
+use function App\Components\Document;
 
+#[Page('/', name: 'home')]
+final class MyApp
+{
     public function render()
     {
         return (
-            <div>
+            <Document>
+                <Document:title>Home</Document:title>
                 <h1>Welcome to my app</h1>
                 <MyButton />
-            </div>
+            </Document>
         );
     }
 }
@@ -67,28 +68,29 @@ A route value goes to the page as a prop. Mark the public property with `#[Path]
 the property is the name of the route value.
 
 ```php
-use App\Pages\Document;
 use Mamu\Attribute\{Page, Path};
 
+use function App\Components\Document;
+
 #[Page('/hello/{name}', defaults: ['name' => 'World'])]
-final class Hello extends Document
+final class Hello
 {
     #[Path] public string $name;
 
     public function render()
     {
-        return <p>Hello {{ name }}</p>;
+        return <Document><p>Hello {{ name }}</p></Document>;
     }
 }
 
 #[Page('/items/{id}', requirements: ['id' => '\d+'])]
-final class ItemPage extends Document
+final class ItemPage
 {
     #[Path] public int $id;
 
     public function render()
     {
-        return <h1>Item {{ id }}</h1>;
+        return <Document><h1>Item {{ id }}</h1></Document>;
     }
 }
 ```
@@ -112,22 +114,23 @@ entity arguments of a Symfony controller. Install `doctrine/orm` and `doctrine/d
 
 ```php
 use App\Model\Scientist;
-use App\Pages\Document;
 use Mamu\Attribute\{Page, Path};
 
+use function App\Components\Document;
+
 #[Page('/scientists/{id:scientist}', requirements: ['id' => '\d+'])]
-final class ScientistPage extends Document
+final class ScientistPage
 {
     #[Path] public Scientist $scientist;
 
-    public function title(): string
-    {
-        return $this->scientist->name;
-    }
-
     public function render()
     {
-        return <h1>{{ scientist.name }}</h1>;
+        return (
+            <Document>
+                <Document:title>{{ scientist.name }}</Document:title>
+                <h1>{{ scientist.name }}</h1>
+            </Document>
+        );
     }
 }
 ```
@@ -488,7 +491,7 @@ function MyButton(int $count, Closure $onClick) {
 }
 
 #[Page('/counters')]
-final class MyApp extends Document
+final class MyApp
 {
     #[State] public int $count = 0;
 
@@ -500,11 +503,11 @@ final class MyApp extends Document
     public function render()
     {
         return (
-            <div>
+            <Document>
                 <h1>Counters that update together</h1>
                 <MyButton count={{ count }} onClick={{ handleClick }} />
                 <MyButton count={{ count }} onClick={{ handleClick }} />
-            </div>
+            </Document>
         );
     }
 }
@@ -515,6 +518,8 @@ final class MyApp extends Document
 - Named slots: `<Card:footer>...</Card:footer>` goes to the `?Html $footer` parameter.
 - A default for children or a slot: `{{ footer ?? 'No footer' }}` shows when the caller gives none.
 - An unknown prop is an error, unless the function has a variadic `...$rest` parameter.
+- `<Root>` (`use Mamu\Root;`) is a built-in component: the root element of a page, in the
+  document. It takes `tag` and any attribute (see [compiling.md](compiling.md#the-document-of-the-pages)).
 
 ### Rest props
 

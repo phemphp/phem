@@ -9,7 +9,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { parse, hasAttr } = require('./php');
+const { parse, hasAttr, BUILTIN_COMPONENTS } = require('./php');
 const { ClassIndex } = require('./classes');
 
 const SKIP_DIRS = new Set(['vendor', 'node_modules', 'var', '.git', 'target', 'cache']);
@@ -226,8 +226,8 @@ class Project {
         this.phpm.delete(file);
     }
 
-    // All the components of the project. `current` replaces the parsed
-    // version of one file (the open document, which can be unsaved).
+    // All the components of the project, and the built-in components. `current`
+    // replaces the parsed version of one file (the open document, which can be unsaved).
     components(currentFile, current) {
         const list = [];
         for (const [file, parsed] of this.phpm) {
@@ -238,6 +238,7 @@ class Project {
         if (current) {
             list.push(...current.components.map((c) => ({ ...c, file: currentFile })));
         }
+        list.push(...BUILTIN_COMPONENTS);
         return list;
     }
 

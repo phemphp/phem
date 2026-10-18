@@ -20,6 +20,7 @@ use Mamu\Handler\HandlerInvoker;
 use Mamu\Html;
 use Mamu\Manifest\ComponentDefinition;
 use Mamu\Manifest\Manifest;
+use Mamu\Root;
 use Mamu\Slot;
 use Symfony\Contracts\Service\ResetInterface;
 use Twig\Template;
@@ -129,7 +130,14 @@ final class Renderer implements ResetInterface
     private function renderComponent(Tree $tree, string $fqcn, array $props, mixed $key, ?Template $slots, array $caller): string
     {
         $def = $this->manifest->component($fqcn) ?? throw new PropError(\sprintf('Unknown component "%s".', $fqcn));
-        $renderer = $this->renderer($def);
+        $root = Root::class === $def->fqcn;
+        if ($root && '' === $tree->page) {
+            throw new \LogicException('A <Root> is the root element of a page: render it in the document of a page, not in a Twig template.');
+        }
+        if ($root && null !== $tree->rootFiber) {
+            throw new \LogicException(\sprintf('The page "%s" renders more than one <Root>: render one, in the document of the page.', $tree->page));
+        }
+        $renderer = $root ? null : $this->renderer($def);
         $parent = $tree->top();
         $index = null !== $key ? '@'.$key : '#'.(null !== $parent ? $parent->nextIndex($fqcn) : $tree->nextRootIndex());
         $path = ($parent->path ?? '').'/'.$fqcn.$index;
@@ -141,9 +149,17 @@ final class Renderer implements ResetInterface
         $fiber->caller = $caller;
 
         $fiber->begin($tree->pass);
+        if ($root) {
+            // The page and the document around the root element are not in a <mamu-c>.
+            $tree->rootFiber = $fiber;
+            for ($p = $parent; null !== $p; $p = $p->parent) {
+                $p->holdsRoot = true;
+            }
+        }
         $tree->push($fiber);
         try {
-            $out = $renderer->render($fiber, $this->slots($fiber));
+            $slots = $this->slots($fiber);
+            $out = null !== $renderer ? $renderer->render($fiber, $slots) : ($slots['children'] ?? null);
             $html = $this->markup->html($out);
         } finally {
             $tree->pop();
@@ -152,14 +168,14 @@ final class Renderer implements ResetInterface
         $fiber->html = $html;
         $own = $html;
         foreach ($fiber->children as $child) {
-            $own = str_replace($child->wrapped(), '<mamu-c id="'.$child->id.'"></mamu-c>', $own);
+            $own = str_replace($child->output(), '<mamu-c id="'.$child->id.'"></mamu-c>', $own);
         }
         $fiber->ownHtml[$tree->pass] = $own;
         if (null !== $parent) {
             $parent->children[] = $fiber;
         }
 
-        return $fiber->wrapped();
+        return $root ? RootElement::render($props, $tree->rootToken(), $fiber->wrapped()) : $fiber->output();
     }
 
     private function renderer(ComponentDefinition $definition): ComponentRenderer

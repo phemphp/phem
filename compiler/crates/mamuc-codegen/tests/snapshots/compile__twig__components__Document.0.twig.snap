@@ -3,9 +3,9 @@ source: crates/mamuc-codegen/tests/compile.rs
 expression: t.content
 ---
 <html lang="en">
-                <head>
-                    <meta charset="utf-8">
-                    <title>{{ title }}</title>
-                </head>
-                <body class="fixture">{{ mamu_root(page) }}</body>
-            </html>
+            <head>
+                <meta charset="utf-8">
+                <title>{% block title %}{{ title ?? 'Fixture' }}{% endblock %}</title>
+            </head>
+            <body class="fixture">{% component embed 'Mamu\\Root' only %}{% block children %}{% with _mamu_caller only %}{{ children }}{% endwith %}{% endblock %}{% endcomponent %}</body>
+        </html>

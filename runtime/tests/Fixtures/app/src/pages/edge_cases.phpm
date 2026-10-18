@@ -2,10 +2,11 @@
 
 namespace App\Pages;
 
-use App\Components\Document;
 use Mamu\Attribute\{Component, Page, State};
 use Mamu\Html;
 use Mamu\Tests\Fixtures\Framed;
+
+use function App\Components\Document;
 
 function Tally(array $items) {
     $n = count($items);
@@ -70,16 +71,20 @@ final class Boxed extends Framed
 }
 
 #[Page('/edge/readonly-slot')]
-final class ReadonlySlotPage extends Document
+final class ReadonlySlotPage
 {
     public function render()
     {
-        return <main><Shelf><Chip label="slot" /></Shelf></main>;
+        return (
+            <Document>
+                <main><Shelf><Chip label="slot" /></Shelf></main>
+            </Document>
+        );
     }
 }
 
 #[Page('/edge/mount')]
-final class MountPage extends Document
+final class MountPage
 {
     #[State] public int $n = 0;
 
@@ -90,35 +95,51 @@ final class MountPage extends Document
 
     public function render()
     {
-        return <main><button onClick={{ bump }}>Bump</button><Gauge n={{ n }} /></main>;
+        return (
+            <Document>
+                <main><button onClick={{ bump }}>Bump</button><Gauge n={{ n }} /></main>
+            </Document>
+        );
     }
 }
 
 #[Page('/edge/open-slots')]
-final class OpenSlotsPage extends Document
+final class OpenSlotsPage
 {
     public function render()
     {
-        return <main><Boxed><b>kid</b><Boxed:footer>f</Boxed:footer></Boxed></main>;
+        return (
+            <Document>
+                <main><Boxed><b>kid</b><Boxed:footer>f</Boxed:footer></Boxed></main>
+            </Document>
+        );
     }
 }
 
 #[Page('/edge/if-slot')]
-final class IfSlotPage extends Document
+final class IfSlotPage
 {
     public function render()
     {
-        return <main><Panel>x<Panel:footer><Chip label="foot" /></Panel:footer></Panel></main>;
+        return (
+            <Document>
+                <main><Panel>x<Panel:footer><Chip label="foot" /></Panel:footer></Panel></main>
+            </Document>
+        );
     }
 }
 
 #[Page('/edge/list-prop')]
-final class ListPropPage extends Document
+final class ListPropPage
 {
     public function render()
     {
         $items = [null, <i>b</i>];
 
-        return <main><Tally items={{ items }} /></main>;
+        return (
+            <Document>
+                <main><Tally items={{ items }} /></main>
+            </Document>
+        );
     }
 }

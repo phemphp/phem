@@ -12,7 +12,7 @@
 
 const path = require('path');
 const { scan } = require('./scanner');
-const { parse, shortName, paramText } = require('./php');
+const { parse, shortName, paramText, BUILTIN_COMPONENTS } = require('./php');
 const { importFor, resolveComponent } = require('./imports');
 const { scopeAt, codeOf, chainStart } = require('./scope');
 const { twigEnv } = require('./twig');
@@ -52,6 +52,9 @@ function memberDoc(m, root) {
 
 function componentDoc(comp, root) {
     const lines = ['```php', comp.signature, '```'];
+    if (comp.doc) {
+        lines.push('', comp.doc);
+    }
     if (comp.file) {
         lines.push('', 'Defined in `' + (root ? path.relative(root, comp.file) : comp.file) + '`');
     }
@@ -82,7 +85,7 @@ class Completer {
     }
 
     components() {
-        return this.project ? this.project.components(this.file, this.parsed) : this.parsed.components.map((c) => ({ ...c, file: this.file }));
+        return this.project ? this.project.components(this.file, this.parsed) : [...this.parsed.components.map((c) => ({ ...c, file: this.file })), ...BUILTIN_COMPONENTS];
     }
 
     symbols(kind) {

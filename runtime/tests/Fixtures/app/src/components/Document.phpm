@@ -2,31 +2,18 @@
 
 namespace App\Components;
 
-use Mamu\Http\PageView;
+use Mamu\{Html, Root};
 
-// The default document of the fixture pages (the mamu.document option). A class page that
-// extends it is its own document.
-class Document implements \Mamu\Document
+// The document of the fixture pages: a page composes it and gives the title with a slot.
+function Document(?Html $title = null, ?Html $children = null)
 {
-    protected string $title = 'Fixture';
-
-    public function title(): string
-    {
-        return $this->title;
-    }
-
-    public function document(PageView $page)
-    {
-        $title = $this->title();
-
-        return (
-            <html lang="en">
-                <head>
-                    <meta charset="utf-8" />
-                    <title>{{ title }}</title>
-                </head>
-                <body className="fixture">{{ mamu_root(page) }}</body>
-            </html>
-        );
-    }
+    return (
+        <html lang="en">
+            <head>
+                <meta charset="utf-8" />
+                <title>{{ title ?? 'Fixture' }}</title>
+            </head>
+            <body className="fixture"><Root>{{ children }}</Root></body>
+        </html>
+    );
 }

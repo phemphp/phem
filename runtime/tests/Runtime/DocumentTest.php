@@ -14,8 +14,11 @@ declare(strict_types=1);
 namespace Mamu\Tests\Runtime;
 
 use Mamu\Http\PageRenderer;
+use Mamu\Rendering\Renderer;
+use Mamu\Root;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
+use Twig\Error\RuntimeError;
 
 final class DocumentTest extends TestCase
 {
@@ -35,7 +38,7 @@ final class DocumentTest extends TestCase
     {
         $html = (string) $this->request('GET', '/document/escaped')->getContent();
 
-        self::assertStringContainsString('<title>Tom &amp; Jerry &lt;script&gt; 0</title>', $html, 'the title() of the parent, and the state of the page');
+        self::assertStringContainsString('<title>Tom &amp; Jerry &lt;script&gt; 0</title>', $html, 'the title slot, with the state of the page');
         self::assertStringNotContainsString('<script>', $html);
     }
 
@@ -53,10 +56,17 @@ final class DocumentTest extends TestCase
         self::assertStringContainsString('<button id="increment" data-mamu-on-click="'.$h[1].'">1</button>', $data['streams']);
         self::assertStringNotContainsString('<title', $data['streams']);
         self::assertStringNotContainsString('<html', $data['streams']);
+        self::assertStringNotContainsString('mamu-root', $data['streams'], 'the content of the root element, without the root element');
+        self::assertSame(1, substr_count($data['streams'], '<turbo-stream'));
         self::assertStringContainsString('<title>Tom &amp; Jerry &lt;script&gt; 0</title>', (string) $this->request('GET', '/document/escaped')->getContent(), 'the server keeps no state');
     }
 
-    public function testComponentsOfTheDocumentAreNotInThePage(): void
+    public function testTheDocumentHasADefaultTitle(): void
+    {
+        self::assertStringContainsString('<title>Fixture</title>', (string) $this->request('GET', '/about')->getContent());
+    }
+
+    public function testComponentsOfTheDocumentRenderOutsideTheRoot(): void
     {
         $html = (string) $this->request('GET', '/document')->getContent();
 
@@ -65,16 +75,36 @@ final class DocumentTest extends TestCase
         self::assertStringContainsString('<button id="toggle" data-mamu-on-click="', $footer[1], 'a class component renders');
         self::assertGreaterThan(strpos($html, '</main>'), strpos($html, '<footer id="doc-footer">'), 'outside the root element: the mamu controller does not get its events');
         self::assertSame(1, preg_match('/data-mamu-state-value="([^"]*)"/', $html, $m));
-        self::assertCount(1, json_decode(html_entity_decode($m[1]), true), 'only the page is in the state');
+        self::assertCount(2, json_decode(html_entity_decode($m[1]), true), 'the page and the toggle of the footer');
     }
 
-    public function testOnlyADocumentCanBeAPage(): void
+    public function testAPageRendersARoot(): void
     {
         $pages = $this->service('mamu.page_renderer', PageRenderer::class);
 
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('The page "App\Pages\Toggle" must be a class that implements "Mamu\Document": make it extend the document of the application.');
+        $this->expectExceptionMessage('The page "App\Pages\NoRootPage" renders no <Root>: render it in a document component with `<Root>{{ children }}</Root>` (see "Mamu\Root").');
 
-        $pages->document('App\Pages\Toggle', Request::create('/'));
+        $pages->document('App\Pages\NoRootPage', Request::create('/document/none'));
+    }
+
+    public function testAPageRendersOneRoot(): void
+    {
+        $pages = $this->service('mamu.page_renderer', PageRenderer::class);
+
+        $this->expectException(RuntimeError::class);
+        $this->expectExceptionMessage('The page "App\Pages\TwoRootsPage" renders more than one <Root>: render one, in the document of the page.');
+
+        $pages->document('App\Pages\TwoRootsPage', Request::create('/document/two'));
+    }
+
+    public function testARootIsInAPage(): void
+    {
+        $renderer = $this->service('mamu.renderer', Renderer::class);
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('A <Root> is the root element of a page: render it in the document of a page, not in a Twig template.');
+
+        $renderer->component(Root::class, [], null, null, []);
     }
 }

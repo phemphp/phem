@@ -99,14 +99,6 @@ final class PathTest extends TestCase
         $this->load('FunctionPage');
     }
 
-    public function testAPageExtendsADocument(): void
-    {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('The page "Mamu\\Tests\\Fixtures\\PathPages\\NoDocument" must implement "Mamu\\Document": make it extend the document of the application.');
-
-        $this->load('NoDocument');
-    }
-
     public function testPageAttributeIsARoute(): void
     {
         $routes = $this->load('Paged');

@@ -16,12 +16,22 @@ namespace Mamu\Attribute;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Marks a class component as a page: a Symfony route to the component. The page extends the
- * document of the application (see Mamu\Document).
+ * Marks a class component as a page: a Symfony route to the component. The page renders the
+ * document of the application, a component with a `<Root>` (see Mamu\Root).
  *
  *     #[Page('/scientists/{id}', name: 'scientist')]
- *     #[Component]
- *     final class ScientistPage extends Document { ... }
+ *     final class ScientistPage
+ *     {
+ *         public function render()
+ *         {
+ *             return (
+ *                 <Document>
+ *                     <Document:title>{{ scientist.name }}</Document:title>
+ *                     ...
+ *                 </Document>
+ *             );
+ *         }
+ *     }
  *
  * It has the options of `#[Route]`: path (or localized paths), name, requirements, defaults,
  * methods, host, schemes, condition, priority, env and aliases.

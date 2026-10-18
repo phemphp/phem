@@ -53,6 +53,22 @@ expression: out.manifest.to_json()
       "required": [],
       "rest": false
     },
+    "App\\Components\\Document": {
+      "fqcn": "App\\Components\\Document",
+      "kind": "template",
+      "file": "components/Document.phpm",
+      "template": "components/Document.0.twig",
+      "props": [
+        "title",
+        "children"
+      ],
+      "slots": [
+        "title",
+        "children"
+      ],
+      "required": [],
+      "rest": false
+    },
     "App\\Components\\MyButton": {
       "fqcn": "App\\Components\\MyButton",
       "kind": "template",
@@ -186,7 +202,7 @@ expression: out.manifest.to_json()
     },
     "components/Document.0.twig": {
       "source": "components/Document.phpm",
-      "line": 23
+      "line": 12
     },
     "components/Rest.0.twig": {
       "source": "components/Rest.phpm",
@@ -198,7 +214,7 @@ expression: out.manifest.to_json()
     },
     "pages/about.0.twig": {
       "source": "pages/about.phpm",
-      "line": 14
+      "line": 15
     },
     "pages/index.0.twig": {
       "source": "pages/index.phpm",
@@ -222,11 +238,11 @@ expression: out.manifest.to_json()
     },
     "pages/index.5.twig": {
       "source": "pages/index.phpm",
-      "line": 76
+      "line": 74
     },
     "pages/index.6.twig": {
       "source": "pages/index.phpm",
-      "line": 79
+      "line": 77
     }
   },
   "files": [

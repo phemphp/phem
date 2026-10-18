@@ -134,7 +134,6 @@ return static function (ContainerConfigurator $container): void {
             ->args([
                 service('mamu.renderer'),
                 service('mamu.state_codec'),
-                service('mamu.markup_resolver'),
                 service('mamu.metadata'),
                 service('mamu.path_resolver'),
                 service('mamu.state_accessor'),

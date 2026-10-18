@@ -52,7 +52,7 @@ namespace App\\Pages;
 use Mamu\\Attribute\\Page;
 
 #[Page('/about')]
-final class About extends Document
+final class About
 {
     public function render()
     {
@@ -221,7 +221,7 @@ use Mamu\\Attribute\\Page;
 
 #[Page('/gallery', name: 'gallery')]
 #[Page('/scientists/{id}')]
-final class Gallery extends Document
+final class Gallery
 {
     public function render()
     {

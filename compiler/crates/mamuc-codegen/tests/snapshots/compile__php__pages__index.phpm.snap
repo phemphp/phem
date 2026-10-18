@@ -6,9 +6,9 @@ expression: f.php
 
 namespace App\Pages;
 
-use App\Components\{Counter, Document};
+use App\Components\Counter;
 use Mamu\Attribute\{Component, Page, State};
-use function App\Components\{MyButton, Card, Badge, Tag};
+use function App\Components\{MyButton, Card, Badge, Tag, Document};
 
 function Toolbar(string $theme = 'light') {
     return new \Mamu\Element('pages/index.0.twig', ['theme' => $theme ?? null]);
@@ -49,10 +49,8 @@ final class Toggle
 }
 
 #[Page('/', name: 'home', methods: ['GET', 'HEAD'])]
-final class Home extends Document
+final class Home
 {
-    protected string $title = 'Fixture Home';
-
     #[State] public int $count = 0;
     #[State] public array $items = [];
 
@@ -81,6 +79,9 @@ final class Home extends Document
 
         return (
             new \Mamu\Element('pages/index.6.twig', ['count' => $this->count, 'handleClick' => $this->handleClick(...), 'products' => $products ?? null, 'listItems' => $listItems ?? null, 'add' => $this->add(...), 'items' => $this->items])
+
+
+
 
 
 

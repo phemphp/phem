@@ -13,14 +13,14 @@ use Symfony\\Component\\Routing\\Attribute\\Route;
 
 #[Page('/home', name: 'home')]
 #[Page(path: '/start')]
-final class Home extends Document
+final class Home
 {
     public function render() { return <p />; }
 }
 
 #[Route('/legacy')]
 #[Component]
-final class Legacy extends Document
+final class Legacy
 {
     public function render() { return <p />; }
 }

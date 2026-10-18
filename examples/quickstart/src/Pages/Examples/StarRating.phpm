@@ -1,14 +1,13 @@
 <?phpm
 namespace App\Pages\Examples;
 
-use App\Pages\Document;
 use Mamu\Attribute\{Page, State};
 
-#[Page('/examples/StarRating')]
-final class StarRating extends Document
-{
-    protected string $title = 'StarRating';
+use function App\Components\Document;
 
+#[Page('/examples/StarRating')]
+final class StarRating
+{
     private const int MAX_STARS = 5;
 
     #[State] 
@@ -29,11 +28,14 @@ final class StarRating extends Document
         $display = str_repeat('★', $this->stars) . str_repeat('☆', self::MAX_STARS - $this->stars);
 
         return (
-            <div>
-                <p>Rate this page: <span className="stars">{{ display }}</span></p>
-                <button onClick={{ addStar }}>Add a star</button>
-                <button onClick={{ clear }}>Clear</button>
-            </div>
+            <Document>
+                <Document:title>StarRating</Document:title>
+                <div>
+                    <p>Rate this page: <span className="stars">{{ display }}</span></p>
+                    <button onClick={{ addStar }}>Add a star</button>
+                    <button onClick={{ clear }}>Clear</button>
+                </div>
+            </Document>
         );
     }
 }

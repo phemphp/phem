@@ -24,6 +24,8 @@
 - mamuc diagnostics on save, with the new `mamu.mamuc.path` and `mamu.mamuc.sourceDir` settings. It
   uses `mamuc check --format json`.
 - The `.`, `>`, `|`, `$`, `%`, `'`, and `"` characters start the completion where it applies.
+- Completion and hover for the built-in `<Root>` component (`Mamu\Root`): its `tag` prop and
+  its `children`. Completion adds the `use Mamu\Root;` import.
 
 - The Twig delimiters `{{ }}` and `{% %}` are one bracket pair, and they always have the color of
   the first bracket level. Before, the two braces of a delimiter had different colors, and the

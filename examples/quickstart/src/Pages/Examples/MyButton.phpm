@@ -1,9 +1,10 @@
 <?phpm
 namespace App\Pages\Examples;
 
-use App\Pages\Document;
 use Mamu\Attribute\Page;
 use Mamu\Html;
+
+use function App\Components\Document;
 
 function MyButton()
 {
@@ -22,20 +23,21 @@ function IconButton(string $icon, ?Html $children = null, mixed ...$props)
 }
 
 #[Page('/examples/MyButton')]
-final class MyApp extends Document
+final class MyApp
 {
-    protected string $title = 'MyButton';
-
     public function render()
     {
         return (
-            <div>
-                <h1>Welcome to my app</h1>
-                <MyButton />
-                <IconButton icon="★" title="Add to favorites" aria-label="Add to favorites">
-                    Favorite
-                </IconButton>
-            </div>
+            <Document>
+                <Document:title>MyButton</Document:title>
+                <div>
+                    <h1>Welcome to my app</h1>
+                    <MyButton />
+                    <IconButton icon="★" title="Add to favorites" aria-label="Add to favorites">
+                        Favorite
+                    </IconButton>
+                </div>
+            </Document>
         );
     }
 }

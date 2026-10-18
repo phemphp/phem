@@ -2,17 +2,14 @@
 namespace App\Pages\Examples;
 
 use App\Components\AddScientist;
-use App\Pages\Document;
 use App\Repository\ScientistRepository;
 use Mamu\Attribute\Page;
 
-use function App\Components\{Layout, ScientistCard};
+use function App\Components\{Layout, ScientistCard, Document};
 
 #[Page('/examples/DurableGallery')]
-final class DurableGallery extends Document
+final class DurableGallery
 {
-    protected string $title = 'Amazing scientists';
-
     public function __construct(
         private readonly ScientistRepository $scientists,
     ) {
@@ -23,13 +20,16 @@ final class DurableGallery extends Document
         $scientists = $this->scientists->all();
 
         return (
-            <Layout title="Amazing scientists">
-                {% for scientist in scientists %}
-                    <ScientistCard key={{ scientist.id }} scientist={{ scientist }} />
-                {% endfor %}
-                <AddScientist />
-                <Layout:footer>{{ scientists|length }} profiles in var/data/gallery.sqlite</Layout:footer>
-            </Layout>
+            <Document>
+                <Document:title>Amazing scientists</Document:title>
+                <Layout title="Amazing scientists">
+                    {% for scientist in scientists %}
+                        <ScientistCard key={{ scientist.id }} scientist={{ scientist }} />
+                    {% endfor %}
+                    <AddScientist />
+                    <Layout:footer>{{ scientists|length }} profiles in var/data/gallery.sqlite</Layout:footer>
+                </Layout>
+            </Document>
         );
     }
 }

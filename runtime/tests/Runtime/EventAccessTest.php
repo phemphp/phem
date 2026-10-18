@@ -80,7 +80,8 @@ final class EventAccessTest extends TestCase
     private function click(string $uri, string $page, string $method, array $server = []): Response
     {
         [$state, $signature] = $this->service('mamu.state_codec', StateCodec::class)->encode([], $page);
-        $handler = 'mamu'.substr(hash('xxh128', '/'.$page.'#0'), 0, 12).'.'.new HandlerFingerprint()->of(new $page()->{$method}(...));
+        // The handler is in the <Root> of the document (a template component, with no fiber).
+        $handler = 'mamu'.substr(hash('xxh128', '/'.$page.'#0/Mamu\\Root#0'), 0, 12).'.'.new HandlerFingerprint()->of(new $page()->{$method}(...));
 
         return $this->event($uri, ['state' => $state, 'signature' => $signature, 'handler' => $handler, 'event' => ['type' => 'click']], $server);
     }

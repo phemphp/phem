@@ -23,6 +23,8 @@ namespace Mamu\Rendering;
 final class Tree
 {
     public int $pass = 0;
+    /** The fiber of the `<Root>` of the last pass (see Mamu\Root). */
+    public ?Fiber $rootFiber = null;
 
     /** @var array<string, Fiber> */
     private array $fibers = [];
@@ -33,6 +35,7 @@ final class Tree
     private array $handlers = [];
     /** @var array<string, int> handler id => the number of handlers with this id */
     private array $handlerCounts = [];
+    private ?string $rootToken = null;
 
     /**
      * @param string                              $page   the page component, or '' for a tree without a page
@@ -53,6 +56,7 @@ final class Tree
     {
         ++$this->pass;
         $this->rootIndex = 0;
+        $this->rootFiber = null;
         $this->handlers = [];
         $this->handlerCounts = [];
     }
@@ -108,6 +112,15 @@ final class Tree
         return $this->handlers[$id] ?? null;
     }
 
+    /**
+     * The place of the state attributes in the root element: PageRenderer replaces it after the
+     * render, when the state is known. It is random, so the data of a page cannot contain it.
+     */
+    public function rootToken(): string
+    {
+        return $this->rootToken ??= 'mamu-root-'.bin2hex(random_bytes(16));
+    }
+
     /** The fiber of the page: the first fiber of the last pass at the root of the tree. */
     public function root(): ?Fiber
     {
@@ -128,6 +141,8 @@ final class Tree
 
     /**
      * The fibers to update after a second pass: the changed fibers whose ancestors did not change.
+     * The fibers around the root element (see Fiber::$holdsRoot) are not in the browser: a change
+     * of the page markup inside the root is a change of the root fiber.
      *
      * @return list<Fiber>
      */
@@ -135,7 +150,7 @@ final class Tree
     {
         $changed = [];
         foreach ($this->mounted() as $f) {
-            if (($f->ownHtml[$this->pass] ?? null) !== ($f->ownHtml[$this->pass - 1] ?? null)) {
+            if (!$f->holdsRoot && ($f->ownHtml[$this->pass] ?? null) !== ($f->ownHtml[$this->pass - 1] ?? null)) {
                 $changed[$f->id] = $f;
             }
         }

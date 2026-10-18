@@ -7,16 +7,17 @@ is a PHP file that contains markup literals, the same way a `.jsx` file contains
 <?phpm
 namespace App\Pages\Examples;
 
-use App\Pages\Document;
 use Closure;
 use Mamu\Attribute\{Page, State};
+
+use function App\Components\Document;
 
 function MyButton(int $count, Closure $onClick) {
     return <button onClick={{ onClick }}>Clicked {{ count }} times</button>;
 }
 
 #[Page('/counters')]
-final class MyApp extends Document
+final class MyApp
 {
     #[State] public int $count = 0;
 
@@ -28,11 +29,12 @@ final class MyApp extends Document
     public function render()
     {
         return (
-            <div>
+            <Document>
+                <Document:title>Counters</Document:title>
                 <h1>Counters that update together</h1>
                 <MyButton count={{ count }} onClick={{ handleClick }} />
                 <MyButton count={{ count }} onClick={{ handleClick }} />
-            </div>
+            </Document>
         );
     }
 }
@@ -127,7 +129,8 @@ See [editors/vscode/README.md](editors/vscode/README.md).
    `#[Component]` and `#[Page]` class as an autowired service that is not shared, so each
    component on a page is a new object with its dependencies. Its route loader reads the
    `#[Page]` attributes (a Symfony `#[Route]`) of the pages, as the attribute loader does for
-   controllers. A page renders in its document (`Mamu\Document`).
+   controllers. A page renders its document: a component of the app with a `<Root>`
+   (`Mamu\Root`), the root element of the page.
    The compiled templates use the application Twig environment, so Twig extensions such as
    `path()` work in markup. In debug mode, the container and the routes are built again after
    each `mamuc build`.
@@ -140,14 +143,15 @@ See [editors/vscode/README.md](editors/vscode/README.md).
    as plain Twig, with no PHP call. Other function components and `#[Component]` classes go
    through the `Renderer` service.
 4. **State in the browser.** The server keeps no session. The `mamu` Stimulus controller on the
-   page root keeps the `#[State]` properties of all components in a signed JSON value. The
+   `<Root>` element keeps the `#[State]` properties of all components in a signed JSON value. The
    signature is an HMAC (`kernel.secret`, from `APP_SECRET`) of the state and its page
    component. An event sends the state back.
    The server makes the components again, restores their state, renders, runs the PHP handler
    (in a Doctrine transaction for a `#[Transactional]` class), renders again, and compares the
    two renders. It answers with a Turbo Stream `update`
-   (`method="morph"`) for each component that changed, plus the new state. Events wait in a
-   queue, so each event uses the newest state.
+   (`method="morph"`) for each component that changed, plus the new state. Only the content
+   of the `<Root>` changes: the document around it (for example the title) stays the same.
+   Events wait in a queue, so each event uses the newest state.
 5. **Server.** [FrankenPHP](https://frankenphp.dev) runs `public/index.php` in worker mode
    (see `examples/quickstart/Caddyfile`). Each worker boots the Symfony kernel once and keeps
    it in memory for many requests. Symfony Runtime gives each request to the kernel, which
@@ -157,8 +161,8 @@ See [editors/vscode/README.md](editors/vscode/README.md).
 | React (react.dev/learn) | Mamu |
 |---|---|
 | `function MyButton() { return <button/> }` | the same, in PHP |
-| `export default function MyApp()` | `#[Page('/')] final class MyApp extends Document`: a Symfony route |
-| the root layout (`<html>`, metadata) | the `Document` class of the app: each page extends it, and sets `$title` or `title()` |
+| `export default function MyApp()` | `#[Page('/')] final class MyApp`: a Symfony route |
+| the root layout (`<html>`, metadata) | a `Document` component of the app, with a `<Root>`: each page renders in it, and gives the title with `<Document:title>` |
 | `{user.name}`, `src={user.imageUrl}` | `{{ user.name }}`, `src={{ user.imageUrl }}` |
 | `className`, `style={{ width: 90 }}` | `className`, `style={{ {width: 90} }}` |
 | `cond ? <A/> : <B/>`, `cond && <A/>` | `{{ cond ? <A /> : <B /> }}`, `{{ cond and <A /> }}`, `{% if %}` |
@@ -193,14 +197,14 @@ finds an error:
 | Code | Meaning |
 |---|---|
 | E001–E006 | Syntax: unclosed or mismatched tags, a void element that is not self-closed, more than one root, a `<?php` open tag instead of `<?phpm` |
-| E010–E014 | Unknown component, unknown or missing prop, children or slot not accepted, duplicate component |
+| E010–E014 | Unknown component, unknown or missing prop, children or slot not accepted, duplicate component (also a component with the name of a built-in component, `Mamu\Root`) |
 | E020 | A call to a React Hook (`Mamu\useState`, ...): Mamu keeps state in `#[Component]` classes |
 | E030–E032 | Undefined variable in markup, markup in an unsupported expression, invalid attribute |
 | E040–E041 | Class component without `render()`, readonly `#[State]` property |
 | E050, E052 | `export default` (not PHP; use `#[Page]`), `#[Page]` or `#[Route]` on a function, or on a class that is not a component |
 | W001–W003 | A handler is called instead of passed; a list item without `key`; an event that the browser does not send (`onMouseEnter`) |
 | W004 | `#[Page]`, `#[Route]`, `#[Component]` or `#[State]` without its `use` import (`Mamu\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
-| W005 | a `<title>` outside `<head>` and `<svg>`: the document of the page prints the title |
+| W005 | a `<title>` outside `<head>` and `<svg>`: the document component prints the title, and a page gives it with `<Document:title>` |
 
 ## Limits
 

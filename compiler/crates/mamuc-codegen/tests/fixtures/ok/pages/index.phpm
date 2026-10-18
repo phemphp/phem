@@ -2,9 +2,9 @@
 
 namespace App\Pages;
 
-use App\Components\{Counter, Document};
+use App\Components\Counter;
 use Mamu\Attribute\{Component, Page, State};
-use function App\Components\{MyButton, Card, Badge, Tag};
+use function App\Components\{MyButton, Card, Badge, Tag, Document};
 
 function Toolbar(string $theme = 'light') {
     return <p className="theme-{{ theme }}">Theme: {{ theme }}</p>;
@@ -45,10 +45,8 @@ final class Toggle
 }
 
 #[Page('/', name: 'home', methods: ['GET', 'HEAD'])]
-final class Home extends Document
+final class Home
 {
-    protected string $title = 'Fixture Home';
-
     #[State] public int $count = 0;
     #[State] public array $items = [];
 
@@ -76,30 +74,33 @@ final class Home extends Document
         $listItems = array_map(fn($p) => <li key={{ p.id }}>{{ p.title }}</li>, $products);
 
         return (
-            <main>
-                <h1>Counters that update together</h1>
-                <MyButton count={{ count }} onClick={{ handleClick }} />
-                <MyButton count={{ count }} onClick={{ handleClick }} />
-                <ul id="shopping">
-                    {% for product in products %}
-                        <li key={{ product.id }} style={{ {color: product.isFruit ? 'magenta' : 'darkgreen', fontWeight: 700} }}>{{ product.title }}</li>
-                    {% endfor %}
-                </ul>
-                <ol id="mapped">{{ listItems }}</ol>
-                <Card title="Hello">
-                    <p>Body {{ count }}</p>
-                    <Card:footer><Badge label="foot" /></Card:footer>
-                </Card>
-                <Counter label="Hits">!</Counter>
-                <Toggle />
-                <button id="add" onClick={{ add }}>Add</button>
-                <span id="items">{{ items|join(',') }}</span>
-                <Toolbar theme="dark" />
-                <Toolbar />
-                <Greeting name="ada" />
-                <Tag />
-                <Tag>urgent</Tag>
-            </main>
+            <Document>
+                <Document:title>Fixture Home</Document:title>
+                <main>
+                    <h1>Counters that update together</h1>
+                    <MyButton count={{ count }} onClick={{ handleClick }} />
+                    <MyButton count={{ count }} onClick={{ handleClick }} />
+                    <ul id="shopping">
+                        {% for product in products %}
+                            <li key={{ product.id }} style={{ {color: product.isFruit ? 'magenta' : 'darkgreen', fontWeight: 700} }}>{{ product.title }}</li>
+                        {% endfor %}
+                    </ul>
+                    <ol id="mapped">{{ listItems }}</ol>
+                    <Card title="Hello">
+                        <p>Body {{ count }}</p>
+                        <Card:footer><Badge label="foot" /></Card:footer>
+                    </Card>
+                    <Counter label="Hits">!</Counter>
+                    <Toggle />
+                    <button id="add" onClick={{ add }}>Add</button>
+                    <span id="items">{{ items|join(',') }}</span>
+                    <Toolbar theme="dark" />
+                    <Toolbar />
+                    <Greeting name="ada" />
+                    <Tag />
+                    <Tag>urgent</Tag>
+                </main>
+            </Document>
         );
     }
 }

@@ -1,0 +1,23 @@
+<?phpm
+
+namespace App\Components;
+
+use Mamu\{Html, Root};
+
+// The HTML document of the pages: a page renders its content in it, and can give the title
+// with a slot (<Document:title>Home</Document:title>).
+function Document(?Html $title = null, ?Html $children = null)
+{
+    return (
+        <html lang="en">
+            <head>
+                <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1" />
+                <title>{{ title ?? 'Mamu' }}</title>
+                <link rel="icon" href="data:," />
+                {{ importmap('app') }}
+            </head>
+            <body><Root>{{ children }}</Root></body>
+        </html>
+    );
+}

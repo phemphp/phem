@@ -13,12 +13,11 @@ declare(strict_types=1);
 
 namespace Mamu\Tests\Runtime;
 
-use Mamu\Http\PageView;
 use Mamu\Http\TurboStreams;
 use Mamu\Rendering\Fiber;
+use Mamu\Rendering\RootElement;
 use Mamu\State\PageState;
 use PHPUnit\Framework\TestCase;
-use Twig\Markup;
 
 final class HttpTest extends TestCase
 {
@@ -40,21 +39,21 @@ final class HttpTest extends TestCase
         self::assertSame([], PageState::fromArray(['_path' => 'not an array'])->values);
     }
 
-    public function testPageViewRendersTheRootElement(): void
+    public function testRootElementHasTheStateOfThePage(): void
     {
-        $page = new PageView('App\\Pages\\Home', new Markup('<p>x</p>', 'UTF-8'), '{"a":"<b>"}', 'sig');
+        $state = RootElement::state('{"a":"<b>"}', 'sig');
         $actions = 'click->mamu#dispatch dblclick->mamu#dispatch input->mamu#dispatch change->mamu#dispatch submit->mamu#dispatch keydown->mamu#dispatch keyup->mamu#dispatch focusin->mamu#dispatch focusout->mamu#dispatch';
         $actions = htmlspecialchars($actions);
 
-        self::assertSame('<div id="mamu-root" data-controller="mamu" data-action="'.$actions.'" data-mamu-state-value="{&quot;a&quot;:&quot;&lt;b&gt;&quot;}" data-mamu-signature-value="sig"><p>x</p></div>', (string) $page->root());
+        self::assertSame('<div id="mamu-root" data-controller="mamu" data-action="'.$actions.'" data-mamu-state-value="{&quot;a&quot;:&quot;&lt;b&gt;&quot;}" data-mamu-signature-value="sig"><p>x</p></div>', RootElement::render([], $state, '<p>x</p>'));
         self::assertSame(
-            'data-controller="mamu menu" data-action="'.$actions.' keydown.esc-&gt;menu#close" data-mamu-state-value="{&quot;a&quot;:&quot;&lt;b&gt;&quot;}" data-mamu-signature-value="sig" class="a b" hidden',
-            (string) $page->attributes(['id' => null, 'data-controller' => 'menu', 'data-action' => 'keydown.esc->menu#close', 'data-mamu-state-value' => 'forged', 'class' => ['a', '', 'b'], 'hidden' => true, 'x" onclick="y' => 1]),
-            'the application adds attributes, but it cannot change the state',
+            '<section data-controller="mamu menu" data-action="'.$actions.' keydown.esc-&gt;menu#close" data-mamu-state-value="{&quot;a&quot;:&quot;&lt;b&gt;&quot;}" data-mamu-signature-value="sig" class="a b" hidden style="color: red"></section>',
+            RootElement::render(['tag' => 'section', 'id' => null, 'data-controller' => 'menu', 'data-action' => 'keydown.esc->menu#close', 'data-mamu-state-value' => 'forged', 'className' => ['a', '', 'b'], 'hidden' => true, 'x" onclick="y' => 1, 'onClick' => 'f', 'style' => ['color' => 'red']], $state, ''),
+            'the application adds attributes, but it cannot change the state or add a handler',
         );
-        self::assertStringStartsWith('<main id="app" ', (string) $page->root(['id' => 'app'], 'main'));
+        self::assertStringStartsWith('<main id="app" ', RootElement::render(['tag' => 'main', 'id' => 'app'], $state, ''));
 
         $this->expectException(\InvalidArgumentException::class);
-        $page->root([], 'div onclick=x');
+        RootElement::render(['tag' => 'div onclick=x'], $state, '');
     }
 }

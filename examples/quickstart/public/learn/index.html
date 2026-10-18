@@ -134,7 +134,7 @@
     <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/MyButton" loading="lazy" title="MyButton preview"></iframe>
 </div>
 <p>Look at <code>&lt;MyButton /&gt;</code>: it starts with a capital letter. That is how you know it is a Mamu component. Component names always start with a capital letter. HTML tags are always lowercase.</p>
-<p>The <code>#[Page]</code> attribute makes a class a page. React uses <code>export default</code> for the page component. In Mamu, <code>#[Page]</code> (a Symfony route) exposes the class at a URL, as <code>#[Route]</code> does for a Symfony controller, and the code stays valid PHP. A page class is a component with no <code>#[Component]</code>, and it extends the <code>Document</code> of your application. The class <code>MyApp</code> above has <code>#[Page('/examples/MyButton')]</code>, so it is the page <a href="/examples/MyButton"><code>/examples/MyButton</code></a>. To find the component of a tag, the compiler uses the PHP rules: first a <code>use function</code> import, then a <code>use</code> import of a class, then the current namespace.</p>
+<p>The <code>#[Page]</code> attribute makes a class a page. React uses <code>export default</code> for the page component. In Mamu, <code>#[Page]</code> (a Symfony route) exposes the class at a URL, as <code>#[Route]</code> does for a Symfony controller, and the code stays valid PHP. A page class is a component with no <code>#[Component]</code>, and it renders its content in the <code>&lt;Document&gt;</code> of your application. The class <code>MyApp</code> above has <code>#[Page('/examples/MyButton')]</code>, so it is the page <a href="/examples/MyButton"><code>/examples/MyButton</code></a>. To find the component of a tag, the compiler uses the PHP rules: first a <code>use function</code> import, then a <code>use</code> import of a class, then the current namespace.</p>
 
 <h2 id="writing-markup" class="heading">Writing markup with Mamu<a class="heading-anchor" href="#writing-markup" aria-label="Link to this section">#</a></h2>
 <p>The markup above is a <em>markup literal</em>. React uses JSX for this. Mamu uses the same idea in PHP: a markup literal is a PHP expression, and its value is a <code>Mamu\Html</code> object. The <code>mamuc</code> compiler turns each markup literal into a Twig template at build time. Nothing is parsed when a request comes in.</p>
@@ -166,32 +166,26 @@
 <p>Import the CSS file in <code>assets/app.js</code>, the JavaScript of the pages. AssetMapper links it on each page:</p>
 <div class="code-block"><div class="code-title">assets/app.js</div><pre class="code" data-controller="highlight"><code>import './bootstrap.js';
 import './styles/app.css';</code></pre></div>
-<p>Your application owns the HTML document of the pages: a class that implements <code>Mamu\Document</code>. Its <code>document()</code> method prints the page with <code>{{ mamu_root(page) }}</code>, and <code>{{ importmap('app') }}</code> loads the assets:</p>
-<div class="code-block"><div class="code-title">src/Pages/Document.phpm</div><pre class="code" data-controller="highlight"><code>class Document implements \Mamu\Document
+<p>Your application owns the HTML document of the pages: a component, as the others. It prints the page content in a <code>&lt;Root&gt;</code>, the root element that the events update, and <code>{{ importmap('app') }}</code> loads the assets:</p>
+<div class="code-block"><div class="code-title">src/Components/Document.phpm</div><pre class="code" data-controller="highlight"><code>use Mamu\{Html, Root};
+
+function Document(?Html $title = null, ?Html $children = null)
 {
-    protected string $title = 'My app';
-
-    public function title(): string
-    {
-        return $this-&gt;title;
-    }
-
-    public function document(PageView $page)
-    {
-        $title = $this-&gt;title();
-
-        return (
-            &lt;html lang="en"&gt;
-                &lt;head&gt;
-                    &lt;title&gt;{{ title }}&lt;/title&gt;
-                    {{ importmap('app') }}
-                &lt;/head&gt;
-                &lt;body&gt;{{ mamu_root(page) }}&lt;/body&gt;
-            &lt;/html&gt;
-        );
-    }
+    return (
+        &lt;html lang="en"&gt;
+            &lt;head&gt;
+                &lt;title&gt;{{ title ?? 'My app' }}&lt;/title&gt;
+                {{ importmap('app') }}
+            &lt;/head&gt;
+            &lt;body&gt;&lt;Root&gt;{{ children }}&lt;/Root&gt;&lt;/body&gt;
+        &lt;/html&gt;
+    );
 }</code></pre></div>
-<p>Each page extends it. A page changes its title with <code>protected string $title = 'Home';</code>, or with a <code>title()</code> method for a dynamic title.</p>
+<p>Each page renders its content in it. A page gives its title with the <code>title</code> slot:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>&lt;Document&gt;
+    &lt;Document:title&gt;{{ scientist.name }}&lt;/Document:title&gt;
+    &lt;h1&gt;{{ scientist.name }}&lt;/h1&gt;
+&lt;/Document&gt;</code></pre></div>
 <p>When the class depends on a value, give <code>className</code> a list. Mamu joins the items with spaces and drops the empty items:</p>
 <div class="code-block"><pre class="code" data-controller="highlight"><code>&lt;li className={{ ['item', isActive ? 'active' : ''] }}&gt;
     {{ item.title }}
@@ -483,7 +477,7 @@ final class AddScientist
 </div>
 <p>First, move the state up from the button into the parent component. Then pass the state down from the parent, together with the click handler. You pass information down as <em>props</em>, with the same Twig syntax as attributes:</p>
 <div class="code-block"><pre class="code" data-controller="highlight"><code>#[Page('/examples/CounterTogether')]
-final class CounterTogether extends Document
+final class CounterTogether
 {
     #[State] public int $count = 0;
 
@@ -495,11 +489,11 @@ final class CounterTogether extends Document
     public function render()
     {
         return (
-            &lt;div&gt;
+            &lt;Document&gt;
                 &lt;h1&gt;Counters that update together&lt;/h1&gt;
                 &lt;CountButton count={{ count }} onClick={{ handleClick }} /&gt;
                 &lt;CountButton count={{ count }} onClick={{ handleClick }} /&gt;
-            &lt;/div&gt;
+            &lt;/Document&gt;
         );
     }
 }</code></pre></div>

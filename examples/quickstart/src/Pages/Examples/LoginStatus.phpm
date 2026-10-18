@@ -1,8 +1,9 @@
 <?phpm
 namespace App\Pages\Examples;
 
-use App\Pages\Document;
 use Mamu\Attribute\{Page, State};
+
+use function App\Components\Document;
 
 function AdminPanel()
 {
@@ -25,10 +26,8 @@ function LoginForm()
 }
 
 #[Page('/examples/LoginStatus')]
-final class LoginStatus extends Document
+final class LoginStatus
 {
-    protected string $title = 'LoginStatus';
-
     #[State]
     public bool $isLoggedIn = false;
 
@@ -46,13 +45,16 @@ final class LoginStatus extends Document
         }
 
         return (
-            <div>
-                {{ content }}
-                <button onClick={{ toggle }}>
-                    {{ isLoggedIn ? 'Log out' : 'Log in' }}
-                </button>
-                {{ isLoggedIn and <p>You have admin rights.</p> }}
-            </div>
+            <Document>
+                <Document:title>LoginStatus</Document:title>
+                <div>
+                    {{ content }}
+                    <button onClick={{ toggle }}>
+                        {{ isLoggedIn ? 'Log out' : 'Log in' }}
+                    </button>
+                    {{ isLoggedIn and <p>You have admin rights.</p> }}
+                </div>
+            </Document>
         );
     }
 }

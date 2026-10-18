@@ -35,6 +35,8 @@ is not there). A project is the nearest directory with a `composer.json` file.
   component has `$children` or slots. If the component is not in scope, the extension adds the
   import: `use function App\Components\Layout;` or `use App\Components\Counter;`. It uses the
   rules of mamuc: a `use function` import, then a `use` import, then the current namespace.
+  It also suggests the built-in `<Root>` (the root element of a page, in the document), and
+  adds `use Mamu\Root;`.
 - **HTML elements**: after `<`, it also suggests the HTML elements. A void element gets ` />`
   (`<img />`); the others get a closing tag.
 - **Props and slots**: in a component tag, it suggests the props that are not set yet (required

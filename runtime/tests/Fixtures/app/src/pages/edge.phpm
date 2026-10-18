@@ -2,10 +2,11 @@
 
 namespace App\Pages;
 
-use App\Components\Document;
 use Mamu\Attribute\{Component, Page, State};
 use Mamu\Html;
 use Mamu\Tests\Fixtures\Titled;
+
+use function App\Components\Document;
 
 // A template component with a required slot, and a slot that the template tests.
 function Panel(Html $children, ?Html $footer = null) {
@@ -39,7 +40,7 @@ final class Heading extends Titled
 }
 
 #[Page('/edge')]
-final class Edge extends Document
+final class Edge
 {
     #[State] public int $n = 0;
 
@@ -53,16 +54,18 @@ final class Edge extends Document
         $odd = array_map(fn ($i) => $i % 2 ? <li key={{ i }}>{{ i }}</li> : null, [1, 2, 3]);
 
         return (
-            <main>
-                <svg id="icon"><title>Icon</title></svg>
-                <Panel><p id="body">Body</p></Panel>
-                <Panel>x<Panel:footer>Foot {{ n }}</Panel:footer></Panel>
-                <ul id="odd">{{ odd }}</ul>
-                <button onClick={{ bump }}>Bump</button>
-                <Label text="n={{ n }}" />
-                <Heading title="Edge" />
-                <p id="path">{{ app.request.pathInfo }}</p>
-            </main>
+            <Document>
+                <main>
+                    <svg id="icon"><title>Icon</title></svg>
+                    <Panel><p id="body">Body</p></Panel>
+                    <Panel>x<Panel:footer>Foot {{ n }}</Panel:footer></Panel>
+                    <ul id="odd">{{ odd }}</ul>
+                    <button onClick={{ bump }}>Bump</button>
+                    <Label text="n={{ n }}" />
+                    <Heading title="Edge" />
+                    <p id="path">{{ app.request.pathInfo }}</p>
+                </main>
+            </Document>
         );
     }
 }

@@ -178,12 +178,53 @@ fn a_class_with_a_parent_outside_the_sources_is_not_checked() {
 
 #[test]
 fn a_parent_class_loads_before_its_subclasses() {
-    let about = "<?phpm\nnamespace App;\nuse Mamu\\Attribute\\Component;\n#[Component]\nfinal class About extends Document {\n    public function render() { return <p>About</p>; }\n}\n";
-    let document = "<?phpm\nnamespace App;\nuse Mamu\\Http\\PageView;\nclass Document implements \\Mamu\\Document {\n    protected string $title = 'App';\n    public function document(PageView $page) {\n        $title = $this->title;\n        return <html><head><title>{{ title }}</title></head><body>{{ mamu_root(page) }}</body></html>;\n    }\n}\n";
-    let (out, diags) = compile(vec![SourceInput { rel: "About.phpm".into(), text: about.into() }, SourceInput { rel: "Page/Document.phpm".into(), text: document.into() }]);
+    let about = "<?phpm\nnamespace App;\nuse Mamu\\Attribute\\Component;\n#[Component]\nfinal class About extends Base {\n    public function render() { return <p>{{ name }}</p>; }\n}\n";
+    let base = "<?phpm\nnamespace App;\nabstract class Base {\n    public string $name = 'App';\n}\n";
+    let (out, diags) = compile(vec![SourceInput { rel: "About.phpm".into(), text: about.into() }, SourceInput { rel: "Page/Base.phpm".into(), text: base.into() }]);
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
-    assert!(msgs.is_empty(), "a <title> in <head> is the title of the document: {msgs:?}");
-    assert_eq!(out.expect("output").manifest.files, ["php/Page/Document.php", "php/About.php"]);
+    assert!(msgs.is_empty(), "{msgs:?}");
+    assert_eq!(out.expect("output").manifest.files, ["php/Page/Base.php", "php/About.php"]);
+}
+
+#[test]
+fn root_is_a_built_in_component() {
+    let src = |imports: &str| {
+        format!("<?phpm\nnamespace App;\n{imports}\nfunction Document(?Html $title = null, ?Html $children = null) {{\n    return <html><head><title>{{{{ title ?? 'App' }}}}</title></head><body><Root tag=\"main\" className=\"app\" data-controller=\"extra\">{{{{ children }}}}</Root></body></html>;\n}}\n")
+    };
+    let (out, diags) = compile(vec![SourceInput { rel: "Document.phpm".into(), text: src("use Mamu\\{Html, Root};") }]);
+    let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
+    assert!(msgs.is_empty(), "{msgs:?}");
+    let out = out.expect("output");
+    assert_eq!(
+        out.files[0].templates[0].content,
+        "<html><head><title>{% block title %}{{ title ?? 'App' }}{% endblock %}</title></head><body>{% component embed 'Mamu\\\\Root' with {'tag': 'main', 'className': 'app', 'data-controller': 'extra'} only %}{% block children %}{% with _mamu_caller only %}{{ children }}{% endwith %}{% endblock %}{% endcomponent %}</body></html>"
+    );
+    assert!(!out.manifest.components.contains_key("Mamu\\Root"), "the runtime knows the built-in components");
+
+    let (_, diags) = compile(vec![SourceInput { rel: "Document.phpm".into(), text: src("use Mamu\\Html;") }]);
+    let d = diags.iter().flat_map(|f| &f.diags).find(|d| d.code == "E010").expect("E010 without the import");
+    assert_eq!(d.help.as_deref(), Some("import it: `use Mamu\\Root;`"));
+
+    let duplicate = "<?phpm\nnamespace Mamu;\nfunction Root() { return <p />; }\n";
+    let (_, diags) = compile(vec![SourceInput { rel: "Root.phpm".into(), text: duplicate.into() }]);
+    let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
+    assert_eq!(msgs, ["E014 component `Mamu\\Root` is a built-in component of Mamu"]);
+}
+
+#[test]
+fn a_page_gives_the_title_to_its_document() {
+    let document = "<?phpm\nnamespace App;\nuse Mamu\\{Html, Root};\nfunction Document(?Html $title = null, ?Html $children = null) {\n    return <html><head><title>{{ title ?? 'App' }}</title></head><body><Root>{{ children }}</Root></body></html>;\n}\n";
+    let page = "<?phpm\nnamespace App;\nuse Mamu\\Attribute\\Page;\n#[Page('/')]\nfinal class Home {\n    public string $name = 'Ada';\n    public function render() { return <Document><Document:title>Hi {{ name }}</Document:title><p>Home</p></Document>; }\n}\n";
+    let (out, diags) = compile(vec![SourceInput { rel: "Document.phpm".into(), text: document.into() }, SourceInput { rel: "Home.phpm".into(), text: page.into() }]);
+    let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
+    assert!(msgs.is_empty(), "{msgs:?}");
+    let out = out.expect("output");
+    let home = out.files.iter().find(|f| f.rel == "Home.phpm").expect("Home.phpm");
+    assert_eq!(
+        home.templates[0].content,
+        "{% component embed 'App\\\\Document' only %}{% block children %}{% with _mamu_caller only %}<p>Home</p>{% endwith %}{% endblock %}{% block title %}{% with _mamu_caller only %}Hi {{ name }}{% endwith %}{% endblock %}{% endcomponent %}"
+    );
+    assert_eq!(out.manifest.components["App\\Document"].slots, ["title", "children"]);
 }
 
 #[test]
@@ -222,7 +263,7 @@ fn a_page_class_is_a_component_with_a_route() {
         let src = format!("<?phpm\nnamespace App;\nuse Mamu\\Attribute\\{{Component, Page}};\nuse Symfony\\Component\\Routing\\Attribute\\Route;\n{attrs}\n{class}\n");
         compile(vec![SourceInput { rel: "Home.phpm".into(), text: src }])
     };
-    let render = "final class Home extends Document { public function render() { return <p>Home</p>; } }";
+    let render = "final class Home { public function render() { return <p>Home</p>; } }";
 
     for attrs in ["#[Page('/')]", "#[\\Mamu\\Attribute\\Page('/')]", "#[Page('/')]\n#[Component]", "#[Route('/')]\n#[Component]", "#[Page('/a')]\n#[Page('/b', name: 'b')]"] {
         let (out, diags) = page(attrs, render);
@@ -233,9 +274,9 @@ fn a_page_class_is_a_component_with_a_route() {
     }
 
     let codes = |attrs: &str, class: &str| page(attrs, class).1.iter().flat_map(|f| f.diags.iter().map(|d| d.code)).collect::<Vec<_>>();
-    assert_eq!(codes("#[Route('/')]", "final class Home extends Document { public function render() { return <p />; } }"), ["E052"], "#[Route] needs #[Component]");
+    assert_eq!(codes("#[Route('/')]", "final class Home { public function render() { return <p />; } }"), ["E052"], "#[Route] needs #[Component]");
     assert_eq!(codes("#[Page('/')]", "final class Home {}"), ["E040"], "a page needs render()");
-    assert_eq!(codes("#[Page('/')]", "final class Home extends Document {}"), Vec::<&str>::new(), "the parent outside the sources can have render()");
+    assert_eq!(codes("#[Page('/')]", "final class Home extends \\Vendor\\Base {}"), Vec::<&str>::new(), "the parent outside the sources can have render()");
     assert_eq!(codes("#[Page('/')]", "function Home() { return <p />; }"), ["E052"], "a function component is not a page");
     assert_eq!(codes("#[Route('/')]", "function Home() { return <p />; }"), ["E052"]);
 }

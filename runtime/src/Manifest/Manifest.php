@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Mamu\Manifest;
 
+use Mamu\Root;
+
 /**
  * The output of `mamuc build`: the components, the pages, and the template line map.
  *
@@ -69,6 +71,10 @@ final class Manifest
         $fqcn = ltrim($fqcn, '\\');
         if (\array_key_exists($fqcn, $this->definitions)) {
             return $this->definitions[$fqcn];
+        }
+        if (Root::class === $fqcn) {
+            // A built-in component: the Renderer renders it (see Mamu\Root).
+            return $this->definitions[$fqcn] = new ComponentDefinition($fqcn, ComponentKind::FunctionComponent, slots: ['children']);
         }
         $data = $this->data()['components'][$fqcn] ?? null;
 

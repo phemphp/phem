@@ -6,31 +6,19 @@ expression: f.php
 
 namespace App\Components;
 
-use Mamu\Http\PageView;
+use Mamu\{Html, Root};
 
-// The default document of the fixture pages (the mamu.document option). A class page that
-// extends it is its own document.
-class Document implements \Mamu\Document
+// The document of the fixture pages: a page renders its markup in it, and gives the title
+// with `<Document:title>`.
+function Document(?Html $title = null, ?Html $children = null)
 {
-    protected string $title = 'Fixture';
-
-    public function title(): string
-    {
-        return $this->title;
-    }
-
-    public function document(PageView $page)
-    {
-        $title = $this->title();
-
-        return (
-            new \Mamu\Element('components/Document.0.twig', ['title' => $title ?? null, 'page' => $page ?? null])
+    return (
+        new \Mamu\Element('components/Document.0.twig', ['title' => $title ?? null, 'children' => $children ?? null])
 
 
 
 
 
 
-        );
-    }
+    );
 }

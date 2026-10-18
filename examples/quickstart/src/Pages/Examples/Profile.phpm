@@ -1,14 +1,13 @@
 <?phpm
 namespace App\Pages\Examples;
 
-use App\Pages\Document;
 use Mamu\Attribute\Page;
 
-#[Page('/examples/Profile')]
-final class Profile extends Document
-{
-    protected string $title = 'Profile';
+use function App\Components\Document;
 
+#[Page('/examples/Profile')]
+final class Profile
+{
     public function render()
     {
         $user = [
@@ -18,15 +17,18 @@ final class Profile extends Document
         ];
 
         return (
-            <>
-                <h1>{{ user.name }}</h1>
-                <img
-                    className="avatar"
-                    src={{ user.imageUrl }}
-                    alt="Photo of {{ user.name }}"
-                    style={{ {width: user.imageSize, height: user.imageSize} }}
-                />
-            </>
+            <Document>
+                <Document:title>Profile</Document:title>
+                <>
+                    <h1>{{ user.name }}</h1>
+                    <img
+                        className="avatar"
+                        src={{ user.imageUrl }}
+                        alt="Photo of {{ user.name }}"
+                        style={{ {width: user.imageSize, height: user.imageSize} }}
+                    />
+                </>
+            </Document>
         );
     }
 }

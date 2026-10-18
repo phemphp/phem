@@ -812,10 +812,29 @@ function paramText(p) {
     return s;
 }
 
+// The components of the runtime: they have no source file.
+const BUILTIN_COMPONENTS = [
+    {
+        kind: 'class',
+        name: 'Root',
+        fqn: 'Mamu\\Root',
+        namespace: 'Mamu',
+        page: false,
+        props: [{ name: 'tag', type: 'string', default: "'div'", required: false }],
+        slots: [],
+        children: true,
+        rest: true,
+        offset: -1,
+        signature: "final class Root\n{\n    public string $tag = 'div';\n    public ?Html $children = null;\n}",
+        doc: 'The root element of the page, in the document: it keeps the state of the page and gets its events. The other attributes go to the element.',
+        file: null,
+    },
+];
+
 function parse(text) {
     const parsed = new Parser(text).parse();
     parsed.components = components(parsed);
     return parsed;
 }
 
-module.exports = { parse, tokenize, docBefore, hasAttr, paramText, shortName, namespaceOf, joinName };
+module.exports = { parse, tokenize, docBefore, hasAttr, paramText, shortName, namespaceOf, joinName, BUILTIN_COMPONENTS };

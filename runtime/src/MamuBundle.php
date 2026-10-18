@@ -41,9 +41,9 @@ use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
  *         resource: .
  *         type: mamu
  *
- * A page is a class component with `#[Route]` that extends the document of the application
- * (`<html>`, `<head>`, `<body>`): a .phpm class that implements Mamu\Document, and prints the
- * page with `{{ mamu_root(page) }}`. The client (the
+ * A page is a class component with `#[Page]` (or `#[Route]`). It renders the document of the
+ * application (`<html>`, `<head>`, `<body>`): a component that renders the page content in a
+ * `<Root>` (see Mamu\Root). The client (the
  * `mamu` Stimulus controller and its CSS) is a Symfony UX package in assets/: with AssetMapper,
  * its files are in the `mamujs` namespace, and StimulusBundle loads the controller
  * from the `assets/controllers.json` of the application.

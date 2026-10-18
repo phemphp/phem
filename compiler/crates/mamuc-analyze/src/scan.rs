@@ -711,7 +711,7 @@ function helper() {}
 
     #[test]
     fn a_page_class_is_a_component() {
-        let f = scan_src("<?phpm\nnamespace App;\nuse Mamu\\Attribute\\Page;\n#[Page('/')]\nfinal class Home extends Document { public function render() { return <p />; } }\n");
+        let f = scan_src("<?phpm\nnamespace App;\nuse Mamu\\Attribute\\Page;\n#[Page('/')]\nfinal class Home { public function render() { return <p />; } }\n");
         assert!(f.classes[0].is_component, "#[Page] needs no #[Component]");
         assert_eq!((f.routes[0].attr, f.routes[0].is_component), ("Page", true));
     }

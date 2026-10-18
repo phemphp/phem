@@ -6,15 +6,19 @@ expression: f.php
 
 namespace App\Pages;
 
-use App\Components\Document;
 use Mamu\Attribute\Page;
+use function App\Components\Document;
 
 #[Page('/about')]
 #[Page('/about-us', name: 'about_us')]
-final class About extends Document
+final class About
 {
     public function render()
     {
-        return new \Mamu\Element('pages/about.0.twig', []);
+        return (
+            new \Mamu\Element('pages/about.0.twig', [])
+
+
+        );
     }
 }

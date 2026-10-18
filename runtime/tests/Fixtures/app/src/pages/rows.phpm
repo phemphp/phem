@@ -2,13 +2,14 @@
 
 namespace App\Pages;
 
-use App\Components\Document;
 use Mamu\Attribute\Page;
 use Mamu\Tests\Fixtures\{Rows, Scientist};
 
+use function App\Components\Document;
+
 // One component with a handler for each row: a closure that captures the row.
 #[Page('/rows')]
-final class RowsPage extends Document
+final class RowsPage
 {
     public function remove(Scientist $scientist): void
     {
@@ -23,6 +24,10 @@ final class RowsPage extends Document
             $items[] = <li key={{ scientist.id }}>{{ scientist.name }} <button onClick={{ remove }}>Remove</button></li>;
         }
 
-        return <ul id="rows">{{ items }}</ul>;
+        return (
+            <Document>
+                <ul id="rows">{{ items }}</ul>
+            </Document>
+        );
     }
 }

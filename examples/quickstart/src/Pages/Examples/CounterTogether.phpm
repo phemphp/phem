@@ -2,8 +2,9 @@
 
 namespace App\Pages\Examples;
 
-use App\Pages\Document;
 use Mamu\Attribute\{Page, State};
+
+use function App\Components\Document;
 
 function CountButton(int $count, mixed ...$props)
 {
@@ -15,10 +16,8 @@ function CountButton(int $count, mixed ...$props)
 }
 
 #[Page('/examples/CounterTogether')]
-final class CounterTogether extends Document
+final class CounterTogether
 {
-    protected string $title = 'CounterTogether';
-
     #[State]
     public int $count = 0;
 
@@ -30,11 +29,14 @@ final class CounterTogether extends Document
     public function render()
     {
         return (
-            <>
-                <h1>Counters that update together</h1>
-                <CountButton count={{ count }} onClick={{ handleClick }} />
-                <CountButton count={{ count }} onClick={{ handleClick }} />
-            </>
+            <Document>
+                <Document:title>CounterTogether</Document:title>
+                <>
+                    <h1>Counters that update together</h1>
+                    <CountButton count={{ count }} onClick={{ handleClick }} />
+                    <CountButton count={{ count }} onClick={{ handleClick }} />
+                </>
+            </Document>
         );
     }
 }

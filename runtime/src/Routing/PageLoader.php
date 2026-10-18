@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Mamu\Routing;
 
-use Mamu\Document;
 use Mamu\Manifest\Manifest;
 use Mamu\Metadata\ComponentMetadata;
 use Symfony\Component\Config\Loader\Loader;
@@ -28,8 +27,8 @@ use Symfony\Component\Routing\RouteCollection;
  * The routes of the pages and the event endpoint.
  *
  * A page is a class component with the `#[Page]` attribute (or the Symfony `#[Route]` attribute;
- * mamuc lists them in the manifest), and it extends the document of the application (see
- * Mamu\Document). The attribute works as on a controller: path (or localized paths), name,
+ * mamuc lists them in the manifest). It renders its document, with a `<Root>` (see Mamu\Root).
+ * The attribute works as on a controller: path (or localized paths), name,
  * requirements, defaults, methods, host, schemes, condition, priority, env and aliases.
  * Without a name, the route name comes from the component: `App\Pages\Counter` →
  * `app_pages_counter`.
@@ -79,9 +78,6 @@ final class PageLoader extends Loader
                 throw new \InvalidArgumentException(\sprintf('The page "%s" must be a class component: a function cannot be a page.', $page));
             }
             $reflection = new \ReflectionClass($page);
-            if (!$reflection->implementsInterface(Document::class)) {
-                throw new \InvalidArgumentException(\sprintf('The page "%s" must implement "%s": make it extend the document of the application.', $page, Document::class));
-            }
             // A route change does not change the manifest, only the compiled file.
             $routes->addResource(new FileResource((string) $reflection->getFileName()));
             foreach ($reflection->getAttributes(RouteAttribute::class, \ReflectionAttribute::IS_INSTANCEOF) as $i => $attribute) {

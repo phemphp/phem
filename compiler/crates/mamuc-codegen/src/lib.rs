@@ -143,7 +143,8 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
     }
     let manifest = Manifest {
         version: VERSION.into(),
-        components: registry,
+        // The runtime knows the built-in components.
+        components: registry.into_iter().filter(|(_, c)| !c.file.is_empty()).collect(),
         pages,
         templates,
         files: files.iter().map(|f| f.php_path.clone()).collect(),
@@ -258,7 +259,6 @@ fn undefined(name: &str, offset: usize, extra: &str) -> Diagnostic {
         .with_help(format!("markup reads the PHP variables of the enclosing function{extra}: define `${name}` before the markup"))
 }
 
-/// A single-quoted string literal. PHP and Twig escape it the same way.
 /// For each file, the other files that declare the parent classes and the traits of its classes.
 fn base_files(parsed: &[Parsed]) -> HashMap<String, Vec<String>> {
     let declared: HashMap<&str, &str> = parsed.iter().flat_map(|p| p.info.classes.iter().map(move |c| (c.fqn.as_str(), p.input.rel.as_str()))).collect();
@@ -306,6 +306,7 @@ fn load_order(files: Vec<FileOutput>, bases: &HashMap<String, Vec<String>>) -> V
     order.into_iter().filter_map(|i| slots[i].take()).collect()
 }
 
+/// A single-quoted string literal. PHP and Twig escape it the same way.
 pub fn php_str(s: &str) -> String {
     format!("'{}'", s.replace('\\', "\\\\").replace('\'', "\\'"))
 }

@@ -2,13 +2,14 @@
 
 namespace App\Pages;
 
-use App\Components\Document;
 use Mamu\Attribute\{Page, Path, State};
 use Mamu\Tests\Fixtures\Scientist;
 
+use function App\Components\Document;
+
 // A class page: the {id} route value goes to the #[Path] property.
 #[Page('/items/{id}')]
-final class ItemPage extends Document
+final class ItemPage
 {
     #[Path] public int $id;
     public string $label = 'Item';
@@ -21,34 +22,37 @@ final class ItemPage extends Document
 
     public function render()
     {
-        return <button id="item" onClick={{ increment }}>{{ label }} {{ id }}: {{ count }}</button>;
+        return (
+            <Document>
+                <button id="item" onClick={{ increment }}>{{ label }} {{ id }}: {{ count }}</button>
+            </Document>
+        );
     }
 }
 
 // A route default: the {name} route value (or its default) goes to the #[Path] property.
 #[Page('/hello/{name}', defaults: ['name' => 'World'])]
-final class Hello extends Document
+final class Hello
 {
     #[Path] public string $name;
 
     public function render()
     {
-        return <p id="hello">Hello {{ name }}</p>;
+        return (
+            <Document>
+                <p id="hello">Hello {{ name }}</p>
+            </Document>
+        );
     }
 }
 
 // An entity page: {id:scientist} finds the scientist by its id, {name:scientist} by its name.
 #[Page('/scientists/{id:scientist}')]
 #[Page('/scientists/by-name/{name:scientist}')]
-final class ScientistPage extends Document
+final class ScientistPage
 {
     #[Path] public Scientist $scientist;
     #[State] public int $likes = 0;
-
-    public function title(): string
-    {
-        return $this->scientist->name;
-    }
 
     public function like(): void
     {
@@ -57,18 +61,27 @@ final class ScientistPage extends Document
 
     public function render()
     {
-        return <button id="scientist" onClick={{ like }}>{{ scientist.name }}: {{ likes }}</button>;
+        return (
+            <Document>
+                <Document:title>{{ scientist.name }}</Document:title>
+                <button id="scientist" onClick={{ like }}>{{ scientist.name }}: {{ likes }}</button>
+            </Document>
+        );
     }
 }
 
 // A nullable entity property: {scientist} finds the scientist by its id, or gives null.
 #[Page('/maybe/{scientist}')]
-final class MaybeScientist extends Document
+final class MaybeScientist
 {
     #[Path] public ?Scientist $scientist = null;
 
     public function render()
     {
-        return <p id="maybe">{{ scientist ? scientist.name : 'Nobody' }}</p>;
+        return (
+            <Document>
+                <p id="maybe">{{ scientist ? scientist.name : 'Nobody' }}</p>
+            </Document>
+        );
     }
 }

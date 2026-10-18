@@ -2,10 +2,11 @@
 
 namespace App\Pages;
 
-use App\Components\Document;
 use Mamu\Attribute\Page;
 use Mamu\Event;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+
+use function App\Components\Document;
 
 // A function component that returns a string: it is text, as in React.
 function PlainText(string $value) {
@@ -14,7 +15,7 @@ function PlainText(string $value) {
 
 // Data in the output: Mamu escapes it, and a spread of data adds no script.
 #[Page('/unsafe')]
-final class UnsafePage extends Document
+final class UnsafePage
 {
     // Redirects to a URL from the browser (for example a `?next=` value).
     public function go(Event $e): RedirectResponse
@@ -28,11 +29,13 @@ final class UnsafePage extends Document
         $data = ['x onfocus=alert(1) autofocus' => 'y', 'onclick' => 'alert(2)', 'title' => 'ok'];
 
         return (
-            <main>
-                <PlainText value={{ name }} />
-                <a id="spread" {{ ...data }} onclick="track()">link</a>
-                <button id="go" onClick={{ go }}>Go</button>
-            </main>
+            <Document>
+                <main>
+                    <PlainText value={{ name }} />
+                    <a id="spread" {{ ...data }} onclick="track()">link</a>
+                    <button id="go" onClick={{ go }}>Go</button>
+                </main>
+            </Document>
         );
     }
 }

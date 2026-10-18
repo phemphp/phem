@@ -18,6 +18,9 @@ pub const ATTR_STATE: &str = "Mamu\\Attribute\\State";
 pub const ATTR_PAGE: &str = "Mamu\\Attribute\\Page";
 /// The Symfony route attribute: it exposes a class component as a page too.
 pub const ATTR_ROUTE: &str = "Symfony\\Component\\Routing\\Attribute\\Route";
+/// The built-in root element of a page: `<Root tag="main">{{ children }}</Root>` in the document
+/// component. The runtime renders it (the `mamu` controller, the state and the event boundary).
+pub const ROOT: &str = "Mamu\\Root";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -181,7 +184,7 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
         if !r.is_component {
             diags.push(
                 Diagnostic::error(codes::ROUTE_NOT_COMPONENT, format!("`#[{}]` must mark a class component, and `{}` is not one", r.attr, r.fqn), r.span)
-                    .with_help("a page is a class with `#[Page]` that extends the document of the application (see Mamu\\Document)"),
+                    .with_help("a page is a class with `#[Page]` and a `render()` method"),
             );
         }
     }
@@ -214,8 +217,24 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
 /// All components of a project, by FQCN.
 pub type Registry = BTreeMap<String, ComponentDef>;
 
+/// The built-in components: they have no source file. The runtime knows them, so the manifest
+/// does not list them.
+pub fn builtins() -> Vec<ComponentDef> {
+    vec![ComponentDef {
+        fqcn: ROOT.into(),
+        kind: Kind::Function,
+        file: String::new(),
+        template: None,
+        props: vec!["tag".into()],
+        slots: vec!["children".into()],
+        required: Vec::new(),
+        rest: true,
+        open: false,
+    }]
+}
+
 pub fn registry<'a>(files: impl IntoIterator<Item = &'a FileInfo>) -> (Registry, Vec<(String, Diagnostic)>) {
-    let mut reg = Registry::new();
+    let mut reg: Registry = builtins().into_iter().map(|c| (c.fqcn.clone(), c)).collect();
     let mut diags = Vec::new();
     for f in files {
         for c in components(f) {
@@ -223,10 +242,12 @@ pub fn registry<'a>(files: impl IntoIterator<Item = &'a FileInfo>) -> (Registry,
                 let span = f.functions.iter().find(|x| x.fqn == c.fqcn).map(|x| x.name_span)
                     .or_else(|| f.classes.iter().find(|x| x.fqn == c.fqcn).map(|x| x.name_span))
                     .unwrap_or_default();
-                diags.push((
-                    f.rel.clone(),
-                    Diagnostic::error(codes::DUPLICATE_COMPONENT, format!("component `{}` is already declared in `{}`", c.fqcn, prev.file), span),
-                ));
+                let message = if prev.file.is_empty() {
+                    format!("component `{}` is a built-in component of Mamu", c.fqcn)
+                } else {
+                    format!("component `{}` is already declared in `{}`", c.fqcn, prev.file)
+                };
+                diags.push((f.rel.clone(), Diagnostic::error(codes::DUPLICATE_COMPONENT, message, span)));
                 continue;
             }
             reg.insert(c.fqcn.clone(), c);

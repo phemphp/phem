@@ -2,14 +2,15 @@
 
 namespace App\Pages;
 
-use App\Components\Document;
 use Mamu\Attribute\{Page, State};
 use Mamu\Tests\Fixtures\Deny;
 use Symfony\Component\HttpKernel\Attribute\Cache;
 
+use function App\Components\Document;
+
 // A page behind a path rule (`access_control`): its events go to its URL, so the rule applies.
 #[Page('/private/counter')]
-final class PrivateCounter extends Document
+final class PrivateCounter
 {
     #[State] public int $count = 0;
 
@@ -20,14 +21,18 @@ final class PrivateCounter extends Document
 
     public function render()
     {
-        return <button onClick={{ increment }}>{{ count }}</button>;
+        return (
+            <Document>
+                <button onClick={{ increment }}>{{ count }}</button>
+            </Document>
+        );
     }
 }
 
 // A controller attribute of a page (as `#[IsGranted]`) applies to the page and to its events.
 #[Deny]
 #[Page('/denied')]
-final class DeniedPage extends Document
+final class DeniedPage
 {
     #[State] public int $count = 0;
 
@@ -38,17 +43,25 @@ final class DeniedPage extends Document
 
     public function render()
     {
-        return <button onClick={{ increment }}>{{ count }}</button>;
+        return (
+            <Document>
+                <button onClick={{ increment }}>{{ count }}</button>
+            </Document>
+        );
     }
 }
 
 // A Symfony controller attribute on a page without state.
 #[Cache(maxage: 60, public: true)]
 #[Page('/cached')]
-final class CachedPage extends Document
+final class CachedPage
 {
     public function render()
     {
-        return <p id="cached">Cached</p>;
+        return (
+            <Document>
+                <p id="cached">Cached</p>
+            </Document>
+        );
     }
 }

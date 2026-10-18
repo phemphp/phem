@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Renders a page (server-side) in its document (see Mamu\Document).
+ * Renders a page (server-side) with its document (see Mamu\Root).
  *
  * The route loader gives each `#[Route]` of a page component a route with the `_mamu_page`
  * (component) attribute.

@@ -9,7 +9,7 @@
 
 const path = require('path');
 const { scan } = require('./scanner');
-const { parse, paramText } = require('./php');
+const { parse, paramText, BUILTIN_COMPONENTS } = require('./php');
 const { resolveComponent } = require('./imports');
 const { scopeAt, codeOf, chainStart } = require('./scope');
 const { twigEnv } = require('./twig');
@@ -65,7 +65,7 @@ class Resolver {
     }
 
     components() {
-        return this.project ? this.project.components(this.file, this.parsed) : this.parsed.components.map((c) => ({ ...c, file: this.file }));
+        return this.project ? this.project.components(this.file, this.parsed) : [...this.parsed.components.map((c) => ({ ...c, file: this.file })), ...BUILTIN_COMPONENTS];
     }
 
     async run() {
@@ -141,6 +141,9 @@ class Resolver {
 
     componentHover(comp) {
         const lines = [code('php', comp.signature)];
+        if (comp.doc) {
+            lines.push('', comp.doc);
+        }
         if (comp.page) {
             const routes = this.project ? this.project.routes(this.file, this.parsed).filter((r) => r.fqn === comp.fqn) : [];
             lines.push('', 'Page' + (routes.length ? ': ' + routes.map((r) => '`' + r.path + '` (`' + r.name + '`)').join(', ') : ''));
@@ -153,6 +156,9 @@ class Resolver {
 
     // The parameter or the property of a prop (or a slot) of a component.
     async propDecl(comp, name) {
+        if (!comp.file) {
+            return null;
+        }
         const source = comp.file === this.file ? this.source : this.project && (await this.project.classes.source(comp.file, this.source));
         if (!source) {
             return null;

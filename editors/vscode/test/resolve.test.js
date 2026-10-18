@@ -40,6 +40,16 @@ test('a component tag goes to the component', async () => {
     assert.deepEqual(target(await at(fn('<Layout title="x"><Layout:foo‸ter>a</Layout:footer></Layout>'))), ['src/components/Layout.phpm', '$footer = null)']);
 });
 
+test('the built-in Root tag has a hover and no location', async () => {
+    const r = await at(USES.replace('use App\\Model', 'use Mamu\\{Html, Root};\nuse App\\Model') + 'function Document(?Html $children = null)\n{\n    return <body><Ro‸ot tag="main">{{ children }}</Root></body>;\n}\n');
+    assert.equal(r.location, null);
+    assert.match(r.hover, /final class Root/);
+    assert.match(r.hover, /root element of the page/);
+    const tag = await at(USES.replace('use App\\Model', 'use Mamu\\Root;\nuse App\\Model') + 'function Document()\n{\n    return <Root ta‸g="main" />;\n}\n');
+    assert.match(tag.hover, /Prop of `Mamu\\Root`/);
+    assert.equal(tag.location, null);
+});
+
 test('a prop goes to the parameter or the property', async () => {
     assert.deepEqual(target(await at(fn('<Layout ti‸tle="x" />'))), ['src/components/Layout.phpm', '$title, ?Html $children = null, ?Html $footer = null)']);
     const r = await at(USES + 'use App\\Components\\Counter;\n\nfunction Home()\n{\n    return <Counter ma‸x={{ 3 }} />;\n}\n');
@@ -121,6 +131,6 @@ test('hover for Twig filters, functions, tests, tags, and HTML', async () => {
 
 test('a route name goes to the page', async () => {
     const r = await at(fn("<a href={{ path('gall‸ery') }}>x</a>"));
-    assert.deepEqual(target(r), ['src/pages/gallery.phpm', 'Gallery extends Document']);
+    assert.deepEqual(target(r), ['src/pages/gallery.phpm', 'Gallery']);
     assert.match(r.hover, /\/gallery/);
 });
