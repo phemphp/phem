@@ -13,6 +13,11 @@
 // While an event runs, the element that sent it and its component (the closest <phem-c>, or the
 // root element) get `aria-busy="true"` and the `phem-loading` class. They show after a delay
 // (`data-phem-loading-delay-value`, 200 ms by default), so a fast response does not flicker.
+//
+// While a submit event runs, the form is locked at once: its submit buttons and its other
+// controls are disabled, and its text fields are read-only (so they keep the focus). A second
+// submit of a locked form is ignored. The lock ends when the response arrives, before the morph,
+// so the server render has the last word. `data-phem-disable="false"` on the form turns it off.
 
 import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
@@ -36,6 +41,16 @@ function showLoading(el, on) {
   el.classList.toggle("phem-loading", on)
 }
 
+// Locks a form control: a text field becomes read-only, any other control becomes disabled.
+// Returns the property that it set, or null when the control was already locked by the page.
+function lockControl(control) {
+  // A range or color input ignores `readonly`.
+  const prop = isTextLike(control) && control.type !== "range" && control.type !== "color" ? "readOnly" : "disabled"
+  if (control[prop] || control.disabled) return null
+  control[prop] = true
+  return prop
+}
+
 export default class PhemController extends Controller {
   static values = { state: String, signature: String, loadingDelay: { type: Number, default: 200 } }
 
@@ -43,10 +58,17 @@ export default class PhemController extends Controller {
     this.queue = Promise.resolve()
     // element => the number of its events that show the loading state
     this.loading = new Map()
+    // form => (control => the property that the lock set), for each locked form
+    this.locked = new Map()
     // The morph of an earlier event sets the attributes of the server render: show the loading
-    // state again on an element with an event that still runs.
+    // state again on an element with an event that still runs, and lock a locked control again.
     this.keepLoading = (event) => {
-      if (this.loading.has(event.target)) showLoading(event.target, true)
+      const t = event.target
+      if (this.loading.has(t)) showLoading(t, true)
+      for (const controls of this.locked.values()) {
+        const prop = controls.get(t)
+        if (prop) t[prop] = true
+      }
     }
     this.element.addEventListener("turbo:morph-element", this.keepLoading)
   }
@@ -59,7 +81,11 @@ export default class PhemController extends Controller {
   dispatch(event) {
     const el = this.handlerElement(event)
     if (!el) return
-    if (event.type === "submit") event.preventDefault()
+    if (event.type === "submit") {
+      event.preventDefault()
+      // The first submit of this form still runs.
+      if (this.locked.has(el)) return
+    }
     const handler = el.getAttribute(el._phemAttr)
     const payload = {
       type: event.type,
@@ -69,10 +95,31 @@ export default class PhemController extends Controller {
       form: el instanceof HTMLFormElement ? formFields(el, event.submitter) : null,
     }
     const done = this.startLoading(el)
+    // After formFields(): a disabled control is not in the form data.
+    const unlock = event.type === "submit" ? this.lockForm(el) : () => {}
     this.queue = this.queue
-      .then(() => this.send(handler, payload))
+      .then(() => this.send(handler, payload, unlock))
       .catch((e) => console.error("[phem]", e))
-      .finally(done)
+      .finally(() => {
+        unlock()
+        done()
+      })
+  }
+
+  // Locks the controls of a form while its submit event runs. Returns the function that ends it.
+  lockForm(form) {
+    if (form.dataset.phemDisable === "false") return () => {}
+    const controls = new Map()
+    for (const control of form.elements) {
+      const prop = lockControl(control)
+      if (prop) controls.set(control, prop)
+    }
+    this.locked.set(form, controls)
+    return () => {
+      if (this.locked.get(form) !== controls) return
+      this.locked.delete(form)
+      controls.forEach((prop, control) => (control[prop] = false))
+    }
   }
 
   // Shows the loading state of an event after the delay. Returns the function that ends it.
@@ -122,13 +169,15 @@ export default class PhemController extends Controller {
     }
   }
 
-  async send(handler, event) {
+  // `beforeRender` runs when the response arrives, before the page changes.
+  async send(handler, event, beforeRender) {
     // The URL of the page, from the browser: always the same origin.
     const response = await fetch(window.location.href, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json", "X-Phem-Event": "1" },
       body: JSON.stringify({ state: this.stateValue, signature: this.signatureValue, handler, event }),
     })
+    beforeRender()
     if (response.status === 409) {
       // The state is not valid any more (a new build, or a new secret): load the page again.
       Turbo.visit(window.location.href, { action: "replace" })

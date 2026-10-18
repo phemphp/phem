@@ -125,7 +125,8 @@ show after a delay of 200 ms (`data-phem-loading-delay-value`), to stop flicker.
 
 Not done yet:
 
-- [ ] Disable a submit button and its form inputs during a submit (as LV does), with an opt-out.
+- [x] Disable a submit button and its form inputs during a submit (as LV does), with an opt-out:
+      `data-phem-disable={{ false }}` on the form.
 - [ ] Custom markup: `<Spinner phem:loading={{ save }} />` shows only while `save` runs.
 
 ### [ ] Optimistic UI and client commands — P2
