@@ -102,12 +102,12 @@ final class PageDriver implements Driver
         return EventResult::updates(self::streams((string) $data['streams']));
     }
 
-    public function state(): array
+    public function state(?string $fiber = null): array
     {
         $data = json_decode($this->state, true, 512, \JSON_THROW_ON_ERROR);
         $fibers = \is_array($data) ? PageState::fromArray($data)->fibers : [];
 
-        return $fibers[Fiber::idOf('/'.$this->page.'#0')] ?? [];
+        return $fibers[$fiber ?? Fiber::idOf('/'.$this->page.'#0')] ?? [];
     }
 
     /** @return array<string, string> the cookies of the browser, with the cookies of the responses */

@@ -319,13 +319,12 @@ Done: `Phem\Test\InteractsWithPhem` (see [docs/testing.md](docs/testing.md)).
 `$this->mount(Counter::class, ['label' => 'Clicks'])->click('button')->assertSee('Clicks 1 times')`
 renders a component in the test process. `$this->visit('/x')` loads a page and sends its events
 over HTTP, so the access rules and the signature are tested too. Also `->change()`, `->submit()`,
-`->assertState()`, `->assertRedirect()` and `->followRedirect()`.
+`->assertState()` (with `in:` for a child component), `->assertRedirect()` and `->followRedirect()`.
 
 Not done yet:
 
 - [ ] `->assertDispatched('toast')`: it needs the item "Server-to-browser events" first.
-- [ ] `->assertState()` for a child component: today it reads only the page or the mounted
-      component.
+- [x] `->assertState()` for a child component: `->assertState('on', true, in: '#toggle')`.
 
 ### [ ] Symfony profiler panel — P2
 

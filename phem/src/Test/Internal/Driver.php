@@ -34,12 +34,14 @@ interface Driver
     public function dispatch(string $handler, array $event): EventResult;
 
     /**
-     * The #[State] properties of the root component (the page, or the mounted component), as
-     * the browser keeps them.
+     * The #[State] properties of a component, as the browser keeps them: the root component
+     * (the page, or the mounted component) by default.
+     *
+     * @param string|null $fiber the id of a fiber (the id of its `<phem-c>`), or null for the root component
      *
      * @return array<string, mixed>
      */
-    public function state(): array;
+    public function state(?string $fiber = null): array;
 
     /** The HTTP status of the last response: 200 for a component. */
     public function status(): int;

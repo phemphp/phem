@@ -197,13 +197,14 @@ final class ComponentTester
 
     /**
      * The #[State] properties of the page, or of the mounted component, as the browser keeps
-     * them (JSON values).
+     * them (JSON values). With `$in`, the properties of the component around the element that
+     * matches this CSS selector (see assertState()).
      *
      * @return array<string, mixed>
      */
-    public function state(): array
+    public function state(?string $in = null): array
     {
-        return $this->driver->state();
+        return $this->driver->state(null !== $in ? $this->fiberOf($in) : null);
     }
 
     // --- Assertions ------------------------------------------------------------------------
@@ -265,12 +266,21 @@ final class ComponentTester
         return $this;
     }
 
-    /** Asserts the value of a #[State] property of the page, or of the mounted component. */
-    public function assertState(string $name, mixed $expected): self
+    /**
+     * Asserts the value of a #[State] property of the page, or of the mounted component.
+     *
+     * With `$in`, the property is of a child component: the closest component with state around
+     * the element that matches this CSS selector, as in the DOM of the browser. With no such
+     * component, it is the page, or the mounted component.
+     *
+     *     ->assertState('on', true, in: '#toggle')
+     */
+    public function assertState(string $name, mixed $expected, ?string $in = null): self
     {
-        $state = $this->driver->state();
-        Assert::assertArrayHasKey($name, $state, \sprintf('The state has no "%s" property.', $name));
-        Assert::assertSame($expected, $state[$name], \sprintf('The "%s" state property.', $name));
+        $state = $this->state($in);
+        $of = null !== $in ? \sprintf(' of the component around "%s"', $in) : '';
+        Assert::assertArrayHasKey($name, $state, \sprintf('The state%s has no "%s" property.', $of, $name));
+        Assert::assertSame($expected, $state[$name], \sprintf('The "%s" state property%s.', $name, $of));
 
         return $this;
     }
@@ -386,6 +396,23 @@ final class ComponentTester
         $root = $this->document->querySelector('[data-phem-state-value]') ?? $this->document->body;
 
         return null !== $element && null !== $root && $root->contains($element) ? $element : null;
+    }
+
+    /**
+     * The fiber id of the closest component with state around an element (the id of its
+     * `<phem-c>`), or null for the root component. A component with no #[State] property
+     * (a `<Root>`, a function component) is not a match.
+     */
+    private function fiberOf(string $selector): ?string
+    {
+        $element = $this->document->querySelector($selector) ?? Assert::fail(\sprintf('No element matches "%s". %s', $selector, $this->context()));
+        for ($c = $element->closest('phem-c'); null !== $c; $c = $c->parentElement?->closest('phem-c')) {
+            if ([] !== $this->driver->state($c->id)) {
+                return $c->id;
+            }
+        }
+
+        return null;
     }
 
     private function enabled(string $selector): Element

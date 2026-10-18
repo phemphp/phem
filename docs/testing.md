@@ -104,11 +104,28 @@ Each assertion returns the tester, so you can chain the actions and the assertio
 | `assertSelectorCount($count, $selector)` | the number of elements |
 | `assertSelectorTextContains($selector, $text)` | the text of the first element |
 | `assertState($name, $value)` | a `#[State]` property of the page, or of the mounted component |
+| `assertState($name, $value, in: $selector)` | a `#[State]` property of a child component (see below) |
 | `assertStatus($status)` | the HTTP status of the last response |
 | `assertRedirect($url)`, `assertNoRedirect()` | a handler that returns a `RedirectResponse`, or a page that redirects |
 | `assertReload()` | the last event answered 409: the browser loads the page again |
 
 To read the values, use `html()`, `text()`, `state()`, and `document()` (a `Dom\HTMLDocument`).
+
+### The state of a child component
+
+Give a CSS selector in `in`. The tester finds the element, and then the closest component with
+`#[State]` properties around it, as in the DOM of the browser. A component with no `#[State]`
+property (a function component, the `<Root>`) does not match. With no match, the assertion
+reads the page, or the mounted component.
+
+```php
+$this->visit('/')
+    ->click('#toggle')
+    ->assertState('on', true, in: '#toggle')   // the Toggle component around the button
+    ->assertState('count', 0);                 // the page
+```
+
+`state(in: '#toggle')` gives all the properties of that component.
 
 ## Services
 
@@ -127,5 +144,6 @@ Before each event, the services are reset (`kernel.reset`), as between two reque
 
 - The tester runs no JavaScript. A Stimulus controller of the application does not run.
 - A server error in `visit()`, or in one of its events, throws its exception in the test.
-- `assertState()` reads the state of the page or of the mounted component, not of a child
-  component. Check the HTML of a child component.
+- `assertState(in: ...)` uses the DOM to find a child component. Slot content is in the DOM
+  of the component that renders the slot. A selector in a slot finds that component (when it
+  has state), not the component that gives the slot.

@@ -105,9 +105,9 @@ final class ComponentDriver implements Driver
         });
     }
 
-    public function state(): array
+    public function state(?string $fiber = null): array
     {
-        return $this->state[Fiber::idOf('/'.$this->component.'#0')] ?? [];
+        return $this->state[$fiber ?? Fiber::idOf('/'.$this->component.'#0')] ?? [];
     }
 
     public function status(): int

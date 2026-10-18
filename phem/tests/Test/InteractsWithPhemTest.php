@@ -159,6 +159,31 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->assertSee('Clicked 1 times');
     }
 
+    public function testAssertStateOfAChildComponent(): void
+    {
+        $tester = $this->visit('/')
+            ->click('button[data-count]')
+            ->assertState('count', 1, in: 'button[data-count]')
+            ->assertState('count', 0)
+            ->assertState('count', 0, in: '#add')
+            ->assertState('count', 0, in: 'title')
+            ->click('#toggle')
+            ->assertState('on', true, in: '#toggle')
+            ->assertState('on', true, in: '#yes');
+
+        self::assertSame(['on' => true], $tester->state(in: '#toggle'));
+        $this->assertFails(static fn () => $tester->assertState('count', 1, in: '#toggle'), 'The state of the component around "#toggle" has no "count" property');
+        $this->assertFails(static fn () => $tester->assertState('on', false, in: '#toggle'), 'The "on" state property of the component around "#toggle"');
+        $this->assertFails(static fn () => $tester->assertState('on', true, in: '#missing'), 'No element matches "#missing"');
+    }
+
+    public function testMountAssertsTheStateOfAnElementOfTheComponent(): void
+    {
+        $this->mount(self::COUNTER)
+            ->click('button')
+            ->assertState('count', 1, in: 'button');
+    }
+
     public function testVisitFollowsTheRedirectOfAHandler(): void
     {
         $this->visit('/leave')
