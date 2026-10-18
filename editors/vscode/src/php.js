@@ -717,6 +717,12 @@ function hasAttr(attrs, name) {
     return attrs.some((a) => a === name || a.endsWith('\\' + name));
 }
 
+// A prop of a class component: a `#[Prop]` (or `#[Path]`) property that is public, not
+// static, not promoted, and not `#[State]`.
+function isProp(p) {
+    return (hasAttr(p.attrs, 'Prop') || hasAttr(p.attrs, 'Path')) && !p.promoted && p.modifiers.includes('public') && !p.modifiers.includes('static') && !hasAttr(p.attrs, 'State');
+}
+
 function isHtmlType(type) {
     return /^\\?(Mamu\\)?Html$/.test(type.replace(/^\?/, '').replace(/^null\||\|null$/i, ''));
 }
@@ -774,7 +780,7 @@ function components(parsed) {
         };
         const lines = [];
         for (const p of cls.properties) {
-            if (p.promoted || !p.modifiers.includes('public') || p.modifiers.includes('static') || hasAttr(p.attrs, 'State')) {
+            if (!isProp(p)) {
                 continue;
             }
             if (p.name === 'children') {
@@ -785,7 +791,7 @@ function components(parsed) {
                 const required = p.default === undefined && !p.type.startsWith('?') && !/(^|\|)null(\||$)/i.test(p.type) && p.type !== '';
                 comp.props.push({ name: p.name, type: p.type, default: p.default, required });
             }
-            lines.push(`    public ${p.type ? p.type + ' ' : ''}$${p.name}${p.default !== undefined ? ' = ' + p.default : ''};`);
+            lines.push(`    #[Prop] public ${p.type ? p.type + ' ' : ''}$${p.name}${p.default !== undefined ? ' = ' + p.default : ''};`);
         }
         if (lines.length > 0) {
             comp.signature += `\n{\n${lines.join('\n')}\n}`;
@@ -838,4 +844,4 @@ function parse(text) {
     return parsed;
 }
 
-module.exports = { parse, tokenize, docBefore, hasAttr, paramText, shortName, namespaceOf, joinName, BUILTIN_COMPONENTS };
+module.exports = { parse, tokenize, docBefore, hasAttr, isProp, paramText, shortName, namespaceOf, joinName, BUILTIN_COMPONENTS };

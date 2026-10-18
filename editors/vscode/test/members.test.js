@@ -72,8 +72,8 @@ test('$this-> in a class shows all its members', async () => {
     assert.equal(r.find('hidden'), undefined);
 });
 
-test('promoted constructor properties are members, not props', async () => {
-    const src = '<?phpm\nnamespace App\\Components;\n\nuse App\\Repository\\ScientistRepository;\nuse Mamu\\Attribute\\Component;\n\n#[Component]\nfinal class List1\n{\n    public int $limit = 3;\n\n    public function __construct(private readonly ScientistRepository $repo)\n    {\n    }\n\n    public function render()\n    {\n        $this->repo->|\n    }\n}\n';
+test('promoted constructor properties and properties without #[Prop] are members, not props', async () => {
+    const src = '<?phpm\nnamespace App\\Components;\n\nuse App\\Repository\\ScientistRepository;\nuse Mamu\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class List1\n{\n    #[Prop] public int $limit = 3;\n    public int $page = 1;\n\n    public function __construct(private readonly ScientistRepository $repo)\n    {\n    }\n\n    public function render()\n    {\n        $this->repo->|\n    }\n}\n';
     const r = await run(src, 'src/components/List1.phpm');
     assert.deepEqual(r.labels.sort(), ['all', 'find', 'load']);
     const { parse } = require('../src/php');

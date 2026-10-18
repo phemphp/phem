@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A property of a class component is a prop only with `#[Prop]` (or `#[Path]` on a page).
+  Completion, hover, and the outline do not show the other public properties as props.
 - A function is a component only with `#[Component]`, as a class. The other functions of a
   `.phpm` file are plain PHP functions: completion does not suggest them as component tags.
 - The project is now Mamu. The extension id is `mamuphp.mamu`, the language id is `phpm`, and

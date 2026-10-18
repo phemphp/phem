@@ -20,7 +20,7 @@ use Mamu\Metadata\ComponentMetadata;
 use Mamu\Metadata\Parameter;
 
 /**
- * Binds props to the parameters of a function component or to the public properties of a
+ * Binds props to the parameters of a function component or to the #[Prop] properties of a
  * class component, with defaults and clear errors.
  */
 final class PropBinder

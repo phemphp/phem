@@ -2,7 +2,7 @@
 
 namespace App\Pages;
 
-use Mamu\Attribute\{Page, Path, State};
+use Mamu\Attribute\{Page, Path, Prop, State};
 use Mamu\Tests\Fixtures\Scientist;
 
 use function App\Components\Document;
@@ -12,7 +12,7 @@ use function App\Components\Document;
 final class ItemPage
 {
     #[Path] public int $id;
-    public string $label = 'Item';
+    #[Prop] public string $label = 'Item';
     #[State] public int $count = 0;
 
     public function increment(): void

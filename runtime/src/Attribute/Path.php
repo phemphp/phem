@@ -15,8 +15,8 @@ namespace Mamu\Attribute;
 
 /**
  * Marks a public property of a page as a route value: `{id}` in `#[Route('/scientists/{id}')]`
- * goes to the `#[Path] $id` property. The page gets the value as a prop, also in the events of
- * the page.
+ * goes to the `#[Path] $id` property. The property is a prop (it needs no #[Prop]), and the page
+ * gets the value also in the events of the page.
  */
 #[\Attribute(\Attribute::TARGET_PROPERTY)]
 final class Path

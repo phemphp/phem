@@ -114,7 +114,7 @@ test('use statements complete namespaces and symbols', async () => {
     assert.equal(r.find('Html').insert, 'Html;');
 
     r = (await run(PAGE + 'use Mamu\\Attribute\\{Component, |};\n'));
-    assert.deepEqual(r.items.map((i) => i.label).sort(), ['Component', 'State']);
+    assert.deepEqual(r.items.map((i) => i.label).sort(), ['Component', 'Prop', 'State']);
 
     r = (await run(PAGE + 'use function Acme\\|\n'));
     assert.deepEqual(r.items.map((i) => i.label), ['slugify']);

@@ -173,7 +173,7 @@ See [editors/vscode/README.md](editors/vscode/README.md).
 | initial state from props or data | `mount()`, called when the component has no state yet |
 | a form `onSubmit` handler | a Symfony form: `$form->handleRequest($e->request)` in the handler |
 | `useContext`, imported modules | services, injected in the constructor |
-| props, `children`, lifting state up | parameters or public properties, `?Html $children`, the same pattern |
+| props, `children`, lifting state up | parameters or `#[Prop]` properties, `?Html $children`, the same pattern |
 
 ## Repository layout
 
@@ -201,10 +201,10 @@ finds an error:
 | E010–E014 | Unknown component (also a function without `#[Component]`), unknown or missing prop, children or slot not accepted, duplicate component (also a component with the name of a built-in component, `Mamu\Root`) |
 | E020 | A call to a React Hook (`Mamu\useState`, ...): Mamu keeps state in `#[Component]` classes |
 | E030–E032 | Undefined variable in markup, markup in an unsupported expression, invalid attribute |
-| E040–E041 | Class component without `render()`, readonly `#[State]` property |
+| E040–E042 | Class component without `render()`, readonly `#[State]` property, `#[Prop]` property that is not public, static, or `#[State]` |
 | E050, E052 | `export default` (not PHP; use `#[Page]`), `#[Page]` or `#[Route]` on a function, or on a class that is not a component |
 | W001–W003 | A handler is called instead of passed; a list item without `key`; an event that the browser does not send (`onMouseEnter`) |
-| W004 | `#[Page]`, `#[Route]`, `#[Component]` or `#[State]` without its `use` import (`Mamu\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
+| W004 | `#[Page]`, `#[Route]`, `#[Component]`, `#[State]`, `#[Prop]` or `#[Path]` without its `use` import (`Mamu\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
 | W005 | a `<title>` outside `<head>` and `<svg>`: the document component prints the title, and a page gives it with `<Document:title>` |
 
 ## Limits

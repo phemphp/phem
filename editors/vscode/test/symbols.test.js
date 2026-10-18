@@ -8,7 +8,7 @@ const { documentSymbols } = require('../src/symbols');
 const SOURCE = `<?phpm
 namespace App\\Pages;
 
-use Mamu\\Attribute\\{Component, State};
+use Mamu\\Attribute\\{Component, Prop, State};
 use Mamu\\Html;
 use Symfony\\Component\\Routing\\Attribute\\Route;
 
@@ -24,7 +24,7 @@ final class Counter
 {
     public const MAX = 10;
 
-    public string $label = 'Clicked';
+    #[Prop] public string $label = 'Clicked';
     #[State] public int $count = 0;
 
     public function __construct(private readonly \\App\\Repository\\TodoRepository $todos)

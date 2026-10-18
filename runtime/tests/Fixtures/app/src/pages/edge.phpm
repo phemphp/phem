@@ -2,7 +2,7 @@
 
 namespace App\Pages;
 
-use Mamu\Attribute\{Component, Page, State};
+use Mamu\Attribute\{Component, Page, Prop, State};
 use Mamu\Html;
 use Mamu\Tests\Fixtures\Titled;
 
@@ -22,7 +22,7 @@ function Panel(Html $children, ?Html $footer = null) {
 #[Component]
 final class Label
 {
-    public readonly string $text;
+    #[Prop] public readonly string $text;
 
     public function render()
     {

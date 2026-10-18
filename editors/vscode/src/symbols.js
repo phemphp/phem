@@ -9,7 +9,7 @@
 // `kind` is namespace, class, interface, trait, enum, function, method,
 // constructor, property, constant, or enumMember.
 
-const { hasAttr } = require('./php');
+const { hasAttr, isProp } = require('./php');
 const { routesOf } = require('./project');
 
 function isHtmlType(type) {
@@ -49,9 +49,10 @@ function documentSymbols(parsed, text) {
         }
         for (const p of cls.properties) {
             let detail = p.type;
-            if (comp && !p.promoted && p.modifiers.includes('public') && !p.static) {
-                detail = hasAttr(p.attrs, 'State') ? 'state' : p.name === 'children' ? 'children' : isHtmlType(p.type) ? 'slot' : 'prop';
-                detail += p.type ? ': ' + p.type : '';
+            if (comp && isProp(p)) {
+                detail = (p.name === 'children' ? 'children' : isHtmlType(p.type) ? 'slot' : 'prop') + (p.type ? ': ' + p.type : '');
+            } else if (comp && hasAttr(p.attrs, 'State') && !p.static) {
+                detail = 'state' + (p.type ? ': ' + p.type : '');
             }
             children.push(symbol(p.name, detail, 'property', p.offset, p.offset + p.name.length + 1, p.offset + 1));
         }

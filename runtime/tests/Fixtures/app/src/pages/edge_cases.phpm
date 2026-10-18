@@ -2,7 +2,7 @@
 
 namespace App\Pages;
 
-use Mamu\Attribute\{Component, Page, State};
+use Mamu\Attribute\{Component, Page, Prop, State};
 use Mamu\Html;
 use Mamu\Tests\Fixtures\Framed;
 
@@ -17,7 +17,7 @@ function Tally(array $items) {
 #[Component]
 final class Chip
 {
-    public string $label = '';
+    #[Prop] public string $label = '';
     #[State] public int $hits = 0;
 
     public function hit(): void
@@ -35,7 +35,7 @@ final class Chip
 #[Component]
 final class Shelf
 {
-    public readonly Html $children;
+    #[Prop] public readonly Html $children;
 
     public function render()
     {
@@ -47,7 +47,7 @@ final class Shelf
 #[Component]
 final class Gauge
 {
-    public readonly int $n;
+    #[Prop] public readonly int $n;
     private string $text = '';
 
     public function mount(): void

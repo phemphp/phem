@@ -76,8 +76,8 @@ pages, in any directory. The Symfony `#[Route]` attribute works too, on a `#[Com
 
 ### Route values
 
-A route value goes to the page as a prop. Mark the public property with `#[Path]`. The name of
-the property is the name of the route value.
+A route value goes to the page as a prop. Mark the public property with `#[Path]` (it needs no
+`#[Prop]`). The name of the property is the name of the route value.
 
 ```php
 use Mamu\Attribute\{Page, Path};
@@ -352,13 +352,13 @@ A component with state is a class with the `#[Component]` attribute and a `rende
 A page class (`#[Page]`) is a component too, with no `#[Component]`.
 
 ```php
-use Mamu\Attribute\{Component, State};
+use Mamu\Attribute\{Component, Prop, State};
 
 #[Component]
 final class Counter
 {
-    public string $label = 'Clicked';   // prop
-    #[State] public int $count = 0;     // state
+    #[Prop] public string $label = 'Clicked';   // prop
+    #[State] public int $count = 0;             // state
 
     public function increment(): void
     {
@@ -372,8 +372,9 @@ final class Counter
 }
 ```
 
-- A public property is a prop. A property without a default value (and not nullable) is a
-  required prop.
+- A `#[Prop]` property is a prop. It must be public, not static, not promoted, and not
+  `#[State]` (compiler error E042). A prop without a default value (and not nullable) is a
+  required prop. A public property without `#[Prop]` is not a prop: the markup cannot set it.
 - A `#[State]` property is state. A method changes it, and Mamu calls `render()` again.
 - In the markup of a class, a name is a local variable, then a property (`$this->name`),
   then a method (`$this->name(...)`, so a method passes as a handler).
@@ -406,12 +407,12 @@ never props.
 
 ```php
 use App\Repository\TodoRepository;
-use Mamu\Attribute\{Component, State};
+use Mamu\Attribute\{Component, Prop, State};
 
 #[Component]
 final class TodoList
 {
-    public int $limit = 10;                // prop
+    #[Prop] public int $limit = 10;        // prop
     #[State] public array $todos = [];     // state
 
     public function __construct(private readonly TodoRepository $repository)
@@ -444,7 +445,7 @@ final class TodoList
 The order for each component in a request:
 
 1. The container makes the object (constructor injection).
-2. Mamu writes the props into the public properties.
+2. Mamu writes the props into the `#[Prop]` properties.
 3. If the browser sent state for this component, Mamu writes it into the `#[State]`
    properties. If not, Mamu calls `mount()` (when the class has it).
 4. Mamu calls the event handler (for an event), then `render()`.
@@ -466,13 +467,13 @@ does not call `flush()`:
 - To change an entity that Doctrine loaded, set its properties. The flush finds the changes.
 
 ```php
-use Mamu\Attribute\{Component, Transactional};
+use Mamu\Attribute\{Component, Prop, Transactional};
 
 #[Component]
 #[Transactional]
 final class TodoItem
 {
-    public Todo $todo;                     // prop: a managed entity
+    #[Prop] public Todo $todo;             // prop: a managed entity
 
     public function __construct(private readonly EntityManagerInterface $em)
     {
@@ -531,7 +532,7 @@ final class MyApp
 ```
 
 - `prop="text"` passes a string, `prop={{ expr }}` passes any value, and a bare `prop` passes `true`.
-- Children go to the `?Html $children` parameter (or public property): `<Card>...</Card>`.
+- Children go to the `?Html $children` parameter (or `#[Prop]` property): `<Card>...</Card>`.
 - Named slots: `<Card:footer>...</Card:footer>` goes to the `?Html $footer` parameter.
 - A default for children or a slot: `{{ footer ?? 'No footer' }}` shows when the caller gives none.
 - An unknown prop is an error, unless the function has a variadic `...$rest` parameter.

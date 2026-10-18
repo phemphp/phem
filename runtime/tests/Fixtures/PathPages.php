@@ -16,6 +16,7 @@ namespace Mamu\Tests\Fixtures\PathPages;
 use Mamu\Attribute\Component;
 use Mamu\Attribute\Page;
 use Mamu\Attribute\Path;
+use Mamu\Attribute\Prop;
 use Mamu\Attribute\State;
 use Mamu\Tests\Fixtures\Scientist;
 use Symfony\Component\HttpKernel\Attribute\Cache;
@@ -28,7 +29,7 @@ use Symfony\Component\Routing\Attribute\Route;
 final class Known
 {
     #[Path] public int $id;
-    public string $label = 'x';
+    #[Prop] public string $label = 'x';
 }
 
 #[Component]
@@ -67,14 +68,14 @@ final class Typed
     #[Path] public float $price = 0.0;
     #[Path] public bool $draft = false;
     #[Path] public string $slug = '';
-    public string $label = 'x';
+    #[Prop] public string $label = 'x';
 }
 
 #[Component]
 #[Route('/without/{id}')]
 final class WithoutPath
 {
-    public int $id = 0;
+    #[Prop] public int $id = 0;
 }
 
 #[Component]

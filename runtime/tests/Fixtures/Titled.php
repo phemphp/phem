@@ -13,12 +13,13 @@ declare(strict_types=1);
 
 namespace Mamu\Tests\Fixtures;
 
+use Mamu\Attribute\Prop;
 use Mamu\Attribute\State;
 
 /** The parent class of a fixture component, outside the .phpm sources: mamuc does not see it. */
 abstract class Titled
 {
-    public string $title = 'Untitled';
+    #[Prop] public string $title = 'Untitled';
     #[State] public int $hits = 0;
     public function hit(): void
     {

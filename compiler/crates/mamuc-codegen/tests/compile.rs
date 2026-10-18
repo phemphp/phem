@@ -134,7 +134,7 @@ fn markup_reads_the_twig_globals() {
 
 #[test]
 fn a_class_component_gets_the_members_of_its_parent_and_traits() {
-    let base = "<?phpm\nnamespace App;\nabstract class Base {\n    public string $title = '';\n    private int $secret = 1;\n    public function save(): void {}\n    public function render() { return <b>{{ title }}</b>; }\n}\ntrait Named { public string $name = ''; }\n";
+    let base = "<?phpm\nnamespace App;\nabstract class Base {\n    #[\\Mamu\\Attribute\\Prop] public string $title = '';\n    private int $secret = 1;\n    public function save(): void {}\n    public function render() { return <b>{{ title }}</b>; }\n}\ntrait Named { #[\\Mamu\\Attribute\\Prop] public string $name = ''; }\n";
     let card = "<?phpm\nnamespace App;\nuse Mamu\\Attribute\\Component;\n#[Component]\nfinal class Card extends Base {\n    use Named;\n    public function view() { return <i onClick={{ save }}>{{ title }} {{ name }}</i>; }\n}\nfunction Page() { return <Card title=\"a\" name=\"b\" />; }\n";
     let inputs = vec![SourceInput { rel: "Base.phpm".into(), text: base.into() }, SourceInput { rel: "Card.phpm".into(), text: card.into() }];
     let (out, diags) = compile(inputs.clone());

@@ -2,15 +2,15 @@
 
 namespace App\Components;
 
-use Mamu\Attribute\{Component, State};
+use Mamu\Attribute\{Component, Prop, State};
 use Mamu\Html;
 use Mamu\Tests\Fixtures\Limits;
 
 #[Component]
 final class Counter
 {
-    public string $label = 'Clicked';
-    public ?Html $children = null;
+    #[Prop] public string $label = 'Clicked';
+    #[Prop] public ?Html $children = null;
     #[State] public int $count = 0;
 
     public function __construct(private readonly Limits $limits)

@@ -406,7 +406,7 @@ final class Counter
 #[Transactional]
 final class AddScientist
 {
-    public string $label = 'Add';  // a prop
+    #[Prop] public string $label = 'Add';  // a prop
 
     public function __construct(private readonly ScientistRepository $scientists)
     {
@@ -431,7 +431,7 @@ final class AddScientist
 <p>The parts of a class component:</p>
 <ul>
     <li><strong>The constructor</strong> gets the services. Its parameters are never props.</li>
-    <li><strong>Public properties</strong> are the props. A property without a default value is a required prop.</li>
+    <li><strong><code>#[Prop]</code> properties</strong> are the props. They must be public. A prop without a default value is a required prop. A public property without <code>#[Prop]</code> is not a prop.</li>
     <li><strong><code>#[State]</code> properties</strong> are the state. The browser keeps them, so they must be JSON values.</li>
     <li><strong><code>mount()</code></strong> (optional) sets the first state. It runs after the props are set, when the component has no state yet: on its first render. For example, <code>$this-&gt;items = $this-&gt;repository-&gt;latest($this-&gt;limit);</code>.</li>
     <li><strong>Methods</strong> are event handlers. A handler can change the state and call the services.</li>

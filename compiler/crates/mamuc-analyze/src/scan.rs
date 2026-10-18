@@ -2,7 +2,7 @@
 //! function that contains each markup literal. It is not a PHP parser; it reads only the
 //! declarations that the compiler needs.
 
-use crate::{Kind, ATTR_COMPONENT, ATTR_PAGE, ATTR_ROUTE, ATTR_STATE};
+use crate::{Kind, ATTR_COMPONENT, ATTR_PAGE, ATTR_PATH, ATTR_PROP, ATTR_ROUTE, ATTR_STATE};
 use mamuc_syntax::php::{Lexed, TokKind, Token};
 use mamuc_syntax::Span;
 use std::collections::HashMap;
@@ -22,7 +22,7 @@ pub struct FileInfo {
     pub routes: Vec<RouteDecl>,
     /// `export default` keywords (not PHP; the compiler reports them).
     pub export_defaults: Vec<Span>,
-    /// Attributes with a known short name (`Page`, `Route`, `Component`, `State`) that resolve to
+    /// Attributes with a known short name (`Page`, `Route`, `Component`, `State`, `Prop`, `Path`) that resolve to
     /// another class: (short name, expected name, resolved name, span).
     pub foreign_attrs: Vec<(String, &'static str, String, Span)>,
     /// For each markup literal (by index), the function or method that contains it.
@@ -142,10 +142,20 @@ pub struct Prop {
     pub is_readonly: bool,
     pub is_static: bool,
     pub is_state: bool,
+    /// The attribute that marks the property as a prop: `Prop`, or `Path` on a page.
+    pub prop_attr: Option<&'static str>,
     /// A promoted constructor parameter: a service that the container injects, not a prop.
     pub is_promoted: bool,
     pub has_default: bool,
     pub span: Span,
+}
+
+impl Prop {
+    /// A `#[Prop]` (or `#[Path]`) property that is public, not static, not promoted, and not
+    /// `#[State]`: a prop of the class component.
+    pub fn is_prop(&self) -> bool {
+        self.prop_attr.is_some() && self.is_public && !self.is_static && !self.is_state && !self.is_promoted
+    }
 }
 
 /// Significant tokens (no whitespace or comments).
@@ -245,7 +255,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                             let attrs = std::mem::take(&mut attrs);
                             check_attrs(&mut info, &attrs);
                             let route = route_attr(&info, &attrs);
-                            let (c, end) = parse_class(&toks, i, &info, attrs.into_iter().map(|(a, _)| a).collect());
+                            let (c, end) = parse_class(&toks, i, &mut info, attrs.into_iter().map(|(a, _)| a).collect());
                             if let Some((attr, span)) = route {
                                 info.routes.push(RouteDecl { fqn: c.fqn.clone(), attr, span, is_component: c.is_component });
                             }
@@ -256,7 +266,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                     }
                     "trait" if toks.t.get(i + 1).is_some_and(|x| x.kind == TokKind::Ident) => {
                         attrs.clear();
-                        let (mut c, end) = parse_class(&toks, i, &info, vec![]);
+                        let (mut c, end) = parse_class(&toks, i, &mut info, vec![]);
                         c.is_trait = true;
                         info.classes.push(c);
                         i = end + 1;
@@ -511,7 +521,7 @@ fn route_attr(info: &FileInfo, attrs: &[(String, Span)]) -> Option<(&'static str
     })
 }
 
-/// Records `#[Page]` / `#[Route]` / `#[Component]` / `#[State]` that do not resolve to the expected
+/// Records `#[Page]` / `#[Route]` / `#[Component]` / `#[State]` / `#[Prop]` / `#[Path]` that do not resolve to the expected
 /// attributes (usually a missing `use ...;`).
 fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
     for (a, span) in attrs {
@@ -521,6 +531,8 @@ fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
             "Route" => ATTR_ROUTE,
             "Component" => ATTR_COMPONENT,
             "State" => ATTR_STATE,
+            "Prop" => ATTR_PROP,
+            "Path" => ATTR_PATH,
             _ => continue,
         };
         let resolved = info.resolve_class(a);
@@ -531,7 +543,7 @@ fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
 }
 
 
-fn parse_class(toks: &Toks, at: usize, info: &FileInfo, attrs: Vec<String>) -> (Class, usize) {
+fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) -> (Class, usize) {
     let name = toks.text(at + 1).to_string();
     let name_span = toks.t[at + 1].span;
     let mut j = at + 2;
@@ -562,7 +574,7 @@ fn parse_class(toks: &Toks, at: usize, info: &FileInfo, attrs: Vec<String>) -> (
     };
 
     let mut i = j + 1;
-    let mut member_attrs: Vec<String> = Vec::new();
+    let mut member_attrs: Vec<(String, Span)> = Vec::new();
     let mut mods: Vec<String> = Vec::new();
     let mut ty_start: Option<usize> = None;
     while i < close {
@@ -571,7 +583,7 @@ fn parse_class(toks: &Toks, at: usize, info: &FileInfo, attrs: Vec<String>) -> (
         let lower = text.to_ascii_lowercase();
         if t.kind == TokKind::AttrOpen {
             let end = toks.matching(i);
-            member_attrs.extend(attr_names(toks, i + 1, end).into_iter().map(|(a, _)| a));
+            member_attrs.extend(attr_names(toks, i + 1, end));
             i = end + 1;
             continue;
         }
@@ -612,6 +624,7 @@ fn parse_class(toks: &Toks, at: usize, info: &FileInfo, attrs: Vec<String>) -> (
                         is_readonly: false,
                         is_static: false,
                         is_state: false,
+                        prop_attr: None,
                         is_promoted: true,
                         has_default: p.default.is_some(),
                         span: m.name_span,
@@ -628,6 +641,8 @@ fn parse_class(toks: &Toks, at: usize, info: &FileInfo, attrs: Vec<String>) -> (
         if t.kind == TokKind::Var {
             let ty = ty_start.map_or(String::new(), |s| toks.src[toks.t[s].span.start..toks.t[i - 1].span.end].trim().to_string());
             let has_default = toks.is_op(i + 1, "=");
+            check_attrs(info, &member_attrs);
+            let has_attr = |name: &str| member_attrs.iter().any(|(a, _)| info.resolve_class(a) == name);
             class.props.push(Prop {
                 name: text[1..].to_string(),
                 ty,
@@ -635,7 +650,14 @@ fn parse_class(toks: &Toks, at: usize, info: &FileInfo, attrs: Vec<String>) -> (
                 is_private: mods.iter().any(|m| m == "private"),
                 is_readonly: mods.iter().any(|m| m == "readonly"),
                 is_static: mods.iter().any(|m| m == "static"),
-                is_state: member_attrs.iter().any(|a| info.resolve_class(a) == ATTR_STATE),
+                is_state: has_attr(ATTR_STATE),
+                prop_attr: if has_attr(ATTR_PROP) {
+                    Some("Prop")
+                } else if has_attr(ATTR_PATH) {
+                    Some("Path")
+                } else {
+                    None
+                },
                 is_promoted: false,
                 has_default,
                 span: t.span,
@@ -747,11 +769,12 @@ function Other() { return <p />; }
         let f = scan_src(
             r#"<?phpm
 namespace App;
-use Mamu\Attribute\{Component, State};
+use Mamu\Attribute\{Component, Prop, State};
 #[Component]
 final class Counter {
-    public string $label = 'Clicked';
+    #[Prop] public string $label = 'Clicked';
     #[State] public int $count = 0;
+    public int $max = 3;
     private int $x;
     public function __construct(public readonly Clock $clock) {}
     public function increment(): void { $this->count++; }
@@ -763,9 +786,9 @@ final class Counter {
         assert!(c.is_component);
         assert_eq!(c.fqn, "App\\Counter");
         let names: Vec<_> = c.props.iter().map(|p| (p.name.as_str(), p.is_public, p.is_state)).collect();
-        assert_eq!(names, [("label", true, false), ("count", true, true), ("x", false, false), ("clock", true, false)]);
+        assert_eq!(names, [("label", true, false), ("count", true, true), ("max", true, false), ("x", false, false), ("clock", true, false)]);
         let props = &crate::components(&f)[0].props;
-        assert_eq!(props, &["label"], "state, private and constructor properties are not props");
+        assert_eq!(props, &["label"], "only #[Prop] properties are props");
         assert_eq!(c.methods.len(), 3);
         assert_eq!(f.markup_scopes, vec![MarkupScope::Method(0, 2)]);
     }

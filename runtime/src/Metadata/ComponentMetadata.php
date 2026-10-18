@@ -14,13 +14,14 @@ declare(strict_types=1);
 namespace Mamu\Metadata;
 
 use Mamu\Attribute\Path;
+use Mamu\Attribute\Prop;
 use Mamu\Attribute\State;
 use Mamu\Binding\ComponentName;
 use Mamu\Binding\PropError;
 
 /**
  * The reflection data of the components: the parameters of a function component, and the
- * props and #[State] properties of a class component. It keeps the data for the life of the
+ * #[Prop] and #[State] properties of a class component. It keeps the data for the life of the
  * service.
  */
 final class ComponentMetadata
@@ -59,8 +60,8 @@ final class ComponentMetadata
     }
 
     /**
-     * The props of a class component: its public properties that are not static, not
-     * promoted, and not #[State].
+     * The props of a class component: its #[Prop] properties, and the #[Path] properties of a
+     * page. A prop is public, not static, not promoted, and not #[State].
      *
      * @param class-string $class
      *
@@ -72,10 +73,15 @@ final class ComponentMetadata
             return $this->props[$class];
         }
         $out = [];
-        foreach ((new \ReflectionClass($class))->getProperties(\ReflectionProperty::IS_PUBLIC) as $p) {
-            if (!$p->isStatic() && !$p->isPromoted() && [] === $p->getAttributes(State::class)) {
-                $out[$p->getName()] = $p;
+        foreach ((new \ReflectionClass($class))->getProperties() as $p) {
+            if ([] === $p->getAttributes(Prop::class) && [] === $p->getAttributes(Path::class)) {
+                continue;
             }
+            if (!$p->isPublic() || $p->isStatic() || $p->isPromoted() || [] !== $p->getAttributes(State::class)) {
+                $attribute = [] !== $p->getAttributes(Prop::class) ? 'Prop' : 'Path';
+                throw new PropError(\sprintf('The #[%s] property "%s" of <%s> must be a prop: public, not static, not promoted, and not #[State].', $attribute, $p->getName(), ComponentName::short($class)));
+            }
+            $out[$p->getName()] = $p;
         }
 
         return $this->props[$class] = $out;
@@ -109,14 +115,10 @@ final class ComponentMetadata
         }
         $out = [];
         if (class_exists($page)) {
-            foreach ((new \ReflectionClass($page))->getProperties() as $p) {
-                if ([] === $p->getAttributes(Path::class)) {
-                    continue;
+            foreach ($this->props($page) as $name => $p) {
+                if ([] !== $p->getAttributes(Path::class)) {
+                    $out[$name] = $p->getType();
                 }
-                if (!isset($this->props($page)[$p->getName()])) {
-                    throw new PropError(\sprintf('The #[Path] property "%s" of <%s> must be a prop: public, not static, not promoted, and not #[State].', $p->getName(), ComponentName::short($page)));
-                }
-                $out[$p->getName()] = $p->getType();
             }
         }
 

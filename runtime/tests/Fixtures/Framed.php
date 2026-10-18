@@ -13,11 +13,12 @@ declare(strict_types=1);
 
 namespace Mamu\Tests\Fixtures;
 
+use Mamu\Attribute\Prop;
 use Mamu\Html;
 
 /** The parent class of a fixture component, with its slots, outside the .phpm sources. */
 abstract class Framed
 {
-    public ?Html $children = null;
-    public ?Html $footer = null;
+    #[Prop] public ?Html $children = null;
+    #[Prop] public ?Html $footer = null;
 }

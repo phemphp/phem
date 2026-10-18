@@ -28,6 +28,7 @@ return array(
     'vendor/acme/lib/functions.php': '<?php\nnamespace Acme;\n\nfunction slugify(string $s): string { return $s; }\n',
     'vendor/mamuphp/runtime/src/Html.php': '<?php\n',
     'vendor/mamuphp/runtime/src/Attribute/Component.php': '<?php\n',
+    'vendor/mamuphp/runtime/src/Attribute/Prop.php': '<?php\n',
     'vendor/mamuphp/runtime/src/Attribute/State.php': '<?php\n',
     'vendor/mamuphp/runtime/tests/HtmlTest.php': '<?php\n',
     'src/Repository/TodoRepository.php': '<?php\n',
@@ -72,13 +73,13 @@ final class About
     'src/components/Counter.phpm': `<?phpm
 namespace App\\Components;
 
-use Mamu\\Attribute\\{Component, State};
+use Mamu\\Attribute\\{Component, Prop, State};
 
 #[Component]
 final class Counter
 {
-    public string $label = 'Clicked';
-    public int $max;
+    #[Prop] public string $label = 'Clicked';
+    #[Prop] public int $max;
     #[State] public int $count = 0;
 
     public function __construct(private readonly \\App\\Repository\\TodoRepository $todos)

@@ -13,6 +13,9 @@ use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 pub const ATTR_COMPONENT: &str = "Mamu\\Attribute\\Component";
 pub const ATTR_STATE: &str = "Mamu\\Attribute\\State";
+pub const ATTR_PROP: &str = "Mamu\\Attribute\\Prop";
+/// The route value attribute of a page property: the property is a prop, with no `#[Prop]`.
+pub const ATTR_PATH: &str = "Mamu\\Attribute\\Path";
 /// The Mamu page attribute: it exposes a class as a page (it extends `Route`). The class is a
 /// component, with no `#[Component]`.
 pub const ATTR_PAGE: &str = "Mamu\\Attribute\\Page";
@@ -43,7 +46,7 @@ pub struct ComponentDef {
     /// The Twig template of a template component.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub template: Option<String>,
-    /// All prop names (parameters, or public properties of a class; constructor parameters are services).
+    /// All prop names (parameters, or `#[Prop]` properties of a class; constructor parameters are services).
     pub props: Vec<String>,
     /// Props that receive markup (`Html`): `children` and the named slots.
     pub slots: Vec<String>,
@@ -105,7 +108,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
         });
     }
     for c in file.classes.iter().filter(|c| c.is_component) {
-        let props: Vec<&Prop> = c.all_props().filter(|p| p.is_public && !p.is_static && !p.is_state && !p.is_promoted).collect();
+        let props: Vec<&Prop> = c.all_props().filter(|p| p.is_prop()).collect();
         out.push(ComponentDef {
             fqcn: c.fqn.clone(),
             kind: Kind::Class,
@@ -208,6 +211,13 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
             diags.push(
                 Diagnostic::error(codes::READONLY_STATE, format!("state property `${}` cannot be readonly", p.name), p.span)
                     .with_help("state changes over time; remove `readonly`"),
+            );
+        }
+        for p in c.props.iter().filter(|p| p.prop_attr.is_some() && !p.is_prop()) {
+            let attr = p.prop_attr.unwrap_or_default();
+            diags.push(
+                Diagnostic::error(codes::INVALID_PROP, format!("`#[{attr}]` property `${}` is not a prop", p.name), p.span)
+                    .with_help("a prop is public, not static, not promoted, and not `#[State]`"),
             );
         }
     }
