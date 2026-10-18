@@ -9,15 +9,14 @@ final class StarRating extends Document
 {
     protected string $title = 'StarRating';
 
-    public string $label = 'Rate this page';  // prop
-    public int $maxStars = 5;                 // prop
+    private const int MAX_STARS = 5;
 
     #[State] 
     public int $stars = 0;                    // state
 
     public function addStar(): void
     {
-        $this->stars = min($this->stars + 1, $this->maxStars);
+        $this->stars = min($this->stars + 1, self::MAX_STARS);
     }
 
     public function clear(): void
@@ -27,11 +26,11 @@ final class StarRating extends Document
 
     public function render()
     {
-        $display = str_repeat('★', $this->stars) . str_repeat('☆', $this->maxStars - $this->stars);
+        $display = str_repeat('★', $this->stars) . str_repeat('☆', self::MAX_STARS - $this->stars);
 
         return (
             <div>
-                <p>{{ label }}: <span className="stars">{{ display }}</span></p>
+                <p>Rate this page: <span className="stars">{{ display }}</span></p>
                 <button onClick={{ addStar }}>Add a star</button>
                 <button onClick={{ clear }}>Clear</button>
             </div>

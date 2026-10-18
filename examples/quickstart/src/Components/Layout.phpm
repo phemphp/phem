@@ -5,7 +5,6 @@ namespace App\Components;
 use Mamu\Html;
 
 // The page shell: a header, the page content (children) and a footer slot.
-// It has no #[Route] attribute, so it is not a page.
 function Layout(string $title, ?Html $children = null, ?Html $footer = null)
 {
     return (
