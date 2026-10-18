@@ -303,6 +303,16 @@ final class AppTest extends TestCase
         self::assertMatchesRegularExpression('#^<mamu-c id="mamu[0-9a-f]+"><p class="greeting">Hello, TWIG!</p></mamu-c>$#', $html);
     }
 
+    public function testAFunctionWithoutTheComponentAttributeIsAPlainFunction(): void
+    {
+        /** @var Manifest $manifest */
+        $manifest = $this->fixtureKernel()->getContainer()->get('mamu.manifest');
+
+        self::assertNotNull($manifest->component('App\\Pages\\Greeting'));
+        self::assertNull($manifest->component('App\\Pages\\Shout'), 'no #[Component]');
+        self::assertTrue(\function_exists('App\\Pages\\Shout'), 'the compiled file declares the function');
+    }
+
     public function testTwigErrorsPointToThePhpmSource(): void
     {
         /** @var Manifest $manifest */

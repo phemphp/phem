@@ -2,6 +2,9 @@
 
 namespace App\Components;
 
+use Mamu\Attribute\Component;
+
+#[Component]
 function RestButton(int $count, mixed ...$rest) {
     return (
         <button type="button" {{ ...rest }} onclick="track()" className="btn btn-{{ count }}" disabled>
@@ -10,6 +13,7 @@ function RestButton(int $count, mixed ...$rest) {
     );
 }
 
+#[Component]
 function Toolbar(mixed ...$rest) {
     $count = 1;
     return <RestButton count={{ count }} {{ ...rest }} />;

@@ -1,11 +1,12 @@
 <?phpm
 namespace App\Pages\Examples;
 
-use Mamu\Attribute\Page;
+use Mamu\Attribute\{Component, Page};
 use Mamu\Html;
 
 use function App\Components\Document;
 
+#[Component]
 function MyButton()
 {
     return (
@@ -13,6 +14,7 @@ function MyButton()
     );
 }
 
+#[Component]
 function IconButton(string $icon, ?Html $children = null, mixed ...$props)
 {
     return (

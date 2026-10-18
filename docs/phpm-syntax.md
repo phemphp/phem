@@ -9,7 +9,7 @@ writes `<?php` in the PHP that it generates.
 
 ## 1. Components
 
-A component is a PHP function whose name starts with a capital letter. It returns markup.
+A component is a PHP function with the `#[Component]` attribute. It returns markup.
 As in React, a string that it returns is text: Mamu escapes it.
 A component with state is a `#[Component]` class (see section 7).
 
@@ -17,12 +17,24 @@ A component with state is a `#[Component]` class (see section 7).
 <?phpm
 namespace App\Components;
 
+use Mamu\Attribute\Component;
+
+#[Component]
 function MyButton() {
     return (
         <button>I'm a button</button>
     );
 }
+
+// A plain PHP function: it is not a component.
+function initials(string $name): string {
+    return strtoupper($name[0]);
+}
 ```
+
+A function without `#[Component]` is a plain PHP function, as in a `.php` file. Its name can
+start with a capital letter or not. A tag cannot use it (E010), and the manifest does not
+list it. Without `use Mamu\Attribute\Component;`, `#[Component]` is another attribute (W004).
 
 Use a component with a tag: `<MyButton />`. The compiler resolves the tag with the PHP rules:
 a `use function` import, then a `use` (class) import, then the current namespace.
@@ -162,6 +174,7 @@ variables of the scope that contains the markup (`$user` is `user` in Twig). The
 `app` of Symfony is also available (`{{ app.user.userIdentifier }}`).
 
 ```php
+#[Component]
 function Profile() {
     $user = ['name' => 'Hedy Lamarr', 'imageUrl' => '/img/hedy.jpg', 'imageSize' => 90];
 
@@ -217,6 +230,7 @@ return <div>{{ content }}</div>;
 ## 5. Lists and keys
 
 ```php
+#[Component]
 function ShoppingList() {
     $products = [
         ['title' => 'Cabbage', 'isFruit' => false, 'id' => 1],
@@ -248,6 +262,7 @@ return <ul>{{ listItems }}</ul>;
 Pass the function. Do not call it.
 
 ```php
+#[Component]
 function MyButton() {
     $handleClick = fn() => error_log('You clicked me!');
 
@@ -482,10 +497,12 @@ that a parent passes as a prop belongs to the parent: the parent's attribute app
 
 ## 9. Props and lifting state up
 
-The props of a function component are its named parameters. A function component has no state.
+The props of a function component (a function with `#[Component]`) are its named parameters.
+A function component has no state.
 It can receive a handler as a prop.
 
 ```php
+#[Component]
 function MyButton(int $count, Closure $onClick) {
     return <button onClick={{ onClick }}>Clicked {{ count }} times</button>;
 }
@@ -528,6 +545,7 @@ A variadic parameter collects the props that no other parameter takes, as a hash
 attributes and the handlers:
 
 ```php
+#[Component]
 function CountButton(int $count, mixed ...$rest) {
     return <button type="button" {{ ...rest }}>Clicked {{ count }} times</button>;
 }

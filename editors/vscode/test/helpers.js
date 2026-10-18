@@ -34,16 +34,25 @@ return array(
     'src/components/Layout.phpm': `<?phpm
 namespace App\\Components;
 
+use Mamu\\Attribute\\Component;
 use Mamu\\Html;
 
+#[Component]
 function Layout(string $title, ?Html $children = null, ?Html $footer = null)
 {
     return <main><h1>{{ title }}</h1>{{ children }}<footer>{{ footer }}</footer></main>;
 }
 
+#[Component]
 function Avatar(string $name, int $size = 64)
 {
     return <img alt={{ name }} width={{ size }} />;
+}
+
+// A plain PHP function: it is not a component.
+function Initials(string $name): string
+{
+    return strtoupper($name[0]);
 }
 `,
     'src/pages/about.phpm': `<?phpm

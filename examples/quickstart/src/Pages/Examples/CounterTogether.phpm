@@ -2,10 +2,11 @@
 
 namespace App\Pages\Examples;
 
-use Mamu\Attribute\{Page, State};
+use Mamu\Attribute\{Component, Page, State};
 
 use function App\Components\Document;
 
+#[Component]
 function CountButton(int $count, mixed ...$props)
 {
     return (

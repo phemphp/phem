@@ -725,7 +725,8 @@ function isHtmlType(type) {
 function components(parsed) {
     const list = [];
     for (const fn of parsed.functions) {
-        if (!/^[A-Z]/.test(fn.name)) {
+        // A function without `#[Component]` is a plain PHP function.
+        if (!hasAttr(fn.attrs, 'Component')) {
             continue;
         }
         const comp = {
@@ -739,7 +740,7 @@ function components(parsed) {
             children: false,
             rest: false,
             offset: fn.offset,
-            signature: `function ${fn.name}(${fn.params.map(paramText).join(', ')})`,
+            signature: `#[Component]\nfunction ${fn.name}(${fn.params.map(paramText).join(', ')})`,
         };
         for (const p of fn.params) {
             if (p.variadic) {

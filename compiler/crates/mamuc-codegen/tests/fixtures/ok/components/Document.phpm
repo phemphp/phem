@@ -2,10 +2,12 @@
 
 namespace App\Components;
 
+use Mamu\Attribute\Component;
 use Mamu\{Html, Root};
 
 // The document of the fixture pages: a page renders its markup in it, and gives the title
 // with `<Document:title>`.
+#[Component]
 function Document(?Html $title = null, ?Html $children = null)
 {
     return (

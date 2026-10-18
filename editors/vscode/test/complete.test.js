@@ -47,6 +47,10 @@ test('a page of another file is not a component tag', async () => {
     assert.equal((await run(about, 'src/pages/about.phpm')).find('About').detail, 'App\\Pages\\About (page)');
 });
 
+test('a function without #[Component] is not a component tag', async () => {
+    assert.equal((await run(PAGE + 'function Home()\n{\n    return <Ini|\n}\n')).find('Initials'), undefined);
+});
+
 test('a class component adds a use import', async () => {
     const { text, find } = (await run(PAGE + 'use function App\\Components\\Layout;\n\nfunction Home()\n{\n    return <Layout title="x"><Cou|</Layout>;\n}\n'));
     const item = find('Counter');
@@ -116,7 +120,7 @@ test('use statements complete namespaces and symbols', async () => {
     assert.deepEqual(r.items.map((i) => i.label), ['slugify']);
 
     r = (await run(PAGE + 'use function App\\Components\\|\n'));
-    assert.deepEqual(r.items.map((i) => i.label).sort(), ['Avatar', 'Layout']);
+    assert.deepEqual(r.items.map((i) => i.label).sort(), ['Avatar', 'Initials', 'Layout'], 'the components and the plain functions');
 });
 
 test('a class name adds an import', async () => {

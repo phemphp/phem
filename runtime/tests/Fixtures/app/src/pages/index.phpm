@@ -6,12 +6,19 @@ use App\Components\Counter;
 use Mamu\Attribute\{Component, Page, State};
 use function App\Components\{MyButton, Card, Badge, Tag, Document};
 
+#[Component]
 function Toolbar(string $theme = 'light') {
     return <p className="theme-{{ theme }}">Theme: {{ theme }}</p>;
 }
 
+// A plain PHP function, with no `#[Component]`: it is not a component.
+function Shout(string $name): string {
+    return strtoupper($name);
+}
+
+#[Component]
 function Greeting(string $name) {
-    $upper = strtoupper($name);
+    $upper = Shout($name);
     return <p className="greeting">Hello, {{ upper }}!</p>;
 }
 

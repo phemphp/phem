@@ -113,13 +113,17 @@
 
 <h2 id="components" class="heading">Creating and nesting components<a class="heading-anchor" href="#components" aria-label="Link to this section">#</a></h2>
 <p>A Mamu app is made of <em>components</em>. A component is a piece of the UI with its own logic and look. A component can be as small as a button or as large as a full page.</p>
-<p>A Mamu component is a PHP function that returns markup. You write it in a <code>.phpm</code> file:</p>
-<div class="code-block"><pre class="code" data-controller="highlight"><code>function MyButton()
+<p>A Mamu component is a PHP function with the <code>#[Component]</code> attribute. It returns markup. You write it in a <code>.phpm</code> file:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>use Mamu\Attribute\Component;
+
+#[Component]
+function MyButton()
 {
     return (
         &lt;button&gt;I'm a button&lt;/button&gt;
     );
 }</code></pre></div>
+<p>A function without <code>#[Component]</code> is a plain PHP function, as in a <code>.php</code> file. A <code>.phpm</code> file can contain both: the components, and the helper functions that they call.</p>
 <p>Now that you declared <code>MyButton</code>, you can nest it into another component:</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="MyButton">
     <div class="sandbox-bar">
@@ -139,7 +143,8 @@
 <h2 id="writing-markup" class="heading">Writing markup with Mamu<a class="heading-anchor" href="#writing-markup" aria-label="Link to this section">#</a></h2>
 <p>The markup above is a <em>markup literal</em>. React uses JSX for this. Mamu uses the same idea in PHP: a markup literal is a PHP expression, and its value is a <code>Mamu\Html</code> object. The <code>mamuc</code> compiler turns each markup literal into a Twig template at build time. Nothing is parsed when a request comes in.</p>
 <p>Markup is stricter than HTML. You must close all tags, for example <code>&lt;br /&gt;</code>. A component also cannot return more than one root tag. Wrap the tags in a shared parent, such as a <code>&lt;div&gt;</code> or an empty fragment <code>&lt;&gt;...&lt;/&gt;</code>:</p>
-<div class="code-block"><pre class="code" data-controller="highlight"><code>function AboutPage()
+<div class="code-block"><pre class="code" data-controller="highlight"><code>#[Component]
+function AboutPage()
 {
     return (
         &lt;&gt;
@@ -167,8 +172,10 @@
 <div class="code-block"><div class="code-title">assets/app.js</div><pre class="code" data-controller="highlight"><code>import './bootstrap.js';
 import './styles/app.css';</code></pre></div>
 <p>Your application owns the HTML document of the pages: a component, as the others. It prints the page content in a <code>&lt;Root&gt;</code>, the root element that the events update, and <code>{{ importmap('app') }}</code> loads the assets:</p>
-<div class="code-block"><div class="code-title">src/Components/Document.phpm</div><pre class="code" data-controller="highlight"><code>use Mamu\{Html, Root};
+<div class="code-block"><div class="code-title">src/Components/Document.phpm</div><pre class="code" data-controller="highlight"><code>use Mamu\Attribute\Component;
+use Mamu\{Html, Root};
 
+#[Component]
 function Document(?Html $title = null, ?Html $children = null)
 {
     return (
@@ -302,7 +309,8 @@ return &lt;ul&gt;{{ listItems }}&lt;/ul&gt;;</code></pre></div>
 
 <h2 id="responding-to-events" class="heading">Responding to events<a class="heading-anchor" href="#responding-to-events" aria-label="Link to this section">#</a></h2>
 <p>You respond to events with <em>event handler</em> functions. Declare the handler in the component, then pass it to an event attribute:</p>
-<div class="code-block"><pre class="code" data-controller="highlight"><code>function MyButton()
+<div class="code-block"><pre class="code" data-controller="highlight"><code>#[Component]
+function MyButton()
 {
     $handleClick = fn() =&gt; error_log('You clicked me!');
 
@@ -497,8 +505,9 @@ final class CounterTogether
         );
     }
 }</code></pre></div>
-<p>In Mamu, props are the named parameters of the function. Change the button to read the props that its parent passes:</p>
-<div class="code-block"><pre class="code" data-controller="highlight"><code>function CountButton(int $count, Closure $onClick)
+<p>In Mamu, props are the named parameters of the <code>#[Component]</code> function. Change the button to read the props that its parent passes:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>#[Component]
+function CountButton(int $count, Closure $onClick)
 {
     return (
         &lt;button onClick={{ onClick }}&gt;
@@ -508,7 +517,8 @@ final class CounterTogether
 }</code></pre></div>
 <p>When you click a button, the <code>onClick</code> handler runs. It is the <code>handleClick()</code> method of the parent, so it changes the state of the parent. The parent renders again with the new <code>$count</code> and passes it to both buttons. A prop with an unknown name is an error, and PHP checks the types of the parameters as usual.</p>
 <p>A generic component cannot know all the attributes that its callers want to give. Add a variadic parameter: it collects the props that no other parameter takes, as <code>...rest</code> does in React. Then spread them on the element with <code>{{ ...props }}</code>. The handlers go through too, so <code>onClick</code> does not need its own parameter:</p>
-<div class="code-block"><pre class="code" data-controller="highlight"><code>function CountButton(int $count, mixed ...$props)
+<div class="code-block"><pre class="code" data-controller="highlight"><code>#[Component]
+function CountButton(int $count, mixed ...$props)
 {
     return (
         &lt;button type="button" {{ ...props }}&gt;

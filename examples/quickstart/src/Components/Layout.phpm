@@ -2,9 +2,11 @@
 
 namespace App\Components;
 
+use Mamu\Attribute\Component;
 use Mamu\Html;
 
 // The page shell: a header, the page content (children) and a footer slot.
+#[Component]
 function Layout(string $title, ?Html $children = null, ?Html $footer = null)
 {
     return (

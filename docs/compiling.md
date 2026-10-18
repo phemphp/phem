@@ -56,8 +56,10 @@ the `<!DOCTYPE html>`.
 
 namespace App\Components;
 
+use Mamu\Attribute\Component;
 use Mamu\{Html, Root};
 
+#[Component]
 function Document(?Html $title = null, ?Html $children = null)
 {
     return (
@@ -252,7 +254,7 @@ mamuc check src --format json
 ```json
 {"files": [{"file": "Components/ScientistCard.phpm", "diagnostics": [{"severity": "error",
   "code": "E010", "message": "unknown component `<Avatr>` (resolved to `App\\Components\\Avatr`)",
-  "label": null, "help": "declare `function Avatr()` in a .phpm file, or check the `use` imports",
+  "label": null, "help": "declare `#[Component] function Avatr()` in a .phpm file, or check the `use` imports",
   "start": {"line": 30, "character": 13}, "end": {"line": 30, "character": 18}}]}]}
 ```
 

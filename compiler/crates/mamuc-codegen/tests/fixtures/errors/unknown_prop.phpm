@@ -1,3 +1,4 @@
 <?phpm // expect: E011
+#[\Mamu\Attribute\Component]
 function Btn(int $count) { return <b>{{ count }}</b>; }
 function App() { return <Btn count={{ 1 }} size="x" />; }

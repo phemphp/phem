@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A function is a component only with `#[Component]`, as a class. The other functions of a
+  `.phpm` file are plain PHP functions: completion does not suggest them as component tags.
 - The project is now Mamu. The extension id is `mamuphp.mamu`, the language id is `phpm`, and
   the files are `.phpm` files that open with `<?phpm`. The compiler is `mamuc`, and the settings
   are `mamu.mamuc.path` and `mamu.mamuc.sourceDir`.

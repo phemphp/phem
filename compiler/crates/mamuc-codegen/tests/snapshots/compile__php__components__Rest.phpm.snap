@@ -6,6 +6,9 @@ expression: f.php
 
 namespace App\Components;
 
+use Mamu\Attribute\Component;
+
+#[Component]
 function RestButton(int $count, mixed ...$rest) {
     return (
         new \Mamu\Element('components/Rest.0.twig', ['rest' => $rest ?? null, 'count' => $count ?? null])
@@ -14,6 +17,7 @@ function RestButton(int $count, mixed ...$rest) {
     );
 }
 
+#[Component]
 function Toolbar(mixed ...$rest) {
     $count = 1;
     return new \Mamu\Element('components/Rest.1.twig', ['count' => $count ?? null, 'rest' => $rest ?? null]);

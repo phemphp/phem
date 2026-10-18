@@ -24,6 +24,7 @@ final class LikeCounter
 }
 
 // Avatar is in Profile.phpm, in this namespace: it needs no import.
+#[Component]
 function ScientistCard(Scientist $scientist)
 {
     return (

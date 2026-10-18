@@ -9,6 +9,7 @@ use Mamu\Tests\Fixtures\Titled;
 use function App\Components\Document;
 
 // A template component with a required slot, and a slot that the template tests.
+#[Component]
 function Panel(Html $children, ?Html $footer = null) {
     return (
         <section class="panel">

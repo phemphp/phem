@@ -2,22 +2,25 @@
 
 namespace App\Pages;
 
-use Mamu\Attribute\{Page, State};
+use Mamu\Attribute\{Component, Page, State};
 
 use function App\Components\Document;
 
 // A template component: the extra props go to `$rest`.
+#[Component]
 function RestButton(int $count, mixed ...$rest) {
     return <button type="button" {{ ...rest }}>Clicked {{ count }} times</button>;
 }
 
 // A function component (PHP code before the markup).
+#[Component]
 function LoudButton(string $label, mixed ...$rest) {
     $text = strtoupper($label);
     return <button className="loud" {{ ...rest }}>{{ text }}</button>;
 }
 
 // Forwards its extra props to another component.
+#[Component]
 function Forward(mixed ...$rest) {
     return <RestButton count={{ 7 }} {{ ...rest }} />;
 }

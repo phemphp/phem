@@ -84,7 +84,7 @@ fn a_set_in_an_if_branch_or_an_element_binds_after_it() {
 
     // `for` has its own scope, and so do the children of a component (its slots).
     assert_eq!(codes("<?phpm\nfunction App() { $xs = [];\n    return <p>{% for x in xs %}{% set y = x %}{% endfor %}{{ y }}</p>;\n}\n"), ["E030"]);
-    let src = "<?phpm\nfunction Box(?Mamu\\Html $children = null) { return <b>{{ children }}</b>; }\nfunction App() { return <p><Box>{% set z = 1 %}</Box>{{ z }}</p>; }\n";
+    let src = "<?phpm\n#[\\Mamu\\Attribute\\Component]\nfunction Box(?Mamu\\Html $children = null) { return <b>{{ children }}</b>; }\nfunction App() { return <p><Box>{% set z = 1 %}</Box>{{ z }}</p>; }\n";
     assert_eq!(codes(src), ["E030"]);
 }
 
@@ -118,9 +118,9 @@ fn a_class_component_reads_the_private_properties_of_its_traits() {
 
 #[test]
 fn a_prop_whose_type_accepts_null_is_optional() {
-    let src = "<?phpm\nfunction Box($a, mixed $b, int|null $c) { return <b>{{ a }}{{ b }}{{ c }}</b>; }\nfunction App() { return <Box />; }\n";
+    let src = "<?phpm\n#[\\Mamu\\Attribute\\Component]\nfunction Box($a, mixed $b, int|null $c) { return <b>{{ a }}{{ b }}{{ c }}</b>; }\nfunction App() { return <Box />; }\n";
     assert_eq!(codes(src), Vec::<&str>::new());
-    let src = "<?phpm\nfunction Box(int|string $a) { return <b>{{ a }}</b>; }\nfunction App() { return <Box />; }\n";
+    let src = "<?phpm\n#[\\Mamu\\Attribute\\Component]\nfunction Box(int|string $a) { return <b>{{ a }}</b>; }\nfunction App() { return <Box />; }\n";
     assert_eq!(codes(src), ["E011"]);
 }
 
@@ -189,7 +189,7 @@ fn a_parent_class_loads_before_its_subclasses() {
 #[test]
 fn root_is_a_built_in_component() {
     let src = |imports: &str| {
-        format!("<?phpm\nnamespace App;\n{imports}\nfunction Document(?Html $title = null, ?Html $children = null) {{\n    return <html><head><title>{{{{ title ?? 'App' }}}}</title></head><body><Root tag=\"main\" className=\"app\" data-controller=\"extra\">{{{{ children }}}}</Root></body></html>;\n}}\n")
+        format!("<?phpm\nnamespace App;\n{imports}\n#[\\Mamu\\Attribute\\Component]\nfunction Document(?Html $title = null, ?Html $children = null) {{\n    return <html><head><title>{{{{ title ?? 'App' }}}}</title></head><body><Root tag=\"main\" className=\"app\" data-controller=\"extra\">{{{{ children }}}}</Root></body></html>;\n}}\n")
     };
     let (out, diags) = compile(vec![SourceInput { rel: "Document.phpm".into(), text: src("use Mamu\\{Html, Root};") }]);
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
@@ -205,7 +205,7 @@ fn root_is_a_built_in_component() {
     let d = diags.iter().flat_map(|f| &f.diags).find(|d| d.code == "E010").expect("E010 without the import");
     assert_eq!(d.help.as_deref(), Some("import it: `use Mamu\\Root;`"));
 
-    let duplicate = "<?phpm\nnamespace Mamu;\nfunction Root() { return <p />; }\n";
+    let duplicate = "<?phpm\nnamespace Mamu;\n#[\\Mamu\\Attribute\\Component]\nfunction Root() { return <p />; }\n";
     let (_, diags) = compile(vec![SourceInput { rel: "Root.phpm".into(), text: duplicate.into() }]);
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
     assert_eq!(msgs, ["E014 component `Mamu\\Root` is a built-in component of Mamu"]);
@@ -213,7 +213,7 @@ fn root_is_a_built_in_component() {
 
 #[test]
 fn a_page_gives_the_title_to_its_document() {
-    let document = "<?phpm\nnamespace App;\nuse Mamu\\{Html, Root};\nfunction Document(?Html $title = null, ?Html $children = null) {\n    return <html><head><title>{{ title ?? 'App' }}</title></head><body><Root>{{ children }}</Root></body></html>;\n}\n";
+    let document = "<?phpm\nnamespace App;\nuse Mamu\\{Html, Root};\n#[\\Mamu\\Attribute\\Component]\nfunction Document(?Html $title = null, ?Html $children = null) {\n    return <html><head><title>{{ title ?? 'App' }}</title></head><body><Root>{{ children }}</Root></body></html>;\n}\n";
     let page = "<?phpm\nnamespace App;\nuse Mamu\\Attribute\\Page;\n#[Page('/')]\nfinal class Home {\n    public string $name = 'Ada';\n    public function render() { return <Document><Document:title>Hi {{ name }}</Document:title><p>Home</p></Document>; }\n}\n";
     let (out, diags) = compile(vec![SourceInput { rel: "Document.phpm".into(), text: document.into() }, SourceInput { rel: "Home.phpm".into(), text: page.into() }]);
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
@@ -279,4 +279,26 @@ fn a_page_class_is_a_component_with_a_route() {
     assert_eq!(codes("#[Page('/')]", "final class Home extends \\Vendor\\Base {}"), Vec::<&str>::new(), "the parent outside the sources can have render()");
     assert_eq!(codes("#[Page('/')]", "function Home() { return <p />; }"), ["E052"], "a function component is not a page");
     assert_eq!(codes("#[Route('/')]", "function Home() { return <p />; }"), ["E052"]);
+    assert_eq!(codes("#[Page('/')]\n#[Component]", "function Home() { return <p />; }"), ["E052"]);
+}
+
+#[test]
+fn a_function_is_a_component_only_with_the_component_attribute() {
+    let src = "<?phpm\nnamespace App;\nuse Mamu\\Attribute\\Component;\nfunction Label(string $s) { return <b>{{ s }}</b>; }\n#[Component]\nfunction Card(string $title) { $label = Label($title); return <div>{{ label }}</div>; }\n#[Component]\nfunction Badge() { return <i>new</i>; }\nfunction App() { return <p><Card title=\"a\" /><Badge /></p>; }\n";
+    let (out, diags) = compile(vec![SourceInput { rel: "App.phpm".into(), text: src.into() }]);
+    let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
+    assert!(msgs.is_empty(), "{msgs:?}");
+    let components = out.expect("output").manifest.components;
+    let kinds: Vec<_> = components.iter().map(|(k, d)| (k.as_str(), d.kind)).collect();
+    assert_eq!(kinds, [("App\\Badge", mamuc_analyze::Kind::Template), ("App\\Card", mamuc_analyze::Kind::Function)], "`Label` and `App` are plain PHP functions");
+
+    // A tag of a function without `#[Component]` is an unknown component, with a hint.
+    let src = "<?phpm\nnamespace App;\nfunction Card() { return <div />; }\nfunction App() { return <Card />; }\n";
+    let (_, diags) = compile(vec![SourceInput { rel: "App.phpm".into(), text: src.into() }]);
+    let d = diags.iter().flat_map(|f| &f.diags).find(|d| d.code == "E010").expect("E010 without #[Component]");
+    assert_eq!(d.help.as_deref(), Some("add `#[Component]` before `function Card()`, and `use Mamu\\Attribute\\Component;`"));
+
+    // Without the import, `#[Component]` is another attribute.
+    let src = "<?phpm\nnamespace App;\n#[Component]\nfunction Card() { return <div />; }\nfunction App() { return <Card />; }\n";
+    assert_eq!(codes(src), ["W004", "E010"]);
 }

@@ -8,6 +8,7 @@ use Mamu\Tests\Fixtures\Framed;
 
 use function App\Components\Document;
 
+#[Component]
 function Tally(array $items) {
     $n = count($items);
     return <p id="count">{{ n }}</p>;

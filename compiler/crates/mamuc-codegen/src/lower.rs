@@ -312,10 +312,12 @@ impl<'a> Lowerer<'a> {
         let Some(def) = self.reg.get(&fqcn).cloned() else {
             let short = fqcn.rsplit('\\').next().unwrap_or(&fqcn).to_string();
             let similar: Vec<&str> = self.reg.keys().filter(|k| k.rsplit('\\').next() == Some(short.as_str())).map(|s| s.as_str()).collect();
-            let help = match similar.first() {
-                Some(&mamuc_analyze::ROOT) => format!("import it: `use {};`", mamuc_analyze::ROOT),
-                Some(s) => format!("import it: `use function {s};` (or `use {s};` for a class component)"),
-                None => format!("declare `function {short}()` in a .phpm file, or check the `use` imports"),
+            let plain = self.info.functions.iter().find(|f| f.fqn.eq_ignore_ascii_case(&fqcn));
+            let help = match (plain, similar.first()) {
+                (Some(f), _) => format!("add `#[Component]` before `function {}()`, and `use {};`", f.name, mamuc_analyze::ATTR_COMPONENT),
+                (None, Some(&mamuc_analyze::ROOT)) => format!("import it: `use {};`", mamuc_analyze::ROOT),
+                (None, Some(s)) => format!("import it: `use function {s};` (or `use {s};` for a class component)"),
+                (None, None) => format!("declare `#[Component] function {short}()` in a .phpm file, or check the `use` imports"),
             };
             self.error(codes::UNKNOWN_COMPONENT, format!("unknown component `<{}>` (resolved to `{fqcn}`)", e.name), e.name_span).help = Some(help);
             return;

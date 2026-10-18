@@ -8,10 +8,11 @@ is a PHP file that contains markup literals, the same way a `.jsx` file contains
 namespace App\Pages\Examples;
 
 use Closure;
-use Mamu\Attribute\{Page, State};
+use Mamu\Attribute\{Component, Page, State};
 
 use function App\Components\Document;
 
+#[Component]
 function MyButton(int $count, Closure $onClick) {
     return <button onClick={{ onClick }}>Clicked {{ count }} times</button>;
 }
@@ -160,7 +161,7 @@ See [editors/vscode/README.md](editors/vscode/README.md).
 
 | React (react.dev/learn) | Mamu |
 |---|---|
-| `function MyButton() { return <button/> }` | the same, in PHP |
+| `function MyButton() { return <button/> }` | `#[Component] function MyButton()`: the same, in PHP (a function without `#[Component]` is a plain PHP function) |
 | `export default function MyApp()` | `#[Page('/')] final class MyApp`: a Symfony route |
 | the root layout (`<html>`, metadata) | a `Document` component of the app, with a `<Root>`: each page renders in it, and gives the title with `<Document:title>` |
 | `{user.name}`, `src={user.imageUrl}` | `{{ user.name }}`, `src={{ user.imageUrl }}` |
@@ -197,7 +198,7 @@ finds an error:
 | Code | Meaning |
 |---|---|
 | E001–E006 | Syntax: unclosed or mismatched tags, a void element that is not self-closed, more than one root, a `<?php` open tag instead of `<?phpm` |
-| E010–E014 | Unknown component, unknown or missing prop, children or slot not accepted, duplicate component (also a component with the name of a built-in component, `Mamu\Root`) |
+| E010–E014 | Unknown component (also a function without `#[Component]`), unknown or missing prop, children or slot not accepted, duplicate component (also a component with the name of a built-in component, `Mamu\Root`) |
 | E020 | A call to a React Hook (`Mamu\useState`, ...): Mamu keeps state in `#[Component]` classes |
 | E030–E032 | Undefined variable in markup, markup in an unsupported expression, invalid attribute |
 | E040–E041 | Class component without `render()`, readonly `#[State]` property |

@@ -182,19 +182,19 @@ expression: out.manifest.to_json()
   "templates": {
     "components/Buttons.0.twig": {
       "source": "components/Buttons.phpm",
-      "line": 10
+      "line": 12
     },
     "components/Buttons.1.twig": {
       "source": "components/Buttons.phpm",
-      "line": 18
+      "line": 21
     },
     "components/Buttons.2.twig": {
       "source": "components/Buttons.phpm",
-      "line": 27
+      "line": 31
     },
     "components/Buttons.3.twig": {
       "source": "components/Buttons.phpm",
-      "line": 31
+      "line": 36
     },
     "components/Counter.0.twig": {
       "source": "components/Counter.phpm",
@@ -202,15 +202,15 @@ expression: out.manifest.to_json()
     },
     "components/Document.0.twig": {
       "source": "components/Document.phpm",
-      "line": 12
+      "line": 14
     },
     "components/Rest.0.twig": {
       "source": "components/Rest.phpm",
-      "line": 7
+      "line": 10
     },
     "components/Rest.1.twig": {
       "source": "components/Rest.phpm",
-      "line": 15
+      "line": 19
     },
     "pages/about.0.twig": {
       "source": "pages/about.phpm",
@@ -218,31 +218,31 @@ expression: out.manifest.to_json()
     },
     "pages/index.0.twig": {
       "source": "pages/index.phpm",
-      "line": 10
+      "line": 11
     },
     "pages/index.1.twig": {
       "source": "pages/index.phpm",
-      "line": 15
+      "line": 22
     },
     "pages/index.2.twig": {
       "source": "pages/index.phpm",
-      "line": 31
+      "line": 38
     },
     "pages/index.3.twig": {
       "source": "pages/index.phpm",
-      "line": 33
+      "line": 40
     },
     "pages/index.4.twig": {
       "source": "pages/index.phpm",
-      "line": 37
+      "line": 44
     },
     "pages/index.5.twig": {
       "source": "pages/index.phpm",
-      "line": 74
+      "line": 81
     },
     "pages/index.6.twig": {
       "source": "pages/index.phpm",
-      "line": 77
+      "line": 84
     }
   },
   "files": [

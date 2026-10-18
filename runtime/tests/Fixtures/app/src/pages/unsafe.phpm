@@ -2,13 +2,14 @@
 
 namespace App\Pages;
 
-use Mamu\Attribute\Page;
+use Mamu\Attribute\{Component, Page};
 use Mamu\Event;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 use function App\Components\Document;
 
 // A function component that returns a string: it is text, as in React.
+#[Component]
 function PlainText(string $value) {
     return $value;
 }

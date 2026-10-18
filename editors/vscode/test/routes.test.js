@@ -31,6 +31,7 @@ final class Plain
 }
 
 #[Page('/function')]
+#[Component]
 function Fn()
 {
     return <p />;

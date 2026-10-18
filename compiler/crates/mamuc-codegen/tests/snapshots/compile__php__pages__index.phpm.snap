@@ -10,12 +10,19 @@ use App\Components\Counter;
 use Mamu\Attribute\{Component, Page, State};
 use function App\Components\{MyButton, Card, Badge, Tag, Document};
 
+#[Component]
 function Toolbar(string $theme = 'light') {
     return new \Mamu\Element('pages/index.0.twig', ['theme' => $theme ?? null]);
 }
 
+// A plain PHP function, with no `#[Component]`: it is not a component.
+function Shout(string $name): string {
+    return strtoupper($name);
+}
+
+#[Component]
 function Greeting(string $name) {
-    $upper = strtoupper($name);
+    $upper = Shout($name);
     return new \Mamu\Element('pages/index.1.twig', ['upper' => $upper ?? null]);
 }
 

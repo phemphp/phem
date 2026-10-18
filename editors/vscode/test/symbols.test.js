@@ -12,6 +12,7 @@ use Mamu\\Attribute\\{Component, State};
 use Mamu\\Html;
 use Symfony\\Component\\Routing\\Attribute\\Route;
 
+#[Component]
 function Card(string $title, ?Html $footer = null, ?Html $children = null, mixed ...$rest)
 {
     return <div>{{ title }}</div>;

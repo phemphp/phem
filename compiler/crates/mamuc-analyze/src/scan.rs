@@ -77,6 +77,7 @@ pub struct Func {
     /// The body, without the braces.
     pub body: Span,
     pub params: Vec<Param>,
+    /// A function with `#[Component]`: a function or a template component.
     pub component_kind: Option<Kind>,
     /// For a template component, the index of its markup literal.
     pub template_markup: Option<usize>,
@@ -220,9 +221,14 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                         continue;
                     }
                     "function" if toks.t.get(i + 1).is_some_and(|x| x.kind == TokKind::Ident) || toks.is_op(i + 1, "&") => {
-                        let (f, end) = parse_function(&toks, i, &info.namespace);
+                        let (mut f, end) = parse_function(&toks, i, &info.namespace);
                         let attrs = std::mem::take(&mut attrs);
                         check_attrs(&mut info, &attrs);
+                        // Only a function with `#[Component]` is a component: the other functions
+                        // of the file are plain PHP functions.
+                        if attrs.iter().any(|(a, _)| info.resolve_class(a) == ATTR_COMPONENT) {
+                            f.component_kind = Some(Kind::Function);
+                        }
                         if let Some((attr, span)) = route_attr(&info, &attrs) {
                             info.routes.push(RouteDecl { fqn: f.fqn.clone(), attr, span, is_component: false });
                         }
@@ -430,7 +436,6 @@ fn parse_function(toks: &Toks, at: usize, ns: &str) -> (Func, usize) {
     } else {
         (Span::new(toks.t[j].span.start, toks.t[j].span.start), j)
     };
-    let component_kind = name.starts_with(|c: char| c.is_ascii_uppercase()).then_some(Kind::Function);
     let f = Func {
         fqn: qualify(ns, &name),
         name,
@@ -438,7 +443,7 @@ fn parse_function(toks: &Toks, at: usize, ns: &str) -> (Func, usize) {
         span: Span::new(toks.t[at].span.start, toks.t[end].span.end),
         body,
         params,
-        component_kind,
+        component_kind: None,
         template_markup: None,
         is_private: false,
     };
@@ -613,7 +618,7 @@ fn parse_class(toks: &Toks, at: usize, info: &FileInfo, attrs: Vec<String>) -> (
                     });
                 }
             }
-            class.methods.push(Func { fqn: format!("{}::{}", class.fqn, m.name), component_kind: None, is_private: mods.iter().any(|x| x == "private"), ..m });
+            class.methods.push(Func { fqn: format!("{}::{}", class.fqn, m.name), is_private: mods.iter().any(|x| x == "private"), ..m });
             member_attrs.clear();
             mods.clear();
             ty_start = None;
@@ -680,10 +685,13 @@ namespace App\Components;
 use function Mamu\{useState, useEffect as ue};
 use App\Ui\Card, App\Ui\Button as Btn;
 use Symfony\Component\Routing\Attribute\Route;
+use Mamu\Attribute\Component;
+#[Component]
 function MyButton(int $count, ?\Closure $onClick = null, ?Html $children = null) {
     [$c, $s] = useState(0);
     return <button>{{ count }}</button>;
 }
+#[Component]
 #[Route('/card', name: 'card')]
 function Card(string $title) { return (<div>{{ title }}</div>); }
 function helper() {}
@@ -707,6 +715,24 @@ function helper() {}
         assert_eq!(f.routes[0].fqn, "App\\Components\\Card");
         assert!(!f.routes[0].is_component, "a function is not a page");
         assert_eq!(f.markup_scopes, vec![MarkupScope::Function(0), MarkupScope::Function(1)]);
+    }
+
+    #[test]
+    fn a_function_needs_component_to_be_a_component() {
+        let f = scan_src(
+            r#"<?phpm
+namespace App;
+use Mamu\Attribute\Component;
+function Format(string $s) { return <b>{{ s }}</b>; }
+#[Component]
+function card() { return <div />; }
+#[\App\Component]
+function Other() { return <p />; }
+"#,
+        );
+        let kinds: Vec<_> = f.functions.iter().map(|x| x.component_kind).collect();
+        assert_eq!(kinds, [None, Some(Kind::Template), None], "a plain PHP function can return markup");
+        assert_eq!(f.foreign_attrs.len(), 1, "`#[\\App\\Component]` is not the Mamu attribute");
     }
 
     #[test]

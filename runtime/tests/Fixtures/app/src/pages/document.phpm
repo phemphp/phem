@@ -10,6 +10,7 @@ use function App\Components\{Badge, Document};
 
 // Another document: another component, as another base template. Components can render
 // after the root element.
+#[Component]
 function SpanishDocument(?Html $title = null, ?Html $children = null)
 {
     return (

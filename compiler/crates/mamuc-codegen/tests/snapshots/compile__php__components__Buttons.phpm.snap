@@ -7,8 +7,10 @@ expression: f.php
 namespace App\Components;
 
 use Closure;
+use Mamu\Attribute\Component;
 use Mamu\Html;
 
+#[Component]
 function MyButton(int $count, Closure $onClick) {
     return (
         new \Mamu\Element('components/Buttons.0.twig', ['onClick' => $onClick ?? null, 'count' => $count ?? null])
@@ -17,6 +19,7 @@ function MyButton(int $count, Closure $onClick) {
     );
 }
 
+#[Component]
 function Card(string $title, ?Html $children = null, ?Html $footer = null) {
     return (
         new \Mamu\Element('components/Buttons.1.twig', ['title' => $title ?? null, 'children' => $children ?? null, 'footer' => $footer ?? null])
@@ -27,10 +30,12 @@ function Card(string $title, ?Html $children = null, ?Html $footer = null) {
     );
 }
 
+#[Component]
 function Badge(string $label, string $tone = 'info') {
     return new \Mamu\Element('components/Buttons.2.twig', ['tone' => $tone ?? null, 'label' => $label ?? null]);
 }
 
+#[Component]
 function Tag(?Html $children = null) {
     return new \Mamu\Element('components/Buttons.3.twig', ['children' => $children ?? null]);
 }
