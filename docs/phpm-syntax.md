@@ -1,7 +1,7 @@
 # The `.phpm` file format
 
 A `.phpm` file is a PHP 8.5 file that can contain **markup literals**, the same way a `.jsx` file is a
-JavaScript file that contains JSX. The `mamuc` compiler turns each markup literal into a Twig
+JavaScript file that contains JSX. The `phemc` compiler turns each markup literal into a Twig
 template and turns the PHP code into plain PHP. All parsing happens at build time.
 
 A `.phpm` file opens PHP with `<?phpm`. A plain `<?php` tag is an error (E006). The compiler
@@ -10,14 +10,14 @@ writes `<?php` in the PHP that it generates.
 ## 1. Components
 
 A component is a PHP function with the `#[Component]` attribute. It returns markup.
-As in React, a string that it returns is text: Mamu escapes it.
+As in React, a string that it returns is text: Phem escapes it.
 A component with state is a `#[Component]` class (see section 7).
 
 ```php
 <?phpm
 namespace App\Components;
 
-use Mamu\Attribute\Component;
+use Phem\Attribute\Component;
 
 #[Component]
 function MyButton() {
@@ -34,13 +34,13 @@ function initials(string $name): string {
 
 A function without `#[Component]` is a plain PHP function, as in a `.php` file. Its name can
 start with a capital letter or not. A tag cannot use it (E010), and the manifest does not
-list it. Without `use Mamu\Attribute\Component;`, `#[Component]` is another attribute (W004).
+list it. Without `use Phem\Attribute\Component;`, `#[Component]` is another attribute (W004).
 
 Use a component with a tag: `<MyButton />`. The compiler resolves the tag with the PHP rules:
 a `use function` import, then a `use` (class) import, then the current namespace.
 
 A page is a class with the `#[Page]` attribute. React uses `export default` for the page
-component of a file. In Mamu, `#[Page]` exposes a class at a URL, as `#[Route]` does for a
+component of a file. In Phem, `#[Page]` exposes a class at a URL, as `#[Route]` does for a
 Symfony controller. The file stays valid PHP. A page class is a component: it needs no
 `#[Component]`. It renders its content in the document of the application, a component that
 renders the `<html>` element and the `<Root>` of the page (see
@@ -48,7 +48,7 @@ renders the `<html>` element and the `<Root>` of the page (see
 `title` slot of the document. A function cannot be a page.
 
 ```php
-use Mamu\Attribute\Page;
+use Phem\Attribute\Page;
 
 use function App\Components\Document;
 
@@ -80,7 +80,7 @@ A route value goes to the page as a prop. Mark the public property with `#[Path]
 `#[Prop]`). The name of the property is the name of the route value.
 
 ```php
-use Mamu\Attribute\{Page, Path};
+use Phem\Attribute\{Page, Path};
 
 use function App\Components\Document;
 
@@ -126,7 +126,7 @@ entity arguments of a Symfony controller. Install `doctrine/orm` and `doctrine/d
 
 ```php
 use App\Model\Scientist;
-use Mamu\Attribute\{Page, Path};
+use Phem\Attribute\{Page, Path};
 
 use function App\Components\Document;
 
@@ -271,8 +271,8 @@ function MyButton() {
 ```
 
 Supported events: `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`, `onKeyDown`, `onKeyUp`,
-`onFocus`, `onBlur`. mamuc warns about another event (W003): the browser does not send it.
-The handler runs on the server. It receives a `Mamu\Event` object with `$e->value`,
+`onFocus`, `onBlur`. phemc warns about another event (W003): the browser does not send it.
+The handler runs on the server. It receives a `Phem\Event` object with `$e->value`,
 `$e->checked`, `$e->key`, `$e->form` (an array, for `onSubmit`), and `$e->request`.
 `onChange` on a text input fires on each key (as in React).
 
@@ -286,10 +286,10 @@ changes before a click (another user removes a row), a click never runs the hand
 another row: the page reloads when its handler is not there any more. A captured Doctrine
 entity counts by its identifier.
 
-An event is a `POST` request to the URL of the page, with the `X-Mamu-Event` header. Thus the
+An event is a `POST` request to the URL of the page, with the `X-Phem-Event` header. Thus the
 access rules of the page apply to its events too: `access_control`, the firewall, and the host
 and condition of the `#[Page]`. The controller attributes of Symfony (`#[IsGranted]`, `#[Cache]`)
-apply to a page class, for the page and for its events. Mamu accepts an event only
+apply to a page class, for the page and for its events. Phem accepts an event only
 as JSON from the same origin (`Sec-Fetch-Site`, or `Origin`), so another site cannot send one
 (CSRF). A `POST` request without the header renders the page, if its route accepts `POST`.
 
@@ -352,7 +352,7 @@ A component with state is a class with the `#[Component]` attribute and a `rende
 A page class (`#[Page]`) is a component too, with no `#[Component]`.
 
 ```php
-use Mamu\Attribute\{Component, Prop, State};
+use Phem\Attribute\{Component, Prop, State};
 
 #[Component]
 final class Counter
@@ -377,15 +377,15 @@ final class Counter
   required prop. A public property without `#[Prop]` is not a prop: the markup cannot set it.
 - A `#[Prop(rest: true)]` property is the rest prop: it gets the props that no other prop
   takes (see [Rest props](#rest-props)).
-- A `#[State]` property is state. A method changes it, and Mamu calls `render()` again.
+- A `#[State]` property is state. A method changes it, and Phem calls `render()` again.
 - In the markup of a class, a name is a local variable, then a property (`$this->name`),
   then a method (`$this->name(...)`, so a method passes as a handler).
 - The props, the properties and the methods of a parent class (`extends`) and of the traits
-  are also available. When the parent class or a trait is not in a `.phpm` file, mamuc does not
+  are also available. When the parent class or a trait is not in a `.phpm` file, phemc does not
   see it: it does not check the props and the slots of the component, and it does not report
   the names that it cannot find.
 - Each component instance has its own state.
-- The state lives in the browser. The `mamu` Stimulus controller keeps it, and the server signs it.
+- The state lives in the browser. The `phem` Stimulus controller keeps it, and the server signs it.
   An event sends the state to the server. The server makes the component again, restores the
   state, runs the handler, renders again, and sends back Turbo Streams that morph only the
   components that changed.
@@ -394,11 +394,11 @@ final class Counter
   can send back any state that the server signed for the page before: an older state (so a
   user can undo a change), or the state of another visitor. Keep limits (tries, votes) and
   security decisions in the database or the session, not in `#[State]`. Two options make the
-  window smaller: a signed state is valid for `mamu.state_max_age` seconds (default 86400; 0
-  for no limit), and `mamu.state_bind_session: true` makes it valid only in its session (a
+  window smaller: a signed state is valid for `phem.state_max_age` seconds (default 86400; 0
+  for no limit), and `phem.state_bind_session: true` makes it valid only in its session (a
   login then reloads the open pages on their next event). An invalid state reloads the page.
 
-Mamu has no Hooks. A call to `Mamu\useState` (or `useReducer`, `useRef`, `useMemo`,
+Phem has no Hooks. A call to `Phem\useState` (or `useReducer`, `useRef`, `useMemo`,
 `useCallback`, `useId`, `useContext`) is the compiler error E020.
 
 ## 8. Services and `mount()`
@@ -409,7 +409,7 @@ never props.
 
 ```php
 use App\Repository\TodoRepository;
-use Mamu\Attribute\{Component, Prop, State};
+use Phem\Attribute\{Component, Prop, State};
 
 #[Component]
 final class TodoList
@@ -447,20 +447,20 @@ final class TodoList
 The order for each component in a request:
 
 1. The container makes the object (constructor injection).
-2. Mamu writes the props into the `#[Prop]` properties.
-3. If the browser sent state for this component, Mamu writes it into the `#[State]`
-   properties. If not, Mamu calls `mount()` (when the class has it).
-4. Mamu calls the event handler (for an event), then `render()`.
+2. Phem writes the props into the `#[Prop]` properties.
+3. If the browser sent state for this component, Phem writes it into the `#[State]`
+   properties. If not, Phem calls `mount()` (when the class has it).
+4. Phem calls the event handler (for an event), then `render()`.
 
 A component without `#[State]` properties has no state in the browser, so `mount()` runs on each
 request. To configure a component service (for example to bind a scalar argument), define it in
-`config/services.yaml` with its class name as the id. Mamu keeps your definition and only makes
+`config/services.yaml` with its class name as the id. Phem keeps your definition and only makes
 it not shared.
 
 ### Transactions
 
-When DoctrineBundle is installed, Mamu runs each event handler in a Doctrine ORM transaction.
-When the handler returns, Mamu flushes and commits. When the handler throws an exception, Mamu
+When DoctrineBundle is installed, Phem runs each event handler in a Doctrine ORM transaction.
+When the handler returns, Phem flushes and commits. When the handler throws an exception, Phem
 rolls back all of its changes. Thus the handler does not call `flush()`:
 
 - To add an entity, call `persist()` (for example through a repository method).
@@ -468,7 +468,7 @@ rolls back all of its changes. Thus the handler does not call `flush()`:
 - To change an entity that Doctrine loaded, set its properties. The flush finds the changes.
 
 ```php
-use Mamu\Attribute\{Component, Prop};
+use Phem\Attribute\{Component, Prop};
 
 #[Component]
 final class TodoItem
@@ -500,13 +500,13 @@ installed and enabled, and `false` if not. To select the components that use a t
 the option to `false` and add `#[Transactional]` to each of these class components:
 
 ```yaml
-# config/packages/mamu.yaml
-mamu:
+# config/packages/phem.yaml
+phem:
     transactional: false
 ```
 
 ```php
-use Mamu\Attribute\{Component, Transactional};
+use Phem\Attribute\{Component, Transactional};
 
 #[Component]
 #[Transactional]
@@ -559,7 +559,7 @@ final class MyApp
 - A default for children or a slot: `{{ footer ?? 'No footer' }}` shows when the caller gives none.
 - An unknown prop is an error, unless the function has a variadic `...$rest` parameter (or
   the class a `#[Prop(rest: true)]` property).
-- `<Root>` (`use Mamu\Root;`) is a built-in component: the root element of a page, in the
+- `<Root>` (`use Phem\Root;`) is a built-in component: the root element of a page, in the
   document. It takes `tag` and any attribute (see [compiling.md](compiling.md#the-document-of-the-pages)).
 
 ### Rest props
@@ -606,8 +606,8 @@ The rest prop is not a named prop: `<CountButton attrs="x" />` puts `attrs` in t
 
 ## 10. Markup values
 
-A markup literal is a value, like a React element: mamuc compiles `<p>{{ x }}</p>` to
-`new \Mamu\Element('file.0.twig', ['x' => $x])`. Mamu renders it when markup prints it
+A markup literal is a value, like a React element: phemc compiles `<p>{{ x }}</p>` to
+`new \Phem\Element('file.0.twig', ['x' => $x])`. Phem renders it when markup prints it
 (`{{ content }}`), or when the component returns it. Markup that does not print (the other
 branch of `{{ on ? yes : no }}`) renders no component. An array of markup prints as a list,
 and its `null` and `false` items print nothing. Do not cast a markup literal to a string in PHP.

@@ -1,0 +1,11 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<html lang="en">
+            <head>
+                <meta charset="utf-8">
+                <title>{% block title %}{{ title ?? 'Fixture' }}{% endblock %}</title>
+            </head>
+            <body class="fixture">{% component embed 'Phem\\Root' only %}{% block children %}{% with _phem_caller only %}{{ children }}{% endwith %}{% endblock %}{% endcomponent %}</body>
+        </html>

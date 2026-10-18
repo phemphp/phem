@@ -1,0 +1,6 @@
+<?phpm // expect: E020
+use function Phem\useState;
+function App() {
+    [$count, $setCount] = useState(0);
+    return <p>{{ count }}</p>;
+}

@@ -5,8 +5,8 @@ use App\Dto\NewScientist;
 use App\Form\ScientistType;
 use App\Model\Scientist;
 use App\Repository\ScientistRepository;
-use Mamu\Attribute\Component;
-use Mamu\Event;
+use Phem\Attribute\Component;
+use Phem\Event;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 

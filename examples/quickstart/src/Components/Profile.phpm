@@ -1,7 +1,7 @@
 <?phpm
 namespace App\Components;
 
-use Mamu\Attribute\Component;
+use Phem\Attribute\Component;
 
 // More than one component can go in one file.
 #[Component]

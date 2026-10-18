@@ -2,8 +2,8 @@
 
 namespace App\Components;
 
-use Mamu\Attribute\Component;
-use Mamu\Html;
+use Phem\Attribute\Component;
+use Phem\Html;
 
 // The page shell: a header, the page content (children) and a footer slot.
 #[Component]

@@ -13,7 +13,7 @@ const { hasAttr, isProp } = require('./php');
 const { routesOf } = require('./project');
 
 function isHtmlType(type) {
-    return /^\??\\?(Mamu\\)?Html(\|null)?$/i.test(type);
+    return /^\??\\?(Phem\\)?Html(\|null)?$/i.test(type);
 }
 
 function symbol(name, detail, kind, start, end, offset, children = []) {

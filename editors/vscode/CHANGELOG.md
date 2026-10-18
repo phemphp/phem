@@ -8,9 +8,9 @@
   Completion, hover, and the outline do not show the other public properties as props.
 - A function is a component only with `#[Component]`, as a class. The other functions of a
   `.phpm` file are plain PHP functions: completion does not suggest them as component tags.
-- The project is now Mamu. The extension id is `mamuphp.mamu`, the language id is `phpm`, and
-  the files are `.phpm` files that open with `<?phpm`. The compiler is `mamuc`, and the settings
-  are `mamu.mamuc.path` and `mamu.mamuc.sourceDir`.
+- The project is now Phem. The extension id is `phem.phem`, the language id is `phpm`, and
+  the files are `.phpm` files that open with `<?phpm`. The compiler is `phemc`, and the settings
+  are `phem.phemc.path` and `phem.phemc.sourceDir`.
 - Completion for class members after `->`, `?->`, and `::`, with the parents, the traits, the
   interfaces, and the docblock types. Completion for variables after `$`.
 - Twig completion: variables (PHP scope, class properties and methods, `{% for %}`,
@@ -27,11 +27,11 @@
   filters, functions, tests, tags, and the HTML elements and attributes.
 - An outline: the namespace, the components with their props and slots, the pages with their
   paths, and the classes with their members.
-- mamuc diagnostics on save, with the new `mamu.mamuc.path` and `mamu.mamuc.sourceDir` settings. It
-  uses `mamuc check --format json`.
+- phemc diagnostics on save, with the new `phem.phemc.path` and `phem.phemc.sourceDir` settings. It
+  uses `phemc check --format json`.
 - The `.`, `>`, `|`, `$`, `%`, `'`, and `"` characters start the completion where it applies.
-- Completion and hover for the built-in `<Root>` component (`Mamu\Root`): its `tag` prop and
-  its `children`. Completion adds the `use Mamu\Root;` import.
+- Completion and hover for the built-in `<Root>` component (`Phem\Root`): its `tag` prop and
+  its `children`. Completion adds the `use Phem\Root;` import.
 
 - The Twig delimiters `{{ }}` and `{% %}` are one bracket pair, and they always have the color of
   the first bracket level. Before, the two braces of a delimiter had different colors, and the
@@ -40,7 +40,7 @@
 ## 0.2.0
 
 - Completion for component tags, with the required props and the import of the component.
-- Completion for props, named slots (`<Card:footer>`), Mamu events, and closing tags.
+- Completion for props, named slots (`<Card:footer>`), Phem events, and closing tags.
 - Completion for `use`, `use function`, and `use const` statements, from the `.phpm` files and the
   Composer autoload maps.
 - Completion for class and function names in PHP code, with the `use` statement.

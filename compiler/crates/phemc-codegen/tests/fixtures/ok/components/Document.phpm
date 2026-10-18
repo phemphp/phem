@@ -1,0 +1,22 @@
+<?phpm
+
+namespace App\Components;
+
+use Phem\Attribute\Component;
+use Phem\{Html, Root};
+
+// The document of the fixture pages: a page renders its markup in it, and gives the title
+// with `<Document:title>`.
+#[Component]
+function Document(?Html $title = null, ?Html $children = null)
+{
+    return (
+        <html lang="en">
+            <head>
+                <meta charset="utf-8" />
+                <title>{{ title ?? 'Fixture' }}</title>
+            </head>
+            <body className="fixture"><Root>{{ children }}</Root></body>
+        </html>
+    );
+}

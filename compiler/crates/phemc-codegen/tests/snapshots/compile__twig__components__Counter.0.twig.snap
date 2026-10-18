@@ -1,0 +1,7 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<button {{ phem_on('click', increment) }} {{ phem_attr('data-count', count) }}>
+                {{ label }} {{ count }} times {{ children }}
+            </button>

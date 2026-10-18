@@ -14,7 +14,7 @@ const FILES = {
 $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 return array(
-    'Mamu\\\\' => array($vendorDir . '/mamuphp/mamu/src'),
+    'Phem\\\\' => array($vendorDir . '/phem/phem/src'),
     'App\\\\' => array($baseDir . '/src'),
 );
 `,
@@ -26,17 +26,17 @@ return array(
 );
 `,
     'vendor/acme/lib/functions.php': '<?php\nnamespace Acme;\n\nfunction slugify(string $s): string { return $s; }\n',
-    'vendor/mamuphp/mamu/src/Html.php': '<?php\n',
-    'vendor/mamuphp/mamu/src/Attribute/Component.php': '<?php\n',
-    'vendor/mamuphp/mamu/src/Attribute/Prop.php': '<?php\n',
-    'vendor/mamuphp/mamu/src/Attribute/State.php': '<?php\n',
-    'vendor/mamuphp/mamu/tests/HtmlTest.php': '<?php\n',
+    'vendor/phem/phem/src/Html.php': '<?php\n',
+    'vendor/phem/phem/src/Attribute/Component.php': '<?php\n',
+    'vendor/phem/phem/src/Attribute/Prop.php': '<?php\n',
+    'vendor/phem/phem/src/Attribute/State.php': '<?php\n',
+    'vendor/phem/phem/tests/HtmlTest.php': '<?php\n',
     'src/Repository/TodoRepository.php': '<?php\n',
     'src/components/Layout.phpm': `<?phpm
 namespace App\\Components;
 
-use Mamu\\Attribute\\Component;
-use Mamu\\Html;
+use Phem\\Attribute\\Component;
+use Phem\\Html;
 
 #[Component]
 function Layout(string $title, ?Html $children = null, ?Html $footer = null)
@@ -59,7 +59,7 @@ function Initials(string $name): string
     'src/pages/about.phpm': `<?phpm
 namespace App\\Pages;
 
-use Mamu\\Attribute\\Page;
+use Phem\\Attribute\\Page;
 
 #[Page('/about')]
 final class About
@@ -73,7 +73,7 @@ final class About
     'src/components/Counter.phpm': `<?phpm
 namespace App\\Components;
 
-use Mamu\\Attribute\\{Component, Prop, State};
+use Phem\\Attribute\\{Component, Prop, State};
 
 #[Component]
 final class Counter
@@ -227,7 +227,7 @@ final class ScientistRepository
     'src/pages/gallery.phpm': `<?phpm
 namespace App\\Pages;
 
-use Mamu\\Attribute\\Page;
+use Phem\\Attribute\\Page;
 
 #[Page('/gallery', name: 'gallery')]
 #[Page('/scientists/{id}')]
@@ -242,7 +242,7 @@ final class Gallery
 };
 
 async function createProject() {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mamu-test-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'phem-test-'));
     for (const [name, content] of Object.entries(FILES)) {
         fs.mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
         fs.writeFileSync(path.join(root, name), content);

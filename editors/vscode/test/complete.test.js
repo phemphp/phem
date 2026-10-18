@@ -43,7 +43,7 @@ test('a component tag adds a use function import', async () => {
 
 test('a page of another file is not a component tag', async () => {
     assert.equal((await run(PAGE + 'function Home()\n{\n    return <Ab|\n}\n')).find('About'), undefined);
-    const about = PAGE + "use Mamu\\Attribute\\Page;\n\n#[Page('/about')]\nfinal class About\n{\n    public function render()\n    {\n        return <p><Ab|</p>;\n    }\n}\n";
+    const about = PAGE + "use Phem\\Attribute\\Page;\n\n#[Page('/about')]\nfinal class About\n{\n    public function render()\n    {\n        return <p><Ab|</p>;\n    }\n}\n";
     assert.equal((await run(about, 'src/pages/about.phpm')).find('About').detail, 'App\\Pages\\About (page)');
 });
 
@@ -61,10 +61,10 @@ test('a class component adds a use import', async () => {
 test('the built-in Root tag adds a use import', async () => {
     const { text, find } = (await run(PAGE + 'function Document()\n{\n    return <body><Ro|</body>;\n}\n'));
     const item = find('Root');
-    assert.equal(item.detail, 'Mamu\\Root');
+    assert.equal(item.detail, 'Phem\\Root');
     assert.equal(item.snippet, 'Root>$0</Root>');
     assert.match(item.documentation, /root element of the page/);
-    assert.match(apply(text, item), /namespace App\\Pages;\n\nuse Mamu\\Root;\n/);
+    assert.match(apply(text, item), /namespace App\\Pages;\n\nuse Phem\\Root;\n/);
 });
 
 test('an import goes into a group on one line', async () => {
@@ -108,12 +108,12 @@ test('props, slots, and closing tags', async () => {
 });
 
 test('use statements complete namespaces and symbols', async () => {
-    let r = (await run(PAGE + 'use Mamu\\|\n'));
+    let r = (await run(PAGE + 'use Phem\\|\n'));
     assert.deepEqual(r.items.map((i) => i.label).sort(), ['Attribute', 'Html']);
     assert.equal(r.find('Attribute').insert, 'Attribute\\');
     assert.equal(r.find('Html').insert, 'Html;');
 
-    r = (await run(PAGE + 'use Mamu\\Attribute\\{Component, |};\n'));
+    r = (await run(PAGE + 'use Phem\\Attribute\\{Component, |};\n'));
     assert.deepEqual(r.items.map((i) => i.label).sort(), ['Component', 'Prop', 'State']);
 
     r = (await run(PAGE + 'use function Acme\\|\n'));
@@ -124,11 +124,11 @@ test('use statements complete namespaces and symbols', async () => {
 });
 
 test('a class name adds an import', async () => {
-    const src = PAGE + 'use Mamu\\Html;\n\nfunction Home()\n{\n    $r = new TodoRe|\n}\n';
+    const src = PAGE + 'use Phem\\Html;\n\nfunction Home()\n{\n    $r = new TodoRe|\n}\n';
     const { text, find } = (await run(src));
     const item = find('TodoRepository');
     assert.equal(item.insert, 'TodoRepository');
-    assert.match(apply(text, item), /namespace App\\Pages;\n\nuse App\\Repository\\TodoRepository;\nuse Mamu\\Html;\n/);
+    assert.match(apply(text, item), /namespace App\\Pages;\n\nuse App\\Repository\\TodoRepository;\nuse Phem\\Html;\n/);
     assert.equal(find('HtmlTest'), undefined);
     assert.deepEqual(find('Html').edits, []);
 

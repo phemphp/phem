@@ -1,7 +1,7 @@
-# Mamu for Visual Studio Code
+# Phem for Visual Studio Code
 
 Syntax highlighting, completion, go to definition, hover, outline, and compiler diagnostics for
-Mamu `.phpm` files. A `.phpm` file is a PHP file that contains markup literals, the same way a
+Phem `.phpm` files. A `.phpm` file is a PHP file that contains markup literals, the same way a
 `.jsx` file contains JSX.
 
 The PHP extensions (Intelephense, PHP Tools) do not read `.phpm` files, so this extension has its
@@ -34,15 +34,15 @@ is not there). A project is the nearest directory with a `composer.json` file.
   functions and classes). A function without `#[Component]` is a plain PHP function. The tag gets the required props, and a closing tag when the
   component has `$children` or slots. If the component is not in scope, the extension adds the
   import: `use function App\Components\Layout;` or `use App\Components\Counter;`. It uses the
-  rules of mamuc: a `use function` import, then a `use` import, then the current namespace.
+  rules of phemc: a `use function` import, then a `use` import, then the current namespace.
   It also suggests the built-in `<Root>` (the root element of a page, in the document), and
-  adds `use Mamu\Root;`.
+  adds `use Phem\Root;`.
 - **HTML elements**: after `<`, it also suggests the HTML elements. A void element gets ` />`
   (`<img />`); the others get a closing tag.
 - **Props and slots**: in a component tag, it suggests the props that are not set yet (required
   props first). After `<Layout:`, it suggests the named slots.
 - **HTML attributes**: in an HTML tag, it suggests the attributes of the element, the global
-  attributes, the `aria-*` attributes, the Mamu events (`onClick`, `onSubmit`, ...),
+  attributes, the `aria-*` attributes, the Phem events (`onClick`, `onSubmit`, ...),
   `className`, and `key`. In the value of an enumerated attribute (`type="`, `target="`,
   `rel="`, `loading="`, ...), it suggests the values.
 - **Closing tags**: after `</`, it suggests the name of the open element.
@@ -66,7 +66,7 @@ is not there). A project is the nearest directory with a `composer.json` file.
   `use App\{...}`), it suggests the next part of the namespace and the symbols.
 - **Classes and functions**: in PHP code, it suggests the classes and the namespaced functions
   of the project and of `vendor/`, and adds the `use` statement when you accept one. A name with a
-  leading `\` (`\Mamu\Html`) completes part by part, with no import.
+  leading `\` (`\Phem\Html`) completes part by part, with no import.
 
 The index updates when you save a `.phpm` file, add or remove a `.php` file, or run Composer.
 The extension reads a class file when it needs the members of the class, and reads it again when
@@ -94,20 +94,20 @@ classes with their members.
 
 ## Diagnostics
 
-The extension can show the errors and the warnings of mamuc in the editor. Set the path of the
-`mamuc` binary (it must run on the host, not in Docker):
+The extension can show the errors and the warnings of phemc in the editor. Set the path of the
+`phemc` binary (it must run on the host, not in Docker):
 
 ```json
 {
-    "mamu.mamuc.path": "/path/to/mamuc",
-    "mamu.mamuc.sourceDir": "src"
+    "phem.phemc.path": "/path/to/phemc",
+    "phem.phemc.sourceDir": "src"
 }
 ```
 
-When you open or save a `.phpm` file, the extension runs `mamuc check <sourceDir> --format json`
-in the project root and shows the diagnostics of all the files. `mamu.mamuc.sourceDir` is relative
-to the project root (default: `src`). With an empty `mamu.mamuc.path` (the default), there are no
-diagnostics. In an untrusted workspace, VS Code ignores the `mamu.mamuc.path` value of the
+When you open or save a `.phpm` file, the extension runs `phemc check <sourceDir> --format json`
+in the project root and shows the diagnostics of all the files. `phem.phemc.sourceDir` is relative
+to the project root (default: `src`). With an empty `phem.phemc.path` (the default), there are no
+diagnostics. In an untrusted workspace, VS Code ignores the `phem.phemc.path` value of the
 workspace settings.
 
 ## Limits
@@ -124,7 +124,7 @@ workspace settings.
 Build and install the package (you need Docker and the `code` command):
 
 ```sh
-make vscode-install    # builds editors/vscode/mamu-0.3.0.vsix and installs it
+make vscode-install    # builds editors/vscode/phem-0.3.0.vsix and installs it
 ```
 
 Then run **Developer: Reload Window** in VS Code. To only build the package, run `make vscode`.
@@ -132,7 +132,7 @@ Then run **Developer: Reload Window** in VS Code. To only build the package, run
 an installed version:
 
 ```sh
-code --install-extension editors/vscode/mamu-0.3.0.vsix --force
+code --install-extension editors/vscode/phem-0.3.0.vsix --force
 ```
 
 Or, in VS Code, open the Extensions view, select **...** > **Install from VSIX...**, and select the file.

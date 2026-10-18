@@ -1,0 +1,285 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: out.manifest.to_json()
+---
+{
+  "version": "0.1.0",
+  "components": {
+    "App\\Components\\Badge": {
+      "fqcn": "App\\Components\\Badge",
+      "kind": "template",
+      "file": "components/Buttons.phpm",
+      "template": "components/Buttons.2.twig",
+      "props": [
+        "label",
+        "tone"
+      ],
+      "slots": [],
+      "required": [
+        "label"
+      ],
+      "rest": false
+    },
+    "App\\Components\\Card": {
+      "fqcn": "App\\Components\\Card",
+      "kind": "template",
+      "file": "components/Buttons.phpm",
+      "template": "components/Buttons.1.twig",
+      "props": [
+        "title",
+        "children",
+        "footer"
+      ],
+      "slots": [
+        "children",
+        "footer"
+      ],
+      "required": [
+        "title"
+      ],
+      "rest": false
+    },
+    "App\\Components\\Counter": {
+      "fqcn": "App\\Components\\Counter",
+      "kind": "class",
+      "file": "components/Counter.phpm",
+      "props": [
+        "label",
+        "children"
+      ],
+      "slots": [
+        "children"
+      ],
+      "required": [],
+      "rest": false
+    },
+    "App\\Components\\Document": {
+      "fqcn": "App\\Components\\Document",
+      "kind": "template",
+      "file": "components/Document.phpm",
+      "template": "components/Document.0.twig",
+      "props": [
+        "title",
+        "children"
+      ],
+      "slots": [
+        "title",
+        "children"
+      ],
+      "required": [],
+      "rest": false
+    },
+    "App\\Components\\MyButton": {
+      "fqcn": "App\\Components\\MyButton",
+      "kind": "template",
+      "file": "components/Buttons.phpm",
+      "template": "components/Buttons.0.twig",
+      "props": [
+        "count",
+        "onClick"
+      ],
+      "slots": [],
+      "required": [
+        "count",
+        "onClick"
+      ],
+      "rest": false
+    },
+    "App\\Components\\Nav": {
+      "fqcn": "App\\Components\\Nav",
+      "kind": "template",
+      "file": "components/Rest.phpm",
+      "template": "components/Rest.3.twig",
+      "props": [],
+      "slots": [],
+      "required": [],
+      "rest": false
+    },
+    "App\\Components\\RestButton": {
+      "fqcn": "App\\Components\\RestButton",
+      "kind": "template",
+      "file": "components/Rest.phpm",
+      "template": "components/Rest.0.twig",
+      "props": [
+        "count"
+      ],
+      "slots": [],
+      "required": [
+        "count"
+      ],
+      "rest": true
+    },
+    "App\\Components\\RestLink": {
+      "fqcn": "App\\Components\\RestLink",
+      "kind": "class",
+      "file": "components/Rest.phpm",
+      "props": [
+        "label"
+      ],
+      "slots": [],
+      "required": [],
+      "rest": true
+    },
+    "App\\Components\\Tag": {
+      "fqcn": "App\\Components\\Tag",
+      "kind": "template",
+      "file": "components/Buttons.phpm",
+      "template": "components/Buttons.3.twig",
+      "props": [
+        "children"
+      ],
+      "slots": [
+        "children"
+      ],
+      "required": [],
+      "rest": false
+    },
+    "App\\Components\\Toolbar": {
+      "fqcn": "App\\Components\\Toolbar",
+      "kind": "function",
+      "file": "components/Rest.phpm",
+      "props": [],
+      "slots": [],
+      "required": [],
+      "rest": true
+    },
+    "App\\Pages\\About": {
+      "fqcn": "App\\Pages\\About",
+      "kind": "class",
+      "file": "pages/about.phpm",
+      "props": [],
+      "slots": [],
+      "required": [],
+      "rest": false
+    },
+    "App\\Pages\\Greeting": {
+      "fqcn": "App\\Pages\\Greeting",
+      "kind": "function",
+      "file": "pages/index.phpm",
+      "props": [
+        "name"
+      ],
+      "slots": [],
+      "required": [
+        "name"
+      ],
+      "rest": false
+    },
+    "App\\Pages\\Home": {
+      "fqcn": "App\\Pages\\Home",
+      "kind": "class",
+      "file": "pages/index.phpm",
+      "props": [],
+      "slots": [],
+      "required": [],
+      "rest": false
+    },
+    "App\\Pages\\Toggle": {
+      "fqcn": "App\\Pages\\Toggle",
+      "kind": "class",
+      "file": "pages/index.phpm",
+      "props": [],
+      "slots": [],
+      "required": [],
+      "rest": false
+    },
+    "App\\Pages\\Toolbar": {
+      "fqcn": "App\\Pages\\Toolbar",
+      "kind": "template",
+      "file": "pages/index.phpm",
+      "template": "pages/index.0.twig",
+      "props": [
+        "theme"
+      ],
+      "slots": [],
+      "required": [],
+      "rest": false
+    }
+  },
+  "pages": [
+    "App\\Pages\\About",
+    "App\\Pages\\Home"
+  ],
+  "templates": {
+    "components/Buttons.0.twig": {
+      "source": "components/Buttons.phpm",
+      "line": 12
+    },
+    "components/Buttons.1.twig": {
+      "source": "components/Buttons.phpm",
+      "line": 21
+    },
+    "components/Buttons.2.twig": {
+      "source": "components/Buttons.phpm",
+      "line": 31
+    },
+    "components/Buttons.3.twig": {
+      "source": "components/Buttons.phpm",
+      "line": 36
+    },
+    "components/Counter.0.twig": {
+      "source": "components/Counter.phpm",
+      "line": 28
+    },
+    "components/Document.0.twig": {
+      "source": "components/Document.phpm",
+      "line": 14
+    },
+    "components/Rest.0.twig": {
+      "source": "components/Rest.phpm",
+      "line": 10
+    },
+    "components/Rest.1.twig": {
+      "source": "components/Rest.phpm",
+      "line": 19
+    },
+    "components/Rest.2.twig": {
+      "source": "components/Rest.phpm",
+      "line": 30
+    },
+    "components/Rest.3.twig": {
+      "source": "components/Rest.phpm",
+      "line": 36
+    },
+    "pages/about.0.twig": {
+      "source": "pages/about.phpm",
+      "line": 15
+    },
+    "pages/index.0.twig": {
+      "source": "pages/index.phpm",
+      "line": 11
+    },
+    "pages/index.1.twig": {
+      "source": "pages/index.phpm",
+      "line": 22
+    },
+    "pages/index.2.twig": {
+      "source": "pages/index.phpm",
+      "line": 38
+    },
+    "pages/index.3.twig": {
+      "source": "pages/index.phpm",
+      "line": 40
+    },
+    "pages/index.4.twig": {
+      "source": "pages/index.phpm",
+      "line": 44
+    },
+    "pages/index.5.twig": {
+      "source": "pages/index.phpm",
+      "line": 81
+    },
+    "pages/index.6.twig": {
+      "source": "pages/index.phpm",
+      "line": 84
+    }
+  },
+  "files": [
+    "php/components/Buttons.php",
+    "php/components/Counter.php",
+    "php/components/Document.php",
+    "php/components/Rest.php",
+    "php/pages/about.php",
+    "php/pages/index.php"
+  ]
+}

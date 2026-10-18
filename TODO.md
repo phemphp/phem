@@ -1,6 +1,6 @@
 # TODO
 
-Features that Mamu does not have yet. Each item takes the best design from the peers:
+Features that Phem does not have yet. Each item takes the best design from the peers:
 Symfony UX Live Components (LC), Livewire 4 (LW), Phoenix LiveView (LV), Blazor Server, and
 React. The syntax in each item is a sketch, not a decision.
 
@@ -9,12 +9,12 @@ Priority: **P1** blocks real applications. **P2** is expected by users of the pe
 
 ## Design discussions
 
-These items need a Mamu-specific design. We cannot copy a peer as it is, because of one of
-these properties of Mamu:
+These items need a Phem-specific design. We cannot copy a peer as it is, because of one of
+these properties of Phem:
 
 - the state lives in the browser, signed, with one value for all the components of the page;
 - the server keeps no session and renders the full tree two times for each event;
-- the `.phpm` markup is compiled and checked by `mamuc`, and it follows React, not Blade or Twig;
+- the `.phpm` markup is compiled and checked by `phemc`, and it follows React, not Blade or Twig;
 - a handler runs in a Doctrine transaction.
 
 Talk about each item before its implementation. The open questions are a start, not a full list.
@@ -27,7 +27,7 @@ Talk about each item before its implementation. The open questions are a start, 
       (`debounce(search, 300)`)? Which default applies to text inputs?
 - [ ] **File uploads** (section 1). A temporary file must be in the signed state as a
       reference. How long is the reference valid, and how does it relate to
-      `mamu.state_max_age` and `mamu.state_bind_session`? What happens to the file when the
+      `phem.state_max_age` and `phem.state_bind_session`? What happens to the file when the
       transaction of the handler rolls back?
 - [ ] **Optimistic UI and client commands** (section 2). How does a PHP `Js` builder look in
       Twig markup? How does the Turbo morph keep the client changes until the server answers?
@@ -42,8 +42,8 @@ Talk about each item before its implementation. The open questions are a start, 
       render show?
 - [ ] **Streams** (section 3). The items of a stream are not in the state. How does a later
       event render the list, and how does the "before/after" comparison see it?
-- [ ] **Context** (section 4). React uses context for UI values and Mamu uses services for the
-      rest. Where is the line? Can `mamuc` check that a provider is above each consumer, also
+- [ ] **Context** (section 4). React uses context for UI values and Phem uses services for the
+      rest. Where is the line? Can `phemc` check that a provider is above each consumer, also
       across `.phpm` files?
 - [ ] **Real-time push** (section 4). The server cannot re-render a page alone. Is a Mercure
       signal + a normal event from the browser enough? How do many signals in a short time
@@ -52,7 +52,7 @@ Talk about each item before its implementation. The open questions are a start, 
       this work with a Symfony form, and with `#[Assert]` on `#[State]` properties? Does
       validation run in the Doctrine transaction?
 - [ ] **Colocated client code** (section 6). Is the extracted script a Stimulus controller, or a
-      smaller hook API? How does `mamuc` give it to AssetMapper in development (`mamuc watch`)
+      smaller hook API? How does `phemc` give it to AssetMapper in development (`phemc watch`)
       and in production?
 - [ ] **`<ErrorBoundary>`** (section 7). An exception in a render and an exception in a
       handler are different: the handler transaction rolls back, and the state may not change.
@@ -70,7 +70,7 @@ one after the other, so a fast typist waits for many old renders.
 - **Proposal:**
   - A `debounce` and `throttle` option for each handler, in milliseconds or `'blur'`.
     Sketch: `<input onChange={{ search }} debounce={{ 300 }} />`.
-  - A default debounce for text inputs (for example 150 ms), configurable in `mamu.yaml`.
+  - A default debounce for text inputs (for example 150 ms), configurable in `phem.yaml`.
   - Coalescing: when the queue has an event for the same handler and element that did not
     start yet, replace it with the new one.
   - A submit or a click sends the pending debounced events first, so no input is lost.
@@ -120,10 +120,10 @@ The user does not see that an event runs.
   `aria-busy` attribute. LW `wire:loading` with `wire:target` and a delay.
 - **Proposal:**
   - Automatically: `aria-busy="true"` on the element that sent the event and on its component
-    root, and a `mamu-loading` class. Remove them when the response arrives. CSS does the rest.
+    root, and a `phem-loading` class. Remove them when the response arrives. CSS does the rest.
   - Disable a submit button and its form inputs during a submit (as LV does), with an opt-out.
   - A small delay (for example 200 ms) before the states show, to stop flicker.
-  - Sketch for custom markup: `<Spinner mamu:loading={{ save }} />` shows only while `save` runs.
+  - Sketch for custom markup: `<Spinner phem:loading={{ save }} />` shows only while `save` runs.
 
 ### [ ] Optimistic UI and client commands — P2
 
@@ -140,7 +140,7 @@ Some changes do not need the server first: open a menu, hide a row, toggle a cla
 ### [ ] Dirty state and "leave page" guard — P3
 
 - **Best peer:** LW `wire:dirty` (style for unsaved bound values).
-- **Proposal:** a `mamu-dirty` class on inputs with a `bind` value that the server did not
+- **Proposal:** a `phem-dirty` class on inputs with a `bind` value that the server did not
   get yet. An optional `beforeunload` guard for a component with dirty values.
 
 ### [ ] Transitions — P3
@@ -165,7 +165,7 @@ compares the two renders. The cost grows with the page size, not with the change
   - Skip a component when its props and its state did not change (automatic `memo`).
     A component that reads services (a repository) can change without a prop change, so it
     needs an opt-in (`#[Component(memo: true)]`) or a way to declare its inputs.
-  - Later: the `mamuc` compiler knows the static parts of each template, so it can send only
+  - Later: the `phemc` compiler knows the static parts of each template, so it can send only
     the dynamic values (as LV does).
 
 ### [ ] Smaller state payload, or state on the server — P2
@@ -177,7 +177,7 @@ The browser sends all the state of the page on each event. A big page sends a bi
   component.
 - **Proposal:**
   - Compress the state (it is JSON, and it repeats keys).
-  - An opt-in server-side store (`mamu.state_store: cache|session`): the browser keeps only an
+  - An opt-in server-side store (`phem.state_store: cache|session`): the browser keeps only an
     id and a version. The current signed-state mode stays the default.
   - Send only the state of the components that changed in the response.
 
@@ -242,7 +242,7 @@ A change by one user does not show for another user until that user sends an eve
 
 - **Best peer:** LV PubSub: each LiveView subscribes to topics, and a broadcast re-renders all
   subscribers. LC uses Mercure and Turbo Streams. LW uses Laravel Echo with `#[On('echo:...')]`.
-- **Proposal:** Mamu keeps state in the browser, so the server cannot re-render a page alone.
+- **Proposal:** Phem keeps state in the browser, so the server cannot re-render a page alone.
   Use Mercure (SSE, and FrankenPHP has a built-in Mercure hub):
   - `#[Subscribe('scientists')]` on a component method, or on a component that must refresh.
   - The server publishes a small signal to the topic (`$hub->publish('scientists')`).
@@ -283,7 +283,7 @@ Some behavior must run in the browser: a chart, a map, a rich text editor, a foc
   extracted at compile time, with `mounted`, `updated` and `destroyed` callbacks. React refs and
   `useEffect`. LW Alpine.
 - **Proposal:**
-  - `mamuc` extracts a `<script type="mamu/controller">` from a `.phpm` file into a Stimulus
+  - `phemc` extracts a `<script type="phem/controller">` from a `.phpm` file into a Stimulus
     controller and registers it with AssetMapper. The component root gets its
     `data-controller` automatically.
   - An `ignore` attribute (as LV `phx-update="ignore"` and LW `wire:ignore`) so the morph does not
@@ -308,7 +308,7 @@ The controller logs a failed event to the console only.
 
 - **Best peer:** LV reconnects automatically and recovers form values. LW `wire:offline`.
 - **Proposal:** retry an idempotent failure (network error, 502, 503) with backoff. Add a
-  `mamu-offline` class on the root when the browser is offline. Show a default error message
+  `phem-offline` class on the root when the browser is offline. Show a default error message
   for a 500, with a hook to change it.
 
 ## 8. Developer experience
@@ -319,7 +319,7 @@ There is no API to test a component without a browser.
 
 - **Best peer:** LW `Livewire::test(Counter::class)->set('count', 1)->call('increment')->assertSee('2')`.
   LC `InteractsWithLiveComponents`. LV `live/2` + `render_click/2` + `render_change/2`.
-- **Proposal:** a `MamuTestCase` (or a trait for `KernelTestCase`):
+- **Proposal:** a `PhemTestCase` (or a trait for `KernelTestCase`):
   `$this->mount(Counter::class, ['label' => 'Clicks'])->click('increment')->assertSee('Clicks 1 times')`.
   Also `->change('[name=q]', 'Curie')`, `->submit('form', [...])`, `->assertState('count', 1)`,
   `->assertRedirect('/x')`, and `->assertDispatched('toast')`. It uses the real HTTP event
@@ -336,7 +336,7 @@ There is no API to test a component without a browser.
 ### [ ] Language server and PhpStorm support — P2
 
 - **Best peer:** the Laravel Idea plugin for Livewire. The Elixir language server for HEEx.
-- **Proposal:** `mamuc lsp`: diagnostics, completion of components and props, go to definition,
+- **Proposal:** `phemc lsp`: diagnostics, completion of components and props, go to definition,
   and hover, from the analyzer that already exists in Rust. The VS Code extension and a
   PhpStorm plugin use it.
 
@@ -344,11 +344,11 @@ There is no API to test a component without a browser.
 
 ### [ ] Audit against the Live Components advisories of 2026 — P1
 
-LC had these issues in 2026. Mamu has a similar design, so check each one and add tests:
+LC had these issues in 2026. Phem has a similar design, so check each one and add tests:
 
-- [ ] CSRF bypass with the `Accept` header. Mamu checks `Sec-Fetch-Site` / `Origin` and requires
+- [ ] CSRF bypass with the `Accept` header. Phem checks `Sec-Fetch-Site` / `Origin` and requires
       JSON: confirm that no other content type or header combination skips the check.
-- [ ] Denial of service with unbounded batch requests. Mamu has one event for each request, but
+- [ ] Denial of service with unbounded batch requests. Phem has one event for each request, but
       limit the body size, the state size, and the depth of the JSON.
 - [ ] XSS with child component tags. Check the escaping of props and slots that go into
       `{% component %}` tags and into data attributes.
@@ -356,4 +356,4 @@ LC had these issues in 2026. Mamu has a similar design, so check each one and ad
 ### [ ] Rate limit for events — P3
 
 - **Proposal:** an optional Symfony RateLimiter for each page or handler
-  (`#[Page(..., eventRateLimit: 'mamu_events')]`).
+  (`#[Page(..., eventRateLimit: 'phem_events')]`).

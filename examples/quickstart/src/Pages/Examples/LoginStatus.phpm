@@ -1,7 +1,7 @@
 <?phpm
 namespace App\Pages\Examples;
 
-use Mamu\Attribute\{Component, Page, State};
+use Phem\Attribute\{Component, Page, State};
 
 use function App\Components\Document;
 

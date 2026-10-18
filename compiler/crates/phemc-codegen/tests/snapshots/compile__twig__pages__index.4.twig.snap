@@ -1,0 +1,10 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<div class="toggle">
+                <button id="toggle" {{ phem_on('click', toggle) }}>Toggle</button>
+                {{ content }}
+                {% if on %}<strong id="yes">Yes</strong>{% else %}<em id="no">No</em>{% endif %}
+                {% if on %}<span id="and">and-shown</span>{% endif %}
+            </div>

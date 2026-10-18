@@ -1,4 +1,0 @@
-<?phpm // expect: E013
-#[\Mamu\Attribute\Component]
-function Card(?\Mamu\Html $children = null) { return <div>{{ children }}</div>; }
-function App() { return <Card><Card:footer>x</Card:footer></Card>; }

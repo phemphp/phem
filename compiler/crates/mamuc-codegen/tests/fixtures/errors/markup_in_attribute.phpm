@@ -1,4 +1,0 @@
-<?phpm // expect: E031
-#[\Mamu\Attribute\Component]
-function Card(mixed $header = null) { return <div>{{ header }}</div>; }
-function App() { return <Card header={{ <b>x</b> }} />; }

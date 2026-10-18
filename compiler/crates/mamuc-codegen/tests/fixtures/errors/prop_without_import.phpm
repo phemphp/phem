@@ -1,4 +1,0 @@
-<?phpm // expect: W004
-use Mamu\Attribute\Component;
-#[Component]
-final class Label { #[Prop] public string $text = ''; public function render() { return <b>{{ text }}</b>; } }

@@ -1,9 +1,9 @@
 {
-    "name": "mamu",
-    "displayName": "Mamu",
-    "description": "Syntax highlighting, completion, go to definition, hover, outline, and mamuc diagnostics for .phpm files: PHP with markup literals and Twig.",
+    "name": "phem",
+    "displayName": "Phem",
+    "description": "Syntax highlighting, completion, go to definition, hover, outline, and phemc diagnostics for .phpm files: PHP with markup literals and Twig.",
     "version": "0.3.0",
-    "publisher": "mamuphp",
+    "publisher": "phem",
     "license": "MIT",
     "icon": "icons/icon.png",
     "engines": {
@@ -14,7 +14,7 @@
     ],
     "keywords": [
         "phpm",
-        "mamu",
+        "phem",
         "php",
         "twig",
         "jsx"
@@ -23,9 +23,9 @@
     "capabilities": {
         "untrustedWorkspaces": {
             "supported": "limited",
-            "description": "In an untrusted workspace, the extension does not use the mamu.mamuc.path setting of the workspace.",
+            "description": "In an untrusted workspace, the extension does not use the phem.phemc.path setting of the workspace.",
             "restrictedConfigurations": [
-                "mamu.mamuc.path"
+                "phem.phemc.path"
             ]
         }
     },
@@ -57,15 +57,15 @@
             }
         ],
         "configuration": {
-            "title": "Mamu",
+            "title": "Phem",
             "properties": {
-                "mamu.mamuc.path": {
+                "phem.phemc.path": {
                     "type": "string",
                     "default": "",
                     "scope": "machine-overridable",
-                    "markdownDescription": "The path of the `mamuc` binary. When it is set, the extension runs `mamuc check <sourceDir> --format json` on save and shows the diagnostics. Empty: no diagnostics."
+                    "markdownDescription": "The path of the `phemc` binary. When it is set, the extension runs `phemc check <sourceDir> --format json` on save and shows the diagnostics. Empty: no diagnostics."
                 },
-                "mamu.mamuc.sourceDir": {
+                "phem.phemc.sourceDir": {
                     "type": "string",
                     "default": "src",
                     "scope": "resource",

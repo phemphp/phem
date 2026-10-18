@@ -1,0 +1,31 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+{% component embed 'App\\Components\\Document' only %}{% block children %}{% with _phem_caller only %}
+                
+                <main>
+                    <h1>Counters that update together</h1>
+                    {% component 'App\\Components\\MyButton' with {'count': (count), 'onClick': (handleClick)} only %}
+                    {% component 'App\\Components\\MyButton' with {'count': (count), 'onClick': (handleClick)} only %}
+                    <ul id="shopping">
+                        {% for product in products %}
+                            <li {{ phem_key(product.id) }} {{ phem_style({color: product.isFruit ? 'magenta' : 'darkgreen', fontWeight: 700}) }}>{{ product.title }}</li>
+                        {% endfor %}
+                    </ul>
+                    <ol id="mapped">{{ listItems }}</ol>
+                    {% component embed 'App\\Components\\Card' with {'title': 'Hello'} only %}{% block children %}{% with _phem_caller only %}
+                        <p>Body {{ count }}</p>
+                        
+                    {% endwith %}{% endblock %}{% block footer %}{% with _phem_caller only %}{% component 'App\\Components\\Badge' with {'label': 'foot'} only %}{% endwith %}{% endblock %}{% endcomponent %}
+                    {% component embed 'App\\Components\\Counter' with {'label': 'Hits'} only %}{% block children %}{% with _phem_caller only %}!{% endwith %}{% endblock %}{% endcomponent %}
+                    {% component 'App\\Pages\\Toggle' only %}
+                    <button id="add" {{ phem_on('click', add) }}>Add</button>
+                    <span id="items">{{ items|join(',') }}</span>
+                    {% component 'App\\Pages\\Toolbar' with {'theme': 'dark'} only %}
+                    {% component 'App\\Pages\\Toolbar' only %}
+                    {% component 'App\\Pages\\Greeting' with {'name': 'ada'} only %}
+                    {% component 'App\\Components\\Tag' only %}
+                    {% component embed 'App\\Components\\Tag' only %}{% block children %}{% with _phem_caller only %}urgent{% endwith %}{% endblock %}{% endcomponent %}
+                </main>
+            {% endwith %}{% endblock %}{% block title %}{% with _phem_caller only %}Fixture Home{% endwith %}{% endblock %}{% endcomponent %}

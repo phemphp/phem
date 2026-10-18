@@ -307,7 +307,7 @@ function routesOf(parsed, file) {
     return list;
 }
 
-// `App\Pages\Counter` → `app_pages_counter`, as in mamu/src/Routing/PageLoader.php.
+// `App\Pages\Counter` → `app_pages_counter`, as in phem/src/Routing/PageLoader.php.
 function routeName(fqn) {
     return fqn.replace(/\\/g, '_').toLowerCase();
 }

@@ -8,7 +8,7 @@ const { routesOf } = require('../src/project');
 const SOURCE = `<?phpm
 namespace App\\Pages;
 
-use Mamu\\Attribute\\{Component, Page};
+use Phem\\Attribute\\{Component, Page};
 use Symfony\\Component\\Routing\\Attribute\\Route;
 
 #[Page('/home', name: 'home')]

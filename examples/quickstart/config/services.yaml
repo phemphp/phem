@@ -3,7 +3,7 @@ services:
         autowire: true
         autoconfigure: true
 
-    # The PHP classes in src/ (the .phpm components are registered by MamuBundle).
+    # The PHP classes in src/ (the .phpm components are registered by PhemBundle).
     App\:
         resource: '../src/'
         exclude:

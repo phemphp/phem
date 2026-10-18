@@ -1,0 +1,11 @@
+[package]
+name = "phemc-analyze"
+description = "PHP structure scan, component registry, and diagnostics for .phpm files"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+phemc-syntax.workspace = true
+phemc-twig-scan.workspace = true
+serde.workspace = true

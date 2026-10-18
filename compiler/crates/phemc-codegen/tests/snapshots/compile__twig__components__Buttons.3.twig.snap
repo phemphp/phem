@@ -1,0 +1,5 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<span class="tag">{% block children %}{{ children ?? 'untagged' }}{% endblock %}</span>

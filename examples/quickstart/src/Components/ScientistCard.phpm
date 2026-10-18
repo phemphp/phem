@@ -3,7 +3,7 @@
 namespace App\Components;
 
 use App\Model\Scientist;
-use Mamu\Attribute\{Component, Prop};
+use Phem\Attribute\{Component, Prop};
 
 #[Component]
 final class LikeCounter

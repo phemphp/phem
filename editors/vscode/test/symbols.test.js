@@ -8,8 +8,8 @@ const { documentSymbols } = require('../src/symbols');
 const SOURCE = `<?phpm
 namespace App\\Pages;
 
-use Mamu\\Attribute\\{Component, Prop, State};
-use Mamu\\Html;
+use Phem\\Attribute\\{Component, Prop, State};
+use Phem\\Html;
 use Symfony\\Component\\Routing\\Attribute\\Route;
 
 #[Component]

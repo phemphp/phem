@@ -1,0 +1,20 @@
+<?phpm
+
+namespace App\Pages;
+
+use Phem\Attribute\Page;
+use function App\Components\Document;
+
+#[Page('/about')]
+#[Page('/about-us', name: 'about_us')]
+final class About
+{
+    public function render()
+    {
+        return (
+            <Document>
+                <p id="about">About</p>
+            </Document>
+        );
+    }
+}

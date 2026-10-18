@@ -6,5 +6,5 @@ return [
     Doctrine\Bundle\DoctrineBundle\DoctrineBundle::class => ['all' => true],
     Doctrine\Bundle\FixturesBundle\DoctrineFixturesBundle::class => ['all' => true],
     Symfony\UX\StimulusBundle\StimulusBundle::class => ['all' => true],
-    Mamu\MamuBundle::class => ['all' => true],
+    Phem\PhemBundle::class => ['all' => true],
 ];

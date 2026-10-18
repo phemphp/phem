@@ -8,10 +8,10 @@ edition = "2021"
 license = "MIT"
 
 [workspace.dependencies]
-mamuc-syntax = { path = "crates/mamuc-syntax" }
-mamuc-twig-scan = { path = "crates/mamuc-twig-scan" }
-mamuc-analyze = { path = "crates/mamuc-analyze" }
-mamuc-codegen = { path = "crates/mamuc-codegen" }
+phemc-syntax = { path = "crates/phemc-syntax" }
+phemc-twig-scan = { path = "crates/phemc-twig-scan" }
+phemc-analyze = { path = "crates/phemc-analyze" }
+phemc-codegen = { path = "crates/phemc-codegen" }
 anyhow = "1"
 blake3 = "1"
 clap = { version = "4", features = ["derive"] }

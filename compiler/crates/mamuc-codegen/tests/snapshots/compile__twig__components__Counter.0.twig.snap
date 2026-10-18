@@ -1,7 +1,0 @@
----
-source: crates/mamuc-codegen/tests/compile.rs
-expression: t.content
----
-<button {{ mamu_on('click', increment) }} {{ mamu_attr('data-count', count) }}>
-                {{ label }} {{ count }} times {{ children }}
-            </button>

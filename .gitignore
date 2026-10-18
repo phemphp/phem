@@ -9,5 +9,5 @@ composer.lock
 *.vsix
 /examples/quickstart/public/assets/
 .env.local
-# The client of the mamu package (a global dist/ rule must not ignore it).
-!/mamu/assets/dist/
+# The client of the phem package (a global dist/ rule must not ignore it).
+!/phem/assets/dist/

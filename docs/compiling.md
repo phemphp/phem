@@ -1,26 +1,26 @@
 # Compiling `.phpm` files
 
-A `.phpm` project is a Symfony application with `MamuBundle`. It needs two build steps before
+A `.phpm` project is a Symfony application with `PhemBundle`. It needs two build steps before
 it can run:
 
-1. `mamuc build` (Rust) compiles the `.phpm` files to PHP and Twig.
-2. `bin/console mamu:warmup` (PHP) compiles the Twig templates into the Twig cache.
+1. `phemc build` (Rust) compiles the `.phpm` files to PHP and Twig.
+2. `bin/console phem:warmup` (PHP) compiles the Twig templates into the Twig cache.
 
-`mamuc build` runs step 2 for you. At runtime, nothing parses `.phpm` or `.twig` sources.
+`phemc build` runs step 2 for you. At runtime, nothing parses `.phpm` or `.twig` sources.
 
 ## Project layout
 
 ```
 my-app/
-├── composer.json          requires mamuphp/mamu, symfony/asset-mapper, symfony/stimulus-bundle (and symfony/runtime, symfony/yaml, symfony/dotenv)
+├── composer.json          requires phem/phem, symfony/asset-mapper, symfony/stimulus-bundle (and symfony/runtime, symfony/yaml, symfony/dotenv)
 ├── .env                   APP_ENV, APP_SECRET (it signs the component state in the browser)
 ├── Caddyfile              FrankenPHP: public/index.php in worker mode, and the static files
 ├── bin/console
 ├── config/
-│   ├── bundles.php        FrameworkBundle, TwigBundle, StimulusBundle, MamuBundle (and DoctrineBundle for transactions and #[Path] entities)
-│   ├── packages/mamu.yaml   optional: source_dir, build_dir, secret
+│   ├── bundles.php        FrameworkBundle, TwigBundle, StimulusBundle, PhemBundle (and DoctrineBundle for transactions and #[Path] entities)
+│   ├── packages/phem.yaml   optional: source_dir, build_dir, secret
 │   ├── packages/asset_mapper.yaml   the assets/ directory
-│   ├── routes/mamu.yaml     { resource: ., type: mamu }: the #[Page] attributes of the pages
+│   ├── routes/phem.yaml     { resource: ., type: phem }: the #[Page] attributes of the pages
 │   └── services.yaml      your services (for example repositories)
 ├── src/                   the .phpm sources (the "source root"), and your PHP classes
 │   ├── Kernel.php
@@ -36,7 +36,7 @@ my-app/
 ├── assets/                the JavaScript and CSS of the pages (AssetMapper)
 │   ├── app.js             the `app` entry of the importmap: bootstrap.js and styles/app.css
 │   ├── bootstrap.js       starts Stimulus (StimulusBundle)
-│   └── controllers.json   enables the `mamu` controller of mamuphp/mamu
+│   └── controllers.json   enables the `phem` controller of phem/phem
 ├── importmap.php          app, @hotwired/stimulus, @hotwired/turbo, @symfony/stimulus-bundle
 ├── public/                static files, index.php (Symfony Runtime: FrankenPHP worker mode, PHP-FPM)
 └── var/cache/             build output (do not commit)
@@ -48,7 +48,7 @@ The directories are only a convention: a page is a class with the `#[Page]` attr
 ### The document of the pages
 
 The application owns the HTML document: a component in the .phpm sources, as the others. It
-returns the `<html>` element, and it prints the content of the page in a `<Root>`. Mamu adds
+returns the `<html>` element, and it prints the content of the page in a `<Root>`. Phem adds
 the `<!DOCTYPE html>`.
 
 ```php
@@ -56,8 +56,8 @@ the `<!DOCTYPE html>`.
 
 namespace App\Components;
 
-use Mamu\Attribute\Component;
-use Mamu\{Html, Root};
+use Phem\Attribute\Component;
+use Phem\{Html, Root};
 
 #[Component]
 function Document(?Html $title = null, ?Html $children = null)
@@ -100,19 +100,19 @@ The document can have more slots, for example a `?Html $head` slot for the `<met
 page. For another layout (an admin area, for example), write another document component, and
 use it in the pages of that area.
 
-`<Root>` (`Mamu\Root`) is a built-in component: import it with `use Mamu\Root;`. It is the
+`<Root>` (`Phem\Root`) is a built-in component: import it with `use Phem\Root;`. It is the
 root element of the page:
 
 | In the document | Gives |
 |---|---|
-| `<Root>{{ children }}</Root>` | `<div id="mamu-root" data-controller="mamu" …>` with the page |
+| `<Root>{{ children }}</Root>` | `<div id="phem-root" data-controller="phem" …>` with the page |
 | `<Root tag="main" className="app">{{ children }}</Root>` | the same, with more attributes and another tag |
 
-The root element has the attributes of the `mamu` Stimulus controller: they give the component
+The root element has the attributes of the `phem` Stimulus controller: they give the component
 state to the controller. `tag` is the tag name (`div` by default). The other props are
 attributes, as on an element (`className`, a class list, `style`, `data-*`). The `id` is
-`mamu-root` (`id={{ null }}` removes it). Your `data-controller` and `data-action` values come
-after the values of Mamu. You cannot change the state attributes, and the root element cannot
+`phem-root` (`id={{ null }}` removes it). Your `data-controller` and `data-action` values come
+after the values of Phem. You cannot change the state attributes, and the root element cannot
 have an event handler.
 
 A page renders one `<Root>`. A page with no `<Root>` or with two is an error, and a `<Root>` in
@@ -120,8 +120,8 @@ a Twig template outside a page is an error too.
 
 The events render the whole page again, but they update only the content of the `<Root>` in
 the browser. The document around it (the title, a footer) does not change. A component after
-the root element renders, but the `mamu` controller does not get its DOM events. A `<title>`
-in the markup of a page is not the title of the page: mamuc reports it (W005). A `<title>` in
+the root element renders, but the `phem` controller does not get its DOM events. A `<title>`
+in the markup of a page is not the title of the page: phemc reports it (W005). A `<title>` in
 `<head>` or in an `<svg>` is correct.
 
 The browser sends the events of a page to the URL of the page, and only a page route runs
@@ -129,9 +129,9 @@ them.
 
 ### The client assets
 
-The client of Mamu is the `mamu` Stimulus controller, and the `mamu-c{display:contents}` CSS. The
-bundle gives them as a Symfony UX package (`mamu/assets/package.json`). With AssetMapper,
-they are in the `mamujs` namespace. The controller imports `@hotwired/stimulus` and
+The client of Phem is the `phem` Stimulus controller, and the `phem-c{display:contents}` CSS. The
+bundle gives them as a Symfony UX package (`phem/assets/package.json`). With AssetMapper,
+they are in the `phemjs` namespace. The controller imports `@hotwired/stimulus` and
 `@hotwired/turbo` from the importmap of the application, so the page has one Turbo and one
 Stimulus. To set up an application:
 
@@ -146,17 +146,17 @@ the bundle):
 ```json
 {
     "controllers": {
-        "@mamuphp/mamu": {
-            "mamu": { "enabled": true, "fetch": "eager", "autoimport": { "@mamuphp/mamu/dist/mamu.css": true } }
+        "@phem/phem": {
+            "phem": { "enabled": true, "fetch": "eager", "autoimport": { "@phem/phem/dist/phem.css": true } }
         }
     },
     "entrypoints": []
 }
 ```
 
-Without StimulusBundle, add `'mamujs' => ['path' => 'mamujs/mamu_controller.js']`
-to `importmap.php`, register the controller (`application.register('mamu', MamuController)`),
-and import `mamujs/mamu.css`.
+Without StimulusBundle, add `'phemjs' => ['path' => 'phemjs/phem_controller.js']`
+to `importmap.php`, register the controller (`application.register('phem', PhemController)`),
+and import `phemjs/phem.css`.
 
 ## 1. Get the tools
 
@@ -165,13 +165,13 @@ toolchain:
 
 ```sh
 docker compose build dev
-docker compose run --rm dev sh      # a shell; `mamuc` is on the PATH
+docker compose run --rm dev sh      # a shell; `phemc` is on the PATH
 ```
 
 Without Docker, you need PHP 8.5, [FrankenPHP](https://frankenphp.dev), and Rust:
 
 ```sh
-cargo build --release --manifest-path compiler/Cargo.toml -p mamuc-cli
+cargo build --release --manifest-path compiler/Cargo.toml -p phemc-cli
 export PATH="$PWD/compiler/target/release:$PATH"
 cd examples/quickstart && composer install   # also runs importmap:install (assets/vendor/)
 ```
@@ -181,14 +181,14 @@ cd examples/quickstart && composer install   # also runs importmap:install (asse
 Run the commands in the project directory (the directory that contains `bin/console`).
 
 ```sh
-mamuc build src
+phemc build src
 ```
 
 Output:
 
 ```
-mamuc: compiled 15 file(s), 24 template(s), 10 page(s); 43 file(s) changed, 0 warning(s) in 51 ms
-mamu: compiled 24 template(s) into the Twig cache in 250 ms
+phemc: compiled 15 file(s), 24 template(s), 10 page(s); 43 file(s) changed, 0 warning(s) in 51 ms
+phem: compiled 24 template(s) into the Twig cache in 250 ms
 ```
 
 The build is incremental: it writes only the files that changed, so the Twig cache and
@@ -196,9 +196,9 @@ OPcache stay valid. If there is an error, it writes nothing and exits with code 
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--out <dir>` | `var/cache/mamu` | The output directory (the same as the `mamu.build_dir` option) |
+| `--out <dir>` | `var/cache/phem` | The output directory (the same as the `phem.build_dir` option) |
 | `--php <bin>` | `php` | The PHP binary for the Twig warmup |
-| `--no-warmup` | off | Do not run `bin/console mamu:warmup` |
+| `--no-warmup` | off | Do not run `bin/console phem:warmup` |
 
 The warmup uses the environment of `APP_ENV`. In debug mode (`dev`), Symfony builds the
 container and the routes again when the manifest or a compiled page changes: a new component,
@@ -207,8 +207,8 @@ page, or route needs no `cache:clear`.
 ### What the build writes
 
 ```
-var/cache/mamu/
-├── php/Pages/index.php          the PHP code; each markup literal becomes new \Mamu\Element('Pages/index.0.twig', [...])
+var/cache/phem/
+├── php/Pages/index.php          the PHP code; each markup literal becomes new \Phem\Element('Pages/index.0.twig', [...])
 ├── templates/Pages/index.0.twig one Twig template for each markup literal (Twig name: @phpm/Pages/index.0.twig)
 ├── manifest.php / manifest.json components (kind, props, slots), pages, template → .phpm line map
 ├── autoload.php                 requires all compiled PHP files
@@ -223,7 +223,7 @@ its line for an error in markup.
 ## 3. Check only (CI)
 
 ```sh
-mamuc check src
+phemc check src
 ```
 
 It reports all diagnostics, writes nothing, and exits with code 1 if there is an error.
@@ -248,7 +248,7 @@ For editors and other tools, `--format json` prints the diagnostics to stdout as
 code does not change:
 
 ```sh
-mamuc check src --format json
+phemc check src --format json
 ```
 
 ```json
@@ -291,18 +291,18 @@ With PHP-FPM, use `public/index.php` as the front controller, as for any Symfony
 Other commands:
 
 ```sh
-php bin/console mamu:warmup                          # compile the templates into the Twig cache again
-php bin/console mamu:render /examples/CounterTogether   # print the HTML of a page (no server)
-php bin/console debug:router                          # the routes of the pages and their events (mamu_event.*)
+php bin/console phem:warmup                          # compile the templates into the Twig cache again
+php bin/console phem:render /examples/CounterTogether   # print the HTML of a page (no server)
+php bin/console debug:router                          # the routes of the pages and their events (phem_event.*)
 ```
 
 ## 5. Watch mode (development)
 
 ```sh
-mamuc watch src --exec "frankenphp run --config Caddyfile"
+phemc watch src --exec "frankenphp run --config Caddyfile"
 ```
 
-When a `.phpm` file changes, `mamuc` rebuilds. If the build passes, it restarts FrankenPHP, so
+When a `.phpm` file changes, `phemc` rebuilds. If the build passes, it restarts FrankenPHP, so
 the workers load the new components. If the build fails, it prints the diagnostics and the
 previous server keeps running. `make up` runs this in Docker for the quickstart, with
 `FRANKENPHP_WORKER_CONFIG="watch ./src/**/*.php"`.
@@ -312,14 +312,14 @@ previous server keeps running. `make up` runs this in Docker for the quickstart,
 ```sh
 export APP_ENV=prod APP_DEBUG=0
 composer install --no-dev --optimize-autoloader
-mamuc build src --no-warmup
+phemc build src --no-warmup
 rm -rf var/cache/prod && php bin/console cache:warmup
 php bin/console asset-map:compile
 ```
 
 In production, Symfony does not check the cache for changes. Build the cache again after each
-`mamuc build`: `cache:warmup` builds the container (with the component services), the routes,
-and the Twig cache of the mamuc templates. `asset-map:compile` writes the assets to
+`phemc build`: `cache:warmup` builds the container (with the component services), the routes,
+and the Twig cache of the phemc templates. `asset-map:compile` writes the assets to
 `public/assets/`. Set a random `APP_SECRET` (for example in `.env.local`).
 
 Then enable the preload (see `docker/php-prod.ini`). `config/preload.php` loads the Symfony
@@ -332,7 +332,7 @@ opcache.preload_user=root
 ```
 
 `make prod` builds and runs the production image on http://localhost:8081. The image is based
-on the FrankenPHP image. It builds `mamuc` in a Rust stage, compiles the project and the caches
+on the FrankenPHP image. It builds `phemc` in a Rust stage, compiles the project and the caches
 at image build time, preloads the compiled components and templates, and runs
 `frankenphp run --config Caddyfile` (worker mode). On each start, its entrypoint runs
 `docker/init-db.sh`: a new volume gets the schema and the fixtures.

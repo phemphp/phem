@@ -1,0 +1,23 @@
+[package]
+name = "phemc-cli"
+description = "phemc: the .phpm compiler"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "phemc"
+path = "src/main.rs"
+
+[dependencies]
+phemc-syntax.workspace = true
+phemc-analyze.workspace = true
+phemc-codegen.workspace = true
+anyhow.workspace = true
+blake3.workspace = true
+clap.workspace = true
+miette.workspace = true
+notify.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+walkdir.workspace = true

@@ -3,7 +3,7 @@ namespace App\Pages\Examples;
 
 use App\Components\AddScientist;
 use App\Repository\ScientistRepository;
-use Mamu\Attribute\Page;
+use Phem\Attribute\Page;
 
 use function App\Components\{Layout, ScientistCard, Document};
 

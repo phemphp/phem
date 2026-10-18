@@ -1,0 +1,14 @@
+{
+    "controllers": {
+        "@phem/phem": {
+            "phem": {
+                "enabled": true,
+                "fetch": "eager",
+                "autoimport": {
+                    "@phem/phem/dist/phem.css": true
+                }
+            }
+        }
+    },
+    "entrypoints": []
+}

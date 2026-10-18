@@ -1,0 +1,17 @@
+[package]
+name = "phemc-codegen"
+description = "Emits PHP and Twig from .phpm files"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+phemc-syntax.workspace = true
+phemc-twig-scan.workspace = true
+phemc-analyze.workspace = true
+rayon.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+insta.workspace = true

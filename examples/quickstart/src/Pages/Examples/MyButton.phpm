@@ -1,8 +1,8 @@
 <?phpm
 namespace App\Pages\Examples;
 
-use Mamu\Attribute\{Component, Page};
-use Mamu\Html;
+use Phem\Attribute\{Component, Page};
+use Phem\Html;
 
 use function App\Components\Document;
 

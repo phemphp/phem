@@ -1,7 +1,0 @@
----
-source: crates/mamuc-codegen/tests/compile.rs
-expression: t.content
----
-{% component embed 'App\\Components\\Document' only %}{% block children %}{% with _mamu_caller only %}
-                <p id="about">About</p>
-            {% endwith %}{% endblock %}{% endcomponent %}

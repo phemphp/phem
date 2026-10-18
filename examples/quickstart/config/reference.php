@@ -928,9 +928,9 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     controller_paths?: list<scalar|Param|null>,
  *     controllers_json?: scalar|Param|null, // Default: "%kernel.project_dir%/assets/controllers.json"
  * }
- * @psalm-type MamuConfig = array{
- *     source_dir?: scalar|Param|null, // The .phpm sources (the directory that you pass to `mamuc build`) // Default: "%kernel.project_dir%/src"
- *     build_dir?: scalar|Param|null, // The mamuc output (`mamuc build --out`) // Default: "%kernel.project_dir%/var/cache/mamu"
+ * @psalm-type PhemConfig = array{
+ *     source_dir?: scalar|Param|null, // The .phpm sources (the directory that you pass to `phemc build`) // Default: "%kernel.project_dir%/src"
+ *     build_dir?: scalar|Param|null, // The phemc output (`phemc build --out`) // Default: "%kernel.project_dir%/var/cache/phem"
  *     secret?: scalar|Param|null, // The key that signs the component state in the browser // Default: "%kernel.secret%"
  *     state_max_age?: int|Param, // The seconds that a signed state is valid (0 for no limit). An older state reloads the page. // Default: 86400
  *     state_bind_session?: bool|Param, // Sign the session id with the state, so the state of a session is not valid in another session. A login makes the open pages reload on their next event. // Default: false
@@ -944,7 +944,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     twig?: TwigConfig,
  *     doctrine?: DoctrineConfig,
  *     stimulus?: StimulusConfig,
- *     mamu?: MamuConfig,
+ *     phem?: PhemConfig,
  *     "when@dev"?: array{
  *         imports?: ImportsConfig,
  *         parameters?: ParametersConfig,
@@ -953,7 +953,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         twig?: TwigConfig,
  *         doctrine?: DoctrineConfig,
  *         stimulus?: StimulusConfig,
- *         mamu?: MamuConfig,
+ *         phem?: PhemConfig,
  *     },
  *     ...<string, ExtensionType|array{ // extra keys must follow the when@%env% pattern or match an extension alias
  *         imports?: ImportsConfig,

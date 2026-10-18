@@ -1,0 +1,37 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from components/Counter.phpm; do not edit */
+
+namespace App\Components;
+
+use Phem\Attribute\{Component, Prop, State};
+use Phem\Html;
+use Phem\Tests\Fixtures\Limits;
+
+#[Component]
+final class Counter
+{
+    #[Prop] public string $label = 'Clicked';
+    #[Prop] public ?Html $children = null;
+    #[State] public int $count = 0;
+
+    public function __construct(private readonly Limits $limits)
+    {
+    }
+
+    public function increment(): void
+    {
+        $this->count = min($this->count + 1, $this->limits->max);
+    }
+
+    public function render()
+    {
+        return (
+            new \Phem\Element('components/Counter.0.twig', ['increment' => $this->increment(...), 'count' => $this->count, 'label' => $this->label, 'children' => $this->children])
+
+
+        );
+    }
+}

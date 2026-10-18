@@ -1,0 +1,28 @@
+{
+    "name": "phemjs",
+    "description": "The Phem client: the phem Stimulus controller, which keeps the component state in the browser and morphs the page with Turbo Streams.",
+    "version": "0.1.0",
+    "license": "MIT",
+    "type": "module",
+    "symfony": {
+        "controllers": {
+            "phem": {
+                "name": "phem",
+                "main": "dist/phem_controller.js",
+                "fetch": "eager",
+                "enabled": true,
+                "autoimport": {
+                    "@phem/phem/dist/phem.css": true
+                }
+            }
+        },
+        "importmap": {
+            "@hotwired/stimulus": "^3.0.0",
+            "@hotwired/turbo": "^8.0.0"
+        }
+    },
+    "peerDependencies": {
+        "@hotwired/stimulus": "^3.0.0",
+        "@hotwired/turbo": "^8.0.0"
+    }
+}

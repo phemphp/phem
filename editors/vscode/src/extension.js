@@ -152,8 +152,8 @@ const symbolProvider = {
     },
 };
 
-// Diagnostics: `mamuc check --format json`, on save. It is off when the
-// `mamu.mamuc.path` setting is empty.
+// Diagnostics: `phemc check --format json`, on save. It is off when the
+// `phem.phemc.path` setting is empty.
 let diagnostics = null;          // created in activate()
 const checks = new Map();       // root -> { timer, busy, again, files }
 let generation = 0;             // changes with the settings; a late result of an old run is dropped
@@ -163,7 +163,7 @@ function toDiagnostic(d) {
     const range = new vscode.Range(d.start.line, d.start.character, d.end.line, d.end.character);
     const diagnostic = new vscode.Diagnostic(range, d.message, d.severity === 'warning' ? vscode.DiagnosticSeverity.Warning : vscode.DiagnosticSeverity.Error);
     diagnostic.code = d.code;
-    diagnostic.source = 'mamuc';
+    diagnostic.source = 'phemc';
     return diagnostic;
 }
 
@@ -180,8 +180,8 @@ function setDiagnostics(state, map) {
 }
 
 async function runCheck(root, uri) {
-    const config = vscode.workspace.getConfiguration('mamu', uri);
-    const command = config.get('mamuc.path', '');
+    const config = vscode.workspace.getConfiguration('phem', uri);
+    const command = config.get('phemc.path', '');
     if (!command) {
         return;
     }
@@ -193,7 +193,7 @@ async function runCheck(root, uri) {
     state.busy = true;
     const started = generation;
     try {
-        const map = await check(command, root, config.get('mamuc.sourceDir', 'src'));
+        const map = await check(command, root, config.get('phemc.sourceDir', 'src'));
         if (started === generation) {
             setDiagnostics(state, map);
         }
@@ -203,7 +203,7 @@ async function runCheck(root, uri) {
             setDiagnostics(state, new Map());
             if (!warned) {
                 warned = true;
-                vscode.window.showWarningMessage(`mamuc check failed (mamu.mamuc.path = ${command}): ${e.message}`);
+                vscode.window.showWarningMessage(`phemc check failed (phem.phemc.path = ${command}): ${e.message}`);
             }
         }
     } finally {
@@ -262,13 +262,13 @@ function activate(context) {
     );
 
     // Diagnostics.
-    diagnostics = vscode.languages.createDiagnosticCollection('mamuc');
+    diagnostics = vscode.languages.createDiagnosticCollection('phemc');
     vscode.workspace.textDocuments.forEach(checkDocument);
     context.subscriptions.push(
         diagnostics,
         vscode.workspace.onDidSaveTextDocument(checkDocument),
         vscode.workspace.onDidChangeConfiguration((e) => {
-            if (e.affectsConfiguration('mamu.mamuc')) {
+            if (e.affectsConfiguration('phem.phemc')) {
                 warned = false;
                 generation++;
                 diagnostics.clear();

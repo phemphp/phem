@@ -1,6 +1,0 @@
-<?phpm // expect: E020
-use function Mamu\useState;
-function App() {
-    [$count, $setCount] = useState(0);
-    return <p>{{ count }}</p>;
-}

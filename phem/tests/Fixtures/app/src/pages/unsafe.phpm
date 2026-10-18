@@ -1,0 +1,42 @@
+<?phpm
+
+namespace App\Pages;
+
+use Phem\Attribute\{Component, Page};
+use Phem\Event;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+
+use function App\Components\Document;
+
+// A function component that returns a string: it is text, as in React.
+#[Component]
+function PlainText(string $value) {
+    return $value;
+}
+
+// Data in the output: Phem escapes it, and a spread of data adds no script.
+#[Page('/unsafe')]
+final class UnsafePage
+{
+    // Redirects to a URL from the browser (for example a `?next=` value).
+    public function go(Event $e): RedirectResponse
+    {
+        return new RedirectResponse((string) $e->value);
+    }
+
+    public function render()
+    {
+        $name = '<b>Ada</b>';
+        $data = ['x onfocus=alert(1) autofocus' => 'y', 'onclick' => 'alert(2)', 'title' => 'ok'];
+
+        return (
+            <Document>
+                <main>
+                    <PlainText value={{ name }} />
+                    <a id="spread" {{ ...data }} onclick="track()">link</a>
+                    <button id="go" onClick={{ go }}>Go</button>
+                </main>
+            </Document>
+        );
+    }
+}

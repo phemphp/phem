@@ -17,19 +17,19 @@ const JSON_OUTPUT = {
     }],
 };
 
-// A fake mamuc: a script that prints `output` and exits with `code`.
-function fakeMamuc(dir, output, code) {
-    const file = path.join(dir, 'mamuc');
+// A fake phemc: a script that prints `output` and exits with `code`.
+function fakePhemc(dir, output, code) {
+    const file = path.join(dir, 'phemc');
     fs.writeFileSync(file, `#!/bin/sh\necho "$@" > "${path.join(dir, 'args')}"\ncat <<'JSON'\n${output}\nJSON\nexit ${code}\n`);
     fs.chmodSync(file, 0o755);
     return file;
 }
 
-test('check() runs mamuc and reads the diagnostics, also with exit code 1', { skip: process.platform === 'win32' }, async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mamu-diag-'));
+test('check() runs phemc and reads the diagnostics, also with exit code 1', { skip: process.platform === 'win32' }, async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'phem-diag-'));
     try {
-        const mamuc = fakeMamuc(dir, JSON.stringify(JSON_OUTPUT), 1);
-        const map = await check(mamuc, dir, 'src');
+        const phemc = fakePhemc(dir, JSON.stringify(JSON_OUTPUT), 1);
+        const map = await check(phemc, dir, 'src');
         assert.equal(fs.readFileSync(path.join(dir, 'args'), 'utf8').trim(), 'check src --format json');
         const list = map.get(path.join(dir, 'src', 'Components', 'Card.phpm'));
         assert.equal(list.length, 2);
@@ -43,7 +43,7 @@ test('check() runs mamuc and reads the diagnostics, also with exit code 1', { sk
         assert.equal(list[1].severity, 'warning');
         assert.equal(list[1].message, 'a warning (here)');
 
-        await assert.rejects(check(fakeMamuc(dir, 'mamuc: source directory `src` does not exist', 1), dir, 'src'), /does not exist/);
+        await assert.rejects(check(fakePhemc(dir, 'phemc: source directory `src` does not exist', 1), dir, 'src'), /does not exist/);
         await assert.rejects(check(path.join(dir, 'missing'), dir, 'src'), { code: 'ENOENT' });
     } finally {
         fs.rmSync(dir, { recursive: true, force: true });

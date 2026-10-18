@@ -55,7 +55,7 @@ export default class extends Controller {
     }
 
     reset() {
-        // A new load of the page drops the state that the mamu controller keeps in the page.
+        // A new load of the page drops the state that the phem controller keeps in the page.
         this.previewTarget.src = `/examples/${this.exampleValue}`;
     }
 

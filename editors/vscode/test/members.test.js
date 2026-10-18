@@ -73,7 +73,7 @@ test('$this-> in a class shows all its members', async () => {
 });
 
 test('promoted constructor properties and properties without #[Prop] are members, not props', async () => {
-    const src = '<?phpm\nnamespace App\\Components;\n\nuse App\\Repository\\ScientistRepository;\nuse Mamu\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class List1\n{\n    #[Prop] public int $limit = 3;\n    public int $page = 1;\n\n    public function __construct(private readonly ScientistRepository $repo)\n    {\n    }\n\n    public function render()\n    {\n        $this->repo->|\n    }\n}\n';
+    const src = '<?phpm\nnamespace App\\Components;\n\nuse App\\Repository\\ScientistRepository;\nuse Phem\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class List1\n{\n    #[Prop] public int $limit = 3;\n    public int $page = 1;\n\n    public function __construct(private readonly ScientistRepository $repo)\n    {\n    }\n\n    public function render()\n    {\n        $this->repo->|\n    }\n}\n';
     const r = await run(src, 'src/components/List1.phpm');
     assert.deepEqual(r.labels.sort(), ['all', 'find', 'load']);
     const { parse } = require('../src/php');
@@ -82,7 +82,7 @@ test('promoted constructor properties and properties without #[Prop] are members
 
 test('the rest prop of a class component is not a named prop', () => {
     const { parse } = require('../src/php');
-    const src = '<?phpm\nnamespace App\\Components;\n\nuse Mamu\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class Link\n{\n    #[Prop] public string $label = \'\';\n    #[Prop(rest: true)] public array $attrs = [];\n    #[Prop(rest: false)] public string $title = \'\';\n\n    public function render()\n    {\n        return <a {{ ...attrs }}>{{ label }}</a>;\n    }\n}\n';
+    const src = '<?phpm\nnamespace App\\Components;\n\nuse Phem\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class Link\n{\n    #[Prop] public string $label = \'\';\n    #[Prop(rest: true)] public array $attrs = [];\n    #[Prop(rest: false)] public string $title = \'\';\n\n    public function render()\n    {\n        return <a {{ ...attrs }}>{{ label }}</a>;\n    }\n}\n';
     const [link] = parse(src).components;
     assert.deepEqual(link.props.map((p) => p.name), ['label', 'title']);
     assert.equal(link.rest, true);

@@ -125,7 +125,7 @@ const ELEMENTS = table({
     wbr: ['A line break opportunity', true],
 });
 
-// name: description. `class` and `for` are in Mamu as className and htmlFor too.
+// name: description. `class` and `for` are in Phem as className and htmlFor too.
 const GLOBAL_ATTRIBUTES = table({
     id: 'A unique identifier',
     class: 'The CSS classes (also className)',

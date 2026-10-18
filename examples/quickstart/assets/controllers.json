@@ -1,11 +1,11 @@
 {
     "controllers": {
-        "@mamuphp/mamu": {
-            "mamu": {
+        "@phem/phem": {
+            "phem": {
                 "enabled": true,
                 "fetch": "eager",
                 "autoimport": {
-                    "@mamuphp/mamu/dist/mamu.css": true
+                    "@phem/phem/dist/phem.css": true
                 }
             }
         }

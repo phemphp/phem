@@ -41,12 +41,12 @@ test('a component tag goes to the component', async () => {
 });
 
 test('the built-in Root tag has a hover and no location', async () => {
-    const r = await at(USES.replace('use App\\Model', 'use Mamu\\{Html, Root};\nuse App\\Model') + 'function Document(?Html $children = null)\n{\n    return <body><Ro‸ot tag="main">{{ children }}</Root></body>;\n}\n');
+    const r = await at(USES.replace('use App\\Model', 'use Phem\\{Html, Root};\nuse App\\Model') + 'function Document(?Html $children = null)\n{\n    return <body><Ro‸ot tag="main">{{ children }}</Root></body>;\n}\n');
     assert.equal(r.location, null);
     assert.match(r.hover, /final class Root/);
     assert.match(r.hover, /root element of the page/);
-    const tag = await at(USES.replace('use App\\Model', 'use Mamu\\Root;\nuse App\\Model') + 'function Document()\n{\n    return <Root ta‸g="main" />;\n}\n');
-    assert.match(tag.hover, /Prop of `Mamu\\Root`/);
+    const tag = await at(USES.replace('use App\\Model', 'use Phem\\Root;\nuse App\\Model') + 'function Document()\n{\n    return <Root ta‸g="main" />;\n}\n');
+    assert.match(tag.hover, /Prop of `Phem\\Root`/);
     assert.equal(tag.location, null);
 });
 
@@ -78,7 +78,7 @@ test('a Twig variable goes to its PHP declaration', async () => {
 });
 
 test('a handler goes to the method', async () => {
-    const src = '<?phpm\nnamespace App\\Components;\n\nuse Mamu\\Attribute\\Component;\n\n#[Component]\nfinal class Counter3\n{\n    public function increment(): void\n    {\n    }\n\n    public function render()\n    {\n        return <button onClick={{ incre‸ment }}>+</button>;\n    }\n}\n';
+    const src = '<?phpm\nnamespace App\\Components;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfinal class Counter3\n{\n    public function increment(): void\n    {\n    }\n\n    public function render()\n    {\n        return <button onClick={{ incre‸ment }}>+</button>;\n    }\n}\n';
     const r = await at(src, 'src/components/Counter3.phpm');
     assert.equal(r.location.line, 8);
     assert.match(r.hover, /public function increment\(\): void/);
@@ -126,7 +126,7 @@ test('hover for Twig filters, functions, tests, tags, and HTML', async () => {
     assert.match((await at(fn('<p>{% for a in b %}{% endf‸or %}</p>'))).hover, /end of the \{% for %\} block/);
     assert.match((await at(fn("<p>{% component 'A' %}{% endcomp‸onent %}</p>"))).hover, /end of the \{% component %\} block/);
     assert.match((await at(fn('<sec‸tion />'))).hover, /A generic section/);
-    assert.match((await at(fn('<button onCl‸ick={{ x }} />'))).hover, /Mamu event/);
+    assert.match((await at(fn('<button onCl‸ick={{ x }} />'))).hover, /Phem event/);
 });
 
 test('a route name goes to the page', async () => {

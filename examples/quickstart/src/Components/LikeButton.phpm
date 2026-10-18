@@ -2,7 +2,7 @@
 
 namespace App\Components;
 
-use Mamu\Attribute\{Component, State};
+use Phem\Attribute\{Component, State};
 
 // A class component with its own state. Each <LikeButton /> keeps its own value.
 #[Component]

@@ -1,8 +1,8 @@
 <?phpm
 namespace App\Pages\Examples;
 
-use Mamu\Attribute\{Page, State};
-use Mamu\Event;
+use Phem\Attribute\{Page, State};
+use Phem\Event;
 
 use function App\Components\Document;
 

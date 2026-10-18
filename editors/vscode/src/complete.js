@@ -252,7 +252,7 @@ class Completer {
         }];
     }
 
-    // Props of a component, or Mamu attributes of an HTML element.
+    // Props of a component, or Phem attributes of an HTML element.
     attrs(ctx) {
         const start = this.offset - ctx.partial.length;
         const end = this.offset + wordAfter(this.text, this.offset);
@@ -279,7 +279,7 @@ class Completer {
         }
         if (/^[a-z]/.test(tag)) {
             for (const event of EVENTS) {
-                add(event, `${event}={{ \${1} }}`, 'Mamu event: the handler runs on the server', '1' + event);
+                add(event, `${event}={{ \${1} }}`, 'Phem event: the handler runs on the server', '1' + event);
             }
             add('className', 'className="${1}"', 'Alias for class', '0className');
             if (tag === 'label') {

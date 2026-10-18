@@ -1,0 +1,7 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<button class="btn" {{ phem_on('click', onClick) }}>
+            Clicked {{ count }} times
+        </button>

@@ -735,7 +735,7 @@ function isRestAttr(a) {
 }
 
 function isHtmlType(type) {
-    return /^\\?(Mamu\\)?Html$/.test(type.replace(/^\?/, '').replace(/^null\||\|null$/i, ''));
+    return /^\\?(Phem\\)?Html$/.test(type.replace(/^\?/, '').replace(/^null\||\|null$/i, ''));
 }
 
 // Turns the parsed functions and classes into components.
@@ -840,8 +840,8 @@ const BUILTIN_COMPONENTS = [
     {
         kind: 'class',
         name: 'Root',
-        fqn: 'Mamu\\Root',
-        namespace: 'Mamu',
+        fqn: 'Phem\\Root',
+        namespace: 'Phem',
         page: false,
         props: [{ name: 'tag', type: 'string', default: "'div'", required: false }],
         slots: [],

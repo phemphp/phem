@@ -1,0 +1,4 @@
+# All options have these defaults. phemc reads src/ and writes var/cache/phem/.
+phem:
+    source_dir: '%kernel.project_dir%/src'
+    build_dir: '%kernel.project_dir%/var/cache/phem'

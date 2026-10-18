@@ -1,4 +1,0 @@
-# All options have these defaults. mamuc reads src/ and writes var/cache/mamu/.
-mamu:
-    source_dir: '%kernel.project_dir%/src'
-    build_dir: '%kernel.project_dir%/var/cache/mamu'
