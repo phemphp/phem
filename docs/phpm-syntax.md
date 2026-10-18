@@ -363,6 +363,20 @@ public function save(Event $e): void
 <div data-controller="toast" data-action="phem:toast@window->toast#show"></div>
 ```
 
+The dispatcher is also a service (`Phem\BrowserEventDispatcher`). A handler with no `Event`
+parameter, or a service that the handler calls, gets it with autowiring:
+
+```php
+public function __construct(private readonly BrowserEventDispatcher $dispatcher)
+{
+}
+
+public function save(): void
+{
+    $this->dispatcher->dispatch('toast', ['message' => 'Saved']);
+}
+```
+
 The events go in their order. A handler that fails, or that returns a `RedirectResponse`,
 sends no events: the browser leaves the page.
 

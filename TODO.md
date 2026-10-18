@@ -244,8 +244,8 @@ detail. A handler that redirects sends no events. Test: `->assertDispatched('toa
 
 Not done yet:
 
-- [ ] An injected service to dispatch from a handler with no `Event` parameter, or from a
-      service that the handler calls.
+- [x] An injected service to dispatch from a handler with no `Event` parameter, or from a
+      service that the handler calls: autowire `Phem\BrowserEventDispatcher`.
 - [ ] Dispatch to an element (the component root) instead of `window`, so the event bubbles.
 
 ### [ ] Real-time push — P2

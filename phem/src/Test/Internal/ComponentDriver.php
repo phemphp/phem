@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Test\Internal;
 
+use Phem\BrowserEventDispatcher;
 use Phem\Event;
 use Phem\Rendering\Fiber;
 use Phem\Rendering\Renderer;
@@ -57,6 +58,7 @@ final class ComponentDriver implements Driver
         private readonly ?RequestStack $requests = null,
         private readonly ?ResetInterface $resetter = null,
         private readonly ?SessionInterface $session = null,
+        private readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
     ) {
         $this->tree = new Tree($this->component, props: $this->props);
         $this->html = $this->within($this->request('GET'), function (Request $request): string {
@@ -88,7 +90,8 @@ final class ComponentDriver implements Driver
             if (null === $closure) {
                 return EventResult::reload();
             }
-            $e = Event::fromArray($event, $request);
+            $this->dispatcher->reset();
+            $e = Event::fromArray($event, $request, $this->dispatcher);
             $result = $this->renderer->dispatch($tree, $closure, $e);
             if ($result instanceof RedirectResponse) {
                 return EventResult::redirect($this->redirect = $result->getTargetUrl());

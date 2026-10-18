@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Controller;
 
+use Phem\BrowserEventDispatcher;
 use Phem\Event;
 use Phem\Http\EventPayload;
 use Phem\Http\RouteValues;
@@ -60,6 +61,7 @@ final class EventController
         private readonly PathResolver $paths = new PathResolver(),
         private readonly StateAccessor $state = new StateAccessor(),
         private readonly TurboStreams $streams = new TurboStreams(),
+        private readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
     ) {
     }
 
@@ -102,7 +104,9 @@ final class EventController
             // The page changed since the browser rendered it (for example after a deploy).
             return self::reload();
         }
-        $event = Event::fromArray($payload->event, $request);
+        // Only the handler sends browser events: not the render before it.
+        $this->dispatcher->reset();
+        $event = Event::fromArray($payload->event, $request, $this->dispatcher);
         $result = $this->renderer->dispatch($tree, $handler, $event);
         if ($result instanceof RedirectResponse) {
             // The browser visits the URL: the page does not render again, and the browser

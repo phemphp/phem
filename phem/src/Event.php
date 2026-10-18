@@ -39,8 +39,11 @@ final class Event
     ) {
     }
 
-    /** @param array<string, mixed> $data */
-    public static function fromArray(array $data, ?Request $request = null): self
+    /**
+     * @param array<string, mixed>        $data
+     * @param BrowserEventDispatcher|null $dispatcher the `phem.browser_event_dispatcher` service, or a new one
+     */
+    public static function fromArray(array $data, ?Request $request = null, ?BrowserEventDispatcher $dispatcher = null): self
     {
         $fields = self::fields($data['form'] ?? null);
         $form = [];
@@ -60,6 +63,7 @@ final class Event
             // The browser sends the event as JSON. A copy of the request with the form fields
             // as POST data lets a Symfony form read them like a normal form submission.
             $request?->duplicate(request: $post),
+            $dispatcher ?? new BrowserEventDispatcher(),
         );
     }
 

@@ -52,6 +52,14 @@ final class RedirectTest extends TestCase
         self::assertSame([], json_decode((string) $this->click('/notify', '#quiet')->getContent(), true)['events'] ?? null);
     }
 
+    public function testResponseHasTheBrowserEventsOfTheInjectedDispatcher(): void
+    {
+        $data = json_decode((string) $this->click('/notify', '#announce')->getContent(), true);
+
+        self::assertIsArray($data);
+        self::assertSame([['name' => 'toast', 'detail' => ['message' => 'Announced 1']], ['name' => 'announced', 'detail' => 'Hello']], $data['events']);
+    }
+
     private function click(string $uri, string $id): \Symfony\Component\HttpFoundation\Response
     {
         $html = (string) $this->request('GET', $uri)->getContent();

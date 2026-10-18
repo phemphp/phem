@@ -25,7 +25,11 @@ namespace Phem;
  *         $e->dispatcher->dispatch('toast', ['message' => 'Saved']);
  *     }
  *
+ * It is also a service (`phem.browser_event_dispatcher`), so a component or a service that the
+ * handler calls can get it with autowiring. `$e->dispatcher` is the same object.
+ *
  * The events go in their order. A handler that fails or that returns a redirect sends none.
+ * The events of the render before the handler are not sent.
  */
 final class BrowserEventDispatcher
 {
@@ -61,5 +65,15 @@ final class BrowserEventDispatcher
     public function dispatched(): array
     {
         return $this->dispatched;
+    }
+
+    /**
+     * Removes the browser events, before a handler runs and between two requests.
+     *
+     * @internal
+     */
+    public function reset(): void
+    {
+        $this->dispatched = [];
     }
 }

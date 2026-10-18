@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
 use Phem\Binding\PropBinder;
+use Phem\BrowserEventDispatcher;
 use Phem\Command\RenderCommand;
 use Phem\Command\WarmupCommand;
 use Phem\Controller\EventController;
@@ -83,6 +84,9 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.handler_middleware.transactional', TransactionalMiddleware::class)
             ->args([service('phem.transaction_runner')->nullOnInvalid()])
             ->tag('phem.handler_middleware', ['priority' => -100])
+        ->set('phem.browser_event_dispatcher', BrowserEventDispatcher::class)
+            ->tag('kernel.reset', ['method' => 'reset'])
+        ->alias(BrowserEventDispatcher::class, 'phem.browser_event_dispatcher')
 
         // Rendering
         ->set('phem.component_factory', ContainerComponentFactory::class)
@@ -152,6 +156,7 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.path_resolver'),
                 service('phem.state_accessor'),
                 service('phem.turbo_streams'),
+                service('phem.browser_event_dispatcher'),
             ])
         ->set('phem.listener.page_attributes', PageAttributesListener::class)
             ->tag('kernel.event_listener', ['event' => 'kernel.controller', 'method' => 'onKernelController'])

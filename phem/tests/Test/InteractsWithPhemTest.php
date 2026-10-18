@@ -245,6 +245,23 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->assertNotDispatched('toast');
     }
 
+    public function testAHandlerDispatchesWithTheInjectedDispatcher(): void
+    {
+        $this->mount(self::NOTIFIER)
+            ->click('#announce')
+            ->assertDispatched('toast', ['message' => 'Announced 1'])
+            ->assertDispatched('announced', 'Hello')
+            ->click('#quiet')
+            ->assertNotDispatched('toast')
+            ->assertNotDispatched('announced');
+        $this->visit('/notify')
+            ->click('#announce')
+            ->assertDispatched('toast', ['message' => 'Announced 1'])
+            ->assertDispatched('announced', 'Hello')
+            ->click('#quiet')
+            ->assertNotDispatched('announced');
+    }
+
     private function assertFails(\Closure $action, string $message): void
     {
         try {

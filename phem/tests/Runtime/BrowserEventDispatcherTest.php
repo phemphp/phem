@@ -24,6 +24,22 @@ final class BrowserEventDispatcherTest extends TestCase
         self::assertNotSame((new Event('click'))->dispatcher, Event::fromArray(['type' => 'click'])->dispatcher);
     }
 
+    public function testAnEventCanUseTheDispatcherService(): void
+    {
+        $dispatcher = new BrowserEventDispatcher();
+
+        self::assertSame($dispatcher, Event::fromArray(['type' => 'click'], null, $dispatcher)->dispatcher);
+    }
+
+    public function testResetRemovesTheBrowserEvents(): void
+    {
+        $dispatcher = new BrowserEventDispatcher();
+        $dispatcher->dispatch('toast');
+        $dispatcher->reset();
+
+        self::assertSame([], $dispatcher->dispatched());
+    }
+
     public function testDispatchKeepsTheBrowserEventsInTheirOrder(): void
     {
         $dispatcher = new BrowserEventDispatcher();

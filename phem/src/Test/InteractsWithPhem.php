@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Test;
 
+use Phem\BrowserEventDispatcher;
 use Phem\Rendering\Renderer;
 use Phem\State\StateAccessor;
 use Phem\State\StateCodec;
@@ -69,7 +70,8 @@ trait InteractsWithPhem
         $renderer = $container->get('phem.renderer');
         $accessor = $container->get('phem.state_accessor');
         $codec = $container->get('phem.state_codec');
-        \assert($renderer instanceof Renderer && $accessor instanceof StateAccessor && $codec instanceof StateCodec);
+        $dispatcher = $container->get('phem.browser_event_dispatcher');
+        \assert($renderer instanceof Renderer && $accessor instanceof StateAccessor && $codec instanceof StateCodec && $dispatcher instanceof BrowserEventDispatcher);
 
         return new ComponentTester(new ComponentDriver(
             $renderer,
@@ -80,6 +82,7 @@ trait InteractsWithPhem
             $requests instanceof RequestStack ? $requests : null,
             $resetter instanceof ResetInterface ? $resetter : null,
             $sessions instanceof SessionFactoryInterface ? $sessions->createSession() : null,
+            $dispatcher,
         ));
     }
 
