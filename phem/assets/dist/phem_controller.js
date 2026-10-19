@@ -291,6 +291,12 @@ export default class PhemController extends Controller {
       if (!sameValue(boundValue(this.boundFields(key)), this.sentBound[key])) event.preventDefault()
     }
     this.element.addEventListener("turbo:before-morph-attribute", this.keepEdited)
+    // The server did not render a component again (a <phem-c data-phem-keep> placeholder): keep
+    // its element and its content as they are.
+    this.keepKept = (event) => {
+      if (event.detail.newElement?.hasAttribute?.("data-phem-keep")) event.preventDefault()
+    }
+    this.element.addEventListener("turbo:before-morph-element", this.keepKept)
     // The first render can drop a value of the URL that does not fit its property: never a new
     // history entry here.
     this.updateUrl(this.queryValue, false)
@@ -303,6 +309,7 @@ export default class PhemController extends Controller {
   disconnect() {
     this.element.removeEventListener("turbo:morph-element", this.keepLoading)
     this.element.removeEventListener("turbo:before-morph-attribute", this.keepEdited)
+    this.element.removeEventListener("turbo:before-morph-element", this.keepKept)
     this.element.removeEventListener("focusout", this.flushOnBlur)
     for (const pending of this.pending.values()) pending.forEach(({ timer }) => clearTimeout(timer))
     this.pending.clear()
@@ -640,6 +647,8 @@ export default class PhemController extends Controller {
       return
     }
     this.hideError()
+    // The dev-mode check of the server: a component with a render() that is not pure.
+    for (const warning of data.warnings ?? []) console.warn("[phem]", warning)
     if (data.redirect) {
       // The handler returned a RedirectResponse. Turbo sets window.location for a URL that it
       // cannot visit, so a javascript: URL would run: visit only http(s) URLs.

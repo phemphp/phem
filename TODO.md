@@ -215,7 +215,7 @@ with `prefers-reduced-motion: reduce`. See [docs/phpm-syntax.md](docs/phpm-synta
 
 ## 3. Rendering and performance
 
-### [ ] Render only the components that can change — P1
+### [x] Render only the components that can change — P1
 
 Today an event renders the full page tree two times (before and after the handler), then it
 compares the two renders. The cost grows with the page size, not with the change size.
@@ -261,10 +261,15 @@ compares the two renders. The cost grows with the page size, not with the change
   - The "before" render comes from one hash for each component in the signed payload. When a
     hash changes, the response has the markup of that component, and the browser morph finds
     the changed nodes. Keep the old markup out of the payload.
+- **Done:** steps 1 to 9 below. `TreeShape` (the `_tree` key of the state), `PathScope` and
+  `UpdateScope` (the two passes), `EventRenderer` (the event flow of `EventController` and of
+  the test driver), `Event::refresh()`, `SkippedRenderCheck` (with `kernel.debug`), the
+  `data-phem-keep` placeholder in the `phem` controller, and W008 in `phemc`. See
+  [docs/phpm-syntax.md](docs/phpm-syntax.md#keep-render-pure).
 - **Implementation plan.** Each step is one change with its tests. The tests of the steps
   before stay green.
   1. **Tree shape and hashes in the payload.** `PageState` keeps, for each fiber of the page,
-     its parent id and the xxh128 hash of its own HTML (`Fiber::$ownHtml`), next to its state.
+     its parent id and the xxh3 (64-bit) hash of its own HTML (`Fiber::$ownHtml`), next to its state.
      `StateAccessor::snapshot()` writes them, and the signature covers them. No change of
      behavior.
   2. **"Before" from the hashes.** `Tree::changedFibers()` compares the own HTML of the second
@@ -308,9 +313,14 @@ compares the two renders. The cost grows with the page size, not with the change
      that an event renders the full page two times.
   10. **Measure.** A page with 500 rows and a counter: the time and the response size of a
       click on the counter, before and after.
-  - Open points: does W008 report the Twig `app` global (`app.request`, `app.session`,
-    `app.user`)? Later: hashes of the props in the payload, so a child that the first pass did
-    not see can skip too.
+  - **Measured** (step 10, a page with 500 function components and a counter, no
+    `kernel.debug`): a click on the counter takes 7.4 ms (median) instead of 14.7 ms with two
+    full renders, and it sends the same stream. But the request is 32.9 KB instead of 205 B: the
+    shape has about 65 bytes for each component (the ids, the hashes, and the JSON escapes).
+  - Open points: make the shape smaller (see "Smaller state payload" below: for example the
+    index of the parent instead of its id, or the shape on the server). Does W008 report the
+    Twig `app` global (`app.request`, `app.session`, `app.user`)? Later: hashes of the props in
+    the payload, so a child that the first pass did not see can skip too.
 
 ### [ ] Smaller state payload, or state on the server — P2
 

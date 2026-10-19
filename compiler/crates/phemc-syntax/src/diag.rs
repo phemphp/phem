@@ -72,4 +72,5 @@ pub mod codes {
     pub const TITLE_IN_MARKUP: &str = "W005";
     pub const TIMING_WITHOUT_HANDLER: &str = "W006";
     pub const LIVE_WITHOUT_BIND: &str = "W007";
+    pub const IMPURE_RENDER: &str = "W008";
 }

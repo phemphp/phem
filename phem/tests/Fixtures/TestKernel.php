@@ -50,7 +50,7 @@ final class TestKernel extends Kernel
         if (0 !== $code) {
             TestCase::fail("phemc build failed:\n".implode("\n", $out));
         }
-        exec('rm -rf '.escapeshellarg($dir.'/var/cache/test'));
+        exec('rm -rf '.escapeshellarg($dir.'/var/cache/test').' '.escapeshellarg($dir.'/var/cache/nodebug'));
         self::$built = true;
     }
 

@@ -56,7 +56,7 @@ final class UrlTest extends TestCase
         $data = $this->send('/url?q=php', $state, $signature, self::handler($html, 'next'));
 
         self::assertStringContainsString('q=php, page=2', $data['streams']);
-        self::assertSame(['tab' => null, 'q' => 'php', 'page' => '2', 'stock' => null, 'tags' => null, 'size' => null, 'min' => null, 'sort' => null, 'filters' => null], $data['query']['values']);
+        self::assertSame(['q' => 'php', 'page' => '2', 'stock' => null, 'tags' => null, 'size' => null, 'min' => null, 'sort' => null, 'filters' => null], $data['query']['values'], 'no "tab": the page did not render again, so the browser keeps its keys');
         self::assertSame(['page'], $data['query']['push']);
     }
 

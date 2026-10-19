@@ -206,7 +206,14 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
             } else if let Some(c) = class {
                 if v.name == "this" {
                     "$this".to_string()
-                } else if c.all_props().any(|p| p.name == v.name && !p.is_static) {
+                } else if let Some(p) = c.all_props().find(|p| p.name == v.name && !p.is_static) {
+                    if p.is_promoted && in_render(info, scope) {
+                        diags.push(
+                            Diagnostic::warning(codes::IMPURE_RENDER, format!("`render()` reads the service `${}`", v.name), Span::new(v.offset, v.offset + v.name.len()))
+                                .with_label("not a prop or state")
+                                .with_help(phemc_analyze::PURE_RENDER_HELP),
+                        );
+                    }
                     format!("$this->{}", v.name)
                 } else if c.has_method(&v.name) {
                     format!("$this->{}(...)", v.name)
@@ -258,6 +265,11 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
 
     let stem = input.rel.strip_suffix(".phpm").unwrap_or(&input.rel);
     (FileOutput { rel: input.rel.clone(), php_path: format!("php/{stem}.php"), php, templates }, diags)
+}
+
+/// Whether a markup literal is in the `render()` method of a class.
+fn in_render(info: &FileInfo, scope: MarkupScope) -> bool {
+    matches!(scope, MarkupScope::Method(ci, mi) if info.classes[ci].methods[mi].name.eq_ignore_ascii_case("render"))
 }
 
 fn undefined(name: &str, offset: usize, extra: &str) -> Diagnostic {

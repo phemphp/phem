@@ -20,6 +20,8 @@ use Symfony\Component\HttpFoundation\Request;
  */
 final class Event
 {
+    private bool $refresh = false;
+
     /**
      * @param array<string, mixed>   $form       the form fields, for `submit`: name => value, or the
      *                                           list of values of a name with more than one value
@@ -42,6 +44,23 @@ final class Event
         public readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
         public readonly array $files = [],
     ) {
+    }
+
+    /**
+     * Renders the full page after the handler, as `router.refresh()` of Next.js. By default, only
+     * the component of the handler, the components whose state changed, and their children with
+     * new props render again. Call it when the handler changes data that other components read
+     * (for example, a form that adds a row to a list of the page).
+     */
+    public function refresh(): void
+    {
+        $this->refresh = true;
+    }
+
+    /** Whether the handler asked for a render of the full page (see refresh()). */
+    public function refreshes(): bool
+    {
+        return $this->refresh;
     }
 
     /**

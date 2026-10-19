@@ -19,6 +19,7 @@ use Phem\Handler\HandlerMiddleware;
 use Phem\Handler\RateLimitMiddleware;
 use Phem\Manifest\Manifest;
 use Phem\Path\PathValueConverter;
+use Phem\Rendering\SkippedRenderCheck;
 use Symfony\Component\AssetMapper\AssetMapperInterface;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
@@ -126,7 +127,15 @@ final class PhemBundle extends AbstractBundle
             ->arg(2, $config['state_bind_session']);
         $container->services()->get('phem.controller.event')
             ->arg(8, $config['max_event_size'])
-            ->arg(11, $config['max_upload_size']);
+            ->arg(10, $config['max_upload_size']);
+        if ($builder->getParameter('kernel.debug')) {
+            // As React StrictMode: render the full page after each event, and warn when a kept
+            // component changed (a render() that is not pure).
+            $container->services()->set('phem.skipped_render_check', SkippedRenderCheck::class)
+                ->args([service('phem.renderer'), service('logger')->nullOnInvalid()]);
+            $container->services()->get('phem.event_renderer')
+                ->arg(5, service('phem.skipped_render_check'));
+        }
 
         $bundles = $builder->getParameter('kernel.bundles');
         $doctrine = \is_array($bundles) && isset($bundles['DoctrineBundle']) && interface_exists(EntityManagerInterface::class);

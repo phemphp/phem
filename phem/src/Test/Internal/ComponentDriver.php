@@ -15,16 +15,15 @@ namespace Phem\Test\Internal;
 
 use Phem\BrowserEventDispatcher;
 use Phem\Event;
+use Phem\Rendering\EventRenderer;
 use Phem\Rendering\Fiber;
 use Phem\Rendering\Renderer;
 use Phem\Rendering\RootElement;
 use Phem\Rendering\Tree;
-use Phem\State\BoundValues;
 use Phem\State\PageState;
 use Phem\State\StateAccessor;
 use Phem\State\StateCodec;
 use Phem\State\UrlQuery;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
@@ -44,8 +43,8 @@ final class ComponentDriver implements Driver
 {
     private Tree $tree;
     private string $html;
-    /** @var array<string, array<string, mixed>> fiber id => state, after a JSON round trip */
-    private array $state = [];
+    /** The state of the last render, after a JSON round trip, as the browser keeps it. */
+    private PageState $state;
     private ?string $redirect = null;
     private string $url = '/';
 
@@ -62,9 +61,10 @@ final class ComponentDriver implements Driver
         private readonly ?ResetInterface $resetter = null,
         private readonly ?SessionInterface $session = null,
         private readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
-        private readonly BoundValues $bound = new BoundValues(),
+        private readonly ?EventRenderer $events = null,
         private readonly UrlQuery $query = new UrlQuery(),
     ) {
+        $this->state = new PageState();
         $this->tree = new Tree($this->component, props: $this->props);
         $this->html = $this->within($this->request('GET'), function (Request $request): string {
             $html = $this->renderer->render($this->tree);
@@ -93,27 +93,20 @@ final class ComponentDriver implements Driver
         unset($event['files']);
 
         return $this->within($request, function (Request $request) use ($handler, $event, $bound): EventResult {
-            $tree = new Tree($this->component, $this->state, $this->props);
-            $this->renderer->render($tree);
-            $closure = null !== $handler ? $tree->handler($handler) : null;
-            if (null !== $handler && null === $closure) {
+            $tree = new Tree($this->component, $this->state->fibers, $this->props, shape: $this->state->shape);
+            // As the browser sends them: JSON values.
+            $bound = json_decode(json_encode((object) $bound, \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR);
+            $events = $this->events ?? new EventRenderer($this->renderer);
+            $outcome = $events->run($tree, $handler, $bound, $this->dispatcher, fn (): Event => Event::fromArray($event, $request, $this->dispatcher));
+            if ($outcome->reload) {
                 return EventResult::reload();
             }
-            // As the browser sends them: JSON values.
-            $this->bound->apply($tree, json_decode(json_encode((object) $bound, \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR));
-            $this->dispatcher->reset();
-            if (null !== $closure) {
-                $e = Event::fromArray($event, $request, $this->dispatcher);
-                $result = $this->renderer->dispatch($tree, $closure, $e);
-                if ($result instanceof RedirectResponse) {
-                    return EventResult::redirect($this->redirect = $result->getTargetUrl());
-                }
+            if (null !== $outcome->redirect) {
+                return EventResult::redirect($this->redirect = $outcome->redirect->getTargetUrl());
             }
-            $this->renderer->render($tree);
             $this->tree = $tree;
             $this->save($request);
             $this->url = UrlQuery::merge($this->url, $this->query->of($tree)['values']);
-
             $updates = [];
             foreach ($tree->changedFibers() as $fiber) {
                 $updates[$fiber->id] = $fiber->html;
@@ -126,7 +119,7 @@ final class ComponentDriver implements Driver
 
     public function state(?string $fiber = null): array
     {
-        return $this->state[$fiber ?? Fiber::idOf('/'.$this->component.'#0')] ?? [];
+        return $this->state->fibers[$fiber ?? Fiber::idOf('/'.$this->component.'#0')] ?? [];
     }
 
     public function url(): string
@@ -154,7 +147,7 @@ final class ComponentDriver implements Driver
     {
         $signed = $this->codec->encode($this->accessor->snapshot($this->tree)->toArray(), $this->component, $request);
         $data = $this->codec->decode($signed[0], $signed[1], $this->component, $request) ?? throw new \LogicException('The state of the component cannot be signed.');
-        $this->state = PageState::fromArray($data)->fibers;
+        $this->state = PageState::fromArray($data);
 
         return $signed;
     }

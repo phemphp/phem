@@ -35,6 +35,8 @@ final class AddScientist
             $e->dispatcher->dispatch('toast', ['message' => \sprintf('%s was added.', $scientist->name)]);
 
             $this->form = null;
+            // The list of the page shows the new row: render the full page, not only this form.
+            $e->refresh();
         }
     }
 

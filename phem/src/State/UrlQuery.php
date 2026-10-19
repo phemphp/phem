@@ -64,9 +64,10 @@ final class UrlQuery
     }
 
     /**
-     * The query of the #[Url] properties of the last pass: the value of each key, or null to
-     * remove the key (the value is the `except` value, or the default value of the property),
-     * and the keys that add an entry to the browser history when they change.
+     * The query of the #[Url] properties of the fibers that rendered in the last pass: the value
+     * of each key, or null to remove the key (the value is the `except` value, or the default
+     * value of the property), and the keys that add an entry to the browser history when they
+     * change. The browser keeps the keys of the other fibers: their state did not change.
      *
      * @return array{values: array<string, QueryValue|null>, push: list<string>}
      *
@@ -77,7 +78,7 @@ final class UrlQuery
         $values = [];
         $push = [];
         $owners = [];
-        foreach ($tree->mounted() as $fiber) {
+        foreach ($tree->rendered() as $fiber) {
             $instance = $fiber->instance;
             if (null === $instance) {
                 continue;

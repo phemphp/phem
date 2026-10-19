@@ -16,6 +16,7 @@ namespace Phem\Rendering;
 use Phem\Binding\PropBinder;
 use Phem\Manifest\ComponentDefinition;
 use Phem\Manifest\ComponentKind;
+use Phem\Metadata\ComponentMetadata;
 use Phem\State\StateAccessor;
 use Phem\State\UrlQuery;
 
@@ -34,6 +35,7 @@ final class ClassComponentRenderer implements ComponentRenderer
         private readonly PropBinder $props = new PropBinder(),
         private readonly StateAccessor $state = new StateAccessor(),
         private readonly UrlQuery $url = new UrlQuery(),
+        private readonly ComponentMetadata $metadata = new ComponentMetadata(),
     ) {
     }
 
@@ -68,6 +70,11 @@ final class ClassComponentRenderer implements ComponentRenderer
             $this->state->restore($component, $state);
         } else {
             $this->props->assign($component, $fiber->props, $slots);
+            if ($this->metadata->mountsEachRender($fiber->fqcn) && method_exists($component, 'mount')) {
+                // No state in the browser: mount() reads its data again in each render (for
+                // example after a handler of the same event changed it).
+                $component->mount();
+            }
         }
         if (!method_exists($component, 'render')) {
             throw new \LogicException(\sprintf('The class component "%s" has no render() method. Run `phemc build` again.', $fiber->fqcn));

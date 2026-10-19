@@ -1,0 +1,4 @@
+<?phpm // expect: W008
+use Phem\Attribute\Component;
+#[Component]
+final class Unread { public function __construct(private readonly Messages $messages) {} public function render() { return <span>{{ messages.countUnread() }}</span>; } }

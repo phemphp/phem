@@ -13,12 +13,15 @@ declare(strict_types=1);
 
 namespace Phem\Rendering;
 
+use Phem\State\TreeShape;
+
 /**
  * The fibers of one page for one request.
  *
- * The server keeps no state between requests. The browser sends the state of all fibers
- * (signed); a Tree starts from it. The Renderer renders the tree, runs an event handler,
- * renders it again, and the tree reports which fibers changed.
+ * The server keeps no state between requests. The browser sends the state of all fibers and
+ * the shape of the last render (signed); a Tree starts from them. For an event, the Renderer
+ * renders the fibers on the path to the handler, runs the handler, renders the fibers that can
+ * change, and the tree reports which fibers changed since the last render (see EventRenderer).
  */
 final class Tree
 {
@@ -45,6 +48,7 @@ final class Tree
      * @param array<string, mixed>                $props  the props of the page: its #[Path] route values (an entity for an entity prop)
      * @param array<string, mixed>                $values the route values of the #[Path] props, as the route gives them (an identifier or criteria for an entity prop)
      * @param array<array-key, mixed>             $query  the query string of the page request, for the #[Url] properties of a new fiber (see Phem\State\UrlQuery)
+     * @param TreeShape                           $shape  the shape of the last render, in the browser
      */
     public function __construct(
         public readonly string $page = '',
@@ -52,6 +56,7 @@ final class Tree
         public readonly array $props = [],
         public readonly array $values = [],
         public readonly array $query = [],
+        public readonly TreeShape $shape = new TreeShape(),
     ) {
     }
 
@@ -156,11 +161,14 @@ final class Tree
         return $this->binds[$key] ?? null;
     }
 
-    /** The fiber of a component instance in the last pass. */
+    /**
+     * The fiber of a component instance. It can be a fiber of an earlier pass: a fiber that does
+     * not render again keeps its instance (for example the owner of markup in a slot).
+     */
     public function fiberOf(object $instance): ?Fiber
     {
         foreach ($this->fibers as $fiber) {
-            if ($fiber->instance === $instance && $fiber->pass === $this->pass) {
+            if ($fiber->instance === $instance) {
                 return $fiber;
             }
         }
@@ -182,36 +190,60 @@ final class Tree
         return $this->rootToken ??= 'phem-root-'.bin2hex(random_bytes(16));
     }
 
-    /** The fiber of the page: the first fiber of the last pass at the root of the tree. */
-    public function root(): ?Fiber
+    /**
+     * The state that the browser sent for a fiber.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function restored(string $id): ?array
     {
-        foreach ($this->mounted() as $f) {
-            if (null === $f->parent) {
-                return $f;
-            }
-        }
-
-        return null;
+        return $this->state[$id] ?? null;
     }
 
-    /** @return list<Fiber> the fibers of the last pass */
-    public function mounted(): array
+    /** @return list<Fiber> the fibers that rendered in the last pass (not the kept ones) */
+    public function rendered(): array
     {
-        return array_values(array_filter($this->fibers, fn (Fiber $f): bool => $f->pass === $this->pass));
+        return array_values(array_filter($this->fibers, fn (Fiber $f): bool => $f->pass === $this->pass && !$f->kept));
     }
 
     /**
-     * The fibers to update after a second pass: the changed fibers whose ancestors did not change.
-     * The fibers around the root element (see Fiber::$holdsRoot) are not in the browser: a change
-     * of the page markup inside the root is a change of the root fiber.
+     * The fibers of the page after the last pass, from the page down, in their order: fiber id =>
+     * [the parent id, the fiber when it rendered in the last pass]. A fiber that did not render
+     * (kept, or not under a fiber that rendered) is as in the shape of the last render, with its
+     * children.
+     *
+     * @return array<string, array{0: string|null, 1: Fiber|null}>
+     */
+    public function page(): array
+    {
+        $out = [];
+        $roots = array_filter($this->rendered(), static fn (Fiber $f): bool => null === $f->parent);
+        if ([] === $roots && null !== $root = $this->shape->root()) {
+            $this->collect($root, null, $out);
+        }
+        foreach ($roots as $fiber) {
+            $this->collect($fiber->id, null, $out);
+        }
+
+        return $out;
+    }
+
+    /**
+     * The fibers to update after an event: the fibers that rendered in the last pass and whose own
+     * HTML is not the HTML of the last render (see TreeShape), with no such ancestor. The fibers
+     * around the root element (see Fiber::$holdsRoot) are not in the browser: a change of the page
+     * markup inside the root is a change of the root fiber.
      *
      * @return list<Fiber>
      */
     public function changedFibers(): array
     {
         $changed = [];
-        foreach ($this->mounted() as $f) {
-            if (!$f->holdsRoot && ($f->ownHtml[$this->pass] ?? null) !== ($f->ownHtml[$this->pass - 1] ?? null)) {
+        foreach ($this->rendered() as $f) {
+            // A fiber that the shape does not know (a state from before the shape) compares with
+            // the pass before.
+            $before = $this->shape->hashOf($f->id) ?? (isset($f->ownHtml[$this->pass - 1]) ? TreeShape::hash($f->ownHtml[$this->pass - 1]) : null);
+            if (!$f->holdsRoot && TreeShape::hash($f->ownHtml[$this->pass] ?? '') !== $before) {
                 $changed[$f->id] = $f;
             }
         }
@@ -226,5 +258,23 @@ final class Tree
         }
 
         return $out;
+    }
+
+    /** @param array<string, array{0: string|null, 1: Fiber|null}> $out */
+    private function collect(string $id, ?string $parent, array &$out): void
+    {
+        $fiber = $this->fibers[$id] ?? null;
+        if (null !== $fiber && $fiber->pass === $this->pass && !$fiber->kept) {
+            $out[$id] = [$parent, $fiber];
+            foreach ($fiber->children as $child) {
+                $this->collect($child->id, $id, $out);
+            }
+
+            return;
+        }
+        $out[$id] = [$parent, null];
+        foreach ($this->shape->childrenOf($id) as $child) {
+            $this->collect($child, $id, $out);
+        }
     }
 }

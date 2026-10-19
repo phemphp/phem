@@ -842,7 +842,8 @@ final class Counter
 - Each component instance has its own state.
 - The state lives in the browser. The `phem` Stimulus controller keeps it, and the server signs it.
   An event sends the state to the server. The server makes the component again, restores the
-  state, runs the handler, renders again, and sends back Turbo Streams that morph only the
+  state, runs the handler, renders the components that can change (see
+  [Keep `render()` pure](#keep-render-pure)), and sends back Turbo Streams that morph only the
   components that changed.
 - State values must be JSON values (scalars and arrays), or backed enums.
 - The state is UI state, not trusted data. The signature stops a forged state, but the browser
@@ -990,9 +991,42 @@ public function render()
 When two components show the same data, lift the data up to their common parent, and pass it
 down as props (see [section 9](#9-props-and-lifting-state-up)).
 
-With this rule, Phem can render only the components that can change: the component of the
-handler, the components whose state changed, and their children with new props. This is
-planned (see `TODO.md`, section 3). Today an event renders the full page.
+Phem uses this rule to render only the components that can change, as React does. An event:
+
+1. renders only the components on the path from the page to the handler (they give the
+   handler), and the components of the bound values with their children;
+2. runs the handler;
+3. renders the *dirty* components with their children: the component of the handler, and the
+   components whose `#[State]` changed. In these subtrees, a child that gets the same props as
+   before does not render again. The browser keeps its HTML.
+
+The props compare as React compares them (`Object.is`): the same values, and the same objects.
+A handler that changes an object in place (an entity) does not change the props of the other
+components that show it: they do not render again. A component with no `#[State]` and a
+`mount()` always renders with its parent: `mount()` can read services.
+
+When a handler changes data that other components read, call `$e->refresh()`: the full page
+renders again, as `router.refresh()` of Next.js does. For example, a form that adds a row to a
+list of the page:
+
+```php
+public function add(Event $e): void
+{
+    $this->scientists->add($scientist);
+    $e->refresh();
+}
+```
+
+Two checks find a `render()` that is not pure:
+
+- `phemc` reports W008 for a `render()` (or a function component) that reads a service of the
+  constructor, a static property, a superglobal, the clock (`time()`, `date()`,
+  `new DateTime()`), or a random value (`rand()`, `random_int()`, `uniqid()`).
+- With `kernel.debug`, after each event, Phem renders the full page again and compares the
+  components that it did not render. A component whose HTML changed is a warning in the log and
+  in the console of the browser. This check doubles the work of an event: Phem does it only in
+  debug mode. A class component with a plain property that is not readonly (a form that a
+  handler sets) is not checked.
 
 ### Transactions
 

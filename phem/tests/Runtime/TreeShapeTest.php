@@ -52,7 +52,7 @@ final class TreeShapeTest extends TestCase
         self::assertNull($tree[$roots[0]][1], 'the page is around the root element: no hash');
         foreach ($tree as $id => [$parent, $hash]) {
             self::assertTrue(null === $parent || isset($tree[$parent]), \sprintf('the parent of "%s" is in the shape', $id));
-            self::assertTrue(null === $hash || 1 === preg_match('/^[0-9a-f]{32}$/', $hash), \sprintf('the hash of "%s" is an xxh128 hash', $id));
+            self::assertTrue(null === $hash || 1 === preg_match('/^[0-9a-f]{16}$/', $hash), \sprintf('the hash of "%s" is an xxh3 hash', $id));
         }
         self::assertNotEmpty(array_filter(array_column($tree, 1)), 'the fibers in the root element have a hash');
     }

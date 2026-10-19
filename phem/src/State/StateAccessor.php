@@ -65,13 +65,18 @@ final class StateAccessor
         return $type->getName()::from($value);
     }
 
-    /** The state of the fibers of the last pass, the route values of the page, and the shape of the tree. */
+    /**
+     * The state of the fibers of the page, the route values of the page, and the shape of the
+     * tree. A fiber that did not render in the last pass keeps the state that the browser sent:
+     * a fiber whose state changes renders (see UpdateScope).
+     */
     public function snapshot(Tree $tree): PageState
     {
         $fibers = [];
-        foreach ($tree->mounted() as $fiber) {
-            if (null !== $fiber->instance && [] !== $state = $this->export($fiber->instance)) {
-                $fibers[$fiber->id] = $state;
+        foreach ($tree->page() as $id => [, $fiber]) {
+            $state = null !== $fiber ? (null !== $fiber->instance ? $this->export($fiber->instance) : []) : ($tree->restored($id) ?? []);
+            if ([] !== $state) {
+                $fibers[$id] = $state;
             }
         }
 

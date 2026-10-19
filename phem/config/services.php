@@ -34,7 +34,9 @@ use Phem\Path\PathResolver;
 use Phem\Path\ScalarPathConverter;
 use Phem\Rendering\ClassComponentRenderer;
 use Phem\Rendering\ContainerComponentFactory;
+use Phem\Rendering\EventRenderer;
 use Phem\Rendering\FunctionComponentRenderer;
+use Phem\Rendering\InputsComparator;
 use Phem\Rendering\MarkupResolver;
 use Phem\Rendering\Renderer;
 use Phem\Rendering\TemplateComponentRenderer;
@@ -98,7 +100,7 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.component_factory', ContainerComponentFactory::class)
             ->args([abstract_arg('class components, set by ComponentPass')])
         ->set('phem.component_renderer.class', ClassComponentRenderer::class)
-            ->args([service('phem.component_factory'), service('phem.prop_binder'), service('phem.state_accessor'), service('phem.url_query')])
+            ->args([service('phem.component_factory'), service('phem.prop_binder'), service('phem.state_accessor'), service('phem.url_query'), service('phem.metadata')])
             ->tag('phem.component_renderer')
         ->set('phem.component_renderer.function', FunctionComponentRenderer::class)
             ->args([service('phem.prop_binder')])
@@ -154,10 +156,22 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.controller.page', PageController::class)
             ->public()
             ->args([service('phem.page_renderer')])
+        ->set('phem.inputs_comparator', InputsComparator::class)
+            ->args([service('phem.handler_fingerprint')])
+        ->set('phem.event_renderer', EventRenderer::class)
+            ->args([
+                service('phem.renderer'),
+                service('phem.bound_values'),
+                service('phem.state_accessor'),
+                service('phem.inputs_comparator'),
+                service('phem.metadata'),
+                null,
+            ])
+        ->alias(EventRenderer::class, 'phem.event_renderer')
         ->set('phem.controller.event', EventController::class)
             ->public()
             ->args([
-                service('phem.renderer'),
+                service('phem.event_renderer'),
                 service('phem.state_codec'),
                 service('phem.controller.page'),
                 service('phem.metadata'),
@@ -166,7 +180,6 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.turbo_streams'),
                 service('phem.browser_event_dispatcher'),
                 1048576,
-                service('phem.bound_values'),
                 service('phem.url_query'),
                 8388608,
             ])

@@ -27,6 +27,9 @@ use Phem\Rendering\Tree;
  */
 final class TreeShape
 {
+    /** @var array<string, list<string>>|null parent id => child ids */
+    private ?array $children = null;
+
     /**
      * @param array<string, array{0: string|null, 1: string|null}> $fibers fiber id => [parent id, hash]
      */
@@ -34,12 +37,15 @@ final class TreeShape
     {
     }
 
-    /** The shape of the last pass of a tree. */
+    /**
+     * The shape of the page after the last pass of a tree. A fiber that did not render in that
+     * pass keeps the hash of the shape before (see Tree::page()).
+     */
     public static function of(Tree $tree): self
     {
         $fibers = [];
-        foreach ($tree->mounted() as $fiber) {
-            $fibers[$fiber->id] = [$fiber->parent?->id, $fiber->holdsRoot ? null : self::hash($fiber->ownHtml[$fiber->pass] ?? '')];
+        foreach ($tree->page() as $id => [$parent, $fiber]) {
+            $fibers[$id] = [$parent, null !== $fiber ? ($fiber->holdsRoot ? null : self::hash($fiber->ownHtml[$fiber->pass] ?? '')) : $tree->shape->hashOf($id)];
         }
 
         return new self($fibers);
@@ -69,9 +75,10 @@ final class TreeShape
         return $this->fibers;
     }
 
+    /** A 64-bit hash: it only tells whether the HTML changed, and the state stays small. */
     public static function hash(string $html): string
     {
-        return hash('xxh128', $html);
+        return hash('xxh3', $html);
     }
 
     /** The hash of the own HTML of a fiber in the last render, or null. */
@@ -84,5 +91,66 @@ final class TreeShape
     public function parentOf(string $id): ?string
     {
         return $this->fibers[$id][0] ?? null;
+    }
+
+    public function has(string $id): bool
+    {
+        return isset($this->fibers[$id]);
+    }
+
+    /** The fiber with no parent: the page. */
+    public function root(): ?string
+    {
+        foreach ($this->fibers as $id => [$parent]) {
+            if (null === $parent) {
+                return $id;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The children of a fiber, in their order.
+     *
+     * @return list<string>
+     */
+    public function childrenOf(string $id): array
+    {
+        $this->children ??= self::children($this->fibers);
+
+        return $this->children[$id] ?? [];
+    }
+
+    /**
+     * The ids from the page to a fiber, the fiber last. Empty for an unknown fiber.
+     *
+     * @return list<string>
+     */
+    public function pathTo(string $id): array
+    {
+        $path = [];
+        for ($current = $id; null !== $current && $this->has($current) && !\in_array($current, $path, true); $current = $this->parentOf($current)) {
+            $path[] = $current;
+        }
+
+        return array_reverse($path);
+    }
+
+    /**
+     * @param array<string, array{0: string|null, 1: string|null}> $fibers
+     *
+     * @return array<string, list<string>>
+     */
+    private static function children(array $fibers): array
+    {
+        $children = [];
+        foreach ($fibers as $id => [$parent]) {
+            if (null !== $parent) {
+                $children[$parent][] = $id;
+            }
+        }
+
+        return $children;
     }
 }

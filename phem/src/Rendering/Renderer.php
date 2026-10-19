@@ -39,6 +39,7 @@ use Twig\Template;
 final class Renderer implements ResetInterface
 {
     private ?Tree $tree = null;
+    private ?RenderScope $scope = null;
 
     /**
      * @param iterable<ComponentRenderer> $renderers
@@ -55,12 +56,31 @@ final class Renderer implements ResetInterface
 
     /**
      * Renders the page of a tree. Call it again for a second pass with the new state.
+     *
+     * @param RenderScope|null $scope the fibers that render, or null for all of them
      */
-    public function render(Tree $tree): string
+    public function render(Tree $tree, ?RenderScope $scope = null): string
     {
         $tree->begin();
 
-        return $this->within($tree, fn (): string => $this->renderComponent($tree, $tree->page, $tree->props, null, null, []));
+        return $this->within($tree, fn (): string => $this->renderComponent($tree, $tree->page, $tree->props, null, null, []), $scope);
+    }
+
+    /**
+     * A new pass that renders only some fibers of the last pass, with their subtrees (see
+     * UpdateScope): each fiber renders again with what its parent gave it in the last pass.
+     * Its parent does not render.
+     *
+     * @param list<Fiber> $fibers fibers of the last pass, with no fiber in the subtree of another
+     */
+    public function rerender(Tree $tree, array $fibers, RenderScope $scope): void
+    {
+        $tree->begin();
+        $this->within($tree, function () use ($tree, $fibers): void {
+            foreach ($fibers as $fiber) {
+                $this->renderFiber($tree, $fiber, $this->manifest->component($fiber->fqcn) ?? throw new PropError(\sprintf('Unknown component "%s".', $fiber->fqcn)));
+            }
+        }, $scope);
     }
 
     /**
@@ -164,14 +184,15 @@ final class Renderer implements ResetInterface
      *
      * @return T
      */
-    private function within(Tree $tree, \Closure $callback): mixed
+    private function within(Tree $tree, \Closure $callback, ?RenderScope $scope = null): mixed
     {
-        $previous = $this->tree;
+        $previous = [$this->tree, $this->scope];
         $this->tree = $tree;
+        $this->scope = $scope;
         try {
             return $callback();
         } finally {
-            $this->tree = $previous;
+            [$this->tree, $this->scope] = $previous;
         }
     }
 
@@ -189,24 +210,53 @@ final class Renderer implements ResetInterface
         if ($root && null !== $tree->rootFiber) {
             throw new \LogicException(\sprintf('The page "%s" renders more than one <Root>: render one, in the document of the page.', $tree->page));
         }
-        $renderer = $root ? null : $this->renderer($def);
         $parent = $tree->top();
         $index = null !== $key ? '@'.$key : '#'.(null !== $parent ? $parent->nextIndex($fqcn) : $tree->nextRootIndex());
         $path = ($parent->path ?? '').'/'.$fqcn.$index;
         $id = Fiber::idOf($path);
         $fiber = $tree->fiber($id, static fn (?array $restored): Fiber => new Fiber($id, $path, $fqcn, $restored, $tree->query));
+        // What the parent gave the fiber in the pass before, if the fiber got to that pass.
+        $previous = $fiber->pass > 0 && $fiber->pass === $tree->pass - 1 ? $fiber->inputs() : null;
         $fiber->parent = $parent;
         $fiber->props = $props;
         $fiber->slots = $slots;
         $fiber->caller = $caller;
+        if (null !== $parent) {
+            $parent->children[] = $fiber;
+        }
 
+        if (null !== $this->scope && !$this->scope->renders($fiber, $previous)) {
+            $fiber->begin($tree->pass);
+            $fiber->kept = true;
+            $fiber->html = '';
+            if ($root) {
+                $this->holdRoot($tree, $fiber);
+            } elseif ($tree->shape->has($fiber->id) && null === $tree->shape->hashOf($fiber->id)) {
+                // Around the root element in the last render (see TreeShape): so are its ancestors.
+                for ($p = $fiber; null !== $p; $p = $p->parent) {
+                    $p->holdsRoot = true;
+                }
+            }
+
+            return $root ? RootElement::render($props, $tree->rootToken(), $fiber->wrapped()) : $fiber->output();
+        }
+
+        $this->renderFiber($tree, $fiber, $def);
+
+        return $root ? RootElement::render($props, $tree->rootToken(), $fiber->wrapped()) : $fiber->output();
+    }
+
+    /**
+     * Renders a fiber with the props, slots and caller that it has, and keeps its HTML. Its id,
+     * its parent and its place in the children of its parent do not change.
+     */
+    private function renderFiber(Tree $tree, Fiber $fiber, ComponentDefinition $def): void
+    {
+        $root = Root::class === $def->fqcn;
+        $renderer = $root ? null : $this->renderer($def);
         $fiber->begin($tree->pass);
         if ($root) {
-            // The page and the document around the root element are not in a <phem-c>.
-            $tree->rootFiber = $fiber;
-            for ($p = $parent; null !== $p; $p = $p->parent) {
-                $p->holdsRoot = true;
-            }
+            $this->holdRoot($tree, $fiber);
         }
         $tree->push($fiber);
         try {
@@ -223,11 +273,15 @@ final class Renderer implements ResetInterface
             $own = str_replace($child->output(), '<phem-c id="'.$child->id.'"></phem-c>', $own);
         }
         $fiber->ownHtml[$tree->pass] = $own;
-        if (null !== $parent) {
-            $parent->children[] = $fiber;
-        }
+    }
 
-        return $root ? RootElement::render($props, $tree->rootToken(), $fiber->wrapped()) : $fiber->output();
+    /** The page and the document around the root element are not in a <phem-c>. */
+    private function holdRoot(Tree $tree, Fiber $fiber): void
+    {
+        $tree->rootFiber = $fiber;
+        for ($p = $fiber->parent; null !== $p; $p = $p->parent) {
+            $p->holdsRoot = true;
+        }
     }
 
     private function renderer(ComponentDefinition $definition): ComponentRenderer

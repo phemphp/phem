@@ -44,6 +44,11 @@ final class Fiber
 
     public int $pass = 0;
     /**
+     * The fiber did not render in this pass (see RenderScope): the browser keeps its HTML, and
+     * its parent has a placeholder for it.
+     */
+    public bool $kept = false;
+    /**
      * The fiber renders the `<Root>` of the page in this pass (the page, the document): it is
      * around the root element, so it has no `<phem-c>` and the events do not update it.
      */
@@ -78,6 +83,7 @@ final class Fiber
     public function begin(int $pass): void
     {
         $this->pass = $pass;
+        $this->kept = false;
         $this->holdsRoot = false;
         $this->children = [];
         $this->childIndexes = [];
@@ -92,12 +98,23 @@ final class Fiber
 
     public function wrapped(): string
     {
+        if ($this->kept) {
+            // The phem controller keeps the element of the browser for this placeholder.
+            return '<phem-c id="'.$this->id.'" data-phem-keep></phem-c>';
+        }
+
         return '<phem-c id="'.$this->id.'">'.$this->html.'</phem-c>';
+    }
+
+    /** What the parent gave the fiber in its last pass: its props, its slots and its caller context. */
+    public function inputs(): FiberInputs
+    {
+        return new FiberInputs($this->props, $this->slots, $this->caller);
     }
 
     /** The HTML in the parent: wrapped(), or the HTML alone around the root of the page. */
     public function output(): string
     {
-        return $this->holdsRoot ? $this->html : $this->wrapped();
+        return $this->holdsRoot && !$this->kept ? $this->html : $this->wrapped();
     }
 }

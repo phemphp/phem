@@ -1,8 +1,10 @@
 //! PHP structure scan, component registry, and diagnostics for `.phpm` files.
 
 mod hooks;
+mod purity;
 mod scan;
 
+pub use purity::HELP as PURE_RENDER_HELP;
 pub use scan::{scan, Class, FileInfo, Func, MarkupScope, Param, Prop, RouteDecl};
 
 use phemc_syntax::diag::codes;
@@ -196,10 +198,11 @@ pub fn resolve_inheritance<'a>(files: impl IntoIterator<Item = &'a mut FileInfo>
     }
 }
 
-/// File-level checks: removed hooks, class component rules, and `#[Page]` / `#[Route]`. Run it after
-/// `resolve_inheritance()`.
+/// File-level checks: removed hooks, a `render()` that is not pure, class component rules, and
+/// `#[Page]` / `#[Route]`. Run it after `resolve_inheritance()`.
 pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
     let mut diags = hooks::check(file, src, lexed);
+    diags.extend(purity::check(file, src, lexed));
     for span in &file.export_defaults {
         diags.push(
             Diagnostic::error(codes::EXPORT_DEFAULT, "`export default` is not PHP", *span)

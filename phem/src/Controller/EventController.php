@@ -20,9 +20,8 @@ use Phem\Http\RouteValues;
 use Phem\Http\TurboStreams;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Path\PathResolver;
-use Phem\Rendering\Renderer;
+use Phem\Rendering\EventRenderer;
 use Phem\Rendering\Tree;
-use Phem\State\BoundValues;
 use Phem\State\PageState;
 use Phem\State\StateAccessor;
 use Phem\State\StateCodec;
@@ -44,11 +43,12 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
  * (see PageLoader). The page comes from the route, not from the browser.
  *
  * The `phem` Stimulus controller sends the signed state of the page, the handler id, and the
- * values of the bound inputs that changed (see BoundValues). The server renders with that
- * state, sets the bound values, runs the handler, renders again, and answers with Turbo
- * Streams that morph the components that changed, the new state, the query of the #[Url]
- * properties (see UrlQuery), and the browser events of the handler (see BrowserEventDispatcher). When the handler returns
- * a RedirectResponse, the server answers with its URL, and the browser visits it.
+ * values of the bound inputs that changed (see BoundValues). The server renders the path to
+ * the handler with that state, sets the bound values, runs the handler, renders the components
+ * that can change (see EventRenderer), and answers with Turbo Streams that morph the components
+ * that changed, the new state, the query of the #[Url] properties (see UrlQuery), and the
+ * browser events of the handler (see BrowserEventDispatcher). When the handler returns a
+ * RedirectResponse, the server answers with its URL, and the browser visits it.
  *
  * An event with the files of a form is `multipart/form-data` (see EventPayload). The handler
  * gets them as UploadedFile objects (see Event::$files). PHP removes a file that the handler does
@@ -69,7 +69,7 @@ final class EventController
     public const HEADER = 'X-Phem-Event';
 
     public function __construct(
-        private readonly Renderer $renderer,
+        private readonly EventRenderer $events,
         private readonly StateCodec $codec,
         private readonly ?PageController $pages = null,
         private readonly ComponentMetadata $metadata = new ComponentMetadata(),
@@ -78,7 +78,6 @@ final class EventController
         private readonly TurboStreams $streams = new TurboStreams(),
         private readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
         private readonly int $maxSize = 1048576,
-        private readonly BoundValues $bound = new BoundValues(),
         private readonly UrlQuery $url = new UrlQuery(),
         private readonly int $maxUploadSize = 8388608,
     ) {
@@ -127,33 +126,27 @@ final class EventController
             // An entity of the page is not there any more: the page shows a 404 response.
             return self::reload();
         }
-        $tree = new Tree($page, $state->fibers, $props, $state->values);
-        $this->renderer->render($tree);
-        $handler = null !== $payload->handler ? $tree->handler($payload->handler) : null;
-        if (null !== $payload->handler && null === $handler) {
+        $tree = new Tree($page, $state->fibers, $props, $state->values, shape: $state->shape);
+        $outcome = $this->events->run($tree, $payload->handler, $payload->bound, $this->dispatcher, fn (): Event => Event::fromArray($payload->event, $request, $this->dispatcher));
+        if ($outcome->reload) {
             // The page changed since the browser rendered it (for example after a deploy).
             return self::reload();
         }
-        // After the first render, as the page in the browser was: the second render shows the
-        // new values as a change.
-        $this->bound->apply($tree, $payload->bound);
-        // Only the handler sends browser events: not the render before it.
-        $this->dispatcher->reset();
-        if (null !== $handler) {
-            $event = Event::fromArray($payload->event, $request, $this->dispatcher);
-            $result = $this->renderer->dispatch($tree, $handler, $event);
-            if ($result instanceof RedirectResponse) {
-                // The browser visits the URL: the page does not render again, and the browser
-                // events of the handler are dropped (the new page has other listeners).
-                return new JsonResponse(['redirect' => self::redirectUrl($result)]);
-            }
+        if (null !== $outcome->redirect) {
+            // The browser visits the URL: the page does not render again, and the browser
+            // events of the handler are dropped (the new page has other listeners).
+            return new JsonResponse(['redirect' => self::redirectUrl($outcome->redirect)]);
         }
-        $this->renderer->render($tree);
         [$json, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page, $request);
 
         $query = $this->url->of($tree);
+        $data = ['streams' => $this->streams->updates($tree->changedFibers()), 'state' => $json, 'signature' => $signature, 'query' => ['values' => (object) $query['values'], 'push' => $query['push']], 'events' => $this->dispatcher->dispatched()];
+        if ([] !== $outcome->warnings) {
+            // The dev-mode check (see SkippedRenderCheck): the phem controller logs them.
+            $data['warnings'] = $outcome->warnings;
+        }
 
-        return new JsonResponse(['streams' => $this->streams->updates($tree->changedFibers()), 'state' => $json, 'signature' => $signature, 'query' => ['values' => (object) $query['values'], 'push' => $query['push']], 'events' => $this->dispatcher->dispatched()]);
+        return new JsonResponse($data);
     }
 
     /**

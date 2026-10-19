@@ -147,10 +147,15 @@ See [editors/vscode/README.md](editors/vscode/README.md).
    `<Root>` element keeps the `#[State]` properties of all components in a signed JSON value. The
    signature is an HMAC (`kernel.secret`, from `APP_SECRET`) of the state and its page
    component. An event sends the state back.
-   The server makes the components again, restores their state, renders, runs the PHP handler
-   (in a Doctrine transaction, when Doctrine ORM is enabled), renders again, and compares the
-   two renders. It answers with a Turbo Stream `update`
-   (`method="morph"`) for each component that changed, plus the new state. Only the content
+   The state has the shape of the last render too: the parent and a hash of the HTML of each
+   component. The server renders only the components on the path to the handler, restores
+   their state, and runs the PHP handler (in a Doctrine transaction, when Doctrine ORM is
+   enabled). Then, as React does, it renders only the components that can change: the component
+   of the handler, the components whose state changed, and their children with new props. It
+   compares their HTML with the hashes, and answers with a Turbo Stream `update`
+   (`method="morph"`) for each component that changed, plus the new state. A component that did
+   not render again is a `<phem-c data-phem-keep>` placeholder: the browser keeps it. This needs
+   a pure `render()` (see [Keep `render()` pure](docs/phpm-syntax.md#keep-render-pure)). Only the content
    of the `<Root>` changes: the document around it (for example the title) stays the same.
    Events wait in a queue, so each event uses the newest state.
    While an event runs, the element that sent it and its component get `aria-busy="true"` and

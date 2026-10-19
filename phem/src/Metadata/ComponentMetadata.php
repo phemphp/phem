@@ -140,6 +140,16 @@ final class ComponentMetadata
     }
 
     /**
+     * Whether mount() of a class component runs each time that the component renders: the class
+     * has a mount() and no #[State] property. The browser keeps no state for it, so mount() reads
+     * its data again (for example from a repository).
+     */
+    public function mountsEachRender(string $class): bool
+    {
+        return class_exists($class) && method_exists($class, 'mount') && [] === $this->stateProperties($class);
+    }
+
+    /**
      * The #[Url] properties of a class component, by query key (see Phem\Attribute\Url).
      *
      * @param class-string $class

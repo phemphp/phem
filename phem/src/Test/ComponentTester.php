@@ -488,7 +488,23 @@ final class ComponentTester
             if (null === $element) {
                 Assert::fail(\sprintf('The event updates the component "%s", but the page has no element with this id.', $id));
             }
+            // A component that did not render again is a placeholder: as in the browser, the
+            // morph keeps its element.
+            $kept = [];
+            preg_match_all('/<phem-c id="([^"]+)" data-phem-keep><\/phem-c>/', $html, $ids);
+            foreach ($ids[1] as $kid) {
+                if (null !== $old = $this->document->getElementById($kid)) {
+                    $kept[$kid] = $old;
+                }
+            }
             $element->innerHTML = $html;
+            foreach ($element->querySelectorAll('phem-c[data-phem-keep]') as $placeholder) {
+                $old = $kept[$placeholder->id] ?? null;
+                if (null === $old) {
+                    Assert::fail(\sprintf('The event keeps the component "%s", but the page has no element with this id.', $placeholder->id));
+                }
+                $placeholder->replaceWith($old);
+            }
         }
     }
 

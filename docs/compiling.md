@@ -118,8 +118,9 @@ have an event handler.
 A page renders one `<Root>`. A page with no `<Root>` or with two is an error, and a `<Root>` in
 a Twig template outside a page is an error too.
 
-The events render the whole page again, but they update only the content of the `<Root>` in
-the browser. The document around it (the title, a footer) does not change. A component after
+The events render only the components that can change (see
+[Keep `render()` pure](phpm-syntax.md#keep-render-pure)), and they update only the content of
+the `<Root>` in the browser. The document around it (the title, a footer) does not change. A component after
 the root element renders, but the `phem` controller does not get its DOM events. A `<title>`
 in the markup of a page is not the title of the page: phemc reports it (W005). A `<title>` in
 `<head>` or in an `<svg>` is correct.
