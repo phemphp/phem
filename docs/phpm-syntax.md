@@ -705,7 +705,8 @@ phem:
 ### Failed events
 
 When the server answers an event with a status that is not 2xx (for example a 500 for an
-exception in the handler, or a 403), the page does not change. The browser dispatches a
+exception in the handler, or a 403), or with a body that is not JSON (for example a PHP error
+that PHP prints before the handler runs), the page does not change. The browser dispatches a
 `phem:error` event on the root of the component of the handler. Its detail has the `handler` id
 and the `status`. It bubbles, as the other browser events.
 

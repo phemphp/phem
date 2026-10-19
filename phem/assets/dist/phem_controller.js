@@ -31,12 +31,12 @@
 //
 // While the browser is offline, the root element has the `phem-offline` class.
 //
-// When an event fails (a status that is not 2xx, for example a 500), the controller dispatches a
-// cancelable `phem:error` event on the root of the component of the handler, with the `handler`
-// id and the `status`. It bubbles up to `window`. When no listener calls `preventDefault()`, the
-// controller shows a default message: a `.phem-error` element with `role="alert"` at the end of
-// the body (`data-phem-error-message-value` changes its text). A click on it, or the next event
-// that succeeds, removes it.
+// When an event fails (a status that is not 2xx, for example a 500, or a body that is not JSON),
+// the controller dispatches a cancelable `phem:error` event on the root of the component of the
+// handler, with the `handler` id and the `status`. It bubbles up to `window`. When no listener
+// calls `preventDefault()`, the controller shows a default message: a `.phem-error` element with
+// `role="alert"` at the end of the body (`data-phem-error-message-value` changes its text). A
+// click on it, or the next event that succeeds, removes it.
 //
 // A network error, a 502 or a 503 can be temporary: the controller sends the event again, up to
 // `data-phem-retries-value` times (3 by default, 0 turns it off). It waits before each new try,
@@ -623,8 +623,17 @@ export default class PhemController extends Controller {
       this.showError(handler, response.status)
       return
     }
+    // A PHP error that PHP prints before the handler (an HTML page with a 200) is not an answer.
+    const text = await response.text()
+    let data
+    try {
+      data = JSON.parse(text)
+    } catch {
+      console.error(`[phem] event failed (${response.status}): the response is not JSON`, text)
+      this.showError(handler, response.status)
+      return
+    }
     this.hideError()
-    const data = await response.json()
     if (data.redirect) {
       // The handler returned a RedirectResponse. Turbo sets window.location for a URL that it
       // cannot visit, so a javascript: URL would run: visit only http(s) URLs.
