@@ -430,7 +430,7 @@ does not run the handler. The page does not change. The browser dispatches a
 <div data-controller="toast" data-action="phem:rate-limited@window->toast#slowDown"></div>
 ```
 
-Do not use `rate-limited` as the name of a browser event of a handler.
+Do not use `rate-limited` or `error` as the name of a browser event of a handler.
 
 ### Event size
 
@@ -444,6 +444,38 @@ maximum depth (8). The browser sends less than that, so a deeper body gets `400 
 phem:
     max_event_size: 2097152
 ```
+
+### Failed events
+
+When the server answers an event with a status that is not 2xx (for example a 500 for an
+exception in the handler, or a 403), the page does not change. The browser dispatches a
+`phem:error` event on the root of the component of the handler. Its detail has the `handler` id
+and the `status`. It bubbles, as the other browser events.
+
+When no listener calls `event.preventDefault()`, the browser shows a default message: a
+`.phem-error` element with `role="alert"` at the end of the `<body>`. A click on the message,
+or the next event that succeeds, removes it. The style is in `phem.css`. Change the text with
+`data-phem-error-message-value` on the `<Root>` element:
+
+```html
+<Root data-phem-error-message-value={{ 'The change was not saved.' }}>
+```
+
+To show your own message, prevent the default:
+
+```html
+<div data-controller="toast" data-action="phem:error@window->toast#failed"></div>
+```
+
+```js
+failed(event) {
+    event.preventDefault()
+    this.show(`Error ${event.detail.status}`)
+}
+```
+
+A `409` (the state is not valid any more) loads the page again, and a `429` dispatches
+`phem:rate-limited` (see [Rate limits](#rate-limits)). They do not dispatch `phem:error`.
 
 ## 7. State: class components
 

@@ -328,7 +328,8 @@ Done: while the browser is offline (`navigator.onLine` is false), the root eleme
 Not done yet:
 
 - [ ] Retry an idempotent failure (network error, 502, 503) with backoff.
-- [ ] A default error message for a 500, with a hook to change it.
+- [x] A default error message for a 500, with a hook to change it: a cancelable `phem:error`
+      event on the component root, with the `handler` and the `status`.
 
 ## 8. Developer experience
 

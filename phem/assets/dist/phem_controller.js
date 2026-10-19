@@ -26,6 +26,13 @@
 // ancestor, or `data-action="phem:toast@window->toast#show"` anywhere.
 //
 // While the browser is offline, the root element has the `phem-offline` class.
+//
+// When an event fails (a status that is not 2xx, for example a 500), the controller dispatches a
+// cancelable `phem:error` event on the root of the component of the handler, with the `handler`
+// id and the `status`. It bubbles up to `window`. When no listener calls `preventDefault()`, the
+// controller shows a default message: a `.phem-error` element with `role="alert"` at the end of
+// the body (`data-phem-error-message-value` changes its text). A click on it, or the next event
+// that succeeds, removes it.
 
 import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
@@ -67,7 +74,12 @@ function lockControl(control) {
 }
 
 export default class PhemController extends Controller {
-  static values = { state: String, signature: String, loadingDelay: { type: Number, default: 200 } }
+  static values = {
+    state: String,
+    signature: String,
+    loadingDelay: { type: Number, default: 200 },
+    errorMessage: { type: String, default: "Something went wrong. Please try again." },
+  }
 
   connect() {
     this.queue = Promise.resolve()
@@ -98,6 +110,7 @@ export default class PhemController extends Controller {
     this.element.removeEventListener("turbo:morph-element", this.keepLoading)
     window.removeEventListener("online", this.showOffline)
     window.removeEventListener("offline", this.showOffline)
+    this.hideError()
   }
 
   // data-action="click->phem#dispatch input->phem#dispatch ..." on the root element.
@@ -218,8 +231,10 @@ export default class PhemController extends Controller {
     if (!response.ok) {
       const text = await response.text()
       console.error(`[phem] event failed (${response.status})`, text)
+      this.showError(handler, response.status)
       return
     }
+    this.hideError()
     const data = await response.json()
     if (data.redirect) {
       // The handler returned a RedirectResponse. Turbo sets window.location for a URL that it
@@ -239,6 +254,26 @@ export default class PhemController extends Controller {
         for (const { name, detail } of data.events) target.dispatchEvent(new CustomEvent(`phem:${name}`, { detail, bubbles: true }))
       })
     }
+  }
+
+  // Dispatches `phem:error`, then shows the default message when no listener prevents it.
+  showError(handler, status) {
+    const event = new CustomEvent("phem:error", { detail: { handler, status }, bubbles: true, cancelable: true })
+    if (!this.componentRoot(handler).dispatchEvent(event)) return
+    this.hideError()
+    // Outside the root element, so the morph does not remove it.
+    const el = document.createElement("div")
+    el.className = "phem-error"
+    el.setAttribute("role", "alert")
+    el.textContent = this.errorMessageValue
+    el.addEventListener("click", () => this.hideError())
+    document.body.append(el)
+    this.errorElement = el
+  }
+
+  hideError() {
+    this.errorElement?.remove()
+    this.errorElement = null
   }
 
   // The root of the component of a handler: the <phem-c> with the fiber id at the start of the
