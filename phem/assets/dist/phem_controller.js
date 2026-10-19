@@ -33,6 +33,13 @@
 // controller shows a default message: a `.phem-error` element with `role="alert"` at the end of
 // the body (`data-phem-error-message-value` changes its text). A click on it, or the next event
 // that succeeds, removes it.
+//
+// A network error, a 502 or a 503 can be temporary: the controller sends the event again, up to
+// `data-phem-retries-value` times (3 by default, 0 turns it off). It waits before each new try,
+// and the wait doubles each time (`data-phem-retry-delay-value`, 500 ms by default, then 1 s, 2 s).
+// A `Retry-After` header makes the wait longer. While the browser is offline, the next try waits
+// for the `online` event. The loading state and the lock of the form stay until the last answer.
+// When the last try fails with a network error, `phem:error` has a `status` of null.
 
 import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
@@ -79,6 +86,8 @@ export default class PhemController extends Controller {
     signature: String,
     loadingDelay: { type: Number, default: 200 },
     errorMessage: { type: String, default: "Something went wrong. Please try again." },
+    retries: { type: Number, default: 3 },
+    retryDelay: { type: Number, default: 500 },
   }
 
   connect() {
@@ -205,14 +214,17 @@ export default class PhemController extends Controller {
     }
   }
 
-  // `beforeRender` runs when the response arrives, before the page changes.
+  // `beforeRender` runs when the last response arrives, before the page changes.
   async send(handler, event, beforeRender) {
-    // The URL of the page, from the browser: always the same origin.
-    const response = await fetch(window.location.href, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json", "X-Phem-Event": "1" },
-      body: JSON.stringify({ state: this.stateValue, signature: this.signatureValue, handler, event }),
-    })
+    let response
+    try {
+      response = await this.fetchWithRetry(handler, event)
+    } catch (e) {
+      beforeRender()
+      console.error("[phem] event failed (network error)", e)
+      this.showError(handler, null)
+      return
+    }
     beforeRender()
     if (response.status === 409) {
       // The state is not valid any more (a new build, or a new secret): load the page again.
@@ -253,6 +265,36 @@ export default class PhemController extends Controller {
         const target = this.componentRoot(handler)
         for (const { name, detail } of data.events) target.dispatchEvent(new CustomEvent(`phem:${name}`, { detail, bubbles: true }))
       })
+    }
+  }
+
+  // Posts the event. Sends it again after a network error, a 502 or a 503, with a longer wait
+  // each time. The last try returns its response, or throws its network error.
+  async fetchWithRetry(handler, event) {
+    for (let attempt = 0; ; attempt++) {
+      let response = null
+      let error = null
+      try {
+        // The URL of the page, from the browser: always the same origin.
+        response = await fetch(window.location.href, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json", "X-Phem-Event": "1" },
+          body: JSON.stringify({ state: this.stateValue, signature: this.signatureValue, handler, event }),
+        })
+      } catch (e) {
+        error = e
+      }
+      const temporary = error !== null || response.status === 502 || response.status === 503
+      if (!temporary || attempt >= this.retriesValue) {
+        if (error) throw error
+        return response
+      }
+      let delay = this.retryDelayValue * 2 ** attempt
+      const retryAfter = Number.parseInt(response?.headers.get("Retry-After") ?? "", 10)
+      if (!Number.isNaN(retryAfter)) delay = Math.max(delay, retryAfter * 1000)
+      console.warn(`[phem] event failed (${error ? "network error" : response.status}), new try in ${delay} ms`)
+      await new Promise((resolve) => setTimeout(resolve, delay))
+      if (!navigator.onLine) await new Promise((resolve) => window.addEventListener("online", resolve, { once: true }))
     }
   }
 

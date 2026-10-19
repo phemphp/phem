@@ -163,6 +163,8 @@ See [editors/vscode/README.md](editors/vscode/README.md).
    While the browser is offline, the `<Root>` element has the `phem-offline` class.
    When an event fails (for example a 500), the browser shows a default error message. A
    `phem:error` listener can show its own message (see [Failed events](docs/phpm-syntax.md#failed-events)).
+   After a network error, a 502 or a 503, the browser sends the event again with a longer wait
+   each time (see [Retries](docs/phpm-syntax.md#retries)).
 5. **Server.** [FrankenPHP](https://frankenphp.dev) runs `public/index.php` in worker mode
    (see `examples/quickstart/Caddyfile`). Each worker boots the Symfony kernel once and keeps
    it in memory for many requests. Symfony Runtime gives each request to the kernel, which

@@ -314,7 +314,7 @@ An exception in one component breaks the full event.
   render or handler renders the fallback for that subtree only. In debug mode, show the
   Symfony exception page in an overlay (as LW does in development).
 
-### [ ] Network errors, retry and offline state — P3
+### [x] Network errors, retry and offline state — P3
 
 The controller logs a failed event to the console only.
 
@@ -327,7 +327,9 @@ Done: while the browser is offline (`navigator.onLine` is false), the root eleme
 
 Not done yet:
 
-- [ ] Retry an idempotent failure (network error, 502, 503) with backoff.
+- [x] Retry an idempotent failure (network error, 502, 503) with backoff: 3 tries by default
+      (`data-phem-retries-value`), 500 ms then double (`data-phem-retry-delay-value`), and
+      `Retry-After`. While offline, the next try waits for the `online` event.
 - [x] A default error message for a 500, with a hook to change it: a cancelable `phem:error`
       event on the component root, with the `handler` and the `status`.
 

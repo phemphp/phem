@@ -477,6 +477,27 @@ failed(event) {
 A `409` (the state is not valid any more) loads the page again, and a `429` dispatches
 `phem:rate-limited` (see [Rate limits](#rate-limits)). They do not dispatch `phem:error`.
 
+### Retries
+
+A network error, a `502` or a `503` can be temporary. The browser sends the event again, with
+the same state, up to 3 times. It waits 500 ms before the first new try, and the wait doubles
+each time (1 s, 2 s). A `Retry-After` header makes the wait longer. While the browser is offline,
+the next try waits until the browser is online again. The loading state and the lock of the form
+stay until the last answer. The events after it wait in the queue.
+
+When the last try fails, the browser dispatches `phem:error`. After a network error, its
+`status` is `null`.
+
+Change the number of tries and the first wait on the `<Root>` element:
+
+```html
+<Root data-phem-retries-value={{ 5 }} data-phem-retry-delay-value={{ 1000 }}>
+```
+
+A network error or a `502` can come after the handler ran and its transaction committed. Then the
+handler runs two times. Make a handler safe to run again (for example, check that the row does not
+exist yet), or set `data-phem-retries-value={{ 0 }}` to turn the retries off.
+
 ## 7. State: class components
 
 A component with state is a class with the `#[Component]` attribute and a `render()` method.
