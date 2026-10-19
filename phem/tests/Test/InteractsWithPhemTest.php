@@ -142,6 +142,19 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->assertSelectorExists('input[name=age][value=""]');
     }
 
+    public function testFillSendsTheValueOfABoundPath(): void
+    {
+        $this->mount(self::PROFILE)
+            ->fill('input[name=status]', 'closed')
+            ->fill('input[name=min]', '5')
+            ->fill('select[name=ids]', ['3'])
+            ->fill('input[name=row-0]', 'Grace')
+            ->click('button[type=submit]')
+            ->assertState('filters', ['status' => 'closed', 'min' => 5, 'ids' => [3]])
+            ->assertState('rows', [['name' => 'Grace'], ['name' => 'Eve']])
+            ->assertSelectorTextContains('#filters', 'closed, 5, 3, Grace+Eve');
+    }
+
     public function testChangeOfALiveFieldSendsAnEventWithNoHandler(): void
     {
         $this->mount(self::PROFILE)

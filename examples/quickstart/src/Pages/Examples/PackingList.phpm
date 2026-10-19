@@ -1,0 +1,62 @@
+<?phpm
+namespace App\Pages\Examples;
+
+use Phem\Attribute\{Page, State};
+
+use function App\Components\Document;
+
+#[Page('/examples/PackingList')]
+final class PackingList
+{
+    // A path binds a value in an array: `trip.days`, `items[i].packed`.
+    #[State]
+    public array $trip = ['destination' => 'Lisbon', 'days' => 3];
+
+    #[State]
+    public array $items = [
+        ['name' => 'Sunglasses', 'count' => 1, 'packed' => true],
+        ['name' => 'Socks', 'count' => 3, 'packed' => false],
+        ['name' => 'Toothbrush', 'count' => 1, 'packed' => false],
+    ];
+
+    public function handlePackAll(): void
+    {
+        // The names that the user changed are already here.
+        foreach ($this->items as $i => $item) {
+            $this->items[$i]['packed'] = true;
+        }
+    }
+
+    public function render()
+    {
+        $packed = count(array_filter(array_column($this->items, 'packed')));
+        $things = array_sum(array_column($this->items, 'count'));
+
+        return (
+            <Document>
+                <Document:title>PackingList</Document:title>
+                <div>
+                    <p>
+                        <label>Trip to <input phem:bind={{ trip.destination }} phem:live /></label>
+                        <label>for <input type="number" min="1" phem:bind={{ trip.days }} phem:live /> days</label>
+                    </p>
+                    <ul>
+                        {% for i, item in items %}
+                            <li key={{ i }}>
+                                <input type="checkbox" phem:bind={{ items[i].packed }} phem:live />
+                                <input type="number" min="0" phem:bind={{ items[i].count }} phem:live />
+                                <input phem:bind={{ items[i].name }} />
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <button onClick={{ handlePackAll }}>Pack all</button>
+                    <p id="summary">
+                        {{ trip.destination ?: 'Somewhere' }}, {{ trip.days }} days:
+                        {{ packed }} of {{ items|length }} packed ({{ things }} things).
+                        {{ items|column('name')|join(', ') }}
+                    </p>
+                </div>
+            </Document>
+        );
+    }
+}

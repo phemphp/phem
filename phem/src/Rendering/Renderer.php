@@ -106,14 +106,23 @@ final class Renderer implements ResetInterface
     }
 
     /**
-     * Registers a bound #[State] property of a component (`phem:bind={{ query }}`), and returns its
-     * key (see Tree::addBind()). The owner is the component of the markup: the markup can render
-     * in a slot of another component, so it is not always the current component. Null outside a page.
+     * Registers a bound #[State] property of a component (`phem:bind={{ query }}`), or a path in
+     * it (`['filters', 'status']`), and returns its key (see Tree::addBind()). The owner is the
+     * component of the markup: the markup can render in a slot of another component, so it is not
+     * always the current component. Null outside a page.
      *
-     * @throws \LogicException when the property is not a #[State] property of the component
+     * @param string|list<mixed> $target the property, or the property and the keys of a path
+     *
+     * @throws \LogicException when the property is not a #[State] property of the component, or
+     *                         when its value has no key of the path
      */
-    public function addBind(string $property, ?object $owner = null): ?string
+    public function addBind(string|array $target, ?object $owner = null): ?string
     {
+        $path = \is_array($target) ? $target : [$target];
+        $property = array_shift($path);
+        if (!\is_string($property)) {
+            throw new \LogicException('"phem:bind" binds a #[State] property: a path starts with its name.');
+        }
         $tree = $this->tree;
         $fiber = null !== $owner ? $tree?->fiberOf($owner) : $tree?->top();
         if (null === $tree || null === $fiber) {
@@ -123,8 +132,21 @@ final class Renderer implements ResetInterface
         if (null === $instance || [] === array_filter($this->metadata->stateProperties($instance::class), static fn (\ReflectionProperty $p): bool => $p->getName() === $property)) {
             throw new \LogicException(\sprintf('"phem:bind" binds a #[State] property of the class component, but "%s" has no #[State] property "%s".', $fiber->fqcn, $property));
         }
+        $keys = [];
+        $value = [] !== $path ? new \ReflectionProperty($instance, $property)->getValue($instance) : null;
+        foreach ($path as $segment) {
+            if (\is_string($segment) || \is_int($segment)) {
+                // As PHP keys: "3" is 3.
+                $segment = array_key_first([$segment => true]);
+            }
+            if (!\is_array($value) || (!\is_int($segment) && !\is_string($segment)) || !\array_key_exists($segment, $value)) {
+                throw new \LogicException(\sprintf('"phem:bind" binds a value of the #[State] property "%s::$%s", but it has no key %s. Give the property all the keys of its bound fields.', $fiber->fqcn, $property, implode('', array_map(static fn (mixed $k): string => '['.(\is_int($k) || \is_string($k) ? json_encode($k, \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE) : get_debug_type($k)).']', [...$keys, $segment]))));
+            }
+            $keys[] = $segment;
+            $value = $value[$segment];
+        }
 
-        return $tree->addBind($property, $fiber);
+        return $tree->addBind($property, $fiber, $keys);
     }
 
     /** The scope of a handler for `phem:loading` (see Tree::handlerScope()). */

@@ -14,6 +14,8 @@ final class Filters
     #[State] public string $sort = 'name';
     #[State] public array $fields = [];
     #[State] public string $notes = '';
+    #[State] public array $range = ['min' => 0, 'max' => 100, 'unit' => ['eur']];
+    #[State] public array $rows = [['name' => 'Ada'], ['name' => 'Eve']];
 
     public function search(): void
     {
@@ -40,6 +42,15 @@ final class Filters
                     <option value="year">Year</option>
                 </select>
                 <textarea phem:bind={{ notes }}></textarea>
+                <input type="number" phem:bind={{ range.min }} />
+                <input type="number" phem:bind={{ range.max }} />
+                <select multiple phem:bind={{ range['unit'] }}>
+                    <option>eur</option>
+                </select>
+                {% for i, row in rows %}
+                    <input key={{ i }} phem:bind={{ rows[i].name }} />
+                {% endfor %}
+                <textarea phem:bind={{ rows.0['name'] }}></textarea>
             </form>
         );
     }

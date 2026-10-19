@@ -18,4 +18,13 @@ expression: t.content
                     <option value="year" {{ phem_selected(fields, 'year') }}>Year</option>
                 </select>
                 <textarea {{ phem_bind('notes', notes, 'textarea', null, null, this) }}>{{ phem_bind_value(notes) }}</textarea>
+                <input type="number" {{ phem_bind(['range', 'min'], range.min, 'input', 'number', null, this) }}>
+                <input type="number" {{ phem_bind(['range', 'max'], range.max, 'input', 'number', null, this) }}>
+                <select multiple {{ phem_bind(['range', ('unit')], range['unit'], 'select', null, null, this) }}>
+                    <option {{ phem_selected(range['unit'], 'eur') }}>eur</option>
+                </select>
+                {% for i, row in rows %}
+                    <input {{ phem_key(i) }} {{ phem_bind(['rows', (i), 'name'], rows[i].name, 'input', null, null, this) }}>
+                {% endfor %}
+                <textarea {{ phem_bind(['rows', 0, ('name')], rows.0['name'], 'textarea', null, null, this) }}>{{ phem_bind_value(rows.0['name']) }}</textarea>
             </form>

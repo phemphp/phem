@@ -96,6 +96,47 @@ final class BindTest extends TestCase
         yield 'a hash with no type' => ['untyped', ['k' => 'v']];
     }
 
+    #[DataProvider('conversionsLike')]
+    public function testConvertsAValueOfTheBrowserToTheTypeOfTheCurrentValue(mixed $current, mixed $value, mixed $expected): void
+    {
+        self::assertTrue(BoundValues::convertLike($current, $value, $out));
+        self::assertSame($expected, $out);
+    }
+
+    /** @return iterable<string, array{mixed, mixed, mixed}> */
+    public static function conversionsLike(): iterable
+    {
+        yield 'a string' => ['', 'Ada', 'Ada'];
+        yield 'a numeric string to an int' => [0, '36', 36];
+        yield 'a numeric string to a float' => [0.5, '2', 2.0];
+        yield 'a checkbox' => [false, true, true];
+        yield 'a case of an enum' => [Size::Small, 'l', Size::Large];
+        yield 'null takes the text' => [null, '36', '36'];
+        yield 'a list of ints' => [[1, 2], ['3'], [3]];
+        yield 'an empty list takes strings' => [[], ['3'], ['3']];
+        yield 'a list of mixed items takes strings' => [[1, 'a'], ['3'], ['3']];
+    }
+
+    #[DataProvider('rejectionsLike')]
+    public function testRejectsAValueThatDoesNotFitTheTypeOfTheCurrentValue(mixed $current, mixed $value): void
+    {
+        self::assertFalse(BoundValues::convertLike($current, $value));
+    }
+
+    /** @return iterable<string, array{mixed, mixed}> */
+    public static function rejectionsLike(): iterable
+    {
+        yield 'text for an int' => [0, 'abc'];
+        yield 'an empty field for an int' => [0, ''];
+        yield 'a string for a bool' => [false, '1'];
+        yield 'an unknown case' => [Size::Small, 'xl'];
+        yield 'a string for a list' => [[], 'a'];
+        yield 'a list for a string' => ['', ['a']];
+        yield 'text in a list of ints' => [[1], ['x']];
+        yield 'a hash' => [null, ['k' => 'v']];
+        yield 'an object' => [new \stdClass(), 'x'];
+    }
+
     public function testRendersTheValueOfABoundField(): void
     {
         $runtime = new PhemRuntime(new Renderer(new Manifest('/nonexistent', ''), new MarkupResolver(new Environment(new ArrayLoader())), []));
@@ -175,6 +216,56 @@ final class BindTest extends TestCase
         self::assertSame('s', $profile['size']);
     }
 
+    public function testAnEventSetsTheValueOfABoundPath(): void
+    {
+        [$html, $state, $signature] = $this->openBind();
+        $row = self::bindKey($html, 'row-1');
+        self::assertStringEndsWith('.rows[1]["name"]', $row);
+        self::assertStringContainsString('<option selected>1</option>', $html);
+
+        $data = $this->send($state, $signature, null, [
+            self::bindKey($html, 'status') => 'closed',
+            self::bindKey($html, 'min') => '5',
+            self::bindKey($html, 'ids') => ['2', '3'],
+            $row => 'Grace',
+        ]);
+
+        $profile = self::profileState($data['state']);
+        self::assertSame(['status' => 'closed', 'min' => 5, 'ids' => [2, 3]], $profile['filters']);
+        self::assertSame([['name' => 'Ada'], ['name' => 'Grace']], $profile['rows']);
+        self::assertStringContainsString('closed, 5, 2+3, Ada+Grace', $data['streams']);
+    }
+
+    public function testABoundPathSetsOnlyAKeyThatTheArrayHas(): void
+    {
+        [$html, $state, $signature] = $this->openBind();
+        $status = self::bindKey($html, 'status');
+        $fiber = substr($status, 0, (int) strpos($status, '.'));
+
+        $data = $this->send($state, $signature, null, [
+            $fiber.'.filters' => 'x',
+            $fiber.'.filters["other"]' => 'x',
+            $fiber.'.rows[2]["name"]' => 'x',
+            $fiber.'.rows["1"]["name"]' => 'x',
+            self::bindKey($html, 'min') => 'abc',
+            self::bindKey($html, 'ids') => ['x'],
+            $status => ['closed'],
+        ]);
+
+        $profile = self::profileState($data['state']);
+        self::assertSame(['status' => 'open', 'min' => 0, 'ids' => [1, 2]], $profile['filters']);
+        self::assertSame([['name' => 'Ada'], ['name' => 'Eve']], $profile['rows']);
+    }
+
+    public function testABoundPathNeedsTheKeyInTheValue(): void
+    {
+        $response = $this->request('GET', '/bind-missing-key');
+
+        // With strict_variables, Twig fails first.
+        self::assertSame(500, $response->getStatusCode());
+        self::assertMatchesRegularExpression('/has no key \[(&quot;|")status(&quot;|")\]|Key (&quot;|")status(&quot;|") does not exist/', (string) $response->getContent());
+    }
+
     public function testAnEventWithAHandlerOfNullNeedsBoundValues(): void
     {
         [, $state, $signature] = $this->openBind();
@@ -211,7 +302,7 @@ final class BindTest extends TestCase
     {
         self::assertSame(1, preg_match('/<(?:input|select|textarea)[^>]*name="'.preg_quote($name, '/').'"[^>]*data-phem-bind="([^"]+)"/', $html, $m), $name);
 
-        return $m[1];
+        return html_entity_decode($m[1]);
     }
 
     /** @return array<string, mixed> the state of the Profile component */

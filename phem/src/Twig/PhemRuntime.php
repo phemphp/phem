@@ -90,7 +90,8 @@ final class PhemRuntime implements RuntimeExtensionInterface
      * `phem:bind={{ query }}` on a form field: the current value of the #[State] property, and
      * `data-phem-bind="<fiber>.<property>"`. The browser sends the new value with the next event
      * (see BoundValues). phemc gives the tag, the `type` and the `value` attributes of the field,
-     * and the component of the markup (`this`).
+     * and the component of the markup (`this`). For a path (`phem:bind={{ filters.status }}`),
+     * phemc gives the property and the keys: `['filters', 'status']`.
      *
      *  - a text input: `value="…"`;
      *  - a checkbox: `checked` when the value is true, or when a list has the `value` of the
@@ -98,8 +99,10 @@ final class PhemRuntime implements RuntimeExtensionInterface
      *  - a radio button: `checked` when the value is its `value`;
      *  - a `<textarea>` and a `<select>`: only the attribute. phemc writes the text of the
      *    `<textarea>`, and the `selected` of each `<option>` (see selected()).
+     *
+     * @param string|list<mixed> $property
      */
-    public function bind(string $property, mixed $value, string $tag, mixed $type = null, mixed $option = null, ?object $owner = null): Markup
+    public function bind(string|array $property, mixed $value, string $tag, mixed $type = null, mixed $option = null, ?object $owner = null): Markup
     {
         $key = $this->renderer->addBind($property, $owner);
         $out = null !== $key ? [\sprintf('data-phem-bind="%s"', Attributes::e($key))] : [];

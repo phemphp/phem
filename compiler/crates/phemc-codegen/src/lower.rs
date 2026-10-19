@@ -347,7 +347,8 @@ impl<'a> Lowerer<'a> {
     }
 
     /// `phem:bind={{ query }}` on an `<input>`, a `<textarea>` or a `<select>`: the name of a
-    /// #[State] property of the class, with a type that takes the value of the field (E033).
+    /// #[State] property of the class, with a type that takes the value of the field (E033). Or a
+    /// path in an array property: `filters.status`, `rows[key].name`.
     fn bind(&mut self, e: &Element) -> Option<BoundField> {
         let mut found = None;
         let mut live = None;
@@ -375,12 +376,11 @@ impl<'a> Lowerer<'a> {
             return None;
         };
         let code = self.expr_code(x);
-        let is_name = code.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_') && code.chars().all(|c| c.is_ascii_alphanumeric() || c == '_');
-        if !is_name {
-            self.error(codes::INVALID_BIND, "`phem:bind` takes the name of a #[State] property, not an expression", x.span).help =
-                Some(format!("{help}. A nested path (`filters.status`) is not supported yet"));
+        let Some((root, path)) = bind_path(&code) else {
+            self.error(codes::INVALID_BIND, "`phem:bind` takes the name of a #[State] property, or a path in it, not an expression", x.span).help =
+                Some(format!("{help}, or a path in an array property: `phem:bind={{{{ filters.status }}}}`, `phem:bind={{{{ rows[key].name }}}}`"));
             return None;
-        }
+        };
         let tag = e.name.to_ascii_lowercase();
         if !matches!(tag.as_str(), "input" | "textarea" | "select") {
             self.error(codes::INVALID_BIND, format!("`phem:bind` is for a form field, not a `<{}>`", e.name), span).help =
@@ -392,20 +392,26 @@ impl<'a> Lowerer<'a> {
                 Some("bind a #[State] property of a class component, or pass `value` and `onChange` as props".into());
             return None;
         };
-        if has_variable(self.scope_text, &code) {
-            self.error(codes::INVALID_BIND, format!("`{code}` is a local variable, not a #[State] property"), x.span).help =
-                Some(format!("rename the variable `${code}`: in markup it hides the property"));
+        if has_variable(self.scope_text, &root) {
+            self.error(codes::INVALID_BIND, format!("`{root}` is a local variable, not a #[State] property"), x.span).help =
+                Some(format!("rename the variable `${root}`: in markup it hides the property"));
             return None;
         }
-        let prop = class.all_props().find(|p| p.name == code && !p.is_static);
+        let prop = class.all_props().find(|p| p.name == root && !p.is_static);
         match prop {
             Some(p) if !p.is_state => {
-                self.error(codes::INVALID_BIND, format!("`{code}` is not a #[State] property"), x.span).help =
-                    Some(format!("add `#[State]` to `${code}`: the browser keeps only the state"));
+                self.error(codes::INVALID_BIND, format!("`{root}` is not a #[State] property"), x.span).help =
+                    Some(format!("add `#[State]` to `${root}`: the browser keeps only the state"));
+                return None;
+            }
+            Some(p) if !path.is_empty() && !FieldValue::List.accepts(&p.ty) => {
+                self.error(codes::INVALID_BIND, format!("a path needs an array property, but `${root}` is `{}`", p.ty.trim()), x.span).help =
+                    Some(format!("bind the property itself (`phem:bind={{{{ {root} }}}}`), or make it an `array`"));
                 return None;
             }
             None if !class.open => {
-                self.error(codes::INVALID_BIND, format!("`{}` has no property `{code}`", class.name), x.span).help = Some(format!("declare `#[State] public string ${code} = '';`"));
+                let decl = if path.is_empty() { format!("#[State] public string ${root} = '';") } else { format!("#[State] public array ${root} = [];") };
+                self.error(codes::INVALID_BIND, format!("`{}` has no property `{root}`", class.name), x.span).help = Some(format!("declare `{decl}`"));
                 return None;
             }
             _ => {}
@@ -449,7 +455,8 @@ impl<'a> Lowerer<'a> {
         if tag == "textarea" && e.children.iter().any(|n| !n.is_blank()) {
             self.error(codes::INVALID_BIND, "a bound `<textarea>` has no text: `phem:bind` sets it", e.name_span).help = Some("remove the text of the `<textarea>`".into());
         }
-        if let (Some(kind), Some(p)) = (kind, prop) {
+        // A value in an array has no declared type: the server converts to the type of the current value.
+        if let (Some(kind), Some(p), true) = (kind, prop, path.is_empty()) {
             if !kind.accepts(&p.ty) {
                 self.error(codes::INVALID_BIND, format!("this field gives {}, but `${code}` is `{}`", kind.describe(), p.ty.trim()), x.span).help = Some(match kind {
                     FieldValue::Scalar => "use a `string`, `int`, `float` or backed enum property".into(),
@@ -471,10 +478,22 @@ impl<'a> Lowerer<'a> {
             Some((_, AttrValue::Quoted { parts, .. })) if tag == "input" => self.quoted_expr(parts, span),
             _ => "null".to_string(),
         };
+        // The property, or a list for a path: `['rows', (key), 'name']`. The render evaluates the keys.
+        let target = if path.is_empty() {
+            php_str(&root)
+        } else {
+            let mut items = vec![php_str(&root)];
+            items.extend(path.iter().map(|s| match s {
+                PathSegment::Name(n) if n.starts_with(|c: char| c.is_ascii_digit()) => n.clone(),
+                PathSegment::Name(n) => php_str(n),
+                PathSegment::Key(k) => format!("({k})"),
+            }));
+            format!("[{}]", items.join(", "))
+        };
         Some(BoundField {
             // `this`: the component of the property. The markup can render in the slot of another
             // component (`<Document>`), so the current component is not always the owner.
-            attrs: format!(" {{{{ phem_bind({}, {code}, {}, {ty}, {option}, this) }}}}", php_str(&code), php_str(&tag)),
+            attrs: format!(" {{{{ phem_bind({target}, {code}, {}, {ty}, {option}, this) }}}}", php_str(&tag)),
             text: (tag == "textarea").then(|| format!("{{{{ phem_bind_value({code}) }}}}")),
             select: (tag == "select").then(|| code.clone()),
         })
@@ -820,6 +839,84 @@ impl FieldValue {
                 }
         })
     }
+}
+
+/// A segment of a bound path (see `bind_path()`).
+enum PathSegment {
+    /// A static key: `.status`, or `.0` for an index.
+    Name(String),
+    /// A key that the render evaluates: `[key]`, with the Twig expression in it.
+    Key(String),
+}
+
+/// The property and the segments of a bound path: `query`, `filters.status`, `rows[key].name`.
+/// None for another expression.
+fn bind_path(code: &str) -> Option<(String, Vec<PathSegment>)> {
+    let is_word = |c: char| c.is_ascii_alphanumeric() || c == '_';
+    let s = code.trim();
+    let end = s.find(|c: char| !is_word(c)).unwrap_or(s.len());
+    let root = &s[..end];
+    if !root.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_') {
+        return None;
+    }
+    let mut path = Vec::new();
+    let mut rest = &s[end..];
+    while let Some(c) = rest.chars().next() {
+        if c == '.' {
+            let r = &rest[1..];
+            let end = r.find(|c: char| !is_word(c)).unwrap_or(r.len());
+            let name = &r[..end];
+            let index = !name.is_empty() && name.chars().all(|c| c.is_ascii_digit()) && (name == "0" || !name.starts_with('0'));
+            let valid = index || name.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_');
+            if !valid {
+                return None;
+            }
+            path.push(PathSegment::Name(name.to_string()));
+            rest = &r[end..];
+        } else if c == '[' {
+            let close = closing_bracket(rest)?;
+            let key = rest[1..close].trim();
+            if key.is_empty() {
+                return None;
+            }
+            path.push(PathSegment::Key(key.to_string()));
+            rest = &rest[close + 1..];
+        } else {
+            return None;
+        }
+    }
+    Some((root.to_string(), path))
+}
+
+/// The index of the `]` that closes the `[` at the start of `s`, after the nested brackets and the strings.
+fn closing_bracket(s: &str) -> Option<usize> {
+    let mut depth = 0usize;
+    let mut quote = None;
+    let mut escaped = false;
+    for (i, c) in s.char_indices() {
+        if let Some(q) = quote {
+            if escaped {
+                escaped = false;
+            } else if c == '\\' {
+                escaped = true;
+            } else if c == q {
+                quote = None;
+            }
+            continue;
+        }
+        match c {
+            '\'' | '"' => quote = Some(c),
+            '[' | '(' | '{' => depth += 1,
+            ']' | ')' | '}' => {
+                depth = depth.checked_sub(1)?;
+                if depth == 0 {
+                    return (c == ']').then_some(i);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 /// `phem:debounce={{ 300 }}` and `phem:throttle={{ 300 }}`: the browser waits before it sends the

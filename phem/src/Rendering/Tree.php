@@ -35,7 +35,7 @@ final class Tree
     private array $handlers = [];
     /** @var array<string, int> handler id => the number of handlers with this id */
     private array $handlerCounts = [];
-    /** @var array<string, true> the bound properties of the pass: "<fiber>.<property>" */
+    /** @var array<string, array{string, string, list<int|string>}> the bound properties of the pass: key => [fiber id, property, path] */
     private array $binds = [];
     private ?string $rootToken = null;
 
@@ -128,21 +128,32 @@ final class Tree
 
     /**
      * Registers a bound #[State] property of a fiber (`phem:bind={{ query }}`), the current fiber
-     * by default. Its key is "<fiber>.<property>": the browser sends the new value with this key
-     * (see BoundValues).
+     * by default, or a path in it (`phem:bind={{ filters.status }}`). Its key is
+     * "<fiber>.<property>", with a JSON key in brackets for each segment of the path
+     * (`<fiber>.rows[3]["name"]`): the browser sends the new value with this key (see BoundValues).
+     *
+     * @param list<int|string> $path
      */
-    public function addBind(string $property, ?Fiber $owner = null): string
+    public function addBind(string $property, ?Fiber $owner = null, array $path = []): string
     {
-        $key = (($owner ?? $this->top())->id ?? 'x').'.'.$property;
-        $this->binds[$key] = true;
+        $id = ($owner ?? $this->top())->id ?? 'x';
+        $key = $id.'.'.$property;
+        foreach ($path as $segment) {
+            $key .= '['.json_encode($segment, \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR).']';
+        }
+        $this->binds[$key] = [$id, $property, $path];
 
         return $key;
     }
 
-    /** Whether the last pass binds this key ("<fiber>.<property>"). */
-    public function isBound(string $key): bool
+    /**
+     * The fiber id, the property and the path of a key that the last pass binds, or null.
+     *
+     * @return array{string, string, list<int|string>}|null
+     */
+    public function bound(string $key): ?array
     {
-        return isset($this->binds[$key]);
+        return $this->binds[$key] ?? null;
     }
 
     /** The fiber of a component instance in the last pass. */

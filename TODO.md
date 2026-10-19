@@ -108,7 +108,9 @@ example uses it. See [docs/phpm-syntax.md](docs/phpm-syntax.md#bound-fields).
 
 Not done yet:
 
-- [ ] Nested paths (`phem:bind={{ filters.status }}`).
+- [x] Nested paths (`phem:bind={{ filters.status }}`, `phem:bind={{ rows[i].name }}`) in an
+      `array` property. The server sets only a key that the array has, with the type of its
+      current value (no PHPDoc). phemc checks that the property is an array (E033).
 - [ ] Bind a property of a parent component from a child component.
 
 - **Best peer:** LW `wire:model` (deferred by default since v3: the value goes with the next

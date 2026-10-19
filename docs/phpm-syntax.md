@@ -550,9 +550,32 @@ backed enum, and an empty field to `null` for a nullable `int`, `float` or enum.
 type does not take (`"abc"` for an `int`) is ignored: the property keeps its value, and the field
 shows the value of the server again.
 
+A path binds a value in an `array` property. A segment is a name (`.status`), an index (`.0`), or
+a key that the render evaluates (`[key]`), for example the key of a loop:
+
+```php
+#[State] public array $filters = ['status' => 'open', 'min' => 0, 'tags' => []];
+#[State] public array $rows = [['name' => 'Ada'], ['name' => 'Eve']];
+```
+
+```php
+<input phem:bind={{ filters.status }} />
+<input type="number" phem:bind={{ filters['min'] }} />
+{% for i, row in rows %}
+    <input phem:bind={{ rows[i].name }} />
+{% endfor %}
+```
+
+A value in an array has no declared type, so the server converts the text of the field to the
+type of the current value: `"5"` to `5` when `filters.min` is an int, and a list of ints stays a
+list of ints. A `null` value takes the text as it is, so give each key a value of the correct type.
+The server sets only a key that the array has: the browser cannot add a key. The value of the
+property must have the key of each bound field, or the render fails. Write the path with no
+spaces, and with no filter or function call.
+
 The values of the fields are not signed: the browser can send any value. The server accepts a
-value only for a property that the page binds, and only when it fits the type. Keep the same
-rules as for all the state: no security decision in a bound property.
+value only for a property (or a path) that the page binds, and only when it fits the type. Keep
+the same rules as for all the state: no security decision in a bound property.
 
 phemc writes `value` (or `checked`, or the `selected` of the options), so these attributes are an
 error on a bound field. Each `<option>` of a bound `<select>` needs a `value`, or a static text.
