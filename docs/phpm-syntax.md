@@ -677,6 +677,27 @@ An event is a `POST` request, so `methods: 'POST'` counts the events and not the
 The default key is the client IP, the method and the path: each page has its own count. The
 handler id is in the JSON body, so the default key counts all the handlers of the page together.
 
+To limit one handler, put the attribute on its method. The other handlers have no limit:
+
+```php
+#[Page('/search')]
+final class SearchPage
+{
+    #[RateLimit('phem_search')]
+    public function search(Event $e): void
+    {
+        // ...
+    }
+}
+```
+
+The default key of a handler is the client IP, the method, the path, and the class and the method
+of the handler: each handler has its own count. The `key` and `tokens` options work as for a
+controller. A `Closure` key gets `([], $request, $component)`. An `Expression` key gets `request`,
+`args` (empty) and `this` (the component), and it needs `symfony/expression-language`. Handlers
+with the same key share one count. A closure in `render()` has no method, so it cannot have a
+limit of its own. The attribute works on the handlers of all class components, not only pages.
+
 Over the limit, the server answers `429 Too Many Requests` with a `Retry-After` header, and it
 does not run the handler. The page does not change. The browser dispatches a
 `phem:rate-limited` event on the root of the component of the handler. Its detail has the

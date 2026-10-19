@@ -65,6 +65,30 @@ final class EventAccessTest extends TestCase
         self::assertSame(200, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave')->getStatusCode(), 'the limit is for each page (the key has the path)');
     }
 
+    public function testRateLimitOfAHandlerAppliesToItsEventsOnly(): void
+    {
+        if (!class_exists(RateLimit::class)) {
+            self::markTestSkipped('The #[RateLimit] attribute needs Symfony 8.1.');
+        }
+        // The limit of the fixture app is 2 events in a minute.
+        self::assertSame(200, $this->click('/limited-handler', 'App\\Pages\\LimitedHandlerPage', 'search')->getStatusCode());
+        self::assertSame(200, $this->click('/limited-handler', 'App\\Pages\\LimitedHandlerPage', 'search')->getStatusCode());
+
+        $response = $this->click('/limited-handler', 'App\\Pages\\LimitedHandlerPage', 'search');
+        self::assertSame(429, $response->getStatusCode(), 'the handler does not run');
+        self::assertMatchesRegularExpression('/^\d+$/', (string) $response->headers->get('Retry-After'));
+
+        for ($i = 0; $i < 3; ++$i) {
+            self::assertSame(200, $this->click('/limited-handler', 'App\\Pages\\LimitedHandlerPage', 'increment')->getStatusCode(), 'a handler without the attribute has no limit');
+        }
+        self::assertSame(200, $this->click('/limited-handler', 'App\\Pages\\LimitedHandlerPage', 'heavy')->getStatusCode(), 'the key has the method: each handler has its own count');
+        self::assertSame(429, $this->click('/limited-handler', 'App\\Pages\\LimitedHandlerPage', 'heavy')->getStatusCode(), 'with `tokens: 2`, one event uses all the limit');
+
+        self::assertSame(200, $this->click('/limited-handler', 'App\\Pages\\LimitedHandlerPage', 'like')->getStatusCode());
+        self::assertSame(200, $this->click('/limited-handler', 'App\\Pages\\LimitedHandlerPage', 'unlike')->getStatusCode());
+        self::assertSame(429, $this->click('/limited-handler', 'App\\Pages\\LimitedHandlerPage', 'like')->getStatusCode(), 'an Expression key and a Closure key with the same value share one count');
+    }
+
     public function testEventFromAnotherSiteIsRejected(): void
     {
         self::assertSame(200, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave')->getStatusCode());

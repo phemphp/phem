@@ -16,6 +16,7 @@ namespace Phem;
 use Doctrine\ORM\EntityManagerInterface;
 use Phem\DependencyInjection\ComponentPass;
 use Phem\Handler\HandlerMiddleware;
+use Phem\Handler\RateLimitMiddleware;
 use Phem\Manifest\Manifest;
 use Phem\Path\PathValueConverter;
 use Symfony\Component\AssetMapper\AssetMapperInterface;
@@ -24,7 +25,12 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use Symfony\Component\HttpKernel\Attribute\RateLimit;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
+
+use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_locator;
 
 /**
  * Integrates `.phpm` components in a Symfony application.
@@ -134,6 +140,14 @@ final class PhemBundle extends AbstractBundle
         }
         $container->services()->get('phem.handler_middleware.transactional')
             ->arg(1, $transactional);
+
+        if (class_exists(RateLimit::class) && interface_exists(RateLimiterFactoryInterface::class)) {
+            // The #[RateLimit] attribute of Symfony 8.1 on a handler method (the limiters of
+            // framework.rate_limiter). Before the transaction, so a limited event does not open one.
+            $container->services()->set('phem.handler_middleware.rate_limit', RateLimitMiddleware::class)
+                ->args([tagged_locator('rate_limiter', 'name'), service('controller.expression_language')->nullOnInvalid()])
+                ->tag('phem.handler_middleware', ['priority' => 100]);
+        }
     }
 
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void

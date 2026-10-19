@@ -20,6 +20,7 @@ use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Bundle\TwigBundle\TwigBundle;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
 use Symfony\Component\HttpKernel\Kernel;
 use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
@@ -77,6 +78,9 @@ final class TestKernel extends Kernel
         $container->extension('twig', ['strict_variables' => true]);
         $container->services()
             ->set(InMemoryStorage::class)
+            // FrameworkBundle removes this service when symfony/expression-language is a dev package of the root.
+            // The Expression key of a #[RateLimit] in access.phpm needs it.
+            ->set('controller.expression_language', ExpressionLanguage::class)
             ->set(Limits::class)->autowire()
             ->set(Announcer::class)->autowire()
             ->set(AccessListener::class)
