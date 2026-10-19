@@ -366,8 +366,10 @@ Not done yet:
 
 LC had these issues in 2026. Phem has a similar design, so check each one and add tests:
 
-- [ ] CSRF bypass with the `Accept` header. Phem checks `Sec-Fetch-Site` / `Origin` and requires
-      JSON: confirm that no other content type or header combination skips the check.
+- [x] CSRF bypass with the `Accept` header. Phem checks `Sec-Fetch-Site` / `Origin` and requires
+      JSON from the `Content-Type` header, not from `Accept`. A request without the
+      `X-Phem-Event` header is a page request, and the handler does not run. Tests cover the
+      other content types, a content type parameter, `Sec-Fetch-Site: none`, and another port.
 - [x] Denial of service with unbounded batch requests. Phem has one event for each request.
       The body has a maximum size (`phem.max_event_size`, 1 MiB by default, 413 over it), and
       the state is in the body. The JSON of the body has a maximum depth of 8 (400 over it).

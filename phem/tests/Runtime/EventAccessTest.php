@@ -81,6 +81,33 @@ final class EventAccessTest extends TestCase
         self::assertSame(415, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['CONTENT_TYPE' => 'text/plain'])->getStatusCode());
     }
 
+    /**
+     * Live Components had a CSRF bypass in 2026: the check read the `Accept` header, which a
+     * request of another site can set. Phem reads the `Content-Type` header, and a request of
+     * another site can send only text/plain, a URL-encoded form or multipart/form-data without
+     * a CORS preflight.
+     */
+    public function testNoOtherHeaderOrContentTypeSkipsTheCsrfChecks(): void
+    {
+        self::assertSame(200, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['CONTENT_TYPE' => 'application/json; charset=utf-8'])->getStatusCode());
+
+        self::assertSame(415, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['CONTENT_TYPE' => 'text/plain', 'HTTP_ACCEPT' => 'application/json'])->getStatusCode(), 'the Accept header is not the content type');
+        self::assertSame(415, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['CONTENT_TYPE' => 'text/plain; application/json'])->getStatusCode(), 'a parameter is not the content type');
+        self::assertSame(415, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['CONTENT_TYPE' => 'application/x-www-form-urlencoded'])->getStatusCode());
+        self::assertSame(415, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['CONTENT_TYPE' => 'multipart/form-data; boundary=x'])->getStatusCode());
+        self::assertSame(415, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['CONTENT_TYPE' => ''])->getStatusCode(), 'no content type');
+
+        self::assertSame(403, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => 'none'])->getStatusCode(), 'a URL that the user typed, or a bookmark');
+        self::assertSame(403, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => 'cross-site', 'HTTP_ORIGIN' => 'http://localhost'])->getStatusCode(), 'Sec-Fetch-Site comes before Origin');
+        self::assertSame(403, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => null, 'HTTP_ORIGIN' => 'http://localhost:8080'])->getStatusCode(), 'another port');
+        self::assertSame(403, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => null, 'HTTP_ORIGIN' => 'http://localhost.evil.example'])->getStatusCode(), 'a host that starts with the host of the page');
+
+        // A form of another site cannot send the X-Phem-Event header: the request is a page request.
+        $response = $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['HTTP_X_PHEM_EVENT' => null, 'HTTP_SEC_FETCH_SITE' => 'cross-site', 'CONTENT_TYPE' => 'application/x-www-form-urlencoded']);
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringNotContainsString('redirect', (string) $response->getContent(), 'the handler does not run');
+    }
+
     public function testEventHasAMaximumSize(): void
     {
         // The fixture app has the default limit (1 MiB).
