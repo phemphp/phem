@@ -40,6 +40,12 @@
 // A `Retry-After` header makes the wait longer. While the browser is offline, the next try waits
 // for the `online` event. The loading state and the lock of the form stay until the last answer.
 // When the last try fails with a network error, `phem:error` has a `status` of null.
+//
+// `data-phem-transition` on an element opts in to view transitions: when the component of the
+// handler is in that element (or is that element), the morph runs in
+// `document.startViewTransition()`. The value of the attribute is the type of the transition, for
+// CSS `:active-view-transition-type(fade)`. A browser without the View Transitions API, or with
+// `prefers-reduced-motion: reduce`, morphs with no transition.
 
 import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
@@ -258,14 +264,50 @@ export default class PhemController extends Controller {
     }
     this.stateValue = data.state
     this.signatureValue = data.signature
-    if (data.streams) Turbo.renderStreamMessage(data.streams)
+    const rendered = data.streams ? this.renderStreams(data.streams, handler) : afterStreams()
     if (data.events?.length) {
       // After the morph, so a listener sees the new page.
-      afterStreams().then(() => {
+      rendered.then(() => {
         const target = this.componentRoot(handler)
         for (const { name, detail } of data.events) target.dispatchEvent(new CustomEvent(`phem:${name}`, { detail, bubbles: true }))
       })
     }
+  }
+
+  // Renders the Turbo Streams of a response, in a view transition when the component of the
+  // handler opts in. Resolves after the morph.
+  renderStreams(streams, handler) {
+    const el = this.componentRoot(handler).closest("[data-phem-transition]")
+    if (!el || !this.element.contains(el) || !document.startViewTransition || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      Turbo.renderStreamMessage(streams)
+      return afterStreams()
+    }
+    // Turbo renders each stream after the next repaint, but the page must not change before the
+    // transition captures it. Take the render of each stream, and run them all in the update of
+    // one transition.
+    const renders = []
+    let transition = null
+    const take = (event) => {
+      const { newStream, render } = event.detail
+      renders.push(() => render(newStream))
+      event.detail.render = () => transition.updateCallbackDone
+    }
+    document.addEventListener("turbo:before-stream-render", take)
+    try {
+      Turbo.renderStreamMessage(streams)
+    } finally {
+      document.removeEventListener("turbo:before-stream-render", take)
+    }
+    const update = () => Promise.all(renders.map((render) => render()))
+    const type = el.dataset.phemTransition
+    const types = type && type !== "true" ? type.split(/\s+/) : []
+    try {
+      transition = document.startViewTransition({ update, types })
+    } catch {
+      // A browser without transition types takes only the update function.
+      transition = document.startViewTransition(update)
+    }
+    return transition.updateCallbackDone
   }
 
   // Posts the event. Sends it again after a network error, a 502 or a 503, with a longer wait

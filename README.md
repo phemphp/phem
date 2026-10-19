@@ -165,6 +165,8 @@ See [editors/vscode/README.md](editors/vscode/README.md).
    `phem:error` listener can show its own message (see [Failed events](docs/phpm-syntax.md#failed-events)).
    After a network error, a 502 or a 503, the browser sends the event again with a longer wait
    each time (see [Retries](docs/phpm-syntax.md#retries)).
+   Add `data-phem-transition` to an element to run the morph of its components in a view
+   transition (see [Transitions](docs/phpm-syntax.md#transitions)).
 5. **Server.** [FrankenPHP](https://frankenphp.dev) runs `public/index.php` in worker mode
    (see `examples/quickstart/Caddyfile`). Each worker boots the Symfony kernel once and keeps
    it in memory for many requests. Symfony Runtime gives each request to the kernel, which

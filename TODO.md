@@ -147,11 +147,16 @@ Some changes do not need the server first: open a menu, hide a row, toggle a cla
 - **Proposal:** a `phem-dirty` class on inputs with a `bind` value that the server did not
   get yet. An optional `beforeunload` guard for a component with dirty values.
 
-### [ ] Transitions — P3
+### [x] Transitions — P3
 
 - **Best peer:** LV `JS.transition`. LW `wire:transition`, which uses the View Transitions API.
 - **Proposal:** use `document.startViewTransition()` around the morph when the browser has it.
   Opt in for each component or element (`transition={{ 'fade' }}`).
+
+Done: `data-phem-transition={{ 'fade' }}` on an element runs the morph of the events of its
+components in one view transition. The value is the transition type, for CSS
+`:active-view-transition-type(fade)`. No transition when the browser does not have the API, or
+with `prefers-reduced-motion: reduce`. See [docs/phpm-syntax.md](docs/phpm-syntax.md#transitions).
 
 ## 3. Rendering and performance
 

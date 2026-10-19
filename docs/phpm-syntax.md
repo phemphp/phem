@@ -498,6 +498,30 @@ A network error or a `502` can come after the handler ran and its transaction co
 handler runs two times. Make a handler safe to run again (for example, check that the row does not
 exist yet), or set `data-phem-retries-value={{ 0 }}` to turn the retries off.
 
+### Transitions
+
+Add `data-phem-transition` to an element to animate the changes of its components with the
+[View Transitions API](https://developer.mozilla.org/docs/Web/API/View_Transition_API). When the
+component of the handler is in that element (or is that element), the browser runs the morph in
+`document.startViewTransition()`. The default animation is a cross-fade of the page. On the
+`<Root>` element, all events of the page have a transition.
+
+The value of the attribute is the type of the transition. Use it in CSS with
+`:active-view-transition-type()`:
+
+```html
+<ul data-phem-transition={{ 'slide' }}>
+```
+
+```css
+html:active-view-transition-type(slide)::view-transition-old(root) { animation: slide-out .2s ease-in; }
+html:active-view-transition-type(slide)::view-transition-new(root) { animation: slide-in .2s ease-out; }
+```
+
+Give an element its own `view-transition-name` in CSS to animate it alone (for example, a row
+that moves). A browser without the View Transitions API, or with `prefers-reduced-motion: reduce`,
+changes the page with no transition.
+
 ## 7. State: class components
 
 A component with state is a class with the `#[Component]` attribute and a `render()` method.
