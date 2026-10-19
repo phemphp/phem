@@ -37,6 +37,23 @@ final class UnsafeTest extends TestCase
         self::assertStringContainsString('<a onclick="track()" id="spread" title="ok">link</a>', $html, 'the static onclick stays; the invalid name and the onclick of the data are not rendered');
     }
 
+    public function testDataInTheTagOfAChildComponentIsText(): void
+    {
+        $html = (string) $this->request('GET', '/unsafe')->getContent();
+        self::assertSame(1, preg_match('/<div id="children">.*?<\/div>\s*<\/main>/s', $html, $m));
+        $children = $m[0];
+        $xss = '&quot;&gt;&lt;script&gt;alert(3)&lt;/script&gt;';
+
+        self::assertStringNotContainsString('<script', $children);
+        self::assertStringContainsString('<h2>'.$xss.'</h2>', $children, 'a prop of a template component');
+        self::assertStringContainsString('<p>'.$xss.'</p>', $children, 'the children slot');
+        self::assertStringContainsString('<footer><span class="tag">'.$xss.'</span></footer>', $children, 'a named slot');
+        self::assertStringContainsString('<span data-phem-key="'.$xss.'" class="badge badge-'.$xss.'">', $children, 'the key and a prop in an attribute');
+        self::assertStringContainsString('IT&#039;S \ #{XSS} &quot;&gt;&lt;SCRIPT&gt;ALERT(3)&lt;/SCRIPT&gt;</span>', $children, 'a quoted prop: the literal is not a Twig string with interpolation');
+        self::assertStringContainsString($xss.' 0 times '.$xss, $children, 'a prop and the children of a class component');
+        self::assertSame(1, preg_match('/<phem-c id="phem[0-9a-f]{12}"><button data-phem-on-click="phem[0-9a-f]{12}\.[0-9a-f]+" data-count="0">/', $children), 'the key of a class component is a hash in the fiber id and the handler id');
+    }
+
     public function testHandlerRedirectsOnlyToARelativeOrAnHttpUrl(): void
     {
         self::assertSame(['redirect' => '/about'], $this->go('/about')['data']);

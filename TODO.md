@@ -363,7 +363,7 @@ Not done yet:
 
 ## 9. Security
 
-### [ ] Audit against the Live Components advisories of 2026 — P1
+### [x] Audit against the Live Components advisories of 2026 — P1
 
 LC had these issues in 2026. Phem has a similar design, so check each one and add tests:
 
@@ -374,8 +374,10 @@ LC had these issues in 2026. Phem has a similar design, so check each one and ad
 - [x] Denial of service with unbounded batch requests. Phem has one event for each request.
       The body has a maximum size (`phem.max_event_size`, 1 MiB by default, 413 over it), and
       the state is in the body. The JSON of the body has a maximum depth of 8 (400 over it).
-- [ ] XSS with child component tags. Check the escaping of props and slots that go into
-      `{% component %}` tags and into data attributes.
+- [x] XSS with child component tags. phemc writes a prop as a Twig expression, never as data
+      in the `{% component %}` tag, and a quoted literal is a single-quoted Twig string with no
+      interpolation. Props, slots and keys are escaped in text and in attributes, and the key
+      of a class component is a hash in the fiber id. Tests cover template and class components.
 
 ### [x] Rate limit for events — P3
 
