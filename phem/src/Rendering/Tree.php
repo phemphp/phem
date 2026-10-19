@@ -107,6 +107,15 @@ final class Tree
         return $id;
     }
 
+    /**
+     * The scope of a handler for `phem:loading`: the current fiber and the fingerprint of the
+     * handler, with no number. It does not register the handler.
+     */
+    public function handlerScope(string $fingerprint): string
+    {
+        return ($this->top()->id ?? 'x').'.'.$fingerprint;
+    }
+
     public function handler(string $id): ?\Closure
     {
         return $this->handlers[$id] ?? null;

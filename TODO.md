@@ -111,7 +111,7 @@ The browser does not send the files of a form today (`formFields()` drops them).
 
 ## 2. Feedback while a request runs
 
-### [ ] Loading states — P1
+### [x] Loading states — P1
 
 The user does not see that an event runs.
 
@@ -127,7 +127,8 @@ Not done yet:
 
 - [x] Disable a submit button and its form inputs during a submit (as LV does), with an opt-out:
       `data-phem-disable={{ false }}` on the form.
-- [ ] Custom markup: `<Spinner phem:loading={{ save }} />` shows only while `save` runs.
+- [x] Custom markup: `<span phem:loading={{ save }}><Spinner /></span>` shows only while `save`
+      runs. See [docs/phpm-syntax.md](docs/phpm-syntax.md#loading-states).
 
 ### [ ] Optimistic UI and client commands — P2
 

@@ -195,19 +195,20 @@ impl<'a> Lowerer<'a> {
                 AttrKind::Plain { name, .. } if is_inline_script(name) => self.dom_attr(a, out),
                 AttrKind::Plain { name, name_span, value } => {
                     let event = event_name(name);
-                    let is_event = event.is_some();
+                    // A handler, or `phem:loading`: both take a function.
+                    let takes_fn = event.is_some() || name == LOADING;
                     if let Some(event) = &event {
                         self.check_event(name, event, *name_span);
                     }
                     let v = match value {
                         AttrValue::Expr(x) => {
                             let c = self.expr_code(x);
-                            if is_event {
+                            if takes_fn {
                                 self.check_handler(name, &c, x.span);
                             }
                             format!("({c})")
                         }
-                        _ if is_event => {
+                        _ if takes_fn => {
                             self.handler_not_function(name, *name_span);
                             continue;
                         }
@@ -267,6 +268,17 @@ impl<'a> Lowerer<'a> {
                         AttrValue::None => "true".into(),
                     };
                     out.push_str(&format!("{ws}{{{{ phem_key({k}) }}}}"));
+                    return;
+                }
+                if name == LOADING {
+                    match value {
+                        AttrValue::Expr(x) => {
+                            let c = self.expr_code(x);
+                            self.check_handler(name, &c, x.span);
+                            out.push_str(&format!("{ws}{{{{ phem_loading({c}) }}}}"));
+                        }
+                        _ => self.handler_not_function(name, *name_span),
+                    }
                     return;
                 }
                 if let Some(event) = event_name(name) {
@@ -466,6 +478,9 @@ impl<'a> Lowerer<'a> {
         Err(unsupported())
     }
 }
+
+/// `phem:loading={{ save }}`: the element shows only while a `save` event runs.
+const LOADING: &str = "phem:loading";
 
 /// The events of `event_name()` that the `phem` client listens to. The runtime makes `focus`
 /// and `blur` the `focusin` and `focusout` events.

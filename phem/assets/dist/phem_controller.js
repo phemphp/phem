@@ -14,6 +14,10 @@
 // root element) get `aria-busy="true"` and the `phem-loading` class. They show after a delay
 // (`data-phem-loading-delay-value`, 200 ms by default), so a fast response does not flicker.
 //
+// `phem:loading={{ save }}` in markup renders `data-phem-loading="<fiber>.<fingerprint>" hidden`.
+// The element shows (no `hidden`) only while a `save` event of that component runs, with the same
+// delay. A child component that gets `save` as a prop can send the event or show the element.
+//
 // While a submit event runs, the form is locked at once: its submit buttons and its other
 // controls are disabled, and its text fields are read-only (so they keep the focus). A second
 // submit of a locked form is ignored. The lock ends when the response arrives, before the morph,
@@ -100,6 +104,8 @@ export default class PhemController extends Controller {
     this.queue = Promise.resolve()
     // element => the number of its events that show the loading state
     this.loading = new Map()
+    // The events that show the loading state now: {handler, el}
+    this.running = new Set()
     // form => (control => the property that the lock set), for each locked form
     this.locked = new Map()
     // The morph of an earlier event sets the attributes of the server render: show the loading
@@ -108,6 +114,7 @@ export default class PhemController extends Controller {
     this.keepLoading = (event) => {
       const t = event.target
       if (this.loading.has(t)) showLoading(t, true)
+      if (t.hasAttribute("data-phem-loading")) t.hidden = !this.isLoading(t)
       if (t === this.element) this.showOffline()
       for (const controls of this.locked.values()) {
         const prop = controls.get(t)
@@ -145,7 +152,7 @@ export default class PhemController extends Controller {
       key: event.key ?? null,
       form: el instanceof HTMLFormElement ? formFields(el, event.submitter) : null,
     }
-    const done = this.startLoading(el)
+    const done = this.startLoading(el, handler)
     // After formFields(): a disabled control is not in the form data.
     const unlock = event.type === "submit" ? this.lockForm(el) : () => {}
     this.queue = this.queue
@@ -174,17 +181,44 @@ export default class PhemController extends Controller {
   }
 
   // Shows the loading state of an event after the delay. Returns the function that ends it.
-  startLoading(el) {
+  startLoading(el, handler) {
     const targets = new Set([el, el.closest("phem-c") ?? this.element])
+    const event = { handler, el }
     let shown = false
     const timer = setTimeout(() => {
       shown = true
       targets.forEach((t) => this.markLoading(t, 1))
+      this.running.add(event)
+      this.showLoadingElements()
     }, this.loadingDelayValue)
     return () => {
       clearTimeout(timer)
-      if (shown) targets.forEach((t) => this.markLoading(t, -1))
+      if (!shown) return
+      targets.forEach((t) => this.markLoading(t, -1))
+      this.running.delete(event)
+      this.showLoadingElements()
     }
+  }
+
+  // Shows each `phem:loading` element with an event that runs, and hides the others.
+  showLoadingElements() {
+    for (const t of this.element.querySelectorAll("[data-phem-loading]")) t.hidden = !this.isLoading(t)
+  }
+
+  // Whether an event of the handler of a `phem:loading` element runs. Its value is the fiber of
+  // its component and the fingerprint of the handler. A handler id is `<fiber>.<fingerprint>`,
+  // with `~<n>` for the same handler two times. The event matches when it has the same
+  // fingerprint, and one component is in the other: a child can get the handler as a prop, and
+  // send the event or show the element.
+  isLoading(el) {
+    const scope = el.dataset.phemLoading
+    const fiber = scope.slice(0, scope.indexOf("."))
+    const fingerprint = scope.slice(fiber.length + 1)
+    for (const { handler, el: source } of this.running) {
+      if (handler.slice(handler.indexOf(".") + 1).split("~")[0] !== fingerprint) continue
+      if (handler.startsWith(`${fiber}.`) || this.componentRoot(scope).contains(source) || this.componentRoot(handler).contains(el)) return true
+    }
+    return false
   }
 
   markLoading(el, delta) {

@@ -32,6 +32,7 @@ final class Counter
             new \Phem\Element('components/Counter.0.twig', ['increment' => $this->increment(...), 'count' => $this->count, 'label' => $this->label, 'children' => $this->children])
 
 
+
         );
     }
 }

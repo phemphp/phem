@@ -4,4 +4,5 @@ expression: t.content
 ---
 <button {{ phem_on('click', increment) }} {{ phem_attr('data-count', count) }}>
                 {{ label }} {{ count }} times {{ children }}
+                <span {{ phem_loading(increment) }}>…</span>
             </button>

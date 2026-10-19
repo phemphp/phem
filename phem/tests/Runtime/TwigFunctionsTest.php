@@ -80,6 +80,16 @@ final class TwigFunctionsTest extends TestCase
         $this->runtime()->attrs(['onClick' => 'var_dump']);
     }
 
+    public function testLoadingTakesAFunction(): void
+    {
+        self::assertSame('data-phem-loading="static" hidden', (string) $this->runtime()->loading(static fn () => null));
+        self::assertSame('', (string) $this->runtime()->loading(null));
+        self::assertSame('id="a" data-phem-loading="static" hidden', (string) $this->runtime()->attrs(['id' => 'a', 'phem:loading' => static fn () => null]), 'in a spread');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->runtime()->attrs(['phem:loading' => 'save']);
+    }
+
     public function testStringOutputOfAComponentIsText(): void
     {
         $markup = new MarkupResolver(new Environment(new ArrayLoader()));

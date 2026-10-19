@@ -391,6 +391,26 @@ public function save(): void
 The events go in their order. A handler that fails, or that returns a `RedirectResponse`,
 sends no events: the browser leaves the page.
 
+### Loading states
+
+While an event runs, the element that sent it and its component get `aria-busy="true"` and the
+`phem-loading` class, after a delay of 200 ms (`data-phem-loading-delay-value` on the `<Root>`
+element changes it).
+
+To show markup only while a handler runs, give the handler to `phem:loading`:
+
+```html
+<button onClick={{ save }}>Save</button>
+<span phem:loading={{ save }} className="spinner">Saving…</span>
+```
+
+The server renders the element with `hidden`. The browser removes `hidden` while a `save` event
+of this component runs, after the same delay. The events of the same handler in another instance
+of the component do not show it. A child component that gets `save` as a prop can send the event,
+or show the element: `phem:loading` works in both directions. `phem.css` hides the element also
+when its CSS gives it a `display`. `phem:loading` is for HTML elements. To show a component, put
+it in an element: `<span phem:loading={{ save }}><Spinner /></span>`.
+
 ### Rate limits
 
 The `#[RateLimit]` attribute of Symfony 8.1 limits the events of a page, as other controller

@@ -22,7 +22,8 @@ use Twig\Markup;
 use Twig\Template;
 
 /**
- * The Twig runtime of the compiled templates: `{% component %}`, `phem_on()` and `phem_attrs()`.
+ * The Twig runtime of the compiled templates: `{% component %}`, `phem_on()`, `phem_loading()`
+ * and `phem_attrs()`.
  * The compiled code gets it with `$this->env->getRuntime(PhemRuntime::class)`.
  */
 final class PhemRuntime implements RuntimeExtensionInterface
@@ -69,6 +70,23 @@ final class PhemRuntime implements RuntimeExtensionInterface
     }
 
     /**
+     * `phem:loading={{ save }}` → `data-phem-loading="<scope>" hidden`: the browser shows the
+     * element only while a `save` event of this component (or of a component in it) runs.
+     */
+    public function loading(mixed $handler): Markup
+    {
+        if (null === $handler || false === $handler) {
+            return new Markup('', 'UTF-8');
+        }
+        if (!$handler instanceof \Closure) {
+            throw new \InvalidArgumentException(\sprintf('The "phem:loading" handler must be a function, "%s" given. Pass the function (`$this->name(...)`), do not call it.', get_debug_type($handler)));
+        }
+        $scope = $this->renderer->handlerScope($handler) ?? 'static';
+
+        return new Markup(\sprintf('data-phem-loading="%s" hidden', Attributes::e($scope)), 'UTF-8');
+    }
+
+    /**
      * The attributes of an HTML element with a spread: `<button type="button" {{ ...rest }}>`
      * → `phem_attrs({'type': 'button'}, rest)`. As in React, a later value replaces an earlier
      * value of the same attribute. `onClick` (and the other `on*` names) binds a handler.
@@ -94,6 +112,7 @@ final class PhemRuntime implements RuntimeExtensionInterface
             $out[] = (string) match (true) {
                 'key' === $name => Attributes::key($value),
                 'style' === $name => Attributes::style($value),
+                'phem:loading' === $name => $this->loading($value),
                 1 === preg_match('/^on[A-Z]/', $name) => $this->on(strtolower(substr($name, 2)), $value),
                 0 === stripos($name, 'on') => '',
                 default => Attributes::attr($name, $value),

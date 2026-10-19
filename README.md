@@ -156,7 +156,8 @@ See [editors/vscode/README.md](editors/vscode/README.md).
    While an event runs, the element that sent it and its component get `aria-busy="true"` and
    the `phem-loading` class, after a delay of 200 ms (`data-phem-loading-delay-value` on the
    `<Root>` element changes it). Use CSS to style them, for example
-   `.phem-loading { opacity: .5 }`.
+   `.phem-loading { opacity: .5 }`. `phem:loading={{ save }}` on an element shows it only
+   while a `save` event runs (see [Loading states](docs/phpm-syntax.md#loading-states)).
    While a submit event runs, the form is locked: its buttons and controls are disabled, its
    text fields are read-only, and a second submit is ignored. Add `data-phem-disable={{ false }}`
    to the form to turn this off.

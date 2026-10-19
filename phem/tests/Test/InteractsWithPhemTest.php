@@ -62,6 +62,15 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->assertState('count', 2);
     }
 
+    public function testLoadingElementHasTheScopeOfItsHandler(): void
+    {
+        $html = $this->mount(self::COUNTER)->assertSelectorExists('span.spinner[hidden]')->html();
+
+        self::assertSame(1, preg_match('/data-phem-on-click="([^"]+)"/', $html, $click));
+        self::assertSame(1, preg_match('/data-phem-loading="([^"]+)"/', $html, $loading));
+        self::assertSame($click[1], $loading[1], 'the same id, with no ~2: phem:loading does not register the handler again');
+    }
+
     public function testEachEventGetsNewServices(): void
     {
         $counter = $this->mount(self::COUNTER)->click('button')->click('button');

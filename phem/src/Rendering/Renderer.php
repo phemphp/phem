@@ -103,6 +103,12 @@ final class Renderer implements ResetInterface
         return $this->tree?->addHandler($handler, $this->fingerprints->of($handler));
     }
 
+    /** The scope of a handler for `phem:loading` (see Tree::handlerScope()). */
+    public function handlerScope(\Closure $handler): ?string
+    {
+        return $this->tree?->handlerScope($this->fingerprints->of($handler));
+    }
+
     // -------------------------------------------------------------------------------------
 
     /**

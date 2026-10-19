@@ -27,6 +27,7 @@ final class Counter
         return (
             <button onClick={{ increment }} data-count={{ count }}>
                 {{ label }} {{ count }} times {{ children }}
+                <span phem:loading={{ increment }}>…</span>
             </button>
         );
     }
