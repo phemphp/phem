@@ -52,7 +52,7 @@ final class DocumentTest extends TestCase
 
         self::assertSame(200, $response->getStatusCode());
         $data = json_decode((string) $response->getContent(), true);
-        self::assertSame(['streams', 'state', 'signature', 'events'], array_keys($data));
+        self::assertSame(['streams', 'state', 'signature', 'query', 'events'], array_keys($data));
         self::assertStringContainsString('<button id="increment" data-phem-on-click="'.$h[1].'">1</button>', $data['streams']);
         self::assertStringNotContainsString('<title', $data['streams']);
         self::assertStringNotContainsString('<html', $data['streams']);

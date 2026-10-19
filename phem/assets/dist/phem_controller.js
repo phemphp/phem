@@ -68,6 +68,13 @@
 // `phem:live` (`data-phem-live`), a change sends an event with no handler, with the same waits as
 // `onChange`. The morph keeps a field that the user changed after the request left. A value that
 // the server did not take (the wrong type) goes back to the value of the server.
+//
+// A #[Url] property is in the query string of the page URL. The page renders its query in
+// `data-phem-query-value` ({values, push}), and each event answers with the new query. The
+// controller writes each key into the URL (null removes it), and keeps the other keys. It
+// replaces the history entry, or it adds one when a changed key is in `push`. It uses the history
+// of Turbo, so back and forward are Turbo restoration visits: the server renders the state of
+// that URL again (or Turbo shows its snapshot of that URL).
 
 import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
@@ -133,6 +140,25 @@ function sameValue(a, b) {
   return JSON.stringify(a) === JSON.stringify(b)
 }
 
+// The name of a query pair ("tags%5B%5D=a" is "tags"), or null when it is not valid.
+function queryName(pair) {
+  try {
+    const name = decodeURIComponent(pair.split("=")[0].replace(/\+/g, " "))
+    const bracket = name.indexOf("[")
+    return bracket > 0 ? name.slice(0, bracket) : name
+  } catch {
+    return null
+  }
+}
+
+// The query pairs of a value: none for null, `key[]=v` for each item of a list.
+function queryPairs(name, value) {
+  const key = encodeURIComponent(name)
+  if (value === null || value === undefined) return []
+  if (Array.isArray(value)) return value.map((v) => `${key}[]=${encodeURIComponent(v)}`)
+  return [`${key}=${encodeURIComponent(value)}`]
+}
+
 function showLoading(el, on) {
   if (on) el.setAttribute("aria-busy", "true")
   else el.removeAttribute("aria-busy")
@@ -158,6 +184,7 @@ export default class PhemController extends Controller {
     retries: { type: Number, default: 3 },
     retryDelay: { type: Number, default: 500 },
     debounce: { type: Number, default: 150 },
+    query: Object,
   }
 
   connect() {
@@ -206,6 +233,9 @@ export default class PhemController extends Controller {
       if (!sameValue(boundValue(this.boundFields(key)), this.sentBound[key])) event.preventDefault()
     }
     this.element.addEventListener("turbo:before-morph-attribute", this.keepEdited)
+    // The first render can drop a value of the URL that does not fit its property: never a new
+    // history entry here.
+    this.updateUrl(this.queryValue, false)
     this.showOffline = () => this.element.classList.toggle("phem-offline", !navigator.onLine)
     this.showOffline()
     window.addEventListener("online", this.showOffline)
@@ -507,6 +537,7 @@ export default class PhemController extends Controller {
     }
     this.stateValue = data.state
     this.signatureValue = data.signature
+    if (data.query) this.updateUrl(data.query, true)
     this.sentBound = Object.fromEntries(Object.entries(fields).map(([key, { value }]) => [key, value]))
     const rendered = data.streams ? this.renderStreams(data.streams, handler) : afterStreams()
     rendered.then(() => {
@@ -520,6 +551,44 @@ export default class PhemController extends Controller {
         for (const { name, detail } of data.events) target.dispatchEvent(new CustomEvent(`phem:${name}`, { detail, bubbles: true }))
       })
     }
+  }
+
+  // Writes the query of the #[Url] properties into the URL. A key keeps its place, a new key goes
+  // at the end, and the other keys do not change. With `canPush`, a changed key in `push` adds a
+  // history entry.
+  updateUrl({ values = {}, push = [] } = {}, canPush) {
+    const keys = Object.keys(values)
+    if (!keys.length) return
+    const url = new URL(window.location.href)
+    const out = []
+    const before = {}
+    for (const pair of url.search.slice(1).split("&")) {
+      if (!pair) continue
+      const name = queryName(pair)
+      if (name === null || !keys.includes(name)) {
+        out.push(pair)
+        continue
+      }
+      if (!(name in before)) out.push(...queryPairs(name, values[name]))
+      ;(before[name] ??= []).push(pair)
+    }
+    for (const name of keys) if (!(name in before)) out.push(...queryPairs(name, values[name]))
+    const search = out.length ? `?${out.join("&")}` : ""
+    if (search === url.search) return
+    const changed = (name) => (before[name] ?? []).join("&") !== queryPairs(name, values[name]).join("&")
+    const pushes = canPush && push.some((name) => keys.includes(name) && changed(name))
+    url.search = search
+    const history = Turbo.navigator?.history
+    if (history) {
+      if (pushes) history.push(url)
+      else history.replace(url, history.restorationIdentifier)
+    } else {
+      window.history[pushes ? "pushState" : "replaceState"](window.history.state, "", url)
+    }
+    // Turbo keeps the snapshot of the page for the URL of its last render: the snapshot of this
+    // state is for the new URL, not for the URL that loaded the page.
+    const view = Turbo.session?.view
+    if (view) view.lastRenderedLocation = url
   }
 
   // Renders the Turbo Streams of a response, in a view transition when the component of the

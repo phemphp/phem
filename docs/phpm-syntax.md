@@ -698,6 +698,36 @@ final class Counter
   for no limit), and `phem.state_bind_session: true` makes it valid only in its session (a
   login then reloads the open pages on their next event). An invalid state reloads the page.
 
+### State in the URL
+
+A `#[Url]` property is in the query string of the page URL. Filters, search terms, tabs and
+page numbers then survive a reload, a shared link, and the back button.
+
+```php
+use Phem\Attribute\{Component, State, Url};
+
+#[Component]
+final class Catalog
+{
+    #[State, Url(as: 'q')] public string $query = '';      // ?q=php
+    #[State, Url(history: true)] public int $page = 1;      // ?page=2, a new history entry
+    #[State, Url] public array $tags = [];                  // ?tags[]=a&tags[]=b
+}
+```
+
+- The property must be a `#[State]` property. Its type is a string, an int, a float, a bool
+  (`1` or `0` in the URL), a backed enum, or an array of them, nullable or not.
+- `as` gives another query key (letters, digits, `_` and `-`). Two components of a page cannot
+  have the same key: give one of them another key.
+- The first render of the page reads the query string, after `mount()`. A value that does not
+  fit the type is ignored, and the property keeps its value. An event does not read the URL:
+  the signed state has the values.
+- After each event, the browser writes the values into the URL, and keeps the other query keys.
+  A value that is equal to the default value of the property removes its key.
+- By default, the browser replaces the current history entry. With `history: true`, a change of
+  the value adds an entry. Back and forward load the page of that URL again, with Turbo.
+- The query string comes from the user: as for `phem:bind`, do not trust its values.
+
 Phem has no Hooks. A call to `Phem\useState` (or `useReducer`, `useRef`, `useMemo`,
 `useCallback`, `useId`, `useContext`) is the compiler error E020.
 

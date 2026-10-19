@@ -15,6 +15,7 @@ namespace Phem\Test\Internal;
 
 use Phem\Rendering\Fiber;
 use Phem\State\PageState;
+use Phem\State\UrlQuery;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -38,6 +39,7 @@ final class PageDriver implements Driver
     private string $signature = '';
     private int $status = 0;
     private ?string $redirect = null;
+    private string $url;
 
     /**
      * @param array<string, string> $server  more server values and headers (`HTTP_ACCEPT_LANGUAGE`) for each request
@@ -50,12 +52,16 @@ final class PageDriver implements Driver
         private readonly array $server = [],
         private array $cookies = [],
     ) {
+        $this->url = $this->uri;
         [$request, $response] = $this->send(Request::create($this->uri, 'GET', cookies: $this->cookies, server: $this->server));
         $this->html = (string) $response->getContent();
         $this->page = (string) $request->attributes->get('_phem_page', '');
-        if (1 === preg_match('/data-phem-state-value="([^"]*)" data-phem-signature-value="([^"]*)"/', $this->html, $m)) {
+        if (1 === preg_match('/data-phem-state-value="([^"]*)" data-phem-signature-value="([^"]*)"(?: data-phem-query-value="([^"]*)")?/', $this->html, $m)) {
             $this->state = html_entity_decode($m[1], \ENT_QUOTES | \ENT_HTML5);
             $this->signature = html_entity_decode($m[2], \ENT_QUOTES | \ENT_HTML5);
+            if (isset($m[3])) {
+                $this->query(json_decode(html_entity_decode($m[3], \ENT_QUOTES | \ENT_HTML5), true, 512, \JSON_THROW_ON_ERROR));
+            }
         }
     }
 
@@ -76,7 +82,8 @@ final class PageDriver implements Driver
         }
         $this->redirect = null;
         $body = json_encode(['state' => $this->state, 'signature' => $this->signature, 'handler' => $handler, 'event' => $event, 'bound' => (object) $bound], \JSON_THROW_ON_ERROR);
-        [, $response] = $this->send(Request::create($this->uri, 'POST', cookies: $this->cookies, server: [
+        // To the URL that the browser shows, as the controller sends it.
+        [, $response] = $this->send(Request::create($this->url, 'POST', cookies: $this->cookies, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_ACCEPT' => 'application/json',
             'HTTP_X_PHEM_EVENT' => '1',
@@ -98,6 +105,7 @@ final class PageDriver implements Driver
         }
         $this->state = (string) $data['state'];
         $this->signature = (string) $data['signature'];
+        $this->query($data['query'] ?? null);
 
         return EventResult::updates(self::streams((string) $data['streams']), self::events($data['events'] ?? []));
     }
@@ -114,6 +122,11 @@ final class PageDriver implements Driver
     public function cookies(): array
     {
         return $this->cookies;
+    }
+
+    public function url(): string
+    {
+        return $this->url;
     }
 
     public function status(): int
@@ -162,6 +175,14 @@ final class PageDriver implements Driver
         }
 
         return [$request, $response];
+    }
+
+    /** Writes the query of the #[Url] properties into the URL, as the browser does. */
+    private function query(mixed $query): void
+    {
+        /** @var array<string, string|list<string>|null> $values */
+        $values = \is_array($query) && \is_array($query['values'] ?? null) ? $query['values'] : [];
+        $this->url = UrlQuery::merge($this->url, $values);
     }
 
     /** @return list<array{name: string, detail: mixed}> */

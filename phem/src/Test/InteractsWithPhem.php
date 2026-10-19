@@ -19,6 +19,7 @@ use Phem\Rendering\Renderer;
 use Phem\State\BoundValues;
 use Phem\State\StateAccessor;
 use Phem\State\StateCodec;
+use Phem\State\UrlQuery;
 use Phem\Test\Internal\ComponentDriver;
 use Phem\Test\Internal\PageDriver;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -87,6 +88,7 @@ trait InteractsWithPhem
             $sessions instanceof SessionFactoryInterface ? $sessions->createSession() : null,
             $dispatcher,
             new BoundValues($metadata),
+            new UrlQuery($metadata),
         ));
     }
 

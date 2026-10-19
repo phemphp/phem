@@ -17,11 +17,13 @@ use Phem\Binding\PropBinder;
 use Phem\Manifest\ComponentDefinition;
 use Phem\Manifest\ComponentKind;
 use Phem\State\StateAccessor;
+use Phem\State\UrlQuery;
 
 /**
  * Renders a class component. The first time a fiber renders in a request, the factory makes its
  * instance, and the props go into it. Then the state that the browser sent back is restored;
- * without one, `mount()` initializes it. Each render writes the props again and calls `render()`.
+ * without one, `mount()` initializes it, and the query string of the page request sets the
+ * #[Url] properties (see Phem\Attribute\Url). Each render writes the props again and calls `render()`.
  * When a readonly prop changes, a new instance replaces the old one and keeps its state. A
  * readonly slot or markup counts as a change in each render.
  */
@@ -31,6 +33,7 @@ final class ClassComponentRenderer implements ComponentRenderer
         private readonly ComponentFactory $factory,
         private readonly PropBinder $props = new PropBinder(),
         private readonly StateAccessor $state = new StateAccessor(),
+        private readonly UrlQuery $url = new UrlQuery(),
     ) {
     }
 
@@ -47,8 +50,11 @@ final class ClassComponentRenderer implements ComponentRenderer
             $this->props->assign($component, $fiber->props, $slots);
             if (null !== $fiber->restored) {
                 $this->state->restore($component, $fiber->restored);
-            } elseif (method_exists($component, 'mount')) {
-                $component->mount();
+            } else {
+                if (method_exists($component, 'mount')) {
+                    $component->mount();
+                }
+                $this->url->read($component, $fiber->query);
             }
         } elseif ($this->props->changesReadonly($component, $fiber->props, $slots)) {
             // A readonly prop cannot change: a new instance gets the props, and the state of the

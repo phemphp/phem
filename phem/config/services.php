@@ -42,6 +42,7 @@ use Phem\Routing\PageLoader;
 use Phem\State\BoundValues;
 use Phem\State\StateAccessor;
 use Phem\State\StateCodec;
+use Phem\State\UrlQuery;
 use Phem\Twig\CacheKeyLoader;
 use Phem\Twig\PhemExtension;
 use Phem\Twig\PhemRuntime;
@@ -65,6 +66,8 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.state_accessor', StateAccessor::class)
             ->args([service('phem.metadata')])
         ->set('phem.bound_values', BoundValues::class)
+            ->args([service('phem.metadata')])
+        ->set('phem.url_query', UrlQuery::class)
             ->args([service('phem.metadata')])
         ->set('phem.state_codec', StateCodec::class)
             ->args([abstract_arg('secret, set by PhemBundle'), 86400, false])
@@ -95,7 +98,7 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.component_factory', ContainerComponentFactory::class)
             ->args([abstract_arg('class components, set by ComponentPass')])
         ->set('phem.component_renderer.class', ClassComponentRenderer::class)
-            ->args([service('phem.component_factory'), service('phem.prop_binder'), service('phem.state_accessor')])
+            ->args([service('phem.component_factory'), service('phem.prop_binder'), service('phem.state_accessor'), service('phem.url_query')])
             ->tag('phem.component_renderer')
         ->set('phem.component_renderer.function', FunctionComponentRenderer::class)
             ->args([service('phem.prop_binder')])
@@ -145,6 +148,7 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.metadata'),
                 service('phem.path_resolver'),
                 service('phem.state_accessor'),
+                service('phem.url_query'),
             ])
         ->alias(PageRenderer::class, 'phem.page_renderer')
         ->set('phem.controller.page', PageController::class)
@@ -163,6 +167,7 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.browser_event_dispatcher'),
                 1048576,
                 service('phem.bound_values'),
+                service('phem.url_query'),
             ])
         ->set('phem.listener.page_attributes', PageAttributesListener::class)
             ->tag('kernel.event_listener', ['event' => 'kernel.controller', 'method' => 'onKernelController'])

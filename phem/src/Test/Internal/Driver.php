@@ -45,6 +45,12 @@ interface Driver
      */
     public function state(?string $fiber = null): array;
 
+    /**
+     * The URL that the browser shows, with the query of the #[Url] properties (see
+     * Phem\State\UrlQuery): "/" and the query for a component.
+     */
+    public function url(): string;
+
     /** The HTTP status of the last response: 200 for a component. */
     public function status(): int;
 

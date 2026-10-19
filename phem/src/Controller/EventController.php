@@ -26,6 +26,7 @@ use Phem\State\BoundValues;
 use Phem\State\PageState;
 use Phem\State\StateAccessor;
 use Phem\State\StateCodec;
+use Phem\State\UrlQuery;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -44,8 +45,8 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
  * The `phem` Stimulus controller sends the signed state of the page, the handler id, and the
  * values of the bound inputs that changed (see BoundValues). The server renders with that
  * state, sets the bound values, runs the handler, renders again, and answers with Turbo
- * Streams that morph the components that changed, the new state, and the browser events of the
- * handler (see BrowserEventDispatcher). When the handler returns
+ * Streams that morph the components that changed, the new state, the query of the #[Url]
+ * properties (see UrlQuery), and the browser events of the handler (see BrowserEventDispatcher). When the handler returns
  * a RedirectResponse, the server answers with its URL, and the browser visits it.
  *
  * Against CSRF, an event is JSON with the `X-Phem-Event` header (a cross-site request with them
@@ -71,6 +72,7 @@ final class EventController
         private readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
         private readonly int $maxSize = 1048576,
         private readonly BoundValues $bound = new BoundValues(),
+        private readonly UrlQuery $url = new UrlQuery(),
     ) {
     }
 
@@ -133,7 +135,9 @@ final class EventController
         $this->renderer->render($tree);
         [$json, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page, $request);
 
-        return new JsonResponse(['streams' => $this->streams->updates($tree->changedFibers()), 'state' => $json, 'signature' => $signature, 'events' => $this->dispatcher->dispatched()]);
+        $query = $this->url->of($tree);
+
+        return new JsonResponse(['streams' => $this->streams->updates($tree->changedFibers()), 'state' => $json, 'signature' => $signature, 'query' => ['values' => (object) $query['values'], 'push' => $query['push']], 'events' => $this->dispatcher->dispatched()]);
     }
 
     /**

@@ -59,12 +59,14 @@ final class Fiber
 
     /**
      * @param array<string, mixed>|null $restored the state that the browser sent back, or null for a new fiber
+     * @param array<array-key, mixed>   $query    the query string of the page request, for the #[Url] properties of a new fiber
      */
     public function __construct(
         public readonly string $id,
         public readonly string $path,
         public readonly string $fqcn,
         public readonly ?array $restored = null,
+        public readonly array $query = [],
     ) {
     }
 

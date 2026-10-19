@@ -44,12 +44,14 @@ final class Tree
      * @param array<string, array<string, mixed>> $state  fiber id => state that the browser sent back
      * @param array<string, mixed>                $props  the props of the page: its #[Path] route values (an entity for an entity prop)
      * @param array<string, mixed>                $values the route values of the #[Path] props, as the route gives them (an identifier or criteria for an entity prop)
+     * @param array<array-key, mixed>             $query  the query string of the page request, for the #[Url] properties of a new fiber (see Phem\State\UrlQuery)
      */
     public function __construct(
         public readonly string $page = '',
         private readonly array $state = [],
         public readonly array $props = [],
         public readonly array $values = [],
+        public readonly array $query = [],
     ) {
     }
 

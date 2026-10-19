@@ -172,7 +172,7 @@ final class Renderer implements ResetInterface
         $index = null !== $key ? '@'.$key : '#'.(null !== $parent ? $parent->nextIndex($fqcn) : $tree->nextRootIndex());
         $path = ($parent->path ?? '').'/'.$fqcn.$index;
         $id = Fiber::idOf($path);
-        $fiber = $tree->fiber($id, static fn (?array $restored): Fiber => new Fiber($id, $path, $fqcn, $restored));
+        $fiber = $tree->fiber($id, static fn (?array $restored): Fiber => new Fiber($id, $path, $fqcn, $restored, $tree->query));
         $fiber->parent = $parent;
         $fiber->props = $props;
         $fiber->slots = $slots;

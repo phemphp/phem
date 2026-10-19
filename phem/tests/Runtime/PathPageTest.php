@@ -99,7 +99,7 @@ final class PathPageTest extends TestCase
         self::assertSame(200, $response->getStatusCode());
         $data = json_decode((string) $response->getContent(), true);
         self::assertStringContainsString('Ada: 1', $data['streams']);
-        self::assertSame(['streams', 'state', 'signature', 'events'], array_keys($data), 'the document does not render again');
+        self::assertSame(['streams', 'state', 'signature', 'query', 'events'], array_keys($data), 'the document does not render again');
     }
 
     /** @return array{0: string, 1: string, 2: string} the state, its signature, and the click handler */

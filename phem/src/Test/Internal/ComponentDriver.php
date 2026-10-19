@@ -23,6 +23,7 @@ use Phem\State\BoundValues;
 use Phem\State\PageState;
 use Phem\State\StateAccessor;
 use Phem\State\StateCodec;
+use Phem\State\UrlQuery;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -46,6 +47,7 @@ final class ComponentDriver implements Driver
     /** @var array<string, array<string, mixed>> fiber id => state, after a JSON round trip */
     private array $state = [];
     private ?string $redirect = null;
+    private string $url = '/';
 
     /**
      * @param array<string, mixed> $props
@@ -61,10 +63,12 @@ final class ComponentDriver implements Driver
         private readonly ?SessionInterface $session = null,
         private readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
         private readonly BoundValues $bound = new BoundValues(),
+        private readonly UrlQuery $query = new UrlQuery(),
     ) {
         $this->tree = new Tree($this->component, props: $this->props);
         $this->html = $this->within($this->request('GET'), function (Request $request): string {
             $html = $this->renderer->render($this->tree);
+            $this->url = UrlQuery::merge($this->url, $this->query->of($this->tree)['values']);
 
             return $this->withState($html, $this->save($request));
         });
@@ -105,6 +109,7 @@ final class ComponentDriver implements Driver
             $this->renderer->render($tree);
             $this->tree = $tree;
             $this->save($request);
+            $this->url = UrlQuery::merge($this->url, $this->query->of($tree)['values']);
 
             $updates = [];
             foreach ($tree->changedFibers() as $fiber) {
@@ -119,6 +124,11 @@ final class ComponentDriver implements Driver
     public function state(?string $fiber = null): array
     {
         return $this->state[$fiber ?? Fiber::idOf('/'.$this->component.'#0')] ?? [];
+    }
+
+    public function url(): string
+    {
+        return $this->url;
     }
 
     public function status(): int
@@ -153,7 +163,7 @@ final class ComponentDriver implements Driver
      */
     private function withState(string $html, array $signed): string
     {
-        return null !== $this->tree->rootFiber ? str_replace($this->tree->rootToken(), RootElement::state(...$signed), $html) : $html;
+        return null !== $this->tree->rootFiber ? str_replace($this->tree->rootToken(), RootElement::state(...$signed, query: $this->query->of($this->tree)), $html) : $html;
     }
 
     private function request(string $method): Request

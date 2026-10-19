@@ -1,14 +1,15 @@
 <?phpm
 namespace App\Pages\Examples;
 
-use Phem\Attribute\{Page, State};
+use Phem\Attribute\{Page, State, Url};
 
 use function App\Components\Document;
 
 #[Page('/examples/SearchBox')]
 final class SearchBox
 {
-    #[State]
+    // In the URL (`?name=Ada`): a reload or a shared link keeps the name.
+    #[State, Url]
     public string $name = '';
 
     public function handleClear(): void

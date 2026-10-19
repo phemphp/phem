@@ -1,0 +1,92 @@
+<?phpm
+
+namespace App\Pages;
+
+use Phem\Attribute\{Component, Page, State, Url};
+use Phem\Tests\Fixtures\Size;
+
+use function App\Components\Document;
+
+// The #[Url] properties: the first render reads them from the query string, and the browser
+// writes them into the URL after each event.
+#[Component]
+final class Catalog
+{
+    #[State, Url(as: 'q')] public string $query = '';
+    #[State, Url(history: true)] public int $page = 1;
+    #[State, Url] public bool $stock = false;
+    #[State, Url] public array $tags = [];
+    #[State, Url] public ?Size $size = null;
+    #[State, Url] public float $min = 0.0;
+    #[State] public int $clicks = 0;
+
+    public function next(): void
+    {
+        ++$this->page;
+    }
+
+    public function clear(): void
+    {
+        $this->query = '';
+        $this->page = 1;
+        $this->stock = false;
+        $this->tags = [];
+        $this->size = null;
+        $this->min = 0.0;
+    }
+
+    public function click(): void
+    {
+        ++$this->clicks;
+    }
+
+    public function render()
+    {
+        return (
+            <div>
+                <input type="search" name="q" phem:bind={{ query }} phem:live />
+                <button id="next" onClick={{ next }}>Next</button>
+                <button id="clear" onClick={{ clear }}>Clear</button>
+                <button id="click" onClick={{ click }}>Click</button>
+                <p id="summary">q={{ query }}, page={{ page }}, stock={{ stock ? 'yes' : 'no' }}, tags={{ tags|join('+') }}, size={{ size.value ?? 'none' }}, min={{ min }}</p>
+            </div>
+        );
+    }
+}
+
+#[Page('/url')]
+final class UrlPage
+{
+    #[State, Url] public string $tab = 'all';
+
+    public function open(): void
+    {
+        $this->tab = 'new';
+    }
+
+    public function render()
+    {
+        return (
+            <Document>
+                <Document:title>Url</Document:title>
+                <button id="tab" onClick={{ open }}>Tab {{ tab }}</button>
+                <Catalog />
+            </Document>
+        );
+    }
+}
+
+// Two components with the same query key: the page fails.
+#[Page('/url-twice')]
+final class UrlTwicePage
+{
+    public function render()
+    {
+        return (
+            <Document>
+                <Catalog />
+                <Catalog />
+            </Document>
+        );
+    }
+}

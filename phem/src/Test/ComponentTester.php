@@ -235,6 +235,15 @@ final class ComponentTester
         return $this->driver->state(null !== $in ? $this->fiberOf($in) : null);
     }
 
+    /**
+     * The URL that the browser shows: the URL of the page (or "/" for a component), with the
+     * query of the #[Url] properties after the last action.
+     */
+    public function url(): string
+    {
+        return $this->driver->url();
+    }
+
     // --- Assertions ------------------------------------------------------------------------
 
     public function assertSee(string $text): self
@@ -309,6 +318,22 @@ final class ComponentTester
         $of = null !== $in ? \sprintf(' of the component around "%s"', $in) : '';
         Assert::assertArrayHasKey($name, $state, \sprintf('The state%s has no "%s" property.', $of, $name));
         Assert::assertSame($expected, $state[$name], \sprintf('The "%s" state property%s.', $name, $of));
+
+        return $this;
+    }
+
+    /**
+     * Asserts a value in the query string of the URL that the browser shows (see url()). A list
+     * is `key[]=a&key[]=b`. Null asserts that the URL has no such key.
+     *
+     *     ->assertQuery('q', 'php')
+     *
+     * @param string|list<string>|null $expected
+     */
+    public function assertQuery(string $key, string|array|null $expected): self
+    {
+        parse_str((string) parse_url($this->url(), \PHP_URL_QUERY), $query);
+        Assert::assertSame($expected, $query[$key] ?? null, \sprintf('The "%s" key in the query string of "%s".', $key, $this->url()));
 
         return $this;
     }

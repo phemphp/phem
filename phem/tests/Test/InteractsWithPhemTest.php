@@ -30,6 +30,7 @@ final class InteractsWithPhemTest extends KernelTestCase
     private const SIGNUP = 'App\Pages\Signup';
     private const NOTIFIER = 'App\Pages\Notifier';
     private const PROFILE = 'App\Pages\Profile';
+    private const CATALOG = 'App\Pages\Catalog';
 
     public static function setUpBeforeClass(): void
     {
@@ -345,6 +346,38 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->assertDispatched('announced', 'Hello')
             ->click('#quiet')
             ->assertNotDispatched('announced');
+    }
+
+    public function testVisitWritesTheUrlPropertiesIntoTheUrl(): void
+    {
+        $tester = $this->visit('/url?q=php&page=abc&x=1')
+            ->assertSee('q=php, page=1')
+            ->assertQuery('q', 'php')
+            ->assertQuery('page', null)
+            ->assertQuery('x', '1');
+        self::assertSame('/url?q=php&x=1', $tester->url());
+
+        $tester->click('#next')
+            ->click('#tab')
+            ->fill('[name=q]', 'a b')
+            ->click('#click')
+            ->assertSee('q=a b, page=2')
+            ->assertQuery('page', '2')
+            ->assertQuery('tab', 'new');
+        self::assertSame('/url?q=a%20b&x=1&page=2&tab=new', $tester->url());
+
+        $tester->click('#clear')->assertQuery('q', null);
+        self::assertSame('/url?x=1&tab=new', $tester->url());
+        $this->assertFails(static fn () => $tester->assertQuery('tab', 'all'), 'The "tab" key in the query string of "/url?x=1&tab=new"');
+    }
+
+    public function testMountWritesTheUrlPropertiesIntoTheUrl(): void
+    {
+        $tester = $this->mount(self::CATALOG)->assertQuery('page', null);
+        self::assertSame('/', $tester->url());
+
+        $tester->click('#next')->assertQuery('page', '2');
+        self::assertSame('/?page=2', $tester->url());
     }
 
     private function assertFails(\Closure $action, string $message): void

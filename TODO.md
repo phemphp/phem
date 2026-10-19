@@ -243,7 +243,7 @@ A slow component (a report, an API call) blocks the full page render.
 
 ## 4. State and communication
 
-### [ ] State in the URL — P2
+### [x] State in the URL — P2
 
 Filters, search terms and tabs must survive a reload, a shared link, and the back button.
 
@@ -253,6 +253,19 @@ Filters, search terms and tabs must survive a reload, a shared link, and the bac
 - **Proposal:** `#[State(url: true)]` or `#[Url(as: 'q', history: false)]`. The server reads the
   query string on the first render, and the browser updates the URL after each event
   (`history.replaceState` by default). Back and forward restore the state.
+
+Done: `#[State, Url]` on a property of a page or of a component, with `as` (another key) and
+`history: true` (a new history entry, not a replace). The first render reads the query string after
+`mount()`, and ignores a value that does not fit the type. After each event the browser writes the
+values into the URL with the history of Turbo, so back and forward are Turbo restoration visits. A
+default value removes its key. Two components with the same key fail. The test helper has
+`->assertQuery()` and `->url()`. The SearchBox example uses it. See
+[docs/phpm-syntax.md](docs/phpm-syntax.md#state-in-the-url).
+
+Not done yet:
+
+- [ ] An `except` option: a value other than the default value of the property that removes the key.
+- [ ] Nested values (`?filters[status]=open`) for an array shape or an object.
 
 ### [ ] Context (provide and inject) — P2
 

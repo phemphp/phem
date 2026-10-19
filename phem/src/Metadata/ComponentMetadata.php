@@ -16,6 +16,7 @@ namespace Phem\Metadata;
 use Phem\Attribute\Path;
 use Phem\Attribute\Prop;
 use Phem\Attribute\State;
+use Phem\Attribute\Url;
 use Phem\Binding\ComponentName;
 use Phem\Binding\PropError;
 
@@ -40,6 +41,9 @@ final class ComponentMetadata
 
     /** @var array<string, array<string, ?\ReflectionType>> */
     private array $paths = [];
+
+    /** @var array<string, array<string, array{0: \ReflectionProperty, 1: Url}>> */
+    private array $urls = [];
 
     /**
      * The parameters of a function component: its props.
@@ -135,6 +139,48 @@ final class ComponentMetadata
     }
 
     /**
+     * The #[Url] properties of a class component, by query key (see Phem\Attribute\Url).
+     *
+     * @param class-string $class
+     *
+     * @return array<string, array{0: \ReflectionProperty, 1: Url}> key => the property and its attribute
+     *
+     * @throws \LogicException when a #[Url] property is not #[State], has a type that a query string cannot hold, or has the key of another property
+     */
+    public function urlProperties(string $class): array
+    {
+        if (isset($this->urls[$class])) {
+            return $this->urls[$class];
+        }
+        $out = [];
+        foreach ((new \ReflectionClass($class))->getProperties() as $p) {
+            $attribute = $p->getAttributes(Url::class)[0] ?? null;
+            if (null === $attribute) {
+                continue;
+            }
+            $url = $attribute->newInstance();
+            $key = $url->as ?? $p->getName();
+            $short = ComponentName::short($class);
+            if ($p->isStatic() || [] === $p->getAttributes(State::class)) {
+                throw new \LogicException(\sprintf('The #[Url] property "%s" of <%s> must be a #[State] property.', $p->getName(), $short));
+            }
+            // PHP changes "." and " " in a query key to "_", and "[" starts a list.
+            if (1 !== preg_match('/^[A-Za-z0-9_-]+$/', $key)) {
+                throw new \LogicException(\sprintf('The query key "%s" of the #[Url] property "%s" of <%s> can have only letters, digits, "_" and "-".', $key, $p->getName(), $short));
+            }
+            if (!self::fitsQuery($p->getType())) {
+                throw new \LogicException(\sprintf('The #[Url] property "%s" of <%s> must be a string, an int, a float, a bool, a backed enum, or an array of them.', $p->getName(), $short));
+            }
+            if (isset($out[$key])) {
+                throw new \LogicException(\sprintf('The #[Url] properties "%s" and "%s" of <%s> have the same query key "%s".', $out[$key][0]->getName(), $p->getName(), $short, $key));
+            }
+            $out[$key] = [$p, $url];
+        }
+
+        return $this->urls[$class] = $out;
+    }
+
+    /**
      * The #[Path] public properties of a page: they get the route values. A function component
      * has none.
      *
@@ -155,6 +201,17 @@ final class ComponentMetadata
         }
 
         return $this->paths[$page] = $out;
+    }
+
+    /** Whether a query string can hold a value of this type: no type, a scalar, a backed enum, an array, or a union of them. */
+    private static function fitsQuery(?\ReflectionType $type): bool
+    {
+        return match (true) {
+            null === $type => true,
+            $type instanceof \ReflectionNamedType => \in_array($type->getName(), ['string', 'int', 'float', 'bool', 'true', 'false', 'null', 'array', 'mixed'], true) || is_subclass_of($type->getName(), \BackedEnum::class),
+            $type instanceof \ReflectionUnionType => array_all($type->getTypes(), self::fitsQuery(...)),
+            default => false,
+        };
     }
 
     /** Whether a property of this type can get an array: no type, `array`, `iterable`, `mixed`, or a union with one. */
