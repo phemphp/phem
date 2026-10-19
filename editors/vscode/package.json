@@ -2,7 +2,7 @@
     "name": "phem",
     "displayName": "Phem",
     "description": "Syntax highlighting, completion, go to definition, hover, outline, and phemc diagnostics for .phpm files: PHP with markup literals and Twig.",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "publisher": "phem",
     "license": "MIT",
     "icon": "icons/icon.png",

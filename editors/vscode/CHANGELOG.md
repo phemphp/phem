@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 - Completion for the Phem attributes of an HTML element: `phem:loading`, `phem:debounce`, and
   `phem:throttle`. In the Twig value of `phem:debounce`, completion also suggests `'blur'`.
