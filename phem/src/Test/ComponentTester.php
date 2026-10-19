@@ -45,6 +45,13 @@ final class ComponentTester
     private bool $reload = false;
     /** @var list<array{name: string, detail: mixed}> */
     private array $dispatched = [];
+    /**
+     * The bound fields (`phem:bind`) that the user changed, as the browser keeps them until the
+     * next event: key => the fields of the key, with a function that gives back the server value.
+     *
+     * @var array<string, list<array{0: Element, 1: \Closure(): void}>>
+     */
+    private array $edited = [];
 
     /**
      * @param \Closure(string): self|null $visit opens a URL (for followRedirect())
@@ -100,11 +107,30 @@ final class ComponentTester
         // A text field sends `input` (for onInput and onChange), other fields `input` and `change`.
         $types = self::isTextLike($element) ? ['input'] : ['input', 'change'];
         $events = array_filter(array_map(fn (string $type): ?array => $this->event($element, $type), $types));
+        if ([] === $events && $element->hasAttribute('data-phem-live') && $element->hasAttribute('data-phem-bind')) {
+            // `phem:live`: an event with no handler, with the bound values.
+            $events = [[null, ['type' => self::isTextLike($element) ? 'input' : 'change', 'live' => true]]];
+        }
         if ([] === $events) {
-            Assert::fail(\sprintf('The element "%s" has no onChange or onInput handler.', $selector));
+            Assert::fail(\sprintf('The element "%s" has no onChange or onInput handler, and no phem:live.', $selector));
         }
 
         return $this->send(...$events);
+    }
+
+    /**
+     * Changes the value of a field, as change() does, but sends no event. For a bound field
+     * (`phem:bind`), the next event sends the new value, as in a browser:
+     *
+     *     ->fill('input[name=query]', 'Ada')->click('button')->assertState('query', 'Ada')
+     *
+     * @param string|int|float|bool|list<string> $value
+     */
+    public function fill(string $selector, string|int|float|bool|array $value): self
+    {
+        $this->setValue($this->enabled($selector), $value, $selector);
+
+        return $this;
     }
 
     /**
@@ -122,7 +148,7 @@ final class ComponentTester
             Assert::fail(\sprintf('The element "%s" is not a form or a button that submits a form.', $selector));
         }
         foreach ($fields as $name => $value) {
-            $this->fill($form, $name, $value);
+            $this->fillField($form, $name, $value);
         }
         $event = $this->event($form, 'submit', $submitter) ?? Assert::fail(\sprintf('The form "%s" has no onSubmit handler.', $selector));
 
@@ -357,13 +383,18 @@ final class ComponentTester
      * Sends events in their order, as the queue of the `phem` Stimulus controller does, and
      * morphs the components that changed.
      *
-     * @param array{0: string, 1: array<string, mixed>} ...$events handler id, DOM event
+     * Each event sends the bound fields that changed. After the morph, a field that the morph
+     * did not render again gets the server value back, as in a browser: the server did not take
+     * its value, or the value is the same.
+     *
+     * @param array{0: string|null, 1: array<string, mixed>} ...$events handler id (null for `phem:live`), DOM event
      */
     private function send(array ...$events): self
     {
         $this->dispatched = [];
         foreach ($events as [$handler, $event]) {
-            $result = $this->driver->dispatch($handler, $event);
+            $bound = array_map(self::boundValue(...), array_map(static fn (array $fields): array => array_column($fields, 0), $this->edited));
+            $result = $this->driver->dispatch($handler, $event, $bound);
             $this->status = $result->status;
             $this->redirect = $result->redirect;
             $this->reload = $result->reload;
@@ -374,6 +405,14 @@ final class ComponentTester
                 break;
             }
             $this->morph($result);
+            foreach ($this->edited as $fields) {
+                foreach ($fields as [$field, $restore]) {
+                    if ($field->isConnected) {
+                        $restore();
+                    }
+                }
+            }
+            $this->edited = [];
             array_push($this->dispatched, ...$result->dispatched);
         }
 
@@ -462,6 +501,7 @@ final class ComponentTester
      */
     private function setValue(Element $element, string|int|float|bool|array $value, string $selector): Element
     {
+        $this->edit($element);
         $type = strtolower($element->getAttribute('type') ?? 'text');
         switch (true) {
             case 'input' === $element->localName && 'radio' === $type:
@@ -509,8 +549,74 @@ final class ComponentTester
         return $element;
     }
 
+    /**
+     * Keeps the server value of the fields of a bound key before the first change, so the
+     * morph can give it back (see send()).
+     */
+    private function edit(Element $field): void
+    {
+        $key = $field->getAttribute('data-phem-bind');
+        if (null === $key || isset($this->edited[$key])) {
+            return;
+        }
+        $fields = array_filter(iterator_to_array($this->document->querySelectorAll('[data-phem-bind]'), false), static fn (Element $f): bool => $f->getAttribute('data-phem-bind') === $key);
+        $this->edited[$key] = array_values(array_map(static fn (Element $f): array => [$f, self::snapshot($f)], $fields));
+    }
+
+    /** @return \Closure(): void gives back the value that the field has now */
+    private static function snapshot(Element $field): \Closure
+    {
+        $value = $field->getAttribute('value');
+        $checked = $field->hasAttribute('checked');
+        $text = $field->textContent;
+        $selected = 'select' === $field->localName ? array_map(static fn (Element $o): bool => $o->hasAttribute('selected'), iterator_to_array($field->querySelectorAll('option'), false)) : [];
+
+        return static function () use ($field, $value, $checked, $text, $selected): void {
+            switch ($field->localName) {
+                case 'select':
+                    foreach (iterator_to_array($field->querySelectorAll('option'), false) as $i => $option) {
+                        $option->toggleAttribute('selected', $selected[$i] ?? false);
+                    }
+                    break;
+                case 'textarea':
+                    $field->textContent = $text;
+                    break;
+                default:
+                    null === $value ? $field->removeAttribute('value') : $field->setAttribute('value', $value);
+                    $field->toggleAttribute('checked', $checked);
+            }
+        };
+    }
+
+    /**
+     * The value of a bound key, from its fields, as the browser sends it.
+     *
+     * @param list<Element> $fields
+     *
+     * @return string|bool|list<string>|null
+     */
+    private static function boundValue(array $fields): string|bool|array|null
+    {
+        $first = $fields[0];
+        $type = strtolower($first->getAttribute('type') ?? 'text');
+
+        return match (true) {
+            'input' === $first->localName && 'checkbox' === $type && $first->hasAttribute('data-phem-bind-list') => array_values(array_map(
+                static fn (Element $f): string => $f->getAttribute('value') ?? 'on',
+                array_filter($fields, static fn (Element $f): bool => $f->hasAttribute('checked')),
+            )),
+            'input' === $first->localName && 'checkbox' === $type => $first->hasAttribute('checked'),
+            'input' === $first->localName && 'radio' === $type => array_values(array_map(
+                static fn (Element $f): string => $f->getAttribute('value') ?? 'on',
+                array_filter($fields, static fn (Element $f): bool => $f->hasAttribute('checked')),
+            ))[0] ?? null,
+            'select' === $first->localName && $first->hasAttribute('multiple') => array_map(self::optionValue(...), self::selectedOptions($first)),
+            default => self::valueOf($first),
+        };
+    }
+
     /** @param string|int|float|bool|list<string> $value */
-    private function fill(Element $form, string $name, string|int|float|bool|array $value): void
+    private function fillField(Element $form, string $name, string|int|float|bool|array $value): void
     {
         $fields = array_values(array_filter(
             iterator_to_array($form->querySelectorAll('[name="'.addcslashes($name, '"\\').'"]'), false),
@@ -521,6 +627,7 @@ final class ComponentTester
         }
         $type = strtolower($fields[0]->getAttribute('type') ?? '');
         if ('checkbox' === $type && \count($fields) > 1) {
+            $this->edit($fields[0]);
             // A group of checkboxes (`tags[]`): the values to check.
             $values = array_map(strval(...), (array) $value);
             foreach ($fields as $checkbox) {

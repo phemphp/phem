@@ -60,6 +60,14 @@
 // waiting event of the element, and any other event (a click, a submit) sends all the waiting
 // events first, so no input is lost. An input or change event that is in the queue and did not
 // start yet takes the value of a newer event of the same handler and element: one request only.
+//
+// `phem:bind={{ query }}` in markup renders `data-phem-bind="<fiber>.query"` and the value of the
+// #[State] property. A change sends no request: each event sends the bound fields that the user
+// changed (`bound`: key => value), and the server sets the properties before the handler. A field
+// changed when its value is not its default value (the value of the server render). With
+// `phem:live` (`data-phem-live`), a change sends an event with no handler, with the same waits as
+// `onChange`. The morph keeps a field that the user changed after the request left. A value that
+// the server did not take (the wrong type) goes back to the value of the server.
 
 import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
@@ -82,6 +90,47 @@ function formFields(form, submitter) {
 // A callback of the same kind that starts later runs after it.
 function afterStreams() {
   return new Promise((resolve) => (document.visibilityState === "hidden" ? setTimeout(resolve, 0) : requestAnimationFrame(() => setTimeout(resolve, 0))))
+}
+
+// The bound fields (`phem:bind`): the value of a key, from all of its fields, as the server takes it.
+function boundValue(fields) {
+  const [first] = fields
+  if (first instanceof HTMLInputElement && first.type === "checkbox") {
+    return first.hasAttribute("data-phem-bind-list") ? fields.filter((f) => f.checked).map((f) => f.value) : first.checked
+  }
+  if (first instanceof HTMLInputElement && first.type === "radio") return fields.find((f) => f.checked)?.value ?? null
+  if (first instanceof HTMLSelectElement && first.multiple) return [...first.selectedOptions].map((o) => o.value)
+  return first.value
+}
+
+// The option that a single <select> shows with no change: the default one, or the first one.
+function defaultOption(select) {
+  const options = [...select.options]
+  return options.findLast((o) => o.defaultSelected) ?? options.find((o) => !o.disabled) ?? null
+}
+
+// Whether the user changed a bound field: its value is not the value of the server render.
+function isDirty(field) {
+  if (field instanceof HTMLInputElement && (field.type === "checkbox" || field.type === "radio")) return field.checked !== field.defaultChecked
+  if (field instanceof HTMLSelectElement) {
+    if (field.multiple) return [...field.options].some((o) => o.selected !== o.defaultSelected)
+    return field.selectedOptions[0] !== defaultOption(field)
+  }
+  return field.value !== field.defaultValue
+}
+
+// Gives a bound field the value of the server render again.
+function resetField(field) {
+  if (field instanceof HTMLInputElement && (field.type === "checkbox" || field.type === "radio")) field.checked = field.defaultChecked
+  else if (field instanceof HTMLSelectElement && field.multiple) for (const o of field.options) o.selected = o.defaultSelected
+  else if (field instanceof HTMLSelectElement) {
+    const option = defaultOption(field)
+    if (option) option.selected = true
+  } else field.value = field.defaultValue
+}
+
+function sameValue(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b)
 }
 
 function showLoading(el, on) {
@@ -142,6 +191,21 @@ export default class PhemController extends Controller {
       }
     }
     this.element.addEventListener("turbo:morph-element", this.keepLoading)
+    // The values of all the bound fields when the request of the event that the morph renders
+    // now left.
+    this.sentBound = null
+    // The morph sets the value of each field of the server render. Keep a bound field that the
+    // user changed after the request left: its value is not the value that it had then. The
+    // morph sets the attributes first, so the field can look changed here: compare with the
+    // values when the request left, not with the default value.
+    this.keepEdited = (event) => {
+      if (!this.sentBound || !["value", "checked", "selected"].includes(event.detail.attributeName)) return
+      const field = event.target instanceof HTMLOptionElement ? event.target.closest("select") : event.target
+      const key = field?.getAttribute?.("data-phem-bind")
+      if (!key || !this.element.contains(field) || !(key in this.sentBound)) return
+      if (!sameValue(boundValue(this.boundFields(key)), this.sentBound[key])) event.preventDefault()
+    }
+    this.element.addEventListener("turbo:before-morph-attribute", this.keepEdited)
     this.showOffline = () => this.element.classList.toggle("phem-offline", !navigator.onLine)
     this.showOffline()
     window.addEventListener("online", this.showOffline)
@@ -150,6 +214,7 @@ export default class PhemController extends Controller {
 
   disconnect() {
     this.element.removeEventListener("turbo:morph-element", this.keepLoading)
+    this.element.removeEventListener("turbo:before-morph-attribute", this.keepEdited)
     this.element.removeEventListener("focusout", this.flushOnBlur)
     for (const pending of this.pending.values()) pending.forEach(({ timer }) => clearTimeout(timer))
     this.pending.clear()
@@ -161,7 +226,12 @@ export default class PhemController extends Controller {
   // data-action="click->phem#dispatch input->phem#dispatch ..." on the root element.
   dispatch(event) {
     const el = this.handlerElement(event)
-    if (!el) return
+    if (!el) {
+      const live = this.liveElement(event)
+      // Its "handler" is the key of the field: the server gets null (see fetchWithRetry()).
+      if (live) this.schedule(live, "data-phem-live", live.getAttribute("data-phem-bind"), event.type, { type: event.type, live: true })
+      return
+    }
     if (event.type === "submit") {
       event.preventDefault()
       // The first submit of this form still runs.
@@ -176,8 +246,13 @@ export default class PhemController extends Controller {
       key: event.key ?? null,
       form: el instanceof HTMLFormElement ? formFields(el, event.submitter) : null,
     }
+    this.schedule(el, attr, handler, event.type, payload)
+  }
+
+  // Sends an event after its wait (debounce or throttle), or at once.
+  schedule(el, attr, handler, type, payload) {
     const send = () => this.enqueue(el, attr, handler, payload)
-    const wait = this.timing(el, event.type)
+    const wait = this.timing(el, type)
     if (wait) {
       this.defer(el, attr, wait, send)
     } else {
@@ -344,6 +419,15 @@ export default class PhemController extends Controller {
     showLoading(el, count > 0)
   }
 
+  // A bound field with `phem:live`, when no handler gets the event: a text field sends on
+  // `input`, the other fields on `change`.
+  liveElement(event) {
+    const el = event.target
+    if (!(el instanceof Element) || !el.hasAttribute("data-phem-live") || !el.hasAttribute("data-phem-bind") || !this.element.contains(el)) return null
+    if (event.type !== (isTextLike(el) ? "input" : "change")) return null
+    return el
+  }
+
   handlerElement(event) {
     const find = (name) => {
       const el = event.target.closest?.(`[data-phem-on-${name}]`)
@@ -372,9 +456,18 @@ export default class PhemController extends Controller {
 
   // `beforeRender` runs when the last response arrives, before the page changes.
   async send(handler, event, beforeRender) {
+    // The bound fields when the event starts: the newest values. The request sends the fields
+    // that changed.
+    const fields = this.boundValues()
+    const bound = Object.fromEntries(Object.entries(fields).filter(([, { dirty }]) => dirty).map(([key, { value }]) => [key, value]))
+    if (event.live && !Object.keys(bound).length) {
+      // The field has its server value again: nothing to send.
+      beforeRender()
+      return
+    }
     let response
     try {
-      response = await this.fetchWithRetry(handler, event)
+      response = await this.fetchWithRetry(handler, event, bound)
     } catch (e) {
       beforeRender()
       console.error("[phem] event failed (network error)", e)
@@ -414,7 +507,12 @@ export default class PhemController extends Controller {
     }
     this.stateValue = data.state
     this.signatureValue = data.signature
+    this.sentBound = Object.fromEntries(Object.entries(fields).map(([key, { value }]) => [key, value]))
     const rendered = data.streams ? this.renderStreams(data.streams, handler) : afterStreams()
+    rendered.then(() => {
+      this.sentBound = null
+      this.resetRejected(bound)
+    })
     if (data.events?.length) {
       // After the morph, so a listener sees the new page.
       rendered.then(() => {
@@ -462,7 +560,7 @@ export default class PhemController extends Controller {
 
   // Posts the event. Sends it again after a network error, a 502 or a 503, with a longer wait
   // each time. The last try returns its response, or throws its network error.
-  async fetchWithRetry(handler, event) {
+  async fetchWithRetry(handler, event, bound = {}) {
     for (let attempt = 0; ; attempt++) {
       let response = null
       let error = null
@@ -471,7 +569,8 @@ export default class PhemController extends Controller {
         response = await fetch(window.location.href, {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json", "X-Phem-Event": "1" },
-          body: JSON.stringify({ state: this.stateValue, signature: this.signatureValue, handler, event }),
+          // A `phem:live` event has no handler: the server only sets the bound values.
+          body: JSON.stringify({ state: this.stateValue, signature: this.signatureValue, handler: event.live ? null : handler, event, bound }),
         })
       } catch (e) {
         error = e
@@ -487,6 +586,32 @@ export default class PhemController extends Controller {
       console.warn(`[phem] event failed (${error ? "network error" : response.status}), new try in ${delay} ms`)
       await new Promise((resolve) => setTimeout(resolve, delay))
       if (!navigator.onLine) await new Promise((resolve) => window.addEventListener("online", resolve, { once: true }))
+    }
+  }
+
+  // The bound fields of a key ("<fiber>.<property>"): a group of checkboxes or radio buttons has more than one.
+  boundFields(key) {
+    return [...this.element.querySelectorAll("[data-phem-bind]")].filter((f) => f.getAttribute("data-phem-bind") === key)
+  }
+
+  // The values of the bound fields: key => {value, dirty}, where dirty tells that the user changed it.
+  boundValues() {
+    const keys = new Map()
+    for (const field of this.element.querySelectorAll("[data-phem-bind]")) {
+      const key = field.getAttribute("data-phem-bind")
+      keys.set(key, [...(keys.get(key) ?? []), field])
+    }
+    const values = {}
+    for (const [key, fields] of keys) values[key] = { value: boundValue(fields), dirty: fields.some(isDirty) }
+    return values
+  }
+
+  // After the morph: a field that still has the value that the request sent, and not the value of
+  // the server render, has a value that the server did not take. It gets the server value again.
+  resetRejected(bound) {
+    for (const [key, value] of Object.entries(bound)) {
+      const fields = this.boundFields(key)
+      if (fields.some(isDirty) && sameValue(boundValue(fields), value)) fields.forEach(resetField)
     }
   }
 

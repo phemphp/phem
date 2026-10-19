@@ -156,7 +156,7 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
 /// variable.
 const TWIG_GLOBALS: &[&str] = &["app"];
 
-fn has_variable(text: &str, name: &str) -> bool {
+pub(crate) fn has_variable(text: &str, name: &str) -> bool {
     let needle = format!("${name}");
     let b = text.as_bytes();
     let mut from = 0;
@@ -188,14 +188,16 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
             }
             _ => vec![],
         };
-        let content = lowerer.lower_root(&m.root, slots);
-
-        // Resolve the free variables to PHP expressions.
         let (scope_text, class) = match scope {
             MarkupScope::Function(fi) => (info.functions[fi].span.text(src), None),
             MarkupScope::Method(ci, mi) => (info.classes[ci].methods[mi].span.text(src), Some(&info.classes[ci])),
             MarkupScope::TopLevel => (src, None),
         };
+        lowerer.class = class;
+        lowerer.scope_text = scope_text;
+        let content = lowerer.lower_root(&m.root, slots);
+
+        // Resolve the free variables to PHP expressions.
         let mut vars = Vec::new();
         for v in vars::free_vars(&m.root) {
             let php = if has_variable(scope_text, &v.name) {
@@ -227,6 +229,10 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
             vars.push(format!("{} => {php}", php_str(&v.name)));
         }
 
+        // A bound field (`phem:bind`) gives its component to the runtime.
+        if class.is_some() && content.contains("phem_bind(") && !vars.iter().any(|v| v.starts_with("'this' =>")) {
+            vars.push("'this' => $this".to_string());
+        }
         let newlines = m.span.text(src).matches('\n').count();
         let call = format!("new \\Phem\\Element({}, [{}]){}", php_str(&name), vars.join(", "), "\n".repeat(newlines));
         replacements.push((m.span, call));

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Completion for the Phem attributes `phem:bind` and `phem:live`.
+
 ## 0.4.0
 
 - Completion for the Phem attributes of an HTML element: `phem:loading`, `phem:debounce`, and

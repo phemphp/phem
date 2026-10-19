@@ -1,12 +1,12 @@
 //! Lowers a markup tree to Twig source.
 
-use phemc_analyze::{FileInfo, Registry};
+use phemc_analyze::{Class, FileInfo, Registry};
 use phemc_syntax::diag::codes;
 use phemc_syntax::markup::{Attr, AttrKind, AttrValue, Element, ExprPart, Node, StrPart, TwigExpr};
 use phemc_syntax::{Diagnostic, Span};
 use std::collections::HashSet;
 
-use crate::php_str;
+use crate::{has_variable, php_str};
 
 pub struct Lowerer<'a> {
     pub info: &'a FileInfo,
@@ -21,11 +21,17 @@ pub struct Lowerer<'a> {
     /// The number of open component tags: their children are blocks of an embed, so a slot of
     /// the template in them prints its prop, not a block.
     components: usize,
+    /// The class of the method of the markup, if any: `phem:bind` binds one of its #[State] properties.
+    pub class: Option<&'a Class>,
+    /// The source of the function or the method of the markup: its local variables.
+    pub scope_text: &'a str,
+    /// The bound value of the open `<select phem:bind>`: its options get `selected`.
+    bound_select: Option<String>,
 }
 
 impl<'a> Lowerer<'a> {
     pub fn new(info: &'a FileInfo, reg: &'a Registry) -> Self {
-        Self { info, reg, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0 }
+        Self { info, reg, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", bound_select: None }
     }
 
     pub fn lower_root(&mut self, node: &Node, slots: Vec<String>) -> String {
@@ -120,6 +126,7 @@ impl<'a> Lowerer<'a> {
             );
         }
         self.check_timing(e);
+        let bind = self.bind(e);
         out.push('<');
         out.push_str(&e.name);
         if e.attrs.iter().any(|a| matches!(a.kind, AttrKind::Spread(_))) {
@@ -129,15 +136,36 @@ impl<'a> Lowerer<'a> {
                 self.dom_attr(a, out);
             }
         }
+        if let Some(b) = &bind {
+            out.push_str(&b.attrs);
+        }
+        if name == "option" {
+            if let Some(bound) = self.bound_select.clone() {
+                self.option_selected(e, &bound, out);
+            }
+        }
         let void = phemc_syntax::markup::VOID_ELEMENTS.contains(&name.as_str());
         out.push('>');
         if void {
             return;
         }
+        if let Some(BoundField { text: Some(text), .. }) = &bind {
+            // A bound `<textarea>`: its text is the value.
+            out.push_str(text);
+            out.push_str("</");
+            out.push_str(&e.name);
+            out.push('>');
+            return;
+        }
+        let select = bind.as_ref().and_then(|b| b.select.clone());
+        let outer_select = if select.is_some() { std::mem::replace(&mut self.bound_select, select) } else { None };
         let scope = usize::from(name == "head" || name == "svg");
         self.title_scopes += scope;
         self.nodes(&e.children, out);
         self.title_scopes -= scope;
+        if bind.as_ref().is_some_and(|b| b.select.is_some()) {
+            self.bound_select = outer_select;
+        }
         out.push_str("</");
         out.push_str(&e.name);
         out.push('>');
@@ -194,6 +222,8 @@ impl<'a> Lowerer<'a> {
                 // An inline script (`onclick="..."`) of the markup: the runtime does not render
                 // `on*` names from phem_attrs(), because a spread can contain data.
                 AttrKind::Plain { name, .. } if is_inline_script(name) => self.dom_attr(a, out),
+                // See bind().
+                AttrKind::Plain { name, .. } if name == BIND => {}
                 AttrKind::Plain { name, name_span, value } => {
                     if TIMINGS.contains(&name.as_str()) {
                         match value {
@@ -268,7 +298,7 @@ impl<'a> Lowerer<'a> {
             match &a.kind {
                 AttrKind::Spread(_) => has_handler = true,
                 AttrKind::Plain { name, name_span, .. } => {
-                    if event_name(name).is_some() {
+                    if event_name(name).is_some() || name == LIVE {
                         has_handler = true;
                     } else if TIMINGS.contains(&name.as_str()) {
                         if let Some(other) = found {
@@ -316,6 +346,163 @@ impl<'a> Lowerer<'a> {
         self.error(codes::BAD_ATTRIBUTE, format!("`{name}` takes an expression"), span).help = Some(format!("write `{name}={{{{ 300 }}}}`"));
     }
 
+    /// `phem:bind={{ query }}` on an `<input>`, a `<textarea>` or a `<select>`: the name of a
+    /// #[State] property of the class, with a type that takes the value of the field (E033).
+    fn bind(&mut self, e: &Element) -> Option<BoundField> {
+        let mut found = None;
+        let mut live = None;
+        for a in &e.attrs {
+            if let AttrKind::Plain { name, name_span, value } = &a.kind {
+                if name == BIND {
+                    found = Some((*name_span, value));
+                } else if name == LIVE {
+                    live = Some(*name_span);
+                }
+            }
+        }
+        let Some((span, value)) = found else {
+            if let Some(span) = live {
+                self.diags.push(
+                    Diagnostic::warning(codes::LIVE_WITHOUT_BIND, "`phem:live` does nothing: the element has no `phem:bind`", span)
+                        .with_help("put it on a bound field, for example `<input phem:bind={{ query }} phem:live />`"),
+                );
+            }
+            return None;
+        };
+        let help = "write the name of a #[State] property: `phem:bind={{ query }}`";
+        let AttrValue::Expr(x) = value else {
+            self.error(codes::INVALID_BIND, "`phem:bind` takes the name of a #[State] property", span).help = Some(help.into());
+            return None;
+        };
+        let code = self.expr_code(x);
+        let is_name = code.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_') && code.chars().all(|c| c.is_ascii_alphanumeric() || c == '_');
+        if !is_name {
+            self.error(codes::INVALID_BIND, "`phem:bind` takes the name of a #[State] property, not an expression", x.span).help =
+                Some(format!("{help}. A nested path (`filters.status`) is not supported yet"));
+            return None;
+        }
+        let tag = e.name.to_ascii_lowercase();
+        if !matches!(tag.as_str(), "input" | "textarea" | "select") {
+            self.error(codes::INVALID_BIND, format!("`phem:bind` is for a form field, not a `<{}>`", e.name), span).help =
+                Some("put it on an `<input>`, a `<textarea>` or a `<select>`".into());
+            return None;
+        }
+        let Some(class) = self.class else {
+            self.error(codes::INVALID_BIND, "`phem:bind` needs a class component: a function component has no state", span).help =
+                Some("bind a #[State] property of a class component, or pass `value` and `onChange` as props".into());
+            return None;
+        };
+        if has_variable(self.scope_text, &code) {
+            self.error(codes::INVALID_BIND, format!("`{code}` is a local variable, not a #[State] property"), x.span).help =
+                Some(format!("rename the variable `${code}`: in markup it hides the property"));
+            return None;
+        }
+        let prop = class.all_props().find(|p| p.name == code && !p.is_static);
+        match prop {
+            Some(p) if !p.is_state => {
+                self.error(codes::INVALID_BIND, format!("`{code}` is not a #[State] property"), x.span).help =
+                    Some(format!("add `#[State]` to `${code}`: the browser keeps only the state"));
+                return None;
+            }
+            None if !class.open => {
+                self.error(codes::INVALID_BIND, format!("`{}` has no property `{code}`", class.name), x.span).help = Some(format!("declare `#[State] public string ${code} = '';`"));
+                return None;
+            }
+            _ => {}
+        }
+
+        // The attributes that phem:bind sets.
+        let attr = |n: &str| {
+            e.attrs.iter().find_map(|a| match &a.kind {
+                AttrKind::Plain { name, name_span, value } if name.eq_ignore_ascii_case(n) => Some((*name_span, value)),
+                _ => None,
+            })
+        };
+        let static_text = |v: &AttrValue| match v {
+            AttrValue::Quoted { parts, raw, .. } if parts.iter().all(|p| matches!(p, StrPart::Lit(_))) => Some(raw.to_ascii_lowercase()),
+            _ => None,
+        };
+        let type_attr = attr("type");
+        let input_type = match type_attr {
+            None => Some("text".to_string()),
+            Some((_, v)) => static_text(v),
+        };
+        let kind = match tag.as_str() {
+            "input" => match input_type.as_deref() {
+                Some("checkbox") => Some(FieldValue::Checkbox),
+                Some(_) => Some(FieldValue::Scalar),
+                None => None,
+            },
+            "select" if attr("multiple").is_some() => Some(FieldValue::List),
+            _ => Some(FieldValue::Scalar),
+        };
+        let toggles = matches!(input_type.as_deref(), Some("checkbox" | "radio"));
+        let owned = match tag.as_str() {
+            "input" if toggles => Some("checked"),
+            "input" if input_type.is_some() => Some("value"),
+            _ => None,
+        };
+        if let Some((s, _)) = owned.and_then(attr) {
+            self.error(codes::INVALID_BIND, format!("`{}` and `phem:bind` cannot be on the same element", owned.unwrap()), s).help =
+                Some("`phem:bind` sets it from the property: remove it".into());
+        }
+        if tag == "textarea" && e.children.iter().any(|n| !n.is_blank()) {
+            self.error(codes::INVALID_BIND, "a bound `<textarea>` has no text: `phem:bind` sets it", e.name_span).help = Some("remove the text of the `<textarea>`".into());
+        }
+        if let (Some(kind), Some(p)) = (kind, prop) {
+            if !kind.accepts(&p.ty) {
+                self.error(codes::INVALID_BIND, format!("this field gives {}, but `${code}` is `{}`", kind.describe(), p.ty.trim()), x.span).help = Some(match kind {
+                    FieldValue::Scalar => "use a `string`, `int`, `float` or backed enum property".into(),
+                    FieldValue::Checkbox => "use a `bool` property (or an `array` for a group of checkboxes)".into(),
+                    FieldValue::List => "use an `array` property".into(),
+                });
+            }
+        }
+
+        let ty = match type_attr {
+            None => "null".to_string(),
+            Some((_, AttrValue::Expr(t))) => self.expr_code(t),
+            Some((_, AttrValue::Quoted { parts, .. })) => self.quoted_expr(parts, span),
+            Some((_, AttrValue::None)) => "null".to_string(),
+        };
+        // The value of a checkbox or a radio button: the value that it gives when checked.
+        let option = match attr("value") {
+            Some((_, AttrValue::Expr(v))) if tag == "input" => format!("({})", self.expr_code(v)),
+            Some((_, AttrValue::Quoted { parts, .. })) if tag == "input" => self.quoted_expr(parts, span),
+            _ => "null".to_string(),
+        };
+        Some(BoundField {
+            // `this`: the component of the property. The markup can render in the slot of another
+            // component (`<Document>`), so the current component is not always the owner.
+            attrs: format!(" {{{{ phem_bind({}, {code}, {}, {ty}, {option}, this) }}}}", php_str(&code), php_str(&tag)),
+            text: (tag == "textarea").then(|| format!("{{{{ phem_bind_value({code}) }}}}")),
+            select: (tag == "select").then(|| code.clone()),
+        })
+    }
+
+    /// `selected` for an `<option>` of a bound `<select>`: its `value`, or its text.
+    fn option_selected(&mut self, e: &Element, bound: &str, out: &mut String) {
+        let value = e.attrs.iter().find_map(|a| match &a.kind {
+            AttrKind::Plain { name, value, .. } if name == "value" => Some(value),
+            _ => None,
+        });
+        let v = match value {
+            Some(AttrValue::Expr(x)) => format!("({})", self.expr_code(x)),
+            Some(AttrValue::Quoted { parts, .. }) => self.quoted_expr(parts, e.name_span),
+            Some(AttrValue::None) => "''".to_string(),
+            None if e.children.iter().all(|n| matches!(n, Node::Text(_))) => {
+                let text: String = e.children.iter().map(|n| if let Node::Text(t) = n { t.text.as_str() } else { "" }).collect();
+                php_str(&text.split_whitespace().collect::<Vec<_>>().join(" "))
+            }
+            None => {
+                self.error(codes::INVALID_BIND, "an `<option>` of a bound `<select>` needs a `value`", e.name_span).help =
+                    Some("write `value={{ item.id }}`: the text of the option is not static".into());
+                return;
+            }
+        };
+        out.push_str(&format!(" {{{{ phem_selected({bound}, {v}) }}}}"));
+    }
+
     fn handler_not_function(&mut self, name: &str, span: Span) {
         self.error(codes::BAD_ATTRIBUTE, format!("`{name}` takes a function"), span).help = Some(format!("write `{name}={{{{ handleIt }}}}`"));
     }
@@ -337,6 +524,23 @@ impl<'a> Lowerer<'a> {
                         AttrValue::None => "true".into(),
                     };
                     out.push_str(&format!("{ws}{{{{ phem_key({k}) }}}}"));
+                    return;
+                }
+                if name == BIND {
+                    // See bind().
+                    return;
+                }
+                if name == LIVE {
+                    match value {
+                        AttrValue::None => out.push_str(&format!("{ws}data-phem-live")),
+                        AttrValue::Expr(x) => {
+                            let c = self.expr_code(x);
+                            out.push_str(&format!("{ws}{{{{ phem_attr('data-phem-live', ({c}) is same as(true)) }}}}"));
+                        }
+                        AttrValue::Quoted { .. } => {
+                            self.error(codes::BAD_ATTRIBUTE, "`phem:live` takes no text", *name_span).help = Some("write `phem:live`, or `phem:live={{ live }}` with a bool".into());
+                        }
+                    }
                     return;
                 }
                 if name == LOADING {
@@ -561,6 +765,62 @@ impl<'a> Lowerer<'a> {
 
 /// `phem:loading={{ save }}`: the element shows only while a `save` event runs.
 const LOADING: &str = "phem:loading";
+
+/// `phem:bind={{ query }}`: the field shows a #[State] property, and the browser sends its new
+/// value with the next event. `phem:live` sends each change at once.
+const BIND: &str = "phem:bind";
+const LIVE: &str = "phem:live";
+
+/// The lowered parts of a bound field (see `Lowerer::bind()`).
+struct BoundField {
+    /// The attributes: ` {{ phem_bind(...) }}`.
+    attrs: String,
+    /// The text of a `<textarea>`.
+    text: Option<String>,
+    /// The bound value of a `<select>`, for the `selected` of its options.
+    select: Option<String>,
+}
+
+/// What a form field gives to a bound property.
+#[derive(Clone, Copy, PartialEq)]
+enum FieldValue {
+    /// A string: a text input, a radio button, a `<select>`, a `<textarea>`.
+    Scalar,
+    /// A bool, or a list of strings for a group: a checkbox.
+    Checkbox,
+    /// A list of strings: a `<select multiple>`.
+    List,
+}
+
+impl FieldValue {
+    fn describe(self) -> &'static str {
+        match self {
+            FieldValue::Scalar => "a string (or a number, or a backed enum)",
+            FieldValue::Checkbox => "a bool (or a list of strings for a group of checkboxes)",
+            FieldValue::List => "a list of strings",
+        }
+    }
+
+    /// Whether a PHP property type takes the value. No type and `mixed` take any value.
+    fn accepts(self, ty: &str) -> bool {
+        let ty = ty.trim();
+        if ty.is_empty() {
+            return true;
+        }
+        ty.split('|').any(|t| {
+            let t = t.trim().trim_matches(|c| c == '(' || c == ')').trim_start_matches('?').trim().to_ascii_lowercase();
+            let list = matches!(t.as_str(), "array" | "iterable");
+            let bool = matches!(t.as_str(), "bool" | "true" | "false");
+            let builtin = list || bool || matches!(t.as_str(), "null" | "object" | "callable" | "void" | "never" | "self" | "static");
+            t == "mixed"
+                || match self {
+                    FieldValue::Scalar => matches!(t.as_str(), "string" | "int" | "float") || !builtin,
+                    FieldValue::Checkbox => bool || list,
+                    FieldValue::List => list,
+                }
+        })
+    }
+}
 
 /// `phem:debounce={{ 300 }}` and `phem:throttle={{ 300 }}`: the browser waits before it sends the
 /// events of the element. `phem:debounce={{ 'blur' }}` sends on blur only.

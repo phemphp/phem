@@ -68,13 +68,14 @@ element. The answer of the server morphs the components that changed.
 |---|---|---|
 | `click($selector)` | `onClick`. A submit button also submits its form (`onSubmit`). | `->click('button.add')` |
 | `doubleClick($selector)` | `onDoubleClick` | `->doubleClick('li')` |
-| `change($selector, $value)` | `onChange`, `onInput` | `->change('[name=q]', 'Curie')` |
+| `change($selector, $value)` | `onChange`, `onInput`, or `phem:live` | `->change('[name=q]', 'Curie')` |
+| `fill($selector, $value)` | none: the next event sends a bound field (`phem:bind`) | `->fill('[name=q]', 'Curie')->click('button')` |
 | `submit($selector, $fields)` | `onSubmit` | `->submit('form', ['name' => 'Ada'])` |
 | `keyDown($selector, $key)`, `keyUp($selector, $key)` | `onKeyDown`, `onKeyUp` | `->keyDown('input', 'Enter')` |
 | `focus($selector)`, `blur($selector)` | `onFocus`, `onBlur` | `->focus('input')` |
 | `fire($selector, $type, $event)` | any DOM event | `->fire('div', 'click', ['value' => 'x'])` |
 
-The value of `change()`:
+The value of `change()` and `fill()`:
 
 - a text field (`<input>`, `<textarea>`) takes a string;
 - a checkbox takes `true` or `false`;

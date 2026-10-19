@@ -39,6 +39,7 @@ use Phem\Rendering\MarkupResolver;
 use Phem\Rendering\Renderer;
 use Phem\Rendering\TemplateComponentRenderer;
 use Phem\Routing\PageLoader;
+use Phem\State\BoundValues;
 use Phem\State\StateAccessor;
 use Phem\State\StateCodec;
 use Phem\Twig\CacheKeyLoader;
@@ -62,6 +63,8 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.prop_binder', PropBinder::class)
             ->args([service('phem.metadata')])
         ->set('phem.state_accessor', StateAccessor::class)
+            ->args([service('phem.metadata')])
+        ->set('phem.bound_values', BoundValues::class)
             ->args([service('phem.metadata')])
         ->set('phem.state_codec', StateCodec::class)
             ->args([abstract_arg('secret, set by PhemBundle'), 86400, false])
@@ -108,6 +111,7 @@ return static function (ContainerConfigurator $container): void {
                 tagged_iterator('phem.component_renderer'),
                 service('phem.handler_invoker'),
                 service('phem.handler_fingerprint'),
+                service('phem.metadata'),
             ])
             ->tag('kernel.reset', ['method' => 'reset'])
         ->alias(Renderer::class, 'phem.renderer')
@@ -157,6 +161,8 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.state_accessor'),
                 service('phem.turbo_streams'),
                 service('phem.browser_event_dispatcher'),
+                1048576,
+                service('phem.bound_values'),
             ])
         ->set('phem.listener.page_attributes', PageAttributesListener::class)
             ->tag('kernel.event_listener', ['event' => 'kernel.controller', 'method' => 'onKernelController'])

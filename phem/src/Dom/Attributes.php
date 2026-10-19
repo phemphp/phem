@@ -113,6 +113,35 @@ final class Attributes
         return new Markup(\sprintf('data-phem-%s="%s"', $kind, $value), 'UTF-8');
     }
 
+    /**
+     * The text of a bound value in a form field (`phem:bind`): a string, a number, the value of a
+     * backed enum, or '' for null. A bool is '1' or ''.
+     */
+    public static function bindValue(mixed $value): string
+    {
+        return match (true) {
+            null === $value => '',
+            $value instanceof \BackedEnum => (string) $value->value,
+            \is_scalar($value) => (string) $value,
+            $value instanceof \Stringable => (string) $value,
+            default => throw new \InvalidArgumentException(\sprintf('A bound field (`phem:bind`) shows a string, a number or a backed enum, "%s" given.', get_debug_type($value))),
+        };
+    }
+
+    /**
+     * `selected` for an `<option>` of a bound `<select>` (`phem:bind`): when its value is the
+     * bound value, or is in the bound list of a `<select multiple>`.
+     */
+    public static function selected(mixed $bound, mixed $option): Markup
+    {
+        $option = self::bindValue($option);
+        $selected = \is_array($bound)
+            ? \in_array($option, array_map(self::bindValue(...), $bound), true)
+            : null !== $bound && self::bindValue($bound) === $option;
+
+        return new Markup($selected ? 'selected' : '', 'UTF-8');
+    }
+
     private static function isBooleanish(string $name): bool
     {
         $name = strtolower($name);

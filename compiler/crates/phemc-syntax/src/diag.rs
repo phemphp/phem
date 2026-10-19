@@ -58,6 +58,7 @@ pub mod codes {
     pub const UNDEFINED_VARIABLE: &str = "E030";
     pub const MARKUP_IN_EXPRESSION: &str = "E031";
     pub const BAD_ATTRIBUTE: &str = "E032";
+    pub const INVALID_BIND: &str = "E033";
     pub const CLASS_WITHOUT_RENDER: &str = "E040";
     pub const READONLY_STATE: &str = "E041";
     pub const INVALID_PROP: &str = "E042";
@@ -70,4 +71,5 @@ pub mod codes {
     pub const FOREIGN_ATTRIBUTE: &str = "W004";
     pub const TITLE_IN_MARKUP: &str = "W005";
     pub const TIMING_WITHOUT_HANDLER: &str = "W006";
+    pub const LIVE_WITHOUT_BIND: &str = "W007";
 }

@@ -14,7 +14,9 @@ declare(strict_types=1);
 namespace Phem\Test;
 
 use Phem\BrowserEventDispatcher;
+use Phem\Metadata\ComponentMetadata;
 use Phem\Rendering\Renderer;
+use Phem\State\BoundValues;
 use Phem\State\StateAccessor;
 use Phem\State\StateCodec;
 use Phem\Test\Internal\ComponentDriver;
@@ -71,7 +73,8 @@ trait InteractsWithPhem
         $accessor = $container->get('phem.state_accessor');
         $codec = $container->get('phem.state_codec');
         $dispatcher = $container->get('phem.browser_event_dispatcher');
-        \assert($renderer instanceof Renderer && $accessor instanceof StateAccessor && $codec instanceof StateCodec && $dispatcher instanceof BrowserEventDispatcher);
+        $metadata = $container->get('phem.metadata');
+        \assert($renderer instanceof Renderer && $accessor instanceof StateAccessor && $codec instanceof StateCodec && $dispatcher instanceof BrowserEventDispatcher && $metadata instanceof ComponentMetadata);
 
         return new ComponentTester(new ComponentDriver(
             $renderer,
@@ -83,6 +86,7 @@ trait InteractsWithPhem
             $resetter instanceof ResetInterface ? $resetter : null,
             $sessions instanceof SessionFactoryInterface ? $sessions->createSession() : null,
             $dispatcher,
+            new BoundValues($metadata),
         ));
     }
 

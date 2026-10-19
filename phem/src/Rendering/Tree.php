@@ -35,6 +35,8 @@ final class Tree
     private array $handlers = [];
     /** @var array<string, int> handler id => the number of handlers with this id */
     private array $handlerCounts = [];
+    /** @var array<string, true> the bound properties of the pass: "<fiber>.<property>" */
+    private array $binds = [];
     private ?string $rootToken = null;
 
     /**
@@ -59,6 +61,7 @@ final class Tree
         $this->rootFiber = null;
         $this->handlers = [];
         $this->handlerCounts = [];
+        $this->binds = [];
     }
 
     /**
@@ -119,6 +122,42 @@ final class Tree
     public function handler(string $id): ?\Closure
     {
         return $this->handlers[$id] ?? null;
+    }
+
+    /**
+     * Registers a bound #[State] property of a fiber (`phem:bind={{ query }}`), the current fiber
+     * by default. Its key is "<fiber>.<property>": the browser sends the new value with this key
+     * (see BoundValues).
+     */
+    public function addBind(string $property, ?Fiber $owner = null): string
+    {
+        $key = (($owner ?? $this->top())->id ?? 'x').'.'.$property;
+        $this->binds[$key] = true;
+
+        return $key;
+    }
+
+    /** Whether the last pass binds this key ("<fiber>.<property>"). */
+    public function isBound(string $key): bool
+    {
+        return isset($this->binds[$key]);
+    }
+
+    /** The fiber of a component instance in the last pass. */
+    public function fiberOf(object $instance): ?Fiber
+    {
+        foreach ($this->fibers as $fiber) {
+            if ($fiber->instance === $instance && $fiber->pass === $this->pass) {
+                return $fiber;
+            }
+        }
+
+        return null;
+    }
+
+    public function fiberById(string $id): ?Fiber
+    {
+        return $this->fibers[$id] ?? null;
     }
 
     /**

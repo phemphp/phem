@@ -42,14 +42,27 @@ final class StateAccessor
         return $out;
     }
 
-    /** @param array<string, mixed> $state the state that the browser sent back */
+    /**
+     * A backed enum is its value in the JSON of the state: it becomes a case again.
+     *
+     * @param array<string, mixed> $state the state that the browser sent back
+     */
     public function restore(object $component, array $state): void
     {
         foreach ($this->metadata->stateProperties($component::class) as $p) {
             if (\array_key_exists($p->getName(), $state)) {
-                $p->setValue($component, $state[$p->getName()]);
+                $p->setValue($component, self::fromJson($p->getType(), $state[$p->getName()]));
             }
         }
+    }
+
+    private static function fromJson(?\ReflectionType $type, mixed $value): mixed
+    {
+        if (!$type instanceof \ReflectionNamedType || (!\is_int($value) && !\is_string($value)) || !is_subclass_of($type->getName(), \BackedEnum::class)) {
+            return $value;
+        }
+
+        return $type->getName()::from($value);
     }
 
     /** The state of the fibers of the last pass, and the route values of the page. */

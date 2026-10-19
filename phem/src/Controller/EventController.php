@@ -22,6 +22,7 @@ use Phem\Metadata\ComponentMetadata;
 use Phem\Path\PathResolver;
 use Phem\Rendering\Renderer;
 use Phem\Rendering\Tree;
+use Phem\State\BoundValues;
 use Phem\State\PageState;
 use Phem\State\StateAccessor;
 use Phem\State\StateCodec;
@@ -40,8 +41,9 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
  * The events go to the URL of the page, so the access rules of the page apply to them too
  * (see PageLoader). The page comes from the route, not from the browser.
  *
- * The `phem` Stimulus controller sends the signed state of the page and the handler id. The
- * server renders with that state, runs the handler, renders again, and answers with Turbo
+ * The `phem` Stimulus controller sends the signed state of the page, the handler id, and the
+ * values of the bound inputs that changed (see BoundValues). The server renders with that
+ * state, sets the bound values, runs the handler, renders again, and answers with Turbo
  * Streams that morph the components that changed, the new state, and the browser events of the
  * handler (see BrowserEventDispatcher). When the handler returns
  * a RedirectResponse, the server answers with its URL, and the browser visits it.
@@ -68,6 +70,7 @@ final class EventController
         private readonly TurboStreams $streams = new TurboStreams(),
         private readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
         private readonly int $maxSize = 1048576,
+        private readonly BoundValues $bound = new BoundValues(),
     ) {
     }
 
@@ -108,24 +111,29 @@ final class EventController
         }
         $tree = new Tree($page, $state->fibers, $props, $state->values);
         $this->renderer->render($tree);
-        $handler = $tree->handler($payload->handler);
-        if (null === $handler) {
+        $handler = null !== $payload->handler ? $tree->handler($payload->handler) : null;
+        if (null !== $payload->handler && null === $handler) {
             // The page changed since the browser rendered it (for example after a deploy).
             return self::reload();
         }
+        // After the first render, as the page in the browser was: the second render shows the
+        // new values as a change.
+        $this->bound->apply($tree, $payload->bound);
         // Only the handler sends browser events: not the render before it.
         $this->dispatcher->reset();
-        $event = Event::fromArray($payload->event, $request, $this->dispatcher);
-        $result = $this->renderer->dispatch($tree, $handler, $event);
-        if ($result instanceof RedirectResponse) {
-            // The browser visits the URL: the page does not render again, and the browser
-            // events of the handler are dropped (the new page has other listeners).
-            return new JsonResponse(['redirect' => self::redirectUrl($result)]);
+        if (null !== $handler) {
+            $event = Event::fromArray($payload->event, $request, $this->dispatcher);
+            $result = $this->renderer->dispatch($tree, $handler, $event);
+            if ($result instanceof RedirectResponse) {
+                // The browser visits the URL: the page does not render again, and the browser
+                // events of the handler are dropped (the new page has other listeners).
+                return new JsonResponse(['redirect' => self::redirectUrl($result)]);
+            }
         }
         $this->renderer->render($tree);
         [$json, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page, $request);
 
-        return new JsonResponse(['streams' => $this->streams->updates($tree->changedFibers()), 'state' => $json, 'signature' => $signature, 'events' => $event->dispatcher->dispatched()]);
+        return new JsonResponse(['streams' => $this->streams->updates($tree->changedFibers()), 'state' => $json, 'signature' => $signature, 'events' => $this->dispatcher->dispatched()]);
     }
 
     /**

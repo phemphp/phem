@@ -29,6 +29,7 @@ final class InteractsWithPhemTest extends KernelTestCase
     private const COUNTER = 'App\Components\Counter';
     private const SIGNUP = 'App\Pages\Signup';
     private const NOTIFIER = 'App\Pages\Notifier';
+    private const PROFILE = 'App\Pages\Profile';
 
     public static function setUpBeforeClass(): void
     {
@@ -101,6 +102,65 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->assertState('plan', 'pro')
             ->change('[name=agree]', false)
             ->assertSee('not agreed, pro');
+    }
+
+    public function testFillSendsTheBoundValuesWithTheNextEvent(): void
+    {
+        $this->mount(self::PROFILE)
+            ->assertSelectorExists('input[name=size][value=s][checked]')
+            ->assertSelectorExists('select[name=plan] option[value=free][selected]')
+            ->fill('input[name=name]', 'Ada')
+            ->fill('input[name=age]', '36')
+            ->fill('input[name=agree]', true)
+            ->fill('input[name=tag-b]', true)
+            ->fill('input[name=size]', 'l')
+            ->fill('select[name=plan]', 'pro')
+            ->fill('select[name=fields]', ['year'])
+            ->fill('textarea[name=bio]', 'Hi')
+            ->assertState('name', '')
+            ->click('button[type=submit]')
+            ->assertSelectorTextContains('#summary', 'Ada, 36, agreed, b, l, pro, year, Hi, saves 1')
+            ->assertState('name', 'Ada')
+            ->assertState('age', 36)
+            ->assertState('tags', ['b'])
+            ->assertState('size', 'l')
+            ->assertSelectorExists('input[name=name][value=Ada]')
+            ->assertSelectorExists('input[name=size][value=l][checked]')
+            ->assertSelectorExists('select[name=plan] option[value=pro][selected]');
+    }
+
+    public function testABoundValueOfTheWrongTypeGetsTheServerValueBack(): void
+    {
+        $this->mount(self::PROFILE)
+            ->fill('input[name=age]', 'abc')
+            ->fill('input[name=name]', 'Ada')
+            ->click('button[type=submit]')
+            ->assertState('age', null)
+            ->assertState('name', 'Ada')
+            ->assertSelectorExists('input[name=age][value=""]');
+    }
+
+    public function testChangeOfALiveFieldSendsAnEventWithNoHandler(): void
+    {
+        $this->mount(self::PROFILE)
+            ->change('input[name=query]', 'php')
+            ->assertSee('Results for php')
+            ->assertState('saves', 0);
+        $this->visit('/bind')
+            ->fill('input[name=name]', 'Ada')
+            ->change('input[name=query]', 'php')
+            ->assertSee('Results for php')
+            ->assertSelectorTextContains('#summary', 'Ada,')
+            ->click('button[type=submit]')
+            ->assertSelectorTextContains('#summary', 'saves 1');
+    }
+
+    public function testABoundFieldInTheSlotOfAnotherComponent(): void
+    {
+        $this->visit('/bind-page')
+            ->change('input[name=name]', 'Ada')
+            ->assertSelectorTextContains('#hello', 'Hello Ada')
+            ->assertState('name', 'Ada');
     }
 
     public function testKeyAndFocusEvents(): void

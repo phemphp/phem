@@ -1,0 +1,21 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<form {{ phem_on('submit', search) }}>
+                <input type="search" data-phem-live {{ phem_timing('debounce', 300) }} {{ phem_bind('query', query, 'input', 'search', null, this) }}>
+                <input type="number" {{ phem_bind('year', year, 'input', 'number', null, this) }}>
+                <input type="checkbox" {{ phem_bind('active', active, 'input', 'checkbox', null, this) }}>
+                <input type="checkbox" value="php" {{ phem_bind('tags', tags, 'input', 'checkbox', 'php', this) }}>
+                <input type="radio" value="name" {{ phem_bind('sort', sort, 'input', 'radio', 'name', this) }}>
+                <select {{ phem_bind('sort', sort, 'select', null, null, this) }}>
+                    {% for value, label in options %}
+                        <option {{ phem_attr('value', value) }} {{ phem_key(value) }} {{ phem_selected(sort, (value)) }}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <select multiple {{ phem_bind('fields', fields, 'select', null, null, this) }}>
+                    <option {{ phem_selected(fields, 'Name') }}>Name</option>
+                    <option value="year" {{ phem_selected(fields, 'year') }}>Year</option>
+                </select>
+                <textarea {{ phem_bind('notes', notes, 'textarea', null, null, this) }}>{{ phem_bind_value(notes) }}</textarea>
+            </form>

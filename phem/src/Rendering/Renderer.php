@@ -20,6 +20,7 @@ use Phem\Handler\HandlerInvoker;
 use Phem\Html;
 use Phem\Manifest\ComponentDefinition;
 use Phem\Manifest\Manifest;
+use Phem\Metadata\ComponentMetadata;
 use Phem\Root;
 use Phem\Slot;
 use Symfony\Contracts\Service\ResetInterface;
@@ -48,6 +49,7 @@ final class Renderer implements ResetInterface
         private readonly iterable $renderers,
         private readonly HandlerInvoker $handlers = new HandlerInvoker(),
         private readonly HandlerFingerprint $fingerprints = new HandlerFingerprint(),
+        private readonly ComponentMetadata $metadata = new ComponentMetadata(),
     ) {
     }
 
@@ -101,6 +103,28 @@ final class Renderer implements ResetInterface
     public function addHandler(\Closure $handler): ?string
     {
         return $this->tree?->addHandler($handler, $this->fingerprints->of($handler));
+    }
+
+    /**
+     * Registers a bound #[State] property of a component (`phem:bind={{ query }}`), and returns its
+     * key (see Tree::addBind()). The owner is the component of the markup: the markup can render
+     * in a slot of another component, so it is not always the current component. Null outside a page.
+     *
+     * @throws \LogicException when the property is not a #[State] property of the component
+     */
+    public function addBind(string $property, ?object $owner = null): ?string
+    {
+        $tree = $this->tree;
+        $fiber = null !== $owner ? $tree?->fiberOf($owner) : $tree?->top();
+        if (null === $tree || null === $fiber) {
+            return null;
+        }
+        $instance = $fiber->instance;
+        if (null === $instance || [] === array_filter($this->metadata->stateProperties($instance::class), static fn (\ReflectionProperty $p): bool => $p->getName() === $property)) {
+            throw new \LogicException(\sprintf('"phem:bind" binds a #[State] property of the class component, but "%s" has no #[State] property "%s".', $fiber->fqcn, $property));
+        }
+
+        return $tree->addBind($property, $fiber);
     }
 
     /** The scope of a handler for `phem:loading` (see Tree::handlerScope()). */

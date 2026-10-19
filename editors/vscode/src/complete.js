@@ -24,6 +24,10 @@ const EVENTS = ['onClick', 'onDoubleClick', 'onChange', 'onInput', 'onSubmit', '
 const PHEM_ATTRIBUTES = {
     'phem:loading': ['phem:loading={{ ${1} }}', 'Phem: show while a handler runs', 'The element shows only while an event of the handler runs: `<span phem:loading={{ save }}>Saving…</span>`.'],
     'phem:debounce': ['phem:debounce={{ ${1:300} }}', 'Phem: wait before an event is sent', 'Milliseconds: the browser sends an event of the element only when no new event comes for that time. `\'blur\'`: send on blur only. `0`: no debounce (text inputs have 150 ms by default).'],
+    'phem:bind': ['phem:bind={{ ${1} }}', 'Phem: bind a field to a #[State] property', 'The field shows the property, and the next event sends its new value: `<input phem:bind={{ query }} />`.'],
+    'phem:live': ['phem:live', 'Phem: send each change of a bound field', 'With `phem:bind`: each change sends an event with no handler, with the debounce of the field.'],
+    'phem:bind': ['phem:bind={{ ${1} }}', 'Phem: bind a field to a #[State] property', 'The field shows the property, and the next event sends its new value: `<input phem:bind={{ query }} />`.'],
+    'phem:live': ['phem:live', 'Phem: send each change of a bound field', 'With `phem:bind`: each change sends an event with no handler, with the debounce of the field.'],
     'phem:throttle': ['phem:throttle={{ ${1:300} }}', 'Phem: send at most one event per interval', 'Milliseconds: the browser sends the first event at once, then at most one event each interval, and always the last one.'],
 };
 const DECLARING_WORDS = /\b(namespace|function|class|interface|trait|enum|const|fn|as|goto|case)\s+$/i;

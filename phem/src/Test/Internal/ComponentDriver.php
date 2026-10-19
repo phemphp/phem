@@ -19,6 +19,7 @@ use Phem\Rendering\Fiber;
 use Phem\Rendering\Renderer;
 use Phem\Rendering\RootElement;
 use Phem\Rendering\Tree;
+use Phem\State\BoundValues;
 use Phem\State\PageState;
 use Phem\State\StateAccessor;
 use Phem\State\StateCodec;
@@ -31,7 +32,7 @@ use Symfony\Contracts\Service\ResetInterface;
 /**
  * Renders a component with its props, in the process of the test, and runs its events as the
  * EventController does: each event makes the components again, restores the signed state,
- * renders, runs the handler, renders again, and morphs the components that changed.
+ * renders, sets the bound values, runs the handler, renders again, and morphs the components that changed.
  *
  * There is no HTTP request: the access rules of a page do not apply. The services are reset
  * before each event, as between two requests.
@@ -59,6 +60,7 @@ final class ComponentDriver implements Driver
         private readonly ?ResetInterface $resetter = null,
         private readonly ?SessionInterface $session = null,
         private readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
+        private readonly BoundValues $bound = new BoundValues(),
     ) {
         $this->tree = new Tree($this->component, props: $this->props);
         $this->html = $this->within($this->request('GET'), function (Request $request): string {
@@ -78,23 +80,27 @@ final class ComponentDriver implements Driver
         return false;
     }
 
-    public function dispatch(string $handler, array $event): EventResult
+    public function dispatch(?string $handler, array $event, array $bound = []): EventResult
     {
         $this->resetter?->reset();
         $this->redirect = null;
 
-        return $this->within($this->request('POST'), function (Request $request) use ($handler, $event): EventResult {
+        return $this->within($this->request('POST'), function (Request $request) use ($handler, $event, $bound): EventResult {
             $tree = new Tree($this->component, $this->state, $this->props);
             $this->renderer->render($tree);
-            $closure = $tree->handler($handler);
-            if (null === $closure) {
+            $closure = null !== $handler ? $tree->handler($handler) : null;
+            if (null !== $handler && null === $closure) {
                 return EventResult::reload();
             }
+            // As the browser sends them: JSON values.
+            $this->bound->apply($tree, json_decode(json_encode((object) $bound, \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR));
             $this->dispatcher->reset();
-            $e = Event::fromArray($event, $request, $this->dispatcher);
-            $result = $this->renderer->dispatch($tree, $closure, $e);
-            if ($result instanceof RedirectResponse) {
-                return EventResult::redirect($this->redirect = $result->getTargetUrl());
+            if (null !== $closure) {
+                $e = Event::fromArray($event, $request, $this->dispatcher);
+                $result = $this->renderer->dispatch($tree, $closure, $e);
+                if ($result instanceof RedirectResponse) {
+                    return EventResult::redirect($this->redirect = $result->getTargetUrl());
+                }
             }
             $this->renderer->render($tree);
             $this->tree = $tree;
@@ -106,7 +112,7 @@ final class ComponentDriver implements Driver
             }
 
             // As the browser gets them: JSON values.
-            return EventResult::updates($updates, json_decode(json_encode($e->dispatcher->dispatched(), \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR));
+            return EventResult::updates($updates, json_decode(json_encode($this->dispatcher->dispatched(), \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR));
         });
     }
 

@@ -216,13 +216,14 @@ finds an error:
 | E001–E006 | Syntax: unclosed or mismatched tags, a void element that is not self-closed, more than one root, a `<?php` open tag instead of `<?phpm` |
 | E010–E014 | Unknown component (also a function without `#[Component]`), unknown or missing prop, children or slot not accepted, duplicate component (also a component with the name of a built-in component, `Phem\Root`) |
 | E020 | A call to a React Hook (`Phem\useState`, ...): Phem keeps state in `#[Component]` classes |
-| E030–E032 | Undefined variable in markup, markup in an unsupported expression, invalid attribute |
+| E030–E033 | Undefined variable in markup, markup in an unsupported expression, invalid attribute, invalid `phem:bind` (not a `#[State]` property, not a form field, or a type that does not take the value of the field) |
 | E040–E043 | Class component without `render()`, readonly `#[State]` property, `#[Prop]` property that is not public, static, or `#[State]`, a second `#[Prop(rest: true)]` property or one whose type does not accept an array |
 | E050, E052 | `export default` (not PHP; use `#[Page]`), `#[Page]` or `#[Route]` on a function, or on a class that is not a component |
 | W001–W003 | A handler is called instead of passed; a list item without `key`; an event that the browser does not send (`onMouseEnter`) |
 | W004 | `#[Page]`, `#[Route]`, `#[Component]`, `#[State]`, `#[Prop]` or `#[Path]` without its `use` import (`Phem\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
 | W005 | a `<title>` outside `<head>` and `<svg>`: the document component prints the title, and a page gives it with `<Document:title>` |
 | W006 | `phem:debounce` or `phem:throttle` on an element with no handler |
+| W007 | `phem:live` on an element with no `phem:bind` |
 
 ## Limits
 

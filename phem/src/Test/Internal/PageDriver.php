@@ -69,13 +69,13 @@ final class PageDriver implements Driver
         return true;
     }
 
-    public function dispatch(string $handler, array $event): EventResult
+    public function dispatch(?string $handler, array $event, array $bound = []): EventResult
     {
         if ('' === $this->signature) {
             throw new \LogicException(\sprintf('The response of "%s" is not a page with a state (status %d): it has no events.', $this->uri, $this->status));
         }
         $this->redirect = null;
-        $body = json_encode(['state' => $this->state, 'signature' => $this->signature, 'handler' => $handler, 'event' => $event], \JSON_THROW_ON_ERROR);
+        $body = json_encode(['state' => $this->state, 'signature' => $this->signature, 'handler' => $handler, 'event' => $event, 'bound' => (object) $bound], \JSON_THROW_ON_ERROR);
         [, $response] = $this->send(Request::create($this->uri, 'POST', cookies: $this->cookies, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_ACCEPT' => 'application/json',

@@ -29,9 +29,11 @@ interface Driver
     /**
      * Runs an event handler, as the `phem` Stimulus controller sends it.
      *
-     * @param array<string, mixed> $event the DOM event (type, value, checked, key, form)
+     * @param string|null          $handler the handler id, or null for a `phem:live` event
+     * @param array<string, mixed> $event   the DOM event (type, value, checked, key, form)
+     * @param array<string, mixed> $bound   the bound fields that changed: "<fiber>.<property>" => value
      */
-    public function dispatch(string $handler, array $event): EventResult;
+    public function dispatch(?string $handler, array $event, array $bound = []): EventResult;
 
     /**
      * The #[State] properties of a component, as the browser keeps them: the root component

@@ -87,6 +87,46 @@ final class PhemRuntime implements RuntimeExtensionInterface
     }
 
     /**
+     * `phem:bind={{ query }}` on a form field: the current value of the #[State] property, and
+     * `data-phem-bind="<fiber>.<property>"`. The browser sends the new value with the next event
+     * (see BoundValues). phemc gives the tag, the `type` and the `value` attributes of the field,
+     * and the component of the markup (`this`).
+     *
+     *  - a text input: `value="…"`;
+     *  - a checkbox: `checked` when the value is true, or when a list has the `value` of the
+     *    checkbox (a group of checkboxes, with `data-phem-bind-list`);
+     *  - a radio button: `checked` when the value is its `value`;
+     *  - a `<textarea>` and a `<select>`: only the attribute. phemc writes the text of the
+     *    `<textarea>`, and the `selected` of each `<option>` (see selected()).
+     */
+    public function bind(string $property, mixed $value, string $tag, mixed $type = null, mixed $option = null, ?object $owner = null): Markup
+    {
+        $key = $this->renderer->addBind($property, $owner);
+        $out = null !== $key ? [\sprintf('data-phem-bind="%s"', Attributes::e($key))] : [];
+        $type = \is_string($type) ? strtolower($type) : 'text';
+        if ('input' === strtolower($tag)) {
+            if ('checkbox' === $type && \is_array($value)) {
+                $out[] = 'data-phem-bind-list';
+                if (\in_array(Attributes::bindValue($option ?? 'on'), array_map(Attributes::bindValue(...), $value), true)) {
+                    $out[] = 'checked';
+                }
+            } elseif ('checkbox' === $type) {
+                if (true === $value) {
+                    $out[] = 'checked';
+                }
+            } elseif ('radio' === $type) {
+                if (null !== $value && Attributes::bindValue($value) === Attributes::bindValue($option ?? 'on')) {
+                    $out[] = 'checked';
+                }
+            } else {
+                $out[] = \sprintf('value="%s"', Attributes::e(Attributes::bindValue($value)));
+            }
+        }
+
+        return new Markup(implode(' ', $out), 'UTF-8');
+    }
+
+    /**
      * The attributes of an HTML element with a spread: `<button type="button" {{ ...rest }}>`
      * → `phem_attrs({'type': 'button'}, rest)`. As in React, a later value replaces an earlier
      * value of the same attribute. `onClick` (and the other `on*` names) binds a handler.
@@ -113,6 +153,8 @@ final class PhemRuntime implements RuntimeExtensionInterface
                 'key' === $name => Attributes::key($value),
                 'style' === $name => Attributes::style($value),
                 'phem:loading' === $name => $this->loading($value),
+                'phem:bind' === $name => throw new \InvalidArgumentException('"phem:bind" cannot come from a spread: write it on the element, with the name of a #[State] property.'),
+                'phem:live' === $name => Attributes::attr('data-phem-live', true === $value ? true : null),
                 \in_array($name, ['phem:debounce', 'phem:throttle'], true) => Attributes::timing(substr($name, 5), $value),
                 1 === preg_match('/^on[A-Z]/', $name) => $this->on(strtolower(substr($name, 2)), $value),
                 0 === stripos($name, 'on') => '',

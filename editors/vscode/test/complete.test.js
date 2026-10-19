@@ -148,6 +148,8 @@ test('the Phem attributes of an HTML element', async () => {
     assert.equal(r.find('phem:debounce').snippet, 'phem:debounce={{ ${1:300} }}');
     assert.equal(r.find('phem:throttle').snippet, 'phem:throttle={{ ${1:300} }}');
     assert.equal(r.find('phem:loading').snippet, 'phem:loading={{ ${1} }}');
+    assert.equal(r.find('phem:bind').snippet, 'phem:bind={{ ${1} }}');
+    assert.equal(r.find('phem:live').snippet, 'phem:live');
     const { range } = r.find('phem:debounce');
     assert.equal(r.text.slice(range[0], range[1]), 'phem:');
 

@@ -276,6 +276,7 @@ The handler runs on the server. It receives a `Phem\Event` object with `$e->valu
 `$e->checked`, `$e->key`, `$e->form` (an array, for `onSubmit`), and `$e->request`.
 `onChange` on a text input fires on each key (as in React), but the browser waits until the user
 stops typing for 150 ms before it sends the event (see [Debounce and throttle](#debounce-and-throttle)).
+A field that only copies its value into the state needs no handler: see [Bound fields](#bound-fields).
 
 `$e->form` has the fields of the form by name. A name with more than one value (a
 `<select multiple>`, checkboxes) has the list of its values. The button that submits the form
@@ -442,6 +443,77 @@ event of the same handler and element replaces it: the server gets one request, 
 
 phemc checks the value: a number of milliseconds, or `'blur'` for `phem:debounce` (E032). An
 element cannot have both. An element with no handler reports W006.
+
+### Bound fields
+
+A field that only copies its value into the state needs no handler. `phem:bind` links a form
+field to a `#[State]` property of the class:
+
+```php
+#[Component]
+final class ScientistSearch
+{
+    #[State] public string $query = '';
+    #[State] public bool $activeOnly = false;
+
+    public function search(): void
+    {
+        // $this->query and $this->activeOnly have the values of the fields here.
+    }
+
+    public function render()
+    {
+        return (
+            <form onSubmit={{ search }}>
+                <input phem:bind={{ query }} />
+                <input type="checkbox" phem:bind={{ activeOnly }} />
+                <button type="submit">Search</button>
+            </form>
+        );
+    }
+}
+```
+
+The field shows the value of the property. A change sends no request: the browser keeps the new
+value, and the next event of the page (the submit, any click) sends it. The server sets the
+property before it runs the handler. The value of `phem:bind` is the name of the property, not an
+expression.
+
+`phem:live` sends each change at once, with no handler. `render()` shows the new value:
+
+```php
+<input phem:bind={{ name }} phem:live />
+<p>{{ name ? 'Hello, ' ~ name ~ '!' : 'Type your name.' }}</p>
+```
+
+A live text field has the debounce of the other text fields (150 ms), and `phem:debounce` changes
+it: `phem:debounce={{ 'blur' }}` sends the value when the field loses the focus. A checkbox, a
+radio button and a `<select>` send on `change`. A field with `phem:bind` and an `onChange` handler
+sets the property first, then it runs the handler.
+
+The type of the property must take the value of the field (E033):
+
+| Field | Property type |
+|---|---|
+| `<input>` (text, number, date, ...), `<textarea>`, `<select>` | `string`, `int`, `float`, or a backed enum |
+| `<input type="radio">` | the same: the `value` of the checked button |
+| `<input type="checkbox">` | `bool`; or `array` for a group of checkboxes, with the `value` of each checked box |
+| `<select multiple>` | `array`: the values of the selected options |
+
+The server converts the text of a field: `"36"` to `36` for an `int`, `"l"` to the case of a
+backed enum, and an empty field to `null` for a nullable `int`, `float` or enum. A value that the
+type does not take (`"abc"` for an `int`) is ignored: the property keeps its value, and the field
+shows the value of the server again.
+
+The values of the fields are not signed: the browser can send any value. The server accepts a
+value only for a property that the page binds, and only when it fits the type. Keep the same
+rules as for all the state: no security decision in a bound property.
+
+phemc writes `value` (or `checked`, or the `selected` of the options), so these attributes are an
+error on a bound field. Each `<option>` of a bound `<select>` needs a `value`, or a static text.
+A bound `<textarea>` has no text. A morph keeps a field that the user changed after the request
+left.
+
 
 ### Rate limits
 
@@ -617,7 +689,7 @@ final class Counter
   An event sends the state to the server. The server makes the component again, restores the
   state, runs the handler, renders again, and sends back Turbo Streams that morph only the
   components that changed.
-- State values must be JSON values (scalars and arrays).
+- State values must be JSON values (scalars and arrays), or backed enums.
 - The state is UI state, not trusted data. The signature stops a forged state, but the browser
   can send back any state that the server signed for the page before: an older state (so a
   user can undo a change), or the state of another visitor. Keep limits (tries, votes) and

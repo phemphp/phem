@@ -19,9 +19,13 @@ these properties of Phem:
 
 Talk about each item before its implementation. The open questions are a start, not a full list.
 
-- [ ] **Bound state (`bind`)** (section 1). React has no two-way binding: is `bind` a new
-      concept, or a shorthand for `value` + `onChange`? Which property types can the compiler
-      accept? How does a bound value join the signed state before the handler runs?
+- [x] **Bound state (`bind`)** (section 1). Decided: a new concept in the `phem:` namespace
+      (`phem:bind={{ query }}`), not a shorthand. The value is the name of a `#[State]` property
+      of the class. The compiler checks the property type against the field: a string, a
+      number or a backed enum; a bool or a list for a checkbox; a list for `<select multiple>`.
+      The server sets the values after the first render and before the handler, only for the
+      properties that the page binds, and only when the value fits the type. `phem:live` sends
+      each change.
 - [x] **Debounce and throttle syntax** (section 1). Decided: an attribute in the `phem:`
       namespace next to the handler (`phem:debounce={{ 300 }}`), as `phem:loading`. A modifier
       in the name cannot hold milliseconds, and a wrapper value breaks "pass the function, do not
@@ -85,10 +89,24 @@ VS Code extension completes the `phem:*` attributes. See
     start yet, replace it with the new one.
   - A submit or a click sends the pending debounced events first, so no input is lost.
 
-### [ ] Bound state without a request on each key (deferred binding) — P1
+### [x] Bound state without a request on each key (deferred binding) — P1
 
 A controlled input needs `value` + `onChange` + a handler that only copies the value.
 This sends a request for each change.
+
+Done: `<input phem:bind={{ query }} />` shows a `#[State]` property, and the next event sends the
+new value (only the fields that changed). The server sets the property before the handler, after
+the first render, and only for a property that the page binds. It converts the text of the field
+to the type of the property (`int`, `float`, backed enum, `null` for an empty field), and ignores
+a value that does not fit: the field shows the server value again. `phem:live` sends each change
+with no handler, with the debounce of the field. phemc checks the property and its type (E033) and
+warns about `phem:live` with no `phem:bind` (W007). The test helper has `->fill()`. The SearchBox
+example uses it. See [docs/phpm-syntax.md](docs/phpm-syntax.md#bound-fields).
+
+Not done yet:
+
+- [ ] Nested paths (`phem:bind={{ filters.status }}`).
+- [ ] Bind a property of a parent component from a child component.
 
 - **Best peer:** LW `wire:model` (deferred by default since v3: the value goes with the next
   action), with `.live` and `.blur` modifiers. LC `data-model` with `on(change)`.
