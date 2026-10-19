@@ -1,0 +1,5 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<label>{{ label }} <input data-phem-live {{ phem_bind(value, value, 'input', null, null, null) }}></label>

@@ -39,6 +39,19 @@ expression: out.manifest.to_json()
       ],
       "rest": false
     },
+    "App\\Components\\ColorPicker": {
+      "fqcn": "App\\Components\\ColorPicker",
+      "kind": "class",
+      "file": "components/Bound.phpm",
+      "props": [
+        "value"
+      ],
+      "slots": [],
+      "required": [
+        "value"
+      ],
+      "rest": false
+    },
     "App\\Components\\Counter": {
       "fqcn": "App\\Components\\Counter",
       "kind": "class",
@@ -94,11 +107,33 @@ expression: out.manifest.to_json()
       ],
       "rest": false
     },
+    "App\\Components\\NameField": {
+      "fqcn": "App\\Components\\NameField",
+      "kind": "function",
+      "file": "components/Bound.phpm",
+      "props": [
+        "value"
+      ],
+      "slots": [],
+      "required": [
+        "value"
+      ],
+      "rest": false
+    },
     "App\\Components\\Nav": {
       "fqcn": "App\\Components\\Nav",
       "kind": "template",
       "file": "components/Rest.phpm",
       "template": "components/Rest.3.twig",
+      "props": [],
+      "slots": [],
+      "required": [],
+      "rest": false
+    },
+    "App\\Components\\Profile": {
+      "fqcn": "App\\Components\\Profile",
+      "kind": "class",
+      "file": "components/Bound.phpm",
       "props": [],
       "slots": [],
       "required": [],
@@ -141,6 +176,22 @@ expression: out.manifest.to_json()
         "children"
       ],
       "required": [],
+      "rest": false
+    },
+    "App\\Components\\TextField": {
+      "fqcn": "App\\Components\\TextField",
+      "kind": "template",
+      "file": "components/Bound.phpm",
+      "template": "components/Bound.0.twig",
+      "props": [
+        "value",
+        "label"
+      ],
+      "slots": [],
+      "required": [
+        "value",
+        "label"
+      ],
       "rest": false
     },
     "App\\Components\\Toolbar": {
@@ -210,6 +261,22 @@ expression: out.manifest.to_json()
     "App\\Pages\\Home"
   ],
   "templates": {
+    "components/Bound.0.twig": {
+      "source": "components/Bound.phpm",
+      "line": 12
+    },
+    "components/Bound.1.twig": {
+      "source": "components/Bound.phpm",
+      "line": 21
+    },
+    "components/Bound.2.twig": {
+      "source": "components/Bound.phpm",
+      "line": 33
+    },
+    "components/Bound.3.twig": {
+      "source": "components/Bound.phpm",
+      "line": 51
+    },
     "components/Buttons.0.twig": {
       "source": "components/Buttons.phpm",
       "line": 12
@@ -288,6 +355,7 @@ expression: out.manifest.to_json()
     }
   },
   "files": [
+    "php/components/Bound.php",
     "php/components/Buttons.php",
     "php/components/Counter.php",
     "php/components/Document.php",

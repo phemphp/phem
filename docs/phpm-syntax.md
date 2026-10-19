@@ -573,6 +573,36 @@ The server sets only a key that the array has: the browser cannot add a key. The
 property must have the key of each bound field, or the render fails. Write the path with no
 spaces, and with no filter or function call.
 
+A child component can bind a property of its parent. Put `phem:bind` on the tag of the child,
+and declare a prop of type `Phem\Bound` in the child. The field of the child binds this prop:
+
+```php
+use Phem\Bound;
+
+#[Component]
+function TextField(Bound $value, string $label)
+{
+    return <label>{{ label }} <input phem:bind={{ value }} phem:live /></label>;
+}
+```
+
+```php
+#[State] public string $query = '';
+#[State] public array $filters = ['status' => 'open'];
+```
+
+```php
+<TextField phem:bind={{ query }} label="Search" />
+<TextField phem:bind={{ filters.status }} label="Status" />
+```
+
+The `Bound` prop holds the property of the parent and its value. The field of the child shows the
+value, and the next event sets the property of the parent, with the same rules. The child keeps no
+copy, so it can be a function component or a template component, with no state. A child passes its
+`Bound` prop on to another child with `phem:bind={{ value }}`. The child must have one `Bound` prop
+(E033). The type of the parent property is not checked against the field of the child: the server
+ignores a value that does not fit.
+
 The values of the fields are not signed: the browser can send any value. The server accepts a
 value only for a property (or a path) that the page binds, and only when it fits the type. Keep
 the same rules as for all the state: no security decision in a bound property.

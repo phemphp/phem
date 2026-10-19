@@ -1,0 +1,9 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<form>
+                {% component 'App\\Components\\NameField' with {'value': phem_bound('name', name, this)} only %}
+                {% component 'App\\Components\\TextField' with {'label': 'Bio', 'value': phem_bound('bio', bio, this)} only %}
+                {% component 'App\\Components\\ColorPicker' with {'value': phem_bound(['prefs', 'color'], prefs.color, this)} only %}
+            </form>

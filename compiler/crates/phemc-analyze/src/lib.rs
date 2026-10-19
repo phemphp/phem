@@ -24,6 +24,8 @@ pub const ATTR_ROUTE: &str = "Symfony\\Component\\Routing\\Attribute\\Route";
 /// The built-in root element of a page: `<Root tag="main">{{ children }}</Root>` in the document
 /// component. The runtime renders it (the `phem` controller, the state and the event boundary).
 pub const ROOT: &str = "Phem\\Root";
+/// The type of a prop that takes a #[State] property of the parent: `<TextField phem:bind={{ query }} />`.
+pub const BOUND: &str = "Phem\\Bound";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -59,6 +61,9 @@ pub struct ComponentDef {
     /// that the compiler does not see, so the compiler does not check its props and slots.
     #[serde(skip)]
     pub open: bool,
+    /// The props of type `Bound`: `phem:bind` on the tag of the component gives one of them.
+    #[serde(skip)]
+    pub bound: Vec<String>,
 }
 
 /// The template name of the markup literal `index` of a source file.
@@ -96,6 +101,12 @@ fn accepts_array(ty: &str) -> bool {
         })
 }
 
+/// Whether a PHP type is `Bound` (or `?Bound`), with the imports of a file.
+pub fn is_bound_type(file: &FileInfo, ty: &str) -> bool {
+    let t = ty.trim().trim_start_matches('?');
+    !t.is_empty() && !t.contains('|') && file.resolve_class(t).eq_ignore_ascii_case(BOUND)
+}
+
 /// The components that a scanned file declares.
 pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
     let mut out = Vec::new();
@@ -116,6 +127,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
                 .collect(),
             rest: f.params.iter().any(|p| p.variadic),
             open: false,
+            bound: f.params.iter().filter(|p| !p.variadic && is_bound_type(file, &p.ty)).map(|p| p.name.clone()).collect(),
         });
     }
     for c in file.classes.iter().filter(|c| c.is_component) {
@@ -130,6 +142,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
             required: props.iter().filter(|p| !p.has_default && !allows_null(&p.ty)).map(|p| p.name.clone()).collect(),
             rest: c.all_props().any(|p| p.is_prop() && p.is_rest),
             open: c.open,
+            bound: props.iter().filter(|p| is_bound_type(file, &p.ty)).map(|p| p.name.clone()).collect(),
         });
     }
     out
@@ -267,6 +280,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         required: Vec::new(),
         rest: true,
         open: false,
+        bound: Vec::new(),
     }]
 }
 

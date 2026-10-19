@@ -1,9 +1,17 @@
 <?phpm
 namespace App\Pages\Examples;
 
-use Phem\Attribute\{Page, State};
+use Phem\Attribute\{Component, Page, State};
+use Phem\Bound;
 
 use function App\Components\Document;
+
+// A child component binds a property of its parent: `<Stepper phem:bind={{ trip.days }} />`.
+#[Component]
+function Stepper(Bound $value, int $min = 0)
+{
+    return <input type="number" min={{ min }} phem:bind={{ value }} phem:live />;
+}
 
 #[Page('/examples/PackingList')]
 final class PackingList
@@ -38,13 +46,13 @@ final class PackingList
                 <div>
                     <p>
                         <label>Trip to <input phem:bind={{ trip.destination }} phem:live /></label>
-                        <label>for <input type="number" min="1" phem:bind={{ trip.days }} phem:live /> days</label>
+                        <label>for <Stepper phem:bind={{ trip.days }} min={{ 1 }} /> days</label>
                     </p>
                     <ul>
                         {% for i, item in items %}
                             <li key={{ i }}>
                                 <input type="checkbox" phem:bind={{ items[i].packed }} phem:live />
-                                <input type="number" min="0" phem:bind={{ items[i].count }} phem:live />
+                                <Stepper phem:bind={{ items[i].count }} />
                                 <input phem:bind={{ items[i].name }} />
                             </li>
                         {% endfor %}

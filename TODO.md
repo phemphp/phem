@@ -111,7 +111,10 @@ Not done yet:
 - [x] Nested paths (`phem:bind={{ filters.status }}`, `phem:bind={{ rows[i].name }}`) in an
       `array` property. The server sets only a key that the array has, with the type of its
       current value (no PHPDoc). phemc checks that the property is an array (E033).
-- [ ] Bind a property of a parent component from a child component.
+- [x] Bind a property of a parent component from a child component: `phem:bind={{ query }}` on
+      the tag of the child gives its `Phem\Bound` prop, and the child binds its field to this prop
+      (`phem:bind={{ value }}`). The key of the field is the key of the parent property. phemc
+      checks that the child has one `Bound` prop (E033).
 
 - **Best peer:** LW `wire:model` (deferred by default since v3: the value goes with the next
   action), with `.live` and `.blur` modifiers. LC `data-model` with `on(change)`.

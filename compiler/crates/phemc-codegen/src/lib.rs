@@ -188,12 +188,13 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
             }
             _ => vec![],
         };
-        let (scope_text, class) = match scope {
-            MarkupScope::Function(fi) => (info.functions[fi].span.text(src), None),
-            MarkupScope::Method(ci, mi) => (info.classes[ci].methods[mi].span.text(src), Some(&info.classes[ci])),
-            MarkupScope::TopLevel => (src, None),
+        let (scope_text, class, params) = match scope {
+            MarkupScope::Function(fi) => (info.functions[fi].span.text(src), None, info.functions[fi].params.as_slice()),
+            MarkupScope::Method(ci, mi) => (info.classes[ci].methods[mi].span.text(src), Some(&info.classes[ci]), &[][..]),
+            MarkupScope::TopLevel => (src, None, &[][..]),
         };
         lowerer.class = class;
+        lowerer.params = params;
         lowerer.scope_text = scope_text;
         let content = lowerer.lower_root(&m.root, slots);
 
@@ -229,8 +230,8 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
             vars.push(format!("{} => {php}", php_str(&v.name)));
         }
 
-        // A bound field (`phem:bind`) gives its component to the runtime.
-        if class.is_some() && content.contains("phem_bind(") && !vars.iter().any(|v| v.starts_with("'this' =>")) {
+        // A bound field or component (`phem:bind`) gives its component to the runtime.
+        if class.is_some() && (content.contains("phem_bind(") || content.contains("phem_bound(")) && !vars.iter().any(|v| v.starts_with("'this' =>")) {
             vars.push("'this' => $this".to_string());
         }
         let newlines = m.span.text(src).matches('\n').count();

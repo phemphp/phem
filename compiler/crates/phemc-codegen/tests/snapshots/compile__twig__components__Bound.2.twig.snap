@@ -1,0 +1,8 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<select {{ phem_bind(value, value, 'select', null, null, null) }}>
+                <option value="red" {{ phem_selected(value, 'red') }}>Red</option>
+                <option value="blue" {{ phem_selected(value, 'blue') }}>Blue</option>
+            </select>

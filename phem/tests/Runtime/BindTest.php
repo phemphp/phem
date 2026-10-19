@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Runtime;
 
+use Phem\Bound;
 use Phem\Dom\Attributes;
 use Phem\Manifest\Manifest;
 use Phem\Rendering\MarkupResolver;
@@ -156,6 +157,12 @@ final class BindTest extends TestCase
         self::assertSame('selected', (string) Attributes::selected(['a', 'b'], 'b'), 'a <select multiple>');
         self::assertSame('selected', (string) Attributes::selected(3, '3'));
         self::assertSame('', (string) Attributes::selected(null, ''));
+
+        // A Bound prop of a child component: the value of the parent property.
+        self::assertSame('value="Ada"', (string) $runtime->bind(new Bound('name', 'Ada'), new Bound('name', 'Ada'), 'input'));
+        self::assertSame('checked', (string) $runtime->bind(new Bound('agree', true), null, 'input', 'checkbox'));
+        self::assertSame('selected', (string) Attributes::selected(new Bound('plan', 'pro'), 'pro'));
+        self::assertSame('Ada', Attributes::bindValue(new Bound('bio', 'Ada')), 'the text of a <textarea>');
     }
 
     public function testABindCannotComeFromASpread(): void
@@ -264,6 +271,37 @@ final class BindTest extends TestCase
         // With strict_variables, Twig fails first.
         self::assertSame(500, $response->getStatusCode());
         self::assertMatchesRegularExpression('/has no key \[(&quot;|")status(&quot;|")\]|Key (&quot;|")status(&quot;|") does not exist/', (string) $response->getContent());
+    }
+
+    public function testAChildFieldBindsThePropertyOfItsParent(): void
+    {
+        $html = (string) $this->request('GET', '/bind-child')->getContent();
+        self::assertSame(1, preg_match('/data-phem-state-value="([^"]*)" data-phem-signature-value="([^"]*)"/', $html, $m), $html);
+        [$state, $signature] = [html_entity_decode($m[1]), $m[2]];
+        self::assertSame(1, preg_match('/<form data-phem-on-submit="([^"]+)"/', $html, $m));
+        $save = $m[1];
+
+        $email = self::bindKey($html, 'email');
+        $fiber = substr($email, 0, (int) strpos($email, '.'));
+        self::assertSame($fiber.'.email', $email, 'the key of the parent property');
+        self::assertSame($fiber.'.note', self::bindKey($html, 'note'), 'through a function component');
+        self::assertSame($fiber.'.plan', self::bindKey($html, 'plan'), 'in a class component with its own state');
+        self::assertSame($fiber.'.address["city"]', self::bindKey($html, 'city'), 'a path');
+        self::assertStringContainsString('value="Paris"', $html);
+        self::assertStringContainsString('<option value="free" selected>Free</option>', $html);
+
+        $response = $this->event('/bind-child', ['state' => $state, 'signature' => $signature, 'handler' => $save, 'event' => ['type' => 'submit'], 'bound' => [
+            $email => 'ada@example.com',
+            $fiber.'.note' => 'Hi',
+            $fiber.'.plan' => 'pro',
+            $fiber.'.address["city"]' => 'Rome',
+        ]]);
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getContent());
+        $data = json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+
+        self::assertStringContainsString('ada@example.com, Hi, pro, Rome, saves 1', $data['streams']);
+        self::assertStringContainsString('value="ada@example.com"', $data['streams'], 'the child field shows the new value');
+        self::assertStringContainsString('<option value="pro" selected>Pro</option>', $data['streams']);
     }
 
     public function testAnEventWithAHandlerOfNullNeedsBoundValues(): void

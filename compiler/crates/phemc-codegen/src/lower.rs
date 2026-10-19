@@ -1,6 +1,6 @@
 //! Lowers a markup tree to Twig source.
 
-use phemc_analyze::{Class, FileInfo, Registry};
+use phemc_analyze::{is_bound_type, Class, FileInfo, Param, Prop, Registry};
 use phemc_syntax::diag::codes;
 use phemc_syntax::markup::{Attr, AttrKind, AttrValue, Element, ExprPart, Node, StrPart, TwigExpr};
 use phemc_syntax::{Diagnostic, Span};
@@ -25,13 +25,15 @@ pub struct Lowerer<'a> {
     pub class: Option<&'a Class>,
     /// The source of the function or the method of the markup: its local variables.
     pub scope_text: &'a str,
+    /// The parameters of the function of the markup: its props.
+    pub params: &'a [Param],
     /// The bound value of the open `<select phem:bind>`: its options get `selected`.
     bound_select: Option<String>,
 }
 
 impl<'a> Lowerer<'a> {
     pub fn new(info: &'a FileInfo, reg: &'a Registry) -> Self {
-        Self { info, reg, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", bound_select: None }
+        Self { info, reg, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None }
     }
 
     pub fn lower_root(&mut self, node: &Node, slots: Vec<String>) -> String {
@@ -348,7 +350,8 @@ impl<'a> Lowerer<'a> {
 
     /// `phem:bind={{ query }}` on an `<input>`, a `<textarea>` or a `<select>`: the name of a
     /// #[State] property of the class, with a type that takes the value of the field (E033). Or a
-    /// path in an array property: `filters.status`, `rows[key].name`.
+    /// path in an array property: `filters.status`, `rows[key].name`. Or a `Bound` prop: the
+    /// property of a parent component.
     fn bind(&mut self, e: &Element) -> Option<BoundField> {
         let mut found = None;
         let mut live = None;
@@ -370,52 +373,14 @@ impl<'a> Lowerer<'a> {
             }
             return None;
         };
-        let help = "write the name of a #[State] property: `phem:bind={{ query }}`";
-        let AttrValue::Expr(x) = value else {
-            self.error(codes::INVALID_BIND, "`phem:bind` takes the name of a #[State] property", span).help = Some(help.into());
-            return None;
-        };
-        let code = self.expr_code(x);
-        let Some((root, path)) = bind_path(&code) else {
-            self.error(codes::INVALID_BIND, "`phem:bind` takes the name of a #[State] property, or a path in it, not an expression", x.span).help =
-                Some(format!("{help}, or a path in an array property: `phem:bind={{{{ filters.status }}}}`, `phem:bind={{{{ rows[key].name }}}}`"));
-            return None;
-        };
         let tag = e.name.to_ascii_lowercase();
         if !matches!(tag.as_str(), "input" | "textarea" | "select") {
             self.error(codes::INVALID_BIND, format!("`phem:bind` is for a form field, not a `<{}>`", e.name), span).help =
                 Some("put it on an `<input>`, a `<textarea>` or a `<select>`".into());
             return None;
         }
-        let Some(class) = self.class else {
-            self.error(codes::INVALID_BIND, "`phem:bind` needs a class component: a function component has no state", span).help =
-                Some("bind a #[State] property of a class component, or pass `value` and `onChange` as props".into());
-            return None;
-        };
-        if has_variable(self.scope_text, &root) {
-            self.error(codes::INVALID_BIND, format!("`{root}` is a local variable, not a #[State] property"), x.span).help =
-                Some(format!("rename the variable `${root}`: in markup it hides the property"));
-            return None;
-        }
-        let prop = class.all_props().find(|p| p.name == root && !p.is_static);
-        match prop {
-            Some(p) if !p.is_state => {
-                self.error(codes::INVALID_BIND, format!("`{root}` is not a #[State] property"), x.span).help =
-                    Some(format!("add `#[State]` to `${root}`: the browser keeps only the state"));
-                return None;
-            }
-            Some(p) if !path.is_empty() && !FieldValue::List.accepts(&p.ty) => {
-                self.error(codes::INVALID_BIND, format!("a path needs an array property, but `${root}` is `{}`", p.ty.trim()), x.span).help =
-                    Some(format!("bind the property itself (`phem:bind={{{{ {root} }}}}`), or make it an `array`"));
-                return None;
-            }
-            None if !class.open => {
-                let decl = if path.is_empty() { format!("#[State] public string ${root} = '';") } else { format!("#[State] public array ${root} = [];") };
-                self.error(codes::INVALID_BIND, format!("`{}` has no property `{root}`", class.name), x.span).help = Some(format!("declare `{decl}`"));
-                return None;
-            }
-            _ => {}
-        }
+        let target = self.bind_target(value, span)?;
+        let value_span = if let AttrValue::Expr(x) = value { x.span } else { span };
 
         // The attributes that phem:bind sets.
         let attr = |n: &str| {
@@ -455,10 +420,11 @@ impl<'a> Lowerer<'a> {
         if tag == "textarea" && e.children.iter().any(|n| !n.is_blank()) {
             self.error(codes::INVALID_BIND, "a bound `<textarea>` has no text: `phem:bind` sets it", e.name_span).help = Some("remove the text of the `<textarea>`".into());
         }
-        // A value in an array has no declared type: the server converts to the type of the current value.
-        if let (Some(kind), Some(p), true) = (kind, prop, path.is_empty()) {
+        // A value in an array has no declared type: the server converts to the type of the current
+        // value. The type of the property of a Bound prop is in the parent: the server checks it.
+        if let (Some(kind), BindTarget::State { code, prop: Some(p), path: false, .. }) = (kind, &target) {
             if !kind.accepts(&p.ty) {
-                self.error(codes::INVALID_BIND, format!("this field gives {}, but `${code}` is `{}`", kind.describe(), p.ty.trim()), x.span).help = Some(match kind {
+                self.error(codes::INVALID_BIND, format!("this field gives {}, but `${code}` is `{}`", kind.describe(), p.ty.trim()), value_span).help = Some(match kind {
                     FieldValue::Scalar => "use a `string`, `int`, `float` or backed enum property".into(),
                     FieldValue::Checkbox => "use a `bool` property (or an `array` for a group of checkboxes)".into(),
                     FieldValue::List => "use an `array` property".into(),
@@ -478,6 +444,71 @@ impl<'a> Lowerer<'a> {
             Some((_, AttrValue::Quoted { parts, .. })) if tag == "input" => self.quoted_expr(parts, span),
             _ => "null".to_string(),
         };
+        // `this`: the component of the property. The markup can render in the slot of another
+        // component (`<Document>`), so the current component is not always the owner. A Bound
+        // prop has its owner.
+        let (target, code, owner) = match target {
+            BindTarget::State { target, code, .. } => (target, code, "this"),
+            BindTarget::Bound(name) => (name.clone(), name, "null"),
+        };
+        Some(BoundField {
+            attrs: format!(" {{{{ phem_bind({target}, {code}, {}, {ty}, {option}, {owner}) }}}}", php_str(&tag)),
+            text: (tag == "textarea").then(|| format!("{{{{ phem_bind_value({code}) }}}}")),
+            select: (tag == "select").then(|| code.clone()),
+        })
+    }
+
+    /// The value of `phem:bind`, on a form field or on the tag of a component: a #[State] property
+    /// of the class, a path in an array property, or a `Bound` prop of the component.
+    fn bind_target(&mut self, value: &AttrValue, span: Span) -> Option<BindTarget> {
+        let help = "write the name of a #[State] property: `phem:bind={{ query }}`";
+        let AttrValue::Expr(x) = value else {
+            self.error(codes::INVALID_BIND, "`phem:bind` takes the name of a #[State] property", span).help = Some(help.into());
+            return None;
+        };
+        let code = self.expr_code(x);
+        let Some((root, path)) = bind_path(&code) else {
+            self.error(codes::INVALID_BIND, "`phem:bind` takes the name of a #[State] property, or a path in it, not an expression", x.span).help =
+                Some(format!("{help}, or a path in an array property: `phem:bind={{{{ filters.status }}}}`, `phem:bind={{{{ rows[key].name }}}}`"));
+            return None;
+        };
+        if self.is_bound_prop(&root) {
+            if !path.is_empty() {
+                self.error(codes::INVALID_BIND, format!("`{root}` is a Bound prop: a path in it is not supported"), x.span).help =
+                    Some(format!("bind the prop itself: `phem:bind={{{{ {root} }}}}`, and give the path in the parent"));
+                return None;
+            }
+            return Some(BindTarget::Bound(root));
+        }
+        let Some(class) = self.class else {
+            self.error(codes::INVALID_BIND, "`phem:bind` needs a class component: a function component has no state", span).help =
+                Some(format!("bind a #[State] property of a class component, or declare a `Bound ${root}` prop and bind it in the parent: `phem:bind={{{{ query }}}}`"));
+            return None;
+        };
+        if has_variable(self.scope_text, &root) {
+            self.error(codes::INVALID_BIND, format!("`{root}` is a local variable, not a #[State] property"), x.span).help =
+                Some(format!("rename the variable `${root}`: in markup it hides the property"));
+            return None;
+        }
+        let prop = class.all_props().find(|p| p.name == root && !p.is_static);
+        match prop {
+            Some(p) if !p.is_state => {
+                self.error(codes::INVALID_BIND, format!("`{root}` is not a #[State] property"), x.span).help =
+                    Some(format!("add `#[State]` to `${root}`: the browser keeps only the state"));
+                return None;
+            }
+            Some(p) if !path.is_empty() && !FieldValue::List.accepts(&p.ty) => {
+                self.error(codes::INVALID_BIND, format!("a path needs an array property, but `${root}` is `{}`", p.ty.trim()), x.span).help =
+                    Some(format!("bind the property itself (`phem:bind={{{{ {root} }}}}`), or make it an `array`"));
+                return None;
+            }
+            None if !class.open => {
+                let decl = if path.is_empty() { format!("#[State] public string ${root} = '';") } else { format!("#[State] public array ${root} = [];") };
+                self.error(codes::INVALID_BIND, format!("`{}` has no property `{root}`", class.name), x.span).help = Some(format!("declare `{decl}`"));
+                return None;
+            }
+            _ => {}
+        }
         // The property, or a list for a path: `['rows', (key), 'name']`. The render evaluates the keys.
         let target = if path.is_empty() {
             php_str(&root)
@@ -490,13 +521,16 @@ impl<'a> Lowerer<'a> {
             }));
             format!("[{}]", items.join(", "))
         };
-        Some(BoundField {
-            // `this`: the component of the property. The markup can render in the slot of another
-            // component (`<Document>`), so the current component is not always the owner.
-            attrs: format!(" {{{{ phem_bind({target}, {code}, {}, {ty}, {option}, this) }}}}", php_str(&tag)),
-            text: (tag == "textarea").then(|| format!("{{{{ phem_bind_value({code}) }}}}")),
-            select: (tag == "select").then(|| code.clone()),
-        })
+        Some(BindTarget::State { target, code, prop: prop.cloned(), path: !path.is_empty() })
+    }
+
+    /// Whether a name is a prop of type `Bound` of the component of the markup.
+    fn is_bound_prop(&self, name: &str) -> bool {
+        let info = self.info;
+        match self.class {
+            Some(c) => c.all_props().any(|p| p.name == name && p.is_prop() && is_bound_type(info, &p.ty)),
+            None => self.params.iter().any(|p| p.name == name && !p.variadic && is_bound_type(info, &p.ty)),
+        }
     }
 
     /// `selected` for an `<option>` of a bound `<select>`: its `value`, or its text.
@@ -642,8 +676,14 @@ impl<'a> Lowerer<'a> {
         let mut key: Option<String> = None;
         let mut has_spread = false;
         let mut given = HashSet::new();
+        let mut bind = None;
+        let mut has_bind = false;
         for a in &e.attrs {
             match &a.kind {
+                AttrKind::Plain { name, name_span, value } if name == BIND => {
+                    has_bind = true;
+                    bind = self.bind_target(value, *name_span).map(|t| (t, *name_span));
+                }
                 AttrKind::Spread(x) => {
                     has_spread = true;
                     let c = self.expr_code(x);
@@ -668,6 +708,37 @@ impl<'a> Lowerer<'a> {
                     props.push(format!("{}: {v}", php_str(name)));
                 }
             }
+        }
+
+        // `phem:bind={{ query }}`: the Bound prop of the child gets the property.
+        if let Some((target, span)) = bind {
+            match def.bound.as_slice() {
+                [] => {
+                    self.error(codes::INVALID_BIND, format!("`<{}>` has no `Bound` prop for `phem:bind`", e.name), span).help =
+                        Some(format!("declare a `Bound $value` prop in `{}`, and bind its field: `<input phem:bind={{{{ value }}}} />`", def.fqcn));
+                }
+                [name] if given.contains(name) => {
+                    self.error(codes::INVALID_BIND, format!("`{name}` and `phem:bind` cannot be on the same component: `phem:bind` gives `{name}`"), span).help =
+                        Some(format!("remove `{name}`"));
+                }
+                [name] => {
+                    let v = match target {
+                        BindTarget::State { target, code, .. } => format!("phem_bound({target}, {code}, this)"),
+                        BindTarget::Bound(b) => format!("({b})"),
+                    };
+                    given.insert(name.clone());
+                    props.push(format!("{}: {v}", php_str(name)));
+                }
+                many => {
+                    self.error(codes::INVALID_BIND, format!("`<{}>` has more than one `Bound` prop ({}): `phem:bind` gives only one", e.name, many.join(", ")), span).help =
+                        Some(format!("keep one `Bound` prop in `{}`", def.fqcn));
+                }
+            }
+        }
+
+        // An invalid `phem:bind` has its own error: no "needs the prop" for the Bound props.
+        if has_bind {
+            given.extend(def.bound.iter().cloned());
         }
 
         // Children and named slots (`<Card:footer>`).
@@ -789,6 +860,16 @@ const LOADING: &str = "phem:loading";
 /// value with the next event. `phem:live` sends each change at once.
 const BIND: &str = "phem:bind";
 const LIVE: &str = "phem:live";
+
+/// What `phem:bind` binds (see `Lowerer::bind_target()`).
+enum BindTarget {
+    /// A #[State] property of the class, or a path in it: the PHP target (`'query'`,
+    /// `['rows', (key), 'name']`), the Twig code of the value, the property (None in an open
+    /// class), and whether it is a path.
+    State { target: String, code: String, prop: Option<Prop>, path: bool },
+    /// A `Bound` prop of the component: the property of a parent component.
+    Bound(String),
+}
 
 /// The lowered parts of a bound field (see `Lowerer::bind()`).
 struct BoundField {

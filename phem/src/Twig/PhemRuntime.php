@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Twig;
 
+use Phem\Bound;
 use Phem\Dom\Attributes;
 use Phem\Dom\DomEvents;
 use Phem\Rendering\Renderer;
@@ -100,10 +101,15 @@ final class PhemRuntime implements RuntimeExtensionInterface
      *  - a `<textarea>` and a `<select>`: only the attribute. phemc writes the text of the
      *    `<textarea>`, and the `selected` of each `<option>` (see selected()).
      *
-     * @param string|list<mixed> $property
+     * In a child component, `phem:bind={{ value }}` binds a Bound prop: the property of the parent.
+     *
+     * @param string|list<mixed>|Bound $property
      */
-    public function bind(string|array $property, mixed $value, string $tag, mixed $type = null, mixed $option = null, ?object $owner = null): Markup
+    public function bind(string|array|Bound $property, mixed $value, string $tag, mixed $type = null, mixed $option = null, ?object $owner = null): Markup
     {
+        if ($property instanceof Bound) {
+            [$property, $value, $owner] = [$property->target, $property->value, $property->owner];
+        }
         $key = $this->renderer->addBind($property, $owner);
         $out = null !== $key ? [\sprintf('data-phem-bind="%s"', Attributes::e($key))] : [];
         $type = \is_string($type) ? strtolower($type) : 'text';
@@ -127,6 +133,17 @@ final class PhemRuntime implements RuntimeExtensionInterface
         }
 
         return new Markup(implode(' ', $out), 'UTF-8');
+    }
+
+    /**
+     * `<TextField phem:bind={{ query }} />` → the Bound prop of the child: the #[State] property
+     * of the component of the markup (`this`), or a path in it, with its current value.
+     *
+     * @param string|list<mixed> $property
+     */
+    public function bound(string|array $property, mixed $value, ?object $owner = null): Bound
+    {
+        return new Bound($property, $value, $owner);
     }
 
     /**

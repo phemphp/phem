@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Dom;
 
+use Phem\Bound;
 use Twig\Markup;
 
 /**
@@ -121,6 +122,7 @@ final class Attributes
     {
         return match (true) {
             null === $value => '',
+            $value instanceof Bound => self::bindValue($value->value),
             $value instanceof \BackedEnum => (string) $value->value,
             \is_scalar($value) => (string) $value,
             $value instanceof \Stringable => (string) $value,
@@ -135,6 +137,9 @@ final class Attributes
     public static function selected(mixed $bound, mixed $option): Markup
     {
         $option = self::bindValue($option);
+        if ($bound instanceof Bound) {
+            $bound = $bound->value;
+        }
         $selected = \is_array($bound)
             ? \in_array($option, array_map(self::bindValue(...), $bound), true)
             : null !== $bound && self::bindValue($bound) === $option;
