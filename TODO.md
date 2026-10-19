@@ -366,7 +366,15 @@ LC had these issues in 2026. Phem has a similar design, so check each one and ad
 - [ ] XSS with child component tags. Check the escaping of props and slots that go into
       `{% component %}` tags and into data attributes.
 
-### [ ] Rate limit for events — P3
+### [x] Rate limit for events — P3
 
-- **Proposal:** an optional Symfony RateLimiter for each page or handler
-  (`#[Page(..., eventRateLimit: 'phem_events')]`).
+Done: the `#[RateLimit]` attribute of Symfony 8.1 on a page class limits its events
+(`#[RateLimit('phem_events', methods: 'POST')]`), as the other controller attributes do. Over the
+limit, the server answers 429 and does not run the handler. The browser dispatches a
+`phem:rate-limited` event on the component root, with `retryAfter`. See
+[docs/phpm-syntax.md](docs/phpm-syntax.md#rate-limits).
+
+Not done yet:
+
+- [ ] A limit for one handler. The handler id is in the JSON body, not in the URL, so the
+      default key of `#[RateLimit]` cannot see it.

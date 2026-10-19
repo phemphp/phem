@@ -17,6 +17,7 @@ use Phem\Handler\HandlerFingerprint;
 use Phem\State\StateCodec;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Attribute\RateLimit;
 
 /**
  * The events of a page go to its URL: the access rules of the page apply to them, and a
@@ -40,6 +41,25 @@ final class EventAccessTest extends TestCase
         $response = $this->request('GET', '/cached');
         self::assertSame(200, $response->getStatusCode());
         self::assertSame('max-age=60, public', $response->headers->get('Cache-Control'), '#[Cache] on a page');
+    }
+
+    public function testRateLimitOfThePageAppliesToItsEvents(): void
+    {
+        if (!class_exists(RateLimit::class)) {
+            self::markTestSkipped('The #[RateLimit] attribute needs Symfony 8.1.');
+        }
+        // The limit of the fixture app is 2 events in a minute.
+        self::assertSame(200, $this->click('/limited', 'App\\Pages\\LimitedPage', 'increment')->getStatusCode());
+        self::assertSame(200, $this->click('/limited', 'App\\Pages\\LimitedPage', 'increment')->getStatusCode());
+
+        $response = $this->click('/limited', 'App\\Pages\\LimitedPage', 'increment');
+        self::assertSame(429, $response->getStatusCode());
+        self::assertMatchesRegularExpression('/^\d+$/', (string) $response->headers->get('Retry-After'));
+
+        for ($i = 0; $i < 3; ++$i) {
+            self::assertSame(200, $this->request('GET', '/limited')->getStatusCode(), 'with `methods: \'POST\'`, the GET requests of the page have no limit');
+        }
+        self::assertSame(200, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave')->getStatusCode(), 'the limit is for each page (the key has the path)');
     }
 
     public function testEventFromAnotherSiteIsRejected(): void

@@ -21,6 +21,7 @@ use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Bundle\TwigBundle\TwigBundle;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Kernel;
+use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
 use Symfony\UX\StimulusBundle\StimulusBundle;
 
@@ -70,9 +71,12 @@ final class TestKernel extends Kernel
             'http_method_override' => false,
             'handle_all_throwables' => true,
             'php_errors' => ['log' => true],
+            // For the #[RateLimit] page of access.phpm. The storage is in memory, so each test starts with no hits.
+            'rate_limiter' => ['phem_events' => ['policy' => 'fixed_window', 'limit' => 2, 'interval' => '1 minute', 'lock_factory' => null, 'storage_service' => InMemoryStorage::class]],
         ]);
         $container->extension('twig', ['strict_variables' => true]);
         $container->services()
+            ->set(InMemoryStorage::class)
             ->set(Limits::class)->autowire()
             ->set(Announcer::class)->autowire()
             ->set(AccessListener::class)

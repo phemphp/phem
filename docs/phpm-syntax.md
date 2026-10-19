@@ -391,6 +391,47 @@ public function save(): void
 The events go in their order. A handler that fails, or that returns a `RedirectResponse`,
 sends no events: the browser leaves the page.
 
+### Rate limits
+
+The `#[RateLimit]` attribute of Symfony 8.1 limits the events of a page, as other controller
+attributes do. Install `symfony/rate-limiter`, and configure a limiter:
+
+```yaml
+# config/packages/rate_limiter.yaml
+framework:
+    rate_limiter:
+        phem_events:
+            policy: sliding_window
+            limit: 30
+            interval: '1 minute'
+```
+
+```php
+use Symfony\Component\HttpKernel\Attribute\RateLimit;
+
+#[RateLimit('phem_events', methods: 'POST')]
+#[Page('/search')]
+final class SearchPage
+{
+    // ...
+}
+```
+
+An event is a `POST` request, so `methods: 'POST'` counts the events and not the page views.
+The default key is the client IP, the method and the path: each page has its own count. The
+handler id is in the JSON body, so the default key counts all the handlers of the page together.
+
+Over the limit, the server answers `429 Too Many Requests` with a `Retry-After` header, and it
+does not run the handler. The page does not change. The browser dispatches a
+`phem:rate-limited` event on the root of the component of the handler. Its detail has the
+`handler` id and `retryAfter`, in seconds (or `null`). It bubbles, as the other browser events:
+
+```html
+<div data-controller="toast" data-action="phem:rate-limited@window->toast#slowDown"></div>
+```
+
+Do not use `rate-limited` as the name of a browser event of a handler.
+
 ## 7. State: class components
 
 A component with state is a class with the `#[Component]` attribute and a `render()` method.

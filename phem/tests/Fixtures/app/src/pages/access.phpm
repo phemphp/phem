@@ -5,6 +5,7 @@ namespace App\Pages;
 use Phem\Attribute\{Page, State};
 use Phem\Tests\Fixtures\Deny;
 use Symfony\Component\HttpKernel\Attribute\Cache;
+use Symfony\Component\HttpKernel\Attribute\RateLimit;
 
 use function App\Components\Document;
 
@@ -61,6 +62,29 @@ final class CachedPage
         return (
             <Document>
                 <p id="cached">Cached</p>
+            </Document>
+        );
+    }
+}
+
+// The #[RateLimit] attribute of Symfony 8.1 limits the events of a page. With `methods: 'POST'`,
+// it counts the events only, not the GET requests of the page.
+#[RateLimit('phem_events', methods: 'POST')]
+#[Page('/limited')]
+final class LimitedPage
+{
+    #[State] public int $count = 0;
+
+    public function increment(): void
+    {
+        ++$this->count;
+    }
+
+    public function render()
+    {
+        return (
+            <Document>
+                <button onClick={{ increment }}>{{ count }}</button>
             </Document>
         );
     }

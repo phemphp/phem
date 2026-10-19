@@ -19,6 +19,7 @@ use Phem\Tests\Fixtures\Limits;
 use Phem\Tests\Fixtures\TestKernel;
 use PHPUnit\Framework\AssertionFailedError;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\HttpKernel\Attribute\RateLimit;
 
 final class InteractsWithPhemTest extends KernelTestCase
 {
@@ -199,6 +200,21 @@ final class InteractsWithPhemTest extends KernelTestCase
     {
         $this->visit('/private/counter')->assertStatus(403);
         $this->visit('/denied')->assertStatus(403);
+    }
+
+    public function testVisitSeesTheRateLimitOfThePage(): void
+    {
+        if (!class_exists(RateLimit::class)) {
+            self::markTestSkipped('The #[RateLimit] attribute needs Symfony 8.1.');
+        }
+        // The limit of the fixture app is 2 events in a minute: the third click does not run.
+        $this->visit('/limited')
+            ->click('button')
+            ->click('button')
+            ->assertState('count', 2)
+            ->click('button')
+            ->assertStatus(429)
+            ->assertState('count', 2);
     }
 
     public function testAssertDispatchedChecksTheBrowserEventsOfTheLastAction(): void

@@ -196,6 +196,15 @@ export default class PhemController extends Controller {
       Turbo.visit(window.location.href, { action: "replace" })
       return
     }
+    if (response.status === 429) {
+      // A #[RateLimit] of the page: the server did not run the handler, and the page does not
+      // change. `phem:rate-limited` tells the page, with the seconds to wait (`Retry-After`).
+      const retryAfter = Number.parseInt(response.headers.get("Retry-After") ?? "", 10)
+      const detail = { handler, retryAfter: Number.isNaN(retryAfter) ? null : retryAfter }
+      console.warn("[phem] too many events: the event was dropped", detail)
+      this.componentRoot(handler).dispatchEvent(new CustomEvent("phem:rate-limited", { detail, bubbles: true }))
+      return
+    }
     if (!response.ok) {
       const text = await response.text()
       console.error(`[phem] event failed (${response.status})`, text)

@@ -41,7 +41,7 @@ final class CounterTest extends KernelTestCase
 |---|---|---|
 | What it renders | one component, with its props | a page, with its document |
 | How events run | in the test process, as the `EventController` runs them | HTTP requests to the URL of the page, through the kernel |
-| Access rules of the page | do not apply | apply (a firewall, `access_control`, `#[IsGranted]`) |
+| Access rules of the page | do not apply | apply (a firewall, `access_control`, `#[IsGranted]`, `#[RateLimit]`) |
 | Signed state | signed and checked, as JSON | signed and checked, as in the browser |
 | Session | a new session for the test | the session cookie goes with each request |
 | Redirect of a handler | `assertRedirect()` | `assertRedirect()`, then `followRedirect()` |
