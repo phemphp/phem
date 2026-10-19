@@ -365,7 +365,7 @@ final class ComponentTester
      *
      *     ->assertQuery('q', 'php')
      *
-     * @param string|list<string>|null $expected
+     * @param string|array<array-key, mixed>|null $expected a list for `key[]=a`, an array with keys for `key[a]=1`
      */
     public function assertQuery(string $key, string|array|null $expected): self
     {

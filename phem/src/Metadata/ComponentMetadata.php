@@ -172,7 +172,7 @@ final class ComponentMetadata
             if (!self::fitsQuery($p->getType())) {
                 throw new \LogicException(\sprintf('The #[Url] property "%s" of <%s> must be a string, an int, a float, a bool, a backed enum, or an array of them.', $p->getName(), $short));
             }
-            if (Url::DEFAULT !== $url->except && !UrlQuery::convert($p->getType(), UrlQuery::encode($url->except, $key))) {
+            if (Url::DEFAULT !== $url->except && !(UrlQuery::isMap($url->except) ? self::acceptsArray($p->getType()) : UrlQuery::convert($p->getType(), UrlQuery::encode($url->except, $key)))) {
                 throw new \LogicException(\sprintf('The "except" value of the #[Url] property "%s" of <%s> does not fit the type of the property.', $p->getName(), $short));
             }
             if (isset($out[$key])) {

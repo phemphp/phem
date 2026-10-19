@@ -867,11 +867,18 @@ final class Catalog
     #[State, Url(as: 'q')] public string $query = '';      // ?q=php
     #[State, Url(history: true)] public int $page = 1;      // ?page=2, a new history entry
     #[State, Url] public array $tags = [];                  // ?tags[]=a&tags[]=b
+    #[State, Url] public array $filters = ['status' => 'all', 'price' => ['max' => 100]];
+                                                            // ?filters[status]=open&filters[price][max]=50
 }
 ```
 
 - The property must be a `#[State]` property. Its type is a string, an int, a float, a bool
   (`1` or `0` in the URL), a backed enum, or an array of them, nullable or not.
+- An array with keys is nested in the URL: `?filters[status]=open`. Its keys can have lists and
+  other arrays with keys. The URL has only the keys with a value other than the default value.
+  The first render sets only the keys that the array has after `mount()`, and the type of the
+  current value is the type of the key, as for a `phem:bind` path. Do not add keys in a
+  handler: a reload does not read them. An object is not possible: `#[State]` keeps arrays.
 - `as` gives another query key (letters, digits, `_` and `-`). Two components of a page cannot
   have the same key: give one of them another key.
 - The first render of the page reads the query string, after `mount()`. A value that does not

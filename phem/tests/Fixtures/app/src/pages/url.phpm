@@ -19,6 +19,7 @@ final class Catalog
     #[State, Url] public ?Size $size = null;
     #[State, Url] public float $min = 0.0;
     #[State, Url(except: 'name')] public string $sort;
+    #[State, Url] public array $filters = ['status' => 'all', 'open' => false, 'price' => ['min' => 0, 'max' => 100], 'tags' => []];
     #[State] public int $clicks = 0;
 
     public function mount(): void
@@ -39,11 +40,19 @@ final class Catalog
         $this->tags = [];
         $this->size = null;
         $this->min = 0.0;
+        $this->filters = ['status' => 'all', 'open' => false, 'price' => ['min' => 0, 'max' => 100], 'tags' => []];
     }
 
     public function click(): void
     {
         ++$this->clicks;
+    }
+
+    public function filter(): void
+    {
+        $this->filters['status'] = 'new';
+        $this->filters['price']['max'] = 50;
+        $this->filters['tags'] = ['a', 'b'];
     }
 
     public function sortBy(): void
@@ -60,7 +69,9 @@ final class Catalog
                 <button id="clear" onClick={{ clear }}>Clear</button>
                 <button id="click" onClick={{ click }}>Click</button>
                 <button id="sort" onClick={{ sortBy }}>Sort</button>
+                <button id="filter" onClick={{ filter }}>Filter</button>
                 <p id="summary">q={{ query }}, page={{ page }}, stock={{ stock ? 'yes' : 'no' }}, tags={{ tags|join('+') }}, size={{ size.value ?? 'none' }}, min={{ min }}, sort={{ sort }}</p>
+                <p id="filters">status={{ filters.status }}, open={{ filters.open ? 'yes' : 'no' }}, price={{ filters.price.min }}-{{ filters.price.max }}, tags={{ filters.tags|join('+') }}</p>
             </div>
         );
     }

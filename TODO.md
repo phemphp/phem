@@ -287,7 +287,9 @@ Not done yet:
 
 - [x] An `except` option: a value other than the default value of the property that removes the key.
       `#[Url(except: 'name')]` replaces the default value, and must fit the type of the property.
-- [ ] Nested values (`?filters[status]=open`) for an array shape or an object.
+- [x] Nested values (`?filters[status]=open`) for an array shape. An array with keys is nested in
+      the URL, with only the keys that changed. The first render sets only the keys that the array
+      has, with the type of the current value. An object is not possible: `#[State]` keeps arrays.
 
 ### [ ] Context (provide and inject) — P2
 

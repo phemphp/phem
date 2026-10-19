@@ -72,7 +72,7 @@ final class RootElement
     /**
      * The state attributes of the root element.
      *
-     * @param array{values: array<string, string|list<string>|null>, push: list<string>}|null $query the query of the #[Url] properties (see Phem\State\UrlQuery::of()), or null for none
+     * @param array{values: array<string, string|array<array-key, mixed>|null>, push: list<string>}|null $query the query of the #[Url] properties (see Phem\State\UrlQuery::of()), or null for none
      */
     public static function state(string $state, string $signature, ?array $query = null): string
     {

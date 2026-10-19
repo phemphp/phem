@@ -71,7 +71,8 @@
 //
 // A #[Url] property is in the query string of the page URL. The page renders its query in
 // `data-phem-query-value` ({values, push}), and each event answers with the new query. The
-// controller writes each key into the URL (null removes it), and keeps the other keys. It
+// controller writes each key into the URL (null removes it), and keeps the other keys. A list is
+// `key[]=a`, and an object is `key[a]=1` (a nested value of an array with keys). It
 // replaces the history entry, or it adds one when a changed key is in `push`. It uses the history
 // of Turbo, so back and forward are Turbo restoration visits: the server renders the state of
 // that URL again (or Turbo shows its snapshot of that URL).
@@ -172,11 +173,16 @@ function queryName(pair) {
   }
 }
 
-// The query pairs of a value: none for null, `key[]=v` for each item of a list.
+// The query pairs of a value: none for null, `key[]=v` for each item of a list, and `key[k]=v`
+// for each key of an object (an array with keys on the server).
 function queryPairs(name, value) {
-  const key = encodeURIComponent(name)
+  return nestedPairs(encodeURIComponent(name), value)
+}
+
+function nestedPairs(key, value) {
   if (value === null || value === undefined) return []
   if (Array.isArray(value)) return value.map((v) => `${key}[]=${encodeURIComponent(v)}`)
+  if (typeof value === "object") return Object.entries(value).flatMap(([k, v]) => nestedPairs(`${key}[${encodeURIComponent(k)}]`, v))
   return [`${key}=${encodeURIComponent(value)}`]
 }
 

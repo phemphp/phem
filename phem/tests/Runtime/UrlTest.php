@@ -38,7 +38,7 @@ final class UrlTest extends TestCase
 
         self::assertStringContainsString('q=php, page=3, stock=yes, tags=a+b, size=l, min=1.5, sort=date', $html);
         self::assertStringContainsString('Tab new', $html, 'a #[Url] property of the page');
-        self::assertSame(['values' => ['tab' => 'new', 'q' => 'php', 'page' => '3', 'stock' => '1', 'tags' => ['a', 'b'], 'size' => 'l', 'min' => '1.5', 'sort' => 'date'], 'push' => ['page']], self::query($html));
+        self::assertSame(['values' => ['tab' => 'new', 'q' => 'php', 'page' => '3', 'stock' => '1', 'tags' => ['a', 'b'], 'size' => 'l', 'min' => '1.5', 'sort' => 'date', 'filters' => null], 'push' => ['page']], self::query($html));
     }
 
     public function testAValueThatDoesNotFitItsTypeIsIgnored(): void
@@ -46,7 +46,7 @@ final class UrlTest extends TestCase
         $html = (string) $this->request('GET', '/url?q[]=php&page=abc&stock=maybe&tags=a&size=xl&min=x')->getContent();
 
         self::assertStringContainsString('q=, page=1, stock=no, tags=, size=none, min=0, sort=name', $html);
-        self::assertSame(['tab' => null, 'q' => null, 'page' => null, 'stock' => null, 'tags' => null, 'size' => null, 'min' => null, 'sort' => null], self::query($html)['values'], 'the browser removes the keys');
+        self::assertSame(['tab' => null, 'q' => null, 'page' => null, 'stock' => null, 'tags' => null, 'size' => null, 'min' => null, 'sort' => null, 'filters' => null], self::query($html)['values'], 'the browser removes the keys');
     }
 
     public function testAnEventAnswersWithTheQuery(): void
@@ -56,17 +56,52 @@ final class UrlTest extends TestCase
         $data = $this->send('/url?q=php', $state, $signature, self::handler($html, 'next'));
 
         self::assertStringContainsString('q=php, page=2', $data['streams']);
-        self::assertSame(['tab' => null, 'q' => 'php', 'page' => '2', 'stock' => null, 'tags' => null, 'size' => null, 'min' => null, 'sort' => null], $data['query']['values']);
+        self::assertSame(['tab' => null, 'q' => 'php', 'page' => '2', 'stock' => null, 'tags' => null, 'size' => null, 'min' => null, 'sort' => null, 'filters' => null], $data['query']['values']);
         self::assertSame(['page'], $data['query']['push']);
     }
 
     public function testAValueEqualToTheDefaultValueRemovesItsKey(): void
     {
-        [$html, $state, $signature] = $this->open('/url?q=php&page=4&stock=true&tags[]=a&size=s&min=2');
+        [$html, $state, $signature] = $this->open('/url?q=php&page=4&stock=true&tags[]=a&size=s&min=2&filters[status]=new&filters[price][max]=5');
 
         $data = $this->send('/url', $state, $signature, self::handler($html, 'clear'));
 
         self::assertSame([null], array_unique(array_values($data['query']['values'])));
+    }
+
+    public function testTheFirstRenderReadsANestedValue(): void
+    {
+        $html = (string) $this->request('GET', '/url?filters[status]=new&filters[open]=1&filters[price][max]=50&filters[tags][]=a&filters[tags][]=b')->getContent();
+
+        self::assertStringContainsString('status=new, open=yes, price=0-50, tags=a+b', $html);
+        self::assertSame(['status' => 'new', 'open' => '1', 'price' => ['max' => '50'], 'tags' => ['a', 'b']], self::query($html)['values']['filters']);
+    }
+
+    public function testANestedValueSetsOnlyTheKeysOfTheArray(): void
+    {
+        $html = (string) $this->request('GET', '/url?filters[status]=new&filters[admin]=1&filters[open]=maybe&filters[price][max]=x&filters[price][min][]=1&filters[tags]=a')->getContent();
+
+        self::assertStringContainsString('status=new, open=no, price=0-100, tags=', $html, 'a key that does not fit keeps its value');
+        self::assertStringNotContainsString('admin', $html);
+        self::assertSame(['status' => 'new'], self::query($html)['values']['filters'], 'a new key is ignored');
+    }
+
+    public function testANestedValueThatIsNotAnArrayIsIgnored(): void
+    {
+        $html = (string) $this->request('GET', '/url?filters=open')->getContent();
+
+        self::assertStringContainsString('status=all, open=no, price=0-100, tags=', $html);
+    }
+
+    public function testAnEventAnswersWithTheChangedKeysOfANestedValue(): void
+    {
+        [$html, $state, $signature] = $this->open('/url');
+
+        $data = $this->send('/url', $state, $signature, self::handler($html, 'filter'));
+
+        self::assertStringContainsString('status=new, open=no, price=0-50, tags=a+b', $data['streams']);
+        self::assertSame(['status' => 'new', 'price' => ['max' => '50'], 'tags' => ['a', 'b']], $data['query']['values']['filters']);
+        self::assertSame('/url?filters[status]=new&filters[price][max]=50&filters[tags][]=a&filters[tags][]=b', UrlQuery::merge('/url', $data['query']['values']));
     }
 
     public function testTheExceptValueRemovesItsKey(): void
@@ -143,7 +178,7 @@ final class UrlTest extends TestCase
     }
 
     /**
-     * @param array<string, string|list<string>|null> $values
+     * @param array<string, string|array<array-key, mixed>|null> $values
      */
     #[DataProvider('merges')]
     public function testMergesTheQueryIntoAUrl(string $url, array $values, string $expected): void
@@ -151,7 +186,7 @@ final class UrlTest extends TestCase
         self::assertSame($expected, UrlQuery::merge($url, $values));
     }
 
-    /** @return iterable<string, array{string, array<string, string|list<string>|null>, string}> */
+    /** @return iterable<string, array{string, array<string, string|array<array-key, mixed>|null>, string}> */
     public static function merges(): iterable
     {
         yield 'a new key' => ['/s', ['q' => 'php'], '/s?q=php'];
@@ -163,6 +198,8 @@ final class UrlTest extends TestCase
         yield 'encoded as in the browser' => ['/s', ['q' => 'a b&c/é(!)'], '/s?q=a%20b%26c%2F%C3%A9(!)'];
         yield 'the fragment stays' => ['/s?q=a#top', ['q' => 'b'], '/s?q=b#top'];
         yield 'another key with the same start' => ['/s?qq=1', ['q' => 'a'], '/s?qq=1&q=a'];
+        yield 'a nested value' => ['/s?f[a]=1&x=1&f[b][c]=2', ['f' => ['a' => '3', 'b' => ['c' => '4', 'd' => ['e']]]], '/s?f[a]=3&f[b][c]=4&f[b][d][]=e&x=1'];
+        yield 'an encoded nested key' => ['/s?f%5Ba%5D=1', ['f' => ['a b' => 'c']], '/s?f[a%20b]=c'];
     }
 
     public function testAUrlPropertyMustBeState(): void
@@ -204,6 +241,22 @@ final class UrlTest extends TestCase
         })::class);
 
         self::assertSame(Size::Large, $properties['size'][1]->except);
+    }
+
+    public function testTheExceptValueCanBeAnArrayWithKeys(): void
+    {
+        $properties = (new ComponentMetadata())->urlProperties((new class {
+            /** @var array<string, string> */
+            #[State, Url(except: ['status' => 'all'])] public array $filters;
+        })::class);
+
+        self::assertSame(['status' => 'all'], $properties['filters'][1]->except);
+    }
+
+    public function testTheValuesOfANestedValueFitAQueryString(): void
+    {
+        $this->expectExceptionMessage('The query string cannot keep a value of type "stdClass" (the #[Url] key "f")');
+        UrlQuery::encode(['a' => ['b' => new \stdClass()]], 'f');
     }
 
     public function testTwoPropertiesCannotHaveTheSameKey(): void
