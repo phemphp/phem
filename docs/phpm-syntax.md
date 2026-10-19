@@ -432,6 +432,19 @@ does not run the handler. The page does not change. The browser dispatches a
 
 Do not use `rate-limited` as the name of a browser event of a handler.
 
+### Event size
+
+An event body has a maximum size, with the state of the page: `phem.max_event_size` bytes
+(default 1048576, 1 MiB; 0 for no limit). Over the limit, the server answers
+`413 Content Too Large` and does not run the handler. The JSON of an event body also has a
+maximum depth (8). The browser sends less than that, so a deeper body gets `400 Bad Request`.
+
+```yaml
+# config/packages/phem.yaml
+phem:
+    max_event_size: 2097152
+```
+
 ## 7. State: class components
 
 A component with state is a class with the `#[Component]` attribute and a `render()` method.

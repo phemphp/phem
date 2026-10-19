@@ -23,6 +23,13 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 final class EventPayload
 {
     /**
+     * The maximum depth of the JSON body, as json_decode() counts it. The body from the browser
+     * has a depth of 5 (the body, the event, the form fields, a [name, value] pair, and the
+     * value), so a deeper body does not come from it.
+     */
+    public const MAX_DEPTH = 8;
+
+    /**
      * @param string               $state the signed JSON of the page state
      * @param array<string, mixed> $event the DOM event (type, value, checked, key, form)
      */
@@ -35,11 +42,11 @@ final class EventPayload
     }
 
     /**
-     * @throws BadRequestHttpException when the body has no handler
+     * @throws BadRequestHttpException when the body is not JSON, is too deep, or has no handler
      */
     public static function fromRequest(Request $request): self
     {
-        $data = json_decode($request->getContent(), true);
+        $data = json_decode($request->getContent(), true, self::MAX_DEPTH);
         if (!\is_array($data) || !\is_string($data['handler'] ?? null)) {
             throw new BadRequestHttpException('An event needs a handler.');
         }

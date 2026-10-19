@@ -30,6 +30,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
 
@@ -47,6 +48,10 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
  *
  * Against CSRF, an event is JSON with the `X-Phem-Event` header (a cross-site request with them
  * needs a CORS preflight), and it comes from the same origin (`Sec-Fetch-Site`, or `Origin`).
+ *
+ * Against a denial of service, the body has a maximum size (`phem.max_event_size`), and its
+ * JSON has a maximum depth (see EventPayload). The state is in the body, so the size limit is
+ * also a limit for the state.
  */
 final class EventController
 {
@@ -62,6 +67,7 @@ final class EventController
         private readonly StateAccessor $state = new StateAccessor(),
         private readonly TurboStreams $streams = new TurboStreams(),
         private readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
+        private readonly int $maxSize = 1048576,
     ) {
     }
 
@@ -75,6 +81,9 @@ final class EventController
         }
         if ('json' !== $request->getContentTypeFormat()) {
             throw new UnsupportedMediaTypeHttpException('An event is JSON (Content-Type: application/json).');
+        }
+        if ($this->isTooLarge($request)) {
+            throw new HttpException(413, \sprintf('An event body can have a maximum of %d bytes (the phem.max_event_size option).', $this->maxSize));
         }
 
         $payload = EventPayload::fromRequest($request);
@@ -131,6 +140,23 @@ final class EventController
         }
 
         return ($this->pages)($request);
+    }
+
+    /**
+     * Whether the body is larger than the maximum size. The Content-Length header lets the
+     * server reject the request before it reads the body.
+     */
+    private function isTooLarge(Request $request): bool
+    {
+        if (0 === $this->maxSize) {
+            return false;
+        }
+        $length = $request->headers->get('Content-Length');
+        if (null !== $length && ctype_digit($length) && (int) $length > $this->maxSize) {
+            return true;
+        }
+
+        return \strlen($request->getContent()) > $this->maxSize;
     }
 
     /**

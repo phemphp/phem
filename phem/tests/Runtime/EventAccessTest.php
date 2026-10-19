@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Phem\Tests\Runtime;
 
 use Phem\Handler\HandlerFingerprint;
+use Phem\Http\EventPayload;
 use Phem\State\StateCodec;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Response;
@@ -80,6 +81,28 @@ final class EventAccessTest extends TestCase
         self::assertSame(415, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['CONTENT_TYPE' => 'text/plain'])->getStatusCode());
     }
 
+    public function testEventHasAMaximumSize(): void
+    {
+        // The fixture app has the default limit (1 MiB).
+        $response = $this->event('/leave', ['handler' => 'h', 'event' => ['value' => str_repeat('a', 1048576)]]);
+        self::assertSame(413, $response->getStatusCode());
+
+        $response = $this->event('/leave', '{}', ['CONTENT_LENGTH' => '2000000']);
+        self::assertSame(413, $response->getStatusCode(), 'the Content-Length header is enough');
+    }
+
+    public function testEventHasAMaximumJsonDepth(): void
+    {
+        self::assertSame(200, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', form: [['name', 'Ada']])->getStatusCode(), 'the form fields of the browser');
+
+        $value = 'deep';
+        for ($i = 0; $i < EventPayload::MAX_DEPTH; ++$i) {
+            $value = [$value];
+        }
+        $response = $this->event('/leave', ['handler' => 'h', 'event' => ['value' => $value]]);
+        self::assertSame(400, $response->getStatusCode());
+    }
+
     public function testPostWithoutTheEventHeaderIsAPageRequest(): void
     {
         $response = $this->request('POST', '/about');
@@ -95,14 +118,15 @@ final class EventAccessTest extends TestCase
      * Sends a click on a method of a page, with a valid state for the page. The state and the
      * handler id come from the runtime: a page behind an access rule does not render them.
      *
-     * @param array<string, string|null> $server
+     * @param array<string, string|null>       $server
+     * @param list<array{string, string}>|null $form   the form fields, as the browser sends them
      */
-    private function click(string $uri, string $page, string $method, array $server = []): Response
+    private function click(string $uri, string $page, string $method, array $server = [], ?array $form = null): Response
     {
         [$state, $signature] = $this->service('phem.state_codec', StateCodec::class)->encode([], $page);
         // The handler is in the <Root> of the document (a template component, with no fiber).
         $handler = 'phem'.substr(hash('xxh128', '/'.$page.'#0/Phem\\Root#0'), 0, 12).'.'.new HandlerFingerprint()->of(new $page()->{$method}(...));
 
-        return $this->event($uri, ['state' => $state, 'signature' => $signature, 'handler' => $handler, 'event' => ['type' => 'click']], $server);
+        return $this->event($uri, ['state' => $state, 'signature' => $signature, 'handler' => $handler, 'event' => ['type' => 'click', 'form' => $form]], $server);
     }
 }

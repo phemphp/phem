@@ -368,8 +368,9 @@ LC had these issues in 2026. Phem has a similar design, so check each one and ad
 
 - [ ] CSRF bypass with the `Accept` header. Phem checks `Sec-Fetch-Site` / `Origin` and requires
       JSON: confirm that no other content type or header combination skips the check.
-- [ ] Denial of service with unbounded batch requests. Phem has one event for each request, but
-      limit the body size, the state size, and the depth of the JSON.
+- [x] Denial of service with unbounded batch requests. Phem has one event for each request.
+      The body has a maximum size (`phem.max_event_size`, 1 MiB by default, 413 over it), and
+      the state is in the body. The JSON of the body has a maximum depth of 8 (400 over it).
 - [ ] XSS with child component tags. Check the escaping of props and slots that go into
       `{% component %}` tags and into data attributes.
 

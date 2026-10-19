@@ -36,6 +36,7 @@ use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
  *         secret: '%kernel.secret%'
  *         state_max_age: 86400       # seconds; 0 for no limit
  *         state_bind_session: false
+ *         max_event_size: 1048576    # bytes; 0 for no limit
  *         transactional: ~           # true when Doctrine ORM is installed and enabled
  *
  *     # config/routes/phem.yaml
@@ -86,6 +87,11 @@ final class PhemBundle extends AbstractBundle
                     ->info('Sign the session id with the state, so the state of a session is not valid in another session. A login makes the open pages reload on their next event.')
                     ->defaultFalse()
                 ->end()
+                ->integerNode('max_event_size')
+                    ->info('The maximum size of an event body in bytes, with the state of the page (0 for no limit). A larger event gets a 413 response.')
+                    ->defaultValue(1048576)
+                    ->min(0)
+                ->end()
                 ->booleanNode('transactional')
                     ->info('Run the event handlers of all components in a Doctrine ORM transaction. Set it to false to use #[Transactional] on each component instead. Default: true when Doctrine ORM is installed and enabled.')
                     ->defaultNull()
@@ -94,7 +100,7 @@ final class PhemBundle extends AbstractBundle
     }
 
     /**
-     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, transactional: bool|null} $config
+     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, max_event_size: int, transactional: bool|null} $config
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
@@ -106,6 +112,8 @@ final class PhemBundle extends AbstractBundle
             ->arg(0, $config['secret'])
             ->arg(1, $config['state_max_age'])
             ->arg(2, $config['state_bind_session']);
+        $container->services()->get('phem.controller.event')
+            ->arg(8, $config['max_event_size']);
 
         $bundles = $builder->getParameter('kernel.bundles');
         $doctrine = \is_array($bundles) && isset($bundles['DoctrineBundle']) && interface_exists(EntityManagerInterface::class);
