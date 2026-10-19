@@ -264,7 +264,8 @@ default value removes its key. Two components with the same key fail. The test h
 
 Not done yet:
 
-- [ ] An `except` option: a value other than the default value of the property that removes the key.
+- [x] An `except` option: a value other than the default value of the property that removes the key.
+      `#[Url(except: 'name')]` replaces the default value, and must fit the type of the property.
 - [ ] Nested values (`?filters[status]=open`) for an array shape or an object.
 
 ### [ ] Context (provide and inject) — P2

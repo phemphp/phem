@@ -19,6 +19,7 @@ use Phem\Attribute\State;
 use Phem\Attribute\Url;
 use Phem\Binding\ComponentName;
 use Phem\Binding\PropError;
+use Phem\State\UrlQuery;
 
 /**
  * The reflection data of the components: the parameters of a function component, and the
@@ -145,7 +146,7 @@ final class ComponentMetadata
      *
      * @return array<string, array{0: \ReflectionProperty, 1: Url}> key => the property and its attribute
      *
-     * @throws \LogicException when a #[Url] property is not #[State], has a type that a query string cannot hold, or has the key of another property
+     * @throws \LogicException when a #[Url] property is not #[State], has a type that a query string cannot hold, has an `except` value that does not fit its type, or has the key of another property
      */
     public function urlProperties(string $class): array
     {
@@ -170,6 +171,9 @@ final class ComponentMetadata
             }
             if (!self::fitsQuery($p->getType())) {
                 throw new \LogicException(\sprintf('The #[Url] property "%s" of <%s> must be a string, an int, a float, a bool, a backed enum, or an array of them.', $p->getName(), $short));
+            }
+            if (Url::DEFAULT !== $url->except && !UrlQuery::convert($p->getType(), UrlQuery::encode($url->except, $key))) {
+                throw new \LogicException(\sprintf('The "except" value of the #[Url] property "%s" of <%s> does not fit the type of the property.', $p->getName(), $short));
             }
             if (isset($out[$key])) {
                 throw new \LogicException(\sprintf('The #[Url] properties "%s" and "%s" of <%s> have the same query key "%s".', $out[$key][0]->getName(), $p->getName(), $short, $key));

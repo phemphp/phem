@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\State;
 
+use Phem\Attribute\Url;
 use Phem\Binding\ComponentName;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Rendering\Tree;
@@ -52,8 +53,8 @@ final class UrlQuery
 
     /**
      * The query of the #[Url] properties of the last pass: the value of each key, or null to
-     * remove the key (the value is the default value of the property), and the keys that add an
-     * entry to the browser history when they change.
+     * remove the key (the value is the `except` value, or the default value of the property),
+     * and the keys that add an entry to the browser history when they change.
      *
      * @return array{values: array<string, string|list<string>|null>, push: list<string>}
      *
@@ -78,7 +79,7 @@ final class UrlQuery
                     continue;
                 }
                 $value = self::encode($property->getValue($instance), $key);
-                $values[$key] = $property->hasDefaultValue() && self::encode($property->getDefaultValue(), $key) === $value ? null : $value;
+                $values[$key] = self::removesKey($property, $url, $value, $key) ? null : $value;
                 if ($url->history) {
                     $push[] = $key;
                 }
@@ -145,14 +146,35 @@ final class UrlQuery
         return $path.([] !== $out ? '?'.implode('&', $out) : '').(null !== $fragment ? '#'.$fragment : '');
     }
 
-    /** @return string|list<string> */
-    private static function encode(mixed $value, string $key): string|array
+    /**
+     * The text of a value in the query string.
+     *
+     * @return string|list<string>
+     *
+     * @throws \LogicException when the query string cannot keep the value
+     */
+    public static function encode(mixed $value, string $key): string|array
     {
         if (\is_array($value) && array_is_list($value)) {
             return array_map(static fn (mixed $v): string => self::scalar($v, $key), $value);
         }
 
         return self::scalar($value, $key);
+    }
+
+    /**
+     * Whether a value removes the key: it is the `except` value of the property, or its default
+     * value with no `except`. A property with neither always has a key.
+     *
+     * @param string|list<string> $value
+     */
+    private static function removesKey(\ReflectionProperty $property, Url $url, string|array $value, string $key): bool
+    {
+        return match (true) {
+            Url::DEFAULT !== $url->except => self::encode($url->except, $key) === $value,
+            $property->hasDefaultValue() => self::encode($property->getDefaultValue(), $key) === $value,
+            default => false,
+        };
     }
 
     private static function scalar(mixed $value, string $key): string

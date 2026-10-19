@@ -18,7 +18,13 @@ final class Catalog
     #[State, Url] public array $tags = [];
     #[State, Url] public ?Size $size = null;
     #[State, Url] public float $min = 0.0;
+    #[State, Url(except: 'name')] public string $sort;
     #[State] public int $clicks = 0;
+
+    public function mount(): void
+    {
+        $this->sort = 'name';
+    }
 
     public function next(): void
     {
@@ -40,6 +46,11 @@ final class Catalog
         ++$this->clicks;
     }
 
+    public function sortBy(): void
+    {
+        $this->sort = 'name' === $this->sort ? 'date' : 'name';
+    }
+
     public function render()
     {
         return (
@@ -48,7 +59,8 @@ final class Catalog
                 <button id="next" onClick={{ next }}>Next</button>
                 <button id="clear" onClick={{ clear }}>Clear</button>
                 <button id="click" onClick={{ click }}>Click</button>
-                <p id="summary">q={{ query }}, page={{ page }}, stock={{ stock ? 'yes' : 'no' }}, tags={{ tags|join('+') }}, size={{ size.value ?? 'none' }}, min={{ min }}</p>
+                <button id="sort" onClick={{ sortBy }}>Sort</button>
+                <p id="summary">q={{ query }}, page={{ page }}, stock={{ stock ? 'yes' : 'no' }}, tags={{ tags|join('+') }}, size={{ size.value ?? 'none' }}, min={{ min }}, sort={{ sort }}</p>
             </div>
         );
     }

@@ -724,6 +724,10 @@ final class Catalog
   the signed state has the values.
 - After each event, the browser writes the values into the URL, and keeps the other query keys.
   A value that is equal to the default value of the property removes its key.
+- `except` gives another value that removes the key, for example for a property with no default
+  value: `#[State, Url(except: 'name')] public string $sort;`. Then the default value has a key.
+  Give the property the `except` value when the URL has no key (in `mount()`), or a reload
+  shows another value.
 - By default, the browser replaces the current history entry. With `history: true`, a change of
   the value adds an entry. Back and forward load the page of that URL again, with Turbo.
 - The query string comes from the user: as for `phem:bind`, do not trust its values.

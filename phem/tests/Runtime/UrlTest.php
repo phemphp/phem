@@ -34,19 +34,19 @@ final class UrlTest extends TestCase
 
     public function testTheFirstRenderReadsTheQueryString(): void
     {
-        $html = (string) $this->request('GET', '/url?q=php&page=3&stock=1&tags[]=a&tags[]=b&size=l&min=1.5&tab=new')->getContent();
+        $html = (string) $this->request('GET', '/url?q=php&page=3&stock=1&tags[]=a&tags[]=b&size=l&min=1.5&sort=date&tab=new')->getContent();
 
-        self::assertStringContainsString('q=php, page=3, stock=yes, tags=a+b, size=l, min=1.5', $html);
+        self::assertStringContainsString('q=php, page=3, stock=yes, tags=a+b, size=l, min=1.5, sort=date', $html);
         self::assertStringContainsString('Tab new', $html, 'a #[Url] property of the page');
-        self::assertSame(['values' => ['tab' => 'new', 'q' => 'php', 'page' => '3', 'stock' => '1', 'tags' => ['a', 'b'], 'size' => 'l', 'min' => '1.5'], 'push' => ['page']], self::query($html));
+        self::assertSame(['values' => ['tab' => 'new', 'q' => 'php', 'page' => '3', 'stock' => '1', 'tags' => ['a', 'b'], 'size' => 'l', 'min' => '1.5', 'sort' => 'date'], 'push' => ['page']], self::query($html));
     }
 
     public function testAValueThatDoesNotFitItsTypeIsIgnored(): void
     {
         $html = (string) $this->request('GET', '/url?q[]=php&page=abc&stock=maybe&tags=a&size=xl&min=x')->getContent();
 
-        self::assertStringContainsString('q=, page=1, stock=no, tags=, size=none, min=0', $html);
-        self::assertSame(['tab' => null, 'q' => null, 'page' => null, 'stock' => null, 'tags' => null, 'size' => null, 'min' => null], self::query($html)['values'], 'the browser removes the keys');
+        self::assertStringContainsString('q=, page=1, stock=no, tags=, size=none, min=0, sort=name', $html);
+        self::assertSame(['tab' => null, 'q' => null, 'page' => null, 'stock' => null, 'tags' => null, 'size' => null, 'min' => null, 'sort' => null], self::query($html)['values'], 'the browser removes the keys');
     }
 
     public function testAnEventAnswersWithTheQuery(): void
@@ -56,7 +56,7 @@ final class UrlTest extends TestCase
         $data = $this->send('/url?q=php', $state, $signature, self::handler($html, 'next'));
 
         self::assertStringContainsString('q=php, page=2', $data['streams']);
-        self::assertSame(['tab' => null, 'q' => 'php', 'page' => '2', 'stock' => null, 'tags' => null, 'size' => null, 'min' => null], $data['query']['values']);
+        self::assertSame(['tab' => null, 'q' => 'php', 'page' => '2', 'stock' => null, 'tags' => null, 'size' => null, 'min' => null, 'sort' => null], $data['query']['values']);
         self::assertSame(['page'], $data['query']['push']);
     }
 
@@ -67,6 +67,19 @@ final class UrlTest extends TestCase
         $data = $this->send('/url', $state, $signature, self::handler($html, 'clear'));
 
         self::assertSame([null], array_unique(array_values($data['query']['values'])));
+    }
+
+    public function testTheExceptValueRemovesItsKey(): void
+    {
+        [$html, $state, $signature] = $this->open('/url');
+
+        $data = $this->send('/url', $state, $signature, self::handler($html, 'sort'));
+        self::assertStringContainsString('sort=date', $data['streams']);
+        self::assertSame('date', $data['query']['values']['sort'], 'a property with no default value');
+
+        $data = $this->send('/url?sort=date', $data['state'], $data['signature'], self::handler($html, 'sort'));
+        self::assertStringContainsString('sort=name', $data['streams']);
+        self::assertNull($data['query']['values']['sort']);
     }
 
     public function testAnEventDoesNotReadTheQueryString(): void
@@ -174,6 +187,23 @@ final class UrlTest extends TestCase
         (new ComponentMetadata())->urlProperties((new class {
             #[State, Url] public ?\DateTimeImmutable $at = null;
         })::class);
+    }
+
+    public function testTheExceptValueFitsTheType(): void
+    {
+        $this->expectExceptionMessage('The "except" value of the #[Url] property "page" of');
+        (new ComponentMetadata())->urlProperties((new class {
+            #[State, Url(except: 'first')] public int $page = 1;
+        })::class);
+    }
+
+    public function testTheExceptValueCanBeAnEnum(): void
+    {
+        $properties = (new ComponentMetadata())->urlProperties((new class {
+            #[State, Url(except: Size::Large)] public ?Size $size = null;
+        })::class);
+
+        self::assertSame(Size::Large, $properties['size'][1]->except);
     }
 
     public function testTwoPropertiesCannotHaveTheSameKey(): void
