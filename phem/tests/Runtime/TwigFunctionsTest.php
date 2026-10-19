@@ -91,6 +91,17 @@ final class TwigFunctionsTest extends TestCase
         $this->runtime()->attrs(['phem:loading' => 'save']);
     }
 
+    public function testProgressTakesAFunction(): void
+    {
+        self::assertSame('data-phem-progress="static" hidden', (string) $this->runtime()->progress(static fn () => null));
+        self::assertSame('', (string) $this->runtime()->progress(null));
+        self::assertSame('max="100" data-phem-progress="static" hidden', (string) $this->runtime()->attrs(['max' => '100', 'phem:progress' => static fn () => null]), 'in a spread');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The "phem:progress" handler must be a function');
+        $this->runtime()->attrs(['phem:progress' => 'save']);
+    }
+
     public function testTiming(): void
     {
         self::assertSame('data-phem-debounce="300"', (string) Attributes::timing('debounce', 300));

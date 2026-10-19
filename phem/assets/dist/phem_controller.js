@@ -79,6 +79,17 @@
 // The files of a form go with its event: the request is `multipart/form-data`, with the JSON of
 // the event in the `_phem` part and each file under the name of its field. An event with no files
 // is JSON. A file input with no file sends nothing.
+//
+// An event with files goes with XHR, not `fetch`, so the controller knows how much of the body
+// has left. `phem:progress={{ save }}` in markup renders `data-phem-progress="<fiber>.<fingerprint>"
+// hidden`, as `phem:loading`: the element shows only while the files of a `save` event upload (and
+// until the response arrives), after the same delay. Its `--phem-progress` CSS property is the
+// progress, from 0 to 1. A `<progress>` element also gets it as its `value` (times its `max`). An
+// event with no files does not show it. On each step of the upload, the form dispatches a
+// `phem:upload-progress` event that bubbles, with the `handler`, the `loaded` and `total` bytes of
+// the body, the `progress`, and the `files`: {field, file, loaded, progress} for each file. The
+// body has more than the files (the JSON of the event): the controller shares the progress
+// between the files by their size, in their order.
 
 import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
@@ -169,6 +180,35 @@ function queryPairs(name, value) {
   return [`${key}=${encodeURIComponent(value)}`]
 }
 
+// Posts a body with XHR, so `onProgress(loaded, total)` gets the progress of the upload (`fetch`
+// cannot give it). Resolves with a Response, as `fetch()`, or rejects with a TypeError for a
+// network error.
+function post(url, headers, body, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    const fail = () => reject(new TypeError("Network request failed"))
+    xhr.open("POST", url)
+    for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value)
+    xhr.responseType = "blob"
+    // Before send(): a listener that comes later gets no progress.
+    xhr.upload.addEventListener("progress", (e) => onProgress(e.loaded, e.lengthComputable ? e.total : 0))
+    xhr.addEventListener("load", () => {
+      if (xhr.status < 200) return fail()
+      const responseHeaders = new Headers()
+      for (const line of xhr.getAllResponseHeaders().split(/\r?\n/)) {
+        const colon = line.indexOf(":")
+        if (colon > 0) responseHeaders.append(line.slice(0, colon).trim(), line.slice(colon + 1).trim())
+      }
+      const body = [204, 205, 304].includes(xhr.status) ? null : xhr.response
+      resolve(new Response(body, { status: xhr.status, statusText: xhr.statusText, headers: responseHeaders }))
+    })
+    xhr.addEventListener("error", fail)
+    xhr.addEventListener("abort", fail)
+    xhr.addEventListener("timeout", fail)
+    xhr.send(body)
+  })
+}
+
 function showLoading(el, on) {
   if (on) el.setAttribute("aria-busy", "true")
   else el.removeAttribute("aria-busy")
@@ -210,7 +250,8 @@ export default class PhemController extends Controller {
     this.element.addEventListener("focusout", this.flushOnBlur)
     // element => the number of its events that show the loading state
     this.loading = new Map()
-    // The events that show the loading state now: {handler, el}
+    // The events that show the loading state now: {handler, el, upload}, where upload is
+    // {progress} for an event with files, or null
     this.running = new Set()
     // form => (control => the property that the lock set), for each locked form
     this.locked = new Map()
@@ -221,6 +262,7 @@ export default class PhemController extends Controller {
       const t = event.target
       if (this.loading.has(t)) showLoading(t, true)
       if (t.hasAttribute("data-phem-loading")) t.hidden = !this.isLoading(t)
+      if (t.hasAttribute("data-phem-progress")) this.showProgress(t)
       if (t === this.element) this.showOffline()
       for (const controls of this.locked.values()) {
         const prop = controls.get(t)
@@ -320,16 +362,18 @@ export default class PhemController extends Controller {
       waiting.set(attr, job)
       this.waiting.set(el, waiting)
     }
-    const done = this.startLoading(el, handler)
+    const upload = payload.files ? { progress: 0 } : null
+    const done = this.startLoading(el, handler, upload)
     // After formFields(): a disabled control is not in the form data.
     const unlock = payload.type === "submit" ? this.lockForm(el) : () => {}
+    const onProgress = upload && ((loaded, total) => this.uploadProgress(el, handler, payload.files, upload, loaded, total))
     this.queue = this.queue
       .then(() => {
         if (waiting?.get(attr) === job) {
           waiting.delete(attr)
           if (!waiting.size) this.waiting.delete(el)
         }
-        return this.send(job.handler, job.payload, unlock)
+        return this.send(job.handler, job.payload, unlock, onProgress)
       })
       .catch((e) => console.error("[phem]", e))
       .finally(() => {
@@ -415,9 +459,9 @@ export default class PhemController extends Controller {
   }
 
   // Shows the loading state of an event after the delay. Returns the function that ends it.
-  startLoading(el, handler) {
+  startLoading(el, handler, upload = null) {
     const targets = new Set([el, el.closest("phem-c") ?? this.element])
-    const event = { handler, el }
+    const event = { handler, el, upload }
     let shown = false
     const timer = setTimeout(() => {
       shown = true
@@ -434,25 +478,65 @@ export default class PhemController extends Controller {
     }
   }
 
-  // Shows each `phem:loading` element with an event that runs, and hides the others.
+  // Shows each `phem:loading` and `phem:progress` element with an event that runs, and hides the
+  // others.
   showLoadingElements() {
     for (const t of this.element.querySelectorAll("[data-phem-loading]")) t.hidden = !this.isLoading(t)
+    for (const t of this.element.querySelectorAll("[data-phem-progress]")) this.showProgress(t)
   }
 
-  // Whether an event of the handler of a `phem:loading` element runs. Its value is the fiber of
-  // its component and the fingerprint of the handler. A handler id is `<fiber>.<fingerprint>`,
-  // with `~<n>` for the same handler two times. The event matches when it has the same
-  // fingerprint, and one component is in the other: a child can get the handler as a prop, and
-  // send the event or show the element.
-  isLoading(el) {
-    const scope = el.dataset.phemLoading
+  // The event that runs for the handler of a `phem:loading` or `phem:progress` element, or null.
+  // The scope of the element is the fiber of its component and the fingerprint of the handler. A
+  // handler id is `<fiber>.<fingerprint>`, with `~<n>` for the same handler two times. The event
+  // matches when it has the same fingerprint, and one component is in the other: a child can get
+  // the handler as a prop, and send the event or show the element. With `upload`, only an event
+  // with files matches.
+  runningEvent(el, scope, upload = false) {
     const fiber = scope.slice(0, scope.indexOf("."))
     const fingerprint = scope.slice(fiber.length + 1)
-    for (const { handler, el: source } of this.running) {
-      if (handler.slice(handler.indexOf(".") + 1).split("~")[0] !== fingerprint) continue
-      if (handler.startsWith(`${fiber}.`) || this.componentRoot(scope).contains(source) || this.componentRoot(handler).contains(el)) return true
+    for (const event of this.running) {
+      const { handler, el: source } = event
+      if ((upload && !event.upload) || handler.slice(handler.indexOf(".") + 1).split("~")[0] !== fingerprint) continue
+      if (handler.startsWith(`${fiber}.`) || this.componentRoot(scope).contains(source) || this.componentRoot(handler).contains(el)) return event
     }
-    return false
+    return null
+  }
+
+  isLoading(el) {
+    return this.runningEvent(el, el.dataset.phemLoading) !== null
+  }
+
+  // Shows a `phem:progress` element with the progress of its upload, or hides it.
+  showProgress(el) {
+    const event = this.runningEvent(el, el.dataset.phemProgress, true)
+    el.hidden = !event
+    if (!event) return
+    const { progress } = event.upload
+    el.style.setProperty("--phem-progress", String(progress))
+    if (el instanceof HTMLProgressElement) el.value = progress * el.max
+  }
+
+  // A step of an upload: show it on the `phem:progress` elements, and dispatch
+  // `phem:upload-progress` on the element that sent the event.
+  uploadProgress(el, handler, files, upload, loaded, total) {
+    upload.progress = total > 0 ? Math.min(loaded / total, 1) : 0
+    for (const t of this.element.querySelectorAll("[data-phem-progress]")) this.showProgress(t)
+    // The body has the JSON of the event and the headers of the parts too: share the progress
+    // between the files by their size, in their order.
+    let sent = upload.progress * files.reduce((sum, [, file]) => sum + file.size, 0)
+    const detail = {
+      handler,
+      loaded,
+      total,
+      progress: upload.progress,
+      files: files.map(([field, file]) => {
+        const part = Math.min(sent, file.size)
+        sent -= part
+        return { field, file, loaded: Math.round(part), progress: file.size > 0 ? part / file.size : Math.floor(upload.progress) }
+      }),
+    }
+    const target = el.isConnected ? el : this.componentRoot(handler)
+    target.dispatchEvent(new CustomEvent("phem:upload-progress", { detail, bubbles: true }))
   }
 
   markLoading(el, delta) {
@@ -497,8 +581,9 @@ export default class PhemController extends Controller {
     }
   }
 
-  // `beforeRender` runs when the last response arrives, before the page changes.
-  async send(handler, event, beforeRender) {
+  // `beforeRender` runs when the last response arrives, before the page changes. `onProgress`
+  // gets the progress of an upload.
+  async send(handler, event, beforeRender, onProgress = null) {
     // The bound fields when the event starts: the newest values. The request sends the fields
     // that changed.
     const fields = this.boundValues()
@@ -510,7 +595,7 @@ export default class PhemController extends Controller {
     }
     let response
     try {
-      response = await this.fetchWithRetry(handler, event, bound)
+      response = await this.fetchWithRetry(handler, event, bound, onProgress)
     } catch (e) {
       beforeRender()
       console.error("[phem] event failed (network error)", e)
@@ -641,8 +726,9 @@ export default class PhemController extends Controller {
   }
 
   // Posts the event. Sends it again after a network error, a 502 or a 503, with a longer wait
-  // each time. The last try returns its response, or throws its network error.
-  async fetchWithRetry(handler, event, bound = {}) {
+  // each time. The last try returns its response, or throws its network error. An event with
+  // files goes with XHR when `onProgress` wants the progress of the upload.
+  async fetchWithRetry(handler, event, bound = {}, onProgress = null) {
     const { files = [], ...data } = event
     // A `phem:live` event has no handler: the server only sets the bound values.
     const json = JSON.stringify({ state: this.stateValue, signature: this.signatureValue, handler: data.live ? null : handler, event: data, bound })
@@ -661,7 +747,7 @@ export default class PhemController extends Controller {
       }
       try {
         // The URL of the page, from the browser: always the same origin.
-        response = await fetch(window.location.href, { method: "POST", headers, body })
+        response = files.length && onProgress ? await post(window.location.href, headers, body, onProgress) : await fetch(window.location.href, { method: "POST", headers, body })
       } catch (e) {
         error = e
       }

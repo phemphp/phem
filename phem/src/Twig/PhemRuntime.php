@@ -23,8 +23,8 @@ use Twig\Markup;
 use Twig\Template;
 
 /**
- * The Twig runtime of the compiled templates: `{% component %}`, `phem_on()`, `phem_loading()`
- * and `phem_attrs()`.
+ * The Twig runtime of the compiled templates: `{% component %}`, `phem_on()`, `phem_loading()`,
+ * `phem_progress()` and `phem_attrs()`.
  * The compiled code gets it with `$this->env->getRuntime(PhemRuntime::class)`.
  */
 final class PhemRuntime implements RuntimeExtensionInterface
@@ -76,15 +76,30 @@ final class PhemRuntime implements RuntimeExtensionInterface
      */
     public function loading(mixed $handler): Markup
     {
+        return $this->handlerScope('loading', $handler);
+    }
+
+    /**
+     * `phem:progress={{ save }}` → `data-phem-progress="<scope>" hidden`: while the files of a
+     * `save` event upload, the browser shows the element with the progress (the `value` of a
+     * `<progress>`, and the `--phem-progress` CSS property).
+     */
+    public function progress(mixed $handler): Markup
+    {
+        return $this->handlerScope('progress', $handler);
+    }
+
+    private function handlerScope(string $name, mixed $handler): Markup
+    {
         if (null === $handler || false === $handler) {
             return new Markup('', 'UTF-8');
         }
         if (!$handler instanceof \Closure) {
-            throw new \InvalidArgumentException(\sprintf('The "phem:loading" handler must be a function, "%s" given. Pass the function (`$this->name(...)`), do not call it.', get_debug_type($handler)));
+            throw new \InvalidArgumentException(\sprintf('The "phem:%s" handler must be a function, "%s" given. Pass the function (`$this->name(...)`), do not call it.', $name, get_debug_type($handler)));
         }
         $scope = $this->renderer->handlerScope($handler) ?? 'static';
 
-        return new Markup(\sprintf('data-phem-loading="%s" hidden', Attributes::e($scope)), 'UTF-8');
+        return new Markup(\sprintf('data-phem-%s="%s" hidden', $name, Attributes::e($scope)), 'UTF-8');
     }
 
     /**
@@ -173,6 +188,7 @@ final class PhemRuntime implements RuntimeExtensionInterface
                 'key' === $name => Attributes::key($value),
                 'style' === $name => Attributes::style($value),
                 'phem:loading' === $name => $this->loading($value),
+                'phem:progress' === $name => $this->progress($value),
                 'phem:bind' === $name => throw new \InvalidArgumentException('"phem:bind" cannot come from a spread: write it on the element, with the name of a #[State] property.'),
                 'phem:live' === $name => Attributes::attr('data-phem-live', true === $value ? true : null),
                 \in_array($name, ['phem:debounce', 'phem:throttle'], true) => Attributes::timing(substr($name, 5), $value),

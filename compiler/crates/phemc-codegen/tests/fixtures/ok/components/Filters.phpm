@@ -51,6 +51,8 @@ final class Filters
                     <input key={{ i }} phem:bind={{ rows[i].name }} />
                 {% endfor %}
                 <textarea phem:bind={{ rows.0['name'] }}></textarea>
+                <input type="file" name="photo" />
+                <progress phem:progress={{ search }} max="100" />
             </form>
         );
     }

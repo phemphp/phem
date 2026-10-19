@@ -23,6 +23,7 @@ const EVENTS = ['onClick', 'onDoubleClick', 'onChange', 'onInput', 'onSubmit', '
 // The Phem attributes of an HTML element: [snippet, detail, documentation].
 const PHEM_ATTRIBUTES = {
     'phem:loading': ['phem:loading={{ ${1} }}', 'Phem: show while a handler runs', 'The element shows only while an event of the handler runs: `<span phem:loading={{ save }}>Saving…</span>`.'],
+    'phem:progress': ['phem:progress={{ ${1} }}', 'Phem: show the upload progress of a handler', 'The element shows only while the files of an event of the handler upload. Its `--phem-progress` CSS property (and the `value` of a `<progress>`) is the progress: `<progress phem:progress={{ save }} max="100"></progress>`.'],
     'phem:debounce': ['phem:debounce={{ ${1:300} }}', 'Phem: wait before an event is sent', 'Milliseconds: the browser sends an event of the element only when no new event comes for that time. `\'blur\'`: send on blur only. `0`: no debounce (text inputs have 150 ms by default).'],
     'phem:bind': ['phem:bind={{ ${1} }}', 'Phem: bind a field to a #[State] property', 'The field shows the property, and the next event sends its new value: `<input phem:bind={{ query }} />`.'],
     'phem:live': ['phem:live', 'Phem: send each change of a bound field', 'With `phem:bind`: each change sends an event with no handler, with the debounce of the field.'],

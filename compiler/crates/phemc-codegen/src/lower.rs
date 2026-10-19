@@ -239,8 +239,8 @@ impl<'a> Lowerer<'a> {
                         continue;
                     }
                     let event = event_name(name);
-                    // A handler, or `phem:loading`: both take a function.
-                    let takes_fn = event.is_some() || name == LOADING;
+                    // A handler, `phem:loading` or `phem:progress`: all take a function.
+                    let takes_fn = event.is_some() || name == LOADING || name == PROGRESS;
                     if let Some(event) = &event {
                         self.check_event(name, event, *name_span);
                     }
@@ -596,12 +596,12 @@ impl<'a> Lowerer<'a> {
                     }
                     return;
                 }
-                if name == LOADING {
+                if name == LOADING || name == PROGRESS {
                     match value {
                         AttrValue::Expr(x) => {
                             let c = self.expr_code(x);
                             self.check_handler(name, &c, x.span);
-                            out.push_str(&format!("{ws}{{{{ phem_loading({c}) }}}}"));
+                            out.push_str(&format!("{ws}{{{{ phem_{}({c}) }}}}", &name[5..]));
                         }
                         _ => self.handler_not_function(name, *name_span),
                     }
@@ -855,6 +855,9 @@ impl<'a> Lowerer<'a> {
 
 /// `phem:loading={{ save }}`: the element shows only while a `save` event runs.
 const LOADING: &str = "phem:loading";
+
+/// `phem:progress={{ save }}`: the element shows the upload progress of a `save` event with files.
+const PROGRESS: &str = "phem:progress";
 
 /// `phem:bind={{ query }}`: the field shows a #[State] property, and the browser sends its new
 /// value with the next event. `phem:live` sends each change at once.

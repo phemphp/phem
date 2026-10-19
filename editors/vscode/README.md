@@ -43,8 +43,8 @@ is not there). A project is the nearest directory with a `composer.json` file.
   props first). After `<Layout:`, it suggests the named slots.
 - **HTML attributes**: in an HTML tag, it suggests the attributes of the element, the global
   attributes, the `aria-*` attributes, the Phem events (`onClick`, `onSubmit`, ...), the Phem
-  attributes (`phem:loading`, `phem:debounce`, `phem:throttle`, `phem:bind`, `phem:live`),
-  `className`, and `key`. In the value of an enumerated attribute (`type="`, `target="`, `rel="`,
+  attributes (`phem:loading`, `phem:progress`, `phem:debounce`, `phem:throttle`, `phem:bind`,
+  `phem:live`), `className`, and `key`. In the value of an enumerated attribute (`type="`, `target="`, `rel="`,
   `loading="`, ...), it suggests the values. In `phem:debounce={{ `, it also suggests `'blur'`.
 - **Closing tags**: after `</`, it suggests the name of the open element.
 - **Members**: after `->`, `?->`, and `::`, it suggests the properties, the methods, and the

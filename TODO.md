@@ -142,8 +142,11 @@ form shows it. The test helper has `->upload()`. The PhotoUpload example uses it
 
 Not done yet:
 
-- [ ] Progress for each file, available in markup. `fetch` cannot report the upload progress, so
-      the controller must send an event with files with XHR.
+- [x] Progress for each file, available in markup. An event with files goes with XHR.
+      `<progress phem:progress={{ save }}>` shows the progress of the upload of a `save` event
+      (its `value`, and the `--phem-progress` CSS property of any element). The form dispatches
+      `phem:upload-progress`, with the progress of each file. The server does not know the files
+      before the event, so the markup shows the progress of all the files together.
 - [ ] Upload on select (to a temporary endpoint), for big files or a preview before the submit.
 - [ ] Direct upload to S3-compatible storage (presigned URL).
 

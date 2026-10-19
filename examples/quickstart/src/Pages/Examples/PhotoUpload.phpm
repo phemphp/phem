@@ -47,6 +47,7 @@ final class PhotoUpload
                 <form onSubmit={{ handleSubmit }}>
                     <label htmlFor="photos">Photos (2 MB each at most)</label>
                     <input id="photos" type="file" name="photos[]" accept="image/*" multiple />
+                    <progress phem:progress={{ handleSubmit }} max="100"></progress>
                     <button type="submit">
                         Upload <span phem:loading={{ handleSubmit }}>…</span>
                     </button>

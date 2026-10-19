@@ -27,4 +27,6 @@ expression: t.content
                     <input {{ phem_key(i) }} {{ phem_bind(['rows', (i), 'name'], rows[i].name, 'input', null, null, this) }}>
                 {% endfor %}
                 <textarea {{ phem_bind(['rows', 0, ('name')], rows.0['name'], 'textarea', null, null, this) }}>{{ phem_bind_value(rows.0['name']) }}</textarea>
+                <input type="file" name="photo">
+                <progress {{ phem_progress(search) }} max="100"></progress>
             </form>

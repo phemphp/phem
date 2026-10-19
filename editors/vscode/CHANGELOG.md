@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Completion for the Phem attributes `phem:bind` and `phem:live`.
+- Completion for the Phem attributes `phem:bind`, `phem:live` and `phem:progress`.
 
 ## 0.4.0
 

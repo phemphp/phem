@@ -378,6 +378,40 @@ phem:
 The browser sends a file again with each new submit, and with each retry of a failed event.
 While the files upload, the loading state shows (see [Loading states](#loading-states)).
 
+To show the progress of the upload, give the handler to `phem:progress`:
+
+```html
+<form onSubmit={{ save }}>
+    <input type="file" name="photos[]" multiple />
+    <progress phem:progress={{ save }} max="100"></progress>
+    <button type="submit">Upload</button>
+</form>
+```
+
+The server renders the element with `hidden`, as `phem:loading`. The browser shows it only while
+the files of a `save` event upload, and until the response arrives, after the delay of the loading
+state. An event with no files does not show it. The `--phem-progress` CSS property of the element
+is the progress, from 0 to 1, so any element can show it:
+`<div phem:progress={{ save }} className="bar"></div>` with
+`.bar { width: calc(var(--phem-progress) * 100%) }`. A `<progress>` element also gets it as its
+`value`, times its `max`.
+
+The progress is for the full body of the event. For each file, listen to `phem:upload-progress`.
+The form dispatches it on each step of the upload, and it bubbles:
+
+```js
+form.addEventListener('phem:upload-progress', (e) => {
+    for (const { field, file, loaded, progress } of e.detail.files) {
+        console.log(field, file.name, loaded, progress);
+    }
+});
+```
+
+The detail has the `handler`, the `loaded` and `total` bytes of the body, the `progress` (0 to 1),
+and the `files`. The body has the JSON of the event too: the browser shares the progress between
+the files by their size, in their order. An event with files goes with `XMLHttpRequest`, because
+`fetch` cannot give the progress of an upload. A retry starts the progress again from 0.
+
 A handler can return a Symfony `RedirectResponse`. Then the page does not render again: the
 browser goes to its URL (a Turbo visit). The URL is relative, or an `http:` or `https:` URL:
 another scheme (`javascript:`) is an error. For example, after a delete:
