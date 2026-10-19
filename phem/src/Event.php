@@ -27,6 +27,10 @@ final class Event
      *                                           as its POST data (`$form->handleRequest($e->request)`)
      * @param BrowserEventDispatcher $dispatcher sends browser events with the response
      *                                           (`$e->dispatcher->dispatch('toast', [...])`)
+     * @param array<string, mixed>   $files      the files of the form, for `submit`: name => an
+     *                                           UploadedFile, in the shape of `$request->files->all()`
+     *                                           (`photos[]` gives a list). PHP removes a file that
+     *                                           the handler does not move at the end of the request.
      */
     public function __construct(
         public readonly string $type,
@@ -36,6 +40,7 @@ final class Event
         public readonly array $form = [],
         public readonly ?Request $request = null,
         public readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
+        public readonly array $files = [],
     ) {
     }
 
@@ -53,6 +58,8 @@ final class Event
         // FormData gives flat keys ("scientist[name]", "tags[]"). PHP makes nested arrays of
         // them, as it does for the body of a normal POST.
         parse_str(implode('&', array_map(static fn (array $f): string => rawurlencode($f[0]).'='.rawurlencode($f[1]), $fields)), $post);
+        // A multipart event has the files of the form as its files.
+        $files = $request?->files->all() ?? [];
 
         return new self(
             (string) ($data['type'] ?? ''),
@@ -62,8 +69,9 @@ final class Event
             $form,
             // The browser sends the event as JSON. A copy of the request with the form fields
             // as POST data lets a Symfony form read them like a normal form submission.
-            $request?->duplicate(request: $post),
+            $request?->duplicate(request: $post, files: $files),
             $dispatcher ?? new BrowserEventDispatcher(),
+            $files,
         );
     }
 

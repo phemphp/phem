@@ -27,6 +27,7 @@ use Phem\State\PageState;
 use Phem\State\StateAccessor;
 use Phem\State\StateCodec;
 use Phem\State\UrlQuery;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -49,12 +50,18 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
  * properties (see UrlQuery), and the browser events of the handler (see BrowserEventDispatcher). When the handler returns
  * a RedirectResponse, the server answers with its URL, and the browser visits it.
  *
- * Against CSRF, an event is JSON with the `X-Phem-Event` header (a cross-site request with them
- * needs a CORS preflight), and it comes from the same origin (`Sec-Fetch-Site`, or `Origin`).
+ * An event with the files of a form is `multipart/form-data` (see EventPayload). The handler
+ * gets them as UploadedFile objects (see Event::$files). PHP removes a file that the handler does
+ * not move at the end of the request.
  *
- * Against a denial of service, the body has a maximum size (`phem.max_event_size`), and its
- * JSON has a maximum depth (see EventPayload). The state is in the body, so the size limit is
- * also a limit for the state.
+ * Against CSRF, an event has the `X-Phem-Event` header (a cross-site request with it needs a CORS
+ * preflight), it is JSON, or multipart with files, and it comes from the same origin
+ * (`Sec-Fetch-Site`, or `Origin`).
+ *
+ * Against a denial of service, the JSON has a maximum size (`phem.max_event_size`) and a maximum
+ * depth (see EventPayload), and the files of an event have a maximum size together
+ * (`phem.max_upload_size`). The state is in the JSON, so the size limit is also a limit for the
+ * state.
  */
 final class EventController
 {
@@ -73,6 +80,7 @@ final class EventController
         private readonly int $maxSize = 1048576,
         private readonly BoundValues $bound = new BoundValues(),
         private readonly UrlQuery $url = new UrlQuery(),
+        private readonly int $maxUploadSize = 8388608,
     ) {
     }
 
@@ -84,11 +92,19 @@ final class EventController
         if (!self::isSameOrigin($request)) {
             throw new AccessDeniedHttpException('An event must come from the same origin.');
         }
-        if ('json' !== $request->getContentTypeFormat()) {
-            throw new UnsupportedMediaTypeHttpException('An event is JSON (Content-Type: application/json).');
+        $multipart = EventPayload::isMultipart($request);
+        if ('json' !== $request->getContentTypeFormat() && !$multipart) {
+            throw new UnsupportedMediaTypeHttpException('An event is JSON (Content-Type: application/json), or multipart/form-data with files.');
         }
-        if ($this->isTooLarge($request)) {
+        if ($multipart && [] === $request->request->all() && [] === $request->files->all()) {
+            // PHP drops all the parts of a body larger than its post_max_size.
+            throw new HttpException(413, 'An event with files is larger than the post_max_size option of PHP.');
+        }
+        if ($this->isTooLarge($request, $multipart)) {
             throw new HttpException(413, \sprintf('An event body can have a maximum of %d bytes (the phem.max_event_size option).', $this->maxSize));
+        }
+        if ($multipart && $this->filesAreTooLarge($request->files->all())) {
+            throw new HttpException(413, \sprintf('The files of an event can have a maximum of %d bytes together (the phem.max_upload_size option).', $this->maxUploadSize));
         }
 
         $payload = EventPayload::fromRequest($request);
@@ -156,12 +172,16 @@ final class EventController
 
     /**
      * Whether the body is larger than the maximum size. The Content-Length header lets the
-     * server reject the request before it reads the body.
+     * server reject the request before it reads the body. For a multipart event, it is the size
+     * of its JSON part: PHP read the body already.
      */
-    private function isTooLarge(Request $request): bool
+    private function isTooLarge(Request $request, bool $multipart): bool
     {
         if (0 === $this->maxSize) {
             return false;
+        }
+        if ($multipart) {
+            return \strlen(EventPayload::json($request)) > $this->maxSize;
         }
         $length = $request->headers->get('Content-Length');
         if (null !== $length && ctype_digit($length) && (int) $length > $this->maxSize) {
@@ -169,6 +189,28 @@ final class EventController
         }
 
         return \strlen($request->getContent()) > $this->maxSize;
+    }
+
+    /**
+     * Whether the files are larger than `phem.max_upload_size` together. A file with an upload
+     * error (larger than `upload_max_filesize` of PHP) has no content: the handler gets it, so a
+     * form can show the error (`#[Assert\File]`).
+     *
+     * @param array<mixed> $files the files of the request, in their PHP shape
+     */
+    private function filesAreTooLarge(array $files): bool
+    {
+        if (0 === $this->maxUploadSize) {
+            return false;
+        }
+        $size = 0;
+        array_walk_recursive($files, static function (mixed $file) use (&$size): void {
+            if ($file instanceof UploadedFile && \UPLOAD_ERR_OK === $file->getError()) {
+                $size += (int) $file->getSize();
+            }
+        });
+
+        return $size > $this->maxUploadSize;
     }
 
     /**

@@ -168,6 +168,7 @@ return static function (ContainerConfigurator $container): void {
                 1048576,
                 service('phem.bound_values'),
                 service('phem.url_query'),
+                8388608,
             ])
         ->set('phem.listener.page_attributes', PageAttributesListener::class)
             ->tag('kernel.event_listener', ['event' => 'kernel.controller', 'method' => 'onKernelController'])

@@ -333,7 +333,7 @@ function MyButton()
     <li><code>onFocus</code></li>
     <li><code>onBlur</code></li>
 </ul>
-<p>The handler receives a <code>Phem\Event</code> object. It has <code>$e-&gt;value</code>, <code>$e-&gt;checked</code>, <code>$e-&gt;key</code>, <code>$e-&gt;form</code> (an array, for <code>onSubmit</code>), and <code>$e-&gt;request</code> (the Symfony request of the event, for Symfony forms). As in React, <code>onChange</code> on a text input fires on each key. Type in the box:</p>
+<p>The handler receives a <code>Phem\Event</code> object. It has <code>$e-&gt;value</code>, <code>$e-&gt;checked</code>, <code>$e-&gt;key</code>, <code>$e-&gt;form</code> (an array, for <code>onSubmit</code>), <code>$e-&gt;files</code> (the files of the form), and <code>$e-&gt;request</code> (the Symfony request of the event, for Symfony forms). As in React, <code>onChange</code> on a text input fires on each key. Type in the box:</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="SearchBox">
     <div class="sandbox-bar">
         <span class="sandbox-tab">SearchBox.phpm</span>
@@ -457,6 +457,29 @@ final class AddScientist
     </div>
 </aside>
 
+<h2 id="uploading-files" class="heading">Uploading files<a class="heading-anchor" href="#uploading-files" aria-label="Link to this section">#</a></h2>
+<p>A form can have file inputs. When the user submits it, the browser sends the files with the event. The handler gets each file as a Symfony <code>UploadedFile</code> in <code>$e-&gt;files</code>, by the name of its input. An input named <code>photos[]</code> gives a list:</p>
+<div class="code-block"><pre class="code" data-controller="highlight"><code>public function handleSubmit(Event $e): void
+{
+    foreach ($e-&gt;files['photos'] ?? [] as $photo) {
+        // getClientOriginalName(), getSize(), move($dir, $name)
+    }
+}</code></pre></div>
+<p>Phem only brings the files to the handler. The handler decides what to do with them: it checks them (here with the <code>Image</code> constraint of the Symfony Validator, a service of the constructor), and it moves the files that it keeps. PHP removes the other files at the end of the request, as for a normal form. The files are not state: only what the page shows about them is in <code>#[State]</code>. A Symfony form with a <code>FileType</code> field works too, with <code>handleRequest($e-&gt;request)</code>.</p>
+<p>Choose one or more images, then click <strong>Upload</strong>. Try a file that is not an image, or an image larger than 2 MB:</p>
+<div class="sandbox" data-controller="sandbox" data-sandbox-example-value="PhotoUpload">
+    <div class="sandbox-bar">
+        <span class="sandbox-tab">PhotoUpload.phpm</span>
+        <div class="sandbox-actions">
+            <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
+            <a class="sandbox-button" href="/examples/PhotoUpload" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
+        </div>
+    </div>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/PhotoUpload.phpm...</code></pre>
+    <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
+    <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/PhotoUpload" loading="lazy" title="PhotoUpload preview"></iframe>
+</div>
+
 <h2 id="sharing-data" class="heading">Sharing data between components<a class="heading-anchor" href="#sharing-data" aria-label="Link to this section">#</a></h2>
 <p>In the previous example, each <code>Counter</code> had its own independent <code>$count</code>. When you clicked one button, only the <code>$count</code> of that button changed. But often you need components to <em>share data and always update together</em>.</p>
 <p>To make both buttons show the same count and update together, move the state from the buttons "upward" to the nearest component that contains all of them. Then pass the state down to each button. This is called <strong>lifting state up</strong>.</p>
@@ -572,6 +595,7 @@ function CountButton(int $count, mixed ...$props)
                     <li><a class="toc-link" data-toc-target="link" href="#responding-to-events">Responding to events</a></li>
                     <li><a class="toc-link" data-toc-target="link" href="#updating-the-screen">Updating the screen</a></li>
                     <li><a class="toc-link" data-toc-target="link" href="#services">Services and initialization</a></li>
+                    <li><a class="toc-link" data-toc-target="link" href="#uploading-files">Uploading files</a></li>
                     <li><a class="toc-link" data-toc-target="link" href="#sharing-data">Sharing data between components</a></li>
                     <li><a class="toc-link" data-toc-target="link" href="#next-steps">Next Steps</a></li>
                     </ul>

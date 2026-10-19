@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Test\Internal;
 
+use Phem\Http\EventPayload;
 use Phem\Rendering\Fiber;
 use Phem\State\PageState;
 use Phem\State\UrlQuery;
@@ -81,14 +82,20 @@ final class PageDriver implements Driver
             throw new \LogicException(\sprintf('The response of "%s" is not a page with a state (status %d): it has no events.', $this->uri, $this->status));
         }
         $this->redirect = null;
+        $files = $event['files'] ?? [];
+        unset($event['files']);
         $body = json_encode(['state' => $this->state, 'signature' => $this->signature, 'handler' => $handler, 'event' => $event, 'bound' => (object) $bound], \JSON_THROW_ON_ERROR);
-        // To the URL that the browser shows, as the controller sends it.
-        [, $response] = $this->send(Request::create($this->url, 'POST', cookies: $this->cookies, server: [
-            'CONTENT_TYPE' => 'application/json',
+        $server = [
             'HTTP_ACCEPT' => 'application/json',
             'HTTP_X_PHEM_EVENT' => '1',
             'HTTP_SEC_FETCH_SITE' => 'same-origin',
-        ] + $this->server, content: $body));
+        ] + $this->server;
+        // To the URL that the browser shows, as the controller sends it. With files, the JSON
+        // is the `_phem` part of a multipart body.
+        $request = [] === $files
+            ? Request::create($this->url, 'POST', cookies: $this->cookies, server: ['CONTENT_TYPE' => 'application/json'] + $server, content: $body)
+            : Request::create($this->url, 'POST', [EventPayload::PART => $body], $this->cookies, TestFiles::of($files), ['CONTENT_TYPE' => 'multipart/form-data; boundary=phem'] + $server);
+        [, $response] = $this->send($request);
 
         if (409 === $response->getStatusCode()) {
             return EventResult::reload();

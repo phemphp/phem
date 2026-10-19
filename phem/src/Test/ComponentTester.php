@@ -52,6 +52,13 @@ final class ComponentTester
      * @var array<string, list<array{0: Element, 1: \Closure(): void}>>
      */
     private array $edited = [];
+    /**
+     * The files that the user selected in the file inputs: input key => paths (see fileKey()).
+     * The morph keeps them, as in a browser: the morph does not change the files of an input.
+     *
+     * @var array<string, list<string>>
+     */
+    private array $selected = [];
 
     /**
      * @param \Closure(string): self|null $visit opens a URL (for followRedirect())
@@ -129,6 +136,36 @@ final class ComponentTester
     public function fill(string $selector, string|int|float|bool|array $value): self
     {
         $this->setValue($this->enabled($selector), $value, $selector);
+
+        return $this;
+    }
+
+    /**
+     * Selects files in a file input (`<input type="file">`), as a user does, but sends no event.
+     * The next submit of its form sends them, and the handler gets them in `$e->files`:
+     *
+     *     ->upload('input[name=photo]', __DIR__.'/ada.jpg')->submit()->assertSee('ada.jpg')
+     *
+     * The handler gets a copy of each file, so it can move it. An empty list removes the files.
+     *
+     * @param string|list<string> $paths more than one path for `<input type="file" multiple>`
+     */
+    public function upload(string $selector, string|array $paths): self
+    {
+        $element = $this->enabled($selector);
+        if ('input' !== $element->localName || 'file' !== strtolower($element->getAttribute('type') ?? '')) {
+            Assert::fail(\sprintf('The element "%s" is not a file input.', $selector));
+        }
+        $paths = (array) $paths;
+        if (\count($paths) > 1 && !$element->hasAttribute('multiple')) {
+            Assert::fail(\sprintf('The file input "%s" has no "multiple" attribute: it takes one file only.', $selector));
+        }
+        foreach ($paths as $path) {
+            if (!is_file($path)) {
+                Assert::fail(\sprintf('The file "%s" does not exist.', $path));
+            }
+        }
+        $this->selected[$this->fileKey($element)] = $paths;
 
         return $this;
     }
@@ -474,13 +511,18 @@ final class ComponentTester
         }
         $handler = (string) $element->getAttribute('data-phem-on-'.('input' === $type && !$element->hasAttribute('data-phem-on-input') ? 'change' : $type));
 
-        return [$handler, [
+        $event = [
             'type' => $type,
             'value' => self::valueOf($element),
             'checked' => 'input' === $element->localName ? $element->hasAttribute('checked') : null,
             'key' => null,
             'form' => 'form' === $element->localName ? self::fields($element, $submitter) : null,
-        ]];
+        ];
+        if ('form' === $element->localName && [] !== ($files = $this->files($element))) {
+            $event['files'] = $files;
+        }
+
+        return [$handler, $event];
     }
 
     /** The closest element with a handler for the event, in the root element of the page. */
@@ -738,6 +780,40 @@ final class ComponentTester
         }
 
         return $fields;
+    }
+
+    /**
+     * The files of a form as [name, path] pairs, as `new FormData(form)` has them: the files that
+     * the user selected in each file input with a name, and not disabled.
+     *
+     * @return list<array{string, string}>
+     */
+    private function files(Element $form): array
+    {
+        $files = [];
+        foreach ($form->querySelectorAll('input[type=file i]') as $input) {
+            $name = $input->getAttribute('name');
+            if (null === $name || '' === $name || $input->hasAttribute('disabled') || null !== $input->closest('fieldset[disabled]')) {
+                continue;
+            }
+            foreach ($this->selected[$this->fileKey($input)] ?? [] as $path) {
+                $files[] = [$name, $path];
+            }
+        }
+
+        return $files;
+    }
+
+    /**
+     * The key of a file input: its name, and its position in the file inputs of the page with
+     * that name. It stays the same when the morph renders the input again.
+     */
+    private function fileKey(Element $input): string
+    {
+        $name = (string) $input->getAttribute('name');
+        $same = array_filter(iterator_to_array($this->document->querySelectorAll('input[type=file i]'), false), static fn (Element $e): bool => $e->getAttribute('name') === $name);
+
+        return $name.'#'.(int) array_search($input, array_values($same), true);
     }
 
     /** The value of an element, as `el.value` in the browser; null for an element without a value. */

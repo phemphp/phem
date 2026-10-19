@@ -88,8 +88,11 @@ final class ComponentDriver implements Driver
     {
         $this->resetter?->reset();
         $this->redirect = null;
+        $request = $this->request('POST');
+        $request->files->replace(TestFiles::of($event['files'] ?? []));
+        unset($event['files']);
 
-        return $this->within($this->request('POST'), function (Request $request) use ($handler, $event, $bound): EventResult {
+        return $this->within($request, function (Request $request) use ($handler, $event, $bound): EventResult {
             $tree = new Tree($this->component, $this->state, $this->props);
             $this->renderer->render($tree);
             $closure = null !== $handler ? $tree->handler($handler) : null;

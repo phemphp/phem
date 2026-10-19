@@ -5,7 +5,7 @@
 // ../package.json). Without StimulusBundle, register it: `application.register("phem", PhemController)`.
 //
 // The server renders the page with the state in `data-phem-state-value` (signed JSON).
-// On an event, the controller posts {state, signature, handler, event} to the URL of the page,
+// On an event, the controller posts {state, signature, handler, event, bound} to the URL of the page,
 // so the access rules of the page apply. The server runs the PHP handler and answers with
 // Turbo Streams (morph of the changed components) and the new state. Events wait in a queue,
 // so each one uses the newest state.
@@ -75,6 +75,10 @@
 // replaces the history entry, or it adds one when a changed key is in `push`. It uses the history
 // of Turbo, so back and forward are Turbo restoration visits: the server renders the state of
 // that URL again (or Turbo shows its snapshot of that URL).
+//
+// The files of a form go with its event: the request is `multipart/form-data`, with the JSON of
+// the event in the `_phem` part and each file under the name of its field. An event with no files
+// is JSON. A file input with no file sends nothing.
 
 import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
@@ -86,10 +90,16 @@ function isTextLike(el) {
 }
 
 // The fields of a form as [name, value] pairs, so a name can have more than one value
-// (`<select multiple>`, checkboxes). The button that submits the form is a field too. A file
-// cannot go in the JSON body, so it is left out.
+// (`<select multiple>`, checkboxes). The button that submits the form is a field too. The files
+// are [name, File] pairs: a file input with no file gives an empty File, which is left out.
 function formFields(form, submitter) {
-  return [...new FormData(form, submitter ?? null)].filter(([, value]) => typeof value === "string")
+  const fields = []
+  const files = []
+  for (const [name, value] of new FormData(form, submitter ?? null)) {
+    if (typeof value === "string") fields.push([name, value])
+    else if (value.name !== "" || value.size > 0) files.push([name, value])
+  }
+  return { fields, files }
 }
 
 // Resolves after Turbo renders the streams of renderStreamMessage(): a <turbo-stream> waits for
@@ -269,13 +279,16 @@ export default class PhemController extends Controller {
     }
     const attr = el._phemAttr
     const handler = el.getAttribute(attr)
+    const { fields, files } = el instanceof HTMLFormElement ? formFields(el, event.submitter) : { fields: null, files: [] }
     const payload = {
       type: event.type,
       value: "value" in el ? el.value : null,
       checked: "checked" in el ? el.checked : null,
       key: event.key ?? null,
-      form: el instanceof HTMLFormElement ? formFields(el, event.submitter) : null,
+      form: fields,
     }
+    // Not in the JSON: fetchWithRetry() sends them as parts of a multipart body.
+    if (files.length) payload.files = files
     this.schedule(el, attr, handler, event.type, payload)
   }
 
@@ -630,17 +643,25 @@ export default class PhemController extends Controller {
   // Posts the event. Sends it again after a network error, a 502 or a 503, with a longer wait
   // each time. The last try returns its response, or throws its network error.
   async fetchWithRetry(handler, event, bound = {}) {
+    const { files = [], ...data } = event
+    // A `phem:live` event has no handler: the server only sets the bound values.
+    const json = JSON.stringify({ state: this.stateValue, signature: this.signatureValue, handler: data.live ? null : handler, event: data, bound })
     for (let attempt = 0; ; attempt++) {
       let response = null
       let error = null
+      const headers = { Accept: "application/json", "X-Phem-Event": "1" }
+      let body = json
+      if (files.length) {
+        // The browser sets the Content-Type, with the boundary of the parts.
+        body = new FormData()
+        body.append("_phem", json)
+        for (const [name, file] of files) body.append(name, file)
+      } else {
+        headers["Content-Type"] = "application/json"
+      }
       try {
         // The URL of the page, from the browser: always the same origin.
-        response = await fetch(window.location.href, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json", "X-Phem-Event": "1" },
-          // A `phem:live` event has no handler: the server only sets the bound values.
-          body: JSON.stringify({ state: this.stateValue, signature: this.signatureValue, handler: event.live ? null : handler, event, bound }),
-        })
+        response = await fetch(window.location.href, { method: "POST", headers, body })
       } catch (e) {
         error = e
       }

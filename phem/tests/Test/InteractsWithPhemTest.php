@@ -31,6 +31,7 @@ final class InteractsWithPhemTest extends KernelTestCase
     private const NOTIFIER = 'App\Pages\Notifier';
     private const PROFILE = 'App\Pages\Profile';
     private const CATALOG = 'App\Pages\Catalog';
+    private const UPLOADER = 'App\Pages\Uploader';
 
     public static function setUpBeforeClass(): void
     {
@@ -380,6 +381,38 @@ final class InteractsWithPhemTest extends KernelTestCase
         self::assertSame('/?page=2', $tester->url());
     }
 
+    public function testUploadSendsTheFilesWithTheNextSubmit(): void
+    {
+        [$a, $b, $c] = self::files(['a.txt' => 'alpha', 'b.txt' => 'beta', 'c.txt' => 'gamma']);
+        $open = ['mount' => fn () => $this->mount(self::UPLOADER), 'visit' => fn () => $this->visit('/upload')];
+        foreach ($open as $how => $tester) {
+            $tester()
+                ->upload('input[name=photo]', $a)
+                ->upload('input[name="photos[]"]', [$b, $c])
+                ->upload('input[name="doc[file]"]', $c)
+                ->submit()
+                ->assertState('uploaded', ['a.txt 5 alpha', 'b.txt 4 beta', 'c.txt 5 gamma', 'c.txt 5 gamma'], in: 'form')
+                ->assertSelectorTextContains('#request', 'Notes a.txt');
+
+            $tester()->submit()->assertState('uploaded', [], in: 'form');
+            $tester()->upload('input[name=photo]', $a)->submit()->submit()->assertState('uploaded', ['a.txt 5 alpha'], in: 'form');
+            $tester()->upload('input[name=photo]', $a)->upload('input[name=photo]', [])->submit()->assertState('uploaded', [], in: 'form');
+            $tester()->upload('input[name=photo]', $a)->click('button[value=move]')->assertSelectorTextContains('#request', 'moved');
+            self::assertFileExists($a, $how.': the handler moves a copy of the file');
+        }
+    }
+
+    public function testUploadFailsForAnInputThatTakesNoSuchFiles(): void
+    {
+        [$a, $b] = self::files(['a.txt' => 'alpha', 'b.txt' => 'beta']);
+        $tester = $this->mount(self::UPLOADER);
+
+        $this->assertFails(static fn () => $tester->upload('input[name=title]', $a), 'The element "input[name=title]" is not a file input.');
+        $this->assertFails(static fn () => $tester->upload('input[name=photo]', [$a, $b]), 'has no "multiple" attribute');
+        $this->assertFails(static fn () => $tester->upload('input[name=off]', $a), 'is disabled');
+        $this->assertFails(static fn () => $tester->upload('input[name=photo]', $a.'.missing'), 'does not exist');
+    }
+
     private function assertFails(\Closure $action, string $message): void
     {
         try {
@@ -390,5 +423,22 @@ final class InteractsWithPhemTest extends KernelTestCase
             return;
         }
         self::fail(\sprintf('The action does not fail with "%s".', $message));
+    }
+
+    /**
+     * @param array<string, string> $contents file name => content
+     *
+     * @return list<string> the paths, in a new directory
+     */
+    private static function files(array $contents): array
+    {
+        $dir = sys_get_temp_dir().'/'.uniqid('phem-upload-');
+        mkdir($dir);
+        $paths = [];
+        foreach ($contents as $name => $content) {
+            file_put_contents($paths[] = $dir.'/'.$name, $content);
+        }
+
+        return $paths;
     }
 }

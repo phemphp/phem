@@ -30,10 +30,13 @@ Talk about each item before its implementation. The open questions are a start, 
       namespace next to the handler (`phem:debounce={{ 300 }}`), as `phem:loading`. A modifier
       in the name cannot hold milliseconds, and a wrapper value breaks "pass the function, do not
       call it". Text inputs have a debounce of 150 ms by default (a `<Root>` value).
-- [ ] **File uploads** (section 1). A temporary file must be in the signed state as a
-      reference. How long is the reference valid, and how does it relate to
-      `phem.state_max_age` and `phem.state_bind_session`? What happens to the file when the
-      transaction of the handler rolls back?
+- [x] **File uploads** (section 1). Decided: a form event with files goes as
+      `multipart/form-data` (the JSON payload in one part, and the files), not to a temporary
+      upload endpoint. PHP keeps each file for that request only, as for a normal form submit,
+      so there is no reference, no expiry and no cleanup, and `phem.state_max_age` and
+      `phem.state_bind_session` do not change. The handler gets `UploadedFile` objects in
+      `$e->files` and `$e->request->files` (so `FileType` works). What the handler does with a
+      file, also when its transaction rolls back, is the concern of the application.
 - [ ] **Optimistic UI and client commands** (section 2). How does a PHP `Js` builder look in
       Twig markup? How does the Turbo morph keep the client changes until the server answers?
 - [ ] **Render only the components that can change** (section 3). A component that reads a
@@ -118,24 +121,34 @@ Not done yet:
   input value (string, bool for a checkbox, list for `<select multiple>`). Nested paths
   (`bind={{ filters.status }}`) are a later step.
 
-### [ ] File uploads — P1
+### [x] File uploads — P1
 
 The browser does not send the files of a form today (`formFields()` drops them).
+
+Done: a submit event with files goes as `multipart/form-data`, with the JSON of the event in the
+`_phem` part. The handler gets `UploadedFile` objects in `$e->files` and in `$e->request->files`,
+so a Symfony form with `FileType` works with `handleRequest($e->request)`. PHP removes a file that
+the handler does not move at the end of the request. The files of an event have a maximum size
+together (`phem.max_upload_size`, 8 MiB by default, 413 over it), and the JSON part keeps
+`phem.max_event_size`. A multipart event has the same CSRF checks (`X-Phem-Event`, same origin).
+A file over `upload_max_filesize` of PHP gets to the handler with its upload error, so the
+form shows it. The test helper has `->upload()`. The PhotoUpload example uses it. See
+[docs/phpm-syntax.md](docs/phpm-syntax.md#file-uploads).
+
+Not done yet:
+
+- [ ] Progress for each file, available in markup. `fetch` cannot report the upload progress, so
+      the controller must send an event with files with XHR.
+- [ ] Upload on select (to a temporary endpoint), for big files or a preview before the submit.
+- [ ] Direct upload to S3-compatible storage (presigned URL).
 
 - **Best peer:** LV `allow_upload` / `live_file_input`: upload starts on select, progress for
   each file, size and type limits checked before the upload, chunked upload, direct upload to
   cloud storage (presigned URL), and cancel. LW `WithFileUploads`: temporary uploads with a
   signed URL, and previews.
-- **Proposal:**
-  - Upload each file to a temporary endpoint as soon as the user selects it. The state keeps
-    a signed reference, not the bytes.
-  - `$e->files` (or the Symfony `Request` files) in the handler gives `UploadedFile` objects,
-    so Symfony forms with `FileType` work.
-  - Limits (`maxSize`, `accept`, `maxFiles`) on the component, checked in the browser and on
-    the server.
-  - Progress for each file, available in markup (`upload.progress`).
-  - An adapter for direct upload to S3-compatible storage (Flysystem).
-  - Temporary files expire. A cleanup command removes them.
+- **Notes:** Phem is a UI component model. It brings the files to the handler, and the
+  application decides what to do with them: where to keep them, how to check them
+  (`#[Assert\File]`), and what to do when the transaction rolls back.
 
 ## 2. Feedback while a request runs
 

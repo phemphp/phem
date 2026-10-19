@@ -17,6 +17,8 @@ use Phem\Handler\HandlerFingerprint;
 use Phem\Http\EventPayload;
 use Phem\State\StateCodec;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\RateLimit;
 
@@ -94,7 +96,6 @@ final class EventAccessTest extends TestCase
         self::assertSame(415, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['CONTENT_TYPE' => 'text/plain', 'HTTP_ACCEPT' => 'application/json'])->getStatusCode(), 'the Accept header is not the content type');
         self::assertSame(415, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['CONTENT_TYPE' => 'text/plain; application/json'])->getStatusCode(), 'a parameter is not the content type');
         self::assertSame(415, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['CONTENT_TYPE' => 'application/x-www-form-urlencoded'])->getStatusCode());
-        self::assertSame(415, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['CONTENT_TYPE' => 'multipart/form-data; boundary=x'])->getStatusCode());
         self::assertSame(415, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['CONTENT_TYPE' => ''])->getStatusCode(), 'no content type');
 
         self::assertSame(403, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => 'none'])->getStatusCode(), 'a URL that the user typed, or a bookmark');
@@ -116,6 +117,43 @@ final class EventAccessTest extends TestCase
 
         $response = $this->event('/leave', '{}', ['CONTENT_LENGTH' => '2000000']);
         self::assertSame(413, $response->getStatusCode(), 'the Content-Length header is enough');
+    }
+
+    /**
+     * An event with files is multipart/form-data. A form of another site can send it without a
+     * CORS preflight, but not with the X-Phem-Event header: the same checks apply.
+     */
+    public function testEventWithFilesIsMultipart(): void
+    {
+        self::assertSame(200, $this->multipart('/leave', ['photo' => self::file('a')])->getStatusCode());
+        self::assertSame(200, $this->multipart('/leave', [], ['CONTENT_TYPE' => 'Multipart/Form-Data; boundary=y'])->getStatusCode(), 'the media type has no case');
+
+        self::assertSame(403, $this->multipart('/leave', ['photo' => self::file('a')], ['HTTP_SEC_FETCH_SITE' => 'cross-site'])->getStatusCode());
+        self::assertSame(403, $this->multipart('/leave', ['photo' => self::file('a')], ['HTTP_SEC_FETCH_SITE' => null, 'HTTP_ORIGIN' => 'https://evil.example'])->getStatusCode());
+        self::assertSame(415, $this->multipart('/leave', ['photo' => self::file('a')], ['CONTENT_TYPE' => 'multipart/mixed; boundary=x'])->getStatusCode());
+
+        $response = $this->multipart('/leave', ['photo' => self::file('a')], ['HTTP_X_PHEM_EVENT' => null, 'HTTP_SEC_FETCH_SITE' => 'cross-site']);
+        self::assertSame(200, $response->getStatusCode(), 'with no X-Phem-Event header, it is a page request');
+        self::assertStringNotContainsString('redirect', (string) $response->getContent(), 'the handler does not run');
+    }
+
+    public function testFilesOfAnEventHaveAMaximumSize(): void
+    {
+        // The fixture app has the default limit (8 MiB).
+        $large = self::file('');
+        self::resize($large, 8388609);
+        self::assertSame(413, $this->multipart('/leave', ['photos' => [self::file('a'), $large]])->getStatusCode());
+        self::resize($large, 8388608);
+        self::assertSame(200, $this->multipart('/leave', ['photos' => [$large]])->getStatusCode(), 'a size of the limit');
+
+        $tooLargeForPhp = new UploadedFile(__FILE__, 'a.txt', null, \UPLOAD_ERR_INI_SIZE, true);
+        self::assertSame(200, $this->multipart('/leave', ['photo' => $tooLargeForPhp, 'photos' => [$large]])->getStatusCode(), 'the handler gets a file over upload_max_filesize of PHP, with its error, and it does not count');
+
+        $request = Request::create('/leave', 'POST', server: ['CONTENT_TYPE' => 'multipart/form-data; boundary=x', 'HTTP_X_PHEM_EVENT' => '1', 'HTTP_SEC_FETCH_SITE' => 'same-origin']);
+        self::assertSame(413, $this->fixtureKernel()->handle($request)->getStatusCode(), 'post_max_size of PHP drops all the parts');
+
+        $response = $this->multipart('/leave', ['photo' => self::file('a')], json: json_encode(['handler' => 'h', 'event' => ['value' => str_repeat('a', 1048576)]], \JSON_THROW_ON_ERROR));
+        self::assertSame(413, $response->getStatusCode(), 'the JSON part has the limit of phem.max_event_size');
     }
 
     public function testEventHasAMaximumJsonDepth(): void
@@ -150,10 +188,59 @@ final class EventAccessTest extends TestCase
      */
     private function click(string $uri, string $page, string $method, array $server = [], ?array $form = null): Response
     {
+        return $this->event($uri, $this->clickPayload($page, $method, $form), $server);
+    }
+
+    /**
+     * Sends a click on the `leave` handler of LeavePage as multipart/form-data, with files.
+     *
+     * @param array<string, mixed>       $files  name => UploadedFile, or a list of them
+     * @param array<string, string|null> $server more headers; null removes a default
+     * @param string|null                $json   the JSON part, instead of the click
+     */
+    private function multipart(string $uri, array $files, array $server = [], ?string $json = null): Response
+    {
+        $json ??= json_encode($this->clickPayload('App\\Pages\\LeavePage', 'leave'), \JSON_THROW_ON_ERROR);
+        $server += ['CONTENT_TYPE' => 'multipart/form-data; boundary=x', 'HTTP_X_PHEM_EVENT' => '1', 'HTTP_SEC_FETCH_SITE' => 'same-origin'];
+        $request = Request::create($uri, 'POST', [EventPayload::PART => $json], [], $files, array_filter($server, static fn (?string $v): bool => null !== $v));
+        $kernel = $this->fixtureKernel();
+        $response = $kernel->handle($request);
+        $kernel->terminate($request, $response);
+
+        return $response;
+    }
+
+    /**
+     * The JSON data of a click on a method of a page, with a valid state for the page.
+     *
+     * @param list<array{string, string}>|null $form the form fields, as the browser sends them
+     *
+     * @return array<string, mixed>
+     */
+    private function clickPayload(string $page, string $method, ?array $form = null): array
+    {
         [$state, $signature] = $this->service('phem.state_codec', StateCodec::class)->encode([], $page);
         // The handler is in the <Root> of the document (a template component, with no fiber).
         $handler = 'phem'.substr(hash('xxh128', '/'.$page.'#0/Phem\\Root#0'), 0, 12).'.'.new HandlerFingerprint()->of(new $page()->{$method}(...));
 
-        return $this->event($uri, ['state' => $state, 'signature' => $signature, 'handler' => $handler, 'event' => ['type' => 'click', 'form' => $form]], $server);
+        return ['state' => $state, 'signature' => $signature, 'handler' => $handler, 'event' => ['type' => 'click', 'form' => $form]];
+    }
+
+    /** @param int<0, max> $size */
+    private static function resize(UploadedFile $file, int $size): void
+    {
+        $handle = fopen($file->getPathname(), 'r+');
+        self::assertNotFalse($handle);
+        ftruncate($handle, $size);
+        fclose($handle);
+        clearstatcache();
+    }
+
+    private static function file(string $content): UploadedFile
+    {
+        $path = (string) tempnam(sys_get_temp_dir(), 'phem');
+        file_put_contents($path, $content);
+
+        return new UploadedFile($path, 'a.txt', null, \UPLOAD_ERR_OK, true);
     }
 }

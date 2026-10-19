@@ -71,6 +71,7 @@ element. The answer of the server morphs the components that changed.
 | `change($selector, $value)` | `onChange`, `onInput`, or `phem:live` | `->change('[name=q]', 'Curie')` |
 | `fill($selector, $value)` | none: the next event sends a bound field (`phem:bind`) | `->fill('[name=q]', 'Curie')->click('button')` |
 | `submit($selector, $fields)` | `onSubmit` | `->submit('form', ['name' => 'Ada'])` |
+| `upload($selector, $paths)` | none: the next submit of its form sends the files | `->upload('[name=photo]', __DIR__.'/ada.jpg')->submit()` |
 | `keyDown($selector, $key)`, `keyUp($selector, $key)` | `onKeyDown`, `onKeyUp` | `->keyDown('input', 'Enter')` |
 | `focus($selector)`, `blur($selector)` | `onFocus`, `onBlur` | `->focus('input')` |
 | `fire($selector, $type, $event)` | any DOM event | `->fire('div', 'click', ['value' => 'x'])` |
@@ -86,12 +87,19 @@ The value of `change()` and `fill()`:
 fields get the values first, as `change()` does. A group of checkboxes (`tags[]`) takes a list
 of the values to check.
 
+`upload()` takes a path, or a list of paths for `<input type="file" multiple>`. An empty list
+removes the files. The handler gets a copy of each file in the temporary directory, so it can
+move the file. As in a browser, the files stay in the input after an event, also when the morph
+renders the input again.
+
 An action fails when it cannot work in a browser:
 
 - no element matches the selector;
 - the element is disabled;
 - no handler gets the event;
-- the form has no field with the name, or the select has no option with the value.
+- the form has no field with the name, or the select has no option with the value;
+- `upload()` gets an element that is not a file input, more than one path for an input with no
+  `multiple` attribute, or a file that does not exist.
 
 ## Assertions
 

@@ -1,0 +1,68 @@
+<?phpm
+
+namespace App\Pages;
+
+use Phem\Attribute\{Component, Page, State};
+use Phem\Event;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+
+use function App\Components\Document;
+
+// The files of a form (see Phem\Event::$files).
+#[Component]
+final class Uploader
+{
+    #[State] public array $uploaded = [];
+    #[State] public string $title = '';
+    #[State] public string $photo = '';
+    #[State] public bool $moved = false;
+
+    public function save(Event $e): void
+    {
+        $this->uploaded = [];
+        $files = $e->files;
+        array_walk_recursive($files, function (UploadedFile $file): void {
+            $this->uploaded[] = $file->getClientOriginalName().' '.$file->getSize().' '.trim((string) file_get_contents($file->getPathname()));
+        });
+        // The copy of the request has the fields and the files of the form, as a normal submit.
+        $this->title = (string) $e->request?->request->get('title');
+        $this->photo = (string) $e->request?->files->get('photo')?->getClientOriginalName();
+        $photo = $e->files['photo'] ?? null;
+        if ('move' === ($e->form['action'] ?? null) && $photo instanceof UploadedFile) {
+            $photo->move(sys_get_temp_dir(), uniqid('phem-moved-'));
+            $this->moved = true;
+        }
+    }
+
+    public function render()
+    {
+        return (
+            <div>
+                <form onSubmit={{ save }}>
+                    <input name="title" value="Notes" />
+                    <input type="file" name="photo" />
+                    <input type="file" name="photos[]" multiple />
+                    <input type="file" name="doc[file]" />
+                    <input type="file" name="off" disabled />
+                    <button type="submit" name="action" value="save">Save</button>
+                    <button type="submit" name="action" value="move">Move</button>
+                </form>
+                <pre id="uploaded">{{ uploaded|json_encode }}</pre>
+                <p id="request">{{ title }} {{ photo }} {{ moved ? 'moved' : '' }}</p>
+            </div>
+        );
+    }
+}
+
+#[Page('/upload')]
+final class UploadPage
+{
+    public function render()
+    {
+        return (
+            <Document>
+                <Uploader />
+            </Document>
+        );
+    }
+}

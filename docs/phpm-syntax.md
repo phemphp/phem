@@ -273,14 +273,15 @@ function MyButton() {
 Supported events: `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`, `onKeyDown`, `onKeyUp`,
 `onFocus`, `onBlur`. phemc warns about another event (W003): the browser does not send it.
 The handler runs on the server. It receives a `Phem\Event` object with `$e->value`,
-`$e->checked`, `$e->key`, `$e->form` (an array, for `onSubmit`), and `$e->request`.
+`$e->checked`, `$e->key`, `$e->form` (an array, for `onSubmit`), `$e->files` (the files of the
+form, see [File uploads](#file-uploads)), and `$e->request`.
 `onChange` on a text input fires on each key (as in React), but the browser waits until the user
 stops typing for 150 ms before it sends the event (see [Debounce and throttle](#debounce-and-throttle)).
 A field that only copies its value into the state needs no handler: see [Bound fields](#bound-fields).
 
 `$e->form` has the fields of the form by name. A name with more than one value (a
 `<select multiple>`, checkboxes) has the list of its values. The button that submits the form
-is a field too. The browser does not send the files of a form.
+is a field too. The files of the form are in `$e->files`, not in `$e->form`.
 
 The id of a handler comes from the handler (its method or closure, and the values that it
 captures, such as `fn () => $this->remove($scientist)`), not from its position. When the data
@@ -292,8 +293,8 @@ An event is a `POST` request to the URL of the page, with the `X-Phem-Event` hea
 access rules of the page apply to its events too: `access_control`, the firewall, and the host
 and condition of the `#[Page]`. The controller attributes of Symfony (`#[IsGranted]`, `#[Cache]`)
 apply to a page class, for the page and for its events. Phem accepts an event only
-as JSON from the same origin (`Sec-Fetch-Site`, or `Origin`), so another site cannot send one
-(CSRF). A `POST` request without the header renders the page, if its route accepts `POST`.
+from the same origin (`Sec-Fetch-Site`, or `Origin`), as JSON or as `multipart/form-data` with
+files, so another site cannot send one (CSRF). A `POST` request without the header renders the page, if its route accepts `POST`.
 
 `$e->request` is the Symfony `Request` of the event, with the form fields as its POST data.
 The keys with brackets become nested arrays (`scientist[name]` → `['scientist' => ['name' => ...]]`),
@@ -332,6 +333,50 @@ public function render()
     );
 }
 ```
+
+### File uploads
+
+The browser sends the files of a form with its submit event. The handler gets each file as a
+Symfony `UploadedFile`, in `$e->files` and in `$e->request->files`. Thus a form with a `FileType`
+field works with `handleRequest($e->request)`, as in a normal POST:
+
+```php
+public function add(Event $e): void
+{
+    $form = $this->forms->create(ScientistType::class)->handleRequest($e->request);
+    if ($form->isSubmitted() && $form->isValid()) {
+        $photo = $form->get('photo')->getData(); // an UploadedFile, or null
+        $photo?->move($this->photoDir, $photo->guessExtension() ?? 'bin');
+    }
+}
+```
+
+`$e->files` has the shape that PHP gives: `photo` is an `UploadedFile`, `photos[]` is a list,
+and `scientist[photo]` is an array. A file input with no file sends nothing.
+
+A file is valid only for its request, as in a normal POST: PHP removes it at the end of the
+request, if the handler did not move it. Phem does nothing more with the file. The handler
+decides where to keep it, and what to do with it when the transaction of the handler rolls back.
+Use `#[Assert\File]` (or the `constraints` of a `FileType`) to check its size and type.
+
+An event with files goes as `multipart/form-data`, with the JSON of the event in a `_phem` part.
+The other events stay JSON. The files of an event have a maximum size together:
+`phem.max_upload_size` bytes (default 8388608, 8 MiB; 0 for no limit). Over the limit, or over
+the `post_max_size` option of PHP, the server answers `413 Content Too Large` and does not run
+the handler. A file over the `upload_max_filesize` option of PHP gets to the handler with an
+upload error and no content (`$file->isValid()` is false), so `#[Assert\File]` shows the error
+in the form. The `File` and `Image` constraints need the `symfony/mime` package. The
+[PhotoUpload](../examples/quickstart/src/Pages/Examples/PhotoUpload.phpm) example of the
+quickstart checks images with the `Image` constraint.
+
+```yaml
+# config/packages/phem.yaml
+phem:
+    max_upload_size: 20971520
+```
+
+The browser sends a file again with each new submit, and with each retry of a failed event.
+While the files upload, the loading state shows (see [Loading states](#loading-states)).
 
 A handler can return a Symfony `RedirectResponse`. Then the page does not render again: the
 browser goes to its URL (a Turbo visit). The URL is relative, or an `http:` or `https:` URL:
@@ -559,7 +604,8 @@ Do not use `rate-limited` or `error` as the name of a browser event of a handler
 ### Event size
 
 An event body has a maximum size, with the state of the page: `phem.max_event_size` bytes
-(default 1048576, 1 MiB; 0 for no limit). Over the limit, the server answers
+(default 1048576, 1 MiB; 0 for no limit). For an event with files, the limit is for its JSON part
+(see [File uploads](#file-uploads) for the limit of the files). Over the limit, the server answers
 `413 Content Too Large` and does not run the handler. The JSON of an event body also has a
 maximum depth (8). The browser sends less than that, so a deeper body gets `400 Bad Request`.
 
