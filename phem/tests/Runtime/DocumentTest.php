@@ -16,6 +16,7 @@ namespace Phem\Tests\Runtime;
 use Phem\Http\PageRenderer;
 use Phem\Rendering\Renderer;
 use Phem\Root;
+use Phem\State\PageState;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Twig\Error\RuntimeError;
@@ -75,7 +76,7 @@ final class DocumentTest extends TestCase
         self::assertStringContainsString('<button id="toggle" data-phem-on-click="', $footer[1], 'a class component renders');
         self::assertGreaterThan(strpos($html, '</main>'), strpos($html, '<footer id="doc-footer">'), 'outside the root element: the phem controller does not get its events');
         self::assertSame(1, preg_match('/data-phem-state-value="([^"]*)"/', $html, $m));
-        self::assertCount(2, json_decode(html_entity_decode($m[1]), true), 'the page and the toggle of the footer');
+        self::assertCount(2, PageState::fromArray(json_decode(html_entity_decode($m[1]), true))->fibers, 'the page and the toggle of the footer');
     }
 
     public function testAPageRendersARoot(): void

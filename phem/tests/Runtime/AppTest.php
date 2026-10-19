@@ -16,6 +16,7 @@ namespace Phem\Tests\Runtime;
 use Phem\EventListener\SourceMapListener;
 use Phem\Manifest\Manifest;
 use Phem\Manifest\SourceMap;
+use Phem\State\PageState;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\AssetMapper\AssetMapperInterface;
@@ -201,7 +202,7 @@ final class AppTest extends TestCase
         preg_match_all('/<phem-c id="(phem[0-9a-f]+)">/', $html, $ids);
         $state = json_decode($this->state, true, flags: \JSON_THROW_ON_ERROR);
         self::assertIsArray($state);
-        self::assertSame([], array_values(array_diff(array_keys($state), $ids[1])), 'each fiber of the state is in the page');
+        self::assertSame([], array_values(array_diff(array_keys(PageState::fromArray($state)->fibers), $ids[1])), 'each fiber of the state is in the page');
     }
 
     public function testAListWithNullItemsIsAnArrayProp(): void
@@ -276,7 +277,7 @@ final class AppTest extends TestCase
 
         self::assertStringContainsString('<html lang="es">', $html, 'another document component');
         self::assertStringContainsString('<title>Documento 3</title>', $html, 'the title slot of the page, with its state');
-        self::assertMatchesRegularExpression('#<body>\s*<main id="phem-root" data-controller="phem extra" data-action="click->phem\#dispatch [^"]*" data-phem-state-value="\{"phem[0-9a-f]+":\{"count":3\},"phem[0-9a-f]+":\{"on":false\}\}" data-phem-signature-value="[^"]*" class="custom page"><phem-c id="phem[0-9a-f]+">\s*<p id="document">Document</p>\s*</phem-c></main>\s*<footer id="doc-footer">#', $html);
+        self::assertMatchesRegularExpression('#<body>\s*<main id="phem-root" data-controller="phem extra" data-action="click->phem\#dispatch [^"]*" data-phem-state-value="\{"_tree":\{[^}]*\},"phem[0-9a-f]+":\{"count":3\},"phem[0-9a-f]+":\{"on":false\}\}" data-phem-signature-value="[^"]*" class="custom page"><phem-c id="phem[0-9a-f]+">\s*<p id="document">Document</p>\s*</phem-c></main>\s*<footer id="doc-footer">#', $html);
 
         $html = (string) $this->request('GET', '/about')->getContent();
         self::assertStringContainsString('<title>Fixture</title>', $html, 'a page with the title of the document');

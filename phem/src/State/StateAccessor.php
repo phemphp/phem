@@ -65,7 +65,7 @@ final class StateAccessor
         return $type->getName()::from($value);
     }
 
-    /** The state of the fibers of the last pass, and the route values of the page. */
+    /** The state of the fibers of the last pass, the route values of the page, and the shape of the tree. */
     public function snapshot(Tree $tree): PageState
     {
         $fibers = [];
@@ -75,6 +75,6 @@ final class StateAccessor
             }
         }
 
-        return new PageState($fibers, $tree->values);
+        return new PageState($fibers, $tree->values, TreeShape::of($tree));
     }
 }
