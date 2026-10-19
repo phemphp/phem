@@ -41,7 +41,7 @@ final class PageState
     public static function fromArray(array $data): self
     {
         $values = \is_array($data[self::PATH_KEY] ?? null) ? $data[self::PATH_KEY] : [];
-        $shape = TreeShape::fromArray($data[self::TREE_KEY] ?? null);
+        $shape = TreeShape::decode($data[self::TREE_KEY] ?? null);
         unset($data[self::PATH_KEY], $data[self::TREE_KEY]);
 
         return new self($data, $values, $shape);
@@ -51,7 +51,7 @@ final class PageState
     public function toArray(): array
     {
         return ([] !== $this->values ? [self::PATH_KEY => $this->values] : [])
-            + ([] !== $this->shape->fibers ? [self::TREE_KEY => $this->shape->toArray()] : [])
+            + ([] !== $this->shape->fibers ? [self::TREE_KEY => $this->shape->encode()] : [])
             + $this->fibers;
     }
 }

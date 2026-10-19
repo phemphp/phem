@@ -24,9 +24,17 @@ use Phem\Rendering\Tree;
  *
  * A fiber around the root element (see Fiber::$holdsRoot) has no hash: it is not in the
  * browser, and its HTML has the random token of the root element.
+ *
+ * In the state, the shape is one string (see encode()), because each event sends it again: the
+ * fibers from the page down, in their order, separated by a comma. Each fiber is its id, its
+ * hash, and its depth (0 for the page). The parent of a fiber is the last fiber before it with
+ * one less depth. The id is the 48 bits of the fiber id (see Fiber::idOf()) and the hash is 48
+ * bits, each in 8 base64url characters. A fiber with no hash has no hash characters.
  */
 final class TreeShape
 {
+    private const FIBER_PREFIX = 'phem';
+
     /** @var array<string, list<string>>|null parent id => child ids */
     private ?array $children = null;
 
@@ -52,33 +60,58 @@ final class TreeShape
     }
 
     /**
-     * The shape in the decoded JSON. A value with another form is ignored.
+     * The shape in the string of the state (see encode()). A value with another form gives an
+     * empty shape: then the event renders the full page.
      *
      * @param mixed $data the value of the `_tree` key
      */
-    public static function fromArray(mixed $data): self
+    public static function decode(mixed $data): self
     {
+        if (!\is_string($data) || '' === $data) {
+            return new self();
+        }
         $fibers = [];
-        foreach (\is_array($data) ? $data : [] as $id => $entry) {
-            if (\is_string($id) && \is_array($entry) && array_is_list($entry) && 2 === \count($entry)
-                && (null === $entry[0] || \is_string($entry[0])) && (null === $entry[1] || \is_string($entry[1]))) {
-                $fibers[$id] = [$entry[0], $entry[1]];
+        $ancestors = [];
+        foreach (explode(',', $data) as $entry) {
+            // 8 characters of id, 8 characters of hash or none, then the depth (8 digits or less).
+            $length = \strlen($entry);
+            $hash = $length > 16 ? substr($entry, 8, 8) : null;
+            $depth = substr($entry, null !== $hash ? 16 : 8);
+            if (1 !== preg_match('/^[A-Za-z0-9_-]{8}$/', $code = substr($entry, 0, 8)) || (null !== $hash && 1 !== preg_match('/^[A-Za-z0-9_-]{8}$/', $hash))
+                || !ctype_digit($depth) || (int) $depth > \count($ancestors) || isset($fibers[$id = self::FIBER_PREFIX.bin2hex(self::fromBase64($code))])) {
+                return new self();
             }
+            $depth = (int) $depth;
+            $fibers[$id] = [$ancestors[$depth - 1] ?? null, $hash];
+            $ancestors = \array_slice($ancestors, 0, $depth);
+            $ancestors[] = $id;
         }
 
         return new self($fibers);
     }
 
-    /** @return array<string, array{0: string|null, 1: string|null}> */
-    public function toArray(): array
+    /**
+     * The shape as one string, for the state (see the class).
+     */
+    public function encode(): string
     {
-        return $this->fibers;
+        $entries = [];
+        foreach ($this->fibers as $id => [$parent]) {
+            if (null === $parent || !$this->has($parent)) {
+                $this->encodeFrom($id, 0, $entries);
+            }
+        }
+
+        return implode(',', $entries);
     }
 
-    /** A 64-bit hash: it only tells whether the HTML changed, and the state stays small. */
+    /**
+     * A 48-bit hash in 8 base64url characters: it only tells whether the HTML of a fiber
+     * changed, and the state stays small.
+     */
     public static function hash(string $html): string
     {
-        return hash('xxh3', $html);
+        return self::toBase64(substr(hash('xxh3', $html, true), 0, 6));
     }
 
     /** The hash of the own HTML of a fiber in the last render, or null. */
@@ -135,6 +168,28 @@ final class TreeShape
         }
 
         return array_reverse($path);
+    }
+
+    /** @param list<string> $entries */
+    private function encodeFrom(string $id, int $depth, array &$entries): void
+    {
+        if (1 !== preg_match('/^'.self::FIBER_PREFIX.'([0-9a-f]{12})$/', $id, $m)) {
+            throw new \LogicException(\sprintf('The fiber id "%s" is not an id of Fiber::idOf().', $id));
+        }
+        $entries[] = self::toBase64((string) hex2bin($m[1])).$this->hashOf($id).$depth;
+        foreach ($this->childrenOf($id) as $child) {
+            $this->encodeFrom($child, $depth + 1, $entries);
+        }
+    }
+
+    private static function toBase64(string $bytes): string
+    {
+        return rtrim(strtr(base64_encode($bytes), '+/', '-_'), '=');
+    }
+
+    private static function fromBase64(string $code): string
+    {
+        return (string) base64_decode(strtr($code, '-_', '+/'), true);
     }
 
     /**

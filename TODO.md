@@ -269,7 +269,8 @@ compares the two renders. The cost grows with the page size, not with the change
 - **Implementation plan.** Each step is one change with its tests. The tests of the steps
   before stay green.
   1. **Tree shape and hashes in the payload.** `PageState` keeps, for each fiber of the page,
-     its parent id and the xxh3 (64-bit) hash of its own HTML (`Fiber::$ownHtml`), next to its state.
+     its parent id and the xxh3 hash of its own HTML (`Fiber::$ownHtml`), next to its state
+     (now one compact string, see "Smaller shape" below).
      `StateAccessor::snapshot()` writes them, and the signature covers them. No change of
      behavior.
   2. **"Before" from the hashes.** `Tree::changedFibers()` compares the own HTML of the second
@@ -317,8 +318,23 @@ compares the two renders. The cost grows with the page size, not with the change
     `kernel.debug`): a click on the counter takes 7.4 ms (median) instead of 14.7 ms with two
     full renders, and it sends the same stream. But the request is 32.9 KB instead of 205 B: the
     shape has about 65 bytes for each component (the ids, the hashes, and the JSON escapes).
-  - Open points: make the shape smaller (see "Smaller state payload" below: for example the
-    index of the parent instead of its id, or the shape on the server). Does W008 report the
+  - **Smaller shape** (same page, same machine, no `kernel.debug`). The `_tree` key is now one
+    string: the fibers from the page down, each with its id (48 bits) and the hash of its own
+    HTML (48 bits) in 8 base64url characters each, and its depth (the parent is the last fiber
+    before it with one less depth). That is about 18 bytes for each component, with no JSON
+    escapes. No change of behavior.
+
+    | 502 fibers                                   | `_tree` in the request | event request | page HTML | event response |
+    |----------------------------------------------|-----------------------:|--------------:|----------:|---------------:|
+    | Before: `{"<id>": ["<parent id>", "<hash>"]}`  |              32,601 B |      32,815 B |  94,946 B |      109,801 B |
+    | Parent index instead of parent id (JSON list) |              23,082 B |             — |         — |              — |
+    | One string, hex ids and 64-bit hex hashes     |              15,048 B |             — |         — |              — |
+    | Now: one string, base64url, 48-bit hashes     |               9,033 B |       9,247 B |  59,354 B |       74,209 B |
+
+    The time of a click does not change (median 13.5 ms before and after in this measure). A
+    48-bit hash misses a change of HTML with a probability of 2^-48 for each changed fiber.
+  - Open points: the shape is still about 18 bytes for each component (see "Smaller state
+    payload" below: for example the shape on the server). Does W008 report the
     Twig `app` global (`app.request`, `app.session`, `app.user`)? Later: hashes of the props in
     the payload, so a child that the first pass did not see can skip too.
 
@@ -330,7 +346,8 @@ The browser sends all the state of the page on each event. A big page sends a bi
   LW and LC send one small snapshot for each component, because each request is for one
   component.
 - **Proposal:**
-  - Compress the state (it is JSON, and it repeats keys).
+  - Compress the state (it is JSON, and it repeats keys). The `_tree` key is already compact
+    (about 18 bytes for each component, see "Render only the components that can change").
   - An opt-in server-side store (`phem.state_store: cache|session`): the browser keeps only an
     id and a version. The current signed-state mode stays the default.
   - Send only the state of the components that changed in the response.
