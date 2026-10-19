@@ -20,6 +20,7 @@ use Phem\Manifest\Manifest;
 use Phem\Rendering\MarkupResolver;
 use Phem\Rendering\Renderer;
 use Phem\Twig\PhemRuntime;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Twig\Environment;
 use Twig\Loader\ArrayLoader;
@@ -88,6 +89,34 @@ final class TwigFunctionsTest extends TestCase
 
         $this->expectException(\InvalidArgumentException::class);
         $this->runtime()->attrs(['phem:loading' => 'save']);
+    }
+
+    public function testTiming(): void
+    {
+        self::assertSame('data-phem-debounce="300"', (string) Attributes::timing('debounce', 300));
+        self::assertSame('data-phem-debounce="blur"', (string) Attributes::timing('debounce', 'blur'));
+        self::assertSame('data-phem-debounce="0"', (string) Attributes::timing('debounce', 0));
+        self::assertSame('data-phem-throttle="500"', (string) Attributes::timing('throttle', 500));
+        self::assertSame('', (string) Attributes::timing('debounce', null));
+        self::assertSame('', (string) Attributes::timing('throttle', false));
+        self::assertSame('id="a" data-phem-debounce="300"', (string) $this->runtime()->attrs(['id' => 'a', 'phem:debounce' => 300]), 'in a spread');
+    }
+
+    #[DataProvider('invalidTimings')]
+    public function testTimingTakesMillisecondsOrBlur(string $kind, mixed $value): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        Attributes::timing($kind, $value);
+    }
+
+    public static function invalidTimings(): iterable
+    {
+        yield 'a negative number' => ['debounce', -1];
+        yield 'a string number' => ['debounce', '300'];
+        yield 'a float' => ['debounce', 1.5];
+        yield 'another string' => ['debounce', '300" onfocus="x'];
+        yield 'blur for throttle' => ['throttle', 'blur'];
+        yield 'another kind' => ['delay', 300];
     }
 
     public function testStringOutputOfAComponentIsText(): void

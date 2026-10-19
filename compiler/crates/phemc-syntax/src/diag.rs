@@ -69,4 +69,5 @@ pub mod codes {
     pub const UNKNOWN_EVENT: &str = "W003";
     pub const FOREIGN_ATTRIBUTE: &str = "W004";
     pub const TITLE_IN_MARKUP: &str = "W005";
+    pub const TIMING_WITHOUT_HANDLER: &str = "W006";
 }

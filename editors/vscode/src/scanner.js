@@ -265,8 +265,9 @@ class Scanner {
                 return null;
             }
             if (this.startsWith('{{')) {
+                const attr = text[this.i - 1] === '=' ? attrs[attrs.length - 1] ?? null : null;
                 this.delimiter();
-                this.twig('}}');
+                this.twig('}}', attr ? { tag: name, attr } : {});
                 continue;
             }
             if (this.startsWith('{#')) {
@@ -321,10 +322,11 @@ class Scanner {
     //
     // The `twig` context has `open` (`{{` or `{%`), `start` (the offset after
     // the delimiter), and `literal` (the start of the markup literal). In a
-    // string, it also has `quote` (the offset of the quote).
-    twig(close) {
+    // string, it also has `quote` (the offset of the quote). The value of an
+    // attribute (`name={{ ...`) also has `tag` and `attr`.
+    twig(close, extra = {}) {
         const text = this.text;
-        const base = { kind: 'twig', open: close === '}}' ? '{{' : '{%', start: this.i, literal: this.literal };
+        const base = { kind: 'twig', open: close === '}}' ? '{{' : '{%', start: this.i, literal: this.literal, ...extra };
         let depth = 0;
         let last = '(';
 

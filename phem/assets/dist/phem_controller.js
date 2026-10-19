@@ -50,6 +50,16 @@
 // `document.startViewTransition()`. The value of the attribute is the type of the transition, for
 // CSS `:active-view-transition-type(fade)`. A browser without the View Transitions API, or with
 // `prefers-reduced-motion: reduce`, morphs with no transition.
+//
+// `phem:debounce={{ 300 }}` in markup renders `data-phem-debounce="300"`: the controller sends an
+// event of the element only when no new event of the same handler comes for 300 ms. With `'blur'`,
+// it sends the event when the element loses the focus. `phem:throttle={{ 300 }}` sends the first
+// event at once, then at most one event each 300 ms, and always the last one. The events of a text
+// input (`onChange`, `onInput`) have a debounce of 150 ms by default (`data-phem-debounce-value`
+// on the root element, 0 turns it off). `onSubmit` and `onBlur` never wait. A blur sends the
+// waiting event of the element, and any other event (a click, a submit) sends all the waiting
+// events first, so no input is lost. An input or change event that is in the queue and did not
+// start yet takes the value of a newer event of the same handler and element: one request only.
 
 import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
@@ -98,10 +108,20 @@ export default class PhemController extends Controller {
     errorMessage: { type: String, default: "Something went wrong. Please try again." },
     retries: { type: Number, default: 3 },
     retryDelay: { type: Number, default: 500 },
+    debounce: { type: Number, default: 150 },
   }
 
   connect() {
     this.queue = Promise.resolve()
+    // element => (handler attribute => {send, timer}): the events that wait for a debounce or a throttle
+    this.pending = new Map()
+    // element => (handler attribute => the time of the last event that the throttle let go)
+    this.sentAt = new WeakMap()
+    // element => (handler attribute => {handler, payload}): the input and change events in the
+    // queue that did not start yet
+    this.waiting = new Map()
+    this.flushOnBlur = (event) => this.flush(event.target)
+    this.element.addEventListener("focusout", this.flushOnBlur)
     // element => the number of its events that show the loading state
     this.loading = new Map()
     // The events that show the loading state now: {handler, el}
@@ -130,6 +150,9 @@ export default class PhemController extends Controller {
 
   disconnect() {
     this.element.removeEventListener("turbo:morph-element", this.keepLoading)
+    this.element.removeEventListener("focusout", this.flushOnBlur)
+    for (const pending of this.pending.values()) pending.forEach(({ timer }) => clearTimeout(timer))
+    this.pending.clear()
     window.removeEventListener("online", this.showOffline)
     window.removeEventListener("offline", this.showOffline)
     this.hideError()
@@ -144,7 +167,8 @@ export default class PhemController extends Controller {
       // The first submit of this form still runs.
       if (this.locked.has(el)) return
     }
-    const handler = el.getAttribute(el._phemAttr)
+    const attr = el._phemAttr
+    const handler = el.getAttribute(attr)
     const payload = {
       type: event.type,
       value: "value" in el ? el.value : null,
@@ -152,16 +176,108 @@ export default class PhemController extends Controller {
       key: event.key ?? null,
       form: el instanceof HTMLFormElement ? formFields(el, event.submitter) : null,
     }
+    const send = () => this.enqueue(el, attr, handler, payload)
+    const wait = this.timing(el, event.type)
+    if (wait) {
+      this.defer(el, attr, wait, send)
+    } else {
+      // The waiting events first, so the server gets all the input before this event.
+      this.flush()
+      send()
+    }
+  }
+
+  // Puts an event in the queue. An input or change event that waits in the queue for the same
+  // handler and element takes the new value, and the new event does not go in the queue.
+  enqueue(el, attr, handler, payload) {
+    const coalesce = payload.type === "input" || payload.type === "change"
+    const waiting = coalesce ? (this.waiting.get(el) ?? new Map()) : null
+    const old = waiting?.get(attr)
+    if (old && old.handler === handler) {
+      old.payload = payload
+      return
+    }
+    const job = { handler, payload }
+    if (coalesce) {
+      waiting.set(attr, job)
+      this.waiting.set(el, waiting)
+    }
     const done = this.startLoading(el, handler)
     // After formFields(): a disabled control is not in the form data.
-    const unlock = event.type === "submit" ? this.lockForm(el) : () => {}
+    const unlock = payload.type === "submit" ? this.lockForm(el) : () => {}
     this.queue = this.queue
-      .then(() => this.send(handler, payload, unlock))
+      .then(() => {
+        if (waiting?.get(attr) === job) {
+          waiting.delete(attr)
+          if (!waiting.size) this.waiting.delete(el)
+        }
+        return this.send(job.handler, job.payload, unlock)
+      })
       .catch((e) => console.error("[phem]", e))
       .finally(() => {
         unlock()
         done()
       })
+  }
+
+  // The wait of an event: {debounce: ms or "blur"}, {throttle: ms}, or null to send it at once.
+  timing(el, type) {
+    if (type === "submit" || type === "focusout") return null
+    const { phemDebounce: debounce, phemThrottle: throttle } = el.dataset
+    if (throttle !== undefined) {
+      const ms = Number(throttle)
+      return ms > 0 ? { throttle: ms } : null
+    }
+    if (debounce === "blur") return { debounce }
+    if (debounce !== undefined) {
+      const ms = Number(debounce)
+      return ms > 0 ? { debounce: ms } : null
+    }
+    // An `input` event comes from a text input (see handlerElement()).
+    return type === "input" && this.debounceValue > 0 ? { debounce: this.debounceValue } : null
+  }
+
+  // Makes an event wait for its debounce or its throttle. A new event of the same handler and
+  // element replaces the event that waits.
+  defer(el, attr, wait, send) {
+    const pending = this.pending.get(el) ?? new Map()
+    this.pending.set(el, pending)
+    const entry = pending.get(attr)
+    if (wait.throttle) {
+      if (entry) {
+        // Keep the time of the throttle: send the newest event then.
+        entry.send = send
+        return
+      }
+      const left = (this.sentAt.get(el)?.get(attr) ?? -Infinity) + wait.throttle - performance.now()
+      pending.set(attr, { send, timer: left > 0 ? setTimeout(() => this.release(el, attr), left) : null })
+      if (left <= 0) this.release(el, attr)
+      return
+    }
+    clearTimeout(entry?.timer)
+    const timer = wait.debounce === "blur" ? null : setTimeout(() => this.release(el, attr), wait.debounce)
+    pending.set(attr, { send, timer })
+  }
+
+  // Sends the waiting event of a handler of an element.
+  release(el, attr) {
+    const pending = this.pending.get(el)
+    const entry = pending?.get(attr)
+    if (!entry) return
+    clearTimeout(entry.timer)
+    pending.delete(attr)
+    if (!pending.size) this.pending.delete(el)
+    const sent = this.sentAt.get(el) ?? new Map()
+    sent.set(attr, performance.now())
+    this.sentAt.set(el, sent)
+    entry.send()
+  }
+
+  // Sends the waiting events of an element, or of all the elements, in the order they came.
+  flush(target = null) {
+    for (const [el, pending] of [...this.pending]) {
+      if (target === null || el === target) for (const attr of [...pending.keys()]) this.release(el, attr)
+    }
   }
 
   // Locks the controls of a form while its submit event runs. Returns the function that ends it.

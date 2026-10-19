@@ -45,6 +45,7 @@ final class PhemExtension extends AbstractExtension
             new TwigFunction('phem_key', Attributes::key(...), $safe),
             new TwigFunction('phem_attr', Attributes::attr(...), $safe),
             new TwigFunction('phem_style', Attributes::style(...), $safe),
+            new TwigFunction('phem_timing', Attributes::timing(...), $safe),
             new TwigFunction('phem_attrs', [PhemRuntime::class, 'attrs'], $safe),
         ];
     }

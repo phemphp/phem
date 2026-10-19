@@ -141,3 +141,43 @@ test('no class names after -> or in strings', async () => {
     assert.equal((await run(PAGE + '$a = "Todo|')).items.length, 0);
     assert.equal((await run(PAGE + 'function Todo|')).items.length, 0);
 });
+
+test('the Phem attributes of an HTML element', async () => {
+    const fn = (markup) => PAGE + 'function Home()\n{\n    $search = fn () => null;\n\n    return ' + markup + ';\n}\n';
+    let r = await run(fn('<input onChange={{ search }} phem:|'));
+    assert.equal(r.find('phem:debounce').snippet, 'phem:debounce={{ ${1:300} }}');
+    assert.equal(r.find('phem:throttle').snippet, 'phem:throttle={{ ${1:300} }}');
+    assert.equal(r.find('phem:loading').snippet, 'phem:loading={{ ${1} }}');
+    const { range } = r.find('phem:debounce');
+    assert.equal(r.text.slice(range[0], range[1]), 'phem:');
+
+    r = await run(fn('<input phem:debounce={{ 300 }} |'));
+    assert.equal(r.find('phem:debounce'), undefined, 'an attribute that is there already');
+    assert.ok(r.find('phem:throttle'));
+
+    r = await run(fn('<Layout title="x" phem:|'));
+    assert.equal(r.find('phem:debounce'), undefined, 'not on a component');
+});
+
+test('the value of phem:debounce in Twig', async () => {
+    const fn = (markup) => PAGE + 'function Home()\n{\n    $search = fn () => null;\n\n    return ' + markup + ';\n}\n';
+    let r = await run(fn('<input onChange={{ search }} phem:debounce={{ | }} />'));
+    let blur = r.find("'blur'");
+    assert.equal(blur.insert, "'blur'");
+    assert.deepEqual(blur.range, [r.text.indexOf('{{ ', r.text.indexOf('debounce')) + 3, r.text.indexOf('{{ ', r.text.indexOf('debounce')) + 3]);
+    assert.ok(r.find('search'), 'the Twig variables too');
+
+    r = await run(fn("<input onChange={{ search }} phem:debounce={{ 'bl| }} />"));
+    blur = r.find("'blur'");
+    assert.equal(r.text.slice(blur.range[0], blur.range[1]), "'bl");
+    assert.equal(r.items.length, 1, 'in a string, only blur');
+
+    r = await run(fn("<input onChange={{ search }} phem:debounce={{ 'bl|' }} />"));
+    blur = r.find("'blur'");
+    assert.equal(r.text.slice(blur.range[0], blur.range[1]), "'bl'", 'it replaces the closing quote');
+
+    r = await run(fn('<input onChange={{ search }} phem:throttle={{ | }} />'));
+    assert.equal(r.find("'blur'"), undefined);
+    r = await run(fn('<input onChange={{ | }} />'));
+    assert.equal(r.find("'blur'"), undefined);
+});

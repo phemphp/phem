@@ -274,7 +274,8 @@ Supported events: `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`,
 `onFocus`, `onBlur`. phemc warns about another event (W003): the browser does not send it.
 The handler runs on the server. It receives a `Phem\Event` object with `$e->value`,
 `$e->checked`, `$e->key`, `$e->form` (an array, for `onSubmit`), and `$e->request`.
-`onChange` on a text input fires on each key (as in React).
+`onChange` on a text input fires on each key (as in React), but the browser waits until the user
+stops typing for 150 ms before it sends the event (see [Debounce and throttle](#debounce-and-throttle)).
 
 `$e->form` has the fields of the form by name. A name with more than one value (a
 `<select multiple>`, checkboxes) has the list of its values. The button that submits the form
@@ -410,6 +411,37 @@ of the component do not show it. A child component that gets `save` as a prop ca
 or show the element: `phem:loading` works in both directions. `phem.css` hides the element also
 when its CSS gives it a `display`. `phem:loading` is for HTML elements. To show a component, put
 it in an element: `<span phem:loading={{ save }}><Spinner /></span>`.
+
+### Debounce and throttle
+
+The browser sends the `onChange` and `onInput` events of a text input (and of a `<textarea>`) when
+the user stops typing for 150 ms, not on each key. `data-phem-debounce-value` on the `<Root>`
+element changes this default, and `0` turns it off. The other events do not wait.
+
+`phem:debounce` and `phem:throttle` set the wait of the events of one element:
+
+```html
+<input onChange={{ search }} phem:debounce={{ 300 }} />
+<input onChange={{ validate }} phem:debounce={{ 'blur' }} />
+<input type="range" onInput={{ preview }} phem:throttle={{ 500 }} />
+```
+
+- `phem:debounce={{ 300 }}`: send an event when no new event of the same handler comes for
+  300 ms. `0` turns off the debounce of the element.
+- `phem:debounce={{ 'blur' }}`: send the event when the element loses the focus.
+- `phem:throttle={{ 500 }}`: send the first event at once, then at most one event each 500 ms.
+  The last event is always sent.
+
+They apply to each handler of the element, but not to `onSubmit` and `onBlur`: these never wait.
+An event that waits has the value of the last event, so no request has an old value. A blur sends
+the waiting event of the element. Any other event (a click, a submit, a key without a wait) sends
+all the waiting events first, so the server gets all the input before the click.
+
+When an `onChange` or `onInput` event waits in the queue (an earlier event still runs), a new
+event of the same handler and element replaces it: the server gets one request, with the new value.
+
+phemc checks the value: a number of milliseconds, or `'blur'` for `phem:debounce` (E032). An
+element cannot have both. An element with no handler reports W006.
 
 ### Rate limits
 

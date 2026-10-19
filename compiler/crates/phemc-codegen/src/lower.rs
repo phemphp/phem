@@ -119,6 +119,7 @@ impl<'a> Lowerer<'a> {
                     .with_help("put the `<title>` in the `<head>` of the document component, and give the title through a slot, for example `<Document:title>Home</Document:title>`"),
             );
         }
+        self.check_timing(e);
         out.push('<');
         out.push_str(&e.name);
         if e.attrs.iter().any(|a| matches!(a.kind, AttrKind::Spread(_))) {
@@ -194,6 +195,17 @@ impl<'a> Lowerer<'a> {
                 // `on*` names from phem_attrs(), because a spread can contain data.
                 AttrKind::Plain { name, .. } if is_inline_script(name) => self.dom_attr(a, out),
                 AttrKind::Plain { name, name_span, value } => {
+                    if TIMINGS.contains(&name.as_str()) {
+                        match value {
+                            AttrValue::Expr(x) => {
+                                let c = self.expr_code(x);
+                                self.check_timing_value(name, &c, x.span);
+                                hash.push(format!("{}: ({c})", php_str(name)));
+                            }
+                            _ => self.timing_not_expr(name, *name_span),
+                        }
+                        continue;
+                    }
                     let event = event_name(name);
                     // A handler, or `phem:loading`: both take a function.
                     let takes_fn = event.is_some() || name == LOADING;
@@ -247,6 +259,63 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// `phem:debounce` and `phem:throttle`: not both on one element, and only on an element with a
+    /// handler (or a spread, which can give one).
+    fn check_timing(&mut self, e: &Element) {
+        let mut found: Option<&str> = None;
+        let mut has_handler = false;
+        for a in &e.attrs {
+            match &a.kind {
+                AttrKind::Spread(_) => has_handler = true,
+                AttrKind::Plain { name, name_span, .. } => {
+                    if event_name(name).is_some() {
+                        has_handler = true;
+                    } else if TIMINGS.contains(&name.as_str()) {
+                        if let Some(other) = found {
+                            self.error(codes::BAD_ATTRIBUTE, format!("`{name}` and `{other}` cannot be on the same element"), *name_span).help =
+                                Some("keep one of them".into());
+                        }
+                        found = Some(name);
+                    }
+                }
+            }
+        }
+        if let (Some(name), false) = (found, has_handler) {
+            let span = e.attrs.iter().find_map(|a| match &a.kind {
+                AttrKind::Plain { name: n, name_span, .. } if n == name => Some(*name_span),
+                _ => None,
+            });
+            self.diags.push(
+                Diagnostic::warning(codes::TIMING_WITHOUT_HANDLER, format!("`{name}` does nothing: the element has no handler"), span.unwrap_or(e.name_span))
+                    .with_help("put it on the element with the handler, for example `<input onChange={{ search }} phem:debounce={{ 300 }} />`"),
+            );
+        }
+    }
+
+    /// The value of `phem:debounce` and `phem:throttle`: milliseconds, or `'blur'` for `phem:debounce`.
+    /// Only a literal can be checked here. The runtime checks the other values.
+    fn check_timing_value(&mut self, name: &str, code: &str, span: Span) {
+        let c = code.trim();
+        let blur = name == DEBOUNCE;
+        let ok = if c.starts_with('-') {
+            !c[1..].trim().starts_with(|ch: char| ch.is_ascii_digit())
+        } else if c.starts_with(|ch: char| ch.is_ascii_digit()) {
+            c.chars().all(|ch| ch.is_ascii_digit())
+        } else if c.starts_with('\'') || c.starts_with('"') {
+            blur && (c == "'blur'" || c == "\"blur\"")
+        } else {
+            true
+        };
+        if !ok {
+            let help = if blur { "write a number of milliseconds (`{{ 300 }}`), or `{{ 'blur' }}`" } else { "write a number of milliseconds: `{{ 300 }}`" };
+            self.error(codes::BAD_ATTRIBUTE, format!("`{name}` takes a number of milliseconds{}", if blur { " or 'blur'" } else { "" }), span).help = Some(help.into());
+        }
+    }
+
+    fn timing_not_expr(&mut self, name: &str, span: Span) {
+        self.error(codes::BAD_ATTRIBUTE, format!("`{name}` takes an expression"), span).help = Some(format!("write `{name}={{{{ 300 }}}}`"));
+    }
+
     fn handler_not_function(&mut self, name: &str, span: Span) {
         self.error(codes::BAD_ATTRIBUTE, format!("`{name}` takes a function"), span).help = Some(format!("write `{name}={{{{ handleIt }}}}`"));
     }
@@ -278,6 +347,17 @@ impl<'a> Lowerer<'a> {
                             out.push_str(&format!("{ws}{{{{ phem_loading({c}) }}}}"));
                         }
                         _ => self.handler_not_function(name, *name_span),
+                    }
+                    return;
+                }
+                if TIMINGS.contains(&name.as_str()) {
+                    match value {
+                        AttrValue::Expr(x) => {
+                            let c = self.expr_code(x);
+                            self.check_timing_value(name, &c, x.span);
+                            out.push_str(&format!("{ws}{{{{ phem_timing('{}', {c}) }}}}", &name[5..]));
+                        }
+                        _ => self.timing_not_expr(name, *name_span),
                     }
                     return;
                 }
@@ -481,6 +561,11 @@ impl<'a> Lowerer<'a> {
 
 /// `phem:loading={{ save }}`: the element shows only while a `save` event runs.
 const LOADING: &str = "phem:loading";
+
+/// `phem:debounce={{ 300 }}` and `phem:throttle={{ 300 }}`: the browser waits before it sends the
+/// events of the element. `phem:debounce={{ 'blur' }}` sends on blur only.
+const DEBOUNCE: &str = "phem:debounce";
+const TIMINGS: &[&str] = &[DEBOUNCE, "phem:throttle"];
 
 /// The events of `event_name()` that the `phem` client listens to. The runtime makes `focus`
 /// and `blur` the `focusin` and `focusout` events.

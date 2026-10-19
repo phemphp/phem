@@ -222,6 +222,7 @@ finds an error:
 | W001–W003 | A handler is called instead of passed; a list item without `key`; an event that the browser does not send (`onMouseEnter`) |
 | W004 | `#[Page]`, `#[Route]`, `#[Component]`, `#[State]`, `#[Prop]` or `#[Path]` without its `use` import (`Phem\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
 | W005 | a `<title>` outside `<head>` and `<svg>`: the document component prints the title, and a page gives it with `<Document:title>` |
+| W006 | `phem:debounce` or `phem:throttle` on an element with no handler |
 
 ## Limits
 

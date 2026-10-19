@@ -2,7 +2,7 @@
 source: crates/phemc-codegen/tests/compile.rs
 expression: t.content
 ---
-<button {{ phem_on('click', increment) }} {{ phem_attr('data-count', count) }}>
+<button {{ phem_on('click', increment) }} {{ phem_timing('throttle', 500) }} {{ phem_attr('data-count', count) }}>
                 {{ label }} {{ count }} times {{ children }}
                 <span {{ phem_loading(increment) }}>…</span>
             </button>

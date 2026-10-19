@@ -93,6 +93,26 @@ final class Attributes
         return new Markup(\sprintf('%s="%s"', self::e($name), self::e((string) $value)), 'UTF-8');
     }
 
+    /**
+     * `phem:debounce={{ 300 }}` → `data-phem-debounce="300"`, and the same for `phem:throttle`: the
+     * browser waits before it sends the events of the element. `phem:debounce={{ 'blur' }}` sends
+     * them on blur only. Null or false renders nothing.
+     */
+    public static function timing(string $kind, mixed $value): Markup
+    {
+        if (null === $value || false === $value) {
+            return new Markup('', 'UTF-8');
+        }
+        if (!\in_array($kind, ['debounce', 'throttle'], true)) {
+            throw new \InvalidArgumentException(\sprintf('Unknown timing "phem:%s": use "phem:debounce" or "phem:throttle".', $kind));
+        }
+        if (!(\is_int($value) && $value >= 0) && !('debounce' === $kind && 'blur' === $value)) {
+            throw new \InvalidArgumentException(\sprintf('"phem:%s" takes a number of milliseconds (0 or more)%s, "%s" given.', $kind, 'debounce' === $kind ? " or 'blur'" : '', get_debug_type($value)));
+        }
+
+        return new Markup(\sprintf('data-phem-%s="%s"', $kind, $value), 'UTF-8');
+    }
+
     private static function isBooleanish(string $name): bool
     {
         $name = strtolower($name);

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Completion for the Phem attributes of an HTML element: `phem:loading`, `phem:debounce`, and
+  `phem:throttle`. In the Twig value of `phem:debounce`, completion also suggests `'blur'`.
 - A `#[Prop(rest: true)]` property of a class component is its rest prop. Completion and hover
   do not show it as a named prop, and the outline shows it as "rest props".
 - A property of a class component is a prop only with `#[Prop]` (or `#[Path]` on a page).

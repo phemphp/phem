@@ -22,9 +22,10 @@ Talk about each item before its implementation. The open questions are a start, 
 - [ ] **Bound state (`bind`)** (section 1). React has no two-way binding: is `bind` a new
       concept, or a shorthand for `value` + `onChange`? Which property types can the compiler
       accept? How does a bound value join the signed state before the handler runs?
-- [ ] **Debounce and throttle syntax** (section 1). An attribute next to the handler, a
-      modifier in the attribute name (`onChange:debounce`), or a wrapper value
-      (`debounce(search, 300)`)? Which default applies to text inputs?
+- [x] **Debounce and throttle syntax** (section 1). Decided: an attribute in the `phem:`
+      namespace next to the handler (`phem:debounce={{ 300 }}`), as `phem:loading`. A modifier
+      in the name cannot hold milliseconds, and a wrapper value breaks "pass the function, do not
+      call it". Text inputs have a debounce of 150 ms by default (a `<Root>` value).
 - [ ] **File uploads** (section 1). A temporary file must be in the signed state as a
       reference. How long is the reference valid, and how does it relate to
       `phem.state_max_age` and `phem.state_bind_session`? What happens to the file when the
@@ -60,10 +61,19 @@ Talk about each item before its implementation. The open questions are a start, 
 
 ## 1. Input and requests
 
-### [ ] Debounce, throttle and event coalescing — P1
+### [x] Debounce, throttle and event coalescing — P1
 
 Today `onChange` on a text input sends one request for each key. The queue sends all of them,
 one after the other, so a fast typist waits for many old renders.
+
+Done: `phem:debounce={{ 300 }}` (or `{{ 'blur' }}`) and `phem:throttle={{ 300 }}` on the element
+of the handler. The `onChange` and `onInput` events of text inputs have a debounce of 150 ms by
+default (`data-phem-debounce-value` on the `<Root>`, 0 turns it off). A blur sends the waiting
+event of the element, and any other event sends all the waiting events first. An input or change
+event in the queue that did not start yet takes the value of a newer event of the same handler and
+element. phemc checks the values (E032) and warns about an element with no handler (W006). The
+VS Code extension completes the `phem:*` attributes. See
+[docs/phpm-syntax.md](docs/phpm-syntax.md#debounce-and-throttle).
 
 - **Best peer:** LV `phx-debounce` / `phx-throttle`. It has a `"blur"` value (send on blur only),
   and it sends a pending event at once on submit. LW `wire:model.live.debounce.300ms`.

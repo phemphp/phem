@@ -20,6 +20,12 @@ const html = require('./data/html');
 const twig = require('./data/twig');
 
 const EVENTS = ['onClick', 'onDoubleClick', 'onChange', 'onInput', 'onSubmit', 'onKeyDown', 'onKeyUp', 'onFocus', 'onBlur'];
+// The Phem attributes of an HTML element: [snippet, detail, documentation].
+const PHEM_ATTRIBUTES = {
+    'phem:loading': ['phem:loading={{ ${1} }}', 'Phem: show while a handler runs', 'The element shows only while an event of the handler runs: `<span phem:loading={{ save }}>Saving…</span>`.'],
+    'phem:debounce': ['phem:debounce={{ ${1:300} }}', 'Phem: wait before an event is sent', 'Milliseconds: the browser sends an event of the element only when no new event comes for that time. `\'blur\'`: send on blur only. `0`: no debounce (text inputs have 150 ms by default).'],
+    'phem:throttle': ['phem:throttle={{ ${1:300} }}', 'Phem: send at most one event per interval', 'Milliseconds: the browser sends the first event at once, then at most one event each interval, and always the last one.'],
+};
 const DECLARING_WORDS = /\b(namespace|function|class|interface|trait|enum|const|fn|as|goto|case)\s+$/i;
 
 // Escapes text for a snippet.
@@ -281,6 +287,9 @@ class Completer {
             for (const event of EVENTS) {
                 add(event, `${event}={{ \${1} }}`, 'Phem event: the handler runs on the server', '1' + event);
             }
+            for (const [name, [snippet, detail, documentation]] of Object.entries(PHEM_ATTRIBUTES)) {
+                add(name, snippet, detail, '1' + name, documentation);
+            }
             add('className', 'className="${1}"', 'Alias for class', '0className');
             if (tag === 'label') {
                 add('htmlFor', 'htmlFor="${1}"', 'Alias for for', '0htmlFor');
@@ -460,9 +469,45 @@ class Completer {
 
     // Twig code: tags, filters, tests, attributes, variables, and route names.
     async twig(ctx) {
+        if (ctx.attr === 'phem:debounce') {
+            const blur = this.debounceBlur(ctx);
+            if (ctx.string) {
+                return blur;
+            }
+            if (blur.length) {
+                return [...blur, ...(await this.twigItems(ctx))];
+            }
+        }
         if (ctx.string) {
             return this.routeItems(ctx);
         }
+        return this.twigItems(ctx);
+    }
+
+    // phem:debounce={{ 'blur' }}: send the event on blur only.
+    debounceBlur(ctx) {
+        const expr = this.text.slice(ctx.start, this.offset);
+        const m = /^\s*(['"]?)(\w*)$/.exec(expr);
+        if (!m) {
+            return [];
+        }
+        const start = this.offset - m[1].length - m[2].length;
+        const end = this.offset + wordAfter(this.text, this.offset);
+        const close = m[1] && this.text[end] === m[1] ? 1 : 0;
+        return [{
+            label: "'blur'",
+            kind: 'value',
+            detail: 'phem:debounce value',
+            documentation: 'Send the event when the element loses the focus.',
+            insert: "'blur'",
+            range: [start, end + close],
+            edits: [],
+            sortText: '0blur',
+            filterText: m[1] + 'blur',
+        }];
+    }
+
+    async twigItems(ctx) {
         const expr = this.text.slice(ctx.start, this.offset);
         const tagStart = ctx.start - 2;
         let m;

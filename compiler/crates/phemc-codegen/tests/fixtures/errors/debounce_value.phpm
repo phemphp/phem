@@ -1,0 +1,2 @@
+<?phpm // expect: E032
+function App() { $search = fn() => 1; return <input onChange={{ search }} phem:debounce={{ 'soon' }} />; }

@@ -113,6 +113,7 @@ final class PhemRuntime implements RuntimeExtensionInterface
                 'key' === $name => Attributes::key($value),
                 'style' === $name => Attributes::style($value),
                 'phem:loading' === $name => $this->loading($value),
+                \in_array($name, ['phem:debounce', 'phem:throttle'], true) => Attributes::timing(substr($name, 5), $value),
                 1 === preg_match('/^on[A-Z]/', $name) => $this->on(strtolower(substr($name, 2)), $value),
                 0 === stripos($name, 'on') => '',
                 default => Attributes::attr($name, $value),
