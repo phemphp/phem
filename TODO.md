@@ -319,9 +319,16 @@ An exception in one component breaks the full event.
 The controller logs a failed event to the console only.
 
 - **Best peer:** LV reconnects automatically and recovers form values. LW `wire:offline`.
-- **Proposal:** retry an idempotent failure (network error, 502, 503) with backoff. Add a
-  `phem-offline` class on the root when the browser is offline. Show a default error message
-  for a 500, with a hook to change it.
+- **Proposal:** retry an idempotent failure (network error, 502, 503) with backoff. Show a
+  default error message for a 500, with a hook to change it.
+
+Done: while the browser is offline (`navigator.onLine` is false), the root element has the
+`phem-offline` class.
+
+Not done yet:
+
+- [ ] Retry an idempotent failure (network error, 502, 503) with backoff.
+- [ ] A default error message for a 500, with a hook to change it.
 
 ## 8. Developer experience
 

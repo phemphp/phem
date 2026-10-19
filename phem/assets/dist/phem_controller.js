@@ -24,6 +24,8 @@
 // the detail. The event starts on the root of the component of the handler (its <phem-c>, or the
 // root element) and bubbles up to `window`: `data-action="phem:toast->toast#show"` on an
 // ancestor, or `data-action="phem:toast@window->toast#show"` anywhere.
+//
+// While the browser is offline, the root element has the `phem-offline` class.
 
 import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
@@ -74,20 +76,28 @@ export default class PhemController extends Controller {
     // form => (control => the property that the lock set), for each locked form
     this.locked = new Map()
     // The morph of an earlier event sets the attributes of the server render: show the loading
-    // state again on an element with an event that still runs, and lock a locked control again.
+    // state again on an element with an event that still runs, lock a locked control again, and
+    // show the offline state again on the root element.
     this.keepLoading = (event) => {
       const t = event.target
       if (this.loading.has(t)) showLoading(t, true)
+      if (t === this.element) this.showOffline()
       for (const controls of this.locked.values()) {
         const prop = controls.get(t)
         if (prop) t[prop] = true
       }
     }
     this.element.addEventListener("turbo:morph-element", this.keepLoading)
+    this.showOffline = () => this.element.classList.toggle("phem-offline", !navigator.onLine)
+    this.showOffline()
+    window.addEventListener("online", this.showOffline)
+    window.addEventListener("offline", this.showOffline)
   }
 
   disconnect() {
     this.element.removeEventListener("turbo:morph-element", this.keepLoading)
+    window.removeEventListener("online", this.showOffline)
+    window.removeEventListener("offline", this.showOffline)
   }
 
   // data-action="click->phem#dispatch input->phem#dispatch ..." on the root element.

@@ -160,6 +160,7 @@ See [editors/vscode/README.md](editors/vscode/README.md).
    While a submit event runs, the form is locked: its buttons and controls are disabled, its
    text fields are read-only, and a second submit is ignored. Add `data-phem-disable={{ false }}`
    to the form to turn this off.
+   While the browser is offline, the `<Root>` element has the `phem-offline` class.
 5. **Server.** [FrankenPHP](https://frankenphp.dev) runs `public/index.php` in worker mode
    (see `examples/quickstart/Caddyfile`). Each worker boots the Symfony kernel once and keeps
    it in memory for many requests. Symfony Runtime gives each request to the kernel, which
