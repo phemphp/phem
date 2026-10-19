@@ -39,9 +39,14 @@ Talk about each item before its implementation. The open questions are a start, 
       file, also when its transaction rolls back, is the concern of the application.
 - [ ] **Optimistic UI and client commands** (section 2). How does a PHP `Js` builder look in
       Twig markup? How does the Turbo morph keep the client changes until the server answers?
-- [ ] **Render only the components that can change** (section 3). A component that reads a
+- [x] **Render only the components that can change** (section 3). A component that reads a
       service can change with no change in its props or state. How does a component declare its
       inputs? Can the "before" render come from hashes in the signed payload?
+      Decided (as React): `render()` must be pure, so a component declares no inputs. An event
+      renders the subtrees of the dirty components (the owner of the handler, and the components
+      whose state changed), and skips a child when its props did not change. The "before"
+      render comes from one hash for each component in the signed payload. See the
+      implementation plan in section 3.
 - [ ] **State payload and a server-side store** (section 3). Is a server store still
       "stateless"? How does it work with FrankenPHP workers on many machines? Which mode is
       the default?
@@ -226,6 +231,86 @@ compares the two renders. The cost grows with the page size, not with the change
     needs an opt-in (`#[Component(memo: true)]`) or a way to declare its inputs.
   - Later: the `phemc` compiler knows the static parts of each template, so it can send only
     the dynamic values (as LV does).
+- **Decided (the React model):**
+  - Rule: `render()` is pure. Its output depends only on the props and the `#[State]` of the
+    component, and on the plain properties that `mount()` or a handler of the component set in
+    the same request (for example a Symfony form with its errors). `render()` does not call
+    services, and it does not read the time, the session or other globals. A component reads
+    services in `mount()` or in a handler (as `TodoList` does). Two components that need the
+    same data lift it up to their common parent, which passes it down as props. A component
+    declares no inputs, and there is no `memo` opt-in.
+  - An event renders again only the dirty components and their subtrees. Phem skips the rest of
+    the page. A dirty component is the owner of the handler (the `$this` of the handler
+    closure, or else the component that registered it), or a component whose `#[State]`
+    changed (in the handler, or with a bound value). Phem cannot see a change of a plain
+    property, so the owner of the handler is always dirty.
+  - In a subtree that renders again, Phem skips a child (and its subtree) when it is not dirty
+    and its props did not change. As React `Object.is`, the props compare with `===`: a closure
+    compares by its fingerprint and its `$this`, and a slot by its template and the context of
+    its caller. A handler that changes an object (an entity) in place does not change the props
+    of the other components that show it: they do not render again.
+  - `mount()` of a component with no `#[State]` runs each time that the component renders, not
+    on each request. A skipped component does not run it.
+  - Escape hatch, as `router.refresh()` of Next.js: `$e->refresh()` in a handler renders the full
+    page again. For example, a form that adds a row to a list that another component shows.
+  - Checks, as React `StrictMode` and its lint rules: `phemc` warns when `render()` calls a
+    service or reads a global (W008). In dev mode, Phem also renders the full page, and warns
+    when the output of a skipped component changed.
+  - Cost: correctness is the job of the developer. A `render()` that breaks the rule shows stale
+    data in production. The checks above find most of these errors in development.
+  - The "before" render comes from one hash for each component in the signed payload. When a
+    hash changes, the response has the markup of that component, and the browser morph finds
+    the changed nodes. Keep the old markup out of the payload.
+- **Implementation plan.** Each step is one change with its tests. The tests of the steps
+  before stay green.
+  1. **Tree shape and hashes in the payload.** `PageState` keeps, for each fiber of the page,
+     its parent id and the xxh128 hash of its own HTML (`Fiber::$ownHtml`), next to its state.
+     `StateAccessor::snapshot()` writes them, and the signature covers them. No change of
+     behavior.
+  2. **"Before" from the hashes.** `Tree::changedFibers()` compares the own HTML of the second
+     pass with the hashes of the payload, not with the first pass. The first pass still renders
+     the full page, but only to get the handlers. Test: the same streams as before.
+  3. **Kept children in the response.** The HTML of a skipped fiber in its parent is
+     `<phem-c id="…" data-phem-keep></phem-c>`. The `phem` controller cancels
+     `turbo:before-morph-element` for such an element, so the browser keeps its content.
+     `Fiber::output()` and `TurboStreams` know the skipped fibers. Test in the JS tests and in
+     a functional test with a skipped child.
+  4. **First pass on the path only.** The ids of the target fibers are the fiber of the handler
+     id and the fibers of the bound keys (see `BoundValues`). With the parent ids of step 1,
+     `Tree` knows the path from the page to each target. The first pass renders only the fibers
+     on these paths. It skips the other children, but it keeps their props, slots and caller
+     context. The state and the `#[Url]` values of the skipped fibers come from the payload
+     (`StateAccessor::snapshot()`, `UrlQuery::of()`). Test: a click in one component of a page
+     with 100 components renders only the fibers on its path (count the calls of `render()`).
+  5. **Dirty fibers and the second pass.** Before the handler, keep the exported `#[State]` of
+     each fiber on the paths. After it, a fiber is dirty when its state changed, or when it owns
+     the handler (`ReflectionFunction::getClosureThis()`, through `Tree::fiberOf()`). The
+     second pass renders each dirty fiber with no dirty ancestor, from its props, slots and
+     caller of the first pass (a new `Renderer::renderSubtree()`; the parent fiber is on the
+     stack, so the ids do not change). A child skips when the rules above allow it. A child that
+     the first pass did not see (a child of a child that rendered again) always renders.
+     A class component with no `#[State]` and a `mount()` always renders.
+  6. **`$e->refresh()`.** A flag on `Event`. When it is set, the second pass renders the full
+     page (as today, with the hashes of step 2). `AddScientist` calls it after an add, so the
+     list of `DurableGallery` shows the new row.
+  7. **Dev-mode check.** With `kernel.debug`, after the response is ready, render the full page
+     in a new `Tree` with the new state, and compare the hash of each skipped fiber. A
+     difference logs a warning with the component and the probable cause ("`render()` reads
+     data that is not a prop or state"), and the `phem` controller shows it in the console.
+  8. **`phemc` W008.** In `render()` and in the markup of a component: a method call on a
+     property that the constructor gets (a service), a static property, a superglobal, or a
+     clock or random function (`time()`, `date()`, `microtime()`, `hrtime()`, `rand()`,
+     `mt_rand()`, `random_int()`, `uniqid()`, `new DateTime*()` with no argument). Snapshot
+     tests in `phemc-codegen`, and a row in the list of warnings.
+  9. **Tests helpers and docs.** `ComponentDriver` uses the new passes. Update README section 4,
+     the "State" list in `docs/phpm-syntax.md` section 7, `docs/compiling.md` (the events render
+     the whole page) and the DurableGallery text in `learn/describing-the-ui.html`: they say
+     that an event renders the full page two times.
+  10. **Measure.** A page with 500 rows and a counter: the time and the response size of a
+      click on the counter, before and after.
+  - Open points: does W008 report the Twig `app` global (`app.request`, `app.session`,
+    `app.user`)? Later: hashes of the props in the payload, so a child that the first pass did
+    not see can skip too.
 
 ### [ ] Smaller state payload, or state on the server — P2
 

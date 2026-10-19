@@ -434,7 +434,7 @@ final class AddScientist
     <li><strong><code>#[State]</code> properties</strong> are the state. The browser keeps them, so they must be JSON values.</li>
     <li><strong><code>mount()</code></strong> (optional) sets the first state. It runs after the props are set, when the component has no state yet: on its first render. For example, <code>$this-&gt;items = $this-&gt;repository-&gt;latest($this-&gt;limit);</code>.</li>
     <li><strong>Methods</strong> are event handlers. A handler can change the state and call the services.</li>
-    <li><strong><code>render()</code></strong> returns markup.</li>
+    <li><strong><code>render()</code></strong> returns markup. As in React, it is pure: it reads the props, the state, and the values that <code>mount()</code> or a handler set. It does not call the services. Read the data in <code>mount()</code> or in a handler.</li>
 </ul>
 <p>With Doctrine ORM, each handler runs in a transaction. When the handler returns, Phem flushes and commits. Thus the repository only calls <code>persist()</code>, and the handler does not call <code>flush()</code>. To select the components that use a transaction, set the <code>phem.transactional</code> option to <code>false</code> and add <code>#[Transactional]</code> to these components.</p>
 <p>A component without state does not need a class. A function that returns markup is a component too, and its parameters are its props. If its body is only <code>return &lt;markup&gt;;</code>, it compiles to a plain Twig template, with no PHP call. Here is a page that is a class with a prop and state:</p>

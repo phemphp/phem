@@ -2,6 +2,7 @@
 namespace App\Pages\Examples;
 
 use App\Components\AddScientist;
+use App\Model\Scientist;
 use App\Repository\ScientistRepository;
 use Phem\Attribute\Page;
 
@@ -10,15 +11,22 @@ use function App\Components\{Layout, ScientistCard, Document};
 #[Page('/examples/DurableGallery')]
 final class DurableGallery
 {
+    /** @var list<Scientist> */
+    private array $scientists = [];
+
     public function __construct(
-        private readonly ScientistRepository $scientists,
+        private readonly ScientistRepository $repository,
     ) {
+    }
+
+
+    public function mount(): void
+    {
+        $this->scientists = $this->repository->all();
     }
 
     public function render()
     {
-        $scientists = $this->scientists->all();
-
         return (
             <Document>
                 <Document:title>Amazing scientists</Document:title>

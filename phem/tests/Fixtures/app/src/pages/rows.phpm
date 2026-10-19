@@ -16,10 +16,19 @@ final class RowsPage
         Rows::remove($scientist->id);
     }
 
+    /** @var array<int, Scientist> */
+    private array $rows = [];
+
+    // No #[State]: mount() runs each time that the page renders. render() stays pure.
+    public function mount(): void
+    {
+        $this->rows = Rows::$scientists;
+    }
+
     public function render()
     {
         $items = [];
-        foreach (Rows::$scientists as $scientist) {
+        foreach ($this->rows as $scientist) {
             $remove = fn () => $this->remove($scientist);
             $items[] = <li key={{ scientist.id }}>{{ scientist.name }} <button onClick={{ remove }}>Remove</button></li>;
         }

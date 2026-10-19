@@ -948,10 +948,51 @@ The order for each component in a request:
    properties. If not, Phem calls `mount()` (when the class has it).
 4. Phem calls the event handler (for an event), then `render()`.
 
-A component without `#[State]` properties has no state in the browser, so `mount()` runs on each
-request. To configure a component service (for example to bind a scalar argument), define it in
-`config/services.yaml` with its class name as the id. Phem keeps your definition and only makes
-it not shared.
+A component without `#[State]` properties has no state in the browser, so `mount()` runs each
+time that the component renders. To configure a component service (for example to bind a scalar
+argument), define it in `config/services.yaml` with its class name as the id. Phem keeps your
+definition and only makes it not shared.
+
+### Keep `render()` pure
+
+As in React, `render()` is a pure function of the component. Its output depends only on:
+
+- the props,
+- the `#[State]` properties,
+- the plain properties that `mount()` or a handler of the component set in the same request
+  (for example a Symfony form with its errors).
+
+`render()` does not call services, and it does not read the time, the session, the superglobals
+or static properties. Read the data in `mount()` or in a handler:
+
+```php
+// Not correct: the output changes when the database changes.
+public function render()
+{
+    $unread = $this->messages->countUnread();
+    return <span>{{ unread }}</span>;
+}
+
+// Correct: mount() reads the service, and render() reads the state.
+#[State] public int $unread = 0;
+
+public function mount(): void
+{
+    $this->unread = $this->messages->countUnread();
+}
+
+public function render()
+{
+    return <span>{{ unread }}</span>;
+}
+```
+
+When two components show the same data, lift the data up to their common parent, and pass it
+down as props (see [section 9](#9-props-and-lifting-state-up)).
+
+With this rule, Phem can render only the components that can change: the component of the
+handler, the components whose state changed, and their children with new props. This is
+planned (see `TODO.md`, section 3). Today an event renders the full page.
 
 ### Transactions
 
