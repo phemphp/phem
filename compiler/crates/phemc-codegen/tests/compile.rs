@@ -341,3 +341,46 @@ fn a_function_is_a_component_only_with_the_component_attribute() {
     let src = "<?phpm\nnamespace App;\n#[Component]\nfunction Card() { return <div />; }\nfunction App() { return <Card />; }\n";
     assert_eq!(codes(src), ["W004", "E010"]);
 }
+
+const TABS: &str = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\{Component, Context, Page, Prop, Provide};\nuse Phem\\Html;\n#[Component, Provide]\nfinal class Tabs { #[Prop] public ?Html $children = null; public function render() { return <div>{{ children }}</div>; } }\n#[Component]\nfunction Tab(string $name, #[Context] Tabs $tabs) { return <b>{{ name }}</b>; }\n#[Component]\nfunction Card(?Html $children = null) { return <section>{{ children }}</section>; }\n";
+
+fn project(files: &[(&str, &str)]) -> Vec<String> {
+    let inputs = files.iter().map(|(rel, text)| SourceInput { rel: (*rel).into(), text: (*text).into() }).collect();
+    let (_, diags) = compile(inputs);
+    diags.iter().flat_map(|f| f.diags.iter().map(move |d| format!("{} {}", f.rel, d.code))).collect()
+}
+
+#[test]
+fn a_context_needs_a_provider_on_each_known_chain_from_a_page() {
+    let page = |body: &str| format!("<?phpm\nnamespace App;\nuse Phem\\Attribute\\{{Component, Page}};\n#[Page('/')]\nfinal class Home {{ public function render() {{ return {body}; }} }}\n#[Component]\nfunction Panel() {{ return <div><Tab name=\"b\" /></div>; }}\n");
+
+    // Inside the provider: covered, also under another component in its slot.
+    assert!(project(&[("Tabs.phpm", TABS), ("Home.phpm", &page("<Tabs><Card><Tab name=\"a\" /></Card></Tabs>"))]).is_empty());
+    // In the slot of a component that is not a provider: the compiler does not know the parent.
+    assert!(project(&[("Tabs.phpm", TABS), ("Home.phpm", &page("<Card><Tab name=\"a\" /></Card>"))]).is_empty());
+    // A component that the page renders, with no provider: the error is on the tag, in its file.
+    assert_eq!(project(&[("Tabs.phpm", TABS), ("Home.phpm", &page("<main><Panel /></main>"))]), ["Home.phpm E015"]);
+    // The same component inside the provider: covered.
+    assert!(project(&[("Tabs.phpm", TABS), ("Home.phpm", &page("<Tabs><Panel /></Tabs>"))]).is_empty());
+    // No page renders the component: no chain, no error.
+    assert!(project(&[("Tabs.phpm", TABS), ("Home.phpm", &page("<main />"))]).is_empty());
+}
+
+#[test]
+fn a_provider_of_a_type_that_the_compiler_cannot_see_can_be_a_subtype() {
+    let src = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\{Component, Context, Page, Prop, Provide};\nuse Phem\\Html;\n#[Component]\nfinal class Shell { #[Provide] public Dark $theme; #[Prop] public ?Html $children = null; public function render() { return <div>{{ children }}</div>; } }\n#[Component]\nfunction Button(#[Context] Theme $theme) { $x = 1; return <b />; }\n#[Page('/')]\nfinal class Home { public function render() { return <Shell><Button /></Shell>; } }\n";
+    assert!(project(&[("App.phpm", src)]).is_empty(), "`Dark` can implement `Theme`");
+    let src = src.replace("Shell><Button /></Shell", "main><Button /></main");
+    assert_eq!(project(&[("App.phpm", &src)]), ["App.phpm E015"]);
+}
+
+#[test]
+fn a_member_path_in_a_handler_is_the_method() {
+    let src = "<?phpm\nfunction App() { $tabs = $form = $select = null; return <p><button onClick={{ tabs.select }} /><button onClick={{ select }} phem:loading={{ form.save }} /></p>; }\n";
+    let (out, diags) = compile(vec![SourceInput { rel: "App.phpm".into(), text: src.into() }]);
+    let out = out.unwrap_or_else(|| panic!("{diags:?}"));
+    let twig = &out.files[0].templates[0].content;
+    assert!(twig.contains("phem_on('click', phem_method(tabs, 'select'))"), "{twig}");
+    assert!(twig.contains("phem_on('click', select)"), "{twig}");
+    assert!(twig.contains("phem_loading(phem_method(form, 'save'))"), "{twig}");
+}

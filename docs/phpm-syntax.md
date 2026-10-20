@@ -279,6 +279,11 @@ function MyButton(): Node {
 }
 ```
 
+A member path is the method of an object: `onClick={{ tabs.select }}` runs `$tabs->select()`
+(in Twig, `tabs.select` alone calls the method). The object is the owner of the handler, so it
+renders again after the event. A key of an array keeps its value: `onClick={{ row.onRemove }}`
+runs the closure in `$row['onRemove']`.
+
 Supported events: `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`, `onKeyDown`, `onKeyUp`,
 `onFocus`, `onBlur`. phemc warns about another event (W003): the browser does not send it.
 The handler runs on the server. It receives a `Phem\Event` object with `$e->value`,
@@ -1052,7 +1057,8 @@ final class Catalog
 - The query string comes from the user: as for `phem:bind`, do not trust its values.
 
 Phem has no Hooks. A call to `Phem\useState` (or `useReducer`, `useRef`, `useMemo`,
-`useCallback`, `useId`, `useContext`) is the compiler error E020.
+`useCallback`, `useId`, `useContext`) is the compiler error E020. For `useContext`, see
+[Context](#context).
 
 ## 8. Services and `mount()`
 
@@ -1101,7 +1107,8 @@ final class TodoList
 The order for each component in a request:
 
 1. The container makes the object (constructor injection).
-2. Phem writes the props into the `#[Prop]` properties.
+2. Phem writes the props into the `#[Prop]` properties, and the contexts into the `#[Context]`
+   properties (see [Context](#context)).
 3. If the browser sent state for this component, Phem writes it into the `#[State]`
    properties. If not, Phem calls `mount()` (when the class has it).
 4. Phem calls the event handler (for an event), then `render()`.
@@ -1117,6 +1124,7 @@ As in React, `render()` is a pure function of the component. Its output depends 
 
 - the props,
 - the `#[State]` properties,
+- the `#[Context]` properties (see [Context](#context)),
 - the plain properties that `mount()` or a handler of the component set in the same request
   (for example a Symfony form with its errors).
 
@@ -1432,6 +1440,123 @@ final class CountButton
 A class has at most one rest prop, and its type must accept an array: `array`, `iterable`,
 `mixed`, or no type (compiler error E043). The other rules of a prop also apply to it (E042).
 The rest prop is not a named prop: `<CountButton attrs="x" />` puts `attrs` in the hash.
+
+### Context
+
+Props pass data one level at a time. When a deep component needs a value of a component far
+above it, each component in between must take the prop and pass it on ("prop drilling"). A
+context gives the value directly, as `createContext` and `useContext` do in React.
+
+Use a context for a value that **depends on the position in the tree**: the theme of a section,
+the density of a table, or the nearest `<Tabs>` or `<Form>` of an item and its state. A value that
+is the same for the full request (the current user, the locale of the request, a repository) is
+a service: inject it in the constructor (see [Services and `mount()`](#8-services-and-mount)).
+
+A class component provides a context with `#[Provide]`. On the class, the component itself is
+the context: the items of a compound component read its state and call its handlers. A component
+below reads it with `#[Context]`, on a property of a class or on a parameter of a function:
+
+```php
+use Phem\Attribute\{Component, Context, Prop, Provide, State};
+use Phem\{Html, Node};
+
+#[Component, Provide]
+final class Tabs
+{
+    #[State] public string $active = 'general';
+    #[Prop] public ?Html $children = null;
+
+    public function select(Event $e): void
+    {
+        $this->active = $e->value;
+    }
+
+    public function render(): Node
+    {
+        return <div role="tablist">{{ children }}</div>;
+    }
+}
+
+#[Component]
+function Tab(string $name, string $label, #[Context] Tabs $tabs): Node
+{
+    return (
+        <button role="tab" aria-selected={{ tabs.active == name }} onClick={{ tabs.select }} value={{ name }}>
+            {{ label }}
+        </button>
+    );
+}
+
+<Tabs>
+    <Tab name="general" label="General" />
+    <Tab name="security" label="Security" />
+</Tabs>
+```
+
+On a property, the value of the property is the context:
+
+```php
+enum Theme: string
+{
+    case Light = 'light';
+    case Dark = 'dark';
+}
+
+#[Component]
+final class ThemeScope
+{
+    #[State, Provide] public Theme $theme = Theme::Light;
+    #[Prop] public ?Html $children = null;
+
+    public function toggle(): void
+    {
+        $this->theme = Theme::Light === $this->theme ? Theme::Dark : Theme::Light;
+    }
+
+    public function render(): Node
+    {
+        return <div><button onClick={{ toggle }}>Toggle</button>{{ children }}</div>;
+    }
+}
+
+#[Component]
+final class Chart
+{
+    #[Context] public Theme $theme = Theme::Light;   // optional: the value when no component above provides it
+
+    public function render(): Node { /* ... */ }
+}
+```
+
+- The **declared type is the key**: one class, interface or enum, nullable or not. The lookup
+  walks up the tree and takes the nearest provider whose value is an instance of the type. So
+  an interface (`#[Context] FormContext $form`) works with each form that implements it. A
+  scalar, an array, `Closure`, `object`, `mixed` or a union type is the compiler error E044: use
+  an enum or a value object, and provide the object that has a handler.
+- A context with no default value and a type that does not accept null is **required**. When no
+  component above provides it, the render throws, with the path of the components (an
+  `<ErrorBoundary>` catches it). `phemc` reports E015 when it is sure: a page renders the
+  component, through markup that the components return, with no provider on the way. When the
+  tag is in the slot of another component (`<Layout><Tab /></Layout>`), the compiler does not
+  know where `Layout` prints it, and only the runtime checks it.
+- A `#[Context]` property is not a prop and not state: the parent cannot set it (E011), and the
+  browser does not keep it. It is not static and not readonly. Phem sets it after the props and
+  before the state or `mount()`, so `mount()` and the handlers can read it. A consumer that must
+  keep a copy (an initial value) puts it in a `#[State]` property in `mount()`.
+- The value is live: a consumer reads its provider when it renders. After an event, the
+  consumers show the new value, also under a component that did not render again, as in React.
+  A provider of itself, or of a mutable object (an entity), renders its consumers each time that
+  it renders. A provider of an enum or of a readonly object renders them only when the value is
+  another one.
+- A consumer can change its provider: `onClick={{ tabs.select }}` runs the handler of the
+  provider (see [Events](#6-events)), and a method of the consumer can call a method of the
+  provider. The provider renders again.
+- A function component with a `#[Context]` parameter is not a template component: it needs the
+  render tree for the lookup.
+- In a plain Twig template, `{% component %}` renders in its own tree: no component outside it
+  provides a context.
+- The Symfony profiler shows the contexts that each component reads and provides, and the
+  components that rendered because a context changed.
 
 ## 10. Markup values
 

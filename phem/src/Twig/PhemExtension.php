@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Phem\Twig;
 
 use Phem\Dom\Attributes;
+use Phem\Handler\MemberHandler;
 use Phem\Manifest\Manifest;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
@@ -52,6 +53,7 @@ final class PhemExtension extends AbstractExtension
             new TwigFunction('phem_style', Attributes::style(...), $safe),
             new TwigFunction('phem_timing', Attributes::timing(...), $safe),
             new TwigFunction('phem_attrs', [PhemRuntime::class, 'attrs'], $safe),
+            new TwigFunction('phem_method', MemberHandler::of(...)),
         ];
     }
 }

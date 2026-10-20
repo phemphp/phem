@@ -54,6 +54,7 @@ pub mod codes {
     pub const NO_CHILDREN: &str = "E012";
     pub const UNKNOWN_SLOT: &str = "E013";
     pub const DUPLICATE_COMPONENT: &str = "E014";
+    pub const MISSING_CONTEXT: &str = "E015";
     pub const HOOK_REMOVED: &str = "E020";
     pub const UNDEFINED_VARIABLE: &str = "E030";
     pub const MARKUP_IN_EXPRESSION: &str = "E031";
@@ -63,6 +64,7 @@ pub mod codes {
     pub const READONLY_STATE: &str = "E041";
     pub const INVALID_PROP: &str = "E042";
     pub const INVALID_REST_PROP: &str = "E043";
+    pub const INVALID_CONTEXT: &str = "E044";
     pub const EXPORT_DEFAULT: &str = "E050";
     pub const ROUTE_NOT_COMPONENT: &str = "E052";
     pub const HANDLER_CALLED: &str = "W001";

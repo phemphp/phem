@@ -16,8 +16,9 @@ namespace Phem\State;
 use Phem\Rendering\Tree;
 
 /**
- * The shape of the last render of a page: for each fiber, the id of its parent and the hash of
- * its own HTML (the HTML without the content of its child fibers, see Fiber::$ownHtml).
+ * The shape of the last render of a page: for each fiber, the id of its parent, the hash of its
+ * own HTML (the HTML without the content of its child fibers, see Fiber::$ownHtml), and whether
+ * it read a context (a consumer, see Phem\Rendering\ContextResolver).
  *
  * The browser keeps it in the signed state. With it, an event knows the render from before the
  * handler with no second render, and it knows the path from the page to a fiber.
@@ -29,17 +30,22 @@ use Phem\Rendering\Tree;
  * fibers from the page down, in their order, separated by a comma. Each fiber is its id, its
  * hash, and its depth (0 for the page). The parent of a fiber is the last fiber before it with
  * one less depth. The id is the 48 bits of the fiber id (see Fiber::idOf()) and the hash is 48
- * bits, each in 8 base64url characters. A fiber with no hash has no hash characters.
+ * bits, each in 8 base64url characters. A fiber with no hash has no hash characters. A consumer
+ * ends with `c`.
  */
 final class TreeShape
 {
     private const FIBER_PREFIX = 'phem';
 
+    private const CONSUMER = 'c';
+
     /** @var array<string, list<string>>|null parent id => child ids */
     private ?array $children = null;
+    /** @var array<string, true>|null the consumers and their ancestors */
+    private ?array $toConsumers = null;
 
     /**
-     * @param array<string, array{0: string|null, 1: string|null}> $fibers fiber id => [parent id, hash]
+     * @param array<string, array{0: string|null, 1: string|null, 2?: true}> $fibers fiber id => [parent id, hash, and true for a consumer]
      */
     public function __construct(public readonly array $fibers = [])
     {
@@ -53,7 +59,12 @@ final class TreeShape
     {
         $fibers = [];
         foreach ($tree->page() as $id => [$parent, $fiber]) {
-            $fibers[$id] = [$parent, null !== $fiber ? ($fiber->holdsRoot ? null : self::hash($fiber->ownHtml[$fiber->pass] ?? '')) : $tree->shape->hashOf($id)];
+            $fibers[$id] = null !== $fiber
+                ? [$parent, $fiber->holdsRoot ? null : self::hash($fiber->ownHtml[$fiber->pass] ?? '')]
+                : [$parent, $tree->shape->hashOf($id)];
+            if (null !== $fiber ? [] !== $fiber->contexts : $tree->shape->isConsumer($id)) {
+                $fibers[$id][] = true;
+            }
         }
 
         return new self($fibers);
@@ -73,7 +84,12 @@ final class TreeShape
         $fibers = [];
         $ancestors = [];
         foreach (explode(',', $data) as $entry) {
-            // 8 characters of id, 8 characters of hash or none, then the depth (8 digits or less).
+            // 8 characters of id, 8 characters of hash or none, the depth (8 digits or less), then
+            // `c` for a consumer.
+            $consumer = str_ends_with($entry, self::CONSUMER);
+            if ($consumer) {
+                $entry = substr($entry, 0, -1);
+            }
             $length = \strlen($entry);
             $hash = $length > 16 ? substr($entry, 8, 8) : null;
             $depth = substr($entry, null !== $hash ? 16 : 8);
@@ -82,7 +98,7 @@ final class TreeShape
                 return new self();
             }
             $depth = (int) $depth;
-            $fibers[$id] = [$ancestors[$depth - 1] ?? null, $hash];
+            $fibers[$id] = $consumer ? [$ancestors[$depth - 1] ?? null, $hash, true] : [$ancestors[$depth - 1] ?? null, $hash];
             $ancestors = \array_slice($ancestors, 0, $depth);
             $ancestors[] = $id;
         }
@@ -118,6 +134,30 @@ final class TreeShape
     public function hashOf(string $id): ?string
     {
         return $this->fibers[$id][1] ?? null;
+    }
+
+    /** Whether a fiber read a context in the last render. */
+    public function isConsumer(string $id): bool
+    {
+        return $this->fibers[$id][2] ?? false;
+    }
+
+    /**
+     * Whether a fiber is a consumer or has one in its subtree, in the last render: a change of a
+     * context above it must render it (see Phem\Rendering\UpdateScope).
+     */
+    public function leadsToConsumer(string $id): bool
+    {
+        if (null === $this->toConsumers) {
+            $this->toConsumers = [];
+            foreach (array_keys($this->fibers) as $fiber) {
+                for ($current = $this->isConsumer($fiber) ? $fiber : null; null !== $current && !isset($this->toConsumers[$current]); $current = $this->parentOf($current)) {
+                    $this->toConsumers[$current] = true;
+                }
+            }
+        }
+
+        return isset($this->toConsumers[$id]);
     }
 
     /** The id of the parent of a fiber in the last render, or null for the page or an unknown fiber. */
@@ -176,7 +216,7 @@ final class TreeShape
         if (1 !== preg_match('/^'.self::FIBER_PREFIX.'([0-9a-f]{12})$/', $id, $m)) {
             throw new \LogicException(\sprintf('The fiber id "%s" is not an id of Fiber::idOf().', $id));
         }
-        $entries[] = self::toBase64((string) hex2bin($m[1])).$this->hashOf($id).$depth;
+        $entries[] = self::toBase64((string) hex2bin($m[1])).$this->hashOf($id).$depth.($this->isConsumer($id) ? self::CONSUMER : '');
         foreach ($this->childrenOf($id) as $child) {
             $this->encodeFrom($child, $depth + 1, $entries);
         }
@@ -193,7 +233,7 @@ final class TreeShape
     }
 
     /**
-     * @param array<string, array{0: string|null, 1: string|null}> $fibers
+     * @param array<string, array{0: string|null, 1: string|null, 2?: true}> $fibers
      *
      * @return array<string, list<string>>
      */

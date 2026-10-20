@@ -53,6 +53,24 @@ final class Fiber
      * around the root element, so it has no `<phem-c>` and the events do not update it.
      */
     public bool $holdsRoot = false;
+    /**
+     * The contexts that the fiber read in this pass: type => the id of the provider fiber (see
+     * ContextResolver). A fiber that read a context is a consumer: TreeShape marks it.
+     *
+     * @var array<class-string, string>
+     */
+    public array $contexts = [];
+    /**
+     * The contexts that the fiber provided in the pass `$providedPass`: type => value.
+     *
+     * @var array<class-string, mixed>
+     */
+    public array $provided = [];
+    public int $providedPass = 0;
+    /** The fiber provides a context that changed in this pass: its consumers render (see UpdateScope). */
+    public bool $changesContext = false;
+    /** The fiber rendered in the second pass of an event only because a context above it changed. */
+    public bool $propagated = false;
     /** The inner HTML of the last render. */
     public string $html = '';
     /**
@@ -85,6 +103,8 @@ final class Fiber
         $this->pass = $pass;
         $this->kept = false;
         $this->holdsRoot = false;
+        $this->contexts = [];
+        $this->changesContext = false;
         $this->children = [];
         $this->childIndexes = [];
     }

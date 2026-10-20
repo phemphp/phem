@@ -2,7 +2,7 @@
 //! function that contains each markup literal. It is not a PHP parser; it reads only the
 //! declarations that the compiler needs.
 
-use crate::{Kind, ATTR_COMPONENT, ATTR_PAGE, ATTR_PATH, ATTR_PROP, ATTR_ROUTE, ATTR_STATE};
+use crate::{Kind, ATTR_COMPONENT, ATTR_CONTEXT, ATTR_PAGE, ATTR_PATH, ATTR_PROP, ATTR_PROVIDE, ATTR_ROUTE, ATTR_STATE};
 use phemc_syntax::php::{Lexed, TokKind, Token};
 use phemc_syntax::Span;
 use std::collections::HashMap;
@@ -22,11 +22,15 @@ pub struct FileInfo {
     pub routes: Vec<RouteDecl>,
     /// `export default` keywords (not PHP; the compiler reports them).
     pub export_defaults: Vec<Span>,
-    /// Attributes with a known short name (`Page`, `Route`, `Component`, `State`, `Prop`, `Path`) that resolve to
-    /// another class: (short name, expected name, resolved name, span).
+    /// Attributes with a known short name (`Page`, `Route`, `Component`, `State`, `Prop`, `Path`,
+    /// `Context`, `Provide`) that resolve to another class: (short name, expected name, resolved
+    /// name, span).
     pub foreign_attrs: Vec<(String, &'static str, String, Span)>,
     /// For each markup literal (by index), the function or method that contains it.
     pub markup_scopes: Vec<MarkupScope>,
+    /// For each markup literal (by index), whether it is the value of a `return` statement:
+    /// `return <div />;` or `return (<div />);`.
+    pub returned_markups: Vec<bool>,
 }
 
 impl FileInfo {
@@ -94,6 +98,12 @@ pub struct Param {
     pub promoted: bool,
     pub promoted_public: bool,
     pub promoted_private: bool,
+    /// The attribute names of the parameter, as written.
+    pub attrs: Vec<(String, Span)>,
+    /// `#[Context]` on a parameter of a function component: a context, not a prop.
+    pub is_context: bool,
+    /// The variable name.
+    pub span: Span,
 }
 
 #[derive(Clone, Debug)]
@@ -119,6 +129,10 @@ pub struct Class {
     /// A parent class or a trait is not in the sources (a `.php` file, a library), so the class
     /// can have more members than the compiler sees.
     pub open: bool,
+    /// The interfaces that the class implements, resolved.
+    pub interfaces: Vec<String>,
+    /// `#[Provide]` on the class: the component provides itself as a context.
+    pub provides_self: bool,
 }
 
 impl Class {
@@ -149,6 +163,10 @@ pub struct Prop {
     /// A promoted constructor parameter: a service that the container injects, not a prop.
     pub is_promoted: bool,
     pub has_default: bool,
+    /// `#[Context]`: the property gets the context of its type.
+    pub is_context: bool,
+    /// `#[Provide]`: the property is a context for the components below.
+    pub is_provide: bool,
     pub span: Span,
 }
 
@@ -236,6 +254,10 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                         let (mut f, end) = parse_function(&toks, i, &info.namespace);
                         let attrs = std::mem::take(&mut attrs);
                         check_attrs(&mut info, &attrs);
+                        for p in &mut f.params {
+                            check_attrs(&mut info, &p.attrs);
+                            p.is_context = p.attrs.iter().any(|(a, _)| info.resolve_class(a) == ATTR_CONTEXT);
+                        }
                         // Only a function with `#[Component]` is a component: the other functions
                         // of the file are plain PHP functions.
                         if attrs.iter().any(|(a, _)| info.resolve_class(a) == ATTR_COMPONENT) {
@@ -307,9 +329,21 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
         })
         .collect();
 
-    // A component function whose body is only `return <markup>;` is a template component.
+    let mut returned = vec![false; lexed.markups.len()];
+    for (k, t) in toks.t.iter().enumerate() {
+        if let TokKind::Markup(index) = t.kind {
+            let before = if k >= 1 && toks.is_op(k - 1, "(") { k.checked_sub(2) } else { k.checked_sub(1) };
+            if let (Some(b), Some(slot)) = (before, returned.get_mut(index)) {
+                *slot = toks.is_word(b, "return");
+            }
+        }
+    }
+    info.returned_markups = returned;
+
+    // A component function whose body is only `return <markup>;` is a template component. A
+    // function with a `#[Context]` parameter needs a fiber for the lookup: it is not one.
     for f in &mut info.functions {
-        if f.component_kind == Some(Kind::Function) {
+        if f.component_kind == Some(Kind::Function) && !f.params.iter().any(|p| p.is_context) {
             f.template_markup = template_body(&toks, f.body);
             if f.template_markup.is_some() {
                 f.component_kind = Some(Kind::Template);
@@ -497,13 +531,26 @@ fn parse_params(toks: &Toks, from: usize, to: usize) -> Vec<Param> {
             }
             j += 1;
         }
-        let mut p = Param { name: String::new(), ty: String::new(), default: None, variadic: false, promoted: false, promoted_public: false, promoted_private: false };
+        let mut p = Param {
+            name: String::new(),
+            ty: String::new(),
+            default: None,
+            variadic: false,
+            promoted: false,
+            promoted_public: false,
+            promoted_private: false,
+            attrs: vec![],
+            is_context: false,
+            span: Span::default(),
+        };
         let mut ty_start: Option<usize> = None;
         let mut k = i;
         while k < j {
             let t = toks.t[k];
             if t.kind == TokKind::AttrOpen {
-                k = toks.matching(k) + 1;
+                let end = toks.matching(k);
+                p.attrs.extend(attr_names(toks, k + 1, end));
+                k = end + 1;
                 continue;
             }
             let text = toks.text(k);
@@ -514,6 +561,7 @@ fn parse_params(toks: &Toks, from: usize, to: usize) -> Vec<Param> {
                 p.promoted_private |= lower == "private";
             } else if t.kind == TokKind::Var {
                 p.name = text[1..].to_string();
+                p.span = t.span;
                 if let Some(s) = ty_start {
                     p.ty = toks.src[toks.t[s].span.start..toks.t[k - 1].span.end].replace("...", "").replace('&', "").trim().to_string();
                 }
@@ -558,6 +606,8 @@ fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
             "State" => ATTR_STATE,
             "Prop" => ATTR_PROP,
             "Path" => ATTR_PATH,
+            "Context" => ATTR_CONTEXT,
+            "Provide" => ATTR_PROVIDE,
             _ => continue,
         };
         let resolved = info.resolve_class(a);
@@ -573,15 +623,23 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
     let name_span = toks.t[at + 1].span;
     let mut j = at + 2;
     let mut parent = None;
+    let mut interfaces = vec![];
+    let mut in_implements = false;
     while j < toks.t.len() && !toks.is_op(j, "{") {
         if toks.is_word(j, "extends") && toks.t.get(j + 1).is_some_and(|x| x.kind == TokKind::Ident) {
             parent = Some(info.resolve_class(toks.text(j + 1)));
+            in_implements = false;
+        } else if toks.is_word(j, "implements") {
+            in_implements = true;
+        } else if in_implements && toks.t[j].kind == TokKind::Ident {
+            interfaces.push(info.resolve_class(toks.text(j)));
         }
         j += 1;
     }
     let close = toks.matching(j);
     // A `#[Page]` class is a component too.
     let is_component = attrs.iter().any(|a| matches!(info.resolve_class(a).as_str(), ATTR_COMPONENT | ATTR_PAGE));
+    let provides_self = attrs.iter().any(|a| info.resolve_class(a) == ATTR_PROVIDE);
     let mut class = Class {
         fqn: qualify(&info.namespace, &name),
         name,
@@ -596,6 +654,8 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
         inherited_props: vec![],
         inherited_methods: vec![],
         open: false,
+        interfaces,
+        provides_self,
     };
 
     let mut i = j + 1;
@@ -656,6 +716,8 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
                         is_rest: false,
                         is_promoted: true,
                         has_default: p.default.is_some(),
+                        is_context: false,
+                        is_provide: false,
                         span: m.name_span,
                     });
                 }
@@ -691,6 +753,8 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
                 is_rest: member_rest.iter().any(|a| info.resolve_class(a) == ATTR_PROP),
                 is_promoted: false,
                 has_default,
+                is_context: has_attr(ATTR_CONTEXT),
+                is_provide: has_attr(ATTR_PROVIDE),
                 span: t.span,
             });
             while i < close && !toks.is_op(i, ";") {

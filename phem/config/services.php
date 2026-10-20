@@ -30,11 +30,13 @@ use Phem\Http\TurboStreams;
 use Phem\Manifest\Manifest;
 use Phem\Manifest\SourceMap;
 use Phem\Metadata\ComponentMetadata;
+use Phem\Metadata\ContextMetadata;
 use Phem\Path\EntityPathConverter;
 use Phem\Path\PathResolver;
 use Phem\Path\ScalarPathConverter;
 use Phem\Rendering\ClassComponentRenderer;
 use Phem\Rendering\ContainerComponentFactory;
+use Phem\Rendering\ContextResolver;
 use Phem\Rendering\ErrorBoundaryRenderer;
 use Phem\Rendering\EventRenderer;
 use Phem\Rendering\FunctionComponentRenderer;
@@ -69,6 +71,9 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.metadata', ComponentMetadata::class)
         ->set('phem.prop_binder', PropBinder::class)
             ->args([service('phem.metadata')])
+        ->set('phem.context_metadata', ContextMetadata::class)
+        ->set('phem.context_resolver', ContextResolver::class)
+            ->args([service('phem.context_metadata')])
         ->set('phem.state_accessor', StateAccessor::class)
             ->args([service('phem.metadata')])
         ->set('phem.bound_values', BoundValues::class)
@@ -104,7 +109,7 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.component_factory', ContainerComponentFactory::class)
             ->args([abstract_arg('class components, set by ComponentPass')])
         ->set('phem.component_renderer.class', ClassComponentRenderer::class)
-            ->args([service('phem.component_factory'), service('phem.prop_binder'), service('phem.state_accessor'), service('phem.url_query'), service('phem.metadata')])
+            ->args([service('phem.component_factory'), service('phem.prop_binder'), service('phem.state_accessor'), service('phem.url_query'), service('phem.metadata'), service('phem.context_resolver')])
             ->tag('phem.component_renderer')
         // Before the class renderer: <Suspense> is a built-in class component.
         ->set('phem.component_renderer.suspense', SuspenseRenderer::class)
@@ -115,7 +120,7 @@ return static function (ContainerConfigurator $container): void {
             ->args([service_closure('phem.renderer'), service('phem.prop_binder'), service('logger')->nullOnInvalid()])
             ->tag('phem.component_renderer', ['priority' => 10])
         ->set('phem.component_renderer.function', FunctionComponentRenderer::class)
-            ->args([service('phem.prop_binder')])
+            ->args([service('phem.prop_binder'), service('phem.context_resolver')])
             ->tag('phem.component_renderer')
         ->set('phem.template_renderer', TemplateComponentRenderer::class)
             ->args([service('phem.prop_binder')])
@@ -129,6 +134,8 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.handler_invoker'),
                 service('phem.handler_fingerprint'),
                 service('phem.metadata'),
+                null,
+                service('phem.context_resolver'),
             ])
             ->tag('kernel.reset', ['method' => 'reset'])
         ->alias(Renderer::class, 'phem.renderer')

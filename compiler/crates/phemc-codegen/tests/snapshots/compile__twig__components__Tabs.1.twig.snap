@@ -1,0 +1,5 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<button role="tab" {{ phem_attr('aria-selected', tabs.active == name) }} {{ phem_on('click', phem_method(tabs, 'select')) }} {{ phem_attr('value', name) }}>{{ label }}</button>

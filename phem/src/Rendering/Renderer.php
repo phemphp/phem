@@ -52,6 +52,7 @@ final class Renderer implements ResetInterface
         private readonly HandlerFingerprint $fingerprints = new HandlerFingerprint(),
         private readonly ComponentMetadata $metadata = new ComponentMetadata(),
         private readonly ?RenderProfiler $profiler = null,
+        private readonly ContextResolver $contexts = new ContextResolver(),
     ) {
     }
 
@@ -296,6 +297,8 @@ final class Renderer implements ResetInterface
         try {
             $slots = $this->slots($fiber);
             $out = null !== $renderer ? $renderer->render($fiber, $slots) : ($slots['children'] ?? null);
+            // The markup is not rendered yet: the children read the contexts of this pass.
+            $this->contexts->provide($fiber);
             $html = $this->markup->html($out);
         } finally {
             $tree->pop();

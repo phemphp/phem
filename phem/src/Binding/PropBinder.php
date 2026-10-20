@@ -39,7 +39,8 @@ final class PropBinder
      */
     public function arguments(string $fqcn, array $props, array $slots = []): array
     {
-        $params = $this->metadata->parameters($fqcn);
+        // A #[Context] parameter is not a prop: the context gives it (see ContextResolver).
+        $params = array_filter($this->metadata->parameters($fqcn), static fn (Parameter $p): bool => !$p->context);
         $variadic = array_any($params, static fn (Parameter $p): bool => $p->variadic);
         $args = [];
         foreach ($props + $slots as $name => $value) {
@@ -71,7 +72,7 @@ final class PropBinder
      */
     public function templateContext(string $fqcn, array $props, array $slots = []): array
     {
-        $params = $this->metadata->parameters($fqcn);
+        $params = array_filter($this->metadata->parameters($fqcn), static fn (Parameter $p): bool => !$p->context);
         $vars = [];
         $rest = [];
         foreach ($this->arguments($fqcn, $props, $slots) as $name => $value) {

@@ -201,7 +201,8 @@ type, completion, go to definition, hover, and outline. See
 | `useState` | a `#[State]` property of a `#[Component]` class; a method changes it |
 | initial state from props or data | `mount()`, called when the component has no state yet |
 | a form `onSubmit` handler | a Symfony form: `$form->handleRequest($e->request)` in the handler |
-| `useContext`, imported modules | services, injected in the constructor |
+| `createContext` + `useContext` | `#[Provide]` on a class component (or a property), and `#[Context]` on a property or a parameter |
+| imported modules | services, injected in the constructor |
 | props, `children`, lifting state up | parameters or `#[Prop]` properties, `?Html $children`, the same pattern |
 
 ## Repository layout
@@ -230,13 +231,13 @@ finds an error:
 | Code | Meaning |
 |---|---|
 | E001–E006 | Syntax: unclosed or mismatched tags, a void element that is not self-closed, more than one root, a `<?php` open tag instead of `<?phpm` |
-| E010–E014 | Unknown component (also a function without `#[Component]`), unknown or missing prop, children or slot not accepted, duplicate component (also a component with the name of a built-in component, `Phem\Root`) |
+| E010–E015 | Unknown component (also a function without `#[Component]`), unknown or missing prop, children or slot not accepted, duplicate component (also a component with the name of a built-in component, `Phem\Root`), a required context with no provider above the component |
 | E020 | A call to a React Hook (`Phem\useState`, ...): Phem keeps state in `#[Component]` classes |
 | E030–E033 | Undefined variable in markup, markup in an unsupported expression, invalid attribute, invalid `phem:bind` (not a `#[State]` property, not a form field, or a type that does not take the value of the field) |
-| E040–E043 | Class component without `render()`, readonly `#[State]` property, `#[Prop]` property that is not public, static, or `#[State]`, a second `#[Prop(rest: true)]` property or one whose type does not accept an array |
+| E040–E044 | Class component without `render()`, readonly `#[State]` property, `#[Prop]` property that is not public, static, or `#[State]`, a second `#[Prop(rest: true)]` property or one whose type does not accept an array, a `#[Context]` or `#[Provide]` type that is not one class, interface or enum (or a `#[Context]` property that is static, readonly, a prop or state) |
 | E050, E052 | `export default` (not PHP; use `#[Page]`), `#[Page]` or `#[Route]` on a function, or on a class that is not a component |
 | W001–W003 | A handler is called instead of passed; a list item without `key`; an event that the browser does not send (`onMouseEnter`) |
-| W004 | `#[Page]`, `#[Route]`, `#[Component]`, `#[State]`, `#[Prop]` or `#[Path]` without its `use` import (`Phem\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
+| W004 | `#[Page]`, `#[Route]`, `#[Component]`, `#[State]`, `#[Prop]`, `#[Path]`, `#[Context]` or `#[Provide]` without its `use` import (`Phem\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
 | W005 | a `<title>` outside `<head>` and `<svg>`: the document component prints the title, and a page gives it with `<Document:title>` |
 | W006 | `phem:debounce` or `phem:throttle` on an element with no handler |
 | W007 | `phem:live` on an element with no `phem:bind` |

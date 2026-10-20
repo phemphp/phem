@@ -22,9 +22,10 @@ use Phem\State\UrlQuery;
 
 /**
  * Renders a class component. The first time a fiber renders in a request, the factory makes its
- * instance, and the props go into it. Then the state that the browser sent back is restored;
+ * instance, and the props and the contexts go into it (see ContextResolver). Then the state that the browser sent back is restored;
  * without one, `mount()` initializes it, and the query string of the page request sets the
- * #[Url] properties (see Phem\Attribute\Url). Each render writes the props again and calls `render()`.
+ * #[Url] properties (see Phem\Attribute\Url). Each render writes the props and the contexts again
+ * and calls `render()`.
  * When a readonly prop changes, a new instance replaces the old one and keeps its state. A
  * readonly slot or markup counts as a change in each render.
  */
@@ -36,6 +37,7 @@ final class ClassComponentRenderer implements ComponentRenderer
         private readonly StateAccessor $state = new StateAccessor(),
         private readonly UrlQuery $url = new UrlQuery(),
         private readonly ComponentMetadata $metadata = new ComponentMetadata(),
+        private readonly ContextResolver $contexts = new ContextResolver(),
     ) {
     }
 
@@ -50,6 +52,7 @@ final class ClassComponentRenderer implements ComponentRenderer
         if (null === $component) {
             $component = $fiber->instance = $this->factory->create($fiber->fqcn);
             $this->props->assign($component, $fiber->props, $slots);
+            $this->contexts->assign($component, $fiber);
             if (null !== $fiber->restored) {
                 $this->state->restore($component, $fiber->restored);
             } else {
@@ -64,12 +67,14 @@ final class ClassComponentRenderer implements ComponentRenderer
             $state = $this->state->export($component);
             $component = $fiber->instance = $this->factory->create($fiber->fqcn);
             $this->props->assign($component, $fiber->props, $slots);
+            $this->contexts->assign($component, $fiber);
             if (null === $fiber->restored && method_exists($component, 'mount')) {
                 $component->mount();
             }
             $this->state->restore($component, $state);
         } else {
             $this->props->assign($component, $fiber->props, $slots);
+            $this->contexts->assign($component, $fiber);
             if ($this->metadata->mountsEachRender($fiber->fqcn) && method_exists($component, 'mount')) {
                 // No state in the browser: mount() reads its data again in each render (for
                 // example after a handler of the same event changed it).

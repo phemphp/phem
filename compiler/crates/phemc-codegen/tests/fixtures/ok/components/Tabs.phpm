@@ -1,0 +1,55 @@
+<?phpm
+
+namespace App\Components;
+
+use Phem\Attribute\{Component, Context, Prop, Provide, State};
+use Phem\{Event, Html, Node};
+
+// A compound component: Tabs provides itself, and each Tab reads it.
+#[Component, Provide]
+final class Tabs
+{
+    #[State] public string $active = 'general';
+    #[Prop] public ?Html $children = null;
+
+    public function select(Event $e): void
+    {
+        $this->active = (string) $e->value;
+    }
+
+    public function render(): Node
+    {
+        return <div role="tablist">{{ children }}</div>;
+    }
+}
+
+// A #[Context] parameter is not a prop, and the component is not a template component.
+#[Component]
+function Tab(string $name, string $label, #[Context] Tabs $tabs): Node
+{
+    return <button role="tab" aria-selected={{ tabs.active == name }} onClick={{ tabs.select }} value={{ name }}>{{ label }}</button>;
+}
+
+// A class consumer with an optional context.
+#[Component]
+final class TabCount
+{
+    #[Context] public ?Tabs $tabs = null;
+
+    public function render(): Node
+    {
+        return <small>{{ tabs ? tabs.active : 'none' }}</small>;
+    }
+}
+
+#[Component]
+function Settings(): Node
+{
+    return (
+        <Tabs>
+            <Tab name="general" label="General" />
+            <Tab name="security" label="Security" />
+            <TabCount />
+        </Tabs>
+    );
+}

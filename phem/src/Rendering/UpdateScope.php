@@ -29,6 +29,11 @@ use Phem\State\TreeShape;
  * and when it is a class component with no #[State] and a mount(): mount() runs each time that
  * it renders, so its output can depend on services.
  *
+ * A context propagates, as in React: when a provider above a child renders in this pass and its
+ * context changed (see ContextResolver::provide()), the child renders when it read a context in
+ * the last render, or has such a fiber in its subtree (see TreeShape::leadsToConsumer()). So a
+ * consumer under a kept fiber renders too, with the fibers on the path to it.
+ *
  * @internal
  */
 final class UpdateScope implements RenderScope
@@ -44,10 +49,31 @@ final class UpdateScope implements RenderScope
 
     public function renders(Fiber $fiber, ?FiberInputs $previous): bool
     {
-        return isset($this->dirty[$fiber->id])
+        $fiber->propagated = false;
+        if (isset($this->dirty[$fiber->id])
             || !$this->before->has($fiber->id)
             || null === $previous
             || $this->metadata->mountsEachRender($fiber->fqcn)
-            || !$this->inputs->same($previous, $fiber->inputs());
+            || !$this->inputs->same($previous, $fiber->inputs())) {
+            return true;
+        }
+
+        return $fiber->propagated = $this->propagates($fiber);
+    }
+
+    /** Whether a provider above the fiber, in the fibers that render in this pass, changed its context. */
+    private function propagates(Fiber $fiber): bool
+    {
+        if (!$this->before->leadsToConsumer($fiber->id)) {
+            return false;
+        }
+        $pass = $fiber->parent->pass ?? null;
+        for ($p = $fiber->parent; null !== $p && $p->pass === $pass && !$p->kept; $p = $p->parent) {
+            if ($p->changesContext) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

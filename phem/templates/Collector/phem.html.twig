@@ -145,6 +145,7 @@
                             {% if collector.event %}
                                 A component with no time in a pass did not render in it: the browser keeps its HTML.
                                 A changed component is morphed in the browser (a Turbo Stream).
+                                A propagated component rendered only because a context above it changed.
                             {% endif %}
                         </p>
                         <table id="phem-fibers">
@@ -155,6 +156,7 @@
                                         <th scope="col" class="num-col">{{ pass.label }}</th>
                                     {% endfor %}
                                     {% if collector.event %}<th scope="col">Changed</th>{% endif %}
+                                    <th scope="col">Context</th>
                                     <th scope="col">State</th>
                                 </tr>
                             </thead>
@@ -172,8 +174,15 @@
                                             </td>
                                         {% endfor %}
                                         {% if collector.event %}
-                                            <td class="font-normal">{{ fiber.changed ? '<span class="badge badge-success">changed</span>' }}</td>
+                                            <td class="font-normal">
+                                                {{ fiber.changed ? '<span class="badge badge-success">changed</span>' }}
+                                                {{ fiber.propagated ? '<span class="badge badge-warning">propagated</span>' }}
+                                            </td>
                                         {% endif %}
+                                        <td class="font-normal">
+                                            {% for type in fiber.provides %}<div>provides {{ type }}</div>{% endfor %}
+                                            {% for type, provider in fiber.reads %}<div>reads {{ type }}{{ provider ? ' from <' ~ provider ~ '>' }}</div>{% endfor %}
+                                        </td>
                                         <td class="font-normal">{{ fiber.state ? profiler_dump(fiber.state, maxDepth=1) : '' }}</td>
                                     </tr>
                                 {% endfor %}

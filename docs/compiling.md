@@ -311,10 +311,11 @@ each event:
 
 - the page, the handler and its source, and the outcome (rendered, redirect, reload, or a
   rate limit);
-- the component tree, with the state of each component and its render time without its
-  children;
+- the component tree, with the state of each component, its render time without its
+  children, and the contexts that it provides and reads (with the provider);
 - the passes of an event: the components that rendered before the handler, the components that
-  rendered after it, and the components that changed (the browser morphs them);
+  rendered after it, the components that rendered only because a context above them changed
+  (propagated), and the components that changed (the browser morphs them);
 - the size of the signed state, and whether the state came from the state cache;
 - the bound values, the browser events of the handler, and the warnings of the dev-mode check;
 - the Doctrine transaction of the handler: commit or rollback, and its time.

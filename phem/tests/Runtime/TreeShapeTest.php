@@ -56,6 +56,30 @@ final class TreeShapeTest extends TestCase
         self::assertSame(1, preg_match('/^[A-Za-z0-9_-]{8}$/', $a), 'the hash has 8 base64url characters');
     }
 
+    public function testShapeMarksTheConsumers(): void
+    {
+        $a = TreeShape::hash('a');
+        $fibers = [
+            'phem00000000000a' => [null, null],
+            'phem00000000000b' => ['phem00000000000a', $a],
+            'phem00000000000c' => ['phem00000000000b', $a, true],
+            'phem00000000000d' => ['phem00000000000a', null],
+        ];
+
+        $encoded = new TreeShape($fibers)->encode();
+
+        self::assertSame('AAAAAAAK0,AAAAAAAL'.$a.'1,AAAAAAAM'.$a.'2c,AAAAAAAN1', $encoded, 'a consumer ends with "c"');
+        $shape = TreeShape::decode($encoded);
+        self::assertSame($fibers, $shape->fibers);
+        self::assertTrue($shape->isConsumer('phem00000000000c'));
+        self::assertFalse($shape->isConsumer('phem00000000000b'));
+        self::assertTrue($shape->leadsToConsumer('phem00000000000a'), 'an ancestor of a consumer');
+        self::assertTrue($shape->leadsToConsumer('phem00000000000b'));
+        self::assertTrue($shape->leadsToConsumer('phem00000000000c'));
+        self::assertFalse($shape->leadsToConsumer('phem00000000000d'));
+        self::assertSame([], TreeShape::decode('AAAAAAAK0c,AAAAAAALc')->fibers, 'the mark comes after the depth');
+    }
+
     public function testShapeWithAnotherFormIsEmpty(): void
     {
         foreach ([

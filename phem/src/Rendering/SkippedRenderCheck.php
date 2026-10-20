@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Rendering;
 
+use Phem\Attribute\Context;
 use Phem\Attribute\Path;
 use Phem\Attribute\Prop;
 use Phem\Attribute\State;
@@ -74,7 +75,7 @@ final class SkippedRenderCheck
             return '' !== $fqcn;
         }
         foreach (new \ReflectionClass($fqcn)->getProperties() as $p) {
-            if (!$p->isStatic() && !$p->isReadOnly() && [] === $p->getAttributes(Prop::class) && [] === $p->getAttributes(Path::class) && [] === $p->getAttributes(State::class)) {
+            if (!$p->isStatic() && !$p->isReadOnly() && [] === $p->getAttributes(Prop::class) && [] === $p->getAttributes(Path::class) && [] === $p->getAttributes(State::class) && [] === $p->getAttributes(Context::class)) {
                 return false;
             }
         }

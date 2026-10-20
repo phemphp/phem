@@ -4,6 +4,7 @@
 //! it generates each file. Markup literals become Twig templates. In the PHP code, each markup
 //! literal becomes a value, `new \Phem\Element(template, vars)`, that the runtime renders.
 
+mod contexts;
 mod lower;
 mod vars;
 
@@ -97,8 +98,12 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
         }
     });
 
-    let (registry, dup) = phemc_analyze::registry(parsed.iter().map(|p| &p.info));
+    let (registry, mut dup) = phemc_analyze::registry(parsed.iter().map(|p| &p.info));
     let bases = base_files(&parsed);
+    // E015: the uses of the components across the files, for the providers of the contexts.
+    let uses: Vec<contexts::Use> = parsed.iter().filter_map(|p| p.lexed.as_ref().map(|l| contexts::uses(&p.info, l))).flatten().collect();
+    let infos: Vec<&FileInfo> = parsed.iter().map(|p| &p.info).collect();
+    dup.extend(contexts::check(&registry, &infos, &uses));
 
     // Pass 2: generate each file.
     let results: Vec<(Option<FileOutput>, FileDiagnostics, Vec<String>)> = parsed

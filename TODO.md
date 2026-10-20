@@ -21,9 +21,6 @@ Talk about each item before its implementation. The open questions are a start, 
 
 - [ ] **Streams** (section 3). The items of a stream are not in the state. How does a later
       event render the list, and how does the "before/after" comparison see it?
-- [ ] **Context** (section 4). React uses context for UI values and Phem uses services for the
-      rest. Where is the line? Can `phemc` check that a provider is above each consumer, also
-      across `.phpm` files?
 - [ ] **Real-time push** (section 4). The server cannot re-render a page alone. Is a Mercure
       signal + a normal event from the browser enough? How do many signals in a short time
       coalesce? Who can subscribe to a topic (private topics, JWT)?
@@ -131,15 +128,36 @@ loads with its own event. The test helper has `->load()`. The Dashboard example 
 
 ## 4. State and communication
 
-### [ ] Context (provide and inject) — P2
+### [x] Context (provide and read) — P2
 
 Props pass data one level at a time. Deep trees need "prop drilling".
 
+Done: a class component provides a context with `#[Provide]`: on a property (its value), or on
+the class (the component itself, for compound components such as `<Tabs>` and `<Tab>`). A
+component below reads it with `#[Context]`, on a property or on a parameter of a function
+component. The declared type is the key (one class, interface or enum), and the lookup takes the
+nearest provider above, through the fibers (`ContextResolver`). Context is for a value that
+depends on the position in the tree; a value that is the same for the full request stays a
+service. A required context with no provider throws, with the path of the components. `phemc`
+reports E015 when a chain of placed uses from a page has no provider (it never reports a false
+error: a tag in the slot of another component stops the check), and E044 for a type that is not
+a key. The context is set after the props and before the state or `mount()`, it is not in the
+state, and it counts as a prop for the purity rule. After an event, the consumers render when
+their provider changes, also under a kept component: the tree shape marks the consumers, and
+`UpdateScope` renders the paths to them, as React does. An enum or a readonly object changes only
+when its value changes; the component itself or a mutable object changes each time that the
+provider renders. A member path in a handler (`onClick={{ tabs.select }}`) is the method of the
+object (`phem_method()`). The profiler shows the contexts of each component, and the components
+that rendered because of a context. The Settings example uses it. See
+[docs/phpm-syntax.md](docs/phpm-syntax.md#context).
+
 - **Best peer:** React `createContext` + `useContext`. LC 3.1 `provide()` / `inject()` for Twig
   components.
-- **Proposal:** services already replace module imports. For UI values (the theme, the current
-  form, the locale of a section), add a provider component and an `#[Inject]` (or
-  `#[Context]`) property. The compiler checks that a provider is above the consumer.
+- **Later:** the compiler follows `{{ children }}` and the named slots into the component that
+  prints them (`<Layout><Tab /></Layout>`, where `Layout` returns `<Tabs>{{ children }}</Tabs>`),
+  so it finds more missing providers. The tree shape keeps the type of each consumer, so a change
+  renders only the consumers of that type. The profiler dumps the context values (the same "safe
+  dump" problem as the props).
 
 ### [ ] Real-time push — P2
 

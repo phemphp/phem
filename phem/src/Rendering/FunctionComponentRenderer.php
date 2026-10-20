@@ -18,15 +18,18 @@ use Phem\Manifest\ComponentDefinition;
 use Phem\Manifest\ComponentKind;
 
 /**
- * Renders a function component: a call with the props (and slots) as named arguments.
+ * Renders a function component: a call with the props (and slots) and the contexts (see
+ * ContextResolver) as named arguments.
  *
  * A template component is also a function. In a template, `{% component %}` renders it as
  * plain Twig (TemplateComponentRenderer); as the root of a page, its function renders here.
  */
 final class FunctionComponentRenderer implements ComponentRenderer
 {
-    public function __construct(private readonly PropBinder $props = new PropBinder())
-    {
+    public function __construct(
+        private readonly PropBinder $props = new PropBinder(),
+        private readonly ContextResolver $contexts = new ContextResolver(),
+    ) {
     }
 
     public function supports(ComponentDefinition $definition): bool
@@ -41,6 +44,6 @@ final class FunctionComponentRenderer implements ComponentRenderer
             throw new \LogicException(\sprintf('The function component "%s" is not loaded. Run `phemc build` again.', $function));
         }
 
-        return $function(...$this->props->arguments($function, $fiber->props, $slots));
+        return $function(...$this->props->arguments($function, $fiber->props, $slots), ...$this->contexts->arguments($function, $fiber));
     }
 }

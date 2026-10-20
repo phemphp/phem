@@ -226,7 +226,7 @@ final class PhemDataCollector extends DataCollector
     /**
      * The fibers of the page, from the page down.
      *
-     * @return list<array{id: string, fqcn: string|null, name: string|null, depth: int, renders: array<int, array{time: float, own: float}>, changed: bool, state: Data|null}>
+     * @return list<array{id: string, fqcn: string|null, name: string|null, depth: int, renders: array<int, array{time: float, own: float}>, changed: bool, state: Data|null, reads: array<string, string|null>, provides: list<string>, propagated: bool}>
      */
     public function getFibers(): array
     {
@@ -339,7 +339,7 @@ final class PhemDataCollector extends DataCollector
     /**
      * @param list<Tree> $trees
      *
-     * @return list<array{id: string, fqcn: string|null, name: string|null, depth: int, renders: array<int, array{time: float, own: float}>, changed: bool, state: Data|null}>
+     * @return list<array{id: string, fqcn: string|null, name: string|null, depth: int, renders: array<int, array{time: float, own: float}>, changed: bool, state: Data|null, reads: array<string, string|null>, provides: list<string>, propagated: bool}>
      */
     private function fibers(Tree $tree, array $trees, bool $event): array
     {
@@ -359,9 +359,16 @@ final class PhemDataCollector extends DataCollector
 
         $out = [];
         $depths = [];
-        foreach ($tree->page() as $id => [$parent]) {
+        foreach ($tree->page() as $id => [$parent, $rendered]) {
             $depth = $depths[$id] = null !== $parent ? ($depths[$parent] ?? -1) + 1 : 0;
             $fqcn = $names[$id] ?? null;
+            // The contexts of the last render of the fiber in this request (see ContextResolver).
+            $fiber = $tree->fiberById($id);
+            $reads = [];
+            foreach ($rendered->contexts ?? [] as $type => $provider) {
+                $providerFqcn = $tree->fiberById($provider)->fqcn ?? null;
+                $reads[ComponentName::short($type)] = null !== $providerFqcn ? ComponentName::short($providerFqcn) : null;
+            }
             $out[] = [
                 'id' => $id,
                 'fqcn' => $fqcn,
@@ -370,6 +377,9 @@ final class PhemDataCollector extends DataCollector
                 'renders' => $renders[$id] ?? [],
                 'changed' => isset($changed[$id]),
                 'state' => isset($states[$id]) ? $this->cloneVar($states[$id]) : null,
+                'reads' => $reads,
+                'provides' => null !== $fiber && $fiber->providedPass > 0 ? array_map(ComponentName::short(...), array_keys($fiber->provided)) : [],
+                'propagated' => $event && null !== $rendered && $rendered->propagated,
             ];
         }
 

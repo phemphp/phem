@@ -249,8 +249,10 @@ impl<'a> Lowerer<'a> {
                             let c = self.expr_code(x);
                             if takes_fn {
                                 self.check_handler(name, &c, x.span);
+                                format!("({})", handler_code(&c))
+                            } else {
+                                format!("({c})")
                             }
-                            format!("({c})")
                         }
                         _ if takes_fn => {
                             self.handler_not_function(name, *name_span);
@@ -601,6 +603,7 @@ impl<'a> Lowerer<'a> {
                         AttrValue::Expr(x) => {
                             let c = self.expr_code(x);
                             self.check_handler(name, &c, x.span);
+                            let c = handler_code(&c);
                             out.push_str(&format!("{ws}{{{{ phem_{}({c}) }}}}", &name[5..]));
                         }
                         _ => self.handler_not_function(name, *name_span),
@@ -624,6 +627,7 @@ impl<'a> Lowerer<'a> {
                         AttrValue::Expr(x) => {
                             let c = self.expr_code(x);
                             self.check_handler(name, &c, x.span);
+                            let c = handler_code(&c);
                             out.push_str(&format!("{ws}{{{{ phem_on('{event}', {c}) }}}}"));
                         }
                         _ => self.handler_not_function(name, *name_span),
@@ -699,7 +703,10 @@ impl<'a> Lowerer<'a> {
                         key = Some(v);
                         continue;
                     }
-                    if !def.rest && !def.open && !def.props.iter().any(|p| p == name) {
+                    if def.contexts.iter().any(|c| &c.name == name) {
+                        self.error(codes::UNKNOWN_PROP, format!("`{name}` of `<{}>` is a context, not a prop", e.name), *name_span).help =
+                            Some("a component above gives it: render the tag inside a component with `#[Provide]` for its type".into());
+                    } else if !def.rest && !def.open && !def.props.iter().any(|p| p == name) {
                         let list = if def.props.is_empty() { "none".to_string() } else { def.props.join(", ") };
                         self.error(codes::UNKNOWN_PROP, format!("`<{}>` has no prop `{name}`", e.name), *name_span).help =
                             Some(format!("its props are: {list}"));
@@ -1013,6 +1020,16 @@ const TIMINGS: &[&str] = &[DEBOUNCE, "phem:throttle"];
 const LISTENED_EVENTS: &[&str] = &["click", "dblclick", "input", "change", "submit", "keydown", "keyup", "focus", "blur", "focusin", "focusout"];
 
 /// `onClick` → `click`, `onDoubleClick` → `dblclick`.
+/// The Twig code of a handler. A member path (`tabs.select`) is the method of the object as a
+/// closure (`phem_method(tabs, 'select')`): in Twig, `tabs.select` calls the method.
+fn handler_code(code: &str) -> String {
+    let ident = |s: &str| s.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_') && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_');
+    match code.rsplit_once('.') {
+        Some((object, member)) if ident(member) && object.split('.').all(ident) => format!("phem_method({object}, {})", php_str(member)),
+        _ => code.to_string(),
+    }
+}
+
 fn event_name(attr: &str) -> Option<String> {
     let rest = attr.strip_prefix("on")?;
     if !rest.starts_with(|c: char| c.is_ascii_uppercase()) {

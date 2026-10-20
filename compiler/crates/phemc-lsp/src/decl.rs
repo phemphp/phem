@@ -1071,6 +1071,10 @@ fn components(parsed: &Parsed) -> Vec<Component> {
             doc: None,
         };
         for p in &f.params {
+            // A `#[Context]` parameter is not a prop: a component above gives it.
+            if has_attr(&p.attrs, "Context") {
+                continue;
+            }
             if p.variadic {
                 comp.rest = true;
             } else if p.name == "children" {

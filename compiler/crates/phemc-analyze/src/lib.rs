@@ -9,13 +9,17 @@ pub use scan::{scan, Class, FileInfo, Func, MarkupScope, Param, Prop, RouteDecl}
 
 use phemc_syntax::diag::codes;
 use phemc_syntax::php::Lexed;
-use phemc_syntax::Diagnostic;
+use phemc_syntax::{Diagnostic, Span};
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 pub const ATTR_COMPONENT: &str = "Phem\\Attribute\\Component";
 pub const ATTR_STATE: &str = "Phem\\Attribute\\State";
 pub const ATTR_PROP: &str = "Phem\\Attribute\\Prop";
+/// A property or a parameter that gets the context of its type from a component above.
+pub const ATTR_CONTEXT: &str = "Phem\\Attribute\\Context";
+/// A property (or a class) that provides a context to the components below.
+pub const ATTR_PROVIDE: &str = "Phem\\Attribute\\Provide";
 /// The route value attribute of a page property: the property is a prop, with no `#[Prop]`.
 pub const ATTR_PATH: &str = "Phem\\Attribute\\Path";
 /// The Phem page attribute: it exposes a class as a page (it extends `Route`). The class is a
@@ -72,6 +76,24 @@ pub struct ComponentDef {
     /// The props of type `Bound`: `phem:bind` on the tag of the component gives one of them.
     #[serde(skip)]
     pub bound: Vec<String>,
+    /// The `#[Context]` properties or parameters: they are not props.
+    #[serde(skip)]
+    pub contexts: Vec<ContextNeed>,
+    /// The types of the contexts that the class provides (`#[Provide]`), resolved.
+    #[serde(skip)]
+    pub provides: Vec<String>,
+}
+
+/// A `#[Context]` property or parameter of a component.
+#[derive(Clone, Debug)]
+pub struct ContextNeed {
+    pub name: String,
+    /// The type, resolved: the key of the context.
+    pub ty: String,
+    /// No default value, and the type does not accept null.
+    pub required: bool,
+    /// The property or the parameter, in the file of the component.
+    pub span: Span,
 }
 
 /// The template name of the markup literal `index` of a source file.
@@ -115,31 +137,45 @@ pub fn is_bound_type(file: &FileInfo, ty: &str) -> bool {
     !t.is_empty() && !t.contains('|') && file.resolve_class(t).eq_ignore_ascii_case(BOUND)
 }
 
+/// The type of a context, resolved: `?Theme` → `App\Theme`.
+pub fn context_type(file: &FileInfo, ty: &str) -> String {
+    file.resolve_class(ty.trim().trim_start_matches('?'))
+}
+
 /// The components that a scanned file declares.
 pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
     let mut out = Vec::new();
     for f in &file.functions {
         let Some(kind) = f.component_kind else { continue };
+        // A `#[Context]` parameter is not a prop.
+        let params: Vec<&Param> = f.params.iter().filter(|p| !p.is_context).collect();
         out.push(ComponentDef {
             fqcn: f.fqn.clone(),
             kind,
             file: file.rel.clone(),
             template: f.template_markup.map(|i| template_name(&file.rel, i)),
-            props: f.params.iter().filter(|p| !p.variadic).map(|p| p.name.clone()).collect(),
-            slots: f.params.iter().filter(|p| is_html_type(&p.ty)).map(|p| p.name.clone()).collect(),
-            required: f
-                .params
+            props: params.iter().filter(|p| !p.variadic).map(|p| p.name.clone()).collect(),
+            slots: params.iter().filter(|p| is_html_type(&p.ty)).map(|p| p.name.clone()).collect(),
+            required: params
                 .iter()
                 .filter(|p| p.default.is_none() && !p.variadic && !allows_null(&p.ty))
                 .map(|p| p.name.clone())
                 .collect(),
-            rest: f.params.iter().any(|p| p.variadic),
+            rest: params.iter().any(|p| p.variadic),
             open: false,
-            bound: f.params.iter().filter(|p| !p.variadic && is_bound_type(file, &p.ty)).map(|p| p.name.clone()).collect(),
+            bound: params.iter().filter(|p| !p.variadic && is_bound_type(file, &p.ty)).map(|p| p.name.clone()).collect(),
+            contexts: f
+                .params
+                .iter()
+                .filter(|p| p.is_context)
+                .map(|p| ContextNeed { name: p.name.clone(), ty: context_type(file, &p.ty), required: p.default.is_none() && !allows_null(&p.ty), span: p.span })
+                .collect(),
+            provides: vec![],
         });
     }
     for c in file.classes.iter().filter(|c| c.is_component) {
         let props: Vec<&Prop> = c.all_props().filter(|p| p.is_prop() && !p.is_rest).collect();
+        let provides = c.provides_self.then(|| c.fqn.clone()).into_iter().chain(c.all_props().filter(|p| p.is_provide).map(|p| context_type(file, &p.ty))).collect();
         out.push(ComponentDef {
             fqcn: c.fqn.clone(),
             kind: Kind::Class,
@@ -151,9 +187,35 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
             rest: c.all_props().any(|p| p.is_prop() && p.is_rest),
             open: c.open,
             bound: props.iter().filter(|p| is_bound_type(file, &p.ty)).map(|p| p.name.clone()).collect(),
+            contexts: c
+                .all_props()
+                .filter(|p| p.is_context)
+                .map(|p| ContextNeed { name: p.name.clone(), ty: context_type(file, &p.ty), required: !p.has_default && !allows_null(&p.ty), span: p.span })
+                .collect(),
+            provides,
         });
     }
     out
+}
+
+/// Why a type cannot be the key of a context, or None: the key is one class, interface or enum,
+/// nullable or not.
+fn bad_context_type(file: &FileInfo, ty: &str) -> Option<&'static str> {
+    const BUILTIN: &[&str] = &[
+        "string", "int", "float", "bool", "array", "iterable", "mixed", "object", "callable", "null", "void", "never", "false", "true", "self", "static", "parent",
+    ];
+    let t = ty.trim().trim_start_matches('?').trim();
+    if t.is_empty() {
+        Some("it has no type")
+    } else if t.contains('|') || t.contains('&') {
+        Some("a union or intersection type has no single key")
+    } else if BUILTIN.iter().any(|b| t.eq_ignore_ascii_case(b)) {
+        Some("a scalar, an array or a pseudo-type is not a key: use an enum or a value object")
+    } else if file.resolve_class(t).eq_ignore_ascii_case("Closure") {
+        Some("all closures have the same type: provide the object that has the handler")
+    } else {
+        None
+    }
 }
 
 /// Adds to each class the members of its parent classes and traits in the sources, so a class
@@ -269,8 +331,38 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
                     .with_help("the rest prop gets a hash of props: use `public array $attrs = [];`"),
             );
         }
+        for p in c.props.iter().filter(|p| p.is_context) {
+            if p.is_static || p.is_readonly || p.is_promoted || p.is_state || p.prop_attr.is_some() {
+                diags.push(
+                    Diagnostic::error(codes::INVALID_CONTEXT, format!("`#[Context]` property `${}` cannot be static, readonly, a prop or state", p.name), p.span)
+                        .with_help("the context sets the property in each render: use `#[Context] public Theme $theme;`"),
+                );
+            }
+        }
+    }
+    for (what, name, ty, span) in context_declarations(file) {
+        if let Some(reason) = bad_context_type(file, ty) {
+            diags.push(
+                Diagnostic::error(codes::INVALID_CONTEXT, format!("{what} `${name}` cannot have the type `{}`", ty.trim()), span)
+                    .with_label(reason)
+                    .with_help("the key of a context is one class, interface or enum, nullable or not"),
+            );
+        }
     }
     diags
+}
+
+/// The `#[Context]` and `#[Provide]` declarations of a file, for the type check: (attribute, name, type, span).
+fn context_declarations(file: &FileInfo) -> Vec<(&'static str, &str, &str, Span)> {
+    let mut out = Vec::new();
+    for f in file.functions.iter().filter(|f| f.component_kind.is_some()) {
+        out.extend(f.params.iter().filter(|p| p.is_context).map(|p| ("`#[Context]` parameter", p.name.as_str(), p.ty.as_str(), p.span)));
+    }
+    for c in &file.classes {
+        out.extend(c.props.iter().filter(|p| p.is_context).map(|p| ("`#[Context]` property", p.name.as_str(), p.ty.as_str(), p.span)));
+        out.extend(c.props.iter().filter(|p| p.is_provide).map(|p| ("`#[Provide]` property", p.name.as_str(), p.ty.as_str(), p.span)));
+    }
+    out
 }
 
 /// All components of a project, by FQCN.
@@ -290,6 +382,8 @@ pub fn builtins() -> Vec<ComponentDef> {
         rest: true,
         open: false,
         bound: Vec::new(),
+        contexts: Vec::new(),
+        provides: Vec::new(),
     }, ComponentDef {
         fqcn: SUSPENSE.into(),
         kind: Kind::Class,
@@ -301,6 +395,8 @@ pub fn builtins() -> Vec<ComponentDef> {
         rest: false,
         open: false,
         bound: Vec::new(),
+        contexts: Vec::new(),
+        provides: Vec::new(),
     }, ComponentDef {
         fqcn: ERROR_BOUNDARY.into(),
         kind: Kind::Class,
@@ -312,6 +408,8 @@ pub fn builtins() -> Vec<ComponentDef> {
         rest: false,
         open: false,
         bound: Vec::new(),
+        contexts: Vec::new(),
+        provides: Vec::new(),
     }]
 }
 

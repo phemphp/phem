@@ -164,6 +164,53 @@ expression: out.manifest.to_json()
       "required": [],
       "rest": true
     },
+    "App\\Components\\Settings": {
+      "fqcn": "App\\Components\\Settings",
+      "kind": "template",
+      "file": "components/Tabs.phpm",
+      "template": "components/Tabs.3.twig",
+      "props": [],
+      "slots": [],
+      "required": [],
+      "rest": false
+    },
+    "App\\Components\\Tab": {
+      "fqcn": "App\\Components\\Tab",
+      "kind": "function",
+      "file": "components/Tabs.phpm",
+      "props": [
+        "name",
+        "label"
+      ],
+      "slots": [],
+      "required": [
+        "name",
+        "label"
+      ],
+      "rest": false
+    },
+    "App\\Components\\TabCount": {
+      "fqcn": "App\\Components\\TabCount",
+      "kind": "class",
+      "file": "components/Tabs.phpm",
+      "props": [],
+      "slots": [],
+      "required": [],
+      "rest": false
+    },
+    "App\\Components\\Tabs": {
+      "fqcn": "App\\Components\\Tabs",
+      "kind": "class",
+      "file": "components/Tabs.phpm",
+      "props": [
+        "children"
+      ],
+      "slots": [
+        "children"
+      ],
+      "required": [],
+      "rest": false
+    },
     "App\\Components\\Tag": {
       "fqcn": "App\\Components\\Tag",
       "kind": "template",
@@ -321,6 +368,22 @@ expression: out.manifest.to_json()
       "source": "components/Rest.phpm",
       "line": 37
     },
+    "components/Tabs.0.twig": {
+      "source": "components/Tabs.phpm",
+      "line": 22
+    },
+    "components/Tabs.1.twig": {
+      "source": "components/Tabs.phpm",
+      "line": 30
+    },
+    "components/Tabs.2.twig": {
+      "source": "components/Tabs.phpm",
+      "line": 41
+    },
+    "components/Tabs.3.twig": {
+      "source": "components/Tabs.phpm",
+      "line": 49
+    },
     "pages/about.0.twig": {
       "source": "pages/about.phpm",
       "line": 16
@@ -361,6 +424,7 @@ expression: out.manifest.to_json()
     "php/components/Document.php",
     "php/components/Filters.php",
     "php/components/Rest.php",
+    "php/components/Tabs.php",
     "php/pages/about.php",
     "php/pages/index.php"
   ]
