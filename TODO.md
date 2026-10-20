@@ -21,9 +21,8 @@ Talk about each item before its implementation. The open questions are a start, 
 
 - [ ] **Streams** (section 3). The items of a stream are not in the state. How does a later
       event render the list, and how does the "before/after" comparison see it?
-- [ ] **Real-time push** (section 4). The server cannot re-render a page alone. Is a Mercure
-      signal + a normal event from the browser enough? How do many signals in a short time
-      coalesce? Who can subscribe to a topic (private topics, JWT)?
+- [x] **Real-time push** (section 4). Decided: a component handles a Messenger message and
+      returns a Turbo Stream, published with Mercure. See the decisions in section 4.
 - [ ] **Live validation** (section 5). The touched fields go in the signed state. How does
       this work with a Symfony form, and with `#[Assert]` on `#[State]` properties? Does
       validation run in the Doctrine transaction?
@@ -165,20 +164,100 @@ A change by one user does not show for another user until that user sends an eve
 
 - **Best peer:** LV PubSub: each LiveView subscribes to topics, and a broadcast re-renders all
   subscribers. LC uses Mercure and Turbo Streams. LW uses Laravel Echo with `#[On('echo:...')]`.
-- **Proposal:** Phem keeps state in the browser, so the server cannot re-render a page alone.
-  Use Mercure (SSE, and FrankenPHP has a built-in Mercure hub):
-  - `#[Subscribe('scientists')]` on a component method, or on a component that must refresh.
-  - The server publishes a small signal to the topic (`$hub->publish('scientists')`).
-  - The browser receives the signal and sends a normal event with its current state. The
-    server renders, and the normal morph runs. Access rules and the signature stay the same.
-  - Optional: a payload in the signal, passed to the handler as `$e->value`.
+- **Proposal:** a component handles a Messenger message with the native `#[AsMessageHandler]`,
+  and returns a `Phem\Stream`. Phem publishes it to Mercure as a Turbo Stream, and Turbo
+  applies it in each browser. The plain PHP code (a controller, a worker, a Doctrine
+  listener) only dispatches the message, so it needs no markup. The markup stays in the
+  `.phpm` file, next to the markup that it changes. No browser sends a request.
 
-### [ ] Polling — P3
+  ```php
+  // plain PHP, anywhere
+  $this->bus->dispatch(new OrderPlaced($order->getId()));
+  ```
 
-- **Best peer:** LW `wire:poll` (it slows down when the tab is in the background, and
-  `wire:poll.visible` stops when the element is not visible). LC `data-poll`.
-- **Proposal:** `#[Poll(seconds: 5)]` on a method, or a `<Poll every={{ 5 }} onTick={{ refresh }} />`
-  built-in component. Pause it when the tab is hidden.
+  ```php
+  #[Component]
+  final class OrderFeed
+  {
+      #[Prop, Topic] public Customer $customer;
+      public array $orders = [];
+
+      public function __construct(private readonly Orders $repo) {}
+
+      public function mount(): void { $this->orders = $this->repo->latestOf($this->customer); }
+
+      #[AsMessageHandler]
+      public function placed(OrderPlaced $m): Stream
+      {
+          $order = $this->repo->find($m->orderId);
+
+          return Stream::prepend('orders', <OrderRow order={{ order }} />)->to($order->customer);
+      }
+
+      #[AsMessageHandler]
+      public function cancelled(OrderCancelled $m): Stream
+      {
+          return Stream::remove('order-'.$m->orderId)->to($m->customerId);
+      }
+
+      public function render(): Node
+      {
+          return (
+              <ul id="orders">
+                  {% for o in orders %}<OrderRow key={{ o.id }} order={{ o }} />{% endfor %}
+              </ul>
+          );
+      }
+  }
+  ```
+
+- **Decisions:**
+  - **Registration.** `ComponentPass` registers each class component as an autoconfigured
+    service, before the autoconfiguration passes of Symfony. So Messenger finds
+    `#[AsMessageHandler]` on a component method. A Phem compiler pass wraps each component
+    handler: the wrapper calls the method and publishes the returned `Stream`. It works on
+    each bus, sync or async, with no middleware configuration. `symfony/mercure-bundle` and
+    `symfony/messenger` are "suggest" dependencies.
+  - **The handler method runs outside a page.** It has no props, no state, no context, no
+    request and no user. It reads only the constructor services and the message. `phemc`
+    reports an error when the method reads a `#[Prop]`, `#[State]` or `#[Context]` property.
+    Phem renders the returned markup alone, with no page.
+  - **No `#[State]` in a component with message handlers** (a `phemc` error). The component
+    reads its data in `mount()`, so the next event renders the same data that the push
+    showed. A handler id comes from the handler and its captured values, so a click on a
+    pushed row finds its handler.
+  - **Topics.** The topic of a component is its class name. A component with a `#[Topic]`
+    prop also has a scoped topic: the class name and the value of the prop
+    (`App\OrderFeed/42`). The value is a scalar, a backed enum, or a Doctrine entity (its
+    identifier). A component has one `#[Topic]` prop at most (a `phemc` error). A stream
+    without `->to()` goes to the class topic, so it reaches all instances. A stream with
+    `->to($value)` goes only to the scoped topic of that value.
+  - **Subscription.** When a page renders a component with message handlers, Phem adds one
+    `<turbo-stream-source>` for the topics of the page. When conditional rendering removes
+    the component, its topics leave the subscription.
+  - **All topics are private.** Phem publishes each update as private. When a page renders,
+    Phem sets the `mercureAuthorization` cookie with a subscriber JWT for the topics of the
+    page. The page passed its access rules (firewall, `access_control`, `#[IsGranted]`), so
+    the viewer can see what the server rendered for them. The JWT also keeps the topics of a
+    valid cookie of the same user, so two open tabs keep their subscriptions. A user cannot
+    subscribe to the scoped topic of another customer by a guess.
+  - **One render for all subscribers.** A pushed stream cannot show data for one user only.
+    Put user data in a scoped topic for that user.
+  - **The page after a push.** Pushed markup has no fiber ids. The browser keeps the ids of the
+    components that got a stream, and sends them with the next event. The server renders these
+    components as dirty, so the morph replaces the pushed markup with markup that has ids.
+  - **Duplicates.** Pushed items have an `id`. Turbo removes an element with the same id before
+    an `append` or a `prepend`, so the user who made the change does not see the item two times.
+  - **Transactions.** A component handler that runs in an event (a sync transport, in the
+    Doctrine transaction) does not publish at once. Phem keeps the streams until the commit,
+    and drops them on a rollback.
+  - **`Stream` actions.** The Turbo actions: `append`, `prepend`, `replace`, `update`,
+    `remove`, `before`, `after`, and the `morph` method for `replace` and `update`.
+  - **Tests.** `$this->handle(new OrderPlaced(1))` in `InteractsWithPhem` runs the component
+    handlers of the test page for the message, and applies the streams to the page.
+- **Out of scope:** polling (LW `wire:poll`, LC `data-poll`). Each tick is a full event (the
+  state, two render passes, a transaction) also when nothing changed. A push sends data only
+  when it changes.
 
 ## 5. Forms and validation
 
