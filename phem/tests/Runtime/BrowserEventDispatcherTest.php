@@ -57,6 +57,14 @@ final class BrowserEventDispatcherTest extends TestCase
         (new BrowserEventDispatcher())->dispatch('a toast');
     }
 
+    public function testDispatchRejectsANameOfTheBrowser(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The browser dispatches the "phem:done" event itself: give the browser event another name.');
+
+        (new BrowserEventDispatcher())->dispatch('done');
+    }
+
     public function testDispatchRejectsADetailThatJsonCannotEncode(): void
     {
         $this->expectException(\InvalidArgumentException::class);

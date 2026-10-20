@@ -4,6 +4,9 @@
     "version": "0.1.0",
     "license": "MIT",
     "type": "module",
+    "scripts": {
+        "test": "vitest run"
+    },
     "symfony": {
         "controllers": {
             "phem": {
@@ -24,5 +27,11 @@
     "peerDependencies": {
         "@hotwired/stimulus": "^3.0.0",
         "@hotwired/turbo": "^8.0.0"
+    },
+    "devDependencies": {
+        "@hotwired/stimulus": "3.2.2",
+        "@hotwired/turbo": "8.0.23",
+        "jsdom": "26.1.0",
+        "vitest": "3.2.4"
     }
 }

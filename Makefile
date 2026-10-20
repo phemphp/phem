@@ -1,10 +1,15 @@
-.PHONY: up test check prod shell lsp vscode vscode-install phpstorm phpstorm-install
+.PHONY: up test test-js check prod shell lsp vscode vscode-install phpstorm phpstorm-install
 
 up:     ## Run the quickstart in watch mode on http://localhost:8080
 	docker compose up --build dev
 
-test:   ## Run cargo test and PHPUnit
+test: test-js ## Run cargo test, PHPUnit and the JS tests
 	docker compose run --rm --build test
+
+test-js: ## Run the tests of the phem Stimulus controller (Vitest, jsdom)
+	docker run --rm -e NPM_CONFIG_UPDATE_NOTIFIER=false -e NPM_CONFIG_LOGLEVEL=warn -v "$(CURDIR)/phem/assets:/assets" -w /assets node:22-alpine sh -c ' \
+		npm install --no-fund --no-audit && \
+		npm test'
 
 check:  ## Run the phemc diagnostics on the quickstart sources
 	docker compose run --rm dev phemc check examples/quickstart/src

@@ -257,6 +257,10 @@ $listItems = array_map(fn($product) => <li key={{ product.id }}>{{ product.title
 return <ul>{{ listItems }}</ul>;
 ```
 
+The key goes in the `data-phem-key` attribute. After an event, the browser matches the items by
+their key, so an item keeps its element (its focus, the changes of a Stimulus controller) when an
+item before it goes away.
+
 ## 6. Events
 
 Pass the function. Do not call it.
@@ -878,6 +882,72 @@ html:active-view-transition-type(slide)::view-transition-new(root) { animation: 
 Give an element its own `view-transition-name` in CSS to animate it alone (for example, a row
 that moves). A browser without the View Transitions API, or with `prefers-reduced-motion: reduce`,
 changes the page with no transition.
+
+### Client code with Stimulus
+
+Some changes need no server: open a menu, toggle a class, give the focus to a field. Write them as
+[Stimulus](https://stimulus.hotwired.dev/) controllers, and use them in markup with
+`data-controller` and `data-action`, as in any Symfony page. The
+[Inbox](../examples/quickstart/src/Pages/Examples/Inbox.phpm) example uses them.
+
+The morph of an event sets the attributes of the server render, so it undoes the changes of a
+controller. `data-phem-client` gives a list of attributes to the client: the morph does not change
+them, also when the server render changes them. The other attributes of the element still change.
+
+```html
+<span data-controller="dropdown">
+    <button data-action="dropdown#toggle" data-phem-client="aria-expanded" aria-expanded="false">⋯</button>
+    <span data-dropdown-target="menu" data-phem-client="hidden" hidden>
+        <button onClick={{ star }}>Star</button>
+    </span>
+</span>
+```
+
+A click on "Star" sends an event, and the menu stays open after the morph. The server render gives
+the first value of the attribute, and the list. The morph matches the items of a list by their
+`key`, so the attributes stay on the correct item when an item before it goes away. Two lists with
+the same keys in one component match by position: give each list an `id`.
+
+`data-phem-ignore` keeps an element as it is: its attributes and its content. Use it for the
+element of a JS library (a chart, a map, a rich text editor). The morph removes the element when
+the server render does not have it.
+
+```html
+<div data-controller="chart" data-phem-ignore></div>
+```
+
+The element that sent an event gets two events, with the `handler` id in their detail:
+
+- `phem:send` when the request starts.
+- `phem:done` when the event ends. After the morph, `ok` is `true`. When the server did not take
+  the event (an error, a network error, or a `429`), `ok` is `false`, `status` is the status (as
+  in `phem:error`), and the page does not change.
+
+When the morph removed the element, the event starts on the root of its component. Both events
+bubble. A redirect, and a reload for a state that is not valid, send no `phem:done`. A handler
+cannot send browser events with these names (or `error`, `rate-limited` and `upload-progress`).
+
+A Stimulus action on the element runs before the event goes, so it can change the page at once
+(optimistic UI). This row hides at once on a click on "Delete". On `phem:done`, it shows again: if
+the server still renders it (the handler did not delete it, or the event failed), it must show.
+If the server deleted it, the morph removed it.
+
+```html
+<li key={{ id }} data-controller="optimistic" data-phem-client="hidden">
+    {{ subject }}
+    <button onClick={{ delete }} data-action="optimistic#hide phem:done->optimistic#show">Delete</button>
+</li>
+```
+
+```js
+export default class extends Controller {
+    hide() { this.element.hidden = true }
+    show() { this.element.hidden = false }
+}
+```
+
+With `data-phem-client="hidden"`, the morph of another event does not show the row while its own
+event waits.
 
 ## 7. State: class components
 

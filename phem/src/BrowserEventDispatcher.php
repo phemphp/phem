@@ -35,19 +35,25 @@ namespace Phem;
  */
 final class BrowserEventDispatcher
 {
+    /** The names of the events that the browser dispatches itself (`phem:done`, ...). */
+    private const RESERVED = ['send', 'done', 'error', 'rate-limited', 'upload-progress'];
+
     /** @var list<array{name: string, detail: mixed}> */
     private array $dispatched = [];
 
     /**
-     * @param string $name   letters, digits and `_ - . :`
+     * @param string $name   letters, digits and `_ - . :`, and not a name of the browser (`done`, `error`, ...)
      * @param mixed  $detail a value that JSON can encode
      *
-     * @throws \InvalidArgumentException for a name that is not valid, or a detail that JSON cannot encode
+     * @throws \InvalidArgumentException for a name that is not valid or reserved, or a detail that JSON cannot encode
      */
     public function dispatch(string $name, mixed $detail = null): void
     {
         if (1 !== preg_match('/^[\w.:-]+$/', $name)) {
             throw new \InvalidArgumentException(\sprintf('The name of a browser event has only letters, digits and "_-.:", "%s" given.', $name));
+        }
+        if (\in_array($name, self::RESERVED, true)) {
+            throw new \InvalidArgumentException(\sprintf('The browser dispatches the "phem:%s" event itself: give the browser event another name.', $name));
         }
         try {
             json_encode($detail, \JSON_THROW_ON_ERROR);

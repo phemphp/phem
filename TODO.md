@@ -19,8 +19,6 @@ these properties of Phem:
 
 Talk about each item before its implementation. The open questions are a start, not a full list.
 
-- [ ] **Optimistic UI and client commands** (section 2). How does a PHP `Js` builder look in
-      Twig markup? How does the Turbo morph keep the client changes until the server answers?
 - [ ] **`<Suspense>`** (section 3). A deferred child needs its own event with the state of the
       page. Is that a normal event to a built-in handler? How does an error in the deferred
       render show?
@@ -35,9 +33,9 @@ Talk about each item before its implementation. The open questions are a start, 
 - [ ] **Live validation** (section 5). The touched fields go in the signed state. How does
       this work with a Symfony form, and with `#[Assert]` on `#[State]` properties? Does
       validation run in the Doctrine transaction?
-- [ ] **Colocated client code** (section 6). Is the extracted script a Stimulus controller, or a
-      smaller hook API? How does `phemc` give it to AssetMapper in development (`phemc watch`)
-      and in production?
+- [ ] **Colocated client code** (section 6). Is the extracted script a Stimulus controller (as
+      the controllers of section 2), or a smaller hook API? How does `phemc` give it to
+      AssetMapper in development (`phemc watch`) and in production?
 - [ ] **`<ErrorBoundary>`** (section 7). An exception in a render and an exception in a
       handler are different: the handler transaction rolls back, and the state may not change.
       Which state does the response send? Is the boundary only for rendering, as in React?
@@ -78,17 +76,24 @@ the event, so the markup shows the progress of all the files together.
 
 ## 2. Feedback while a request runs
 
-### [ ] Optimistic UI and client commands — P2
+### [x] Client code with Stimulus and optimistic UI — P2
 
 Some changes do not need the server first: open a menu, hide a row, toggle a class.
 
-- **Best peer:** LV `Phoenix.LiveView.JS` commands (`show`, `hide`, `toggle_class`,
-  `transition`, `push`). They run in the browser, compose with a server event, and survive
-  a DOM patch. React `useOptimistic`.
-- **Proposal:** a `Js` builder in PHP that compiles to a data attribute that the Stimulus
-  controller runs. A command list can end with a server handler.
-  Sketch: `<button onClick={{ js.hide('#row-' ~ id).then(remove) }}>`.
-  The morph must keep the client changes until the server answers (as LV does).
+Done: these changes are Stimulus controllers, as in any Symfony page, and not a new syntax.
+`data-phem-client="hidden aria-expanded"` gives the attributes in the list to the client, so the
+morph does not undo the changes of a controller. `data-phem-ignore` keeps an element and its
+content for a JS library. The element that sent an event gets `phem:send` when the request starts,
+and `phem:done` when the event ends (`ok`, and the `status` of a failure). A Stimulus action on the
+element runs before the event, so it can change the page at once and undo it on `phem:done`. The
+Inbox example uses them. The morph matches the items of a list by their `key`, so the client
+changes stay on the correct item. The tests of the controller run with Vitest (`make test-js`).
+See [docs/phpm-syntax.md](docs/phpm-syntax.md#client-code-with-stimulus).
+
+- **Best peer:** LV `Phoenix.LiveView.JS` commands. React `useOptimistic`. LC and Turbo use
+  Stimulus.
+- **Notes:** LV needs `JS` commands because it has no client framework for them. Phem runs on
+  Stimulus already, so a second syntax adds API but no capability.
 
 ### [x] Dirty state and "leave page" guard — P3
 
@@ -186,9 +191,8 @@ Some behavior must run in the browser: a chart, a map, a rich text editor, a foc
   - `phemc` extracts a `<script type="phem/controller">` from a `.phpm` file into a Stimulus
     controller and registers it with AssetMapper. The component root gets its
     `data-controller` automatically.
-  - An `ignore` attribute (as LV `phx-update="ignore"` and LW `wire:ignore`) so the morph does not
-    change the DOM that a JS library owns.
   - The controller gets the server events of the item "Server-to-browser events".
+  - Done: `data-phem-ignore` (as LV `phx-update="ignore"` and LW `wire:ignore`), see section 2.
 
 ## 7. Errors and resilience
 

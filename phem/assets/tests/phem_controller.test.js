@@ -1,0 +1,241 @@
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
+import { Application } from "@hotwired/stimulus"
+import PhemController from "../dist/phem_controller.js"
+
+let application
+
+beforeAll(() => {
+  application = Application.start()
+  application.register("phem", PhemController)
+})
+
+// A page with one component (`c1`) and the markup of its server render.
+async function mount(markup, rootAttributes = "") {
+  document.body.innerHTML = `
+    <div id="phem-root" data-controller="phem" data-action="click->phem#dispatch"
+         data-phem-state-value="{}" data-phem-signature-value="s1" data-phem-loading-delay-value="0" ${rootAttributes}>
+      <phem-c id="c1">${markup}</phem-c>
+    </div>`
+  // Stimulus connects the controller in a mutation observer callback.
+  await new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+// The answer of the server to the next event: a morph of `c1` to `markup`.
+function respond(markup) {
+  const body = {
+    streams: `<turbo-stream action="update" method="morph" target="c1"><template>${markup}</template></turbo-stream>`,
+    state: "{}",
+    signature: "s2",
+  }
+  fetch.mockResolvedValueOnce(new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } }))
+}
+
+// Resolves with the `phem:done` event of the next event.
+function nextDone() {
+  return new Promise((resolve) => window.addEventListener("phem:done", resolve, { once: true }))
+}
+
+function click(selector) {
+  document.querySelector(selector).click()
+}
+
+beforeEach(() => {
+  vi.stubGlobal("fetch", vi.fn())
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+  document.body.innerHTML = ""
+})
+
+describe("data-phem-client", () => {
+  it("keeps the attributes in the list, and morphs the others", async () => {
+    await mount(`<p id="menu" data-phem-client="hidden aria-expanded" hidden aria-expanded="false" title="old">Menu</p><button data-phem-on-click="c1.star">Star</button>`)
+    const menu = document.getElementById("menu")
+    menu.hidden = false
+    menu.setAttribute("aria-expanded", "true")
+    respond(`<p id="menu" data-phem-client="hidden aria-expanded" hidden aria-expanded="false" title="new">Menu</p><button data-phem-on-click="c1.star">Unstar</button>`)
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect(document.getElementById("menu")).toBe(menu)
+    expect(menu.hidden).toBe(false)
+    expect(menu.getAttribute("aria-expanded")).toBe("true")
+    expect(menu.title).toBe("new")
+    expect(document.querySelector("button").textContent).toBe("Unstar")
+  })
+
+  it("does not keep an attribute that is not in the list", async () => {
+    await mount(`<p id="menu" data-phem-client="aria-expanded" hidden>Menu</p><button data-phem-on-click="c1.star">Star</button>`)
+    document.getElementById("menu").hidden = false
+    respond(`<p id="menu" data-phem-client="aria-expanded" hidden>Menu</p><button data-phem-on-click="c1.star">Star</button>`)
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect(document.getElementById("menu").hidden).toBe(true)
+  })
+})
+
+describe("data-phem-ignore", () => {
+  it("keeps the element, its attributes and its content", async () => {
+    await mount(`<div id="chart" data-phem-ignore>1</div><button data-phem-on-click="c1.add">Add</button>`)
+    const chart = document.getElementById("chart")
+    chart.innerHTML = "<canvas></canvas>"
+    chart.className = "ready"
+    respond(`<div id="chart" data-phem-ignore>2</div><button data-phem-on-click="c1.add">Add</button><p id="added">Added</p>`)
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect(document.getElementById("chart")).toBe(chart)
+    expect(chart.outerHTML).toBe('<div id="chart" data-phem-ignore="" class="ready"><canvas></canvas></div>')
+    expect(document.getElementById("added")).not.toBeNull()
+  })
+
+  it("removes the element when the server render does not have it", async () => {
+    await mount(`<div id="chart" data-phem-ignore>1</div><button data-phem-on-click="c1.remove">Remove</button>`)
+    respond(`<button data-phem-on-click="c1.remove">Remove</button>`)
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect(document.getElementById("chart")).toBeNull()
+  })
+})
+
+describe("the morph of a list", () => {
+  const rows = (keys) => `<ul>${keys.map((k) => `<li data-phem-key="${k}" data-phem-client="hidden">Row ${k}</li>`).join("")}</ul><button data-phem-on-click="c1.change">Change</button>`
+
+  async function morph(from, to) {
+    await mount(rows(from))
+    const before = Object.fromEntries([...document.querySelectorAll("li")].map((li) => [li.dataset.phemKey, li]))
+    before[from.at(-1)].hidden = true
+    respond(rows(to))
+    const done = nextDone()
+    click("button")
+    await done
+    return before
+  }
+
+  it("keeps the element of an item when an item before it goes away", async () => {
+    const before = await morph(["1", "2"], ["2"])
+    const [row] = document.querySelectorAll("li")
+
+    expect(row).toBe(before["2"])
+    expect(row.hidden).toBe(true)
+    expect(row.textContent).toBe("Row 2")
+  })
+
+  it("keeps the element of an item when an item comes before it", async () => {
+    const before = await morph(["1"], ["0", "1"])
+    const [added, row] = document.querySelectorAll("li")
+
+    expect(row).toBe(before["1"])
+    expect(row.hidden).toBe(true)
+    expect(added.hidden).toBe(false)
+    expect(added.textContent).toBe("Row 0")
+  })
+
+  it("removes the ids of the keys after the morph", async () => {
+    await morph(["1", "2"], ["0", "2", "3"])
+
+    expect(document.querySelectorAll("[id^='phem-key:']")).toHaveLength(0)
+    expect([...document.querySelectorAll("li")].map((li) => li.hasAttribute("id"))).toEqual([false, false, false])
+  })
+
+  it("keeps an id of the server render", async () => {
+    await mount(`<ul><li id="row-1" data-phem-key="1">Row 1</li></ul><button data-phem-on-click="c1.change">Change</button>`)
+    respond(`<ul><li id="row-1" data-phem-key="1">Row 1</li><li id="row-2" data-phem-key="2">Row 2</li></ul><button data-phem-on-click="c1.change">Change</button>`)
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect([...document.querySelectorAll("li")].map((li) => li.id)).toEqual(["row-1", "row-2"])
+  })
+
+  it("morphs two lists with the same keys by position", async () => {
+    const lists = (a, b) => `<ul>${a.map((k) => `<li data-phem-key="${k}">A${k}</li>`).join("")}</ul><ul>${b.map((k) => `<li data-phem-key="${k}">B${k}</li>`).join("")}</ul><button data-phem-on-click="c1.change">Change</button>`
+    await mount(lists(["1", "2"], ["1", "2"]))
+    respond(lists(["2"], ["1", "2", "3"]))
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect([...document.querySelectorAll("ul")].map((ul) => ul.textContent)).toEqual(["A2", "B1B2B3"])
+  })
+})
+
+describe("phem:send and phem:done", () => {
+  it("dispatches them on the element that sent the event, and phem:done after the morph", async () => {
+    await mount(`<button id="star" data-phem-on-click="c1.star">Star</button>`)
+    const events = []
+    const button = document.getElementById("star")
+    button.addEventListener("phem:send", (e) => events.push(["send", e.detail, fetch.mock.calls.length]))
+    button.addEventListener("phem:done", (e) => events.push(["done", e.detail, e.target.textContent]))
+    respond(`<button id="star" data-phem-on-click="c1.star">Unstar</button>`)
+    const done = nextDone()
+    click("#star")
+    await done
+
+    expect(events).toEqual([
+      ["send", { handler: "c1.star" }, 0],
+      ["done", { handler: "c1.star", ok: true, status: 200 }, "Unstar"],
+    ])
+  })
+
+  it("dispatches phem:done on the root of the component when the morph removed the element", async () => {
+    await mount(`<ul><li id="row-1"><button data-phem-on-click="c1.remove">Delete</button></li></ul>`)
+    respond(`<ul></ul>`)
+    const done = nextDone()
+    click("#row-1 button")
+    const event = await done
+
+    expect(event.target.id).toBe("c1")
+    expect(event.detail).toEqual({ handler: "c1.remove", ok: true, status: 200 })
+  })
+
+  it("lets a Stimulus action change the page before the event, and undo it on a failure", async () => {
+    await mount(`<ul><li id="row-1" data-phem-client="hidden"><button data-phem-on-click="c1.remove">Delete</button></li></ul>`)
+    const row = document.getElementById("row-1")
+    const button = row.querySelector("button")
+    // As `data-action="optimistic#hide phem:done->optimistic#show"`: the listener of the button
+    // runs before the listener of the root element.
+    button.addEventListener("click", () => (row.hidden = true))
+    button.addEventListener("phem:done", () => (row.hidden = false))
+    let hiddenOnSend = null
+    button.addEventListener("phem:send", () => (hiddenOnSend = row.hidden))
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    window.addEventListener("phem:error", (e) => e.preventDefault(), { once: true })
+    fetch.mockResolvedValueOnce(new Response("Error", { status: 500 }))
+    const done = nextDone()
+    button.click()
+    const event = await done
+
+    expect(hiddenOnSend).toBe(true)
+    expect(event.detail).toEqual({ handler: "c1.remove", ok: false, status: 500 })
+    expect(row.hidden).toBe(false)
+  })
+
+  it("dispatches phem:done with a 429 for a rate limit", async () => {
+    await mount(`<button data-phem-on-click="c1.star">Star</button>`)
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+    fetch.mockResolvedValueOnce(new Response("", { status: 429 }))
+    const done = nextDone()
+    click("button")
+
+    expect((await done).detail).toEqual({ handler: "c1.star", ok: false, status: 429 })
+  })
+
+  it("dispatches phem:done with no status for a network error", async () => {
+    await mount(`<button data-phem-on-click="c1.star">Star</button>`, 'data-phem-retries-value="0"')
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    window.addEventListener("phem:error", (e) => e.preventDefault(), { once: true })
+    fetch.mockRejectedValueOnce(new TypeError("Failed to fetch"))
+    const done = nextDone()
+    click("button")
+
+    expect((await done).detail).toEqual({ handler: "c1.star", ok: false, status: null })
+  })
+})

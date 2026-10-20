@@ -41,6 +41,21 @@
 // `role="alert"` at the end of the body (`data-phem-error-message-value` changes its text). A
 // click on it, or the next event that succeeds, removes it.
 //
+// The element that sent an event gets `phem:send` when its request starts, and `phem:done` when the
+// event ends: after the morph (`ok` is true), or after a failure with no morph (`ok` is false, with
+// the `status`, as `phem:error`, and 429 for `phem:rate-limited`). The detail has the `handler` id.
+// When the morph removed the element, the event starts on the root of its component. Both bubble.
+// A redirect and a reload send no `phem:done`. A Stimulus action on the element runs before the
+// event goes, so it can change the page at once (optimistic UI), and undo it on a `phem:done`
+// that is not `ok`.
+//
+// The morph sets the attributes of the server render. `data-phem-client="hidden aria-expanded"` on
+// an element gives the attributes in the list to the client: the morph does not change them, so the
+// changes of a Stimulus controller stay. `data-phem-ignore` on an element keeps all of it (its
+// attributes and its content) for a JS library. The morph still removes the element when the
+// server render does not have it. The morph matches the items of a list by their `key`
+// (`data-phem-key`), so an item keeps its element when an item before it goes away.
+//
 // A network error, a 502 or a 503 can be temporary: the controller sends the event again, up to
 // `data-phem-retries-value` times (3 by default, 0 turns it off). It waits before each new try,
 // and the wait doubles each time (`data-phem-retry-delay-value`, 500 ms by default, then 1 s, 2 s).
@@ -173,6 +188,24 @@ function resetField(field) {
     const option = defaultOption(field)
     if (option) option.selected = true
   } else field.value = field.defaultValue
+}
+
+// The start of the id that an element with a `key` gets while a morph runs (see keyIds()).
+const KEY_ID = "phem-key:"
+
+// Gives each element with a `key` (`data-phem-key`) and no id in `root` an id from its key: the id
+// of its closest ancestor with an id (or of `target`), its tag and its key. The parents come
+// first, so the id of a nested item has the ids of its parents.
+function keyIds(root, target) {
+  for (const el of root.querySelectorAll("[data-phem-key]")) {
+    if (el.hasAttribute("id")) continue
+    const scope = el.parentElement?.closest("[id]") ?? target
+    el.id = `${KEY_ID}${scope.id}/${el.localName}:${el.getAttribute("data-phem-key")}`
+  }
+}
+
+function dropKeyIds(root) {
+  for (const el of root.querySelectorAll(`[id^="${KEY_ID}"]`)) el.removeAttribute("id")
 }
 
 function sameValue(a, b) {
@@ -334,11 +367,44 @@ export default class PhemController extends Controller {
     }
     this.element.addEventListener("turbo:before-morph-attribute", this.keepEdited)
     // The server did not render a component again (a <phem-c data-phem-keep> placeholder): keep
-    // its element and its content as they are.
+    // its element and its content as they are. The same for a `data-phem-ignore` element that the
+    // server renders again, because JS owns it. The morph removes it when the server render does
+    // not have it.
     this.keepKept = (event) => {
-      if (event.detail.newElement?.hasAttribute?.("data-phem-keep")) event.preventDefault()
+      const next = event.detail.newElement
+      if (next?.hasAttribute?.("data-phem-keep")) event.preventDefault()
+      else if (next?.hasAttribute?.("data-phem-ignore") && event.target.hasAttribute("data-phem-ignore")) event.preventDefault()
     }
     this.element.addEventListener("turbo:before-morph-element", this.keepKept)
+    // The attributes in the `data-phem-client` list of an element belong to the client (a Stimulus
+    // controller): the morph does not change them.
+    this.keepClient = (event) => {
+      const names = event.target.getAttribute?.("data-phem-client")
+      if (names && names.split(/\s+/).includes(event.detail.attributeName)) event.preventDefault()
+    }
+    this.element.addEventListener("turbo:before-morph-attribute", this.keepClient)
+    // The morph matches the elements by their id, and else by their position. While the morph of a
+    // stream runs, each element with a `key` and no id has an id from its key, in the page and in
+    // the server render. So a list item keeps its element (its client attributes, its focus, its
+    // JS library) when an item before it goes away. Two lists with the same keys and no id between
+    // them and their component get the same ids: the morph ignores these ids, and matches their
+    // items by position. Before the `take` of renderStreams(), which runs this render.
+    this.keyMorph = (event) => {
+      const stream = event.detail.newStream
+      const target = stream.getAttribute("method") === "morph" && document.getElementById(stream.getAttribute("target"))
+      if (!target || !this.element.contains(target)) return
+      const render = event.detail.render
+      event.detail.render = async (element) => {
+        keyIds(target, target)
+        keyIds(stream.templateElement.content, target)
+        try {
+          await render(element)
+        } finally {
+          dropKeyIds(target)
+        }
+      }
+    }
+    document.addEventListener("turbo:before-stream-render", this.keyMorph)
     // The first render can drop a value of the URL that does not fit its property: never a new
     // history entry here.
     this.updateUrl(this.queryValue, false)
@@ -373,6 +439,8 @@ export default class PhemController extends Controller {
     this.element.removeEventListener("turbo:morph-element", this.keepLoading)
     this.element.removeEventListener("turbo:before-morph-attribute", this.keepEdited)
     this.element.removeEventListener("turbo:before-morph-element", this.keepKept)
+    this.element.removeEventListener("turbo:before-morph-attribute", this.keepClient)
+    document.removeEventListener("turbo:before-stream-render", this.keyMorph)
     this.element.removeEventListener("focusout", this.flushOnBlur)
     for (const pending of this.pending.values()) pending.forEach(({ timer }) => clearTimeout(timer))
     this.pending.clear()
@@ -453,7 +521,7 @@ export default class PhemController extends Controller {
           waiting.delete(attr)
           if (!waiting.size) this.waiting.delete(el)
         }
-        return this.send(job.handler, job.payload, unlock, onProgress)
+        return this.send(el, job.handler, job.payload, unlock, onProgress)
       })
       .catch((e) => console.error("[phem]", e))
       .finally(() => {
@@ -661,9 +729,9 @@ export default class PhemController extends Controller {
     }
   }
 
-  // `beforeRender` runs when the last response arrives, before the page changes. `onProgress`
-  // gets the progress of an upload.
-  async send(handler, event, beforeRender, onProgress = null) {
+  // Sends the event of the element `el`. `beforeRender` runs when the last response arrives,
+  // before the page changes. `onProgress` gets the progress of an upload.
+  async send(el, handler, event, beforeRender, onProgress = null) {
     // The bound fields when the event starts: the newest values. The request sends the fields
     // that changed.
     const fields = this.boundValues()
@@ -673,6 +741,9 @@ export default class PhemController extends Controller {
       beforeRender()
       return
     }
+    this.notify(el, handler, "send")
+    // The end of an event that the server did not take: no morph.
+    const failed = (status) => this.notify(el, handler, "done", { ok: false, status })
     let response
     try {
       response = await this.fetchEvent(handler, event, bound, onProgress)
@@ -680,6 +751,7 @@ export default class PhemController extends Controller {
       beforeRender()
       console.error("[phem] event failed (network error)", e)
       this.showError(handler, null)
+      failed(null)
       return
     }
     beforeRender()
@@ -697,12 +769,14 @@ export default class PhemController extends Controller {
       const detail = { handler, retryAfter: Number.isNaN(retryAfter) ? null : retryAfter }
       console.warn("[phem] too many events: the event was dropped", detail)
       this.componentRoot(handler).dispatchEvent(new CustomEvent("phem:rate-limited", { detail, bubbles: true }))
+      failed(429)
       return
     }
     if (!response.ok) {
       const text = await response.text()
       console.error(`[phem] event failed (${response.status})`, text)
       this.showError(handler, response.status)
+      failed(response.status)
       return
     }
     // A PHP error that PHP prints before the handler (an HTML page with a 200) is not an answer.
@@ -713,6 +787,7 @@ export default class PhemController extends Controller {
     } catch {
       console.error(`[phem] event failed (${response.status}): the response is not JSON`, text)
       this.showError(handler, response.status)
+      failed(response.status)
       return
     }
     this.hideError()
@@ -738,14 +813,19 @@ export default class PhemController extends Controller {
       this.sentBound = null
       this.resetRejected(bound)
       this.markDirty()
-    })
-    if (data.events?.length) {
       // After the morph, so a listener sees the new page.
-      rendered.then(() => {
-        const target = this.componentRoot(handler)
-        for (const { name, detail } of data.events) target.dispatchEvent(new CustomEvent(`phem:${name}`, { detail, bubbles: true }))
-      })
-    }
+      const target = this.componentRoot(handler)
+      for (const { name, detail } of data.events ?? []) target.dispatchEvent(new CustomEvent(`phem:${name}`, { detail, bubbles: true }))
+      this.notify(el, handler, "done", { ok: true, status: response.status })
+    })
+  }
+
+  // Dispatches `phem:<name>` (`send` or `done`) for an event, with the `handler` id and `detail`.
+  // It starts on the element that sent the event, or on the root of its component when the morph
+  // removed that element, and it bubbles.
+  notify(el, handler, name, detail = {}) {
+    const target = el.isConnected && this.element.contains(el) ? el : this.componentRoot(handler)
+    target.dispatchEvent(new CustomEvent(`phem:${name}`, { detail: { handler, ...detail }, bubbles: true }))
   }
 
   // Writes the query of the #[Url] properties into the URL. A key keeps its place, a new key goes
