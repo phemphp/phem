@@ -27,7 +27,8 @@
         "symfony/asset-mapper": "^7.4|^8.0",
         "symfony/expression-language": "^7.4|^8.0",
         "symfony/rate-limiter": "^7.4|^8.0",
-        "symfony/stimulus-bundle": "^2.20"
+        "symfony/stimulus-bundle": "^2.20",
+        "symfony/web-profiler-bundle": "^7.4|^8.0"
     },
     "suggest": {
         "doctrine/doctrine-bundle": "To run the event handlers in a Doctrine ORM transaction, and to give #[Path] props the entities of their route values",

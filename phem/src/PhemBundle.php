@@ -19,6 +19,10 @@ use Phem\Handler\HandlerMiddleware;
 use Phem\Handler\RateLimitMiddleware;
 use Phem\Manifest\Manifest;
 use Phem\Path\PathValueConverter;
+use Phem\Profiler\PhemDataCollector;
+use Phem\Profiler\Profile;
+use Phem\Profiler\ProfiledTransactionRunner;
+use Phem\Profiler\ProfilerMiddleware;
 use Phem\Rendering\SkippedRenderCheck;
 use Phem\State\StateCache;
 use Symfony\Component\AssetMapper\AssetMapperInterface;
@@ -145,12 +149,33 @@ final class PhemBundle extends AbstractBundle
                 ->args([service('phem.renderer'), service('logger')->nullOnInvalid()]);
             $container->services()->get('phem.event_renderer')
                 ->arg(5, service('phem.skipped_render_check'));
+
+            // The Phem panel of the Symfony profiler (see PhemDataCollector). The data collector
+            // is used only when the profiler is enabled (framework.profiler).
+            $container->services()
+                ->set('phem.profile', Profile::class)
+                    ->args([service('debug.stopwatch')->nullOnInvalid()])
+                    ->tag('kernel.reset', ['method' => 'reset'])
+                ->set('phem.handler_middleware.profiler', ProfilerMiddleware::class)
+                    ->args([service('phem.profile')])
+                    // Outside the transaction, inside the rate limit.
+                    ->tag('phem.handler_middleware', ['priority' => 50])
+                ->set('phem.data_collector', PhemDataCollector::class)
+                    ->args([service('phem.profile'), service('phem.state_accessor')])
+                    ->tag('data_collector', ['id' => 'phem', 'template' => '@Phem/Collector/phem.html.twig', 'priority' => 260])
+                ->get('phem.renderer')
+                    ->arg(6, service('phem.profile'));
         }
 
         $bundles = $builder->getParameter('kernel.bundles');
         $doctrine = \is_array($bundles) && isset($bundles['DoctrineBundle']) && interface_exists(EntityManagerInterface::class);
         if ($doctrine) {
             $container->import('../config/doctrine.php');
+            if ($builder->getParameter('kernel.debug')) {
+                $container->services()->set('phem.transaction_runner.profiler', ProfiledTransactionRunner::class)
+                    ->decorate('phem.transaction_runner')
+                    ->args([service('.inner'), service('phem.profile')]);
+            }
         }
 
         $transactional = $config['transactional'] ?? $doctrine;

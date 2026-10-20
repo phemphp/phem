@@ -289,6 +289,31 @@ frankenphp run --config Caddyfile
 
 With PHP-FPM, use `public/index.php` as the front controller, as for any Symfony application.
 
+### The Symfony profiler
+
+In debug mode, Phem adds a panel to the Symfony profiler. Install the profiler in development:
+
+```sh
+composer require --dev symfony/web-profiler-bundle symfony/stopwatch
+```
+
+The quickstart has it in the `dev` environment. The Phem panel shows each page request and
+each event:
+
+- the page, the handler and its source, and the outcome (rendered, redirect, reload, or a
+  rate limit);
+- the component tree, with the state of each component and its render time without its
+  children;
+- the passes of an event: the components that rendered before the handler, the components that
+  rendered after it, and the components that changed (the browser morphs them);
+- the size of the signed state, and whether the state came from the state cache;
+- the bound values, the browser events of the handler, and the warnings of the dev-mode check;
+- the Doctrine transaction of the handler: commit or rollback, and its time.
+
+The Performance panel shows the render passes, the handler and the transaction (`phem`
+category). With the profiler on, the browser console shows each event with a link to its Phem
+panel (`console.debug`). Without debug mode, Phem does not measure the renders.
+
 Other commands:
 
 ```sh

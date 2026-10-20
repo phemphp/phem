@@ -1102,8 +1102,9 @@ Two checks find a `render()` that is not pure:
   constructor, a static property, a superglobal, the clock (`time()`, `date()`,
   `new DateTime()`), or a random value (`rand()`, `random_int()`, `uniqid()`).
 - With `kernel.debug`, after each event, Phem renders the full page again and compares the
-  components that it did not render. A component whose HTML changed is a warning in the log and
-  in the console of the browser. This check doubles the work of an event: Phem does it only in
+  components that it did not render. A component whose HTML changed is a warning in the log, in
+  the console of the browser, and in the Phem panel of the Symfony profiler (see
+  [compiling.md](compiling.md#the-symfony-profiler)). This check doubles the work of an event: Phem does it only in
   debug mode. A class component with a plain property that is not readonly (a form that a
   handler sets) is not checked.
 

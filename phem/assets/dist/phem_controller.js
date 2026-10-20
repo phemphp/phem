@@ -246,6 +246,16 @@ function post(url, headers, body, onProgress) {
   })
 }
 
+// With the Symfony profiler (debug mode), logs each event with the link to its Phem panel. The
+// server sends the `X-Debug-Token-Link` header only when the profiler is on.
+function logProfile(handler, event, response) {
+  const link = response.headers.get("X-Debug-Token-Link")
+  if (!link) return
+  const url = new URL(link, window.location.href)
+  url.searchParams.set("panel", "phem")
+  console.debug(`[phem] ${event.live ? "phem:live" : handler} → ${response.status}`, url.href)
+}
+
 function showLoading(el, on) {
   if (on) el.setAttribute("aria-busy", "true")
   else el.removeAttribute("aria-busy")
@@ -673,6 +683,7 @@ export default class PhemController extends Controller {
       return
     }
     beforeRender()
+    logProfile(handler, event, response)
     if (response.status === 409) {
       // The state is not valid any more (a new build, or a new secret): load the page again.
       this.leaving = true

@@ -1,0 +1,298 @@
+{% extends '@WebProfiler/Profiler/layout.html.twig' %}
+
+{% set outcomes = {
+    rendered: 'Rendered',
+    redirect: 'Redirect',
+    reload: 'Reload (the state is not valid)',
+    state_required: 'State required (not in the cache)',
+    rate_limited: 'Rate limited',
+    error: 'Error',
+} %}
+
+{% macro ms(time) %}{{ '%0.2f'|format(time) }} ms{% endmacro %}
+
+{% macro bytes(size) %}{{ size >= 1024 ? '%0.1f KiB'|format(size / 1024) : size ~ ' B' }}{% endmacro %}
+
+{% block head %}
+    {{ parent() }}
+    <style>
+        #phem-fibers td.phem-name { white-space: nowrap; }
+        #phem-fibers .phem-id { color: var(--color-muted); font-size: var(--font-size-monospace); margin-left: 6px; }
+        #phem-fibers .phem-kept { color: var(--color-muted); }
+        #phem-fibers td.num-col { white-space: nowrap; }
+    </style>
+{% endblock %}
+
+{% block toolbar %}
+    {% if collector.phem %}
+        {% set status = collector.outcome == 'error' ? 'red' : (collector.warnings is not empty ? 'yellow' : '') %}
+        {% set icon %}
+            {{ include('@Phem/Collector/icon.svg') }}
+            <span class="sf-toolbar-value">{{ '%0.0f'|format(collector.renderTime) }}</span>
+            <span class="sf-toolbar-label">ms</span>
+        {% endset %}
+
+        {% set text %}
+            <div class="sf-toolbar-info-piece">
+                <b>Page</b>
+                <span>{{ collector.shortPage }}</span>
+            </div>
+            {% if collector.event %}
+                <div class="sf-toolbar-info-piece">
+                    <b>Handler</b>
+                    <span>{{ collector.live ? 'phem:live (bound values only)' : (collector.handler.name ?? collector.handler.id ?? 'n/a') }}</span>
+                </div>
+                <div class="sf-toolbar-info-piece">
+                    <b>Outcome</b>
+                    <span class="sf-toolbar-status {{ collector.outcome == 'error' ? 'sf-toolbar-status-red' }}">{{ outcomes[collector.outcome] ?? collector.outcome }}</span>
+                </div>
+            {% endif %}
+            <div class="sf-toolbar-info-piece">
+                <b>Components</b>
+                <span>{{ collector.renderedCount }} rendered{% if collector.event %}, {{ collector.changedCount }} changed{% endif %}</span>
+            </div>
+            {% if collector.state %}
+                <div class="sf-toolbar-info-piece">
+                    <b>State</b>
+                    <span>{{ _self.bytes(collector.state.size) }} ({{ _self.bytes(collector.state.gzip) }} gzip)</span>
+                </div>
+            {% endif %}
+            {% if collector.warnings is not empty %}
+                <div class="sf-toolbar-info-piece">
+                    <b>Warnings</b>
+                    <span class="sf-toolbar-status sf-toolbar-status-yellow">{{ collector.warnings|length }}</span>
+                </div>
+            {% endif %}
+        {% endset %}
+
+        {{ include('@WebProfiler/Profiler/toolbar_item.html.twig', {link: profiler_url, status: status}) }}
+    {% endif %}
+{% endblock %}
+
+{% block menu %}
+    <span class="label {{ not collector.phem ? 'disabled' }} {{ collector.outcome == 'error' ? 'label-status-error' : (collector.warnings is not empty ? 'label-status-warning') }}">
+        <span class="icon">{{ include('@Phem/Collector/icon.svg') }}</span>
+        <strong>Phem</strong>
+        {% if collector.warnings is not empty %}
+            <span class="count">{{ collector.warnings|length }}</span>
+        {% endif %}
+    </span>
+{% endblock %}
+
+{% block panel %}
+    <h2>Phem</h2>
+
+    {% if not collector.phem %}
+        <div class="empty empty-panel">
+            <p>This request is not a page or an event of Phem.</p>
+        </div>
+    {% else %}
+        <div class="metrics">
+            <div class="metric">
+                <span class="value">{{ collector.event ? 'Event' : 'Page' }}</span>
+                <span class="label">{{ collector.shortPage }}</span>
+            </div>
+            {% if collector.event %}
+                <div class="metric">
+                    <span class="value">{{ outcomes[collector.outcome] ?? collector.outcome }}</span>
+                    <span class="label">Outcome ({{ collector.status }})</span>
+                </div>
+            {% endif %}
+            <div class="metric">
+                <span class="value">{{ '%0.1f'|format(collector.renderTime) }} <span class="unit">ms</span></span>
+                <span class="label">Render time</span>
+            </div>
+            {% if collector.handler.time is defined %}
+                <div class="metric">
+                    <span class="value">{{ '%0.1f'|format(collector.handler.time) }} <span class="unit">ms</span></span>
+                    <span class="label">Handler</span>
+                </div>
+            {% endif %}
+            <div class="metric-divider"></div>
+            <div class="metric-group">
+                <div class="metric">
+                    <span class="value">{{ collector.renderedCount }}</span>
+                    <span class="label">Rendered</span>
+                </div>
+                {% if collector.event %}
+                    <div class="metric">
+                        <span class="value">{{ collector.changedCount }}</span>
+                        <span class="label">Changed</span>
+                    </div>
+                {% endif %}
+                {% if collector.state %}
+                    <div class="metric">
+                        <span class="value">{{ _self.bytes(collector.state.size) }}</span>
+                        <span class="label">State ({{ _self.bytes(collector.state.gzip) }} gzip)</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% for warning in collector.warnings %}
+            <div class="alert alert-warning">{{ warning }}</div>
+        {% endfor %}
+
+        <div class="sf-tabs">
+            <div class="tab">
+                <h3 class="tab-title">Components <span class="badge">{{ collector.fibers|length }}</span></h3>
+                <div class="tab-content">
+                    {% if collector.fibers is empty %}
+                        <div class="empty"><p>No component tree: the page did not render{% if collector.outcome != 'rendered' %} ({{ outcomes[collector.outcome] ?? collector.outcome }}){% endif %}.</p></div>
+                    {% else %}
+                        <p class="help">
+                            The time of a component is its own render time, without its children.
+                            {% if collector.event %}
+                                A component with no time in a pass did not render in it: the browser keeps its HTML.
+                                A changed component is morphed in the browser (a Turbo Stream).
+                            {% endif %}
+                        </p>
+                        <table id="phem-fibers">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Component</th>
+                                    {% for pass in collector.mainPasses %}
+                                        <th scope="col" class="num-col">{{ pass.label }}</th>
+                                    {% endfor %}
+                                    {% if collector.event %}<th scope="col">Changed</th>{% endif %}
+                                    <th scope="col">State</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fiber in collector.fibers %}
+                                    <tr>
+                                        <td class="phem-name font-normal" style="padding-left: {{ 8 + fiber.depth * 16 }}px">
+                                            <span title="{{ fiber.fqcn }}">{{ fiber.name ? '<' ~ fiber.name ~ '>' : '(not rendered)' }}</span>
+                                            <span class="phem-id">{{ fiber.id }}</span>
+                                        </td>
+                                        {% for pass in collector.mainPasses %}
+                                            {% set render = fiber.renders[pass.pass] ?? null %}
+                                            <td class="num-col font-normal {{ render is null ? 'phem-kept' }}" {% if render %}title="With the children: {{ _self.ms(render.time) }}"{% endif %}>
+                                                {{ render ? _self.ms(render.own) : '—' }}
+                                            </td>
+                                        {% endfor %}
+                                        {% if collector.event %}
+                                            <td class="font-normal">{{ fiber.changed ? '<span class="badge badge-success">changed</span>' }}</td>
+                                        {% endif %}
+                                        <td class="font-normal">{{ fiber.state ? profiler_dump(fiber.state, maxDepth=1) : '' }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if collector.event %}
+                <div class="tab">
+                    <h3 class="tab-title">Event</h3>
+                    <div class="tab-content">
+                        <table>
+                            <tbody>
+                                <tr>
+                                    <th scope="row">Handler</th>
+                                    <td>
+                                        {% if collector.live %}
+                                            <code>phem:live</code>: the event has only bound values.
+                                        {% elseif collector.handler.name is defined %}
+                                            {% set link = collector.handler.file ? collector.handler.file|file_link(collector.handler.line) : false %}
+                                            {% if link %}<a href="{{ link }}">{{ collector.handler.name }}</a>{% else %}{{ collector.handler.name }}{% endif %}
+                                            {% if collector.handler.exception %}<span class="badge badge-error">{{ collector.handler.exception }}</span>{% endif %}
+                                        {% else %}
+                                            The handler did not run.
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% if collector.handler.id ?? null %}
+                                    <tr><th scope="row">Handler id</th><td><code>{{ collector.handler.id }}</code></td></tr>
+                                {% endif %}
+                                <tr>
+                                    <th scope="row">Outcome</th>
+                                    <td>{{ outcomes[collector.outcome] ?? collector.outcome }} ({{ collector.status }}){% if collector.redirect %}: <code>{{ collector.redirect }}</code>{% endif %}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Transaction</th>
+                                    <td>
+                                        {% if collector.transaction %}
+                                            {{ collector.transaction.committed ? 'Committed' : 'Rolled back' }} ({{ _self.ms(collector.transaction.time) }})
+                                        {% else %}
+                                            No transaction.
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">State</th>
+                                    <td>
+                                        {% if collector.stateSent is null %}
+                                            n/a
+                                        {% elseif collector.stateSent %}
+                                            The browser sent the full state.
+                                        {% else %}
+                                            The browser sent only the signature: the state came from the state cache.
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Request body</th>
+                                    <td>{{ _self.bytes(collector.requestSize) }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Response body</th>
+                                    <td>{{ _self.bytes(collector.responseSize) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3>Bound values <span class="badge">{{ collector.boundCount }}</span></h3>
+                        {% if collector.boundCount %}
+                            {{ profiler_dump(collector.bound, maxDepth=2) }}
+                        {% else %}
+                            <div class="empty"><p>The event has no bound values that changed.</p></div>
+                        {% endif %}
+
+                        <h3>Browser events <span class="badge">{{ collector.browserEventCount }}</span></h3>
+                        {% if collector.browserEventCount %}
+                            {{ profiler_dump(collector.browserEvents, maxDepth=3) }}
+                        {% else %}
+                            <div class="empty"><p>The handler dispatched no browser events.</p></div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="tab">
+                <h3 class="tab-title">Render passes <span class="badge">{{ collector.passes|length }}</span></h3>
+                <div class="tab-content">
+                    {% if collector.passes is empty %}
+                        <div class="empty"><p>No component rendered.</p></div>
+                    {% else %}
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Pass</th>
+                                    <th scope="col" class="num-col">Components</th>
+                                    <th scope="col" class="num-col">Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pass in collector.passes %}
+                                    <tr>
+                                        <td class="font-normal">{{ pass.label }}</td>
+                                        <td class="font-normal num-col">{{ pass.fibers }}</td>
+                                        <td class="font-normal num-col">{{ _self.ms(pass.time) }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <p class="help">
+                            {% if collector.event %}
+                                An event renders the path to the handler before it, and the components that can change after it.
+                            {% endif %}
+                            In debug mode, the dev-mode check renders the full page again after an event, to find a render() that is not pure.
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

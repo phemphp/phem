@@ -51,6 +51,7 @@ final class Renderer implements ResetInterface
         private readonly HandlerInvoker $handlers = new HandlerInvoker(),
         private readonly HandlerFingerprint $fingerprints = new HandlerFingerprint(),
         private readonly ComponentMetadata $metadata = new ComponentMetadata(),
+        private readonly ?RenderProfiler $profiler = null,
     ) {
     }
 
@@ -251,6 +252,16 @@ final class Renderer implements ResetInterface
      * its parent and its place in the children of its parent do not change.
      */
     private function renderFiber(Tree $tree, Fiber $fiber, ComponentDefinition $def): void
+    {
+        if (null === $this->profiler) {
+            $this->renderFiberNow($tree, $fiber, $def);
+
+            return;
+        }
+        $this->profiler->profile($tree, $fiber, fn () => $this->renderFiberNow($tree, $fiber, $def));
+    }
+
+    private function renderFiberNow(Tree $tree, Fiber $fiber, ComponentDefinition $def): void
     {
         $root = Root::class === $def->fqcn;
         $renderer = $root ? null : $this->renderer($def);

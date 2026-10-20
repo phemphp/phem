@@ -33,5 +33,9 @@
     "config": {
         "allow-plugins": { "symfony/runtime": true },
         "sort-packages": true
+    },
+    "require-dev": {
+        "symfony/stopwatch": "^7.4|^8.0",
+        "symfony/web-profiler-bundle": "^7.4|^8.0"
     }
 }

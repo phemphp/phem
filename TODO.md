@@ -204,13 +204,20 @@ An exception in one component breaks the full event.
 
 ## 8. Developer experience
 
-### [ ] Symfony profiler panel — P2
+### [x] Symfony profiler panel — P2
+
+Done: in debug mode, a Phem panel in the Symfony profiler, for each page request and each event:
+the handler and its outcome, the component tree with the state and the own render time of each
+component in each pass, the components that changed, the state size and the state cache, the
+bound values, the browser events, the warnings of the dev-mode check, and the Doctrine
+transaction. The Performance panel shows the passes, the handler and the transaction. The browser
+console logs each event with a link to its panel. See
+[docs/compiling.md](docs/compiling.md#the-symfony-profiler).
 
 - **Best peer:** React DevTools (the component tree, props and state). The Symfony profiler
   panels of LC.
-- **Proposal:** a profiler panel for each event: the handler, the component tree, the state size,
-  the render time for each component, the components that changed, and the Doctrine
-  transaction. A browser log of the events in debug mode.
+- **Later:** the props of each component (they can be entities and closures, so they need a
+  safe dump).
 
 ### [ ] Language server and PhpStorm support — P2
 
