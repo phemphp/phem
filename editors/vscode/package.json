@@ -19,7 +19,7 @@
         "twig",
         "jsx"
     ],
-    "main": "./src/extension.js",
+    "main": "./dist/extension.js",
     "capabilities": {
         "untrustedWorkspaces": {
             "supported": "limited",
@@ -88,5 +88,11 @@
     },
     "dependencies": {
         "vscode-languageclient": "9.0.1"
+    },
+    "scripts": {
+        "vscode:prepublish": "esbuild src/extension.js --bundle --outfile=dist/extension.js --platform=node --format=cjs --external:vscode --minify"
+    },
+    "devDependencies": {
+        "esbuild": "0.25.10"
     }
 }

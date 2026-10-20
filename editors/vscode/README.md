@@ -158,13 +158,17 @@ The extension is a thin client: `src/extension.js` starts the server with
 `vscode-languageclient`, and colors the Twig delimiters. The server is in
 `compiler/crates/phemc-lsp/`. Its tests run with `make test`.
 
-To run the extension from the sources, build the server and install the dependencies, then open
-`editors/vscode/` in VS Code and push `F5`:
+esbuild bundles `src/extension.js` and its dependencies into one file, `dist/extension.js`
+(`npm run vscode:prepublish`). The package has only this file, not `node_modules/`.
+
+To run the extension from the sources, build the server, install the dependencies and bundle
+the extension. Then open `editors/vscode/` in VS Code and push `F5`. Bundle again after a change
+in `src/`.
 
 ```sh
 make lsp
 mkdir -p editors/vscode/server && cp editors/server/phem-lsp.cjs editors/server/phem-lsp.wasm editors/vscode/server/
-(cd editors/vscode && npm install)
+(cd editors/vscode && npm install && npm run vscode:prepublish)
 ```
 
 To see the scopes of a token, run **Developer: Inspect Editor Tokens and Scopes**.

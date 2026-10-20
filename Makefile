@@ -8,7 +8,7 @@ test: test-js ## Run cargo test, PHPUnit and the JS tests
 
 test-js: ## Run the tests of the phem Stimulus controller (Vitest, jsdom)
 	docker run --rm -e NPM_CONFIG_UPDATE_NOTIFIER=false -e NPM_CONFIG_LOGLEVEL=warn -v "$(CURDIR)/phem/assets:/assets" -w /assets node:22-alpine sh -c ' \
-		npm install --no-fund --no-audit && \
+		npm install --ignore-scripts --no-fund --no-audit && \
 		npm test'
 
 check:  ## Run the phemc diagnostics on the quickstart sources
@@ -26,7 +26,7 @@ vscode: lsp ## Build the VS Code extension: editors/vscode/phem-<version>.vsix
 	rm -rf editors/vscode/server && mkdir editors/vscode/server && cp editors/server/phem-lsp.cjs editors/server/phem-lsp.wasm editors/vscode/server/
 	docker run --rm -e NPM_CONFIG_UPDATE_NOTIFIER=false -e NPM_CONFIG_LOGLEVEL=warn -v "$(CURDIR)/editors/vscode:/ext" -w /ext node:22-alpine sh -c ' \
 		npm install --global --no-fund --no-audit npm@12.2.0 > /dev/null && \
-		npm install --omit=dev --no-fund --no-audit && \
+		npm install --ignore-scripts --no-fund --no-audit && \
 		npx --yes @vscode/vsce@4.0.0 package --skip-license --allow-missing-repository'
 
 VSCODE_VERSION = $(shell sed -n 's/^    "version": "\(.*\)",/\1/p' editors/vscode/package.json)
