@@ -5,9 +5,10 @@ namespace App\Components;
 use Closure;
 use Phem\Attribute\Component;
 use Phem\Html;
+use Phem\Node;
 
 #[Component]
-function MyButton(int $count, Closure $onClick) {
+function MyButton(int $count, Closure $onClick): Node {
     return (
         <button className="btn" onClick={{ onClick }}>
             Clicked {{ count }} times
@@ -16,7 +17,7 @@ function MyButton(int $count, Closure $onClick) {
 }
 
 #[Component]
-function Card(string $title, ?Html $children = null, ?Html $footer = null) {
+function Card(string $title, ?Html $children = null, ?Html $footer = null): Node {
     return (
         <section class="card">
             <h2>{{ title }}</h2>
@@ -27,11 +28,11 @@ function Card(string $title, ?Html $children = null, ?Html $footer = null) {
 }
 
 #[Component]
-function Badge(string $label, string $tone = 'info') {
+function Badge(string $label, string $tone = 'info'): Node {
     return <span class="badge badge-{{ tone }}">{{ label|upper }}</span>;
 }
 
 #[Component]
-function Tag(?Html $children = null) {
+function Tag(?Html $children = null): Node {
     return <span class="tag">{{ children ?? 'untagged' }}</span>;
 }

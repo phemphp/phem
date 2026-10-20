@@ -2,13 +2,14 @@
 namespace App\Pages\Examples;
 
 use Phem\Attribute\Page;
+use Phem\Node;
 
 use function App\Components\{Layout, Profile, Document};
 
 #[Page('/examples/Gallery')]
 final class Gallery
 {
-    public function render()
+    public function render(): Node
     {
         $scientists = [
             ['id' => 1, 'name' => 'Maria Skłodowska-Curie', 'profession' => 'physicist and chemist'],

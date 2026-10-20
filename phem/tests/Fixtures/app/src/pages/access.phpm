@@ -3,6 +3,7 @@
 namespace App\Pages;
 
 use Phem\Attribute\{Page, State};
+use Phem\Node;
 use Phem\Tests\Fixtures\Deny;
 use Symfony\Component\HttpKernel\Attribute\Cache;
 use Symfony\Component\ExpressionLanguage\Expression;
@@ -22,7 +23,7 @@ final class PrivateCounter
         ++$this->count;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>
@@ -44,7 +45,7 @@ final class DeniedPage
         ++$this->count;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>
@@ -59,7 +60,7 @@ final class DeniedPage
 #[Page('/cached')]
 final class CachedPage
 {
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>
@@ -82,7 +83,7 @@ final class LimitedPage
         ++$this->count;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>
@@ -131,7 +132,7 @@ final class LimitedHandlerPage
         ++$this->count;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

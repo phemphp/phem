@@ -2,13 +2,14 @@
 namespace App\Pages\Examples;
 
 use Phem\Attribute\Page;
+use Phem\Node;
 
 use function App\Components\Document;
 
 #[Page('/examples/ShoppingList')]
 final class ShoppingList
 {
-    public function render()
+    public function render(): Node
     {
         $products = [
             ['title' => 'Cabbage', 'isFruit' => false, 'id' => 1],

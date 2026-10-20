@@ -3,6 +3,7 @@ namespace App\Pages\Examples;
 
 use Phem\Attribute\{Page, State};
 use Phem\Event;
+use Phem\Node;
 use Symfony\Component\Validator\Constraints\Image;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -39,7 +40,7 @@ final class PhotoUpload
         }
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

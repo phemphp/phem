@@ -3,11 +3,12 @@ namespace App\Pages\Examples;
 
 use Phem\Attribute\{Component, Page};
 use Phem\Html;
+use Phem\Node;
 
 use function App\Components\Document;
 
 #[Component]
-function MyButton()
+function MyButton(): Node
 {
     return (
         <button>I'm a button</button>
@@ -15,7 +16,7 @@ function MyButton()
 }
 
 #[Component]
-function IconButton(string $icon, ?Html $children = null, mixed ...$props)
+function IconButton(string $icon, ?Html $children = null, mixed ...$props): Node
 {
     return (
         <button type="button" onclick="alert('Clicked!')" {{ ...props }}>
@@ -27,7 +28,7 @@ function IconButton(string $icon, ?Html $children = null, mixed ...$props)
 #[Page('/examples/MyButton')]
 final class MyApp
 {
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

@@ -3,6 +3,7 @@
 namespace App\Pages;
 
 use Phem\Attribute\Page;
+use Phem\Node;
 
 use function App\Components\Document;
 
@@ -10,7 +11,7 @@ use function App\Components\Document;
 #[Page('/about-us', name: 'about_us')]
 final class About
 {
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

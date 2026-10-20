@@ -2,7 +2,7 @@
 namespace App\Pages\Examples;
 
 use Phem\Attribute\{Component, Page, State};
-use Phem\{ErrorBoundary, Suspense};
+use Phem\{ErrorBoundary, Node, Suspense};
 
 use function App\Components\Document;
 
@@ -23,7 +23,7 @@ final class SalesReport
         $this->sales = ['North' => 1200, 'South' => 860, 'East' => 1530];
     }
 
-    public function render()
+    public function render(): Node
     {
         $rows = [];
         foreach ($this->sales as $region => $total) {
@@ -45,7 +45,7 @@ final class ActivityChart
         $this->days = ['Mon' => 4, 'Tue' => 7, 'Wed' => 2, 'Thu' => 9, 'Fri' => 5];
     }
 
-    public function render()
+    public function render(): Node
     {
         $bars = [];
         foreach ($this->days as $day => $n) {
@@ -58,7 +58,7 @@ final class ActivityChart
 }
 
 #[Component]
-function Weather()
+function Weather(): Node
 {
     throw new \RuntimeException('The weather service is down.');
 
@@ -66,7 +66,7 @@ function Weather()
 }
 
 #[Component]
-function StockQuote(int $refreshes)
+function StockQuote(int $refreshes): Node
 {
     if (1 === $refreshes % 2) {
         throw new \RuntimeException('The stock service timed out.');
@@ -86,7 +86,7 @@ final class Dashboard
         ++$this->refreshes;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

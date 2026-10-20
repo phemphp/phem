@@ -4,13 +4,14 @@ namespace App\Pages;
 
 use Phem\Attribute\{Component, Page, Prop, State};
 use Phem\Html;
+use Phem\Node;
 use Phem\Tests\Fixtures\Titled;
 
 use function App\Components\Document;
 
 // A template component with a required slot, and a slot that the template tests.
 #[Component]
-function Panel(Html $children, ?Html $footer = null) {
+function Panel(Html $children, ?Html $footer = null): Node {
     return (
         <section class="panel">
             {{ children }}
@@ -24,7 +25,7 @@ final class Label
 {
     #[Prop] public readonly string $text;
 
-    public function render()
+    public function render(): Node
     {
         return <span id="label">{{ text }}</span>;
     }
@@ -34,7 +35,7 @@ final class Label
 #[Component]
 final class Heading extends Titled
 {
-    public function render()
+    public function render(): Node
     {
         return <h3 id="heading" onClick={{ hit }}>{{ title }} {{ hits }}</h3>;
     }
@@ -50,7 +51,7 @@ final class Edge
         ++$this->n;
     }
 
-    public function render()
+    public function render(): Node
     {
         $odd = array_map(fn ($i) => $i % 2 ? <li key={{ i }}>{{ i }}</li> : null, [1, 2, 3]);
 

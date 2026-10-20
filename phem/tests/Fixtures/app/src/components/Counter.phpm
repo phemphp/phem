@@ -4,6 +4,7 @@ namespace App\Components;
 
 use Phem\Attribute\{Component, Prop, State};
 use Phem\Html;
+use Phem\Node;
 use Phem\Tests\Fixtures\Limits;
 
 #[Component]
@@ -22,7 +23,7 @@ final class Counter
         $this->count = min($this->count + 1, $this->limits->max);
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <button onClick={{ increment }} data-count={{ count }}>

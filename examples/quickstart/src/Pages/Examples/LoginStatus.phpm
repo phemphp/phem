@@ -2,11 +2,12 @@
 namespace App\Pages\Examples;
 
 use Phem\Attribute\{Component, Page, State};
+use Phem\Node;
 
 use function App\Components\Document;
 
 #[Component]
-function AdminPanel()
+function AdminPanel(): Node
 {
     return (
         <div className="panel">
@@ -17,7 +18,7 @@ function AdminPanel()
 }
 
 #[Component]
-function LoginForm()
+function LoginForm(): Node
 {
     return (
         <div className="panel">
@@ -38,7 +39,7 @@ final class LoginStatus
         $this->isLoggedIn = !$this->isLoggedIn;
     }
 
-    public function render()
+    public function render(): Node
     {
         if ($this->isLoggedIn) {
             $content = <AdminPanel />;

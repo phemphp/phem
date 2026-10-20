@@ -3,6 +3,7 @@
 namespace App\Pages;
 
 use Phem\Attribute\{Component, Page, State};
+use Phem\Node;
 use Phem\Suspense;
 use Phem\Tests\Fixtures\Renders;
 
@@ -27,7 +28,7 @@ final class Report
         ++$this->rows;
     }
 
-    public function render()
+    public function render(): Node
     {
         return <button id="more" onClick={{ more }}>Rows {{ rows }}</button>;
     }
@@ -38,7 +39,7 @@ final class Part
 {
     #[State] public int $n = 1;
 
-    public function render()
+    public function render(): Node
     {
         return <span id="part">Part {{ n }}</span>;
     }
@@ -46,7 +47,7 @@ final class Part
 
 // A service that is down.
 #[Component]
-function Thrower()
+function Thrower(): Node
 {
     throw new \RuntimeException('The chart service is down.');
 
@@ -55,7 +56,7 @@ function Thrower()
 
 // A child with state renders first, then the render throws: the boundary drops the child.
 #[Component]
-function Broken()
+function Broken(): Node
 {
     return <div><Part /><Thrower /></div>;
 }
@@ -71,7 +72,7 @@ final class SuspensePage
         ++$this->clicks;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

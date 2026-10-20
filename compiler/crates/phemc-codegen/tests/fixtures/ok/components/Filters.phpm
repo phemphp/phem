@@ -3,6 +3,7 @@
 namespace App\Components;
 
 use Phem\Attribute\{Component, State};
+use Phem\Node;
 
 #[Component]
 final class Filters
@@ -21,7 +22,7 @@ final class Filters
     {
     }
 
-    public function render()
+    public function render(): Node
     {
         $options = ['name' => 'Name', 'year' => 'Year'];
 

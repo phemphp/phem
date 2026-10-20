@@ -3,6 +3,7 @@
 namespace App\Pages;
 
 use Phem\Attribute\{Page, State};
+use Phem\Node;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 use function App\Components\Document;
@@ -20,7 +21,7 @@ final class LeavePage
         return new RedirectResponse('/about');
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

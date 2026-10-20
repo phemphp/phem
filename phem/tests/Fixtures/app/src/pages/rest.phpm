@@ -3,25 +3,26 @@
 namespace App\Pages;
 
 use Phem\Attribute\{Component, Page, Prop, State};
+use Phem\Node;
 
 use function App\Components\Document;
 
 // A template component: the extra props go to `$rest`.
 #[Component]
-function RestButton(int $count, mixed ...$rest) {
+function RestButton(int $count, mixed ...$rest): Node {
     return <button type="button" {{ ...rest }}>Clicked {{ count }} times</button>;
 }
 
 // A function component (PHP code before the markup).
 #[Component]
-function LoudButton(string $label, mixed ...$rest) {
+function LoudButton(string $label, mixed ...$rest): Node {
     $text = strtoupper($label);
     return <button className="loud" {{ ...rest }}>{{ text }}</button>;
 }
 
 // Forwards its extra props to another component.
 #[Component]
-function Forward(mixed ...$rest) {
+function Forward(mixed ...$rest): Node {
     return <RestButton count={{ 7 }} {{ ...rest }} />;
 }
 
@@ -32,7 +33,7 @@ final class RestLink
     #[Prop] public string $label = '';
     #[Prop(rest: true)] public array $attrs = [];
 
-    public function render()
+    public function render(): Node
     {
         return <a className="link" {{ ...attrs }}>{{ label }}</a>;
     }
@@ -48,7 +49,7 @@ final class RestPage
         ++$this->count;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

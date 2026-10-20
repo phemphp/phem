@@ -20,7 +20,7 @@ namespace Phem;
  * not rendered yet: the Renderer renders it when the component returns it, or when a
  * template prints it.
  */
-final class Element
+final class Element implements Node
 {
     /**
      * @param string               $template the template name in the phemc output

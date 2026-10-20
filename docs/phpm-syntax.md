@@ -9,8 +9,9 @@ writes `<?php` in the PHP that it generates.
 
 ## 1. Components
 
-A component is a PHP function with the `#[Component]` attribute. It returns markup.
-As in React, a string that it returns is text: Phem escapes it.
+A component is a PHP function with the `#[Component]` attribute. It returns markup: give it the
+return type `Phem\Node` (see [Markup values](#10-markup-values)). As in React, a string that it
+returns is text: Phem escapes it.
 A component with state is a `#[Component]` class (see section 7).
 
 ```php
@@ -18,9 +19,10 @@ A component with state is a `#[Component]` class (see section 7).
 namespace App\Components;
 
 use Phem\Attribute\Component;
+use Phem\Node;
 
 #[Component]
-function MyButton() {
+function MyButton(): Node {
     return (
         <button>I'm a button</button>
     );
@@ -49,13 +51,14 @@ renders the `<html>` element and the `<Root>` of the page (see
 
 ```php
 use Phem\Attribute\Page;
+use Phem\Node;
 
 use function App\Components\Document;
 
 #[Page('/', name: 'home')]
 final class MyApp
 {
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>
@@ -81,6 +84,7 @@ A route value goes to the page as a prop. Mark the public property with `#[Path]
 
 ```php
 use Phem\Attribute\{Page, Path};
+use Phem\Node;
 
 use function App\Components\Document;
 
@@ -89,7 +93,7 @@ final class Hello
 {
     #[Path] public string $name;
 
-    public function render()
+    public function render(): Node
     {
         return <Document><p>Hello {{ name }}</p></Document>;
     }
@@ -100,7 +104,7 @@ final class ItemPage
 {
     #[Path] public int $id;
 
-    public function render()
+    public function render(): Node
     {
         return <Document><h1>Item {{ id }}</h1></Document>;
     }
@@ -127,6 +131,7 @@ entity arguments of a Symfony controller. Install `doctrine/orm` and `doctrine/d
 ```php
 use App\Model\Scientist;
 use Phem\Attribute\{Page, Path};
+use Phem\Node;
 
 use function App\Components\Document;
 
@@ -135,7 +140,7 @@ final class ScientistPage
 {
     #[Path] public Scientist $scientist;
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>
@@ -175,7 +180,7 @@ variables of the scope that contains the markup (`$user` is `user` in Twig). The
 
 ```php
 #[Component]
-function Profile() {
+function Profile(): Node {
     $user = ['name' => 'Hedy Lamarr', 'imageUrl' => '/img/hedy.jpg', 'imageSize' => 90];
 
     return (
@@ -231,7 +236,7 @@ return <div>{{ content }}</div>;
 
 ```php
 #[Component]
-function ShoppingList() {
+function ShoppingList(): Node {
     $products = [
         ['title' => 'Cabbage', 'isFruit' => false, 'id' => 1],
         ['title' => 'Garlic', 'isFruit' => false, 'id' => 2],
@@ -267,7 +272,7 @@ Pass the function. Do not call it.
 
 ```php
 #[Component]
-function MyButton() {
+function MyButton(): Node {
     $handleClick = fn() => error_log('You clicked me!');
 
     return <button onClick={{ handleClick }}>Click me</button>;
@@ -324,7 +329,7 @@ private ?FormInterface $form = null {
     get => $this->form ??= $this->forms->create(ScientistType::class);
 }
 
-public function render()
+public function render(): Node
 {
     $view = $this->form->createView();
 
@@ -544,7 +549,7 @@ final class ScientistSearch
         // $this->query and $this->activeOnly have the values of the fields here.
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <form onSubmit={{ search }}>
@@ -616,9 +621,10 @@ and declare a prop of type `Phem\Bound` in the child. The field of the child bin
 
 ```php
 use Phem\Bound;
+use Phem\Node;
 
 #[Component]
-function TextField(Bound $value, string $label)
+function TextField(Bound $value, string $label): Node
 {
     return <label>{{ label }} <input phem:bind={{ value }} phem:live /></label>;
 }
@@ -956,6 +962,7 @@ A page class (`#[Page]`) is a component too, with no `#[Component]`.
 
 ```php
 use Phem\Attribute\{Component, Prop, State};
+use Phem\Node;
 
 #[Component]
 final class Counter
@@ -968,7 +975,7 @@ final class Counter
         $this->count = min($this->count + 1, 10);
     }
 
-    public function render()
+    public function render(): Node
     {
         return <button onClick={{ increment }}>{{ label }} {{ count }} times</button>;
     }
@@ -1056,6 +1063,7 @@ never props.
 ```php
 use App\Repository\TodoRepository;
 use Phem\Attribute\{Component, Prop, State};
+use Phem\Node;
 
 #[Component]
 final class TodoList
@@ -1078,7 +1086,7 @@ final class TodoList
         $this->todos = $this->repository->latest($this->limit);
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <section>
@@ -1117,7 +1125,7 @@ or static properties. Read the data in `mount()` or in a handler:
 
 ```php
 // Not correct: the output changes when the database changes.
-public function render()
+public function render(): Node
 {
     $unread = $this->messages->countUnread();
     return <span>{{ unread }}</span>;
@@ -1131,7 +1139,7 @@ public function mount(): void
     $this->unread = $this->messages->countUnread();
 }
 
-public function render()
+public function render(): Node
 {
     return <span>{{ unread }}</span>;
 }
@@ -1247,12 +1255,13 @@ slow: the server renders the full page before it sends it. Put the slow componen
 children. Then the browser loads the children with an event:
 
 ```php
+use Phem\Node;
 use Phem\Suspense;
 
 #[Page('/dashboard')]
 final class Dashboard
 {
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>
@@ -1303,11 +1312,12 @@ children, only for this boundary:
 
 ```php
 use Phem\ErrorBoundary;
+use Phem\Node;
 
 #[Page('/dashboard')]
 final class Dashboard
 {
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>
@@ -1345,7 +1355,7 @@ It can receive a handler as a prop.
 
 ```php
 #[Component]
-function MyButton(int $count, Closure $onClick) {
+function MyButton(int $count, Closure $onClick): Node {
     return <button onClick={{ onClick }}>Clicked {{ count }} times</button>;
 }
 
@@ -1359,7 +1369,7 @@ final class MyApp
         ++$this->count;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>
@@ -1389,7 +1399,7 @@ attributes and the handlers:
 
 ```php
 #[Component]
-function CountButton(int $count, mixed ...$rest) {
+function CountButton(int $count, mixed ...$rest): Node {
     return <button type="button" {{ ...rest }}>Clicked {{ count }} times</button>;
 }
 
@@ -1412,7 +1422,7 @@ final class CountButton
     #[Prop] public int $count = 0;
     #[Prop(rest: true)] public array $attrs = [];
 
-    public function render()
+    public function render(): Node
     {
         return <button type="button" {{ ...attrs }}>Clicked {{ count }} times</button>;
     }
@@ -1430,6 +1440,16 @@ A markup literal is a value, like a React element: phemc compiles `<p>{{ x }}</p
 (`{{ content }}`), or when the component returns it. Markup that does not print (the other
 branch of `{{ on ? yes : no }}`) renders no component. An array of markup prints as a list,
 and its `null` and `false` items print nothing. Do not cast a markup literal to a string in PHP.
+
+`Phem\Node` is the type of markup, like `ReactNode`. Use it as the return type of a function
+component and of `render()`:
+
+- A markup literal is a `Phem\Element` (not rendered yet).
+- A prop or a slot with markup (`$this->children`) is a `Phem\Html` (rendered markup).
+
+Both are a `Node`. Use `?Node` for a component that can render nothing (`return null;`), and
+`Node|string` for a component that can return text. phemc does not need the return type, but
+PHP and PHPStan then check what the component returns.
 
 Components also work in the normal Twig templates of the application, without state:
 `{% component 'App\\Components\\Profile' with {person: person} %}`.

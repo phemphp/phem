@@ -17,9 +17,10 @@ use Twig\Markup;
 
 /**
  * Rendered markup. Twig prints it without escaping.
- * A markup literal in PHP (`$content = <AdminPanel />;`) is an Html value.
+ * A markup literal in PHP (`$content = <AdminPanel />;`) is an Element. It becomes Html when it
+ * passes to a component as a prop or a slot.
  */
-class Html extends Markup
+class Html extends Markup implements Node
 {
     public function __construct(string $html)
     {

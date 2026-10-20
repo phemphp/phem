@@ -4,6 +4,7 @@ namespace App\Pages\Examples;
 use App\Model\Scientist;
 use App\Repository\ScientistRepository;
 use Phem\Attribute\{Page, Path};
+use Phem\Node;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 use function App\Components\{Layout, ScientistCard, Document};
@@ -26,7 +27,7 @@ final class ScientistPage
         return new RedirectResponse('/examples/DurableGallery');
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

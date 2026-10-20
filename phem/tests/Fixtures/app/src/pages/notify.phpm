@@ -5,6 +5,7 @@ namespace App\Pages;
 use Phem\Attribute\{Component, Page, State};
 use Phem\BrowserEventDispatcher;
 use Phem\Event;
+use Phem\Node;
 use Phem\Tests\Fixtures\Announcer;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
@@ -59,7 +60,7 @@ final class Notifier
         $e->dispatcher->dispatch('submitted', $e->form);
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <div>
@@ -78,7 +79,7 @@ final class Notifier
 #[Page('/notify')]
 final class NotifyPage
 {
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

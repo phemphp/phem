@@ -4,6 +4,7 @@ namespace App\Pages;
 
 use Phem\Attribute\{Component, Page, State};
 use Phem\Event;
+use Phem\Node;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 use function App\Components\Document;
@@ -34,7 +35,7 @@ final class Uploader
         }
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <div>
@@ -57,7 +58,7 @@ final class Uploader
 #[Page('/upload')]
 final class UploadPage
 {
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

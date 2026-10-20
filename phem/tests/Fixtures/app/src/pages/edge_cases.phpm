@@ -4,12 +4,13 @@ namespace App\Pages;
 
 use Phem\Attribute\{Component, Page, Prop, State};
 use Phem\Html;
+use Phem\Node;
 use Phem\Tests\Fixtures\Framed;
 
 use function App\Components\Document;
 
 #[Component]
-function Tally(array $items) {
+function Tally(array $items): Node {
     $n = count($items);
     return <p id="count">{{ n }}</p>;
 }
@@ -25,7 +26,7 @@ final class Chip
         ++$this->hits;
     }
 
-    public function render()
+    public function render(): Node
     {
         return <button onClick={{ hit }}>{{ label }} {{ hits }}</button>;
     }
@@ -37,7 +38,7 @@ final class Shelf
 {
     #[Prop] public readonly Html $children;
 
-    public function render()
+    public function render(): Node
     {
         return <div id="shelf"><Chip label="own" />{{ children }}</div>;
     }
@@ -55,7 +56,7 @@ final class Gauge
         $this->text = 'n'.$this->n;
     }
 
-    public function render()
+    public function render(): Node
     {
         return <span id="gauge">{{ text }}</span>;
     }
@@ -65,7 +66,7 @@ final class Gauge
 #[Component]
 final class Boxed extends Framed
 {
-    public function render()
+    public function render(): Node
     {
         return <div id="boxed">{{ children }}|{{ footer }}</div>;
     }
@@ -74,7 +75,7 @@ final class Boxed extends Framed
 #[Page('/edge/readonly-slot')]
 final class ReadonlySlotPage
 {
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>
@@ -94,7 +95,7 @@ final class MountPage
         ++$this->n;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>
@@ -107,7 +108,7 @@ final class MountPage
 #[Page('/edge/open-slots')]
 final class OpenSlotsPage
 {
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>
@@ -120,7 +121,7 @@ final class OpenSlotsPage
 #[Page('/edge/if-slot')]
 final class IfSlotPage
 {
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>
@@ -133,7 +134,7 @@ final class IfSlotPage
 #[Page('/edge/list-prop')]
 final class ListPropPage
 {
-    public function render()
+    public function render(): Node
     {
         $items = [null, <i>b</i>];
 

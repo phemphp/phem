@@ -4,6 +4,7 @@ namespace App\Pages;
 
 use Phem\Attribute\{Component, Page, State};
 use Phem\ErrorBoundary;
+use Phem\Node;
 
 use function App\Components\Document;
 
@@ -27,7 +28,7 @@ final class Ticker
         throw new \RuntimeException('The handler failed.');
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <p>
@@ -40,7 +41,7 @@ final class Ticker
 
 // A service that is down when `down` is true.
 #[Component]
-function Quote(bool $down)
+function Quote(bool $down): Node
 {
     if ($down) {
         throw new \RuntimeException('The quote service is down.');
@@ -51,7 +52,7 @@ function Quote(bool $down)
 
 // A child with state renders first, then the render throws: the boundary drops the child.
 #[Component]
-function QuoteCard(bool $down)
+function QuoteCard(bool $down): Node
 {
     return <div><Ticker /><Quote down={{ down }} /></div>;
 }
@@ -72,7 +73,7 @@ final class ErrorBoundaryPage
         $this->down = !$this->down;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

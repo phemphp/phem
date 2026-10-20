@@ -2,13 +2,14 @@
 namespace App\Pages\Examples;
 
 use Phem\Attribute\Page;
+use Phem\Node;
 
 use function App\Components\Document;
 
 #[Page('/examples/Profile')]
 final class Profile
 {
-    public function render()
+    public function render(): Node
     {
         $user = [
             'name' => 'Hedy Lamarr',

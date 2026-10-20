@@ -4,10 +4,11 @@ namespace App\Components;
 
 use Phem\Attribute\Component;
 use Phem\Html;
+use Phem\Node;
 
 // The page shell: a header, the page content (children) and a footer slot.
 #[Component]
-function Layout(string $title, ?Html $children = null, ?Html $footer = null)
+function Layout(string $title, ?Html $children = null, ?Html $footer = null): Node
 {
     return (
         <div className="layout">

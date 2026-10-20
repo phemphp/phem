@@ -2,6 +2,7 @@
 namespace App\Pages\Examples;
 
 use Phem\Attribute\{Page, State};
+use Phem\Node;
 
 use function App\Components\Document;
 
@@ -23,7 +24,7 @@ final class StarRating
         $this->stars = 0;
     }
 
-    public function render()
+    public function render(): Node
     {
         $display = str_repeat('★', $this->stars) . str_repeat('☆', self::MAX_STARS - $this->stars);
 

@@ -3,6 +3,7 @@
 namespace App\Pages;
 
 use Phem\Attribute\{Component, Page, State};
+use Phem\Node;
 use Phem\Tests\Fixtures\Size;
 
 use function App\Components\Document;
@@ -29,7 +30,7 @@ final class Profile
         ++$this->saves;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <form onSubmit={{ save }}>
@@ -72,7 +73,7 @@ final class Profile
 #[Page('/bind')]
 final class BindPage
 {
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>
@@ -90,7 +91,7 @@ final class BoundPage
 {
     #[State] public string $name = '';
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>
@@ -108,7 +109,7 @@ final class MissingKeyPage
 {
     #[State] public array $filters = [];
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

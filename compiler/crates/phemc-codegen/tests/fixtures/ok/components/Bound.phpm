@@ -4,17 +4,18 @@ namespace App\Components;
 
 use Phem\Attribute\{Component, Prop, State};
 use Phem\Bound;
+use Phem\Node;
 
 /** A template component: its field binds the property of the parent. */
 #[Component]
-function TextField(Bound $value, string $label)
+function TextField(Bound $value, string $label): Node
 {
     return <label>{{ label }} <input phem:bind={{ value }} phem:live /></label>;
 }
 
 /** A function component: it passes its Bound prop to a child. */
 #[Component]
-function NameField(Bound $value)
+function NameField(Bound $value): Node
 {
     $label = 'Name';
 
@@ -27,7 +28,7 @@ final class ColorPicker
 {
     #[Prop] public Bound $value;
 
-    public function render()
+    public function render(): Node
     {
         return (
             <select phem:bind={{ value }}>
@@ -45,7 +46,7 @@ final class Profile
     #[State] public string $bio = '';
     #[State] public array $prefs = ['color' => 'red'];
 
-    public function render()
+    public function render(): Node
     {
         return (
             <form>

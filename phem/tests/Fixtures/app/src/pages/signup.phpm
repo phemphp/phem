@@ -4,6 +4,7 @@ namespace App\Pages;
 
 use Phem\Attribute\{Component, Page, Prop, State};
 use Phem\Event;
+use Phem\Node;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 use function App\Components\Document;
@@ -55,7 +56,7 @@ final class Signup
         return null;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <div class="signup">
@@ -89,7 +90,7 @@ final class Signup
 #[Page('/signup')]
 final class SignupPage
 {
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

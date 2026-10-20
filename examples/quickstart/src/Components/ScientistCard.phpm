@@ -4,6 +4,7 @@ namespace App\Components;
 
 use App\Model\Scientist;
 use Phem\Attribute\{Component, Prop};
+use Phem\Node;
 
 #[Component]
 final class LikeCounter
@@ -16,7 +17,7 @@ final class LikeCounter
         ++$this->scientist->likes;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <button onClick={{ like }}>♥ {{ scientist.likes }}</button>
@@ -26,7 +27,7 @@ final class LikeCounter
 
 // Avatar is in Profile.phpm, in this namespace: it needs no import.
 #[Component]
-function ScientistCard(Scientist $scientist)
+function ScientistCard(Scientist $scientist): Node
 {
     return (
         <section className="profile">

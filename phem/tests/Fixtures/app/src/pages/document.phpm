@@ -3,7 +3,7 @@
 namespace App\Pages;
 
 use Phem\Attribute\{Component, Page, State};
-use Phem\{Html, Root};
+use Phem\{Html, Node, Root};
 use Symfony\Component\Routing\Attribute\Route;
 
 use function App\Components\{Badge, Document};
@@ -11,7 +11,7 @@ use function App\Components\{Badge, Document};
 // Another document: another component, as another base template. Components can render
 // after the root element.
 #[Component]
-function SpanishDocument(?Html $title = null, ?Html $children = null)
+function SpanishDocument(?Html $title = null, ?Html $children = null): Node
 {
     return (
         <html lang="es">
@@ -37,7 +37,7 @@ final class DocumentPage
         $this->count = 3;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <SpanishDocument>
@@ -59,7 +59,7 @@ final class EscapedTitlePage
         ++$this->n;
     }
 
-    public function render()
+    public function render(): Node
     {
         $name = 'Tom & Jerry <script>';
 
@@ -76,7 +76,7 @@ final class EscapedTitlePage
 #[Page('/document/none')]
 final class NoRootPage
 {
-    public function render()
+    public function render(): Node
     {
         return <p>No root</p>;
     }
@@ -86,7 +86,7 @@ final class NoRootPage
 #[Page('/document/two')]
 final class TwoRootsPage
 {
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

@@ -57,10 +57,10 @@ the `<!DOCTYPE html>`.
 namespace App\Components;
 
 use Phem\Attribute\Component;
-use Phem\{Html, Root};
+use Phem\{Html, Node, Root};
 
 #[Component]
-function Document(?Html $title = null, ?Html $children = null)
+function Document(?Html $title = null, ?Html $children = null): Node
 {
     return (
         <html lang="en">
@@ -77,6 +77,8 @@ function Document(?Html $title = null, ?Html $children = null)
 Each page renders its content in it. A page gives the title with the `title` slot:
 
 ```php
+use Phem\Node;
+
 use function App\Components\Document;
 
 #[Page('/scientists/{id:scientist}')]
@@ -84,7 +86,7 @@ final class ScientistPage
 {
     #[Path] public Scientist $scientist;
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

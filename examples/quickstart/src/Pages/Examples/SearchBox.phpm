@@ -2,6 +2,7 @@
 namespace App\Pages\Examples;
 
 use Phem\Attribute\{Page, State, Url};
+use Phem\Node;
 
 use function App\Components\Document;
 
@@ -17,7 +18,7 @@ final class SearchBox
         $this->name = '';
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

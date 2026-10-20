@@ -9,11 +9,12 @@ namespace App\Pages\Examples;
 
 use Closure;
 use Phem\Attribute\{Component, Page, State};
+use Phem\Node;
 
 use function App\Components\Document;
 
 #[Component]
-function MyButton(int $count, Closure $onClick) {
+function MyButton(int $count, Closure $onClick): Node {
     return <button onClick={{ onClick }}>Clicked {{ count }} times</button>;
 }
 
@@ -27,7 +28,7 @@ final class MyApp
         ++$this->count;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>
@@ -60,7 +61,7 @@ final class AddScientist
         $this->scientists->add(new Scientist($e->form['name'], $e->form['profession']));
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <form onSubmit={{ add }}>

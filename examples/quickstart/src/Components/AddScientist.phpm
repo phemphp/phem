@@ -7,6 +7,7 @@ use App\Model\Scientist;
 use App\Repository\ScientistRepository;
 use Phem\Attribute\Component;
 use Phem\Event;
+use Phem\Node;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 
@@ -40,7 +41,7 @@ final class AddScientist
         }
     }
 
-    public function render()
+    public function render(): Node
     {
         $view = $this->form->createView();
 

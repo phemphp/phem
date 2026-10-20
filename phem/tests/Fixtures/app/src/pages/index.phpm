@@ -4,10 +4,11 @@ namespace App\Pages;
 
 use App\Components\Counter;
 use Phem\Attribute\{Component, Page, State};
+use Phem\Node;
 use function App\Components\{MyButton, Card, Badge, Tag, Document};
 
 #[Component]
-function Toolbar(string $theme = 'light') {
+function Toolbar(string $theme = 'light'): Node {
     return <p className="theme-{{ theme }}">Theme: {{ theme }}</p>;
 }
 
@@ -17,7 +18,7 @@ function Shout(string $name): string {
 }
 
 #[Component]
-function Greeting(string $name) {
+function Greeting(string $name): Node {
     $upper = Shout($name);
     return <p className="greeting">Hello, {{ upper }}!</p>;
 }
@@ -32,7 +33,7 @@ final class Toggle
         $this->on = !$this->on;
     }
 
-    public function render()
+    public function render(): Node
     {
         if ($this->on) {
             $content = <Badge label="on" tone="ok" />;
@@ -72,7 +73,7 @@ final class Home
         $this->items[] = 'item'.(count($this->items) + 1);
     }
 
-    public function render()
+    public function render(): Node
     {
         $products = [
             ['title' => 'Cabbage', 'isFruit' => false, 'id' => 1],

@@ -7,13 +7,14 @@ expression: f.php
 namespace App\Pages;
 
 use Phem\Attribute\Page;
+use Phem\Node;
 use function App\Components\Document;
 
 #[Page('/about')]
 #[Page('/about-us', name: 'about_us')]
 final class About
 {
-    public function render()
+    public function render(): Node
     {
         return (
             new \Phem\Element('pages/about.0.twig', [])

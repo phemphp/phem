@@ -4,6 +4,7 @@ namespace App\Pages;
 
 use Phem\Attribute\{Component, Page, Prop, State};
 use Phem\Bound;
+use Phem\Node;
 
 use function App\Components\Document;
 
@@ -12,14 +13,14 @@ use function App\Components\Document;
 
 /** A template component. */
 #[Component]
-function TextField(Bound $value, string $name)
+function TextField(Bound $value, string $name): Node
 {
     return <label>{{ name }} <input name={{ name }} phem:bind={{ value }} /></label>;
 }
 
 /** A function component: it passes its Bound prop on. */
 #[Component]
-function NoteField(Bound $value)
+function NoteField(Bound $value): Node
 {
     $name = 'note';
 
@@ -33,7 +34,7 @@ final class PlanField
     #[Prop] public Bound $value;
     #[State] public int $opens = 0;
 
-    public function render()
+    public function render(): Node
     {
         return (
             <select name="plan" phem:bind={{ value }}>
@@ -58,7 +59,7 @@ final class Account
         ++$this->saves;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <form onSubmit={{ save }}>
@@ -75,7 +76,7 @@ final class Account
 #[Page('/bind-child')]
 final class BindChildPage
 {
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

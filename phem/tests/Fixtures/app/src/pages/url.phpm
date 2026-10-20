@@ -3,6 +3,7 @@
 namespace App\Pages;
 
 use Phem\Attribute\{Component, Page, State, Url};
+use Phem\Node;
 use Phem\Tests\Fixtures\Size;
 
 use function App\Components\Document;
@@ -60,7 +61,7 @@ final class Catalog
         $this->sort = 'name' === $this->sort ? 'date' : 'name';
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <div>
@@ -87,7 +88,7 @@ final class UrlPage
         $this->tab = 'new';
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>
@@ -103,7 +104,7 @@ final class UrlPage
 #[Page('/url-twice')]
 final class UrlTwicePage
 {
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

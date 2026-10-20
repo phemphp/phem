@@ -4,6 +4,7 @@ namespace App\Pages;
 
 use Phem\Attribute\{Component, Page};
 use Phem\Event;
+use Phem\Node;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 use App\Components\Counter;
@@ -12,7 +13,7 @@ use function App\Components\{Badge, Card, Document, Tag};
 
 // A function component that returns a string: it is text, as in React.
 #[Component]
-function PlainText(string $value) {
+function PlainText(string $value): string {
     return $value;
 }
 
@@ -26,7 +27,7 @@ final class UnsafePage
         return new RedirectResponse((string) $e->value);
     }
 
-    public function render()
+    public function render(): Node
     {
         $name = '<b>Ada</b>';
         $data = ['x onfocus=alert(1) autofocus' => 'y', 'onclick' => 'alert(2)', 'title' => 'ok'];

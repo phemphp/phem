@@ -3,12 +3,13 @@ namespace App\Pages\Examples;
 
 use Phem\Attribute\{Component, Page, State};
 use Phem\Bound;
+use Phem\Node;
 
 use function App\Components\Document;
 
 // A child component binds a property of its parent: `<Stepper phem:bind={{ trip.days }} />`.
 #[Component]
-function Stepper(Bound $value, int $min = 0)
+function Stepper(Bound $value, int $min = 0): Node
 {
     return <input type="number" min={{ min }} phem:bind={{ value }} phem:live />;
 }
@@ -35,7 +36,7 @@ final class PackingList
         }
     }
 
-    public function render()
+    public function render(): Node
     {
         $packed = count(array_filter(array_column($this->items, 'packed')));
         $things = array_sum(array_column($this->items, 'count'));

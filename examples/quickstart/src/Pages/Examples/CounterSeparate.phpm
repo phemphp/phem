@@ -3,6 +3,7 @@
 namespace App\Pages\Examples;
 
 use Phem\Attribute\{Component, Page, State};
+use Phem\Node;
 
 use function App\Components\Document;
 
@@ -17,7 +18,7 @@ final class Counter
         ++$this->count;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <button onClick={{ handleClick }}>
@@ -30,7 +31,7 @@ final class Counter
 #[Page('/examples/CounterSeparate')]
 final class CounterSeparate
 {
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

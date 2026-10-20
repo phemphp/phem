@@ -9,9 +9,10 @@ namespace App\Components;
 use Closure;
 use Phem\Attribute\Component;
 use Phem\Html;
+use Phem\Node;
 
 #[Component]
-function MyButton(int $count, Closure $onClick) {
+function MyButton(int $count, Closure $onClick): Node {
     return (
         new \Phem\Element('components/Buttons.0.twig', ['onClick' => $onClick ?? null, 'count' => $count ?? null])
 
@@ -20,7 +21,7 @@ function MyButton(int $count, Closure $onClick) {
 }
 
 #[Component]
-function Card(string $title, ?Html $children = null, ?Html $footer = null) {
+function Card(string $title, ?Html $children = null, ?Html $footer = null): Node {
     return (
         new \Phem\Element('components/Buttons.1.twig', ['title' => $title ?? null, 'children' => $children ?? null, 'footer' => $footer ?? null])
 
@@ -31,11 +32,11 @@ function Card(string $title, ?Html $children = null, ?Html $footer = null) {
 }
 
 #[Component]
-function Badge(string $label, string $tone = 'info') {
+function Badge(string $label, string $tone = 'info'): Node {
     return new \Phem\Element('components/Buttons.2.twig', ['tone' => $tone ?? null, 'label' => $label ?? null]);
 }
 
 #[Component]
-function Tag(?Html $children = null) {
+function Tag(?Html $children = null): Node {
     return new \Phem\Element('components/Buttons.3.twig', ['children' => $children ?? null]);
 }

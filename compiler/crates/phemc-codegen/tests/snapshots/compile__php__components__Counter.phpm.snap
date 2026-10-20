@@ -8,6 +8,7 @@ namespace App\Components;
 
 use Phem\Attribute\{Component, Prop, State};
 use Phem\Html;
+use Phem\Node;
 use Phem\Tests\Fixtures\Limits;
 
 #[Component]
@@ -26,7 +27,7 @@ final class Counter
         $this->count = min($this->count + 1, $this->limits->max);
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             new \Phem\Element('components/Counter.0.twig', ['increment' => $this->increment(...), 'count' => $this->count, 'label' => $this->label, 'children' => $this->children])

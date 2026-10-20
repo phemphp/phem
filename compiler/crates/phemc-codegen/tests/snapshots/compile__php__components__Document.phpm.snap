@@ -7,12 +7,12 @@ expression: f.php
 namespace App\Components;
 
 use Phem\Attribute\Component;
-use Phem\{Html, Root};
+use Phem\{Html, Node, Root};
 
 // The document of the fixture pages: a page renders its markup in it, and gives the title
 // with `<Document:title>`.
 #[Component]
-function Document(?Html $title = null, ?Html $children = null)
+function Document(?Html $title = null, ?Html $children = null): Node
 {
     return (
         new \Phem\Element('components/Document.0.twig', ['title' => $title ?? null, 'children' => $children ?? null])

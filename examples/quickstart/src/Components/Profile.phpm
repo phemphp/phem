@@ -2,10 +2,11 @@
 namespace App\Components;
 
 use Phem\Attribute\Component;
+use Phem\Node;
 
 // More than one component can go in one file.
 #[Component]
-function Avatar(string $name, int $size = 64)
+function Avatar(string $name, int $size = 64): Node
 {
     return (
         <img
@@ -19,7 +20,7 @@ function Avatar(string $name, int $size = 64)
 }
 
 #[Component]
-function Profile(array $person)
+function Profile(array $person): Node
 {
     // LikeButton is in this namespace too, so it needs no import.
     return (

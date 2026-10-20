@@ -3,11 +3,12 @@
 namespace App\Pages\Examples;
 
 use Phem\Attribute\{Component, Page, State};
+use Phem\Node;
 
 use function App\Components\Document;
 
 #[Component]
-function CountButton(int $count, mixed ...$props)
+function CountButton(int $count, mixed ...$props): Node
 {
     return (
         <button type="button" {{ ...props }}>
@@ -27,7 +28,7 @@ final class CounterTogether
         ++$this->count;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

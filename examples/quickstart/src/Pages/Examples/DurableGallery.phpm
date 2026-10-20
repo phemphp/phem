@@ -5,6 +5,7 @@ use App\Components\AddScientist;
 use App\Model\Scientist;
 use App\Repository\ScientistRepository;
 use Phem\Attribute\Page;
+use Phem\Node;
 
 use function App\Components\{Layout, ScientistCard, Document};
 
@@ -25,7 +26,7 @@ final class DurableGallery
         $this->scientists = $this->repository->all();
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <Document>

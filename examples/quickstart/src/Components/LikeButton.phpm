@@ -3,6 +3,7 @@
 namespace App\Components;
 
 use Phem\Attribute\{Component, State};
+use Phem\Node;
 
 // A class component with its own state. Each <LikeButton /> keeps its own value.
 // `phem:loading` shows the "…" only while the `toggle` event of this button runs.
@@ -17,7 +18,7 @@ final class LikeButton
         $this->liked = !$this->liked;
     }
 
-    public function render()
+    public function render(): Node
     {
         return (
             <button onClick={{ toggle }}>
