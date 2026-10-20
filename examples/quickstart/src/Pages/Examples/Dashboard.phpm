@@ -2,14 +2,16 @@
 namespace App\Pages\Examples;
 
 use Phem\Attribute\{Component, Page, State};
-use Phem\Suspense;
+use Phem\{ErrorBoundary, Suspense};
 
 use function App\Components\Document;
 
-// Content that loads after the page, with <Suspense>.
+// Content that loads after the page, with <Suspense>, and a part that can fail, with <ErrorBoundary>.
 // - The page shows the fallbacks at once. Then the browser loads the sales report.
 // - The activity chart is `lazy`: it loads when you scroll down to it.
 // - The weather service is down: the error slot shows, only for that card.
+// - The stock service fails on each second refresh: the fallback shows, and the next refresh
+//   shows the quote again.
 #[Component]
 final class SalesReport
 {
@@ -63,9 +65,27 @@ function Weather()
     return <p>Sunny</p>;
 }
 
+#[Component]
+function StockQuote(int $refreshes)
+{
+    if (1 === $refreshes % 2) {
+        throw new \RuntimeException('The stock service timed out.');
+    }
+    $price = number_format(100 + $refreshes * 1.25, 2);
+
+    return <p>ACME: {{ price }} €</p>;
+}
+
 #[Page('/examples/Dashboard')]
 final class Dashboard
 {
+    #[State] public int $refreshes = 0;
+
+    public function refresh(): void
+    {
+        ++$this->refreshes;
+    }
+
     public function render()
     {
         return (
@@ -82,6 +102,12 @@ final class Dashboard
                     <Suspense:error><p>The weather is not available now.</p></Suspense:error>
                     <Weather />
                 </Suspense>
+                <h2>Stock</h2>
+                <ErrorBoundary>
+                    <ErrorBoundary:fallback><p>The stock quote is not available now.</p></ErrorBoundary:fallback>
+                    <StockQuote refreshes={{ refreshes }} />
+                </ErrorBoundary>
+                <button onClick={{ refresh }}>Refresh</button>
                 <p style="height: 120vh">Scroll down for the activity chart.</p>
                 <h2>Activity</h2>
                 <Suspense lazy>

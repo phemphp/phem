@@ -230,6 +230,27 @@ fn suspense_is_a_built_in_component() {
 }
 
 #[test]
+fn error_boundary_is_a_built_in_component() {
+    let src = |imports: &str, body: &str| format!("<?phpm\nnamespace App;\n{imports}\n#[\\Phem\\Attribute\\Component]\nfunction Quote() {{ return <p />; }}\n#[\\Phem\\Attribute\\Component]\nfunction Home() {{\n    return {body};\n}}\n");
+    let body = "<ErrorBoundary><ErrorBoundary:fallback>No quote</ErrorBoundary:fallback><Quote /></ErrorBoundary>";
+    let (out, diags) = compile(vec![SourceInput { rel: "Home.phpm".into(), text: src("use Phem\\ErrorBoundary;", body) }]);
+    let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
+    assert!(msgs.is_empty(), "{msgs:?}");
+    let out = out.expect("output");
+    assert!(out.files[0].templates.iter().any(|t| t.content.contains("{% component embed 'Phem\\\\ErrorBoundary' only %}")), "{:?}", out.files[0].templates);
+    assert!(!out.manifest.components.contains_key("Phem\\ErrorBoundary"), "the runtime knows the built-in components");
+
+    let (_, diags) = compile(vec![SourceInput { rel: "Home.phpm".into(), text: src("use Phem\\ErrorBoundary;", "<ErrorBoundary><Quote /></ErrorBoundary>") }]);
+    let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| d.message.clone())).collect();
+    assert_eq!(msgs, ["`<ErrorBoundary>` needs the prop `fallback`"]);
+    let wrong = "<ErrorBoundary><ErrorBoundary:fallback>No</ErrorBoundary:fallback><ErrorBoundary:error>No</ErrorBoundary:error><Quote /></ErrorBoundary>";
+    assert_eq!(codes(&src("use Phem\\ErrorBoundary;", wrong)), ["E013"]);
+    let (_, diags) = compile(vec![SourceInput { rel: "Home.phpm".into(), text: src("", body) }]);
+    let d = diags.iter().flat_map(|f| &f.diags).find(|d| d.code == "E010").expect("E010 without the import");
+    assert_eq!(d.help.as_deref(), Some("import it: `use Phem\\ErrorBoundary;`"));
+}
+
+#[test]
 fn a_page_gives_the_title_to_its_document() {
     let document = "<?phpm\nnamespace App;\nuse Phem\\{Html, Root};\n#[\\Phem\\Attribute\\Component]\nfunction Document(?Html $title = null, ?Html $children = null) {\n    return <html><head><title>{{ title ?? 'App' }}</title></head><body><Root>{{ children }}</Root></body></html>;\n}\n";
     let page = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\Page;\n#[Page('/')]\nfinal class Home {\n    public string $name = 'Ada';\n    public function render() { return <Document><Document:title>Hi {{ name }}</Document:title><p>Home</p></Document>; }\n}\n";

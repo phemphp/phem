@@ -1294,6 +1294,49 @@ again after a failed load. A reload of the page tries again.
 The status of a boundary does not go back. An error of a later event (for example after a click
 in the children) also shows the `error` slot.
 
+### Errors in a part of the page
+
+An exception in the render of one component makes the full event fail. When a part of the page
+can fail (a call to an external service, a widget with bad data), put it in an `<ErrorBoundary>`,
+as in React. When the render of the children throws, the `fallback` slot shows in place of the
+children, only for this boundary:
+
+```php
+use Phem\ErrorBoundary;
+
+#[Page('/dashboard')]
+final class Dashboard
+{
+    public function render()
+    {
+        return (
+            <Document>
+                <ErrorBoundary>
+                    <ErrorBoundary:fallback><p>The stock quote is not available now.</p></ErrorBoundary:fallback>
+                    <StockQuote />
+                </ErrorBoundary>
+            </Document>
+        );
+    }
+}
+```
+
+- The `fallback` slot is required.
+- The response is a normal answer (200). The boundary drops what the children rendered before
+  the exception, and the logger gets the exception (the profiler shows it).
+- The boundary has no state. Each render tries the children again: in the page request, and in
+  each event. When the children do not throw any more, they show again.
+- When the fallback shows, the children are not in the page, so their state goes away. When
+  they show again, they mount again, with new state.
+- The boundary catches the exceptions of the render, and of `mount()`. It does not catch the
+  exceptions of an event handler, as in React. An exception in a handler fails the event (see
+  [Failed events](#failed-events)): the transaction rolls back, and the page keeps the state
+  that it had before the event.
+
+`<Suspense>` with an `error` slot does the same for the content that loads after the page (see
+[Content that loads after the page](#content-that-loads-after-the-page)). But its status stays
+failed, and the `<ErrorBoundary>` tries again on each render.
+
 ## 9. Props and lifting state up
 
 The props of a function component (a function with `#[Component]`) are its named parameters.

@@ -29,6 +29,9 @@ pub const ROOT: &str = "Phem\\Root";
 /// The built-in boundary of content that loads after the page: `<Suspense lazy>` with the
 /// `fallback` and `error` slots. The runtime renders it (see `Phem\Suspense`).
 pub const SUSPENSE: &str = "Phem\\Suspense";
+/// The built-in boundary of render errors: `<ErrorBoundary>` with the `fallback` slot. The runtime
+/// renders it (see `Phem\ErrorBoundary`).
+pub const ERROR_BOUNDARY: &str = "Phem\\ErrorBoundary";
 /// The type of a prop that takes a #[State] property of the parent: `<TextField phem:bind={{ query }} />`.
 pub const BOUND: &str = "Phem\\Bound";
 
@@ -298,12 +301,23 @@ pub fn builtins() -> Vec<ComponentDef> {
         rest: false,
         open: false,
         bound: Vec::new(),
+    }, ComponentDef {
+        fqcn: ERROR_BOUNDARY.into(),
+        kind: Kind::Class,
+        file: String::new(),
+        template: None,
+        props: vec!["children".into(), "fallback".into()],
+        slots: vec!["children".into(), "fallback".into()],
+        required: vec!["fallback".into()],
+        rest: false,
+        open: false,
+        bound: Vec::new(),
     }]
 }
 
 /// Whether a component is a built-in component of Phem (see `builtins()`).
 pub fn is_builtin(fqcn: &str) -> bool {
-    fqcn == ROOT || fqcn == SUSPENSE
+    fqcn == ROOT || fqcn == SUSPENSE || fqcn == ERROR_BOUNDARY
 }
 
 pub fn registry<'a>(files: impl IntoIterator<Item = &'a FileInfo>) -> (Registry, Vec<(String, Diagnostic)>) {

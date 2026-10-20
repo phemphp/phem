@@ -1176,6 +1176,18 @@ pub fn builtin_components() -> Vec<Component> {
         offset: None,
         signature: "final class Suspense\n{\n    public bool $lazy = false;\n    public ?Html $children = null;\n    public ?Html $fallback = null;\n    public ?Html $error = null;\n}".into(),
         doc: Some("Content that loads after the page: the page shows the fallback, and the browser loads the children when the page starts (or, with `lazy`, when the fallback comes into view). When the children throw, the error slot shows."),
+    }, Component {
+        kind: ComponentKind::Class,
+        name: "ErrorBoundary".into(),
+        fqn: "Phem\\ErrorBoundary".into(),
+        page: false,
+        props: vec![],
+        slots: vec!["fallback".into()],
+        children: true,
+        rest: false,
+        offset: None,
+        signature: "final class ErrorBoundary\n{\n    public ?Html $children = null;\n    public ?Html $fallback = null;\n}".into(),
+        doc: Some("Catches the render errors of the children: when the render of the children throws, the fallback shows in place of them, only for this boundary. Each render tries the children again. An error in an event handler is not caught: the event fails."),
     }]
 }
 

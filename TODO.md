@@ -33,10 +33,6 @@ Talk about each item before its implementation. The open questions are a start, 
 - [ ] **Colocated client code** (section 6). Is the extracted script a Stimulus controller (as
       the controllers of section 2), or a smaller hook API? How does `phemc` give it to
       AssetMapper in development (`phemc watch`) and in production?
-- [ ] **`<ErrorBoundary>`** (section 7). An exception in a render and an exception in a
-      handler are different: the handler transaction rolls back, and the state may not change.
-      Which state does the response send? Is the boundary only for rendering, as in React?
-      `Renderer::catching()` of `<Suspense>` already drops the fibers of a render that throws.
 
 ## 1. Input and requests
 
@@ -200,15 +196,23 @@ Some behavior must run in the browser: a chart, a map, a rich text editor, a foc
 
 ## 7. Errors and resilience
 
-### [ ] Error boundaries — P2
+### [x] Error boundaries — P2
 
 An exception in one component breaks the full event.
 
+Done: a built-in `<ErrorBoundary>` component, with a required `fallback` slot. When the render of
+the children throws (also in `mount()`), the boundary drops their fibers (`Renderer::catching()`)
+and renders the fallback, only for this subtree. The logger gets the exception. The boundary has
+no state: each render tries the children again, so they show again when they do not throw, and
+they mount again. The boundary catches render errors only, as in React. An exception in a handler
+fails the event: the transaction rolls back, and the response does not change the state of the
+page. The Dashboard example uses it. See
+[docs/phpm-syntax.md](docs/phpm-syntax.md#errors-in-a-part-of-the-page).
+
 - **Best peer:** React error boundaries. LV crash recovery (the process restarts and the client
   recovers the form values).
-- **Proposal:** a built-in `<ErrorBoundary>` with a `fallback` slot. An exception in a child
-  render or handler renders the fallback for that subtree only. In debug mode, show the
-  Symfony exception page in an overlay (as LW does in development).
+- **Later:** in debug mode, show the Symfony exception page in an overlay (as LW does in
+  development).
 
 ## 8. Developer experience
 

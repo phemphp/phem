@@ -420,6 +420,15 @@ fn the_builtin_suspense_tag_has_its_slots() {
 }
 
 #[test]
+fn the_builtin_error_boundary_tag_has_its_slot() {
+    let r = run(&format!("{PAGE}function Home()\n{{\n    return <div><ErrorB|</div>;\n}}\n"));
+    let item = r.get("ErrorBoundary");
+    assert_eq!(item.detail, "Phem\\ErrorBoundary");
+    assert!(item.documentation.as_ref().unwrap().contains("render errors"));
+    assert!(apply(&r.text, item).contains("namespace App\\Pages;\n\nuse Phem\\ErrorBoundary;\n"));
+}
+
+#[test]
 fn an_import_goes_into_a_group_on_one_line() {
     let r = run(&format!("{PAGE}use function App\\Components\\{{Layout}};\n\nfunction Home()\n{{\n    return <Av|\n}}\n"));
     assert!(apply(&r.text, r.get("Avatar")).contains("use function App\\Components\\{Layout, Avatar};"));

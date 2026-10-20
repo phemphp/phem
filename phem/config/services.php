@@ -35,6 +35,7 @@ use Phem\Path\PathResolver;
 use Phem\Path\ScalarPathConverter;
 use Phem\Rendering\ClassComponentRenderer;
 use Phem\Rendering\ContainerComponentFactory;
+use Phem\Rendering\ErrorBoundaryRenderer;
 use Phem\Rendering\EventRenderer;
 use Phem\Rendering\FunctionComponentRenderer;
 use Phem\Rendering\InputsComparator;
@@ -108,6 +109,10 @@ return static function (ContainerConfigurator $container): void {
         // Before the class renderer: <Suspense> is a built-in class component.
         ->set('phem.component_renderer.suspense', SuspenseRenderer::class)
             ->args([service_closure('phem.renderer'), service('phem.prop_binder'), service('phem.state_accessor'), service('logger')->nullOnInvalid()])
+            ->tag('phem.component_renderer', ['priority' => 10])
+        // Before the class renderer: <ErrorBoundary> is a built-in class component.
+        ->set('phem.component_renderer.error_boundary', ErrorBoundaryRenderer::class)
+            ->args([service_closure('phem.renderer'), service('phem.prop_binder'), service('logger')->nullOnInvalid()])
             ->tag('phem.component_renderer', ['priority' => 10])
         ->set('phem.component_renderer.function', FunctionComponentRenderer::class)
             ->args([service('phem.prop_binder')])

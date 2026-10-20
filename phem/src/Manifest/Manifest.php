@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Manifest;
 
+use Phem\ErrorBoundary;
 use Phem\Root;
 use Phem\Suspense;
 
@@ -80,6 +81,10 @@ final class Manifest
         if (Suspense::class === $fqcn) {
             // A built-in component: the SuspenseRenderer renders it (see Phem\Suspense).
             return $this->definitions[$fqcn] = new ComponentDefinition($fqcn, ComponentKind::ClassComponent, slots: ['children', 'fallback', 'error']);
+        }
+        if (ErrorBoundary::class === $fqcn) {
+            // A built-in component: the ErrorBoundaryRenderer renders it (see Phem\ErrorBoundary).
+            return $this->definitions[$fqcn] = new ComponentDefinition($fqcn, ComponentKind::ClassComponent, slots: ['children', 'fallback']);
         }
         $data = $this->data()['components'][$fqcn] ?? null;
 
