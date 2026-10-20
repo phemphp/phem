@@ -47,9 +47,15 @@ Talk about each item before its implementation. The open questions are a start, 
       whose state changed), and skips a child when its props did not change. The "before"
       render comes from one hash for each component in the signed payload. See the
       implementation plan in section 3.
-- [ ] **State payload and a server-side store** (section 3). Is a server store still
+- [x] **State payload and a server-side store** (section 3). Is a server store still
       "stateless"? How does it work with FrankenPHP workers on many machines? Which mode is
       the default?
+      Decided: a hybrid. The browser keeps the full signed state, as today, and it is the source
+      of truth. An event sends only the signature, and the server finds the state in a cache.
+      On a miss, the browser sends the full state again, compressed. The cache is only an
+      optimization: the server can lose it at any time, and the cost is one more request. So
+      Phem stays stateless, many machines work with no shared store, and the hybrid is the
+      default. See the decision and the implementation plan in section 3.
 - [ ] **`<Suspense>`** (section 3). A deferred child needs its own event with the state of the
       page. Is that a normal event to a built-in handler? How does an error in the deferred
       render show?
@@ -351,6 +357,123 @@ The browser sends all the state of the page on each event. A big page sends a bi
   - An opt-in server-side store (`phem.state_store: cache|session`): the browser keeps only an
     id and a version. The current signed-state mode stays the default.
   - Send only the state of the components that changed in the response.
+- **Problem.** The request is the expensive direction: the upload of a mobile network is slow,
+  and a browser does not compress a request body (the server can gzip the response). The
+  request grows with the page, not with the change: a click on a counter in a page with 500
+  rows sends the state and the shape of all the rows. A big state can also hit
+  `phem.max_event_size` (413).
+- **Decided (the hybrid: a cache that is only an optimization):**
+  - The browser keeps the full signed state, as today (`data-phem-state-value` and
+    `data-phem-signature-value`). It is the source of truth. The response still sends the full
+    state and its signature.
+  - The server saves each state that it signs (the page render and each event) in a cache:
+    the key comes from the signature, and the value is the JSON.
+  - An event sends only the signature, with no `state` key. On a hit, the server uses the JSON
+    of the cache. On a miss (an expired entry, another machine, a restart, a cleared cache),
+    the server answers `409` with `{"state": "required"}`, and it does not run the handler. The
+    browser sends the event again with the full state, compressed with gzip.
+  - Why this design: the server can lose the cache at any time, and the only cost is one more
+    request. There is no "session lost" error, the back button and many tabs work (each tab has
+    its full state), and many machines work with no shared store (a shared store only gives more
+    hits). The current properties do not change, so the hybrid is the default.
+  - A pure server store (option C: the browser does not have the state, so the user cannot
+    read it) and a response with only the changed state (option B) are not part of this
+    decision. They can come later, and option C can use the same protocol.
+- **Answers to the open questions:**
+  - *The hash is the signature.* The signature (`<issued at>.<HMAC>`) is unique for each state,
+    page, time and session, and the browser has it already. It is not a secret. The cache key is
+    `xxh128(signature)`, so the key has only the characters that PSR-6 accepts. Before the
+    lookup, the server checks the format of the signature (digits, a dot, 64 hex characters).
+  - *A hit has the same checks as a full state.* The server gives the JSON of the cache and the
+    signature to `StateCodec::decode()`, so the HMAC, `state_max_age` and `state_bind_session`
+    apply as today. A wrong cache entry (a shared pool, another application, a collision)
+    cannot give a state that the server did not sign. A signature older than `state_max_age`
+    answers with a reload at once, with no lookup.
+  - *The cache is a Symfony cache pool.* The bundle prepends a `cache.phem.state` pool
+    (`framework.cache.pools`) with the `cache.app` adapter and a default lifetime of 3600
+    seconds. The application changes the adapter or the lifetime in the framework
+    configuration, as for each Symfony pool (Redis or APCu for production). The option
+    `phem.state_cache: false` turns the cache off: then each event sends the full compressed
+    state. The cache must remove old entries: Redis and APCu do it, and a filesystem pool
+    needs `cache:pool:prune`. A lifetime shorter than `state_max_age` is correct, because a
+    miss costs only one more request.
+  - *Compression comes first, and we measure it alone.* The fallback needs it, so it is step 1
+    of the plan, with a measure on the page of the 500 rows before the cache.
+- **Rules of the protocol:**
+  - The browser compresses a body with the full state with `CompressionStream('gzip')` and
+    `Content-Encoding: gzip`, when the JSON is larger than 1 KiB and the browser has the API.
+    The server unzips it in `EventBody`. It stops at `phem.max_event_size` of unzipped
+    bytes (413), so a "zip bomb" cannot use the memory. The limit also applies to the
+    compressed body. Another `Content-Encoding` is 415.
+  - An event with files always sends the full state, not compressed, in the `_phem` part. A
+    miss must not upload the files two times, and the files are larger than the state.
+  - The `409` check runs after the CSRF, origin, content type and size checks, and before the
+    handler. So the browser can send the event again with no risk. This try does not count in
+    the network retries (`data-phem-retries-value`). A second `409` for the same event is an
+    error (`phem:error`), with no new try.
+  - The events of a page go one after the other, so the next event of a burst (typing,
+    clicks) sends the signature of the last response, and that response saved its state in
+    the cache: most events hit.
+- **Implementation plan.** Each step is one change with its tests. The tests of the steps
+  before stay green.
+  1. **Compressed body.** `EventPayload` reads a `Content-Encoding: gzip` body with the size
+     limit (an incremental `inflate_*`, 413 over the limit, 400 for a body that is not gzip, 415
+     for another encoding). `EventController::isTooLarge()` checks the compressed and the
+     unzipped sizes. The `phem` controller compresses the JSON body over 1 KiB. Tests: PHP
+     (a gzip body, a zip bomb, a bad body, another encoding) and JS (a large body is
+     compressed, a small body is not). **Measure:** the request of a click on the counter of
+     the page of the 500 rows, before and after.
+     **Done:** `EventBody` reads the JSON of an event (the body, a gzip body, or the `_phem`
+     part) with the limit, and `EventPayload::fromJson()` parses it. The `phem` controller
+     compresses a JSON body of 1 KiB or more. Tests in `EventAccessTest`. The `phem` controller
+     has no JS tests, so the browser part was checked by hand in the quickstart (the events
+     work, and they go with `Content-Encoding: gzip`). **Measured** (same machine, a temporary
+     page in the quickstart):
+
+     | Event request                                    |   JSON | gzip | Saved |
+     |--------------------------------------------------|-------:|-----:|------:|
+     | Click on a counter, 500 class components (shape) | 9,280 B | 6,971 B |  25 % |
+     | Key in a field, 200 rows in `#[State]`           | 13,795 B | 1,522 B |  89 % |
+
+     The browser compresses in about 0.4 ms (median), and the server unzips in about 0.01 ms.
+     Result: compression works well for a big state, because the JSON repeats its keys. It does
+     not help much for the `_tree` shape: its ids and hashes are random bytes. Only the cache
+     (steps 2 to 5) removes the shape from the request.
+  2. **State cache service.** A `StateCache` class (`save(signature, json)`,
+     `find(signature): ?string`) on a PSR-6 pool, and a `NullStateCache` for
+     `phem.state_cache: false`. The bundle prepends the `phem.state_cache` pool. Tests: the key,
+     the format check of the signature, the pool lifetime, and the `false` option.
+     **Done:** `StateCache` (`save()`, `find()`) on the `cache.phem.state` pool
+     (`StateCache::POOL`), with the `cache.app` adapter and a lifetime of 3600 seconds. With
+     `phem.state_cache: false`, the cache has no pool and keeps nothing: one class with an
+     optional pool, not a `NullStateCache`. A value that is not a signature is never a key.
+     Tests in `StateCacheTest`. The `phem.state_cache` service has no user yet, so the container
+     removes it until step 3.
+  3. **Save each signed state.** `PageRenderer` (the page render) and `EventController` save
+     the JSON after `StateCodec::encode()`. No change of the
+     protocol yet. Test: the cache has the state of the page and of each event.
+  4. **Signature-only events.** `EventPayload::$state` is nullable. With no `state` key,
+     `EventController` reads the JSON from `StateCache`, then calls `StateCodec::decode()` as
+     today. A miss answers `409 {"state": "required"}`. Tests: a hit runs the handler; a miss
+     answers 409 and does not run the handler (no transaction, no rate limit token); a cache
+     entry with a wrong JSON is a reload; an old signature is a reload with no lookup; an
+     event with files and no state is 400.
+  5. **Browser protocol.** The `phem` controller sends only the signature, and on a `409` it
+     sends the event again with the full compressed state, one time. An event with files sends
+     the full state. JS tests: hit, miss, a second 409, and files.
+  6. **Test helpers.** `PageDriver` (`$this->visit()`) sends signature-only events as the
+     browser, and `->withoutStateCache()` (or a cleared pool) forces the misses, so a test can
+     check both paths. `ComponentDriver` does not change (no HTTP).
+  7. **Docs.** The options in the doc comment of `PhemBundle` and in `docs/phpm-syntax.md`
+     (`phem.state_cache`, the `cache.phem.state` pool, prune for a filesystem pool). The text of
+     `StateCodec` and `EventController` about the size limit. README section 4 (the event
+     request).
+  8. **Measure.** The page of the 500 rows: the request size and the time of a click on the
+     counter, for a hit, a miss (two requests) and today. Also a page with a big `#[State]`
+     (200 rows in an array), with each key of a search field.
+- **Effect on other items:** on a hit, the request does not send the `_tree` shape, so the open
+  point "the shape on the server" of "Render only the components that can change" is mostly
+  closed.
 
 ### [ ] Lazy and deferred components (Suspense) — P2
 

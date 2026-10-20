@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Test\Internal;
 
-use Phem\Http\EventPayload;
+use Phem\Http\EventBody;
 use Phem\Rendering\Fiber;
 use Phem\State\PageState;
 use Phem\State\UrlQuery;
@@ -94,7 +94,7 @@ final class PageDriver implements Driver
         // is the `_phem` part of a multipart body.
         $request = [] === $files
             ? Request::create($this->url, 'POST', cookies: $this->cookies, server: ['CONTENT_TYPE' => 'application/json'] + $server, content: $body)
-            : Request::create($this->url, 'POST', [EventPayload::PART => $body], $this->cookies, TestFiles::of($files), ['CONTENT_TYPE' => 'multipart/form-data; boundary=phem'] + $server);
+            : Request::create($this->url, 'POST', [EventBody::PART => $body], $this->cookies, TestFiles::of($files), ['CONTENT_TYPE' => 'multipart/form-data; boundary=phem'] + $server);
         [, $response] = $this->send($request);
 
         if (409 === $response->getStatusCode()) {

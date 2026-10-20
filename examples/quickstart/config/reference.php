@@ -934,6 +934,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     secret?: scalar|Param|null, // The key that signs the component state in the browser // Default: "%kernel.secret%"
  *     state_max_age?: int|Param, // The seconds that a signed state is valid (0 for no limit). An older state reloads the page. // Default: 86400
  *     state_bind_session?: bool|Param, // Sign the session id with the state, so the state of a session is not valid in another session. A login makes the open pages reload on their next event. // Default: false
+ *     state_cache?: bool|Param, // Keep each signed state in the cache.phem.state pool (framework.cache.pools), so an event can send only its signature. The browser sends the full state when the pool does not have it. // Default: true
  *     max_event_size?: int|Param, // The maximum size of an event body in bytes, with the state of the page (0 for no limit). A larger event gets a 413 response. // Default: 1048576
  *     max_upload_size?: int|Param, // The maximum size of the files of an event in bytes, together (0 for no limit). Larger files get a 413 response. The post_max_size option of PHP also applies, and a file over upload_max_filesize gets to the handler with an upload error. // Default: 8388608
  *     transactional?: bool|Param|null, // Run the event handlers of all components in a Doctrine ORM transaction. Set it to false to use #[Transactional] on each component instead. Default: true when Doctrine ORM is installed and enabled. // Default: null

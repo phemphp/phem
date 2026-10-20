@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Phem\Tests\Runtime;
 
 use Phem\Handler\HandlerFingerprint;
+use Phem\Http\EventBody;
 use Phem\Http\EventPayload;
 use Phem\State\StateCodec;
 use PHPUnit\Framework\TestCase;
@@ -144,6 +145,31 @@ final class EventAccessTest extends TestCase
     }
 
     /**
+     * The browser compresses a large body with gzip. The limit is also for the JSON after the
+     * server unzips it, so a small body that unzips to a very large one (a "zip bomb") is 413.
+     */
+    public function testEventBodyCanBeGzip(): void
+    {
+        $json = json_encode($this->clickPayload('App\\Pages\\LeavePage', 'leave'), \JSON_THROW_ON_ERROR);
+        self::assertSame(200, $this->event('/leave', (string) gzencode($json), ['HTTP_CONTENT_ENCODING' => 'gzip'])->getStatusCode());
+        self::assertSame(200, $this->event('/leave', (string) gzencode($json), ['HTTP_CONTENT_ENCODING' => ' GZIP '])->getStatusCode(), 'the encoding has no case');
+        self::assertSame(200, $this->event('/leave', $json, ['HTTP_CONTENT_ENCODING' => 'identity'])->getStatusCode());
+
+        $bomb = (string) gzencode(json_encode(['handler' => 'h', 'event' => ['value' => str_repeat('a', 1048576)]], \JSON_THROW_ON_ERROR), 9);
+        self::assertLessThan(10000, \strlen($bomb));
+        self::assertSame(413, $this->event('/leave', $bomb, ['HTTP_CONTENT_ENCODING' => 'gzip'])->getStatusCode(), 'the unzipped JSON has the limit of phem.max_event_size');
+        self::assertSame(413, $this->event('/leave', (string) gzencode('{}'), ['HTTP_CONTENT_ENCODING' => 'gzip', 'CONTENT_LENGTH' => '2000000'])->getStatusCode(), 'the compressed body has the limit too');
+
+        self::assertSame(400, $this->event('/leave', $json, ['HTTP_CONTENT_ENCODING' => 'gzip'])->getStatusCode(), 'a body that is not gzip');
+        self::assertSame(400, $this->event('/leave', substr((string) gzencode($json), 0, -12), ['HTTP_CONTENT_ENCODING' => 'gzip'])->getStatusCode(), 'a body that is not complete');
+        self::assertSame(400, $this->event('/leave', '', ['HTTP_CONTENT_ENCODING' => 'gzip'])->getStatusCode(), 'an empty body');
+
+        self::assertSame(415, $this->event('/leave', $json, ['HTTP_CONTENT_ENCODING' => 'br'])->getStatusCode());
+        self::assertSame(415, $this->event('/leave', $json, ['HTTP_CONTENT_ENCODING' => 'gzip, gzip'])->getStatusCode());
+        self::assertSame(415, $this->multipart('/leave', ['photo' => self::file('a')], ['HTTP_CONTENT_ENCODING' => 'gzip'])->getStatusCode(), 'an event with files is not compressed');
+    }
+
+    /**
      * An event with files is multipart/form-data. A form of another site can send it without a
      * CORS preflight, but not with the X-Phem-Event header: the same checks apply.
      */
@@ -226,7 +252,7 @@ final class EventAccessTest extends TestCase
     {
         $json ??= json_encode($this->clickPayload('App\\Pages\\LeavePage', 'leave'), \JSON_THROW_ON_ERROR);
         $server += ['CONTENT_TYPE' => 'multipart/form-data; boundary=x', 'HTTP_X_PHEM_EVENT' => '1', 'HTTP_SEC_FETCH_SITE' => 'same-origin'];
-        $request = Request::create($uri, 'POST', [EventPayload::PART => $json], [], $files, array_filter($server, static fn (?string $v): bool => null !== $v));
+        $request = Request::create($uri, 'POST', [EventBody::PART => $json], [], $files, array_filter($server, static fn (?string $v): bool => null !== $v));
         $kernel = $this->fixtureKernel();
         $response = $kernel->handle($request);
         $kernel->terminate($request, $response);

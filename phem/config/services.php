@@ -24,6 +24,7 @@ use Phem\EventListener\SourceMapListener;
 use Phem\Handler\HandlerFingerprint;
 use Phem\Handler\HandlerInvoker;
 use Phem\Handler\TransactionalMiddleware;
+use Phem\Http\EventBody;
 use Phem\Http\PageRenderer;
 use Phem\Http\TurboStreams;
 use Phem\Manifest\Manifest;
@@ -43,6 +44,7 @@ use Phem\Rendering\TemplateComponentRenderer;
 use Phem\Routing\PageLoader;
 use Phem\State\BoundValues;
 use Phem\State\StateAccessor;
+use Phem\State\StateCache;
 use Phem\State\StateCodec;
 use Phem\State\UrlQuery;
 use Phem\Twig\CacheKeyLoader;
@@ -168,6 +170,10 @@ return static function (ContainerConfigurator $container): void {
                 null,
             ])
         ->alias(EventRenderer::class, 'phem.event_renderer')
+        ->set('phem.state_cache', StateCache::class)
+            ->args([service(StateCache::POOL)])
+        ->set('phem.event_body', EventBody::class)
+            ->args([1048576])
         ->set('phem.controller.event', EventController::class)
             ->public()
             ->args([
@@ -179,7 +185,7 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.state_accessor'),
                 service('phem.turbo_streams'),
                 service('phem.browser_event_dispatcher'),
-                1048576,
+                service('phem.event_body'),
                 service('phem.url_query'),
                 8388608,
             ])

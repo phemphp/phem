@@ -15,6 +15,7 @@ namespace Phem\Controller;
 
 use Phem\BrowserEventDispatcher;
 use Phem\Event;
+use Phem\Http\EventBody;
 use Phem\Http\EventPayload;
 use Phem\Http\RouteValues;
 use Phem\Http\TurboStreams;
@@ -58,10 +59,10 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
  * preflight), it is JSON, or multipart with files, and it comes from the same origin
  * (`Sec-Fetch-Site`, or `Origin`).
  *
- * Against a denial of service, the JSON has a maximum size (`phem.max_event_size`) and a maximum
- * depth (see EventPayload), and the files of an event have a maximum size together
- * (`phem.max_upload_size`). The state is in the JSON, so the size limit is also a limit for the
- * state.
+ * Against a denial of service, the JSON has a maximum size (`phem.max_event_size`, also after
+ * the server unzips a gzip body, see EventBody) and a maximum depth (see EventPayload), and the
+ * files of an event have a maximum size together (`phem.max_upload_size`). The state is in the
+ * JSON, so the size limit is also a limit for the state.
  */
 final class EventController
 {
@@ -77,7 +78,7 @@ final class EventController
         private readonly StateAccessor $state = new StateAccessor(),
         private readonly TurboStreams $streams = new TurboStreams(),
         private readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
-        private readonly int $maxSize = 1048576,
+        private readonly EventBody $body = new EventBody(),
         private readonly UrlQuery $url = new UrlQuery(),
         private readonly int $maxUploadSize = 8388608,
     ) {
@@ -91,7 +92,7 @@ final class EventController
         if (!self::isSameOrigin($request)) {
             throw new AccessDeniedHttpException('An event must come from the same origin.');
         }
-        $multipart = EventPayload::isMultipart($request);
+        $multipart = EventBody::isMultipart($request);
         if ('json' !== $request->getContentTypeFormat() && !$multipart) {
             throw new UnsupportedMediaTypeHttpException('An event is JSON (Content-Type: application/json), or multipart/form-data with files.');
         }
@@ -99,14 +100,12 @@ final class EventController
             // PHP drops all the parts of a body larger than its post_max_size.
             throw new HttpException(413, 'An event with files is larger than the post_max_size option of PHP.');
         }
-        if ($this->isTooLarge($request, $multipart)) {
-            throw new HttpException(413, \sprintf('An event body can have a maximum of %d bytes (the phem.max_event_size option).', $this->maxSize));
-        }
+        $body = $this->body->json($request);
         if ($multipart && $this->filesAreTooLarge($request->files->all())) {
             throw new HttpException(413, \sprintf('The files of an event can have a maximum of %d bytes together (the phem.max_upload_size option).', $this->maxUploadSize));
         }
 
-        $payload = EventPayload::fromRequest($request);
+        $payload = EventPayload::fromJson($body);
         $page = (string) $request->attributes->get('_phem_page');
         $data = $this->codec->decode($payload->state, $payload->signature, $page, $request);
         if (null === $data) {
@@ -161,27 +160,6 @@ final class EventController
         }
 
         return ($this->pages)($request);
-    }
-
-    /**
-     * Whether the body is larger than the maximum size. The Content-Length header lets the
-     * server reject the request before it reads the body. For a multipart event, it is the size
-     * of its JSON part: PHP read the body already.
-     */
-    private function isTooLarge(Request $request, bool $multipart): bool
-    {
-        if (0 === $this->maxSize) {
-            return false;
-        }
-        if ($multipart) {
-            return \strlen(EventPayload::json($request)) > $this->maxSize;
-        }
-        $length = $request->headers->get('Content-Length');
-        if (null !== $length && ctype_digit($length) && (int) $length > $this->maxSize) {
-            return true;
-        }
-
-        return \strlen($request->getContent()) > $this->maxSize;
     }
 
     /**

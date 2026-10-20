@@ -717,6 +717,12 @@ An event body has a maximum size, with the state of the page: `phem.max_event_si
 `413 Content Too Large` and does not run the handler. The JSON of an event body also has a
 maximum depth (8). The browser sends less than that, so a deeper body gets `400 Bad Request`.
 
+The browser compresses a JSON body larger than 1 KiB with gzip (`Content-Encoding: gzip`), when
+it has the `CompressionStream` API. An event with files is not compressed. The limit applies to
+the compressed body and to the JSON after the server unzips it, so a small body that unzips to a
+very large one also gets `413`. A body that is not valid gzip gets `400`, and another content
+encoding gets `415`.
+
 ```yaml
 # config/packages/phem.yaml
 phem:

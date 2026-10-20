@@ -91,6 +91,10 @@
 // the body, the `progress`, and the `files`: {field, file, loaded, progress} for each file. The
 // body has more than the files (the JSON of the event): the controller shares the progress
 // between the files by their size, in their order.
+//
+// An event with no files and a JSON larger than 1 KiB goes compressed (`Content-Encoding: gzip`,
+// with `CompressionStream`): the JSON has all the state of the page, and a browser does not
+// compress a request body. A browser without `CompressionStream` sends the JSON as it is.
 
 import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
@@ -184,6 +188,20 @@ function nestedPairs(key, value) {
   if (Array.isArray(value)) return value.map((v) => `${key}[]=${encodeURIComponent(v)}`)
   if (typeof value === "object") return Object.entries(value).flatMap(([k, v]) => nestedPairs(`${key}[${encodeURIComponent(k)}]`, v))
   return [`${key}=${encodeURIComponent(value)}`]
+}
+
+// The smallest JSON body that the controller compresses: the gzip header and the time to compress
+// cost more than they save for a smaller body.
+const GZIP_MIN_SIZE = 1024
+
+// The JSON body of an event, compressed when it is large (see GZIP_MIN_SIZE). Resolves with the
+// body and its headers. A Blob can go again with each new try.
+async function jsonBody(json) {
+  const headers = { "Content-Type": "application/json" }
+  const blob = new Blob([json], { type: "application/json" })
+  if (blob.size < GZIP_MIN_SIZE || typeof CompressionStream !== "function") return { body: json, headers }
+  const body = await new Response(blob.stream().pipeThrough(new CompressionStream("gzip"))).blob()
+  return { body, headers: { ...headers, "Content-Encoding": "gzip" } }
 }
 
 // Posts a body with XHR, so `onProgress(loaded, total)` gets the progress of the upload (`fetch`
@@ -756,18 +774,18 @@ export default class PhemController extends Controller {
     const { files = [], ...data } = event
     // A `phem:live` event has no handler: the server only sets the bound values.
     const json = JSON.stringify({ state: this.stateValue, signature: this.signatureValue, handler: data.live ? null : handler, event: data, bound })
+    // An event with files is not compressed: the files are most of the body.
+    const plain = files.length ? null : await jsonBody(json)
     for (let attempt = 0; ; attempt++) {
       let response = null
       let error = null
-      const headers = { Accept: "application/json", "X-Phem-Event": "1" }
-      let body = json
+      const headers = { Accept: "application/json", "X-Phem-Event": "1", ...plain?.headers }
+      let body = plain?.body
       if (files.length) {
         // The browser sets the Content-Type, with the boundary of the parts.
         body = new FormData()
         body.append("_phem", json)
         for (const [name, file] of files) body.append(name, file)
-      } else {
-        headers["Content-Type"] = "application/json"
       }
       try {
         // The URL of the page, from the browser: always the same origin.

@@ -20,6 +20,7 @@ use Phem\Handler\RateLimitMiddleware;
 use Phem\Manifest\Manifest;
 use Phem\Path\PathValueConverter;
 use Phem\Rendering\SkippedRenderCheck;
+use Phem\State\StateCache;
 use Symfony\Component\AssetMapper\AssetMapperInterface;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
@@ -43,6 +44,7 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_lo
  *         secret: '%kernel.secret%'
  *         state_max_age: 86400       # seconds; 0 for no limit
  *         state_bind_session: false
+ *         state_cache: true          # keep the signed states in the cache.phem.state pool
  *         max_event_size: 1048576    # bytes; 0 for no limit
  *         max_upload_size: 8388608   # bytes; 0 for no limit
  *         transactional: ~           # true when Doctrine ORM is installed and enabled
@@ -95,6 +97,10 @@ final class PhemBundle extends AbstractBundle
                     ->info('Sign the session id with the state, so the state of a session is not valid in another session. A login makes the open pages reload on their next event.')
                     ->defaultFalse()
                 ->end()
+                ->booleanNode('state_cache')
+                    ->info('Keep each signed state in the cache.phem.state pool (framework.cache.pools), so an event can send only its signature. The browser sends the full state when the pool does not have it.')
+                    ->defaultTrue()
+                ->end()
                 ->integerNode('max_event_size')
                     ->info('The maximum size of an event body in bytes, with the state of the page (0 for no limit). A larger event gets a 413 response.')
                     ->defaultValue(1048576)
@@ -113,7 +119,7 @@ final class PhemBundle extends AbstractBundle
     }
 
     /**
-     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, max_event_size: int, max_upload_size: int, transactional: bool|null} $config
+     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, max_event_size: int, max_upload_size: int, transactional: bool|null} $config
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
@@ -125,8 +131,12 @@ final class PhemBundle extends AbstractBundle
             ->arg(0, $config['secret'])
             ->arg(1, $config['state_max_age'])
             ->arg(2, $config['state_bind_session']);
+        if (!$config['state_cache']) {
+            $container->services()->get('phem.state_cache')->arg(0, null);
+        }
+        $container->services()->get('phem.event_body')
+            ->arg(0, $config['max_event_size']);
         $container->services()->get('phem.controller.event')
-            ->arg(8, $config['max_event_size'])
             ->arg(10, $config['max_upload_size']);
         if ($builder->getParameter('kernel.debug')) {
             // As React StrictMode: render the full page after each event, and warn when a kept
@@ -161,14 +171,20 @@ final class PhemBundle extends AbstractBundle
 
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
     {
-        if (!interface_exists(AssetMapperInterface::class)) {
-            return;
-        }
+        // The pool of StateCache. The application can change its adapter (Redis or APCu in
+        // production) and its lifetime in framework.cache.pools.
         $builder->prependExtensionConfig('framework', [
-            'asset_mapper' => [
-                'paths' => [\dirname(__DIR__).'/assets/dist' => 'phemjs'],
+            'cache' => [
+                'pools' => [StateCache::POOL => ['adapter' => 'cache.app', 'default_lifetime' => 3600]],
             ],
         ]);
+        if (interface_exists(AssetMapperInterface::class)) {
+            $builder->prependExtensionConfig('framework', [
+                'asset_mapper' => [
+                    'paths' => [\dirname(__DIR__).'/assets/dist' => 'phemjs'],
+                ],
+            ]);
+        }
     }
 
     public function build(ContainerBuilder $container): void
