@@ -646,6 +646,41 @@ error on a bound field. Each `<option>` of a bound `<select>` needs a `value`, o
 A bound `<textarea>` has no text. A morph keeps a field that the user changed after the request
 left.
 
+#### Unsaved changes
+
+A bound field that the user changed, and that the server did not get yet, has the `phem-dirty`
+class. Its component (`<phem-c>`), its form, its `data-phem-guard` element, and the root element
+get the class too, while they have a dirty field. The class goes when an event sends the value
+and the server takes it. Use it in CSS:
+
+```css
+input.phem-dirty { border-color: orange; }
+.unsaved-hint { display: none; }
+form.phem-dirty .unsaved-hint { display: inline; }
+```
+
+Add `data-phem-guard` to an element to ask the user before they leave the page while a bound
+field in it is dirty. On the `<Root>` element, it is for all the fields of the page:
+
+```php
+<form onSubmit={{ save }} data-phem-guard>
+    <input phem:bind={{ title }} />
+    <span className="unsaved-hint">Unsaved changes</span>
+    <button type="submit">Save</button>
+</form>
+```
+
+A reload, a tab close, or a link that Turbo does not follow shows the question of the browser
+(`beforeunload`). A Turbo visit shows a `confirm()` with the value of the attribute
+(`data-phem-guard={{ 'Discard the draft?' }}`), or with `data-phem-guard-message-value` of the
+root element ("You have unsaved changes. Leave the page?" by default). The back and forward buttons
+of a Turbo page do not ask. A redirect of a handler does not ask: the server got the values with
+the event.
+
+Only bound fields count. A field with no `phem:bind` (for example a field of a Symfony form) sends
+its value with the submit, and it is never dirty. A `phem:live` field is dirty only until its event
+leaves.
+
 
 ### Rate limits
 

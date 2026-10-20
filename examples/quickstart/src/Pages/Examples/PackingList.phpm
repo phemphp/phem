@@ -40,10 +40,12 @@ final class PackingList
         $packed = count(array_filter(array_column($this->items, 'packed')));
         $things = array_sum(array_column($this->items, 'count'));
 
+        // A changed name waits for the next event. Until then, the field and the <div> have the
+        // `phem-dirty` class (the hint shows), and `data-phem-guard` asks before the user leaves.
         return (
             <Document>
                 <Document:title>PackingList</Document:title>
-                <div>
+                <div data-phem-guard>
                     <p>
                         <label>Trip to <input phem:bind={{ trip.destination }} phem:live /></label>
                         <label>for <Stepper phem:bind={{ trip.days }} min={{ 1 }} /> days</label>
@@ -58,6 +60,7 @@ final class PackingList
                         {% endfor %}
                     </ul>
                     <button onClick={{ handlePackAll }}>Pack all</button>
+                    <span className="unsaved-hint">Unsaved changes</span>
                     <p id="summary">
                         {{ trip.destination ?: 'Somewhere' }}, {{ trip.days }} days:
                         {{ packed }} of {{ items|length }} packed ({{ things }} things).

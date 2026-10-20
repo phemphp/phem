@@ -182,6 +182,22 @@ input:focus {
     }
 }
 
+/* A bound field that the user changed, and that the server did not get yet. */
+input.phem-dirty {
+    border-color: var(--accent);
+}
+
+.unsaved-hint {
+    display: none;
+    margin-left: 8px;
+    font-size: 14px;
+    color: var(--muted);
+}
+
+.phem-dirty > .unsaved-hint {
+    display: inline;
+}
+
 .toast {
     position: fixed;
     right: 20px;

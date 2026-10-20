@@ -58,15 +58,11 @@ A file over `upload_max_filesize` of PHP gets to the handler with its upload err
 form shows it. The test helper has `->upload()`. The PhotoUpload example uses it. See
 [docs/phpm-syntax.md](docs/phpm-syntax.md#file-uploads).
 
-Not done yet:
-
-- [x] Progress for each file, available in markup. An event with files goes with XHR.
-      `<progress phem:progress={{ save }}>` shows the progress of the upload of a `save` event
-      (its `value`, and the `--phem-progress` CSS property of any element). The form dispatches
-      `phem:upload-progress`, with the progress of each file. The server does not know the files
-      before the event, so the markup shows the progress of all the files together.
-- [ ] Upload on select (to a temporary endpoint), for big files or a preview before the submit.
-- [ ] Direct upload to S3-compatible storage (presigned URL).
+Done: progress for each file, available in markup. An event with files goes with XHR.
+`<progress phem:progress={{ save }}>` shows the progress of the upload of a `save` event (its
+`value`, and the `--phem-progress` CSS property of any element). The form dispatches
+`phem:upload-progress`, with the progress of each file. The server does not know the files before
+the event, so the markup shows the progress of all the files together.
 
 - **Best peer:** LV `allow_upload` / `live_file_input`: upload starts on select, progress for
   each file, size and type limits checked before the upload, chunked upload, direct upload to
@@ -75,6 +71,10 @@ Not done yet:
 - **Notes:** Phem is a UI component model. It brings the files to the handler, and the
   application decides what to do with them: where to keep them, how to check them
   (`#[Assert\File]`), and what to do when the transaction rolls back.
+- **Out of scope:** upload on select (temporary uploads) and direct upload to cloud storage
+  (presigned URL). They need storage, an expiry, and cleanup, and the server of Phem keeps no
+  session. An application does them with its own endpoint or a JS uploader, and puts the result
+  (an id or a path) in a hidden field of the form. The submit event sends it as a normal field.
 
 ## 2. Feedback while a request runs
 
@@ -90,11 +90,15 @@ Some changes do not need the server first: open a menu, hide a row, toggle a cla
   Sketch: `<button onClick={{ js.hide('#row-' ~ id).then(remove) }}>`.
   The morph must keep the client changes until the server answers (as LV does).
 
-### [ ] Dirty state and "leave page" guard — P3
+### [x] Dirty state and "leave page" guard — P3
+
+Done: a bound field that the server did not get yet has the `phem-dirty` class, and so do its
+component, its form, its `data-phem-guard` element, and the root element. `data-phem-guard` asks
+the user before they leave the page with dirty fields (`beforeunload`, and a `confirm()` for a Turbo
+visit). The PackingList example uses it. See
+[docs/phpm-syntax.md](docs/phpm-syntax.md#unsaved-changes).
 
 - **Best peer:** LW `wire:dirty` (style for unsaved bound values).
-- **Proposal:** a `phem-dirty` class on inputs with a `bind` value that the server did not
-  get yet. An optional `beforeunload` guard for a component with dirty values.
 
 ## 3. Rendering and performance
 

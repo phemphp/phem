@@ -72,6 +72,15 @@
 // `onChange`. The morph keeps a field that the user changed after the request left. A value that
 // the server did not take (the wrong type) goes back to the value of the server.
 //
+// A bound field that the user changed, and that the server did not get yet, has the `phem-dirty`
+// class. Its components (<phem-c>), its form, its `data-phem-guard` element, and the root element
+// get it too, while they have a dirty field. The class goes when an event sends the value and the server takes it.
+// `data-phem-guard` on an element (or on the root element) asks the user before they leave the
+// page while a field in it is dirty: `beforeunload` for a reload, a tab close or a normal link,
+// and a `confirm()` for a Turbo visit. The value of the attribute is the text of the `confirm()`
+// (`data-phem-guard-message-value` by default). A browser shows its own text for `beforeunload`.
+// A redirect of a handler, and a reload for a state that is not valid, do not ask.
+//
 // A #[Url] property is in the query string of the page URL. The page renders its query in
 // `data-phem-query-value` ({values, push}), and each event answers with the new query. The
 // controller writes each key into the URL (null removes it), and keeps the other keys. A list is
@@ -262,6 +271,7 @@ export default class PhemController extends Controller {
     retries: { type: Number, default: 3 },
     retryDelay: { type: Number, default: 500 },
     debounce: { type: Number, default: 150 },
+    guardMessage: { type: String, default: "You have unsaved changes. Leave the page?" },
     query: Object,
   }
 
@@ -326,6 +336,27 @@ export default class PhemController extends Controller {
     this.showOffline()
     window.addEventListener("online", this.showOffline)
     window.addEventListener("offline", this.showOffline)
+    // The `phem-dirty` class of the bound fields that the user changed.
+    this.showDirty = () => this.markDirty()
+    this.element.addEventListener("input", this.showDirty)
+    this.element.addEventListener("change", this.showDirty)
+    this.showDirty()
+    // True when the controller itself leaves the page (a redirect or a reload): no question.
+    this.leaving = false
+    this.guardUnload = (event) => {
+      if (this.leaving || !this.dirtyGuard()) return
+      event.preventDefault()
+      event.returnValue = ""
+    }
+    this.guardVisit = (event) => {
+      if (this.leaving) return
+      const guard = this.dirtyGuard()
+      if (!guard) return
+      if (window.confirm(guard.getAttribute("data-phem-guard") || this.guardMessageValue)) this.leaving = true
+      else event.preventDefault()
+    }
+    window.addEventListener("beforeunload", this.guardUnload)
+    document.addEventListener("turbo:before-visit", this.guardVisit)
   }
 
   disconnect() {
@@ -337,6 +368,10 @@ export default class PhemController extends Controller {
     this.pending.clear()
     window.removeEventListener("online", this.showOffline)
     window.removeEventListener("offline", this.showOffline)
+    this.element.removeEventListener("input", this.showDirty)
+    this.element.removeEventListener("change", this.showDirty)
+    window.removeEventListener("beforeunload", this.guardUnload)
+    document.removeEventListener("turbo:before-visit", this.guardVisit)
     this.hideError()
   }
 
@@ -640,6 +675,7 @@ export default class PhemController extends Controller {
     beforeRender()
     if (response.status === 409) {
       // The state is not valid any more (a new build, or a new secret): load the page again.
+      this.leaving = true
       Turbo.visit(window.location.href, { action: "replace" })
       return
     }
@@ -675,8 +711,11 @@ export default class PhemController extends Controller {
       // The handler returned a RedirectResponse. Turbo sets window.location for a URL that it
       // cannot visit, so a javascript: URL would run: visit only http(s) URLs.
       const url = new URL(data.redirect, window.location.href)
-      if (url.protocol === "http:" || url.protocol === "https:") Turbo.visit(url.href)
-      else console.error("[phem] redirect to a URL that is not http(s) was blocked", data.redirect)
+      if (url.protocol === "http:" || url.protocol === "https:") {
+        // The server got the bound values with the event.
+        this.leaving = true
+        Turbo.visit(url.href)
+      } else console.error("[phem] redirect to a URL that is not http(s) was blocked", data.redirect)
       return
     }
     this.stateValue = data.state
@@ -687,6 +726,7 @@ export default class PhemController extends Controller {
     rendered.then(() => {
       this.sentBound = null
       this.resetRejected(bound)
+      this.markDirty()
     })
     if (data.events?.length) {
       // After the morph, so a listener sees the new page.
@@ -839,6 +879,26 @@ export default class PhemController extends Controller {
     const values = {}
     for (const [key, fields] of keys) values[key] = { value: boundValue(fields), dirty: fields.some(isDirty) }
     return values
+  }
+
+  // Gives the `phem-dirty` class to each bound field that the user changed, and to each component,
+  // form, guard and root element with one. The server render has no such class, so it runs after each morph.
+  markDirty() {
+    const fields = [...this.element.querySelectorAll("[data-phem-bind]")]
+    const dirty = fields.filter(isDirty)
+    for (const field of fields) field.classList.toggle("phem-dirty", dirty.includes(field))
+    for (const el of [this.element, ...this.element.querySelectorAll("phem-c, form, [data-phem-guard]")]) {
+      el.classList.toggle("phem-dirty", dirty.some((field) => el.contains(field)))
+    }
+  }
+
+  // The closest `data-phem-guard` element of a dirty bound field, or null.
+  dirtyGuard() {
+    for (const field of this.element.querySelectorAll("[data-phem-bind]")) {
+      const guard = field.closest("[data-phem-guard]")
+      if (guard && this.element.contains(guard) && isDirty(field)) return guard
+    }
+    return null
   }
 
   // After the morph: a field that still has the value that the request sent, and not the value of
