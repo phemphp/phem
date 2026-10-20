@@ -177,6 +177,21 @@ final class Tree
         return null;
     }
 
+    /**
+     * Removes a fiber and its subtree from the tree, with the handlers and the bound properties
+     * of this pass: their render threw, so the page does not show them (see Renderer::catching()).
+     */
+    public function drop(Fiber $fiber): void
+    {
+        foreach ($fiber->children as $child) {
+            $this->drop($child);
+        }
+        unset($this->fibers[$fiber->id]);
+        $prefix = $fiber->id.'.';
+        $this->handlers = array_filter($this->handlers, static fn (string $id): bool => !str_starts_with($id, $prefix), \ARRAY_FILTER_USE_KEY);
+        $this->binds = array_filter($this->binds, static fn (array $bind): bool => $bind[0] !== $fiber->id);
+    }
+
     public function fiberById(string $id): ?Fiber
     {
         return $this->fibers[$id] ?? null;

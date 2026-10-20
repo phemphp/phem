@@ -1,0 +1,94 @@
+<?phpm
+namespace App\Pages\Examples;
+
+use Phem\Attribute\{Component, Page, State};
+use Phem\Suspense;
+
+use function App\Components\Document;
+
+// Content that loads after the page, with <Suspense>.
+// - The page shows the fallbacks at once. Then the browser loads the sales report.
+// - The activity chart is `lazy`: it loads when you scroll down to it.
+// - The weather service is down: the error slot shows, only for that card.
+#[Component]
+final class SalesReport
+{
+    #[State] public array $sales = [];
+
+    public function mount(): void
+    {
+        usleep(800_000); // A slow query.
+        $this->sales = ['North' => 1200, 'South' => 860, 'East' => 1530];
+    }
+
+    public function render()
+    {
+        $rows = [];
+        foreach ($this->sales as $region => $total) {
+            $rows[] = <li key={{ region }}>{{ region }}: {{ total }} €</li>;
+        }
+
+        return <ul>{{ rows }}</ul>;
+    }
+}
+
+#[Component]
+final class ActivityChart
+{
+    #[State] public array $days = [];
+
+    public function mount(): void
+    {
+        usleep(500_000); // A slow API call.
+        $this->days = ['Mon' => 4, 'Tue' => 7, 'Wed' => 2, 'Thu' => 9, 'Fri' => 5];
+    }
+
+    public function render()
+    {
+        $bars = [];
+        foreach ($this->days as $day => $n) {
+            $bar = str_repeat('▇', $n);
+            $bars[] = <li key={{ day }}>{{ day }} {{ bar }}</li>;
+        }
+
+        return <ul>{{ bars }}</ul>;
+    }
+}
+
+#[Component]
+function Weather()
+{
+    throw new \RuntimeException('The weather service is down.');
+
+    return <p>Sunny</p>;
+}
+
+#[Page('/examples/Dashboard')]
+final class Dashboard
+{
+    public function render()
+    {
+        return (
+            <Document>
+                <Document:title>Dashboard</Document:title>
+                <h2>Sales</h2>
+                <Suspense>
+                    <Suspense:fallback><p>Loading the sales report…</p></Suspense:fallback>
+                    <SalesReport />
+                </Suspense>
+                <h2>Weather</h2>
+                <Suspense>
+                    <Suspense:fallback><p>Loading the weather…</p></Suspense:fallback>
+                    <Suspense:error><p>The weather is not available now.</p></Suspense:error>
+                    <Weather />
+                </Suspense>
+                <p style="height: 120vh">Scroll down for the activity chart.</p>
+                <h2>Activity</h2>
+                <Suspense lazy>
+                    <Suspense:fallback><p>Loading the activity chart…</p></Suspense:fallback>
+                    <ActivityChart />
+                </Suspense>
+            </Document>
+        );
+    }
+}

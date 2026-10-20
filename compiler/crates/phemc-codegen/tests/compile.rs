@@ -212,6 +212,24 @@ fn root_is_a_built_in_component() {
 }
 
 #[test]
+fn suspense_is_a_built_in_component() {
+    let src = |imports: &str, body: &str| format!("<?phpm\nnamespace App;\n{imports}\n#[\\Phem\\Attribute\\Component]\nfunction Report() {{ return <p />; }}\n#[\\Phem\\Attribute\\Component]\nfunction Home() {{\n    return {body};\n}}\n");
+    let body = "<Suspense lazy><Suspense:fallback>Loading</Suspense:fallback><Suspense:error>Error</Suspense:error><Report /></Suspense>";
+    let (out, diags) = compile(vec![SourceInput { rel: "Home.phpm".into(), text: src("use Phem\\Suspense;", body) }]);
+    let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
+    assert!(msgs.is_empty(), "{msgs:?}");
+    let out = out.expect("output");
+    assert!(out.files[0].templates.iter().any(|t| t.content.contains("{% component embed 'Phem\\\\Suspense' with {'lazy': true} only %}")), "{:?}", out.files[0].templates);
+    assert!(!out.manifest.components.contains_key("Phem\\Suspense"), "the runtime knows the built-in components");
+
+    let wrong = "<Suspense><Suspense:loading>Loading</Suspense:loading><Report /></Suspense>";
+    assert_eq!(codes(&src("use Phem\\Suspense;", wrong)), ["E013"]);
+    let (_, diags) = compile(vec![SourceInput { rel: "Home.phpm".into(), text: src("", body) }]);
+    let d = diags.iter().flat_map(|f| &f.diags).find(|d| d.code == "E010").expect("E010 without the import");
+    assert_eq!(d.help.as_deref(), Some("import it: `use Phem\\Suspense;`"));
+}
+
+#[test]
 fn a_page_gives_the_title_to_its_document() {
     let document = "<?phpm\nnamespace App;\nuse Phem\\{Html, Root};\n#[\\Phem\\Attribute\\Component]\nfunction Document(?Html $title = null, ?Html $children = null) {\n    return <html><head><title>{{ title ?? 'App' }}</title></head><body><Root>{{ children }}</Root></body></html>;\n}\n";
     let page = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\Page;\n#[Page('/')]\nfinal class Home {\n    public string $name = 'Ada';\n    public function render() { return <Document><Document:title>Hi {{ name }}</Document:title><p>Home</p></Document>; }\n}\n";

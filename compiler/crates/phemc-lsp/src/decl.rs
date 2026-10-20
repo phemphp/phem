@@ -1164,6 +1164,18 @@ pub fn builtin_components() -> Vec<Component> {
         offset: None,
         signature: "final class Root\n{\n    public string $tag = 'div';\n    public ?Html $children = null;\n}".into(),
         doc: Some("The root element of the page, in the document: it keeps the state of the page and gets its events. The other attributes go to the element."),
+    }, Component {
+        kind: ComponentKind::Class,
+        name: "Suspense".into(),
+        fqn: "Phem\\Suspense".into(),
+        page: false,
+        props: vec![Prop { name: "lazy".into(), ty: "bool".into(), default: Some("false".into()), required: false }],
+        slots: vec!["fallback".into(), "error".into()],
+        children: true,
+        rest: false,
+        offset: None,
+        signature: "final class Suspense\n{\n    public bool $lazy = false;\n    public ?Html $children = null;\n    public ?Html $fallback = null;\n    public ?Html $error = null;\n}".into(),
+        doc: Some("Content that loads after the page: the page shows the fallback, and the browser loads the children when the page starts (or, with `lazy`, when the fallback comes into view). When the children throw, the error slot shows."),
     }]
 }
 

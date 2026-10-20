@@ -170,6 +170,29 @@ final class Renderer implements ResetInterface
         return $tree->addBind($property, $fiber, $keys);
     }
 
+    /**
+     * Renders markup in the current fiber, for a boundary (see Phem\Suspense). When the render
+     * throws, the fibers that it made are not in the tree (see Tree::drop()), with their state and
+     * their handlers, and the exception is the result: the boundary renders something else.
+     */
+    public function catching(Html $markup): string|\Throwable
+    {
+        $tree = $this->tree;
+        $fiber = $tree?->top();
+        $count = \count($fiber->children ?? []);
+        try {
+            return (string) $markup;
+        } catch (\Throwable $e) {
+            if (null !== $tree && null !== $fiber) {
+                foreach (array_splice($fiber->children, $count) as $child) {
+                    $tree->drop($child);
+                }
+            }
+
+            return $e;
+        }
+    }
+
     /** The scope of a handler for `phem:loading` (see Tree::handlerScope()). */
     public function handlerScope(\Closure $handler): ?string
     {

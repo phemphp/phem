@@ -1239,6 +1239,61 @@ final class TodoItem
 
 A handler that a parent passes as a prop belongs to the parent: the parent's attribute applies.
 
+### Content that loads after the page
+
+A slow component (a report with a heavy query, a call to an external API) makes the full page
+slow: the server renders the full page before it sends it. Put the slow component in a
+`<Suspense>` boundary, as in React. The page renders the `fallback` slot in place of the
+children. Then the browser loads the children with an event:
+
+```php
+use Phem\Suspense;
+
+#[Page('/dashboard')]
+final class Dashboard
+{
+    public function render()
+    {
+        return (
+            <Document>
+                <Suspense>
+                    <Suspense:fallback><p>Loading the sales report…</p></Suspense:fallback>
+                    <SalesReport />
+                </Suspense>
+                <Suspense lazy>
+                    <Suspense:fallback><p>Loading the chart…</p></Suspense:fallback>
+                    <Suspense:error><p>The chart is not available now.</p></Suspense:error>
+                    <ActivityChart />
+                </Suspense>
+            </Document>
+        );
+    }
+}
+```
+
+- The children do not render before the load. So the `mount()` of `SalesReport` does not run
+  in the page request: the slow work runs in the load event.
+- Without `lazy`, the browser loads the children when the page starts. With `lazy`, it loads
+  them when the fallback comes into view (200px before).
+- The load is a normal event: it sends the state of the page, and has the same access rules,
+  rate limits and profiler panel. It renders only the boundary, and the morph puts the children
+  in place of the fallback.
+- Each boundary sends its own load event, in the event queue. A slow load makes the events after
+  it wait.
+- The state keeps the status of the boundary. After the load, the next events render the
+  children directly, and they keep their state.
+- The fallback is in a `<phem-suspense>` element, with `display: block`. Style it with CSS.
+
+When the render of the children throws, the `error` slot shows in place of the children, only
+for this boundary. The response is a normal answer (200). The boundary drops what the children
+rendered before the exception, and the logger gets the exception (the profiler shows it). With
+no `error` slot, the exception goes on: the event fails (see [Failed events](#failed-events)),
+and the fallback stays. A boundary loads one time: the browser does not send the load event
+again after a failed load. A reload of the page tries again.
+
+The status of a boundary does not go back. An error of a later event (for example after a click
+in the children) also shows the `error` slot.
+
 ## 9. Props and lifting state up
 
 The props of a function component (a function with `#[Component]`) are its named parameters.

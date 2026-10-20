@@ -225,6 +225,30 @@ final class ComponentTester
         return $this->send($data);
     }
 
+    /**
+     * Loads the `<Suspense>` boundaries that show their fallback, as the browser does when the
+     * page starts (or when a `lazy` boundary comes into view): one load event for each, in their
+     * order. A selector loads only one boundary: the boundary of the element (an element in its
+     * fallback, or the boundary). Loaded children can have boundaries too: call load() again.
+     *
+     *     ->assertSee('Loading the report')->load()->assertSee('Rows 3')
+     */
+    public function load(?string $selector = null): self
+    {
+        if (null !== $selector) {
+            $element = $this->document->querySelector($selector) ?? Assert::fail(\sprintf('No element matches "%s". %s', $selector, $this->context()));
+            $boundaries = [$element->closest('[data-phem-load]') ?? Assert::fail(\sprintf('The element "%s" is not in a <Suspense> that shows its fallback.', $selector))];
+        } else {
+            $boundaries = iterator_to_array($this->document->querySelectorAll('[data-phem-load]'), false);
+            if ([] === $boundaries) {
+                Assert::fail(\sprintf('The page has no <Suspense> that shows its fallback. %s', $this->context()));
+            }
+        }
+        $event = ['type' => 'load', 'value' => null, 'checked' => null, 'key' => null, 'form' => null];
+
+        return $this->send(...array_map(static fn (Element $boundary): array => [(string) $boundary->getAttribute('data-phem-load'), $event], $boundaries));
+    }
+
     /** Opens the URL of the last redirect (a page only). */
     public function followRedirect(): self
     {

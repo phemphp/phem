@@ -239,3 +239,81 @@ describe("phem:send and phem:done", () => {
     expect((await done).detail).toEqual({ handler: "c1.star", ok: false, status: null })
   })
 })
+
+describe("<Suspense>", () => {
+  // The JSON body of a call of fetch().
+  const sent = (call) => JSON.parse(fetch.mock.calls[call][1].body)
+
+  it("sends the load event when the page starts, and morphs the children in", async () => {
+    respond(`<p id="report">Rows 3</p>`)
+    const done = nextDone()
+    await mount(`<phem-suspense data-phem-load="c1.load"><p>Loading…</p></phem-suspense>`)
+    const event = await done
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(sent(0)).toMatchObject({ handler: "c1.load", event: { type: "load" } })
+    expect(event.detail).toEqual({ handler: "c1.load", ok: true, status: 200 })
+    expect(document.getElementById("report").textContent).toBe("Rows 3")
+    expect(document.querySelector("phem-suspense")).toBeNull()
+  })
+
+  it("loads a lazy boundary only when it comes into view", async () => {
+    const observed = []
+    let callback
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        constructor(cb) {
+          callback = cb
+        }
+        observe(el) {
+          observed.push(el)
+        }
+        unobserve() {}
+        disconnect() {}
+      },
+    )
+    await mount(`<phem-suspense data-phem-load="c1.load" data-phem-lazy><p>Loading…</p></phem-suspense>`)
+
+    expect(fetch).not.toHaveBeenCalled()
+    expect(observed).toEqual([document.querySelector("phem-suspense")])
+
+    respond(`<p id="chart">Chart</p>`)
+    const done = nextDone()
+    callback([{ isIntersecting: true, target: observed[0] }])
+    await done
+
+    expect(sent(0).handler).toBe("c1.load")
+    expect(document.getElementById("chart")).not.toBeNull()
+  })
+
+  it("does not load a boundary again after a failed load", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    window.addEventListener("phem:error", (e) => e.preventDefault(), { once: true })
+    fetch.mockResolvedValueOnce(new Response("Error", { status: 500 }))
+    const failed = nextDone()
+    await mount(`<phem-suspense data-phem-load="c1.load"><p>Loading…</p></phem-suspense><button data-phem-on-click="c1.star">Star</button>`)
+    expect((await failed).detail).toEqual({ handler: "c1.load", ok: false, status: 500 })
+
+    respond(`<phem-suspense data-phem-load="c1.load"><p>Loading…</p></phem-suspense><button data-phem-on-click="c1.star">Unstar</button>`)
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(sent(1).handler).toBe("c1.star")
+    expect(document.querySelector("phem-suspense p").textContent).toBe("Loading…")
+  })
+
+  it("loads a boundary that a morph shows", async () => {
+    await mount(`<button data-phem-on-click="c1.open">Open</button>`)
+    respond(`<phem-suspense data-phem-load="c1.load"><p>Loading…</p></phem-suspense>`)
+    respond(`<p id="report">Rows 3</p>`)
+    const loaded = new Promise((resolve) => window.addEventListener("phem:done", (e) => e.detail.handler === "c1.load" && resolve(e)))
+    click("button")
+    await loaded
+
+    expect(sent(1).handler).toBe("c1.load")
+    expect(document.getElementById("report")).not.toBeNull()
+  })
+})

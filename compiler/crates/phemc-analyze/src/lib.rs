@@ -26,6 +26,9 @@ pub const ATTR_ROUTE: &str = "Symfony\\Component\\Routing\\Attribute\\Route";
 /// The built-in root element of a page: `<Root tag="main">{{ children }}</Root>` in the document
 /// component. The runtime renders it (the `phem` controller, the state and the event boundary).
 pub const ROOT: &str = "Phem\\Root";
+/// The built-in boundary of content that loads after the page: `<Suspense lazy>` with the
+/// `fallback` and `error` slots. The runtime renders it (see `Phem\Suspense`).
+pub const SUSPENSE: &str = "Phem\\Suspense";
 /// The type of a prop that takes a #[State] property of the parent: `<TextField phem:bind={{ query }} />`.
 pub const BOUND: &str = "Phem\\Bound";
 
@@ -284,7 +287,23 @@ pub fn builtins() -> Vec<ComponentDef> {
         rest: true,
         open: false,
         bound: Vec::new(),
+    }, ComponentDef {
+        fqcn: SUSPENSE.into(),
+        kind: Kind::Class,
+        file: String::new(),
+        template: None,
+        props: vec!["lazy".into(), "children".into(), "fallback".into(), "error".into()],
+        slots: vec!["children".into(), "fallback".into(), "error".into()],
+        required: Vec::new(),
+        rest: false,
+        open: false,
+        bound: Vec::new(),
     }]
+}
+
+/// Whether a component is a built-in component of Phem (see `builtins()`).
+pub fn is_builtin(fqcn: &str) -> bool {
+    fqcn == ROOT || fqcn == SUSPENSE
 }
 
 pub fn registry<'a>(files: impl IntoIterator<Item = &'a FileInfo>) -> (Registry, Vec<(String, Diagnostic)>) {

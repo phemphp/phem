@@ -75,6 +75,7 @@ element. The answer of the server morphs the components that changed.
 | `keyDown($selector, $key)`, `keyUp($selector, $key)` | `onKeyDown`, `onKeyUp` | `->keyDown('input', 'Enter')` |
 | `focus($selector)`, `blur($selector)` | `onFocus`, `onBlur` | `->focus('input')` |
 | `fire($selector, $type, $event)` | any DOM event | `->fire('div', 'click', ['value' => 'x'])` |
+| `load($selector)` | the load of a `<Suspense>` boundary | `->load()`, `->load('#report')` |
 
 The value of `change()` and `fill()`:
 
@@ -92,12 +93,25 @@ removes the files. The handler gets a copy of each file in the temporary directo
 move the file. As in a browser, the files stay in the input after an event, also when the morph
 renders the input again.
 
+The first render of a page with a `<Suspense>` boundary shows its fallback, as in a browser.
+`load()` sends the load event of each boundary that shows its fallback, in their order. A
+selector loads only the boundary of the element: the `<phem-suspense>` element, or an element in
+its fallback. The loaded children can have boundaries too: call `load()` again.
+
+```php
+$this->visit('/dashboard')
+    ->assertSee('Loading the sales report')
+    ->load()
+    ->assertSee('North: 1200 €');
+```
+
 An action fails when it cannot work in a browser:
 
 - no element matches the selector;
 - the element is disabled;
 - no handler gets the event;
 - the form has no field with the name, or the select has no option with the value;
+- `load()` finds no boundary that shows its fallback;
 - `upload()` gets an element that is not a file input, more than one path for an input with no
   `multiple` attribute, or a file that does not exist.
 

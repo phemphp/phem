@@ -1,5 +1,7 @@
 /* A component boundary (<phem-c>) does not change the layout. */
 phem-c{display:contents}
+/* The fallback of a <Suspense>: a box, so a lazy boundary can come into view. */
+phem-suspense{display:block}
 /* The default message of a failed event. */
 .phem-error{position:fixed;inset:auto 1rem 1rem;z-index:2147483647;max-width:32rem;margin:auto;padding:.75rem 1rem;border-radius:.375rem;background:#b91c1c;color:#fff;font:inherit;cursor:pointer}
 /* A phem:loading or phem:progress element shows only while its handler runs, also with a `display` of its own. */

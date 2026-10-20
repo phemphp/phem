@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Phem\Manifest;
 
 use Phem\Root;
+use Phem\Suspense;
 
 /**
  * The output of `phemc build`: the components, the pages, and the template line map.
@@ -75,6 +76,10 @@ final class Manifest
         if (Root::class === $fqcn) {
             // A built-in component: the Renderer renders it (see Phem\Root).
             return $this->definitions[$fqcn] = new ComponentDefinition($fqcn, ComponentKind::FunctionComponent, slots: ['children']);
+        }
+        if (Suspense::class === $fqcn) {
+            // A built-in component: the SuspenseRenderer renders it (see Phem\Suspense).
+            return $this->definitions[$fqcn] = new ComponentDefinition($fqcn, ComponentKind::ClassComponent, slots: ['children', 'fallback', 'error']);
         }
         $data = $this->data()['components'][$fqcn] ?? null;
 

@@ -411,6 +411,15 @@ fn the_builtin_root_tag_adds_a_use_import() {
 }
 
 #[test]
+fn the_builtin_suspense_tag_has_its_slots() {
+    let r = run(&format!("{PAGE}function Home()\n{{\n    return <div><Sus|</div>;\n}}\n"));
+    let item = r.get("Suspense");
+    assert_eq!(item.detail, "Phem\\Suspense");
+    assert!(item.documentation.as_ref().unwrap().contains("loads after the page"));
+    assert!(apply(&r.text, item).contains("namespace App\\Pages;\n\nuse Phem\\Suspense;\n"));
+}
+
+#[test]
 fn an_import_goes_into_a_group_on_one_line() {
     let r = run(&format!("{PAGE}use function App\\Components\\{{Layout}};\n\nfunction Home()\n{{\n    return <Av|\n}}\n"));
     assert!(apply(&r.text, r.get("Avatar")).contains("use function App\\Components\\{Layout, Avatar};"));

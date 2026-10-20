@@ -664,7 +664,7 @@ impl<'a> Lowerer<'a> {
             let plain = self.info.functions.iter().find(|f| f.fqn.eq_ignore_ascii_case(&fqcn));
             let help = match (plain, similar.first()) {
                 (Some(f), _) => format!("add `#[Component]` before `function {}()`, and `use {};`", f.name, phemc_analyze::ATTR_COMPONENT),
-                (None, Some(&phemc_analyze::ROOT)) => format!("import it: `use {};`", phemc_analyze::ROOT),
+                (None, Some(s)) if phemc_analyze::is_builtin(s) => format!("import it: `use {s};`"),
                 (None, Some(s)) => format!("import it: `use function {s};` (or `use {s};` for a class component)"),
                 (None, None) => format!("declare `#[Component] function {short}()` in a .phpm file, or check the `use` imports"),
             };

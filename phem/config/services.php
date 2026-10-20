@@ -40,6 +40,7 @@ use Phem\Rendering\FunctionComponentRenderer;
 use Phem\Rendering\InputsComparator;
 use Phem\Rendering\MarkupResolver;
 use Phem\Rendering\Renderer;
+use Phem\Rendering\SuspenseRenderer;
 use Phem\Rendering\TemplateComponentRenderer;
 use Phem\Routing\PageLoader;
 use Phem\State\BoundValues;
@@ -104,6 +105,10 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.component_renderer.class', ClassComponentRenderer::class)
             ->args([service('phem.component_factory'), service('phem.prop_binder'), service('phem.state_accessor'), service('phem.url_query'), service('phem.metadata')])
             ->tag('phem.component_renderer')
+        // Before the class renderer: <Suspense> is a built-in class component.
+        ->set('phem.component_renderer.suspense', SuspenseRenderer::class)
+            ->args([service_closure('phem.renderer'), service('phem.prop_binder'), service('phem.state_accessor'), service('logger')->nullOnInvalid()])
+            ->tag('phem.component_renderer', ['priority' => 10])
         ->set('phem.component_renderer.function', FunctionComponentRenderer::class)
             ->args([service('phem.prop_binder')])
             ->tag('phem.component_renderer')

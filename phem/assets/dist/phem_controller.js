@@ -433,6 +433,17 @@ export default class PhemController extends Controller {
     }
     window.addEventListener("beforeunload", this.guardUnload)
     document.addEventListener("turbo:before-visit", this.guardVisit)
+    // The handlers of the `<Suspense>` boundaries that loaded, or that load now: one load each.
+    this.loads = new Set()
+    // A `lazy` boundary loads when it comes into view, or a little before.
+    this.boundaryObserver =
+      typeof IntersectionObserver === "function"
+        ? new IntersectionObserver(
+            (entries) => entries.forEach((entry) => entry.isIntersecting && entry.target.isConnected && this.loadBoundary(entry.target)),
+            { rootMargin: "200px" },
+          )
+        : null
+    this.loadBoundaries()
   }
 
   disconnect() {
@@ -450,7 +461,28 @@ export default class PhemController extends Controller {
     this.element.removeEventListener("change", this.showDirty)
     window.removeEventListener("beforeunload", this.guardUnload)
     document.removeEventListener("turbo:before-visit", this.guardVisit)
+    this.boundaryObserver?.disconnect()
     this.hideError()
+  }
+
+  // Loads each `<Suspense>` boundary that shows its fallback (`data-phem-load`, the id of its load
+  // handler): at once, or with `data-phem-lazy` when it comes into view. The load is a normal
+  // event in the queue, so it sends the newest state. A boundary loads one time: after a failed
+  // load, it keeps its fallback.
+  loadBoundaries() {
+    for (const el of this.element.querySelectorAll("[data-phem-load]")) {
+      if (this.loads.has(el.getAttribute("data-phem-load"))) continue
+      if (el.hasAttribute("data-phem-lazy") && this.boundaryObserver) this.boundaryObserver.observe(el)
+      else this.loadBoundary(el)
+    }
+  }
+
+  loadBoundary(el) {
+    this.boundaryObserver?.unobserve(el)
+    const handler = el.getAttribute("data-phem-load")
+    if (!handler || this.loads.has(handler)) return
+    this.loads.add(handler)
+    this.enqueue(el, "data-phem-load", handler, { type: "load", value: null, checked: null, key: null, form: null })
   }
 
   // data-action="click->phem#dispatch input->phem#dispatch ..." on the root element.
@@ -817,6 +849,8 @@ export default class PhemController extends Controller {
       const target = this.componentRoot(handler)
       for (const { name, detail } of data.events ?? []) target.dispatchEvent(new CustomEvent(`phem:${name}`, { detail, bubbles: true }))
       this.notify(el, handler, "done", { ok: true, status: response.status })
+      // The morph can show a new boundary (also in the children of a boundary that loaded).
+      this.loadBoundaries()
     })
   }
 

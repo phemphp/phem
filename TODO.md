@@ -19,9 +19,6 @@ these properties of Phem:
 
 Talk about each item before its implementation. The open questions are a start, not a full list.
 
-- [ ] **`<Suspense>`** (section 3). A deferred child needs its own event with the state of the
-      page. Is that a normal event to a built-in handler? How does an error in the deferred
-      render show?
 - [ ] **Streams** (section 3). The items of a stream are not in the state. How does a later
       event render the list, and how does the "before/after" comparison see it?
 - [ ] **Context** (section 4). React uses context for UI values and Phem uses services for the
@@ -39,6 +36,7 @@ Talk about each item before its implementation. The open questions are a start, 
 - [ ] **`<ErrorBoundary>`** (section 7). An exception in a render and an exception in a
       handler are different: the handler transaction rolls back, and the state may not change.
       Which state does the response send? Is the boundary only for rendering, as in React?
+      `Renderer::catching()` of `<Suspense>` already drops the fibers of a render that throws.
 
 ## 1. Input and requests
 
@@ -107,19 +105,25 @@ visit). The PackingList example uses it. See
 
 ## 3. Rendering and performance
 
-### [ ] Lazy and deferred components (Suspense) — P2
+### [x] Lazy and deferred components (Suspense) — P2
 
 A slow component (a report, an API call) blocks the full page render.
+
+Done: a built-in `<Suspense>` component, with the `fallback` and `error` slots. The page renders
+the fallback, and the children do not render (so their `mount()` does not run). The browser loads
+the children with a normal event to the built-in load handler of the boundary: when the page
+starts, or with `lazy` when the fallback comes into view (IntersectionObserver). The state keeps
+the status of the boundary (pending, loaded, failed). When the render of the children throws, the
+boundary drops their fibers and renders the error slot (`Renderer::catching()`, the base of
+`<ErrorBoundary>`). Without an error slot, the event fails and the fallback stays. Each boundary
+loads with its own event. The test helper has `->load()`. The Dashboard example uses it. See
+[docs/phpm-syntax.md](docs/phpm-syntax.md#content-that-loads-after-the-page).
 
 - **Best peer:** React `<Suspense fallback>`. LV `assign_async` + `<.async_result>` (loading,
   ok and failed states in one place). LC `loading="defer"` / `loading="lazy"` (lazy waits
   until the element is visible). LW `#[Lazy]` with a `placeholder()` method.
-- **Proposal:** a built-in `<Suspense>` component, as in React, with a `fallback` slot. The page
-  renders the fallback, then the browser loads the children with an event (`defer`), or when the
-  children become visible (`lazy`, IntersectionObserver). A failure renders an error slot.
-  Sketch: `<Suspense lazy><Suspense:fallback><Spinner /></Suspense:fallback><Report /></Suspense>`.
 - **Later:** stream the deferred parts in the first response (HTTP streaming), with no second
-  request.
+  request. A retry of a failed boundary (a built-in handler for the error slot).
 
 ### [ ] Streams for long lists — P3
 
