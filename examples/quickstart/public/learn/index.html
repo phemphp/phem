@@ -396,7 +396,7 @@ final class Counter
 <aside class="callout callout-deep">
     <h3 class="callout-title">Where does the state live?</h3>
     <div class="callout-body">
-        <p>In React, the state lives in the memory of the browser tab. In Phem, the state lives <strong>in the browser</strong> too, but in a different form: the <code>phem</code> Stimulus controller keeps it in the page, and the server signs it. Each event sends the state to the server, and the server sends back the new state with the new markup. The server keeps nothing between requests. For this reason, state values must be JSON values: scalars and arrays. Click <strong>Reset</strong> on a sandbox: the page loads again, and the state goes back to its first value.</p>
+        <p>In React, the state lives in the memory of the browser tab. In Phem, the state lives <strong>in the browser</strong> too, but in a different form: the <code>phem</code> Stimulus controller keeps it in the page, and the server signs it. Each event gives the state to the server (the server keeps a copy in a cache, or the browser sends it again), and the server sends back the new state with the new markup. The server needs nothing between requests: it can lose its cache at any time. For this reason, state values must be JSON values: scalars and arrays. Click <strong>Reset</strong> on a sandbox: the page loads again, and the state goes back to its first value.</p>
     </div>
 </aside>
 

@@ -116,7 +116,7 @@ See [editors/vscode/README.md](editors/vscode/README.md).
              ── #[Page] classes → routes ── PageController / EventController
                               │
  Browser ◄── HTML ─────── HttpKernel (FrankenPHP in worker mode, or PHP-FPM)
-   phem Stimulus controller ── POST <page URL> {state, signature, handler, event}
+   phem Stimulus controller ── POST <page URL> {signature, handler, event}
    ◄── Turbo Streams (morph of the changed components) + the new signed state
 ```
 
@@ -146,7 +146,11 @@ See [editors/vscode/README.md](editors/vscode/README.md).
 4. **State in the browser.** The server keeps no session. The `phem` Stimulus controller on the
    `<Root>` element keeps the `#[State]` properties of all components in a signed JSON value. The
    signature is an HMAC (`kernel.secret`, from `APP_SECRET`) of the state and its page
-   component. An event sends the state back.
+   component. An event sends only the signature: the server keeps each state that it signs in a
+   cache pool, by its signature. When the pool does not have it (an expired entry, another
+   machine), the browser sends the event again with the full state, compressed. The cache is only
+   an optimization: the browser keeps the state (see
+   [State cache](docs/phpm-syntax.md#state-cache)).
    The state has the shape of the last render too: the parent and a hash of the HTML of each
    component. The server renders only the components on the path to the handler, restores
    their state, and runs the PHP handler (in a Doctrine transaction, when Doctrine ORM is

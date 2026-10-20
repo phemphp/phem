@@ -86,6 +86,20 @@ final class StateCodecTest extends TestCase
         self::assertSame([], $codec->decode($json, $signature, 'App\\A', $this->request('s2')));
     }
 
+    /** The time is in the signature: the server knows the age before it has the JSON (see StateCache). */
+    public function testAgeOfASignature(): void
+    {
+        $codec = $this->codec(maxAge: 60);
+        [, $signature] = $codec->encode([], 'App\\A');
+
+        $this->now += 60;
+        self::assertFalse($codec->isTooOld($signature));
+        ++$this->now;
+        self::assertTrue($codec->isTooOld($signature));
+        self::assertFalse($this->codec(maxAge: 0)->isTooOld($signature), 'no limit');
+        self::assertFalse($codec->isTooOld('not a signature'), 'decode() rejects it');
+    }
+
     private function codec(int $maxAge = 86400, bool $bindSession = false): StateCodec
     {
         return new StateCodec('secret', $maxAge, $bindSession, fn (): int => $this->now);

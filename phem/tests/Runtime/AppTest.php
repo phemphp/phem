@@ -246,6 +246,25 @@ final class AppTest extends TestCase
         self::assertSame($this->state, $cache->find($this->signature), 'the event');
     }
 
+    /** The phem controller reads the answer with JSON.parse() only: no HEX escapes make it larger. */
+    public function testEventAnswerHasNoHexEscapes(): void
+    {
+        $response = $this->event('/', [
+            'state' => $this->state,
+            'signature' => $this->signature,
+            'handler' => $this->handlers[0],
+            'event' => ['type' => 'click'],
+        ]);
+        $json = (string) $response->getContent();
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
+        self::assertStringContainsString('"state":"{\\"_tree\\":', $json, 'a quote of the state is \\"');
+        self::assertStringContainsString('<turbo-stream action=\\"update\\"', $json, 'the streams keep their < and their slashes');
+        self::assertStringNotContainsString('\\u00', $json);
+        self::assertSame('nosniff', $this->event('/', ['handler' => 'h', 'signature' => '1.'.str_repeat('a', 64)])->headers->get('X-Content-Type-Options'), 'also a reload');
+    }
+
     public function testForgedStateIsRejected(): void
     {
         $r = $this->click(0, str_replace('"count":0', '"count":99', $this->state));

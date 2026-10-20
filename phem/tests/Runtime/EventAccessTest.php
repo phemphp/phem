@@ -16,8 +16,10 @@ namespace Phem\Tests\Runtime;
 use Phem\Handler\HandlerFingerprint;
 use Phem\Http\EventBody;
 use Phem\Http\EventPayload;
+use Phem\State\StateCache;
 use Phem\State\StateCodec;
 use PHPUnit\Framework\TestCase;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -88,6 +90,54 @@ final class EventAccessTest extends TestCase
         self::assertSame(200, $this->click('/limited-handler', 'App\\Pages\\LimitedHandlerPage', 'like')->getStatusCode());
         self::assertSame(200, $this->click('/limited-handler', 'App\\Pages\\LimitedHandlerPage', 'unlike')->getStatusCode());
         self::assertSame(429, $this->click('/limited-handler', 'App\\Pages\\LimitedHandlerPage', 'like')->getStatusCode(), 'an Expression key and a Closure key with the same value share one count');
+    }
+
+    /**
+     * An event can send only the signature: the server finds the state in the cache. On a miss,
+     * it answers 409 before the handler, and the browser sends the event again with its state.
+     */
+    public function testEventCanSendOnlyTheSignature(): void
+    {
+        $this->service(StateCache::POOL, CacheItemPoolInterface::class)->clear();
+        $payload = $this->clickPayload('App\\Pages\\LeavePage', 'leave');
+        $state = $payload['state'];
+        unset($payload['state']);
+
+        $response = $this->event('/leave', $payload);
+        self::assertSame(409, $response->getStatusCode());
+        self::assertSame('{"state":"required"}', $response->getContent(), 'the cache does not have the state');
+
+        $this->service('phem.state_cache', StateCache::class)->save($payload['signature'], $state);
+        $response = $this->event('/leave', $payload);
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('redirect', (string) $response->getContent(), 'the handler runs with the state of the cache');
+
+        $this->service('phem.state_cache', StateCache::class)->save($payload['signature'], '{"phem1":{"n":1}}');
+        self::assertSame('{"reload":true}', $this->event('/leave', $payload)->getContent(), 'a cache entry that does not fit the signature');
+
+        $payload['signature'] = '1.'.str_repeat('a', 64);
+        self::assertSame('{"reload":true}', $this->event('/leave', $payload)->getContent(), 'a signature older than state_max_age reloads, with no lookup');
+
+        $json = json_encode(['signature' => $payload['signature']] + $payload, \JSON_THROW_ON_ERROR);
+        self::assertSame(400, $this->multipart('/leave', ['photo' => self::file('a')], json: $json)->getStatusCode(), 'an event with files sends its state');
+    }
+
+    public function testEventThatMissesTheCacheDoesNotRunItsMiddlewares(): void
+    {
+        if (!class_exists(RateLimit::class)) {
+            self::markTestSkipped('The #[RateLimit] attribute needs Symfony 8.1.');
+        }
+        $this->service(StateCache::POOL, CacheItemPoolInterface::class)->clear();
+        $payload = $this->clickPayload('App\\Pages\\LimitedHandlerPage', 'search');
+        $full = $payload;
+        unset($payload['state']);
+        // The limit of the fixture app is 2 events in a minute.
+        for ($i = 0; $i < 3; ++$i) {
+            self::assertSame(409, $this->event('/limited-handler', $payload)->getStatusCode());
+        }
+        self::assertSame(200, $this->event('/limited-handler', $full)->getStatusCode(), 'a miss uses no token of the limit of the handler');
+        self::assertSame(200, $this->event('/limited-handler', $full)->getStatusCode());
+        self::assertSame(429, $this->event('/limited-handler', $full)->getStatusCode());
     }
 
     public function testEventFromAnotherSiteIsRejected(): void

@@ -84,19 +84,12 @@ final class PageDriver implements Driver
         $this->redirect = null;
         $files = $event['files'] ?? [];
         unset($event['files']);
-        $body = json_encode(['state' => $this->state, 'signature' => $this->signature, 'handler' => $handler, 'event' => $event, 'bound' => (object) $bound], \JSON_THROW_ON_ERROR);
-        $server = [
-            'HTTP_ACCEPT' => 'application/json',
-            'HTTP_X_PHEM_EVENT' => '1',
-            'HTTP_SEC_FETCH_SITE' => 'same-origin',
-        ] + $this->server;
-        // To the URL that the browser shows, as the controller sends it. With files, the JSON
-        // is the `_phem` part of a multipart body.
-        $request = [] === $files
-            ? Request::create($this->url, 'POST', cookies: $this->cookies, server: ['CONTENT_TYPE' => 'application/json'] + $server, content: $body)
-            : Request::create($this->url, 'POST', [EventBody::PART => $body], $this->cookies, TestFiles::of($files), ['CONTENT_TYPE' => 'multipart/form-data; boundary=phem'] + $server);
-        [, $response] = $this->send($request);
-
+        // As the browser: only the signature, and the state again when the server does not have
+        // it. An event with files always sends the state.
+        $response = $this->post($handler, $event, $bound, $files, [] !== $files);
+        if ([] === $files && 409 === $response->getStatusCode() && '{"state":"required"}' === $response->getContent()) {
+            $response = $this->post($handler, $event, $bound, $files, true);
+        }
         if (409 === $response->getStatusCode()) {
             return EventResult::reload();
         }
@@ -115,6 +108,30 @@ final class PageDriver implements Driver
         $this->query($data['query'] ?? null);
 
         return EventResult::updates(self::streams((string) $data['streams']), self::events($data['events'] ?? []));
+    }
+
+    /**
+     * Posts an event to the URL that the browser shows, as the controller sends it. With files,
+     * the JSON is the `_phem` part of a multipart body.
+     *
+     * @param array<string, mixed>              $event
+     * @param array<string, mixed>              $bound
+     * @param list<array{0: string, 1: string}> $files [field name, path] pairs
+     */
+    private function post(?string $handler, array $event, array $bound, array $files, bool $withState): Response
+    {
+        $state = $withState ? ['state' => $this->state] : [];
+        $body = json_encode($state + ['signature' => $this->signature, 'handler' => $handler, 'event' => $event, 'bound' => (object) $bound], \JSON_THROW_ON_ERROR);
+        $server = [
+            'HTTP_ACCEPT' => 'application/json',
+            'HTTP_X_PHEM_EVENT' => '1',
+            'HTTP_SEC_FETCH_SITE' => 'same-origin',
+        ] + $this->server;
+        $request = [] === $files
+            ? Request::create($this->url, 'POST', cookies: $this->cookies, server: ['CONTENT_TYPE' => 'application/json'] + $server, content: $body)
+            : Request::create($this->url, 'POST', [EventBody::PART => $body], $this->cookies, TestFiles::of($files), ['CONTENT_TYPE' => 'multipart/form-data; boundary=phem'] + $server);
+
+        return $this->send($request)[1];
     }
 
     public function state(?string $fiber = null): array

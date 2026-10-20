@@ -14,10 +14,12 @@ declare(strict_types=1);
 namespace Phem\Tests\Test;
 
 use Phem\Html;
+use Phem\State\StateCache;
 use Phem\Test\InteractsWithPhem;
 use Phem\Tests\Fixtures\Limits;
 use Phem\Tests\Fixtures\TestKernel;
 use PHPUnit\Framework\AssertionFailedError;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpKernel\Attribute\RateLimit;
 
@@ -243,6 +245,20 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->click('button.btn')
             ->assertState('count', 1)
             ->assertSee('Clicked 1 times');
+    }
+
+    /** As the browser, visit() sends only the signature, and the state again on a miss of the cache. */
+    public function testVisitSendsTheStateWhenTheCacheDoesNotHaveIt(): void
+    {
+        $tester = $this->visit('/')->click('button.btn')->assertState('count', 1);
+
+        $pool = static::getContainer()->get(StateCache::POOL);
+        self::assertInstanceOf(CacheItemPoolInterface::class, $pool);
+        $pool->clear();
+        $tester->click('button.btn')
+            ->assertState('count', 2) // one click, also with the second request
+            ->click('button.btn')
+            ->assertState('count', 3);
     }
 
     public function testAssertStateOfAChildComponent(): void

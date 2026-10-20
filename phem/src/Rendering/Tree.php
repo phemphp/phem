@@ -18,8 +18,9 @@ use Phem\State\TreeShape;
 /**
  * The fibers of one page for one request.
  *
- * The server keeps no state between requests. The browser sends the state of all fibers and
- * the shape of the last render (signed); a Tree starts from them. For an event, the Renderer
+ * The server needs no state between requests. The browser keeps the state of all fibers and the
+ * shape of the last render (signed), and an event gives them to the server (or the server finds
+ * them in the StateCache); a Tree starts from them. For an event, the Renderer
  * renders the fibers on the path to the handler, runs the handler, renders the fibers that can
  * change, and the tree reports which fibers changed since the last render (see EventRenderer).
  */

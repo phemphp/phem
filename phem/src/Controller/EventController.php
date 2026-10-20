@@ -34,6 +34,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
@@ -44,15 +45,18 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
  * The events go to the URL of the page, so the access rules of the page apply to them too
  * (see PageLoader). The page comes from the route, not from the browser.
  *
- * The `phem` Stimulus controller sends the signed state of the page, the handler id, and the
- * values of the bound inputs that changed (see BoundValues). The server renders the path to
+ * The `phem` Stimulus controller sends the signature of the state of the page, the handler id,
+ * and the values of the bound inputs that changed (see BoundValues). The server finds the state
+ * of the signature in the StateCache. When the cache does not have it, the server answers 409
+ * with `{"state": "required"}` before the handler runs, and the browser sends the event again
+ * with its full state. An event with files always sends its full state. The server renders the path to
  * the handler with that state, sets the bound values, runs the handler, renders the components
  * that can change (see EventRenderer), and answers with Turbo Streams that morph the components
  * that changed, the new state, the query of the #[Url] properties (see UrlQuery), and the
  * browser events of the handler (see BrowserEventDispatcher). When the handler returns a
  * RedirectResponse, the server answers with its URL, and the browser visits it.
  *
- * An event with the files of a form is `multipart/form-data` (see EventPayload). The handler
+ * An event with the files of a form is `multipart/form-data` (see EventBody). The handler
  * gets them as UploadedFile objects (see Event::$files). PHP removes a file that the handler does
  * not move at the end of the request.
  *
@@ -108,8 +112,23 @@ final class EventController
         }
 
         $payload = EventPayload::fromJson($body);
+        $json = $payload->state;
+        if (null === $json) {
+            if ($multipart) {
+                // A miss would upload the files two times.
+                throw new BadRequestHttpException('An event with files sends its state.');
+            }
+            if ($this->codec->isTooOld($payload->signature)) {
+                return self::reload();
+            }
+            $json = $this->cache->find($payload->signature);
+            if (null === $json) {
+                // The browser sends the event again with its state. The handler did not run.
+                return self::json(['state' => 'required'], 409);
+            }
+        }
         $page = (string) $request->attributes->get('_phem_page');
-        $data = $this->codec->decode($payload->state, $payload->signature, $page, $request);
+        $data = $this->codec->decode($json, $payload->signature, $page, $request);
         if (null === $data) {
             // The state is not valid any more (a new build, a new secret, too old, or another session).
             return self::reload();
@@ -136,7 +155,7 @@ final class EventController
         if (null !== $outcome->redirect) {
             // The browser visits the URL: the page does not render again, and the browser
             // events of the handler are dropped (the new page has other listeners).
-            return new JsonResponse(['redirect' => self::redirectUrl($outcome->redirect)]);
+            return self::json(['redirect' => self::redirectUrl($outcome->redirect)]);
         }
         [$json, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page, $request);
         // The next event can send only the signature (see StateCache).
@@ -149,7 +168,7 @@ final class EventController
             $data['warnings'] = $outcome->warnings;
         }
 
-        return new JsonResponse($data);
+        return self::json($data);
     }
 
     /**
@@ -232,6 +251,25 @@ final class EventController
 
     private static function reload(): JsonResponse
     {
-        return new JsonResponse(['reload' => true], 409);
+        return self::json(['reload' => true], 409);
+    }
+
+    /**
+     * An answer to the `phem` controller, which reads it with fetch() and JSON.parse() only.
+     *
+     * The JSON has no HEX escapes (the defaults of JsonResponse): they make a JSON safe in an HTML
+     * `<script>`, and this JSON is never in HTML. With them, each `"` of the signed state and each
+     * `<` of the streams take 6 bytes (`\u0022`), so the response is about two times larger. The
+     * `nosniff` header stops a browser that reads the response as HTML, so a `<script>` in a
+     * string of the JSON cannot run.
+     *
+     * @param array<string, mixed> $data
+     */
+    private static function json(array $data, int $status = 200): JsonResponse
+    {
+        $response = new JsonResponse(null, $status, ['X-Content-Type-Options' => 'nosniff']);
+        $response->setEncodingOptions(\JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_PRESERVE_ZERO_FRACTION);
+
+        return $response->setData($data);
     }
 }

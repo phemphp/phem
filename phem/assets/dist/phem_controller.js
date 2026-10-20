@@ -5,8 +5,11 @@
 // ../package.json). Without StimulusBundle, register it: `application.register("phem", PhemController)`.
 //
 // The server renders the page with the state in `data-phem-state-value` (signed JSON).
-// On an event, the controller posts {state, signature, handler, event, bound} to the URL of the page,
-// so the access rules of the page apply. The server runs the PHP handler and answers with
+// On an event, the controller posts {signature, handler, event, bound} to the URL of the page,
+// so the access rules of the page apply. The server finds the state of the signature in its
+// cache. When the cache does not have it, the server answers 409 with `{"state": "required"}`
+// before the handler runs, and the controller sends the event again with the state, one time.
+// An event with files always sends the state, so the files do not upload two times. The server runs the PHP handler and answers with
 // Turbo Streams (morph of the changed components) and the new state. Events wait in a queue,
 // so each one uses the newest state.
 //
@@ -93,8 +96,9 @@
 // between the files by their size, in their order.
 //
 // An event with no files and a JSON larger than 1 KiB goes compressed (`Content-Encoding: gzip`,
-// with `CompressionStream`): the JSON has all the state of the page, and a browser does not
-// compress a request body. A browser without `CompressionStream` sends the JSON as it is.
+// with `CompressionStream`): an event sent again with the state has all the state of the page,
+// and a browser does not compress a request body. A browser without `CompressionStream` sends the
+// JSON as it is.
 
 import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
@@ -626,7 +630,7 @@ export default class PhemController extends Controller {
     }
     let response
     try {
-      response = await this.fetchWithRetry(handler, event, bound, onProgress)
+      response = await this.fetchEvent(handler, event, bound, onProgress)
     } catch (e) {
       beforeRender()
       console.error("[phem] event failed (network error)", e)
@@ -767,13 +771,26 @@ export default class PhemController extends Controller {
     return transition.updateCallbackDone
   }
 
+  // Posts the event with only the signature of the state. When the server does not have the
+  // state (a 409 with `{"state": "required"}`), posts it again with the state. An event with files
+  // always has the state.
+  async fetchEvent(handler, event, bound = {}, onProgress = null) {
+    const withState = Boolean(event.files?.length)
+    const response = await this.fetchWithRetry(handler, event, bound, onProgress, withState)
+    if (withState || response.status !== 409) return response
+    const data = await response.clone().json().catch(() => null)
+    if (data?.state !== "required") return response
+    return this.fetchWithRetry(handler, event, bound, onProgress, true)
+  }
+
   // Posts the event. Sends it again after a network error, a 502 or a 503, with a longer wait
   // each time. The last try returns its response, or throws its network error. An event with
   // files goes with XHR when `onProgress` wants the progress of the upload.
-  async fetchWithRetry(handler, event, bound = {}, onProgress = null) {
+  async fetchWithRetry(handler, event, bound, onProgress, withState) {
     const { files = [], ...data } = event
     // A `phem:live` event has no handler: the server only sets the bound values.
-    const json = JSON.stringify({ state: this.stateValue, signature: this.signatureValue, handler: data.live ? null : handler, event: data, bound })
+    const state = withState ? { state: this.stateValue } : {}
+    const json = JSON.stringify({ ...state, signature: this.signatureValue, handler: data.live ? null : handler, event: data, bound })
     // An event with files is not compressed: the files are most of the body.
     const plain = files.length ? null : await jsonBody(json)
     for (let attempt = 0; ; attempt++) {

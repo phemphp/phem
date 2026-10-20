@@ -75,6 +75,18 @@ final class StateCodec
         return \is_array($state) ? $state : null;
     }
 
+    /**
+     * Whether a signature is older than the maximum age. The time is in the signature, so the
+     * server can know it before it has the JSON. A value that is not a signature is not too old:
+     * decode() rejects it.
+     */
+    public function isTooOld(string $signature): bool
+    {
+        $issuedAt = explode('.', $signature, 2)[0];
+
+        return $this->maxAge > 0 && ctype_digit($issuedAt) && $this->now() - (int) $issuedAt > $this->maxAge;
+    }
+
     private function sign(string $json, string $page, int $issuedAt, ?Request $request): string
     {
         return hash_hmac('sha256', $page."\n".$issuedAt."\n".$this->session($request)."\n".$json, $this->secret);

@@ -344,7 +344,7 @@ compares the two renders. The cost grows with the page size, not with the change
     Twig `app` global (`app.request`, `app.session`, `app.user`)? Later: hashes of the props in
     the payload, so a child that the first pass did not see can skip too.
 
-### [ ] Smaller state payload, or state on the server — P2
+### [x] Smaller state payload, or state on the server — P2
 
 The browser sends all the state of the page on each event. A big page sends a big payload.
 
@@ -409,8 +409,8 @@ The browser sends all the state of the page on each event. A big page sends a bi
     miss must not upload the files two times, and the files are larger than the state.
   - The `409` check runs after the CSRF, origin, content type and size checks, and before the
     handler. So the browser can send the event again with no risk. This try does not count in
-    the network retries (`data-phem-retries-value`). A second `409` for the same event is an
-    error (`phem:error`), with no new try.
+    the network retries (`data-phem-retries-value`). The second request has the state, so the
+    server cannot answer `{"state": "required"}` again.
   - The events of a page go one after the other, so the next event of a burst (typing,
     clicks) sends the signature of the last response, and that response saved its state in
     the cache: most events hit.
@@ -461,22 +461,61 @@ The browser sends all the state of the page on each event. A big page sends a bi
      answers 409 and does not run the handler (no transaction, no rate limit token); a cache
      entry with a wrong JSON is a reload; an old signature is a reload with no lookup; an
      event with files and no state is 400.
+     **Done:** `StateCodec::isTooOld()` reads the time of the signature. Tests in
+     `EventAccessTest` and `StateCodecTest`. A `#[RateLimit]` on a handler (a middleware) uses no
+     token on a miss, but a `#[RateLimit]` on a page counts each request: a miss uses two tokens.
   5. **Browser protocol.** The `phem` controller sends only the signature, and on a `409` it
      sends the event again with the full compressed state, one time. An event with files sends
      the full state. JS tests: hit, miss, a second 409, and files.
+     **Done:** `fetchEvent()` sends the signature, and on `{"state": "required"}` it calls
+     `fetchWithRetry()` again with the state. A `409` with `{"reload": true}` still reloads the
+     page. The `phem` controller has no JS tests: checked by hand in the quickstart (a hit; a
+     miss after `cache:pool:clear`, then a gzip request with the state, then a hit again).
   6. **Test helpers.** `PageDriver` (`$this->visit()`) sends signature-only events as the
      browser, and `->withoutStateCache()` (or a cleared pool) forces the misses, so a test can
      check both paths. `ComponentDriver` does not change (no HTTP).
+     **Done:** `PageDriver` sends the signature first and the state on a miss, as the browser.
+     No `->withoutStateCache()`: an application test does not need the miss path, and the Phem
+     tests cover it (`InteractsWithPhemTest` clears the pool).
   7. **Docs.** The options in the doc comment of `PhemBundle` and in `docs/phpm-syntax.md`
      (`phem.state_cache`, the `cache.phem.state` pool, prune for a filesystem pool). The text of
      `StateCodec` and `EventController` about the size limit. README section 4 (the event
      request).
+     **Done:** a "State cache" section in `docs/phpm-syntax.md` (the pool, the miss, prune, Redis,
+     the rate limits), the state list of section 7, README section 4, the text of `Tree` and of
+     `learn/index.html`.
   8. **Measure.** The page of the 500 rows: the request size and the time of a click on the
      counter, for a hit, a miss (two requests) and today. Also a page with a big `#[State]`
      (200 rows in an array), with each key of a search field.
+     **Measured** (a temporary page in the quickstart, dev mode with `kernel.debug`, on
+     localhost, a filesystem pool; the median of 41 events, a miss of 11):
+
+     | Event request             | Before step 1 | Full state, gzip | Hit   | Miss (2 requests) |
+     |---------------------------|--------------:|-----------------:|------:|------------------:|
+     | 500 components, a click   |       9,280 B |          6,988 B | 169 B |           7,157 B |
+     | 200 rows in state, a key  |      13,795 B |          1,531 B | 183 B |           1,713 B |
+
+     The time of a hit is the same as with the full state (about 39 ms and 29 ms in dev mode).
+     A miss adds a round trip: on localhost about 1 to 2 ms. The response does not change: it
+     still has the full state, and `JsonResponse` escapes each `"` of the state as `\u0022`, so
+     the state of 200 rows is about 22 KB in the response (before the gzip of the server).
 - **Effect on other items:** on a hit, the request does not send the `_tree` shape, so the open
   point "the shape on the server" of "Render only the components that can change" is mostly
   closed.
+- **No HEX escapes in the response.** `EventController` answers with a JSON with no HEX escapes
+  (the defaults of `JsonResponse`), and with `X-Content-Type-Options: nosniff`. The `phem`
+  controller reads the answer with `JSON.parse()` only, so the escapes for an HTML `<script>`
+  are not necessary. The same page of 200 rows, a hit, the median of 41 events:
+
+  | Event response    | Before   | After    |
+  |-------------------|---------:|---------:|
+  | JSON              | 22,474 B | 14,239 B |
+  | With gzip (level 6) | 1,856 B |  1,732 B |
+
+  A server with gzip saves only about 7 %, but a server with no gzip saves about 37 %.
+- **Open points:** the response still has the full state (option B). A pure server store
+  (option C) for a state that the user must not read. A `#[RateLimit]` on a page that does not
+  count a miss.
 
 ### [ ] Lazy and deferred components (Suspense) — P2
 

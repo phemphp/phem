@@ -729,6 +729,43 @@ phem:
     max_event_size: 2097152
 ```
 
+### State cache
+
+The browser keeps the full signed state of the page, but an event sends only its signature. The
+server keeps each state that it signs (the page render and each event) in the `cache.phem.state`
+pool, by its signature, so the request of an event stays small on a big page.
+
+When the pool does not have the state (an expired entry, a restart, another machine with its own
+pool), the server answers `409` with `{"state": "required"}` and does not run the handler. The
+browser sends the same event again with the full state, compressed (see
+[Event size](#event-size)). So the pool can lose an entry at any time: the only cost is one more
+request. An event with files always sends the full state, so the files do not upload two times.
+
+The state from the pool has the same checks as a state from the browser: the signature,
+`phem.state_max_age` and `phem.state_bind_session`. A wrong entry in the pool cannot give a state
+that the server did not sign.
+
+The pool uses the `cache.app` adapter, with a lifetime of 3600 seconds. A lifetime shorter than
+`phem.state_max_age` is correct. Each page view and each event writes one entry, so use a pool
+that removes old entries: Redis or APCu in production. A filesystem pool (the default
+`cache.app`) needs `bin/console cache:pool:prune`. With many machines, a shared pool (Redis)
+gives more hits.
+
+```yaml
+# config/packages/cache.yaml
+framework:
+    cache:
+        pools:
+            cache.phem.state:
+                adapter: cache.adapter.redis
+                default_lifetime: 1800
+```
+
+`phem.state_cache: false` turns the cache off: then each event sends the full state.
+
+A `#[RateLimit]` on a page counts each request: a miss of the cache (and the second request) uses
+two tokens. A `#[RateLimit]` on a handler counts only the request that runs the handler.
+
 ### Failed events
 
 When the server answers an event with a status that is not 2xx (for example a 500 for an
@@ -847,8 +884,9 @@ final class Counter
   the names that it cannot find.
 - Each component instance has its own state.
 - The state lives in the browser. The `phem` Stimulus controller keeps it, and the server signs it.
-  An event sends the state to the server. The server makes the component again, restores the
-  state, runs the handler, renders the components that can change (see
+  An event sends the signature of the state, and the server finds the state in its cache (or the
+  browser sends it again, see [State cache](#state-cache)). The server makes the component
+  again, restores the state, runs the handler, renders the components that can change (see
   [Keep `render()` pure](#keep-render-pure)), and sends back Turbo Streams that morph only the
   components that changed.
 - State values must be JSON values (scalars and arrays), or backed enums.

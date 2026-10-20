@@ -31,13 +31,13 @@ final class EventPayload
 
     /**
      * @param string|null          $handler the handler id, or null for an event of `phem:live` with no handler
-     * @param string               $state   the signed JSON of the page state
+     * @param string|null          $state   the signed JSON of the page state, or null when the event sends only the signature (see StateCache)
      * @param array<string, mixed> $event   the DOM event (type, value, checked, key, form)
      * @param array<string, mixed> $bound   the values of the bound inputs that changed: "<fiber>.<property>" => value (see BoundValues)
      */
     public function __construct(
         public readonly ?string $handler,
-        public readonly string $state,
+        public readonly ?string $state,
         public readonly string $signature,
         public readonly array $event,
         public readonly array $bound = [],
@@ -57,7 +57,7 @@ final class EventPayload
 
         return new self(
             $data['handler'],
-            (string) ($data['state'] ?? '{}'),
+            \is_string($data['state'] ?? null) ? $data['state'] : null,
             (string) ($data['signature'] ?? ''),
             \is_array($data['event'] ?? null) ? $data['event'] : [],
             \is_array($data['bound'] ?? null) ? $data['bound'] : [],
