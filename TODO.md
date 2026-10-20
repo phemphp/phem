@@ -447,11 +447,14 @@ The browser sends all the state of the page on each event. A big page sends a bi
      (`StateCache::POOL`), with the `cache.app` adapter and a lifetime of 3600 seconds. With
      `phem.state_cache: false`, the cache has no pool and keeps nothing: one class with an
      optional pool, not a `NullStateCache`. A value that is not a signature is never a key.
-     Tests in `StateCacheTest`. The `phem.state_cache` service has no user yet, so the container
-     removes it until step 3.
+     Tests in `StateCacheTest`.
   3. **Save each signed state.** `PageRenderer` (the page render) and `EventController` save
-     the JSON after `StateCodec::encode()`. No change of the
-     protocol yet. Test: the cache has the state of the page and of each event.
+     the JSON after `StateCodec::encode()`. No change of the protocol yet. Test: the cache has
+     the state of the page and of each event.
+     **Done:** both get the `phem.state_cache` service (a `StateCache` with no pool by default,
+     so a direct use keeps nothing). Test in `AppTest`. Each page view and each event writes one
+     entry: a filesystem pool (the default `cache.app`) writes one file for each, until
+     `cache:pool:prune`.
   4. **Signature-only events.** `EventPayload::$state` is nullable. With no `state` key,
      `EventController` reads the JSON from `StateCache`, then calls `StateCodec::decode()` as
      today. A miss answers `409 {"state": "required"}`. Tests: a hit runs the handler; a miss

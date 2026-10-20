@@ -25,6 +25,7 @@ use Phem\Rendering\EventRenderer;
 use Phem\Rendering\Tree;
 use Phem\State\PageState;
 use Phem\State\StateAccessor;
+use Phem\State\StateCache;
 use Phem\State\StateCodec;
 use Phem\State\UrlQuery;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -81,6 +82,7 @@ final class EventController
         private readonly EventBody $body = new EventBody(),
         private readonly UrlQuery $url = new UrlQuery(),
         private readonly int $maxUploadSize = 8388608,
+        private readonly StateCache $cache = new StateCache(),
     ) {
     }
 
@@ -137,6 +139,8 @@ final class EventController
             return new JsonResponse(['redirect' => self::redirectUrl($outcome->redirect)]);
         }
         [$json, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page, $request);
+        // The next event can send only the signature (see StateCache).
+        $this->cache->save($signature, $json);
 
         $query = $this->url->of($tree);
         $data = ['streams' => $this->streams->updates($tree->changedFibers()), 'state' => $json, 'signature' => $signature, 'query' => ['values' => (object) $query['values'], 'push' => $query['push']], 'events' => $this->dispatcher->dispatched()];

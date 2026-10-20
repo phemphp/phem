@@ -20,6 +20,7 @@ use Phem\Rendering\RootElement;
 use Phem\Rendering\Tree;
 use Phem\Root;
 use Phem\State\StateAccessor;
+use Phem\State\StateCache;
 use Phem\State\StateCodec;
 use Phem\State\UrlQuery;
 use Symfony\Component\HttpFoundation\Request;
@@ -29,7 +30,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * Renders a page component (server-side) with its signed state. The page renders its document:
  * a component of the application with a `<Root>` (see Phem\Root). The query string of the
  * request sets the #[Url] properties, and the root element tells the browser their query (see
- * Phem\State\UrlQuery).
+ * Phem\State\UrlQuery). The signed state goes to the StateCache, so the first event of the page
+ * can send only its signature.
  *
  * PageController uses it for the page routes. The browser sends the events of a page to the URL
  * of the page, and only a page route (a `#[Page]` on the component) runs them.
@@ -43,6 +45,7 @@ final class PageRenderer
         private readonly PathResolver $paths = new PathResolver(),
         private readonly StateAccessor $state = new StateAccessor(),
         private readonly UrlQuery $url = new UrlQuery(),
+        private readonly StateCache $cache = new StateCache(),
     ) {
     }
 
@@ -65,6 +68,7 @@ final class PageRenderer
             throw new \LogicException(\sprintf('The page "%s" renders no <Root>: render it in a document component with `<Root>{{ children }}</Root>` (see "%s").', $page, Root::class));
         }
         [$state, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page, $request);
+        $this->cache->save($signature, $state);
 
         return "<!DOCTYPE html>\n".str_replace($tree->rootToken(), RootElement::state($state, $signature, $this->url->of($tree)), $html);
     }

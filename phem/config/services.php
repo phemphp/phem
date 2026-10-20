@@ -153,6 +153,7 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.path_resolver'),
                 service('phem.state_accessor'),
                 service('phem.url_query'),
+                service('phem.state_cache'),
             ])
         ->alias(PageRenderer::class, 'phem.page_renderer')
         ->set('phem.controller.page', PageController::class)
@@ -188,6 +189,7 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.event_body'),
                 service('phem.url_query'),
                 8388608,
+                service('phem.state_cache'),
             ])
         ->set('phem.listener.page_attributes', PageAttributesListener::class)
             ->tag('kernel.event_listener', ['event' => 'kernel.controller', 'method' => 'onKernelController'])

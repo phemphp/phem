@@ -17,6 +17,7 @@ use Phem\EventListener\SourceMapListener;
 use Phem\Manifest\Manifest;
 use Phem\Manifest\SourceMap;
 use Phem\State\PageState;
+use Phem\State\StateCache;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\AssetMapper\AssetMapperInterface;
@@ -232,6 +233,17 @@ final class AppTest extends TestCase
         $this->click(4);
         $r = $this->click(4);
         self::assertStringContainsString('<span id="items">item1,item2,item3</span>', $r['data']['streams']);
+    }
+
+    public function testCacheHasTheStateOfThePageAndOfEachEvent(): void
+    {
+        $cache = $this->service('phem.state_cache', StateCache::class);
+        self::assertSame($this->state, $cache->find($this->signature), 'the page render');
+
+        $first = $this->signature;
+        self::assertSame(200, $this->click(0)['status']);
+        self::assertNotSame($first, $this->signature);
+        self::assertSame($this->state, $cache->find($this->signature), 'the event');
     }
 
     public function testForgedStateIsRejected(): void
