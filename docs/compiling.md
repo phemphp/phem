@@ -260,8 +260,15 @@ phemc check src --format json
 ```
 
 `file` is relative to the source directory. `line` starts at 0, and `character` counts UTF-16
-code units, as the Language Server Protocol does. The VS Code extension uses this output (see
-`editors/vscode/README.md`).
+code units, as the Language Server Protocol does.
+
+### The language server
+
+`phemc lsp` runs the language server on stdin and stdout. It shows the same diagnostics as
+`phemc check` as you type, and it gives the completion, the definition, the hover, and the
+outline of `.phpm` files. The editors bundle the same server, compiled to WebAssembly
+(`make lsp`), so they do not need a `phemc` binary. See `editors/vscode/README.md` and
+`editors/phpstorm/README.md`.
 
 ## 4. Run
 

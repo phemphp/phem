@@ -219,9 +219,20 @@ console logs each event with a link to its panel. See
 - **Later:** the props of each component (they can be entities and closures, so they need a
   safe dump).
 
-### [ ] Language server and PhpStorm support — P2
+### [x] Language server and PhpStorm support — P2
+
+Done: `phemc lsp` runs a language server (the `phemc-lsp` crate). It gives the diagnostics of the
+compiler as the user types (with the unsaved text of the open documents), and the completion
+(components, props, slots, HTML, Twig, PHP members, variables, and `use` imports), go to
+definition, hover, and the outline. The server replaces the JavaScript engine of the VS Code
+extension. The editors bundle the server compiled to WebAssembly (`make lsp`) and run it with
+Node, so they need no `phemc` binary. The VS Code extension is a thin client (`make vscode`).
+The PhpStorm plugin uses the LSP API of the IntelliJ Platform and the same TextMate grammar
+(`make phpstorm`). See [editors/vscode/README.md](editors/vscode/README.md) and
+[editors/phpstorm/README.md](editors/phpstorm/README.md).
 
 - **Best peer:** the Laravel Idea plugin for Livewire. The Elixir language server for HEEx.
-- **Proposal:** `phemc lsp`: diagnostics, completion of components and props, go to definition,
-  and hover, from the analyzer that already exists in Rust. The VS Code extension and a
-  PhpStorm plugin use it.
+- **Later:** find references and rename of components and props, code actions (for example,
+  add a missing import), and stubs for the PHP built-in classes. A small native PhpStorm
+  plugin that injects PHP into `.phpm` files, so the PHP features of PhpStorm (refactorings,
+  find usages) work there too.

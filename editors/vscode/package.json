@@ -1,13 +1,13 @@
 {
     "name": "phem",
     "displayName": "Phem",
-    "description": "Syntax highlighting, completion, go to definition, hover, outline, and phemc diagnostics for .phpm files: PHP with markup literals and Twig.",
-    "version": "0.4.0",
+    "description": "Syntax highlighting, and the Phem language server for .phpm files: diagnostics as you type, completion, go to definition, hover, and outline.",
+    "version": "0.5.0",
     "publisher": "phem",
     "license": "MIT",
     "icon": "icons/icon.png",
     "engines": {
-        "vscode": "^1.75.0"
+        "vscode": "^1.82.0"
     },
     "categories": [
         "Programming Languages"
@@ -23,7 +23,7 @@
     "capabilities": {
         "untrustedWorkspaces": {
             "supported": "limited",
-            "description": "In an untrusted workspace, the extension does not use the phem.phemc.path setting of the workspace.",
+            "description": "In an untrusted workspace, the extension does not use the phem.phemc.path setting of the workspace: it runs the bundled server.",
             "restrictedConfigurations": [
                 "phem.phemc.path"
             ]
@@ -63,13 +63,13 @@
                     "type": "string",
                     "default": "",
                     "scope": "machine-overridable",
-                    "markdownDescription": "The path of the `phemc` binary. When it is set, the extension runs `phemc check <sourceDir> --format json` on save and shows the diagnostics. Empty: no diagnostics."
+                    "markdownDescription": "The path of a `phemc` binary. When it is set, the extension runs `phemc lsp` as the language server. Empty: the extension runs its bundled server (WebAssembly, with the Node of VS Code)."
                 },
                 "phem.phemc.sourceDir": {
                     "type": "string",
                     "default": "src",
                     "scope": "resource",
-                    "markdownDescription": "The source directory of the `.phpm` files, relative to the project root (the directory with `composer.json`)."
+                    "markdownDescription": "The source directory of the `.phpm` files, relative to the project root (the directory with `composer.json`). The server checks the files of this directory as you type."
                 }
             }
         },
@@ -85,5 +85,8 @@
                 }
             }
         ]
+    },
+    "dependencies": {
+        "vscode-languageclient": "9.0.1"
     }
 }

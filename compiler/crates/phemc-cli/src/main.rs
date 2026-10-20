@@ -4,6 +4,7 @@
 //!   (`bin/console phem:warmup` of the Symfony application).
 //! - `phemc check <src>`: reports diagnostics only. `--format json` prints them as JSON (for editors).
 //! - `phemc watch <src> --exec <cmd>`: rebuilds on change and restarts `<cmd>`.
+//! - `phemc lsp`: runs the language server on stdin and stdout (for editors).
 
 use anyhow::{bail, Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
@@ -40,6 +41,8 @@ enum Cmd {
         #[arg(long)]
         exec: Option<String>,
     },
+    /// Run the language server on stdin and stdout.
+    Lsp,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -70,6 +73,7 @@ fn main() -> ExitCode {
         Cmd::Check { src, format: Format::Text } => check(&src),
         Cmd::Check { src, format: Format::Json } => check_json(&src),
         Cmd::Watch { build, exec } => watch(&build, exec.as_deref()).map(|_| true),
+        Cmd::Lsp => phemc_lsp::run().map(|_| true).map_err(Into::into),
     };
     match result {
         Ok(true) => ExitCode::SUCCESS,

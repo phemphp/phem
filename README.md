@@ -86,14 +86,18 @@ make up      # http://localhost:8080/learn — phemc watch + FrankenPHP (worker 
 make test    # cargo test + PHPUnit
 make check   # phemc diagnostics for the quickstart sources
 make prod    # the production image on http://localhost:8081
-make vscode  # the VS Code extension for .phpm files (editors/vscode/phem-0.3.0.vsix)
+make vscode    # the VS Code extension for .phpm files (editors/vscode/phem-<version>.vsix)
+make phpstorm  # the PhpStorm plugin for .phpm files (needs Java 21 and Gradle)
 ```
 
 `make up` and `make prod` also make the SQLite database of the quickstart on the first start:
 `docker/init-db.sh` makes the schema from the Doctrine mapping and loads the Doctrine fixtures.
 
-To build and install the VS Code extension, run `make vscode-install`.
-See [editors/vscode/README.md](editors/vscode/README.md).
+To build and install the editor support, run `make vscode-install` or `make phpstorm-install`.
+Both use the Phem language server (`phemc lsp`), compiled to WebAssembly: diagnostics as you
+type, completion, go to definition, hover, and outline. See
+[editors/vscode/README.md](editors/vscode/README.md) and
+[editors/phpstorm/README.md](editors/phpstorm/README.md).
 
 - `/learn` is the Quick Start page (static HTML + CSS, like react.dev/learn).
 - Each sandbox in it runs a real `.phpm` file from `examples/quickstart/src/Pages/Examples/`.
@@ -202,14 +206,16 @@ See [editors/vscode/README.md](editors/vscode/README.md).
 ## Repository layout
 
 ```
-compiler/            Rust workspace: phemc-syntax, phemc-twig-scan, phemc-analyze, phemc-codegen, phemc-cli
+compiler/            Rust workspace: phemc-syntax, phemc-twig-scan, phemc-analyze, phemc-codegen, phemc-lsp, phemc-cli
 phem/                phem/phem (Composer): PhemBundle, Renderer, Twig extension, controllers,
                      route loader, Doctrine transaction runner, console commands, and the phem
                      Stimulus controller (assets/: a Symfony UX package for AssetMapper)
 examples/quickstart/ a Symfony application: the react.dev/learn-style site (public/), its
                      runnable .phpm examples (src/), and its FrankenPHP Caddyfile
 docker/              Dockerfile (FrankenPHP: dev, prod), dev and prod entrypoints, init-db.sh
-editors/vscode/      VS Code extension: .phpm syntax highlighting (TextMate grammar) and completion
+editors/server/      the Node launcher of the language server (phem-lsp.wasm: `make lsp`)
+editors/vscode/      VS Code extension: .phpm syntax highlighting (TextMate grammar) and the language server
+editors/phpstorm/    PhpStorm plugin: the same grammar and language server
 docs/phpm-syntax.md   the .phpm syntax
 docs/compiling.md    how to build, check, watch, and run .phpm files
 docs/testing.md      how to test components and pages (Phem\Test\InteractsWithPhem)

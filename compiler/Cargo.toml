@@ -12,13 +12,16 @@ phemc-syntax = { path = "crates/phemc-syntax" }
 phemc-twig-scan = { path = "crates/phemc-twig-scan" }
 phemc-analyze = { path = "crates/phemc-analyze" }
 phemc-codegen = { path = "crates/phemc-codegen" }
+phemc-lsp = { path = "crates/phemc-lsp" }
 anyhow = "1"
 blake3 = "1"
 clap = { version = "4", features = ["derive"] }
 insta = "1"
+lsp-types = "0.94"
 miette = { version = "7", features = ["fancy"] }
 notify = "8"
 rayon = "1"
+regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 walkdir = "2"

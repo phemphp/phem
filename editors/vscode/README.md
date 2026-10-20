@@ -4,8 +4,11 @@ Syntax highlighting, completion, go to definition, hover, outline, and compiler 
 Phem `.phpm` files. A `.phpm` file is a PHP file that contains markup literals, the same way a
 `.jsx` file contains JSX.
 
-The PHP extensions (Intelephense, PHP Tools) do not read `.phpm` files, so this extension has its
-own small PHP, Twig, and HTML support.
+The PHP extensions (Intelephense, PHP Tools) do not read `.phpm` files. Thus the Phem language
+server (the `phemc-lsp` crate of the compiler) gives the PHP, Twig, and HTML support. The
+extension contains the server, compiled to WebAssembly, and runs it with the Node of VS Code. You
+do not need to install `phemc` or Rust. The PhpStorm plugin (`editors/phpstorm/`) uses the same
+server.
 
 The extension highlights:
 
@@ -26,13 +29,13 @@ A markup literal starts where a PHP expression starts: after `return`, `(`, `=`,
 
 ## Completion
 
-The extension reads the `.phpm` files of the project and the Composer autoload maps
+The server reads the `.phpm` files of the project and the Composer autoload maps
 (`vendor/composer/autoload_*.php`, or the `autoload` section of `composer.json` when `vendor/`
 is not there). A project is the nearest directory with a `composer.json` file.
 
 - **Component tags**: after `<`, it suggests the components of the project (`#[Component]`
   functions and classes). A function without `#[Component]` is a plain PHP function. The tag gets the required props, and a closing tag when the
-  component has `$children` or slots. If the component is not in scope, the extension adds the
+  component has `$children` or slots. If the component is not in scope, the server adds the
   import: `use function App\Components\Layout;` or `use App\Components\Counter;`. It uses the
   rules of phemc: a `use function` import, then a `use` import, then the current namespace.
   It also suggests the built-in `<Root>` (the root element of a page, in the document), and
@@ -69,8 +72,8 @@ is not there). A project is the nearest directory with a `composer.json` file.
   of the project and of `vendor/`, and adds the `use` statement when you accept one. A name with a
   leading `\` (`\Phem\Html`) completes part by part, with no import.
 
-The index updates when you save a `.phpm` file, add or remove a `.php` file, or run Composer.
-The extension reads a class file when it needs the members of the class, and reads it again when
+The index updates when you change a `.phpm` file, add or remove a `.php` file, or run Composer.
+The server reads a class file when it needs the members of the class, and reads it again when
 the file changes.
 
 ## Go to definition and hover
@@ -95,25 +98,34 @@ classes with their members.
 
 ## Diagnostics
 
-The extension can show the errors and the warnings of phemc in the editor. Set the path of the
-`phemc` binary (it must run on the host, not in Docker):
+The server shows the errors and the warnings of the compiler as you type. It checks all the
+`.phpm` files of the source directory, because a file can use the components of the other files.
+The open documents replace the files on disk, also when you did not save them.
 
 ```json
 {
-    "phem.phemc.path": "/path/to/phemc",
     "phem.phemc.sourceDir": "src"
 }
 ```
 
-When you open or save a `.phpm` file, the extension runs `phemc check <sourceDir> --format json`
-in the project root and shows the diagnostics of all the files. `phem.phemc.sourceDir` is relative
-to the project root (default: `src`). With an empty `phem.phemc.path` (the default), there are no
-diagnostics. In an untrusted workspace, VS Code ignores the `phem.phemc.path` value of the
-workspace settings.
+`phem.phemc.sourceDir` is the source directory, relative to the project root (default: `src`).
+The server does not check a `.phpm` file outside of the source directory.
+
+## Settings
+
+| Setting                | Default | Description                                                                                       |
+|------------------------|---------|---------------------------------------------------------------------------------------------------|
+| `phem.phemc.sourceDir` | `src`   | The source directory of the `.phpm` files, relative to the project root.                          |
+| `phem.phemc.path`      | empty   | The path of a native `phemc` binary. When you set it, the extension runs `phemc lsp` as the server. Empty: the bundled server. |
+
+The extension restarts the server when you change a setting. In an untrusted workspace, VS Code
+ignores the `phem.phemc.path` value of the workspace settings.
+
+To see the messages of the server, open the **Output** view and select **Phem**.
 
 ## Limits
 
-- The extension has no stubs for the PHP built-in classes (`DateTime`, `ArrayObject`, ...), so
+- The server has no stubs for the PHP built-in classes (`DateTime`, `ArrayObject`, ...), so
   their members do not show.
 - It does not read the generic templates of a class (`@extends ServiceEntityRepository<Scientist>`
   does not make `find()` return a `Scientist`). Add a `@return` or a `@var` tag for these cases.
@@ -122,31 +134,37 @@ workspace settings.
 
 ## Install
 
-Build and install the package (you need Docker and the `code` command):
+Build and install the package (you need Docker and the `code` command). Run the command in the
+repository root:
 
 ```sh
-make vscode-install    # builds editors/vscode/phem-0.3.0.vsix and installs it
+make vscode-install    # builds editors/vscode/phem-<version>.vsix and installs it
 ```
 
 Then run **Developer: Reload Window** in VS Code. To only build the package, run `make vscode`.
-`make vscode` does not install the package. If you install it yourself, add `--force` to replace
-an installed version:
+`make vscode` builds the server (`make lsp`, the WebAssembly build of `phemc-lsp`), copies it to
+`editors/vscode/server/`, and packages the extension. It does not install the package. If you
+install it yourself, add `--force` to replace an installed version:
 
 ```sh
-code --install-extension editors/vscode/phem-0.3.0.vsix --force
+code --install-extension editors/vscode/phem-0.5.0.vsix --force
 ```
 
 Or, in VS Code, open the Extensions view, select **...** > **Install from VSIX...**, and select the file.
 
 ## Develop
 
-Open `editors/vscode/` in VS Code and push `F5`. A new window starts with the extension loaded.
-To see the scopes of a token, run **Developer: Inspect Editor Tokens and Scopes**.
+The extension is a thin client: `src/extension.js` starts the server with
+`vscode-languageclient`, and colors the Twig delimiters. The server is in
+`compiler/crates/phemc-lsp/`. Its tests run with `make test`.
 
-The completion code is in `src/`. It is plain JavaScript with no dependencies and no build step.
-`src/extension.js` connects it to VS Code. The other files do not use the `vscode` API, so the
-tests run with Node:
+To run the extension from the sources, build the server and install the dependencies, then open
+`editors/vscode/` in VS Code and push `F5`:
 
 ```sh
-make vscode-test
+make lsp
+mkdir -p editors/vscode/server && cp editors/server/phem-lsp.cjs editors/server/phem-lsp.wasm editors/vscode/server/
+(cd editors/vscode && npm install)
 ```
+
+To see the scopes of a token, run **Developer: Inspect Editor Tokens and Scopes**.

@@ -1,7 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 
+- The extension runs the Phem language server (the `phemc-lsp` crate of the compiler). The
+  completion, the definition, the hover, and the outline come from the server. The JavaScript
+  copy of the parser is removed. The PhpStorm plugin uses the same server.
+- The extension contains the server, compiled to WebAssembly, and runs it with the Node of
+  VS Code. You do not need a `phemc` binary.
+- The diagnostics of the compiler show as you type, also for unsaved changes. Before, they
+  showed only on save, and only with a `phem.phemc.path` setting.
+- `phem.phemc.path` now runs a native `phemc lsp` as the server. Empty: the bundled server.
 - Completion for the Phem attributes `phem:bind`, `phem:live` and `phem:progress`.
 
 ## 0.4.0

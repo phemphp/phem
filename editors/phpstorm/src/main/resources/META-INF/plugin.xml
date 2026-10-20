@@ -1,0 +1,28 @@
+<idea-plugin>
+    <id>phem.language</id>
+    <name>Phem</name>
+    <vendor>Phem</vendor>
+    <description><![CDATA[
+        Support for Phem <code>.phpm</code> files: PHP with markup literals and Twig.
+        <ul>
+            <li>Syntax highlighting (TextMate grammar).</li>
+            <li>Diagnostics, completion, go to definition, hover, and structure view
+                (Phem language server).</li>
+        </ul>
+        Configure it in <b>Settings | Languages &amp; Frameworks | Phem</b>.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.lsp</depends>
+    <depends>org.jetbrains.plugins.textmate</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <textmate.bundleProvider implementation="phem.intellij.PhemTextMateBundleProvider"/>
+        <fileIconProvider implementation="phem.intellij.PhemFileIconProvider" order="first"/>
+        <platform.lsp.integrationProvider implementation="phem.intellij.PhemLspIntegrationProvider"/>
+        <projectConfigurable parentId="language"
+                             id="phem.settings"
+                             displayName="Phem"
+                             instance="phem.intellij.PhemConfigurable"/>
+    </extensions>
+</idea-plugin>

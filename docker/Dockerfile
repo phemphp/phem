@@ -29,6 +29,8 @@ ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     CARGO_TARGET_DIR=/cargo-target \
     PATH=/usr/local/cargo/bin:/cargo-target/release:$PATH
+# The editors run the language server as WebAssembly (`make lsp`).
+RUN rustup target add wasm32-wasip1
 WORKDIR /app
 # The repository is mounted at /app, so edits to the entrypoint apply without a rebuild.
 ENTRYPOINT ["/app/docker/dev-entrypoint.sh"]
