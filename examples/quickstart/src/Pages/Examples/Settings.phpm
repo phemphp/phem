@@ -16,6 +16,11 @@ enum Theme: string
 {
     case Light = 'light';
     case Dark = 'dark';
+
+    public function other(): Theme
+    {
+        return $this === self::Light ? self::Dark : self::Light;
+    }
 }
 
 #[Component, Provide]
@@ -64,11 +69,12 @@ function Section(string $title, ?Html $children = null): Node
 #[Page('/examples/Settings')]
 final class Settings
 {
-    #[State, Provide] public Theme $theme = Theme::Light;
+    #[State, Provide] 
+    public Theme $theme = Theme::Light;
 
     public function toggleTheme(): void
     {
-        $this->theme = Theme::Light === $this->theme ? Theme::Dark : Theme::Light;
+        $this->theme = $this->theme->other();
     }
 
     public function render(): Node

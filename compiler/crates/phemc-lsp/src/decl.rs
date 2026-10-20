@@ -1214,6 +1214,15 @@ mod tests {
     }
 
     #[test]
+    fn context_parameters_and_properties_are_not_props() {
+        let src = "<?phpm\nnamespace App\\Components;\n\nuse Phem\\Attribute\\{Component, Context, Prop};\n\n#[Component]\nfunction Tab(string $name, #[Context] Tabs $tabs, #[Context] ?Theme $theme = null) { return <p />; }\n\n#[Component]\nfinal class Panel\n{\n    #[Prop] public string $name;\n    #[Context] public Tabs $tabs;\n}\n";
+        let parsed = parse(src);
+        for comp in &parsed.components {
+            assert_eq!(comp.props.iter().map(|p| (p.name.as_str(), p.required)).collect::<Vec<_>>(), [("name", true)], "{}", comp.name);
+        }
+    }
+
+    #[test]
     fn the_rest_prop_of_a_class_component_is_not_a_named_prop() {
         let src = "<?phpm\nnamespace App\\Components;\n\nuse Phem\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class Link\n{\n    #[Prop] public string $label = '';\n    #[Prop(rest: true)] public array $attrs = [];\n    #[Prop(rest: false)] public string $title = '';\n\n    public function render()\n    {\n        return <a {{ ...attrs }}>{{ label }}</a>;\n    }\n}\n";
         let link = &parse(src).components[0];
