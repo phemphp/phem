@@ -51,9 +51,9 @@ function Tab(string $name, string $label, #[Context] Tabs $tabs): Node
 }
 
 #[Component]
-function Panel(string $name, ?Html $children = null, #[Context] ?Tabs $tabs = null, #[Context] Theme $theme = Theme::Light): ?Node
+function Panel(string $name, Html $children, #[Context] Tabs $tabs, #[Context] Theme $theme): ?Node
 {
-    if (null !== $tabs && $tabs->active !== $name) {
+    if ($tabs->active !== $name) {
         return null;
     }
 
@@ -61,7 +61,7 @@ function Panel(string $name, ?Html $children = null, #[Context] ?Tabs $tabs = nu
 }
 
 #[Component]
-function Section(string $title, ?Html $children = null): Node
+function Section(string $title, Html $children): Node
 {
     return <section><h2>{{ title }}</h2>{{ children }}</section>;
 }
