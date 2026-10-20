@@ -59,9 +59,11 @@ final class Profile implements RenderProfiler, ResetInterface
             $render();
         } finally {
             $time = (hrtime(true) - $start) / 1e6;
-            [, $children] = array_pop($this->stack);
-            $this->renders[$index]['time'] = $time;
-            $this->renders[$index]['own'] = max(0.0, $time - $children);
+            $children = array_pop($this->stack)[1] ?? 0.0;
+            $record = $this->renders[$index];
+            $record['time'] = $time;
+            $record['own'] = max(0.0, $time - $children);
+            $this->renders[$index] = $record;
             if ([] !== $this->stack) {
                 $this->stack[\count($this->stack) - 1][1] += $time;
             }
@@ -79,17 +81,19 @@ final class Profile implements RenderProfiler, ResetInterface
     public function handler(\Closure $handler, \Closure $next): mixed
     {
         $function = new \ReflectionFunction($handler);
-        $this->handler = ['name' => self::nameOf($function), 'file' => $function->getFileName() ?: null, 'line' => $function->getStartLine() ?: null, 'time' => 0.0, 'exception' => null];
+        $record = ['name' => self::nameOf($function), 'file' => $function->getFileName() ?: null, 'line' => $function->getStartLine() ?: null, 'time' => 0.0, 'exception' => null];
+        $this->handler = $record;
         $this->stopwatch?->start('phem.handler', 'phem');
         $start = hrtime(true);
         try {
             return $next();
         } catch (\Throwable $e) {
-            $this->handler['exception'] = $e::class;
+            $record['exception'] = $e::class;
 
             throw $e;
         } finally {
-            $this->handler['time'] = (hrtime(true) - $start) / 1e6;
+            $record['time'] = (hrtime(true) - $start) / 1e6;
+            $this->handler = $record;
             $this->stopwatch?->stop('phem.handler');
         }
     }
@@ -106,16 +110,17 @@ final class Profile implements RenderProfiler, ResetInterface
      */
     public function transaction(\Closure $run): mixed
     {
+        $committed = false;
         $this->transaction = ['committed' => false, 'time' => 0.0];
         $this->stopwatch?->start('phem.transaction', 'phem');
         $start = hrtime(true);
         try {
             $result = $run();
-            $this->transaction['committed'] = true;
+            $committed = true;
 
             return $result;
         } finally {
-            $this->transaction['time'] = (hrtime(true) - $start) / 1e6;
+            $this->transaction = ['committed' => $committed, 'time' => (hrtime(true) - $start) / 1e6];
             $this->stopwatch?->stop('phem.transaction');
         }
     }

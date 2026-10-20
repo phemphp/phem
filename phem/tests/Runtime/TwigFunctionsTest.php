@@ -120,6 +120,7 @@ final class TwigFunctionsTest extends TestCase
         Attributes::timing($kind, $value);
     }
 
+    /** @return iterable<string, array{string, mixed}> */
     public static function invalidTimings(): iterable
     {
         yield 'a negative number' => ['debounce', -1];

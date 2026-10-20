@@ -41,7 +41,7 @@ final class ComponentMetadataTest extends TestCase
     public function testPrivatePropIsAnError(): void
     {
         $component = new class {
-            #[Prop] private string $label = '';
+            #[Prop] private string $label = ''; // @phpstan-ignore property.onlyWritten (the test needs a private prop)
         };
 
         $this->expectException(PropError::class);
