@@ -62,11 +62,14 @@ pub struct Project {
     symbols: BTreeMap<(SymbolKind, String), Symbol>,
     pub phpm: BTreeMap<PathBuf, Rc<Parsed>>,
     pub classes: ClassCache,
+    /// The PSR-4 directories of the index, with no symbolic links: a directory of a package that
+    /// `vendor/` links to (a Composer path repository) is the directory of the package.
+    dirs: Vec<PathBuf>,
 }
 
 impl Project {
     pub fn load(root: &Path) -> Self {
-        let mut p = Project { root: root.to_path_buf(), symbols: BTreeMap::new(), phpm: BTreeMap::new(), classes: ClassCache::default() };
+        let mut p = Project { root: root.to_path_buf(), symbols: BTreeMap::new(), phpm: BTreeMap::new(), classes: ClassCache::default(), dirs: vec![] };
         let vendor = root.join("vendor");
         if vendor.join("composer/autoload_psr4.php").exists() {
             p.load_vendor(&vendor);
@@ -75,6 +78,11 @@ impl Project {
         }
         p.walk_phpm(root, true);
         p
+    }
+
+    /// Whether the class index reads a file of this directory. The path has no symbolic links.
+    pub fn indexes(&self, real_dir: &Path) -> bool {
+        self.dirs.iter().any(|d| real_dir.starts_with(d))
     }
 
     fn add(&mut self, kind: SymbolKind, fqn: &str, file: &Path) {
@@ -88,6 +96,7 @@ impl Project {
         for (prefix, dirs) in parse_autoload_map(&read("autoload_psr4.php"), vendor) {
             for dir in dirs {
                 let is_vendor = dir.starts_with(vendor);
+                self.add_dir(&dir);
                 self.walk_psr4(&dir, &prefix, is_vendor, &mut counter);
             }
         }
@@ -122,6 +131,7 @@ impl Project {
                 };
                 for dir in dirs {
                     let dir = self.root.join(dir);
+                    self.add_dir(&dir);
                     self.walk_psr4(&dir, prefix, false, &mut counter);
                 }
             }
@@ -137,6 +147,13 @@ impl Project {
         }
         for c in &parsed.constants {
             self.add(SymbolKind::Const, &c.fqn, file);
+        }
+    }
+
+    /// Keeps a PSR-4 directory of the index, with no symbolic links (see `indexes()`).
+    fn add_dir(&mut self, dir: &Path) {
+        if let Ok(real) = std::fs::canonicalize(dir) {
+            self.dirs.push(real);
         }
     }
 

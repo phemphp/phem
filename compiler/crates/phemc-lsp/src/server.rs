@@ -321,6 +321,12 @@ impl<W: Write> Server<W> {
             if !matches!(inside.as_deref(), Some("vendor" | "var" | "node_modules")) {
                 self.projects.remove(&root);
             }
+            // A project that indexes the file through a link in `vendor/` (a Composer path
+            // repository) also indexes it again. A deleted file has no real path: its directory
+            // has one.
+            if let Some(real) = file.parent().and_then(|d| std::fs::canonicalize(d).ok()) {
+                self.projects.retain(|_, p| !p.indexes(&real));
+            }
         }
     }
 
@@ -562,6 +568,7 @@ fn outline(text: &str, s: Outline) -> lsp::DocumentSymbol {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::project::SymbolKind;
 
     #[test]
     fn converts_utf16_positions() {
@@ -620,6 +627,51 @@ mod tests {
         let diagnostics = out.iter().find(|m| m["method"] == "textDocument/publishDiagnostics").unwrap();
         assert_eq!(diagnostics["params"]["diagnostics"][0]["code"], "E010");
         assert_eq!(diagnostics["params"]["diagnostics"][0]["range"]["start"], json!({"line": 5, "character": 12}));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_new_class_of_a_linked_package_goes_into_the_index_of_the_app() {
+        // As the quickstart: `vendor/phem/phem` is a link to the package, outside the app.
+        let dir = crate::tests::temp_dir();
+        let package = dir.join("phem");
+        std::fs::create_dir_all(package.join("src")).unwrap();
+        std::fs::write(package.join("composer.json"), r#"{"autoload": {"psr-4": {"Phem\\": "src/"}}}"#).unwrap();
+        std::fs::write(package.join("src/Html.php"), "<?php\n").unwrap();
+        let app = dir.join("app");
+        std::fs::create_dir_all(app.join("src")).unwrap();
+        std::fs::create_dir_all(app.join("vendor/composer")).unwrap();
+        std::fs::create_dir_all(app.join("vendor/phem")).unwrap();
+        std::os::unix::fs::symlink("../../../phem", app.join("vendor/phem/phem")).unwrap();
+        std::fs::write(app.join("composer.json"), r#"{"autoload": {"psr-4": {"App\\": "src/"}}}"#).unwrap();
+        std::fs::write(
+            app.join("vendor/composer/autoload_psr4.php"),
+            "<?php\n$vendorDir = dirname(__DIR__);\n$baseDir = dirname($vendorDir);\nreturn array(\n    'Phem\\\\' => array($vendorDir . '/phem/phem/src'),\n    'App\\\\' => array($baseDir . '/src'),\n);\n",
+        )
+        .unwrap();
+        let page = app.join("src/index.phpm");
+        std::fs::write(&page, "<?phpm\n").unwrap();
+
+        let mut server = Server::new(Vec::new());
+        let class = |server: &mut Server<Vec<u8>>, fqn: &str| server.project(&page).1.file_of(SymbolKind::Class, fqn);
+        assert!(class(&mut server, "Phem\\Html").is_some());
+        assert!(class(&mut server, "Phem\\Feed").is_none());
+
+        // The editor sends the real path of the new file: it is in the package, not in the app.
+        let feed = package.join("src/Feed.php");
+        std::fs::write(&feed, "<?php\n").unwrap();
+        server.file_changed(&feed, lsp::FileChangeType::CREATED);
+        assert!(class(&mut server, "Phem\\Feed").is_some());
+
+        std::fs::remove_file(&feed).unwrap();
+        server.file_changed(&feed, lsp::FileChangeType::DELETED);
+        assert!(class(&mut server, "Phem\\Feed").is_none());
+
+        // A new class of the app goes into the index too.
+        std::fs::write(app.join("src/Kernel.php"), "<?php\n").unwrap();
+        server.file_changed(&app.join("src/Kernel.php"), lsp::FileChangeType::CREATED);
+        assert!(class(&mut server, "App\\Kernel").is_some());
         std::fs::remove_dir_all(dir).unwrap();
     }
 }
