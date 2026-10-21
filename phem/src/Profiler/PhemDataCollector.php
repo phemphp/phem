@@ -203,7 +203,7 @@ final class PhemDataCollector extends DataCollector
         return $this->data['stale'] ?? [];
     }
 
-    /** @return list<array{topics: list<string>, data: string, private: bool}> the updates that the request published to the Mercure hub */
+    /** @return list<array{topics: list<string>, names: list<string>, data: string, private: bool}> the updates that the request published to the Mercure hub */
     public function getStreams(): array
     {
         return $this->data['streams'] ?? [];

@@ -152,7 +152,8 @@ return static function (ContainerConfigurator $container): void {
 
         // Streams: the push to the pages with #[Subscribe], through the Mercure hub
         ->set('phem.topics', Topics::class)
-            ->args([service('phem.metadata')])
+            ->args([service('phem.metadata'), abstract_arg('secret, set by PhemBundle')])
+            ->tag('kernel.reset', ['method' => 'reset'])
         ->set('phem.stream_publisher', FrankenPhpPublisher::class)
             ->args([service('logger')->nullOnInvalid()])
         ->set('phem.streams', Streams::class)

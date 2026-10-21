@@ -164,6 +164,7 @@ A change by one user does not show for another user until that user sends an eve
 
 Done: a page with `#[Subscribe]` opens one EventSource to the Mercure hub of FrankenPHP, for its
 topics: the page, the page with its `#[Path]` route values, and `phem:*` (`everywhere()`). A
+page topic is an HMAC of its name, so the browser sees no class name and no route value. A
 handler or a service pushes Turbo Streams with `Phem\Stream\Streams`:
 `$streams->to(Page::class, $values)->prepend('entries', <Entry entry={{ entry }} />)->refresh('stats')`.
 

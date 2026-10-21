@@ -275,7 +275,7 @@
                         <h3>Pushed streams <span class="badge">{{ collector.streams|length }}</span></h3>
                         {% for update in collector.streams %}
                             <p>
-                                {% for topic in update.topics %}<code>{{ topic }}</code> {% endfor %}
+                                {% for topic in update.topics %}<code title="{{ topic }}">{{ update.names[loop.index0] ?? topic }}</code> {% endfor %}
                                 <span class="badge">{{ update.private ? 'private' : 'public' }}</span>
                             </p>
                             <pre class="sf-dump">{{ update.data|replace({'><turbo-stream': ">\n<turbo-stream"}) }}</pre>

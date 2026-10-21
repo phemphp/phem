@@ -38,7 +38,7 @@ final class Profile implements RenderProfiler, ResetInterface
     private ?array $handler = null;
     /** @var array{committed: bool, time: float}|null */
     private ?array $transaction = null;
-    /** @var list<array{topics: list<string>, data: string, private: bool}> the published updates (see ProfiledStreamPublisher) */
+    /** @var list<array{topics: list<string>, names: list<string>, data: string, private: bool}> the published updates (see ProfiledStreamPublisher) */
     private array $streams = [];
 
     public function __construct(private readonly ?Stopwatch $stopwatch = null)
@@ -131,13 +131,14 @@ final class Profile implements RenderProfiler, ResetInterface
      * Keeps an update that Phem published to the Mercure hub (see Phem\Stream\Streams).
      *
      * @param list<string> $topics
+     * @param list<string> $names  the names of the topics (see Phem\Stream\Topics::name())
      */
-    public function published(array $topics, string $data, bool $private): void
+    public function published(array $topics, string $data, bool $private, array $names = []): void
     {
-        $this->streams[] = ['topics' => $topics, 'data' => $data, 'private' => $private];
+        $this->streams[] = ['topics' => $topics, 'names' => $names, 'data' => $data, 'private' => $private];
     }
 
-    /** @return list<array{topics: list<string>, data: string, private: bool}> */
+    /** @return list<array{topics: list<string>, names: list<string>, data: string, private: bool}> */
     public function streams(): array
     {
         return $this->streams;

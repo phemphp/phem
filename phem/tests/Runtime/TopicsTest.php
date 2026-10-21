@@ -23,15 +23,28 @@ final class TopicsTest extends TestCase
 {
     public function testAPageSubscribesToItselfToItsUrlAndToAllPages(): void
     {
-        self::assertSame(
-            ['phem:'.Subscribed::class, 'phem:'.Subscribed::class.'?id=42&size=l', 'phem:*'],
-            new Topics()->ofPage(Subscribed::class, ['size' => 'l', 'id' => '42']),
-        );
+        $topics = new Topics(secret: 's3cret');
+        $page = $topics->ofPage(Subscribed::class, ['size' => 'l', 'id' => '42']);
+
+        self::assertSame(['phem:'.Subscribed::class, 'phem:'.Subscribed::class.'?id=42&size=l', 'phem:*'], array_map($topics->name(...), $page));
+    }
+
+    public function testATopicIsAnHmacOfItsName(): void
+    {
+        [$topic, $scoped] = new Topics(secret: 's3cret')->ofPage(Subscribed::class, ['id' => '42', 'size' => 'l']);
+
+        self::assertMatchesRegularExpression('/^phem:[A-Za-z0-9_-]{22}$/', $topic);
+        self::assertStringNotContainsString('Subscribed', $topic.$scoped);
+        self::assertStringNotContainsString('42', $scoped);
+        self::assertNotSame($topic, new Topics(secret: 'other')->ofPage(Subscribed::class, [])[0], 'another secret');
+        self::assertSame($topic, new Topics(secret: 's3cret')->ofPage(Subscribed::class, [])[0], 'the next request');
     }
 
     public function testAPageWithNoRouteValuesHasNoTopicOfAUrl(): void
     {
-        self::assertSame(['phem:'.Subscribed::class, 'phem:*'], new Topics()->ofPage(Subscribed::class, []));
+        $topics = new Topics();
+
+        self::assertSame(['phem:'.Subscribed::class, 'phem:*'], array_map($topics->name(...), $topics->ofPage(Subscribed::class, [])));
     }
 
     public function testAPageWithNoSubscribeHasNoTopics(): void
@@ -43,7 +56,7 @@ final class TopicsTest extends TestCase
     {
         $topics = new Topics();
 
-        self::assertSame('phem:'.Subscribed::class, $topics->to('\\'.Subscribed::class));
+        self::assertSame($topics->ofPage(Subscribed::class, [])[0], $topics->to('\\'.Subscribed::class));
         // An int and a backed enum are the strings of the URL.
         self::assertSame($topics->ofPage(Subscribed::class, ['id' => '42', 'size' => 'l'])[1], $topics->to(Subscribed::class, ['size' => Size::Large, 'id' => 42]));
     }

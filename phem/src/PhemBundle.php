@@ -167,6 +167,8 @@ final class PhemBundle extends AbstractBundle
             ->arg(0, $config['max_event_size']);
         $container->services()->get('phem.controller.event')
             ->arg(10, $config['max_upload_size']);
+        $container->services()->get('phem.topics')
+            ->arg(1, $config['secret']);
         $mercure = $config['mercure'];
         if (null !== $mercure['subscriber_key']) {
             // A token lives as long as a state: an older page reloads on its next event.
@@ -204,7 +206,7 @@ final class PhemBundle extends AbstractBundle
                     ->arg(6, service('phem.profile'));
             $container->services()->set('phem.stream_publisher.profiler', ProfiledStreamPublisher::class)
                 ->decorate('phem.stream_publisher')
-                ->args([service('.inner'), service('phem.profile')]);
+                ->args([service('.inner'), service('phem.profile'), service('phem.topics')]);
         }
 
         $bundles = $builder->getParameter('kernel.bundles');

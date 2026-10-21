@@ -1430,7 +1430,9 @@ final class SignForm
 - A stream outside the root element (`#phem-root`) is plain Turbo.
 
 The page opens one connection to the hub, for its topics: the page, the page with its route
-values, and the topic of `everywhere()`. Phem publishes with `mercure_publish()` of FrankenPHP:
+values, and the topic of `everywhere()`. A topic is an HMAC of its name with the secret of Phem
+(`phem.secret`): the HTML, the access token and the hub do not show the class names or the route
+values. The profiler shows the names. Phem publishes with `mercure_publish()` of FrankenPHP:
 no HTTP request, and no publisher key. Add the hub to the site of the Caddyfile:
 
 ```caddyfile

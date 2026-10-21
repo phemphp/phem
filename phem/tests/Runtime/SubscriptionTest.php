@@ -32,10 +32,12 @@ final class SubscriptionTest extends TestCase
 
     public function testTheRootElementGetsTheUrlOfTheHubWithTheTopics(): void
     {
-        $subscription = new Subscription(new Topics());
+        $topics = new Topics();
+        $subscription = new Subscription($topics);
+        [$page] = $topics->ofPage(Subscribed::class, []);
 
         self::assertSame(
-            'data-phem-stream-value="/.well-known/mercure?match=phem%3APhem%5CTests%5CFixtures%5CSubscribed&amp;match=phem%3A%2A"',
+            'data-phem-stream-value="/.well-known/mercure?match='.rawurlencode($page).'&amp;match=phem%3A%2A"',
             $subscription->attribute(Subscribed::class, [], Request::create('/')),
         );
         self::assertSame('', $subscription->attribute(Scientist::class, [], Request::create('/')));
@@ -55,7 +57,7 @@ final class SubscriptionTest extends TestCase
         self::assertTrue($cookie->isSecure());
         self::assertTrue($cookie->isHttpOnly());
         self::assertSame(Cookie::SAMESITE_STRICT, $cookie->getSameSite());
-        self::assertSame(['phem:'.Subscribed::class, 'phem:*'], $tokens->topics((string) $cookie->getValue(), self::HUB, ''));
+        self::assertSame(new Topics()->ofPage(Subscribed::class, []), $tokens->topics((string) $cookie->getValue(), self::HUB, ''));
     }
 
     public function testTheTokenKeepsTheTopicsOfTheCookieOfAnotherTab(): void
@@ -68,7 +70,7 @@ final class SubscriptionTest extends TestCase
 
         $cookie = $subscription->cookie($request);
         self::assertNotNull($cookie);
-        self::assertSame(['phem:'.Subscribed::class, 'phem:*', 'phem:App\Other'], $tokens->topics((string) $cookie->getValue(), self::HUB, self::subject('s1')));
+        self::assertSame([...new Topics()->ofPage(Subscribed::class, []), 'phem:App\Other'], $tokens->topics((string) $cookie->getValue(), self::HUB, self::subject('s1')));
     }
 
     public function testTheTokenDropsTheTopicsOfTheCookieOfAnotherSession(): void
@@ -81,19 +83,19 @@ final class SubscriptionTest extends TestCase
 
         $cookie = $subscription->cookie($request);
         self::assertNotNull($cookie);
-        self::assertSame(['phem:'.Subscribed::class, 'phem:*'], $tokens->topics((string) $cookie->getValue(), self::HUB, self::subject('bob')));
+        self::assertSame(new Topics()->ofPage(Subscribed::class, []), $tokens->topics((string) $cookie->getValue(), self::HUB, self::subject('bob')));
     }
 
     public function testAFreshTokenWithTheTopicsIsNotRenewed(): void
     {
         $tokens = new SubscriberToken(self::KEY);
         $subscription = new Subscription(new Topics(), $tokens);
-        $fresh = $tokens->create(['phem:'.Subscribed::class, 'phem:*'], self::HUB, '');
+        $fresh = $tokens->create(new Topics()->ofPage(Subscribed::class, []), self::HUB, '');
         $request = Request::create('https://example.com/guestbook', cookies: ['__Secure-mercure_access_token' => $fresh]);
         $subscription->renew(Subscribed::class, [], $request);
         self::assertNull($subscription->cookie($request));
 
-        $old = new SubscriberToken(self::KEY, ttl: 10)->create(['phem:'.Subscribed::class, 'phem:*'], self::HUB, '');
+        $old = new SubscriberToken(self::KEY, ttl: 10)->create(new Topics()->ofPage(Subscribed::class, []), self::HUB, '');
         $request = Request::create('https://example.com/guestbook', cookies: ['__Secure-mercure_access_token' => $old]);
         $subscription->renew(Subscribed::class, [], $request);
         self::assertNotNull($subscription->cookie($request), 'it lived more than half of its time');

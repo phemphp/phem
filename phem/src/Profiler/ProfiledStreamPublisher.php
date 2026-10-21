@@ -14,21 +14,24 @@ declare(strict_types=1);
 namespace Phem\Profiler;
 
 use Phem\Stream\StreamPublisher;
+use Phem\Stream\Topics;
 
 /**
- * Keeps each published update in the Profile, for the profiler panel (debug mode only).
+ * Keeps each published update in the Profile, for the profiler panel (debug mode only), with the
+ * names of its topics (see Topics::name()).
  */
 final class ProfiledStreamPublisher implements StreamPublisher
 {
     public function __construct(
         private readonly StreamPublisher $inner,
         private readonly Profile $profile,
+        private readonly Topics $topics = new Topics(),
     ) {
     }
 
     public function publish(array $topics, string $data, bool $private): void
     {
         $this->inner->publish($topics, $data, $private);
-        $this->profile->published($topics, $data, $private);
+        $this->profile->published($topics, $data, $private, array_map($this->topics->name(...), $topics));
     }
 }

@@ -105,7 +105,8 @@ final class ProfilerTest extends TestCase
 
         self::assertSame([$entries[1]], $collector->getStale());
         [$update] = $collector->getStreams();
-        self::assertSame(['phem:App\Pages\GuestbookPage?room=lobby'], $update['topics']);
+        self::assertSame(['phem:App\Pages\GuestbookPage?room=lobby'], $update['names'], 'the profiler shows the names of the topics');
+        self::assertStringNotContainsString('Guestbook', $update['topics'][0]);
         self::assertStringContainsString('<turbo-stream action="prepend" target="entries">', $update['data']);
     }
 
