@@ -141,6 +141,13 @@ repository root:
 make vscode-install    # builds editors/vscode/phem-<version>.vsix and installs it
 ```
 
+The command installs the extension in the Default profile of VS Code. To install it in a different
+profile, set `VSCODE_PROFILE`:
+
+```sh
+make vscode-install VSCODE_PROFILE=Personal
+```
+
 Then run **Developer: Reload Window** in VS Code. To only build the package, run `make vscode`.
 `make vscode` builds the server (`make lsp`, the WebAssembly build of `phemc-lsp`), copies it to
 `editors/vscode/server/`, and packages the extension. It does not install the package. If you

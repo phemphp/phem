@@ -30,9 +30,11 @@ vscode: lsp ## Build the VS Code extension: editors/vscode/phem-<version>.vsix
 		npx --yes @vscode/vsce@4.0.0 package --skip-license --allow-missing-repository'
 
 VSCODE_VERSION = $(shell sed -n 's/^    "version": "\(.*\)",/\1/p' editors/vscode/package.json)
+# The VS Code profile to install the extension in. Empty means the Default profile.
+VSCODE_PROFILE ?=
 
 vscode-install: vscode ## Build the VS Code extension and install it (then reload the VS Code window)
-	code --install-extension editors/vscode/phem-$(VSCODE_VERSION).vsix --force
+	code --install-extension editors/vscode/phem-$(VSCODE_VERSION).vsix --force $(if $(VSCODE_PROFILE),--profile "$(VSCODE_PROFILE)")
 
 PHPSTORM_VERSION = $(shell sed -n 's/^pluginVersion = //p' editors/phpstorm/gradle.properties)
 # The plugins directory of the newest PhpStorm configuration (macOS).
