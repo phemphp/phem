@@ -1418,6 +1418,10 @@ final class SignForm
   element is not the last render of the server any more. The next event sends the stale
   components, and the server renders them again with their full subtree, so the state of the
   page knows the change. When a stale component is not in the page any more, its parent renders.
+  So the content that you push into a target must also be in the server render (read it from
+  the database in `mount()`). Else the next event of that browser renders the component again
+  without it, and the morph removes it. For a target that only the pushes fill (a chat with no
+  history), put `data-phem-ignore` on it: the morph keeps its content.
 - Before an `append` or a `prepend`, the browser removes an element of the target with the id of
   a new element. So give each pushed item an `id`: the user who made the change gets the push
   too, and sees the item one time.
