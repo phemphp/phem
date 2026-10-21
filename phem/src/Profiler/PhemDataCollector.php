@@ -19,6 +19,7 @@ use Phem\Http\EventBody;
 use Phem\Http\EventPayload;
 use Phem\Rendering\Tree;
 use Phem\State\StateAccessor;
+use Phem\State\StateJson;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\DataCollector\DataCollector;
@@ -34,9 +35,6 @@ use Symfony\Component\VarDumper\Cloner\Data;
  */
 final class PhemDataCollector extends DataCollector
 {
-    /** As StateCodec::encode(): the size of the state is the size of its JSON in the page or in the response. */
-    private const JSON = \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_PRESERVE_ZERO_FRACTION;
-
     public function __construct(
         private readonly Profile $profile,
         private readonly StateAccessor $state = new StateAccessor(),
@@ -89,7 +87,8 @@ final class PhemDataCollector extends DataCollector
         ];
         if (null !== $tree && 'rendered' === $outcome) {
             $this->data['fibers'] = $this->fibers($tree, $trees, $event);
-            $json = json_encode((object) $this->state->snapshot($tree)->toArray(), self::JSON);
+            // As StateCodec::encode(): the full state, in the page, and in an event that sends it.
+            $json = StateJson::encode($this->state->snapshot($tree)->toArray());
             $this->data['state'] = ['size' => \strlen($json), 'gzip' => \strlen((string) gzencode($json))];
         }
     }

@@ -16,6 +16,7 @@ namespace Phem\Tests\Runtime;
 use Phem\Attribute\State;
 use Phem\Attribute\Url;
 use Phem\Metadata\ComponentMetadata;
+use Phem\State\StateJson;
 use Phem\State\UrlQuery;
 use Phem\Tests\Fixtures\Size;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -112,7 +113,7 @@ final class UrlTest extends TestCase
         self::assertStringContainsString('sort=date', $data['streams']);
         self::assertSame('date', $data['query']['values']['sort'], 'a property with no default value');
 
-        $data = $this->send('/url?sort=date', $data['state'], $data['signature'], self::handler($html, 'sort'));
+        $data = $this->send('/url?sort=date', StateJson::apply($state, $data['changes']), $data['signature'], self::handler($html, 'sort'));
         self::assertStringContainsString('sort=name', $data['streams']);
         self::assertNull($data['query']['values']['sort']);
     }

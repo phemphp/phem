@@ -19,6 +19,7 @@ use Phem\Manifest\Manifest;
 use Phem\Rendering\MarkupResolver;
 use Phem\Rendering\Renderer;
 use Phem\State\BoundValues;
+use Phem\State\StateJson;
 use Phem\Tests\Fixtures\Size;
 use Phem\Twig\PhemRuntime;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -183,7 +184,7 @@ final class BindTest extends TestCase
 
         $data = $this->send($state, $signature, $m[1], [$name => 'Ada', self::bindKey($html, 'age') => '36', self::bindKey($html, 'tag-a') => ['b']]);
 
-        self::assertSame(['name' => 'Ada', 'age' => 36, 'tags' => ['b'], 'saves' => 1], array_intersect_key(self::profileState($data['state']), ['name' => 1, 'age' => 1, 'tags' => 1, 'saves' => 1]));
+        self::assertSame(['name' => 'Ada', 'age' => 36, 'tags' => ['b'], 'saves' => 1], array_intersect_key(self::profileState(StateJson::apply($state, $data['changes'])), ['name' => 1, 'age' => 1, 'tags' => 1, 'saves' => 1]));
         self::assertStringContainsString('value="Ada"', $data['streams'], 'the second render shows the new value');
         self::assertStringContainsString('Ada, 36, not agreed, b,', $data['streams']);
     }
@@ -195,8 +196,8 @@ final class BindTest extends TestCase
 
         $data = $this->send($state, $signature, null, [$query => 'php']);
 
-        self::assertSame('php', self::profileState($data['state'])['query']);
-        self::assertSame(0, self::profileState($data['state'])['saves']);
+        self::assertSame('php', self::profileState(StateJson::apply($state, $data['changes']))['query']);
+        self::assertSame(0, self::profileState(StateJson::apply($state, $data['changes']))['saves']);
         self::assertStringContainsString('Results for php', $data['streams']);
         self::assertSame([], $data['events']);
     }
@@ -216,7 +217,7 @@ final class BindTest extends TestCase
             self::bindKey($html, 'size') => 'xl',
         ]);
 
-        $profile = self::profileState($data['state']);
+        $profile = self::profileState(StateJson::apply($state, $data['changes']));
         self::assertSame(0, $profile['saves'], 'a #[State] property with no bound field');
         self::assertSame('', $profile['name'], 'a list for a string');
         self::assertNull($profile['age'], 'text for an int');
@@ -237,7 +238,7 @@ final class BindTest extends TestCase
             $row => 'Grace',
         ]);
 
-        $profile = self::profileState($data['state']);
+        $profile = self::profileState(StateJson::apply($state, $data['changes']));
         self::assertSame(['status' => 'closed', 'min' => 5, 'ids' => [2, 3]], $profile['filters']);
         self::assertSame([['name' => 'Ada'], ['name' => 'Grace']], $profile['rows']);
         self::assertStringContainsString('closed, 5, 2+3, Ada+Grace', $data['streams']);
@@ -259,7 +260,7 @@ final class BindTest extends TestCase
             $status => ['closed'],
         ]);
 
-        $profile = self::profileState($data['state']);
+        $profile = self::profileState(StateJson::apply($state, $data['changes']));
         self::assertSame(['status' => 'open', 'min' => 0, 'ids' => [1, 2]], $profile['filters']);
         self::assertSame([['name' => 'Ada'], ['name' => 'Eve']], $profile['rows']);
     }

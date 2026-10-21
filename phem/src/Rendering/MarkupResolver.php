@@ -15,6 +15,7 @@ namespace Phem\Rendering;
 
 use Phem\Dom\Attributes;
 use Phem\Element;
+use Phem\Html;
 use Phem\HtmlList;
 use Phem\LazyHtml;
 use Phem\Manifest\Manifest;
@@ -37,15 +38,43 @@ final class MarkupResolver
         if ($value instanceof Element) {
             // The markup renders when a template prints it. Thus the markup of a branch that does
             // not show (`{{ on ? yes : no }}`) mounts no component and adds no handler.
-            return new LazyHtml(fn (): string => $this->twig->render(Manifest::templateName($value->template), array_map($this->resolve(...), $value->vars)));
+            return new LazyHtml(fn (): string => $this->twig->render(Manifest::templateName($value->template), $this->items($value->vars)));
         }
         if (\is_array($value)) {
-            $value = array_map($this->resolve(...), $value);
+            $value = $this->items($value, $markup);
 
-            return HtmlList::of($value) ?? $value;
+            return $markup ? (HtmlList::of($value) ?? $value) : $value;
         }
 
         return $value;
+    }
+
+    /**
+     * The items of an array, with their markup resolved. Only an Element or an array can contain
+     * markup. An array whose items do not change is the same array: the data of a page (for
+     * example its rows) is not copied for each element that gets it.
+     *
+     * @param array<array-key, mixed> $items
+     *
+     * @param-out bool $markup whether an item is markup after the resolve
+     *
+     * @return array<array-key, mixed>
+     */
+    private function items(array $items, ?bool &$markup = null): array
+    {
+        $markup = false;
+        foreach ($items as $key => $item) {
+            if ($item instanceof Element || \is_array($item)) {
+                $resolved = $this->resolve($item);
+                // The same array is identical with no comparison of its items.
+                if ($resolved !== $item) {
+                    $items[$key] = $item = $resolved;
+                }
+            }
+            $markup = $markup || $item instanceof Html;
+        }
+
+        return $items;
     }
 
     /**

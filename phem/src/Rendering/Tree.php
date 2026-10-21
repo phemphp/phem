@@ -218,6 +218,14 @@ final class Tree
      */
     public function fiberOf(object $instance): ?Fiber
     {
+        // Each `phem:bind` asks for the fiber of its component: most often the current fiber, or
+        // a fiber above it for markup in a slot. Each fiber has its own instance (see
+        // ContainerComponentFactory), so the first match is the fiber.
+        for ($i = \count($this->stack) - 1; $i >= 0; --$i) {
+            if ($this->stack[$i]->instance === $instance) {
+                return $this->stack[$i];
+            }
+        }
         foreach ($this->fibers as $fiber) {
             if ($fiber->instance === $instance) {
                 return $fiber;

@@ -10,7 +10,8 @@
 // cache. When the cache does not have it, the server answers 409 with `{"state": "required"}`
 // before the handler runs, and the controller sends the event again with the state, one time.
 // An event with files always sends the state, so the files do not upload two times. The server runs the PHP handler and answers with
-// Turbo Streams (morph of the changed components) and the new state. Events wait in a queue,
+// Turbo Streams (morph of the changed components), the entries of the state that changed, and the
+// new signature (see applyStateChanges()). Events wait in a queue,
 // so each one uses the newest state.
 //
 // While an event runs, the element that sent it and its component (the closest <phem-c>, or the
@@ -273,6 +274,27 @@ function nestedPairs(key, value) {
   if (Array.isArray(value)) return value.map((v) => `${key}[]=${encodeURIComponent(v)}`)
   if (typeof value === "object") return Object.entries(value).flatMap(([k, v]) => nestedPairs(`${key}[${encodeURIComponent(k)}]`, v))
   return [`${key}=${encodeURIComponent(value)}`]
+}
+
+// The state is a JSON object with one entry on each line, in the order of the keys (see
+// Phem\State\StateJson). An event response has only the entries that changed: key => the JSON text
+// of the value, or null for an entry that the state does not have any more. The controller sets
+// them and joins the lines again, with no JSON encoder, so the text is the text that the server
+// signed. A state with another form counts as empty: then the response has all the entries.
+function applyStateChanges(state, changes) {
+  const entries = new Map()
+  if (state.startsWith("{\n") && state.endsWith("\n}")) {
+    for (const line of state.slice(2, -2).split(",\n")) {
+      const end = line.indexOf('"', 1)
+      entries.set(line.slice(1, end), line.slice(end + 2))
+    }
+  }
+  for (const [key, value] of Object.entries(changes)) {
+    if (value === null) entries.delete(key)
+    else entries.set(key, value)
+  }
+  const keys = [...entries.keys()].sort()
+  return keys.length ? `{\n${keys.map((key) => `"${key}":${entries.get(key)}`).join(",\n")}\n}` : "{}"
 }
 
 // The smallest JSON body that the controller compresses: the gzip header and the time to compress
@@ -1010,7 +1032,7 @@ export default class PhemController extends Controller {
       return
     }
     for (const id of stale) this.stale.delete(id)
-    this.stateValue = data.state
+    this.stateValue = applyStateChanges(this.stateValue, data.changes ?? {})
     this.signatureValue = data.signature
     if (data.query) this.updateUrl(data.query, true)
     this.sentBound = Object.fromEntries(Object.entries(fields).map(([key, { value }]) => [key, value]))

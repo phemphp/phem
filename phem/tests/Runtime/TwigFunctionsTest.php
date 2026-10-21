@@ -16,6 +16,7 @@ namespace Phem\Tests\Runtime;
 use Phem\Dom\Attributes;
 use Phem\Element;
 use Phem\Html;
+use Phem\HtmlList;
 use Phem\Manifest\Manifest;
 use Phem\Rendering\MarkupResolver;
 use Phem\Rendering\Renderer;
@@ -178,6 +179,29 @@ final class TwigFunctionsTest extends TestCase
         $markup = new MarkupResolver($twig);
 
         self::assertSame('<p><b>yes</b></p>', $markup->html(new Element('a.twig', ['on' => true, 'yes' => new Element('yes.twig'), 'no' => new Element('no.twig')])));
+    }
+
+    public function testMarkupInDataResolvesAndTheOtherDataIsNotCopied(): void
+    {
+        $markup = new MarkupResolver(new Environment(new ArrayLoader(['@phpm/b.twig' => '<b>{{ name }}</b>'])));
+        $rows = [];
+        for ($i = 0; $i < 5000; ++$i) {
+            $rows[] = ['id' => $i, 'name' => 'Name '.$i, 'tags' => ['a', 'b']];
+        }
+
+        $resolved = $markup->resolve(['rows' => $rows, 'label' => ['text' => new Element('b.twig', ['name' => 'Ada'])], 'items' => [new Element('b.twig', ['name' => 'Grace'])]]);
+
+        self::assertSame($rows, $resolved['rows']);
+        self::assertInstanceOf(Html::class, $resolved['label']['text'], 'markup in a hash');
+        self::assertSame('<b>Ada</b>', (string) $resolved['label']['text']);
+        self::assertInstanceOf(HtmlList::class, $resolved['items'], 'a list of markup');
+        self::assertSame('<b>Grace</b>', (string) $resolved['items']);
+
+        // A copy of the rows takes more than 1 MB.
+        $before = memory_get_usage();
+        $same = $markup->resolve(['rows' => $rows, 'title' => 'Rows']);
+        self::assertLessThan(10_000, memory_get_usage() - $before, 'the data is the same array');
+        self::assertSame(['rows' => $rows, 'title' => 'Rows'], $same);
     }
 
     private function runtime(): PhemRuntime

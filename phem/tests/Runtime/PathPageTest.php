@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Runtime;
 
+use Phem\State\StateJson;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -49,7 +50,8 @@ final class PathPageTest extends TestCase
 
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('Item 3: 1', $data['streams']);
-        self::assertSame(['id' => '3'], json_decode($data['state'], true)['_path']);
+        self::assertArrayNotHasKey('_path', $data['changes'], 'the route values did not change');
+        self::assertSame(['id' => '3'], json_decode(StateJson::apply($state, $data['changes']), true)['_path']);
     }
 
     public function testForgedRouteValueIsRejected(): void
@@ -99,7 +101,7 @@ final class PathPageTest extends TestCase
         self::assertSame(200, $response->getStatusCode());
         $data = json_decode((string) $response->getContent(), true);
         self::assertStringContainsString('Ada: 1', $data['streams']);
-        self::assertSame(['streams', 'state', 'signature', 'query', 'events'], array_keys($data), 'the document does not render again');
+        self::assertSame(['streams', 'changes', 'signature', 'query', 'events'], array_keys($data), 'the document does not render again');
     }
 
     /** @return array{0: string, 1: string, 2: string} the state, its signature, and the click handler */

@@ -18,6 +18,7 @@ use Phem\Manifest\Manifest;
 use Phem\Manifest\SourceMap;
 use Phem\State\PageState;
 use Phem\State\StateCache;
+use Phem\State\StateJson;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\AssetMapper\AssetMapperInterface;
@@ -58,7 +59,7 @@ final class AppTest extends TestCase
         ]);
         $data = json_decode((string) $response->getContent(), true);
         if (200 === $response->getStatusCode()) {
-            $this->state = $data['state'];
+            $this->state = StateJson::apply($state ?? $this->state, $data['changes']);
             $this->signature = $data['signature'];
         }
 
@@ -259,7 +260,7 @@ final class AppTest extends TestCase
 
         self::assertSame(200, $response->getStatusCode());
         self::assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
-        self::assertStringContainsString('"state":"{\\"_tree\\":', $json, 'a quote of the state is \\"');
+        self::assertStringContainsString('"changes":{"_tree":"\\"', $json, 'a quote of the state is \\"');
         self::assertStringContainsString('<turbo-stream action=\\"update\\"', $json, 'the streams keep their < and their slashes');
         self::assertStringNotContainsString('\\u00', $json);
         self::assertSame('nosniff', $this->event('/', ['handler' => 'h', 'signature' => '1.'.str_repeat('a', 64)])->headers->get('X-Content-Type-Options'), 'also a reload');
@@ -308,7 +309,7 @@ final class AppTest extends TestCase
 
         self::assertStringContainsString('<html lang="es">', $html, 'another document component');
         self::assertStringContainsString('<title>Documento 3</title>', $html, 'the title slot of the page, with its state');
-        self::assertMatchesRegularExpression('#<body>\s*<main id="phem-root" data-controller="phem extra" data-action="click->phem\#dispatch [^"]*" data-phem-state-value="\{"_tree":"[^"]*","phem[0-9a-f]+":\{"count":3\},"phem[0-9a-f]+":\{"on":false\}\}" data-phem-signature-value="[^"]*" class="custom page"><phem-c id="phem[0-9a-f]+">\s*<p id="document">Document</p>\s*</phem-c></main>\s*<footer id="doc-footer">#', $html);
+        self::assertMatchesRegularExpression('#<body>\s*<main id="phem-root" data-controller="phem extra" data-action="click->phem\#dispatch [^"]*" data-phem-state-value="\{\n"_tree":"[^"]*",\n"phem[0-9a-f]+":\{"count":3\},\n"phem[0-9a-f]+":\{"on":false\}\n\}" data-phem-signature-value="[^"]*" class="custom page"><phem-c id="phem[0-9a-f]+">\s*<p id="document">Document</p>\s*</phem-c></main>\s*<footer id="doc-footer">#', $html);
 
         $html = (string) $this->request('GET', '/about')->getContent();
         self::assertStringContainsString('<title>Fixture</title>', $html, 'a page with the title of the document');

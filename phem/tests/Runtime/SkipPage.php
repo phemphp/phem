@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Runtime;
 
+use Phem\State\StateJson;
 use Phem\Tests\Fixtures\Renders;
 use PHPUnit\Framework\TestCase;
 
@@ -41,7 +42,7 @@ trait SkipPage
         $response = $this->event('/skip', ['state' => $this->state, 'signature' => $this->signature, 'handler' => $h[1], 'event' => ['type' => 'click']]);
         $data = json_decode((string) $response->getContent(), true);
         TestCase::assertSame(200, $response->getStatusCode(), (string) $response->getContent());
-        $this->state = $data['state'];
+        $this->state = StateJson::apply($this->state, $data['changes']);
         $this->signature = $data['signature'];
 
         return $data;

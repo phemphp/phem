@@ -789,6 +789,11 @@ The browser keeps the full signed state of the page, but an event sends only its
 server keeps each state that it signs (the page render and each event) in the `cache.phem.state`
 pool, by its signature, so the request of an event stays small on a big page.
 
+The response of an event is small too: it has only the entries of the state that changed (the
+state of a component, the shape of the render), and the new signature. The signed JSON has one
+entry on each line, so the browser sets the new entries with no JSON encoder, and its copy is
+the text that the server signed.
+
 When the pool does not have the state (an expired entry, a restart, another machine with its own
 pool), the server answers `409` with `{"state": "required"}` and does not run the handler. The
 browser sends the same event again with the full state, compressed (see

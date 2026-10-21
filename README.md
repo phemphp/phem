@@ -122,7 +122,7 @@ type, completion, go to definition, hover, and outline. See
                               │
  Browser ◄── HTML ─────── HttpKernel (FrankenPHP in worker mode, or PHP-FPM)
    phem Stimulus controller ── POST <page URL> {signature, handler, event}
-   ◄── Turbo Streams (morph of the changed components) + the new signed state
+   ◄── Turbo Streams (morph of the changed components) + the changed state entries
 ```
 
 1. **Compile time.** `phemc` parses each `.phpm` file. It finds the markup literals in the PHP
@@ -162,10 +162,12 @@ type, completion, go to definition, hover, and outline. See
    enabled). Then, as React does, it renders only the components that can change: the component
    of the handler, the components whose state changed, and their children with new props. It
    compares their HTML with the hashes, and answers with a Turbo Stream `update`
-   (`method="morph"`) for each component that changed, plus the new state. A component that did
-   not render again is a `<phem-c data-phem-keep>` placeholder: the browser keeps it. This needs
-   a pure `render()` (see [Keep `render()` pure](docs/phpm-syntax.md#keep-render-pure)). Only the content
-   of the `<Root>` changes: the document around it (for example the title) stays the same.
+   (`method="morph"`) for each component that changed, plus the entries of the state that
+   changed and the new signature: the browser sets them in its copy of the state, so a big page
+   does not get all its state again with each event. A component that did not render again is
+   a `<phem-c data-phem-keep>` placeholder: the browser keeps it. This needs a pure `render()`
+   (see [Keep `render()` pure](docs/phpm-syntax.md#keep-render-pure)). Only the content of the
+   `<Root>` changes: the document around it (for example the title) stays the same.
    Events wait in a queue, so each event uses the newest state.
    While an event runs, the element that sent it and its component get `aria-busy="true"` and
    the `phem-loading` class, after a delay of 200 ms (`data-phem-loading-delay-value` on the

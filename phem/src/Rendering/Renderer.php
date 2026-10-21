@@ -373,11 +373,16 @@ final class Renderer implements ResetInterface
         }
 
         $fiber->html = $html;
-        $own = $html;
+        // One strtr() for all the children: a replace for each child reads the HTML one time for
+        // each child, so a list of components takes a time in the square of its length.
+        $placeholders = [];
         foreach ($fiber->children as $child) {
-            $own = str_replace($child->output(), '<phem-c id="'.$child->id.'"></phem-c>', $own);
+            $output = $child->output();
+            if ('' !== $output) {
+                $placeholders[$output] = '<phem-c id="'.$child->id.'"></phem-c>';
+            }
         }
-        $fiber->ownHtml[$tree->pass] = $own;
+        $fiber->ownHtml[$tree->pass] = strtr($html, $placeholders);
     }
 
     /** The page and the document around the root element are not in a <phem-c>. */

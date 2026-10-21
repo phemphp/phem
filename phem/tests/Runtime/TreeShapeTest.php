@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Phem\Tests\Runtime;
 
 use Phem\State\PageState;
+use Phem\State\StateJson;
 use Phem\State\TreeShape;
 use PHPUnit\Framework\TestCase;
 
@@ -120,7 +121,7 @@ final class TreeShapeTest extends TestCase
         self::assertSame(200, $response->getStatusCode());
 
         $before = $this->shapeOf($state);
-        $after = $this->shapeOf($data['state']);
+        $after = $this->shapeOf(StateJson::apply($state, $data['changes']));
         self::assertSame(array_keys($before), array_keys($after), 'the same fibers');
         $changed = array_keys(array_filter($after, static fn (array $f, string $id): bool => $f !== $before[$id], \ARRAY_FILTER_USE_BOTH));
         preg_match_all('/<turbo-stream [^>]*target="([^"]+)"/', $data['streams'], $targets);

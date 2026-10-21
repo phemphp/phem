@@ -20,11 +20,12 @@ async function mount(markup, rootAttributes = "") {
   await new Promise((resolve) => setTimeout(resolve, 0))
 }
 
-// The answer of the server to the next event: a morph of `c1` to `markup`.
-function respond(markup) {
+// The answer of the server to the next event: a morph of `c1` to `markup`, with no change of the
+// state, or the `changes` of the state.
+function respond(markup, changes = {}) {
   const body = {
     streams: `<turbo-stream action="update" method="morph" target="c1"><template>${markup}</template></turbo-stream>`,
-    state: "{}",
+    changes,
     signature: "s2",
   }
   fetch.mockResolvedValueOnce(new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } }))
@@ -75,6 +76,58 @@ describe("data-phem-client", () => {
     await done
 
     expect(document.getElementById("menu").hidden).toBe(true)
+  })
+})
+
+describe("the state", () => {
+  // The same vector as in the tests of Phem\State\StateJson (tests/Runtime/StateJsonTest.php): the
+  // server makes the same text from the same state and changes. A value has an escaped line break
+  // after a comma and escaped quotes: they are not the end of an entry.
+  const vector = JSON.parse(String.raw`{"before":"{\n\"_path\":{\"id\":\"3\"},\n\"_tree\":\"AAAAAAAA0\",\n\"phem0a\":{\"text\":\"a,\\nb \\\"c\\\" é/\"},\n\"phem0b\":{\"n\":1.0}\n}","changes":{"phem0a":null,"phem0b":"{\"n\":2.5}","phem0c":"[]","_tree":"\"BBBBBBBB0,CCCCCCCC1\""},"after":"{\n\"_path\":{\"id\":\"3\"},\n\"_tree\":\"BBBBBBBB0,CCCCCCCC1\",\n\"phem0b\":{\"n\":2.5},\n\"phem0c\":[]\n}"}`)
+
+  const root = () => document.getElementById("phem-root")
+
+  it("sets the changes of the response in the state, as the server does", async () => {
+    await mount(`<button data-phem-on-click="c1.save">Save</button>`)
+    root().setAttribute("data-phem-state-value", vector.before)
+    respond(`<button data-phem-on-click="c1.save">Save</button>`, vector.changes)
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect(root().getAttribute("data-phem-state-value")).toBe(vector.after)
+    expect(root().getAttribute("data-phem-signature-value")).toBe("s2")
+  })
+
+  it("starts with no entries for a state with another form", async () => {
+    await mount(`<button data-phem-on-click="c1.save">Save</button>`)
+    root().setAttribute("data-phem-state-value", '{"phem0a":{"n":1}}')
+    const all = { _path: '{"id":"3"}', _tree: '"BBBBBBBB0,CCCCCCCC1"', phem0b: '{"n":2.5}', phem0c: "[]" }
+    respond(`<button data-phem-on-click="c1.save">Save</button>`, all)
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect(root().getAttribute("data-phem-state-value")).toBe(vector.after)
+  })
+
+  it("sends the new state when the server does not have it", async () => {
+    await mount(`<button data-phem-on-click="c1.save">Save</button>`)
+    root().setAttribute("data-phem-state-value", vector.before)
+    respond(`<button data-phem-on-click="c1.save">Save</button>`, vector.changes)
+    let done = nextDone()
+    click("button")
+    await done
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ state: "required" }), { status: 409 }))
+    respond(`<button data-phem-on-click="c1.save">Save</button>`)
+    done = nextDone()
+    click("button")
+    await done
+
+    expect(fetch).toHaveBeenCalledTimes(3)
+    const body = JSON.parse(fetch.mock.calls[2][1].body)
+    expect(body.state).toBe(vector.after)
+    expect(body.signature).toBe("s2")
   })
 })
 
@@ -473,7 +526,7 @@ describe("pushes", () => {
     expect(document.getElementById("entry-2")).toBeNull()
 
     const markup = '<ul id="entries"><li id="entry-1">One</li><li id="entry-2">Two</li></ul><button data-phem-on-click="c1.save">Save</button>'
-    answer(new Response(JSON.stringify({ streams: `<turbo-stream action="update" method="morph" target="c1"><template>${markup}</template></turbo-stream>`, state: "{}", signature: "s2" }), { status: 200 }))
+    answer(new Response(JSON.stringify({ streams: `<turbo-stream action="update" method="morph" target="c1"><template>${markup}</template></turbo-stream>`, changes: {}, signature: "s2" }), { status: 200 }))
     await done
     await rendered()
 

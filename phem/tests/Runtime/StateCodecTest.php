@@ -28,7 +28,7 @@ final class StateCodecTest extends TestCase
         $codec = $this->codec();
         [$json, $signature] = $codec->encode(['phem1' => ['n' => 1]], 'App\\A');
 
-        self::assertSame('{"phem1":{"n":1}}', $json);
+        self::assertSame("{\n\"phem1\":{\"n\":1}\n}", $json, 'one entry on each line (see StateJson)');
         self::assertMatchesRegularExpression('/^1000000\.[0-9a-f]{64}$/', $signature, 'the time it was issued, and the HMAC');
         self::assertSame(['phem1' => ['n' => 1]], $codec->decode($json, $signature, 'App\\A'));
         self::assertNull($codec->decode($json, $signature, 'App\\B'));

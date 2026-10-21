@@ -89,7 +89,7 @@ final class SkipTest extends TestCase
 
         self::assertSame(42, Renders::of('Probe'), 'the full page, in the two passes');
         self::assertSame(['Clicks 1'], $this->texts($data['streams']), 'it compares with the first pass');
-        self::assertArrayHasKey('_tree', json_decode($data['state'], true), 'the next event has the shape');
+        self::assertArrayHasKey('_tree', $data['changes'], 'the next event has the shape');
     }
 
     public function testMountRunsAgainInTheRenderAfterTheHandler(): void

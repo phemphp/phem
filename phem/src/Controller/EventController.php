@@ -28,6 +28,7 @@ use Phem\State\PageState;
 use Phem\State\StateAccessor;
 use Phem\State\StateCache;
 use Phem\State\StateCodec;
+use Phem\State\StateJson;
 use Phem\State\UrlQuery;
 use Phem\Stream\Subscription;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -54,7 +55,8 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
  * with its full state. An event with files always sends its full state. The server renders the path to
  * the handler with that state, sets the bound values, runs the handler, renders the components
  * that can change (see EventRenderer), and answers with Turbo Streams that morph the components
- * that changed, the new state, the query of the #[Url] properties (see UrlQuery), and the
+ * that changed, the entries of the state that changed and the new signature (see StateJson),
+ * the query of the #[Url] properties (see UrlQuery), and the
  * browser events of the handler (see BrowserEventDispatcher). The browser also sends the
  * components whose element a push changed: they render again (see EventRenderer). When the handler returns a
  * RedirectResponse, the server answers with its URL, and the browser visits it.
@@ -163,12 +165,14 @@ final class EventController
         }
         // A new access token for the hub, before the old one expires (see Subscription).
         $this->subscription?->renew($page, $state->values, $request);
-        [$json, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page, $request);
+        [$next, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page, $request);
         // The next event can send only the signature (see StateCache).
-        $this->cache->save($signature, $json);
+        $this->cache->save($signature, $next);
 
         $query = $this->url->of($tree);
-        $data = ['streams' => $this->streams->updates($tree->changedFibers()), 'state' => $json, 'signature' => $signature, 'query' => ['values' => (object) $query['values'], 'push' => $query['push']], 'events' => $this->dispatcher->dispatched()];
+        // Only the entries of the state that changed: the browser has the state of this event.
+        $changes = (object) StateJson::changes($json, $next);
+        $data = ['streams' => $this->streams->updates($tree->changedFibers()), 'changes' => $changes, 'signature' => $signature, 'query' => ['values' => (object) $query['values'], 'push' => $query['push']], 'events' => $this->dispatcher->dispatched()];
         if ([] !== $outcome->warnings) {
             // The dev-mode check (see SkippedRenderCheck): the phem controller logs them.
             $data['warnings'] = $outcome->warnings;

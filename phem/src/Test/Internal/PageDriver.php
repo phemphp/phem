@@ -16,6 +16,7 @@ namespace Phem\Test\Internal;
 use Phem\Http\EventBody;
 use Phem\Rendering\Fiber;
 use Phem\State\PageState;
+use Phem\State\StateJson;
 use Phem\State\UrlQuery;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -103,7 +104,8 @@ final class PageDriver implements Driver
         if (\is_string($data['redirect'] ?? null)) {
             return EventResult::redirect($this->redirect = $data['redirect']);
         }
-        $this->state = (string) $data['state'];
+        // As the browser: the response has only the entries of the state that changed.
+        $this->state = StateJson::apply($this->state, \is_array($data['changes'] ?? null) ? $data['changes'] : []);
         $this->signature = (string) $data['signature'];
         $this->query($data['query'] ?? null);
 

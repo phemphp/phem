@@ -54,7 +54,7 @@ final class StateCodec
      */
     public function encode(array $state, string $page, ?Request $request = null): array
     {
-        $json = json_encode((object) $state, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_PRESERVE_ZERO_FRACTION);
+        $json = StateJson::encode($state);
         $issuedAt = $this->now();
 
         return [$json, $issuedAt.'.'.$this->sign($json, $page, $issuedAt, $request)];
