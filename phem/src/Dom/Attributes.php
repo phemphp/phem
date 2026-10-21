@@ -31,6 +31,12 @@ final class Attributes
      */
     private const BOOLEANISH = ['autoreverse', 'contenteditable', 'draggable', 'externalresourcesrequired', 'focusable', 'preservealpha', 'spellcheck', 'value'];
 
+    /**
+     * The attributes with a URL that the browser opens or sends a form to, as in React: a
+     * `javascript:` URL in them runs as a script (see attr()).
+     */
+    private const URLS = ['action', 'formaction', 'href', 'src', 'xlink:href'];
+
     /** Unitless CSS properties (camelCase), as in React. */
     private const UNITLESS = [
         'animationIterationCount', 'aspectRatio', 'columnCount', 'columns', 'flex', 'flexGrow', 'flexShrink',
@@ -73,7 +79,12 @@ final class Attributes
         return 1 === preg_match('/^[^\s\x00-\x1F\x7F"\'<>\/=]+$/', $name);
     }
 
-    /** An attribute with an invalid name (see isValidName()) is not rendered, as in React. */
+    /**
+     * An attribute with an invalid name (see isValidName()) is not rendered, as in React. A URL
+     * attribute (`href`, `src`, `action`, `formAction`, `xlink:href`) with a `javascript:` URL is
+     * not rendered either: the URL can come from data (the website of a user), and a click would
+     * run it as a script.
+     */
     public static function attr(string $name, mixed $value): Markup
     {
         if (\is_bool($value) && self::isBooleanish($name)) {
@@ -90,8 +101,12 @@ final class Attributes
         } elseif (\is_array($value)) {
             $value = json_encode($value, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
         }
+        $value = (string) $value;
+        if (self::isScriptUrl($name, $value)) {
+            return new Markup('', 'UTF-8');
+        }
 
-        return new Markup(\sprintf('%s="%s"', self::e($name), self::e((string) $value)), 'UTF-8');
+        return new Markup(\sprintf('%s="%s"', self::e($name), self::e($value)), 'UTF-8');
     }
 
     /**
@@ -145,6 +160,11 @@ final class Attributes
             : null !== $bound && self::bindValue($bound) === $option;
 
         return new Markup($selected ? 'selected' : '', 'UTF-8');
+    }
+
+    private static function isScriptUrl(string $name, string $value): bool
+    {
+        return \in_array(strtolower($name), self::URLS, true) && 'javascript' === UrlScheme::of($value);
     }
 
     private static function isBooleanish(string $name): bool

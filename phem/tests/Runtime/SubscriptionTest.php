@@ -64,7 +64,7 @@ final class SubscriptionTest extends TestCase
     {
         $tokens = new SubscriberToken(self::KEY);
         $subscription = new Subscription(new Topics(), $tokens);
-        $old = $tokens->create(['phem:App\Other', 'phem:*'], self::HUB, self::subject('s1'));
+        $old = $tokens->create($tokens->grant(['phem:App\Other', 'phem:*']), self::HUB, self::subject('s1'));
         $request = self::withSession('s1', ['__Secure-mercure_access_token' => $old]);
         $subscription->renew(Subscribed::class, [], $request);
 
@@ -73,11 +73,57 @@ final class SubscriptionTest extends TestCase
         self::assertSame([...new Topics()->ofPage(Subscribed::class, []), 'phem:App\Other'], $tokens->topics((string) $cookie->getValue(), self::HUB, self::subject('s1')));
     }
 
+    /**
+     * A topic of the old cookie did not pass the access rules of this request: the viewer can
+     * have lost access to its page since (another role, another owner). It keeps its expiry, so
+     * an event on another page with #[Subscribe] does not extend it, and the viewer does not get
+     * the private pushes of the page with no end. The token expires with its first topic.
+     */
+    public function testAKeptTopicKeepsItsExpiry(): void
+    {
+        $tokens = new SubscriberToken(self::KEY);
+        $subscription = new Subscription(new Topics(), $tokens);
+        $expiry = time() + 50000;
+        $old = $tokens->create(['phem:App\Revoked' => $expiry], self::HUB, self::subject('s1'));
+        $request = self::withSession('s1', ['__Secure-mercure_access_token' => $old]);
+        $subscription->renew(Subscribed::class, [], $request);
+
+        $cookie = $subscription->cookie($request);
+        self::assertInstanceOf(Cookie::class, $cookie);
+        $token = (string) $cookie->getValue();
+        $grants = $tokens->grants($token, self::HUB, self::subject('s1'));
+        self::assertSame($expiry, $grants['phem:App\Revoked'] ?? null, 'the kept topic gets no new expiry');
+        self::assertSame($expiry, self::expiry($token), 'the token expires with its first topic');
+        foreach (new Topics()->ofPage(Subscribed::class, []) as $topic) {
+            self::assertGreaterThan($expiry, $grants[$topic] ?? 0, 'a topic of the page gets a new expiry');
+        }
+    }
+
+    public function testAKeptTopicThatLivedHalfOfItsTimeGoes(): void
+    {
+        $tokens = new SubscriberToken(self::KEY);
+        $subscription = new Subscription(new Topics(), $tokens);
+        $old = $tokens->create(['phem:App\Revoked' => time() + 10], self::HUB, self::subject('s1'));
+        $request = self::withSession('s1', ['__Secure-mercure_access_token' => $old]);
+        $subscription->renew(Subscribed::class, [], $request);
+
+        $cookie = $subscription->cookie($request);
+        self::assertInstanceOf(Cookie::class, $cookie);
+        self::assertSame(new Topics()->ofPage(Subscribed::class, []), $tokens->topics((string) $cookie->getValue(), self::HUB, self::subject('s1')));
+    }
+
+    private static function expiry(string $token): int
+    {
+        $claims = json_decode((string) base64_decode(strtr(explode('.', $token)[1], '-_', '+/'), true), true);
+
+        return \is_array($claims) && \is_int($claims['exp'] ?? null) ? $claims['exp'] : 0;
+    }
+
     public function testTheTokenDropsTheTopicsOfTheCookieOfAnotherSession(): void
     {
         $tokens = new SubscriberToken(self::KEY);
         $subscription = new Subscription(new Topics(), $tokens);
-        $old = $tokens->create(['phem:App\Inbox?user=5', 'phem:*'], self::HUB, self::subject('alice'));
+        $old = $tokens->create($tokens->grant(['phem:App\Inbox?user=5', 'phem:*']), self::HUB, self::subject('alice'));
         $request = self::withSession('bob', ['__Secure-mercure_access_token' => $old]);
         $subscription->renew(Subscribed::class, [], $request);
 
@@ -90,12 +136,12 @@ final class SubscriptionTest extends TestCase
     {
         $tokens = new SubscriberToken(self::KEY);
         $subscription = new Subscription(new Topics(), $tokens);
-        $fresh = $tokens->create(new Topics()->ofPage(Subscribed::class, []), self::HUB, '');
+        $fresh = $tokens->create($tokens->grant(new Topics()->ofPage(Subscribed::class, [])), self::HUB, '');
         $request = Request::create('https://example.com/guestbook', cookies: ['__Secure-mercure_access_token' => $fresh]);
         $subscription->renew(Subscribed::class, [], $request);
         self::assertNull($subscription->cookie($request));
 
-        $old = new SubscriberToken(self::KEY, ttl: 10)->create(new Topics()->ofPage(Subscribed::class, []), self::HUB, '');
+        $old = $tokens->create(array_fill_keys(new Topics()->ofPage(Subscribed::class, []), time() + 10), self::HUB, '');
         $request = Request::create('https://example.com/guestbook', cookies: ['__Secure-mercure_access_token' => $old]);
         $subscription->renew(Subscribed::class, [], $request);
         self::assertNotNull($subscription->cookie($request), 'it lived more than half of its time');
@@ -154,19 +200,19 @@ final class SubscriptionTest extends TestCase
     public function testAnInvalidTokenHasNoTopics(): void
     {
         $tokens = new SubscriberToken(self::KEY);
-        $token = $tokens->create(['phem:*'], self::HUB);
+        $token = $tokens->create($tokens->grant(['phem:*']), self::HUB);
 
         self::assertSame(['phem:*'], $tokens->topics($token, self::HUB));
         self::assertSame([], $tokens->topics($token, 'https://other.example/.well-known/mercure'));
         self::assertSame([], new SubscriberToken('another-subscriber-key-of-32-bytes')->topics($token, self::HUB));
         self::assertSame([], new SubscriberToken(self::KEY, 'another')->topics($token, self::HUB));
-        self::assertSame([], new SubscriberToken(self::KEY, ttl: -1)->topics(new SubscriberToken(self::KEY, ttl: -1)->create(['phem:*'], self::HUB), self::HUB));
+        self::assertSame([], $tokens->topics($tokens->create(['phem:*' => time() - 1], self::HUB), self::HUB));
         self::assertSame([], $tokens->topics('not.a.token', self::HUB));
     }
 
     public function testTheTokenIsAnAccessTokenOfTheModernMercureProtocol(): void
     {
-        [$header, $claims] = array_map(static fn (string $part): mixed => json_decode((string) base64_decode(strtr($part, '-_', '+/'), true), true), \array_slice(explode('.', new SubscriberToken(self::KEY)->create(['phem:*'], self::HUB)), 0, 2));
+        [$header, $claims] = array_map(static fn (string $part): mixed => json_decode((string) base64_decode(strtr($part, '-_', '+/'), true), true), \array_slice(explode('.', new SubscriberToken(self::KEY)->create(['phem:*' => time() + 60], self::HUB)), 0, 2));
 
         self::assertSame(['alg' => 'HS256', 'typ' => 'at+jwt'], $header);
         self::assertIsArray($claims);

@@ -211,6 +211,10 @@ function Profile(): Node {
   gives a default that `rest` can replace. `on*` keys (`onClick`, ...) bind handlers.
   A spread can contain data, so it does not render an invalid attribute name or an inline
   script (`onclick`, with a string). A static `onclick="..."` in the markup stays.
+- As in React, a URL attribute (`href`, `src`, `action`, `formAction`, `xlink:href`) with a
+  `javascript:` URL from an expression is not rendered: `<a href={{ user.website }}>` with
+  `javascript:alert(1)` gives `<a>`. This is also true for a quoted value with an expression
+  (`href="{{ url }}"`) and for a spread. A click on the element would run the URL as a script.
 - All Twig filters, tests, and tags work: `|upper`, `|length`, `{% set %}`, `{% for %}`, and more.
 - Do not put PHP code in markup. Compute values in PHP before the `return`.
 
@@ -1462,8 +1466,10 @@ phem:
 
 With the subscriber key, the updates are private. Each page response sets the cookie of the hub
 with an access token for the topics of the page. The topics of the other tabs of the same
-session stay in it: after a logout or a login, they go. An event renews the token when it lived
-half of its time. The page passed its access rules, so the viewer can see what the server
+session stay in it: after a logout or a login, they go. Each topic expires in the time of a
+token after its page passed its access rules, and only a render or an event of that page extends
+it: a viewer that lost access to a page stops getting its updates. The token expires with its
+first topic. An event renews the token when it lived half of its time. The page passed its access rules, so the viewer can see what the server
 renders for its topics. With no key, the updates are public, and the hub needs the `anonymous`
 directive. The `local` transport has no history: after a lost connection, the browser refreshes
 the content of the root element, because the updates of that time are lost. When the hub refuses

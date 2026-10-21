@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Phem\Controller;
 
 use Phem\BrowserEventDispatcher;
+use Phem\Dom\UrlScheme;
 use Phem\Event;
 use Phem\Http\EventBody;
 use Phem\Http\EventPayload;
@@ -245,10 +246,9 @@ final class EventController
     private static function redirectUrl(RedirectResponse $response): string
     {
         $url = $response->getTargetUrl();
-        // As the browser parses the URL: no control characters or spaces at the ends, and no tabs or line breaks.
-        $normalized = str_replace(["\t", "\n", "\r"], '', trim($url, "\x00..\x20"));
-        if (1 === preg_match('/^([a-z][a-z0-9+.\-]*):/i', $normalized, $m) && !\in_array(strtolower($m[1]), ['http', 'https'], true)) {
-            throw new \UnexpectedValueException(\sprintf('An event handler can redirect only to a relative, http or https URL, "%s:" given.', $m[1]));
+        $scheme = UrlScheme::of($url);
+        if (null !== $scheme && !\in_array($scheme, ['http', 'https'], true)) {
+            throw new \UnexpectedValueException(\sprintf('An event handler can redirect only to a relative, http or https URL, "%s:" given.', $scheme));
         }
 
         return $url;

@@ -65,6 +65,33 @@ final class TwigFunctionsTest extends TestCase
         self::assertSame('id="a" class="b"', (string) $attrs);
     }
 
+    /**
+     * A `javascript:` URL from data in a URL attribute runs as a script on a click, as React
+     * blocks it: in a spread and in a single attribute.
+     */
+    #[DataProvider('scriptUrls')]
+    public function testUrlAttributeOfDataRunsNoScript(string $name, string $url): void
+    {
+        foreach ([(string) Attributes::attr($name, $url), (string) $this->runtime()->attrs([$name => $url])] as $html) {
+            // The URL as the browser reads it: no entities, no control characters or spaces at the ends, and no tabs or line breaks.
+            $value = 1 === preg_match('/="([^"]*)"/', $html, $m) ? html_entity_decode($m[1], \ENT_QUOTES | \ENT_HTML5) : '';
+            $value = str_replace(["\t", "\n", "\r"], '', trim($value, "\x00..\x20"));
+            self::assertDoesNotMatchRegularExpression('/^javascript:/i', $value, $html);
+        }
+    }
+
+    /** @return iterable<array{string, string}> */
+    public static function scriptUrls(): iterable
+    {
+        yield ['href', 'javascript:alert(1)'];
+        yield ['href', ' JavaScript:alert(1)'];
+        yield ['href', "java\tscript:alert(1)"];
+        yield ['src', 'javascript:alert(1)'];
+        yield ['action', 'javascript:alert(1)'];
+        yield ['formaction', 'javascript:alert(1)'];
+        yield ['xlink:href', 'javascript:alert(1)'];
+    }
+
     public function testSpreadNeedsAHash(): void
     {
         $this->expectException(\InvalidArgumentException::class);

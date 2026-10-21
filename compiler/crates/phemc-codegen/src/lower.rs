@@ -636,6 +636,11 @@ impl<'a> Lowerer<'a> {
                 }
                 match value {
                     AttrValue::None => out.push_str(&format!("{ws}{html_name}")),
+                    // A URL from an expression goes through phem_attr(), which drops a `javascript:` URL.
+                    AttrValue::Quoted { parts, .. } if is_url_attr(html_name) && parts.iter().any(|p| matches!(p, StrPart::Expr(_))) => {
+                        let c = self.quoted_expr(parts, a.span);
+                        out.push_str(&format!("{ws}{{{{ phem_attr('{html_name}', {c}) }}}}"));
+                    }
                     AttrValue::Quoted { raw, quote, .. } => out.push_str(&format!("{ws}{html_name}={quote}{raw}{quote}")),
                     AttrValue::Expr(x) => {
                         let c = self.expr_code(x);
@@ -865,6 +870,13 @@ const LOADING: &str = "phem:loading";
 
 /// `phem:progress={{ save }}`: the element shows the upload progress of a `save` event with files.
 const PROGRESS: &str = "phem:progress";
+
+/// The attributes with a URL that the browser opens or sends a form to (see `Attributes::URLS` of the runtime).
+const URL_ATTRS: &[&str] = &["action", "formaction", "href", "src", "xlink:href"];
+
+fn is_url_attr(name: &str) -> bool {
+    URL_ATTRS.iter().any(|u| u.eq_ignore_ascii_case(name))
+}
 
 /// `phem:bind={{ query }}`: the field shows a #[State] property, and the browser sends its new
 /// value with the next event. `phem:live` sends each change at once.

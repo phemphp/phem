@@ -27,11 +27,15 @@ use Symfony\Component\HttpFoundation\Request;
  *
  * With a subscriber key, the updates are private, and the response sets the cookie of the hub
  * with an access token for the topics (see SubscriberToken). The page passed its access rules,
- * so the viewer can see what the server renders for its topics. A browser has one cookie for all
- * its tabs: the token also keeps the topics of a valid cookie of the request (the newest first,
- * up to MAX_TOPICS), so an older tab can connect again. The subject of a token is a hash of the
- * session id: after a logout or a login (a new session), the topics of the old cookie are not
- * kept. An event renews the token when it lived half of its time, or when it lacks a topic.
+ * so the viewer can see what the server renders for its topics: they expire in the time of a
+ * token (see SubscriberToken::grant()). A browser has one cookie for all its tabs: the token also
+ * keeps the topics of a valid cookie of the request (the newest first, up to MAX_TOPICS), so an
+ * older tab can connect again. A kept topic keeps its expiry: it did not pass the access rules in
+ * this request (the viewer can have lost access to its page since), so only an event of its page
+ * extends it. A kept topic that lived half of its time goes, so the token lives at least that
+ * long. The subject of a token is a hash of the session id: after a logout or a login (a new
+ * session), the topics of the old cookie are not kept. An event renews the token when it lived
+ * half of its time, or when it lacks a topic.
  * With no key, the updates are public: the hub needs the `anonymous` directive.
  *
  * The audience of the token is the URL of the hub that the browser connects to. A relative hub
@@ -109,11 +113,11 @@ final class Subscription
         $audience = $this->audience($request);
         $subject = self::subject($request);
         $old = $request->cookies->get($this->cookie);
-        $oldTopics = \is_string($old) ? $this->tokens->topics($old, $audience, $subject) : [];
-        if (\is_string($old) && [] === array_diff($topics, $oldTopics) && $this->tokens->isFresh($old, $audience, $subject)) {
+        $kept = \is_string($old) ? $this->tokens->grants($old, $audience, $subject) : [];
+        if (\is_string($old) && [] === array_diff($topics, array_keys($kept)) && $this->tokens->isFresh($old, $audience, $subject)) {
             return null;
         }
-        $all = array_values(array_unique([...$topics, ...$oldTopics]));
+        $grants = $this->tokens->grant($topics) + array_filter($kept, $this->tokens->isFreshExpiry(...));
         $path = (string) parse_url($this->hub, \PHP_URL_PATH);
         // A browser keeps a Secure cookie only from a secure origin: HTTPS, or localhost.
         $secure = $request->isSecure() || \in_array($request->getHost(), ['localhost', '127.0.0.1', '[::1]', '::1'], true) || str_ends_with($request->getHost(), '.localhost');
@@ -122,7 +126,7 @@ final class Subscription
         }
 
         return Cookie::create($this->cookie)
-            ->withValue($this->tokens->create(\array_slice($all, 0, self::MAX_TOPICS), $audience, $subject))
+            ->withValue($this->tokens->create(\array_slice($grants, 0, self::MAX_TOPICS, true), $audience, $subject))
             ->withPath('' !== $path ? $path : '/')
             ->withSecure($secure)
             ->withHttpOnly(true)

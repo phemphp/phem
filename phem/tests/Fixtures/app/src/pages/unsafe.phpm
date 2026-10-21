@@ -32,12 +32,20 @@ final class UnsafePage
         $name = '<b>Ada</b>';
         $data = ['x onfocus=alert(1) autofocus' => 'y', 'onclick' => 'alert(2)', 'title' => 'ok'];
         $xss = '"><script>alert(3)</script>';
+        // A URL from data (for example the website of a user profile).
+        $website = 'javascript:alert(4)';
+        $link = ['href' => ' JavaScript:alert(5)'];
+        $action = "java\tscript:alert(6)";
 
         return (
             <Document>
                 <main>
                     <PlainText value={{ name }} />
                     <a id="spread" {{ ...data }} onclick="track()">link</a>
+                    <a id="website" href={{ website }}>website</a>
+                    <a id="quoted" href="{{ website }}">website</a>
+                    <a id="link" {{ ...link }}>link</a>
+                    <form><button id="action" formaction={{ action }}>Send</button></form>
                     <button id="go" onClick={{ go }}>Go</button>
                     <div id="children">
                         <Card title={{ xss }}>

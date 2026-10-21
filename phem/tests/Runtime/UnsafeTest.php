@@ -37,6 +37,25 @@ final class UnsafeTest extends TestCase
         self::assertStringContainsString('<a onclick="track()" id="spread" title="ok">link</a>', $html, 'the static onclick stays; the invalid name and the onclick of the data are not rendered');
     }
 
+    /**
+     * A `javascript:` URL from data runs as a script when the user clicks the element. React
+     * blocks it in a URL attribute (`href`, `src`, `action`, `formAction`, ...), also with
+     * another case, spaces at the ends, or a tab in the scheme, as the browser parses the URL.
+     */
+    public function testUrlOfDataRunsNoScript(): void
+    {
+        $html = (string) $this->request('GET', '/unsafe')->getContent();
+
+        foreach (['website' => 'href', 'quoted' => 'href', 'link' => 'href', 'action' => 'formaction'] as $id => $attribute) {
+            self::assertSame(1, preg_match('/<[a-z]+ id="'.$id.'"[^>]*>/', $html, $m), $id);
+            if (1 !== preg_match('/\s'.$attribute.'="([^"]*)"/', $m[0], $value)) {
+                continue;
+            }
+            $url = str_replace(["\t", "\n", "\r"], '', trim(html_entity_decode($value[1], \ENT_QUOTES | \ENT_HTML5), "\x00..\x20"));
+            self::assertDoesNotMatchRegularExpression('/^javascript:/i', $url, \sprintf('the %s of #%s is a script: %s', $attribute, $id, $m[0]));
+        }
+    }
+
     public function testDataInTheTagOfAChildComponentIsText(): void
     {
         $html = (string) $this->request('GET', '/unsafe')->getContent();

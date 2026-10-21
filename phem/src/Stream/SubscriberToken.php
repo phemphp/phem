@@ -18,6 +18,9 @@ namespace Phem\Stream;
  * `subscribe` action on a list of topics, in the `authorization_details` claim of the modern
  * Mercure protocol. The hub checks the issuer (`iss`), the audience (`aud`, the URL of the hub)
  * and the expiry (`exp`), and it closes a subscription when its token expires.
+ *
+ * Each topic has its own expiry (a grant, see Subscription), in the `phem_exp` claim: the hub
+ * ignores it. The token expires with its first topic.
  */
 final class SubscriberToken
 {
@@ -36,27 +39,41 @@ final class SubscriberToken
     }
 
     /**
+     * Each topic expires in the time of a token from now: the topics of a page that passed its
+     * access rules.
+     *
      * @param list<string> $topics
-     * @param string       $audience the URL of the hub, as the browser connects to it
-     * @param string       $subject  who the token is for (see Subscription): a token of another subject gives no topics
+     *
+     * @return array<string, int> topic => expiry (a Unix time)
      */
-    public function create(array $topics, string $audience, string $subject = 'phem'): string
+    public function grant(array $topics): array
     {
-        $now = time();
+        return array_fill_keys($topics, time() + $this->ttl);
+    }
+
+    /**
+     * @param array<string, int> $grants   topic => expiry (see grant()): the token expires with its first topic
+     * @param string             $audience the URL of the hub, as the browser connects to it
+     * @param string             $subject  who the token is for (see Subscription): a token of another subject gives no topics
+     */
+    public function create(array $grants, string $audience, string $subject = 'phem'): string
+    {
+        $topics = array_map(strval(...), array_keys($grants));
         $header = self::encode(['alg' => 'HS256', 'typ' => 'at+jwt']);
         $claims = self::encode([
             'iss' => $this->issuer,
             'aud' => $audience,
             'sub' => $subject,
             'client_id' => 'phem',
-            'iat' => $now,
-            'exp' => $now + $this->ttl,
+            'iat' => time(),
+            'exp' => [] !== $grants ? min($grants) : time() + $this->ttl,
             'jti' => bin2hex(random_bytes(16)),
             'authorization_details' => [[
                 'type' => self::DETAIL,
                 'actions' => ['subscribe'],
                 'topics' => array_map(static fn (string $topic): array => ['match' => $topic], $topics),
             ]],
+            'phem_exp' => array_values($grants),
         ]);
 
         return $header.'.'.$claims.'.'.$this->sign($header.'.'.$claims);
@@ -69,7 +86,18 @@ final class SubscriberToken
      */
     public function topics(string $token, string $audience, string $subject = 'phem'): array
     {
-        return $this->claims($token, $audience, $subject)['topics'] ?? [];
+        return array_map(strval(...), array_keys($this->grants($token, $audience, $subject)));
+    }
+
+    /**
+     * The topics of a valid token (see topics()) with their expiry. A topic with no expiry of
+     * its own expires with the token.
+     *
+     * @return array<string, int> topic => expiry (a Unix time)
+     */
+    public function grants(string $token, string $audience, string $subject = 'phem'): array
+    {
+        return $this->claims($token, $audience, $subject)['grants'] ?? [];
     }
 
     /** Whether a valid token lives for more than half of its time: it does not need a renewal. */
@@ -77,10 +105,16 @@ final class SubscriberToken
     {
         $claims = $this->claims($token, $audience, $subject);
 
-        return null !== $claims && $claims['exp'] - time() > intdiv($this->ttl, 2);
+        return null !== $claims && $this->isFreshExpiry($claims['exp']);
     }
 
-    /** @return array{topics: list<string>, exp: int}|null */
+    /** Whether an expiry is more than half of the time of a token from now. */
+    public function isFreshExpiry(int $expiry): bool
+    {
+        return $expiry - time() > intdiv($this->ttl, 2);
+    }
+
+    /** @return array{grants: array<string, int>, exp: int}|null */
     private function claims(string $token, string $audience, string $subject): ?array
     {
         $parts = explode('.', $token);
@@ -91,16 +125,20 @@ final class SubscriberToken
         if (!\is_array($claims) || ($claims['iss'] ?? null) !== $this->issuer || ($claims['aud'] ?? null) !== $audience || ($claims['sub'] ?? null) !== $subject || !\is_int($claims['exp'] ?? null) || $claims['exp'] <= time()) {
             return null;
         }
-        $topics = [];
+        $expiries = \is_array($claims['phem_exp'] ?? null) ? array_values($claims['phem_exp']) : [];
+        $grants = [];
+        $i = 0;
         foreach ((array) ($claims['authorization_details'] ?? []) as $detail) {
             foreach (\is_array($detail) ? (array) ($detail['topics'] ?? []) : [] as $topic) {
                 if (\is_array($topic) && \is_string($topic['match'] ?? null)) {
-                    $topics[] = $topic['match'];
+                    $expiry = $expiries[$i] ?? null;
+                    $grants[$topic['match']] = \is_int($expiry) ? $expiry : $claims['exp'];
                 }
+                ++$i;
             }
         }
 
-        return ['topics' => $topics, 'exp' => $claims['exp']];
+        return ['grants' => $grants, 'exp' => $claims['exp']];
     }
 
     private function sign(string $data): string

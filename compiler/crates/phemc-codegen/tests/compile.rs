@@ -69,6 +69,20 @@ fn passes_the_variables_of_extension_tags() {
     assert_eq!(codes, ["E030"]);
 }
 
+#[test]
+fn a_quoted_url_with_an_expression_goes_through_phem_attr() {
+    // phem_attr() drops a `javascript:` URL: the URL can come from data.
+    let src = "<?phpm\nfunction App() { $url = ''; $id = 1;\n    return <form action=\"{{ url }}\"><a href=\"{{ url }}\" HREF=\"/items/{{ id }}\" title=\"{{ url }}\">x</a><img src=\"/a.png\" /><button formAction=\" {{ url }}\">y</button></form>;\n}\n";
+    let (out, diags) = compile(vec![SourceInput { rel: "App.phpm".into(), text: src.into() }]);
+    assert!(diags.iter().all(|f| f.diags.is_empty()), "unexpected diagnostics");
+    let twig = &out.expect("output").files[0].templates[0].content;
+    for expected in ["{{ phem_attr('action', '' ~ (url)) }}", "{{ phem_attr('href', '' ~ (url)) }}", "{{ phem_attr('HREF', '/items/' ~ (id)) }}", "{{ phem_attr('formAction', ' ' ~ (url)) }}"] {
+        assert!(twig.contains(expected), "{expected} in {twig}");
+    }
+    assert!(twig.contains(r#"title="{{ url }}""#), "another attribute keeps its Twig: {twig}");
+    assert!(twig.contains(r#"src="/a.png""#), "a static URL keeps its text: {twig}");
+}
+
 fn codes(src: &str) -> Vec<&'static str> {
     let (_, diags) = compile(vec![SourceInput { rel: "App.phpm".into(), text: src.into() }]);
     diags.iter().flat_map(|f| f.diags.iter().map(|d| d.code)).collect()
