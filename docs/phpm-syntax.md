@@ -1355,6 +1355,127 @@ final class Dashboard
 [Content that loads after the page](#content-that-loads-after-the-page)). But its status stays
 failed, and the `<ErrorBoundary>` tries again on each render.
 
+### Real-time updates
+
+A change by one user does not show for another user until that user sends an event. A page with
+`#[Subscribe]` gets the Turbo Streams of other requests: a handler (or any service) pushes them
+with `Phem\Stream\Streams`, and the Mercure hub of FrankenPHP sends them to the open pages.
+
+```php
+use Phem\Attribute\{Component, Page, State, Subscribe};
+use Phem\Stream\Streams;
+
+#[Page('/guestbook'), Subscribe]
+final class Guestbook
+{
+    // ... renders <SignForm />, <GuestbookStats /> (id="guestbook-stats") and <ul id="entries">
+}
+
+#[Component]
+final class SignForm
+{
+    #[State] public string $message = '';
+
+    public function __construct(
+        private readonly GuestbookRepository $repository,
+        private readonly Streams $streams,
+    ) {
+    }
+
+    public function sign(): void
+    {
+        $entry = new Entry($this->message);
+        $this->repository->add($entry);
+        $this->message = '';
+
+        $this->streams->to(Guestbook::class)
+            ->prepend('entries', <GuestbookEntry entry={{ entry }} />)
+            ->refresh('guestbook-stats');
+    }
+    // ...
+}
+```
+
+- `to(Page::class)` names all the URLs of a page. `to(Page::class, ['id' => 42])` names one URL:
+  give all the `#[Path]` route values of the page, as the URL has them. `everywhere()` names all
+  the pages with `#[Subscribe]`, for a part of the layout. A class with no `#[Subscribe]` throws.
+- Each action takes the `id` of the target element: `append`, `prepend`, `before`, `after`,
+  `replace`, `update` and `remove`, as in Turbo. `replace` and `update` morph by default
+  (`morph: false` turns it off), so the focus, a bound field that the user changes, and the
+  client attributes (`data-phem-client`) stay.
+- The markup is **plain markup**: it renders at once, outside the page, with the data of now. A
+  component in it renders with no `<phem-c>`. An event handler, a `phem:bind`, a `phem:loading`
+  or a `<Suspense>` in it throws: no page has its fiber.
+- **`refresh($target)`** renders the component around the target again in each browser, with a
+  normal event, with its subtree. Use it for interactive content, and for data that depends on
+  the user: each browser sends its own request, with its access rules and its state. As after
+  `$e->refresh()`, a component with no `#[State]` reads its data again in `mount()`, and a
+  `#[State]` keeps the value of the browser. So put the data that a push changes in a component
+  with no `#[State]`, and give it as a prop to a child with the state of the UI (an open panel).
+  The browser sends one event for all the refreshes that come together, and none for a target
+  that the page does not show.
+- In the root element, the browser marks the component around each target as **stale**: its
+  element is not the last render of the server any more. The next event sends the stale
+  components, and the server renders them again with their full subtree, so the state of the
+  page knows the change. When a stale component is not in the page any more, its parent renders.
+- Before an `append` or a `prepend`, the browser removes an element of the target with the id of
+  a new element. So give each pushed item an `id`: the user who made the change gets the push
+  too, and sees the item one time.
+- While an event runs, the pushes wait, and they come after its morph.
+- The streams go to the hub at the end of the request, after the transaction of the event: a
+  refresh reads the new data. When a handler throws (also when the commit fails), its streams are
+  dropped. In a long process (a command), call `$streams->flush()`.
+- The same markup goes to all the viewers of the page: do not push data for one user only. Push
+  a `refresh()` instead.
+- A stream outside the root element (`#phem-root`) is plain Turbo.
+
+The page opens one connection to the hub, for its topics: the page, the page with its route
+values, and the topic of `everywhere()`. Phem publishes with `mercure_publish()` of FrankenPHP:
+no HTTP request, and no publisher key. Add the hub to the site of the Caddyfile:
+
+```caddyfile
+mercure {
+    transport local
+    issuer phem {
+        subscriber {
+            jwt {$MERCURE_SUBSCRIBER_JWT_KEY}
+        }
+    }
+}
+```
+
+```yaml
+# config/packages/phem.yaml
+phem:
+    mercure:
+        subscriber_key: '%env(MERCURE_SUBSCRIBER_JWT_KEY)%'
+        # hub_url: '/.well-known/mercure'
+        # issuer: 'phem'
+        # cookie_name: '__Secure-mercure_access_token'
+```
+
+With the subscriber key, the updates are private. Each page response sets the cookie of the hub
+with an access token for the topics of the page. The topics of the other tabs of the same
+session stay in it: after a logout or a login, they go. An event renews the token when it lived
+half of its time. The page passed its access rules, so the viewer can see what the server
+renders for its topics. With no key, the updates are public, and the hub needs the `anonymous`
+directive. The `local` transport has no history: after a lost connection, the browser refreshes
+the content of the root element, because the updates of that time are lost. When the hub refuses
+the connection (an expired token), the browser sends a refresh, which renews the token, and
+connects again.
+
+- The token is for the URL of the hub that the browser connects to. Behind a proxy that ends
+  TLS, configure the trusted proxies of Symfony, or set an absolute `hub_url`.
+- The cookie is `Secure`: a browser keeps it on HTTPS and on localhost. On another plain HTTP host
+  (`http://app.test`), set `cookie_name` (and the `cookie_name` of the hub) to a name with no
+  `__Secure-` prefix. Phem logs a warning.
+- When `mercure_publish()` does not exist (no FrankenPHP), or the publish fails, the logger gets
+  the error, and the response does not change.
+
+The Symfony profiler shows the streams that a request pushed, and the stale components of an
+event. `phemc` reports E053 for `#[Subscribe]` on a class that is not a page. The tests get the
+pushes with `receive()` (see [Testing](testing.md#actions)).
+
 ## 9. Props and lifting state up
 
 The props of a function component (a function with `#[Component]`) are its named parameters.

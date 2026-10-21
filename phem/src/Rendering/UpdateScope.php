@@ -26,7 +26,7 @@ use Phem\State\TreeShape;
  * output depends only on the props and the state.
  *
  * A child always renders when the first pass did not get to it (its parent was not on a path),
- * and when it is a class component with no #[State] and a mount(): mount() runs each time that
+ * when it is in the subtree of a stale fiber (see Tree::markStale()), and when it is a class component with no #[State] and a mount(): mount() runs each time that
  * it renders, so its output can depend on services.
  *
  * A context propagates, as in React: when a provider above a child renders in this pass and its
@@ -51,6 +51,7 @@ final class UpdateScope implements RenderScope
     {
         $fiber->propagated = false;
         if (isset($this->dirty[$fiber->id])
+            || $fiber->refreshed
             || !$this->before->has($fiber->id)
             || null === $previous
             || $this->metadata->mountsEachRender($fiber->fqcn)

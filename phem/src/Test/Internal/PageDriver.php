@@ -76,7 +76,7 @@ final class PageDriver implements Driver
         return true;
     }
 
-    public function dispatch(?string $handler, array $event, array $bound = []): EventResult
+    public function dispatch(?string $handler, array $event, array $bound = [], array $stale = []): EventResult
     {
         if ('' === $this->signature) {
             throw new \LogicException(\sprintf('The response of "%s" is not a page with a state (status %d): it has no events.', $this->uri, $this->status));
@@ -86,9 +86,9 @@ final class PageDriver implements Driver
         unset($event['files']);
         // As the browser: only the signature, and the state again when the server does not have
         // it. An event with files always sends the state.
-        $response = $this->post($handler, $event, $bound, $files, [] !== $files);
+        $response = $this->post($handler, $event, $bound, $files, [] !== $files, $stale);
         if ([] === $files && 409 === $response->getStatusCode() && '{"state":"required"}' === $response->getContent()) {
-            $response = $this->post($handler, $event, $bound, $files, true);
+            $response = $this->post($handler, $event, $bound, $files, true, $stale);
         }
         if (409 === $response->getStatusCode()) {
             return EventResult::reload();
@@ -117,11 +117,12 @@ final class PageDriver implements Driver
      * @param array<string, mixed>              $event
      * @param array<string, mixed>              $bound
      * @param list<array{0: string, 1: string}> $files [field name, path] pairs
+     * @param list<string>                      $stale
      */
-    private function post(?string $handler, array $event, array $bound, array $files, bool $withState): Response
+    private function post(?string $handler, array $event, array $bound, array $files, bool $withState, array $stale = []): Response
     {
         $state = $withState ? ['state' => $this->state] : [];
-        $body = json_encode($state + ['signature' => $this->signature, 'handler' => $handler, 'event' => $event, 'bound' => (object) $bound], \JSON_THROW_ON_ERROR);
+        $body = json_encode($state + ['signature' => $this->signature, 'handler' => $handler, 'event' => $event, 'bound' => (object) $bound] + ([] !== $stale ? ['stale' => $stale] : []), \JSON_THROW_ON_ERROR);
         $server = [
             'HTTP_ACCEPT' => 'application/json',
             'HTTP_X_PHEM_EVENT' => '1',

@@ -76,6 +76,7 @@ element. The answer of the server morphs the components that changed.
 | `focus($selector)`, `blur($selector)` | `onFocus`, `onBlur` | `->focus('input')` |
 | `fire($selector, $type, $event)` | any DOM event | `->fire('div', 'click', ['value' => 'x'])` |
 | `load($selector)` | the load of a `<Suspense>` boundary | `->load()`, `->load('#report')` |
+| `receive()` | the pushes of other requests (a page with `#[Subscribe]`) | `$other->receive()->assertSee('Hi')` |
 
 The value of `change()` and `fill()`:
 
@@ -105,6 +106,19 @@ $this->visit('/dashboard')
     ->assertSee('North: 1200 €');
 ```
 
+A page with `#[Subscribe]` gets the pushes of `Phem\Stream\Streams` with `receive()`: the
+updates of its topics since its render, or since the last `receive()`. In the tests
+(`framework.test: true`), the streams go to memory, not to a Mercure hub. A stream marks the
+component around its target as stale, and the next event sends it, as in a browser. A `refresh()`
+sends one event with no handler. Open the page two times, as two tabs:
+
+```php
+$other = $this->visit('/guestbook');
+$this->visit('/guestbook')->fill('[name=message]', 'Hi')->click('button');
+
+$other->receive()->assertSee('Hi');
+```
+
 An action fails when it cannot work in a browser:
 
 - no element matches the selector;
@@ -112,6 +126,7 @@ An action fails when it cannot work in a browser:
 - no handler gets the event;
 - the form has no field with the name, or the select has no option with the value;
 - `load()` finds no boundary that shows its fallback;
+- `receive()` gets a page with no `#[Subscribe]`;
 - `upload()` gets an element that is not a file input, more than one path for an input with no
   `multiple` attribute, or a file that does not exist.
 

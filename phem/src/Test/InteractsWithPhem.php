@@ -14,12 +14,14 @@ declare(strict_types=1);
 namespace Phem\Test;
 
 use Phem\BrowserEventDispatcher;
+use Phem\DependencyInjection\TestPublisherPass;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Rendering\EventRenderer;
 use Phem\Rendering\Renderer;
 use Phem\State\StateAccessor;
 use Phem\State\StateCodec;
 use Phem\State\UrlQuery;
+use Phem\Stream\MemoryPublisher;
 use Phem\Test\Internal\ComponentDriver;
 use Phem\Test\Internal\PageDriver;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -113,8 +115,10 @@ trait InteractsWithPhem
     {
         $dispatcher = static::getContainer()->get('event_dispatcher');
         \assert($dispatcher instanceof EventDispatcherInterface && null !== static::$kernel);
+        $publisher = static::getContainer()->get(TestPublisherPass::ID);
+        $updates = $publisher instanceof MemoryPublisher ? $publisher->updates(...) : null;
         $driver = new PageDriver(static::$kernel, $dispatcher, $uri, $server, $cookies);
 
-        return new ComponentTester($driver, fn (string $url): ComponentTester => $this->visitWithCookies($url, $server, $driver->cookies()));
+        return new ComponentTester($driver, fn (string $url): ComponentTester => $this->visitWithCookies($url, $server, $driver->cookies()), $updates);
     }
 }

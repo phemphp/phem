@@ -34,15 +34,16 @@ final class TemplateComponentRenderer
      * $template) renders, not $template: its slot blocks print the slot props, so each slot
      * renders once. With block inheritance, a slot that the template tests renders two times.
      *
-     * @param array<string, mixed> $props
-     * @param array<string, mixed> $caller the Twig context of the caller (for slots)
-     * @param list<string>         $slots  the slots that the caller gives
+     * @param array<string, mixed>   $props
+     * @param array<string, mixed>   $caller the Twig context of the caller (for slots)
+     * @param list<string>           $slots  the slots that the caller gives
+     * @param (\Closure(): int)|null $pass   the render pass now (see Phem\Slot)
      */
-    public function render(Template $template, string $fqcn, array $props, mixed $key, array $caller, array $slots = []): string
+    public function render(Template $template, string $fqcn, array $props, mixed $key, array $caller, array $slots = [], ?\Closure $pass = null): string
     {
         $given = [];
         foreach ($slots as $name) {
-            $given[$name] = new Slot(static fn (): string => $template->renderBlock($name, ['_phem_caller' => $caller]));
+            $given[$name] = new Slot(static fn (): string => $template->renderBlock($name, ['_phem_caller' => $caller]), $pass);
         }
         $vars = $this->props->templateContext($fqcn, $props, $given);
         $vars['_phem_caller'] = $caller;

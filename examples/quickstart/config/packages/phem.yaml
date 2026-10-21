@@ -1,4 +1,8 @@
-# All options have these defaults. phemc reads src/ and writes var/cache/phem/.
+# phemc reads src/ and writes var/cache/phem/ (the defaults).
 phem:
     source_dir: '%kernel.project_dir%/src'
     build_dir: '%kernel.project_dir%/var/cache/phem'
+    # The Mercure hub of FrankenPHP (see the Caddyfile), for the pages with #[Subscribe]. With
+    # the subscriber key, the updates are private: each page gets an access token for its topics.
+    mercure:
+        subscriber_key: '%env(MERCURE_SUBSCRIBER_JWT_KEY)%'

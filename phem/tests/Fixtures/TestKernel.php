@@ -93,6 +93,7 @@ final class TestKernel extends Kernel
             ->set('controller.expression_language', ExpressionLanguage::class)
             ->set(Limits::class)->autowire()
             ->set(Announcer::class)->autowire()
+            ->set(Guestbook::class)
             ->set(AccessListener::class)
                 ->tag('kernel.event_listener', ['event' => 'kernel.request', 'method' => 'onKernelRequest', 'priority' => 8])
                 ->tag('kernel.event_listener', ['event' => 'kernel.controller_arguments', 'method' => 'onKernelControllerArguments'])

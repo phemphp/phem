@@ -21,6 +21,7 @@ use Phem\Html;
 use Phem\Manifest\ComponentDefinition;
 use Phem\Manifest\Manifest;
 use Phem\Metadata\ComponentMetadata;
+use Phem\Node;
 use Phem\Root;
 use Phem\Slot;
 use Symfony\Contracts\Service\ResetInterface;
@@ -40,6 +41,10 @@ final class Renderer implements ResetInterface
 {
     private ?Tree $tree = null;
     private ?RenderScope $scope = null;
+    /** The render pass now: each render(), rerender() and detached() starts one (see Phem\Slot). */
+    private int $pass = 0;
+    /** The number of the passes so far: each pass has its own number. */
+    private int $passes = 0;
 
     /**
      * @param iterable<ComponentRenderer> $renderers
@@ -64,6 +69,7 @@ final class Renderer implements ResetInterface
     public function render(Tree $tree, ?RenderScope $scope = null): string
     {
         $tree->begin();
+        $this->pass = ++$this->passes;
 
         return $this->within($tree, fn (): string => $this->renderComponent($tree, $tree->page, $tree->props, null, null, []), $scope);
     }
@@ -78,8 +84,10 @@ final class Renderer implements ResetInterface
     public function rerender(Tree $tree, array $fibers, RenderScope $scope): void
     {
         $tree->begin();
+        $this->pass = ++$this->passes;
         $this->within($tree, function () use ($tree, $fibers): void {
             foreach ($fibers as $fiber) {
+                $fiber->refreshed = $tree->refreshes($fiber);
                 $this->renderFiber($tree, $fiber, $this->manifest->component($fiber->fqcn) ?? throw new PropError(\sprintf('Unknown component "%s".', $fiber->fqcn)));
             }
         }, $scope);
@@ -93,6 +101,40 @@ final class Renderer implements ResetInterface
     public function dispatch(Tree $tree, \Closure $handler, Event $event): mixed
     {
         return $this->within($tree, fn (): mixed => $this->handlers->invoke($handler, $event));
+    }
+
+    /**
+     * Renders markup outside the page, for a push (see Phem\Stream\Streams): a component in it
+     * renders with no `<phem-c>`, because the pages that get it have their own fibers. An event
+     * handler, a `phem:bind`, a `phem:loading` and a `<Suspense>` throw: they need a fiber of
+     * the page.
+     */
+    public function detached(Node $markup): string
+    {
+        $tree = new Tree(detached: true);
+        $tree->begin();
+        // Its own pass, inside the pass of the page (a push in mount()): the slots of the page
+        // render one time in the pass of the page.
+        $pass = $this->pass;
+        $this->pass = ++$this->passes;
+        try {
+            $html = $this->within($tree, fn (): string => $this->markup->html($markup));
+        } finally {
+            $this->pass = $pass;
+        }
+        // Markup that rendered in the page before (a slot) has the fibers and the handlers of
+        // this page.
+        if (1 === preg_match('/<phem-c[\s>]|\sdata-phem-(?:on-[\w-]+|bind|load|loading|progress)=/', $html)) {
+            $this->notDetached('a component or a handler of this page (markup that rendered in the page before, such as a slot)', true);
+        }
+
+        return $html;
+    }
+
+    /** The render pass now (see Phem\Slot). */
+    public function pass(): int
+    {
+        return $this->pass;
     }
 
     public function reset(): void
@@ -124,6 +166,8 @@ final class Renderer implements ResetInterface
     /** Registers an event handler of the current fiber. Null outside a page. */
     public function addHandler(\Closure $handler): ?string
     {
+        $this->notDetached('an event handler');
+
         return $this->tree?->addHandler($handler, $this->fingerprints->of($handler));
     }
 
@@ -140,6 +184,7 @@ final class Renderer implements ResetInterface
      */
     public function addBind(string|array $target, ?object $owner = null): ?string
     {
+        $this->notDetached('a "phem:bind"');
         $path = \is_array($target) ? $target : [$target];
         $property = array_shift($path);
         if (!\is_string($property)) {
@@ -197,10 +242,19 @@ final class Renderer implements ResetInterface
     /** The scope of a handler for `phem:loading` (see Tree::handlerScope()). */
     public function handlerScope(\Closure $handler): ?string
     {
+        $this->notDetached('a "phem:loading" or a "phem:progress"');
+
         return $this->tree?->handlerScope($this->fingerprints->of($handler));
     }
 
     // -------------------------------------------------------------------------------------
+
+    private function notDetached(string $what, bool $always = false): void
+    {
+        if ($always || (null !== $this->tree && $this->tree->detached)) {
+            throw new \LogicException(\sprintf('A pushed stream is plain markup, but it has %s: it renders outside the page, so the browser cannot send its events. Push a refresh() of the component instead: each browser renders it again with a normal event.', $what));
+        }
+    }
 
     /**
      * @template T
@@ -249,6 +303,7 @@ final class Renderer implements ResetInterface
         if (null !== $parent) {
             $parent->children[] = $fiber;
         }
+        $fiber->refreshed = $tree->refreshes($fiber);
 
         if (null !== $this->scope && !$this->scope->renders($fiber, $previous)) {
             $fiber->begin($tree->pass);
@@ -267,6 +322,9 @@ final class Renderer implements ResetInterface
         }
 
         $this->renderFiber($tree, $fiber, $def);
+        if ($tree->detached) {
+            return $fiber->html;
+        }
 
         return $root ? RootElement::render($props, $tree->rootToken(), $fiber->wrapped()) : $fiber->output();
     }
@@ -348,7 +406,7 @@ final class Renderer implements ResetInterface
         $caller = $fiber->caller;
         $out = [];
         foreach ($template->getBlockNames([]) as $name) {
-            $out[$name] = new Slot(static fn (): string => $template->renderBlock($name, ['_phem_caller' => $caller]));
+            $out[$name] = new Slot(static fn (): string => $template->renderBlock($name, ['_phem_caller' => $caller]), $this->pass(...));
         }
 
         return $out;

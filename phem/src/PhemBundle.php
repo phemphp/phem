@@ -15,16 +15,19 @@ namespace Phem;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Phem\DependencyInjection\ComponentPass;
+use Phem\DependencyInjection\TestPublisherPass;
 use Phem\Handler\HandlerMiddleware;
 use Phem\Handler\RateLimitMiddleware;
 use Phem\Manifest\Manifest;
 use Phem\Path\PathValueConverter;
 use Phem\Profiler\PhemDataCollector;
 use Phem\Profiler\Profile;
+use Phem\Profiler\ProfiledStreamPublisher;
 use Phem\Profiler\ProfiledTransactionRunner;
 use Phem\Profiler\ProfilerMiddleware;
 use Phem\Rendering\SkippedRenderCheck;
 use Phem\State\StateCache;
+use Phem\Stream\SubscriberToken;
 use Symfony\Component\AssetMapper\AssetMapperInterface;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
@@ -115,6 +118,28 @@ final class PhemBundle extends AbstractBundle
                     ->defaultValue(8388608)
                     ->min(0)
                 ->end()
+                ->arrayNode('mercure')
+                    ->info('The Mercure hub of FrankenPHP, for the pages with #[Subscribe] (see Phem\\Stream\\Streams)')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->scalarNode('hub_url')
+                            ->info('The URL of the hub, as the browser connects to it. It is the audience of the access token: behind a proxy that ends TLS, configure the trusted proxies, or give an absolute URL.')
+                            ->defaultValue('/.well-known/mercure')
+                        ->end()
+                        ->scalarNode('subscriber_key')
+                            ->info('The subscriber key of the hub (`issuer … { subscriber { jwt <key> } }` in the Caddyfile). With a key, the updates are private and each page gets an access token for its topics. With null, the updates are public: the hub needs the `anonymous` directive.')
+                            ->defaultNull()
+                        ->end()
+                        ->scalarNode('issuer')
+                            ->info('The issuer of the hub configuration (`issuer phem { … }`)')
+                            ->defaultValue('phem')
+                        ->end()
+                        ->scalarNode('cookie_name')
+                            ->info('The cookie of the access token (`cookie_name` of the hub)')
+                            ->defaultValue('__Secure-mercure_access_token')
+                        ->end()
+                    ->end()
+                ->end()
                 ->booleanNode('transactional')
                     ->info('Run the event handlers of all components in a Doctrine ORM transaction. Set it to false to use #[Transactional] on each component instead. Default: true when Doctrine ORM is installed and enabled.')
                     ->defaultNull()
@@ -123,7 +148,7 @@ final class PhemBundle extends AbstractBundle
     }
 
     /**
-     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, max_event_size: int, max_upload_size: int, transactional: bool|null} $config
+     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, max_event_size: int, max_upload_size: int, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string}, transactional: bool|null} $config
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
@@ -142,6 +167,18 @@ final class PhemBundle extends AbstractBundle
             ->arg(0, $config['max_event_size']);
         $container->services()->get('phem.controller.event')
             ->arg(10, $config['max_upload_size']);
+        $mercure = $config['mercure'];
+        if (null !== $mercure['subscriber_key']) {
+            // A token lives as long as a state: an older page reloads on its next event.
+            $container->services()->set('phem.subscriber_token', SubscriberToken::class)
+                ->args([$mercure['subscriber_key'], $mercure['issuer'], $config['state_max_age'] ?: 86400]);
+        }
+        $container->services()->get('phem.subscription')
+            ->arg(1, null !== $mercure['subscriber_key'] ? service('phem.subscriber_token') : null)
+            ->arg(2, $mercure['hub_url'])
+            ->arg(3, $mercure['cookie_name']);
+        $container->services()->get('phem.streams')
+            ->arg(3, null !== $mercure['subscriber_key']);
         if ($builder->getParameter('kernel.debug')) {
             // As React StrictMode: render the full page after each event, and warn when a kept
             // component changed (a render() that is not pure).
@@ -165,6 +202,9 @@ final class PhemBundle extends AbstractBundle
                     ->tag('data_collector', ['id' => 'phem', 'template' => '@Phem/Collector/phem.html.twig', 'priority' => 260])
                 ->get('phem.renderer')
                     ->arg(6, service('phem.profile'));
+            $container->services()->set('phem.stream_publisher.profiler', ProfiledStreamPublisher::class)
+                ->decorate('phem.stream_publisher')
+                ->args([service('.inner'), service('phem.profile')]);
         }
 
         $bundles = $builder->getParameter('kernel.bundles');
@@ -218,6 +258,7 @@ final class PhemBundle extends AbstractBundle
         $container->registerForAutoconfiguration(HandlerMiddleware::class)->addTag('phem.handler_middleware');
         // Before the autoconfiguration passes, so the component services are autoconfigured.
         $container->addCompilerPass(new ComponentPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 200);
+        $container->addCompilerPass(new TestPublisherPass());
     }
 
     public function boot(): void

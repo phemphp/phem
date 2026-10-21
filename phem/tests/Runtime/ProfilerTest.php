@@ -93,6 +93,22 @@ final class ProfilerTest extends TestCase
         self::assertStringContainsString('&lt;Clicker&gt;', $html);
     }
 
+    public function testThePanelShowsThePushedStreamsAndTheStaleComponents(): void
+    {
+        $html = (string) $this->request('GET', '/guestbook/lobby')->getContent();
+        self::assertSame(1, preg_match('/data-phem-state-value="([^"]*)" data-phem-signature-value="([^"]*)"/', $html, $state));
+        self::assertSame(1, preg_match('/data-phem-on-submit="([^"]+)"/', $html, $submit));
+        self::assertSame(1, preg_match('/data-phem-bind="([^"]+)"/', $html, $bind));
+        self::assertSame(1, preg_match('/<phem-c id="(phem[0-9a-f]{12})"><ul id="entries"/', $html, $entries));
+        $this->event('/guestbook/lobby', ['state' => html_entity_decode($state[1]), 'signature' => $state[2], 'handler' => $submit[1], 'event' => ['type' => 'submit'], 'bound' => [$bind[1] => 'Hi'], 'stale' => [$entries[1]]]);
+        $collector = $this->collector($this->lastResponse());
+
+        self::assertSame([$entries[1]], $collector->getStale());
+        [$update] = $collector->getStreams();
+        self::assertSame(['phem:App\Pages\GuestbookPage?room=lobby'], $update['topics']);
+        self::assertStringContainsString('<turbo-stream action="prepend" target="entries">', $update['data']);
+    }
+
     public function testAnotherRequestHasNoPanel(): void
     {
         $collector = $this->service('phem.data_collector', PhemDataCollector::class);

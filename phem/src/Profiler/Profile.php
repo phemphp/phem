@@ -21,7 +21,7 @@ use Symfony\Contracts\Service\ResetInterface;
 
 /**
  * Keeps what Phem did in one request, for the profiler panel (see PhemDataCollector): the
- * render of each fiber in each pass, the event handler, and its transaction.
+ * render of each fiber in each pass, the event handler, its transaction, and the pushed streams.
  *
  * Phem uses it only in debug mode. With the Stopwatch, the render passes, the handler and the
  * transaction also show in the Performance panel of the profiler.
@@ -38,6 +38,8 @@ final class Profile implements RenderProfiler, ResetInterface
     private ?array $handler = null;
     /** @var array{committed: bool, time: float}|null */
     private ?array $transaction = null;
+    /** @var list<array{topics: list<string>, data: string, private: bool}> the published updates (see ProfiledStreamPublisher) */
+    private array $streams = [];
 
     public function __construct(private readonly ?Stopwatch $stopwatch = null)
     {
@@ -125,6 +127,22 @@ final class Profile implements RenderProfiler, ResetInterface
         }
     }
 
+    /**
+     * Keeps an update that Phem published to the Mercure hub (see Phem\Stream\Streams).
+     *
+     * @param list<string> $topics
+     */
+    public function published(array $topics, string $data, bool $private): void
+    {
+        $this->streams[] = ['topics' => $topics, 'data' => $data, 'private' => $private];
+    }
+
+    /** @return list<array{topics: list<string>, data: string, private: bool}> */
+    public function streams(): array
+    {
+        return $this->streams;
+    }
+
     /** @return list<Tree> the trees that rendered, in their order */
     public function trees(): array
     {
@@ -171,6 +189,7 @@ final class Profile implements RenderProfiler, ResetInterface
         $this->stack = [];
         $this->handler = null;
         $this->transaction = null;
+        $this->streams = [];
     }
 
     /** `Counter::add()`, or `Counter closure` for a closure in render(). */

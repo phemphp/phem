@@ -28,6 +28,7 @@ use Phem\State\StateAccessor;
 use Phem\State\StateCache;
 use Phem\State\StateCodec;
 use Phem\State\UrlQuery;
+use Phem\Stream\Subscription;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -53,7 +54,8 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
  * the handler with that state, sets the bound values, runs the handler, renders the components
  * that can change (see EventRenderer), and answers with Turbo Streams that morph the components
  * that changed, the new state, the query of the #[Url] properties (see UrlQuery), and the
- * browser events of the handler (see BrowserEventDispatcher). When the handler returns a
+ * browser events of the handler (see BrowserEventDispatcher). The browser also sends the
+ * components whose element a push changed: they render again (see EventRenderer). When the handler returns a
  * RedirectResponse, the server answers with its URL, and the browser visits it.
  *
  * An event with the files of a form is `multipart/form-data` (see EventBody). The handler
@@ -87,6 +89,7 @@ final class EventController
         private readonly UrlQuery $url = new UrlQuery(),
         private readonly int $maxUploadSize = 8388608,
         private readonly StateCache $cache = new StateCache(),
+        private readonly ?Subscription $subscription = null,
     ) {
     }
 
@@ -147,7 +150,7 @@ final class EventController
             return self::reload();
         }
         $tree = new Tree($page, $state->fibers, $props, $state->values, shape: $state->shape);
-        $outcome = $this->events->run($tree, $payload->handler, $payload->bound, $this->dispatcher, fn (): Event => Event::fromArray($payload->event, $request, $this->dispatcher));
+        $outcome = $this->events->run($tree, $payload->handler, $payload->bound, $this->dispatcher, fn (): Event => Event::fromArray($payload->event, $request, $this->dispatcher), $payload->stale);
         if ($outcome->reload) {
             // The page changed since the browser rendered it (for example after a deploy).
             return self::reload();
@@ -157,6 +160,8 @@ final class EventController
             // events of the handler are dropped (the new page has other listeners).
             return self::json(['redirect' => self::redirectUrl($outcome->redirect)]);
         }
+        // A new access token for the hub, before the old one expires (see Subscription).
+        $this->subscription?->renew($page, $state->values, $request);
         [$json, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page, $request);
         // The next event can send only the signature (see StateCache).
         $this->cache->save($signature, $json);

@@ -25,6 +25,9 @@ pub const ATTR_PATH: &str = "Phem\\Attribute\\Path";
 /// The Phem page attribute: it exposes a class as a page (it extends `Route`). The class is a
 /// component, with no `#[Component]`.
 pub const ATTR_PAGE: &str = "Phem\\Attribute\\Page";
+/// A page that gets the Turbo Streams of other requests (`Phem\Stream\Streams`). Only a page can
+/// have it: each page opens its own connection to the Mercure hub.
+pub const ATTR_SUBSCRIBE: &str = "Phem\\Attribute\\Subscribe";
 /// The Symfony route attribute: it exposes a class component as a page too.
 pub const ATTR_ROUTE: &str = "Symfony\\Component\\Routing\\Attribute\\Route";
 /// The built-in root element of a page: `<Root tag="main">{{ children }}</Root>` in the document
@@ -285,6 +288,12 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
                     .with_help("a page is a class with `#[Page]` and a `render()` method"),
             );
         }
+    }
+    for (fqn, span) in &file.subscribes {
+        diags.push(
+            Diagnostic::error(codes::SUBSCRIBE_NOT_PAGE, format!("`#[Subscribe]` must mark a page, and `{fqn}` is not one"), *span)
+                .with_help("a page opens the connection to the Mercure hub: put `#[Subscribe]` next to `#[Page]`"),
+        );
     }
     for (short, expected, resolved, span) in &file.foreign_attrs {
         diags.push(

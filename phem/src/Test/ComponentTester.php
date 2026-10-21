@@ -15,6 +15,7 @@ namespace Phem\Test;
 
 use Dom\Element;
 use Dom\HTMLDocument;
+use Phem\Stream\Stream;
 use Phem\Test\Internal\Driver;
 use Phem\Test\Internal\EventResult;
 use PHPUnit\Framework\Assert;
@@ -59,16 +60,28 @@ final class ComponentTester
      * @var array<string, list<string>>
      */
     private array $selected = [];
+    /**
+     * The components whose element a push changed: the next event sends them (see receive()).
+     *
+     * @var array<string, true>
+     */
+    private array $stale = [];
+    /** The number of the published updates that the page saw. */
+    private int $seen;
 
     /**
-     * @param \Closure(string): self|null $visit opens a URL (for followRedirect())
+     * @param \Closure(string): self|null                                      $visit   opens a URL (for followRedirect())
+     * @param \Closure(): list<array{topics: list<string>, data: string}>|null $updates the published updates (see Phem\Stream\MemoryPublisher)
      *
      * @internal use InteractsWithPhem::mount() or InteractsWithPhem::visit()
      */
     public function __construct(
         private readonly Driver $driver,
         private readonly ?\Closure $visit = null,
+        private readonly ?\Closure $updates = null,
     ) {
+        // The page gets the updates that come after its render.
+        $this->seen = null !== $updates ? \count($updates()) : 0;
         $html = $driver->html();
         $this->document = HTMLDocument::createFromString($driver->isDocument() ? $html : '<!DOCTYPE html><html><head></head><body>'.$html.'</body></html>', \LIBXML_NOERROR, 'UTF-8');
         $this->status = $driver->status();
@@ -247,6 +260,47 @@ final class ComponentTester
         $event = ['type' => 'load', 'value' => null, 'checked' => null, 'key' => null, 'form' => null];
 
         return $this->send(...array_map(static fn (Element $boundary): array => [(string) $boundary->getAttribute('data-phem-load'), $event], $boundaries));
+    }
+
+    /**
+     * Gets the pushes of other requests (see Phem\Stream\Streams), as the `phem` Stimulus
+     * controller does: the updates of the topics of the page since its render or the last
+     * receive(). A stream in the root element marks the component around its target as stale, and
+     * the next event sends it. A `refresh()` sends one event with no handler. Before an `append`
+     * or a `prepend`, an element of the target with the id of a new element is removed. A page
+     * with #[Subscribe] only:
+     *
+     *     $other = $this->visit('/guestbook');
+     *     $this->visit('/guestbook')->fill('textarea', 'Hi')->click('button');
+     *     $other->receive()->assertSee('Hi');
+     */
+    public function receive(): self
+    {
+        $source = $this->document->querySelector('[data-phem-stream-value]');
+        if (null === $source || null === $this->updates) {
+            Assert::fail(\sprintf('The page has no #[Subscribe]: it gets no pushes. %s', $this->context()));
+        }
+        $topics = [];
+        foreach (explode('&', (string) parse_url((string) $source->getAttribute('data-phem-stream-value'), \PHP_URL_QUERY)) as $pair) {
+            [$name, $value] = explode('=', $pair, 2) + [1 => ''];
+            if ('match' === $name) {
+                $topics[] = rawurldecode($value);
+            }
+        }
+        $updates = ($this->updates)();
+        $refresh = false;
+        foreach (\array_slice($updates, $this->seen) as $update) {
+            if ([] !== array_intersect($update['topics'], $topics)) {
+                $refresh = $this->push($update['data']) || $refresh;
+            }
+        }
+        $this->seen = \count($updates);
+        $this->dispatched = [];
+        if ($refresh && [] !== $this->stale) {
+            return $this->send([null, ['type' => 'refresh', 'value' => null, 'checked' => null, 'key' => null, 'form' => null, 'refresh' => true]]);
+        }
+
+        return $this;
     }
 
     /** Opens the URL of the last redirect (a page only). */
@@ -480,7 +534,8 @@ final class ComponentTester
         $this->dispatched = [];
         foreach ($events as [$handler, $event]) {
             $bound = array_map(self::boundValue(...), array_map(static fn (array $fields): array => array_column($fields, 0), $this->edited));
-            $result = $this->driver->dispatch($handler, $event, $bound);
+            $stale = array_keys($this->stale);
+            $result = $this->driver->dispatch($handler, $event, $bound, $stale);
             $this->status = $result->status;
             $this->redirect = $result->redirect;
             $this->reload = $result->reload;
@@ -490,6 +545,7 @@ final class ComponentTester
                 $this->dispatched = [];
                 break;
             }
+            $this->stale = array_diff_key($this->stale, array_flip($stale));
             $this->morph($result);
             foreach ($this->edited as $fields) {
                 foreach ($fields as [$field, $restore]) {
@@ -503,6 +559,75 @@ final class ComponentTester
         }
 
         return $this;
+    }
+
+    /**
+     * Renders the Turbo Streams of a push (see receive()). Returns whether a stream is a refresh
+     * of a component of the page.
+     */
+    private function push(string $data): bool
+    {
+        $message = HTMLDocument::createFromString('<!DOCTYPE html><html><head></head><body>'.$data.'</body></html>', \LIBXML_NOERROR, 'UTF-8');
+        $refresh = false;
+        foreach ($message->querySelectorAll('turbo-stream') as $stream) {
+            $action = (string) $stream->getAttribute('action');
+            $target = $this->document->getElementById((string) $stream->getAttribute('target'));
+            if (null === $target) {
+                continue;
+            }
+            $template = $stream->querySelector('template');
+            $nodes = null !== $template ? $this->nodes($template->innerHTML) : [];
+            if (Stream::REFRESH === $action) {
+                $refresh = $this->markStale($target) || $refresh;
+                continue;
+            }
+            $this->markStale(\in_array($action, ['remove', 'replace', 'before', 'after'], true) ? $target->parentElement : $target);
+            if ('append' === $action || 'prepend' === $action) {
+                foreach ($nodes as $node) {
+                    $old = $node instanceof Element && '' !== $node->id ? $this->document->getElementById($node->id) : null;
+                    if (null !== $old && $target->contains($old)) {
+                        $old->remove();
+                    }
+                }
+            }
+            match ($action) {
+                'append' => $target->append(...$nodes),
+                'prepend' => $target->prepend(...$nodes),
+                'before' => $target->before(...$nodes),
+                'after' => $target->after(...$nodes),
+                'replace' => $target->replaceWith(...$nodes),
+                'update' => $target->replaceChildren(...$nodes),
+                'remove' => $target->remove(),
+                default => Assert::fail(\sprintf('A push has the Turbo Stream action "%s", which the tests do not know.', $action)),
+            };
+        }
+
+        return $refresh;
+    }
+
+    /** Marks the component around an element as stale. Returns false when the element is not in a component. */
+    private function markStale(?Element $element): bool
+    {
+        $component = $element?->closest('phem-c');
+        if (null === $component) {
+            return false;
+        }
+        $this->stale[$component->id] = true;
+
+        return true;
+    }
+
+    /**
+     * The nodes of an HTML fragment, in the document of the page.
+     *
+     * @return list<\Dom\Node>
+     */
+    private function nodes(string $html): array
+    {
+        $container = $this->document->createElement('div');
+        $container->innerHTML = $html;
+
+        return iterator_to_array($container->childNodes, false);
     }
 
     private function morph(EventResult $result): void

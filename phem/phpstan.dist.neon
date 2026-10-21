@@ -8,6 +8,9 @@ parameters:
         - src
         - config
         - tests
+    # mercure_publish() of the FrankenPHP SAPI (see Phem\Stream\FrankenPhpPublisher).
+    scanFiles:
+        - stubs/frankenphp.php
     excludePaths:
         - tests/Fixtures/app/var
     # The runtime supports Symfony 7.4 and later: do not read the version of the installed one.

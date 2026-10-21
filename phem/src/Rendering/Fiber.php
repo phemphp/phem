@@ -53,6 +53,8 @@ final class Fiber
      * around the root element, so it has no `<phem-c>` and the events do not update it.
      */
     public bool $holdsRoot = false;
+    /** The fiber or an ancestor is stale (see Tree::markStale()): it renders in this pass. */
+    public bool $refreshed = false;
     /**
      * The contexts that the fiber read in this pass: type => the id of the provider fiber (see
      * ContextResolver). A fiber that read a context is a consumer: TreeShape marks it.

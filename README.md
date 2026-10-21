@@ -182,7 +182,12 @@ type, completion, go to definition, hover, and outline. See
    each time (see [Retries](docs/phpm-syntax.md#retries)).
    Add `data-phem-transition` to an element to run the morph of its components in a view
    transition (see [Transitions](docs/phpm-syntax.md#transitions)).
-5. **Server.** [FrankenPHP](https://frankenphp.dev) runs `public/index.php` in worker mode
+5. **Real-time updates.** A page with `#[Subscribe]` opens one connection to the Mercure hub of
+   FrankenPHP. A handler pushes Turbo Streams to the open pages with `Phem\Stream\Streams`:
+   plain markup (`prepend`, `update`, `remove`, ...), or a `refresh()` that renders a component
+   again in each browser with a normal event. The next event of a page renders again the
+   components that a push changed (see [Real-time updates](docs/phpm-syntax.md#real-time-updates)).
+6. **Server.** [FrankenPHP](https://frankenphp.dev) runs `public/index.php` in worker mode
    (see `examples/quickstart/Caddyfile`). Each worker boots the Symfony kernel once and keeps
    it in memory for many requests. Symfony Runtime gives each request to the kernel, which
    resets the services (`kernel.reset`) between requests. Caddy serves the static files of
@@ -202,6 +207,7 @@ type, completion, go to definition, hover, and outline. See
 | initial state from props or data | `mount()`, called when the component has no state yet |
 | a form `onSubmit` handler | a Symfony form: `$form->handleRequest($e->request)` in the handler |
 | `createContext` + `useContext` | `#[Provide]` on a class component (or a property), and `#[Context]` on a property or a parameter |
+| a WebSocket or a subscription | `#[Subscribe]` on a page, and `Phem\Stream\Streams` in a handler: Turbo Streams through the Mercure hub of FrankenPHP |
 | imported modules | services, injected in the constructor |
 | props, `children`, lifting state up | parameters or `#[Prop]` properties, `?Html $children`, the same pattern |
 
@@ -235,9 +241,9 @@ finds an error:
 | E020 | A call to a React Hook (`Phem\useState`, ...): Phem keeps state in `#[Component]` classes |
 | E030–E033 | Undefined variable in markup, markup in an unsupported expression, invalid attribute, invalid `phem:bind` (not a `#[State]` property, not a form field, or a type that does not take the value of the field) |
 | E040–E044 | Class component without `render()`, readonly `#[State]` property, `#[Prop]` property that is not public, static, or `#[State]`, a second `#[Prop(rest: true)]` property or one whose type does not accept an array, a `#[Context]` or `#[Provide]` type that is not one class, interface or enum (or a `#[Context]` property that is static, readonly, a prop or state) |
-| E050, E052 | `export default` (not PHP; use `#[Page]`), `#[Page]` or `#[Route]` on a function, or on a class that is not a component |
+| E050, E052, E053 | `export default` (not PHP; use `#[Page]`), `#[Page]` or `#[Route]` on a function, or on a class that is not a component, `#[Subscribe]` on a class that is not a page |
 | W001–W003 | A handler is called instead of passed; a list item without `key`; an event that the browser does not send (`onMouseEnter`) |
-| W004 | `#[Page]`, `#[Route]`, `#[Component]`, `#[State]`, `#[Prop]`, `#[Path]`, `#[Context]` or `#[Provide]` without its `use` import (`Phem\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
+| W004 | `#[Page]`, `#[Route]`, `#[Component]`, `#[State]`, `#[Prop]`, `#[Path]`, `#[Context]`, `#[Provide]` or `#[Subscribe]` without its `use` import (`Phem\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
 | W005 | a `<title>` outside `<head>` and `<svg>`: the document component prints the title, and a page gives it with `<Document:title>` |
 | W006 | `phem:debounce` or `phem:throttle` on an element with no handler |
 | W007 | `phem:live` on an element with no `phem:bind` |

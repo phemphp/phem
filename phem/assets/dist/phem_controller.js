@@ -123,6 +123,22 @@
 // with `CompressionStream`): an event sent again with the state has all the state of the page,
 // and a browser does not compress a request body. A browser without `CompressionStream` sends the
 // JSON as it is.
+//
+// A page with #[Subscribe] gets the Turbo Streams of other requests (Phem\Stream\Streams): the
+// root element has `data-phem-stream-value`, the URL of the Mercure hub with the topics of the page,
+// and the controller opens one EventSource to it. A stream outside the root element is plain Turbo.
+// In the root element, the controller marks the component around the target as stale: its element
+// is not the last render of the server any more. The next event sends the stale components, and
+// the server renders them again, so the state of the page knows the change. Before an `append` or
+// a `prepend`, the controller removes an element of the target with the id of a new element, so
+// the user who made the change does not see it two times. A pushed morph keeps a bound field that
+// the user changed. While an event runs, the pushes wait, and they come after its morph.
+//
+// `phem-refresh` is the action of Phem: it marks the component around its target as stale, and the
+// controller sends one event with no handler for all the refreshes that come together (after
+// REFRESH_WAIT ms). The server renders the stale components again, with the state of the page.
+// After a lost connection, the hub cannot give the lost updates: the controller refreshes the
+// content of the root element.
 
 import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
@@ -193,6 +209,19 @@ function resetField(field) {
 // The start of the id that an element with a `key` gets while a morph runs (see keyIds()).
 const KEY_ID = "phem-key:"
 
+// The wait before a refresh: the refreshes that come in this time go in one event.
+const REFRESH_WAIT = 50
+
+// The maximum number of stale components of an event (EventPayload::MAX_STALE on the server).
+// With more, the controller marks the content of the root element: one id renders all of them.
+const MAX_STALE = 100
+
+// The wait before a new connection to the hub after it refused one (an expired token).
+const STREAM_RETRY = 5000
+
+// The DOM event of a refresh: an event with no handler.
+const REFRESH_EVENT = { type: "refresh", value: null, checked: null, key: null, form: null, refresh: true }
+
 // Gives each element with a `key` (`data-phem-key`) and no id in `root` an id from its key: the id
 // of its closest ancestor with an id (or of `target`), its tag and its key. The parents come
 // first, so the id of a nested item has the ids of its parents.
@@ -206,6 +235,16 @@ function keyIds(root, target) {
 
 function dropKeyIds(root) {
   for (const el of root.querySelectorAll(`[id^="${KEY_ID}"]`)) el.removeAttribute("id")
+}
+
+// Before an `append` or a `prepend` of a push: removes each element of the target with the id of
+// a new element. Turbo removes only the children of the target, and the items of a list are often
+// in a component (<phem-c>).
+function removeDuplicates(target, stream) {
+  for (const el of stream.querySelector("template")?.content.children ?? []) {
+    const old = el.id ? document.getElementById(el.id) : null
+    if (old && target.contains(old)) old.remove()
+  }
 }
 
 function sameValue(a, b) {
@@ -286,7 +325,7 @@ function logProfile(handler, event, response) {
   if (!link) return
   const url = new URL(link, window.location.href)
   url.searchParams.set("panel", "phem")
-  console.debug(`[phem] ${event.live ? "phem:live" : handler} → ${response.status}`, url.href)
+  console.debug(`[phem] ${event.live ? "phem:live" : event.refresh ? "phem:refresh" : handler} → ${response.status}`, url.href)
 }
 
 function showLoading(el, on) {
@@ -316,6 +355,7 @@ export default class PhemController extends Controller {
     debounce: { type: Number, default: 150 },
     guardMessage: { type: String, default: "You have unsaved changes. Leave the page?" },
     query: Object,
+    stream: String,
   }
 
   connect() {
@@ -358,11 +398,17 @@ export default class PhemController extends Controller {
     // user changed after the request left: its value is not the value that it had then. The
     // morph sets the attributes first, so the field can look changed here: compare with the
     // values when the request left, not with the default value.
+    // A pushed morph runs with no event: it keeps a bound field that the user changed.
     this.keepEdited = (event) => {
-      if (!this.sentBound || !["value", "checked", "selected"].includes(event.detail.attributeName)) return
+      if (!["value", "checked", "selected"].includes(event.detail.attributeName)) return
       const field = event.target instanceof HTMLOptionElement ? event.target.closest("select") : event.target
       const key = field?.getAttribute?.("data-phem-bind")
-      if (!key || !this.element.contains(field) || !(key in this.sentBound)) return
+      if (!key || !this.element.contains(field)) return
+      if (!this.sentBound) {
+        if (this.pushing && this.boundFields(key).some(isDirty)) event.preventDefault()
+        return
+      }
+      if (!(key in this.sentBound)) return
       if (!sameValue(boundValue(this.boundFields(key)), this.sentBound[key])) event.preventDefault()
     }
     this.element.addEventListener("turbo:before-morph-attribute", this.keepEdited)
@@ -444,9 +490,23 @@ export default class PhemController extends Controller {
           )
         : null
     this.loadBoundaries()
+    // The ids of the stale components (see the header): the next event sends them.
+    this.stale = new Set()
+    // The number of events that run now, and the pushes that wait for them.
+    this.busy = 0
+    this.held = []
+    // The number of pushes that Turbo renders now (see keepEdited).
+    this.pushing = 0
+    this.refreshTimer = null
+    this.streamTimer = null
+    this.openStream()
   }
 
   disconnect() {
+    this.source?.close()
+    this.source = null
+    clearTimeout(this.refreshTimer)
+    clearTimeout(this.streamTimer)
     this.element.removeEventListener("turbo:morph-element", this.keepLoading)
     this.element.removeEventListener("turbo:before-morph-attribute", this.keepEdited)
     this.element.removeEventListener("turbo:before-morph-element", this.keepKept)
@@ -463,6 +523,105 @@ export default class PhemController extends Controller {
     document.removeEventListener("turbo:before-visit", this.guardVisit)
     this.boundaryObserver?.disconnect()
     this.hideError()
+  }
+
+  // Opens the EventSource of a page with #[Subscribe] (see the header).
+  openStream() {
+    if (!this.streamValue || typeof EventSource !== "function") return
+    const source = new EventSource(this.streamValue, { withCredentials: true })
+    let lost = false
+    source.addEventListener("message", (event) => this.receive(event.data))
+    source.addEventListener("error", () => {
+      lost = true
+      if (source.readyState !== EventSource.CLOSED || this.source !== source) return
+      // The hub refused the connection (an expired token): EventSource does not connect again.
+      // A refresh renews the token (an event sets the cookie), then the controller connects again.
+      this.source = null
+      clearTimeout(this.streamTimer)
+      this.streamTimer = setTimeout(() => {
+        this.markContentStale()
+        this.queue = this.queue
+          .then(() => this.send(this.element, null, REFRESH_EVENT, () => {}))
+          .catch((e) => console.error("[phem]", e))
+          .then(() => this.element.isConnected && !this.source && this.openStream())
+      }, STREAM_RETRY)
+    })
+    source.addEventListener("open", () => {
+      if (!lost) return
+      lost = false
+      // The `local` transport of the hub has no history: the updates of the lost time are lost.
+      if (this.markContentStale()) this.scheduleRefresh()
+    })
+    this.source = source
+  }
+
+  // A push: it waits while an event runs, so it comes after the morph of the event.
+  receive(data) {
+    if (this.busy) this.held.push(data)
+    else this.applyPush(data)
+  }
+
+  // Renders the Turbo Streams of a push. In the root element, each stream marks the component
+  // whose own HTML it changes: the component around the target, or around its parent for an
+  // action that changes the parent (remove, replace, before, after).
+  applyPush(data) {
+    const message = document.createElement("template")
+    message.innerHTML = data
+    let refresh = false
+    for (const stream of message.content.querySelectorAll("turbo-stream")) {
+      const action = stream.getAttribute("action")
+      const target = document.getElementById(stream.getAttribute("target") ?? "")
+      const inRoot = target !== null && this.element.contains(target)
+      if (action === "phem-refresh") {
+        stream.remove()
+        refresh = (inRoot && this.markStale(target)) || refresh
+        continue
+      }
+      if (!inRoot) continue
+      this.markStale(["remove", "replace", "before", "after"].includes(action) ? target.parentElement : target)
+      if (action === "append" || action === "prepend") removeDuplicates(target, stream)
+    }
+    if (message.content.querySelector("turbo-stream")) {
+      console.debug("[phem] push", data)
+      this.pushing++
+      Turbo.renderStreamMessage(message.innerHTML)
+      afterStreams().then(() => {
+        this.pushing--
+        this.markDirty()
+      })
+    }
+    if (refresh) this.scheduleRefresh()
+  }
+
+  // Marks the component around an element as stale. Returns false when the element is not in a component.
+  markStale(el) {
+    const component = el?.closest("phem-c")
+    if (!component || !this.element.contains(component)) return false
+    this.stale.add(component.id)
+    // Too many for one event: the content of the root element renders all of them.
+    if (this.stale.size > MAX_STALE) {
+      this.stale.clear()
+      this.markContentStale()
+    }
+    return true
+  }
+
+  // Marks the content of the root element (its first component) as stale. Returns false when it has none.
+  markContentStale() {
+    const content = this.element.querySelector("phem-c")
+    if (content) this.stale.add(content.id)
+    return content !== null
+  }
+
+  // Sends one refresh after REFRESH_WAIT, for all the refreshes until then. It goes in the queue
+  // of the events, so it waits for the event that runs.
+  scheduleRefresh() {
+    clearTimeout(this.refreshTimer)
+    this.refreshTimer = setTimeout(() => {
+      this.queue = this.queue
+        .then(() => (this.stale.size ? this.send(this.element, null, REFRESH_EVENT, () => {}) : null))
+        .catch((e) => console.error("[phem]", e))
+    }, REFRESH_WAIT)
   }
 
   // Loads each `<Suspense>` boundary that shows its fallback (`data-phem-load`, the id of its load
@@ -762,8 +921,19 @@ export default class PhemController extends Controller {
   }
 
   // Sends the event of the element `el`. `beforeRender` runs when the last response arrives,
-  // before the page changes. `onProgress` gets the progress of an upload.
+  // before the page changes. `onProgress` gets the progress of an upload. The pushes that come
+  // while it runs wait for its end (see receive()).
   async send(el, handler, event, beforeRender, onProgress = null) {
+    this.busy++
+    try {
+      await this.sendNow(el, handler, event, beforeRender, onProgress)
+    } finally {
+      this.busy--
+      if (!this.busy) this.held.splice(0).forEach((data) => this.applyPush(data))
+    }
+  }
+
+  async sendNow(el, handler, event, beforeRender, onProgress) {
     // The bound fields when the event starts: the newest values. The request sends the fields
     // that changed.
     const fields = this.boundValues()
@@ -773,6 +943,9 @@ export default class PhemController extends Controller {
       beforeRender()
       return
     }
+    // The stale components when the event starts: the server renders them again.
+    const stale = [...this.stale]
+    if (stale.length) event = { ...event, stale }
     this.notify(el, handler, "send")
     // The end of an event that the server did not take: no morph.
     const failed = (status) => this.notify(el, handler, "done", { ok: false, status })
@@ -836,12 +1009,13 @@ export default class PhemController extends Controller {
       } else console.error("[phem] redirect to a URL that is not http(s) was blocked", data.redirect)
       return
     }
+    for (const id of stale) this.stale.delete(id)
     this.stateValue = data.state
     this.signatureValue = data.signature
     if (data.query) this.updateUrl(data.query, true)
     this.sentBound = Object.fromEntries(Object.entries(fields).map(([key, { value }]) => [key, value]))
     const rendered = data.streams ? this.renderStreams(data.streams, handler) : afterStreams()
-    rendered.then(() => {
+    return rendered.then(() => {
       this.sentBound = null
       this.resetRejected(bound)
       this.markDirty()
@@ -858,6 +1032,8 @@ export default class PhemController extends Controller {
   // It starts on the element that sent the event, or on the root of its component when the morph
   // removed that element, and it bubbles.
   notify(el, handler, name, detail = {}) {
+    // A refresh has no element that sent it.
+    if (handler === null) return
     const target = el.isConnected && this.element.contains(el) ? el : this.componentRoot(handler)
     target.dispatchEvent(new CustomEvent(`phem:${name}`, { detail: { handler, ...detail }, bubbles: true }))
   }
@@ -952,10 +1128,11 @@ export default class PhemController extends Controller {
   // each time. The last try returns its response, or throws its network error. An event with
   // files goes with XHR when `onProgress` wants the progress of the upload.
   async fetchWithRetry(handler, event, bound, onProgress, withState) {
-    const { files = [], ...data } = event
-    // A `phem:live` event has no handler: the server only sets the bound values.
+    const { files = [], stale = [], ...data } = event
+    // A `phem:live` event has no handler: the server only sets the bound values. A refresh has
+    // no handler either: the server renders the stale components.
     const state = withState ? { state: this.stateValue } : {}
-    const json = JSON.stringify({ ...state, signature: this.signatureValue, handler: data.live ? null : handler, event: data, bound })
+    const json = JSON.stringify({ ...state, signature: this.signatureValue, handler: data.live ? null : handler, event: data, bound, ...(stale.length ? { stale } : {}) })
     // An event with files is not compressed: the files are most of the body.
     const plain = files.length ? null : await jsonBody(json)
     for (let attempt = 0; ; attempt++) {
@@ -1058,6 +1235,7 @@ export default class PhemController extends Controller {
   // The root of the component of a handler: the <phem-c> with the fiber id at the start of the
   // handler id. The root element when the component is the page, or when the morph removed it.
   componentRoot(handler) {
+    if (handler === null) return this.element
     const el = document.getElementById(handler.slice(0, handler.indexOf(".")))
     return el?.localName === "phem-c" && this.element.contains(el) ? el : this.element
   }

@@ -81,6 +81,8 @@ final class PhemDataCollector extends DataCollector
             'browser_event_count' => \is_array($answer['events'] ?? null) ? \count($answer['events']) : 0,
             'warnings' => array_values(array_filter(\is_array($answer['warnings'] ?? null) ? $answer['warnings'] : [], 'is_string')),
             'transaction' => $this->profile->transacted(),
+            'stale' => $payload->stale ?? [],
+            'streams' => $this->profile->streams(),
             'passes' => $this->passes($trees, $tree, $event),
             'fibers' => [],
             'state' => null,
@@ -193,6 +195,18 @@ final class PhemDataCollector extends DataCollector
     public function getWarnings(): array
     {
         return $this->data['warnings'] ?? [];
+    }
+
+    /** @return list<string> the components whose element a push changed, that the event rendered again */
+    public function getStale(): array
+    {
+        return $this->data['stale'] ?? [];
+    }
+
+    /** @return list<array{topics: list<string>, data: string, private: bool}> the updates that the request published to the Mercure hub */
+    public function getStreams(): array
+    {
+        return $this->data['streams'] ?? [];
     }
 
     /** @return array{committed: bool, time: float}|null */

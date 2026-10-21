@@ -2,7 +2,7 @@
 //! function that contains each markup literal. It is not a PHP parser; it reads only the
 //! declarations that the compiler needs.
 
-use crate::{Kind, ATTR_COMPONENT, ATTR_CONTEXT, ATTR_PAGE, ATTR_PATH, ATTR_PROP, ATTR_PROVIDE, ATTR_ROUTE, ATTR_STATE};
+use crate::{Kind, ATTR_COMPONENT, ATTR_CONTEXT, ATTR_PAGE, ATTR_PATH, ATTR_PROP, ATTR_PROVIDE, ATTR_ROUTE, ATTR_STATE, ATTR_SUBSCRIBE};
 use phemc_syntax::php::{Lexed, TokKind, Token};
 use phemc_syntax::Span;
 use std::collections::HashMap;
@@ -20,6 +20,8 @@ pub struct FileInfo {
     pub classes: Vec<Class>,
     /// The declarations marked with `#[Page]` or `#[Route]`: the pages.
     pub routes: Vec<RouteDecl>,
+    /// The declarations with `#[Subscribe]` that are not class pages (the compiler reports them).
+    pub subscribes: Vec<(String, Span)>,
     /// `export default` keywords (not PHP; the compiler reports them).
     pub export_defaults: Vec<Span>,
     /// Attributes with a known short name (`Page`, `Route`, `Component`, `State`, `Prop`, `Path`,
@@ -266,6 +268,9 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                         if let Some((attr, span)) = route_attr(&info, &attrs) {
                             info.routes.push(RouteDecl { fqn: f.fqn.clone(), attr, span, is_component: false });
                         }
+                        if let Some(span) = subscribe_attr(&info, &attrs) {
+                            info.subscribes.push((f.fqn.clone(), span));
+                        }
                         info.functions.push(f);
                         i = end + 1;
                         continue;
@@ -279,7 +284,11 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                             let attrs = std::mem::take(&mut attrs);
                             check_attrs(&mut info, &attrs);
                             let route = route_attr(&info, &attrs);
+                            let subscribe = subscribe_attr(&info, &attrs);
                             let (c, end) = parse_class(&toks, i, &mut info, attrs.into_iter().map(|(a, _)| a).collect());
+                            if let Some(span) = subscribe.filter(|_| route.is_none() || !c.is_component) {
+                                info.subscribes.push((c.fqn.clone(), span));
+                            }
                             if let Some((attr, span)) = route {
                                 info.routes.push(RouteDecl { fqn: c.fqn.clone(), attr, span, is_component: c.is_component });
                             }
@@ -594,6 +603,11 @@ fn route_attr(info: &FileInfo, attrs: &[(String, Span)]) -> Option<(&'static str
     })
 }
 
+/// The span of a `#[Subscribe]` of a declaration.
+fn subscribe_attr(info: &FileInfo, attrs: &[(String, Span)]) -> Option<Span> {
+    attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_SUBSCRIBE).map(|(_, s)| *s)
+}
+
 /// Records `#[Page]` / `#[Route]` / `#[Component]` / `#[State]` / `#[Prop]` / `#[Path]` that do not resolve to the expected
 /// attributes (usually a missing `use ...;`).
 fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
@@ -608,6 +622,7 @@ fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
             "Path" => ATTR_PATH,
             "Context" => ATTR_CONTEXT,
             "Provide" => ATTR_PROVIDE,
+            "Subscribe" => ATTR_SUBSCRIBE,
             _ => continue,
         };
         let resolved = info.resolve_class(a);

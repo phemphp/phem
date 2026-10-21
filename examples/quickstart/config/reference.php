@@ -937,6 +937,12 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     state_cache?: bool|Param, // Keep each signed state in the cache.phem.state pool (framework.cache.pools), so an event can send only its signature. The browser sends the full state when the pool does not have it. // Default: true
  *     max_event_size?: int|Param, // The maximum size of an event body in bytes, with the state of the page (0 for no limit). A larger event gets a 413 response. // Default: 1048576
  *     max_upload_size?: int|Param, // The maximum size of the files of an event in bytes, together (0 for no limit). Larger files get a 413 response. The post_max_size option of PHP also applies, and a file over upload_max_filesize gets to the handler with an upload error. // Default: 8388608
+ *     mercure?: array{ // The Mercure hub of FrankenPHP, for the pages with #[Subscribe] (see Phem\Stream\Streams)
+ *         hub_url?: scalar|Param|null, // The URL of the hub, as the browser connects to it. It is the audience of the access token: behind a proxy that ends TLS, configure the trusted proxies, or give an absolute URL. // Default: "/.well-known/mercure"
+ *         subscriber_key?: scalar|Param|null, // The subscriber key of the hub (`issuer … { subscriber { jwt <key> } }` in the Caddyfile). With a key, the updates are private and each page gets an access token for its topics. With null, the updates are public: the hub needs the `anonymous` directive. // Default: null
+ *         issuer?: scalar|Param|null, // The issuer of the hub configuration (`issuer phem { … }`) // Default: "phem"
+ *         cookie_name?: scalar|Param|null, // The cookie of the access token (`cookie_name` of the hub) // Default: "__Secure-mercure_access_token"
+ *     },
  *     transactional?: bool|Param|null, // Run the event handlers of all components in a Doctrine ORM transaction. Set it to false to use #[Transactional] on each component instead. Default: true when Doctrine ORM is installed and enabled. // Default: null
  * }
  * @psalm-type WebProfilerConfig = array{

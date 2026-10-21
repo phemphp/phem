@@ -51,7 +51,7 @@ final class PhemRuntime implements RuntimeExtensionInterface
      */
     public function template(Template $template, string $fqcn, array $props, mixed $key, array $caller, array $slots = []): string
     {
-        return $this->templates->render($template, $fqcn, $props, $key, $caller, $slots);
+        return $this->templates->render($template, $fqcn, $props, $key, $caller, $slots, $this->renderer->pass(...));
     }
 
     /** `onClick={{ f }}` → `data-phem-on-click="<handler id>"`. */

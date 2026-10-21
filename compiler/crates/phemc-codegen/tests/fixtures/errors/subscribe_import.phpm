@@ -1,0 +1,9 @@
+<?phpm // expect: W004
+namespace App\Pages;
+use Phem\Attribute\Page;
+use Phem\Node;
+#[Page('/feed'), Subscribe]
+final class FeedPage
+{
+    public function render(): Node { return <ul id="feed"></ul>; }
+}

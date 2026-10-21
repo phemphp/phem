@@ -318,7 +318,10 @@ each event:
   (propagated), and the components that changed (the browser morphs them);
 - the size of the signed state, and whether the state came from the state cache;
 - the bound values, the browser events of the handler, and the warnings of the dev-mode check;
-- the Doctrine transaction of the handler: commit or rollback, and its time.
+- the Doctrine transaction of the handler: commit or rollback, and its time;
+- the Turbo Streams that the request pushed to the Mercure hub, with their topics, and the
+  stale components that an event rendered again (see
+  [Real-time updates](phpm-syntax.md#real-time-updates)).
 
 The Performance panel shows the render passes, the handler and the transaction (`phem`
 category). With the profiler on, the browser console shows each event with a link to its Phem

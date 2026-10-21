@@ -21,8 +21,10 @@ use Phem\Controller\EventController;
 use Phem\Controller\PageController;
 use Phem\EventListener\PageAttributesListener;
 use Phem\EventListener\SourceMapListener;
+use Phem\EventListener\StreamListener;
 use Phem\Handler\HandlerFingerprint;
 use Phem\Handler\HandlerInvoker;
+use Phem\Handler\StreamsMiddleware;
 use Phem\Handler\TransactionalMiddleware;
 use Phem\Http\EventBody;
 use Phem\Http\PageRenderer;
@@ -51,6 +53,10 @@ use Phem\State\StateAccessor;
 use Phem\State\StateCache;
 use Phem\State\StateCodec;
 use Phem\State\UrlQuery;
+use Phem\Stream\FrankenPhpPublisher;
+use Phem\Stream\Streams;
+use Phem\Stream\Subscription;
+use Phem\Stream\Topics;
 use Phem\Twig\CacheKeyLoader;
 use Phem\Twig\PhemExtension;
 use Phem\Twig\PhemRuntime;
@@ -101,6 +107,10 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.handler_middleware.transactional', TransactionalMiddleware::class)
             ->args([service('phem.transaction_runner')->nullOnInvalid()])
             ->tag('phem.handler_middleware', ['priority' => -100])
+        // Outside the transaction: a commit that fails drops the streams too.
+        ->set('phem.handler_middleware.streams', StreamsMiddleware::class)
+            ->args([service('phem.streams')])
+            ->tag('phem.handler_middleware', ['priority' => 0])
         ->set('phem.browser_event_dispatcher', BrowserEventDispatcher::class)
             ->tag('kernel.reset', ['method' => 'reset'])
         ->alias(BrowserEventDispatcher::class, 'phem.browser_event_dispatcher')
@@ -140,6 +150,22 @@ return static function (ContainerConfigurator $container): void {
             ->tag('kernel.reset', ['method' => 'reset'])
         ->alias(Renderer::class, 'phem.renderer')
 
+        // Streams: the push to the pages with #[Subscribe], through the Mercure hub
+        ->set('phem.topics', Topics::class)
+            ->args([service('phem.metadata')])
+        ->set('phem.stream_publisher', FrankenPhpPublisher::class)
+            ->args([service('logger')->nullOnInvalid()])
+        ->set('phem.streams', Streams::class)
+            ->args([service('phem.renderer'), service('phem.stream_publisher'), service('phem.topics'), false])
+            ->tag('kernel.reset', ['method' => 'reset'])
+        ->alias(Streams::class, 'phem.streams')
+        ->set('phem.subscription', Subscription::class)
+            ->args([service('phem.topics'), null, '/.well-known/mercure', '__Secure-mercure_access_token', service('logger')->nullOnInvalid()])
+        ->set('phem.listener.stream', StreamListener::class)
+            ->args([service('phem.streams'), service('phem.subscription')])
+            // Before the profiler collects the data of the request (-100).
+            ->tag('kernel.event_listener', ['event' => 'kernel.response', 'method' => 'onKernelResponse', 'priority' => -50])
+
         // Twig
         ->set('phem.twig.extension', PhemExtension::class)
             ->args([service('phem.manifest')])
@@ -171,6 +197,7 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.state_accessor'),
                 service('phem.url_query'),
                 service('phem.state_cache'),
+                service('phem.subscription'),
             ])
         ->alias(PageRenderer::class, 'phem.page_renderer')
         ->set('phem.controller.page', PageController::class)
@@ -207,6 +234,7 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.url_query'),
                 8388608,
                 service('phem.state_cache'),
+                service('phem.subscription'),
             ])
         ->set('phem.listener.page_attributes', PageAttributesListener::class)
             ->tag('kernel.event_listener', ['event' => 'kernel.controller', 'method' => 'onKernelController'])

@@ -242,6 +242,12 @@
                                     </td>
                                 </tr>
                                 <tr>
+                                    <th scope="row">Stale components</th>
+                                    <td>
+                                        {% for id in collector.stale %}<code>{{ id }}</code> {% else %}None: no push changed the page since the last event.{% endfor %}
+                                    </td>
+                                </tr>
+                                <tr>
                                     <th scope="row">Request body</th>
                                     <td>{{ _self.bytes(collector.requestSize) }}</td>
                                 </tr>
@@ -265,6 +271,17 @@
                         {% else %}
                             <div class="empty"><p>The handler dispatched no browser events.</p></div>
                         {% endif %}
+
+                        <h3>Pushed streams <span class="badge">{{ collector.streams|length }}</span></h3>
+                        {% for update in collector.streams %}
+                            <p>
+                                {% for topic in update.topics %}<code>{{ topic }}</code> {% endfor %}
+                                <span class="badge">{{ update.private ? 'private' : 'public' }}</span>
+                            </p>
+                            <pre class="sf-dump">{{ update.data|replace({'><turbo-stream': ">\n<turbo-stream"}) }}</pre>
+                        {% else %}
+                            <div class="empty"><p>The request published no streams to the Mercure hub.</p></div>
+                        {% endfor %}
                     </div>
                 </div>
             {% endif %}

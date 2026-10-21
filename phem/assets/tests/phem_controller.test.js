@@ -317,3 +317,218 @@ describe("<Suspense>", () => {
     expect(document.getElementById("report")).not.toBeNull()
   })
 })
+
+describe("pushes", () => {
+  // The EventSource of the page: the test sends the messages of the hub.
+  class FakeEventSource {
+    static CLOSED = 2
+    static last = null
+    static count = 0
+    constructor(url, options) {
+      this.url = url
+      this.options = options
+      this.listeners = {}
+      this.closed = false
+      this.readyState = 0
+      FakeEventSource.last = this
+      FakeEventSource.count++
+    }
+    addEventListener(type, listener) {
+      ;(this.listeners[type] ??= []).push(listener)
+    }
+    emit(type, event = {}) {
+      for (const listener of this.listeners[type] ?? []) listener(event)
+    }
+    push(data) {
+      this.emit("message", { data })
+    }
+    close() {
+      this.closed = true
+    }
+  }
+
+  const stream = (action, target, content = null) =>
+    content === null ? `<turbo-stream action="${action}" target="${target}"></turbo-stream>` : `<turbo-stream action="${action}" target="${target}"><template>${content}</template></turbo-stream>`
+
+  // The body of the next event that the controller posts.
+  function nextBody() {
+    return vi.waitFor(() => {
+      expect(fetch).toHaveBeenCalled()
+      return JSON.parse(fetch.mock.calls.at(-1)[1].body)
+    })
+  }
+
+  const rendered = () => new Promise((resolve) => setTimeout(resolve, 30))
+
+  beforeEach(() => {
+    FakeEventSource.last = null
+    FakeEventSource.count = 0
+    vi.stubGlobal("EventSource", FakeEventSource)
+  })
+
+  async function subscribe(markup) {
+    await mount(markup, 'data-phem-stream-value="/.well-known/mercure?match=phem%3AApp%5CGuestbook"')
+    return FakeEventSource.last
+  }
+
+  it("opens one connection to the hub, and closes it when the page goes", async () => {
+    const source = await subscribe("<ul id=\"entries\"></ul>")
+
+    expect(source.url).toBe("/.well-known/mercure?match=phem%3AApp%5CGuestbook")
+    expect(source.options).toEqual({ withCredentials: true })
+    document.body.innerHTML = ""
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(source.closed).toBe(true)
+  })
+
+  it("opens no connection for a page with no subscription", async () => {
+    await mount("<p>Hi</p>")
+
+    expect(FakeEventSource.last).toBeNull()
+  })
+
+  it("renders a stream outside the root element as plain Turbo", async () => {
+    const source = await subscribe("<button data-phem-on-click=\"c1.save\">Save</button>")
+    document.body.insertAdjacentHTML("beforeend", '<p id="count">1</p>')
+    source.push(stream("update", "count", "2"))
+    await rendered()
+    respond("<button data-phem-on-click=\"c1.save\">Save</button>")
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect(document.getElementById("count").textContent).toBe("2")
+    expect(JSON.parse(fetch.mock.calls[0][1].body).stale).toBeUndefined()
+  })
+
+  it("marks the component of the target as stale, and the next event sends it", async () => {
+    const source = await subscribe('<ul id="entries"></ul><button data-phem-on-click="c1.save">Save</button>')
+    source.push(stream("append", "entries", '<li id="entry-1">Hi</li>'))
+    await rendered()
+
+    expect(document.getElementById("entry-1").textContent).toBe("Hi")
+    respond('<ul id="entries"><li id="entry-1">Hi</li></ul><button data-phem-on-click="c1.save">Save</button>')
+    let done = nextDone()
+    click("button")
+    await done
+    expect(JSON.parse(fetch.mock.calls[0][1].body).stale).toEqual(["c1"])
+
+    // The server rendered it again: the next event does not send it.
+    respond('<ul id="entries"><li id="entry-1">Hi</li></ul><button data-phem-on-click="c1.save">Save</button>')
+    done = nextDone()
+    click("button")
+    await done
+    expect(JSON.parse(fetch.mock.calls[1][1].body).stale).toBeUndefined()
+  })
+
+  it("removes an element with the same id in the target before an append", async () => {
+    const source = await subscribe('<ul id="entries"><phem-c id="c2"><li id="entry-1">Old</li></phem-c></ul>')
+    source.push(stream("prepend", "entries", '<li id="entry-1">New</li>'))
+    await rendered()
+
+    expect([...document.querySelectorAll("#entry-1")].map((li) => li.textContent)).toEqual(["New"])
+  })
+
+  it("keeps a bound field that the user changed in a pushed morph", async () => {
+    const source = await subscribe('<div id="form"><input data-phem-bind="c1.name" value="Ada"><p>Old</p></div>')
+    document.querySelector("input").value = "Grace"
+    source.push(`<turbo-stream action="update" method="morph" target="form"><template><input data-phem-bind="c1.name" value="Ada"><p>New</p></template></turbo-stream>`)
+    await rendered()
+
+    expect(document.querySelector("p").textContent).toBe("New")
+    expect(document.querySelector("input").value).toBe("Grace")
+  })
+
+  it("sends one refresh with no handler for the refreshes that come together", async () => {
+    const source = await subscribe('<p id="stats">1 entry</p><p id="other">Other</p>')
+    respond('<p id="stats">2 entries</p><p id="other">Other</p>')
+    source.push(stream("phem-refresh", "stats") + stream("phem-refresh", "other"))
+    source.push(stream("phem-refresh", "stats"))
+    const body = await nextBody()
+
+    expect(body.handler).toBeNull()
+    expect(body.stale).toEqual(["c1"])
+    await vi.waitFor(() => expect(document.getElementById("stats").textContent).toBe("2 entries"))
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("sends no refresh for a target that the page does not show", async () => {
+    const source = await subscribe("<p>Hi</p>")
+    source.push(stream("phem-refresh", "missing"))
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("renders a push that comes while an event runs after the morph of the event", async () => {
+    const source = await subscribe('<ul id="entries"><li id="entry-1">One</li></ul><button data-phem-on-click="c1.save">Save</button>')
+    let answer
+    fetch.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)))
+    const done = nextDone()
+    click("button")
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+    // The event of this user added entry 2; the push of the same change comes first.
+    source.push(stream("append", "entries", '<li id="entry-2">Two</li>'))
+    await rendered()
+    expect(document.getElementById("entry-2")).toBeNull()
+
+    const markup = '<ul id="entries"><li id="entry-1">One</li><li id="entry-2">Two</li></ul><button data-phem-on-click="c1.save">Save</button>'
+    answer(new Response(JSON.stringify({ streams: `<turbo-stream action="update" method="morph" target="c1"><template>${markup}</template></turbo-stream>`, state: "{}", signature: "s2" }), { status: 200 }))
+    await done
+    await rendered()
+
+    expect([...document.querySelectorAll("li")].map((li) => li.textContent)).toEqual(["One", "Two"])
+  })
+
+  it("refreshes the content of the root element after a lost connection", async () => {
+    const source = await subscribe("<p>Hi</p>")
+    respond("<p>Hi again</p>")
+    source.emit("open")
+    source.emit("error")
+    source.emit("open")
+    const body = await nextBody()
+
+    expect(body.stale).toEqual(["c1"])
+    expect(body.handler).toBeNull()
+  })
+
+  it("sends the content of the root element when more than 100 components are stale", async () => {
+    const rows = Array.from({ length: 101 }, (_, i) => `<phem-c id="row${i}"><p id="cell${i}">${i}</p></phem-c>`).join("")
+    const source = await subscribe(`<p id="top">Rows</p>${rows}`)
+    source.push(Array.from({ length: 101 }, (_, i) => stream("update", `cell${i}`, "x")).join(""))
+    source.push(stream("phem-refresh", "top"))
+    respond(rows)
+    const body = await nextBody()
+
+    expect(body.stale).toEqual(["c1"])
+  })
+
+  it("renews the token with a refresh and connects again after the hub refused the connection", async () => {
+    const source = await subscribe("<p>Hi</p>")
+    respond("<p>Hi</p>")
+    vi.useFakeTimers({ toFake: ["setTimeout"] })
+    try {
+      source.readyState = FakeEventSource.CLOSED
+      source.emit("error")
+      vi.advanceTimersByTime(5000)
+    } finally {
+      vi.useRealTimers()
+    }
+    const body = await nextBody()
+
+    expect(body.handler).toBeNull()
+    expect(body.stale).toEqual(["c1"])
+    await vi.waitFor(() => expect(FakeEventSource.count).toBe(2))
+  })
+
+  it("keeps a dirty bound field only in a pushed morph", async () => {
+    await mount('<input data-phem-bind="c1.name" value="Ada">')
+    const input = document.querySelector("input")
+    input.value = "Grace"
+    const event = new CustomEvent("turbo:before-morph-attribute", { cancelable: true, bubbles: true, detail: { attributeName: "value" } })
+    input.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(false)
+  })
+})
+

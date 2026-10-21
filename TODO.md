@@ -21,8 +21,8 @@ Talk about each item before its implementation. The open questions are a start, 
 
 - [ ] **Streams** (section 3). The items of a stream are not in the state. How does a later
       event render the list, and how does the "before/after" comparison see it?
-- [x] **Real-time push** (section 4). Decided: a component handles a Messenger message and
-      returns a Turbo Stream, published with Mercure. See the decisions in section 4.
+- [x] **Real-time push** (section 4). Done for v1: Turbo Streams of plain markup and a
+      `refresh` action, through the Mercure hub of FrankenPHP. See section 4.
 - [ ] **Live validation** (section 5). The touched fields go in the signed state. How does
       this work with a Symfony form, and with `#[Assert]` on `#[State]` properties? Does
       validation run in the Doctrine transaction?
@@ -158,103 +158,55 @@ that rendered because of a context. The Settings example uses it. See
   renders only the consumers of that type. The profiler dumps the context values (the same "safe
   dump" problem as the props).
 
-### [ ] Real-time push — P2
+### [x] Real-time push — P2
 
 A change by one user does not show for another user until that user sends an event.
 
+Done: a page with `#[Subscribe]` opens one EventSource to the Mercure hub of FrankenPHP, for its
+topics: the page, the page with its `#[Path]` route values, and `phem:*` (`everywhere()`). A
+handler or a service pushes Turbo Streams with `Phem\Stream\Streams`:
+`$streams->to(Page::class, $values)->prepend('entries', <Entry entry={{ entry }} />)->refresh('stats')`.
+
+- The markup is plain markup: it renders at once outside the page (`Renderer::detached()`), with
+  no `<phem-c>`. A handler, a `phem:bind`, a `phem:loading` or a `<Suspense>` in it throws.
+- `refresh()` is the action of Phem (`phem-refresh`): each browser renders the component around
+  the target again with a normal event, with its state and its access rules, as after
+  `$e->refresh()`: a component with no `#[State]` reads its data again in `mount()`. The browser
+  sends one event for the refreshes that come together.
+- In the root element, the browser marks the component around each target as stale. The next
+  event sends the stale ids, and the server renders them with their full subtree and always
+  morphs them (`Tree::markStale()`). A stale component that is not in the page makes its parent
+  stale. So the shape and the state of the page know the change.
+- `update` and `replace` morph by default. A pushed morph keeps a bound field that the user
+  changed. Before an `append` or a `prepend`, the browser removes an element of the target with
+  the id of a new element (no duplicate for the user who made the change). While an event runs,
+  the pushes wait for its morph.
+- The streams go to the hub at the end of the request (`kernel.response`), after the transaction
+  of the event, with `mercure_publish()` (no HTTP request, no publisher key). `StreamsMiddleware`
+  drops the streams of a handler that throws.
+- With `phem.mercure.subscriber_key`, the updates are private: the response sets the cookie of
+  the hub with a token (`at+jwt`, modern Mercure) for the topics of the page and of the other
+  tabs, and each event renews it. With no key, the updates are public.
+- After a lost connection, the browser refreshes the content of the root element (the `local`
+  transport has no history).
+- The tests get the pushes with `$page->receive()` (a MemoryPublisher with `framework.test`).
+  The profiler shows the pushed streams and the stale components. `phemc` reports E053 for
+  `#[Subscribe]` on a class that is not a page. The Guestbook example uses it. See
+  [docs/phpm-syntax.md](docs/phpm-syntax.md#real-time-updates).
+
 - **Best peer:** LV PubSub: each LiveView subscribes to topics, and a broadcast re-renders all
   subscribers. LC uses Mercure and Turbo Streams. LW uses Laravel Echo with `#[On('echo:...')]`.
-- **Proposal:** a component handles a Messenger message with the native `#[AsMessageHandler]`,
-  and returns a `Phem\Stream`. Phem publishes it to Mercure as a Turbo Stream, and Turbo
-  applies it in each browser. The plain PHP code (a controller, a worker, a Doctrine
-  listener) only dispatches the message, so it needs no markup. The markup stays in the
-  `.phpm` file, next to the markup that it changes. No browser sends a request.
-
-  ```php
-  // plain PHP, anywhere
-  $this->bus->dispatch(new OrderPlaced($order->getId()));
-  ```
-
-  ```php
-  #[Component]
-  final class OrderFeed
-  {
-      #[Prop, Topic] public Customer $customer;
-      public array $orders = [];
-
-      public function __construct(private readonly Orders $repo) {}
-
-      public function mount(): void { $this->orders = $this->repo->latestOf($this->customer); }
-
-      #[AsMessageHandler]
-      public function placed(OrderPlaced $m): Stream
-      {
-          $order = $this->repo->find($m->orderId);
-
-          return Stream::prepend('orders', <OrderRow order={{ order }} />)->to($order->customer);
-      }
-
-      #[AsMessageHandler]
-      public function cancelled(OrderCancelled $m): Stream
-      {
-          return Stream::remove('order-'.$m->orderId)->to($m->customerId);
-      }
-
-      public function render(): Node
-      {
-          return (
-              <ul id="orders">
-                  {% for o in orders %}<OrderRow key={{ o.id }} order={{ o }} />{% endfor %}
-              </ul>
-          );
-      }
-  }
-  ```
-
-- **Decisions:**
-  - **Registration.** `ComponentPass` registers each class component as an autoconfigured
-    service, before the autoconfiguration passes of Symfony. So Messenger finds
-    `#[AsMessageHandler]` on a component method. A Phem compiler pass wraps each component
-    handler: the wrapper calls the method and publishes the returned `Stream`. It works on
-    each bus, sync or async, with no middleware configuration. `symfony/mercure-bundle` and
-    `symfony/messenger` are "suggest" dependencies.
-  - **The handler method runs outside a page.** It has no props, no state, no context, no
-    request and no user. It reads only the constructor services and the message. `phemc`
-    reports an error when the method reads a `#[Prop]`, `#[State]` or `#[Context]` property.
-    Phem renders the returned markup alone, with no page.
-  - **No `#[State]` in a component with message handlers** (a `phemc` error). The component
-    reads its data in `mount()`, so the next event renders the same data that the push
-    showed. A handler id comes from the handler and its captured values, so a click on a
-    pushed row finds its handler.
-  - **Topics.** The topic of a component is its class name. A component with a `#[Topic]`
-    prop also has a scoped topic: the class name and the value of the prop
-    (`App\OrderFeed/42`). The value is a scalar, a backed enum, or a Doctrine entity (its
-    identifier). A component has one `#[Topic]` prop at most (a `phemc` error). A stream
-    without `->to()` goes to the class topic, so it reaches all instances. A stream with
-    `->to($value)` goes only to the scoped topic of that value.
-  - **Subscription.** When a page renders a component with message handlers, Phem adds one
-    `<turbo-stream-source>` for the topics of the page. When conditional rendering removes
-    the component, its topics leave the subscription.
-  - **All topics are private.** Phem publishes each update as private. When a page renders,
-    Phem sets the `mercureAuthorization` cookie with a subscriber JWT for the topics of the
-    page. The page passed its access rules (firewall, `access_control`, `#[IsGranted]`), so
-    the viewer can see what the server rendered for them. The JWT also keeps the topics of a
-    valid cookie of the same user, so two open tabs keep their subscriptions. A user cannot
-    subscribe to the scoped topic of another customer by a guess.
-  - **One render for all subscribers.** A pushed stream cannot show data for one user only.
-    Put user data in a scoped topic for that user.
-  - **The page after a push.** Pushed markup has no fiber ids. The browser keeps the ids of the
-    components that got a stream, and sends them with the next event. The server renders these
-    components as dirty, so the morph replaces the pushed markup with markup that has ids.
-  - **Duplicates.** Pushed items have an `id`. Turbo removes an element with the same id before
-    an `append` or a `prepend`, so the user who made the change does not see the item two times.
-  - **Transactions.** A component handler that runs in an event (a sync transport, in the
-    Doctrine transaction) does not publish at once. Phem keeps the streams until the commit,
-    and drops them on a rollback.
-  - **`Stream` actions.** The Turbo actions: `append`, `prepend`, `replace`, `update`,
-    `remove`, `before`, `after`, and the `morph` method for `replace` and `update`.
-  - **Tests.** `$this->handle(new OrderPlaced(1))` in `InteractsWithPhem` runs the component
-    handlers of the test page for the message, and applies the streams to the page.
+  Turbo 8 broadcasts page refreshes.
+- **Later:**
+  - Interactive pushed markup: a component with handlers in a push. Its fiber ids and handler
+    ids depend on the page path, which a publisher does not know. A relative id that the server
+    resolves through the stale component could work, with a `key` on the pushed component.
+  - A component that handles a Messenger message (`#[AsMessageHandler]` on a component method)
+    and returns its streams, so the markup stays next to the markup that it changes.
+  - Publish from a CLI process (a Messenger worker): a publisher for the HTTP API of the hub,
+    with a publisher key. `mercure_publish()` works only in a request of FrankenPHP.
+  - A replay of the lost updates (`lastEventID`, with a transport that keeps a history), in
+    place of the refresh after a lost connection.
 - **Out of scope:** polling (LW `wire:poll`, LC `data-poll`). Each tick is a full event (the
   state, two render passes, a transaction) also when nothing changed. A push sends data only
   when it changes.

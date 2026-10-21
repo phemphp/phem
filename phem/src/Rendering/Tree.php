@@ -42,14 +42,17 @@ final class Tree
     /** @var array<string, array{string, string, list<int|string>}> the bound properties of the pass: key => [fiber id, property, path] */
     private array $binds = [];
     private ?string $rootToken = null;
+    /** @var array<string, true> the stale fibers: they render with their full subtree, and their HTML always goes to the browser */
+    private array $stale = [];
 
     /**
-     * @param string                              $page   the page component, or '' for a tree without a page
-     * @param array<string, array<string, mixed>> $state  fiber id => state that the browser sent back
-     * @param array<string, mixed>                $props  the props of the page: its #[Path] route values (an entity for an entity prop)
-     * @param array<string, mixed>                $values the route values of the #[Path] props, as the route gives them (an identifier or criteria for an entity prop)
-     * @param array<array-key, mixed>             $query  the query string of the page request, for the #[Url] properties of a new fiber (see Phem\State\UrlQuery)
-     * @param TreeShape                           $shape  the shape of the last render, in the browser
+     * @param string                              $page     the page component, or '' for a tree without a page
+     * @param array<string, array<string, mixed>> $state    fiber id => state that the browser sent back
+     * @param array<string, mixed>                $props    the props of the page: its #[Path] route values (an entity for an entity prop)
+     * @param array<string, mixed>                $values   the route values of the #[Path] props, as the route gives them (an identifier or criteria for an entity prop)
+     * @param array<array-key, mixed>             $query    the query string of the page request, for the #[Url] properties of a new fiber (see Phem\State\UrlQuery)
+     * @param TreeShape                           $shape    the shape of the last render, in the browser
+     * @param bool                                $detached a tree outside a page, for the markup of a push (see Renderer::detached())
      */
     public function __construct(
         public readonly string $page = '',
@@ -58,7 +61,38 @@ final class Tree
         public readonly array $values = [],
         public readonly array $query = [],
         public readonly TreeShape $shape = new TreeShape(),
+        public readonly bool $detached = false,
     ) {
+    }
+
+    /**
+     * Marks fibers as stale: their element in the browser is not the last render, because a push
+     * changed it (see Phem\Stream\Streams). A stale fiber renders with its full subtree, and
+     * its HTML goes to the browser also when its hash did not change (see changedFibers()).
+     */
+    public function markStale(string ...$ids): void
+    {
+        $this->stale += array_fill_keys($ids, true);
+    }
+
+    public function isStale(string $id): bool
+    {
+        return isset($this->stale[$id]);
+    }
+
+    /** Whether a fiber or one of its ancestors is stale (see markStale()). */
+    public function refreshes(Fiber $fiber): bool
+    {
+        if ([] === $this->stale) {
+            return false;
+        }
+        for ($f = $fiber; null !== $f; $f = $f->parent) {
+            if (isset($this->stale[$f->id])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Starts a render pass. */
@@ -246,7 +280,8 @@ final class Tree
 
     /**
      * The fibers to update after an event: the fibers that rendered in the last pass and whose own
-     * HTML is not the HTML of the last render (see TreeShape), with no such ancestor. The fibers
+     * HTML is not the HTML of the last render (see TreeShape), and the stale fibers (see
+     * markStale()), with no such ancestor. The fibers
      * around the root element (see Fiber::$holdsRoot) are not in the browser: a change of the page
      * markup inside the root is a change of the root fiber.
      *
@@ -259,7 +294,7 @@ final class Tree
             // A fiber that the shape does not know (a state from before the shape) compares with
             // the pass before.
             $before = $this->shape->hashOf($f->id) ?? (isset($f->ownHtml[$this->pass - 1]) ? TreeShape::hash($f->ownHtml[$this->pass - 1]) : null);
-            if (!$f->holdsRoot && TreeShape::hash($f->ownHtml[$this->pass] ?? '') !== $before) {
+            if (!$f->holdsRoot && (isset($this->stale[$f->id]) || TreeShape::hash($f->ownHtml[$this->pass] ?? '') !== $before)) {
                 $changed[$f->id] = $f;
             }
         }

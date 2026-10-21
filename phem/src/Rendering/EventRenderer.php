@@ -31,6 +31,12 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  *    change (see UpdateScope). A dirty fiber is the owner of the handler (the `$this` of the
  *    handler closure, or the fiber that registered it), or a fiber whose state changed.
  *
+ * The browser also sends the stale fibers: the components whose element a push changed (see
+ * Phem\Stream\Streams). They render in the two passes with their full subtree, and their HTML
+ * goes to the browser (see Tree::markStale()). An event with no handler and only stale fibers is
+ * a refresh. When a stale fiber is not in the page any more, its closest ancestor that rendered is
+ * stale: the push changed the HTML of that ancestor.
+ *
  * The render from before the handler is the shape that the browser sent (see TreeShape): the
  * tree compares the second pass with it. When the shape does not know a fiber of the paths, or
  * when the handler calls Event::refresh(), the full page renders, in the two passes.
@@ -52,8 +58,9 @@ final class EventRenderer
      * @param array<array-key, mixed> $bound      the bound values: "<fiber>.<property>" => value (see BoundValues)
      * @param \Closure(): Event       $event      makes the event for the handler
      * @param BrowserEventDispatcher  $dispatcher it gets only the browser events of the handler
+     * @param list<string>            $stale      the ids of the stale fibers (see Tree::markStale())
      */
-    public function run(Tree $tree, ?string $handler, array $bound, BrowserEventDispatcher $dispatcher, \Closure $event): EventOutcome
+    public function run(Tree $tree, ?string $handler, array $bound, BrowserEventDispatcher $dispatcher, \Closure $event, array $stale = []): EventOutcome
     {
         $owners = [];
         foreach ($bound as $key => $value) {
@@ -61,8 +68,12 @@ final class EventRenderer
                 $owners[] = PathScope::fiberOf($key);
             }
         }
-        $scope = PathScope::to($tree->shape, null !== $handler ? [PathScope::fiberOf($handler)] : [], array_values(array_unique($owners)));
+        // An id that the shape does not know is not in the page any more.
+        $stale = array_values(array_filter(array_unique($stale), $tree->shape->has(...)));
+        $tree->markStale(...$stale);
+        $scope = PathScope::to($tree->shape, null !== $handler ? [PathScope::fiberOf($handler)] : [], array_values(array_unique([...$owners, ...$stale])));
         $this->renderer->render($tree, $scope);
+        $this->staleAncestors($tree, $stale);
         $closure = null !== $handler ? $tree->handler($handler) : null;
         if (null !== $handler && null === $closure) {
             return EventOutcome::reload();
@@ -96,6 +107,30 @@ final class EventRenderer
     }
 
     /**
+     * Marks as stale the closest ancestor that rendered of each stale fiber that did not render:
+     * the push changed the HTML of the ancestor, and the fiber is not in it any more.
+     *
+     * @param list<string> $stale
+     */
+    private function staleAncestors(Tree $tree, array $stale): void
+    {
+        foreach ($stale as $id) {
+            for ($current = $id; null !== $current && !self::rendered($tree, $current); $current = $tree->shape->parentOf($current)) {
+            }
+            if (null !== $current && $current !== $id) {
+                $tree->markStale($current);
+            }
+        }
+    }
+
+    private static function rendered(Tree $tree, string $id): bool
+    {
+        $fiber = $tree->fiberById($id);
+
+        return null !== $fiber && $fiber->pass === $tree->pass && !$fiber->kept;
+    }
+
+    /**
      * The state of each fiber with a component instance in the last pass.
      *
      * @return array<string, array<string, mixed>>
@@ -113,8 +148,9 @@ final class EventRenderer
     }
 
     /**
-     * The fibers that render again: the fibers whose state changed, and the owner of the handler.
-     * The owner is always dirty: a handler can change a property that is not state (a form).
+     * The fibers that render again: the fibers whose state changed, the owner of the handler, and
+     * the stale fibers. The owner is always dirty: a handler can change a property that is not
+     * state (a form).
      *
      * @param array<string, array<string, mixed>> $before
      *
@@ -124,7 +160,7 @@ final class EventRenderer
     {
         $dirty = [];
         foreach ($tree->rendered() as $fiber) {
-            if (null !== $fiber->instance && (!isset($before[$fiber->id]) || $before[$fiber->id] !== $this->state->export($fiber->instance))) {
+            if ($tree->isStale($fiber->id) || (null !== $fiber->instance && (!isset($before[$fiber->id]) || $before[$fiber->id] !== $this->state->export($fiber->instance)))) {
                 $dirty[$fiber->id] = $fiber;
             }
         }

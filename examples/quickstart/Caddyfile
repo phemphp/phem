@@ -15,6 +15,20 @@
 {$SERVER_NAME::8080} {
 	encode zstd gzip
 	header -X-Powered-By
+
+	# The Mercure hub of FrankenPHP, at /.well-known/mercure, for the pages with #[Subscribe].
+	# PHP publishes with mercure_publish(), with no HTTP request and no publisher JWT. The `local`
+	# transport keeps the updates in memory, with no history. A subscriber needs an access token
+	# of the `phem` issuer: Phem puts one in a cookie for the topics of each page. The key is the
+	# phem.mercure.subscriber_key option (MERCURE_SUBSCRIBER_JWT_KEY in .env).
+	mercure {
+		transport local
+		issuer phem {
+			subscriber {
+				jwt {$MERCURE_SUBSCRIBER_JWT_KEY:!ChangeThisMercureHubSubscriberKey!-quickstart-only}
+			}
+		}
+	}
 	# The browser checks the static files again on each load (ETag); PHP sets its own value.
 	header ?Cache-Control no-cache
 
