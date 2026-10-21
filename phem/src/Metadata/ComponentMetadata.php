@@ -19,6 +19,7 @@ use Phem\Attribute\State;
 use Phem\Attribute\Url;
 use Phem\Binding\ComponentName;
 use Phem\Binding\PropError;
+use Phem\Feed;
 use Phem\State\UrlQuery;
 
 /**
@@ -42,6 +43,9 @@ final class ComponentMetadata
 
     /** @var array<string, array<string, ?\ReflectionType>> */
     private array $paths = [];
+
+    /** @var array<string, list<\ReflectionProperty>> */
+    private array $feeds = [];
 
     /** @var array<string, array<string, array{0: \ReflectionProperty, 1: Url}>> */
     private array $urls = [];
@@ -136,6 +140,21 @@ final class ComponentMetadata
         return $this->states[$class] ??= array_values(array_filter(
             (new \ReflectionClass($class))->getProperties(),
             static fn (\ReflectionProperty $p) => !$p->isStatic() && [] !== $p->getAttributes(State::class),
+        ));
+    }
+
+    /**
+     * The Feed properties of a class component (see Phem\Feed).
+     *
+     * @param class-string $class
+     *
+     * @return list<\ReflectionProperty>
+     */
+    public function feedProperties(string $class): array
+    {
+        return $this->feeds[$class] ??= array_values(array_filter(
+            (new \ReflectionClass($class))->getProperties(),
+            static fn (\ReflectionProperty $p) => !$p->isStatic() && $p->getType() instanceof \ReflectionNamedType && Feed::class === $p->getType()->getName(),
         ));
     }
 

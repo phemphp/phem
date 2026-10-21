@@ -164,6 +164,16 @@ final class Renderer implements ResetInterface
     }
 
     /** Registers an event handler of the current fiber. Null outside a page. */
+    /**
+     * Registers the element of a feed in the current tree (see Phem\Feed). A feed is not part of
+     * a push: a pushed item renders with no feed element.
+     */
+    public function addFeed(string $target): void
+    {
+        $this->notDetached('a feed');
+        $this->tree?->addFeed($target);
+    }
+
     public function addHandler(\Closure $handler): ?string
     {
         $this->notDetached('an event handler');

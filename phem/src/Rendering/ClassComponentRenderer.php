@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Phem\Rendering;
 
 use Phem\Binding\PropBinder;
+use Phem\Feed;
 use Phem\Manifest\ComponentDefinition;
 use Phem\Manifest\ComponentKind;
 use Phem\Metadata\ComponentMetadata;
@@ -79,6 +80,12 @@ final class ClassComponentRenderer implements ComponentRenderer
                 // No state in the browser: mount() reads its data again in each render (for
                 // example after a handler of the same event changed it).
                 $component->mount();
+            }
+        }
+        // A feed with no value has no history (see Phem\Feed).
+        foreach ($this->metadata->feedProperties($fiber->fqcn) as $feed) {
+            if (!$feed->isInitialized($component)) {
+                $feed->setValue($component, Feed::withoutHistory());
             }
         }
         if (!method_exists($component, 'render')) {

@@ -33,6 +33,19 @@ pub struct FileOutput {
     pub php_path: String,
     pub php: String,
     pub templates: Vec<TemplateOutput>,
+    /// The feeds of the class components of the file: class => property => feed.
+    pub feeds: BTreeMap<String, BTreeMap<String, FeedDef>>,
+}
+
+/// A feed property of a class component (`Phem\Feed`): where its changes go in the page.
+#[derive(Clone, Debug, Serialize)]
+pub struct FeedDef {
+    /// The id of the element around the loop.
+    pub target: String,
+    /// The template of one item: the loop body.
+    pub template: String,
+    /// The loop variable: the name of the item in the template.
+    pub var: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -66,6 +79,9 @@ pub struct Manifest {
     /// The class components with a `#[Page]` or `#[Route]` attribute (the runtime reads the routes from them).
     pub pages: Vec<String>,
     pub templates: BTreeMap<String, TemplateOutput>,
+    /// The feeds of the class components: class => property => feed.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub feeds: BTreeMap<String, BTreeMap<String, FeedDef>>,
     /// Compiled PHP files, relative to the output directory.
     pub files: Vec<String>,
 }
@@ -141,7 +157,9 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
     pages.sort();
 
     let mut templates = BTreeMap::new();
+    let mut feeds = BTreeMap::new();
     for f in &files {
+        feeds.extend(f.feeds.clone());
         for t in &f.templates {
             templates.insert(t.name.clone(), TemplateOutput { name: String::new(), content: String::new(), source: t.source.clone(), line: t.line });
         }
@@ -152,6 +170,7 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
         components: registry.into_iter().filter(|(_, c)| !c.file.is_empty()).collect(),
         pages,
         templates,
+        feeds,
         files: files.iter().map(|f| f.php_path.clone()).collect(),
     };
     (Some(ProjectOutput { files, manifest }), all_diags)
@@ -181,6 +200,9 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
     let mut lowerer = lower::Lowerer::new(info, reg);
     let mut replacements: Vec<(Span, String)> = Vec::new();
     let mut templates = Vec::new();
+    let mut feeds: BTreeMap<String, BTreeMap<String, FeedDef>> = BTreeMap::new();
+    // The feed loops of each class: (class, property) => the `{% for %}` tags.
+    let mut feed_loops: HashMap<(String, String), Vec<Span>> = HashMap::new();
 
     for (index, m) in lexed.markups.iter().enumerate() {
         let name = phemc_analyze::template_name(&input.rel, index);
@@ -201,7 +223,15 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
         lowerer.class = class;
         lowerer.params = params;
         lowerer.scope_text = scope_text;
+        lowerer.in_render = in_render(info, scope);
         let content = lowerer.lower_root(&m.root, slots);
+        for f in std::mem::take(&mut lowerer.feeds) {
+            let fqcn = class.map(|c| c.fqn.clone()).unwrap_or_default();
+            let template = format!("{}.feed.{}.twig", name.strip_suffix(".twig").unwrap_or(&name), f.prop);
+            templates.push(TemplateOutput { name: template.clone(), content: f.body, source: input.rel.clone(), line: line_col(src, f.span.start).0 });
+            feed_loops.entry((fqcn.clone(), f.prop.clone())).or_default().push(f.span);
+            feeds.entry(fqcn).or_default().insert(f.prop, FeedDef { target: f.target, template, var: f.var });
+        }
 
         // Resolve the free variables to PHP expressions.
         let mut vars = Vec::new();
@@ -253,6 +283,25 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
     }
     diags.append(&mut lowerer.diags);
 
+    // E054: the render of a class prints each feed in one loop.
+    for c in info.classes.iter().filter(|c| c.is_component && c.methods.iter().any(|m| m.name.eq_ignore_ascii_case("render"))) {
+        for p in c.props.iter().filter(|p| phemc_analyze::is_feed_type(info, &p.ty)) {
+            let loops = feed_loops.get(&(c.fqn.clone(), p.name.clone())).map_or(&[][..], Vec::as_slice);
+            let reported = diags.iter().any(|d| d.code == codes::INVALID_FEED_LOOP || d.code == codes::INVALID_FEED_ITEM);
+            match loops {
+                [] if !reported => diags.push(
+                    Diagnostic::error(codes::INVALID_FEED_LOOP, format!("the feed `${}` never prints", p.name), p.span)
+                        .with_help(format!("print it in `render()`, in its own element: `<ul>{{% for item in {} %}}<li key={{{{ item.id }}}}>...</li>{{% endfor %}}</ul>`", p.name)),
+                ),
+                [_, second, ..] => diags.push(
+                    Diagnostic::error(codes::INVALID_FEED_LOOP, format!("the feed `${}` prints in two loops", p.name), *second)
+                        .with_help("a push goes to one element: print the feed in one loop"),
+                ),
+                _ => {}
+            }
+        }
+    }
+
     // Each `<?phpm` tag becomes `<?php`. The first one gets a header comment on its line (keeps line numbers).
     for (i, open) in lexed.tokens.iter().filter(|t| t.kind == TokKind::OpenTag).enumerate() {
         let tag = if i == 0 { format!("<?php /* compiled by phemc from {}; do not edit */", input.rel) } else { "<?php".into() };
@@ -269,7 +318,7 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
     php.push_str(&src[last..]);
 
     let stem = input.rel.strip_suffix(".phpm").unwrap_or(&input.rel);
-    (FileOutput { rel: input.rel.clone(), php_path: format!("php/{stem}.php"), php, templates }, diags)
+    (FileOutput { rel: input.rel.clone(), php_path: format!("php/{stem}.php"), php, templates, feeds }, diags)
 }
 
 /// Whether a markup literal is in the `render()` method of a class.

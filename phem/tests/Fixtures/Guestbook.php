@@ -24,6 +24,7 @@ final class Guestbook
     public function add(string $room, string $text): array
     {
         $entry = ['id' => ++$this->id, 'text' => $text];
+        $this->entries[$room] ??= [];
         array_unshift($this->entries[$room], $entry);
 
         return $entry;

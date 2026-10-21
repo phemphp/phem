@@ -646,7 +646,18 @@ final class ComponentTester
                     $kept[$kid] = $old;
                 }
             }
+            // As in the browser, an element with `data-phem-ignore` in the page and in the new
+            // HTML stays as it is (the tests find it by its id).
+            $ignored = [];
+            foreach ($element->querySelectorAll('[data-phem-ignore][id]') as $old) {
+                $ignored[$old->id] = $old;
+            }
             $element->innerHTML = $html;
+            foreach ($element->querySelectorAll('[data-phem-ignore][id]') as $new) {
+                if (null !== $old = $ignored[$new->id] ?? null) {
+                    $new->replaceWith($old);
+                }
+            }
             foreach ($element->querySelectorAll('phem-c[data-phem-keep]') as $placeholder) {
                 $old = $kept[$placeholder->id] ?? null;
                 if (null === $old) {

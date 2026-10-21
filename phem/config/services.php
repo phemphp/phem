@@ -56,6 +56,7 @@ use Phem\State\UrlQuery;
 use Phem\Stream\FrankenPhpPublisher;
 use Phem\Stream\Streams;
 use Phem\Stream\Subscription;
+use Phem\Stream\FeedStreams;
 use Phem\Stream\Topics;
 use Phem\Twig\CacheKeyLoader;
 use Phem\Twig\PhemExtension;
@@ -160,6 +161,8 @@ return static function (ContainerConfigurator $container): void {
             ->args([service('phem.renderer'), service('phem.stream_publisher'), service('phem.topics'), false])
             ->tag('kernel.reset', ['method' => 'reset'])
         ->alias(Streams::class, 'phem.streams')
+        ->set('phem.feed_streams', FeedStreams::class)
+            ->args([service('phem.manifest'), service('phem.renderer'), service('phem.streams'), service('phem.topics')])
         ->set('phem.subscription', Subscription::class)
             ->args([service('phem.topics'), null, '/.well-known/mercure', '__Secure-mercure_access_token', service('logger')->nullOnInvalid()])
         ->set('phem.listener.stream', StreamListener::class)
@@ -214,6 +217,7 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.inputs_comparator'),
                 service('phem.metadata'),
                 null,
+                service('phem.feed_streams'),
             ])
         ->alias(EventRenderer::class, 'phem.event_renderer')
         ->set('phem.state_cache', StateCache::class)

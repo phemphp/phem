@@ -16,6 +16,7 @@ namespace Phem\Twig;
 use Phem\Bound;
 use Phem\Dom\Attributes;
 use Phem\Dom\DomEvents;
+use Phem\Feed;
 use Phem\Rendering\Renderer;
 use Phem\Rendering\TemplateComponentRenderer;
 use Twig\Extension\RuntimeExtensionInterface;
@@ -24,7 +25,7 @@ use Twig\Template;
 
 /**
  * The Twig runtime of the compiled templates: `{% component %}`, `phem_on()`, `phem_loading()`,
- * `phem_progress()` and `phem_attrs()`.
+ * `phem_progress()`, `phem_attrs()` and `phem_feed()`.
  * The compiled code gets it with `$this->env->getRuntime(PhemRuntime::class)`.
  */
 final class PhemRuntime implements RuntimeExtensionInterface
@@ -52,6 +53,20 @@ final class PhemRuntime implements RuntimeExtensionInterface
     public function template(Template $template, string $fqcn, array $props, mixed $key, array $caller, array $slots = []): string
     {
         return $this->templates->render($template, $fqcn, $props, $key, $caller, $slots, $this->renderer->pass(...));
+    }
+
+    /**
+     * The element of a feed (see Phem\Feed): `id="<target>"`, and `data-phem-ignore` for a feed with
+     * no history, so the page keeps the pushed items when it renders again.
+     */
+    public function feed(string $target, mixed $feed): Markup
+    {
+        if (!$feed instanceof Feed) {
+            throw new \LogicException(\sprintf('The loop of the feed element "%s" prints a "%s", not a "%s": set the feed property in mount() with Feed::of(), or give it no value.', $target, get_debug_type($feed), Feed::class));
+        }
+        $this->renderer->addFeed($target);
+
+        return new Markup('id="'.Attributes::e($target).'"'.($feed->hasHistory() ? '' : ' data-phem-ignore'), 'UTF-8');
     }
 
     /** `onClick={{ f }}` → `data-phem-on-click="<handler id>"`. */

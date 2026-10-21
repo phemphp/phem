@@ -60,6 +60,20 @@ final class Attributes
         return new Markup(null === $key ? '' : 'data-phem-key="'.self::e((string) $key).'"', 'UTF-8');
     }
 
+    /**
+     * The key of an item of a feed (see Phem\Feed): `data-phem-key`, and the id of the item in the
+     * page, from the id of the feed element and the key.
+     */
+    public static function feedItem(string $target, mixed $key): Markup
+    {
+        if (null === $key || '' === $key || false === $key) {
+            throw new \LogicException(\sprintf('An item of the feed element "%s" has no key: give each item a key, for example its id.', $target));
+        }
+        $key = $key instanceof \BackedEnum ? (string) $key->value : (string) $key;
+
+        return new Markup('data-phem-key="'.self::e($key).'" id="'.self::e($target.'-'.$key).'"', 'UTF-8');
+    }
+
     /** Adds `data-phem-key` to the first element of an HTML fragment. */
     public static function keyed(string $html, string $key): string
     {

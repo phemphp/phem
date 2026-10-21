@@ -1,0 +1,70 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from pages/chat.phpm; do not edit */
+
+namespace App\Pages;
+
+use Phem\Attribute\{Component, Context, Page, Provide, State, Subscribe};
+use Phem\{Event, Feed, Node};
+use function App\Components\Document;
+
+#[Page('/chat'), Subscribe, Provide]
+final class Chat
+{
+    public Feed $messages;
+
+    public function post(string $text): void
+    {
+        $this->messages->append(new Message($text));
+    }
+
+    public function render(): Node
+    {
+        return (
+            new \Phem\Element('pages/chat.0.twig', ['messages' => $this->messages])
+
+
+
+
+
+
+
+
+
+        );
+    }
+}
+
+final readonly class Message
+{
+    public string $id;
+
+    public function __construct(public string $text)
+    {
+        $this->id = bin2hex(random_bytes(8));
+    }
+}
+
+#[Component]
+final class ChatForm
+{
+    #[State] public string $text = '';
+    #[Context] public Chat $chat;
+
+    public function send(Event $e): void
+    {
+        $this->chat->post($this->text);
+        $this->text = '';
+    }
+
+    public function render(): Node
+    {
+        return (
+            new \Phem\Element('pages/chat.1.twig', ['send' => $this->send(...), 'text' => $this->text, 'this' => $this])
+
+
+        );
+    }
+}

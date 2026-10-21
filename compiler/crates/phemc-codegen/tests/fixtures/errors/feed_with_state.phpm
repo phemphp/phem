@@ -1,0 +1,10 @@
+<?phpm // expect: E056
+use Phem\Attribute\{Component, State};
+use Phem\{Feed, Node};
+#[Component]
+final class Log
+{
+    public Feed $lines;
+    #[State] public bool $open = false;
+    public function render(): Node { return <ul>{% for l in lines %}<li key={{ l.id }}>{{ l.text }}</li>{% endfor %}</ul>; }
+}

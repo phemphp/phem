@@ -44,6 +44,8 @@ final class Tree
     private ?string $rootToken = null;
     /** @var array<string, true> the stale fibers: they render with their full subtree, and their HTML always goes to the browser */
     private array $stale = [];
+    /** @var array<string, string> the feed elements of the pass: id => the fiber that rendered it */
+    private array $feeds = [];
 
     /**
      * @param string                              $page     the page component, or '' for a tree without a page
@@ -104,6 +106,20 @@ final class Tree
         $this->handlers = [];
         $this->handlerCounts = [];
         $this->binds = [];
+        $this->feeds = [];
+    }
+
+    /**
+     * Registers the element of a feed in this pass (see Phem\Feed).
+     *
+     * @throws \LogicException when another component rendered the same feed element in this pass
+     */
+    public function addFeed(string $target): void
+    {
+        $fiber = $this->top()?->id ?? '';
+        if (($this->feeds[$target] ??= $fiber) !== $fiber) {
+            throw new \LogicException(\sprintf('Two components print the same feed in one page (the element "%s"). The pushes of a feed go to one element: render the component of the feed one time in a page.', $target));
+        }
     }
 
     /**

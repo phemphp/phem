@@ -1,0 +1,215 @@
+<?phpm
+
+namespace App\Pages;
+
+use Phem\Attribute\{Component, Context, Page, Path, Provide, State, Subscribe};
+use Phem\{Event, Feed, Node};
+use Phem\Tests\Fixtures\Guestbook;
+
+use function App\Components\Document;
+
+// The feeds of Phem\Feed: a change goes to the open pages, with the markup of the loop body.
+
+// A feed with no history: the pushes are its only items.
+#[Page('/chat/{room}'), Subscribe, Provide]
+final class ChatRoom
+{
+    #[Path] public string $room;
+    public Feed $messages;
+
+    public function __construct(private readonly Guestbook $guestbook)
+    {
+    }
+
+    public function post(string $text): void
+    {
+        $this->messages->append($this->guestbook->add('chat-'.$this->room, $text));
+    }
+
+    public function shout(): void
+    {
+        if (null !== $entry = $this->guestbook->entries('chat-'.$this->room)[0] ?? null) {
+            $this->messages->replace(['id' => $entry['id'], 'text' => strtoupper($entry['text'])]);
+        }
+    }
+
+    public function drop(): void
+    {
+        if (null !== $id = $this->guestbook->forget('chat-'.$this->room)) {
+            $this->messages->remove(['id' => $id, 'text' => '']);
+        }
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <ul class="messages">
+                    {% for m in messages %}
+                        <li key={{ m.id }} class="message">{{ m.text }}</li>
+                    {% endfor %}
+                </ul>
+                <ChatRoomForm />
+            </Document>
+        );
+    }
+}
+
+#[Component]
+final class ChatRoomForm
+{
+    #[State] public string $text = '';
+    #[Context] public ChatRoom $chat;
+
+    public function send(Event $e): void
+    {
+        $this->chat->post($this->text);
+        $this->text = '';
+    }
+
+    public function shout(): void
+    {
+        $this->chat->shout();
+    }
+
+    public function drop(): void
+    {
+        $this->chat->drop();
+    }
+
+    // The changes of a handler that throws are dropped.
+    public function fail(): void
+    {
+        $this->chat->post('Lost');
+
+        throw new \RuntimeException('The handler failed.');
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form onSubmit={{ send }}>
+                <input name="text" phem:bind={{ text }} />
+                <button id="send" type="submit">Send</button>
+                <button id="shout" type="button" onClick={{ shout }}>Shout</button>
+                <button id="drop" type="button" onClick={{ drop }}>Drop</button>
+                <button id="fail" type="button" onClick={{ fail }}>Fail</button>
+            </form>
+        );
+    }
+}
+
+// A feed with history: mount() reads the items of the server render.
+#[Page('/history'), Subscribe, Provide]
+final class HistoryPage
+{
+    public Feed $entries;
+
+    public function __construct(private readonly Guestbook $guestbook)
+    {
+    }
+
+    public function mount(): void
+    {
+        $this->entries = Feed::of($this->guestbook->entries('history'));
+    }
+
+    public function add(string $text): void
+    {
+        $this->entries->prepend($this->guestbook->add('history', $text));
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <ol class="entries">
+                    {% for entry in entries %}<li key={{ entry.id }}>{{ entry.text }}</li>{% endfor %}
+                </ol>
+                <HistoryForm />
+            </Document>
+        );
+    }
+}
+
+#[Component]
+final class HistoryForm
+{
+    #[State] public string $text = '';
+    #[Context] public HistoryPage $page;
+
+    public function add(): void
+    {
+        $this->page->add($this->text);
+        $this->text = '';
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form onSubmit={{ add }}>
+                <input name="text" phem:bind={{ text }} />
+                <button id="add" type="submit">Add</button>
+            </form>
+        );
+    }
+}
+
+// A feed on a page with no #[Subscribe]: a change throws.
+#[Page('/quiet'), Provide]
+final class QuietPage
+{
+    public Feed $lines;
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <ul>{% for line in lines %}<li key={{ line }}>{{ line }}</li>{% endfor %}</ul>
+                <QuietForm />
+            </Document>
+        );
+    }
+}
+
+#[Component]
+final class QuietForm
+{
+    #[Context] public QuietPage $page;
+
+    public function say(): void
+    {
+        $this->page->lines->append('Hello');
+    }
+
+    public function render(): Node
+    {
+        return <button id="say" onClick={{ say }}>Say</button>;
+    }
+}
+
+// The same feed two times in one page: its pushes would go to one element only.
+#[Page('/two-logs'), Subscribe]
+final class TwoLogsPage
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <FeedLog />
+                <FeedLog />
+            </Document>
+        );
+    }
+}
+
+#[Component]
+final class FeedLog
+{
+    public Feed $lines;
+
+    public function render(): Node
+    {
+        return <ul>{% for line in lines %}<li key={{ line }}>{{ line }}</li>{% endfor %}</ul>;
+    }
+}

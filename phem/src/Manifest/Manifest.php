@@ -28,6 +28,7 @@ use Phem\Suspense;
  *     components?: array<string, array<string, mixed>>,
  *     pages?: list<string>,
  *     templates?: array<string, array{source: string, line: int}>,
+ *     feeds?: array<string, array<string, array<string, string>>>,
  *     files?: list<string>,
  * }
  */
@@ -41,6 +42,8 @@ final class Manifest
     private ?string $twigSignature = null;
     /** @var array<string, ComponentDefinition|null> */
     private array $definitions = [];
+    /** @var array<string, array<string, FeedDefinition>> */
+    private array $feeds = [];
 
     public function __construct(
         private readonly string $buildDir,
@@ -99,6 +102,18 @@ final class Manifest
                 yield $definition;
             }
         }
+    }
+
+    /**
+     * The feed properties of a class component (see Phem\Feed).
+     *
+     * @return array<string, FeedDefinition> property => feed
+     */
+    public function feeds(string $fqcn): array
+    {
+        $fqcn = ltrim($fqcn, '\\');
+
+        return $this->feeds[$fqcn] ??= array_map(FeedDefinition::fromArray(...), $this->data()['feeds'][$fqcn] ?? []);
     }
 
     /** @return list<string> the page components: the components with a `#[Route]` attribute */
