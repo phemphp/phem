@@ -19,83 +19,16 @@ these properties of Phem:
 
 Talk about each item before its implementation. The open questions are a start, not a full list.
 
-- [ ] **Streams** (section 3). The items of a stream are not in the state. How does a later
+- [ ] **Streams** (section 1). The items of a stream are not in the state. How does a later
       event render the list, and how does the "before/after" comparison see it?
-- [x] **Real-time push** (section 4). Done for v1: Turbo Streams of plain markup and a
-      `refresh` action, through the Mercure hub of FrankenPHP. See section 4.
-- [ ] **Live validation** (section 5). The touched fields go in the signed state. How does
+- [ ] **Live validation** (section 3). The touched fields go in the signed state. How does
       this work with a Symfony form, and with `#[Assert]` on `#[State]` properties? Does
       validation run in the Doctrine transaction?
-- [ ] **Colocated client code** (section 6). Is the extracted script a Stimulus controller (as
-      the controllers of section 2), or a smaller hook API? How does `phemc` give it to
+- [ ] **Colocated client code** (section 4). Is the extracted script a Stimulus controller (as
+      the `data-phem-client` controllers), or a smaller hook API? How does `phemc` give it to
       AssetMapper in development (`phemc watch`) and in production?
 
-## 1. Input and requests
-
-### [x] File uploads — P1
-
-The browser does not send the files of a form today (`formFields()` drops them).
-
-Done: a submit event with files goes as `multipart/form-data`, with the JSON of the event in the
-`_phem` part. The handler gets `UploadedFile` objects in `$e->files` and in `$e->request->files`,
-so a Symfony form with `FileType` works with `handleRequest($e->request)`. PHP removes a file that
-the handler does not move at the end of the request. The files of an event have a maximum size
-together (`phem.max_upload_size`, 8 MiB by default, 413 over it), and the JSON part keeps
-`phem.max_event_size`. A multipart event has the same CSRF checks (`X-Phem-Event`, same origin).
-A file over `upload_max_filesize` of PHP gets to the handler with its upload error, so the
-form shows it. The test helper has `->upload()`. The PhotoUpload example uses it. See
-[docs/phpm-syntax.md](docs/phpm-syntax.md#file-uploads).
-
-Done: progress for each file, available in markup. An event with files goes with XHR.
-`<progress phem:progress={{ save }}>` shows the progress of the upload of a `save` event (its
-`value`, and the `--phem-progress` CSS property of any element). The form dispatches
-`phem:upload-progress`, with the progress of each file. The server does not know the files before
-the event, so the markup shows the progress of all the files together.
-
-- **Best peer:** LV `allow_upload` / `live_file_input`: upload starts on select, progress for
-  each file, size and type limits checked before the upload, chunked upload, direct upload to
-  cloud storage (presigned URL), and cancel. LW `WithFileUploads`: temporary uploads with a
-  signed URL, and previews.
-- **Notes:** Phem is a UI component model. It brings the files to the handler, and the
-  application decides what to do with them: where to keep them, how to check them
-  (`#[Assert\File]`), and what to do when the transaction rolls back.
-- **Out of scope:** upload on select (temporary uploads) and direct upload to cloud storage
-  (presigned URL). They need storage, an expiry, and cleanup, and the server of Phem keeps no
-  session. An application does them with its own endpoint or a JS uploader, and puts the result
-  (an id or a path) in a hidden field of the form. The submit event sends it as a normal field.
-
-## 2. Feedback while a request runs
-
-### [x] Client code with Stimulus and optimistic UI — P2
-
-Some changes do not need the server first: open a menu, hide a row, toggle a class.
-
-Done: these changes are Stimulus controllers, as in any Symfony page, and not a new syntax.
-`data-phem-client="hidden aria-expanded"` gives the attributes in the list to the client, so the
-morph does not undo the changes of a controller. `data-phem-ignore` keeps an element and its
-content for a JS library. The element that sent an event gets `phem:send` when the request starts,
-and `phem:done` when the event ends (`ok`, and the `status` of a failure). A Stimulus action on the
-element runs before the event, so it can change the page at once and undo it on `phem:done`. The
-Inbox example uses them. The morph matches the items of a list by their `key`, so the client
-changes stay on the correct item. The tests of the controller run with Vitest (`make test-js`).
-See [docs/phpm-syntax.md](docs/phpm-syntax.md#client-code-with-stimulus).
-
-- **Best peer:** LV `Phoenix.LiveView.JS` commands. React `useOptimistic`. LC and Turbo use
-  Stimulus.
-- **Notes:** LV needs `JS` commands because it has no client framework for them. Phem runs on
-  Stimulus already, so a second syntax adds API but no capability.
-
-### [x] Dirty state and "leave page" guard — P3
-
-Done: a bound field that the server did not get yet has the `phem-dirty` class, and so do its
-component, its form, its `data-phem-guard` element, and the root element. `data-phem-guard` asks
-the user before they leave the page with dirty fields (`beforeunload`, and a `confirm()` for a Turbo
-visit). The PackingList example uses it. See
-[docs/phpm-syntax.md](docs/phpm-syntax.md#unsaved-changes).
-
-- **Best peer:** LW `wire:dirty` (style for unsaved bound values).
-
-## 3. Rendering and performance
+## 1. Rendering and performance
 
 ### [x] Lazy and deferred components (Suspense) — P2
 
@@ -125,7 +58,7 @@ loads with its own event. The test helper has `->load()`. The Dashboard example 
   `->delete($m)`, and the response has a Turbo Stream `append` / `remove` for the item. The
   list is not part of `#[State]`. Good for chats, feeds and infinite scroll.
 
-## 4. State and communication
+## 2. State and communication
 
 ### [x] Context (provide and read) — P2
 
@@ -212,7 +145,7 @@ handler or a service pushes Turbo Streams with `Phem\Stream\Streams`:
   state, two render passes, a transaction) also when nothing changed. A push sends data only
   when it changes.
 
-## 5. Forms and validation
+## 3. Forms and validation
 
 ### [ ] Live validation of touched fields — P2
 
@@ -228,7 +161,7 @@ Symfony forms work in a submit handler. There is no validation while the user ty
   - For a Symfony form: keep the submitted values in the state, and call `submit()` with
     `clearMissing: false` on each change (as LC does).
 
-## 6. Client escape hatch
+## 4. Client escape hatch
 
 ### [ ] Colocated client code and refs — P2
 
@@ -242,9 +175,8 @@ Some behavior must run in the browser: a chart, a map, a rich text editor, a foc
     controller and registers it with AssetMapper. The component root gets its
     `data-controller` automatically.
   - The controller gets the server events of the item "Server-to-browser events".
-  - Done: `data-phem-ignore` (as LV `phx-update="ignore"` and LW `wire:ignore`), see section 2.
 
-## 7. Errors and resilience
+## 5. Errors and resilience
 
 ### [x] Error boundaries — P2
 
@@ -264,7 +196,7 @@ page. The Dashboard example uses it. See
 - **Later:** in debug mode, show the Symfony exception page in an overlay (as LW does in
   development).
 
-## 8. Developer experience
+## 6. Developer experience
 
 ### [x] Symfony profiler panel — P2
 
