@@ -43,7 +43,8 @@ namespace Phem;
  * - After the event handler, each change goes to the page of the event (with its #[Path] route
  *   values) as a Turbo Stream, with the loop body rendered for the item: append() and prepend()
  *   add it to the element, replace() and remove() change the element of the item. The `key` of
- *   the item gives its id: give the same key to the same item.
+ *   the item gives its id: give the same key to the same item. refresh() renders the component
+ *   of the feed again in each page, for the data around the feed (a count).
  * - The page must have #[Subscribe]. The class of the feed has no #[State]: its data loads again
  *   in each render.
  * - Feed::of() gives the items of the server render, for example from a repository in mount().
@@ -59,6 +60,7 @@ final class Feed implements \IteratorAggregate, \Countable
     public const PREPEND = 'prepend';
     public const REPLACE = 'replace';
     public const REMOVE = 'remove';
+    public const REFRESH = 'refresh';
 
     /** @var list<array{0: string, 1: mixed}> [action, item] */
     private array $changes = [];
@@ -115,6 +117,16 @@ final class Feed implements \IteratorAggregate, \Countable
     {
         $this->items = array_values(array_filter($this->items, static fn (mixed $i): bool => $i !== $item));
         $this->changes[] = [self::REMOVE, $item];
+    }
+
+    /**
+     * Renders the component of the feed again in all the open pages, with a normal event and with
+     * its subtree: mount() reads the new data, and a #[State] keeps the value of the browser. Use
+     * it for the data around the feed that its items change (a count).
+     */
+    public function refresh(): void
+    {
+        $this->changes[] = [self::REFRESH, null];
     }
 
     public function getIterator(): \ArrayIterator

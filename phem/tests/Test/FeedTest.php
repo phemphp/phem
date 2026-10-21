@@ -127,6 +127,21 @@ final class FeedTest extends KernelTestCase
             ->assertSelectorTextContains('.entries li:first-child', 'Second');
     }
 
+    public function testARefreshRendersTheComponentOfTheFeedAgainInTheOtherTabs(): void
+    {
+        $other = $this->visit('/history')->assertSelectorTextContains('.count', '0 entries');
+        $this->visit('/history')->fill('input[name=text]', 'First')->click('#add-count');
+
+        $publisher = static::getContainer()->get(TestPublisherPass::ID);
+        \assert($publisher instanceof MemoryPublisher);
+        [$update] = $publisher->updates();
+        self::assertMatchesRegularExpression('{<turbo-stream action="phem-refresh" target="phem-f-[a-z0-9]{10}"></turbo-stream>$}', $update['data']);
+
+        $other->receive()
+            ->assertSelectorTextContains('.count', '1 entries')
+            ->assertSelectorCount(1, '.entries li');
+    }
+
     public function testAChangeOnAPageWithNoSubscribeThrows(): void
     {
         $this->expectException(\LogicException::class);

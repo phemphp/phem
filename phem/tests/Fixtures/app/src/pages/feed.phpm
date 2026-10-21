@@ -114,15 +114,19 @@ final class HistoryPage
         $this->entries = Feed::of($this->guestbook->entries('history'));
     }
 
-    public function add(string $text): void
+    public function add(string $text, bool $count = false): void
     {
         $this->entries->prepend($this->guestbook->add('history', $text));
+        if ($count) {
+            $this->entries->refresh();
+        }
     }
 
     public function render(): Node
     {
         return (
             <Document>
+                <HistoryCount />
                 <ol class="entries">
                     {% for entry in entries %}<li key={{ entry.id }}>{{ entry.text }}</li>{% endfor %}
                 </ol>
@@ -144,14 +148,42 @@ final class HistoryForm
         $this->text = '';
     }
 
+    public function addAndCount(): void
+    {
+        $this->page->add($this->text, count: true);
+        $this->text = '';
+    }
+
     public function render(): Node
     {
         return (
             <form onSubmit={{ add }}>
                 <input name="text" phem:bind={{ text }} />
                 <button id="add" type="submit">Add</button>
+                <button id="add-count" type="button" onClick={{ addAndCount }}>Add and count</button>
             </form>
         );
+    }
+}
+
+// The data around the feed: refresh() renders it again in the other tabs.
+#[Component]
+final class HistoryCount
+{
+    public int $count = 0;
+
+    public function __construct(private readonly Guestbook $guestbook)
+    {
+    }
+
+    public function mount(): void
+    {
+        $this->count = \count($this->guestbook->entries('history'));
+    }
+
+    public function render(): Node
+    {
+        return <p class="count">{{ count }} entries</p>;
     }
 }
 

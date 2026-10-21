@@ -3,25 +3,24 @@ namespace App\Pages\Examples;
 
 use App\Model\GuestbookEntry as Entry;
 use App\Repository\GuestbookRepository;
-use Phem\Attribute\{Component, Page, Prop, State, Subscribe};
-use Phem\Event;
-use Phem\Node;
-use Phem\Stream\Streams;
+use Phem\Attribute\{Component, Context, Page, Prop, Provide, State, Subscribe};
+use Phem\{Event, Feed, Node};
 
 use function App\Components\Document;
 
 // Real-time push: open this page in two tabs, and sign in one of them.
 // - #[Subscribe] connects the page to the Mercure hub of FrankenPHP (see the Caddyfile).
-// - The handler pushes plain markup: `prepend()` adds the new entry in each tab.
-// - `refresh()` renders the stats again in each tab, with a normal event: GuestbookStats has no
-//   #[State], so mount() reads the new data; the open list of names (a #[State] of its child)
-//   stays open.
-// The streams go to the hub after the transaction of the event.
-#[Page('/examples/Guestbook'), Subscribe]
+// - `entries` is a Feed with the latest entries: sign() prepends the new entry, and Phem pushes
+//   it to each tab with the markup of the loop body. No code names a topic or a target id.
+// - `refresh()` of the feed renders the page again in each tab, with a normal event:
+//   GuestbookStats has no #[State], so mount() reads the new data; the open list of names (a
+//   #[State] of its child) stays open.
+// - SignForm gets the page as a context (#[Provide]), and calls sign().
+// The pushes go to the hub after the transaction of the event: the new entry has its id.
+#[Page('/examples/Guestbook'), Subscribe, Provide]
 final class Guestbook
 {
-    /** @var list<Entry> */
-    private array $entries = [];
+    public Feed $entries;
 
     public function __construct(private readonly GuestbookRepository $repository)
     {
@@ -29,7 +28,15 @@ final class Guestbook
 
     public function mount(): void
     {
-        $this->entries = $this->repository->latest();
+        $this->entries = Feed::of($this->repository->latest());
+    }
+
+    public function sign(string $name, string $message): void
+    {
+        $entry = new Entry($name, $message);
+        $this->repository->add($entry);
+        $this->entries->prepend($entry);
+        $this->entries->refresh();
     }
 
     public function render(): Node
@@ -40,24 +47,17 @@ final class Guestbook
                 <h1>Guestbook</h1>
                 <SignForm />
                 <GuestbookStats />
-                <ul id="entries" className="entries">
-                    {% for entry in entries %}<GuestbookEntry key={{ entry.id }} entry={{ entry }} />{% endfor %}
+                <ul className="entries">
+                    {% for entry in entries %}
+                        <li key={{ entry.id }}>
+                            <strong>{{ entry.name }}</strong>: {{ entry.message }}
+                            <small>{{ entry.signedAt|date('H:i:s') }}</small>
+                        </li>
+                    {% endfor %}
                 </ul>
             </Document>
         );
     }
-}
-
-// One entry: the page and the push render it. It has no handler, so it can be pushed.
-#[Component]
-function GuestbookEntry(Entry $entry): Node
-{
-    return (
-        <li id="entry-{{ entry.id }}">
-            <strong>{{ entry.name }}</strong>: {{ entry.message }}
-            <small>{{ entry.signedAt|date('H:i:s') }}</small>
-        </li>
-    );
 }
 
 #[Component]
@@ -65,25 +65,18 @@ final class SignForm
 {
     #[State] public string $name = '';
     #[State] public string $message = '';
-
-    public function __construct(
-        private readonly GuestbookRepository $repository,
-        private readonly Streams $streams,
-    ) {
-    }
+    #[Context] public Guestbook $guestbook;
 
     public function sign(Event $e): void
     {
-        if ('' === trim($this->name) || '' === trim($this->message)) {
+        $name = mb_substr(trim($this->name), 0, 40);
+        $message = mb_substr(trim($this->message), 0, 280);
+        if ('' === $name || '' === $message) {
             return;
         }
-        $entry = new Entry(mb_substr(trim($this->name), 0, 40), mb_substr(trim($this->message), 0, 280));
-        $this->repository->add($entry);
         $this->message = '';
 
-        $this->streams->to(Guestbook::class)
-            ->prepend('entries', <GuestbookEntry entry={{ entry }} />)
-            ->refresh('guestbook-stats');
+        $this->guestbook->sign($name, $message);
     }
 
     public function render(): Node
@@ -117,7 +110,7 @@ final class GuestbookStats
     public function render(): Node
     {
         return (
-            <section id="guestbook-stats">
+            <section>
                 <SignedNames names={{ names }} />
             </section>
         );

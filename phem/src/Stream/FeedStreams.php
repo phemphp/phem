@@ -23,7 +23,8 @@ use Phem\Rendering\Tree;
 /**
  * Turns the changes of the feeds of an event into streams to the page of the event (see
  * Phem\Feed): append() and prepend() add the loop body of the item to the feed element, and
- * replace() and remove() change the element of the item, by its id.
+ * replace() and remove() change the element of the item, by its id. refresh() renders the
+ * component around the feed element again.
  *
  * Phem\Rendering\EventRenderer calls it after the handler: a handler that throws (also when the
  * commit fails) pushes nothing. The streams wait in Streams, and go to the hub at the end of the
@@ -75,6 +76,9 @@ final class FeedStreams
 
     private function stream(FeedDefinition $definition, string $action, mixed $item): Stream
     {
+        if (Feed::REFRESH === $action) {
+            return new Stream(Stream::REFRESH, $definition->target);
+        }
         $html = $this->renderer->detached(new Element($definition->template, [$definition->var => $item]));
 
         return match ($action) {

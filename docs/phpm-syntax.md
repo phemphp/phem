@@ -1371,39 +1371,39 @@ A change by one user does not show for another user until that user sends an eve
 with `Phem\Stream\Streams`, and the Mercure hub of FrankenPHP sends them to the open pages.
 
 ```php
-use Phem\Attribute\{Component, Page, State, Subscribe};
+use Phem\Attribute\{Component, Page, Path, Prop, Subscribe};
 use Phem\Stream\Streams;
 
-#[Page('/guestbook'), Subscribe]
-final class Guestbook
+#[Page('/orders/{id}'), Subscribe]
+final class OrderPage
 {
-    // ... renders <SignForm />, <GuestbookStats /> (id="guestbook-stats") and <ul id="entries">
+    #[Path] public int $id;
+    // ... renders <p id="order-status"> and <OrderItems /> (id="order-items")
 }
 
 #[Component]
-final class SignForm
+final class ShipButton
 {
-    #[State] public string $message = '';
+    #[Prop] public Order $order;
 
-    public function __construct(
-        private readonly GuestbookRepository $repository,
-        private readonly Streams $streams,
-    ) {
+    public function __construct(private readonly Streams $streams)
+    {
     }
 
-    public function sign(): void
+    public function ship(): void
     {
-        $entry = new Entry($this->message);
-        $this->repository->add($entry);
-        $this->message = '';
+        $this->order->ship();
 
-        $this->streams->to(Guestbook::class)
-            ->prepend('entries', <GuestbookEntry entry={{ entry }} />)
-            ->refresh('guestbook-stats');
+        $this->streams->to(OrderPage::class, ['id' => $this->order->id])
+            ->update('order-status', <OrderStatus order={{ order }} />)
+            ->refresh('order-items');
     }
     // ...
 }
 ```
+
+For a list that the page prints in a loop, use a [feed](#feeds): it pushes its items with no
+`Streams` and no target id.
 
 - `to(Page::class)` names all the URLs of a page. `to(Page::class, ['id' => 42])` names one URL:
   give all the `#[Path]` route values of the page, as the URL has them. `everywhere()` names all
@@ -1496,6 +1496,10 @@ final class ChatForm
 - `append($item)` and `prepend($item)` add the loop body, rendered for the item, to the element
   of the loop. `replace($item)` and `remove($item)` change the element of the item: the element
   with the same `key`. So give the same key to the same item, for example its id.
+- `refresh()` renders the class of the feed again in each tab, with a normal event and with its
+  subtree, as `Streams::refresh()`. Use it for the data around the feed that a change makes old
+  (a count): a child with no `#[State]` reads its data again in `mount()`, and a `#[State]` keeps
+  the value of the browser.
 - The changes go to the page of the event, with its `#[Path]` route values, after the handler:
   as `Streams::to(Page::class, [...])`. A change on a page with no `#[Subscribe]` throws. When the
   handler throws (also when the commit fails), the changes are dropped. A feed that changes
