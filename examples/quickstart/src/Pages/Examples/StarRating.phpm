@@ -11,8 +11,8 @@ final class StarRating
 {
     private const int MAX_STARS = 5;
 
-    #[State] 
-    public int $stars = 0;                    // state
+    #[State]
+    public int $stars = 0;
 
     public function addStar(): void
     {

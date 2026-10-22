@@ -981,8 +981,8 @@ use Phem\Node;
 #[Component]
 final class Counter
 {
-    #[Prop] public string $label = 'Clicked';   // prop
-    #[State] public int $count = 0;             // state
+    #[Prop] public string $label = 'Clicked';
+    #[State] public int $count = 0;
 
     public function increment(): void
     {
@@ -1083,8 +1083,8 @@ use Phem\Node;
 #[Component]
 final class TodoList
 {
-    #[Prop] public int $limit = 10;        // prop
-    #[State] public array $todos = [];     // state
+    #[Prop] public int $limit = 10;
+    #[State] public array $todos = [];
 
     public function __construct(private readonly TodoRepository $repository)
     {
@@ -1220,7 +1220,7 @@ use Phem\Attribute\{Component, Prop, Transactional};
 #[Component, Transactional]
 final class TodoItem
 {
-    #[Prop] public Todo $todo;             // prop: a managed entity
+    #[Prop] public Todo $todo;             // a managed entity
 
     public function __construct(private readonly EntityManagerInterface $em)
     {
