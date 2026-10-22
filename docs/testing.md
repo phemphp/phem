@@ -110,9 +110,8 @@ A page with `#[Subscribe]` gets the pushes of `Phem\Stream\Streams` with `receiv
 its topics since its render, or since the last `receive()`. In the tests (`framework.test: true`),
 the streams go to memory, not to a Mercure hub. A stream marks the component around its target as
 stale, and the next event sends it, as in a browser. A `refresh()` sends one event with no handler.
-The changes of a `Phem\LiveCollection` are pushes too. As in a browser, an element with
-`data-phem-ignore` and an `id` (the element of a live collection with no history) keeps its content
-when an event renders it again. Open the page two times, as two tabs:
+As in a browser, an element with `data-phem-ignore` and an `id` (a target that only the pushes fill)
+keeps its content when an event renders it again. Open the page two times, as two tabs:
 
 ```php
 $other = $this->visit('/guestbook');

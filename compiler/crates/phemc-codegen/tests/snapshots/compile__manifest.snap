@@ -259,24 +259,6 @@ expression: out.manifest.to_json()
       "required": [],
       "rest": false
     },
-    "App\\Pages\\Chat": {
-      "fqcn": "App\\Pages\\Chat",
-      "kind": "class",
-      "file": "pages/chat.phpm",
-      "props": [],
-      "slots": [],
-      "required": [],
-      "rest": false
-    },
-    "App\\Pages\\ChatForm": {
-      "fqcn": "App\\Pages\\ChatForm",
-      "kind": "class",
-      "file": "pages/chat.phpm",
-      "props": [],
-      "slots": [],
-      "required": [],
-      "rest": false
-    },
     "App\\Pages\\Greeting": {
       "fqcn": "App\\Pages\\Greeting",
       "kind": "function",
@@ -323,7 +305,6 @@ expression: out.manifest.to_json()
   },
   "pages": [
     "App\\Pages\\About",
-    "App\\Pages\\Chat",
     "App\\Pages\\Home"
   ],
   "templates": {
@@ -407,18 +388,6 @@ expression: out.manifest.to_json()
       "source": "pages/about.phpm",
       "line": 16
     },
-    "pages/chat.0.live.messages.twig": {
-      "source": "pages/chat.phpm",
-      "line": 25
-    },
-    "pages/chat.0.twig": {
-      "source": "pages/chat.phpm",
-      "line": 22
-    },
-    "pages/chat.1.twig": {
-      "source": "pages/chat.phpm",
-      "line": 61
-    },
     "pages/index.0.twig": {
       "source": "pages/index.phpm",
       "line": 12
@@ -448,15 +417,6 @@ expression: out.manifest.to_json()
       "line": 85
     }
   },
-  "live_collections": {
-    "App\\Pages\\Chat": {
-      "messages": {
-        "target": "phem-lc-aozv1063td",
-        "template": "pages/chat.0.live.messages.twig",
-        "var": "m"
-      }
-    }
-  },
   "files": [
     "php/components/Bound.php",
     "php/components/Buttons.php",
@@ -466,7 +426,6 @@ expression: out.manifest.to_json()
     "php/components/Rest.php",
     "php/components/Tabs.php",
     "php/pages/about.php",
-    "php/pages/chat.php",
     "php/pages/index.php"
   ]
 }

@@ -1,7 +1,0 @@
----
-source: crates/phemc-codegen/tests/compile.rs
-expression: t.content
----
-<form {{ phem_on('submit', send) }}>
-                <input name="text" {{ phem_bind('text', text, 'input', null, null, this) }}>
-            </form>

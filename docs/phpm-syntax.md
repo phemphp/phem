@@ -1371,39 +1371,39 @@ A change by one user does not show for another user until that user sends an eve
 with `Phem\Stream\Streams`, and the Mercure hub of FrankenPHP sends them to the open pages.
 
 ```php
-use Phem\Attribute\{Component, Page, Path, Prop, Subscribe};
+use Phem\Attribute\{Component, Page, State, Subscribe};
 use Phem\Stream\Streams;
 
-#[Page('/orders/{id}'), Subscribe]
-final class OrderPage
+#[Page('/guestbook'), Subscribe]
+final class Guestbook
 {
-    #[Path] public int $id;
-    // ... renders <p id="order-status"> and <OrderItems /> (id="order-items")
+    // ... renders <SignForm />, <GuestbookStats /> (id="guestbook-stats") and <ul id="entries">
 }
 
 #[Component]
-final class ShipButton
+final class SignForm
 {
-    #[Prop] public Order $order;
+    #[State] public string $message = '';
 
-    public function __construct(private readonly Streams $streams)
-    {
+    public function __construct(
+        private readonly GuestbookRepository $repository,
+        private readonly Streams $streams,
+    ) {
     }
 
-    public function ship(): void
+    public function sign(): void
     {
-        $this->order->ship();
+        $entry = new Entry($this->message);
+        $this->repository->add($entry);
+        $this->message = '';
 
-        $this->streams->to(OrderPage::class, ['id' => $this->order->id])
-            ->update('order-status', <OrderStatus order={{ order }} />)
-            ->refresh('order-items');
+        $this->streams->to(Guestbook::class)
+            ->prepend('entries', <GuestbookEntry entry={{ entry }} />)
+            ->refresh('guestbook-stats');
     }
     // ...
 }
 ```
-
-For a list that the page prints in a loop, use a [live collection](#live-collections): it pushes its
-items with no `Streams` and no target id.
 
 - `to(Page::class)` names all the URLs of a page. `to(Page::class, ['id' => 42])` names one URL:
   give all the `#[Path]` route values of the page, as the URL has them. `everywhere()` names all
@@ -1423,14 +1423,14 @@ items with no `Streams` and no target id.
   with no `#[State]`, and give it as a prop to a child with the state of the UI (an open panel).
   The browser sends one event for all the refreshes that come together, and none for a target
   that the page does not show.
-- In the root element, the browser marks the component around each target as **stale**: its element
-  is not the last render of the server any more. The next event sends the stale components, and the
-  server renders them again with their full subtree, so the state of the page knows the change. When
-  a stale component is not in the page any more, its parent renders. So the content that you push
-  into a target must also be in the server render (read it from the database in `mount()`). Else the
-  next event of that browser renders the component again without it, and the morph removes it. For a
-  target that only the pushes fill (a chat with no history), put `data-phem-ignore` on it: the morph
-  keeps its content. A [live collection](#live-collections) with no history does it for you.
+- In the root element, the browser marks the component around each target as **stale**: its
+  element is not the last render of the server any more. The next event sends the stale
+  components, and the server renders them again with their full subtree, so the state of the
+  page knows the change. When a stale component is not in the page any more, its parent renders.
+  So the content that you push into a target must also be in the server render (read it from
+  the database in `mount()`). Else the next event of that browser renders the component again
+  without it, and the morph removes it. For a target that only the pushes fill (a chat with no
+  history), put `data-phem-ignore` on it: the morph keeps its content.
 - Before an `append` or a `prepend`, the browser removes an element of the target with the id of
   a new element. So give each pushed item an `id`: the user who made the change gets the push
   too, and sees the item one time.
@@ -1441,86 +1441,6 @@ items with no `Streams` and no target id.
 - The same markup goes to all the viewers of the page: do not push data for one user only. Push
   a `refresh()` instead.
 - A stream outside the root element (`#phem-root`) is plain Turbo.
-
-#### Live collections
-
-A `Phem\LiveCollection` property pushes its changes with no `Streams`, no topic and no target id.
-The page prints the live collection in a loop. A change goes to all the open tabs, with the markup
-of the loop body:
-
-```php
-use Phem\Attribute\{Component, Context, Page, Provide, State, Subscribe};
-use Phem\{Event, LiveCollection, Node};
-
-#[Page('/chat'), Subscribe, Provide]
-final class Chat
-{
-    public LiveCollection $messages;
-
-    public function post(string $name, string $text): void
-    {
-        $this->messages->append(new ChatMessage($name, $text));   // a value object with an `id`
-    }
-
-    public function render(): Node
-    {
-        return (
-            <Document>
-                <ul>
-                    {% for m in messages %}
-                        <li key={{ m.id }}><strong>{{ m.name }}</strong>: {{ m.text }}</li>
-                    {% endfor %}
-                </ul>
-                <ChatForm />
-            </Document>
-        );
-    }
-}
-
-#[Component]
-final class ChatForm
-{
-    #[State] public string $text = '';
-    #[Context] public Chat $chat;
-
-    public function send(Event $e): void
-    {
-        $this->chat->post('Ada', $this->text);
-        $this->text = '';
-    }
-    // ...
-}
-```
-
-- `append($item)` and `prepend($item)` add the loop body, rendered for the item, to the element
-  of the loop. `replace($item)` and `remove($item)` change the element of the item: the element
-  with the same `key`. So give the same key to the same item, for example its id.
-- `refresh()` renders the class of the live collection again in each tab, with a normal event and
-  with its subtree, as `Streams::refresh()`. Use it for the data around the live collection that a
-  change makes old (a count): a child with no `#[State]` reads its data again in `mount()`, and a
-  `#[State]` keeps the value of the browser.
-- The changes go to the page of the event, with its `#[Path]` route values, after the handler: as
-  `Streams::to(Page::class, [...])`. A change on a page with no `#[Subscribe]` throws. When the
-  handler throws (also when the commit fails), the changes are dropped. A live collection that
-  changes outside an event (in `mount()`) pushes nothing.
-- phemc compiles the loop body as a template of its own, and it gives the element of the loop
-  its id (`phem-lc-` and a hash of the class and the property), and each item the id of the
-  element and the key. Do not write these ids: E054 and E055 report an `id` on them.
-- A live collection has its data in the application. `LiveCollection::of($items)` gives the items of
-  the server render, for example from a repository in `mount()`. A live collection property with no
-  value is empty and has **no history**: the element of the loop gets `data-phem-ignore`, so the
-  morph keeps the pushed items when the page renders again. A tab then shows only the items that
-  come after it opens.
-- The rules, as for the markup of `Streams`: the loop body is one HTML element with a `key`, and
-  it reads only the item (not a property, not `loop`), with no handler and no `phem:bind`. The
-  same markup goes to all the viewers, so it has no data of one user. For interactive items, push
-  a `refresh()` with `Streams`.
-- The loop is the only content of its element, with no `{% else %}`, in `render()`, and the page
-  prints each live collection in one loop. A page that renders the same live collection element two
-  times (two instances of its component) throws.
-- The class of the live collection has no `#[State]` (E056): its data loads again in each render, so
-  the next event of each tab renders the new items. The form with the state is a child, and calls
-  the class through a [context](#context).
 
 The page opens one connection to the hub, for its topics: the page, the page with its route
 values, and the topic of `everywhere()`. A topic is an HMAC of its name with the secret of Phem
@@ -1570,8 +1490,7 @@ connects again.
   the error, and the response does not change.
 
 The Symfony profiler shows the streams that a request pushed, and the stale components of an
-event. `phemc` reports E053 for `#[Subscribe]` on a class that is not a page, and E054–E056 for a
-live collection that is not valid. The tests get the
+event. `phemc` reports E053 for `#[Subscribe]` on a class that is not a page. The tests get the
 pushes with `receive()` (see [Testing](testing.md#actions)).
 
 ## 9. Props and lifting state up

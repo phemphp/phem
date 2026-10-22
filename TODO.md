@@ -156,16 +156,17 @@ A slow handler (a payment, an export, a call to an API) blocks the event and its
   does not run the method. It dispatches a generic Messenger message with the handler reference
   (`FQCN::method`) and the data of the event, and it answers at once. A generic message handler
   in the worker makes the component, and calls the method. The result goes to the open pages as
-  a push (`Streams`, a `LiveCollection`, or a `Live` for one value), also to the browser of the user
-  who clicked: its response is gone.
+  a push (`Streams`), also to the browser of the user who clicked: its response is gone.
 
   ```php
   #[Async]
   public function ship(Event $e): void
   {
       $order = $this->orders->find($this->id);
-      $order->ship();                    // slow
-      $this->order->replace($order);     // a push: the worker has no response
+      $order->ship();   // slow
+      // A push: the worker has no response.
+      $this->streams->to(OrderPage::class, ['id' => $this->id])
+          ->update('order-status', <OrderStatus order={{ order }} />);
   }
   ```
 
@@ -195,9 +196,6 @@ A slow handler (a payment, an export, a call to an API) blocks the event and its
   - Is it worth it? A sync handler can already dispatch its own message
     (`$bus->dispatch(new ShipOrder($id))`). `#[Async]` saves the message class and its handler,
     but it hides a queue behind a method call.
-- **Related:** a value for one element that pushes as a `LiveCollection` does (`Live` with
-  `replace()`, `remove()` and `refresh()`), so that an async handler can change one element with
-  no `Streams` and no target id.
 
 ## 3. Forms and validation
 

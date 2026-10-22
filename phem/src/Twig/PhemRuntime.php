@@ -16,7 +16,6 @@ namespace Phem\Twig;
 use Phem\Bound;
 use Phem\Dom\Attributes;
 use Phem\Dom\DomEvents;
-use Phem\LiveCollection;
 use Phem\Rendering\Renderer;
 use Phem\Rendering\TemplateComponentRenderer;
 use Twig\Extension\RuntimeExtensionInterface;
@@ -25,7 +24,7 @@ use Twig\Template;
 
 /**
  * The Twig runtime of the compiled templates: `{% component %}`, `phem_on()`, `phem_loading()`,
- * `phem_progress()`, `phem_attrs()` and `phem_live_collection()`.
+ * `phem_progress()` and `phem_attrs()`.
  * The compiled code gets it with `$this->env->getRuntime(PhemRuntime::class)`.
  */
 final class PhemRuntime implements RuntimeExtensionInterface
@@ -53,21 +52,6 @@ final class PhemRuntime implements RuntimeExtensionInterface
     public function template(Template $template, string $fqcn, array $props, mixed $key, array $caller, array $slots = []): string
     {
         return $this->templates->render($template, $fqcn, $props, $key, $caller, $slots, $this->renderer->pass(...));
-    }
-
-    /**
-     * The element of a live collection (see Phem\LiveCollection): `id="<target>"`, and
-     * `data-phem-ignore` for a live collection with no history, so the page keeps the pushed items
-     * when it renders again.
-     */
-    public function liveCollection(string $target, mixed $collection): Markup
-    {
-        if (!$collection instanceof LiveCollection) {
-            throw new \LogicException(\sprintf('The loop of the live collection element "%s" prints a "%s", not a "%s": set the live collection property in mount() with LiveCollection::of(), or give it no value.', $target, get_debug_type($collection), LiveCollection::class));
-        }
-        $this->renderer->addLiveCollection($target);
-
-        return new Markup('id="'.Attributes::e($target).'"'.($collection->hasHistory() ? '' : ' data-phem-ignore'), 'UTF-8');
     }
 
     /** `onClick={{ f }}` → `data-phem-on-click="<handler id>"`. */

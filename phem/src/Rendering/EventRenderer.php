@@ -18,7 +18,6 @@ use Phem\Event;
 use Phem\Metadata\ComponentMetadata;
 use Phem\State\BoundValues;
 use Phem\State\StateAccessor;
-use Phem\Stream\LiveStreams;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
@@ -27,8 +26,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  * 1. The first pass renders only the fibers on the paths from the page to the fiber of the
  *    handler, and the subtrees of the components of the bound values (see PathScope). It gives
  *    the handler and the bound properties.
- * 2. The bound values go into their #[State] properties, and the handler runs. The changes of the
- *    live collections go to the open pages (see Phem\LiveCollection).
+ * 2. The bound values go into their #[State] properties, and the handler runs.
  * 3. The second pass renders the dirty fibers and their subtrees, and keeps a child that cannot
  *    change (see UpdateScope). A dirty fiber is the owner of the handler (the `$this` of the
  *    handler closure, or the fiber that registered it), or a fiber whose state changed.
@@ -52,7 +50,6 @@ final class EventRenderer
         private readonly InputsComparator $inputs = new InputsComparator(),
         private readonly ComponentMetadata $metadata = new ComponentMetadata(),
         private readonly ?SkippedRenderCheck $check = null,
-        private readonly ?LiveStreams $liveStreams = null,
     ) {
     }
 
@@ -92,8 +89,6 @@ final class EventRenderer
         if (null !== $closure) {
             $e = $event();
             $result = $this->renderer->dispatch($tree, $closure, $e);
-            // Before the second pass: a mount() in it makes a new live collection.
-            $this->liveStreams?->collect($tree);
             if ($result instanceof RedirectResponse) {
                 return EventOutcome::redirect($result);
             }

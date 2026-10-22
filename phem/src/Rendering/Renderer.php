@@ -164,16 +164,6 @@ final class Renderer implements ResetInterface
     }
 
     /** Registers an event handler of the current fiber. Null outside a page. */
-    /**
-     * Registers the element of a live collection in the current tree (see Phem\LiveCollection). A
-     * live collection is not part of a push: a pushed item renders with no live collection element.
-     */
-    public function addLiveCollection(string $target): void
-    {
-        $this->notDetached('a live collection');
-        $this->tree?->addLiveCollection($target);
-    }
-
     public function addHandler(\Closure $handler): ?string
     {
         $this->notDetached('an event handler');

@@ -22,7 +22,7 @@ use Twig\TwigFunction;
 /**
  * The `{% component %}` tag and the `phem_*` functions that compiled templates use.
  *
- * The functions that need the current render tree (`phem_on`, `phem_loading`, `phem_progress`, `phem_bind`, `phem_attrs`, `phem_live_collection`) are in PhemRuntime.
+ * The functions that need the current render tree (`phem_on`, `phem_loading`, `phem_progress`, `phem_bind`, `phem_attrs`) are in PhemRuntime.
  * The attribute functions render with Phem\Dom\Attributes.
  */
 final class PhemExtension extends AbstractExtension
@@ -49,8 +49,6 @@ final class PhemExtension extends AbstractExtension
             new TwigFunction('phem_bind_value', Attributes::bindValue(...)),
             new TwigFunction('phem_selected', Attributes::selected(...), $safe),
             new TwigFunction('phem_key', Attributes::key(...), $safe),
-            new TwigFunction('phem_live_collection', [PhemRuntime::class, 'liveCollection'], $safe),
-            new TwigFunction('phem_live_item', Attributes::liveItem(...), $safe),
             new TwigFunction('phem_attr', Attributes::attr(...), $safe),
             new TwigFunction('phem_style', Attributes::style(...), $safe),
             new TwigFunction('phem_timing', Attributes::timing(...), $safe),

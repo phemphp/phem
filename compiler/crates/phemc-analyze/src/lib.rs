@@ -41,9 +41,6 @@ pub const SUSPENSE: &str = "Phem\\Suspense";
 pub const ERROR_BOUNDARY: &str = "Phem\\ErrorBoundary";
 /// The type of a prop that takes a #[State] property of the parent: `<TextField phem:bind={{ query }} />`.
 pub const BOUND: &str = "Phem\\Bound";
-/// The type of a class property whose changes go to the open pages: the page prints it in a
-/// `{% for %}`, and the runtime pushes each change with the markup of the loop body.
-pub const LIVE_COLLECTION: &str = "Phem\\LiveCollection";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -141,21 +138,6 @@ fn accepts_array(ty: &str) -> bool {
 pub fn is_bound_type(file: &FileInfo, ty: &str) -> bool {
     let t = ty.trim().trim_start_matches('?');
     !t.is_empty() && !t.contains('|') && file.resolve_class(t).eq_ignore_ascii_case(BOUND)
-}
-
-/// Whether a PHP type names `LiveCollection`: `LiveCollection`, `?LiveCollection`, or a union
-/// with it.
-pub fn mentions_live_collection(file: &FileInfo, ty: &str) -> bool {
-    ty.split(['|', '&']).any(|t| {
-        let t = t.trim().trim_matches(|c| c == '(' || c == ')').trim().trim_start_matches('?');
-        !t.is_empty() && file.resolve_class(t).eq_ignore_ascii_case(LIVE_COLLECTION)
-    })
-}
-
-/// Whether a PHP type is exactly `LiveCollection`, with the imports of a file.
-pub fn is_live_collection_type(file: &FileInfo, ty: &str) -> bool {
-    let t = ty.trim();
-    !t.is_empty() && !t.contains(['|', '&', '?']) && file.resolve_class(t).eq_ignore_ascii_case(LIVE_COLLECTION)
 }
 
 /// The type of a context, resolved: `?Theme` → `App\Theme`.
@@ -357,24 +339,6 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
                 Diagnostic::error(codes::INVALID_REST_PROP, format!("rest prop `${}` cannot get an array", p.name), p.span)
                     .with_help("the rest prop gets a hash of props: use `public array $attrs = [];`"),
             );
-        }
-        for p in c.props.iter().filter(|p| mentions_live_collection(file, &p.ty)) {
-            let bad = if !is_live_collection_type(file, &p.ty) {
-                Some("its type is not exactly `LiveCollection`")
-            } else if p.is_static || p.is_readonly || p.is_promoted || p.is_state || p.prop_attr.is_some() || p.is_context || p.is_provide {
-                Some("a live collection is not static, readonly, promoted, a prop, state or a context")
-            } else if c.all_props().any(|s| s.is_state) {
-                Some("the class has `#[State]`")
-            } else {
-                None
-            };
-            if let Some(reason) = bad {
-                diags.push(
-                    Diagnostic::error(codes::INVALID_LIVE_COLLECTION, format!("live collection property `${}` is not valid", p.name), p.span)
-                        .with_label(reason)
-                        .with_help("declare `public LiveCollection $items;` in a component with no `#[State]`: its data loads again in each render, and the state of the UI goes in a child component"),
-                );
-            }
         }
         for p in c.props.iter().filter(|p| p.is_context) {
             if p.is_static || p.is_readonly || p.is_promoted || p.is_state || p.prop_attr.is_some() {

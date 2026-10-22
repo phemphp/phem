@@ -31,6 +31,7 @@ final class GuestbookRepository extends ServiceEntityRepository
     public function add(GuestbookEntry $entry): void
     {
         $this->getEntityManager()->persist($entry);
+        $this->getEntityManager()->flush();
     }
 
     /**
