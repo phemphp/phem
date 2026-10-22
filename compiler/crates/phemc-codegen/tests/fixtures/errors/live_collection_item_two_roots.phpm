@@ -1,9 +1,9 @@
 <?phpm // expect: E055
 use Phem\Attribute\Component;
-use Phem\{Feed, Node};
+use Phem\{LiveCollection, Node};
 #[Component]
 final class Log
 {
-    public Feed $lines;
+    public LiveCollection $lines;
     public function render(): Node { return <dl>{% for l in lines %}<dt key={{ l.id }}>{{ l.at }}</dt><dd>{{ l.text }}</dd>{% endfor %}</dl>; }
 }

@@ -1,6 +1,6 @@
 //! Lowers a markup tree to Twig source.
 
-use phemc_analyze::{is_bound_type, is_feed_type, Class, FileInfo, Param, Prop, Registry};
+use phemc_analyze::{is_bound_type, is_live_collection_type, Class, FileInfo, Param, Prop, Registry};
 use phemc_syntax::diag::codes;
 use phemc_syntax::markup::{Attr, AttrKind, AttrValue, Block, Element, ExprPart, Node, StrPart, TwigExpr};
 use phemc_syntax::{Diagnostic, Span};
@@ -29,17 +29,20 @@ pub struct Lowerer<'a> {
     pub params: &'a [Param],
     /// The bound value of the open `<select phem:bind>`: its options get `selected`.
     bound_select: Option<String>,
-    /// The markup is in the `render()` method of the class: only there can it print a feed.
+    /// The markup is in the `render()` method of the class: only there can it print a
+    /// live collection.
     pub in_render: bool,
-    /// The target id of the feed whose item root element lowers next: its `key` gives the id.
-    feed_item: Option<String>,
-    /// The feed loops of the markup that lowered last (see `FeedLoop`).
-    pub feeds: Vec<FeedLoop>,
+    /// The target id of the live collection whose item root element lowers next: its `key`
+    /// gives the id.
+    live_item: Option<String>,
+    /// The live collection loops of the markup that lowered last (see `LiveCollectionLoop`).
+    pub live_collections: Vec<LiveCollectionLoop>,
 }
 
-/// A `{% for %}` that prints a feed property of the class: the only content of its element.
+/// A `{% for %}` that prints a live collection property of the class: the only content of
+/// its element.
 #[derive(Debug)]
-pub struct FeedLoop {
+pub struct LiveCollectionLoop {
     pub prop: String,
     /// The id of the element around the loop: the target of the pushes.
     pub target: String,
@@ -53,7 +56,7 @@ pub struct FeedLoop {
 
 impl<'a> Lowerer<'a> {
     pub fn new(info: &'a FileInfo, reg: &'a Registry) -> Self {
-        Self { info, reg, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, in_render: false, feed_item: None, feeds: vec![] }
+        Self { info, reg, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, in_render: false, live_item: None, live_collections: vec![] }
     }
 
     pub fn lower_root(&mut self, node: &Node, slots: Vec<String>) -> String {
@@ -82,13 +85,13 @@ impl<'a> Lowerer<'a> {
             Node::Tag(t) => out.push_str(&t.raw),
             Node::Fragment(f) => self.nodes(&f.children, out),
             Node::Block(b) => {
-                if let Some((prop, _)) = self.feed_of(b) {
-                    // A feed loop that is the only content of an element lowers in element(), or
-                    // feed_container() reported it.
+                if let Some((prop, _)) = self.live_collection_of(b) {
+                    // A live collection loop that is the only content of an element lowers in
+                    // element(), or live_collection_container() reported it.
                     let span = b.branches[0].tag.span;
-                    if !self.diags.iter().any(|d| d.code == codes::INVALID_FEED_LOOP && d.span == span) {
-                        self.error(codes::INVALID_FEED_LOOP, format!("the feed `{prop}` must be the only content of an element"), span).help =
-                            Some(format!("print the feed in `render()`, in its own element: `<ul>{{% for item in {prop} %}}<li key={{{{ item.id }}}}>...</li>{{% endfor %}}</ul>`"));
+                    if !self.diags.iter().any(|d| d.code == codes::INVALID_LIVE_COLLECTION_LOOP && d.span == span) {
+                        self.error(codes::INVALID_LIVE_COLLECTION_LOOP, format!("the live collection `{prop}` must be the only content of an element"), span).help =
+                            Some(format!("print the live collection in `render()`, in its own element: `<ul>{{% for item in {prop} %}}<li key={{{{ item.id }}}}>...</li>{{% endfor %}}</ul>`"));
                     }
                 } else if b.name() == "for" {
                     self.check_keys(&b.branches[0].children);
@@ -156,8 +159,8 @@ impl<'a> Lowerer<'a> {
             );
         }
         self.check_timing(e);
-        let item = self.feed_item.take();
-        let feed = self.feed_container(e);
+        let item = self.live_item.take();
+        let collection = self.live_collection_container(e);
         let bind = self.bind(e);
         out.push('<');
         out.push_str(&e.name);
@@ -173,7 +176,7 @@ impl<'a> Lowerer<'a> {
                             AttrValue::Quoted { parts, .. } => self.quoted_expr(parts, a.span),
                             AttrValue::None => "true".into(),
                         };
-                        out.push_str(&format!("{ws}{{{{ phem_feed_item({}, {k}) }}}}", php_str(target)));
+                        out.push_str(&format!("{ws}{{{{ phem_live_item({}, {k}) }}}}", php_str(target)));
                     }
                     _ => self.dom_attr(a, out),
                 }
@@ -182,8 +185,8 @@ impl<'a> Lowerer<'a> {
         if let Some(b) = &bind {
             out.push_str(&b.attrs);
         }
-        if let Some((_, prop, target)) = &feed {
-            out.push_str(&format!(" {{{{ phem_feed({}, {prop}) }}}}", php_str(target)));
+        if let Some((_, prop, target)) = &collection {
+            out.push_str(&format!(" {{{{ phem_live_collection({}, {prop}) }}}}", php_str(target)));
         }
         if name == "option" {
             if let Some(bound) = self.bound_select.clone() {
@@ -207,11 +210,11 @@ impl<'a> Lowerer<'a> {
         let outer_select = if select.is_some() { std::mem::replace(&mut self.bound_select, select) } else { None };
         let scope = usize::from(name == "head" || name == "svg");
         self.title_scopes += scope;
-        match &feed {
+        match &collection {
             Some((block, prop, target)) => {
                 for n in &e.children {
                     match n {
-                        Node::Block(b) if std::ptr::eq(b, *block) => self.feed_loop(n, b, prop, target, out),
+                        Node::Block(b) if std::ptr::eq(b, *block) => self.live_collection_loop(n, b, prop, target, out),
                         _ => self.node(n, out),
                     }
                 }
@@ -227,8 +230,9 @@ impl<'a> Lowerer<'a> {
         out.push('>');
     }
 
-    /// The feed property that a `{% for %}` prints (`for m in messages`), and its loop variables.
-    fn feed_of(&self, b: &Block) -> Option<(String, Vec<String>)> {
+    /// The live collection property that a `{% for %}` prints (`for m in messages`), and its
+    /// loop variables.
+    fn live_collection_of(&self, b: &Block) -> Option<(String, Vec<String>)> {
         if b.name() != "for" {
             return None;
         }
@@ -236,15 +240,15 @@ impl<'a> Lowerer<'a> {
         let words: Vec<&str> = b.branches[0].tag.head.split_whitespace().collect();
         let at = words.iter().position(|w| *w == "in")?;
         let iterable = words[at + 1..].join(" ");
-        class.all_props().find(|p| p.name == iterable && !p.is_static && is_feed_type(self.info, &p.ty))?;
+        class.all_props().find(|p| p.name == iterable && !p.is_static && is_live_collection_type(self.info, &p.ty))?;
         let vars = words[..at].join(" ").split(',').map(|v| v.trim().to_string()).filter(|v| !v.is_empty()).collect();
         Some((iterable, vars))
     }
 
-    /// The feed loop of an element: its only content (with blank text and comments around it).
-    /// Returns the loop, the feed property and the target id of the pushes, and reports E054
-    /// for an element that cannot be the target.
-    fn feed_container<'e>(&mut self, e: &'e Element) -> Option<(&'e Block, String, String)> {
+    /// The live collection loop of an element: its only content (with blank text and comments
+    /// around it). Returns the loop, the live collection property and the target id of the
+    /// pushes, and reports E054 for an element that cannot be the target.
+    fn live_collection_container<'e>(&mut self, e: &'e Element) -> Option<(&'e Block, String, String)> {
         let mut found = None;
         for n in &e.children {
             match n {
@@ -255,91 +259,93 @@ impl<'a> Lowerer<'a> {
             }
         }
         let block = found?;
-        let (prop, vars) = self.feed_of(block)?;
+        let (prop, vars) = self.live_collection_of(block)?;
         let span = block.branches[0].tag.span;
         let help = format!("write `<ul>{{% for item in {prop} %}}<li key={{{{ item.id }}}}>...</li>{{% endfor %}}</ul>`");
         let problem = if !self.in_render {
-            Some("a feed prints in the `render()` method of its class".to_string())
+            Some("a live collection prints in the `render()` method of its class".to_string())
         } else if block.branches.len() > 1 {
-            Some("a feed loop has no `{% else %}`: the pushes add items to the element".to_string())
+            Some("a live collection loop has no `{% else %}`: the pushes add items to the element".to_string())
         } else if vars.len() != 1 {
-            Some("a feed loop has one variable: the item".to_string())
+            Some("a live collection loop has one variable: the item".to_string())
         } else if let Some(attr) = e.attrs.iter().find_map(|a| match &a.kind {
             AttrKind::Spread(_) => Some("a spread".to_string()),
             AttrKind::Plain { name, .. } if name.eq_ignore_ascii_case("id") || name.eq_ignore_ascii_case("data-phem-ignore") => Some(format!("`{name}`")),
             _ => None,
         }) {
-            Some(format!("the element of a feed has no {attr}: Phem gives it its id, and keeps the pushed items"))
+            Some(format!("the element of a live collection has no {attr}: Phem gives it its id, and keeps the pushed items"))
         } else {
             None
         };
         if let Some(msg) = problem {
-            self.error(codes::INVALID_FEED_LOOP, msg, span).help = Some(help);
+            self.error(codes::INVALID_LIVE_COLLECTION_LOOP, msg, span).help = Some(help);
             return None;
         }
         let fqcn = self.class.map(|c| c.fqn.clone()).unwrap_or_default();
-        Some((block, prop.clone(), feed_target(&fqcn, &prop)))
+        Some((block, prop.clone(), live_collection_target(&fqcn, &prop)))
     }
 
-    /// A feed loop: the loop body is also the template of one item (see `FeedLoop`). Its root
-    /// element has a `key` (the id of the item), and the body reads only the item.
-    fn feed_loop(&mut self, node: &Node, b: &Block, prop: &str, target: &str, out: &mut String) {
+    /// A live collection loop: the loop body is also the template of one item (see
+    /// `LiveCollectionLoop`). Its root element has a `key` (the id of the item), and the body
+    /// reads only the item.
+    fn live_collection_loop(&mut self, node: &Node, b: &Block, prop: &str, target: &str, out: &mut String) {
         let branch = &b.branches[0];
         let var = phemc_twig_scan::tag_vars("for", &branch.tag.head).bound.into_iter().next().unwrap_or_default();
         let span = branch.tag.span;
-        let mut ok = self.check_feed_item(&branch.children, span);
+        let mut ok = self.check_live_item(&branch.children, span);
         for v in crate::vars::free_vars(node) {
             if v.name != prop {
                 ok = false;
-                self.error(codes::INVALID_FEED_ITEM, format!("the item of the feed `{prop}` reads `{}`", v.name), Span::new(v.offset, v.offset + v.name.len())).help =
+                self.error(codes::INVALID_LIVE_ITEM, format!("the item of the live collection `{prop}` reads `{}`", v.name), Span::new(v.offset, v.offset + v.name.len())).help =
                     Some(format!("the same markup goes to all the viewers: read only `{var}` in the loop body"));
             }
         }
         if let Some(offset) = uses_loop(&branch.children) {
             ok = false;
-            self.error(codes::INVALID_FEED_ITEM, format!("the item of the feed `{prop}` reads `loop`"), Span::new(offset, offset + 4)).help =
+            self.error(codes::INVALID_LIVE_ITEM, format!("the item of the live collection `{prop}` reads `loop`"), Span::new(offset, offset + 4)).help =
                 Some("a pushed item renders alone: it has no place in the loop".into());
         }
         out.push_str(&branch.tag.raw);
-        self.feed_item = ok.then(|| target.to_string());
+        self.live_item = ok.then(|| target.to_string());
         let mut body = String::new();
         self.nodes(&branch.children, &mut body);
-        self.feed_item = None;
+        self.live_item = None;
         out.push_str(&body);
         out.push_str(&b.close.raw);
-        if FEED_UNSAFE.iter().any(|f| body.contains(f)) {
-            self.error(codes::INVALID_FEED_ITEM, format!("the item of the feed `{prop}` has a handler or a `phem:bind`"), span).help =
+        if LIVE_ITEM_UNSAFE.iter().any(|f| body.contains(f)) {
+            self.error(codes::INVALID_LIVE_ITEM, format!("the item of the live collection `{prop}` has a handler or a `phem:bind`"), span).help =
                 Some("a pushed item is plain markup: put the interactive part outside the loop".into());
             return;
         }
         if ok {
-            self.feeds.push(FeedLoop { prop: prop.to_string(), target: target.to_string(), var, body, span });
+            self.live_collections.push(LiveCollectionLoop { prop: prop.to_string(), target: target.to_string(), var, body, span });
         }
     }
 
-    /// E055: the loop body of a feed is one element (not a component), with a `key` and no `id`.
-    fn check_feed_item(&mut self, body: &[Node], span: Span) -> bool {
+    /// E055: the loop body of a live collection is one element (not a component), with a `key`
+    /// and no `id`.
+    fn check_live_item(&mut self, body: &[Node], span: Span) -> bool {
         let mut roots = body.iter().filter(|n| !matches!(n, Node::TwigComment(_) | Node::HtmlComment(_)) && !matches!(n, Node::Text(t) if t.text.trim().is_empty()));
         let help = "write one element with a key: `<li key={{ item.id }}>...</li>`";
         let root = match (roots.next(), roots.next()) {
             (Some(Node::Element(e)), None) if !e.is_component() => e,
             _ => {
-                self.error(codes::INVALID_FEED_ITEM, "the body of a feed loop is one HTML element", span).help = Some(help.into());
+                self.error(codes::INVALID_LIVE_ITEM, "the body of a live collection loop is one HTML element", span).help = Some(help.into());
                 return false;
             }
         };
         let has = |n: &str| root.attrs.iter().any(|a| matches!(&a.kind, AttrKind::Plain { name, .. } if name.eq_ignore_ascii_case(n)));
         let problem = if root.attrs.iter().any(|a| matches!(a.kind, AttrKind::Spread(_))) {
-            Some("the item of a feed has no spread")
+            Some("the item of a live collection has no spread")
         } else if !has("key") {
-            Some("the item of a feed has a `key`: it gives the id of the item")
+            Some("the item of a live collection has a `key`: it gives the id of the item")
         } else if has("id") {
-            Some("the item of a feed has no `id`: Phem makes it from the `key`")
+            Some("the item of a live collection has no `id`: Phem makes it from the `key`")
         } else {
             None
         };
         if let Some(msg) = problem {
-            self.error(codes::INVALID_FEED_ITEM, msg, root.name_span).help = Some(help.into());
+            self.error(codes::INVALID_LIVE_ITEM, msg, root.name_span).help = Some(help.into());
             return false;
         }
         true
@@ -1047,11 +1053,11 @@ const PROGRESS: &str = "phem:progress";
 const URL_ATTRS: &[&str] = &["action", "formaction", "href", "src", "xlink:href"];
 
 /// The functions of a compiled template that a pushed item cannot have: they need the fiber of a page.
-const FEED_UNSAFE: &[&str] = &["phem_on(", "phem_bind(", "phem_bound(", "phem_loading(", "phem_progress("];
+const LIVE_ITEM_UNSAFE: &[&str] = &["phem_on(", "phem_bind(", "phem_bound(", "phem_loading(", "phem_progress("];
 
-/// The id of the element of a feed: `phem-f-` and a hash of the class and the property. It is
-/// the same in all the pages, and it does not show the class name.
-pub fn feed_target(fqcn: &str, prop: &str) -> String {
+/// The id of the element of a live collection: `phem-lc-` and a hash of the class and the property.
+/// It is the same in all the pages, and it does not show the class name.
+pub fn live_collection_target(fqcn: &str, prop: &str) -> String {
     // FNV-1a, 64 bits.
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     for b in format!("{}::{prop}", fqcn.to_ascii_lowercase()).bytes() {
@@ -1059,7 +1065,7 @@ pub fn feed_target(fqcn: &str, prop: &str) -> String {
         h = h.wrapping_mul(0x0100_0000_01b3);
     }
     const ALPHABET: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
-    let mut id = String::from("phem-f-");
+    let mut id = String::from("phem-lc-");
     for _ in 0..10 {
         id.push(ALPHABET[(h % 36) as usize] as char);
         h /= 36;

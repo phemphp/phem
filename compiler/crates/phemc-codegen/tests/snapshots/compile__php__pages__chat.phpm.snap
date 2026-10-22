@@ -7,13 +7,13 @@ expression: f.php
 namespace App\Pages;
 
 use Phem\Attribute\{Component, Context, Page, Provide, State, Subscribe};
-use Phem\{Event, Feed, Node};
+use Phem\{Event, LiveCollection, Node};
 use function App\Components\Document;
 
 #[Page('/chat'), Subscribe, Provide]
 final class Chat
 {
-    public Feed $messages;
+    public LiveCollection $messages;
 
     public function post(string $text): void
     {

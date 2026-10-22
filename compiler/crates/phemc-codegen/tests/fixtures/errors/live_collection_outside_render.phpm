@@ -1,10 +1,10 @@
 <?phpm // expect: E054
 use Phem\Attribute\Component;
-use Phem\{Feed, Node};
+use Phem\{LiveCollection, Node};
 #[Component]
 final class Log
 {
-    public Feed $lines;
+    public LiveCollection $lines;
     public function render(): Node { return <div>{{ this.list() }}</div>; }
     public function list(): Node { return <ul>{% for l in lines %}<li key={{ l.id }}>{{ l.text }}</li>{% endfor %}</ul>; }
 }

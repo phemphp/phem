@@ -1,9 +1,9 @@
 <?phpm // expect: E056
 use Phem\Attribute\Component;
-use Phem\{Feed, Node};
+use Phem\{LiveCollection, Node};
 #[Component]
 final class Log
 {
-    public ?Feed $lines = null;
+    public ?LiveCollection $lines = null;
     public function render(): Node { return <ul></ul>; }
 }

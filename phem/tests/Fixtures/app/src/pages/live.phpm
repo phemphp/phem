@@ -3,19 +3,20 @@
 namespace App\Pages;
 
 use Phem\Attribute\{Component, Context, Page, Path, Provide, State, Subscribe};
-use Phem\{Event, Feed, Node};
+use Phem\{Event, LiveCollection, Node};
 use Phem\Tests\Fixtures\Guestbook;
 
 use function App\Components\Document;
 
-// The feeds of Phem\Feed: a change goes to the open pages, with the markup of the loop body.
+// The live collections of Phem\LiveCollection: a change goes to the open pages, with the markup of
+// the loop body.
 
-// A feed with no history: the pushes are its only items.
+// A live collection with no history: the pushes are its only items.
 #[Page('/chat/{room}'), Subscribe, Provide]
 final class ChatRoom
 {
     #[Path] public string $room;
-    public Feed $messages;
+    public LiveCollection $messages;
 
     public function __construct(private readonly Guestbook $guestbook)
     {
@@ -99,11 +100,11 @@ final class ChatRoomForm
     }
 }
 
-// A feed with history: mount() reads the items of the server render.
+// A live collection with history: mount() reads the items of the server render.
 #[Page('/history'), Subscribe, Provide]
 final class HistoryPage
 {
-    public Feed $entries;
+    public LiveCollection $entries;
 
     public function __construct(private readonly Guestbook $guestbook)
     {
@@ -111,7 +112,7 @@ final class HistoryPage
 
     public function mount(): void
     {
-        $this->entries = Feed::of($this->guestbook->entries('history'));
+        $this->entries = LiveCollection::of($this->guestbook->entries('history'));
     }
 
     public function add(string $text, bool $count = false): void
@@ -166,7 +167,7 @@ final class HistoryForm
     }
 }
 
-// The data around the feed: refresh() renders it again in the other tabs.
+// The data around the live collection: refresh() renders it again in the other tabs.
 #[Component]
 final class HistoryCount
 {
@@ -187,11 +188,11 @@ final class HistoryCount
     }
 }
 
-// A feed on a page with no #[Subscribe]: a change throws.
+// A live collection on a page with no #[Subscribe]: a change throws.
 #[Page('/quiet'), Provide]
 final class QuietPage
 {
-    public Feed $lines;
+    public LiveCollection $lines;
 
     public function render(): Node
     {
@@ -220,7 +221,7 @@ final class QuietForm
     }
 }
 
-// The same feed two times in one page: its pushes would go to one element only.
+// The same live collection two times in one page: its pushes would go to one element only.
 #[Page('/two-logs'), Subscribe]
 final class TwoLogsPage
 {
@@ -228,17 +229,17 @@ final class TwoLogsPage
     {
         return (
             <Document>
-                <FeedLog />
-                <FeedLog />
+                <LiveLog />
+                <LiveLog />
             </Document>
         );
     }
 }
 
 #[Component]
-final class FeedLog
+final class LiveLog
 {
-    public Feed $lines;
+    public LiveCollection $lines;
 
     public function render(): Node
     {

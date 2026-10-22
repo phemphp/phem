@@ -61,13 +61,13 @@ final class Attributes
     }
 
     /**
-     * The key of an item of a feed (see Phem\Feed): `data-phem-key`, and the id of the item in the
-     * page, from the id of the feed element and the key.
+     * The key of an item of a live collection (see Phem\LiveCollection): `data-phem-key`, and the
+     * id of the item in the page, from the id of the live collection element and the key.
      */
-    public static function feedItem(string $target, mixed $key): Markup
+    public static function liveItem(string $target, mixed $key): Markup
     {
         if (null === $key || '' === $key || false === $key) {
-            throw new \LogicException(\sprintf('An item of the feed element "%s" has no key: give each item a key, for example its id.', $target));
+            throw new \LogicException(\sprintf('An item of the live collection element "%s" has no key: give each item a key, for example its id.', $target));
         }
         $key = $key instanceof \BackedEnum ? (string) $key->value : (string) $key;
 

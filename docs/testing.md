@@ -106,13 +106,13 @@ $this->visit('/dashboard')
     ->assertSee('North: 1200 €');
 ```
 
-A page with `#[Subscribe]` gets the pushes of `Phem\Stream\Streams` with `receive()`: the
-updates of its topics since its render, or since the last `receive()`. In the tests
-(`framework.test: true`), the streams go to memory, not to a Mercure hub. A stream marks the
-component around its target as stale, and the next event sends it, as in a browser. A `refresh()`
-sends one event with no handler. The changes of a `Phem\Feed` are pushes too. As in a browser, an
-element with `data-phem-ignore` and an `id` (the element of a feed with no history) keeps its
-content when an event renders it again. Open the page two times, as two tabs:
+A page with `#[Subscribe]` gets the pushes of `Phem\Stream\Streams` with `receive()`: the updates of
+its topics since its render, or since the last `receive()`. In the tests (`framework.test: true`),
+the streams go to memory, not to a Mercure hub. A stream marks the component around its target as
+stale, and the next event sends it, as in a browser. A `refresh()` sends one event with no handler.
+The changes of a `Phem\LiveCollection` are pushes too. As in a browser, an element with
+`data-phem-ignore` and an `id` (the element of a live collection with no history) keeps its content
+when an event renders it again. Open the page two times, as two tabs:
 
 ```php
 $other = $this->visit('/guestbook');

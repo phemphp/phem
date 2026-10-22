@@ -14,12 +14,12 @@ declare(strict_types=1);
 namespace Phem\Manifest;
 
 /**
- * A feed property of a class component in the phemc manifest (see Phem\Feed).
+ * A live collection property of a class component in the phemc manifest (see Phem\LiveCollection).
  */
-final class FeedDefinition
+final class LiveCollectionDefinition
 {
     /**
-     * @param string $target   the id of the element around the loop of the feed
+     * @param string $target   the id of the element around the loop of the live collection
      * @param string $template the template of one item (the loop body), without the Twig namespace
      * @param string $var      the loop variable: the name of the item in the template
      */
@@ -30,7 +30,7 @@ final class FeedDefinition
     ) {
     }
 
-    /** @param array<string, mixed> $data an entry of the `feeds` list of the manifest */
+    /** @param array<string, mixed> $data an entry of the `live_collections` list of the manifest */
     public static function fromArray(array $data): self
     {
         return new self((string) ($data['target'] ?? ''), (string) ($data['template'] ?? ''), (string) ($data['var'] ?? ''));

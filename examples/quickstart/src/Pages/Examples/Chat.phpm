@@ -2,21 +2,22 @@
 namespace App\Pages\Examples;
 
 use Phem\Attribute\{Component, Context, Page, Provide, State, Subscribe};
-use Phem\{Event, Feed, Node};
+use Phem\{Event, LiveCollection, Node};
 
 use function App\Components\Document;
 
 // A minimal chat: open this page in two tabs, and send a message in one of them.
 // - #[Subscribe] connects the page to the Mercure hub of FrankenPHP.
-// - `messages` is a Feed: the page prints it in a loop, and post() pushes each new message to
-//   all the open tabs, with the markup of the loop body. No code names a topic or a target id.
+// - `messages` is a LiveCollection: the page prints it in a loop, and post() pushes each new
+//   message to all the open tabs, with the markup of the loop body. No code names a topic or a
+//   target id.
 // - ChatForm gets the page as a context (#[Provide]), and calls post().
-// - There is no database: the feed has no history, so a tab shows only the messages that come
-//   after it opens. Phem keeps the pushed messages when the page renders again.
+// - There is no database: the live collection has no history, so a tab shows only the messages that
+//   come after it opens. Phem keeps the pushed messages when the page renders again.
 #[Page('/examples/Chat'), Subscribe, Provide]
 final class Chat
 {
-    public Feed $messages;
+    public LiveCollection $messages;
 
     public function post(string $name, string $text): void
     {

@@ -407,7 +407,7 @@ expression: out.manifest.to_json()
       "source": "pages/about.phpm",
       "line": 16
     },
-    "pages/chat.0.feed.messages.twig": {
+    "pages/chat.0.live.messages.twig": {
       "source": "pages/chat.phpm",
       "line": 25
     },
@@ -448,11 +448,11 @@ expression: out.manifest.to_json()
       "line": 85
     }
   },
-  "feeds": {
+  "live_collections": {
     "App\\Pages\\Chat": {
       "messages": {
-        "target": "phem-f-aozv1063td",
-        "template": "pages/chat.0.feed.messages.twig",
+        "target": "phem-lc-aozv1063td",
+        "template": "pages/chat.0.live.messages.twig",
         "var": "m"
       }
     }

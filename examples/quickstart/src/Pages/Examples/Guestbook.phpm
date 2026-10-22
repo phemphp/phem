@@ -4,15 +4,15 @@ namespace App\Pages\Examples;
 use App\Model\GuestbookEntry as Entry;
 use App\Repository\GuestbookRepository;
 use Phem\Attribute\{Component, Context, Page, Prop, Provide, State, Subscribe};
-use Phem\{Event, Feed, Node};
+use Phem\{Event, LiveCollection, Node};
 
 use function App\Components\Document;
 
 // Real-time push: open this page in two tabs, and sign in one of them.
 // - #[Subscribe] connects the page to the Mercure hub of FrankenPHP (see the Caddyfile).
-// - `entries` is a Feed with the latest entries: sign() prepends the new entry, and Phem pushes
-//   it to each tab with the markup of the loop body. No code names a topic or a target id.
-// - `refresh()` of the feed renders the page again in each tab, with a normal event:
+// - `entries` is a LiveCollection with the latest entries: sign() prepends the new entry, and Phem
+//   pushes it to each tab with the markup of the loop body. No code names a topic or a target id.
+// - `refresh()` of the live collection renders the page again in each tab, with a normal event:
 //   GuestbookStats has no #[State], so mount() reads the new data; the open list of names (a
 //   #[State] of its child) stays open.
 // - SignForm gets the page as a context (#[Provide]), and calls sign().
@@ -20,7 +20,7 @@ use function App\Components\Document;
 #[Page('/examples/Guestbook'), Subscribe, Provide]
 final class Guestbook
 {
-    public Feed $entries;
+    public LiveCollection $entries;
 
     public function __construct(private readonly GuestbookRepository $repository)
     {
@@ -28,13 +28,14 @@ final class Guestbook
 
     public function mount(): void
     {
-        $this->entries = Feed::of($this->repository->latest());
+        $this->entries = LiveCollection::of($this->repository->latest());
     }
 
     public function sign(string $name, string $message): void
     {
         $entry = new Entry($name, $message);
         $this->repository->add($entry);
+        
         $this->entries->prepend($entry);
         $this->entries->refresh();
     }

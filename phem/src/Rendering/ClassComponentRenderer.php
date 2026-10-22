@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Phem\Rendering;
 
 use Phem\Binding\PropBinder;
-use Phem\Feed;
+use Phem\LiveCollection;
 use Phem\Manifest\ComponentDefinition;
 use Phem\Manifest\ComponentKind;
 use Phem\Metadata\ComponentMetadata;
@@ -82,10 +82,10 @@ final class ClassComponentRenderer implements ComponentRenderer
                 $component->mount();
             }
         }
-        // A feed with no value has no history (see Phem\Feed).
-        foreach ($this->metadata->feedProperties($fiber->fqcn) as $feed) {
-            if (!$feed->isInitialized($component)) {
-                $feed->setValue($component, Feed::withoutHistory());
+        // A live collection with no value has no history (see Phem\LiveCollection).
+        foreach ($this->metadata->liveCollectionProperties($fiber->fqcn) as $collection) {
+            if (!$collection->isInitialized($component)) {
+                $collection->setValue($component, LiveCollection::withoutHistory());
             }
         }
         if (!method_exists($component, 'render')) {

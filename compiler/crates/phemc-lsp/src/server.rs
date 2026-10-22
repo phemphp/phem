@@ -656,17 +656,17 @@ mod tests {
         let mut server = Server::new(Vec::new());
         let class = |server: &mut Server<Vec<u8>>, fqn: &str| server.project(&page).1.file_of(SymbolKind::Class, fqn);
         assert!(class(&mut server, "Phem\\Html").is_some());
-        assert!(class(&mut server, "Phem\\Feed").is_none());
+        assert!(class(&mut server, "Phem\\LiveCollection").is_none());
 
         // The editor sends the real path of the new file: it is in the package, not in the app.
-        let feed = package.join("src/Feed.php");
-        std::fs::write(&feed, "<?php\n").unwrap();
-        server.file_changed(&feed, lsp::FileChangeType::CREATED);
-        assert!(class(&mut server, "Phem\\Feed").is_some());
+        let file = package.join("src/LiveCollection.php");
+        std::fs::write(&file, "<?php\n").unwrap();
+        server.file_changed(&file, lsp::FileChangeType::CREATED);
+        assert!(class(&mut server, "Phem\\LiveCollection").is_some());
 
-        std::fs::remove_file(&feed).unwrap();
-        server.file_changed(&feed, lsp::FileChangeType::DELETED);
-        assert!(class(&mut server, "Phem\\Feed").is_none());
+        std::fs::remove_file(&file).unwrap();
+        server.file_changed(&file, lsp::FileChangeType::DELETED);
+        assert!(class(&mut server, "Phem\\LiveCollection").is_none());
 
         // A new class of the app goes into the index too.
         std::fs::write(app.join("src/Kernel.php"), "<?php\n").unwrap();

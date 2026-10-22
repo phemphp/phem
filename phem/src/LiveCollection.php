@@ -19,7 +19,7 @@ namespace Phem;
  *     #[Page('/chat'), Subscribe, Provide]
  *     final class Chat
  *     {
- *         public Feed $messages;
+ *         public LiveCollection $messages;
  *
  *         public function post(string $name, string $text): void
  *         {
@@ -38,23 +38,23 @@ namespace Phem;
  *         }
  *     }
  *
- * - The page prints the feed in one `{% for %}`, the only content of its element. phemc gives
- *   the element its id, and compiles the loop body as the markup of one item.
+ * - The page prints the live collection in one `{% for %}`, the only content of its element. phemc
+ *   gives the element its id, and compiles the loop body as the markup of one item.
  * - After the event handler, each change goes to the page of the event (with its #[Path] route
  *   values) as a Turbo Stream, with the loop body rendered for the item: append() and prepend()
  *   add it to the element, replace() and remove() change the element of the item. The `key` of
  *   the item gives its id: give the same key to the same item. refresh() renders the component
- *   of the feed again in each page, for the data around the feed (a count).
- * - The page must have #[Subscribe]. The class of the feed has no #[State]: its data loads again
- *   in each render.
- * - Feed::of() gives the items of the server render, for example from a repository in mount().
- *   A feed property with no value is empty and has no history: the page keeps the pushed items
- *   when it renders again (`data-phem-ignore` on the element).
- * - The data stays in the application: a feed only records the changes of one request.
+ *   of the live collection again in each page, for the data around the live collection (a count).
+ * - The page must have #[Subscribe]. The class of the live collection has no #[State]: its data
+ *   loads again in each render.
+ * - LiveCollection::of() gives the items of the server render, for example from a repository in
+ *   mount(). A live collection property with no value is empty and has no history: the page
+ *   keeps the pushed items when it renders again (`data-phem-ignore` on the element).
+ * - The data stays in the application: a live collection only records the changes of one request.
  *
  * @implements \IteratorAggregate<int, mixed>
  */
-final class Feed implements \IteratorAggregate, \Countable
+final class LiveCollection implements \IteratorAggregate, \Countable
 {
     public const APPEND = 'append';
     public const PREPEND = 'prepend';
@@ -73,7 +73,7 @@ final class Feed implements \IteratorAggregate, \Countable
     }
 
     /**
-     * A feed with the items of the server render (its history).
+     * A live collection with the items of the server render (its history).
      *
      * @param iterable<mixed> $items
      */
@@ -83,23 +83,23 @@ final class Feed implements \IteratorAggregate, \Countable
     }
 
     /**
-     * A feed with no history: the pushes are its only items.
+     * A live collection with no history: the pushes are its only items.
      *
-     * @internal Phem sets it for a feed property with no value
+     * @internal Phem sets it for a live collection property with no value
      */
     public static function withoutHistory(): self
     {
         return new self([], false);
     }
 
-    /** Adds the item at the end of the element of the feed, in all the open pages. */
+    /** Adds the item at the end of the element of the live collection, in all the open pages. */
     public function append(mixed $item): void
     {
         $this->items[] = $item;
         $this->changes[] = [self::APPEND, $item];
     }
 
-    /** Adds the item at the start of the element of the feed, in all the open pages. */
+    /** Adds the item at the start of the element of the live collection, in all the open pages. */
     public function prepend(mixed $item): void
     {
         array_unshift($this->items, $item);
@@ -120,9 +120,9 @@ final class Feed implements \IteratorAggregate, \Countable
     }
 
     /**
-     * Renders the component of the feed again in all the open pages, with a normal event and with
-     * its subtree: mount() reads the new data, and a #[State] keeps the value of the browser. Use
-     * it for the data around the feed that its items change (a count).
+     * Renders the component of the live collection again in all the open pages, with a normal
+     * event and with its subtree: mount() reads the new data, and a #[State] keeps the value of
+     * the browser. Use it for the data around the live collection that its items change (a count).
      */
     public function refresh(): void
     {
@@ -139,7 +139,7 @@ final class Feed implements \IteratorAggregate, \Countable
         return \count($this->items);
     }
 
-    /** @internal see the `phem_feed()` Twig function */
+    /** @internal see the `phem_live_collection()` Twig function */
     public function hasHistory(): bool
     {
         return $this->history;
@@ -148,7 +148,7 @@ final class Feed implements \IteratorAggregate, \Countable
     /**
      * The changes since the last call, in their order.
      *
-     * @internal see Phem\Stream\FeedStreams
+     * @internal see Phem\Stream\LiveStreams
      *
      * @return list<array{0: string, 1: mixed}> [action, item]
      */

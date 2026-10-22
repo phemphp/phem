@@ -28,7 +28,7 @@ use Phem\Suspense;
  *     components?: array<string, array<string, mixed>>,
  *     pages?: list<string>,
  *     templates?: array<string, array{source: string, line: int}>,
- *     feeds?: array<string, array<string, array<string, string>>>,
+ *     live_collections?: array<string, array<string, array<string, string>>>,
  *     files?: list<string>,
  * }
  */
@@ -42,8 +42,8 @@ final class Manifest
     private ?string $twigSignature = null;
     /** @var array<string, ComponentDefinition|null> */
     private array $definitions = [];
-    /** @var array<string, array<string, FeedDefinition>> */
-    private array $feeds = [];
+    /** @var array<string, array<string, LiveCollectionDefinition>> */
+    private array $liveCollections = [];
 
     public function __construct(
         private readonly string $buildDir,
@@ -105,15 +105,15 @@ final class Manifest
     }
 
     /**
-     * The feed properties of a class component (see Phem\Feed).
+     * The live collection properties of a class component (see Phem\LiveCollection).
      *
-     * @return array<string, FeedDefinition> property => feed
+     * @return array<string, LiveCollectionDefinition> property => live collection
      */
-    public function feeds(string $fqcn): array
+    public function liveCollections(string $fqcn): array
     {
         $fqcn = ltrim($fqcn, '\\');
 
-        return $this->feeds[$fqcn] ??= array_map(FeedDefinition::fromArray(...), $this->data()['feeds'][$fqcn] ?? []);
+        return $this->liveCollections[$fqcn] ??= array_map(LiveCollectionDefinition::fromArray(...), $this->data()['live_collections'][$fqcn] ?? []);
     }
 
     /** @return list<string> the page components: the components with a `#[Route]` attribute */

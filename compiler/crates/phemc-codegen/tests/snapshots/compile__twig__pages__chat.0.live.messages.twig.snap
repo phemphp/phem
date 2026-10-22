@@ -1,0 +1,6 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+
+                        <li {{ phem_live_item('phem-lc-aozv1063td', m.id) }} class="message">{{ m.text|upper }}</li>

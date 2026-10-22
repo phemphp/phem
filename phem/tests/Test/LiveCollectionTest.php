@@ -21,8 +21,8 @@ use Phem\Tests\Fixtures\TestKernel;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Twig\Error\RuntimeError;
 
-/** The pushes of the changes of a Phem\Feed (tests/Fixtures/app/src/pages/feed.phpm). */
-final class FeedTest extends KernelTestCase
+/** The pushes of the changes of a Phem\LiveCollection (tests/Fixtures/app/src/pages/live.phpm). */
+final class LiveCollectionTest extends KernelTestCase
 {
     use InteractsWithPhem;
 
@@ -51,7 +51,7 @@ final class FeedTest extends KernelTestCase
             ->assertSelectorTextContains('.messages li', 'Hello');
     }
 
-    public function testAFeedWithNoHistoryKeepsThePushedItemsWhenThePageRendersAgain(): void
+    public function testALiveCollectionWithNoHistoryKeepsThePushedItemsWhenThePageRendersAgain(): void
     {
         $page = $this->visit('/chat/lobby')
             ->assertSelectorExists('ul.messages[data-phem-ignore]')
@@ -73,7 +73,7 @@ final class FeedTest extends KernelTestCase
         $topics = static::getContainer()->get('phem.topics');
         \assert($topics instanceof Topics);
         self::assertSame([$topics->to('App\Pages\ChatRoom', ['room' => 'lobby'])], $update['topics']);
-        self::assertMatchesRegularExpression('{^<turbo-stream action="append" target="(phem-f-[a-z0-9]{10})"><template>\s*<li data-phem-key="1" id="\1-1" class="message">Hi</li>\s*</template></turbo-stream>$}', $update['data']);
+        self::assertMatchesRegularExpression('{^<turbo-stream action="append" target="(phem-lc-[a-z0-9]{10})"><template>\s*<li data-phem-key="1" id="\1-1" class="message">Hi</li>\s*</template></turbo-stream>$}', $update['data']);
     }
 
     public function testAPushToOneUrlDoesNotGoToTheOtherUrlsOfThePage(): void
@@ -111,7 +111,7 @@ final class FeedTest extends KernelTestCase
         self::assertSame([], $publisher->updates());
     }
 
-    public function testAFeedWithHistoryRendersItsItemsAndPushesTheNewOnes(): void
+    public function testALiveCollectionWithHistoryRendersItsItemsAndPushesTheNewOnes(): void
     {
         $other = $this->visit('/history')->assertSelectorNotExists('ol.entries[data-phem-ignore]');
         // The handler changes only the form: the push gives the item to the tab that added it.
@@ -127,7 +127,7 @@ final class FeedTest extends KernelTestCase
             ->assertSelectorTextContains('.entries li:first-child', 'Second');
     }
 
-    public function testARefreshRendersTheComponentOfTheFeedAgainInTheOtherTabs(): void
+    public function testARefreshRendersTheComponentOfTheLiveCollectionAgainInTheOtherTabs(): void
     {
         $other = $this->visit('/history')->assertSelectorTextContains('.count', '0 entries');
         $this->visit('/history')->fill('input[name=text]', 'First')->click('#add-count');
@@ -135,7 +135,7 @@ final class FeedTest extends KernelTestCase
         $publisher = static::getContainer()->get(TestPublisherPass::ID);
         \assert($publisher instanceof MemoryPublisher);
         [$update] = $publisher->updates();
-        self::assertMatchesRegularExpression('{<turbo-stream action="phem-refresh" target="phem-f-[a-z0-9]{10}"></turbo-stream>$}', $update['data']);
+        self::assertMatchesRegularExpression('{<turbo-stream action="phem-refresh" target="phem-lc-[a-z0-9]{10}"></turbo-stream>$}', $update['data']);
 
         $other->receive()
             ->assertSelectorTextContains('.count', '1 entries')
@@ -145,15 +145,15 @@ final class FeedTest extends KernelTestCase
     public function testAChangeOnAPageWithNoSubscribeThrows(): void
     {
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('The feed "App\Pages\QuietPage::$lines" changed, but the page "App\Pages\QuietPage" has no #[Subscribe]');
+        $this->expectExceptionMessage('The live collection "App\Pages\QuietPage::$lines" changed, but the page "App\Pages\QuietPage" has no #[Subscribe]');
 
         $this->visit('/quiet')->click('#say');
     }
 
-    public function testAPageCannotPrintTheSameFeedTwoTimes(): void
+    public function testAPageCannotPrintTheSameLiveCollectionTwoTimes(): void
     {
         $this->expectException(RuntimeError::class);
-        $this->expectExceptionMessage('Two components print the same feed in one page');
+        $this->expectExceptionMessage('Two components print the same live collection in one page');
 
         $this->visit('/two-logs');
     }

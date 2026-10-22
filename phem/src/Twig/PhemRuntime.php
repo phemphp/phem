@@ -16,7 +16,7 @@ namespace Phem\Twig;
 use Phem\Bound;
 use Phem\Dom\Attributes;
 use Phem\Dom\DomEvents;
-use Phem\Feed;
+use Phem\LiveCollection;
 use Phem\Rendering\Renderer;
 use Phem\Rendering\TemplateComponentRenderer;
 use Twig\Extension\RuntimeExtensionInterface;
@@ -25,7 +25,7 @@ use Twig\Template;
 
 /**
  * The Twig runtime of the compiled templates: `{% component %}`, `phem_on()`, `phem_loading()`,
- * `phem_progress()`, `phem_attrs()` and `phem_feed()`.
+ * `phem_progress()`, `phem_attrs()` and `phem_live_collection()`.
  * The compiled code gets it with `$this->env->getRuntime(PhemRuntime::class)`.
  */
 final class PhemRuntime implements RuntimeExtensionInterface
@@ -56,17 +56,18 @@ final class PhemRuntime implements RuntimeExtensionInterface
     }
 
     /**
-     * The element of a feed (see Phem\Feed): `id="<target>"`, and `data-phem-ignore` for a feed with
-     * no history, so the page keeps the pushed items when it renders again.
+     * The element of a live collection (see Phem\LiveCollection): `id="<target>"`, and
+     * `data-phem-ignore` for a live collection with no history, so the page keeps the pushed items
+     * when it renders again.
      */
-    public function feed(string $target, mixed $feed): Markup
+    public function liveCollection(string $target, mixed $collection): Markup
     {
-        if (!$feed instanceof Feed) {
-            throw new \LogicException(\sprintf('The loop of the feed element "%s" prints a "%s", not a "%s": set the feed property in mount() with Feed::of(), or give it no value.', $target, get_debug_type($feed), Feed::class));
+        if (!$collection instanceof LiveCollection) {
+            throw new \LogicException(\sprintf('The loop of the live collection element "%s" prints a "%s", not a "%s": set the live collection property in mount() with LiveCollection::of(), or give it no value.', $target, get_debug_type($collection), LiveCollection::class));
         }
-        $this->renderer->addFeed($target);
+        $this->renderer->addLiveCollection($target);
 
-        return new Markup('id="'.Attributes::e($target).'"'.($feed->hasHistory() ? '' : ' data-phem-ignore'), 'UTF-8');
+        return new Markup('id="'.Attributes::e($target).'"'.($collection->hasHistory() ? '' : ' data-phem-ignore'), 'UTF-8');
     }
 
     /** `onClick={{ f }}` → `data-phem-on-click="<handler id>"`. */

@@ -27,6 +27,9 @@ Talk about each item before its implementation. The open questions are a start, 
 - [ ] **Colocated client code** (section 4). Is the extracted script a Stimulus controller (as
       the `data-phem-client` controllers), or a smaller hook API? How does `phemc` give it to
       AssetMapper in development (`phemc watch`) and in production?
+- [ ] **Async handlers** (section 2). A worker has no request, no browser state and no tree.
+      What does the method get (its props, its context, the `Event`), and how does the result
+      go back to the browser of the user who clicked?
 
 ## 1. Rendering and performance
 
@@ -144,6 +147,57 @@ handler or a service pushes Turbo Streams with `Phem\Stream\Streams`:
 - **Out of scope:** polling (LW `wire:poll`, LC `data-poll`). Each tick is a full event (the
   state, two render passes, a transaction) also when nothing changed. A push sends data only
   when it changes.
+
+### [ ] Async handlers (fire and forget) — P3
+
+A slow handler (a payment, an export, a call to an API) blocks the event and its morph.
+
+- **Proposal:** `#[Async]` on a handler method. The browser sends the event as usual. The server
+  does not run the method. It dispatches a generic Messenger message with the handler reference
+  (`FQCN::method`) and the data of the event, and it answers at once. A generic message handler
+  in the worker makes the component, and calls the method. The result goes to the open pages as
+  a push (`Streams`, a `LiveCollection`, or a `Live` for one value), also to the browser of the user
+  who clicked: its response is gone.
+
+  ```php
+  #[Async]
+  public function ship(Event $e): void
+  {
+      $order = $this->orders->find($this->id);
+      $order->ship();                    // slow
+      $this->order->replace($order);     // a push: the worker has no response
+  }
+  ```
+
+- **Best peer:** LV `start_async` / `assign_async` (a task in the LiveView process, the result
+  comes back as a message). LW `#[Async]` on an action (it runs in parallel, but in a request).
+  Symfony Messenger with `#[AsMessage(transport: 'async')]`.
+- **Open questions:**
+  - The reference. `FQCN::method` from the browser must not call any method: sign it (as the
+    handler ids now), and accept only a method with `#[Async]`. Is the compiler the place to
+    check this (a new E code)?
+  - The component in the worker. It has no tree, no fiber, no parent: what gives its props, its
+    context (`#[Context]`) and its `#[State]`? Options: the signed state of the event, a
+    serialized copy of the props (only scalars and entities by id), or a rule that an async
+    method reads only its arguments and its services.
+  - The `Event`. Serialize its data (the form fields, the route values of the page), but not the
+    uploaded files and not the request. Is it a smaller `AsyncEvent` with no `refresh()`, no
+    redirect and no response?
+  - The user. The worker has no session and no token. Keep the user identifier in the message,
+    and check the access rules (`#[IsGranted]`) at dispatch and again in the worker?
+  - The sync part. Does the event still render (for example a "pending" state that the handler
+    sets before the dispatch), or does the browser get only an empty answer?
+  - The push from the worker. `mercure_publish()` works only in a request of FrankenPHP, so this
+    needs the publisher for the HTTP API of the hub (see Real-time push, Later).
+  - The transaction, the retries and the failures. The worker runs the method in a transaction
+    (`doctrine_transaction` middleware). A retry runs it again: the method must be idempotent.
+    How does the user see a failure (a push of an error)?
+  - Is it worth it? A sync handler can already dispatch its own message
+    (`$bus->dispatch(new ShipOrder($id))`). `#[Async]` saves the message class and its handler,
+    but it hides a queue behind a method call.
+- **Related:** a value for one element that pushes as a `LiveCollection` does (`Live` with
+  `replace()`, `remove()` and `refresh()`), so that an async handler can change one element with
+  no `Streams` and no target id.
 
 ## 3. Forms and validation
 
