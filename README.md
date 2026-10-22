@@ -45,18 +45,19 @@ final class MyApp
 A page is a class with `#[Page]` (a Symfony route). It extends the document of the application:
 a class that renders the `<html>` element and the title of the page. A component with state is
 an object: a `#[Component]` (or `#[Page]`) class is a Symfony service, so its
-constructor gets the services that it needs (autowiring). With Doctrine ORM, `#[Transactional]`
-runs each event handler of the component in a transaction: Phem flushes and commits when the
-handler returns.
+constructor gets the services that it needs (autowiring). With Doctrine ORM, a `#[Transactional]`
+event handler runs in a transaction: Phem flushes and commits when the handler returns. Put the
+attribute on a handler method, or on the class for all the handlers of the component.
 
 ```php
-#[Component, Transactional]
+#[Component]
 final class AddScientist
 {
     public function __construct(private readonly ScientistRepository $scientists)
     {
     }
 
+    #[Transactional]
     public function add(Event $e): void   // an event handler
     {
         $this->scientists->add(new Scientist($e->form['name'], $e->form['profession']));
@@ -159,8 +160,8 @@ type, completion, go to definition, hover, and outline. See
    [State cache](docs/phpm-syntax.md#state-cache)).
    The state has the shape of the last render too: the parent and a hash of the HTML of each
    component. The server renders only the components on the path to the handler, restores
-   their state, and runs the PHP handler (in a Doctrine transaction, when the component has
-   `#[Transactional]`). Then, as React does, it renders only the components that can change: the component
+   their state, and runs the PHP handler (in a Doctrine transaction, when the handler or its component
+   has `#[Transactional]`). Then, as React does, it renders only the components that can change: the component
    of the handler, the components whose state changed, and their children with new props. It
    compares their HTML with the hashes, and answers with a Turbo Stream `update`
    (`method="morph"`) for each component that changed, plus the entries of the state that

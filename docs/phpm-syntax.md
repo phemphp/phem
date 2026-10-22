@@ -1205,9 +1205,9 @@ Two checks find a `render()` that is not pure:
 
 ### Transactions
 
-Add `#[Transactional]` to a class component to run each of its event handlers in a Doctrine ORM
-transaction. This needs DoctrineBundle. The handlers of the other components run without a
-transaction. When the handler returns, Phem flushes and commits. When the handler throws an
+Add `#[Transactional]` to an event handler method to run it in a Doctrine ORM transaction. Add it
+to a class component to run all of its event handlers in a transaction: its methods and the
+closures of `render()`. This needs DoctrineBundle. The other handlers run without a transaction. When the handler returns, Phem flushes and commits. When the handler throws an
 exception, Phem rolls back all of its changes. Thus the handler does not call `flush()`:
 
 - To add an entity, call `persist()` (for example through a repository method).
@@ -1243,6 +1243,30 @@ final class TodoItem
 The transaction contains only the handler. `render()` and `mount()` run outside of it.
 
 A handler that a parent passes as a prop belongs to the parent: the parent's attribute applies.
+
+When only some handlers write to the database, put the attribute on these methods. The other
+handlers (a toggle of the UI, a search) run without a transaction:
+
+```php
+#[Component]
+final class AddScientist
+{
+    #[State] public bool $help = false;
+
+    // __construct(), render() ...
+
+    #[Transactional]
+    public function add(Event $e): void
+    {
+        $this->scientists->add(new Scientist($e->form['name'], $e->form['profession']));
+    }
+
+    public function toggleHelp(): void   // no transaction
+    {
+        $this->help = !$this->help;
+    }
+}
+```
 
 ### Content that loads after the page
 
@@ -1360,7 +1384,7 @@ final class Guestbook
     // ... renders <SignForm />, <GuestbookStats /> (id="guestbook-stats") and <ul id="entries">
 }
 
-#[Component, Transactional]
+#[Component]
 final class SignForm
 {
     #[State] public string $message = '';
@@ -1371,6 +1395,7 @@ final class SignForm
     ) {
     }
 
+    #[Transactional]
     public function sign(): void
     {
         $entry = new Entry($this->message);

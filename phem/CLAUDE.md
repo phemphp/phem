@@ -20,3 +20,14 @@ Use the SOLID principles in all new and changed code. Follow the patterns that t
 
 Do not add an abstraction that has no second use or no test need. Simple code is better than an
 unused interface.
+
+## Tests
+
+Run the tests after each change in the core library (`phem/`), before you report the work as
+done:
+
+- Run `make test` from the root of the repository. It runs the JS tests (Vitest), cargo test and
+  PHPUnit.
+- For a fast check while you work, run PHPUnit in the dev container:
+  `docker exec phem-dev-1 sh -c 'cd /app/phem && vendor/bin/phpunit'`. Run `make test` at the end.
+- Report the result. If a test fails, show the output.

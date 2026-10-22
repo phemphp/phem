@@ -31,7 +31,7 @@
         "symfony/web-profiler-bundle": "^7.4|^8.0"
     },
     "suggest": {
-        "doctrine/doctrine-bundle": "To run the event handlers of #[Transactional] components in a Doctrine ORM transaction, and to give #[Path] props the entities of their route values",
+        "doctrine/doctrine-bundle": "To run the event handlers of #[Transactional] handlers in a Doctrine ORM transaction, and to give #[Path] props the entities of their route values",
         "phpunit/phpunit": "To test the components and the pages with Phem\\Test\\InteractsWithPhem",
         "symfony/asset-mapper": "To load the phem Stimulus controller and its CSS with an importmap (the phemjs assets)",
         "symfony/rate-limiter": "To limit the events of a page or of one handler with the #[RateLimit] attribute of Symfony 8.1",

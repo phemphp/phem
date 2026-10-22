@@ -18,7 +18,7 @@ use Phem\Doctrine\DoctrineObjectIdentifier;
 use Phem\Doctrine\DoctrineTransactionRunner;
 
 // The Doctrine ORM adapters. PhemBundle imports this file when DoctrineBundle is installed:
-// the event handlers of #[Transactional] components run in a transaction, the #[Path] props with an
+// the #[Transactional] event handlers run in a transaction, the #[Path] props with an
 // entity type get their entity, and a handler that captures an entity keeps its id.
 return static function (ContainerConfigurator $container): void {
     $container->services()

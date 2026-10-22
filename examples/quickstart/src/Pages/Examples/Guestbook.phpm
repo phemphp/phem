@@ -60,7 +60,7 @@ function GuestbookEntry(Entry $entry): Node
     );
 }
 
-#[Component, Transactional]
+#[Component]
 final class SignForm
 {
     #[State] public string $name = '';
@@ -72,6 +72,7 @@ final class SignForm
     ) {
     }
 
+    #[Transactional]
     public function sign(Event $e): void
     {
         if ('' === trim($this->name) || '' === trim($this->message)) {

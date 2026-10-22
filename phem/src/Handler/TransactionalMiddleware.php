@@ -17,8 +17,8 @@ use Phem\Attribute\Transactional;
 use Phem\Event;
 
 /**
- * Runs the event handlers of a `#[Transactional]` component in a transaction of the
- * TransactionRunner (Doctrine ORM, when DoctrineBundle is installed). The other handlers run
+ * Runs the event handlers of a `#[Transactional]` component, and the `#[Transactional]` handler
+ * methods, in a transaction of the TransactionRunner (Doctrine ORM, when DoctrineBundle is installed). The other handlers run
  * without a transaction.
  */
 final class TransactionalMiddleware implements HandlerMiddleware
@@ -33,7 +33,7 @@ final class TransactionalMiddleware implements HandlerMiddleware
         if (!self::isTransactional($handler)) {
             return $next();
         }
-        $transactions = $this->transactions ?? throw new \LogicException('A #[Transactional] component needs Doctrine ORM: install doctrine/orm and doctrine/doctrine-bundle.');
+        $transactions = $this->transactions ?? throw new \LogicException('A #[Transactional] handler needs Doctrine ORM: install doctrine/orm and doctrine/doctrine-bundle.');
 
         return $transactions->run($next);
     }
@@ -41,11 +41,22 @@ final class TransactionalMiddleware implements HandlerMiddleware
     /**
      * The component of a handler is the object of its closure: a method (`$this->add(...)`) or
      * a closure in `render()`. A handler that a parent passes as a prop runs with the parent.
+     * The attribute is on the class of the component, or on the method of the handler.
      */
     private static function isTransactional(\Closure $handler): bool
     {
-        $component = new \ReflectionFunction($handler)->getClosureThis();
+        $function = new \ReflectionFunction($handler);
+        $component = $function->getClosureThis();
+        if (null === $component) {
+            return false;
+        }
+        $class = new \ReflectionObject($component);
+        if ([] !== $class->getAttributes(Transactional::class)) {
+            return true;
+        }
 
-        return null !== $component && [] !== new \ReflectionObject($component)->getAttributes(Transactional::class);
+        // A first-class callable of a method has the name of the method; a closure does not.
+        return $class->hasMethod($function->getName())
+            && [] !== $class->getMethod($function->getName())->getAttributes(Transactional::class);
     }
 }

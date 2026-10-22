@@ -43,6 +43,20 @@ final class TransactionalTest extends TestCase
         self::assertSame(['begin', 'closure', 'commit'], $this->log->getArrayCopy());
     }
 
+    public function testTransactionalMethodRunsInATransaction(): void
+    {
+        $this->dispatch(new MethodTransactionalComponent($this->log)->save(...));
+        self::assertSame(['begin', 'save', 'commit'], $this->log->getArrayCopy());
+    }
+
+    public function testOtherHandlersOfAComponentWithATransactionalMethodRunWithoutATransaction(): void
+    {
+        $component = new MethodTransactionalComponent($this->log);
+        $this->dispatch($component->toggle(...));
+        $this->dispatch($component->closure());
+        self::assertSame(['toggle', 'closure'], $this->log->getArrayCopy());
+    }
+
     public function testOtherHandlersRunWithoutATransaction(): void
     {
         $log = $this->log;
@@ -109,6 +123,32 @@ final class TransactionalComponent
     {
         $this->log[] = 'fail';
         throw new \RuntimeException('Failed.');
+    }
+
+    public function closure(): \Closure
+    {
+        return function (): void {
+            $this->log[] = 'closure';
+        };
+    }
+}
+
+final class MethodTransactionalComponent
+{
+    /** @param \ArrayObject<int, string> $log */
+    public function __construct(private readonly \ArrayObject $log)
+    {
+    }
+
+    #[Transactional]
+    public function save(): void
+    {
+        $this->log[] = 'save';
+    }
+
+    public function toggle(): void
+    {
+        $this->log[] = 'toggle';
     }
 
     public function closure(): \Closure

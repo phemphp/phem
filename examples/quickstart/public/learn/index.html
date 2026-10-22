@@ -402,7 +402,7 @@ final class Counter
 
 <h2 id="services" class="heading">Services and initialization<a class="heading-anchor" href="#services" aria-label="Link to this section">#</a></h2>
 <p>A Phem application is a Symfony application, and each class component is a service. The container makes a new object for each component on the page, so the constructor gets the services that the component needs (autowiring), as in a Symfony controller:</p>
-<div class="code-block"><pre class="code" data-controller="highlight"><code>#[Component, Transactional]
+<div class="code-block"><pre class="code" data-controller="highlight"><code>#[Component]
 final class AddScientist
 {
     #[Prop] public string $label = 'Add';  // a prop
@@ -411,6 +411,7 @@ final class AddScientist
     {
     }
 
+    #[Transactional]
     public function add(Event $e): void
     {
         $this-&gt;scientists-&gt;add(new Scientist($e-&gt;form['name'], $e-&gt;form['profession']));
@@ -436,7 +437,7 @@ final class AddScientist
     <li><strong>Methods</strong> are event handlers. A handler can change the state and call the services.</li>
     <li><strong><code>render()</code></strong> returns markup. As in React, it is pure: it reads the props, the state, and the values that <code>mount()</code> or a handler set. It does not call the services. Read the data in <code>mount()</code> or in a handler.</li>
 </ul>
-<p>With Doctrine ORM, <code>#[Transactional]</code> runs each handler of the component in a transaction. When the handler returns, Phem flushes and commits. Thus the repository only calls <code>persist()</code>, and the handler does not call <code>flush()</code>. The handlers of a component without the attribute run without a transaction.</p>
+<p>With Doctrine ORM, <code>#[Transactional]</code> runs the handler in a transaction. When the handler returns, Phem flushes and commits. Thus the repository only calls <code>persist()</code>, and the handler does not call <code>flush()</code>. Put the attribute on the class to run all the handlers of the component in a transaction. The other handlers run without a transaction.</p>
 <p>A component without state does not need a class. A function that returns markup is a component too, and its parameters are its props. If its body is only <code>return &lt;markup&gt;;</code>, it compiles to a plain Twig template, with no PHP call. Here is a page that is a class with a prop and state:</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="StarRating">
     <div class="sandbox-bar">

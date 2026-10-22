@@ -11,7 +11,7 @@ use Phem\Node;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 
-#[Component, Transactional]
+#[Component]
 final class AddScientist
 {
     private ?FormInterface $form = null {
@@ -24,6 +24,7 @@ final class AddScientist
     ) {
     }
 
+    #[Transactional]
     public function add(Event $e): void
     {
         $scientist = new NewScientist();

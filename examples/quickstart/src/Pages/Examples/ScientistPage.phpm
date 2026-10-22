@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 
 use function App\Components\{Layout, ScientistCard, Document};
 
-#[Page('/examples/ScientistPage/{id:scientist}', requirements: ['id' => '\d+']), Transactional]
+#[Page('/examples/ScientistPage/{id:scientist}', requirements: ['id' => '\d+'])]
 final class ScientistPage
 {
     #[Path]
@@ -20,6 +20,7 @@ final class ScientistPage
     ) {
     }
 
+    #[Transactional]
     public function delete(): RedirectResponse
     {
         $this->scientists->remove($this->scientist);
