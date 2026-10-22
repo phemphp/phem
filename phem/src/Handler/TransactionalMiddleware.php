@@ -18,20 +18,19 @@ use Phem\Event;
 
 /**
  * Runs the event handlers of a `#[Transactional]` component in a transaction of the
- * TransactionRunner (Doctrine ORM, when DoctrineBundle is installed). With `$all`, it runs
- * all event handlers in a transaction, with or without the attribute.
+ * TransactionRunner (Doctrine ORM, when DoctrineBundle is installed). The other handlers run
+ * without a transaction.
  */
 final class TransactionalMiddleware implements HandlerMiddleware
 {
     public function __construct(
         private readonly ?TransactionRunner $transactions = null,
-        private readonly bool $all = false,
     ) {
     }
 
     public function handle(\Closure $handler, Event $event, \Closure $next): mixed
     {
-        if (!$this->all && !self::isTransactional($handler)) {
+        if (!self::isTransactional($handler)) {
             return $next();
         }
         $transactions = $this->transactions ?? throw new \LogicException('A #[Transactional] component needs Doctrine ORM: install doctrine/orm and doctrine/doctrine-bundle.');

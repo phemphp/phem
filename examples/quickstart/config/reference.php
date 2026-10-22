@@ -943,7 +943,6 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         issuer?: scalar|Param|null, // The issuer of the hub configuration (`issuer phem { … }`) // Default: "phem"
  *         cookie_name?: scalar|Param|null, // The cookie of the access token (`cookie_name` of the hub) // Default: "__Secure-mercure_access_token"
  *     },
- *     transactional?: bool|Param|null, // Run the event handlers of all components in a Doctrine ORM transaction. Set it to false to use #[Transactional] on each component instead. Default: true when Doctrine ORM is installed and enabled. // Default: null
  * }
  * @psalm-type WebProfilerConfig = array{
  *     toolbar?: bool|array{ // Profiler toolbar configuration

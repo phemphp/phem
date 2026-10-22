@@ -3,13 +3,13 @@ namespace App\Pages\Examples;
 
 use App\Model\Scientist;
 use App\Repository\ScientistRepository;
-use Phem\Attribute\{Page, Path};
+use Phem\Attribute\{Page, Path, Transactional};
 use Phem\Node;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 use function App\Components\{Layout, ScientistCard, Document};
 
-#[Page('/examples/ScientistPage/{id:scientist}', requirements: ['id' => '\d+'])]
+#[Page('/examples/ScientistPage/{id:scientist}', requirements: ['id' => '\d+']), Transactional]
 final class ScientistPage
 {
     #[Path]

@@ -3,7 +3,7 @@ namespace App\Pages\Examples;
 
 use App\Model\GuestbookEntry as Entry;
 use App\Repository\GuestbookRepository;
-use Phem\Attribute\{Component, Page, Prop, State, Subscribe};
+use Phem\Attribute\{Component, Page, Prop, State, Subscribe, Transactional};
 use Phem\Event;
 use Phem\Node;
 use Phem\Stream\Streams;
@@ -60,7 +60,7 @@ function GuestbookEntry(Entry $entry): Node
     );
 }
 
-#[Component]
+#[Component, Transactional]
 final class SignForm
 {
     #[State] public string $name = '';

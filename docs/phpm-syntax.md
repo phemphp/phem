@@ -1205,18 +1205,19 @@ Two checks find a `render()` that is not pure:
 
 ### Transactions
 
-When DoctrineBundle is installed, Phem runs each event handler in a Doctrine ORM transaction.
-When the handler returns, Phem flushes and commits. When the handler throws an exception, Phem
-rolls back all of its changes. Thus the handler does not call `flush()`:
+Add `#[Transactional]` to a class component to run each of its event handlers in a Doctrine ORM
+transaction. This needs DoctrineBundle. The handlers of the other components run without a
+transaction. When the handler returns, Phem flushes and commits. When the handler throws an
+exception, Phem rolls back all of its changes. Thus the handler does not call `flush()`:
 
 - To add an entity, call `persist()` (for example through a repository method).
 - To delete an entity, call `remove()`.
 - To change an entity that Doctrine loaded, set its properties. The flush finds the changes.
 
 ```php
-use Phem\Attribute\{Component, Prop};
+use Phem\Attribute\{Component, Prop, Transactional};
 
-#[Component]
+#[Component, Transactional]
 final class TodoItem
 {
     #[Prop] public Todo $todo;             // prop: a managed entity
@@ -1240,27 +1241,6 @@ final class TodoItem
 ```
 
 The transaction contains only the handler. `render()` and `mount()` run outside of it.
-
-The `transactional` option controls this behavior. Its default is `true` when Doctrine ORM is
-installed and enabled, and `false` if not. To select the components that use a transaction, set
-the option to `false` and add `#[Transactional]` to each of these class components:
-
-```yaml
-# config/packages/phem.yaml
-phem:
-    transactional: false
-```
-
-```php
-use Phem\Attribute\{Component, Transactional};
-
-#[Component]
-#[Transactional]
-final class TodoItem
-{
-    // ...
-}
-```
 
 A handler that a parent passes as a prop belongs to the parent: the parent's attribute applies.
 
@@ -1371,7 +1351,7 @@ A change by one user does not show for another user until that user sends an eve
 with `Phem\Stream\Streams`, and the Mercure hub of FrankenPHP sends them to the open pages.
 
 ```php
-use Phem\Attribute\{Component, Page, State, Subscribe};
+use Phem\Attribute\{Component, Page, State, Subscribe, Transactional};
 use Phem\Stream\Streams;
 
 #[Page('/guestbook'), Subscribe]
@@ -1380,7 +1360,7 @@ final class Guestbook
     // ... renders <SignForm />, <GuestbookStats /> (id="guestbook-stats") and <ul id="entries">
 }
 
-#[Component]
+#[Component, Transactional]
 final class SignForm
 {
     #[State] public string $message = '';

@@ -14,8 +14,7 @@ declare(strict_types=1);
 namespace Phem\Handler;
 
 /**
- * Runs the event handlers of `#[Transactional]` components, or of all components with the
- * `phem.transactional` option.
+ * Runs the event handlers of `#[Transactional]` components.
  */
 interface TransactionRunner
 {

@@ -30,7 +30,6 @@ use Phem\State\StateCache;
 use Phem\Stream\SubscriberToken;
 use Symfony\Component\AssetMapper\AssetMapperInterface;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
-use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
@@ -54,7 +53,6 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_lo
  *         state_cache: true          # keep the signed states in the cache.phem.state pool
  *         max_event_size: 1048576    # bytes; 0 for no limit
  *         max_upload_size: 8388608   # bytes; 0 for no limit
- *         transactional: ~           # true when Doctrine ORM is installed and enabled
  *
  *     # config/routes/phem.yaml
  *     phem:
@@ -140,15 +138,11 @@ final class PhemBundle extends AbstractBundle
                         ->end()
                     ->end()
                 ->end()
-                ->booleanNode('transactional')
-                    ->info('Run the event handlers of all components in a Doctrine ORM transaction. Set it to false to use #[Transactional] on each component instead. Default: true when Doctrine ORM is installed and enabled.')
-                    ->defaultNull()
-                ->end()
             ->end();
     }
 
     /**
-     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, max_event_size: int, max_upload_size: int, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string}, transactional: bool|null} $config
+     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, max_event_size: int, max_upload_size: int, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string}} $config
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
@@ -219,13 +213,6 @@ final class PhemBundle extends AbstractBundle
                     ->args([service('.inner'), service('phem.profile')]);
             }
         }
-
-        $transactional = $config['transactional'] ?? $doctrine;
-        if ($transactional && !$doctrine) {
-            throw new InvalidConfigurationException('The "phem.transactional" option needs Doctrine ORM: install doctrine/orm and doctrine/doctrine-bundle, or set the option to false.');
-        }
-        $container->services()->get('phem.handler_middleware.transactional')
-            ->arg(1, $transactional);
 
         if (class_exists(RateLimit::class) && interface_exists(RateLimiterFactoryInterface::class)) {
             // The #[RateLimit] attribute of Symfony 8.1 on a handler method (the limiters of

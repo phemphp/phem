@@ -3,10 +3,10 @@
 namespace App\Components;
 
 use App\Model\Scientist;
-use Phem\Attribute\{Component, Prop};
+use Phem\Attribute\{Component, Prop, Transactional};
 use Phem\Node;
 
-#[Component]
+#[Component, Transactional]
 final class LikeCounter
 {
     #[Prop]

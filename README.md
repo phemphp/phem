@@ -45,11 +45,12 @@ final class MyApp
 A page is a class with `#[Page]` (a Symfony route). It extends the document of the application:
 a class that renders the `<html>` element and the title of the page. A component with state is
 an object: a `#[Component]` (or `#[Page]`) class is a Symfony service, so its
-constructor gets the services that it needs (autowiring). With Doctrine ORM, each event
-handler runs in a transaction: Phem flushes and commits when the handler returns.
+constructor gets the services that it needs (autowiring). With Doctrine ORM, `#[Transactional]`
+runs each event handler of the component in a transaction: Phem flushes and commits when the
+handler returns.
 
 ```php
-#[Component]
+#[Component, Transactional]
 final class AddScientist
 {
     public function __construct(private readonly ScientistRepository $scientists)
@@ -106,7 +107,7 @@ type, completion, go to definition, hover, and outline. See
 - `/learn/describing-the-ui.html` has a multi-file example: the page `Gallery.phpm` uses
   components from `examples/quickstart/src/Components/`. The page `DurableGallery.phpm` reads and
   writes its data in SQLite through a Doctrine ORM entity and its repository. Its handlers run in
-  a Doctrine transaction, and a Symfony form adds a scientist. The data stays after a reload.
+  a Doctrine transaction (`#[Transactional]`), and a Symfony form adds a scientist. The data stays after a reload.
 
 ## How it works
 
@@ -158,8 +159,8 @@ type, completion, go to definition, hover, and outline. See
    [State cache](docs/phpm-syntax.md#state-cache)).
    The state has the shape of the last render too: the parent and a hash of the HTML of each
    component. The server renders only the components on the path to the handler, restores
-   their state, and runs the PHP handler (in a Doctrine transaction, when Doctrine ORM is
-   enabled). Then, as React does, it renders only the components that can change: the component
+   their state, and runs the PHP handler (in a Doctrine transaction, when the component has
+   `#[Transactional]`). Then, as React does, it renders only the components that can change: the component
    of the handler, the components whose state changed, and their children with new props. It
    compares their HTML with the hashes, and answers with a Turbo Stream `update`
    (`method="morph"`) for each component that changed, plus the entries of the state that
