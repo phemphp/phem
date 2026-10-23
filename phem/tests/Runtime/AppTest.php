@@ -58,6 +58,7 @@ final class AppTest extends TestCase
             'event' => ['type' => 'click'],
         ]);
         $data = json_decode((string) $response->getContent(), true);
+
         if (200 === $response->getStatusCode()) {
             $this->state = StateJson::apply($state ?? $this->state, $data['changes']);
             $this->signature = $data['signature'];
@@ -85,6 +86,7 @@ final class AppTest extends TestCase
     {
         $response = $this->request('GET', '/');
         $html = (string) $response->getContent();
+
         self::assertSame(200, $response->getStatusCode());
         self::assertStringStartsWith("<!DOCTYPE html>\n<html lang=\"en\">", $html);
         self::assertStringContainsString('<title>Fixture Home</title>', $html, 'the page composes the document, and gives its title');
@@ -113,6 +115,7 @@ final class AppTest extends TestCase
         self::assertSame(200, $r['status']);
         self::assertSame(2, substr_count($r['data']['streams'], 'Clicked 1 times'));
         self::assertStringNotContainsString('<title>', $r['data']['streams']);
+
         $r = $this->click(1);
         self::assertSame(2, substr_count($r['data']['streams'], 'Clicked 2 times'));
     }
@@ -137,8 +140,10 @@ final class AppTest extends TestCase
         $r = $this->click(0, uri: '/rest');
         self::assertSame(200, $r['status']);
         self::assertSame(2, substr_count($r['data']['streams'], 'Clicked 1 times'), 'onClick in the rest props');
+
         $r = $this->click(1, uri: '/rest');
         self::assertSame(2, substr_count($r['data']['streams'], 'Clicked 2 times'), 'onDoubleClick in the rest props');
+
         $r = $this->click(2, uri: '/rest');
         self::assertStringContainsString('Home 3', $r['data']['streams'], 'onClick in the rest prop of a class component');
     }
@@ -217,8 +222,10 @@ final class AppTest extends TestCase
         for ($i = 1; $i <= 3; ++$i) {
             $r = $this->click(2);
         }
+
         self::assertSame(1, substr_count($r['data']['streams'], '<turbo-stream'));
         self::assertStringContainsString('Hits 3 times', $r['data']['streams']);
+
         // Limits::$max is 3: nothing changed, so no stream.
         $r = $this->click(2);
         self::assertSame('', $r['data']['streams']);
@@ -231,6 +238,7 @@ final class AppTest extends TestCase
         self::assertStringContainsString('<strong id="yes">Yes</strong>', $r['data']['streams']);
         self::assertStringContainsString('<span id="and">and-shown</span>', $r['data']['streams']);
         self::assertStringContainsString('ON', $r['data']['streams']);
+
         $this->click(4);
         $r = $this->click(4);
         self::assertStringContainsString('<span id="items">item1,item2,item3</span>', $r['data']['streams']);

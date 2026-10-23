@@ -74,6 +74,7 @@ final class LoggingMiddleware implements HandlerMiddleware
     public function handle(\Closure $handler, Event $event, \Closure $next): mixed
     {
         $this->log[] = $this->name.' before';
+
         try {
             return $next();
         } finally {

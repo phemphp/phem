@@ -33,6 +33,7 @@ final class SourceMap
         if (!str_starts_with($twigName, $prefix) || !$this->manifest->exists()) {
             return null;
         }
+
         $tpl = $this->manifest->template(substr($twigName, \strlen($prefix)));
         if (null === $tpl) {
             return null;

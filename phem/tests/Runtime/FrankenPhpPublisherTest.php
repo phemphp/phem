@@ -22,6 +22,7 @@ final class FrankenPhpPublisherTest extends TestCase
     public function testWithNoFrankenPhpTheLoggerGetsTheErrorAndTheRequestGoesOn(): void
     {
         self::assertFalse(\function_exists('mercure_publish'), 'the tests run in the CLI');
+
         $logger = new class extends AbstractLogger {
             /** @var list<string> */
             public array $errors = [];

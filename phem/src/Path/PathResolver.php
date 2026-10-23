@@ -56,6 +56,7 @@ final class PathResolver
         if (!$type instanceof \ReflectionNamedType || \is_object($value)) {
             return $value;
         }
+
         $prop = new PathProp($page, $name, $type);
         foreach ($this->converters as $converter) {
             if ($converter->supports($prop)) {

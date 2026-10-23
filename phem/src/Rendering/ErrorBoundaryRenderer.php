@@ -47,6 +47,7 @@ final class ErrorBoundaryRenderer implements ComponentRenderer
         if (!$boundary instanceof ErrorBoundary) {
             $boundary = $fiber->instance = new ErrorBoundary();
         }
+
         $this->props->assign($boundary, $fiber->props, $slots);
         if (null === $boundary->children) {
             return null;
@@ -56,6 +57,7 @@ final class ErrorBoundaryRenderer implements ComponentRenderer
         if (\is_string($html)) {
             return new Html($html);
         }
+
         $this->logger?->error('[phem] The children of an <ErrorBoundary> threw: the fallback shows. '.$html->getMessage(), ['exception' => $html, 'fiber' => $fiber->id]);
 
         return $boundary->fallback;

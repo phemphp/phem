@@ -57,10 +57,12 @@ final class SkippedRenderCheck
             if (null !== $fiber || !$now->has($id) || $now->hashOf($id) === $state->shape->hashOf($id)) {
                 continue;
             }
+
             $fqcn = $full->fiberById($id)->fqcn ?? '';
             if (!self::isChecked($fqcn)) {
                 continue;
             }
+
             $warning = \sprintf('<%s> did not render again after the event, but its HTML is not the same now. Its render() reads data that is not a prop or state (a service, the time, a global). Read the data in mount() or in a handler, or call $e->refresh() in the handler.', ComponentName::short($fqcn));
             $this->logger?->warning('[phem] '.$warning, ['component' => $fqcn, 'fiber' => $id]);
             $warnings[] = $warning;
@@ -74,6 +76,7 @@ final class SkippedRenderCheck
         if (!class_exists($fqcn)) {
             return '' !== $fqcn;
         }
+
         foreach (new \ReflectionClass($fqcn)->getProperties() as $p) {
             if (!$p->isStatic() && !$p->isReadOnly() && [] === $p->getAttributes(Prop::class) && [] === $p->getAttributes(Path::class) && [] === $p->getAttributes(State::class) && [] === $p->getAttributes(Context::class)) {
                 return false;

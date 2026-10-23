@@ -40,6 +40,7 @@ final class MarkupResolver
             // not show (`{{ on ? yes : no }}`) mounts no component and adds no handler.
             return new LazyHtml(fn (): string => $this->twig->render(Manifest::templateName($value->template), $this->items($value->vars)));
         }
+
         if (\is_array($value)) {
             $value = $this->items($value, $markup);
 
@@ -71,6 +72,7 @@ final class MarkupResolver
                     $items[$key] = $item = $resolved;
                 }
             }
+
             $markup = $markup || $item instanceof Html;
         }
 

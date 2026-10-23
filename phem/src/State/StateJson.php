@@ -57,15 +57,18 @@ final class StateJson
         if ('{}' === $json) {
             return [];
         }
+
         if (!str_starts_with($json, "{\n") || !str_ends_with($json, "\n}")) {
             return null;
         }
+
         $entries = [];
         foreach (explode(",\n", substr($json, 2, -2)) as $line) {
             $end = strpos($line, '"', 1);
             if (!str_starts_with($line, '"') || false === $end || ':' !== ($line[$end + 1] ?? '')) {
                 return null;
             }
+
             $entries[substr($line, 1, $end - 1)] = substr($line, $end + 2);
         }
 
@@ -86,11 +89,13 @@ final class StateJson
         $old = self::entries($before) ?? [];
         $new = self::entries($after) ?? throw new \InvalidArgumentException('The new state is not a text of StateJson::encode().');
         $changes = [];
+
         foreach ($new as $key => $value) {
             if (($old[$key] ?? null) !== $value) {
                 $changes[$key] = $value;
             }
         }
+
         foreach (array_diff_key($old, $new) as $key => $_) {
             $changes[$key] = null;
         }
@@ -106,6 +111,7 @@ final class StateJson
     public static function apply(string $json, array $changes): string
     {
         $entries = self::entries($json) ?? [];
+
         foreach ($changes as $key => $value) {
             if (null === $value) {
                 unset($entries[$key]);
@@ -123,12 +129,15 @@ final class StateJson
         if ([] === $entries) {
             return '{}';
         }
+
         ksort($entries, \SORT_STRING);
+
         $lines = [];
         foreach ($entries as $key => $value) {
             if (1 !== preg_match(self::KEY, (string) $key)) {
                 throw new \LogicException(\sprintf('The key "%s" of a page state can have only letters, digits and "_".', $key));
             }
+
             $lines[] = '"'.$key.'":'.$value;
         }
 

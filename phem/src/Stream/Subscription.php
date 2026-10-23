@@ -76,6 +76,7 @@ final class Subscription
         if ([] === $topics) {
             return '';
         }
+
         $query = implode('&', array_map(static fn (string $topic): string => 'match='.rawurlencode($topic), $topics));
 
         return (string) Attributes::attr('data-phem-stream-value', $this->hub.(str_contains($this->hub, '?') ? '&' : '?').$query);
@@ -109,16 +110,20 @@ final class Subscription
         if (null === $this->tokens || !\is_array($topics) || [] === $topics) {
             return null;
         }
+
         $topics = array_values(array_filter($topics, \is_string(...)));
         $audience = $this->audience($request);
         $subject = self::subject($request);
         $old = $request->cookies->get($this->cookie);
         $kept = \is_string($old) ? $this->tokens->grants($old, $audience, $subject) : [];
+
         if (\is_string($old) && [] === array_diff($topics, array_keys($kept)) && $this->tokens->isFresh($old, $audience, $subject)) {
             return null;
         }
+
         $grants = $this->tokens->grant($topics) + array_filter($kept, $this->tokens->isFreshExpiry(...));
         $path = (string) parse_url($this->hub, \PHP_URL_PATH);
+
         // A browser keeps a Secure cookie only from a secure origin: HTTPS, or localhost.
         $secure = $request->isSecure() || \in_array($request->getHost(), ['localhost', '127.0.0.1', '[::1]', '::1'], true) || str_ends_with($request->getHost(), '.localhost');
         if (!$secure && (str_starts_with($this->cookie, '__Secure-') || str_starts_with($this->cookie, '__Host-'))) {
@@ -142,6 +147,7 @@ final class Subscription
         if (!$request->hasSession()) {
             return '';
         }
+
         $session = $request->getSession();
         $id = $session->isStarted() ? $session->getId() : $request->cookies->get($session->getName());
 

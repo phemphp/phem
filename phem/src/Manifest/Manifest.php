@@ -74,18 +74,22 @@ final class Manifest
         if (\array_key_exists($fqcn, $this->definitions)) {
             return $this->definitions[$fqcn];
         }
+
         if (Root::class === $fqcn) {
             // A built-in component: the Renderer renders it (see Phem\Root).
             return $this->definitions[$fqcn] = new ComponentDefinition($fqcn, ComponentKind::FunctionComponent, slots: ['children']);
         }
+
         if (Suspense::class === $fqcn) {
             // A built-in component: the SuspenseRenderer renders it (see Phem\Suspense).
             return $this->definitions[$fqcn] = new ComponentDefinition($fqcn, ComponentKind::ClassComponent, slots: ['children', 'fallback', 'error']);
         }
+
         if (ErrorBoundary::class === $fqcn) {
             // A built-in component: the ErrorBoundaryRenderer renders it (see Phem\ErrorBoundary).
             return $this->definitions[$fqcn] = new ComponentDefinition($fqcn, ComponentKind::ClassComponent, slots: ['children', 'fallback']);
         }
+
         $data = $this->data()['components'][$fqcn] ?? null;
 
         return $this->definitions[$fqcn] = null !== $data ? ComponentDefinition::fromArray($fqcn, $data) : null;
@@ -122,13 +126,16 @@ final class Manifest
         if (null !== $this->twigSignature) {
             return $this->twigSignature;
         }
+
         if (!$this->exists()) {
             return '';
         }
+
         $parts = [];
         foreach ($this->data()['components'] ?? [] as $fqcn => $def) {
             $parts[$fqcn] = [$def['kind'] ?? null, $def['template'] ?? null];
         }
+
         ksort($parts);
 
         return $this->twigSignature = hash('xxh128', serialize($parts));
@@ -170,9 +177,11 @@ final class Manifest
         if (null !== $this->data) {
             return $this->data;
         }
+
         if (!$this->exists()) {
             throw new \RuntimeException(\sprintf('No compiled project in "%s". Run `phemc build src` first.', $this->buildDir));
         }
+
         $data = require $this->file();
         require_once $this->buildDir.'/autoload.php';
 

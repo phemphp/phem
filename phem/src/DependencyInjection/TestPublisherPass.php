@@ -34,6 +34,7 @@ final class TestPublisherPass implements CompilerPassInterface
         if (!$container->hasDefinition('test.service_container') || !$container->has('phem.stream_publisher')) {
             return;
         }
+
         $container->setDefinition(self::ID, new Definition(MemoryPublisher::class))->setPublic(true);
         $container->setAlias('phem.stream_publisher', self::ID);
     }

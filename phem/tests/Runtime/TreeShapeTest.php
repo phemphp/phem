@@ -29,6 +29,7 @@ final class TreeShapeTest extends TestCase
         $state = new PageState(['phem000000000002' => ['n' => 1]], [], $shape);
 
         self::assertSame(['_tree' => 'AAAAAAAB0,AAAAAAAC'.$hash.'1', 'phem000000000002' => ['n' => 1]], $state->toArray());
+
         $decoded = PageState::fromArray($state->toArray());
         self::assertSame(['phem000000000002' => ['n' => 1]], $decoded->fibers);
         self::assertSame($shape->fibers, $decoded->shape->fibers);
@@ -102,10 +103,12 @@ final class TreeShapeTest extends TestCase
         $roots = array_keys(array_filter($tree, static fn (array $f): bool => null === $f[0]));
         self::assertCount(1, $roots, 'only the page has no parent');
         self::assertNull($tree[$roots[0]][1], 'the page is around the root element: no hash');
+
         foreach ($tree as $id => [$parent, $hash]) {
             self::assertTrue(null === $parent || isset($tree[$parent]), \sprintf('the parent of "%s" is in the shape', $id));
             self::assertTrue(null === $hash || 1 === preg_match('/^[A-Za-z0-9_-]{8}$/', $hash), \sprintf('the hash of "%s" is a hash (see TreeShape::hash())', $id));
         }
+
         self::assertNotEmpty(array_filter(array_column($tree, 1)), 'the fibers in the root element have a hash');
     }
 

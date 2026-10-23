@@ -66,6 +66,7 @@ final class ComponentDriver implements Driver
     ) {
         $this->state = new PageState();
         $this->tree = new Tree($this->component, props: $this->props);
+
         $this->html = $this->within($this->request('GET'), function (Request $request): string {
             $html = $this->renderer->render($this->tree);
             $this->url = UrlQuery::merge($this->url, $this->query->of($this->tree)['values']);
@@ -88,12 +89,14 @@ final class ComponentDriver implements Driver
     {
         $this->resetter?->reset();
         $this->redirect = null;
+
         $request = $this->request('POST');
         $request->files->replace(TestFiles::of($event['files'] ?? []));
         unset($event['files']);
 
         return $this->within($request, function (Request $request) use ($handler, $event, $bound, $stale): EventResult {
             $tree = new Tree($this->component, $this->state->fibers, $this->props, shape: $this->state->shape);
+
             // As the browser sends them: JSON values.
             $bound = json_decode(json_encode((object) $bound, \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR);
             $events = $this->events ?? new EventRenderer($this->renderer);
@@ -101,12 +104,15 @@ final class ComponentDriver implements Driver
             if ($outcome->reload) {
                 return EventResult::reload();
             }
+
             if (null !== $outcome->redirect) {
                 return EventResult::redirect($this->redirect = $outcome->redirect->getTargetUrl());
             }
+
             $this->tree = $tree;
             $this->save($request);
             $this->url = UrlQuery::merge($this->url, $this->query->of($tree)['values']);
+
             $updates = [];
             foreach ($tree->changedFibers() as $fiber) {
                 $updates[$fiber->id] = $fiber->html;
@@ -165,6 +171,7 @@ final class ComponentDriver implements Driver
     private function request(string $method): Request
     {
         $request = Request::create('/', $method, server: 'POST' === $method ? ['CONTENT_TYPE' => 'application/json'] : []);
+
         if (null !== $this->session) {
             $request->setSession($this->session);
         }
@@ -184,6 +191,7 @@ final class ComponentDriver implements Driver
     private function within(Request $request, \Closure $callback): mixed
     {
         $this->requests?->push($request);
+
         try {
             return $callback($request);
         } finally {

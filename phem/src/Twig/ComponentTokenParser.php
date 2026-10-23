@@ -72,6 +72,7 @@ final class ComponentTokenParser extends AbstractTokenParser
                 new Token(Token::BLOCK_END_TYPE, '', $line),
             ]);
         }
+
         $module = $this->parser->parse($stream, static fn (Token $t): bool => $t->test('endcomponent'), true);
         $this->parser->embedTemplate($module);
         $stream->expect(Token::BLOCK_END_TYPE);

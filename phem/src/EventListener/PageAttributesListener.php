@@ -36,6 +36,7 @@ final class PageAttributesListener
         if (!\is_string($page) || '' === $page) {
             return;
         }
+
         $own = $this->attributesOf($page);
         if (Kernel::VERSION_ID >= 80100) {
             // Symfony 8.1 takes a flat list of attributes.
@@ -43,10 +44,12 @@ final class PageAttributesListener
 
             return;
         }
+
         $attributes = $event->getAttributes();
         foreach ($own as $class => $instances) {
             $attributes[$class] = [...$instances, ...($attributes[$class] ?? [])];
         }
+
         // @phpstan-ignore argument.type (Symfony 7.4 and 8.0 take the attributes grouped by class)
         $event->setController($event->getController(), $attributes);
     }
@@ -57,15 +60,18 @@ final class PageAttributesListener
         if (isset($this->attributes[$page])) {
             return $this->attributes[$page];
         }
+
         if (!class_exists($page)) {
             return $this->attributes[$page] = [];
         }
+
         $out = [];
         foreach ((new \ReflectionClass($page))->getAttributes() as $attribute) {
             $class = $attribute->getName();
             if (!class_exists($class) || is_a($class, Route::class, true)) {
                 continue;
             }
+
             $out[$class][] = $attribute->newInstance();
         }
 

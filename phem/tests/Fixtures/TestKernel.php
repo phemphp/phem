@@ -42,15 +42,18 @@ final class TestKernel extends Kernel
         if (self::$built) {
             return;
         }
+
         $dir = __DIR__.'/app';
         $phemc = getenv('PHEMC_BIN') ?: trim((string) shell_exec('command -v phemc'));
         if ('' === $phemc) {
             TestCase::markTestSkipped('phemc is not installed (build it with cargo, or set PHEMC_BIN).');
         }
+
         exec(\sprintf('cd %s && %s build src --no-warmup 2>&1', escapeshellarg($dir), escapeshellarg($phemc)), $out, $code);
         if (0 !== $code) {
             TestCase::fail("phemc build failed:\n".implode("\n", $out));
         }
+
         exec('rm -rf '.escapeshellarg($dir.'/var/cache/test').' '.escapeshellarg($dir.'/var/cache/nodebug').' '.escapeshellarg($dir.'/var/cache/profiler'));
         self::$built = true;
     }
@@ -84,10 +87,12 @@ final class TestKernel extends Kernel
             'rate_limiter' => ['phem_events' => ['policy' => 'fixed_window', 'limit' => 2, 'interval' => '1 minute', 'lock_factory' => null, 'storage_service' => InMemoryStorage::class]],
         ]);
         $container->extension('twig', ['strict_variables' => true]);
+
         if ('profiler' === $this->environment) {
             $container->extension('framework', ['profiler' => ['enabled' => true, 'collect' => true]]);
             $container->extension('web_profiler', ['toolbar' => false]);
         }
+
         $container->services()
             ->set(InMemoryStorage::class)
             // FrameworkBundle removes this service when symfony/expression-language is a dev package of the root.
@@ -110,6 +115,7 @@ final class TestKernel extends Kernel
         if ('profiler' === $this->environment) {
             $routes->import('@WebProfilerBundle/Resources/config/routing/profiler.php')->prefix('/_profiler');
         }
+
         $routes->import('.', 'phem');
     }
 }

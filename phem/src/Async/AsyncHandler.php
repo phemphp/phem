@@ -66,6 +66,7 @@ final class AsyncHandler
         if (!$message->isSignedWith($this->secret)) {
             throw new UnrecoverableMessageHandlingException('The message of an async handler has no valid signature: it does not come from this application, or the secret changed.');
         }
+
         $this->user->run($message->token, fn () => $this->handle($message));
     }
 
@@ -73,15 +74,18 @@ final class AsyncHandler
     {
         $data = json_decode($message->state, true, 512, \JSON_THROW_ON_ERROR);
         $state = PageState::fromArray(\is_array($data) ? $data : []);
+
         try {
             $props = $this->paths->resolve($message->page, $state->values);
         } catch (\UnexpectedValueException $e) {
             throw new UnrecoverableMessageHandlingException(\sprintf('An entity of the page "%s" is not there any more.', $message->page), 0, $e);
         }
+
         $tree = new Tree($message->page, $state->fibers, $props, $state->values, shape: $state->shape);
         $request = Request::create($message->url, 'POST');
         $request->attributes->add($message->route);
         $this->requests?->push($request);
+
         try {
             $handler = $this->events->handlerOf($tree, $message->handler, $message->bound);
             if (null === $handler) {
@@ -90,20 +94,25 @@ final class AsyncHandler
 
                 return;
             }
+
             $event = Event::fromArray($message->event, $request);
+
             $this->renderer->inside($tree, fn (): mixed => $this->handlers->invoke($handler, $event, function () use ($handler, $event, $message): void {
                 $mark = $this->streams->mark();
                 $promise = $handler($event);
                 $this->streams->rollback($mark);
+
                 if (!$promise instanceof Promise) {
                     // A retry runs the method body again, and it returns the same thing.
                     throw new UnrecoverableMessageHandlingException(\sprintf('An async handler of the page "%s" returned a "%s" in the worker, not a %s: it must return the same thing in the request and in the worker. The request of the worker has no session and no cookies.', $message->page, get_debug_type($promise), Promise::class));
                 }
+
                 ($promise->work)();
             }));
         } finally {
             $this->requests?->pop();
         }
+
         $this->streams->flush();
     }
 }

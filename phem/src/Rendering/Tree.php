@@ -86,6 +86,7 @@ final class Tree
         if ([] === $this->stale) {
             return false;
         }
+
         for ($f = $fiber; null !== $f; $f = $f->parent) {
             if (isset($this->stale[$f->id])) {
                 return true;
@@ -178,9 +179,11 @@ final class Tree
     {
         $id = ($owner ?? $this->top())->id ?? 'x';
         $key = $id.'.'.$property;
+
         foreach ($path as $segment) {
             $key .= '['.json_encode($segment, \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR).']';
         }
+
         $this->binds[$key] = [$id, $property, $path];
 
         return $key;
@@ -210,6 +213,7 @@ final class Tree
                 return $this->stack[$i];
             }
         }
+
         foreach ($this->fibers as $fiber) {
             if ($fiber->instance === $instance) {
                 return $fiber;
@@ -228,6 +232,7 @@ final class Tree
         foreach ($fiber->children as $child) {
             $this->drop($child);
         }
+
         unset($this->fibers[$fiber->id]);
         $prefix = $fiber->id.'.';
         $this->handlers = array_filter($this->handlers, static fn (string $id): bool => !str_starts_with($id, $prefix), \ARRAY_FILTER_USE_KEY);
@@ -276,9 +281,11 @@ final class Tree
     {
         $out = [];
         $roots = array_filter($this->rendered(), static fn (Fiber $f): bool => null === $f->parent);
+
         if ([] === $roots && null !== $root = $this->shape->root()) {
             $this->collect($root, null, $out);
         }
+
         foreach ($roots as $fiber) {
             $this->collect($fiber->id, null, $out);
         }
@@ -306,6 +313,7 @@ final class Tree
                 $changed[$f->id] = $f;
             }
         }
+
         $out = [];
         foreach ($changed as $f) {
             for ($p = $f->parent; null !== $p; $p = $p->parent) {
@@ -313,6 +321,7 @@ final class Tree
                     continue 2;
                 }
             }
+
             $out[] = $f;
         }
 
@@ -331,6 +340,7 @@ final class Tree
 
             return;
         }
+
         $out[$id] = [$parent, null];
         foreach ($this->shape->childrenOf($id) as $child) {
             $this->collect($child, $id, $out);

@@ -55,6 +55,7 @@ final class EventPayload
     public static function fromJson(string $json): self
     {
         $data = json_decode($json, true, self::MAX_DEPTH);
+
         // A `phem:live` event has a null handler: it only sends the bound values.
         if (!\is_array($data) || !\array_key_exists('handler', $data) || (!\is_string($data['handler']) && (null !== $data['handler'] || !\is_array($data['bound'] ?? null)))) {
             throw new BadRequestHttpException('An event needs a handler.');
@@ -81,6 +82,7 @@ final class EventPayload
         if (!\is_array($stale)) {
             return [];
         }
+
         if (\count($stale) > self::MAX_STALE) {
             throw new BadRequestHttpException(\sprintf('An event has %d stale components at most.', self::MAX_STALE));
         }

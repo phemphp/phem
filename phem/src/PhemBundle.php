@@ -175,6 +175,7 @@ final class PhemBundle extends AbstractBundle
             ->set('phem.source_dir', $config['source_dir'])
             ->set('phem.build_dir', $config['build_dir']);
         $container->import('../config/services.php');
+
         $container->services()->get('phem.state_codec')
             ->arg(0, $config['secret'])
             ->arg(1, $config['state_max_age'])
@@ -182,24 +183,28 @@ final class PhemBundle extends AbstractBundle
         if (!$config['state_cache']) {
             $container->services()->get('phem.state_cache')->arg(0, null);
         }
+
         $container->services()->get('phem.event_body')
             ->arg(0, $config['max_event_size']);
         $container->services()->get('phem.controller.event')
             ->arg(10, $config['max_upload_size']);
         $container->services()->get('phem.topics')
             ->arg(1, $config['secret']);
+
         $mercure = $config['mercure'];
         if (null !== $mercure['subscriber_key']) {
             // A token lives as long as a state: an older page reloads on its next event.
             $container->services()->set('phem.subscriber_token', SubscriberToken::class)
                 ->args([$mercure['subscriber_key'], $mercure['issuer'], $config['state_max_age'] ?: 86400]);
         }
+
         $container->services()->get('phem.subscription')
             ->arg(1, null !== $mercure['subscriber_key'] ? service('phem.subscriber_token') : null)
             ->arg(2, $mercure['hub_url'])
             ->arg(3, $mercure['cookie_name']);
         $container->services()->get('phem.streams')
             ->arg(3, null !== $mercure['subscriber_key']);
+
         if (null !== $mercure['publisher_key']) {
             // mercure_publish() in a request, the HTTP API of the hub in a worker.
             $container->services()
@@ -208,12 +213,14 @@ final class PhemBundle extends AbstractBundle
                 ->set('phem.stream_publisher', SapiPublisher::class)
                     ->args([service('phem.stream_publisher.frankenphp'), service('phem.stream_publisher.hub')]);
         }
+
         $container->services()->get('phem.async.dispatcher')->arg(1, $config['secret']);
         if (interface_exists(MessageBusInterface::class)) {
             // The #[Async] handlers: their work runs in a Messenger worker.
             $container->import('../config/messenger.php');
             $container->services()->get('phem.async.handler')->arg(4, $config['secret']);
         }
+
         if ($builder->getParameter('kernel.debug')) {
             // As React StrictMode: render the full page after each event, and warn when a kept
             // component changed (a render() that is not pure).
@@ -244,6 +251,7 @@ final class PhemBundle extends AbstractBundle
 
         $bundles = $builder->getParameter('kernel.bundles');
         $doctrine = \is_array($bundles) && isset($bundles['DoctrineBundle']) && interface_exists(EntityManagerInterface::class);
+
         if ($doctrine) {
             $container->import('../config/doctrine.php');
             if ($builder->getParameter('kernel.debug')) {
@@ -271,6 +279,7 @@ final class PhemBundle extends AbstractBundle
                 'pools' => [StateCache::POOL => ['adapter' => 'cache.app', 'default_lifetime' => 3600]],
             ],
         ]);
+
         if (interface_exists(AssetMapperInterface::class)) {
             $builder->prependExtensionConfig('framework', [
                 'asset_mapper' => [
@@ -284,6 +293,7 @@ final class PhemBundle extends AbstractBundle
     {
         $container->registerForAutoconfiguration(PathValueConverter::class)->addTag('phem.path_converter');
         $container->registerForAutoconfiguration(HandlerMiddleware::class)->addTag('phem.handler_middleware');
+
         // Before the autoconfiguration passes, so the component services are autoconfigured.
         $container->addCompilerPass(new ComponentPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 200);
         $container->addCompilerPass(new TestPublisherPass());

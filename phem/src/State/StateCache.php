@@ -47,6 +47,7 @@ final class StateCache
         if (null === $key || null === $this->pool) {
             return;
         }
+
         $this->pool->save($this->pool->getItem($key)->set($json));
     }
 
@@ -57,6 +58,7 @@ final class StateCache
         if (null === $key || null === $this->pool) {
             return null;
         }
+
         $json = $this->pool->getItem($key)->get();
 
         return \is_string($json) ? $json : null;

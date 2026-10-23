@@ -169,6 +169,7 @@ final class BindTest extends TestCase
     public function testABindCannotComeFromASpread(): void
     {
         $runtime = new PhemRuntime(new Renderer(new Manifest('/nonexistent', ''), new MarkupResolver(new Environment(new ArrayLoader())), []));
+
         self::assertSame('data-phem-live="true"', (string) $runtime->attrs(['phem:live' => true]));
         self::assertSame('', (string) $runtime->attrs(['phem:live' => 'yes']));
 

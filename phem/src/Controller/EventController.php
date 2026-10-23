@@ -104,17 +104,21 @@ final class EventController
         if (!$request->headers->has(self::HEADER)) {
             return $this->notAnEvent($request);
         }
+
         if (!self::isSameOrigin($request)) {
             throw new AccessDeniedHttpException('An event must come from the same origin.');
         }
+
         $multipart = EventBody::isMultipart($request);
         if ('json' !== $request->getContentTypeFormat() && !$multipart) {
             throw new UnsupportedMediaTypeHttpException('An event is JSON (Content-Type: application/json), or multipart/form-data with files.');
         }
+
         if ($multipart && [] === $request->request->all() && [] === $request->files->all()) {
             // PHP drops all the parts of a body larger than its post_max_size.
             throw new HttpException(413, 'An event with files is larger than the post_max_size option of PHP.');
         }
+
         $body = $this->body->json($request);
         if ($multipart && $this->filesAreTooLarge($request->files->all())) {
             throw new HttpException(413, \sprintf('The files of an event can have a maximum of %d bytes together (the phem.max_upload_size option).', $this->maxUploadSize));
@@ -127,15 +131,18 @@ final class EventController
                 // A miss would upload the files two times.
                 throw new BadRequestHttpException('An event with files sends its state.');
             }
+
             if ($this->codec->isTooOld($payload->signature)) {
                 return self::reload();
             }
+
             $json = $this->cache->find($payload->signature);
             if (null === $json) {
                 // The browser sends the event again with its state. The handler did not run.
                 return self::json(['state' => 'required'], 409);
             }
         }
+
         $page = (string) $request->attributes->get('_phem_page');
         $data = $this->codec->decode($json, $payload->signature, $page, $request);
         if (null === $data) {
@@ -149,29 +156,35 @@ final class EventController
             // The state is for another URL of the page (`/items/3`, not `/items/4`).
             return self::reload();
         }
+
         try {
             $props = $this->paths->resolve($page, $state->values);
         } catch (\UnexpectedValueException) {
             // An entity of the page is not there any more: the page shows a 404 response.
             return self::reload();
         }
+
         $tree = new Tree($page, $state->fibers, $props, $state->values, shape: $state->shape);
         if (null !== $payload->handler) {
             $request->attributes->set(EventReplay::ATTRIBUTE, new EventReplay($page, $json, $payload->bound, $payload->handler, $payload->event));
         }
+
         $outcome = $this->events->run($tree, $payload->handler, $payload->bound, $this->dispatcher, fn (): Event => Event::fromArray($payload->event, $request, $this->dispatcher), $payload->stale);
         if ($outcome->reload) {
             // The page changed since the browser rendered it (for example after a deploy).
             return self::reload();
         }
+
         if (null !== $outcome->redirect) {
             // The browser visits the URL: the page does not render again, and the browser
             // events of the handler are dropped (the new page has other listeners).
             return self::json(['redirect' => self::redirectUrl($outcome->redirect)]);
         }
+
         // A new access token for the hub, before the old one expires (see Subscription).
         $this->subscription?->renew($page, $state->values, $request);
         [$next, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page, $request);
+
         // The next event can send only the signature (see StateCache).
         $this->cache->save($signature, $next);
 
@@ -179,6 +192,7 @@ final class EventController
         // Only the entries of the state that changed: the browser has the state of this event.
         $changes = (object) StateJson::changes($json, $next);
         $data = ['streams' => $this->streams->updates($tree->changedFibers()), 'changes' => $changes, 'signature' => $signature, 'query' => ['values' => (object) $query['values'], 'push' => $query['push']], 'events' => $this->dispatcher->dispatched()];
+
         if ([] !== $outcome->warnings) {
             // The dev-mode check (see SkippedRenderCheck): the phem controller logs them.
             $data['warnings'] = $outcome->warnings;
@@ -213,6 +227,7 @@ final class EventController
         if (0 === $this->maxUploadSize) {
             return false;
         }
+
         $size = 0;
         array_walk_recursive($files, static function (mixed $file) use (&$size): void {
             if ($file instanceof UploadedFile && \UPLOAD_ERR_OK === $file->getError()) {
@@ -234,10 +249,12 @@ final class EventController
         if (null !== $site) {
             return 'same-origin' === $site;
         }
+
         $origin = $request->headers->get('Origin');
         if (null === $origin) {
             return true;
         }
+
         $url = parse_url($origin);
         $host = ($url['host'] ?? '').(isset($url['port']) ? ':'.$url['port'] : '');
 

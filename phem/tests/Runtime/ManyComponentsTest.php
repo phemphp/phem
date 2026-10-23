@@ -115,6 +115,7 @@ final class ManyComponentsTest extends TestCase
         preg_match_all('/<phem-c id="(phem[0-9a-f]{12})"><li>\s*<input name="name" data-phem-bind="([^"]+)"/', $html, $rows);
         self::assertCount(50, array_unique($rows[1]), 'a fiber for each row');
         self::assertNotContains($title[1][0], $rows[1], 'the title is a field of the page');
+
         foreach ($rows[1] as $i => $fiber) {
             self::assertSame($fiber.'.name', $rows[2][$i]);
             foreach (['email', 'city', 'done'] as $property) {
@@ -169,6 +170,7 @@ final class ManyComponentsTest extends TestCase
     {
         Many::$rows = $rows;
         $best = \INF;
+
         for ($i = 0; $i < 3; ++$i) {
             $start = hrtime(true);
             $response = $this->request('GET', $uri);

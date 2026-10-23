@@ -81,8 +81,10 @@ final class TreeShape
         if (!\is_string($data) || '' === $data) {
             return new self();
         }
+
         $fibers = [];
         $ancestors = [];
+
         foreach (explode(',', $data) as $entry) {
             // 8 characters of id, 8 characters of hash or none, the depth (8 digits or less), then
             // `c` for a consumer.
@@ -90,13 +92,16 @@ final class TreeShape
             if ($consumer) {
                 $entry = substr($entry, 0, -1);
             }
+
             $length = \strlen($entry);
             $hash = $length > 16 ? substr($entry, 8, 8) : null;
             $depth = substr($entry, null !== $hash ? 16 : 8);
+
             if (1 !== preg_match('/^[A-Za-z0-9_-]{8}$/', $code = substr($entry, 0, 8)) || (null !== $hash && 1 !== preg_match('/^[A-Za-z0-9_-]{8}$/', $hash))
                 || !ctype_digit($depth) || (int) $depth > \count($ancestors) || isset($fibers[$id = self::FIBER_PREFIX.bin2hex(self::fromBase64($code))])) {
                 return new self();
             }
+
             $depth = (int) $depth;
             $fibers[$id] = $consumer ? [$ancestors[$depth - 1] ?? null, $hash, true] : [$ancestors[$depth - 1] ?? null, $hash];
             $ancestors = \array_slice($ancestors, 0, $depth);
@@ -216,7 +221,9 @@ final class TreeShape
         if (1 !== preg_match('/^'.self::FIBER_PREFIX.'([0-9a-f]{12})$/', $id, $m)) {
             throw new \LogicException(\sprintf('The fiber id "%s" is not an id of Fiber::idOf().', $id));
         }
+
         $entries[] = self::toBase64((string) hex2bin($m[1])).$this->hashOf($id).$depth.($this->isConsumer($id) ? self::CONSUMER : '');
+
         foreach ($this->childrenOf($id) as $child) {
             $this->encodeFrom($child, $depth + 1, $entries);
         }

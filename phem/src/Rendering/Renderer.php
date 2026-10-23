@@ -85,6 +85,7 @@ final class Renderer implements ResetInterface
     {
         $tree->begin();
         $this->pass = ++$this->passes;
+
         $this->within($tree, function () use ($tree, $fibers): void {
             foreach ($fibers as $fiber) {
                 $fiber->refreshed = $tree->refreshes($fiber);
@@ -128,15 +129,18 @@ final class Renderer implements ResetInterface
     {
         $tree = new Tree(detached: true);
         $tree->begin();
+
         // Its own pass, inside the pass of the page (a push in mount()): the slots of the page
         // render one time in the pass of the page.
         $pass = $this->pass;
         $this->pass = ++$this->passes;
+
         try {
             $html = $this->within($tree, fn (): string => $this->markup->html($markup));
         } finally {
             $this->pass = $pass;
         }
+
         // Markup that rendered in the page before (a slot) has the fibers and the handlers of
         // this page.
         if (1 === preg_match('/<phem-c[\s>]|\sdata-phem-(?:on-[\w-]+|bind|load|loading|progress)=/', $html)) {
@@ -200,20 +204,26 @@ final class Renderer implements ResetInterface
     public function addBind(string|array $target, ?object $owner = null): ?string
     {
         $this->notDetached('a "phem:bind"');
+
         $path = \is_array($target) ? $target : [$target];
         $property = array_shift($path);
+
         if (!\is_string($property)) {
             throw new \LogicException('"phem:bind" binds a #[State] property: a path starts with its name.');
         }
+
         $tree = $this->tree;
         $fiber = null !== $owner ? $tree?->fiberOf($owner) : $tree?->top();
+
         if (null === $tree || null === $fiber) {
             return null;
         }
+
         $instance = $fiber->instance;
         if (null === $instance || [] === array_filter($this->metadata->stateProperties($instance::class), static fn (\ReflectionProperty $p): bool => $p->getName() === $property)) {
             throw new \LogicException(\sprintf('"phem:bind" binds a #[State] property of the class component, but "%s" has no #[State] property "%s".', $fiber->fqcn, $property));
         }
+
         $keys = [];
         $value = [] !== $path ? new \ReflectionProperty($instance, $property)->getValue($instance) : null;
         foreach ($path as $segment) {
@@ -221,9 +231,11 @@ final class Renderer implements ResetInterface
                 // As PHP keys: "3" is 3.
                 $segment = array_key_first([$segment => true]);
             }
+
             if (!\is_array($value) || (!\is_int($segment) && !\is_string($segment)) || !\array_key_exists($segment, $value)) {
                 throw new \LogicException(\sprintf('"phem:bind" binds a value of the #[State] property "%s::$%s", but it has no key %s. Give the property all the keys of its bound fields.', $fiber->fqcn, $property, implode('', array_map(static fn (mixed $k): string => '['.(\is_int($k) || \is_string($k) ? json_encode($k, \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE) : get_debug_type($k)).']', [...$keys, $segment]))));
             }
+
             $keys[] = $segment;
             $value = $value[$segment];
         }
@@ -241,6 +253,7 @@ final class Renderer implements ResetInterface
         $tree = $this->tree;
         $fiber = $tree?->top();
         $count = \count($fiber->children ?? []);
+
         try {
             return (string) $markup;
         } catch (\Throwable $e) {
@@ -283,6 +296,7 @@ final class Renderer implements ResetInterface
         $previous = [$this->tree, $this->scope];
         $this->tree = $tree;
         $this->scope = $scope;
+
         try {
             return $callback();
         } finally {
@@ -298,32 +312,39 @@ final class Renderer implements ResetInterface
     {
         $def = $this->manifest->component($fqcn) ?? throw new PropError(\sprintf('Unknown component "%s".', $fqcn));
         $root = Root::class === $def->fqcn;
+
         if ($root && '' === $tree->page) {
             throw new \LogicException('A <Root> is the root element of a page: render it in the document of a page, not in a Twig template.');
         }
+
         if ($root && null !== $tree->rootFiber) {
             throw new \LogicException(\sprintf('The page "%s" renders more than one <Root>: render one, in the document of the page.', $tree->page));
         }
+
         $parent = $tree->top();
         $index = null !== $key ? '@'.$key : '#'.(null !== $parent ? $parent->nextIndex($fqcn) : $tree->nextRootIndex());
         $path = ($parent->path ?? '').'/'.$fqcn.$index;
         $id = Fiber::idOf($path);
         $fiber = $tree->fiber($id, static fn (?array $restored): Fiber => new Fiber($id, $path, $fqcn, $restored, $tree->query));
+
         // What the parent gave the fiber in the pass before, if the fiber got to that pass.
         $previous = $fiber->pass > 0 && $fiber->pass === $tree->pass - 1 ? $fiber->inputs() : null;
         $fiber->parent = $parent;
         $fiber->props = $props;
         $fiber->slots = $slots;
         $fiber->caller = $caller;
+
         if (null !== $parent) {
             $parent->children[] = $fiber;
         }
+
         $fiber->refreshed = $tree->refreshes($fiber);
 
         if (null !== $this->scope && !$this->scope->renders($fiber, $previous)) {
             $fiber->begin($tree->pass);
             $fiber->kept = true;
             $fiber->html = '';
+
             if ($root) {
                 $this->holdRoot($tree, $fiber);
             } elseif ($tree->shape->has($fiber->id) && null === $tree->shape->hashOf($fiber->id)) {
@@ -337,6 +358,7 @@ final class Renderer implements ResetInterface
         }
 
         $this->renderFiber($tree, $fiber, $def);
+
         if ($tree->detached) {
             return $fiber->html;
         }
@@ -355,6 +377,7 @@ final class Renderer implements ResetInterface
 
             return;
         }
+
         $this->profiler->profile($tree, $fiber, fn () => $this->renderFiberNow($tree, $fiber, $def));
     }
 
@@ -366,6 +389,7 @@ final class Renderer implements ResetInterface
         if ($root) {
             $this->holdRoot($tree, $fiber);
         }
+
         $tree->push($fiber);
         try {
             $slots = $this->slots($fiber);
@@ -387,6 +411,7 @@ final class Renderer implements ResetInterface
                 $placeholders[$output] = '<phem-c id="'.$child->id.'"></phem-c>';
             }
         }
+
         $fiber->ownHtml[$tree->pass] = strtr($html, $placeholders);
     }
 
@@ -423,8 +448,10 @@ final class Renderer implements ResetInterface
         if (null === $template) {
             return [];
         }
+
         $caller = $fiber->caller;
         $out = [];
+
         foreach ($template->getBlockNames([]) as $name) {
             $out[$name] = new Slot(static fn (): string => $template->renderBlock($name, ['_phem_caller' => $caller]), $this->pass(...));
         }

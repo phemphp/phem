@@ -56,9 +56,11 @@ final class ComponentMetadata
         if (isset($this->parameters[$function])) {
             return $this->parameters[$function];
         }
+
         if (!\function_exists($function)) {
             throw new PropError(\sprintf('Component function "%s" does not exist. Run `phemc build` again.', $function));
         }
+
         $out = [];
         foreach ((new \ReflectionFunction($function))->getParameters() as $p) {
             $out[$p->getName()] = Parameter::fromReflection($p);
@@ -81,6 +83,7 @@ final class ComponentMetadata
         if (isset($this->props[$class])) {
             return $this->props[$class];
         }
+
         $out = [];
         $rest = null;
         foreach ((new \ReflectionClass($class))->getProperties() as $p) {
@@ -88,22 +91,28 @@ final class ComponentMetadata
             if (null === $prop && [] === $p->getAttributes(Path::class)) {
                 continue;
             }
+
             if (!$p->isPublic() || $p->isStatic() || $p->isPromoted() || [] !== $p->getAttributes(State::class)) {
                 $attribute = null !== $prop ? 'Prop' : 'Path';
                 throw new PropError(\sprintf('The #[%s] property "%s" of <%s> must be a prop: public, not static, not promoted, and not #[State].', $attribute, $p->getName(), ComponentName::short($class)));
             }
+
             if (!($prop?->newInstance()->rest ?? false)) {
                 $out[$p->getName()] = $p;
                 continue;
             }
+
             if (null !== $rest) {
                 throw new PropError(\sprintf('<%s> has two rest props, "%s" and "%s". A class component has at most one.', ComponentName::short($class), $rest->getName(), $p->getName()));
             }
+
             if (!self::acceptsArray($p->getType())) {
                 throw new PropError(\sprintf('The rest prop "%s" of <%s> gets a hash of props, so its type must accept an array.', $p->getName(), ComponentName::short($class)));
             }
+
             $rest = $p;
         }
+
         $this->rests[$class] = $rest;
 
         return $this->props[$class] = $out;
@@ -163,31 +172,39 @@ final class ComponentMetadata
         if (isset($this->urls[$class])) {
             return $this->urls[$class];
         }
+
         $out = [];
         foreach ((new \ReflectionClass($class))->getProperties() as $p) {
             $attribute = $p->getAttributes(Url::class)[0] ?? null;
             if (null === $attribute) {
                 continue;
             }
+
             $url = $attribute->newInstance();
             $key = $url->as ?? $p->getName();
             $short = ComponentName::short($class);
+
             if ($p->isStatic() || [] === $p->getAttributes(State::class)) {
                 throw new \LogicException(\sprintf('The #[Url] property "%s" of <%s> must be a #[State] property.', $p->getName(), $short));
             }
+
             // PHP changes "." and " " in a query key to "_", and "[" starts a list.
             if (1 !== preg_match('/^[A-Za-z0-9_-]+$/', $key)) {
                 throw new \LogicException(\sprintf('The query key "%s" of the #[Url] property "%s" of <%s> can have only letters, digits, "_" and "-".', $key, $p->getName(), $short));
             }
+
             if (!self::fitsQuery($p->getType())) {
                 throw new \LogicException(\sprintf('The #[Url] property "%s" of <%s> must be a string, an int, a float, a bool, a backed enum, or an array of them.', $p->getName(), $short));
             }
+
             if (Url::DEFAULT !== $url->except && !(UrlQuery::isMap($url->except) ? self::acceptsArray($p->getType()) : UrlQuery::convert($p->getType(), UrlQuery::encode($url->except, $key)))) {
                 throw new \LogicException(\sprintf('The "except" value of the #[Url] property "%s" of <%s> does not fit the type of the property.', $p->getName(), $short));
             }
+
             if (isset($out[$key])) {
                 throw new \LogicException(\sprintf('The #[Url] properties "%s" and "%s" of <%s> have the same query key "%s".', $out[$key][0]->getName(), $p->getName(), $short, $key));
             }
+
             $out[$key] = [$p, $url];
         }
 
@@ -205,6 +222,7 @@ final class ComponentMetadata
         if (isset($this->paths[$page])) {
             return $this->paths[$page];
         }
+
         $out = [];
         if (class_exists($page)) {
             foreach ($this->props($page) as $name => $p) {

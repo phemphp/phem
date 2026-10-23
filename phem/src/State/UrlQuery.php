@@ -51,10 +51,12 @@ final class UrlQuery
         if ([] === $query) {
             return;
         }
+
         foreach ($this->metadata->urlProperties($component::class) as $key => [$property]) {
             if (!\array_key_exists($key, $query)) {
                 continue;
             }
+
             $current = $property->isInitialized($component) ? $property->getValue($component) : null;
             $ok = self::isMap($current) ? self::readMap($current, $query[$key], $value) : self::convert($property->getType(), $query[$key], $value);
             if ($ok) {
@@ -78,22 +80,27 @@ final class UrlQuery
         $values = [];
         $push = [];
         $owners = [];
+
         foreach ($tree->rendered() as $fiber) {
             $instance = $fiber->instance;
             if (null === $instance) {
                 continue;
             }
+
             foreach ($this->metadata->urlProperties($instance::class) as $key => [$property, $url]) {
                 if (isset($owners[$key])) {
                     throw new \LogicException(\sprintf('Two components of the page keep the query key "%s" (#[Url]): <%s> and <%s>. Give one of them another key: #[Url(as: \'…\')].', $key, ComponentName::short($owners[$key]), ComponentName::short($instance::class)));
                 }
+
                 $owners[$key] = $instance::class;
                 if (!$property->isInitialized($instance)) {
                     continue;
                 }
+
                 $value = self::encode($property->getValue($instance), $key);
                 $base = self::base($property, $url, $key);
                 $values[$key] = null === $base ? $value : self::without($value, $base);
+
                 if ($url->history) {
                     $push[] = $key;
                 }
@@ -135,15 +142,19 @@ final class UrlQuery
         $parts = explode('#', $url, 2);
         $fragment = $parts[1] ?? null;
         [$path, $search] = explode('?', $parts[0], 2) + [1 => ''];
+
         $out = [];
         $done = [];
+
         foreach (explode('&', $search) as $pair) {
             if ('' === $pair) {
                 continue;
             }
+
             $name = urldecode(explode('=', $pair, 2)[0]);
             $bracket = strpos($name, '[');
             $name = false !== $bracket && $bracket > 0 ? substr($name, 0, $bracket) : $name;
+
             if (!\array_key_exists($name, $values)) {
                 $out[] = $pair;
             } elseif (!isset($done[$name])) {
@@ -151,6 +162,7 @@ final class UrlQuery
                 array_push($out, ...self::pairs($name, $values[$name]));
             }
         }
+
         foreach ($values as $name => $value) {
             if (!isset($done[$name])) {
                 array_push($out, ...self::pairs($name, $value));
@@ -172,6 +184,7 @@ final class UrlQuery
         if (self::isMap($value)) {
             return array_map(static fn (mixed $v): string|array => self::encode($v, $key), $value);
         }
+
         if (\is_array($value)) {
             return array_map(static fn (mixed $v): string => self::scalar($v, $key), $value);
         }
@@ -219,9 +232,11 @@ final class UrlQuery
         if ($value === $base) {
             return null;
         }
+
         if (!self::isMap($value) || !self::isMap($base)) {
             return $value;
         }
+
         $out = [];
         foreach ($value as $k => $v) {
             $v = \array_key_exists($k, $base) ? self::without($v, $base[$k]) : $v;
@@ -247,17 +262,20 @@ final class UrlQuery
         if (!\is_array($query)) {
             return false;
         }
+
         $changed = false;
         foreach ($query as $k => $v) {
             if (!\array_key_exists($k, $current)) {
                 continue;
             }
+
             $ok = self::isMap($current[$k]) ? self::readMap($current[$k], $v, $value) : self::convertLike($current[$k], $v, $value);
             if ($ok) {
                 $current[$k] = $value;
                 $changed = true;
             }
         }
+
         $out = $current;
 
         return $changed;
@@ -317,6 +335,7 @@ final class UrlQuery
         if (null === $value) {
             return [];
         }
+
         if (self::isMap($value)) {
             $out = [];
             foreach ($value as $k => $v) {
@@ -325,6 +344,7 @@ final class UrlQuery
 
             return $out;
         }
+
         if (\is_array($value)) {
             return array_values(array_map(static fn (mixed $v): string => $name.'[]='.self::encodeComponent((string) $v), $value));
         }

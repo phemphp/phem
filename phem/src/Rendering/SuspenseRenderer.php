@@ -59,6 +59,7 @@ final class SuspenseRenderer implements ComponentRenderer
                 $this->state->restore($suspense, $fiber->restored);
             }
         }
+
         $this->props->assign($suspense, $fiber->props, $slots);
         $renderer = ($this->renderer)();
 
@@ -66,16 +67,20 @@ final class SuspenseRenderer implements ComponentRenderer
             if (null === $suspense->children) {
                 return null;
             }
+
             $html = $renderer->catching($suspense->children);
             if (\is_string($html)) {
                 return new Html($html);
             }
+
             if (null === $suspense->error) {
                 throw $html;
             }
+
             $this->logger?->error('[phem] The children of a <Suspense> threw: the error slot shows. '.$html->getMessage(), ['exception' => $html, 'fiber' => $fiber->id]);
             $suspense->status = SuspenseStatus::Failed;
         }
+
         if (SuspenseStatus::Failed === $suspense->status) {
             return $suspense->error;
         }

@@ -68,6 +68,7 @@ final class UpdateScope implements RenderScope
         if (!$this->before->leadsToConsumer($fiber->id)) {
             return false;
         }
+
         $pass = $fiber->parent->pass ?? null;
         for ($p = $fiber->parent; null !== $p && $p->pass === $pass && !$p->kept; $p = $p->parent) {
             if ($p->changesContext) {

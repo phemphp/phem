@@ -121,11 +121,14 @@ final class SubscriberToken
         if (3 !== \count($parts) || !hash_equals($this->sign($parts[0].'.'.$parts[1]), $parts[2])) {
             return null;
         }
+
         $claims = json_decode(self::decode($parts[1]), true);
         if (!\is_array($claims) || ($claims['iss'] ?? null) !== $this->issuer || ($claims['aud'] ?? null) !== $audience || ($claims['sub'] ?? null) !== $subject || !\is_int($claims['exp'] ?? null) || $claims['exp'] <= time()) {
             return null;
         }
+
         $expiries = \is_array($claims['phem_exp'] ?? null) ? array_values($claims['phem_exp']) : [];
+
         $grants = [];
         $i = 0;
         foreach ((array) ($claims['authorization_details'] ?? []) as $detail) {
@@ -134,6 +137,7 @@ final class SubscriberToken
                     $expiry = $expiries[$i] ?? null;
                     $grants[$topic['match']] = \is_int($expiry) ? $expiry : $claims['exp'];
                 }
+
                 ++$i;
             }
         }

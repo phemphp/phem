@@ -36,6 +36,7 @@ final class TestAsyncPass implements CompilerPassInterface
         if (!$container->hasDefinition('test.service_container') || !$container->hasDefinition('phem.async.dispatcher') || !$container->has('messenger.default_bus')) {
             return;
         }
+
         $container->setDefinition(self::ID, new Definition(MemoryBus::class, [new Reference('messenger.default_bus')]))->setPublic(true);
         $container->getDefinition('phem.async.dispatcher')->replaceArgument(0, new Reference(self::ID));
     }

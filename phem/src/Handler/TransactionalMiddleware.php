@@ -33,6 +33,7 @@ final class TransactionalMiddleware implements HandlerMiddleware
         if (!self::isTransactional($handler)) {
             return $next();
         }
+
         $transactions = $this->transactions ?? throw new \LogicException('A #[Transactional] handler needs Doctrine ORM: install doctrine/orm and doctrine/doctrine-bundle.');
 
         return $transactions->run($next);
@@ -50,6 +51,7 @@ final class TransactionalMiddleware implements HandlerMiddleware
         if (null === $component) {
             return false;
         }
+
         $class = new \ReflectionObject($component);
         if ([] !== $class->getAttributes(Transactional::class)) {
             return true;

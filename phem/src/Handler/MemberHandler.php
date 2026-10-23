@@ -29,9 +29,11 @@ final class MemberHandler
         if (\is_array($object)) {
             return $object[$member] ?? null;
         }
+
         if (!\is_object($object)) {
             return null;
         }
+
         $method = [$object, $member];
         if (\is_callable($method)) {
             return \Closure::fromCallable($method);

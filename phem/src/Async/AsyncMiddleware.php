@@ -40,17 +40,22 @@ final class AsyncMiddleware implements HandlerMiddleware
     {
         $method = self::methodOf($handler);
         $async = null !== $method && [] !== $method->getAttributes(Async::class);
+
         if ($async) {
             // Before the handler: a failed check runs no handler.
             $this->dispatcher->check($event->request);
         }
+
         $result = $next();
+
         if (null !== $method && $async && !$result instanceof Promise) {
             throw new \LogicException(\sprintf('The #[Async] handler "%s::%s()" must return a %s, "%s" given.', $method->class, $method->name, Promise::class, get_debug_type($result)));
         }
+
         if (null !== $method && !$async && $result instanceof Promise) {
             throw new \LogicException(\sprintf('The handler "%s::%s()" returns a %s, but it has no #[%s] attribute.', $method->class, $method->name, Promise::class, Async::class));
         }
+
         if ($result instanceof Promise) {
             $this->dispatcher->dispatch($event->request);
         }

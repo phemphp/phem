@@ -55,12 +55,15 @@ final class PageDriver implements Driver
         private array $cookies = [],
     ) {
         $this->url = $this->uri;
+
         [$request, $response] = $this->send(Request::create($this->uri, 'GET', cookies: $this->cookies, server: $this->server));
         $this->html = (string) $response->getContent();
         $this->page = (string) $request->attributes->get('_phem_page', '');
+
         if (1 === preg_match('/data-phem-state-value="([^"]*)" data-phem-signature-value="([^"]*)"(?: data-phem-query-value="([^"]*)")?/', $this->html, $m)) {
             $this->state = html_entity_decode($m[1], \ENT_QUOTES | \ENT_HTML5);
             $this->signature = html_entity_decode($m[2], \ENT_QUOTES | \ENT_HTML5);
+
             if (isset($m[3])) {
                 $this->query(json_decode(html_entity_decode($m[3], \ENT_QUOTES | \ENT_HTML5), true, 512, \JSON_THROW_ON_ERROR));
             }
@@ -82,28 +85,35 @@ final class PageDriver implements Driver
         if ('' === $this->signature) {
             throw new \LogicException(\sprintf('The response of "%s" is not a page with a state (status %d): it has no events.', $this->uri, $this->status));
         }
+
         $this->redirect = null;
         $files = $event['files'] ?? [];
         unset($event['files']);
+
         // As the browser: only the signature, and the state again when the server does not have
         // it. An event with files always sends the state.
         $response = $this->post($handler, $event, $bound, $files, [] !== $files, $stale);
         if ([] === $files && 409 === $response->getStatusCode() && '{"state":"required"}' === $response->getContent()) {
             $response = $this->post($handler, $event, $bound, $files, true, $stale);
         }
+
         if (409 === $response->getStatusCode()) {
             return EventResult::reload();
         }
+
         if (200 !== $response->getStatusCode()) {
             return EventResult::error($response->getStatusCode());
         }
+
         $data = json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
         if (!\is_array($data)) {
             throw new \UnexpectedValueException('An event answered with no JSON object.');
         }
+
         if (\is_string($data['redirect'] ?? null)) {
             return EventResult::redirect($this->redirect = $data['redirect']);
         }
+
         // As the browser: the response has only the entries of the state that changed.
         $this->state = StateJson::apply($this->state, \is_array($data['changes'] ?? null) ? $data['changes'] : []);
         $this->signature = (string) $data['signature'];
@@ -125,11 +135,13 @@ final class PageDriver implements Driver
     {
         $state = $withState ? ['state' => $this->state] : [];
         $body = json_encode($state + ['signature' => $this->signature, 'handler' => $handler, 'event' => $event, 'bound' => (object) $bound] + ([] !== $stale ? ['stale' => $stale] : []), \JSON_THROW_ON_ERROR);
+
         $server = [
             'HTTP_ACCEPT' => 'application/json',
             'HTTP_X_PHEM_EVENT' => '1',
             'HTTP_SEC_FETCH_SITE' => 'same-origin',
         ] + $this->server;
+
         $request = [] === $files
             ? Request::create($this->url, 'POST', cookies: $this->cookies, server: ['CONTENT_TYPE' => 'application/json'] + $server, content: $body)
             : Request::create($this->url, 'POST', [EventBody::PART => $body], $this->cookies, TestFiles::of($files), ['CONTENT_TYPE' => 'multipart/form-data; boundary=phem'] + $server);
@@ -179,20 +191,24 @@ final class PageDriver implements Driver
             $error ??= $event->getThrowable();
         };
         $this->dispatcher->addListener(KernelEvents::EXCEPTION, $listener, 2048);
+
         try {
             $response = $this->kernel->handle($request);
+
             if ($this->kernel instanceof TerminableInterface) {
                 $this->kernel->terminate($request, $response);
             }
         } finally {
             $this->dispatcher->removeListener(KernelEvents::EXCEPTION, $listener);
         }
+
         if ($response->getStatusCode() >= 500 && $error instanceof \Throwable) {
             throw $error;
         }
 
         $this->status = $response->getStatusCode();
         $this->redirect = $response->isRedirect() ? $response->headers->get('Location') : null;
+
         foreach ($response->headers->getCookies() as $cookie) {
             if ($cookie->isCleared()) {
                 unset($this->cookies[$cookie->getName()]);
@@ -218,11 +234,13 @@ final class PageDriver implements Driver
         if (!\is_array($events)) {
             throw new \UnexpectedValueException('The browser events of an event answer are not a list.');
         }
+
         $list = [];
         foreach ($events as $event) {
             if (!\is_array($event) || !\is_string($event['name'] ?? null)) {
                 throw new \UnexpectedValueException('A browser event of an event answer has no name.');
             }
+
             $list[] = ['name' => $event['name'], 'detail' => $event['detail'] ?? null];
         }
 
@@ -240,6 +258,7 @@ final class PageDriver implements Driver
         $open = '#<turbo-stream action="update" method="morph" target="([^"]*)"><template>#';
         $close = '</template></turbo-stream>';
         $parts = preg_split($open, $streams, -1, \PREG_SPLIT_DELIM_CAPTURE) ?: [];
+
         $updates = [];
         for ($i = 1, $n = \count($parts); $i + 1 < $n; $i += 2) {
             $updates[$parts[$i]] = str_ends_with($parts[$i + 1], $close) ? substr($parts[$i + 1], 0, -\strlen($close)) : $parts[$i + 1];

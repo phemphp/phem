@@ -118,6 +118,7 @@ describe("the state", () => {
     let done = nextDone()
     click("button")
     await done
+
     fetch.mockResolvedValueOnce(new Response(JSON.stringify({ state: "required" }), { status: 409 }))
     respond(`<button data-phem-on-click="c1.save">Save</button>`)
     done = nextDone()
@@ -169,6 +170,7 @@ describe("the morph of a list", () => {
     const done = nextDone()
     click("button")
     await done
+
     return before
   }
 
@@ -429,6 +431,7 @@ describe("pushes", () => {
 
     expect(source.url).toBe("/.well-known/mercure?match=phem%3AApp%5CGuestbook")
     expect(source.options).toEqual({ withCredentials: true })
+
     document.body.innerHTML = ""
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(source.closed).toBe(true)
@@ -445,6 +448,7 @@ describe("pushes", () => {
     document.body.insertAdjacentHTML("beforeend", '<p id="count">1</p>')
     source.push(stream("update", "count", "2"))
     await rendered()
+
     respond("<button data-phem-on-click=\"c1.save\">Save</button>")
     const done = nextDone()
     click("button")
@@ -460,10 +464,12 @@ describe("pushes", () => {
     await rendered()
 
     expect(document.getElementById("entry-1").textContent).toBe("Hi")
+
     respond('<ul id="entries"><li id="entry-1">Hi</li></ul><button data-phem-on-click="c1.save">Save</button>')
     let done = nextDone()
     click("button")
     await done
+
     expect(JSON.parse(fetch.mock.calls[0][1].body).stale).toEqual(["c1"])
 
     // The server rendered it again: the next event does not send it.
@@ -471,6 +477,7 @@ describe("pushes", () => {
     done = nextDone()
     click("button")
     await done
+
     expect(JSON.parse(fetch.mock.calls[1][1].body).stale).toBeUndefined()
   })
 
@@ -520,6 +527,7 @@ describe("pushes", () => {
     const done = nextDone()
     click("button")
     await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+
     // The event of this user added entry 2; the push of the same change comes first.
     source.push(stream("append", "entries", '<li id="entry-2">Two</li>'))
     await rendered()
@@ -567,6 +575,7 @@ describe("pushes", () => {
     } finally {
       vi.useRealTimers()
     }
+
     const body = await nextBody()
 
     expect(body.handler).toBeNull()

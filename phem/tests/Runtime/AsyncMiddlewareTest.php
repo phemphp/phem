@@ -85,6 +85,7 @@ final class AsyncMiddlewareTest extends TestCase
         } catch (\LogicException $e) {
             self::assertStringContainsString('cannot get the files of a form', $e->getMessage());
         }
+
         self::assertSame(0, $component->calls, 'the check runs before the handler');
     }
 
@@ -98,6 +99,7 @@ final class AsyncMiddlewareTest extends TestCase
         } catch (\LogicException $e) {
             self::assertStringContainsString('needs Symfony Messenger', $e->getMessage());
         }
+
         self::assertSame(0, $component->calls);
     }
 

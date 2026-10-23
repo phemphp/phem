@@ -103,6 +103,7 @@ final class SuspenseTest extends KernelTestCase
             ->assertSelectorNotExists('#part');
 
         self::assertStringNotContainsString('Part 1', $page->html(), 'the boundary drops what the children rendered before the exception');
+
         $page->click('#click')->assertSee('Clicks 1')->assertSee('No chart.');
     }
 

@@ -49,15 +49,18 @@ final class BoundValues
             if (null === $entry) {
                 continue;
             }
+
             [$id, $name, $path] = $entry;
             $instance = $tree->fiberById($id)?->instance;
             if (null === $instance) {
                 continue;
             }
+
             foreach ($this->metadata->stateProperties($instance::class) as $property) {
                 if ($property->getName() !== $name) {
                     continue;
                 }
+
                 if ([] === $path) {
                     if (self::convert($property->getType(), $value, $converted)) {
                         $property->setValue($instance, $converted);
@@ -82,28 +85,35 @@ final class BoundValues
         if (!self::isBrowserValue($value)) {
             return false;
         }
+
         if (null === $current) {
             $out = $value;
 
             return true;
         }
+
         if (!\is_array($current)) {
             $type = self::typeOf($current);
 
             return null !== $type && self::toType($type, $value, $out);
         }
+
         if (!\is_array($value)) {
             return false;
         }
+
         $types = array_unique(array_map(self::typeOf(...), $current));
         $type = 1 === \count($types) ? reset($types) : null;
+
         $items = [];
         foreach ($value as $item) {
             if (null !== $type && !self::toType($type, $item, $item)) {
                 return false;
             }
+
             $items[] = $item;
         }
+
         $out = $items;
 
         return true;
@@ -119,31 +129,37 @@ final class BoundValues
         if (!self::isBrowserValue($value)) {
             return false;
         }
+
         if (null === $type) {
             $out = $value;
 
             return true;
         }
+
         $types = match (true) {
             $type instanceof \ReflectionNamedType => [$type],
             $type instanceof \ReflectionUnionType => $type->getTypes(),
             default => [],
         };
+
         $names = [];
         foreach ($types as $t) {
             if ($t instanceof \ReflectionNamedType) {
                 $names[] = $t->getName();
             }
         }
+
         if ($type->allowsNull() && !\in_array('null', $names, true)) {
             $names[] = 'null';
         }
+
         // An empty field is null for a nullable property that does not take a string.
         if ('' === $value && \in_array('null', $names, true) && !array_intersect($names, ['string', 'mixed'])) {
             $out = null;
 
             return true;
         }
+
         // The type of the value first (`int|string` keeps "3" a string), then a conversion.
         foreach ([true, false] as $exact) {
             foreach ($names as $name) {
@@ -169,10 +185,12 @@ final class BoundValues
         if (!\is_array($array) || null === $key || !\array_key_exists($key, $array)) {
             return false;
         }
+
         $ok = [] === $path ? self::convertLike($array[$key], $value, $converted) : self::set($array[$key], $path, $value, $converted);
         if (!$ok) {
             return false;
         }
+
         $array[$key] = $converted;
         $out = $array;
 
@@ -217,6 +235,7 @@ final class BoundValues
             'array', 'iterable' => \is_array($value),
             default => false,
         };
+
         if ($ok) {
             $out = match ($type) {
                 'string' => \is_scalar($value) ? (string) $value : $value,
@@ -227,18 +246,22 @@ final class BoundValues
 
             return true;
         }
+
         if ($exact || !is_subclass_of($type, \BackedEnum::class) || (!\is_string($value) && !\is_int($value))) {
             return false;
         }
+
         $backing = (new \ReflectionEnum($type))->getBackingType()?->getName();
         if ('int' === $backing) {
             if (\is_string($value) && 1 !== preg_match('/^-?\d{1,18}$/', $value)) {
                 return false;
             }
+
             $value = (int) $value;
         } else {
             $value = (string) $value;
         }
+
         $out = $type::tryFrom($value);
 
         return null !== $out;

@@ -69,11 +69,14 @@ final class EventRenderer
         }
 
         $before = $this->states($tree);
+
         // After the first pass, as the page in the browser was: the second pass shows the new
         // values as a change.
         $this->bound->apply($tree, $bound);
+
         // Only the handler sends browser events: not the render before it.
         $dispatcher->reset();
+
         $refresh = !$scoped;
         if (null !== $closure) {
             $e = $event();
@@ -81,8 +84,10 @@ final class EventRenderer
             if ($result instanceof RedirectResponse) {
                 return EventOutcome::redirect($result);
             }
+
             $refresh = $refresh || $e->refreshes();
         }
+
         if ($refresh) {
             $this->renderer->render($tree);
 
@@ -128,6 +133,7 @@ final class EventRenderer
                 $owners[] = PathScope::fiberOf($key);
             }
         }
+
         // An id that the shape does not know is not in the page any more.
         $stale = array_values(array_filter(array_unique($stale), $tree->shape->has(...)));
         $tree->markStale(...$stale);
@@ -149,6 +155,7 @@ final class EventRenderer
         foreach ($stale as $id) {
             for ($current = $id; null !== $current && !self::rendered($tree, $current); $current = $tree->shape->parentOf($current)) {
             }
+
             if (null !== $current && $current !== $id) {
                 $tree->markStale($current);
             }
@@ -196,6 +203,7 @@ final class EventRenderer
                 $dirty[$fiber->id] = $fiber;
             }
         }
+
         if (null !== $closure && null !== $handler) {
             $object = new \ReflectionFunction($closure)->getClosureThis();
             $owner = (null !== $object ? $tree->fiberOf($object) : null) ?? $tree->fiberById(PathScope::fiberOf($handler));
@@ -223,6 +231,7 @@ final class EventRenderer
                     continue 2;
                 }
             }
+
             $roots[] = $fiber;
         }
 

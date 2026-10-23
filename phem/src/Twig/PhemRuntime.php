@@ -60,11 +60,13 @@ final class PhemRuntime implements RuntimeExtensionInterface
         if (null === $handler || false === $handler) {
             return new Markup('', 'UTF-8');
         }
+
         // Only a Closure: a string or an array can also be callable (`'system'`), and it can come
         // from data in a spread.
         if (!$handler instanceof \Closure) {
             throw new \InvalidArgumentException(\sprintf('The "%s" handler must be a function, "%s" given. Pass the function (`$this->name(...)`, `fn () => ...`), do not call it.', $event, get_debug_type($handler)));
         }
+
         $id = $this->renderer->addHandler($handler) ?? 'static';
 
         return new Markup(\sprintf('data-phem-on-%s="%s"', DomEvents::name($event), Attributes::e($id)), 'UTF-8');
@@ -94,9 +96,11 @@ final class PhemRuntime implements RuntimeExtensionInterface
         if (null === $handler || false === $handler) {
             return new Markup('', 'UTF-8');
         }
+
         if (!$handler instanceof \Closure) {
             throw new \InvalidArgumentException(\sprintf('The "phem:%s" handler must be a function, "%s" given. Pass the function (`$this->name(...)`), do not call it.', $name, get_debug_type($handler)));
         }
+
         $scope = $this->renderer->handlerScope($handler) ?? 'static';
 
         return new Markup(\sprintf('data-phem-%s="%s" hidden', $name, Attributes::e($scope)), 'UTF-8');
@@ -125,9 +129,11 @@ final class PhemRuntime implements RuntimeExtensionInterface
         if ($property instanceof Bound) {
             [$property, $value, $owner] = [$property->target, $property->value, $property->owner];
         }
+
         $key = $this->renderer->addBind($property, $owner);
         $out = null !== $key ? [\sprintf('data-phem-bind="%s"', Attributes::e($key))] : [];
         $type = \is_string($type) ? strtolower($type) : 'text';
+
         if ('input' === strtolower($tag)) {
             if ('checkbox' === $type && \is_array($value)) {
                 $out[] = 'data-phem-bind-list';
@@ -178,10 +184,12 @@ final class PhemRuntime implements RuntimeExtensionInterface
                 // Not (array) $object: that gives all of its properties, also the private ones.
                 throw new \InvalidArgumentException(\sprintf('A spread (`{{ ...attrs }}`) needs a hash of attributes, "%s" given.', get_debug_type($attrs)));
             }
+
             foreach ($attrs ?? [] as $name => $value) {
                 $merged[Attributes::name((string) $name)] = $value;
             }
         }
+
         $out = [];
         foreach ($merged as $name => $value) {
             $out[] = (string) match (true) {

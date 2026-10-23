@@ -55,6 +55,7 @@ final class TestFiles
     {
         $key = array_shift($keys);
         $value = [] === $keys ? $file : self::insert('' !== $key && \is_array($tree[$key] ?? null) ? $tree[$key] : [], $keys, $file);
+
         if ('' === $key) {
             $tree[] = $value;
         } else {
@@ -70,6 +71,7 @@ final class TestFiles
         if (false === $copy || !copy($path, $copy)) {
             throw new \RuntimeException(\sprintf('Cannot copy the file "%s" for the test.', $path));
         }
+
         register_shutdown_function(static function () use ($copy): void {
             if (is_file($copy)) {
                 unlink($copy);

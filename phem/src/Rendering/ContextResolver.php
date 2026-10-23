@@ -72,10 +72,12 @@ final class ContextResolver
         if ([] === $provides) {
             return;
         }
+
         $values = [];
         foreach ($provides as $provided) {
             $values[$provided->type] ??= $provided->valueOf($component);
         }
+
         $fiber->changesContext = $fiber->providedPass !== $fiber->pass - 1 || !self::same($fiber->provided, $values);
         $fiber->provided = $values;
         $fiber->providedPass = $fiber->pass;
@@ -88,6 +90,7 @@ final class ContextResolver
             if (null === $component) {
                 continue;
             }
+
             foreach ($this->metadata->provides($component::class) as $provided) {
                 $value = $provided->valueOf($component);
                 if ($value instanceof $dependency->type) {
@@ -97,11 +100,13 @@ final class ContextResolver
                 }
             }
         }
+
         if ($dependency->required) {
             $path = [];
             for ($f = $fiber; null !== $f; $f = $f->parent) {
                 array_unshift($path, '<'.ComponentName::short($f->fqcn).'>');
             }
+
             throw new ContextError(\sprintf('<%1$s> needs a "%2$s" context for "%3$s", but no component above it provides one. Render <%1$s> inside a component with #[Provide] for this type, or give "%3$s" a default value. Path: %4$s.', ComponentName::short($fiber->fqcn), $dependency->type, $dependency->name, implode(' > ', $path)));
         }
 
@@ -119,6 +124,7 @@ final class ContextResolver
             if (array_keys($a) !== array_keys($b)) {
                 return false;
             }
+
             foreach ($a as $key => $value) {
                 if (!self::same($value, $b[$key])) {
                     return false;
@@ -127,6 +133,7 @@ final class ContextResolver
 
             return true;
         }
+
         if (\is_object($a) && !$a instanceof \UnitEnum) {
             return \is_object($b) && $a::class === $b::class && new \ReflectionClass($a)->isReadOnly() && self::same((array) $a, (array) $b);
         }

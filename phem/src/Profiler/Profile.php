@@ -53,9 +53,11 @@ final class Profile implements RenderProfiler, ResetInterface
         $this->renders[] = ['tree' => $id, 'pass' => $tree->pass, 'depth' => \count($this->stack), 'fiber' => $fiber->id, 'fqcn' => $fiber->fqcn, 'parent' => $fiber->parent?->id, 'time' => 0.0, 'own' => 0.0];
         $this->stack[] = [$index, 0.0];
         $outer = 1 === \count($this->stack);
+
         if ($outer) {
             $this->stopwatch?->start('phem.render', 'phem');
         }
+
         $start = hrtime(true);
         try {
             $render();
@@ -66,9 +68,11 @@ final class Profile implements RenderProfiler, ResetInterface
             $record['time'] = $time;
             $record['own'] = max(0.0, $time - $children);
             $this->renders[$index] = $record;
+
             if ([] !== $this->stack) {
                 $this->stack[\count($this->stack) - 1][1] += $time;
             }
+
             if ($outer) {
                 $this->stopwatch?->stop('phem.render');
             }

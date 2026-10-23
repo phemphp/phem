@@ -35,9 +35,11 @@ final class StreamListener
         if (!$event->isMainRequest()) {
             return;
         }
+
         if (null !== $cookie = $this->subscription->cookie($event->getRequest())) {
             $event->getResponse()->headers->setCookie($cookie);
         }
+
         $this->streams->flush();
     }
 }

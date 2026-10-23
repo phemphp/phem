@@ -38,6 +38,7 @@ final class DoctrineEntityFinder implements EntityFinder
     {
         $manager = $this->doctrine->getManagerForClass($class) ?? throw new \LogicException(\sprintf('No Doctrine entity manager has the class "%s".', $class));
         $repository = $manager->getRepository($class);
+
         try {
             return \is_array($id) ? $repository->findOneBy($id) : $repository->find($id);
         } catch (NoResultException|ConversionException) {

@@ -38,6 +38,7 @@ final class FrankenPhpPublisher implements StreamPublisher
 
             return;
         }
+
         try {
             mercure_publish($topics, $data, $private);
         } catch (\Throwable $e) {

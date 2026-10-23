@@ -71,15 +71,18 @@ final class PageLoader extends Loader
         if (!$this->manifest->exists()) {
             return $routes;
         }
+
         $routes->addResource(new FileResource($this->manifest->file()));
 
         foreach ($this->manifest->pages() as $page) {
             if (!class_exists($page, false)) {
                 throw new \InvalidArgumentException(\sprintf('The page "%s" must be a class component: a function cannot be a page.', $page));
             }
+
             $reflection = new \ReflectionClass($page);
             // A route change does not change the manifest, only the compiled file.
             $routes->addResource(new FileResource((string) $reflection->getFileName()));
+
             foreach ($reflection->getAttributes(RouteAttribute::class, \ReflectionAttribute::IS_INSTANCEOF) as $i => $attribute) {
                 $this->addRoute($routes, $attribute->newInstance(), $page, $i);
             }
@@ -107,21 +110,26 @@ final class PageLoader extends Loader
     {
         $paths = $this->metadata->pathProps($page);
         $mapping = (array) ($route->getDefault('_route_mapping') ?? []);
+
         foreach (array_unique([...$route->compile()->getVariables(), ...array_keys($route->getDefaults())]) as $value) {
             if (str_starts_with($value, '_')) {
                 continue;
             }
+
             if (isset($mapping[$value])) {
                 $prop = \is_array($mapping[$value]) ? $mapping[$value][0] : $mapping[$value];
                 if (!\array_key_exists($prop, $paths)) {
                     throw new \InvalidArgumentException(\sprintf('The route "%s" maps the value "%s" to "%s", but the page "%s" has no #[Path] property "%s".', $name, $value, $prop, $page, $prop));
                 }
+
                 $type = $paths[$prop];
                 if (!$type instanceof \ReflectionNamedType || $type->isBuiltin()) {
                     throw new \InvalidArgumentException(\sprintf('The route "%s" maps the value "%s" to the #[Path] property "%s" of the page "%s", but its type is not an entity class.', $name, $value, $prop, $page));
                 }
+
                 continue;
             }
+
             if (!\array_key_exists($value, $paths)) {
                 throw new \InvalidArgumentException(\sprintf('The route "%s" has the value "%s", but the page "%s" has no #[Path] property "%s". Add one, or remove the value from the route.', $name, $value, $page, $value));
             }
@@ -133,6 +141,7 @@ final class PageLoader extends Loader
         if ($attr->envs && !\in_array($this->env, $attr->envs, true)) {
             return;
         }
+
         $name = $attr->name ?? self::routeName($page).($index > 0 ? '_'.$index : '');
         $defaults = array_replace($attr->defaults, ['_controller' => 'phem.controller.page', '_phem_page' => $page]);
         $paths = \is_array($attr->path) ? $attr->path : [0 => (string) $attr->path];
@@ -140,6 +149,7 @@ final class PageLoader extends Loader
         foreach ($paths as $locale => $path) {
             $route = new Route($path, $defaults, $attr->requirements, $attr->options, $attr->host ?? '', $attr->schemes, $attr->methods, $attr->condition ?? '');
             $this->checkValues($route, $name, $page);
+
             $routeName = $name;
             if (0 !== $locale) {
                 $route->setDefault('_locale', $locale);
@@ -147,6 +157,7 @@ final class PageLoader extends Loader
                 $route->setDefault('_canonical_route', $name);
                 $routeName .= '.'.$locale;
             }
+
             // The event route first: it takes the POST requests of the page URL.
             $event = (clone $route)
                 ->setMethods(['POST'])

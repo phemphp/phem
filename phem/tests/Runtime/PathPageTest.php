@@ -75,6 +75,7 @@ final class PathPageTest extends TestCase
         $html = (string) $this->request('GET', '/scientists/1')->getContent();
         self::assertStringContainsString('>Ada: 0</button>', $html);
         self::assertStringContainsString('<title>Ada</title>', $html, 'the title slot of the page reads the entity');
+
         $html = (string) $this->request('GET', '/scientists/by-name/Marie')->getContent();
         self::assertStringContainsString('>Marie: 0</button>', $html);
         self::assertStringContainsString('<title>Marie</title>', $html);

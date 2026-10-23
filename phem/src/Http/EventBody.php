@@ -51,17 +51,20 @@ final class EventBody
         if ('identity' !== $encoding && ('gzip' !== $encoding || self::isMultipart($request))) {
             throw new UnsupportedMediaTypeHttpException('An event body has no content encoding, or gzip (a body with no files).');
         }
+
         if (self::isMultipart($request)) {
             // PHP read the body already: the limit is for the JSON part.
             $json = $request->request->all()[self::PART] ?? '';
 
             return $this->limit(\is_string($json) ? $json : '');
         }
+
         $length = $request->headers->get('Content-Length');
         if (0 !== $this->maxSize && null !== $length && ctype_digit($length) && (int) $length > $this->maxSize) {
             // Before the server reads the body.
             throw $this->tooLarge();
         }
+
         $body = $this->limit($request->getContent());
 
         return 'gzip' === $encoding ? $this->gunzip($body) : $body;
@@ -81,9 +84,11 @@ final class EventBody
             if (false === $part) {
                 throw new BadRequestHttpException('The gzip body of the event is not valid.');
             }
+
             $json .= $part;
             $this->limit($json);
         }
+
         if (\ZLIB_STREAM_END !== inflate_get_status($context)) {
             throw new BadRequestHttpException('The gzip body of the event is not complete.');
         }

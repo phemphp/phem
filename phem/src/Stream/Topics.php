@@ -75,10 +75,12 @@ final class Topics implements ResetInterface
         if (!$this->subscribes($page)) {
             return [];
         }
+
         $topics = [$this->topic(self::PREFIX.$page)];
         if ([] !== $values) {
             $topics[] = $this->scoped($page, $values);
         }
+
         $topics[] = self::EVERYWHERE;
 
         return $topics;
@@ -97,13 +99,16 @@ final class Topics implements ResetInterface
         if (!$this->subscribes($page)) {
             throw new \LogicException(\sprintf('The streams go to the pages with #[Subscribe], but "%s" has no #[%s] attribute.', $page, Subscribe::class));
         }
+
         if ([] === $values) {
             return $this->topic(self::PREFIX.$page);
         }
+
         $paths = $this->metadata->pathProps($page);
         if ([] !== $unknown = array_diff_key($values, $paths)) {
             throw new \LogicException(\sprintf('The page "%s" has no #[Path] prop "%s": give the route values of its #[Path] props (%s).', $page, implode('", "', array_keys($unknown)), [] !== $paths ? '"'.implode('", "', array_keys($paths)).'"' : 'it has none'));
         }
+
         if ([] !== $missing = array_diff_key($paths, $values)) {
             throw new \LogicException(\sprintf('The streams to one URL of the page "%s" need all its #[Path] route values, but "%s" is missing. Give no values for all the URLs of the page.', $page, implode('", "', array_keys($missing))));
         }

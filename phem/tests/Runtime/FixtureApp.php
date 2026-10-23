@@ -31,6 +31,7 @@ trait FixtureApp
         if (null !== $this->kernel) {
             return $this->kernel;
         }
+
         TestKernel::compileSources();
         $this->kernel = new TestKernel('test', true);
         $this->kernel->boot();

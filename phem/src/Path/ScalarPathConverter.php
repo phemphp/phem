@@ -31,6 +31,7 @@ final class ScalarPathConverter implements PathValueConverter
         if (!\is_string($value)) {
             return $value;
         }
+
         $type = $prop->type->getName();
 
         return match ($type) {

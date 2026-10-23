@@ -53,12 +53,14 @@ final class ClassComponentRenderer implements ComponentRenderer
             $component = $fiber->instance = $this->factory->create($fiber->fqcn);
             $this->props->assign($component, $fiber->props, $slots);
             $this->contexts->assign($component, $fiber);
+
             if (null !== $fiber->restored) {
                 $this->state->restore($component, $fiber->restored);
             } else {
                 if (method_exists($component, 'mount')) {
                     $component->mount();
                 }
+
                 $this->url->read($component, $fiber->query);
             }
         } elseif ($this->props->changesReadonly($component, $fiber->props, $slots)) {
@@ -68,19 +70,23 @@ final class ClassComponentRenderer implements ComponentRenderer
             $component = $fiber->instance = $this->factory->create($fiber->fqcn);
             $this->props->assign($component, $fiber->props, $slots);
             $this->contexts->assign($component, $fiber);
+
             if (null === $fiber->restored && method_exists($component, 'mount')) {
                 $component->mount();
             }
+
             $this->state->restore($component, $state);
         } else {
             $this->props->assign($component, $fiber->props, $slots);
             $this->contexts->assign($component, $fiber);
+
             if ($this->metadata->mountsEachRender($fiber->fqcn) && method_exists($component, 'mount')) {
                 // No state in the browser: mount() reads its data again in each render (for
                 // example after a handler of the same event changed it).
                 $component->mount();
             }
         }
+
         if (!method_exists($component, 'render')) {
             throw new \LogicException(\sprintf('The class component "%s" has no render() method. Run `phemc build` again.', $fiber->fqcn));
         }

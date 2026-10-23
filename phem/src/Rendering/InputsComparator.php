@@ -46,10 +46,12 @@ final class InputsComparator
         if ($a === $b) {
             return true;
         }
+
         if (\is_array($a) && \is_array($b)) {
             if (\count($a) !== \count($b) || array_keys($a) !== array_keys($b)) {
                 return false;
             }
+
             foreach ($a as $key => $value) {
                 if (!$this->equal($value, $b[$key])) {
                     return false;
@@ -58,10 +60,12 @@ final class InputsComparator
 
             return true;
         }
+
         if ($a instanceof \Closure && $b instanceof \Closure) {
             return new \ReflectionFunction($a)->getClosureThis() === new \ReflectionFunction($b)->getClosureThis()
                 && $this->fingerprints->of($a) === $this->fingerprints->of($b);
         }
+
         if ($a instanceof Markup && $b instanceof Markup && !$a instanceof LazyHtml && !$b instanceof LazyHtml) {
             return $a::class === $b::class && (string) $a === (string) $b;
         }

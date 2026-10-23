@@ -137,10 +137,12 @@ final class ContextResolverTest extends TestCase
         $only = self::fiber('readonly', $readonly);
         $only->pass = 1;
         $resolver->provide($only);
+
         $readonly->locale = new Locale('es');
         $only->pass = 2;
         $resolver->provide($only);
         self::assertFalse($only->changesContext, 'another readonly object with the same values');
+
         $readonly->locale = new Locale('fr');
         $only->pass = 3;
         $resolver->provide($only);
@@ -153,6 +155,7 @@ final class ContextResolverTest extends TestCase
         $self = self::fiber('self', new #[Provide] class {});
         $self->pass = 1;
         $resolver->provide($self);
+
         $self->pass = 2;
         $resolver->provide($self);
         self::assertTrue($self->changesContext, 'a provider of itself changes each time that it renders');

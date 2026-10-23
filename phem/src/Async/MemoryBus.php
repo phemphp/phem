@@ -38,6 +38,7 @@ final class MemoryBus implements MessageBusInterface
         if (!$this->keep || !$message instanceof AsyncHandlerMessage) {
             return $this->bus->dispatch($message, $stamps);
         }
+
         $this->messages[] = $message;
 
         return Envelope::wrap($message, $stamps);

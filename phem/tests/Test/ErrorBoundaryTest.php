@@ -54,6 +54,7 @@ final class ErrorBoundaryTest extends KernelTestCase
             ->assertSelectorTextContains('#other', 'Quote 42');
 
         self::assertStringNotContainsString('Ticks', $page->html(), 'the boundary drops what the children rendered before the exception');
+
         $page->click('#click')->assertSee('Clicks 1')->assertSee('No quote.');
     }
 

@@ -75,6 +75,7 @@ final class StateCodecTest extends TestCase
         $request->getSession()->setId('s3');
         $request->getSession()->start();
         [$json, $signature] = $codec->encode([], 'App\\A', $request);
+
         self::assertSame([], $codec->decode($json, $signature, 'App\\A', $this->request('s3')));
     }
 

@@ -45,6 +45,7 @@ final class TemplateComponentRenderer
         foreach ($slots as $name) {
             $given[$name] = new Slot(static fn (): string => $template->renderBlock($name, ['_phem_caller' => $caller]), $pass);
         }
+
         $vars = $this->props->templateContext($fqcn, $props, $given);
         $vars['_phem_caller'] = $caller;
         $parent = [] !== $slots ? $template->getParent($vars) : false;

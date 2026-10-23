@@ -156,10 +156,12 @@ function isTextLike(el) {
 function formFields(form, submitter) {
   const fields = []
   const files = []
+
   for (const [name, value] of new FormData(form, submitter ?? null)) {
     if (typeof value === "string") fields.push([name, value])
     else if (value.name !== "" || value.size > 0) files.push([name, value])
   }
+
   return { fields, files }
 }
 
@@ -176,6 +178,7 @@ function boundValue(fields) {
   if (first instanceof HTMLInputElement && first.type === "checkbox") {
     return first.hasAttribute("data-phem-bind-list") ? fields.filter((f) => f.checked).map((f) => f.value) : first.checked
   }
+
   if (first instanceof HTMLInputElement && first.type === "radio") return fields.find((f) => f.checked)?.value ?? null
   if (first instanceof HTMLSelectElement && first.multiple) return [...first.selectedOptions].map((o) => o.value)
   return first.value
@@ -194,6 +197,7 @@ function isDirty(field) {
     if (field.multiple) return [...field.options].some((o) => o.selected !== o.defaultSelected)
     return field.selectedOptions[0] !== defaultOption(field)
   }
+
   return field.value !== field.defaultValue
 }
 
@@ -229,6 +233,7 @@ const REFRESH_EVENT = { type: "refresh", value: null, checked: null, key: null, 
 function keyIds(root, target) {
   for (const el of root.querySelectorAll("[data-phem-key]")) {
     if (el.hasAttribute("id")) continue
+
     const scope = el.parentElement?.closest("[id]") ?? target
     el.id = `${KEY_ID}${scope.id}/${el.localName}:${el.getAttribute("data-phem-key")}`
   }
@@ -283,16 +288,19 @@ function nestedPairs(key, value) {
 // signed. A state with another form counts as empty: then the response has all the entries.
 function applyStateChanges(state, changes) {
   const entries = new Map()
+
   if (state.startsWith("{\n") && state.endsWith("\n}")) {
     for (const line of state.slice(2, -2).split(",\n")) {
       const end = line.indexOf('"', 1)
       entries.set(line.slice(1, end), line.slice(end + 2))
     }
   }
+
   for (const [key, value] of Object.entries(changes)) {
     if (value === null) entries.delete(key)
     else entries.set(key, value)
   }
+
   const keys = [...entries.keys()].sort()
   return keys.length ? `{\n${keys.map((key) => `"${key}":${entries.get(key)}`).join(",\n")}\n}` : "{}"
 }
@@ -307,6 +315,7 @@ async function jsonBody(json) {
   const headers = { "Content-Type": "application/json" }
   const blob = new Blob([json], { type: "application/json" })
   if (blob.size < GZIP_MIN_SIZE || typeof CompressionStream !== "function") return { body: json, headers }
+
   const body = await new Response(blob.stream().pipeThrough(new CompressionStream("gzip"))).blob()
   return { body, headers: { ...headers, "Content-Encoding": "gzip" } }
 }
@@ -318,24 +327,30 @@ function post(url, headers, body, onProgress) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     const fail = () => reject(new TypeError("Network request failed"))
+
     xhr.open("POST", url)
     for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value)
     xhr.responseType = "blob"
+
     // Before send(): a listener that comes later gets no progress.
     xhr.upload.addEventListener("progress", (e) => onProgress(e.loaded, e.lengthComputable ? e.total : 0))
     xhr.addEventListener("load", () => {
       if (xhr.status < 200) return fail()
+
       const responseHeaders = new Headers()
       for (const line of xhr.getAllResponseHeaders().split(/\r?\n/)) {
         const colon = line.indexOf(":")
         if (colon > 0) responseHeaders.append(line.slice(0, colon).trim(), line.slice(colon + 1).trim())
       }
+
       const body = [204, 205, 304].includes(xhr.status) ? null : xhr.response
       resolve(new Response(body, { status: xhr.status, statusText: xhr.statusText, headers: responseHeaders }))
     })
+
     xhr.addEventListener("error", fail)
     xhr.addEventListener("abort", fail)
     xhr.addEventListener("timeout", fail)
+
     xhr.send(body)
   })
 }
@@ -345,6 +360,7 @@ function post(url, headers, body, onProgress) {
 function logProfile(handler, event, response) {
   const link = response.headers.get("X-Debug-Token-Link")
   if (!link) return
+
   const url = new URL(link, window.location.href)
   url.searchParams.set("panel", "phem")
   console.debug(`[phem] ${event.live ? "phem:live" : event.refresh ? "phem:refresh" : handler} → ${response.status}`, url.href)
@@ -389,8 +405,10 @@ export default class PhemController extends Controller {
     // element => (handler attribute => {handler, payload}): the input and change events in the
     // queue that did not start yet
     this.waiting = new Map()
+
     this.flushOnBlur = (event) => this.flush(event.target)
     this.element.addEventListener("focusout", this.flushOnBlur)
+
     // element => the number of its events that show the loading state
     this.loading = new Map()
     // The events that show the loading state now: {handler, el, upload}, where upload is
@@ -398,6 +416,7 @@ export default class PhemController extends Controller {
     this.running = new Set()
     // form => (control => the property that the lock set), for each locked form
     this.locked = new Map()
+
     // The morph of an earlier event sets the attributes of the server render: show the loading
     // state again on an element with an event that still runs, lock a locked control again, and
     // show the offline state again on the root element.
@@ -407,12 +426,14 @@ export default class PhemController extends Controller {
       if (t.hasAttribute("data-phem-loading")) t.hidden = !this.isLoading(t)
       if (t.hasAttribute("data-phem-progress")) this.showProgress(t)
       if (t === this.element) this.showOffline()
+
       for (const controls of this.locked.values()) {
         const prop = controls.get(t)
         if (prop) t[prop] = true
       }
     }
     this.element.addEventListener("turbo:morph-element", this.keepLoading)
+
     // The values of all the bound fields when the request of the event that the morph renders
     // now left.
     this.sentBound = null
@@ -423,17 +444,21 @@ export default class PhemController extends Controller {
     // A pushed morph runs with no event: it keeps a bound field that the user changed.
     this.keepEdited = (event) => {
       if (!["value", "checked", "selected"].includes(event.detail.attributeName)) return
+
       const field = event.target instanceof HTMLOptionElement ? event.target.closest("select") : event.target
       const key = field?.getAttribute?.("data-phem-bind")
       if (!key || !this.element.contains(field)) return
+
       if (!this.sentBound) {
         if (this.pushing && this.boundFields(key).some(isDirty)) event.preventDefault()
         return
       }
+
       if (!(key in this.sentBound)) return
       if (!sameValue(boundValue(this.boundFields(key)), this.sentBound[key])) event.preventDefault()
     }
     this.element.addEventListener("turbo:before-morph-attribute", this.keepEdited)
+
     // The server did not render a component again (a <phem-c data-phem-keep> placeholder): keep
     // its element and its content as they are. The same for a `data-phem-ignore` element that the
     // server renders again, because JS owns it. The morph removes it when the server render does
@@ -444,6 +469,7 @@ export default class PhemController extends Controller {
       else if (next?.hasAttribute?.("data-phem-ignore") && event.target.hasAttribute("data-phem-ignore")) event.preventDefault()
     }
     this.element.addEventListener("turbo:before-morph-element", this.keepKept)
+
     // The attributes in the `data-phem-client` list of an element belong to the client (a Stimulus
     // controller): the morph does not change them.
     this.keepClient = (event) => {
@@ -451,6 +477,7 @@ export default class PhemController extends Controller {
       if (names && names.split(/\s+/).includes(event.detail.attributeName)) event.preventDefault()
     }
     this.element.addEventListener("turbo:before-morph-attribute", this.keepClient)
+
     // The morph matches the elements by their id, and else by their position. While the morph of a
     // stream runs, each element with a `key` and no id has an id from its key, in the page and in
     // the server render. So a list item keeps its element (its client attributes, its focus, its
@@ -473,22 +500,27 @@ export default class PhemController extends Controller {
       }
     }
     document.addEventListener("turbo:before-stream-render", this.keyMorph)
+
     // The first render can drop a value of the URL that does not fit its property: never a new
     // history entry here.
     this.updateUrl(this.queryValue, false)
+
     this.showOffline = () => this.element.classList.toggle("phem-offline", !navigator.onLine)
     this.showOffline()
     window.addEventListener("online", this.showOffline)
     window.addEventListener("offline", this.showOffline)
+
     // The `phem-dirty` class of the bound fields that the user changed.
     this.showDirty = () => this.markDirty()
     this.element.addEventListener("input", this.showDirty)
     this.element.addEventListener("change", this.showDirty)
     this.showDirty()
+
     // True when the controller itself leaves the page (a redirect or a reload): no question.
     this.leaving = false
     this.guardUnload = (event) => {
       if (this.leaving || !this.dirtyGuard()) return
+
       event.preventDefault()
       event.returnValue = ""
     }
@@ -496,11 +528,13 @@ export default class PhemController extends Controller {
       if (this.leaving) return
       const guard = this.dirtyGuard()
       if (!guard) return
+
       if (window.confirm(guard.getAttribute("data-phem-guard") || this.guardMessageValue)) this.leaving = true
       else event.preventDefault()
     }
     window.addEventListener("beforeunload", this.guardUnload)
     document.addEventListener("turbo:before-visit", this.guardVisit)
+
     // The handlers of the `<Suspense>` boundaries that loaded, or that load now: one load each.
     this.loads = new Set()
     // A `lazy` boundary loads when it comes into view, or a little before.
@@ -512,6 +546,7 @@ export default class PhemController extends Controller {
           )
         : null
     this.loadBoundaries()
+
     // The ids of the stale components (see the header): the next event sends them.
     this.stale = new Set()
     // The number of events that run now, and the pushes that wait for them.
@@ -550,12 +585,15 @@ export default class PhemController extends Controller {
   // Opens the EventSource of a page with #[Subscribe] (see the header).
   openStream() {
     if (!this.streamValue || typeof EventSource !== "function") return
+
     const source = new EventSource(this.streamValue, { withCredentials: true })
     let lost = false
+
     source.addEventListener("message", (event) => this.receive(event.data))
     source.addEventListener("error", () => {
       lost = true
       if (source.readyState !== EventSource.CLOSED || this.source !== source) return
+
       // The hub refused the connection (an expired token): EventSource does not connect again.
       // A refresh renews the token (an event sets the cookie), then the controller connects again.
       this.source = null
@@ -568,12 +606,14 @@ export default class PhemController extends Controller {
           .then(() => this.element.isConnected && !this.source && this.openStream())
       }, STREAM_RETRY)
     })
+
     source.addEventListener("open", () => {
       if (!lost) return
       lost = false
       // The `local` transport of the hub has no history: the updates of the lost time are lost.
       if (this.markContentStale()) this.scheduleRefresh()
     })
+
     this.source = source
   }
 
@@ -590,19 +630,24 @@ export default class PhemController extends Controller {
     const message = document.createElement("template")
     message.innerHTML = data
     let refresh = false
+
     for (const stream of message.content.querySelectorAll("turbo-stream")) {
       const action = stream.getAttribute("action")
       const target = document.getElementById(stream.getAttribute("target") ?? "")
       const inRoot = target !== null && this.element.contains(target)
+
       if (action === "phem-refresh") {
         stream.remove()
         refresh = (inRoot && this.markStale(target)) || refresh
         continue
       }
+
       if (!inRoot) continue
+
       this.markStale(["remove", "replace", "before", "after"].includes(action) ? target.parentElement : target)
       if (action === "append" || action === "prepend") removeDuplicates(target, stream)
     }
+
     if (message.content.querySelector("turbo-stream")) {
       console.debug("[phem] push", data)
       this.pushing++
@@ -612,6 +657,7 @@ export default class PhemController extends Controller {
         this.markDirty()
       })
     }
+
     if (refresh) this.scheduleRefresh()
   }
 
@@ -619,12 +665,15 @@ export default class PhemController extends Controller {
   markStale(el) {
     const component = el?.closest("phem-c")
     if (!component || !this.element.contains(component)) return false
+
     this.stale.add(component.id)
+
     // Too many for one event: the content of the root element renders all of them.
     if (this.stale.size > MAX_STALE) {
       this.stale.clear()
       this.markContentStale()
     }
+
     return true
   }
 
@@ -662,6 +711,7 @@ export default class PhemController extends Controller {
     this.boundaryObserver?.unobserve(el)
     const handler = el.getAttribute("data-phem-load")
     if (!handler || this.loads.has(handler)) return
+
     this.loads.add(handler)
     this.enqueue(el, "data-phem-load", handler, { type: "load", value: null, checked: null, key: null, form: null })
   }
@@ -675,11 +725,13 @@ export default class PhemController extends Controller {
       if (live) this.schedule(live, "data-phem-live", live.getAttribute("data-phem-bind"), event.type, { type: event.type, live: true })
       return
     }
+
     if (event.type === "submit") {
       event.preventDefault()
       // The first submit of this form still runs.
       if (this.locked.has(el)) return
     }
+
     const attr = el._phemAttr
     const handler = el.getAttribute(attr)
     const { fields, files } = el instanceof HTMLFormElement ? formFields(el, event.submitter) : { fields: null, files: [] }
@@ -690,6 +742,7 @@ export default class PhemController extends Controller {
       key: event.key ?? null,
       form: fields,
     }
+
     // Not in the JSON: fetchWithRetry() sends them as parts of a multipart body.
     if (files.length) payload.files = files
     this.schedule(el, attr, handler, event.type, payload)
@@ -699,6 +752,7 @@ export default class PhemController extends Controller {
   schedule(el, attr, handler, type, payload) {
     const send = () => this.enqueue(el, attr, handler, payload)
     const wait = this.timing(el, type)
+
     if (wait) {
       this.defer(el, attr, wait, send)
     } else {
@@ -718,22 +772,26 @@ export default class PhemController extends Controller {
       old.payload = payload
       return
     }
+
     const job = { handler, payload }
     if (coalesce) {
       waiting.set(attr, job)
       this.waiting.set(el, waiting)
     }
+
     const upload = payload.files ? { progress: 0 } : null
     const done = this.startLoading(el, handler, upload)
     // After formFields(): a disabled control is not in the form data.
     const unlock = payload.type === "submit" ? this.lockForm(el) : () => {}
     const onProgress = upload && ((loaded, total) => this.uploadProgress(el, handler, payload.files, upload, loaded, total))
+
     this.queue = this.queue
       .then(() => {
         if (waiting?.get(attr) === job) {
           waiting.delete(attr)
           if (!waiting.size) this.waiting.delete(el)
         }
+
         return this.send(el, job.handler, job.payload, unlock, onProgress)
       })
       .catch((e) => console.error("[phem]", e))
@@ -746,16 +804,19 @@ export default class PhemController extends Controller {
   // The wait of an event: {debounce: ms or "blur"}, {throttle: ms}, or null to send it at once.
   timing(el, type) {
     if (type === "submit" || type === "focusout") return null
+
     const { phemDebounce: debounce, phemThrottle: throttle } = el.dataset
     if (throttle !== undefined) {
       const ms = Number(throttle)
       return ms > 0 ? { throttle: ms } : null
     }
+
     if (debounce === "blur") return { debounce }
     if (debounce !== undefined) {
       const ms = Number(debounce)
       return ms > 0 ? { debounce: ms } : null
     }
+
     // An `input` event comes from a text input (see handlerElement()).
     return type === "input" && this.debounceValue > 0 ? { debounce: this.debounceValue } : null
   }
@@ -766,17 +827,20 @@ export default class PhemController extends Controller {
     const pending = this.pending.get(el) ?? new Map()
     this.pending.set(el, pending)
     const entry = pending.get(attr)
+
     if (wait.throttle) {
       if (entry) {
         // Keep the time of the throttle: send the newest event then.
         entry.send = send
         return
       }
+
       const left = (this.sentAt.get(el)?.get(attr) ?? -Infinity) + wait.throttle - performance.now()
       pending.set(attr, { send, timer: left > 0 ? setTimeout(() => this.release(el, attr), left) : null })
       if (left <= 0) this.release(el, attr)
       return
     }
+
     clearTimeout(entry?.timer)
     const timer = wait.debounce === "blur" ? null : setTimeout(() => this.release(el, attr), wait.debounce)
     pending.set(attr, { send, timer })
@@ -787,9 +851,11 @@ export default class PhemController extends Controller {
     const pending = this.pending.get(el)
     const entry = pending?.get(attr)
     if (!entry) return
+
     clearTimeout(entry.timer)
     pending.delete(attr)
     if (!pending.size) this.pending.delete(el)
+
     const sent = this.sentAt.get(el) ?? new Map()
     sent.set(attr, performance.now())
     this.sentAt.set(el, sent)
@@ -806,12 +872,15 @@ export default class PhemController extends Controller {
   // Locks the controls of a form while its submit event runs. Returns the function that ends it.
   lockForm(form) {
     if (form.dataset.phemDisable === "false") return () => {}
+
     const controls = new Map()
     for (const control of form.elements) {
       const prop = lockControl(control)
       if (prop) controls.set(control, prop)
     }
+
     this.locked.set(form, controls)
+
     return () => {
       if (this.locked.get(form) !== controls) return
       this.locked.delete(form)
@@ -824,15 +893,18 @@ export default class PhemController extends Controller {
     const targets = new Set([el, el.closest("phem-c") ?? this.element])
     const event = { handler, el, upload }
     let shown = false
+
     const timer = setTimeout(() => {
       shown = true
       targets.forEach((t) => this.markLoading(t, 1))
       this.running.add(event)
       this.showLoadingElements()
     }, this.loadingDelayValue)
+
     return () => {
       clearTimeout(timer)
       if (!shown) return
+
       targets.forEach((t) => this.markLoading(t, -1))
       this.running.delete(event)
       this.showLoadingElements()
@@ -855,11 +927,13 @@ export default class PhemController extends Controller {
   runningEvent(el, scope, upload = false) {
     const fiber = scope.slice(0, scope.indexOf("."))
     const fingerprint = scope.slice(fiber.length + 1)
+
     for (const event of this.running) {
       const { handler, el: source } = event
       if ((upload && !event.upload) || handler.slice(handler.indexOf(".") + 1).split("~")[0] !== fingerprint) continue
       if (handler.startsWith(`${fiber}.`) || this.componentRoot(scope).contains(source) || this.componentRoot(handler).contains(el)) return event
     }
+
     return null
   }
 
@@ -872,6 +946,7 @@ export default class PhemController extends Controller {
     const event = this.runningEvent(el, el.dataset.phemProgress, true)
     el.hidden = !event
     if (!event) return
+
     const { progress } = event.upload
     el.style.setProperty("--phem-progress", String(progress))
     if (el instanceof HTMLProgressElement) el.value = progress * el.max
@@ -882,6 +957,7 @@ export default class PhemController extends Controller {
   uploadProgress(el, handler, files, upload, loaded, total) {
     upload.progress = total > 0 ? Math.min(loaded / total, 1) : 0
     for (const t of this.element.querySelectorAll("[data-phem-progress]")) this.showProgress(t)
+
     // The body has the JSON of the event and the headers of the parts too: share the progress
     // between the files by their size, in their order.
     let sent = upload.progress * files.reduce((sum, [, file]) => sum + file.size, 0)
@@ -896,6 +972,7 @@ export default class PhemController extends Controller {
         return { field, file, loaded: Math.round(part), progress: file.size > 0 ? part / file.size : Math.floor(upload.progress) }
       }),
     }
+
     const target = el.isConnected ? el : this.componentRoot(handler)
     target.dispatchEvent(new CustomEvent("phem:upload-progress", { detail, bubbles: true }))
   }
@@ -923,8 +1000,10 @@ export default class PhemController extends Controller {
         el._phemAttr = `data-phem-on-${name}`
         return el
       }
+
       return null
     }
+
     switch (event.type) {
       // React's onChange fires on each key for text inputs.
       case "input": {
@@ -960,15 +1039,18 @@ export default class PhemController extends Controller {
     // that changed.
     const fields = this.boundValues()
     const bound = Object.fromEntries(Object.entries(fields).filter(([, { dirty }]) => dirty).map(([key, { value }]) => [key, value]))
+
     if (event.live && !Object.keys(bound).length) {
       // The field has its server value again: nothing to send.
       beforeRender()
       return
     }
+
     // The stale components when the event starts: the server renders them again.
     const stale = [...this.stale]
     if (stale.length) event = { ...event, stale }
     this.notify(el, handler, "send")
+
     // The end of an event that the server did not take: no morph.
     const failed = (status) => this.notify(el, handler, "done", { ok: false, status })
     let response
@@ -981,14 +1063,17 @@ export default class PhemController extends Controller {
       failed(null)
       return
     }
+
     beforeRender()
     logProfile(handler, event, response)
+
     if (response.status === 409) {
       // The state is not valid any more (a new build, or a new secret): load the page again.
       this.leaving = true
       Turbo.visit(window.location.href, { action: "replace" })
       return
     }
+
     if (response.status === 429) {
       // A #[RateLimit] of the page: the server did not run the handler, and the page does not
       // change. `phem:rate-limited` tells the page, with the seconds to wait (`Retry-After`).
@@ -999,6 +1084,7 @@ export default class PhemController extends Controller {
       failed(429)
       return
     }
+
     if (!response.ok) {
       const text = await response.text()
       console.error(`[phem] event failed (${response.status})`, text)
@@ -1006,6 +1092,7 @@ export default class PhemController extends Controller {
       failed(response.status)
       return
     }
+
     // A PHP error that PHP prints before the handler (an HTML page with a 200) is not an answer.
     const text = await response.text()
     let data
@@ -1017,9 +1104,12 @@ export default class PhemController extends Controller {
       failed(response.status)
       return
     }
+
     this.hideError()
+
     // The dev-mode check of the server: a component with a render() that is not pure.
     for (const warning of data.warnings ?? []) console.warn("[phem]", warning)
+
     if (data.redirect) {
       // The handler returned a RedirectResponse. Turbo sets window.location for a URL that it
       // cannot visit, so a javascript: URL would run: visit only http(s) URLs.
@@ -1031,20 +1121,24 @@ export default class PhemController extends Controller {
       } else console.error("[phem] redirect to a URL that is not http(s) was blocked", data.redirect)
       return
     }
+
     for (const id of stale) this.stale.delete(id)
     this.stateValue = applyStateChanges(this.stateValue, data.changes ?? {})
     this.signatureValue = data.signature
     if (data.query) this.updateUrl(data.query, true)
     this.sentBound = Object.fromEntries(Object.entries(fields).map(([key, { value }]) => [key, value]))
+
     const rendered = data.streams ? this.renderStreams(data.streams, handler) : afterStreams()
     return rendered.then(() => {
       this.sentBound = null
       this.resetRejected(bound)
       this.markDirty()
+
       // After the morph, so a listener sees the new page.
       const target = this.componentRoot(handler)
       for (const { name, detail } of data.events ?? []) target.dispatchEvent(new CustomEvent(`phem:${name}`, { detail, bubbles: true }))
       this.notify(el, handler, "done", { ok: true, status: response.status })
+
       // The morph can show a new boundary (also in the children of a boundary that loaded).
       this.loadBoundaries()
     })
@@ -1056,6 +1150,7 @@ export default class PhemController extends Controller {
   notify(el, handler, name, detail = {}) {
     // A refresh has no element that sent it.
     if (handler === null) return
+
     const target = el.isConnected && this.element.contains(el) ? el : this.componentRoot(handler)
     target.dispatchEvent(new CustomEvent(`phem:${name}`, { detail: { handler, ...detail }, bubbles: true }))
   }
@@ -1066,25 +1161,33 @@ export default class PhemController extends Controller {
   updateUrl({ values = {}, push = [] } = {}, canPush) {
     const keys = Object.keys(values)
     if (!keys.length) return
+
     const url = new URL(window.location.href)
     const out = []
     const before = {}
+
     for (const pair of url.search.slice(1).split("&")) {
       if (!pair) continue
+
       const name = queryName(pair)
       if (name === null || !keys.includes(name)) {
         out.push(pair)
         continue
       }
+
       if (!(name in before)) out.push(...queryPairs(name, values[name]))
       ;(before[name] ??= []).push(pair)
     }
+
     for (const name of keys) if (!(name in before)) out.push(...queryPairs(name, values[name]))
+
     const search = out.length ? `?${out.join("&")}` : ""
     if (search === url.search) return
+
     const changed = (name) => (before[name] ?? []).join("&") !== queryPairs(name, values[name]).join("&")
     const pushes = canPush && push.some((name) => keys.includes(name) && changed(name))
     url.search = search
+
     const history = Turbo.navigator?.history
     if (history) {
       if (pushes) history.push(url)
@@ -1092,6 +1195,7 @@ export default class PhemController extends Controller {
     } else {
       window.history[pushes ? "pushState" : "replaceState"](window.history.state, "", url)
     }
+
     // Turbo keeps the snapshot of the page for the URL of its last render: the snapshot of this
     // state is for the new URL, not for the URL that loaded the page.
     const view = Turbo.session?.view
@@ -1106,6 +1210,7 @@ export default class PhemController extends Controller {
       Turbo.renderStreamMessage(streams)
       return afterStreams()
     }
+
     // Turbo renders each stream after the next repaint, but the page must not change before the
     // transition captures it. Take the render of each stream, and run them all in the update of
     // one transition.
@@ -1116,21 +1221,25 @@ export default class PhemController extends Controller {
       renders.push(() => render(newStream))
       event.detail.render = () => transition.updateCallbackDone
     }
+
     document.addEventListener("turbo:before-stream-render", take)
     try {
       Turbo.renderStreamMessage(streams)
     } finally {
       document.removeEventListener("turbo:before-stream-render", take)
     }
+
     const update = () => Promise.all(renders.map((render) => render()))
     const type = el.dataset.phemTransition
     const types = type && type !== "true" ? type.split(/\s+/) : []
+
     try {
       transition = document.startViewTransition({ update, types })
     } catch {
       // A browser without transition types takes only the update function.
       transition = document.startViewTransition(update)
     }
+
     return transition.updateCallbackDone
   }
 
@@ -1141,8 +1250,10 @@ export default class PhemController extends Controller {
     const withState = Boolean(event.files?.length)
     const response = await this.fetchWithRetry(handler, event, bound, onProgress, withState)
     if (withState || response.status !== 409) return response
+
     const data = await response.clone().json().catch(() => null)
     if (data?.state !== "required") return response
+
     return this.fetchWithRetry(handler, event, bound, onProgress, true)
   }
 
@@ -1151,12 +1262,15 @@ export default class PhemController extends Controller {
   // files goes with XHR when `onProgress` wants the progress of the upload.
   async fetchWithRetry(handler, event, bound, onProgress, withState) {
     const { files = [], stale = [], ...data } = event
+
     // A `phem:live` event has no handler: the server only sets the bound values. A refresh has
     // no handler either: the server renders the stale components.
     const state = withState ? { state: this.stateValue } : {}
     const json = JSON.stringify({ ...state, signature: this.signatureValue, handler: data.live ? null : handler, event: data, bound, ...(stale.length ? { stale } : {}) })
+
     // An event with files is not compressed: the files are most of the body.
     const plain = files.length ? null : await jsonBody(json)
+
     for (let attempt = 0; ; attempt++) {
       let response = null
       let error = null
@@ -1168,17 +1282,20 @@ export default class PhemController extends Controller {
         body.append("_phem", json)
         for (const [name, file] of files) body.append(name, file)
       }
+
       try {
         // The URL of the page, from the browser: always the same origin.
         response = files.length && onProgress ? await post(window.location.href, headers, body, onProgress) : await fetch(window.location.href, { method: "POST", headers, body })
       } catch (e) {
         error = e
       }
+
       const temporary = error !== null || response.status === 502 || response.status === 503
       if (!temporary || attempt >= this.retriesValue) {
         if (error) throw error
         return response
       }
+
       let delay = this.retryDelayValue * 2 ** attempt
       const retryAfter = Number.parseInt(response?.headers.get("Retry-After") ?? "", 10)
       if (!Number.isNaN(retryAfter)) delay = Math.max(delay, retryAfter * 1000)
@@ -1200,8 +1317,10 @@ export default class PhemController extends Controller {
       const key = field.getAttribute("data-phem-bind")
       keys.set(key, [...(keys.get(key) ?? []), field])
     }
+
     const values = {}
     for (const [key, fields] of keys) values[key] = { value: boundValue(fields), dirty: fields.some(isDirty) }
+
     return values
   }
 
@@ -1210,6 +1329,7 @@ export default class PhemController extends Controller {
   markDirty() {
     const fields = [...this.element.querySelectorAll("[data-phem-bind]")]
     const dirty = fields.filter(isDirty)
+
     for (const field of fields) field.classList.toggle("phem-dirty", dirty.includes(field))
     for (const el of [this.element, ...this.element.querySelectorAll("phem-c, form, [data-phem-guard]")]) {
       el.classList.toggle("phem-dirty", dirty.some((field) => el.contains(field)))
@@ -1222,6 +1342,7 @@ export default class PhemController extends Controller {
       const guard = field.closest("[data-phem-guard]")
       if (guard && this.element.contains(guard) && isDirty(field)) return guard
     }
+
     return null
   }
 
@@ -1238,7 +1359,9 @@ export default class PhemController extends Controller {
   showError(handler, status) {
     const event = new CustomEvent("phem:error", { detail: { handler, status }, bubbles: true, cancelable: true })
     if (!this.componentRoot(handler).dispatchEvent(event)) return
+
     this.hideError()
+
     // Outside the root element, so the morph does not remove it.
     const el = document.createElement("div")
     el.className = "phem-error"

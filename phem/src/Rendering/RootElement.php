@@ -42,6 +42,7 @@ final class RootElement
         if (!\is_string($tag) || 1 !== preg_match('/^[a-z][a-z0-9-]*$/i', $tag)) {
             throw new \InvalidArgumentException(\sprintf('"%s" is not a valid tag name for the root of a page.', \is_string($tag) ? $tag : get_debug_type($tag)));
         }
+
         unset($props['tag']);
         $attributes = [];
         foreach ($props as $name => $value) {
@@ -56,7 +57,9 @@ final class RootElement
         ] as $name => $value) {
             $html[] = (string) Attributes::attr($name, $value);
         }
+
         $html[] = $state;
+
         foreach (array_diff_key($attributes, ['id' => true, 'data-controller' => true, 'data-action' => true, 'key' => true] + self::OWN) as $name => $value) {
             $html[] = (string) match (true) {
                 'style' === $name => Attributes::style($value),

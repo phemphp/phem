@@ -86,12 +86,14 @@ final class AsyncTest extends KernelTestCase
         } catch (\RuntimeException $e) {
             self::assertSame('The work failed.', $e->getMessage());
         }
+
         self::assertCount($before, $this->updates());
     }
 
     public function testTheWorkerRejectsAMessageWithNoValidSignature(): void
     {
         $this->visit('/async/lobby')->click('#ship-1');
+
         $bus = static::getContainer()->get(TestAsyncPass::ID);
         $handler = static::getContainer()->get('phem.async.handler');
         \assert($bus instanceof MemoryBus && $handler instanceof AsyncHandler);

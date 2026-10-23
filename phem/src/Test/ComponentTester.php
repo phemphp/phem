@@ -84,8 +84,10 @@ final class ComponentTester
     ) {
         // The page gets the updates that come after its render.
         $this->seen = null !== $updates ? \count($updates()) : 0;
+
         $html = $driver->html();
         $this->document = HTMLDocument::createFromString($driver->isDocument() ? $html : '<!DOCTYPE html><html><head></head><body>'.$html.'</body></html>', \LIBXML_NOERROR, 'UTF-8');
+
         $this->status = $driver->status();
         $this->redirect = $driver->redirect();
     }
@@ -100,6 +102,7 @@ final class ComponentTester
     {
         $element = $this->enabled($selector);
         $form = self::formOf($element);
+
         // The browser makes both events before the answer of the first one.
         $events = array_filter([$this->event($element, 'click'), null !== $form ? $this->event($form, 'submit', $element) : null]);
         if ([] === $events) {
@@ -126,6 +129,7 @@ final class ComponentTester
     public function change(string $selector, string|int|float|bool|array $value): self
     {
         $element = $this->setValue($this->enabled($selector), $value, $selector);
+
         // A text field sends `input` (for onInput and onChange), other fields `input` and `change`.
         $types = self::isTextLike($element) ? ['input'] : ['input', 'change'];
         $events = array_filter(array_map(fn (string $type): ?array => $this->event($element, $type), $types));
@@ -133,6 +137,7 @@ final class ComponentTester
             // `phem:live`: an event with no handler, with the bound values.
             $events = [[null, ['type' => self::isTextLike($element) ? 'input' : 'change', 'live' => true]]];
         }
+
         if ([] === $events) {
             Assert::fail(\sprintf('The element "%s" has no onChange or onInput handler, and no phem:live.', $selector));
         }
@@ -171,15 +176,18 @@ final class ComponentTester
         if ('input' !== $element->localName || 'file' !== strtolower($element->getAttribute('type') ?? '')) {
             Assert::fail(\sprintf('The element "%s" is not a file input.', $selector));
         }
+
         $paths = (array) $paths;
         if (\count($paths) > 1 && !$element->hasAttribute('multiple')) {
             Assert::fail(\sprintf('The file input "%s" has no "multiple" attribute: it takes one file only.', $selector));
         }
+
         foreach ($paths as $path) {
             if (!is_file($path)) {
                 Assert::fail(\sprintf('The file "%s" does not exist.', $path));
             }
         }
+
         $this->selected[$this->fileKey($element)] = $paths;
 
         return $this;
@@ -199,9 +207,11 @@ final class ComponentTester
         if (null === $form) {
             Assert::fail(\sprintf('The element "%s" is not a form or a button that submits a form.', $selector));
         }
+
         foreach ($fields as $name => $value) {
             $this->fillField($form, $name, $value);
         }
+
         $event = $this->event($form, 'submit', $submitter) ?? Assert::fail(\sprintf('The form "%s" has no onSubmit handler.', $selector));
 
         return $this->send($event);
@@ -259,6 +269,7 @@ final class ComponentTester
                 Assert::fail(\sprintf('The page has no <Suspense> that shows its fallback. %s', $this->context()));
             }
         }
+
         $event = ['type' => 'load', 'value' => null, 'checked' => null, 'key' => null, 'form' => null];
 
         return $this->send(...array_map(static fn (Element $boundary): array => [(string) $boundary->getAttribute('data-phem-load'), $event], $boundaries));
@@ -282,6 +293,7 @@ final class ComponentTester
         if (null === $source || null === $this->updates) {
             Assert::fail(\sprintf('The page has no #[Subscribe]: it gets no pushes. %s', $this->context()));
         }
+
         $topics = [];
         foreach (explode('&', (string) parse_url((string) $source->getAttribute('data-phem-stream-value'), \PHP_URL_QUERY)) as $pair) {
             [$name, $value] = explode('=', $pair, 2) + [1 => ''];
@@ -289,6 +301,7 @@ final class ComponentTester
                 $topics[] = rawurldecode($value);
             }
         }
+
         $updates = ($this->updates)();
         $refresh = false;
         foreach (\array_slice($updates, $this->seen) as $update) {
@@ -296,8 +309,10 @@ final class ComponentTester
                 $refresh = $this->push($update['data']) || $refresh;
             }
         }
+
         $this->seen = \count($updates);
         $this->dispatched = [];
+
         if ($refresh && [] !== $this->stale) {
             return $this->send([null, ['type' => 'refresh', 'value' => null, 'checked' => null, 'key' => null, 'form' => null, 'refresh' => true]]);
         }
@@ -319,6 +334,7 @@ final class ComponentTester
         if (null === $this->settle) {
             Assert::fail('No #[Async] work can run here: install symfony/messenger, and test a page with visit().');
         }
+
         if (0 === ($this->settle)()) {
             Assert::fail(\sprintf('No #[Async] work waits: no handler returned a Promise. %s', $this->context()));
         }
@@ -332,6 +348,7 @@ final class ComponentTester
         if (null === $this->redirect) {
             Assert::fail('The last response is not a redirect.');
         }
+
         if (null === $this->visit) {
             Assert::fail('A mounted component cannot follow a redirect: use visit() to test the page.');
         }
@@ -454,6 +471,7 @@ final class ComponentTester
     {
         $state = $this->state($in);
         $of = null !== $in ? \sprintf(' of the component around "%s"', $in) : '';
+
         Assert::assertArrayHasKey($name, $state, \sprintf('The state%s has no "%s" property.', $of, $name));
         Assert::assertSame($expected, $state[$name], \sprintf('The "%s" state property%s.', $name, $of));
 
@@ -491,6 +509,7 @@ final class ComponentTester
     public function assertRedirect(?string $url = null): self
     {
         Assert::assertNotNull($this->redirect, 'The last response is not a redirect.');
+
         if (null !== $url) {
             Assert::assertSame($url, $this->redirect, 'The URL of the redirect.');
         }
@@ -526,6 +545,7 @@ final class ComponentTester
     {
         $details = array_column(array_filter($this->dispatched, static fn (array $e): bool => $name === $e['name']), 'detail');
         Assert::assertNotEmpty($details, \sprintf('The last action did not dispatch the browser event "%s"%s.', $name, $this->dispatchedNames()));
+
         if (\func_num_args() > 1) {
             Assert::assertContains($detail, $details, \sprintf('The detail of the browser event "%s".', $name));
         }
@@ -555,6 +575,7 @@ final class ComponentTester
     private function send(array ...$events): self
     {
         $this->dispatched = [];
+
         foreach ($events as [$handler, $event]) {
             $bound = array_map(self::boundValue(...), array_map(static fn (array $fields): array => array_column($fields, 0), $this->edited));
             $stale = array_keys($this->stale);
@@ -562,14 +583,17 @@ final class ComponentTester
             $this->status = $result->status;
             $this->redirect = $result->redirect;
             $this->reload = $result->reload;
+
             if (200 !== $result->status || null !== $result->redirect) {
                 // The browser leaves the page, or the event failed: the next events do not run,
                 // and the browser events of the action are lost.
                 $this->dispatched = [];
                 break;
             }
+
             $this->stale = array_diff_key($this->stale, array_flip($stale));
             $this->morph($result);
+
             foreach ($this->edited as $fields) {
                 foreach ($fields as [$field, $restore]) {
                     if ($field->isConnected) {
@@ -577,6 +601,7 @@ final class ComponentTester
                     }
                 }
             }
+
             $this->edited = [];
             array_push($this->dispatched, ...$result->dispatched);
         }
@@ -598,13 +623,17 @@ final class ComponentTester
             if (null === $target) {
                 continue;
             }
+
             $template = $stream->querySelector('template');
             $nodes = null !== $template ? $this->nodes($template->innerHTML) : [];
+
             if (Stream::REFRESH === $action) {
                 $refresh = $this->markStale($target) || $refresh;
                 continue;
             }
+
             $this->markStale(\in_array($action, ['remove', 'replace', 'before', 'after'], true) ? $target->parentElement : $target);
+
             if ('append' === $action || 'prepend' === $action) {
                 foreach ($nodes as $node) {
                     $old = $node instanceof Element && '' !== $node->id ? $this->document->getElementById($node->id) : null;
@@ -613,6 +642,7 @@ final class ComponentTester
                     }
                 }
             }
+
             match ($action) {
                 'append' => $target->append(...$nodes),
                 'prepend' => $target->prepend(...$nodes),
@@ -635,6 +665,7 @@ final class ComponentTester
         if (null === $component) {
             return false;
         }
+
         $this->stale[$component->id] = true;
 
         return true;
@@ -660,6 +691,7 @@ final class ComponentTester
             if (null === $element) {
                 Assert::fail(\sprintf('The event updates the component "%s", but the page has no element with this id.', $id));
             }
+
             // A component that did not render again is a placeholder: as in the browser, the
             // morph keeps its element.
             $kept = [];
@@ -669,23 +701,28 @@ final class ComponentTester
                     $kept[$kid] = $old;
                 }
             }
+
             // As in the browser, an element with `data-phem-ignore` in the page and in the new
             // HTML stays as it is (the tests find it by its id).
             $ignored = [];
             foreach ($element->querySelectorAll('[data-phem-ignore][id]') as $old) {
                 $ignored[$old->id] = $old;
             }
+
             $element->innerHTML = $html;
+
             foreach ($element->querySelectorAll('[data-phem-ignore][id]') as $new) {
                 if (null !== $old = $ignored[$new->id] ?? null) {
                     $new->replaceWith($old);
                 }
             }
+
             foreach ($element->querySelectorAll('phem-c[data-phem-keep]') as $placeholder) {
                 $old = $kept[$placeholder->id] ?? null;
                 if (null === $old) {
                     Assert::fail(\sprintf('The event keeps the component "%s", but the page has no element with this id.', $placeholder->id));
                 }
+
                 $placeholder->replaceWith($old);
             }
         }
@@ -708,6 +745,7 @@ final class ComponentTester
         if (null === $element) {
             return null;
         }
+
         $handler = (string) $element->getAttribute('data-phem-on-'.('input' === $type && !$element->hasAttribute('data-phem-on-input') ? 'change' : $type));
 
         $event = [
@@ -717,6 +755,7 @@ final class ComponentTester
             'key' => null,
             'form' => 'form' === $element->localName ? self::fields($element, $submitter) : null,
         ];
+
         if ('form' === $element->localName && [] !== ($files = $this->files($element))) {
             $event['files'] = $files;
         }
@@ -741,6 +780,7 @@ final class ComponentTester
     private function fiberOf(string $selector): ?string
     {
         $element = $this->document->querySelector($selector) ?? Assert::fail(\sprintf('No element matches "%s". %s', $selector, $this->context()));
+
         for ($c = $element->closest('phem-c'); null !== $c; $c = $c->parentElement?->closest('phem-c')) {
             if ([] !== $this->driver->state($c->id)) {
                 return $c->id;
@@ -769,28 +809,33 @@ final class ComponentTester
     {
         $this->edit($element);
         $type = strtolower($element->getAttribute('type') ?? 'text');
+
         switch (true) {
             case 'input' === $element->localName && 'radio' === $type:
                 if (!\is_bool($value)) {
                     $element = $this->radio($element, self::scalar($value, $selector), $selector);
                     $value = true;
                 }
+
                 if ($value) {
                     foreach ($this->radioGroup($element) as $radio) {
                         $radio->removeAttribute('checked');
                     }
                 }
+
                 $element->toggleAttribute('checked', $value);
                 break;
             case 'input' === $element->localName && 'checkbox' === $type:
                 if (!\is_bool($value)) {
                     Assert::fail(\sprintf('The checkbox "%s" takes true or false.', $selector));
                 }
+
                 $element->toggleAttribute('checked', $value);
                 break;
             case 'select' === $element->localName:
                 $values = array_map(strval(...), (array) $value);
                 $found = [];
+
                 foreach ($element->querySelectorAll('option') as $option) {
                     $selected = \in_array(self::optionValue($option), $values, true);
                     $option->toggleAttribute('selected', $selected);
@@ -798,9 +843,11 @@ final class ComponentTester
                         $found[] = self::optionValue($option);
                     }
                 }
+
                 if ([] !== $missing = array_diff($values, $found)) {
                     Assert::fail(\sprintf('The select "%s" has no option "%s".', $selector, implode('", "', $missing)));
                 }
+
                 break;
             case 'textarea' === $element->localName:
                 $element->textContent = self::scalar($value, $selector);
@@ -825,6 +872,7 @@ final class ComponentTester
         if (null === $key || isset($this->edited[$key])) {
             return;
         }
+
         $fields = array_filter(iterator_to_array($this->document->querySelectorAll('[data-phem-bind]'), false), static fn (Element $f): bool => $f->getAttribute('data-phem-bind') === $key);
         $this->edited[$key] = array_values(array_map(static fn (Element $f): array => [$f, self::snapshot($f)], $fields));
     }
@@ -843,6 +891,7 @@ final class ComponentTester
                     foreach (iterator_to_array($field->querySelectorAll('option'), false) as $i => $option) {
                         $option->toggleAttribute('selected', $selected[$i] ?? false);
                     }
+
                     break;
                 case 'textarea':
                     $field->textContent = $text;
@@ -891,9 +940,11 @@ final class ComponentTester
         if ([] === $fields) {
             Assert::fail(\sprintf('The form has no field "%s".', $name));
         }
+
         $type = strtolower($fields[0]->getAttribute('type') ?? '');
         if ('checkbox' === $type && \count($fields) > 1) {
             $this->edit($fields[0]);
+
             // A group of checkboxes (`tags[]`): the values to check.
             $values = array_map(strval(...), (array) $value);
             foreach ($fields as $checkbox) {
@@ -902,6 +953,7 @@ final class ComponentTester
 
             return;
         }
+
         $this->setValue($fields[0], $value, \sprintf('[name="%s"]', $name));
     }
 
@@ -923,6 +975,7 @@ final class ComponentTester
         if (null === $name) {
             return [];
         }
+
         $scope = $radio->closest('form') ?? $this->document;
 
         return iterator_to_array($scope->querySelectorAll('input[type="radio"][name="'.addcslashes($name, '"\\').'"]'), false);
@@ -954,12 +1007,14 @@ final class ComponentTester
             if (null === $name || '' === $name || $field->hasAttribute('disabled') || null !== $field->closest('fieldset[disabled]')) {
                 continue;
             }
+
             $type = strtolower($field->getAttribute('type') ?? ('button' === $field->localName ? 'submit' : 'text'));
             switch (true) {
                 case 'button' === $field->localName || \in_array($type, ['submit', 'image', 'reset', 'button'], true):
                     if ($field === $submitter) {
                         $fields[] = [$name, $field->getAttribute('value') ?? ''];
                     }
+
                     break;
                 case 'file' === $type:
                     break;
@@ -967,11 +1022,13 @@ final class ComponentTester
                     if ($field->hasAttribute('checked')) {
                         $fields[] = [$name, $field->getAttribute('value') ?? 'on'];
                     }
+
                     break;
                 case 'select' === $field->localName:
                     foreach (self::selectedOptions($field) as $option) {
                         $fields[] = [$name, self::optionValue($option)];
                     }
+
                     break;
                 default:
                     $fields[] = [$name, (string) self::valueOf($field)];
@@ -995,6 +1052,7 @@ final class ComponentTester
             if (null === $name || '' === $name || $input->hasAttribute('disabled') || null !== $input->closest('fieldset[disabled]')) {
                 continue;
             }
+
             foreach ($this->selected[$this->fileKey($input)] ?? [] as $path) {
                 $files[] = [$name, $path];
             }
@@ -1035,6 +1093,7 @@ final class ComponentTester
         if ([] !== $selected || $select->hasAttribute('multiple')) {
             return $selected;
         }
+
         foreach ($options as $option) {
             if (!$option->hasAttribute('disabled')) {
                 return [$option];

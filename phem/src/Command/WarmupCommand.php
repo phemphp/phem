@@ -31,6 +31,7 @@ final class WarmupCommand
     {
         $start = hrtime(true);
         $n = $this->warmer->compile();
+
         $errorOutput = $output instanceof ConsoleOutputInterface ? $output->getErrorOutput() : $output;
         $errorOutput->writeln(\sprintf('phem: compiled %d template(s) into the Twig cache in %d ms', $n, (hrtime(true) - $start) / 1e6));
 

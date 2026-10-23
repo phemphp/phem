@@ -32,6 +32,7 @@ final class RouteValues
             if (!\array_key_exists($parameter, $values)) {
                 continue;
             }
+
             [$prop, $field] = \is_array($target) ? $target : [$target, $parameter];
             $criteria[$prop][$field] = $values[$parameter];
             unset($values[$parameter]);

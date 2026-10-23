@@ -54,6 +54,7 @@ final class TransactionalTest extends TestCase
         $component = new MethodTransactionalComponent($this->log);
         $this->dispatch($component->toggle(...));
         $this->dispatch($component->closure());
+
         self::assertSame(['toggle', 'closure'], $this->log->getArrayCopy());
     }
 
@@ -62,6 +63,7 @@ final class TransactionalTest extends TestCase
         $log = $this->log;
         $this->dispatch(new PlainComponent($log)->add(...));
         $this->dispatch(static function () use ($log): void { $log[] = 'static'; });
+
         self::assertSame(['add', 'static'], $log->getArrayCopy());
     }
 
@@ -72,12 +74,14 @@ final class TransactionalTest extends TestCase
             self::fail('The handler exception is not thrown.');
         } catch (\RuntimeException) {
         }
+
         self::assertSame(['begin', 'fail', 'rollback'], $this->log->getArrayCopy());
     }
 
     public function testResultOfATransactionalHandlerComesBack(): void
     {
         $result = $this->dispatch(new TransactionalComponent($this->log)->leave(...));
+
         self::assertSame(['begin', 'leave', 'commit'], $this->log->getArrayCopy());
         self::assertInstanceOf(RedirectResponse::class, $result);
         self::assertSame('/done', $result->getTargetUrl());
@@ -182,12 +186,14 @@ final class RecordingRunner implements TransactionRunner
     public function run(\Closure $callback): mixed
     {
         $this->log[] = 'begin';
+
         try {
             $result = $callback();
         } catch (\Throwable $e) {
             $this->log[] = 'rollback';
             throw $e;
         }
+
         $this->log[] = 'commit';
 
         return $result;

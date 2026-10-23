@@ -64,8 +64,10 @@ final class ContextProfilerTest extends TestCase
         $response = $this->event(['state' => html_entity_decode($m[1]), 'signature' => $m[2], 'handler' => $h[1], 'event' => ['type' => 'click']]);
 
         self::assertSame(200, $response->getStatusCode(), (string) $response->getContent());
+
         $propagated = array_column(array_filter($this->collector($response)->getFibers(), static fn (array $f): bool => $f['propagated']), 'name');
         self::assertSame(['Card', 'Tab', 'TabsNav'], $propagated, 'the card has the same props: it renders on the path to the consumers; the clicked tab is dirty');
+
         $data = json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
         self::assertStringContainsString('aria-selected="false"', $data['streams'], 'the other tab shows the change');
     }
@@ -80,6 +82,7 @@ final class ContextProfilerTest extends TestCase
     {
         $profile = $this->service('profiler', Profiler::class)->loadProfileFromResponse($response);
         self::assertNotNull($profile, 'the response has a profile');
+
         $collector = $profile->getCollector('phem');
         self::assertInstanceOf(PhemDataCollector::class, $collector);
 

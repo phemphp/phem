@@ -36,6 +36,7 @@ class ComponentIncludeNode extends IncludeNode
         parent::__construct(new ConstantExpression($template ?? 'not_used', $lineno), $variables, true, false, $lineno);
         $this->setAttribute('fqcn', $fqcn);
         $this->setAttribute('kind', $kind);
+
         if (null !== $key) {
             $this->setNode('key', $key);
         }
@@ -45,6 +46,7 @@ class ComponentIncludeNode extends IncludeNode
     {
         $compiler->addDebugInfo($this);
         $compiler->write('yield $this->env->getRuntime(')->string(PhemRuntime::class)->raw(')');
+
         if ('template' === $this->getAttribute('kind')) {
             $compiler->raw('->template(');
             $this->addGetTemplate($compiler);
@@ -52,10 +54,12 @@ class ComponentIncludeNode extends IncludeNode
         } else {
             $compiler->raw('->component(');
         }
+
         $compiler->string($this->getAttribute('fqcn'))->raw(', ');
         $this->addProps($compiler);
         $compiler->raw(', ');
         $this->addKey($compiler);
+
         if ('template' === $this->getAttribute('kind')) {
             $compiler->raw(', $context');
             $this->addSlotNames($compiler);
@@ -64,6 +68,7 @@ class ComponentIncludeNode extends IncludeNode
             $this->addSlots($compiler);
             $compiler->raw(', $context');
         }
+
         $compiler->raw(");\n");
     }
 

@@ -55,12 +55,15 @@ final class RateLimitMiddleware implements HandlerMiddleware
         if (null === $class || !$class->hasMethod($function->getName())) {
             return $next();
         }
+
         $method = $class->getMethod($function->getName());
         $request = $event->request;
+
         foreach ($this->attributesOf($method) as $attribute) {
             if (null !== $request && $attribute->methods && !\in_array($request->getMethod(), $attribute->methods, true)) {
                 continue;
             }
+
             $this->consume($attribute, $method, $function->getClosureThis(), $request);
         }
 
@@ -72,6 +75,7 @@ final class RateLimitMiddleware implements HandlerMiddleware
         if (!$this->limiters->has($attribute->limiter)) {
             throw new \InvalidArgumentException(\sprintf('Rate limiter "%s" does not exist. Did you forget to configure it? Available limiters: "%s".', $attribute->limiter, implode('", "', array_keys($this->limiters->getProvidedServices()))));
         }
+
         $key = match (true) {
             null === $attribute->key => ($request?->getClientIp() ?? 'unknown').'~'.($request?->getMethod() ?? 'POST').'~'.($request?->getPathInfo() ?? '').'~'.$method->class.'::'.$method->name,
             // As the RateLimitAttributeListener of Symfony: the controller is the component, and a handler has no arguments.
@@ -80,6 +84,7 @@ final class RateLimitMiddleware implements HandlerMiddleware
                 ->evaluate($attribute->key, ['request' => $request, 'args' => [], 'this' => $component]),
             default => $attribute->key,
         };
+
         if (!\is_string($key)) {
             throw new \TypeError(\sprintf('The value of the "$key" option of the "%s" attribute must evaluate to a string, "%s" given.', RateLimit::class, get_debug_type($key)));
         }

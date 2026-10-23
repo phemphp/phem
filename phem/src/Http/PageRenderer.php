@@ -60,16 +60,19 @@ final class PageRenderer
     public function document(string $page, Request $request): string
     {
         $values = array_intersect_key(RouteValues::fromRequest($request), $this->metadata->pathProps($page));
+
         try {
             $props = $this->paths->resolve($page, $values);
         } catch (\UnexpectedValueException $e) {
             throw new NotFoundHttpException($e->getMessage(), $e);
         }
+
         $tree = new Tree($page, props: $props, values: $values, query: $request->query->all());
         $html = $this->renderer->render($tree);
         if (null === $tree->rootFiber) {
             throw new \LogicException(\sprintf('The page "%s" renders no <Root>: render it in a document component with `<Root>{{ children }}</Root>` (see "%s").', $page, Root::class));
         }
+
         [$state, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page, $request);
         $this->cache->save($signature, $state);
 

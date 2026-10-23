@@ -38,6 +38,7 @@ final class HandlerInvoker
     {
         $next = $call ?? static fn (): mixed => $handler($event);
         $middlewares = $this->middlewares instanceof \Traversable ? iterator_to_array($this->middlewares, false) : $this->middlewares;
+
         foreach (array_reverse($middlewares) as $middleware) {
             $next = static fn (): mixed => $middleware->handle($handler, $event, $next);
         }

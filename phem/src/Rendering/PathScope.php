@@ -52,6 +52,7 @@ final class PathScope implements RenderScope
             if ([] === $path) {
                 return null;
             }
+
             $ids += array_fill_keys($path, true);
         }
 
@@ -71,6 +72,7 @@ final class PathScope implements RenderScope
         if (isset($this->ids[$fiber->id])) {
             return true;
         }
+
         for ($p = $fiber->parent; null !== $p; $p = $p->parent) {
             if (isset($this->subtrees[$p->id])) {
                 return true;

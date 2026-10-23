@@ -92,8 +92,10 @@ final class SubscriptionTest extends TestCase
         self::assertInstanceOf(Cookie::class, $cookie);
         $token = (string) $cookie->getValue();
         $grants = $tokens->grants($token, self::HUB, self::subject('s1'));
+
         self::assertSame($expiry, $grants['phem:App\Revoked'] ?? null, 'the kept topic gets no new expiry');
         self::assertSame($expiry, self::expiry($token), 'the token expires with its first topic');
+
         foreach (new Topics()->ofPage(Subscribed::class, []) as $topic) {
             self::assertGreaterThan($expiry, $grants[$topic] ?? 0, 'a topic of the page gets a new expiry');
         }

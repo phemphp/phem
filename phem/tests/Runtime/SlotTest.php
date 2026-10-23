@@ -30,6 +30,7 @@ final class SlotTest extends TestCase
 
         self::assertSame('render 1', (string) $slot);
         self::assertSame('render 1', (string) $slot, 'the same pass');
+
         $pass = 2;
         self::assertSame('render 2', (string) $slot, 'a component that prints it renders again in a later pass');
     }

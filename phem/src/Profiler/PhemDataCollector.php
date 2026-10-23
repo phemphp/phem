@@ -49,9 +49,11 @@ final class PhemDataCollector extends DataCollector
         if (!\is_string($page) || '' === $page) {
             return;
         }
+
         $event = $request->isMethod('POST') && $request->headers->has(EventController::HEADER);
         $payload = $event ? $this->payload($request) : null;
         $answer = $event ? self::answer($response) : [];
+
         $trees = $this->profile->trees();
         $tree = null;
         foreach ($trees as $t) {
@@ -60,6 +62,7 @@ final class PhemDataCollector extends DataCollector
                 break;
             }
         }
+
         $outcome = self::outcome($event, $response, $answer, $exception);
 
         $this->data = [
@@ -85,6 +88,7 @@ final class PhemDataCollector extends DataCollector
             'fibers' => [],
             'state' => null,
         ];
+
         if (null !== $tree && 'rendered' === $outcome) {
             $this->data['fibers'] = $this->fibers($tree, $trees, $event);
             // As StateCodec::encode(): the full state, in the page, and in an event that sends it.
@@ -282,6 +286,7 @@ final class PhemDataCollector extends DataCollector
         if (false === $content || !str_contains((string) $response->headers->get('Content-Type'), 'json')) {
             return [];
         }
+
         try {
             $data = json_decode($content, true, 512, \JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
@@ -297,9 +302,11 @@ final class PhemDataCollector extends DataCollector
         if (429 === $response->getStatusCode()) {
             return 'rate_limited';
         }
+
         if (null !== $exception || (!$response->isSuccessful() && 409 !== $response->getStatusCode())) {
             return 'error';
         }
+
         if (!$event) {
             return 'rendered';
         }
@@ -333,6 +340,7 @@ final class PhemDataCollector extends DataCollector
                     $passes[$render['pass']]['time'] += $render['time'];
                 }
             }
+
             ksort($passes);
             foreach ($passes as $pass => $data) {
                 $label = match (true) {
@@ -363,10 +371,12 @@ final class PhemDataCollector extends DataCollector
                 $names[$render['fiber']] ??= $render['fqcn'];
             }
         }
+
         $renders = [];
         foreach ($this->profile->renders($tree) as $render) {
             $renders[$render['fiber']][$render['pass']] = ['time' => $render['time'], 'own' => $render['own']];
         }
+
         $changed = $event ? array_fill_keys(array_map(static fn ($f): string => $f->id, $tree->changedFibers()), true) : [];
         $states = $this->state->snapshot($tree)->fibers;
 
@@ -375,6 +385,7 @@ final class PhemDataCollector extends DataCollector
         foreach ($tree->page() as $id => [$parent, $rendered]) {
             $depth = $depths[$id] = null !== $parent ? ($depths[$parent] ?? -1) + 1 : 0;
             $fqcn = $names[$id] ?? null;
+
             // The contexts of the last render of the fiber in this request (see ContextResolver).
             $fiber = $tree->fiberById($id);
             $reads = [];
@@ -382,6 +393,7 @@ final class PhemDataCollector extends DataCollector
                 $providerFqcn = $tree->fiberById($provider)->fqcn ?? null;
                 $reads[ComponentName::short($type)] = null !== $providerFqcn ? ComponentName::short($providerFqcn) : null;
             }
+
             $out[] = [
                 'id' => $id,
                 'fqcn' => $fqcn,

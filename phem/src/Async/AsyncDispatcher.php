@@ -59,9 +59,11 @@ final class AsyncDispatcher
     {
         $bus = $this->bus ?? throw new \LogicException('An #[Async] handler needs Symfony Messenger: install symfony/messenger and enable framework.messenger.');
         $replay = null !== $request ? EventReplay::of($request) : null;
+
         if (null === $request || null === $replay) {
             throw new \LogicException('An #[Async] handler runs only in an event of a page: the worker renders the page of the event again. In a test, use visit() and settle(), not mount().');
         }
+
         if ([] !== $request->files->all()) {
             throw new \LogicException('An #[Async] handler cannot get the files of a form: PHP removes them at the end of the request. Move the files in a normal handler.');
         }

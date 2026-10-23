@@ -52,14 +52,17 @@ final class BrowserEventDispatcher
         if (1 !== preg_match('/^[\w.:-]+$/', $name)) {
             throw new \InvalidArgumentException(\sprintf('The name of a browser event has only letters, digits and "_-.:", "%s" given.', $name));
         }
+
         if (\in_array($name, self::RESERVED, true)) {
             throw new \InvalidArgumentException(\sprintf('The browser dispatches the "phem:%s" event itself: give the browser event another name.', $name));
         }
+
         try {
             json_encode($detail, \JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
             throw new \InvalidArgumentException(\sprintf('The detail of the browser event "%s" cannot be JSON: %s.', $name, $e->getMessage()), 0, $e);
         }
+
         $this->dispatched[] = ['name' => $name, 'detail' => $detail];
     }
 

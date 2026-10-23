@@ -46,6 +46,7 @@ final class StreamTest extends KernelTestCase
         $source = $page->document()->querySelector('[data-phem-stream-value]')?->getAttribute('data-phem-stream-value');
         $topics = static::getContainer()->get('phem.topics');
         \assert($topics instanceof Topics);
+
         self::assertSame('/.well-known/mercure?match='.implode('&match=', array_map(rawurlencode(...), $topics->ofPage('App\Pages\GuestbookPage', ['room' => 'lobby']))), $source);
         // An HMAC of the names: no class name and no route value.
         self::assertStringNotContainsString('Guestbook', (string) $source);
@@ -62,6 +63,7 @@ final class StreamTest extends KernelTestCase
         $other = $this->visit('/guestbook/lobby')
             ->click('#toggle')
             ->assertSee('0 entries, open');
+
         // The user who signs gets the push too: the handler changes only the form.
         $this->visit('/guestbook/lobby')
             ->fill('input[name=text]', 'Hello')
@@ -146,6 +148,7 @@ final class StreamTest extends KernelTestCase
     public function testTheStreamsOfAHandlerThatThrowsAreDropped(): void
     {
         $page = $this->visit('/guestbook/lobby');
+
         try {
             $page->click('#fail');
             self::fail('The handler did not throw.');
@@ -204,6 +207,7 @@ final class StreamTest extends KernelTestCase
         [$update] = $publisher->updates();
         $topics = static::getContainer()->get('phem.topics');
         \assert($topics instanceof Topics);
+
         self::assertSame([$topics->to('App\Pages\GuestbookPage', ['room' => 'lobby'])], $update['topics']);
         self::assertFalse($update['private']);
         self::assertSame('<turbo-stream action="prepend" target="entries"><template><li id="entry-1">Hi</li></template></turbo-stream><turbo-stream action="phem-refresh" target="stats"></turbo-stream>', $update['data']);

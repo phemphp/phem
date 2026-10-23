@@ -59,14 +59,18 @@ final class AsyncUser
         if (null === $token || null === $this->tokens) {
             return $callback();
         }
+
         // The message has a valid HMAC (see AsyncHandler): the token comes from capture().
         $user = unserialize($token);
         if (!$user instanceof TokenInterface) {
             throw new UnrecoverableMessageHandlingException('The token of an async handler is not a security token.');
         }
+
         $this->refresh($user);
+
         $previous = $this->tokens->getToken();
         $this->tokens->setToken($user);
+
         try {
             return $callback();
         } finally {
@@ -80,6 +84,7 @@ final class AsyncUser
         if (null === $user || null === $this->users || !$this->users->supportsClass($user::class)) {
             return;
         }
+
         try {
             $token->setUser($this->users->refreshUser($user));
         } catch (UserNotFoundException $e) {

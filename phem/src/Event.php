@@ -74,9 +74,11 @@ final class Event
         foreach ($fields as [$name, $value]) {
             $form[$name] = \array_key_exists($name, $form) ? [...(array) $form[$name], $value] : $value;
         }
+
         // FormData gives flat keys ("scientist[name]", "tags[]"). PHP makes nested arrays of
         // them, as it does for the body of a normal POST.
         parse_str(implode('&', array_map(static fn (array $f): string => rawurlencode($f[0]).'='.rawurlencode($f[1]), $fields)), $post);
+
         // A multipart event has the files of the form as its files.
         $files = $request?->files->all() ?? [];
 
@@ -105,6 +107,7 @@ final class Event
         if (!\is_array($form)) {
             return [];
         }
+
         $fields = [];
         foreach ($form as $name => $value) {
             if (\is_int($name) && \is_array($value) && \is_string($value[0] ?? null) && \is_scalar($value[1] ?? null)) {

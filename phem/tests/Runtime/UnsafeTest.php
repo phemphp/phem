@@ -51,6 +51,7 @@ final class UnsafeTest extends TestCase
             if (1 !== preg_match('/\s'.$attribute.'="([^"]*)"/', $m[0], $value)) {
                 continue;
             }
+
             $url = str_replace(["\t", "\n", "\r"], '', trim(html_entity_decode($value[1], \ENT_QUOTES | \ENT_HTML5), "\x00..\x20"));
             self::assertDoesNotMatchRegularExpression('/^javascript:/i', $url, \sprintf('the %s of #%s is a script: %s', $attribute, $id, $m[0]));
         }
@@ -89,6 +90,7 @@ final class UnsafeTest extends TestCase
         $html = (string) $this->request('GET', '/unsafe')->getContent();
         self::assertSame(1, preg_match('/data-phem-state-value="([^"]*)" data-phem-signature-value="([^"]*)"/', $html, $m));
         self::assertSame(1, preg_match('/<button id="go" data-phem-on-click="([^"]+)"/', $html, $h));
+
         $response = $this->event('/unsafe', [
             'state' => html_entity_decode($m[1]),
             'signature' => $m[2],

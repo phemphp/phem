@@ -52,6 +52,7 @@ final class HubPublisher implements StreamPublisher
             'data='.rawurlencode($data),
             ...($private ? ['private=on'] : []),
         ]);
+
         try {
             $this->client->request('POST', $this->url, [
                 'headers' => ['Authorization' => 'Bearer '.$this->token(), 'Content-Type' => 'application/x-www-form-urlencoded'],

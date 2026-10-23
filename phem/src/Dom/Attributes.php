@@ -90,17 +90,21 @@ final class Attributes
         if (\is_bool($value) && self::isBooleanish($name)) {
             $value = $value ? 'true' : 'false';
         }
+
         if (null === $value || false === $value || !self::isValidName($name)) {
             return new Markup('', 'UTF-8');
         }
+
         if (true === $value) {
             return new Markup(self::e($name), 'UTF-8');
         }
+
         if ('class' === $name && \is_array($value)) {
             $value = implode(' ', array_filter(array_map(strval(...), $value), static fn ($v) => '' !== $v));
         } elseif (\is_array($value)) {
             $value = json_encode($value, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
         }
+
         $value = (string) $value;
         if (self::isScriptUrl($name, $value)) {
             return new Markup('', 'UTF-8');
@@ -119,9 +123,11 @@ final class Attributes
         if (null === $value || false === $value) {
             return new Markup('', 'UTF-8');
         }
+
         if (!\in_array($kind, ['debounce', 'throttle'], true)) {
             throw new \InvalidArgumentException(\sprintf('Unknown timing "phem:%s": use "phem:debounce" or "phem:throttle".', $kind));
         }
+
         if (!(\is_int($value) && $value >= 0) && !('debounce' === $kind && 'blur' === $value)) {
             throw new \InvalidArgumentException(\sprintf('"phem:%s" takes a number of milliseconds (0 or more)%s, "%s" given.', $kind, 'debounce' === $kind ? " or 'blur'" : '', get_debug_type($value)));
         }
@@ -155,6 +161,7 @@ final class Attributes
         if ($bound instanceof Bound) {
             $bound = $bound->value;
         }
+
         $selected = \is_array($bound)
             ? \in_array($option, array_map(self::bindValue(...), $bound), true)
             : null !== $bound && self::bindValue($bound) === $option;
@@ -179,21 +186,26 @@ final class Attributes
         if (null === $style || false === $style || [] === $style) {
             return new Markup('', 'UTF-8');
         }
+
         if (\is_array($style)) {
             $rules = [];
             foreach ($style as $prop => $value) {
                 $prop = (string) $prop;
+
                 // A style object can come from data: a name or a value that adds another
                 // declaration (`red; position: fixed`) is not rendered.
                 if (null === $value || false === $value || 1 !== preg_match('/^-?-?[a-zA-Z][\w-]*$/', $prop) || !self::isCssValue((string) $value)) {
                     continue;
                 }
+
                 $css = str_starts_with($prop, '--') ? $prop : strtolower(preg_replace('/[A-Z]/', '-$0', $prop) ?? $prop);
                 if ((\is_int($value) || \is_float($value)) && 0 != $value && !\in_array($prop, self::UNITLESS, true)) {
                     $value .= 'px';
                 }
+
                 $rules[] = $css.': '.$value;
             }
+
             $style = implode('; ', $rules);
         }
 

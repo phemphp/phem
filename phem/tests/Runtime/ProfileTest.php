@@ -40,6 +40,7 @@ final class ProfileTest extends TestCase
         });
 
         [$p, $c] = $profile->renders($tree);
+
         self::assertSame(['phem000000000001', 0, null], [$p['fiber'], $p['depth'], $p['parent']]);
         self::assertSame(['phem000000000002', 1, 'phem000000000001'], [$c['fiber'], $c['depth'], $c['parent']]);
         self::assertGreaterThanOrEqual(20.0, $c['time']);
@@ -95,6 +96,7 @@ final class ProfileTest extends TestCase
             $runner->run(static fn () => throw new \RuntimeException());
         } catch (\RuntimeException) {
         }
+
         $rollback = $profile->transacted();
 
         self::assertTrue($commit['committed'] ?? null);

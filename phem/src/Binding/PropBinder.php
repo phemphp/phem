@@ -43,17 +43,21 @@ final class PropBinder
         $params = array_filter($this->metadata->parameters($fqcn), static fn (Parameter $p): bool => !$p->context);
         $variadic = array_any($params, static fn (Parameter $p): bool => $p->variadic);
         $args = [];
+
         foreach ($props + $slots as $name => $value) {
             if (!isset($params[$name]) && !$variadic) {
                 throw new PropError(\sprintf('<%s> has no prop "%s". Its props are: %s.', ComponentName::short($fqcn), $name, implode(', ', array_keys($params)) ?: 'none'));
             }
+
             $args[$name] = $value instanceof HtmlList && ($params[$name]->wantsArray ?? false) ? $value->toArray() : $value;
         }
+
         foreach ($params as $name => $p) {
             if (!$p->variadic && !\array_key_exists($name, $args) && !$p->optional) {
                 if (!$p->nullable) {
                     throw new PropError(\sprintf('<%s> needs the prop "%s".', ComponentName::short($fqcn), $name));
                 }
+
                 $args[$name] = null;
             }
         }
@@ -75,6 +79,7 @@ final class PropBinder
         $params = array_filter($this->metadata->parameters($fqcn), static fn (Parameter $p): bool => !$p->context);
         $vars = [];
         $rest = [];
+
         foreach ($this->arguments($fqcn, $props, $slots) as $name => $value) {
             if (isset($params[$name]) && !$params[$name]->variadic) {
                 $vars[$name] = $value;
@@ -82,6 +87,7 @@ final class PropBinder
                 $rest[$name] = $value;
             }
         }
+
         foreach ($params as $name => $p) {
             if ($p->variadic) {
                 $vars[$name] = $rest;
@@ -107,14 +113,17 @@ final class PropBinder
     {
         $all = $props + $slots;
         $properties = $this->metadata->props($component::class);
+
         foreach ($properties as $name => $p) {
             if (!$p->isReadOnly() || !$p->isInitialized($component) || !\array_key_exists($name, $all)) {
                 continue;
             }
+
             if (self::differs($p->getValue($component), self::value($p, $all[$name]))) {
                 return true;
             }
         }
+
         $rest = $this->metadata->restProp($component::class);
 
         return null !== $rest && $rest->isReadOnly() && $rest->isInitialized($component)
@@ -135,15 +144,18 @@ final class PropBinder
         $all = $props + $slots;
         $properties = $this->metadata->props($class);
         $rest = $this->metadata->restProp($class);
+
         foreach ($all as $name => $_) {
             if (!isset($properties[$name]) && null === $rest) {
                 throw new PropError(\sprintf('<%s> has no prop "%s". Its props are: %s.', ComponentName::short($class), $name, implode(', ', array_keys($properties)) ?: 'none'));
             }
         }
+
         foreach ($properties as $name => $p) {
             if ($p->isReadOnly() && $p->isInitialized($component)) {
                 continue;
             }
+
             if (\array_key_exists($name, $all)) {
                 $p->setValue($component, self::value($p, $all[$name]));
             } elseif ($p->hasDefaultValue()) {
@@ -154,6 +166,7 @@ final class PropBinder
                 throw new PropError(\sprintf('<%s> needs the prop "%s".', ComponentName::short($class), $name));
             }
         }
+
         if (null !== $rest && !($rest->isReadOnly() && $rest->isInitialized($component))) {
             $rest->setValue($component, array_diff_key($all, $properties));
         }
@@ -168,9 +181,11 @@ final class PropBinder
         if ($old instanceof LazyHtml || $new instanceof LazyHtml) {
             return true;
         }
+
         if ($old instanceof Html && $new instanceof Html) {
             return (string) $old !== (string) $new;
         }
+
         if (\is_array($old) && \is_array($new) && array_keys($old) === array_keys($new)) {
             return array_any($old, static fn (mixed $v, int|string $k): bool => self::differs($v, $new[$k]));
         }

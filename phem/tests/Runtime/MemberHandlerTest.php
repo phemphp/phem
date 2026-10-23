@@ -33,6 +33,7 @@ final class MemberHandlerTest extends TestCase
 
         self::assertInstanceOf(\Closure::class, $handler);
         self::assertSame($tabs, new \ReflectionFunction($handler)->getClosureThis(), 'the object is the owner of the handler');
+
         $handler('security');
         self::assertSame('security', $tabs->active);
     }

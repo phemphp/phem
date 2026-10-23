@@ -67,9 +67,11 @@ final class StateCodec
         if (!ctype_digit($issuedAt) || !hash_equals($this->sign($json, $page, (int) $issuedAt, $request), $mac)) {
             return null;
         }
+
         if ($this->maxAge > 0 && $this->now() - (int) $issuedAt > $this->maxAge) {
             return null;
         }
+
         $state = json_decode($json, true, 512, \JSON_THROW_ON_ERROR);
 
         return \is_array($state) ? $state : null;
@@ -101,6 +103,7 @@ final class StateCodec
         if (!$this->bindSession || null === $request || !$request->hasSession()) {
             return '';
         }
+
         $session = $request->getSession();
 
         return $session->isStarted() ? $session->getId() : (string) $request->cookies->get($session->getName(), '');

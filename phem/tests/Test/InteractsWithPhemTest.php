@@ -79,6 +79,7 @@ final class InteractsWithPhemTest extends KernelTestCase
     public function testEachEventGetsNewServices(): void
     {
         $counter = $this->mount(self::COUNTER)->click('button')->click('button');
+
         // The services of the container go into the component; the test can change them.
         $limits = self::getContainer()->get(Limits::class);
         self::assertInstanceOf(Limits::class, $limits);
@@ -163,6 +164,7 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->change('input[name=query]', 'php')
             ->assertSee('Results for php')
             ->assertState('saves', 0);
+
         $this->visit('/bind')
             ->fill('input[name=name]', 'Ada')
             ->change('input[name=query]', 'php')
@@ -255,6 +257,7 @@ final class InteractsWithPhemTest extends KernelTestCase
         $pool = static::getContainer()->get(StateCache::POOL);
         self::assertInstanceOf(CacheItemPoolInterface::class, $pool);
         $pool->clear();
+
         $tester->click('button.btn')
             ->assertState('count', 2) // one click, also with the second request
             ->click('button.btn')
@@ -307,6 +310,7 @@ final class InteractsWithPhemTest extends KernelTestCase
         if (!class_exists(RateLimit::class)) {
             self::markTestSkipped('The #[RateLimit] attribute needs Symfony 8.1.');
         }
+
         // The limit of the fixture app is 2 events in a minute: the third click does not run.
         $this->visit('/limited')
             ->click('button')
@@ -370,6 +374,7 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->click('#quiet')
             ->assertNotDispatched('toast')
             ->assertNotDispatched('announced');
+
         $this->visit('/notify')
             ->click('#announce')
             ->assertDispatched('toast', ['message' => 'Announced 1'])
@@ -414,6 +419,7 @@ final class InteractsWithPhemTest extends KernelTestCase
     {
         [$a, $b, $c] = self::files(['a.txt' => 'alpha', 'b.txt' => 'beta', 'c.txt' => 'gamma']);
         $open = ['mount' => fn () => $this->mount(self::UPLOADER), 'visit' => fn () => $this->visit('/upload')];
+
         foreach ($open as $how => $tester) {
             $tester()
                 ->upload('input[name=photo]', $a)
@@ -451,6 +457,7 @@ final class InteractsWithPhemTest extends KernelTestCase
 
             return;
         }
+
         self::fail(\sprintf('The action does not fail with "%s".', $message));
     }
 
@@ -463,6 +470,7 @@ final class InteractsWithPhemTest extends KernelTestCase
     {
         $dir = sys_get_temp_dir().'/'.uniqid('phem-upload-');
         mkdir($dir);
+
         $paths = [];
         foreach ($contents as $name => $content) {
             file_put_contents($paths[] = $dir.'/'.$name, $content);

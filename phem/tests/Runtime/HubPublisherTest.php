@@ -32,9 +32,11 @@ final class HubPublisherTest extends TestCase
         self::assertSame('POST', $response->getRequestMethod());
         self::assertSame('http://hub/.well-known/mercure', $response->getRequestUrl());
         self::assertSame('topic=phem%3Aa&topic=phem%3A%2A&data=%3Cturbo-stream%3E&private=on', $response->getRequestOptions()['body']);
+
         $authorization = array_values(preg_grep('/^Authorization: Bearer /', $response->getRequestOptions()['headers']) ?: [''])[0];
         [$header, $payload, $signature] = explode('.', substr($authorization, \strlen('Authorization: Bearer '))) + ['', '', ''];
         self::assertSame(['alg' => 'HS256', 'typ' => 'at+jwt'], json_decode(base64_decode(strtr($header, '-_', '+/')), true));
+
         $claims = json_decode(base64_decode(strtr($payload, '-_', '+/')), true);
         self::assertSame('phem', $claims['iss']);
         self::assertSame('http://hub/.well-known/mercure', $claims['aud']);

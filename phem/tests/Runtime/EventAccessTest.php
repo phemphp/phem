@@ -54,6 +54,7 @@ final class EventAccessTest extends TestCase
         if (!class_exists(RateLimit::class)) {
             self::markTestSkipped('The #[RateLimit] attribute needs Symfony 8.1.');
         }
+
         // The limit of the fixture app is 2 events in a minute.
         self::assertSame(200, $this->click('/limited', 'App\\Pages\\LimitedPage', 'increment')->getStatusCode());
         self::assertSame(200, $this->click('/limited', 'App\\Pages\\LimitedPage', 'increment')->getStatusCode());
@@ -65,6 +66,7 @@ final class EventAccessTest extends TestCase
         for ($i = 0; $i < 3; ++$i) {
             self::assertSame(200, $this->request('GET', '/limited')->getStatusCode(), 'with `methods: \'POST\'`, the GET requests of the page have no limit');
         }
+
         self::assertSame(200, $this->click('/leave', 'App\\Pages\\LeavePage', 'leave')->getStatusCode(), 'the limit is for each page (the key has the path)');
     }
 
@@ -73,6 +75,7 @@ final class EventAccessTest extends TestCase
         if (!class_exists(RateLimit::class)) {
             self::markTestSkipped('The #[RateLimit] attribute needs Symfony 8.1.');
         }
+
         // The limit of the fixture app is 2 events in a minute.
         self::assertSame(200, $this->click('/limited-handler', 'App\\Pages\\LimitedHandlerPage', 'search')->getStatusCode());
         self::assertSame(200, $this->click('/limited-handler', 'App\\Pages\\LimitedHandlerPage', 'search')->getStatusCode());
@@ -84,6 +87,7 @@ final class EventAccessTest extends TestCase
         for ($i = 0; $i < 3; ++$i) {
             self::assertSame(200, $this->click('/limited-handler', 'App\\Pages\\LimitedHandlerPage', 'increment')->getStatusCode(), 'a handler without the attribute has no limit');
         }
+
         self::assertSame(200, $this->click('/limited-handler', 'App\\Pages\\LimitedHandlerPage', 'heavy')->getStatusCode(), 'the key has the method: each handler has its own count');
         self::assertSame(429, $this->click('/limited-handler', 'App\\Pages\\LimitedHandlerPage', 'heavy')->getStatusCode(), 'with `tokens: 2`, one event uses all the limit');
 
@@ -127,14 +131,17 @@ final class EventAccessTest extends TestCase
         if (!class_exists(RateLimit::class)) {
             self::markTestSkipped('The #[RateLimit] attribute needs Symfony 8.1.');
         }
+
         $this->service(StateCache::POOL, CacheItemPoolInterface::class)->clear();
         $payload = $this->clickPayload('App\\Pages\\LimitedHandlerPage', 'search');
         $full = $payload;
         unset($payload['state']);
+
         // The limit of the fixture app is 2 events in a minute.
         for ($i = 0; $i < 3; ++$i) {
             self::assertSame(409, $this->event('/limited-handler', $payload)->getStatusCode());
         }
+
         self::assertSame(200, $this->event('/limited-handler', $full)->getStatusCode(), 'a miss uses no token of the limit of the handler');
         self::assertSame(200, $this->event('/limited-handler', $full)->getStatusCode());
         self::assertSame(429, $this->event('/limited-handler', $full)->getStatusCode());
@@ -264,6 +271,7 @@ final class EventAccessTest extends TestCase
         for ($i = 0; $i < EventPayload::MAX_DEPTH; ++$i) {
             $value = [$value];
         }
+
         $response = $this->event('/leave', ['handler' => 'h', 'event' => ['value' => $value]]);
         self::assertSame(400, $response->getStatusCode());
     }
@@ -303,6 +311,7 @@ final class EventAccessTest extends TestCase
         $json ??= json_encode($this->clickPayload('App\\Pages\\LeavePage', 'leave'), \JSON_THROW_ON_ERROR);
         $server += ['CONTENT_TYPE' => 'multipart/form-data; boundary=x', 'HTTP_X_PHEM_EVENT' => '1', 'HTTP_SEC_FETCH_SITE' => 'same-origin'];
         $request = Request::create($uri, 'POST', [EventBody::PART => $json], [], $files, array_filter($server, static fn (?string $v): bool => null !== $v));
+
         $kernel = $this->fixtureKernel();
         $response = $kernel->handle($request);
         $kernel->terminate($request, $response);

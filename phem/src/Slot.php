@@ -40,6 +40,7 @@ final class Slot extends LazyHtml
     public function __toString(): string
     {
         $pass = null !== $this->pass ? ($this->pass)() : null;
+
         if (null === $this->html || $pass !== $this->renderedIn) {
             $this->html = ($this->render)();
             $this->renderedIn = $pass;

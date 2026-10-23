@@ -53,6 +53,7 @@ final class TwigFunctionsTest extends TestCase
         self::assertSame('aria-label="a"', (string) Attributes::attr('aria-label', 'a'));
         self::assertSame('xlink:href="a"', (string) Attributes::attr('xlink:href', 'a'));
         self::assertSame('@click="a"', (string) Attributes::attr('@click', 'a'));
+
         foreach (['x onfocus=alert(1) autofocus', 'a"b', 'a>b', 'a/b', "a\tb", "a\0b", ''] as $name) {
             self::assertSame('', (string) Attributes::attr($name, 'v'), $name);
             self::assertSame('', (string) Attributes::attr($name, true), $name);
@@ -77,6 +78,7 @@ final class TwigFunctionsTest extends TestCase
             // The URL as the browser reads it: no entities, no control characters or spaces at the ends, and no tabs or line breaks.
             $value = 1 === preg_match('/="([^"]*)"/', $html, $m) ? html_entity_decode($m[1], \ENT_QUOTES | \ENT_HTML5) : '';
             $value = str_replace(["\t", "\n", "\r"], '', trim($value, "\x00..\x20"));
+
             self::assertDoesNotMatchRegularExpression('/^javascript:/i', $value, $html);
         }
     }
@@ -185,6 +187,7 @@ final class TwigFunctionsTest extends TestCase
     {
         $markup = new MarkupResolver(new Environment(new ArrayLoader(['@phpm/b.twig' => '<b>{{ name }}</b>'])));
         $rows = [];
+
         for ($i = 0; $i < 5000; ++$i) {
             $rows[] = ['id' => $i, 'name' => 'Name '.$i, 'tags' => ['a', 'b']];
         }

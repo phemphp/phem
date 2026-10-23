@@ -83,7 +83,9 @@ final class Streams implements ResetInterface
         foreach ($this->queue as [$topic, $stream]) {
             $updates[$topic] = ($updates[$topic] ?? '').$stream->toHtml();
         }
+
         $this->queue = [];
+
         foreach ($updates as $topic => $data) {
             $this->publisher->publish([$topic], $data, $this->private);
         }

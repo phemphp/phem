@@ -40,6 +40,7 @@ final class HandlerIdTest extends TestCase
         Rows::remove(2); // another user removes Grace
 
         $response = $this->remove($handlers['Hedy'], $state, $signature);
+
         self::assertSame(200, $response->getStatusCode());
         self::assertSame([2, 3], Rows::$removed, 'Hedy, not Marie');
         self::assertSame(['Ada', 'Marie'], array_values(array_map(static fn (Scientist $s): string => $s->name, Rows::$scientists)));
@@ -63,6 +64,7 @@ final class HandlerIdTest extends TestCase
         ];
 
         [$a, $b] = $handlers(1);
+
         self::assertNotSame($fingerprints->of($a), $fingerprints->of($b), 'another line');
         self::assertSame($fingerprints->of($handlers(1)[0]), $fingerprints->of($a), 'the same function and value: the next request');
         self::assertNotSame($fingerprints->of($handlers(2)[0]), $fingerprints->of($a));

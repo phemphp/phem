@@ -50,6 +50,7 @@ final class HtmlList extends LazyHtml implements \IteratorAggregate
             if (!$t instanceof \ReflectionNamedType) {
                 continue;
             }
+
             $name = $t->getName();
             if ('array' === $name) {
                 $array = true;
@@ -76,6 +77,7 @@ final class HtmlList extends LazyHtml implements \IteratorAggregate
         if (!\is_array($value) || !array_is_list($value) || !array_any($value, static fn (mixed $item): bool => $item instanceof Html)) {
             return null;
         }
+
         $items = [];
         foreach ($value as $item) {
             if ($item instanceof Html) {

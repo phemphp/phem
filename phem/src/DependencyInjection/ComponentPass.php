@@ -41,6 +41,7 @@ final class ComponentPass implements CompilerPassInterface
         if (!$container->hasDefinition('phem.component_factory')) {
             return;
         }
+
         $buildDir = $container->getParameterBag()->resolveValue($container->getParameter('phem.build_dir'));
         $manifestFile = $buildDir.'/manifest.php';
         $container->addResource(new FileExistenceResource($manifestFile));
@@ -49,11 +50,13 @@ final class ComponentPass implements CompilerPassInterface
         $manifest = new Manifest($buildDir, '');
         if ($manifest->exists()) {
             $container->addResource(new FileResource($manifestFile));
+
             // The manifest also loads the classes: they must exist for autowiring. They are not PSR-4 classes.
             foreach ($manifest->components() as $def) {
                 if (ComponentKind::ClassComponent !== $def->kind) {
                     continue;
                 }
+
                 $fqcn = $def->fqcn;
                 $definition = $container->hasDefinition($fqcn)
                     ? $container->getDefinition($fqcn)
