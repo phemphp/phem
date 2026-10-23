@@ -248,7 +248,24 @@ E011
   help: its props are: person
 ```
 
-The README has the list of codes.
+### Diagnostics
+
+`phemc` does not write output when it finds an error. The codes:
+
+| Code | Meaning |
+|---|---|
+| E001–E006 | Syntax: unclosed or mismatched tags, a void element that is not self-closed, more than one root, a `<?php` open tag instead of `<?phpm` |
+| E010–E015 | Unknown component (also a function without `#[Component]`), unknown or missing prop, children or slot not accepted, duplicate component (also a component with the name of a built-in component, `Phem\Root`), a required context with no provider above the component |
+| E020 | A call to a React Hook (`Phem\useState`, ...): Phem keeps state in `#[Component]` classes |
+| E030–E033 | Undefined variable in markup, markup in an unsupported expression, invalid attribute, invalid `phem:bind` (not a `#[State]` property, not a form field, or a type that does not take the value of the field) |
+| E040–E044 | Class component without `render()`, readonly `#[State]` property, `#[Prop]` property that is not public, static, or `#[State]`, a second `#[Prop(rest: true)]` property or one whose type does not accept an array, a `#[Context]` or `#[Provide]` type that is not one class, interface or enum (or a `#[Context]` property that is static, readonly, a prop or state) |
+| E050, E052, E053 | `export default` (not PHP; use `#[Page]`), `#[Page]` or `#[Route]` on a function, or on a class that is not a component, `#[Subscribe]` on a class that is not a page |
+| E054, E055 | `#[Async]` on a function; an `#[Async]` method that does not declare `Promise` as its return type |
+| W001–W003 | A handler is called instead of passed; a list item without `key`; an event that the browser does not send (`onMouseEnter`) |
+| W004 | `#[Page]`, `#[Route]`, `#[Component]`, `#[State]`, `#[Prop]`, `#[Path]`, `#[Context]`, `#[Provide]`, `#[Subscribe]` or `#[Async]` without its `use` import (`Phem\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
+| W005 | a `<title>` outside `<head>` and `<svg>`: the document component prints the title, and a page gives it with `<Document:title>` |
+| W006 | `phem:debounce` or `phem:throttle` on an element with no handler |
+| W007 | `phem:live` on an element with no `phem:bind` |
 
 For editors and other tools, `--format json` prints the diagnostics to stdout as JSON. The exit
 code does not change:
