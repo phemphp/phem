@@ -56,6 +56,7 @@ final class ChatForm
         if ('' === $name || '' === $text) {
             return;
         }
+
         $this->text = '';
 
         $this->streams->to(Chat::class)

@@ -6,6 +6,7 @@ export default class extends Controller {
   show({ detail }) {
     this.element.textContent = detail.message
     this.element.classList.add("toast-visible")
+
     clearTimeout(this.timer)
     this.timer = setTimeout(() => this.element.classList.remove("toast-visible"), 3000)
   }

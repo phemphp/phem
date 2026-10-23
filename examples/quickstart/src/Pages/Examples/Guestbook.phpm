@@ -78,6 +78,7 @@ final class SignForm
         if ('' === trim($this->name) || '' === trim($this->message)) {
             return;
         }
+
         $entry = new Entry(mb_substr(trim($this->name), 0, 40), mb_substr(trim($this->message), 0, 280));
         $this->repository->add($entry);
         $this->message = '';

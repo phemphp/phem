@@ -14,6 +14,7 @@ final class ScientistFixtures extends Fixture
         $manager->persist(new Scientist('Maria Skłodowska-Curie', 'physicist and chemist'));
         $manager->persist(new Scientist('Katsuko Saruhashi', 'geochemist'));
         $manager->persist(new Scientist('Lise Meitner', 'physicist'));
+
         $manager->flush();
     }
 }

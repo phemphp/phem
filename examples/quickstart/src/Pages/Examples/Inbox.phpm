@@ -43,13 +43,16 @@ final class Inbox
             if ($message['id'] !== $id) {
                 continue;
             }
+
             if ($message['starred']) {
                 $this->dispatcher->dispatch('toast', ['message' => 'A starred message stays.']);
 
                 return;
             }
+
             unset($this->messages[$i]);
         }
+
         $this->messages = array_values($this->messages);
     }
 
@@ -61,6 +64,7 @@ final class Inbox
             $star = fn () => $this->toggle($id, 'starred');
             $read = fn () => $this->toggle($id, 'read');
             $delete = fn () => $this->delete($id);
+
             $rows[] = (
                 <li key={{ id }} data-controller="optimistic" data-phem-client="hidden">
                     {{ message.starred ? '★' : '☆' }}
