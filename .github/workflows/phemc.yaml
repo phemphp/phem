@@ -43,7 +43,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # rustup is on all the GitHub runners: no third-party action in a job with write permissions.
       - name: Install Rust
         env:
@@ -76,13 +76,13 @@ jobs:
             exit 1
           fi
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.asset }}
           path: ${{ matrix.asset }}
       - name: Attest
         if: env.VERSION != ''
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest@v4
         with:
           subject-path: ${{ matrix.asset }}
       - name: Upload assets
@@ -98,7 +98,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: phemc-*
           merge-multiple: true
