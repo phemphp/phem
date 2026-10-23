@@ -281,7 +281,7 @@ fn error_boundary_is_a_built_in_component() {
     let (_, diags) = compile(vec![SourceInput { rel: "Home.phpm".into(), text: src("use Phem\\ErrorBoundary;", "<ErrorBoundary><Quote /></ErrorBoundary>") }]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| d.message.clone())).collect();
-    assert_eq!(msgs, ["`<ErrorBoundary>` needs the prop `fallback`"]);
+    assert_eq!(msgs, ["`<ErrorBoundary>` needs the slot `fallback`"]);
 
     let wrong = "<ErrorBoundary><ErrorBoundary:fallback>No</ErrorBoundary:fallback><ErrorBoundary:error>No</ErrorBoundary:error><Quote /></ErrorBoundary>";
     assert_eq!(codes(&src("use Phem\\ErrorBoundary;", wrong)), ["E013"]);
@@ -306,6 +306,19 @@ fn a_page_gives_the_title_to_its_document() {
         "{% component embed 'App\\\\Document' only %}{% block children %}{% with _phem_caller only %}<p>Home</p>{% endwith %}{% endblock %}{% block title %}{% with _phem_caller only %}Hi {{ name }}{% endwith %}{% endblock %}{% endcomponent %}"
     );
     assert_eq!(out.manifest.components["App\\Document"].slots, ["title", "children"]);
+}
+
+#[test]
+fn a_required_slot_that_the_caller_does_not_give_is_an_error() {
+    let src = |body: &str| format!("<?phpm\nnamespace App;\nuse Phem\\Html;\n#[\\Phem\\Attribute\\Component]\nfunction Card(Html $title, Html $children) {{ return <div>{{{{ title }}}}{{{{ children }}}}</div>; }}\n#[\\Phem\\Attribute\\Component]\nfunction Home() {{ return {body}; }}\n");
+    let diags = |body: &str| -> Vec<(String, Option<String>)> {
+        let (_, diags) = compile(vec![SourceInput { rel: "Home.phpm".into(), text: src(body) }]);
+        diags.iter().flat_map(|f| f.diags.iter().map(|d| (format!("{} {}", d.code, d.message), d.help.clone()))).collect()
+    };
+
+    assert_eq!(diags("<Card><p>Body</p></Card>"), [("E011 `<Card>` needs the slot `title`".into(), Some("add `<Card:title>...</Card:title>` in `<Card>`".into()))]);
+    assert_eq!(diags("<Card><Card:title>Hi</Card:title></Card>"), [("E011 `<Card>` needs the slot `children`".into(), Some("put the content between `<Card>` and `</Card>`".into()))]);
+    assert!(diags("<Card><Card:title>Hi</Card:title><p>Body</p></Card>").is_empty());
 }
 
 #[test]

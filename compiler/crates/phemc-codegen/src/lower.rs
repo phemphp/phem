@@ -866,7 +866,15 @@ impl<'a> Lowerer<'a> {
 
         if !has_spread {
             for r in def.required.iter().filter(|r| !given.contains(*r)) {
-                self.error(codes::UNKNOWN_PROP, format!("`<{}>` needs the prop `{r}`", e.name), e.name_span);
+                if !def.slots.contains(r) {
+                    self.error(codes::UNKNOWN_PROP, format!("`<{}>` needs the prop `{r}`", e.name), e.name_span);
+                } else if r == "children" {
+                    self.error(codes::UNKNOWN_PROP, format!("`<{}>` needs the slot `children`", e.name), e.name_span).help =
+                        Some(format!("put the content between `<{0}>` and `</{0}>`", e.name));
+                } else {
+                    self.error(codes::UNKNOWN_PROP, format!("`<{}>` needs the slot `{r}`", e.name), e.name_span).help =
+                        Some(format!("add `<{0}:{r}>...</{0}:{r}>` in `<{0}>`", e.name));
+                }
             }
         }
 

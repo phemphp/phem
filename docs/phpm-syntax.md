@@ -1675,6 +1675,9 @@ final class MyApp
 - `prop="text"` passes a string, `prop={{ expr }}` passes any value, and a bare `prop` passes `true`.
 - Children go to the `?Html $children` parameter (or `#[Prop]` property): `<Card>...</Card>`.
 - Named slots: `<Card:footer>...</Card:footer>` goes to the `?Html $footer` parameter.
+- An `Html` parameter (or `#[Prop]` property) with no `?` and no default is a required slot:
+  `Html $title`. When the caller does not give it, the compiler reports E011 (`<Card>` needs
+  the slot `title`).
 - A default for children or a slot: `{{ footer ?? 'No footer' }}` shows when the caller gives none.
 - An unknown prop is an error, unless the function has a variadic `...$rest` parameter (or
   the class a `#[Prop(rest: true)]` property).
