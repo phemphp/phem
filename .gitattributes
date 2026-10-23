@@ -1,0 +1,24 @@
+# Keep the Composer dist of phem/phem small: only bin/, src/, config/, templates/, assets/dist/,
+# assets/package.json, composer.json, LICENSE and README.md.
+/.gitattributes export-ignore
+/.github export-ignore
+/.gitignore export-ignore
+/.php-cs-fixer.dist.php export-ignore
+/CLAUDE.md export-ignore
+/Makefile export-ignore
+/TODO.md export-ignore
+/assets/package-lock.json export-ignore
+/assets/tests export-ignore
+/assets/vitest.config.js export-ignore
+/compiler export-ignore
+/docs export-ignore
+/editors export-ignore
+/examples export-ignore
+/install.ps1 export-ignore
+/install.sh export-ignore
+/phem-logo.svg export-ignore
+/phpstan.dist.neon export-ignore
+/phpunit.xml.dist export-ignore
+/release.sh export-ignore
+/stubs export-ignore
+/tests export-ignore

@@ -359,7 +359,7 @@ pub fn routes_of(parsed: &Parsed, file: &Path) -> Vec<Route> {
     list
 }
 
-/// `App\Pages\Counter` → `app_pages_counter`, as in `phem/src/Routing/PageLoader.php`.
+/// `App\Pages\Counter` → `app_pages_counter`, as in `src/Routing/PageLoader.php` of phem/phem.
 fn route_name(fqn: &str) -> String {
     fqn.replace('\\', "_").to_lowercase()
 }

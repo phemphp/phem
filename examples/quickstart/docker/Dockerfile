@@ -35,14 +35,20 @@ ENV RUSTUP_HOME=/usr/local/rustup \
 RUN rustup target add wasm32-wasip1
 WORKDIR /app
 # The repository is mounted at /app, so edits to the entrypoint apply without a rebuild.
-ENTRYPOINT ["/app/docker/dev-entrypoint.sh"]
+ENTRYPOINT ["/app/examples/quickstart/docker/dev-entrypoint.sh"]
 CMD ["serve"]
 
 # --- Prod: compiled app only (phemc + Symfony and Twig caches + OPcache preload)
 FROM php-base AS prod
 ENV APP_ENV=prod APP_DEBUG=0
 COPY --from=phemc-build /usr/local/bin/phemc /usr/local/bin/phemc
-COPY phem/ /app/phem/
+# The phem/phem package is the root of the repository (the path repository of the quickstart).
+COPY composer.json /app/
+COPY bin/phemc /app/bin/phemc
+COPY src/ /app/src/
+COPY config/ /app/config/
+COPY templates/ /app/templates/
+COPY assets/ /app/assets/
 COPY examples/quickstart/ /app/examples/quickstart/
 WORKDIR /app/examples/quickstart
 # A random APP_SECRET for this image (it signs the component state in the browser).
@@ -55,9 +61,9 @@ RUN printf 'APP_SECRET=%s\n' "$(od -An -tx1 -N32 /dev/urandom | tr -d ' \n')" > 
  && rm -rf var/cache/prod \
  && php bin/console cache:warmup \
  && php bin/console asset-map:compile
-COPY docker/php-prod.ini /usr/local/etc/php/conf.d/zz-phem.ini
-COPY docker/init-db.sh /usr/local/bin/init-db
-COPY docker/prod-entrypoint.sh /usr/local/bin/prod-entrypoint
+COPY examples/quickstart/docker/php-prod.ini /usr/local/etc/php/conf.d/zz-phem.ini
+COPY examples/quickstart/docker/init-db.sh /usr/local/bin/init-db
+COPY examples/quickstart/docker/prod-entrypoint.sh /usr/local/bin/prod-entrypoint
 EXPOSE 8080
 # The entrypoint makes the database in the volume on the first start.
 ENTRYPOINT ["prod-entrypoint"]

@@ -1,0 +1,32 @@
+# Run it from the root of the repository: `make up`, `make test`, `make prod`. The build context
+# and the bind mount are the whole repository, because the images build phemc from compiler/.
+name: phem
+
+services:
+  dev:
+    build: { context: ../.., dockerfile: examples/quickstart/docker/Dockerfile, target: dev }
+    command: serve
+    ports: ["8080:8080"]
+    volumes:
+      - ../..:/app
+      - cargo-target:/cargo-target
+      - cargo-registry:/usr/local/cargo/registry
+
+  test:
+    build: { context: ../.., dockerfile: examples/quickstart/docker/Dockerfile, target: dev }
+    command: test
+    volumes:
+      - ../..:/app
+      - cargo-target:/cargo-target
+      - cargo-registry:/usr/local/cargo/registry
+
+  prod:
+    build: { context: ../.., dockerfile: examples/quickstart/docker/Dockerfile, target: prod }
+    ports: ["8081:8080"]
+    volumes:
+      - quickstart-data:/app/examples/quickstart/var/data   # the SQLite file of DurableGallery
+
+volumes:
+  quickstart-data:
+  cargo-target:
+  cargo-registry:

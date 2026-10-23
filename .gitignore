@@ -11,5 +11,8 @@ composer.lock
 /examples/quickstart/public/assets/
 .env.local
 # The client of the phem package (a global dist/ rule must not ignore it).
-!/phem/assets/dist/
-/phem/assets/node_modules/
+!/assets/dist/
+/assets/node_modules/
+# The phemc binary that bin/phemc downloads (and its temporary file).
+/bin/phemc-*
+/bin/.phemc-*

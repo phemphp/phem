@@ -1,24 +1,27 @@
 .PHONY: up test test-js check prod shell lsp vscode vscode-install phpstorm phpstorm-install
 
+# The Docker files are in the quickstart. The build context is the repository.
+COMPOSE = docker compose -f examples/quickstart/compose.yaml
+
 up:     ## Run the quickstart in watch mode on http://localhost:8080
-	docker compose up --build dev
+	$(COMPOSE) up --build dev
 
 test: test-js ## Run cargo test, PHPUnit and the JS tests
-	docker compose run --rm --build test
+	$(COMPOSE) run --rm --build test
 
 test-js: ## Run the tests of the phem Stimulus controller (Vitest, jsdom)
-	docker run --rm -e NPM_CONFIG_UPDATE_NOTIFIER=false -e NPM_CONFIG_LOGLEVEL=warn -v "$(CURDIR)/phem/assets:/assets" -w /assets node:22-alpine sh -c ' \
+	docker run --rm -e NPM_CONFIG_UPDATE_NOTIFIER=false -e NPM_CONFIG_LOGLEVEL=warn -v "$(CURDIR)/assets:/assets" -w /assets node:22-alpine sh -c ' \
 		npm install --ignore-scripts --no-fund --no-audit && \
 		npm test'
 
 check:  ## Run the phemc diagnostics on the quickstart sources
-	docker compose run --rm dev phemc check examples/quickstart/src
+	$(COMPOSE) run --rm dev phemc check examples/quickstart/src
 
 prod:   ## Build and run the production image on http://localhost:8081
-	docker compose up --build prod
+	$(COMPOSE) up --build prod
 
 lsp:    ## Build the language server for the editors: editors/server/phem-lsp.wasm
-	docker compose run --rm --build --no-deps dev sh -c ' \
+	$(COMPOSE) run --rm --build --no-deps dev sh -c ' \
 		cargo build --release --quiet --manifest-path compiler/Cargo.toml -p phemc-lsp --bin phem-lsp --target wasm32-wasip1 && \
 		cp /cargo-target/wasm32-wasip1/release/phem-lsp.wasm editors/server/phem-lsp.wasm'
 
@@ -50,4 +53,4 @@ phpstorm-install: phpstorm ## Build the PhpStorm plugin and install it (then res
 	@echo "Installed in $(PHPSTORM_PLUGINS)/phem-phpstorm. Restart PhpStorm."
 
 shell:
-	docker compose run --rm dev sh
+	$(COMPOSE) run --rm dev sh

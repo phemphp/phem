@@ -1,6 +1,6 @@
 {
     "name": "phem/phem",
-    "description": "Runtime for .phpm components: a Symfony bundle with Twig rendering, class components as services, pages as Symfony routes, and Turbo/Stimulus state.",
+    "description": "A component model for Symfony apps",
     "type": "symfony-bundle",
     "license": "MIT",
     "authors": [
@@ -42,6 +42,7 @@
         "symfony/rate-limiter": "To limit the events of a page or of one handler with the #[RateLimit] attribute of Symfony 8.1",
         "symfony/stimulus-bundle": "To register the phem Stimulus controller from assets/controllers.json"
     },
+    "bin": ["bin/phemc"],
     "autoload": {
         "psr-4": { "Phem\\": "src/" }
     },

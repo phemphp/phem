@@ -1,0 +1,112 @@
+name: Release
+# Sets the version of the compiler, commits it to main as github-actions[bot], tags v<version>,
+# drafts the GitHub release, and dispatches the build of the phemc binaries (phemc.yaml).
+# Run it with ./release.sh <version>. A dispatch again after a partial failure resumes from the tag.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (for example 0.1.0, no v prefix)"
+        required: true
+        type: string
+permissions: {}
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.version }}
+  cancel-in-progress: false
+jobs:
+  release:
+    name: Release ${{ inputs.version }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      VERSION: ${{ inputs.version }}
+    steps:
+      - name: Validate inputs
+        # https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then
+            echo "::error::release.yaml must be dispatched against refs/heads/main, got ${GITHUB_REF}"
+            exit 1
+          fi
+          if [[ ! ${VERSION} =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$ ]]; then
+            echo "::error::Invalid version: '${VERSION}' (must be SemVer, no v prefix)"
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Classify release
+        id: classify
+        # Pre-releases (a SemVer "-" suffix) do not become the latest release.
+        run: |
+          if [[ "${VERSION}" == *-* ]]; then
+            echo "prerelease=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "prerelease=false" >> "${GITHUB_OUTPUT}"
+          fi
+      - name: Determine release state
+        id: state
+        # The tag is the resume signal.
+        run: |
+          set -euo pipefail
+          if git rev-parse --verify --quiet "refs/tags/v${VERSION}" >/dev/null; then
+            if ! git merge-base --is-ancestor "v${VERSION}" HEAD; then
+              echo "::error::Tag v${VERSION} is not reachable from main; refusing to resume."
+              exit 1
+            fi
+            echo "Resuming: v${VERSION} exists"
+            echo "resume=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "resume=false" >> "${GITHUB_OUTPUT}"
+          fi
+      - name: Set the compiler version
+        if: steps.state.outputs.resume != 'true'
+        # The first `version = ` line of compiler/Cargo.toml is the one of [workspace.package].
+        # `phemc --version` then prints the version of the tag.
+        run: |
+          set -euo pipefail
+          sed -i -E "0,/^version = \".*\"$/s//version = \"${VERSION}\"/" compiler/Cargo.toml
+          grep -q "^version = \"${VERSION}\"$" compiler/Cargo.toml
+          cargo update --workspace --manifest-path compiler/Cargo.toml
+      - name: Commit and tag
+        if: steps.state.outputs.resume != 'true'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git commit --quiet -m "Prepare release ${VERSION} [skip ci]" -- compiler/Cargo.toml compiler/Cargo.lock
+            git push origin HEAD:main
+          fi
+          git tag -a "v${VERSION}" -m "Version ${VERSION}"
+          git push origin "v${VERSION}"
+      - name: Draft GitHub release
+        env:
+          PRERELEASE: ${{ steps.classify.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          if gh release view "v${VERSION}" --repo "${REPO}" >/dev/null 2>&1; then
+            echo "Release v${VERSION} already exists; skipping draft creation."
+            exit 0
+          fi
+          previous_tag=$(git describe --tags --abbrev=0 --match 'v*' --exclude "v${VERSION}" "v${VERSION}^" 2>/dev/null || true)
+          notes_args=(-X POST -f tag_name="v${VERSION}")
+          if [[ -n "${previous_tag}" ]]; then
+            notes_args+=(-f previous_tag_name="${previous_tag}")
+          fi
+          notes=$(gh api "repos/${REPO}/releases/generate-notes" "${notes_args[@]}" --jq .body)
+          create_args=(-X POST -f tag_name="v${VERSION}" -f name="v${VERSION}" -F draft=true -f body="${notes}")
+          if [[ "${PRERELEASE}" == "true" ]]; then
+            create_args+=(-F prerelease=true)
+          else
+            create_args+=(-f make_latest=true)
+          fi
+          gh api "repos/${REPO}/releases" "${create_args[@]}" --silent
+      - name: Dispatch the build of the phemc binaries
+        # A tag pushed with GITHUB_TOKEN does not start the push workflows: dispatch it.
+        run: gh workflow run phemc.yaml --repo "${REPO}" --ref "v${VERSION}" -f version="${VERSION}"

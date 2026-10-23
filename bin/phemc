@@ -1,0 +1,176 @@
+#!/usr/bin/env php
+<?php
+
+/*
+ * This file is part of the Phem package.
+ *
+ * (c) Yonel Ceruto <open@yceruto.dev>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+declare(strict_types=1);
+
+// Runs the phemc compiler. The Composer package has no binary: on the first run, this script
+// downloads the phemc binary of the installed phem/phem version from the GitHub release, checks
+// its SHA-256, and keeps it next to this script. `composer update` removes it with the old
+// version, so the compiler and the runtime always have the same version.
+
+const PHEMC_REPOSITORY = 'phemphp/phem';
+
+function phemc_fail(string $message): never
+{
+    fwrite(STDERR, $message.PHP_EOL);
+
+    exit(1);
+}
+
+/**
+ * The name of the release asset for this platform (the FrankenPHP names), or null.
+ */
+function phemc_asset(): ?string
+{
+    $arch = match (strtolower(php_uname('m'))) {
+        'x86_64', 'amd64' => 'x86_64',
+        'aarch64', 'arm64' => 'aarch64',
+        default => null,
+    };
+
+    return match ([PHP_OS_FAMILY, $arch]) {
+        ['Linux', 'x86_64'] => 'phemc-linux-x86_64',
+        ['Linux', 'aarch64'] => 'phemc-linux-aarch64',
+        ['Darwin', 'aarch64'] => 'phemc-mac-arm64',
+        ['Darwin', 'x86_64'] => 'phemc-mac-x86_64',
+        ['Windows', 'x86_64'] => 'phemc-windows-x86_64.exe',
+        default => null,
+    };
+}
+
+/**
+ * The installed version of phem/phem without the "v" prefix, or null for a dev version.
+ */
+function phemc_version(): ?string
+{
+    // The Composer proxy in vendor/bin/ sets $_composer_autoload_path. A run of bin/phemc in a
+    // checkout of the repository uses the vendor/ directory of the repository.
+    $autoload = $GLOBALS['_composer_autoload_path'] ?? __DIR__.'/../vendor/autoload.php';
+
+    if (!is_file($autoload)) {
+        return null;
+    }
+
+    require_once $autoload;
+
+    if (!class_exists(Composer\InstalledVersions::class) || !Composer\InstalledVersions::isInstalled('phem/phem')) {
+        return null;
+    }
+
+    $version = Composer\InstalledVersions::getPrettyVersion('phem/phem') ?? '';
+
+    if ('' === $version || str_starts_with($version, 'dev-') || str_ends_with($version, '-dev')) {
+        return null;
+    }
+
+    return ltrim($version, 'v');
+}
+
+function phemc_get(string $url): string
+{
+    $context = stream_context_create(['http' => [
+        'follow_location' => 1,
+        'max_redirects' => 10,
+        'timeout' => 60,
+        'user_agent' => 'phem-phemc',
+    ]]);
+
+    $content = @file_get_contents($url, false, $context);
+
+    if (false === $content) {
+        $error = error_get_last()['message'] ?? 'unknown error';
+
+        phemc_fail(sprintf("Cannot download %s: %s\nDownload it by hand into %s.", $url, $error, __DIR__));
+    }
+
+    return $content;
+}
+
+function phemc_download(string $asset, string $binary): void
+{
+    $version = phemc_version() ?? phemc_fail(sprintf(
+        "No phemc binary in %s, and this phem/phem version has no release to download it from.\n".
+        'Build it from the sources: cargo build --release --manifest-path compiler/Cargo.toml -p phemc-cli',
+        __DIR__,
+    ));
+
+    $base = getenv('PHEMC_DOWNLOAD_URL') ?: 'https://github.com/'.PHEMC_REPOSITORY.'/releases/download';
+    $url = sprintf('%s/v%s/%s', rtrim($base, '/'), $version, $asset);
+
+    fwrite(STDERR, sprintf('Downloading phemc v%s (%s)...'.PHP_EOL, $version, $asset));
+
+    $checksums = phemc_get(sprintf('%s/v%s/phemc-checksums.txt', rtrim($base, '/'), $version));
+    $content = phemc_get($url);
+
+    // The lines of `sha256sum`: "<hash>  <file>".
+    $expected = null;
+
+    foreach (preg_split('/\R/', $checksums) ?: [] as $line) {
+        if (1 === preg_match('/^([0-9a-f]{64})\s+\*?(\S+)$/', trim($line), $match) && $match[2] === $asset) {
+            $expected = $match[1];
+        }
+    }
+
+    if (null === $expected) {
+        phemc_fail(sprintf('No checksum for %s in the phemc-checksums.txt of v%s.', $asset, $version));
+    }
+
+    if (!hash_equals($expected, hash('sha256', $content))) {
+        phemc_fail(sprintf('The checksum of %s does not match the phemc-checksums.txt of v%s.', $url, $version));
+    }
+
+    // A temporary file and a rename, so a parallel run never executes a partial binary.
+    $temporary = sprintf('%s/.%s.%d', __DIR__, $asset, getmypid());
+
+    if (false === @file_put_contents($temporary, $content)) {
+        phemc_fail(sprintf('Cannot write the phemc binary in %s.', __DIR__));
+    }
+
+    chmod($temporary, 0o755);
+
+    if (!@rename($temporary, $binary)) {
+        @unlink($temporary);
+
+        if (!is_file($binary)) {
+            phemc_fail(sprintf('Cannot write the phemc binary %s.', $binary));
+        }
+    }
+}
+
+$asset = phemc_asset() ?? phemc_fail(sprintf(
+    "No prebuilt phemc binary for %s (%s).\n".
+    'Build it from the sources: cargo build --release --manifest-path compiler/Cargo.toml -p phemc-cli',
+    PHP_OS_FAMILY,
+    php_uname('m'),
+));
+$binary = __DIR__.'/'.$asset;
+
+if (!is_file($binary)) {
+    phemc_download($asset, $binary);
+}
+
+$arguments = array_slice($_SERVER['argv'], 1);
+
+// Replace this process, so the signals (Ctrl+C on `phemc watch`) go to phemc.
+if ('Windows' !== PHP_OS_FAMILY && function_exists('pcntl_exec')) {
+    pcntl_exec($binary, $arguments);
+
+    phemc_fail(sprintf('Cannot run %s.', $binary));
+}
+
+$process = proc_open([$binary, ...$arguments], [STDIN, STDOUT, STDERR], $pipes);
+
+if (false === $process) {
+    phemc_fail(sprintf('Cannot run %s.', $binary));
+}
+
+exit(proc_close($process));

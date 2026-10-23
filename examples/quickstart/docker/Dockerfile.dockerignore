@@ -1,4 +1,6 @@
 compiler/target
 **/vendor
 **/var
+**/node_modules
+bin/phemc-*
 .git

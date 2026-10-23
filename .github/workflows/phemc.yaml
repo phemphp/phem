@@ -1,0 +1,111 @@
+name: Build phemc binaries
+# Builds the phemc binary of each platform. With a version (dispatched by release.yaml on the
+# tag), it also attests the binaries and uploads them and phemc-checksums.txt to the release.
+# bin/phemc downloads them from there.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version to upload to (for example 0.1.0). Empty: build only."
+        required: false
+        type: string
+  push:
+    branches: [main]
+    paths: ["compiler/**", ".github/workflows/phemc.yaml"]
+  pull_request:
+    paths: ["compiler/**", ".github/workflows/phemc.yaml"]
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  VERSION: ${{ inputs.version }}
+jobs:
+  build:
+    name: Build ${{ matrix.asset }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # musl gives static Linux binaries: they also run on Alpine images.
+          - { runner: ubuntu-24.04, target: x86_64-unknown-linux-musl, asset: phemc-linux-x86_64 }
+          - { runner: ubuntu-24.04-arm, target: aarch64-unknown-linux-musl, asset: phemc-linux-aarch64 }
+          - { runner: macos-15, target: aarch64-apple-darwin, asset: phemc-mac-arm64 }
+          - { runner: macos-15-intel, target: x86_64-apple-darwin, asset: phemc-mac-x86_64 }
+          - { runner: windows-2025, target: x86_64-pc-windows-msvc, asset: phemc-windows-x86_64.exe }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      # rustup is on all the GitHub runners: no third-party action in a job with write permissions.
+      - name: Install Rust
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          rustup toolchain install stable --profile minimal --target "${TARGET}"
+          rustup default stable
+      - name: Install musl
+        if: contains(matrix.target, 'musl')
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: Build
+        run: cargo build --release --locked --manifest-path compiler/Cargo.toml -p phemc-cli --target "${{ matrix.target }}"
+      - name: Copy binary
+        env:
+          ASSET: ${{ matrix.asset }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          binary="compiler/target/${TARGET}/release/phemc"
+          if [[ "${ASSET}" == *.exe ]]; then
+            binary="${binary}.exe"
+          fi
+          cp "${binary}" "${ASSET}"
+      - name: Run sanity checks
+        run: |
+          set -euo pipefail
+          output=$("./${{ matrix.asset }}" --version)
+          echo "${output}"
+          if [[ -n "${VERSION}" && "${output}" != "phemc ${VERSION}" ]]; then
+            echo "::error::Expected \"phemc ${VERSION}\", got \"${output}\""
+            exit 1
+          fi
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}
+      - name: Attest
+        if: env.VERSION != ''
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ matrix.asset }}
+      - name: Upload assets
+        if: env.VERSION != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "v${VERSION}" "${{ matrix.asset }}" --repo "${{ github.repository }}" --clobber
+  checksums:
+    name: Upload phemc-checksums.txt
+    needs: build
+    if: inputs.version != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: phemc-*
+          merge-multiple: true
+      - name: Upload checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha256sum phemc-* | tee phemc-checksums.txt
+          gh release upload "v${VERSION}" phemc-checksums.txt --repo "${{ github.repository }}" --clobber

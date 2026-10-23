@@ -133,7 +133,7 @@ them.
 ### The client assets
 
 The client of Phem is the `phem` Stimulus controller, and the `phem-c{display:contents}` CSS. The
-bundle gives them as a Symfony UX package (`phem/assets/package.json`). With AssetMapper,
+bundle gives them as a Symfony UX package (`assets/package.json`). With AssetMapper,
 they are in the `phemjs` namespace. The controller imports `@hotwired/stimulus` and
 `@hotwired/turbo` from the importmap of the application, so the page has one Turbo and one
 Stimulus. To set up an application:
@@ -163,12 +163,15 @@ and import `phemjs/phem.css`.
 
 ## 1. Get the tools
 
-With Docker (recommended), the `dev` image has FrankenPHP (PHP 8.5), Composer, and the Rust
+In an application, `composer require phem/phem` gives `vendor/bin/phemc`. On the first run, it
+downloads the `phemc` binary of the installed version from the GitHub release. You also need
+PHP 8.5 and, for the worker mode, [FrankenPHP](https://frankenphp.dev).
+
+To work on this repository, use Docker (recommended). The `dev` image has FrankenPHP (PHP 8.5), Composer, and the Rust
 toolchain:
 
 ```sh
-docker compose build dev
-docker compose run --rm dev sh      # a shell; `phemc` is on the PATH
+make shell      # a shell in the dev image; `phemc` (built from compiler/) is on the PATH
 ```
 
 Without Docker, you need PHP 8.5, [FrankenPHP](https://frankenphp.dev), and Rust:
@@ -293,7 +296,7 @@ frankenphp run --config Caddyfile
 - `APP_ENV=dev` (the default in `.env`) shows the Symfony error pages, with the `.phpm` location.
 - The application assumes that the database exists. Make it before the first run, for example
   `bin/console doctrine:schema:create` and `bin/console doctrine:fixtures:load`. In Docker, the
-  quickstart entrypoints run `docker/init-db.sh` for this. The script changes nothing when the
+  quickstart entrypoints run `examples/quickstart/docker/init-db.sh` for this. The script changes nothing when the
   database already exists.
 
 With PHP-FPM, use `public/index.php` as the front controller, as for any Symfony application.
@@ -361,7 +364,7 @@ In production, Symfony does not check the cache for changes. Build the cache aga
 and the Twig cache of the phemc templates. `asset-map:compile` writes the assets to
 `public/assets/`. Set a random `APP_SECRET` (for example in `.env.local`).
 
-Then enable the preload (see `docker/php-prod.ini`). `config/preload.php` loads the Symfony
+Then enable the preload (see `examples/quickstart/docker/php-prod.ini`). `config/preload.php` loads the Symfony
 container and the compiled components:
 
 ```ini
@@ -374,4 +377,4 @@ opcache.preload_user=root
 on the FrankenPHP image. It builds `phemc` in a Rust stage, compiles the project and the caches
 at image build time, preloads the compiled components and templates, and runs
 `frankenphp run --config Caddyfile` (worker mode). On each start, its entrypoint runs
-`docker/init-db.sh`: a new volume gets the schema and the fixtures.
+`examples/quickstart/docker/init-db.sh`: a new volume gets the schema and the fixtures.

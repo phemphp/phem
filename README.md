@@ -80,6 +80,21 @@ final class AddScientist
 - How to compile, check, watch, and run `.phpm` files: [docs/compiling.md](docs/compiling.md).
 - How to test components and pages with PHPUnit: [docs/testing.md](docs/testing.md).
 
+## Install
+
+In a Symfony application:
+
+```sh
+composer require phem/phem
+vendor/bin/phemc build src --out var/cache/phem
+```
+
+The package has no compiler binary. `vendor/bin/phemc` downloads the `phemc` binary of the
+installed version from the GitHub release on the first run, and checks its SHA-256. Without
+Composer, download the binary of the latest release with
+`curl -fsSL https://github.com/phemphp/phem/raw/refs/heads/main/install.sh | sh`
+(on Windows, `install.ps1`).
+
 ## Quick start
 
 You need only Docker.
@@ -94,7 +109,7 @@ make phpstorm  # the PhpStorm plugin for .phpm files (needs Java 21 and Gradle)
 ```
 
 `make up` and `make prod` also make the SQLite database of the quickstart on the first start:
-`docker/init-db.sh` makes the schema from the Doctrine mapping and loads the Doctrine fixtures.
+`examples/quickstart/docker/init-db.sh` makes the schema from the Doctrine mapping and loads the Doctrine fixtures.
 They also run the Messenger worker of the `#[Async]` handlers (`messenger:consume async`), next to
 FrankenPHP.
 
@@ -222,21 +237,37 @@ type, completion, go to definition, hover, and outline. See
 
 ## Repository layout
 
+The repository root is the `phem/phem` Composer package. The compiler, the editor support, the
+docs and the quickstart are in the same repository, and `.gitattributes` keeps them out of the
+Composer dist.
+
 ```
+src/ config/ templates/  phem/phem (Composer): PhemBundle, Renderer, Twig extension, controllers,
+                     route loader, Doctrine transaction runner, console commands
+assets/              the phem Stimulus controller (a Symfony UX package for AssetMapper)
+bin/phemc            the phemc launcher: downloads the binary of the release on the first run
+tests/               PHPUnit tests of the package (assets/tests/: the Vitest tests of the controller)
 compiler/            Rust workspace: phemc-syntax, phemc-twig-scan, phemc-analyze, phemc-codegen, phemc-lsp, phemc-cli
-phem/                phem/phem (Composer): PhemBundle, Renderer, Twig extension, controllers,
-                     route loader, Doctrine transaction runner, console commands, and the phem
-                     Stimulus controller (assets/: a Symfony UX package for AssetMapper)
 examples/quickstart/ a Symfony application: the react.dev/learn-style site (public/), its
-                     runnable .phpm examples (src/), and its FrankenPHP Caddyfile
-docker/              Dockerfile (FrankenPHP: dev, prod), dev and prod entrypoints, init-db.sh
+                     runnable .phpm examples (src/), its FrankenPHP Caddyfile, compose.yaml, and
+                     docker/ (Dockerfile: dev, prod; the entrypoints; init-db.sh)
 editors/server/      the Node launcher of the language server (phem-lsp.wasm: `make lsp`)
 editors/vscode/      VS Code extension: .phpm syntax highlighting (TextMate grammar) and the language server
 editors/phpstorm/    PhpStorm plugin: the same grammar and language server
 docs/phpm-syntax.md   the .phpm syntax
 docs/compiling.md    how to build, check, watch, and run .phpm files
 docs/testing.md      how to test components and pages (Phem\Test\InteractsWithPhem)
+release.sh           dispatches the release workflow (.github/workflows/release.yaml)
+install.sh           downloads the phemc binary of the latest release (install.ps1 on Windows)
 ```
+
+## Release
+
+Run `./release.sh 0.1.0` on an up-to-date `main`. The `Release` workflow sets the version of the
+compiler, tags `v0.1.0`, drafts the GitHub release, and starts `phemc.yaml`. That workflow builds
+the `phemc` binaries (Linux x86_64 and aarch64, macOS arm64 and x86_64, Windows x86_64), attests
+them, and uploads them with `phemc-checksums.txt` to the release. Then publish the draft release:
+`vendor/bin/phemc` downloads only from a published release.
 
 ## Diagnostics
 

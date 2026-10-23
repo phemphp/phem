@@ -10,7 +10,7 @@ case "$1" in
     # from older sources can make it fail.
     phemc build src --out var/cache/phem --no-warmup
     composer install --quiet --no-interaction
-    /app/docker/init-db.sh
+    /app/examples/quickstart/docker/init-db.sh
     # phemc restarts FrankenPHP after each build of the .phpm files. The workers also restart
     # when a PHP class in src/ changes (for example a repository).
     export FRANKENPHP_WORKER_CONFIG="${FRANKENPHP_WORKER_CONFIG-watch ./src/**/*.php}"
@@ -21,7 +21,7 @@ case "$1" in
     ;;
   test)
     cargo test --quiet --manifest-path /app/compiler/Cargo.toml
-    cd /app/phem
+    cd /app
     composer install --quiet --no-interaction
     exec vendor/bin/phpunit
     ;;
