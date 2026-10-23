@@ -35,6 +35,7 @@ pub(crate) fn uses(info: &FileInfo, lexed: &Lexed) -> Vec<Use> {
         if !info.returned_markups.get(index).copied().unwrap_or(false) {
             continue;
         }
+
         let owner = match info.markup_scopes.get(index) {
             Some(MarkupScope::Function(fi)) if info.functions[*fi].component_kind.is_some() => info.functions[*fi].fqn.clone(),
             Some(MarkupScope::Method(ci, mi)) if info.classes[*ci].is_component && info.classes[*ci].methods[*mi].name.eq_ignore_ascii_case("render") => {
@@ -42,8 +43,10 @@ pub(crate) fn uses(info: &FileInfo, lexed: &Lexed) -> Vec<Use> {
             }
             _ => continue,
         };
+
         walk(info, &owner, &m.root, &mut Vec::new(), &mut out);
     }
+
     out
 }
 
@@ -52,6 +55,7 @@ fn walk(info: &FileInfo, owner: &str, node: &Node, enclosing: &mut Vec<String>, 
         Node::Element(e) if e.is_component() => {
             let child = resolve(info, &e.name);
             out.push(Use { owner: owner.to_string(), child: child.clone(), enclosing: enclosing.clone(), rel: info.rel.clone(), span: e.name_span });
+
             let slot_prefix = format!("{}:", e.name);
             enclosing.push(child);
             for c in &e.children {
@@ -65,6 +69,7 @@ fn walk(info: &FileInfo, owner: &str, node: &Node, enclosing: &mut Vec<String>, 
                     other => walk(info, owner, other, enclosing, out),
                 }
             }
+
             enclosing.pop();
         }
         Node::Element(e) => {
@@ -96,6 +101,7 @@ fn resolve(info: &FileInfo, name: &str) -> String {
             return f.clone();
         }
     }
+
     info.resolve_class(name)
 }
 
@@ -130,19 +136,23 @@ impl Checker<'_> {
         let maybe = !self.classes.contains_key(&ty.to_ascii_lowercase());
         let mut queue = vec![provided.to_string()];
         let mut seen = HashSet::new();
+
         while let Some(name) = queue.pop() {
             if name.eq_ignore_ascii_case(ty) {
                 return true;
             }
+
             if !seen.insert(name.to_ascii_lowercase()) {
                 continue;
             }
+
             match self.classes.get(&name.to_ascii_lowercase()) {
                 Some(c) => queue.extend(c.parent.iter().chain(&c.interfaces).cloned()),
                 None if maybe => return true,
                 None => {}
             }
         }
+
         false
     }
 
@@ -162,9 +172,11 @@ impl Checker<'_> {
         if !seen.insert(component.to_ascii_lowercase()) {
             return None;
         }
+
         if self.pages.contains(&component.to_ascii_lowercase()) {
             return Some(component.to_string());
         }
+
         for u in self.uses.get(&component.to_ascii_lowercase()).into_iter().flatten() {
             if matches!(self.place(u, ty), Place::Placed) && !self.provides(&u.owner, ty) {
                 if let Some(page) = self.page_without(&u.owner, ty, seen) {
@@ -172,6 +184,7 @@ impl Checker<'_> {
                 }
             }
         }
+
         None
     }
 }
@@ -185,6 +198,7 @@ pub(crate) fn check(reg: &Registry, infos: &[&FileInfo], uses: &[Use]) -> Vec<(S
     for u in uses {
         by_child.entry(u.child.to_ascii_lowercase()).or_default().push(u);
     }
+
     let checker = Checker { reg, classes, pages, uses: by_child };
 
     let mut out = Vec::new();
@@ -192,6 +206,7 @@ pub(crate) fn check(reg: &Registry, infos: &[&FileInfo], uses: &[Use]) -> Vec<(S
         for need in def.contexts.iter().filter(|n| n.required) {
             let ty_short = short(&need.ty);
             let help = format!("render `<{}>` inside a component with `#[Provide]` for `{ty_short}`, or give `${}` a default value", short(&def.fqcn), need.name);
+
             if checker.pages.contains(&def.fqcn.to_ascii_lowercase()) {
                 out.push((
                     def.file.clone(),
@@ -200,16 +215,20 @@ pub(crate) fn check(reg: &Registry, infos: &[&FileInfo], uses: &[Use]) -> Vec<(S
                 ));
                 continue;
             }
+
             for u in checker.uses.get(&def.fqcn.to_ascii_lowercase()).into_iter().flatten() {
                 if !matches!(checker.place(u, &need.ty), Place::Placed) || checker.provides(&u.owner, &need.ty) {
                     continue;
                 }
+
                 let Some(page) = checker.page_without(&u.owner, &need.ty, &mut HashSet::new()) else { continue };
+
                 let label = if page.eq_ignore_ascii_case(&u.owner) {
                     format!("the page `{}` renders it with no `{ty_short}` above", short(&page))
                 } else {
                     format!("`{}` renders it, and the page `{}` renders `{}` with no `{ty_short}` above", short(&u.owner), short(&page), short(&u.owner))
                 };
+
                 out.push((
                     u.rel.clone(),
                     Diagnostic::error(codes::MISSING_CONTEXT, format!("`<{}>` needs a `{ty_short}` context, but no component above it provides one", short(&def.fqcn)), u.span)
@@ -219,6 +238,7 @@ pub(crate) fn check(reg: &Registry, infos: &[&FileInfo], uses: &[Use]) -> Vec<(S
             }
         }
     }
+
     out
 }
 

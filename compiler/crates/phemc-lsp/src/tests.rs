@@ -297,6 +297,7 @@ fn root() -> &'static Path {
             std::fs::create_dir_all(path.parent().unwrap()).unwrap();
             std::fs::write(path, content).unwrap();
         }
+
         root
     })
 }
@@ -361,6 +362,7 @@ fn apply(text: &str, item: &Item) -> String {
     for e in edits {
         out.insert_str(e.offset, &e.text);
     }
+
     out
 }
 
@@ -564,10 +566,12 @@ fn an_arrow_shows_the_public_members_of_the_type_with_inheritance() {
     for label in ["id", "name", "profession", "likes", "status", "getFullName", "like", "age", "slug", "displayName"] {
         assert!(r.find(label).is_some(), "{label}");
     }
+
     // Private, protected, static, and magic members are not visible from outside.
     for label in ["secret", "born", "hidden", "count", "create", "__construct"] {
         assert!(r.find(label).is_none(), "{label}");
     }
+
     assert_eq!(r.get("name").kind, ItemKind::Field);
     assert_eq!(r.get("name").detail, "string");
     assert_eq!(snippet(r.get("like")), "like($1)$0");
@@ -616,6 +620,7 @@ fn this_in_a_class_shows_all_its_members() {
     for label in ["lab", "name", "born", "age", "render"] {
         assert!(r.find(label).is_some(), "{label}");
     }
+
     assert!(r.find("secret").is_none(), "a private member of the parent");
     assert!(r.find("hidden").is_none());
 }
@@ -659,6 +664,7 @@ fn braces_show_the_variables_of_the_scope_and_the_functions() {
     for label in ["s", "repo", "count", "path", "form_widget"] {
         assert!(r.find(label).is_some(), "{label}");
     }
+
     assert!(r.find("phem_attr").is_none());
     assert_eq!(snippet(r.get("path")), "path($1)$0");
 }
@@ -669,6 +675,7 @@ fn a_dot_shows_the_attributes_of_an_object_with_getters_as_names() {
     for label in ["name", "profession", "likes", "fullName", "famous", "like", "slug", "magic"] {
         assert!(r.find(label).is_some(), "{label}");
     }
+
     assert_eq!(r.get("fullName").detail, "getFullName(): string");
     assert_eq!(r.get("fullName").insert.as_deref(), Some("fullName"));
     assert!(r.find("getFullName").is_none(), "the getter shows once, as a name");
@@ -696,6 +703,7 @@ fn the_item_of_a_for_loop_has_the_type_of_the_items() {
 fn the_keys_of_an_array_shape() {
     let r = run(&twig_fn("    $user = ['name' => 'Hedy', 'size' => 90, 'pet' => ['kind' => 'cat']];\n", "{{ user.pet.|"));
     assert_eq!(r.labels(), ["kind"]);
+
     let r = run(&twig_fn("    $products = [['title' => 'A', 'id' => 1]];\n", "{% for p in products %}{{ p.|"));
     assert_eq!(r.sorted(), ["id", "title"]);
 }
@@ -739,6 +747,7 @@ fn filters_tests_and_tags() {
     let r = run(&twig_fn("", "{% for a in b %}{% end| -%}"));
     assert_eq!(snippet(r.get("endfor")), "endfor -%}");
     assert_eq!(r.slice(r.get("endfor").range), "end -%}");
+
     let r = run(&twig_fn("", "{% for a in b %}{%|}"));
     assert_eq!(r.slice(r.get("endfor").range), "}");
 }
@@ -792,6 +801,7 @@ fn the_attributes_of_an_html_element() {
     for label in ["type", "name", "placeholder", "id", "class", "className", "aria-label", "onChange", "key"] {
         assert!(r.find(label).is_some(), "{label}");
     }
+
     assert!(r.find("href").is_none());
     assert_eq!(snippet(r.get("required")), "required");
     assert_eq!(snippet(r.get("type")), "type=\"${1}\"");
@@ -869,6 +879,7 @@ fn a_component_tag_goes_to_the_component() {
 
     let src = def_fn("<Layout title=\"x\"></Lay‸out>", "");
     assert_eq!(target(&at_page(&src), &src), layout);
+
     let src = def_fn("<Layout title=\"x\"><Layout:foo‸ter>a</Layout:footer></Layout>", "");
     assert_eq!(target(&at_page(&src), &src), pair("src/components/Layout.phpm", "$footer = null)"));
 }
@@ -881,6 +892,7 @@ fn the_builtin_root_tag_has_a_hover_and_no_location() {
     assert!(r.location.is_none());
     assert!(hover(&r).contains("final class Root"));
     assert!(hover(&r).contains("root element of the page"));
+
     let src = DEF_USES.replace("use App\\Model", "use Phem\\Root;\nuse App\\Model") + "function Document()\n{\n    return <Root ta‸g=\"main\" />;\n}\n";
     let tag = at_page(&src);
     assert!(hover(&tag).contains("Prop of `Phem\\Root`"));
@@ -891,6 +903,7 @@ fn the_builtin_root_tag_has_a_hover_and_no_location() {
 fn a_prop_goes_to_the_parameter_or_the_property() {
     let src = def_fn("<Layout ti‸tle=\"x\" />", "");
     assert_eq!(target(&at_page(&src), &src), pair("src/components/Layout.phpm", "$title, ?Html $children = null, ?Html $footer = null)"));
+
     let src = format!("{DEF_USES}use App\\Components\\Counter;\n\nfunction Home()\n{{\n    return <Counter ma‸x={{{{ 3 }}}} />;\n}}\n");
     let r = at_page(&src);
     assert_eq!(target(&r, &src), pair("src/components/Counter.phpm", "$max;"));
@@ -934,6 +947,7 @@ fn php_names_classes_members_functions_and_variables() {
         let src = def_fn("<p />", body);
         assert_eq!(target(&at_page(&src), &src), pair(expected.0, expected.1), "{body}");
     };
+
     let src = def_fn("<p />", "    $x = new Scien‸tist('a', 'b');\n");
     let r = at_page(&src);
     assert_eq!(target(&r, &src), pair("src/Model/Scientist.php", "Scientist extends Person"));
@@ -986,10 +1000,12 @@ fn a_route_name_goes_to_the_page() {
 /// stops the server.
 fn every_offset(project: &Project, file: &Path, text: &str) {
     let index = Index::new(project, Source::new(file.to_path_buf(), text.to_string()));
+
     for offset in (0..=text.len()).filter(|&o| text.is_char_boundary(o)) {
         for trigger in [None, Some('<'), Some('>'), Some('$')] {
             complete(&index, offset, trigger);
         }
+
         symbol_at(&index, offset);
     }
 }
@@ -997,14 +1013,17 @@ fn every_offset(project: &Project, file: &Path, text: &str) {
 #[test]
 fn no_panic_at_any_offset() {
     let project = Project::load(root());
+
     for (name, _) in FILES.iter().filter(|(n, _)| n.ends_with(".phpm") || n.starts_with("src/")) {
         let file = root().join(name);
         let text = std::fs::read_to_string(&file).unwrap();
         every_offset(&project, &file, &text);
+
         // An incomplete file: each prefix of the text.
         let cut = text.char_indices().map(|(i, _)| i).nth(text.chars().count() / 2).unwrap();
         every_offset(&project, &file, &text[..cut]);
     }
+
     let odd = "<?phpm\n$s = \"é{$a[\"k\"]}\"; /* ♥ */ return <p a=\"😀\" {{ ...b }}>{{ x|y(\"é\") }}{% for é in ü %}</p>; <<<EOT\nx\n";
     every_offset(&project, &root().join("src/odd.phpm"), odd);
 }

@@ -109,8 +109,10 @@ pub fn esc(s: &str) -> String {
         if matches!(c, '\\' | '$' | '}') {
             out.push('\\');
         }
+
         out.push(c);
     }
+
     out
 }
 
@@ -143,7 +145,9 @@ pub fn member_doc(m: &Member, root: &Path) -> String {
     if !m.doc.is_empty() {
         lines.extend([String::new(), m.doc.clone()]);
     }
+
     lines.extend([String::new(), format!("Defined in `{}`", rel(root, &m.file))]);
+
     lines.join("\n")
 }
 
@@ -152,12 +156,15 @@ fn component_doc(comp: &FileComponent, root: &Path) -> String {
     if let Some(doc) = comp.doc {
         lines.extend([String::new(), doc.to_string()]);
     }
+
     if let Some(file) = &comp.file {
         lines.extend([String::new(), format!("Defined in `{}`", rel(root, file))]);
     }
+
     if !comp.slots.is_empty() {
         lines.extend([String::new(), format!("Slots: {}", comp.slots.iter().map(|s| format!("`{s}`")).collect::<Vec<_>>().join(", "))]);
     }
+
     lines.join("\n")
 }
 
@@ -205,6 +212,7 @@ pub fn complete(index: &Index, offset: usize, trigger: Option<char>) -> Vec<Item
     while !text.is_char_boundary(offset) {
         offset -= 1;
     }
+
     Completer { index, text, offset, trigger }.run()
 }
 
@@ -242,6 +250,7 @@ impl<'a, 'p> Completer<'a, 'p> {
         if !needs_import {
             return '0';
         }
+
         match file.and_then(|f| f.strip_prefix(self.root()).ok()) {
             Some(r) if !r.starts_with("vendor") => '1',
             _ => '2',
@@ -255,6 +264,7 @@ impl<'a, 'p> Completer<'a, 'p> {
         while !self.text.is_char_boundary(from) {
             from -= 1;
         }
+
         let before = &self.text[from..self.offset];
         match self.trigger {
             Some('>') => before.ends_with("->"),
@@ -271,6 +281,7 @@ impl<'a, 'p> Completer<'a, 'p> {
         if !self.trigger_fits(&context) {
             return vec![];
         }
+
         match &context {
             Context::TagName { partial, start } if partial.contains(':') => self.slots(partial, *start),
             Context::TagName { partial, start } => {
@@ -299,13 +310,16 @@ impl<'a, 'p> Completer<'a, 'p> {
         let components = self.components();
         let parsed = &self.index.current.parsed;
         let plain: Vec<_> = components.iter().map(|c| c.component.clone()).collect();
+
         let mut items = Vec::new();
         let mut seen: Vec<&str> = Vec::new();
         for comp in &components {
             if seen.contains(&comp.fqn.as_str()) || (comp.page && comp.file.as_deref() != Some(self.file())) {
                 continue;
             }
+
             seen.push(&comp.fqn);
+
             let mut name = comp.name.clone();
             let mut edits = vec![];
             if resolve_component(parsed, &plain, &comp.name).is_none_or(|r| r.fqn != comp.fqn) {
@@ -314,6 +328,7 @@ impl<'a, 'p> Completer<'a, 'p> {
                 name = imp.name;
                 edits = imp.edit.into_iter().collect();
             }
+
             let mut snippet = esc(&name);
             if !name_only {
                 for (n, prop) in comp.props.iter().filter(|p| p.required).enumerate() {
@@ -321,6 +336,7 @@ impl<'a, 'p> Completer<'a, 'p> {
                 }
                 snippet += &if comp.children || !comp.slots.is_empty() { format!(">$0</{}>", esc(&name)) } else { " />$0".to_string() };
             }
+
             let kind = if comp.kind == ComponentKind::Class { ItemKind::Class } else { ItemKind::Function };
             let sort = format!("{}{name}", self.rank(!edits.is_empty(), comp.file.as_deref()));
             let mut item = Item::new(name, kind, (start, end), sort)
@@ -330,6 +346,7 @@ impl<'a, 'p> Completer<'a, 'p> {
             item.edits = edits;
             items.push(item);
         }
+
         items
     }
 
@@ -338,8 +355,10 @@ impl<'a, 'p> Completer<'a, 'p> {
         if partial.starts_with(|c: char| c.is_ascii_uppercase() || c == '\\') {
             return vec![];
         }
+
         let end = self.after_word();
         let name_only = self.name_only(end);
+
         data::ELEMENTS
             .iter()
             .map(|(name, description, is_void)| {
@@ -350,6 +369,7 @@ impl<'a, 'p> Completer<'a, 'p> {
                 } else {
                     format!("{name}$1>$0</{name}>")
                 };
+
                 Item::new(*name, ItemKind::Element, (start, end), format!("5{name}")).detail(*description).snippet(snippet)
             })
             .collect()
@@ -362,6 +382,7 @@ impl<'a, 'p> Completer<'a, 'p> {
         let Some(comp) = resolve_component(&self.index.current.parsed, &components, parent) else { return vec![] };
         let end = self.after_word();
         let name_only = Regex::new(r"^\s*/?>").unwrap().is_match(&self.text[end..]);
+
         comp.slots
             .iter()
             .map(|slot| {
@@ -388,6 +409,7 @@ impl<'a, 'p> Completer<'a, 'p> {
                 items.push(Item::new(name, ItemKind::Property, range, sort).detail(detail).snippet(snippet).doc(doc.map(str::to_string)));
             }
         };
+
         let is_component = tag.trim_start_matches('\\').starts_with(|c: char| c.is_ascii_uppercase());
         if is_component && !tag.contains(':') {
             let components: Vec<_> = self.components().into_iter().map(|c| c.component).collect();
@@ -403,27 +425,35 @@ impl<'a, 'p> Completer<'a, 'p> {
                     add(&prop.name, prop_snippet(prop, 1), &detail, format!("{}{}", if prop.required { '0' } else { '1' }, prop.name), None);
                 }
             }
+
             add("key", "key={{ ${1} }}".into(), "The key of the item in a list", "2key".into(), None);
             return items;
         }
+
         if !tag.starts_with(|c: char| c.is_ascii_lowercase()) {
             return items;
         }
+
         for event in EVENTS {
             add(event, format!("{event}={{{{ ${{1}} }}}}"), "Phem event: the handler runs on the server", format!("1{event}"), None);
         }
+
         for (name, snippet, detail, doc) in PHEM_ATTRIBUTES {
             add(name, snippet.to_string(), detail, format!("1{name}"), Some(doc));
         }
+
         add("className", "className=\"${1}\"".into(), "Alias for class", "0className".into(), None);
         if tag == "label" {
             add("htmlFor", "htmlFor=\"${1}\"".into(), "Alias for for", "0htmlFor".into(), None);
         }
+
         add("key", "key={{ ${1} }}".into(), "The key of the item in a list", "2key".into(), None);
+
         let attr_snippet = |name: &str| if data::BOOLEAN.contains(&name) { name.to_string() } else { format!("{name}=\"${{1}}\"") };
         for name in data::attributes_for(tag) {
             add(name, attr_snippet(name), &format!("<{tag}> attribute"), format!("0{name}"), None);
         }
+
         for (name, description) in data::GLOBAL_ATTRIBUTES {
             match *name {
                 "data-" => add(name, "data-${1:name}=\"${2}\"".into(), description, format!("3{name}"), None),
@@ -431,9 +461,11 @@ impl<'a, 'p> Completer<'a, 'p> {
                 _ => add(name, attr_snippet(name), description, format!("2{name}"), None),
             }
         }
+
         for name in data::ARIA_ATTRIBUTES {
             add(name, format!("{name}=\"${{1}}\""), "ARIA attribute", format!("4{name}"), None);
         }
+
         items
     }
 
@@ -442,6 +474,7 @@ impl<'a, 'p> Completer<'a, 'p> {
         if !tag.starts_with(|c: char| c.is_ascii_lowercase()) || self.text[quote + 1..self.offset].contains(['{', '}']) {
             return vec![];
         }
+
         let (start, end) = self.word(|c| is_word_byte(c) || matches!(c, b'+' | b'/' | b'.' | b'-'));
         data::values_for(tag, attr)
             .iter()
@@ -464,32 +497,38 @@ impl<'a, 'p> Completer<'a, 'p> {
                 return self.namespace_items(kind, &m[2], &m[3], true, "");
             }
         }
+
         if let Some(m) = USE_GROUP.captures(stmt) {
             let kind = use_kind(m.get(3).or(m.get(1)).map(|k| k.as_str()));
             return self.namespace_items(kind, &format!("{}{}", &m[2], &m[4]), &m[5], false, &m[2]);
         }
 
         let line = &before[before.rfind('\n').map_or(0, |i| i + 1)..];
+
         // $a->b, $a?->b, Foo::b
         if let Some(m) = MEMBER_ACCESS.captures(line) {
             return self.members(&m[1], self.offset - m[0].len(), &m[2]);
         }
+
         // $name: a variable.
         if let Some(m) = VARIABLE.captures(line) {
             return self.variables(&m[1]);
         }
+
         // \Foo\Bar: a fully qualified name.
         if let Some(m) = QUALIFIED.captures(line) {
             let mut items = self.namespace_items(SymbolKind::Class, &m[1], &m[2], false, "");
             items.extend(self.namespace_items(SymbolKind::Function, &m[1], &m[2], false, "").into_iter().filter(|i| i.kind != ItemKind::Module));
             return items;
         }
+
         // Foo: a class or a function, with an import on accept.
         let Some(m) = NAME.captures(line) else { return vec![] };
         let head = &line[..line.len() - m[1].len()];
         if AFTER_ACCESS.is_match(head) || DECLARING_WORDS.is_match(head) || USE_START.is_match(stmt) {
             return vec![];
         }
+
         self.name_items(m[1].len())
     }
 
@@ -501,22 +540,27 @@ impl<'a, 'p> Completer<'a, 'p> {
         let scope = Scope::at(self.index, self.offset);
         let ty = if CLASS_NAME.is_match(&expr) { scope.class_type(&expr) } else { scope.type_of_range(start, op_start) };
         let Some(fqn) = ty.and_then(|t| t.fqn) else { return vec![] };
+
         let is_static = op == "::";
         let is_parent = expr.eq_ignore_ascii_case("parent");
         let is_self = ["self", "static", "parent", "$this"].iter().any(|w| expr.eq_ignore_ascii_case(w));
         let from = scope.self_.clone();
         let range = (self.offset - typed.len(), self.after_word());
+
         let mut items = Vec::new();
         for m in self.index.members(&fqn).iter() {
             if m.visibility == "private" && from.as_deref() != Some(m.owner.as_str()) {
                 continue;
             }
+
             if m.visibility == "protected" && !from.as_deref().is_some_and(|f| is_self || self.index.is_a(f, &m.owner)) {
                 continue;
             }
+
             if m.kind == MemberKind::Method && m.name.starts_with("__") && !(is_parent && m.name.eq_ignore_ascii_case("__construct")) {
                 continue;
             }
+
             let doc = Some(member_doc(m, self.root()));
             if is_static {
                 match m.kind {
@@ -537,9 +581,11 @@ impl<'a, 'p> Completer<'a, 'p> {
                 items.push(self.method_item(m, doc, range));
             }
         }
+
         if is_static && !typed.starts_with('$') {
             items.push(Item::new("class", ItemKind::Keyword, range, "2class").detail("The fully qualified class name").insert("class"));
         }
+
         items
     }
 
@@ -552,6 +598,7 @@ impl<'a, 'p> Completer<'a, 'p> {
         } else {
             format!("{}()$0", m.name)
         };
+
         let ret = if m.type_text.is_empty() { String::new() } else { format!(": {}", m.type_text) };
         Item::new(&m.name, ItemKind::Method, range, format!("1{}", m.name)).detail(format!("({}){ret}", m.params_signature())).doc(doc).snippet(snippet)
     }
@@ -561,15 +608,18 @@ impl<'a, 'p> Completer<'a, 'p> {
         let scope = Scope::at(self.index, self.offset);
         let start = self.offset - typed.len() - 1;
         let range = (start, self.after_word());
+
         let mut items = Vec::new();
         for v in scope.vars.iter().filter(|v| v.offset != start) {
             let label = format!("${}", v.name);
             items.push(Item::new(&label, ItemKind::Variable, range, format!("0{}", v.name)).detail(&v.type_text).insert(&label).filter(&label));
         }
+
         if scope.this_type.is_some() {
             let name = scope.class.map_or(String::new(), |c| scope.source.parsed.classes[c].name.clone());
             items.push(Item::new("$this", ItemKind::Variable, range, "1this").detail(name).insert("$this").filter("$this"));
         }
+
         items
     }
 
@@ -580,15 +630,18 @@ impl<'a, 'p> Completer<'a, 'p> {
             if ctx.in_string() {
                 return blur;
             }
+
             if !blur.is_empty() {
                 let mut items = blur;
                 items.extend(self.twig_items(ctx));
                 return items;
             }
         }
+
         if ctx.in_string() {
             return self.route_items(ctx);
         }
+
         self.twig_items(ctx)
     }
 
@@ -600,6 +653,7 @@ impl<'a, 'p> Completer<'a, 'p> {
         let start = self.offset - quote.len() - m[2].len();
         let end = self.after_word();
         let close = usize::from(!quote.is_empty() && self.text[end..].starts_with(quote));
+
         vec![Item::new("'blur'", ItemKind::Value, (start, end + close), "0blur")
             .detail("phem:debounce value")
             .doc(Some("Send the event when the element loses the focus.".into()))
@@ -616,14 +670,18 @@ impl<'a, 'p> Completer<'a, 'p> {
                 return self.twig_tags(&m[1], &env);
             }
         }
+
         let range = self.word(is_word_byte);
         let item = |label: &str, kind, detail: &str, doc: Option<String>, sort: String| Item::new(label, kind, range, sort).detail(detail).doc(doc);
+
         if TWIG_FILTER.is_match(expr) {
             return data::FILTERS.iter().map(|(name, sig, doc)| item(name, ItemKind::Function, sig, Some(doc.to_string()), format!("0{name}")).insert(*name)).collect();
         }
+
         if TWIG_TEST.is_match(expr) {
             return data::TESTS.iter().map(|(name, snippet, doc)| item(name, ItemKind::Function, "test", Some(doc.to_string()), format!("0{name}")).snippet(*snippet)).collect();
         }
+
         let env = TwigEnv::new(self.index, ctx.literal, tag_start);
         if let Some(m) = TWIG_DOT.captures(expr).filter(|_| !TWIG_RANGE.is_match(expr)) {
             let Some(ty) = env.type_of(&m[1]) else { return vec![] };
@@ -638,6 +696,7 @@ impl<'a, 'p> Completer<'a, 'p> {
                         (_, Some(m)) => m.type_text.clone(),
                         _ => String::new(),
                     };
+
                     if a.kind == AttrKind::Method {
                         let snippet = if a.required > 0 { format!("{}($1)$0", a.name) } else { a.name.clone() };
                         item(&a.name, ItemKind::Method, &detail, doc, format!("1{}", a.name)).snippet(snippet)
@@ -647,15 +706,18 @@ impl<'a, 'p> Completer<'a, 'p> {
                 })
                 .collect();
         }
+
         // A new variable name: {% for x in, {% set x
         if ctx.open == "{%" && TWIG_NEW_VAR.is_match(expr) {
             return vec![];
         }
+
         let trimmed = expr.trim_start();
         let trimmed = trimmed.strip_prefix(['-', '~']).unwrap_or(trimmed);
         if TWIG_AFTER_VALUE.is_match(&format!(" {trimmed}")) {
             return vec![];
         }
+
         let mut items = Vec::new();
         for v in env.variables() {
             let kind = match v.kind {
@@ -663,6 +725,7 @@ impl<'a, 'p> Completer<'a, 'p> {
                 VarSource::Property => ItemKind::Field,
                 _ => ItemKind::Variable,
             };
+
             let detail = match &v.kind {
                 VarSource::Method => format!("handler{}", if v.type_text.is_empty() { String::new() } else { format!(": {}", v.type_text) }),
                 VarSource::Twig(d) => d.to_string(),
@@ -671,20 +734,25 @@ impl<'a, 'p> Completer<'a, 'p> {
                 VarSource::Property if v.type_text.is_empty() => "property".into(),
                 _ => v.type_text.clone(),
             };
+
             let rank = match v.kind {
                 VarSource::Twig(_) => '0',
                 VarSource::Method => '2',
                 _ => '1',
             };
+
             let doc = v.member.as_ref().map(|m| member_doc(m, self.root()));
             items.push(item(&v.name, kind, &detail, doc, format!("{rank}{}", v.name)).insert(&v.name));
         }
+
         for (name, sig, doc) in data::FUNCTIONS {
             items.push(item(name, ItemKind::Function, sig, Some(doc.to_string()), format!("3{name}")).snippet(format!("{name}($1)$0")));
         }
+
         for word in data::KEYWORDS {
             items.push(item(word, ItemKind::Keyword, "Twig", None, format!("4{word}")).insert(*word));
         }
+
         items
     }
 
@@ -697,32 +765,39 @@ impl<'a, 'p> Completer<'a, 'p> {
         let close = TWIG_CLOSE.captures(&self.text[word_end..]);
         let end = close.as_ref().map_or(word_end, |c| word_end + c[0].len());
         let tail = format!(" {}%}}", close.as_ref().and_then(|c| c.get(1)).map_or("", |m| m.as_str()));
+
         let mut items: Vec<Item> = Vec::new();
         let mut add = |label: &str, detail: String, doc: Option<&str>, snippet: String, sort: String| {
             if !items.iter().any(|i| i.label == label) {
                 items.push(Item::new(label, ItemKind::Keyword, (start, end), sort).detail(detail).doc(doc.map(str::to_string)).snippet(snippet).filter(label));
             }
         };
+
         for (i, tag) in env.open_tags().iter().enumerate() {
             let end_tag = format!("end{tag}");
             add(&end_tag, format!("Close the {{% {tag} %}} block"), None, format!("{end_tag}{tail}"), format!("0{i}"));
             if tag == "if" || tag == "for" {
                 add("else", data::tag("else").unwrap().2.to_string(), None, format!("else{tail}"), "1else".into());
             }
+
             if tag == "if" {
                 add("elseif", data::tag("elseif").unwrap().2.to_string(), None, format!("elseif ${{1}}{tail}"), "1elseif".into());
             }
         }
+
         for (name, snippet, doc, end_tag) in data::TAGS {
             if *name == "else" || *name == "elseif" {
                 continue;
             }
+
             let detail = match end_tag {
                 Some(e) => format!("{{% {name} %}} ... {{% {e} %}}"),
                 None => format!("{{% {name} %}}"),
             };
+
             add(name, detail, Some(doc), format!("{snippet} %}}"), format!("2{name}"));
         }
+
         items
     }
 
@@ -732,6 +807,7 @@ impl<'a, 'p> Completer<'a, 'p> {
         if !ROUTE_CALL.is_match(&self.text[ctx.start..quote]) {
             return vec![];
         }
+
         let (start, end) = self.word(|c| is_word_byte(c) || c == b'.' || c == b'-');
         self.index
             .project
@@ -751,6 +827,7 @@ impl<'a, 'p> Completer<'a, 'p> {
         let prefix = ns_typed.to_lowercase();
         let line_end = self.text[end..].find('\n').map_or(self.text.len(), |i| end + i);
         let semicolon = if in_use && self.text[end..line_end].trim().is_empty() { ";" } else { "" };
+
         let mut namespaces: Vec<(String, String)> = Vec::new();
         let mut items = Vec::new();
         let item_kind = match kind {
@@ -758,29 +835,36 @@ impl<'a, 'p> Completer<'a, 'p> {
             SymbolKind::Function => ItemKind::Function,
             SymbolKind::Const => ItemKind::Constant,
         };
+
         for sym in self.symbols(kind) {
             if !sym.fqn.to_lowercase().starts_with(&prefix) || sym.fqn.len() < ns_typed.len() {
                 continue;
             }
+
             let rest = &sym.fqn[ns_typed.len()..];
             if let Some(sep) = rest.find('\\') {
                 let ns = &rest[..sep];
                 if !namespaces.iter().any(|(n, _)| n == ns) {
                     namespaces.push((ns.to_string(), sym.fqn[..ns_typed.len() + sep].to_string()));
                 }
+
                 continue;
             }
+
             if rest.is_empty() {
                 continue;
             }
+
             let detail = sym.fqn.strip_prefix(group_prefix).unwrap_or(&sym.fqn);
             items.push(Item::new(rest, item_kind, (start, end), format!("1{rest}")).detail(detail).insert(format!("{rest}{semicolon}")));
         }
+
         for (ns, fqn) in namespaces {
             let mut item = Item::new(&ns, ItemKind::Module, (start, end), format!("0{ns}")).detail(fqn).insert(format!("{ns}\\"));
             item.retrigger = true;
             items.push(item);
         }
+
         items
     }
 
@@ -799,15 +883,18 @@ impl<'a, 'p> Completer<'a, 'p> {
             item.edits = imp.edit.into_iter().collect();
             items.push(item);
         };
+
         for sym in self.symbols(SymbolKind::Class) {
             add(SymbolKind::Class, &sym);
         }
+
         let components: Vec<String> = self.components().into_iter().map(|c| c.component.fqn).collect();
         for sym in self.symbols(SymbolKind::Function) {
             if !components.contains(&sym.fqn) && sym.fqn.contains('\\') {
                 add(SymbolKind::Function, &sym);
             }
         }
+
         items
     }
 }

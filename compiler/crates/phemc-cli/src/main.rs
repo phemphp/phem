@@ -75,6 +75,7 @@ fn main() -> ExitCode {
         Cmd::Watch { build, exec } => watch(&build, exec.as_deref()).map(|_| true),
         Cmd::Lsp => phemc_lsp::run().map(|_| true).map_err(Into::into),
     };
+
     match result {
         Ok(true) => ExitCode::SUCCESS,
         Ok(false) => ExitCode::FAILURE,
@@ -89,6 +90,7 @@ fn read_sources(src: &Path) -> Result<Vec<SourceInput>> {
     if !src.is_dir() {
         bail!("source directory `{}` does not exist", src.display());
     }
+
     let mut inputs = Vec::new();
     for entry in walkdir::WalkDir::new(src).sort_by_file_name() {
         let entry = entry?;
@@ -98,6 +100,7 @@ fn read_sources(src: &Path) -> Result<Vec<SourceInput>> {
             inputs.push(SourceInput { rel, text });
         }
     }
+
     Ok(inputs)
 }
 
@@ -116,6 +119,7 @@ fn report(src: &Path, files: &[FileDiagnostics]) -> (usize, usize) {
                     miette::Severity::Warning
                 }
             };
+
             let mut md = miette::MietteDiagnostic::new(d.message.clone())
                 .with_code(d.code)
                 .with_severity(severity)
@@ -123,11 +127,13 @@ fn report(src: &Path, files: &[FileDiagnostics]) -> (usize, usize) {
             if let Some(h) = &d.help {
                 md = md.with_help(h.clone());
             }
+
             let name = src.join(&f.rel).display().to_string();
             let report = miette::Report::new(md).with_source_code(miette::NamedSource::new(name, f.text.clone()));
             eprintln!("{report:?}");
         }
     }
+
     (errors, warnings)
 }
 
@@ -181,6 +187,7 @@ fn diagnostics_json(files: &[FileDiagnostics]) -> serde_json::Value {
             serde_json::json!({ "file": f.rel, "diagnostics": diags })
         })
         .collect();
+
     serde_json::json!({ "files": files })
 }
 
@@ -189,6 +196,7 @@ fn end_of(text: &str, start: usize, end: usize) -> usize {
     if end > start {
         return end;
     }
+
     text.get(start..).and_then(|rest| rest.chars().next()).map_or(start, |c| start + c.len_utf8())
 }
 
@@ -199,9 +207,11 @@ fn position(text: &str, offset: usize) -> serde_json::Value {
     while !text.is_char_boundary(offset) {
         offset -= 1;
     }
+
     let before = &text[..offset];
     let line_start = before.rfind('\n').map_or(0, |i| i + 1);
     let line = &before[line_start..];
+
     serde_json::json!({
         "line": before.matches('\n').count(),
         "character": line.strip_prefix('\u{feff}').unwrap_or(line).encode_utf16().count(),
@@ -215,6 +225,7 @@ fn build(args: &BuildArgs) -> Result<bool> {
         eprintln!("phemc: build failed: {errors} error(s), {warnings} warning(s)");
         return Ok(false);
     };
+
     let written = write_output(args, &project)?;
     eprintln!(
         "phemc: compiled {count} file(s), {} template(s), {} page(s); {written} file(s) changed, {warnings} warning(s) in {} ms",
@@ -222,9 +233,11 @@ fn build(args: &BuildArgs) -> Result<bool> {
         project.manifest.pages.len(),
         started.elapsed().as_millis()
     );
+
     if !args.no_warmup {
         warmup(args)?;
     }
+
     Ok(true)
 }
 
@@ -233,9 +246,11 @@ fn write_if_changed(path: &Path, content: &str) -> Result<bool> {
     if std::fs::read(path).is_ok_and(|old| old == content.as_bytes()) {
         return Ok(false);
     }
+
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
+
     std::fs::write(path, content).with_context(|| format!("cannot write {}", path.display()))?;
     Ok(true)
 }
@@ -259,12 +274,14 @@ fn write_output(args: &BuildArgs, project: &ProjectOutput) -> Result<usize> {
         let p = out.join(&f.php_path);
         written += write_if_changed(&p, &f.php)? as usize;
         keep.insert(p);
+
         for t in &f.templates {
             let p = out.join("templates").join(&t.name);
             written += write_if_changed(&p, &t.content)? as usize;
             keep.insert(p);
         }
     }
+
     // Remove stale outputs of deleted sources.
     for dir in ["php", "templates"] {
         for e in walkdir::WalkDir::new(out.join(dir)).into_iter().filter_map(|e| e.ok()) {
@@ -283,6 +300,7 @@ fn write_output(args: &BuildArgs, project: &ProjectOutput) -> Result<usize> {
     for f in &manifest.files {
         autoload.push_str(&format!("require_once __DIR__.'/{f}';\n"));
     }
+
     written += write_if_changed(&out.join("autoload.php"), &autoload)? as usize;
 
     let abs_out = std::path::absolute(out)?;
@@ -302,6 +320,7 @@ fn warmup(args: &BuildArgs) -> Result<()> {
         eprintln!("phemc: skipped the Twig warmup (no bin/console or vendor/; run `composer install`)");
         return Ok(());
     }
+
     let status = Command::new(&args.php)
         .arg(bin)
         .arg("phem:warmup")
@@ -310,6 +329,7 @@ fn warmup(args: &BuildArgs) -> Result<()> {
     if !status.success() {
         bail!("the Twig warmup failed");
     }
+
     Ok(())
 }
 
@@ -327,6 +347,7 @@ fn watch(args: &BuildArgs, exec: Option<&str>) -> Result<()> {
             child = Some(spawn(cmd)?);
         }
     }
+
     let (tx, rx) = mpsc::channel();
     let mut watcher = notify::recommended_watcher(tx)?;
     watcher.watch(&args.src, RecursiveMode::Recursive)?;
@@ -337,9 +358,11 @@ fn watch(args: &BuildArgs, exec: Option<&str>) -> Result<()> {
         let relevant = |e: &notify::Result<notify::Event>| {
             e.as_ref().is_ok_and(|e| !e.kind.is_access() && e.paths.iter().any(|p| p.extension().is_some_and(|x| x == "phpm")))
         };
+
         if !relevant(&event) {
             continue;
         }
+
         // Debounce: editors write files in several steps.
         while rx.recv_timeout(Duration::from_millis(150)).is_ok() {}
         eprintln!("phemc: change detected, rebuilding");
@@ -350,6 +373,7 @@ fn watch(args: &BuildArgs, exec: Option<&str>) -> Result<()> {
                         let _ = c.kill();
                         let _ = c.wait();
                     }
+
                     child = Some(spawn(cmd)?);
                 }
             }
@@ -370,6 +394,7 @@ mod tests {
         // `♥` is 3 bytes and 1 UTF-16 unit; `😀` is 4 bytes and 2 UTF-16 units.
         let text = "a\n♥ 😀x";
         let offset = text.find('x').unwrap();
+
         assert_eq!(position(text, offset), json!({"line": 1, "character": 4}));
         assert_eq!(position(text, 0), json!({"line": 0, "character": 0}));
         assert_eq!(position(text, text.len() + 10), json!({"line": 1, "character": 5}));
@@ -397,6 +422,7 @@ mod tests {
             },
             FileDiagnostics { rel: "Pages/ok.phpm".into(), text: String::new(), diags: vec![] },
         ];
+
         assert_eq!(
             diagnostics_json(&files),
             json!({"files": [{"file": "Pages/index.phpm", "diagnostics": [{

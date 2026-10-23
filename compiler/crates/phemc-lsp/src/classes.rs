@@ -49,6 +49,7 @@ impl ClassCache {
                 return Some(s.clone());
             }
         }
+
         let text = std::fs::read_to_string(file).ok()?;
         let source = Source::new(file.to_path_buf(), text);
         self.files.borrow_mut().insert(file.to_path_buf(), (mtime, source.clone()));
@@ -145,6 +146,7 @@ impl<'a> Index<'a> {
         if file == self.current.file {
             return Some(self.current.clone());
         }
+
         self.project.classes.source(file)
     }
 
@@ -153,16 +155,20 @@ impl<'a> Index<'a> {
         if fqn.is_empty() {
             return None;
         }
+
         let pick = |source: &Rc<Source>| {
             let index = match kind {
                 SymbolKind::Class => source.parsed.classes.iter().position(|d| d.fqn.eq_ignore_ascii_case(fqn)),
                 _ => source.parsed.functions.iter().position(|d| d.fqn.eq_ignore_ascii_case(fqn)),
             };
+
             index.map(|index| Found { source: source.clone(), index })
         };
+
         if let Some(found) = pick(&self.current) {
             return Some(found);
         }
+
         let file = self.project.file_of(kind, fqn)?;
         pick(&self.source(&file)?)
     }
@@ -173,6 +179,7 @@ impl<'a> Index<'a> {
         if cls.kind == "interface" {
             return None;
         }
+
         cls.extends.first().and_then(|e| resolve_name(&found.source.parsed, e))
     }
 
@@ -188,6 +195,7 @@ impl<'a> Index<'a> {
         if let Some(m) = self.members.borrow().get(&key) {
             return m.clone();
         }
+
         let list = Rc::new(self.collect(fqn, called, &mut Vec::new()));
         self.members.borrow_mut().insert(key, list.clone());
         list
@@ -197,12 +205,14 @@ impl<'a> Index<'a> {
         if fqn.is_empty() || seen.contains(&fqn.to_lowercase()) {
             return vec![];
         }
+
         seen.push(fqn.to_lowercase());
         let Some(found) = self.find(SymbolKind::Class, fqn) else { return vec![] };
         let cls = found.class();
         let source = &found.source;
         let parent = Self::parent_of(&found);
         let ctx = TypeCtx { parsed: &source.parsed, self_: Some(&cls.fqn), static_: Some(called), parent: parent.as_deref() };
+
         let mut list: Vec<Member> = Vec::new();
         let add = |list: &mut Vec<Member>, m: Member| {
             let same = |o: &Member| o.kind == m.kind && if m.kind == MemberKind::Property { o.name == m.name } else { o.name.eq_ignore_ascii_case(&m.name) };
@@ -210,6 +220,7 @@ impl<'a> Index<'a> {
                 list.push(m);
             }
         };
+
         let base = |kind, name: &str| Member {
             kind,
             name: name.to_string(),
@@ -239,6 +250,7 @@ impl<'a> Index<'a> {
                 p.name,
                 p.default.as_ref().map_or(String::new(), |d| format!(" = {d}"))
             );
+
             add(&mut list, Member {
                 ty: to_type(&type_text, &ctx).or_else(|| to_type(&p.ty, &ctx)),
                 type_text,
@@ -250,6 +262,7 @@ impl<'a> Index<'a> {
                 ..base(MemberKind::Property, &p.name)
             });
         }
+
         for m in &cls.methods {
             let tags = doc_tags(&m.doc);
             let type_text = if tags.ret.is_empty() { m.return_type.clone() } else { tags.ret.clone() };
@@ -265,6 +278,7 @@ impl<'a> Index<'a> {
                 ..base(MemberKind::Method, &m.name)
             });
         }
+
         for c in &cls.constants {
             add(&mut list, Member {
                 ty: c.is_case.then(|| Type::class(cls.fqn.clone())),
@@ -278,6 +292,7 @@ impl<'a> Index<'a> {
                 ..base(MemberKind::Constant, &c.name)
             });
         }
+
         if cls.kind == "enum" {
             for (name, ty) in [("name", "string"), ("value", "int|string")] {
                 add(&mut list, Member { type_text: ty.into(), signature: format!("public readonly {ty} ${name}"), ..base(MemberKind::Property, name) });
@@ -297,6 +312,7 @@ impl<'a> Index<'a> {
                     ..base(MemberKind::Property, &p.name)
                 });
             }
+
             for m in &tags.methods {
                 add(&mut list, Member {
                     ty: to_type(&m.ty, &ctx),
@@ -319,6 +335,7 @@ impl<'a> Index<'a> {
                 }
             }
         }
+
         if let Some(parent) = &parent {
             for m in self.collect(parent, called, seen) {
                 if m.visibility != "private" {
@@ -326,6 +343,7 @@ impl<'a> Index<'a> {
                 }
             }
         }
+
         let interfaces = if cls.kind == "interface" { &cls.extends } else { &cls.implements };
         for i in interfaces {
             if let Some(i) = resolve_name(&source.parsed, i) {
@@ -334,6 +352,7 @@ impl<'a> Index<'a> {
                 }
             }
         }
+
         list
     }
 
@@ -353,12 +372,15 @@ impl<'a> Index<'a> {
             if c.eq_ignore_ascii_case(ancestor) {
                 return true;
             }
+
             if seen.contains(&c.to_lowercase()) {
                 return false;
             }
+
             seen.push(c.to_lowercase());
             current = self.find(SymbolKind::Class, &c).and_then(|f| Self::parent_of(&f));
         }
+
         false
     }
 }

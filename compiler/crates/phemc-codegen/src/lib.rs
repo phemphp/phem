@@ -91,6 +91,7 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
             Err(d) => Parsed { info: FileInfo { rel: input.rel.clone(), ..Default::default() }, input, lexed: None, diags: vec![d] },
         })
         .collect();
+
     phemc_analyze::resolve_inheritance(parsed.iter_mut().map(|p| &mut p.info));
     parsed.par_iter_mut().for_each(|p| {
         if let Some(lexed) = &p.lexed {
@@ -100,6 +101,7 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
 
     let (registry, mut dup) = phemc_analyze::registry(parsed.iter().map(|p| &p.info));
     let bases = base_files(&parsed);
+
     // E015: the uses of the components across the files, for the providers of the contexts.
     let uses: Vec<contexts::Use> = parsed.iter().filter_map(|p| p.lexed.as_ref().map(|l| contexts::uses(&p.info, l))).flatten().collect();
     let infos: Vec<&FileInfo> = parsed.iter().map(|p| &p.info).collect();
@@ -111,11 +113,13 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
         .map(|p| {
             let mut diags = p.diags;
             diags.extend(dup.iter().filter(|(r, _)| *r == p.input.rel).map(|(_, d)| d.clone()));
+
             let out = p.lexed.as_ref().map(|lexed| {
                 let (out, d) = emit_file(&p.input, lexed, &p.info, &registry);
                 diags.extend(d);
                 out
             });
+
             diags.sort_by_key(|d| d.span.start);
             let pages = p.info.routes.iter().map(|r| r.fqn.clone()).collect();
             (out, FileDiagnostics { rel: p.input.rel.clone(), text: p.input.text, diags }, pages)
@@ -133,9 +137,11 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
         }
         all_diags.push(d);
     }
+
     if has_errors {
         return (None, all_diags);
     }
+
     files.sort_by(|a, b| a.rel.cmp(&b.rel));
     let files = load_order(files, &bases);
     pages.sort();
@@ -146,6 +152,7 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
             templates.insert(t.name.clone(), TemplateOutput { name: String::new(), content: String::new(), source: t.source.clone(), line: t.line });
         }
     }
+
     let manifest = Manifest {
         version: VERSION.into(),
         // The runtime knows the built-in components.
@@ -154,6 +161,7 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
         templates,
         files: files.iter().map(|f| f.php_path.clone()).collect(),
     };
+
     (Some(ProjectOutput { files, manifest }), all_diags)
 }
 
@@ -165,13 +173,16 @@ pub(crate) fn has_variable(text: &str, name: &str) -> bool {
     let needle = format!("${name}");
     let b = text.as_bytes();
     let mut from = 0;
+
     while let Some(rel) = text[from..].find(&needle) {
         let end = from + rel + needle.len();
         if b.get(end).is_none_or(|c| !(c.is_ascii_alphanumeric() || *c == b'_' || *c >= 0x80)) {
             return true;
         }
+
         from = end;
     }
+
     false
 }
 
@@ -193,11 +204,13 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
             }
             _ => vec![],
         };
+
         let (scope_text, class, params) = match scope {
             MarkupScope::Function(fi) => (info.functions[fi].span.text(src), None, info.functions[fi].params.as_slice()),
             MarkupScope::Method(ci, mi) => (info.classes[ci].methods[mi].span.text(src), Some(&info.classes[ci]), &[][..]),
             MarkupScope::TopLevel => (src, None, &[][..]),
         };
+
         lowerer.class = class;
         lowerer.params = params;
         lowerer.scope_text = scope_text;
@@ -219,6 +232,7 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
                                 .with_help(phemc_analyze::PURE_RENDER_HELP),
                         );
                     }
+
                     format!("$this->{}", v.name)
                 } else if c.has_method(&v.name) {
                     format!("$this->{}(...)", v.name)
@@ -231,14 +245,17 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
                     if v.strict {
                         diags.push(undefined(&v.name, v.offset, " or a property or method of the class"));
                     }
+
                     continue;
                 }
             } else {
                 if v.strict && !TWIG_GLOBALS.contains(&v.name.as_str()) {
                     diags.push(undefined(&v.name, v.offset, ""));
                 }
+
                 continue;
             };
+
             vars.push(format!("{} => {php}", php_str(&v.name)));
         }
 
@@ -251,6 +268,7 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
         replacements.push((m.span, call));
         templates.push(TemplateOutput { name, content, source: input.rel.clone(), line: line_col(src, m.span.start).0 });
     }
+
     diags.append(&mut lowerer.diags);
 
     // Each `<?phpm` tag becomes `<?php`. The first one gets a header comment on its line (keeps line numbers).
@@ -258,7 +276,9 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
         let tag = if i == 0 { format!("<?php /* compiled by phemc from {}; do not edit */", input.rel) } else { "<?php".into() };
         replacements.push((open.span, tag));
     }
+
     replacements.sort_by_key(|(s, _)| s.start);
+
     let mut php = String::with_capacity(src.len());
     let mut last = 0;
     for (span, text) in replacements {
@@ -266,6 +286,7 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
         php.push_str(&text);
         last = span.end;
     }
+
     php.push_str(&src[last..]);
 
     let stem = input.rel.strip_suffix(".phpm").unwrap_or(&input.rel);
@@ -286,6 +307,7 @@ fn undefined(name: &str, offset: usize, extra: &str) -> Diagnostic {
 /// For each file, the other files that declare the parent classes and the traits of its classes.
 fn base_files(parsed: &[Parsed]) -> HashMap<String, Vec<String>> {
     let declared: HashMap<&str, &str> = parsed.iter().flat_map(|p| p.info.classes.iter().map(move |c| (c.fqn.as_str(), p.input.rel.as_str()))).collect();
+
     parsed
         .iter()
         .map(|p| {
@@ -298,6 +320,7 @@ fn base_files(parsed: &[Parsed]) -> HashMap<String, Vec<String>> {
                 .filter(|rel| *rel != p.input.rel)
                 .map(String::from)
                 .collect();
+
             bases.sort();
             bases.dedup();
             (p.input.rel.clone(), bases)
@@ -313,19 +336,24 @@ fn load_order(files: Vec<FileOutput>, bases: &HashMap<String, Vec<String>>) -> V
         if std::mem::replace(&mut seen[i], true) {
             return;
         }
+
         for rel in bases.get(&files[i].rel).into_iter().flatten() {
             if let Some(&j) = index.get(rel.as_str()) {
                 visit(j, files, index, bases, seen, order);
             }
         }
+
         order.push(i);
     }
+
     let index: HashMap<&str, usize> = files.iter().enumerate().map(|(i, f)| (f.rel.as_str(), i)).collect();
+
     let mut seen = vec![false; files.len()];
     let mut order = Vec::with_capacity(files.len());
     for i in 0..files.len() {
         visit(i, &files, &index, bases, &mut seen, &mut order);
     }
+
     let mut slots: Vec<Option<FileOutput>> = files.into_iter().map(Some).collect();
     order.into_iter().filter_map(|i| slots[i].take()).collect()
 }
@@ -340,6 +368,7 @@ pub fn php_value(v: &serde_json::Value, indent: usize) -> String {
     use serde_json::Value;
     let pad = "    ".repeat(indent + 1);
     let end = "    ".repeat(indent);
+
     match v {
         Value::Null => "null".into(),
         Value::Bool(b) => b.to_string(),

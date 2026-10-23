@@ -25,10 +25,12 @@ pub fn run() -> std::io::Result<()> {
     let stdin = std::io::stdin();
     let mut reader = BufReader::new(stdin.lock());
     let mut server = Server::new(std::io::stdout());
+
     while let Some(message) = read_message(&mut reader)? {
         if !server.handle(message) {
             break;
         }
+
         if reader.buffer().is_empty() {
             server.check_dirty();
         }
@@ -43,17 +45,21 @@ fn read_message(reader: &mut impl BufRead) -> std::io::Result<Option<Value>> {
         if reader.read_line(&mut line)? == 0 {
             return Ok(None);
         }
+
         let line = line.trim_end();
         if line.is_empty() {
             break;
         }
+
         if let Some((name, value)) = line.split_once(':') {
             if name.eq_ignore_ascii_case("content-length") {
                 length = value.trim().parse::<usize>().ok();
             }
         }
     }
+
     let Some(length) = length else { return Ok(Some(Value::Null)) };
+
     let mut body = vec![0; length];
     reader.read_exact(&mut body)?;
     Ok(Some(serde_json::from_slice(&body).unwrap_or(Value::Null)))
@@ -117,6 +123,7 @@ impl<W: Write> Server<W> {
             // A response to a request of the server, or an invalid message.
             return true;
         };
+
         let params = message.get("params").cloned().unwrap_or(Value::Null);
         match message.get("id").cloned() {
             Some(id) => {
@@ -125,10 +132,12 @@ impl<W: Write> Server<W> {
                 } else {
                     self.request(&method, params)
                 };
+
                 let response = match result {
                     Ok(result) => json!({ "jsonrpc": "2.0", "id": id, "result": result }),
                     Err((code, message)) => json!({ "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": message } }),
                 };
+
                 self.send(response);
                 true
             }
@@ -140,6 +149,7 @@ impl<W: Write> Server<W> {
         fn parse<T: serde::de::DeserializeOwned>(params: Value) -> Result<T, (i64, String)> {
             serde_json::from_value(params).map_err(|e| (-32602, e.to_string()))
         }
+
         let result = match method {
             "initialize" => self.initialize(parse(params)?),
             "shutdown" => {
@@ -153,6 +163,7 @@ impl<W: Write> Server<W> {
             TWIG_DELIMITERS => self.twig_delimiters(parse(params)?),
             _ => return Err((-32601, format!("unknown method `{method}`"))),
         };
+
         Ok(result)
     }
 
@@ -191,6 +202,7 @@ impl<W: Write> Server<W> {
             }
             _ => {}
         }
+
         true
     }
 
@@ -198,6 +210,7 @@ impl<W: Write> Server<W> {
         if let Some(dir) = params.initialization_options.as_ref().and_then(|o| o.get("sourceDir")).and_then(Value::as_str) {
             self.source_dir = dir.to_string();
         }
+
         #[allow(deprecated)]
         let folder = params.workspace_folders.as_ref().and_then(|f| f.first()).map(|f| f.uri.clone()).or(params.root_uri.clone());
         self.workspace = folder.as_ref().and_then(file_of);
@@ -216,6 +229,7 @@ impl<W: Write> Server<W> {
             document_symbol_provider: Some(lsp::OneOf::Left(true)),
             ..Default::default()
         };
+
         json!({
             "capabilities": capabilities,
             "serverInfo": { "name": "phemc", "version": env!("CARGO_PKG_VERSION") },
@@ -227,6 +241,7 @@ impl<W: Write> Server<W> {
         if !self.watch_registration {
             return;
         }
+
         let watchers: Vec<_> = ["**/*.phpm", "**/*.php", "**/composer.json", "**/vendor/composer/installed.json"]
             .iter()
             .map(|g| lsp::FileSystemWatcher { glob_pattern: lsp::GlobPattern::String(g.to_string()), kind: None })
@@ -236,6 +251,7 @@ impl<W: Write> Server<W> {
             method: "workspace/didChangeWatchedFiles".into(),
             register_options: Some(json!({ "watchers": watchers })),
         };
+
         self.next_id += 1;
         let id = format!("phem-{}", self.next_id);
         self.send(json!({
@@ -251,6 +267,7 @@ impl<W: Write> Server<W> {
         if let Some(root) = self.roots.get(&dir) {
             return root.clone();
         }
+
         let root = find_root(file, self.workspace.as_deref());
         self.roots.insert(dir, root.clone());
         root
@@ -261,20 +278,24 @@ impl<W: Write> Server<W> {
         let root = self.root_of(file);
         if !self.projects.contains_key(&root) {
             let mut project = Project::load(&root);
+
             // The open documents replace the files on disk.
             for (path, doc) in &self.docs {
                 if path.starts_with(&root) && path.extension().is_some_and(|e| e == "phpm") {
                     project.update_phpm(path, Some(&doc.text));
                 }
             }
+
             self.projects.insert(root.clone(), project);
         }
+
         let project = self.projects.get_mut(&root).unwrap();
         (root, project)
     }
 
     fn set_text(&mut self, uri: lsp::Url, text: String) {
         let Some(file) = file_of(&uri) else { return };
+
         self.docs.insert(file.clone(), Document { uri, text });
         self.phpm_changed(&file);
     }
@@ -284,11 +305,13 @@ impl<W: Write> Server<W> {
         if file.extension().is_none_or(|e| e != "phpm") {
             return;
         }
+
         let root = self.root_of(file);
         let text = self.docs.get(file).map(|d| d.text.clone());
         if let Some(project) = self.projects.get_mut(&root) {
             project.update_phpm(file, text.as_deref());
         }
+
         self.dirty.insert(root);
     }
 
@@ -300,18 +323,22 @@ impl<W: Write> Server<W> {
             self.roots.clear();
             return;
         }
+
         if name.ends_with(".phpm") {
             if typ == lsp::FileChangeType::DELETED {
                 let root = self.root_of(file);
                 if let Some(project) = self.projects.get_mut(&root) {
                     project.delete_phpm(file);
                 }
+
                 self.dirty.insert(root);
             } else if !self.docs.contains_key(file) {
                 self.phpm_changed(file);
             }
+
             return;
         }
+
         // A new or a deleted class file: index the project again. The class index reads a changed
         // class file again (it checks the modification time). The files in `vendor/`, `var/`
         // (caches), and `node_modules/` do not count.
@@ -321,6 +348,7 @@ impl<W: Write> Server<W> {
             if !matches!(inside.as_deref(), Some("vendor" | "var" | "node_modules")) {
                 self.projects.remove(&root);
             }
+
             // A project that indexes the file through a link in `vendor/` (a Composer path
             // repository) also indexes it again. A deleted file has no real path: its directory
             // has one.
@@ -333,17 +361,20 @@ impl<W: Write> Server<W> {
     /// Checks the dirty projects and publishes their diagnostics.
     fn check_dirty(&mut self) {
         let open: HashMap<PathBuf, String> = self.docs.iter().map(|(p, d)| (p.clone(), d.text.clone())).collect();
+
         for root in std::mem::take(&mut self.dirty) {
             let src = root.join(&self.source_dir);
             if !src.is_dir() {
                 continue;
             }
+
             let files = check::check(&src, &open);
             let mut now = BTreeSet::new();
             for f in &files {
                 if f.diags.is_empty() {
                     continue;
                 }
+
                 now.insert(f.file.clone());
                 let diagnostics: Vec<lsp::Diagnostic> = f
                     .diags
@@ -359,6 +390,7 @@ impl<W: Write> Server<W> {
                     .collect();
                 self.publish(&f.file, diagnostics);
             }
+
             let before = self.published.insert(root.clone(), now.clone()).unwrap_or_default();
             for file in before.difference(&now) {
                 self.publish(file, vec![]);
@@ -374,6 +406,7 @@ impl<W: Write> Server<W> {
                 Err(()) => return,
             },
         };
+
         self.notify("textDocument/publishDiagnostics", lsp::PublishDiagnosticsParams { uri, diagnostics, version: None });
     }
 
@@ -384,6 +417,7 @@ impl<W: Write> Server<W> {
             Some(d) => d.text.clone(),
             None => std::fs::read_to_string(&file).ok()?,
         };
+
         let (_, project) = self.project(&file);
         let index = Index::new(project, Source::new(file, text.clone()));
         Some(f(&index, &text))
@@ -415,6 +449,7 @@ impl<W: Write> Server<W> {
         let pos = params.text_document_position_params;
         let link_support = self.link_support;
         let docs: HashMap<PathBuf, String> = self.docs.iter().map(|(p, d)| (p.clone(), d.text.clone())).collect();
+
         let result = self.with_index(&pos.text_document.uri, |index, text| {
             let symbol = symbol_at(index, offset_of(text, pos.position))?;
             let location = symbol.location?;
@@ -422,8 +457,10 @@ impl<W: Write> Server<W> {
                 Some(t) => t.clone(),
                 None => index.source(&location.file)?.text.clone(),
             };
+
             let at = range(&target_text, location.offset, location.offset);
             let uri = lsp::Url::from_file_path(&location.file).ok()?;
+
             Some(if link_support {
                 lsp::GotoDefinitionResponse::Link(vec![lsp::LocationLink {
                     origin_selection_range: Some(range(text, symbol.range.0, symbol.range.1)),
@@ -440,10 +477,12 @@ impl<W: Write> Server<W> {
 
     fn document_symbol(&mut self, params: lsp::DocumentSymbolParams) -> Value {
         let Some(file) = file_of(&params.text_document.uri) else { return Value::Null };
+
         let text = match self.docs.get(&file) {
             Some(d) => d.text.clone(),
             None => return Value::Null,
         };
+
         let source = Source::new(file, text);
         let list: Vec<_> = document_symbols(&source.parsed, &source.text).into_iter().map(|s| outline(&source.text, s)).collect();
         json!(list)
@@ -460,6 +499,7 @@ fn file_of(uri: &lsp::Url) -> Option<PathBuf> {
     if uri.scheme() != "file" {
         return None;
     }
+
     uri.to_file_path().ok()
 }
 
@@ -472,14 +512,17 @@ pub fn offset_of(text: &str, pos: lsp::Position) -> usize {
             None => return text.len(),
         }
     }
+
     let line_end = text[line_start..].find('\n').map_or(text.len(), |i| line_start + i);
     let mut units = 0;
     for (i, c) in text[line_start..line_end].char_indices() {
         if units >= pos.character as usize {
             return line_start + i;
         }
+
         units += c.len_utf16();
     }
+
     line_end
 }
 
@@ -489,6 +532,7 @@ pub fn position(text: &str, offset: usize) -> lsp::Position {
     while !text.is_char_boundary(offset) {
         offset -= 1;
     }
+
     let before = &text[..offset];
     let line_start = before.rfind('\n').map_or(0, |i| i + 1);
     lsp::Position { line: before.matches('\n').count() as u32, character: before[line_start..].encode_utf16().count() as u32 }
@@ -520,7 +564,9 @@ fn completion_item(text: &str, item: crate::complete::Item) -> lsp::CompletionIt
         (None, Some(i)) => (i, lsp::InsertTextFormat::PLAIN_TEXT),
         (None, None) => (item.label.clone(), lsp::InsertTextFormat::PLAIN_TEXT),
     };
+
     let edits: Vec<lsp::TextEdit> = item.edits.iter().map(|e| lsp::TextEdit { range: range(text, e.offset, e.offset), new_text: e.text.clone() }).collect();
+
     lsp::CompletionItem {
         label: item.label,
         kind: Some(completion_kind(item.kind)),
@@ -592,6 +638,7 @@ mod tests {
         while let Some(m) = read_message(&mut reader).unwrap() {
             list.push(m);
         }
+
         list
     }
 
@@ -627,6 +674,7 @@ mod tests {
         let diagnostics = out.iter().find(|m| m["method"] == "textDocument/publishDiagnostics").unwrap();
         assert_eq!(diagnostics["params"]["diagnostics"][0]["code"], "E010");
         assert_eq!(diagnostics["params"]["diagnostics"][0]["range"]["start"], json!({"line": 5, "character": 12}));
+
         std::fs::remove_dir_all(dir).unwrap();
     }
 
@@ -672,6 +720,7 @@ mod tests {
         std::fs::write(app.join("src/Kernel.php"), "<?php\n").unwrap();
         server.file_changed(&app.join("src/Kernel.php"), lsp::FileChangeType::CREATED);
         assert!(class(&mut server, "App\\Kernel").is_some());
+
         std::fs::remove_dir_all(dir).unwrap();
     }
 }

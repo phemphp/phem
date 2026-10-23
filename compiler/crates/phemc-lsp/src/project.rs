@@ -76,7 +76,9 @@ impl Project {
         } else {
             p.load_composer_json();
         }
+
         p.walk_phpm(root, true);
+
         p
     }
 
@@ -100,6 +102,7 @@ impl Project {
                 self.walk_psr4(&dir, &prefix, is_vendor, &mut counter);
             }
         }
+
         for (fqn, files) in parse_autoload_map(&read("autoload_classmap.php"), vendor) {
             if let Some(file) = files.first() {
                 if !fqn.starts_with("Composer\\") && !fqn.contains("\\Tests\\") && !fqn.contains("\\Test\\") {
@@ -107,6 +110,7 @@ impl Project {
                 }
             }
         }
+
         for (_, files) in parse_autoload_map(&read("autoload_files.php"), vendor) {
             if let Some(file) = files.first() {
                 if let Ok(code) = std::fs::read_to_string(file) {
@@ -129,6 +133,7 @@ impl Project {
                     serde_json::Value::Array(a) => a.iter().filter_map(|d| d.as_str()).collect(),
                     _ => vec![],
                 };
+
                 for dir in dirs {
                     let dir = self.root.join(dir);
                     self.add_dir(&dir);
@@ -142,9 +147,11 @@ impl Project {
         for f in &parsed.functions {
             self.add(SymbolKind::Function, &f.fqn, file);
         }
+
         for c in &parsed.classes {
             self.add(SymbolKind::Class, &c.fqn, file);
         }
+
         for c in &parsed.constants {
             self.add(SymbolKind::Const, &c.fqn, file);
         }
@@ -162,12 +169,14 @@ impl Project {
         let Ok(entries) = std::fs::read_dir(dir) else { return };
         let mut entries: Vec<_> = entries.filter_map(Result::ok).collect();
         entries.sort_by_key(|e| e.file_name());
+
         let mut subdirs = Vec::new();
         for entry in entries {
             *counter += 1;
             if *counter > MAX_FILES {
                 return;
             }
+
             let name = entry.file_name().to_string_lossy().into_owned();
             let path = entry.path();
             let is_dir = std::fs::metadata(&path).is_ok_and(|m| m.is_dir());
@@ -181,6 +190,7 @@ impl Project {
                 }
             }
         }
+
         for (dir, prefix) in subdirs {
             self.walk_psr4(&dir, &prefix, is_vendor, counter);
         }
@@ -192,6 +202,7 @@ impl Project {
         if !top && dir.join("composer.json").exists() {
             return;
         }
+
         let Ok(entries) = std::fs::read_dir(dir) else { return };
         for entry in entries.filter_map(Result::ok) {
             let name = entry.file_name().to_string_lossy().into_owned();
@@ -212,6 +223,7 @@ impl Project {
             Some(t) => Some(t.to_string()),
             None => std::fs::read_to_string(file).ok(),
         };
+
         match text {
             Some(t) => {
                 self.phpm.insert(file.to_path_buf(), Rc::new(parse(&t)));
@@ -250,10 +262,12 @@ impl Project {
                 SymbolKind::Function => parsed.functions.iter().map(|d| &d.fqn).collect(),
                 SymbolKind::Const => parsed.constants.iter().map(|d| &d.fqn).collect(),
             };
+
             for fqn in fqns {
                 map.insert(fqn.clone(), Symbol { kind, fqn: fqn.clone(), file: f.to_path_buf() });
             }
         }
+
         map.into_values().collect()
     }
 
@@ -262,15 +276,18 @@ impl Project {
         if let Some(s) = self.symbols.get(&(kind, fqn.to_string())) {
             return Some(s.file.clone());
         }
+
         for (file, parsed) in &self.phpm {
             let found = match kind {
                 SymbolKind::Class => parsed.classes.iter().any(|d| d.fqn.eq_ignore_ascii_case(fqn)),
                 _ => parsed.functions.iter().any(|d| d.fqn.eq_ignore_ascii_case(fqn)),
             };
+
             if found {
                 return Some(file.clone());
             }
         }
+
         self.symbols.values().find(|s| s.kind == kind && s.fqn.eq_ignore_ascii_case(fqn)).map(|s| s.file.clone())
     }
 
@@ -296,9 +313,11 @@ pub fn parse_autoload_map(code: &str, vendor: &Path) -> Vec<(String, Vec<PathBuf
             let dir = if &m[1] == "vendorDir" { vendor } else { base };
             return Some(dir.join(m[2].trim_start_matches('/')));
         }
+
         let e = expr.trim();
         (e.len() >= 2 && e.starts_with('\'') && e.ends_with('\'')).then(|| PathBuf::from(&e[1..e.len() - 1]))
     };
+
     MAP_ENTRY
         .captures_iter(code)
         .map(|m| {
@@ -307,6 +326,7 @@ pub fn parse_autoload_map(code: &str, vendor: &Path) -> Vec<(String, Vec<PathBuf
                 Some(list) => list.as_str().split(',').collect(),
                 None => vec![m.get(2).unwrap().as_str()],
             };
+
             (key, exprs.into_iter().filter_map(resolve).collect())
         })
         .collect()
@@ -328,12 +348,14 @@ pub fn routes_of(parsed: &Parsed, file: &Path) -> Vec<Route> {
         if attrs.is_empty() || !(has_attr(&decl.attrs, "Component") || has_attr(&decl.attrs, "Page")) {
             continue;
         }
+
         for (i, attr) in attrs.iter().enumerate() {
             let name = quoted(&ATTR_NAME, &attr.args).unwrap_or_else(|| route_name(&decl.fqn) + &if i > 0 { format!("_{i}") } else { String::new() });
             let path = quoted(&ATTR_PATH, &attr.args).or_else(|| quoted(&ATTR_PATH_NAMED, &attr.args)).unwrap_or_default();
             list.push(Route { name, path, fqn: decl.fqn.clone(), file: file.to_path_buf(), offset: decl.offset });
         }
     }
+
     list
 }
 
@@ -349,11 +371,14 @@ pub fn find_root(file: &Path, fallback: Option<&Path>) -> PathBuf {
         if d.join("composer.json").exists() {
             return d.to_path_buf();
         }
+
         if fallback == Some(d) {
             break;
         }
+
         dir = d.parent();
     }
+
     fallback.map(Path::to_path_buf).or_else(|| file.parent().map(Path::to_path_buf)).unwrap_or_default()
 }
 

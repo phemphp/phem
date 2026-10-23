@@ -27,6 +27,7 @@ fn match_close(tokens: &[Token], i: usize) -> Option<usize> {
         "[" => "]",
         _ => "}",
     };
+
     let mut depth = 0;
     for (j, t) in tokens.iter().enumerate().skip(i) {
         if t.v == open {
@@ -38,6 +39,7 @@ fn match_close(tokens: &[Token], i: usize) -> Option<usize> {
             }
         }
     }
+
     None
 }
 
@@ -84,6 +86,7 @@ pub fn enclosing(parsed: &Parsed, offset: usize) -> Enclosing {
             };
         }
     }
+
     let f = parsed.functions.iter().find(|f| f.body.is_some_and(|(s, e)| offset > s && offset < e));
     Enclosing {
         class: None,
@@ -122,13 +125,16 @@ impl<'a, 'p> Scope<'a, 'p> {
             parent,
         };
         let Some(body) = en.body else { return scope };
+
         let tags = doc_tags(&en.doc);
         for p in &en.params {
             scope.param(p, tags.param(&p.name));
         }
+
         if let (Some(c), false) = (cls, en.is_static) {
             scope.this_type = Some(Type::class(c.fqn.clone()));
         }
+
         let start = body + 1;
         let tokens = tokens_in(source.code(), start, offset);
         scope.walk(&tokens);
@@ -144,18 +150,21 @@ impl<'a, 'p> Scope<'a, 'p> {
             if ws == 0 {
                 continue;
             }
+
             let ty: String = rest[ws..].chars().take_while(|c| !c.is_whitespace()).collect();
             let after = &rest[ws + ty.len()..];
             let ws2 = after.len() - after.trim_start().len();
             if ws2 == 0 || !after[ws2..].starts_with('$') {
                 continue;
             }
+
             let name: String = after[ws2 + 1..].chars().take_while(|c| c.is_alphanumeric() || *c == '_').collect();
             if !name.is_empty() {
                 let t = to_type(&ty, &scope.ctx());
                 scope.set(&name, t, start + at, &ty);
             }
         }
+
         scope
     }
 
@@ -173,6 +182,7 @@ impl<'a, 'p> Scope<'a, 'p> {
         if p.variadic && ty.is_some() && doc_type.is_none() {
             ty = Some(Type::list(ty));
         }
+
         self.put(Var { name: p.name.clone(), ty, type_text, offset: p.offset, kind: VarKind::Param });
     }
 
@@ -193,8 +203,10 @@ impl<'a, 'p> Scope<'a, 'p> {
                     old.type_text = type_text.to_string();
                 }
             }
+
             return;
         }
+
         self.vars.push(Var { name: name.to_string(), ty, type_text: type_text.to_string(), offset, kind: VarKind::Local });
     }
 
@@ -209,6 +221,7 @@ impl<'a, 'p> Scope<'a, 'p> {
                 if i > 0 && ["->", "::", "?->"].contains(&tokens[i - 1].v.as_str()) {
                     continue;
                 }
+
                 let name = &tok.v[1..];
                 let doc = doc_tags(&doc_before(&self.source.text, tok.start));
                 let doc_type = doc.var_of(name).filter(|t| !t.is_empty()).map(str::to_string).or_else(|| (!doc.var.is_empty()).then(|| doc.var.clone()));
@@ -216,21 +229,26 @@ impl<'a, 'p> Scope<'a, 'p> {
                     Some(t) => to_type(t, &self.ctx()),
                     None => self.chain(tokens, i + 2, tokens.len()),
                 };
+
                 self.set(name, ty, tok.start, doc_type.as_deref().unwrap_or(""));
                 continue;
             }
+
             if tok.is_word("foreach") && next.is_some_and(|n| n.is("(")) {
                 self.foreach(tokens, i + 1);
                 continue;
             }
+
             if tok.is_word("catch") && next.is_some_and(|n| n.is("(")) {
                 let variable = tokens.iter().skip(i + 2).take(6).find(|t| t.t == Tok::Var);
                 if let (Some(ty), Some(v)) = (tokens.get(i + 2).filter(|t| t.t == Tok::Id), variable) {
                     let t = to_type(&ty.v, &self.ctx());
                     self.set(&v.v[1..], t, v.start, &ty.v.clone());
                 }
+
                 continue;
             }
+
             if (tok.is_word("fn") || tok.is_word("function")) && next.is_some_and(|n| n.is("(")) {
                 self.closure(tokens, i, tok.is_word("function"));
             }
@@ -245,6 +263,7 @@ impl<'a, 'p> Scope<'a, 'p> {
         let vars: Vec<&Token> = tokens[as_ + 1..end].iter().filter(|t| t.t == Tok::Var).collect();
         let has_key = tokens[as_ + 1..end].iter().any(|t| t.is("=>"));
         let Some(item) = vars.last() else { return };
+
         self.set(&item.v[1..], list.and_then(|l| l.item()), item.start, "");
         if has_key && vars.len() > 1 {
             self.set(&vars[0].v[1..], None, vars[0].start, "");
@@ -260,6 +279,7 @@ impl<'a, 'p> Scope<'a, 'p> {
             while j < tokens.len() && !tokens[j].is("{") {
                 j += 1;
             }
+
             if j >= tokens.len() || match_close(tokens, j).is_some() {
                 return;
             }
@@ -267,6 +287,7 @@ impl<'a, 'p> Scope<'a, 'p> {
             while j < tokens.len() && !tokens[j].is("=>") {
                 j += 1;
             }
+
             let mut depth = 0;
             for t in tokens.iter().skip(j + 1) {
                 match t.v.as_str() {
@@ -282,6 +303,7 @@ impl<'a, 'p> Scope<'a, 'p> {
                 }
             }
         }
+
         // The parameters: [Type] [&] [...] $name [= default]
         let mut ty = String::new();
         let mut k = i + 2;
@@ -296,6 +318,7 @@ impl<'a, 'p> Scope<'a, 'p> {
             } else if t.t == Tok::Id || t.is("?") || t.is("|") {
                 ty += &t.v;
             }
+
             k += 1;
         }
     }
@@ -305,9 +328,11 @@ impl<'a, 'p> Scope<'a, 'p> {
         if name.eq_ignore_ascii_case("self") || name.eq_ignore_ascii_case("static") {
             return self.self_.clone().map(Type::class);
         }
+
         if name.eq_ignore_ascii_case("parent") {
             return self.parent.clone().map(Type::class);
         }
+
         resolve_name(&self.source.parsed, name).map(Type::class)
     }
 
@@ -322,6 +347,7 @@ impl<'a, 'p> Scope<'a, 'p> {
                 Some((f, r)) => (f, Some(r)),
                 None => (name, None),
             };
+
             let kind = if rest.is_some() { UseKind::Class } else { UseKind::Function };
             if let Some(i) = imports_of(parsed, kind).find(|i| i.alias.eq_ignore_ascii_case(first)) {
                 candidates.push(match rest {
@@ -329,11 +355,14 @@ impl<'a, 'p> Scope<'a, 'p> {
                     None => i.fqn.clone(),
                 });
             }
+
             if !parsed.namespace.is_empty() {
                 candidates.push(format!("{}\\{name}", parsed.namespace));
             }
+
             candidates.push(name.to_string());
         }
+
         candidates.iter().find_map(|fqn| self.index.find(SymbolKind::Function, fqn))
     }
 
@@ -363,6 +392,7 @@ impl<'a, 'p> Scope<'a, 'p> {
                     if depth == 0 && t.is("[") && first.is_none() && keys.is_empty() {
                         first = Some(k);
                     }
+
                     depth += 1;
                     continue;
                 }
@@ -377,15 +407,18 @@ impl<'a, 'p> Scope<'a, 'p> {
                             Some(v) if v.is("[") => self.shape(tokens, k + 1),
                             _ => self.chain(tokens, k + 1, tokens.len()),
                         };
+
                         keys.push(Key { name, offset: Some(from + offset), ty, doc: None });
                     }
                 }
                 _ => {}
             }
         }
+
         if !keys.is_empty() {
             return Some(Type { keys: Some(keys), ..Default::default() });
         }
+
         first.map(|f| Type::list(self.shape(tokens, f)))
     }
 
@@ -397,6 +430,7 @@ impl<'a, 'p> Scope<'a, 'p> {
         if tok.is_word("clone") || tok.is_word("yield") || tok.is_word("await") {
             return self.chain(tokens, i + 1, end);
         }
+
         if tok.is_word("new") && tokens.get(i + 1).is_some_and(|t| t.t == Tok::Id) {
             ty = self.class_type(&tokens[i + 1].v);
             i += 2;
@@ -454,11 +488,13 @@ impl<'a, 'p> Scope<'a, 'p> {
                     }
                     None => t.item(),
                 };
+
                 i = skip(tokens, i);
             } else {
                 break;
             }
         }
+
         ty
     }
 
@@ -482,6 +518,7 @@ fn string_before(s: &str) -> Option<(usize, String)> {
             return Some((k, body[k + 1..].to_string()));
         }
     }
+
     None
 }
 
@@ -502,7 +539,9 @@ pub fn chain_start(code: &[u8], end: usize) -> usize {
         while i > 0 && code[i - 1].is_ascii_whitespace() {
             i -= 1;
         }
+
         let Some(&c) = i.checked_sub(1).and_then(|k| code.get(k)) else { return i };
+
         if c == b')' || c == b']' {
             let open = if c == b')' { b'(' } else { b'[' };
             let mut depth = 0;
@@ -520,29 +559,36 @@ pub fn chain_start(code: &[u8], end: usize) -> usize {
                     }
                 }
             }
+
             if !found {
                 return i;
             }
+
             i = j;
             continue;
         }
+
         let word = code[..i].iter().rev().take(256).take_while(|&&c| c == b'$' || c == b'\\' || c.is_ascii_alphanumeric() || c == b'_').count();
         if word == 0 {
             return i;
         }
+
         let w = &code[i - word..i];
         i -= word;
         let before = trim_end(&code[..i]);
         if w.eq_ignore_ascii_case(b"new") {
             return i;
         }
+
         if before.ends_with(b"->") || before.ends_with(b"::") {
             i = before.len() - if before.ends_with(b"?->") { 3 } else { 2 };
             continue;
         }
+
         if ends_with_word(before, b"new") {
             return before.len() - 3;
         }
+
         return i;
     }
 }

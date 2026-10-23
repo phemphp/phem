@@ -18,14 +18,17 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
         if t.kind != TokKind::Ident || !is_op(i + 1, "(") {
             continue;
         }
+
         // A method call, a static call, a declaration or `new` is not a call to a hook function.
         if i > 0 && (is_op(i - 1, "->") || is_op(i - 1, "?->") || is_op(i - 1, "::") || is_word(i - 1, "function") || is_word(i - 1, "new")) {
             continue;
         }
+
         let name = t.text(src);
         if !is_removed_hook(file, name) {
             continue;
         }
+
         let short = name.rsplit('\\').next().unwrap_or(name);
         diags.push(
             Diagnostic::error(codes::HOOK_REMOVED, format!("`{short}` is not available: Phem has no hooks"), t.span)
@@ -36,6 +39,7 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
                 ),
         );
     }
+
     diags
 }
 
@@ -52,6 +56,7 @@ fn is_removed_hook(file: &FileInfo, name: &str) -> bool {
     } else {
         format!("{}\\{name}", file.namespace)
     };
+
     let fqn = fqn.to_ascii_lowercase();
     fqn.strip_prefix("phem\\").is_some_and(|short| REMOVED.contains(&short))
 }

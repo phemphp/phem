@@ -42,6 +42,7 @@ impl FileInfo {
         if let Some(rest) = name.strip_prefix('\\') {
             return rest.to_string();
         }
+
         let (first, tail) = name.split_once('\\').map_or((name, None), |(a, b)| (a, Some(b)));
         if let Some(fqn) = self.class_uses.get(&first.to_ascii_lowercase()) {
             return match tail {
@@ -49,6 +50,7 @@ impl FileInfo {
                 None => fqn.clone(),
             };
         }
+
         qualify(&self.namespace, name)
     }
 }
@@ -220,6 +222,7 @@ impl<'a> Toks<'a> {
                 }
             }
         }
+
         self.t.len() - 1
     }
 }
@@ -264,17 +267,21 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                             check_attrs(&mut info, &p.attrs);
                             p.is_context = p.attrs.iter().any(|(a, _)| info.resolve_class(a) == ATTR_CONTEXT);
                         }
+
                         // Only a function with `#[Component]` is a component: the other functions
                         // of the file are plain PHP functions.
                         if attrs.iter().any(|(a, _)| info.resolve_class(a) == ATTR_COMPONENT) {
                             f.component_kind = Some(Kind::Function);
                         }
+
                         if let Some((attr, span)) = route_attr(&info, &attrs) {
                             info.routes.push(RouteDecl { fqn: f.fqn.clone(), attr, span, is_component: false });
                         }
+
                         if let Some(span) = subscribe_attr(&info, &attrs) {
                             info.subscribes.push((f.fqn.clone(), span));
                         }
+
                         f.async_attr = async_attr(&info, &attrs);
                         info.functions.push(f);
                         i = end + 1;
@@ -294,9 +301,11 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                             if let Some(span) = subscribe.filter(|_| route.is_none() || !c.is_component) {
                                 info.subscribes.push((c.fqn.clone(), span));
                             }
+
                             if let Some((attr, span)) = route {
                                 info.routes.push(RouteDecl { fqn: c.fqn.clone(), attr, span, is_component: c.is_component });
                             }
+
                             info.classes.push(c);
                             i = end + 1;
                             continue;
@@ -316,6 +325,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                         while j < n && !toks.is_op(j, "{") {
                             j += 1;
                         }
+
                         attrs.clear();
                         i = toks.matching(j) + 1;
                         continue;
@@ -325,6 +335,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
             }
             _ => {}
         }
+
         i += 1;
     }
 
@@ -339,6 +350,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                     }
                 }
             }
+
             info.functions.iter().position(|f| f.body.contains(m.span)).map_or(MarkupScope::TopLevel, MarkupScope::Function)
         })
         .collect();
@@ -352,6 +364,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
             }
         }
     }
+
     info.returned_markups = returned;
 
     // A component function whose body is only `return <markup>;` is a template component. A
@@ -364,6 +377,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
             }
         }
     }
+
     info
 }
 
@@ -374,6 +388,7 @@ fn template_body(toks: &Toks, body: Span) -> Option<usize> {
         TokKind::Markup(i) => Some(i),
         _ => None,
     };
+
     match inner.len() {
         3 if texts[0].eq_ignore_ascii_case("return") && texts[2] == ";" => markup(inner[1]),
         5 if texts[0].eq_ignore_ascii_case("return") && texts[1] == "(" && texts[3] == ")" && texts[4] == ";" => markup(inner[2]),
@@ -395,8 +410,10 @@ fn attr_names(toks: &Toks, from: usize, to: usize) -> Vec<(String, Span)> {
         } else if toks.is_op(i, ",") {
             expect_name = true;
         }
+
         i += 1;
     }
+
     out
 }
 
@@ -414,12 +431,15 @@ fn rest_attrs(toks: &Toks, from: usize, to: usize) -> Vec<String> {
             if toks.is_op(i, "(") && matches!(args.iter().map(String::as_str).collect::<Vec<_>>()[..], ["true"] | ["rest", ":", "true"]) {
                 out.extend(name.map(str::to_string));
             }
+
             i = end;
         } else if toks.is_op(i, ",") {
             name = None;
         }
+
         i += 1;
     }
+
     out
 }
 
@@ -433,6 +453,7 @@ fn parse_use(toks: &Toks, mut i: usize, info: &mut FileInfo) -> usize {
     } else {
         0
     };
+
     let add = |kind: u8, fqn: String, alias: Option<String>, info: &mut FileInfo| {
         let fqn = fqn.trim_start_matches('\\').to_string();
         let alias = alias.unwrap_or_else(|| fqn.rsplit('\\').next().unwrap_or(&fqn).to_string()).to_ascii_lowercase();
@@ -442,9 +463,11 @@ fn parse_use(toks: &Toks, mut i: usize, info: &mut FileInfo) -> usize {
             _ => None,
         };
     };
+
     loop {
         let name = toks.text(i).to_string();
         i += 1;
+
         // Group use: `use App\Components\{A, B as C};`
         if toks.is_op(i, "\\") && toks.is_op(i + 1, "{") {
             let end = toks.matching(i + 1);
@@ -458,6 +481,7 @@ fn parse_use(toks: &Toks, mut i: usize, info: &mut FileInfo) -> usize {
                     k = 2;
                     j += 1;
                 }
+
                 let inner = toks.text(j).to_string();
                 j += 1;
                 let alias = if toks.is_word(j, "as") {
@@ -466,11 +490,13 @@ fn parse_use(toks: &Toks, mut i: usize, info: &mut FileInfo) -> usize {
                 } else {
                     None
                 };
+
                 add(k, format!("{name}\\{inner}"), alias, info);
                 if toks.is_op(j, ",") {
                     j += 1;
                 }
             }
+
             i = end + 1;
         } else {
             let alias = if toks.is_word(i, "as") {
@@ -479,12 +505,15 @@ fn parse_use(toks: &Toks, mut i: usize, info: &mut FileInfo) -> usize {
             } else {
                 None
             };
+
             add(kind, name, alias, info);
         }
+
         if toks.is_op(i, ",") {
             i += 1;
             continue;
         }
+
         // `;`
         return i + 1;
     }
@@ -504,26 +533,32 @@ fn parse_function(toks: &Toks, at: usize, ns: &str) -> (Func, usize) {
     if toks.is_op(i, "&") {
         i += 1;
     }
+
     let name = toks.text(i).to_string();
     let name_span = toks.t[i].span;
     i += 1;
+
     let params_end = toks.matching(i);
     let params = parse_params(toks, i + 1, params_end);
+
     let mut j = params_end + 1;
     while j < toks.t.len() && !toks.is_op(j, "{") && !toks.is_op(j, ";") {
         j += 1;
     }
+
     let return_type = if toks.is_op(params_end + 1, ":") && params_end + 2 < j {
         toks.src[toks.t[params_end + 2].span.start..toks.t[j - 1].span.end].trim().to_string()
     } else {
         String::new()
     };
+
     let (body, end) = if toks.is_op(j, "{") {
         let close = toks.matching(j);
         (Span::new(toks.t[j].span.end, toks.t[close].span.start), close)
     } else {
         (Span::new(toks.t[j].span.start, toks.t[j].span.start), j)
     };
+
     let f = Func {
         fqn: qualify(ns, &name),
         name,
@@ -537,6 +572,7 @@ fn parse_function(toks: &Toks, at: usize, ns: &str) -> (Func, usize) {
         return_type,
         async_attr: None,
     };
+
     (f, end)
 }
 
@@ -552,6 +588,7 @@ fn parse_params(toks: &Toks, from: usize, to: usize) -> Vec<Param> {
             }
             j += 1;
         }
+
         let mut p = Param {
             name: String::new(),
             ty: String::new(),
@@ -564,6 +601,7 @@ fn parse_params(toks: &Toks, from: usize, to: usize) -> Vec<Param> {
             is_context: false,
             span: Span::default(),
         };
+
         let mut ty_start: Option<usize> = None;
         let mut k = i;
         while k < j {
@@ -574,6 +612,7 @@ fn parse_params(toks: &Toks, from: usize, to: usize) -> Vec<Param> {
                 k = end + 1;
                 continue;
             }
+
             let text = toks.text(k);
             let lower = text.to_ascii_lowercase();
             if t.kind == TokKind::Ident && matches!(lower.as_str(), "public" | "private" | "protected" | "readonly") {
@@ -586,22 +625,28 @@ fn parse_params(toks: &Toks, from: usize, to: usize) -> Vec<Param> {
                 if let Some(s) = ty_start {
                     p.ty = toks.src[toks.t[s].span.start..toks.t[k - 1].span.end].replace("...", "").replace('&', "").trim().to_string();
                 }
+
                 if toks.is_op(k + 1, "=") && k + 2 < j {
                     p.default = Some(toks.src[toks.t[k + 2].span.start..toks.t[j - 1].span.end].to_string());
                 }
+
                 break;
             } else if text == "..." {
                 p.variadic = true;
             } else if ty_start.is_none() && text != "&" {
                 ty_start = Some(k);
             }
+
             k += 1;
         }
+
         if !p.name.is_empty() {
             out.push(p);
         }
+
         i = j + 1;
     }
+
     out
 }
 
@@ -643,6 +688,7 @@ fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
             "Async" => ATTR_ASYNC,
             _ => continue,
         };
+
         let resolved = info.resolve_class(a);
         if resolved != expected {
             info.foreign_attrs.push((short.to_string(), expected, resolved, *span));
@@ -650,10 +696,10 @@ fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
     }
 }
 
-
 fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) -> (Class, usize) {
     let name = toks.text(at + 1).to_string();
     let name_span = toks.t[at + 1].span;
+
     let mut j = at + 2;
     let mut parent = None;
     let mut interfaces = vec![];
@@ -669,7 +715,9 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
         }
         j += 1;
     }
+
     let close = toks.matching(j);
+
     // A `#[Page]` class is a component too.
     let is_component = attrs.iter().any(|a| matches!(info.resolve_class(a).as_str(), ATTR_COMPONENT | ATTR_PAGE));
     let provides_self = attrs.iter().any(|a| info.resolve_class(a) == ATTR_PROVIDE);
@@ -707,11 +755,13 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
             i = end + 1;
             continue;
         }
+
         if t.kind == TokKind::Ident && matches!(lower.as_str(), "public" | "private" | "protected" | "readonly" | "static" | "var" | "final" | "abstract") {
             mods.push(lower);
             i += 1;
             continue;
         }
+
         if t.kind == TokKind::Ident && (lower == "const" || lower == "use" || lower == "case") {
             let is_use = lower == "use";
             i += 1;
@@ -721,11 +771,14 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
                     i = toks.matching(i);
                     break;
                 }
+
                 if is_use && toks.t[i].kind == TokKind::Ident {
                     class.traits.push(info.resolve_class(toks.text(i)));
                 }
+
                 i += 1;
             }
+
             member_attrs.clear();
             member_rest.clear();
             mods.clear();
@@ -733,6 +786,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
             i += 1;
             continue;
         }
+
         if t.kind == TokKind::Ident && lower == "function" {
             let (m, end) = parse_function(toks, i, "");
             if m.name.eq_ignore_ascii_case("__construct") {
@@ -755,9 +809,11 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
                     });
                 }
             }
+
             check_attrs(info, &member_attrs);
             let async_attr = async_attr(info, &member_attrs);
             class.methods.push(Func { fqn: format!("{}::{}", class.fqn, m.name), is_private: mods.iter().any(|x| x == "private"), async_attr, ..m });
+
             member_attrs.clear();
             member_rest.clear();
             mods.clear();
@@ -765,6 +821,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
             i = end + 1;
             continue;
         }
+
         if t.kind == TokKind::Var {
             let ty = ty_start.map_or(String::new(), |s| toks.src[toks.t[s].span.start..toks.t[i - 1].span.end].trim().to_string());
             let has_default = toks.is_op(i + 1, "=");
@@ -792,6 +849,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
                 is_provide: has_attr(ATTR_PROVIDE),
                 span: t.span,
             });
+
             while i < close && !toks.is_op(i, ";") {
                 if toks.is_op(i, "{") {
                     i = toks.matching(i);
@@ -803,8 +861,10 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
                 } else if toks.is_op(i, "(") || toks.is_op(i, "[") {
                     i = toks.matching(i);
                 }
+
                 i += 1;
             }
+
             member_attrs.clear();
             member_rest.clear();
             mods.clear();
@@ -812,11 +872,14 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
             i += 1;
             continue;
         }
+
         if ty_start.is_none() {
             ty_start = Some(i);
         }
+
         i += 1;
     }
+
     (class, close)
 }
 
@@ -850,17 +913,20 @@ function Card(string $title) { return (<div>{{ title }}</div>); }
 function helper() {}
 "#,
         );
+
         assert_eq!(f.namespace, "App\\Components");
         assert_eq!(f.function_uses["usestate"], "Phem\\useState");
         assert_eq!(f.function_uses["ue"], "Phem\\useEffect");
         assert_eq!(f.class_uses["btn"], "App\\Ui\\Button");
         assert_eq!(f.functions.len(), 3);
+
         let b = &f.functions[0];
         assert_eq!(b.fqn, "App\\Components\\MyButton");
         assert_eq!(b.component_kind, Some(Kind::Function));
         assert_eq!(b.params[1].name, "onClick");
         assert_eq!(b.params[1].ty, "?\\Closure");
         assert_eq!(b.params[1].default.as_deref(), Some("null"));
+
         assert_eq!(f.functions[1].component_kind, Some(Kind::Template));
         assert_eq!(f.functions[1].template_markup, Some(1));
         assert_eq!(f.functions[2].component_kind, None);
@@ -883,6 +949,7 @@ function card() { return <div />; }
 function Other() { return <p />; }
 "#,
         );
+
         let kinds: Vec<_> = f.functions.iter().map(|x| x.component_kind).collect();
         assert_eq!(kinds, [None, Some(Kind::Template), None], "a plain PHP function can return markup");
         assert_eq!(f.foreign_attrs.len(), 1, "`#[\\App\\Component]` is not the Phem attribute");
@@ -913,6 +980,7 @@ final class Counter {
 }
 "#,
         );
+
         let c = &f.classes[0];
         assert!(c.is_component);
         assert_eq!(c.fqn, "App\\Counter");
@@ -939,6 +1007,7 @@ final class Form {
 }
 "#,
         );
+
         let c = &f.classes[0];
         let props: Vec<_> = c.props.iter().map(|p| p.name.as_str()).collect();
         assert_eq!(props, ["form", "n", "f"]);
@@ -962,6 +1031,7 @@ final class Link {
 }
 "#,
         );
+
         let rest: Vec<_> = f.classes[0].props.iter().map(|p| (p.name.as_str(), p.is_rest)).collect();
         assert_eq!(rest, [("label", false), ("title", false), ("attrs", true), ("more", true), ("other", false)]);
         let def = &crate::components(&f)[0];

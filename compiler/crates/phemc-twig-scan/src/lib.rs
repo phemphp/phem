@@ -43,21 +43,26 @@ fn tokenize(src: &str) -> Vec<(Tok, usize)> {
             i += 1;
             continue;
         }
+
         let start = i;
         if c.is_ascii_alphabetic() || c == b'_' {
             while i < b.len() && (b[i].is_ascii_alphanumeric() || b[i] == b'_') {
                 i += 1;
             }
+
             out.push((Tok::Name(src[start..i].to_string()), start));
             continue;
         }
+
         if c.is_ascii_digit() {
             while i < b.len() && (b[i].is_ascii_alphanumeric() || b[i] == b'_' || (b[i] == b'.' && b.get(i + 1).is_some_and(|d| d.is_ascii_digit()))) {
                 i += 1;
             }
+
             out.push((Tok::Num, start));
             continue;
         }
+
         if c == b'\'' || c == b'"' {
             i += 1;
             let mut interps = Vec::new();
@@ -66,6 +71,7 @@ fn tokenize(src: &str) -> Vec<(Tok, usize)> {
                     i += 2;
                     continue;
                 }
+
                 if c == b'"' && b[i] == b'#' && b.get(i + 1) == Some(&b'{') {
                     let inner = i + 2;
                     let mut depth = 1;
@@ -76,20 +82,26 @@ fn tokenize(src: &str) -> Vec<(Tok, usize)> {
                             b'}' => depth -= 1,
                             _ => {}
                         }
+
                         i += 1;
                     }
+
                     interps.push((src[inner..i.saturating_sub(1)].to_string(), inner));
                     continue;
                 }
+
                 if b[i] == c {
                     i += 1;
                     break;
                 }
+
                 i += 1;
             }
+
             out.push((Tok::Str(interps), start));
             continue;
         }
+
         for p in PUNCT {
             if src[i..].starts_with(p) {
                 i += p.len();
@@ -97,8 +109,10 @@ fn tokenize(src: &str) -> Vec<(Tok, usize)> {
                 continue 'outer;
             }
         }
+
         i += src[i..].chars().next().map_or(1, char::len_utf8);
     }
+
     out
 }
 
@@ -117,6 +131,7 @@ fn dedup(names: Vec<Name>) -> Vec<Name> {
 fn collect(src: &str, base: usize, extra_keywords: &[&str], out: &mut Vec<Name>) {
     let toks = tokenize(src);
     let arrow_params = arrow_params(&toks);
+
     // A stack of open brackets, to know if a `name:` is a hash key or a named argument.
     let mut brackets: Vec<&'static str> = Vec::new();
     // After `is`: 1 = expect `not` or a test name, 2 = expect the second word of `divisible by` / `same as`.
@@ -124,6 +139,7 @@ fn collect(src: &str, base: usize, extra_keywords: &[&str], out: &mut Vec<Name>)
     for (i, (tok, off)) in toks.iter().enumerate() {
         let prev = i.checked_sub(1).map(|j| &toks[j].0);
         let next = toks.get(i + 1).map(|t| &t.0);
+
         match tok {
             Tok::Punct(p @ ("(" | "[" | "{")) => {
                 brackets.push(p);
@@ -137,6 +153,7 @@ fn collect(src: &str, base: usize, extra_keywords: &[&str], out: &mut Vec<Name>)
                 for (inner, inner_off) in interps {
                     collect(inner, base + inner_off, extra_keywords, out);
                 }
+
                 after_is = 0;
             }
             Tok::Name(name) => {
@@ -144,6 +161,7 @@ fn collect(src: &str, base: usize, extra_keywords: &[&str], out: &mut Vec<Name>)
                     after_is = 1;
                     continue;
                 }
+
                 // A test name: `is defined`, `is not empty`, `is divisible by(3)`, `is same as(x)`.
                 if after_is == 1 {
                     if name != "not" {
@@ -151,10 +169,12 @@ fn collect(src: &str, base: usize, extra_keywords: &[&str], out: &mut Vec<Name>)
                     }
                     continue;
                 }
+
                 if after_is == 2 {
                     after_is = 0;
                     continue;
                 }
+
                 let attr_or_filter = matches!(prev, Some(Tok::Punct("." | "|" | "?.")));
                 let call = matches!(next, Some(Tok::Punct("(")));
                 let keyed = matches!(next, Some(Tok::Punct(":")) | Some(Tok::Punct("=")))
@@ -171,6 +191,7 @@ fn collect(src: &str, base: usize, extra_keywords: &[&str], out: &mut Vec<Name>)
                 {
                     continue;
                 }
+
                 out.push(Name { name: name.clone(), offset: base + off });
             }
             _ => after_is = 0,
@@ -185,6 +206,7 @@ fn arrow_params(toks: &[(Tok, usize)]) -> std::collections::HashSet<usize> {
         if *t != Tok::Punct("=>") || i == 0 {
             continue;
         }
+
         match &toks[i - 1].0 {
             Tok::Name(n) => {
                 names.insert(n.clone());
@@ -205,6 +227,7 @@ fn arrow_params(toks: &[(Tok, usize)]) -> std::collections::HashSet<usize> {
             _ => {}
         }
     }
+
     // Arrow parameters are rare and short; treat every use of the name as bound.
     toks.iter()
         .enumerate()
@@ -231,6 +254,7 @@ pub fn tag_vars(tag: &str, head: &str) -> TagVars {
     match tag {
         "for" => {
             let Some(in_pos) = find_word(head, "in") else { return TagVars::default() };
+
             let bound = head[..in_pos].split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
             let mut used = Vec::new();
             collect(&head[in_pos + 2..], in_pos + 2, &[], &mut used);
@@ -273,8 +297,10 @@ fn find_word(s: &str, word: &str) -> Option<usize> {
         if before && after {
             return Some(i);
         }
+
         from = i + word.len();
     }
+
     None
 }
 
@@ -284,12 +310,14 @@ pub fn is_call(expr: &str) -> bool {
     if toks.len() < 3 || toks.last().map(|t| &t.0) != Some(&Tok::Punct(")")) {
         return false;
     }
+
     // name (. name)* ( ... ) with balanced parentheses that close at the end.
     let mut i = 0;
     loop {
         if !matches!(toks.get(i).map(|t| &t.0), Some(Tok::Name(_))) {
             return false;
         }
+
         i += 1;
         match toks.get(i).map(|t| &t.0) {
             Some(Tok::Punct(".")) => i += 1,
@@ -297,6 +325,7 @@ pub fn is_call(expr: &str) -> bool {
             _ => return false,
         }
     }
+
     let mut depth = 0;
     for (j, (t, _)) in toks.iter().enumerate().skip(i) {
         match t {
@@ -310,6 +339,7 @@ pub fn is_call(expr: &str) -> bool {
             _ => {}
         }
     }
+
     false
 }
 
@@ -356,11 +386,13 @@ mod tests {
         let t = tag_vars("for", "key, product in products if product.ok");
         assert_eq!(t.bound, ["key", "product"]);
         assert_eq!(t.used.iter().map(|n| n.name.as_str()).collect::<Vec<_>>(), ["products", "product"]);
+
         assert_eq!(tag_vars("set", "total = a + b").bound, ["total"]);
         assert_eq!(tag_vars("set", "body").bound, ["body"]);
         assert!(!tag_vars("if", "a").guessed);
         assert_eq!(tag_vars("block", "content"), TagVars::default());
         assert_eq!(tag_vars("endtrans", ""), TagVars::default());
+
         let t = tag_vars("trans", "with {'%name%': user.name} into locale");
         assert!(t.guessed);
         assert_eq!(t.used.iter().map(|n| n.name.as_str()).collect::<Vec<_>>(), ["user", "into", "locale"]);

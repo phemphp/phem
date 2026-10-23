@@ -105,9 +105,11 @@ impl<'a> Lexer<'a> {
 
     fn run(mut self) -> Result<Lexed, Diagnostic> {
         self.inline_html()?;
+
         while self.pos < self.b.len() {
             self.token()?;
         }
+
         self.check_single_roots()?;
         Ok(self.out)
     }
@@ -122,6 +124,7 @@ impl<'a> Lexer<'a> {
                 if self.pos > start {
                     self.push(TokKind::InlineHtml, start);
                 }
+
                 let tag_start = self.pos;
                 let tag_end = tag_start + "<?phpm".len();
                 if !self.starts_with("<?phpm") || self.b.get(tag_end).is_some_and(|&c| is_ident_char(c)) {
@@ -132,6 +135,7 @@ impl<'a> Lexer<'a> {
                     )
                     .with_help("write `<?phpm` instead of `<?php`"));
                 }
+
                 self.pos = tag_end;
                 self.push(TokKind::OpenTag, tag_start);
             }
@@ -142,6 +146,7 @@ impl<'a> Lexer<'a> {
                 }
             }
         }
+
         Ok(())
     }
 
@@ -153,14 +158,17 @@ impl<'a> Lexer<'a> {
             while matches!(self.peek_at(0), Some(c) if c.is_ascii_whitespace()) {
                 self.pos += 1;
             }
+
             self.push(TokKind::Ws, start);
             return Ok(());
         }
+
         if self.starts_with("#[") {
             self.pos += 2;
             self.push(TokKind::AttrOpen, start);
             return Ok(());
         }
+
         if c == b'#' || self.starts_with("//") {
             while let Some(c) = self.peek_at(0) {
                 if c == b'\n' || self.starts_with("?>") {
@@ -168,9 +176,11 @@ impl<'a> Lexer<'a> {
                 }
                 self.pos += 1;
             }
+
             self.push(TokKind::Comment, start);
             return Ok(());
         }
+
         if self.starts_with("/*") {
             let end = self.src[self.pos + 2..]
                 .find("*/")
@@ -180,39 +190,47 @@ impl<'a> Lexer<'a> {
             self.push(TokKind::Comment, start);
             return Ok(());
         }
+
         if self.starts_with("?>") {
             self.pos += 2;
             self.push(TokKind::CloseTag, start);
             return self.inline_html();
         }
+
         if c == b'$' && matches!(self.peek_at(1), Some(n) if is_ident_start(n)) {
             self.pos += 1;
             while matches!(self.peek_at(0), Some(c) if is_ident_char(c)) {
                 self.pos += 1;
             }
+
             self.push(TokKind::Var, start);
             return Ok(());
         }
+
         if is_ident_start(c) || (c == b'\\' && matches!(self.peek_at(1), Some(n) if is_ident_start(n))) {
             self.ident();
             self.push(TokKind::Ident, start);
             return Ok(());
         }
+
         if c.is_ascii_digit() || (c == b'.' && matches!(self.peek_at(1), Some(n) if n.is_ascii_digit())) {
             self.number();
             self.push(TokKind::Number, start);
             return Ok(());
         }
+
         if c == b'\'' || c == b'"' || c == b'`' {
             self.string(c)?;
             self.push(TokKind::Str, start);
             return Ok(());
         }
+
         if self.starts_with("<<<") {
             self.heredoc()?;
             self.push(TokKind::Str, start);
             return Ok(());
         }
+
         if c == b'<' && matches!(self.peek_at(1), Some(n) if n.is_ascii_alphabetic() || n == b'>') && self.at_expr_start() {
             let (root, end) = markup::parse_literal(self.src, self.pos)?;
             self.pos = end;
@@ -221,6 +239,7 @@ impl<'a> Lexer<'a> {
             self.push(TokKind::Markup(index), start);
             return Ok(());
         }
+
         for op in OPS {
             if self.starts_with(op) {
                 self.pos += op.len();
@@ -228,12 +247,14 @@ impl<'a> Lexer<'a> {
                 return Ok(());
             }
         }
+
         let ch = self.src[self.pos..].chars().next().unwrap();
         Err(Diagnostic::error(codes::SYNTAX, format!("unexpected character `{ch}`"), Span::new(start, start + ch.len_utf8())))
     }
 
     fn at_expr_start(&self) -> bool {
         let Some(t) = self.last_significant() else { return false };
+
         let text = t.text(self.src);
         match t.kind {
             TokKind::Op => EXPR_START_OPS.contains(&text),
@@ -247,9 +268,11 @@ impl<'a> Lexer<'a> {
             if self.peek_at(0) == Some(b'\\') {
                 self.pos += 1;
             }
+
             while matches!(self.peek_at(0), Some(c) if is_ident_char(c)) {
                 self.pos += 1;
             }
+
             if !(self.peek_at(0) == Some(b'\\') && matches!(self.peek_at(1), Some(n) if is_ident_start(n))) {
                 break;
             }
@@ -262,17 +285,21 @@ impl<'a> Lexer<'a> {
             while matches!(self.peek_at(0), Some(c) if c.is_ascii_hexdigit() || c == b'_') {
                 self.pos += 1;
             }
+
             return;
         }
+
         while matches!(self.peek_at(0), Some(c) if c.is_ascii_digit() || c == b'_') {
             self.pos += 1;
         }
+
         if self.peek_at(0) == Some(b'.') && matches!(self.peek_at(1), Some(c) if c.is_ascii_digit()) {
             self.pos += 1;
             while matches!(self.peek_at(0), Some(c) if c.is_ascii_digit() || c == b'_') {
                 self.pos += 1;
             }
         }
+
         if matches!(self.peek_at(0), Some(b'e' | b'E'))
             && (matches!(self.peek_at(1), Some(c) if c.is_ascii_digit())
                 || (matches!(self.peek_at(1), Some(b'+' | b'-')) && matches!(self.peek_at(2), Some(c) if c.is_ascii_digit())))
@@ -287,22 +314,26 @@ impl<'a> Lexer<'a> {
     fn string(&mut self, q: u8) -> Result<(), Diagnostic> {
         let start = self.pos;
         self.pos += 1;
+
         while let Some(c) = self.peek_at(0) {
             // `{` cannot be escaped: `"\{$a}"` is a backslash and an interpolation.
             if c == b'\\' && !(q != b'\'' && self.peek_at(1) == Some(b'{')) {
                 self.pos += 2;
                 continue;
             }
+
             // `"{$a["key"]}"` and `"${a}"`: the interpolation is PHP code, and it can contain strings.
             if q != b'\'' && (self.starts_with("{$") || self.starts_with("${")) {
                 self.interpolation(start)?;
                 continue;
             }
+
             self.pos += 1;
             if c == q {
                 return Ok(());
             }
         }
+
         Err(Diagnostic::error(codes::UNCLOSED, "unclosed string", Span::new(start, start + 1)))
     }
 
@@ -325,8 +356,10 @@ impl<'a> Lexer<'a> {
                 }
                 _ => {}
             }
+
             self.pos += 1;
         }
+
         Err(Diagnostic::error(codes::UNCLOSED, "unclosed string", Span::new(string_start, string_start + 1)))
     }
 
@@ -336,6 +369,7 @@ impl<'a> Lexer<'a> {
         while matches!(self.peek_at(0), Some(b' ' | b'\t')) {
             self.pos += 1;
         }
+
         let quote = match self.peek_at(0) {
             Some(q @ (b'\'' | b'"')) => {
                 self.pos += 1;
@@ -343,33 +377,40 @@ impl<'a> Lexer<'a> {
             }
             _ => None,
         };
+
         let id_start = self.pos;
         while matches!(self.peek_at(0), Some(c) if is_ident_char(c)) {
             self.pos += 1;
         }
+
         let id = self.src[id_start..self.pos].to_string();
         if quote.is_some() {
             self.pos += 1;
         }
+
         let err = || Diagnostic::error(codes::UNCLOSED, format!("unclosed heredoc `{id}`"), Span::new(start, start + 3));
         if id.is_empty() {
             return Err(err());
         }
+
         // The closing identifier is on its own line, after optional indentation.
         let mut line_start = match self.src[self.pos..].find('\n') {
             Some(i) => self.pos + i + 1,
             None => return Err(err()),
         };
+
         loop {
             let rest = &self.src[line_start..];
             let trimmed = rest.trim_start_matches([' ', '\t']);
             let indent = rest.len() - trimmed.len();
+
             if trimmed.starts_with(id.as_str())
                 && !trimmed.as_bytes().get(id.len()).is_some_and(|&c| is_ident_char(c))
             {
                 self.pos = line_start + indent + id.len();
                 return Ok(());
             }
+
             match rest.find('\n') {
                 Some(i) => line_start += i + 1,
                 None => return Err(err()),
@@ -443,6 +484,7 @@ mod tests {
         let strs: Vec<_> = l.tokens.iter().filter(|t| t.kind == TokKind::Str).map(|t| t.text(src)).collect();
         assert_eq!(strs, [r#""{$a["k"]} and ${b['x']}""#, r#"`{$c["<p>"]}`"#]);
         assert_eq!(l.markups.len(), 1);
+
         // `{` cannot be escaped. `{` without `$` is text, and `{$` in a single-quoted string is text.
         let l = lex(r#"<?phpm $s = "\{$a["k"]} { a}"; $t = '{$a"'; return <b />;"#).unwrap();
         assert_eq!(l.markups.len(), 1);

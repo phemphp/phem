@@ -155,6 +155,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
     let mut out = Vec::new();
     for f in &file.functions {
         let Some(kind) = f.component_kind else { continue };
+
         // A `#[Context]` parameter is not a prop.
         let params: Vec<&Param> = f.params.iter().filter(|p| !p.is_context).collect();
         out.push(ComponentDef {
@@ -181,6 +182,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
             provides: vec![],
         });
     }
+
     for c in file.classes.iter().filter(|c| c.is_component) {
         let props: Vec<&Prop> = c.all_props().filter(|p| p.is_prop() && !p.is_rest).collect();
         let provides = c.provides_self.then(|| c.fqn.clone()).into_iter().chain(c.all_props().filter(|p| p.is_provide).map(|p| context_type(file, &p.ty))).collect();
@@ -203,6 +205,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
             provides,
         });
     }
+
     out
 }
 
@@ -212,6 +215,7 @@ fn bad_context_type(file: &FileInfo, ty: &str) -> Option<&'static str> {
     const BUILTIN: &[&str] = &[
         "string", "int", "float", "bool", "array", "iterable", "mixed", "object", "callable", "null", "void", "never", "false", "true", "self", "static", "parent",
     ];
+
     let t = ty.trim().trim_start_matches('?').trim();
     if t.is_empty() {
         Some("it has no type")
@@ -233,12 +237,14 @@ fn bad_context_type(file: &FileInfo, ty: &str) -> Option<&'static str> {
 /// its traits) is not visible.
 pub fn resolve_inheritance<'a>(files: impl IntoIterator<Item = &'a mut FileInfo>) {
     let mut files: Vec<&mut FileInfo> = files.into_iter().collect();
+
     let mut declared: HashMap<String, Class> = HashMap::new();
     for f in &files {
         for c in &f.classes {
             declared.insert(c.fqn.to_ascii_lowercase(), c.clone());
         }
     }
+
     for f in &mut files {
         for c in &mut f.classes {
             // Each base, and whether it comes through a parent class.
@@ -248,26 +254,32 @@ pub fn resolve_inheritance<'a>(files: impl IntoIterator<Item = &'a mut FileInfo>
                 if !seen.insert(name.to_ascii_lowercase()) {
                     continue;
                 }
+
                 let Some(base) = declared.get(&name.to_ascii_lowercase()) else {
                     c.open = true;
                     continue;
                 };
+
                 for p in &base.props {
                     if from_parent && p.is_private {
                         continue;
                     }
+
                     if !c.props.iter().chain(&c.inherited_props).any(|x| x.name == p.name) {
                         c.inherited_props.push(p.clone());
                     }
                 }
+
                 for m in &base.methods {
                     if from_parent && m.is_private {
                         continue;
                     }
+
                     if !c.has_method(&m.name) {
                         c.inherited_methods.push(m.name.clone());
                     }
                 }
+
                 queue.extend(base.traits.iter().map(|t| (t.clone(), from_parent)).chain(base.parent.iter().map(|p| (p.clone(), true))));
             }
         }
@@ -287,9 +299,11 @@ fn check_async(file: &FileInfo) -> Vec<Diagnostic> {
             );
         }
     }
+
     for c in &file.classes {
         for m in &c.methods {
             let Some(span) = m.async_attr else { continue };
+
             if m.return_type.is_empty() || file.resolve_class(&m.return_type) != PROMISE {
                 diags.push(
                     Diagnostic::error(codes::ASYNC_WITHOUT_PROMISE, format!("the `#[Async]` handler `{}()` must declare `Promise` as its return type", m.fqn), span)
@@ -299,6 +313,7 @@ fn check_async(file: &FileInfo) -> Vec<Diagnostic> {
             }
         }
     }
+
     diags
 }
 
@@ -307,6 +322,7 @@ fn check_async(file: &FileInfo) -> Vec<Diagnostic> {
 pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
     let mut diags = hooks::check(file, src, lexed);
     diags.extend(purity::check(file, src, lexed));
+
     for span in &file.export_defaults {
         diags.push(
             Diagnostic::error(codes::EXPORT_DEFAULT, "`export default` is not PHP", *span)
@@ -314,6 +330,7 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
                 .with_help("expose the page with `#[Page('/path')]` on the line before it, and `use Phem\\Attribute\\Page;`"),
         );
     }
+
     for r in &file.routes {
         if !r.is_component {
             diags.push(
@@ -322,35 +339,42 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
             );
         }
     }
+
     for (fqn, span) in &file.subscribes {
         diags.push(
             Diagnostic::error(codes::SUBSCRIBE_NOT_PAGE, format!("`#[Subscribe]` must mark a page, and `{fqn}` is not one"), *span)
                 .with_help("a page opens the connection to the Mercure hub: put `#[Subscribe]` next to `#[Page]`"),
         );
     }
+
     diags.extend(check_async(file));
+
     for (short, expected, resolved, span) in &file.foreign_attrs {
         diags.push(
             Diagnostic::warning(codes::FOREIGN_ATTRIBUTE, format!("`#[{short}]` resolves to `{resolved}`, not to `{expected}`"), *span)
                 .with_help(format!("add `use {expected};`")),
         );
     }
+
     for c in &file.classes {
         if !c.is_component {
             continue;
         }
+
         if !c.open && !c.has_method("render") {
             diags.push(
                 Diagnostic::error(codes::CLASS_WITHOUT_RENDER, format!("component class `{}` has no `render()` method", c.name), c.name_span)
                     .with_help("add `public function render() { return <div>...</div>; }`"),
             );
         }
+
         for p in c.props.iter().filter(|p| p.is_state && p.is_readonly) {
             diags.push(
                 Diagnostic::error(codes::READONLY_STATE, format!("state property `${}` cannot be readonly", p.name), p.span)
                     .with_help("state changes over time; remove `readonly`"),
             );
         }
+
         for p in c.props.iter().filter(|p| p.prop_attr.is_some() && !p.is_prop()) {
             let attr = p.prop_attr.unwrap_or_default();
             diags.push(
@@ -358,6 +382,7 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
                     .with_help("a prop is public, not static, not promoted, and not `#[State]`"),
             );
         }
+
         // Two rest props: the error is on the second one of the class (or on the class, when
         // both are inherited).
         let rests: Vec<&Prop> = c.all_props().filter(|p| p.is_prop() && p.is_rest).collect();
@@ -368,12 +393,14 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
                     .with_help("a class component has at most one `#[Prop(rest: true)]` property"),
             );
         }
+
         for p in c.props.iter().filter(|p| p.is_prop() && p.is_rest && !accepts_array(&p.ty)) {
             diags.push(
                 Diagnostic::error(codes::INVALID_REST_PROP, format!("rest prop `${}` cannot get an array", p.name), p.span)
                     .with_help("the rest prop gets a hash of props: use `public array $attrs = [];`"),
             );
         }
+
         for p in c.props.iter().filter(|p| p.is_context) {
             if p.is_static || p.is_readonly || p.is_promoted || p.is_state || p.prop_attr.is_some() {
                 diags.push(
@@ -383,6 +410,7 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
             }
         }
     }
+
     for (what, name, ty, span) in context_declarations(file) {
         if let Some(reason) = bad_context_type(file, ty) {
             diags.push(
@@ -392,6 +420,7 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
             );
         }
     }
+
     diags
 }
 
@@ -401,10 +430,12 @@ fn context_declarations(file: &FileInfo) -> Vec<(&'static str, &str, &str, Span)
     for f in file.functions.iter().filter(|f| f.component_kind.is_some()) {
         out.extend(f.params.iter().filter(|p| p.is_context).map(|p| ("`#[Context]` parameter", p.name.as_str(), p.ty.as_str(), p.span)));
     }
+
     for c in &file.classes {
         out.extend(c.props.iter().filter(|p| p.is_context).map(|p| ("`#[Context]` property", p.name.as_str(), p.ty.as_str(), p.span)));
         out.extend(c.props.iter().filter(|p| p.is_provide).map(|p| ("`#[Provide]` property", p.name.as_str(), p.ty.as_str(), p.span)));
     }
+
     out
 }
 
@@ -475,12 +506,15 @@ pub fn registry<'a>(files: impl IntoIterator<Item = &'a FileInfo>) -> (Registry,
                 } else {
                     format!("component `{}` is already declared in `{}`", c.fqcn, prev.file)
                 };
+
                 diags.push((f.rel.clone(), Diagnostic::error(codes::DUPLICATE_COMPONENT, message, span)));
                 continue;
             }
+
             reg.insert(c.fqcn.clone(), c);
         }
     }
+
     (reg, diags)
 }
 
@@ -493,6 +527,7 @@ mod tests {
         for ty in ["", "?int", "mixed", "null", "int|null", "NULL|string", "(A&B)|null", " ?\\Closure"] {
             assert!(allows_null(ty), "{ty}");
         }
+
         for ty in ["int", "string|int", "Html", "(A&B)|C", "nullable"] {
             assert!(!allows_null(ty), "{ty}");
         }

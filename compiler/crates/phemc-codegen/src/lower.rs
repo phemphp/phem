@@ -65,10 +65,12 @@ impl<'a> Lowerer<'a> {
                 if b.name() == "for" {
                     self.check_keys(&b.branches[0].children);
                 }
+
                 for br in &b.branches {
                     out.push_str(&br.tag.raw);
                     self.nodes(&br.children, out);
                 }
+
                 out.push_str(&b.close.raw);
             }
             Node::Output(o) => {
@@ -77,10 +79,13 @@ impl<'a> Lowerer<'a> {
                         Ok(s) => out.push_str(&s),
                         Err(d) => self.diags.push(d),
                     }
+
                     return;
                 }
+
                 let code = o.expr.code();
                 let code = code.trim();
+
                 // `{{ children }}`, or `{{ children ?? 'default' }}`: the default is the content
                 // of the block, so it shows when the caller gives no children.
                 let name = code.split_once("??").map_or(code, |(slot, _)| slot.trim());
@@ -92,6 +97,7 @@ impl<'a> Lowerer<'a> {
                     }
                     return;
                 }
+
                 out.push_str(&o.raw);
             }
             Node::Element(e) if e.is_component() => self.component(e, out),
@@ -111,6 +117,7 @@ impl<'a> Lowerer<'a> {
                                 .with_help("add `key={{ item.id }}`, so updates keep the right element"),
                         );
                     }
+
                     return;
                 }
                 Node::Block(_) | Node::Output(_) => return,
@@ -127,8 +134,10 @@ impl<'a> Lowerer<'a> {
                     .with_help("put the `<title>` in the `<head>` of the document component, and give the title through a slot, for example `<Document:title>Home</Document:title>`"),
             );
         }
+
         self.check_timing(e);
         let bind = self.bind(e);
+
         out.push('<');
         out.push_str(&e.name);
         if e.attrs.iter().any(|a| matches!(a.kind, AttrKind::Spread(_))) {
@@ -138,19 +147,23 @@ impl<'a> Lowerer<'a> {
                 self.dom_attr(a, out);
             }
         }
+
         if let Some(b) = &bind {
             out.push_str(&b.attrs);
         }
+
         if name == "option" {
             if let Some(bound) = self.bound_select.clone() {
                 self.option_selected(e, &bound, out);
             }
         }
+
         let void = phemc_syntax::markup::VOID_ELEMENTS.contains(&name.as_str());
         out.push('>');
         if void {
             return;
         }
+
         if let Some(BoundField { text: Some(text), .. }) = &bind {
             // A bound `<textarea>`: its text is the value.
             out.push_str(text);
@@ -159,8 +172,10 @@ impl<'a> Lowerer<'a> {
             out.push('>');
             return;
         }
+
         let select = bind.as_ref().and_then(|b| b.select.clone());
         let outer_select = if select.is_some() { std::mem::replace(&mut self.bound_select, select) } else { None };
+
         let scope = usize::from(name == "head" || name == "svg");
         self.title_scopes += scope;
         self.nodes(&e.children, out);
@@ -168,6 +183,7 @@ impl<'a> Lowerer<'a> {
         if bind.as_ref().is_some_and(|b| b.select.is_some()) {
             self.bound_select = outer_select;
         }
+
         out.push_str("</");
         out.push_str(&e.name);
         out.push('>');
@@ -179,6 +195,7 @@ impl<'a> Lowerer<'a> {
                 .help = Some("assign the markup to a PHP variable first, or use a slot: `<Card:header>...</Card:header>`".into());
             return "null".into();
         }
+
         x.code().trim().to_string()
     }
 
@@ -192,6 +209,7 @@ impl<'a> Lowerer<'a> {
                         self.error(codes::BAD_ATTRIBUTE, "Twig tags are not allowed in this attribute value", span)
                             .help = Some("use an expression: `name={{ ok ? 'a' : 'b' }}`".into());
                     }
+
                     items.push(php_str(s));
                 }
                 StrPart::Expr(x) => {
@@ -200,6 +218,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+
         match items.len() {
             0 => "''".into(),
             1 if matches!(parts[0], StrPart::Expr(_)) => format!("'' ~ {}", items[0]),
@@ -219,6 +238,7 @@ impl<'a> Lowerer<'a> {
                         args.push(format!("{{{}}}", hash.join(", ")));
                         hash.clear();
                     }
+
                     args.push(self.expr_code(x));
                 }
                 // An inline script (`onclick="..."`) of the markup: the runtime does not render
@@ -236,14 +256,17 @@ impl<'a> Lowerer<'a> {
                             }
                             _ => self.timing_not_expr(name, *name_span),
                         }
+
                         continue;
                     }
+
                     let event = event_name(name);
                     // A handler, `phem:loading` or `phem:progress`: all take a function.
                     let takes_fn = event.is_some() || name == LOADING || name == PROGRESS;
                     if let Some(event) = &event {
                         self.check_event(name, event, *name_span);
                     }
+
                     let v = match value {
                         AttrValue::Expr(x) => {
                             let c = self.expr_code(x);
@@ -261,13 +284,16 @@ impl<'a> Lowerer<'a> {
                         AttrValue::None => "true".to_string(),
                         AttrValue::Quoted { parts, .. } => self.quoted_expr(parts, a.span),
                     };
+
                     hash.push(format!("{}: {v}", php_str(name)));
                 }
             }
         }
+
         if !hash.is_empty() {
             args.push(format!("{{{}}}", hash.join(", ")));
         }
+
         let ws = attrs.first().map_or(" ", |a| if a.ws_before.is_empty() { " " } else { a.ws_before.as_str() });
         out.push_str(&format!("{ws}{{{{ phem_attrs({}) }}}}", args.join(", ")));
     }
@@ -309,16 +335,19 @@ impl<'a> Lowerer<'a> {
                             self.error(codes::BAD_ATTRIBUTE, format!("`{name}` and `{other}` cannot be on the same element"), *name_span).help =
                                 Some("keep one of them".into());
                         }
+
                         found = Some(name);
                     }
                 }
             }
         }
+
         if let (Some(name), false) = (found, has_handler) {
             let span = e.attrs.iter().find_map(|a| match &a.kind {
                 AttrKind::Plain { name: n, name_span, .. } if n == name => Some(*name_span),
                 _ => None,
             });
+
             self.diags.push(
                 Diagnostic::warning(codes::TIMING_WITHOUT_HANDLER, format!("`{name}` does nothing: the element has no handler"), span.unwrap_or(e.name_span))
                     .with_help("put it on the element with the handler, for example `<input onChange={{ search }} phem:debounce={{ 300 }} />`"),
@@ -340,6 +369,7 @@ impl<'a> Lowerer<'a> {
         } else {
             true
         };
+
         if !ok {
             let help = if blur { "write a number of milliseconds (`{{ 300 }}`), or `{{ 'blur' }}`" } else { "write a number of milliseconds: `{{ 300 }}`" };
             self.error(codes::BAD_ATTRIBUTE, format!("`{name}` takes a number of milliseconds{}", if blur { " or 'blur'" } else { "" }), span).help = Some(help.into());
@@ -366,6 +396,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+
         let Some((span, value)) = found else {
             if let Some(span) = live {
                 self.diags.push(
@@ -373,14 +404,17 @@ impl<'a> Lowerer<'a> {
                         .with_help("put it on a bound field, for example `<input phem:bind={{ query }} phem:live />`"),
                 );
             }
+
             return None;
         };
+
         let tag = e.name.to_ascii_lowercase();
         if !matches!(tag.as_str(), "input" | "textarea" | "select") {
             self.error(codes::INVALID_BIND, format!("`phem:bind` is for a form field, not a `<{}>`", e.name), span).help =
                 Some("put it on an `<input>`, a `<textarea>` or a `<select>`".into());
             return None;
         }
+
         let target = self.bind_target(value, span)?;
         let value_span = if let AttrValue::Expr(x) = value { x.span } else { span };
 
@@ -395,11 +429,13 @@ impl<'a> Lowerer<'a> {
             AttrValue::Quoted { parts, raw, .. } if parts.iter().all(|p| matches!(p, StrPart::Lit(_))) => Some(raw.to_ascii_lowercase()),
             _ => None,
         };
+
         let type_attr = attr("type");
         let input_type = match type_attr {
             None => Some("text".to_string()),
             Some((_, v)) => static_text(v),
         };
+
         let kind = match tag.as_str() {
             "input" => match input_type.as_deref() {
                 Some("checkbox") => Some(FieldValue::Checkbox),
@@ -409,19 +445,23 @@ impl<'a> Lowerer<'a> {
             "select" if attr("multiple").is_some() => Some(FieldValue::List),
             _ => Some(FieldValue::Scalar),
         };
+
         let toggles = matches!(input_type.as_deref(), Some("checkbox" | "radio"));
         let owned = match tag.as_str() {
             "input" if toggles => Some("checked"),
             "input" if input_type.is_some() => Some("value"),
             _ => None,
         };
+
         if let Some((s, _)) = owned.and_then(attr) {
             self.error(codes::INVALID_BIND, format!("`{}` and `phem:bind` cannot be on the same element", owned.unwrap()), s).help =
                 Some("`phem:bind` sets it from the property: remove it".into());
         }
+
         if tag == "textarea" && e.children.iter().any(|n| !n.is_blank()) {
             self.error(codes::INVALID_BIND, "a bound `<textarea>` has no text: `phem:bind` sets it", e.name_span).help = Some("remove the text of the `<textarea>`".into());
         }
+
         // A value in an array has no declared type: the server converts to the type of the current
         // value. The type of the property of a Bound prop is in the parent: the server checks it.
         if let (Some(kind), BindTarget::State { code, prop: Some(p), path: false, .. }) = (kind, &target) {
@@ -440,12 +480,14 @@ impl<'a> Lowerer<'a> {
             Some((_, AttrValue::Quoted { parts, .. })) => self.quoted_expr(parts, span),
             Some((_, AttrValue::None)) => "null".to_string(),
         };
+
         // The value of a checkbox or a radio button: the value that it gives when checked.
         let option = match attr("value") {
             Some((_, AttrValue::Expr(v))) if tag == "input" => format!("({})", self.expr_code(v)),
             Some((_, AttrValue::Quoted { parts, .. })) if tag == "input" => self.quoted_expr(parts, span),
             _ => "null".to_string(),
         };
+
         // `this`: the component of the property. The markup can render in the slot of another
         // component (`<Document>`), so the current component is not always the owner. A Bound
         // prop has its owner.
@@ -453,6 +495,7 @@ impl<'a> Lowerer<'a> {
             BindTarget::State { target, code, .. } => (target, code, "this"),
             BindTarget::Bound(name) => (name.clone(), name, "null"),
         };
+
         Some(BoundField {
             attrs: format!(" {{{{ phem_bind({target}, {code}, {}, {ty}, {option}, {owner}) }}}}", php_str(&tag)),
             text: (tag == "textarea").then(|| format!("{{{{ phem_bind_value({code}) }}}}")),
@@ -468,30 +511,36 @@ impl<'a> Lowerer<'a> {
             self.error(codes::INVALID_BIND, "`phem:bind` takes the name of a #[State] property", span).help = Some(help.into());
             return None;
         };
+
         let code = self.expr_code(x);
         let Some((root, path)) = bind_path(&code) else {
             self.error(codes::INVALID_BIND, "`phem:bind` takes the name of a #[State] property, or a path in it, not an expression", x.span).help =
                 Some(format!("{help}, or a path in an array property: `phem:bind={{{{ filters.status }}}}`, `phem:bind={{{{ rows[key].name }}}}`"));
             return None;
         };
+
         if self.is_bound_prop(&root) {
             if !path.is_empty() {
                 self.error(codes::INVALID_BIND, format!("`{root}` is a Bound prop: a path in it is not supported"), x.span).help =
                     Some(format!("bind the prop itself: `phem:bind={{{{ {root} }}}}`, and give the path in the parent"));
                 return None;
             }
+
             return Some(BindTarget::Bound(root));
         }
+
         let Some(class) = self.class else {
             self.error(codes::INVALID_BIND, "`phem:bind` needs a class component: a function component has no state", span).help =
                 Some(format!("bind a #[State] property of a class component, or declare a `Bound ${root}` prop and bind it in the parent: `phem:bind={{{{ query }}}}`"));
             return None;
         };
+
         if has_variable(self.scope_text, &root) {
             self.error(codes::INVALID_BIND, format!("`{root}` is a local variable, not a #[State] property"), x.span).help =
                 Some(format!("rename the variable `${root}`: in markup it hides the property"));
             return None;
         }
+
         let prop = class.all_props().find(|p| p.name == root && !p.is_static);
         match prop {
             Some(p) if !p.is_state => {
@@ -511,6 +560,7 @@ impl<'a> Lowerer<'a> {
             }
             _ => {}
         }
+
         // The property, or a list for a path: `['rows', (key), 'name']`. The render evaluates the keys.
         let target = if path.is_empty() {
             php_str(&root)
@@ -523,6 +573,7 @@ impl<'a> Lowerer<'a> {
             }));
             format!("[{}]", items.join(", "))
         };
+
         Some(BindTarget::State { target, code, prop: prop.cloned(), path: !path.is_empty() })
     }
 
@@ -541,6 +592,7 @@ impl<'a> Lowerer<'a> {
             AttrKind::Plain { name, value, .. } if name == "value" => Some(value),
             _ => None,
         });
+
         let v = match value {
             Some(AttrValue::Expr(x)) => format!("({})", self.expr_code(x)),
             Some(AttrValue::Quoted { parts, .. }) => self.quoted_expr(parts, e.name_span),
@@ -555,6 +607,7 @@ impl<'a> Lowerer<'a> {
                 return;
             }
         };
+
         out.push_str(&format!(" {{{{ phem_selected({bound}, {v}) }}}}"));
     }
 
@@ -572,19 +625,23 @@ impl<'a> Lowerer<'a> {
                     "htmlFor" => "for",
                     n => n,
                 };
+
                 if name == "key" {
                     let k = match value {
                         AttrValue::Expr(x) => self.expr_code(x),
                         AttrValue::Quoted { parts, .. } => self.quoted_expr(parts, a.span),
                         AttrValue::None => "true".into(),
                     };
+
                     out.push_str(&format!("{ws}{{{{ phem_key({k}) }}}}"));
                     return;
                 }
+
                 if name == BIND {
                     // See bind().
                     return;
                 }
+
                 if name == LIVE {
                     match value {
                         AttrValue::None => out.push_str(&format!("{ws}data-phem-live")),
@@ -596,8 +653,10 @@ impl<'a> Lowerer<'a> {
                             self.error(codes::BAD_ATTRIBUTE, "`phem:live` takes no text", *name_span).help = Some("write `phem:live`, or `phem:live={{ live }}` with a bool".into());
                         }
                     }
+
                     return;
                 }
+
                 if name == LOADING || name == PROGRESS {
                     match value {
                         AttrValue::Expr(x) => {
@@ -608,8 +667,10 @@ impl<'a> Lowerer<'a> {
                         }
                         _ => self.handler_not_function(name, *name_span),
                     }
+
                     return;
                 }
+
                 if TIMINGS.contains(&name.as_str()) {
                     match value {
                         AttrValue::Expr(x) => {
@@ -619,8 +680,10 @@ impl<'a> Lowerer<'a> {
                         }
                         _ => self.timing_not_expr(name, *name_span),
                     }
+
                     return;
                 }
+
                 if let Some(event) = event_name(name) {
                     self.check_event(name, &event, *name_span);
                     match value {
@@ -632,8 +695,10 @@ impl<'a> Lowerer<'a> {
                         }
                         _ => self.handler_not_function(name, *name_span),
                     }
+
                     return;
                 }
+
                 match value {
                     AttrValue::None => out.push_str(&format!("{ws}{html_name}")),
                     // A URL from an expression goes through phem_attr(), which drops a `javascript:` URL.
@@ -662,6 +727,7 @@ impl<'a> Lowerer<'a> {
                 return f.clone();
             }
         }
+
         self.info.resolve_class(name)
     }
 
@@ -677,6 +743,7 @@ impl<'a> Lowerer<'a> {
                 (None, Some(s)) => format!("import it: `use function {s};` (or `use {s};` for a class component)"),
                 (None, None) => format!("declare `#[Component] function {short}()` in a .phpm file, or check the `use` imports"),
             };
+
             self.error(codes::UNKNOWN_COMPONENT, format!("unknown component `<{}>` (resolved to `{fqcn}`)", e.name), e.name_span).help = Some(help);
             return;
         };
@@ -704,10 +771,12 @@ impl<'a> Lowerer<'a> {
                         AttrValue::Expr(x) => format!("({})", self.expr_code(x)),
                         AttrValue::Quoted { parts, .. } => self.quoted_expr(parts, a.span),
                     };
+
                     if name == "key" {
                         key = Some(v);
                         continue;
                     }
+
                     if def.contexts.iter().any(|c| &c.name == name) {
                         self.error(codes::UNKNOWN_PROP, format!("`{name}` of `<{}>` is a context, not a prop", e.name), *name_span).help =
                             Some("a component above gives it: render the tag inside a component with `#[Provide]` for its type".into());
@@ -716,6 +785,7 @@ impl<'a> Lowerer<'a> {
                         self.error(codes::UNKNOWN_PROP, format!("`<{}>` has no prop `{name}`", e.name), *name_span).help =
                             Some(format!("its props are: {list}"));
                     }
+
                     given.insert(name.clone());
                     props.push(format!("{}: {v}", php_str(name)));
                 }
@@ -738,6 +808,7 @@ impl<'a> Lowerer<'a> {
                         BindTarget::State { target, code, .. } => format!("phem_bound({target}, {code}, this)"),
                         BindTarget::Bound(b) => format!("({b})"),
                     };
+
                     given.insert(name.clone());
                     props.push(format!("{}: {v}", php_str(name)));
                 }
@@ -766,6 +837,7 @@ impl<'a> Lowerer<'a> {
                         self.error(codes::UNKNOWN_SLOT, format!("`<{}>` has no slot `{slot}`", e.name), s.name_span).help =
                             Some(format!("add a `?Html ${slot} = null` parameter to `{}`", def.fqcn));
                     }
+
                     let mut body = String::new();
                     self.nodes(&s.children, &mut body);
                     given.insert(slot.clone());
@@ -774,19 +846,24 @@ impl<'a> Lowerer<'a> {
                 other => default_children.push(other),
             }
         }
+
         if default_children.iter().any(|n| !n.is_blank() && !matches!(n, Node::TwigComment(_))) {
             if !def.open && !def.slots.iter().any(|s| s == "children") {
                 self.error(codes::NO_CHILDREN, format!("`<{}>` does not accept children", e.name), e.name_span).help =
                     Some(format!("add a `?Html $children = null` parameter to `{}`", def.fqcn));
             }
+
             let mut body = String::new();
             for n in default_children {
                 self.node(n, &mut body);
             }
+
             given.insert("children".to_string());
             blocks.insert(0, ("children".into(), body));
         }
+
         self.components -= 1;
+
         if !has_spread {
             for r in def.required.iter().filter(|r| !given.contains(*r)) {
                 self.error(codes::UNKNOWN_PROP, format!("`<{}>` needs the prop `{r}`", e.name), e.name_span);
@@ -797,10 +874,13 @@ impl<'a> Lowerer<'a> {
         if !props.is_empty() {
             head.push_str(&format!(" with {{{}}}", props.join(", ")));
         }
+
         if let Some(k) = key {
             head.push_str(&format!(" key {k}"));
         }
+
         head.push_str(" only");
+
         // Keep the line count of the source tag, so Twig error lines stay close.
         let newlines = e.attrs.iter().map(|a| a.newlines_before).sum::<usize>();
         let pad = "\n".repeat(newlines);
@@ -812,6 +892,7 @@ impl<'a> Lowerer<'a> {
             for (name, body) in blocks {
                 out.push_str(&format!("{{% block {name} %}}{{% with _phem_caller only %}}{body}{{% endwith %}}{{% endblock %}}"));
             }
+
             out.push_str("{% endcomponent %}");
         }
     }
@@ -829,6 +910,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+
         self.cond_branch(&code, &marks, x.span)
     }
 
@@ -839,28 +921,35 @@ impl<'a> Lowerer<'a> {
             self.node(marks[i], &mut out);
             return Ok(out);
         }
+
         if !t.contains('\u{1}') {
             return Ok(format!("{{{{ {t} }}}}"));
         }
+
         let unsupported = || {
             Diagnostic::error(codes::MARKUP_IN_EXPRESSION, "markup can appear in a Twig expression only as a branch of `?:` or after `and`", span)
                 .with_help("assign the markup to a PHP variable and print it: `{{ content }}`, or use `{% if %}`")
         };
+
         if let Some((c, a, b)) = split_ternary(t) {
             if c.contains('\u{1}') {
                 return Err(unsupported());
             }
+
             let a = self.cond_branch(a, marks, span)?;
             let b = self.cond_branch(b, marks, span)?;
             return Ok(format!("{{% if {} %}}{a}{{% else %}}{b}{{% endif %}}", c.trim()));
         }
+
         if let Some((c, m)) = split_and(t) {
             if c.contains('\u{1}') {
                 return Err(unsupported());
             }
+
             let m = self.cond_branch(m, marks, span)?;
             return Ok(format!("{{% if {} %}}{m}{{% endif %}}", c.trim()));
         }
+
         Err(unsupported())
     }
 }
@@ -929,6 +1018,7 @@ impl FieldValue {
         if ty.is_empty() {
             return true;
         }
+
         ty.split('|').any(|t| {
             let t = t.trim().trim_matches(|c| c == '(' || c == ')').trim_start_matches('?').trim().to_ascii_lowercase();
             let list = matches!(t.as_str(), "array" | "iterable");
@@ -962,6 +1052,7 @@ fn bind_path(code: &str) -> Option<(String, Vec<PathSegment>)> {
     if !root.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_') {
         return None;
     }
+
     let mut path = Vec::new();
     let mut rest = &s[end..];
     while let Some(c) = rest.chars().next() {
@@ -974,6 +1065,7 @@ fn bind_path(code: &str) -> Option<(String, Vec<PathSegment>)> {
             if !valid {
                 return None;
             }
+
             path.push(PathSegment::Name(name.to_string()));
             rest = &r[end..];
         } else if c == '[' {
@@ -982,12 +1074,14 @@ fn bind_path(code: &str) -> Option<(String, Vec<PathSegment>)> {
             if key.is_empty() {
                 return None;
             }
+
             path.push(PathSegment::Key(key.to_string()));
             rest = &rest[close + 1..];
         } else {
             return None;
         }
     }
+
     Some((root.to_string(), path))
 }
 
@@ -1007,6 +1101,7 @@ fn closing_bracket(s: &str) -> Option<usize> {
             }
             continue;
         }
+
         match c {
             '\'' | '"' => quote = Some(c),
             '[' | '(' | '{' => depth += 1,
@@ -1019,6 +1114,7 @@ fn closing_bracket(s: &str) -> Option<usize> {
             _ => {}
         }
     }
+
     None
 }
 
@@ -1047,6 +1143,7 @@ fn event_name(attr: &str) -> Option<String> {
     if !rest.starts_with(|c: char| c.is_ascii_uppercase()) {
         return None;
     }
+
     Some(match rest {
         "DoubleClick" => "dblclick".into(),
         r => r.to_ascii_lowercase(),
@@ -1057,7 +1154,6 @@ fn event_name(attr: &str) -> Option<String> {
 fn is_inline_script(attr: &str) -> bool {
     event_name(attr).is_none() && attr.get(..2).is_some_and(|p| p.eq_ignore_ascii_case("on"))
 }
-
 
 fn placeholder(t: &str) -> Option<usize> {
     t.strip_prefix('\u{1}')?.strip_suffix('\u{2}')?.parse().ok()
@@ -1075,13 +1171,17 @@ fn strip_parens(t: &str) -> &str {
                 ')' => depth -= 1,
                 _ => {}
             }
+
             depth >= 0
         });
+
         if !balanced || depth != 0 {
             break;
         }
+
         t = inner.trim();
     }
+
     t
 }
 
@@ -1102,6 +1202,7 @@ fn top_level(s: &str) -> Vec<(usize, char)> {
             }
             continue;
         }
+
         match c {
             '\'' | '"' => quote = Some(c),
             '(' | '[' | '{' => depth += 1,
@@ -1110,6 +1211,7 @@ fn top_level(s: &str) -> Vec<(usize, char)> {
             _ => {}
         }
     }
+
     out
 }
 
@@ -1118,6 +1220,7 @@ fn split_ternary(s: &str) -> Option<(&str, &str, &str)> {
     let b = s.as_bytes();
     let is_q = |i: usize| b[i] == b'?' && b.get(i + 1) != Some(&b'?') && b.get(i + 1) != Some(&b':') && (i == 0 || b[i - 1] != b'?');
     let q = top.iter().find(|(i, c)| *c == '?' && is_q(*i))?.0;
+
     let mut nested = 0;
     for (i, c) in top.iter().copied().filter(|(i, _)| *i > q) {
         if c == '?' && is_q(i) {
@@ -1126,26 +1229,32 @@ fn split_ternary(s: &str) -> Option<(&str, &str, &str)> {
             if nested == 0 {
                 return Some((&s[..q], &s[q + 1..i], &s[i + 1..]));
             }
+
             nested -= 1;
         }
     }
+
     None
 }
 
 fn split_and(s: &str) -> Option<(&str, &str)> {
     let top: HashSet<usize> = top_level(s).into_iter().map(|(i, _)| i).collect();
     let b = s.as_bytes();
+
     let mut found = None;
     let mut from = 0;
     while let Some(rel) = s[from..].find("and") {
         let i = from + rel;
         let before = i == 0 || !(b[i - 1].is_ascii_alphanumeric() || b[i - 1] == b'_');
         let after = b.get(i + 3).is_none_or(|c| !(c.is_ascii_alphanumeric() || *c == b'_'));
+
         if before && after && top.contains(&i) {
             found = Some(i);
         }
+
         from = i + 3;
     }
+
     let i = found?;
     Some((&s[..i], &s[i + 3..]))
 }

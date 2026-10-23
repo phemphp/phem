@@ -78,12 +78,14 @@ pub fn document_symbols(parsed: &Parsed, text: &str) -> Vec<Outline> {
                     } else {
                         typed("prop", &p.ty)
                     };
+
                     symbol(&p.name, detail, OutlineKind::Property, p.offset, p.offset + p.name.len() + 1, p.offset + 1, vec![])
                 })
                 .collect()
         } else {
             vec![]
         };
+
         let detail = if comp { page_detail(&routes, &f.fqn) } else { String::new() };
         list.push(symbol(&f.name, detail, OutlineKind::Function, f.start, f.end, f.offset, children));
     }
@@ -95,6 +97,7 @@ pub fn document_symbols(parsed: &Parsed, text: &str) -> Vec<Outline> {
             let kind = if c.is_case { OutlineKind::EnumMember } else { OutlineKind::Constant };
             children.push(symbol(&c.name, String::new(), kind, c.offset, c.offset + c.name.len(), c.offset, vec![]));
         }
+
         for p in &cls.properties {
             let detail = if comp && is_prop(p) {
                 if p.rest {
@@ -107,6 +110,7 @@ pub fn document_symbols(parsed: &Parsed, text: &str) -> Vec<Outline> {
                     } else {
                         "prop"
                     };
+
                     typed(base, &p.ty)
                 }
             } else if comp && has_attr(&p.attrs, "State") && !p.is_static {
@@ -114,18 +118,22 @@ pub fn document_symbols(parsed: &Parsed, text: &str) -> Vec<Outline> {
             } else {
                 p.ty.clone()
             };
+
             children.push(symbol(&p.name, detail, OutlineKind::Property, p.offset, p.offset + p.name.len() + 1, p.offset + 1, vec![]));
         }
+
         for m in &cls.methods {
             let kind = if m.name.eq_ignore_ascii_case("__construct") { OutlineKind::Constructor } else { OutlineKind::Method };
             children.push(symbol(&m.name, m.return_type.clone(), kind, m.start, m.end, m.offset, vec![]));
         }
+
         let kind = match cls.kind.as_str() {
             "interface" => OutlineKind::Interface,
             "trait" => OutlineKind::Trait,
             "enum" => OutlineKind::Enum,
             _ => OutlineKind::Class,
         };
+
         let detail = if comp { page_detail(&routes, &cls.fqn) } else { String::new() };
         list.push(symbol(&cls.name, detail, kind, cls.start, cls.end, cls.offset, children));
     }

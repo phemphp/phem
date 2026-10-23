@@ -76,6 +76,7 @@ pub fn mask_text(text: &str, masks: &[(usize, usize)]) -> Vec<u8> {
             }
         }
     }
+
     code
 }
 
@@ -182,6 +183,7 @@ impl Scanner<'_> {
                 return Ok(());
             }
         }
+
         self.i = self.t.len();
         Err(self.eof(context))
     }
@@ -221,10 +223,12 @@ impl Scanner<'_> {
                 self.i += 1;
                 continue;
             }
+
             if c == b' ' || c == b'\t' || c == b'\r' {
                 self.i += 1;
                 continue;
             }
+
             // `<?phpm` in a .phpm file, `<?php` in the PHP classes that the project reads.
             if self.starts_with("<?php") || self.starts_with("<?=") {
                 self.i += if self.starts_with("<?=") {
@@ -238,6 +242,7 @@ impl Scanner<'_> {
                 newline = true;
                 continue;
             }
+
             if (c == b'#' && self.at(1) != Some(b'[')) || self.starts_with("//") {
                 self.mask(start, |s| match s.find("\n", s.i) {
                     Some(end) => {
@@ -251,16 +256,19 @@ impl Scanner<'_> {
                 })?;
                 continue;
             }
+
             if self.starts_with("/*") {
                 self.mask(start, |s| s.skip_to("*/", Context::Php { string: false, comment: true }))?;
                 continue;
             }
+
             if c == b'\'' || c == b'"' || c == b'`' {
                 self.mask(start, |s| s.skip_quoted(Context::Php { string: true, comment: false }))?;
                 last = Last::Value;
                 newline = false;
                 continue;
             }
+
             if self.starts_with("<<<") {
                 if let Some((header, id)) = self.heredoc_header() {
                     self.mask(start, |s| {
@@ -281,6 +289,7 @@ impl Scanner<'_> {
                     continue;
                 }
             }
+
             if c == b'<' && (newline || last.starts_expression()) && self.opens_tag() {
                 self.literal = Some(start);
                 self.mask(start, |s| s.markup())?;
@@ -296,9 +305,11 @@ impl Scanner<'_> {
                 self.i += n;
                 continue;
             }
+
             last = Last::Char(c);
             self.i += 1;
         }
+
         Err(self.eof(Context::Php { string: false, comment: false }))
     }
 
@@ -309,6 +320,7 @@ impl Scanner<'_> {
         while matches!(t.get(k), Some(b' ' | b'\t')) {
             k += 1;
         }
+
         let quote = match t.get(k) {
             Some(&q @ (b'\'' | b'"')) => {
                 k += 1;
@@ -316,13 +328,16 @@ impl Scanner<'_> {
             }
             _ => None,
         };
+
         let id_start = k;
         if !t.get(k).is_some_and(|c| c.is_ascii_alphabetic() || *c == b'_') {
             return None;
         }
+
         while t.get(k).is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'_') {
             k += 1;
         }
+
         let id = String::from_utf8_lossy(&t[id_start..k]).into_owned();
         if let Some(q) = quote {
             if t.get(k) != Some(&q) {
@@ -330,9 +345,11 @@ impl Scanner<'_> {
             }
             k += 1;
         }
+
         if t.get(k) == Some(&b'\r') {
             k += 1;
         }
+
         (t.get(k) == Some(&b'\n')).then_some((k + 1, id))
     }
 
@@ -343,19 +360,23 @@ impl Scanner<'_> {
             if self.i >= self.t.len() {
                 return Err(self.eof(Context::Text));
             }
+
             let c = self.t[self.i];
             if c == b'<' {
                 if self.starts_with("<!--") {
                     self.skip_to("-->", Context::Comment)?;
                     continue;
                 }
+
                 if self.at(1) == Some(b'/') {
                     self.close_tag(&mut tags)?;
                     if tags.is_empty() {
                         return Ok(());
                     }
+
                     continue;
                 }
+
                 if self.opens_tag() {
                     match self.open_tag()? {
                         Some(name) => {
@@ -368,6 +389,7 @@ impl Scanner<'_> {
                         None if tags.is_empty() => return Ok(()),
                         None => {}
                     }
+
                     continue;
                 }
             } else if c == b'{' {
@@ -390,6 +412,7 @@ impl Scanner<'_> {
                     _ => {}
                 }
             }
+
             self.i += 1;
         }
     }
@@ -415,20 +438,24 @@ impl Scanner<'_> {
         if self.i >= self.t.len() {
             return Err(self.eof(Context::TagName { partial: name, start: name_start }));
         }
+
         let mut attrs: Vec<String> = Vec::new();
         loop {
             if self.i >= self.t.len() {
                 return Err(self.eof(Context::Attr { tag: name, attrs, partial: String::new() }));
             }
+
             let c = self.t[self.i];
             if c == b'>' {
                 self.i += 1;
                 return Ok(Some(name));
             }
+
             if self.starts_with("/>") {
                 self.i += 2;
                 return Ok(None);
             }
+
             if self.starts_with("{{") {
                 let attr = if self.i > 0 && self.t[self.i - 1] == b'=' { attrs.last().cloned() } else { None };
                 self.delimiter();
@@ -436,16 +463,19 @@ impl Scanner<'_> {
                 self.twig("}}", value)?;
                 continue;
             }
+
             if self.starts_with("{#") {
                 self.i += 2;
                 self.skip_to("#}", Context::Comment)?;
                 continue;
             }
+
             if c == b'"' || c == b'\'' {
                 let context = Context::AttrValue { tag: name.clone(), attr: attrs.last().cloned(), quote: self.i };
                 self.skip_quoted(context)?;
                 continue;
             }
+
             let n = self.t[self.i..]
                 .iter()
                 .take_while(|&&c| !c.is_ascii_whitespace() && !matches!(c, b'=' | b'/' | b'>' | b'"' | b'\'' | b'{'))
@@ -456,9 +486,11 @@ impl Scanner<'_> {
                 if self.i >= self.t.len() {
                     return Err(self.eof(Context::Attr { tag: name, attrs, partial: attr }));
                 }
+
                 attrs.push(attr);
                 continue;
             }
+
             self.i += 1;
         }
     }
@@ -474,6 +506,7 @@ impl Scanner<'_> {
         if self.i >= self.t.len() {
             return Err(self.eof(Context::CloseTag { partial: Some(name), start, expected }));
         }
+
         self.skip_to(">", Context::CloseTag { partial: None, start, expected })?;
         tags.pop();
         Ok(())
@@ -493,8 +526,10 @@ impl Scanner<'_> {
                     }
                 }
             }
+
             k += 1;
         }
+
         self.i = self.t.len();
         Err(self.eof(Context::Raw))
     }
@@ -511,43 +546,51 @@ impl Scanner<'_> {
             tag,
             attr,
         };
+
         let mut depth = 0i32;
         let mut last = Last::Char(b'(');
         loop {
             if self.i >= self.t.len() {
                 return Err(self.eof(Context::Twig(base)));
             }
+
             let c = self.t[self.i];
             if depth == 0 && self.starts_with(close) {
                 self.delimiter();
                 return Ok(());
             }
+
             if c.is_ascii_whitespace() {
                 self.i += 1;
                 continue;
             }
+
             if c == b'\'' || c == b'"' {
                 let context = Context::Twig(TwigContext { quote: Some(self.i), ..base.clone() });
                 self.skip_quoted(context)?;
                 last = Last::Value;
                 continue;
             }
+
             if c == b'<' && (last.starts_expression() || last == Last::Char(b'{') || last == Last::Char(b'~')) && self.opens_tag() {
                 self.markup()?;
                 last = Last::Value;
                 continue;
             }
+
             if c == b'{' {
                 depth += 1;
             } else if c == b'}' {
                 depth -= 1;
             }
+
             let n = self.word_len(|c| c.is_ascii_alphabetic() || c == b'_', |c| c.is_ascii_alphanumeric() || c == b'_');
             if n > 0 {
                 last = Last::Word(self.text(self.i, self.i + n).to_lowercase());
                 self.i += n;
                 continue;
             }
+
             last = Last::Char(c);
             self.i += 1;
         }
@@ -565,6 +608,7 @@ fn heredoc_close(body: &[u8], id: &str) -> Option<usize> {
         if after.starts_with(id.as_bytes()) && !after.get(id.len()).is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'_') {
             return Some(line + indent + id.len());
         }
+
         line += rest.iter().position(|&c| c == b'\n')? + 1;
     }
 }

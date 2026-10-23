@@ -29,6 +29,7 @@ fn strip_comments(s: &str) -> String {
         out.extend(comment.bytes().map(|b| if b == b'\n' { '\n' } else { ' ' }));
         rest = &rest[i + comment.len()..];
     }
+
     out.push_str(rest);
     out
 }
@@ -50,9 +51,11 @@ fn has_end_tag(text: &str, from: usize, tag: &str) -> bool {
             if depth == 0 {
                 return true;
             }
+
             depth -= 1;
         }
     }
+
     false
 }
 
@@ -91,8 +94,10 @@ pub fn open_blocks(text: &str, from: usize, end: usize) -> Vec<Block> {
                     stack.push(Block { tag: Some(tag.to_string()), args: args.to_string(), offset, sets: vec![] });
                 }
             }
+
             continue;
         }
+
         // A tag that is not in the table (a new Twig tag, or a tag of an extension) opens a block
         // when its end tag follows.
         let known = data::tag(tag);
@@ -100,16 +105,19 @@ pub fn open_blocks(text: &str, from: usize, end: usize) -> Vec<Block> {
             Some(t) => t.3.is_some(),
             None => !tag.starts_with("end") && has_end_tag(text, from + m.get(0).unwrap().end(), tag),
         };
+
         if opens {
             stack.push(Block { tag: Some(tag.to_string()), args: args.to_string(), offset, sets: vec![] });
             continue;
         }
+
         if let Some(open) = tag.strip_prefix("end") {
             if let Some(i) = (1..stack.len()).rev().find(|&i| stack[i].tag.as_deref() == Some(open)) {
                 stack.truncate(i);
             }
         }
     }
+
     stack
 }
 
@@ -151,9 +159,11 @@ pub fn steps(expr: &str) -> Option<Vec<StepKind>> {
         } else {
             return None;
         };
+
         list.push(step);
         rest = &rest[len..];
     }
+
     Some(list)
 }
 
@@ -212,6 +222,7 @@ impl<'a, 'p> TwigEnv<'a, 'p> {
             Some(l) => open_blocks(&index.current.text, l, end),
             None => vec![Block { tag: None, args: String::new(), offset: 0, sets: vec![] }],
         };
+
         let mut env = TwigEnv { scope, blocks: blocks.clone(), twig_vars: Vec::new() };
         // The outer blocks come first, so an inner variable replaces an outer one.
         for block in &blocks {
@@ -225,14 +236,17 @@ impl<'a, 'p> TwigEnv<'a, 'p> {
                     if m.get(2).is_some() {
                         env.set_var(&m[1], VarSource::Twig("{% for %} key"), None, at(&m[1]));
                     }
+
                     env.set_var("loop", VarSource::Twig("The loop variable"), Some(loop_type()), Some(block.offset));
                 }
             }
+
             for set in &block.sets {
                 let ty = if set.expr.is_empty() { None } else { env.type_of(&set.expr) };
                 env.set_var(&set.name, VarSource::Twig("{% set %}"), ty, Some(set.offset));
             }
         }
+
         env
     }
 
@@ -257,14 +271,17 @@ impl<'a, 'p> TwigEnv<'a, 'p> {
                 list.push(v);
             }
         };
+
         for v in &self.twig_vars {
             add(v.clone());
         }
+
         let file = self.scope.source.file.clone();
         for v in &self.scope.vars {
             let kind = if v.kind == VarKind::Param { VarSource::Param } else { VarSource::Local };
             add(TwigVar { name: v.name.clone(), kind, ty: v.ty.clone(), type_text: v.type_text.clone(), offset: Some(v.offset), file: file.clone(), member: None });
         }
+
         if let Some(ci) = self.scope.class {
             let fqn = &self.scope.source.parsed.classes[ci].fqn;
             let members = self.scope.index.members(fqn);
@@ -277,13 +294,16 @@ impl<'a, 'p> TwigEnv<'a, 'p> {
                 file: m.file.clone(),
                 member: Some(m.clone()),
             };
+
             for m in members.iter().filter(|m| m.kind == MemberKind::Property && !m.is_static) {
                 add(var(m, VarSource::Property));
             }
+
             for m in members.iter().filter(|m| m.kind == MemberKind::Method && !m.is_static && is_handler(&m.name)) {
                 add(var(m, VarSource::Method));
             }
         }
+
         list
     }
 
@@ -314,6 +334,7 @@ impl<'a, 'p> TwigEnv<'a, 'p> {
                 StepKind::Name(_) => None,
             };
         }
+
         ty
     }
 
@@ -325,16 +346,19 @@ impl<'a, 'p> TwigEnv<'a, 'p> {
                 .map(|k| Attr { name: k.name.clone(), kind: AttrKind::Key, ty: k.ty.clone(), member: None, key: Some(k.clone()), getter: false, required: 0 })
                 .collect();
         }
+
         let Some(fqn) = &ty.fqn else { return vec![] };
         let members = self.scope.index.members(fqn);
         let mut list: Vec<Attr> = Vec::new();
         for m in members.iter().filter(|m| m.kind == MemberKind::Property && !m.is_static && m.visibility == "public") {
             list.push(Attr { name: m.name.clone(), kind: AttrKind::Property, ty: m.ty.clone(), member: Some(m.clone()), key: None, getter: false, required: 0 });
         }
+
         for m in members.iter() {
             if m.kind != MemberKind::Method || m.is_static || m.visibility != "public" || m.name.starts_with("__") {
                 continue;
             }
+
             let required = m.required();
             if let Some(name) = getter_name(&m.name).filter(|_| required == 0) {
                 if !list.iter().any(|a| a.name == name) {
@@ -342,10 +366,12 @@ impl<'a, 'p> TwigEnv<'a, 'p> {
                     continue;
                 }
             }
+
             if !list.iter().any(|a| a.name == m.name) {
                 list.push(Attr { name: m.name.clone(), kind: AttrKind::Method, ty: m.ty.clone(), member: Some(m.clone()), key: None, getter: false, required });
             }
         }
+
         list
     }
 
@@ -370,6 +396,7 @@ fn getter_name(method: &str) -> Option<String> {
     if !rest.chars().all(|c| c.is_alphanumeric() || c == '_') {
         return None;
     }
+
     Some(first.to_ascii_lowercase().to_string() + chars.as_str())
 }
 

@@ -248,6 +248,7 @@ impl<'a> Parser<'a> {
             }
             self.pos += 1;
         }
+
         newlines
     }
 
@@ -279,6 +280,7 @@ impl<'a> Parser<'a> {
                     .with_help("close it with `</>`"))
             }
         }
+
         Ok(Node::Fragment(Fragment { children, span: Span::new(start, self.pos) }))
     }
 
@@ -291,6 +293,7 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
+
         self.src[start..self.pos].to_string()
     }
 
@@ -303,6 +306,7 @@ impl<'a> Parser<'a> {
         if name.is_empty() {
             return Err(self.err(codes::SYNTAX, "expected a tag name after `<`", Span::new(start, start + 1)));
         }
+
         let (attrs, self_closing) = self.parse_attrs(&name, start)?;
         let start_tag = Span::new(start, self.pos);
         let lower = name.to_ascii_lowercase();
@@ -318,6 +322,7 @@ impl<'a> Parser<'a> {
                 start_tag,
             }));
         }
+
         if !is_component_name(&name) && VOID_ELEMENTS.contains(&lower.as_str()) {
             return Err(self
                 .err(codes::VOID_NOT_CLOSED, format!("the void element `<{name}>` must be self-closed"), start_tag)
@@ -344,6 +349,7 @@ impl<'a> Parser<'a> {
                         .with_help(format!("close it with `</{name}>`, or self-close it: `<{name} />`")))
                 }
             }
+
             children
         };
 
@@ -375,6 +381,7 @@ impl<'a> Parser<'a> {
         let Some(rel) = self.src[start..].find(&close) else {
             return Err(self.err(codes::UNCLOSED, format!("unclosed element `<{name}>`"), start_tag));
         };
+
         self.pos = start + rel;
         let text = Text { text: self.src[start..self.pos].to_string(), span: Span::new(start, self.pos) };
         self.pos += close.len();
@@ -382,6 +389,7 @@ impl<'a> Parser<'a> {
         if self.peek() != Some(b'>') {
             return Err(self.err(codes::SYNTAX, "expected `>`", Span::new(self.pos, self.pos + 1)));
         }
+
         self.pos += 1;
         Ok(if text.text.is_empty() { vec![] } else { vec![Node::Text(text)] })
     }
@@ -396,14 +404,17 @@ impl<'a> Parser<'a> {
                 return Err(self
                     .err(codes::UNCLOSED, format!("unclosed start tag `<{tag}`"), Span::new(tag_start, tag_start + 1)));
             }
+
             if self.starts_with("/>") {
                 self.pos += 2;
                 return Ok((attrs, true));
             }
+
             if self.peek() == Some(b'>') {
                 self.pos += 1;
                 return Ok((attrs, false));
             }
+
             let start = self.pos;
             if self.starts_with("{{") {
                 let out = self.parse_output()?;
@@ -414,6 +425,7 @@ impl<'a> Parser<'a> {
                         .err(codes::BAD_ATTRIBUTE, "a Twig expression inside a tag must be a spread", out.span)
                         .with_help("write `{{ ...props }}`, or a dynamic attribute: `name={{ expr }}`"));
                 }
+
                 let lead = code.len() - trimmed.len() + 3;
                 let inner = TwigExpr {
                     parts: vec![ExprPart::Code(trimmed[3..].to_string())],
@@ -422,22 +434,26 @@ impl<'a> Parser<'a> {
                 attrs.push(Attr { kind: AttrKind::Spread(inner), span: out.span, newlines_before, ws_before });
                 continue;
             }
+
             if self.starts_with("{%") || self.starts_with("{#") {
                 return Err(self
                     .err(codes::BAD_ATTRIBUTE, "Twig tags are not allowed inside a start tag", Span::new(start, start + 2))
                     .with_help("use a dynamic attribute: `disabled={{ isOff }}` or `class={{ ok ? 'on' : null }}`"));
             }
+
             while let Some(c) = self.peek() {
                 if c.is_ascii_whitespace() || matches!(c, b'=' | b'>' | b'"' | b'\'' | b'{') || self.starts_with("/>") {
                     break;
                 }
                 self.pos += 1;
             }
+
             let name_span = Span::new(start, self.pos);
             let name = name_span.text(self.src).to_string();
             if name.is_empty() {
                 return Err(self.err(codes::SYNTAX, "unexpected character in tag", Span::new(start, start + 1)));
             }
+
             let save = self.pos;
             self.skip_ws();
             let value = if self.peek() == Some(b'=') {
@@ -448,6 +464,7 @@ impl<'a> Parser<'a> {
                 self.pos = save;
                 AttrValue::None
             };
+
             attrs.push(Attr {
                 kind: AttrKind::Plain { name, name_span, value },
                 span: Span::new(start, self.pos),
@@ -463,33 +480,40 @@ impl<'a> Parser<'a> {
                 let open = self.pos;
                 self.pos += 1;
                 let raw_start = self.pos;
+
                 let mut parts = Vec::new();
                 let mut lit = String::new();
                 loop {
                     if self.eof() {
                         return Err(self.err(codes::UNCLOSED, "unclosed attribute value", Span::new(open, open + 1)));
                     }
+
                     if self.starts_with("{{") {
                         if !lit.is_empty() {
                             parts.push(StrPart::Lit(std::mem::take(&mut lit)));
                         }
+
                         let out = self.parse_output()?;
                         parts.push(StrPart::Expr(out.expr));
                         continue;
                     }
+
                     let c = self.peek().unwrap();
                     if c == q {
                         break;
                     }
+
                     let ch = self.src[self.pos..].chars().next().unwrap();
                     lit.push(ch);
                     self.pos += ch.len_utf8();
                 }
+
                 let raw = self.src[raw_start..self.pos].to_string();
                 self.pos += 1;
                 if !lit.is_empty() {
                     parts.push(StrPart::Lit(lit));
                 }
+
                 Ok(AttrValue::Quoted { parts, raw, quote: q as char })
             }
             Some(b'{') if self.starts_with("{{") => Ok(AttrValue::Expr(self.parse_output()?.expr)),
@@ -501,9 +525,11 @@ impl<'a> Parser<'a> {
                     }
                     self.pos += 1;
                 }
+
                 if start == self.pos {
                     return Err(self.err(codes::SYNTAX, "expected an attribute value", Span::new(start, start + 1)));
                 }
+
                 let raw = self.src[start..self.pos].to_string();
                 Ok(AttrValue::Quoted { parts: vec![StrPart::Lit(raw.clone())], raw, quote: '"' })
             }
@@ -517,6 +543,7 @@ impl<'a> Parser<'a> {
             if self.eof() {
                 return Ok((children, None));
             }
+
             if self.starts_with("</") {
                 let start = self.pos;
                 self.pos += 2;
@@ -525,9 +552,11 @@ impl<'a> Parser<'a> {
                 if self.peek() != Some(b'>') {
                     return Err(self.err(codes::SYNTAX, "expected `>` to end the closing tag", Span::new(start, self.pos)));
                 }
+
                 self.pos += 1;
                 return Ok((children, Some(Term::Close { name, span: Span::new(start, self.pos) })));
             }
+
             if self.starts_with("<!--") {
                 let start = self.pos;
                 let end = self.src[start..]
@@ -538,14 +567,17 @@ impl<'a> Parser<'a> {
                 children.push(Node::HtmlComment(Text { text: self.src[start..end].to_string(), span: Span::new(start, end) }));
                 continue;
             }
+
             if self.peek() == Some(b'<') && matches!(self.peek_at(1), Some(c) if c.is_ascii_alphabetic() || c == b'>') {
                 children.push(self.parse_root()?);
                 continue;
             }
+
             if self.starts_with("{{") {
                 children.push(Node::Output(self.parse_output()?));
                 continue;
             }
+
             if self.starts_with("{#") {
                 let start = self.pos;
                 let end = self.src[start..]
@@ -556,12 +588,14 @@ impl<'a> Parser<'a> {
                 children.push(Node::TwigComment(Span::new(start, end)));
                 continue;
             }
+
             if self.starts_with("{%") {
                 let tag = self.parse_tag()?;
                 let n = tag.name.as_str();
                 if n == "else" || n == "elseif" || n.starts_with("end") {
                     return Ok((children, Some(Term::Tag(tag))));
                 }
+
                 if n == "verbatim" {
                     children.push(self.parse_verbatim(tag)?);
                 } else if is_block_tag(&tag) || self.has_end_tag(&tag.name) {
@@ -569,6 +603,7 @@ impl<'a> Parser<'a> {
                 } else {
                     children.push(Node::Tag(tag));
                 }
+
                 continue;
             }
             children.push(Node::Text(self.parse_text()));
@@ -582,15 +617,18 @@ impl<'a> Parser<'a> {
             if self.pos > start && (self.starts_with("{{") || self.starts_with("{%") || self.starts_with("{#")) {
                 break;
             }
+
             if self.pos > start
                 && self.peek() == Some(b'<')
                 && matches!(self.peek_at(1), Some(c) if c.is_ascii_alphabetic() || c == b'>' || c == b'/' || c == b'!')
             {
                 break;
             }
+
             let ch = self.src[self.pos..].chars().next().unwrap();
             self.pos += ch.len_utf8();
         }
+
         Text { text: self.src[start..self.pos].to_string(), span: Span::new(start, self.pos) }
     }
 
@@ -636,21 +674,25 @@ impl<'a> Parser<'a> {
         if BLOCK_TAGS.contains(&name) || name == "verbatim" {
             return false;
         }
+
         let end = format!("end{name}");
         let mut p = Parser { src: self.src, b: self.b, pos: self.pos };
         let mut depth = 0;
         while let Some(rel) = p.src[p.pos..].find("{%") {
             p.pos += rel;
             let Ok(tag) = p.parse_tag() else { return false };
+
             if tag.name == name {
                 depth += 1;
             } else if tag.name == end {
                 if depth == 0 {
                     return true;
                 }
+
                 depth -= 1;
             }
         }
+
         false
     }
 
@@ -661,12 +703,14 @@ impl<'a> Parser<'a> {
             let Some(rel) = self.src[search..].find("{%") else {
                 return Err(self.err(codes::UNCLOSED, "unclosed `{% verbatim %}`", open.span));
             };
+
             self.pos = search + rel;
             let tag = self.parse_tag()?;
             if tag.name == "endverbatim" {
                 let end = self.pos;
                 return Ok(Node::Verbatim(Text { text: self.src[start..end].to_string(), span: Span::new(start, end) }));
             }
+
             search = self.pos;
         }
     }
@@ -677,6 +721,7 @@ impl<'a> Parser<'a> {
         if matches!(self.peek(), Some(b'-' | b'~')) {
             self.pos += 1;
         }
+
         let inner_start = self.pos;
         let end = self.scan_twig_end(b'%', start)?;
         let inner = &self.src[inner_start..end.0];
@@ -691,6 +736,7 @@ impl<'a> Parser<'a> {
         if name.is_empty() {
             return Err(self.err(codes::SYNTAX, "expected a Twig tag name", Span::new(start, self.pos)));
         }
+
         Ok(Tag {
             name,
             head_span: Span::new(head_start, head_start + head.len()),
@@ -706,6 +752,7 @@ impl<'a> Parser<'a> {
         if matches!(self.peek(), Some(b'-' | b'~')) {
             self.pos += 1;
         }
+
         let expr = self.parse_expr(start)?;
         Ok(Output { expr, span: Span::new(start, self.pos), raw: self.src[start..self.pos].to_string() })
     }
@@ -742,6 +789,7 @@ impl<'a> Parser<'a> {
                 _ => self.pos += 1,
             }
         }
+
         let what = if close == b'%' { "`{% ... %}`" } else { "`{{ ... }}`" };
         Err(self.err(codes::UNCLOSED, format!("unclosed Twig {what}"), Span::new(open, open + 2)))
     }
@@ -755,17 +803,20 @@ impl<'a> Parser<'a> {
                 self.pos += 2;
                 continue;
             }
+
             if q == b'"' && c == b'#' && self.peek_at(1) == Some(b'{') {
                 interp += 1;
                 self.pos += 2;
                 continue;
             }
+
             if interp > 0 && c == b'}' {
                 interp -= 1;
             } else if interp == 0 && c == q {
                 self.pos += 1;
                 return Ok(());
             }
+
             self.pos += 1;
         }
         Err(self.err(codes::UNCLOSED, "unclosed string", Span::new(start, start + 1)))
@@ -781,6 +832,7 @@ impl<'a> Parser<'a> {
             if self.eof() {
                 return Err(self.err(codes::UNCLOSED, "unclosed Twig `{{ ... }}`", Span::new(open, open + 2)));
             }
+
             let c = self.peek().unwrap();
             let end_here = (c == b'}' && depth == 0 && self.peek_at(1) == Some(b'}'))
                 || (matches!(c, b'-' | b'~') && depth == 0 && self.peek_at(1) == Some(b'}') && self.peek_at(2) == Some(b'}'));
@@ -791,6 +843,7 @@ impl<'a> Parser<'a> {
                 parts.retain(|p| !matches!(p, ExprPart::Code(s) if s.is_empty()));
                 return Ok(TwigExpr { parts, span: Span::new(inner_start, inner_end) });
             }
+
             match c {
                 b'\'' | b'"' => self.skip_string(c)?,
                 b'{' | b'(' | b'[' => {
@@ -819,6 +872,7 @@ fn is_block_tag(tag: &Tag) -> bool {
     if !BLOCK_TAGS.contains(&tag.name.as_str()) {
         return false;
     }
+
     match tag.name.as_str() {
         // `{% set x = 1 %}` has no body; `{% set x %}...{% endset %}` has one.
         "set" => !tag.head.contains('='),
@@ -834,9 +888,11 @@ fn allows_markup(code_before: &str, at_start: bool) -> bool {
     if t.is_empty() {
         return at_start || code_before.is_empty();
     }
+
     if t.ends_with(['?', ':', '(', ',', '[', '=']) {
         return true;
     }
+
     for word in ["and", "or", "not"] {
         if let Some(rest) = t.strip_suffix(word) {
             if rest.is_empty() || !rest.ends_with(|c: char| c.is_alphanumeric() || c == '_' || c == '.') {
@@ -844,6 +900,7 @@ fn allows_markup(code_before: &str, at_start: bool) -> bool {
             }
         }
     }
+
     false
 }
 
@@ -869,6 +926,7 @@ mod tests {
         assert_eq!(e.name, "img");
         assert!(e.self_closing);
         assert_eq!(e.attrs.len(), 4);
+
         match &e.attrs[1].kind {
             AttrKind::Plain { name, value: AttrValue::Expr(x), .. } => {
                 assert_eq!(name, "src");
@@ -876,6 +934,7 @@ mod tests {
             }
             _ => panic!(),
         }
+
         match &e.attrs[2].kind {
             AttrKind::Plain { value: AttrValue::Quoted { parts, .. }, .. } => assert_eq!(parts.len(), 2),
             _ => panic!(),

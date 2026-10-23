@@ -28,14 +28,17 @@ pub fn import_for(text: &str, parsed: &Parsed, kind: UseKind, fqn: &str) -> Impo
     if let Some(same) = imports_of(parsed, kind).find(|i| i.fqn.eq_ignore_ascii_case(fqn)) {
         return Import { name: same.alias.clone(), edit: None, qualified: false };
     }
+
     if ns.eq_ignore_ascii_case(&parsed.namespace) || (kind != UseKind::Class && ns.is_empty()) {
         // The same namespace, or a global function or constant: no import.
         return Import { name: short.to_string(), edit: None, qualified: false };
     }
+
     if imports_of(parsed, kind).any(|i| i.alias.eq_ignore_ascii_case(short)) {
         // The short name is taken: use the fully qualified name.
         return Import { name: format!("\\{fqn}"), edit: None, qualified: true };
     }
+
     Import { name: short.to_string(), edit: Some(use_edit(text, parsed, kind, fqn)), qualified: false }
 }
 
@@ -66,6 +69,7 @@ pub fn use_edit(text: &str, parsed: &Parsed, kind: UseKind, fqn: &str) -> Insert
         while i > open && text.as_bytes()[i - 1].is_ascii_whitespace() {
             i -= 1;
         }
+
         let text = if text.as_bytes()[i - 1] == b',' { format!(" {short}") } else { format!(", {short}") };
         return Insert { offset: i, text };
     }
@@ -84,22 +88,26 @@ pub fn use_edit(text: &str, parsed: &Parsed, kind: UseKind, fqn: &str) -> Insert
             // Class imports go before the function and constant imports.
             return Insert { offset: line_start(text, first.start), text: format!("{statement}\n\n") };
         }
+
         if kind == UseKind::Function {
             if let Some(c) = parsed.uses.iter().find(|u| u.kind == UseKind::Const) {
                 return Insert { offset: line_start(text, c.start), text: format!("{statement}\n\n") };
             }
         }
+
         let class_uses: Vec<_> = parsed.uses.iter().filter(|u| u.kind == UseKind::Class).collect();
         let anchor = match class_uses.last() {
             Some(c) if kind != UseKind::Const => c,
             _ => last,
         };
+
         return Insert { offset: line_end(text, anchor.end), text: format!("\n\n{statement}") };
     }
 
     if let Some(end) = parsed.namespace_end.or(parsed.open_tag_end) {
         return Insert { offset: line_end(text, end), text: format!("\n\n{statement}") };
     }
+
     Insert { offset: 0, text: format!("{statement}\n\n") }
 }
 
@@ -109,10 +117,12 @@ pub fn resolve_component<'a>(parsed: &Parsed, components: &'a [Component], tag: 
     if let Some(fqn) = tag.strip_prefix('\\') {
         return by_fqn(fqn);
     }
+
     let (first, tail) = match tag.split_once('\\') {
         Some((f, r)) => (f, format!("\\{r}")),
         None => (tag, String::new()),
     };
+
     for kind in [UseKind::Function, UseKind::Class] {
         for i in imports_of(parsed, kind) {
             if i.alias.eq_ignore_ascii_case(first) {
@@ -122,6 +132,7 @@ pub fn resolve_component<'a>(parsed: &Parsed, components: &'a [Component], tag: 
             }
         }
     }
+
     by_fqn(&crate::decl::join_name(&parsed.namespace, tag))
 }
 

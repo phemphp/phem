@@ -39,6 +39,7 @@ pub fn free_vars(root: &Node) -> Vec<FreeVar> {
     let mut out = Vec::new();
     let mut scope = Scope::default();
     node(root, &mut scope, &mut out);
+
     // Keep the first use of each name. It is strict when one of its uses is strict.
     let strict: std::collections::HashSet<String> = out.iter().filter(|v| v.strict).map(|v| v.name.clone()).collect();
     let mut seen = std::collections::HashSet::new();
@@ -46,6 +47,7 @@ pub fn free_vars(root: &Node) -> Vec<FreeVar> {
     for v in &mut out {
         v.strict = strict.contains(&v.name);
     }
+
     out
 }
 
@@ -106,6 +108,7 @@ fn node(n: &Node, scope: &mut Scope, out: &mut Vec<FreeVar>) {
                     AttrKind::Plain { value: AttrValue::None, .. } => {}
                 }
             }
+
             // The children of a component are slots: blocks with `{% with _phem_caller only %}`.
             if e.is_component() {
                 scoped(&e.children, scope, out);
@@ -120,6 +123,7 @@ fn node(n: &Node, scope: &mut Scope, out: &mut Vec<FreeVar>) {
             for u in tv.used {
                 push(out, scope, u.name, t.head_span.start + u.offset, !tv.guessed);
             }
+
             if t.name == "set" {
                 scope.bound.extend(tv.bound);
             }
@@ -137,22 +141,26 @@ fn node(n: &Node, scope: &mut Scope, out: &mut Vec<FreeVar>) {
                 for u in tv.used {
                     push(out, scope, u.name, br.tag.head_span.start + u.offset, !tv.guessed);
                 }
+
                 let mark = scope.mark();
                 // The loop variables exist only in the loop body (not in `{% else %}`).
                 if br.tag.name == "for" && i == 0 {
                     scope.bound.extend(tv.bound.iter().cloned());
                 }
+
                 let start = scope.mark();
                 children(&br.children, scope, out);
                 if shares_scope {
                     set_in_branches.push(scope.bound.drain(start.0..).collect());
                     maybe.extend(scope.maybe.drain(start.1..));
                 }
+
                 scope.truncate(mark);
                 if br.tag.name == "set" {
                     scope.bound.extend(tv.bound);
                 }
             }
+
             // A name that each branch sets binds after the tag. A name that only some branches
             // set can bind: Twig does not know which branch runs.
             for name in set_in_branches.iter().flatten() {
@@ -162,6 +170,7 @@ fn node(n: &Node, scope: &mut Scope, out: &mut Vec<FreeVar>) {
                     maybe.push(name.clone());
                 }
             }
+
             scope.maybe.extend(maybe);
         }
         Node::Text(_) | Node::HtmlComment(_) | Node::Verbatim(_) | Node::TwigComment(_) => {}

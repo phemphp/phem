@@ -22,6 +22,7 @@ pub fn check(src: &Path, open: &HashMap<PathBuf, String>) -> Vec<FileCheck> {
         if !entry.file_type().is_file() || path.extension().is_none_or(|e| e != "phpm") {
             continue;
         }
+
         let Ok(rel) = path.strip_prefix(src) else { continue };
         let text = match open.get(path) {
             Some(t) => t.clone(),
@@ -30,8 +31,10 @@ pub fn check(src: &Path, open: &HashMap<PathBuf, String>) -> Vec<FileCheck> {
                 Err(_) => continue,
             },
         };
+
         inputs.push(SourceInput { rel: rel.to_string_lossy().replace('\\', "/"), text });
     }
+
     let (_, files) = phemc_codegen::compile(inputs);
     files.into_iter().map(|f| FileCheck { file: src.join(&f.rel), text: f.text, diags: f.diags }).collect()
 }
@@ -42,9 +45,11 @@ pub fn message(d: &Diagnostic) -> String {
     if let Some(label) = &d.label {
         m += &format!(" ({label})");
     }
+
     if let Some(help) = &d.help {
         m += &format!("\nhelp: {help}");
     }
+
     m
 }
 
@@ -53,5 +58,6 @@ pub fn end_of(text: &str, start: usize, end: usize) -> usize {
     if end > start {
         return end;
     }
+
     text.get(start..).and_then(|rest| rest.chars().next()).map_or(start, |c| start + c.len_utf8())
 }

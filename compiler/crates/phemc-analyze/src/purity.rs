@@ -27,12 +27,14 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
     for f in file.functions.iter().filter(|f| f.component_kind.is_some()) {
         check_body(f, &[], src, lexed, &mut diags);
     }
+
     for c in file.classes.iter().filter(|c| c.is_component) {
         let services: Vec<&str> = c.all_props().filter(|p| p.is_promoted).map(|p| p.name.as_str()).collect();
         for m in c.methods.iter().filter(|m| m.name.eq_ignore_ascii_case("render")) {
             check_body(m, &services, src, lexed, &mut diags);
         }
     }
+
     diags
 }
 
@@ -114,6 +116,7 @@ mod tests {
     fn pure_code_is_fine() {
         let src = "<?phpm\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class A {\n    public function __construct(private readonly Repo $repo) {}\n    private array $rows = [];\n    public function mount(): void { $this->rows = $this->repo->all(); }\n    public function save(): void { $this->repo->save(time()); }\n    public function render() { $rows = $this->rows; $d = new \\DateTimeImmutable('2020-01-01'); $x = Rows::count(); $y = $this->format(); return <p>{{ rows|length }}</p>; }\n}\n";
         assert!(messages(src).is_empty(), "{:?}", messages(src));
+
         let src = "<?phpm\nfunction helper() { return time(); }\n";
         assert!(messages(src).is_empty(), "a plain function is not a component");
     }

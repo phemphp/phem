@@ -79,6 +79,7 @@ pub fn split_top(ty: &str, seps: &[char]) -> Vec<String> {
             _ => {}
         }
     }
+
     parts.push(ty[start..].trim().to_string());
     parts.retain(|p| !p.is_empty());
     parts
@@ -97,22 +98,27 @@ pub fn resolve_name(parsed: &Parsed, name: &str) -> Option<String> {
     if name.is_empty() {
         return None;
     }
+
     if let Some(fqn) = name.strip_prefix('\\') {
         return Some(fqn.to_string());
     }
+
     if is_builtin(name) {
         return None;
     }
+
     let (first, rest) = match name.split_once('\\') {
         Some((f, r)) => (f, Some(r)),
         None => (name, None),
     };
+
     if let Some(imported) = imports_of(parsed, UseKind::Class).find(|i| i.alias.eq_ignore_ascii_case(first)) {
         return Some(match rest {
             Some(r) => format!("{}\\{r}", imported.fqn),
             None => imported.fqn.clone(),
         });
     }
+
     Some(crate::decl::join_name(&parsed.namespace, name))
 }
 
@@ -126,11 +132,13 @@ pub fn to_type(ty: &str, ctx: &TypeCtx) -> Option<Type> {
     if ty.is_empty() {
         return None;
     }
+
     // A conditional type: ($a is Foo ? A : B). Use the last branch.
     if ty.starts_with('(') && ty.ends_with(')') && is_conditional(&ty[1..ty.len() - 1]) {
         let branches = split_top(&ty[1..ty.len() - 1], &[':']);
         return if branches.len() > 1 { to_type(branches.last().unwrap(), ctx) } else { None };
     }
+
     let parts = split_top(ty.strip_prefix('?').unwrap_or(ty), &['|', '&']);
     for part in &parts {
         let part = part.strip_prefix('(').unwrap_or(part);
@@ -139,9 +147,11 @@ pub fn to_type(ty: &str, ctx: &TypeCtx) -> Option<Type> {
         if word_is(part, &["null", "false", "true", "void", "never", "mixed"]) {
             continue;
         }
+
         if let Some(item) = part.strip_suffix("[]") {
             return Some(Type::list(to_type(item, ctx)));
         }
+
         let (base, args) = generic(part);
         if word_is(base, ITERABLE) {
             if let Some(last) = args.last() {
@@ -149,26 +159,33 @@ pub fn to_type(ty: &str, ctx: &TypeCtx) -> Option<Type> {
             }
             continue;
         }
+
         if base.eq_ignore_ascii_case("self") {
             return ctx.self_.map(Type::class);
         }
+
         if base.eq_ignore_ascii_case("static") || base.eq_ignore_ascii_case("$this") {
             return ctx.static_.or(ctx.self_).map(Type::class);
         }
+
         if base.eq_ignore_ascii_case("parent") {
             return ctx.parent.map(Type::class);
         }
+
         let named = base.trim_start_matches('\\').chars().next().is_some_and(|c| c.is_ascii_alphabetic() || c == '_');
         if base.starts_with("array{") || is_builtin(base) || !named {
             continue;
         }
+
         let Some(fqn) = resolve_name(ctx.parsed, base) else { continue };
         let mut t = Type::class(fqn);
         if let Some(last) = args.last() {
             t.item = to_type(last, ctx).map(Box::new);
         }
+
         return Some(t);
     }
+
     None
 }
 
@@ -192,7 +209,9 @@ pub fn read_type(s: &str) -> String {
             while compact.ends_with(char::is_whitespace) {
                 compact.pop();
             }
+
             compact.push(c);
+
             while chars.peek().is_some_and(|c| c.is_whitespace()) {
                 chars.next();
             }
@@ -200,6 +219,7 @@ pub fn read_type(s: &str) -> String {
             compact.push(c);
         }
     }
+
     let mut depth = 0i32;
     let mut end = compact.len();
     for (i, c) in compact.char_indices() {
@@ -213,6 +233,7 @@ pub fn read_type(s: &str) -> String {
             _ => {}
         }
     }
+
     compact[..end].split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
@@ -263,8 +284,10 @@ fn dollar_name(s: &str) -> Option<(usize, &str)> {
         if len > 0 {
             return Some((start, &s[start + 1..start + 1 + len]));
         }
+
         from = start + 1;
     }
+
     None
 }
 
@@ -274,12 +297,14 @@ pub fn doc_tags(doc: &str) -> DocTags {
     if doc.is_empty() {
         return tags;
     }
+
     let mut summary = Vec::new();
     let mut in_tags = false;
     let mut line_start = 0;
     for raw in doc.split('\n') {
         let start = line_start;
         line_start += raw.len() + 1;
+
         // ` * text */` → `text`
         let mut line = raw.trim_start_matches([' ', '\t']);
         let mut offset = start + (raw.len() - line.len());
@@ -290,10 +315,12 @@ pub fn doc_tags(doc: &str) -> DocTags {
             line = &line[1..];
             offset += 1;
         }
+
         if let Some(l) = line.strip_prefix([' ', '\t']) {
             line = l;
             offset += 1;
         }
+
         let line = line.trim_end();
         let line = line.strip_suffix("*/").unwrap_or(line).trim_end();
         let Some(tag) = line.strip_prefix('@') else {
@@ -302,6 +329,7 @@ pub fn doc_tags(doc: &str) -> DocTags {
             }
             continue;
         };
+
         in_tags = true;
         let name_len = tag.chars().take_while(|c| c.is_alphanumeric() || *c == '_' || *c == '-').count();
         let name = &tag[..name_len];
@@ -309,11 +337,13 @@ pub fn doc_tags(doc: &str) -> DocTags {
         let rest = tag[name_len..].trim_start();
         let ty = read_type(rest);
         let rest_offset = offset + 1 + name_len + (tag[name_len..].len() - rest.len());
+
         match name {
             "var" => {
                 if let Some((_, v)) = dollar_name(rest) {
                     tags.vars.push((v.to_string(), if ty.starts_with('$') { String::new() } else { ty.clone() }));
                 }
+
                 if !ty.starts_with('$') {
                     tags.var = ty;
                 }
@@ -343,6 +373,7 @@ pub fn doc_tags(doc: &str) -> DocTags {
             _ => {}
         }
     }
+
     tags.summary = summary.join(" ").trim().to_string();
     tags
 }
@@ -356,15 +387,18 @@ fn doc_method(rest: &str) -> Option<DocMethod> {
     if name_len == 0 {
         return None;
     }
+
     let name = &head[head.len() - name_len..];
     let mut words: Vec<&str> = head[..head.len() - name_len].split_whitespace().collect();
     let is_static = words.first().is_some_and(|w| *w == "static");
     if is_static {
         words.remove(0);
     }
+
     if words.len() > 1 {
         return None;
     }
+
     Some(DocMethod {
         name: name.to_string(),
         ty: words.first().map_or(String::new(), |w| w.to_string()),

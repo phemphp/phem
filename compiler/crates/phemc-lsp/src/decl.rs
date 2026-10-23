@@ -39,14 +39,17 @@ pub fn tokenize(code: &[u8]) -> Vec<Token> {
         while k < code.len() && is_word_char(code[k]) {
             k += 1;
         }
+
         k
     };
+
     while i < code.len() {
         let c = code[i];
         if c.is_ascii_whitespace() {
             i += 1;
             continue;
         }
+
         let start = i;
         let (t, end) = if code[i..].starts_with(b"#[") {
             (Tok::Punct, i + 2)
@@ -57,9 +60,11 @@ pub fn tokenize(code: &[u8]) -> Vec<Token> {
             while code.get(k) == Some(&b'\\') && code.get(k + 1).is_some_and(|&n| is_word_start(n)) {
                 k = word_end(k + 2);
             }
+
             if code.get(k) == Some(&b'\\') {
                 k += 1;
             }
+
             (Tok::Id, k)
         } else if code[i..].starts_with(b"...") {
             (Tok::Punct, i + 3)
@@ -71,9 +76,11 @@ pub fn tokenize(code: &[u8]) -> Vec<Token> {
             let len = std::str::from_utf8(&code[i..]).ok().and_then(|s| s.chars().next()).map_or(1, char::len_utf8);
             (Tok::Punct, i + len)
         };
+
         tokens.push(Token { t, v: String::from_utf8_lossy(&code[start..end]).into_owned(), start, end });
         i = end;
     }
+
     tokens
 }
 
@@ -295,6 +302,7 @@ pub fn parse(text: &str) -> Parsed {
             p.out.open_tag_end = Some(i + if m { 6 } else { 5 });
         }
     }
+
     p.parse();
     let mut parsed = p.out;
     parsed.components = components(&parsed);
@@ -359,6 +367,7 @@ impl Parser<'_> {
             } else if v == close {
                 depth -= 1;
             }
+
             self.k += 1;
         }
     }
@@ -379,6 +388,7 @@ impl Parser<'_> {
                 }
             }
         }
+
         None
     }
 
@@ -386,6 +396,7 @@ impl Parser<'_> {
     fn attribute(&mut self) -> Vec<Attribute> {
         let start_k = self.k;
         self.skip_group();
+
         let mut list: Vec<Attribute> = Vec::new();
         let mut depth = 0;
         for j in start_k + 1..self.k.saturating_sub(1) {
@@ -395,6 +406,7 @@ impl Parser<'_> {
                     let end = self.match_index(j).map_or(self.text.len(), |c| self.tokens[c].start);
                     list.last_mut().unwrap().args = self.text[tok.end..end].to_string();
                 }
+
                 depth += 1;
             } else if tok.v == ")" || tok.v == "]" {
                 depth -= 1;
@@ -402,6 +414,7 @@ impl Parser<'_> {
                 list.push(Attribute { name: tok.v.trim_start_matches('\\').to_string(), args: String::new() });
             }
         }
+
         list
     }
 
@@ -410,19 +423,23 @@ impl Parser<'_> {
         if !self.peek_is(0, ":") {
             return String::new();
         }
+
         self.k += 1;
         let (mut start, mut end) = (None, 0);
         while let Some(tok) = self.peek(0) {
             if tok.v == "{" || tok.v == ";" || tok.v == "=>" || tok.is_word("use") {
                 break;
             }
+
             if tok.t != Tok::Id && !["?", "|", "&", "(", ")"].contains(&tok.v.as_str()) {
                 break;
             }
+
             start.get_or_insert(tok.start);
             end = tok.end;
             self.k += 1;
         }
+
         start.map_or(String::new(), |s| compact(&self.text[s..end]))
     }
 
@@ -441,13 +458,16 @@ impl Parser<'_> {
                 attrs.extend(self.attribute());
                 continue;
             }
+
             if tok.t != Tok::Id {
                 self.k += 1;
                 if tok.v == ";" || tok.v == "}" {
                     attrs.clear();
                 }
+
                 continue;
             }
+
             let word = tok.v.to_ascii_lowercase();
             let prev = self.k.checked_sub(1).map(|p| self.tokens[p].v.clone()).unwrap_or_default();
             if word == "namespace" && (self.peek_id(1) || self.peek_is(1, "{")) {
@@ -459,18 +479,22 @@ impl Parser<'_> {
                     self.out.namespace = name;
                     self.out.namespace_end = Some(self.peek(0).map_or(tok.end, |t| t.end));
                 }
+
                 continue;
             }
+
             if word == "use" && self.peek_id(1) {
                 self.use_stmt(&tok);
                 continue;
             }
+
             if word == "function" && self.peek_id(1) && self.peek_is(2, "(") {
                 self.k += 1;
                 let name = self.next();
                 let params = self.params();
                 let return_type = self.return_type();
                 let body = self.body_range();
+
                 self.out.functions.push(Function {
                     fqn: join_name(&self.namespace, &name.v),
                     params,
@@ -485,6 +509,7 @@ impl Parser<'_> {
                 });
                 continue;
             }
+
             // `$a->class`, `Foo::class`, and `f(class: 1)` are not declarations.
             if ["class", "interface", "trait", "enum"].contains(&word.as_str())
                 && !["::", "->", "?->"].contains(&prev.as_str())
@@ -497,23 +522,27 @@ impl Parser<'_> {
                 self.class_like(&word, name, list, &tok);
                 continue;
             }
+
             if word == "new" && self.peek(1).is_some_and(|t| t.is_word("class")) {
                 self.k += 2;
                 self.skip_to_body();
                 continue;
             }
+
             if word == "const" && self.peek_id(1) && self.peek_is(2, "=") {
                 self.k += 1;
                 let name = self.next();
                 self.out.constants.push(Constant { fqn: join_name(&self.namespace, &name.v) });
                 continue;
             }
+
             if word == "define" && self.peek_is(1, "(") {
                 // define('NAME', ...): the name is masked as a string, so read it from the text.
                 if let Some(name) = define_name(&self.text[tok.end..]) {
                     self.out.constants.push(Constant { fqn: name.trim_start_matches('\\').to_string() });
                 }
             }
+
             self.k += 1;
         }
     }
@@ -527,6 +556,7 @@ impl Parser<'_> {
                 self.k += 1;
             }
         }
+
         if !self.done() {
             self.skip_group();
         }
@@ -542,6 +572,7 @@ impl Parser<'_> {
                 self.k += 1;
             }
         }
+
         let mut stmt = UseStmt { kind, start: tok.start, end: tok.end, items: vec![], group: None };
         while !self.done() {
             let t = self.next();
@@ -549,9 +580,11 @@ impl Parser<'_> {
                 stmt.end = t.end;
                 break;
             }
+
             if t.t != Tok::Id {
                 continue;
             }
+
             if t.v.ends_with('\\') && self.peek_is(0, "{") {
                 // A group: use A\{B, C};
                 let prefix = t.v.trim_start_matches('\\').to_string();
@@ -561,6 +594,7 @@ impl Parser<'_> {
                     if it.t != Tok::Id {
                         continue;
                     }
+
                     let mut item_kind = kind;
                     let mut name = it.v;
                     if let Some(k) = UseKind::parse(&name) {
@@ -569,6 +603,7 @@ impl Parser<'_> {
                             name = self.next().v;
                         }
                     }
+
                     let mut alias = short_name(&name).to_string();
                     if self.peek(0).is_some_and(|t| t.is_word("as")) {
                         self.k += 1;
@@ -576,12 +611,15 @@ impl Parser<'_> {
                             alias = self.next().v;
                         }
                     }
+
                     stmt.items.push(UseItem { kind: item_kind, fqn: format!("{prefix}{name}"), alias });
                 }
+
                 let close = if self.peek_is(0, "}") { Some(self.next().start) } else { None };
                 stmt.group = Some(UseGroup { prefix, open: open.start, close });
                 continue;
             }
+
             let fqn = t.v.trim_start_matches('\\').to_string();
             let mut alias = short_name(&fqn).to_string();
             if self.peek(0).is_some_and(|t| t.is_word("as")) {
@@ -590,8 +628,10 @@ impl Parser<'_> {
                     alias = self.next().v;
                 }
             }
+
             stmt.items.push(UseItem { kind, fqn, alias });
         }
+
         self.out.uses.push(stmt);
     }
 
@@ -614,39 +654,47 @@ impl Parser<'_> {
                     params.push(p);
                 }
             }
+
             *type_range = None;
             *default_start = None;
         };
+
         while let Some(tok) = self.peek(0).cloned() {
             if depth == 0 && tok.v == ")" {
                 finish(&mut current, &mut type_range, &mut default_start, tok.start);
                 self.k += 1;
                 break;
             }
+
             if tok.v == "#[" {
                 let list = self.attribute();
                 current.get_or_insert_with(Param::default).attrs.extend(list.into_iter().map(|a| a.name));
                 continue;
             }
+
             self.k += 1;
             if tok.v == "(" || tok.v == "[" || tok.v == "{" {
                 depth += 1;
                 continue;
             }
+
             if tok.v == ")" || tok.v == "]" || tok.v == "}" {
                 depth -= 1;
                 continue;
             }
+
             if depth > 0 || default_start.is_some() {
                 if depth == 0 && tok.v == "," {
                     finish(&mut current, &mut type_range, &mut default_start, tok.start);
                 }
                 continue;
             }
+
             if tok.v == "," {
                 finish(&mut current, &mut type_range, &mut default_start, tok.start);
                 continue;
             }
+
             let p = current.get_or_insert_with(Param::default);
             if tok.t == Tok::Var {
                 p.name = tok.v[1..].to_string();
@@ -664,6 +712,7 @@ impl Parser<'_> {
                 type_range = Some((type_range.map_or(tok.start, |r| r.0), tok.end));
             }
         }
+
         params
     }
 
@@ -695,6 +744,7 @@ impl Parser<'_> {
             if tok.t != Tok::Id {
                 continue;
             }
+
             if tok.is_word("extends") {
                 list = Some(true);
             } else if tok.is_word("implements") {
@@ -703,14 +753,17 @@ impl Parser<'_> {
                 if ext { &mut cls.extends } else { &mut cls.implements }.push(tok.v);
             }
         }
+
         if self.done() {
             self.out.classes.push(cls);
             return;
         }
+
         if let Some((start, end)) = self.body_range() {
             cls.body_start = Some(start);
             cls.end = end;
         }
+
         self.k += 1;
         self.class_body(&mut cls);
         self.out.classes.push(cls);
@@ -721,6 +774,7 @@ impl Parser<'_> {
         let mut member_rest = false;
         let mut modifiers: Vec<String> = Vec::new();
         let mut member_start: Option<usize> = None;
+
         macro_rules! reset {
             () => {{
                 member_attrs = Vec::new();
@@ -729,11 +783,13 @@ impl Parser<'_> {
                 member_start = None;
             }};
         }
+
         while let Some(tok) = self.peek(0).cloned() {
             if tok.v == "}" {
                 self.k += 1;
                 return;
             }
+
             let start = *member_start.get_or_insert(tok.start);
             if tok.v == "#[" {
                 let list = self.attribute();
@@ -741,29 +797,35 @@ impl Parser<'_> {
                 member_attrs.extend(list.into_iter().map(|a| a.name));
                 continue;
             }
+
             if tok.v == "{" {
                 self.skip_group();
                 reset!();
                 continue;
             }
+
             if tok.t == Tok::Id && MODIFIERS.contains(&tok.v.to_ascii_lowercase().as_str()) {
                 modifiers.push(self.next().v.to_ascii_lowercase());
                 continue;
             }
+
             if tok.is_word("function") {
                 self.k += 1;
                 if self.peek_is(0, "&") {
                     self.k += 1;
                 }
+
                 if !self.peek_id(0) {
                     // `function` with no name yet (the user types it).
                     reset!();
                     continue;
                 }
+
                 let fname = self.next();
                 let params = if self.peek_is(0, "(") { self.params() } else { vec![] };
                 let return_type = self.return_type();
                 let body = self.body_range();
+
                 if fname.v.eq_ignore_ascii_case("__construct") {
                     for p in params.iter().filter(|p| p.promoted) {
                         cls.properties.push(Property {
@@ -781,6 +843,7 @@ impl Parser<'_> {
                         });
                     }
                 }
+
                 cls.methods.push(Method {
                     name: fname.v.clone(),
                     params,
@@ -793,15 +856,18 @@ impl Parser<'_> {
                     body,
                     end: body.map_or(fname.end, |b| b.1),
                 });
+
                 // Skip the body (or the `;` of an abstract method).
                 while !self.done() && !self.peek_is(0, "{") && !self.peek_is(0, ";") && !self.peek_is(0, "}") {
                     self.k += 1;
                 }
+
                 if self.peek_is(0, "{") {
                     self.skip_group();
                 } else if self.peek_is(0, ";") {
                     self.k += 1;
                 }
+
                 reset!();
                 continue;
             }
@@ -817,11 +883,13 @@ impl Parser<'_> {
                         cls.traits.push(t.v);
                     }
                 }
+
                 if self.peek_is(0, "{") {
                     self.skip_group();
                 } else if self.peek_is(0, ";") {
                     self.k += 1;
                 }
+
                 reset!();
                 continue;
             }
@@ -830,6 +898,7 @@ impl Parser<'_> {
                 reset!();
                 continue;
             }
+
             if !modifiers.is_empty() {
                 let mods = std::mem::take(&mut modifiers);
                 let attrs = std::mem::take(&mut member_attrs);
@@ -837,6 +906,7 @@ impl Parser<'_> {
                 reset!();
                 continue;
             }
+
             self.k += 1;
             reset!();
         }
@@ -854,27 +924,33 @@ impl Parser<'_> {
                 if tok.v == ";" {
                     self.k += 1;
                 }
+
                 break;
             }
+
             if tok.v == "(" || tok.v == "[" || tok.v == "{" {
                 self.skip_group();
                 continue;
             }
+
             self.k += 1;
             if expect_name && tok.t == Tok::Id {
                 last = Some(tok);
                 continue;
             }
+
             if expect_name && (tok.v == "=" || is_case) {
                 if let Some(l) = last.take() {
                     cls.constants.push(ClassConst { name: l.v, is_case, visibility: visibility_of(modifiers), doc: doc.clone(), offset: l.start });
                     expect_name = false;
                 }
             }
+
             if tok.v == "," {
                 expect_name = true;
             }
         }
+
         if expect_name && is_case {
             if let Some(l) = last {
                 cls.constants.push(ClassConst { name: l.v, is_case, visibility: "public".into(), doc, offset: l.start });
@@ -895,35 +971,44 @@ impl Parser<'_> {
                 if let Some(s) = *default_start {
                     p.default = Some(text[s..end].trim().to_string());
                 }
+
                 cls.properties.push(p);
             }
+
             *default_start = None;
         };
+
         while let Some(tok) = self.peek(0).cloned() {
             if tok.v == ";" || tok.v == "}" {
                 finish(cls, &mut current, &mut default_start, tok.start);
                 if tok.v == ";" {
                     self.k += 1;
                 }
+
                 return;
             }
+
             if tok.v == "{" && current.is_some() {
                 // Property hooks.
                 finish(cls, &mut current, &mut default_start, tok.start);
                 self.skip_group();
                 return;
             }
+
             if tok.v == "(" || tok.v == "[" || tok.v == "{" {
                 self.skip_group();
                 continue;
             }
+
             self.k += 1;
             if default_start.is_some() {
                 if tok.v == "," {
                     finish(cls, &mut current, &mut default_start, tok.start);
                 }
+
                 continue;
             }
+
             if tok.t == Tok::Var {
                 current = Some(Property {
                     name: tok.v[1..].to_string(),
@@ -968,16 +1053,20 @@ pub fn doc_before(text: &str, offset: usize) -> String {
     while !text.is_char_boundary(from) {
         from += 1;
     }
+
     let before = &text[from..offset.min(text.len())];
     let Some(close) = before.rfind("*/") else { return String::new() };
     let Some(open) = before[..close].rfind("/**") else { return String::new() };
+
     if before[open..close].contains("*/") {
         return String::new();
     }
+
     let between = strip_attributes(&before[close + 2..]);
     if between.contains([';', '{', '}', '$']) {
         return String::new();
     }
+
     before[open..close + 2].to_string()
 }
 
@@ -995,6 +1084,7 @@ fn strip_attributes(s: &str) -> String {
             }
         }
     }
+
     out.push_str(rest);
     out
 }
@@ -1018,12 +1108,14 @@ fn is_rest_attr(a: &Attribute) -> bool {
     if !has_attr(std::slice::from_ref(&a.name), "Prop") {
         return false;
     }
+
     let args = a.args.trim();
     let value = match args.split_once(':') {
         Some((key, value)) if key.trim() == "rest" => value.trim(),
         Some(_) => return false,
         None => args,
     };
+
     value.eq_ignore_ascii_case("true")
 }
 
@@ -1057,6 +1149,7 @@ fn components(parsed: &Parsed) -> Vec<Component> {
         if !has_attr(&f.attrs, "Component") {
             continue;
         }
+
         let mut comp = Component {
             kind: ComponentKind::Function,
             name: f.name.clone(),
@@ -1070,11 +1163,13 @@ fn components(parsed: &Parsed) -> Vec<Component> {
             signature: format!("#[Component]\nfunction {}({})", f.name, f.params.iter().map(param_text).collect::<Vec<_>>().join(", ")),
             doc: None,
         };
+
         for p in &f.params {
             // A `#[Context]` parameter is not a prop: a component above gives it.
             if has_attr(&p.attrs, "Context") {
                 continue;
             }
+
             if p.variadic {
                 comp.rest = true;
             } else if p.name == "children" {
@@ -1085,12 +1180,15 @@ fn components(parsed: &Parsed) -> Vec<Component> {
                 comp.props.push(Prop { name: p.name.clone(), ty: p.ty.clone(), default: p.default.clone(), required: p.default.is_none() });
             }
         }
+
         list.push(comp);
     }
+
     for c in &parsed.classes {
         if c.kind != "class" || !(has_attr(&c.attrs, "Component") || has_attr(&c.attrs, "Page")) {
             continue;
         }
+
         let mut comp = Component {
             kind: ComponentKind::Class,
             name: c.name.clone(),
@@ -1104,6 +1202,7 @@ fn components(parsed: &Parsed) -> Vec<Component> {
             signature: format!("#[Component]\nfinal class {}", c.name),
             doc: None,
         };
+
         let mut lines = Vec::new();
         for p in c.properties.iter().filter(|p| is_prop(p)) {
             let decl = format!(
@@ -1112,11 +1211,13 @@ fn components(parsed: &Parsed) -> Vec<Component> {
                 p.name,
                 p.default.as_ref().map_or(String::new(), |d| format!(" = {d}"))
             );
+
             if p.rest {
                 comp.rest = true;
                 lines.push(format!("    #[Prop(rest: true)] {decl};"));
                 continue;
             }
+
             if p.name == "children" {
                 comp.children = true;
             } else if is_html_type(&p.ty) {
@@ -1125,13 +1226,17 @@ fn components(parsed: &Parsed) -> Vec<Component> {
                 let required = p.default.is_none() && !nullable(&p.ty) && !p.ty.is_empty();
                 comp.props.push(Prop { name: p.name.clone(), ty: p.ty.clone(), default: p.default.clone(), required });
             }
+
             lines.push(format!("    #[Prop] {decl};"));
         }
+
         if !lines.is_empty() {
             comp.signature += &format!("\n{{\n{}\n}}", lines.join("\n"));
         }
+
         list.push(comp);
     }
+
     list
 }
 
@@ -1141,16 +1246,20 @@ pub fn param_text(p: &Param) -> String {
         s += &p.ty;
         s.push(' ');
     }
+
     if p.by_ref {
         s.push('&');
     }
+
     if p.variadic {
         s += "...";
     }
+
     s += &format!("${}", p.name);
     if let Some(d) = &p.default {
         s += &format!(" = {d}");
     }
+
     s
 }
 

@@ -57,6 +57,7 @@ pub fn symbol_at(index: &Index, offset: usize) -> Option<Symbol> {
     while !text.is_char_boundary(offset) {
         offset -= 1;
     }
+
     Resolver { index, text, offset }.run()
 }
 
@@ -101,11 +102,13 @@ impl Resolver<'_, '_> {
         if start == end {
             return None;
         }
+
         let mut context = scan(&self.text[..end]).context?;
         if matches!(context, Context::Php { .. } | Context::Twig(_)) {
             end = extend(is_word);
             context = scan(&self.text[..end]).context?;
         }
+
         match context {
             Context::TagName { partial, start } => self.tag(&partial, start, end),
             Context::CloseTag { partial: Some(partial), start, .. } => self.tag(&partial, start, end),
@@ -122,6 +125,7 @@ impl Resolver<'_, '_> {
             let (doc, _) = data::element(name)?;
             return Some(Symbol { range: (start, end), location: None, hover: Some(format!("{}\n\n{doc}", code("html", &format!("<{name}>")))) });
         }
+
         let colon = name.find(':');
         let comp_name = colon.map_or(name, |c| &name[..c]);
         let components = self.components();
@@ -134,6 +138,7 @@ impl Resolver<'_, '_> {
             let hover = format!("{}\n\nSlot of `{}`{}", code("php", &format!("?Html ${slot}")), comp.fqn, self.defined_in(comp.file.as_deref()));
             return Some(Symbol { range: (start + colon + 1, end), location, hover: Some(hover) });
         }
+
         let location = comp.file.as_ref().zip(comp.offset).and_then(|(f, o)| self.location(f, o));
         Some(Symbol { range: (start, start + comp_name.len()), location, hover: Some(self.component_hover(comp)) })
     }
@@ -143,14 +148,17 @@ impl Resolver<'_, '_> {
         if let Some(doc) = comp.doc {
             lines.extend([String::new(), doc.to_string()]);
         }
+
         if comp.page {
             let routes: Vec<_> = self.index.project.routes(self.file(), &self.index.current.parsed).into_iter().filter(|r| r.fqn == comp.fqn).collect();
             let list = routes.iter().map(|r| format!("`{}` (`{}`)", r.path, r.name)).collect::<Vec<_>>().join(", ");
             lines.extend([String::new(), if list.is_empty() { "Page".into() } else { format!("Page: {list}") }]);
         }
+
         if !comp.slots.is_empty() {
             lines.extend([String::new(), format!("Slots: {}", comp.slots.iter().map(|s| format!("`{s}`")).collect::<Vec<_>>().join(", "))]);
         }
+
         lines.join("\n") + &self.defined_in(comp.file.as_deref())
     }
 
@@ -194,14 +202,17 @@ impl Resolver<'_, '_> {
             );
             return Some(Symbol { range, location, hover: Some(hover) });
         }
+
         if name.len() > 2 && name.starts_with("on") && name.as_bytes()[2].is_ascii_uppercase() {
             return Some(Symbol { range, location: None, hover: Some(format!("{}\n\n{EVENT_DOC}", code("html", name))) });
         }
+
         let doc = data::global_attribute(name).map(str::to_string).or_else(|| match name {
             "className" => Some("Alias for class".into()),
             "htmlFor" => Some("Alias for for".into()),
             _ => data::attributes_for(tag).contains(&name).then(|| format!("<{tag}> attribute")),
         })?;
+
         Some(Symbol { range, location: None, hover: Some(format!("{}\n\n{doc}", code("html", name))) })
     }
 
@@ -212,6 +223,7 @@ impl Resolver<'_, '_> {
             if !ROUTE_CALL.is_match(&t[ctx.start..quote]) {
                 return None;
             }
+
             let q = t.as_bytes()[quote] as char;
             let close = t[quote + 1..].find(q).map_or(end, |i| quote + 1 + i);
             let name = &t[quote + 1..close];
@@ -219,10 +231,12 @@ impl Resolver<'_, '_> {
             let hover = format!("{}\n\nThe route of `{}`{}", code("php", &format!("#[Page('{}')]", route.path)), route.fqn, self.defined_in(Some(&route.file)));
             return Some(Symbol { range: (quote + 1, quote + 1 + name.len()), location: self.location(&route.file, route.offset), hover: Some(hover) });
         }
+
         let expr = &t[ctx.start..end];
         let word = WORD_END.find(expr)?.as_str();
         let range = (end - word.len(), end);
         let head = &expr[..expr.len() - word.len()];
+
         if ctx.open == "{%" && TAG_HEAD.is_match(head) {
             let tag = data::tag(word);
             // Each end tag is `end` and the name of the tag that it closes.
@@ -232,12 +246,15 @@ impl Resolver<'_, '_> {
                 (None, Some(o)) => format!("The end of the {{% {o} %}} block"),
                 _ => return None,
             };
+
             return Some(Symbol { range, location: None, hover: Some(format!("{}\n\n{doc}", code("twig", &format!("{{% {word} %}}")))) });
         }
+
         if FILTER_HEAD.is_match(head) {
             let f = data::filter(word)?;
             return Some(Symbol { range, location: None, hover: Some(format!("{}\n\n{}", code("twig", &format!("|{}", f.1)), f.2)) });
         }
+
         if TEST_HEAD.is_match(head) {
             let test = data::test(word)?;
             return Some(Symbol { range, location: None, hover: Some(format!("{}\n\n{}", code("twig", &format!("is {word}")), test.2)) });
@@ -252,8 +269,10 @@ impl Resolver<'_, '_> {
                 let hover = format!("{}\n\n{}", code("twig", word), key.doc.unwrap_or("Array key"));
                 return Some(Symbol { range, location: key.offset.and_then(|o| self.location(self.file(), o)), hover: Some(hover) });
             }
+
             return Some(self.member_result(&attr.member?, range));
         }
+
         let call = t[end..].trim_start().starts_with('(');
         let v = env.variable(word);
         if call && v.is_none() {
@@ -261,13 +280,16 @@ impl Resolver<'_, '_> {
                 return Some(Symbol { range, location: None, hover: Some(format!("{}\n\n{}", code("twig", f.1), f.2)) });
             }
         }
+
         let Some(v) = v else {
             let f = data::function(word)?;
             return Some(Symbol { range, location: None, hover: Some(format!("{}\n\n{}", code("twig", f.1), f.2)) });
         };
+
         if let Some(m) = &v.member {
             return Some(self.member_result(m, range));
         }
+
         let kind = match &v.kind {
             VarSource::Twig(d) => d.to_string(),
             VarSource::Param => "Parameter".into(),
@@ -275,6 +297,7 @@ impl Resolver<'_, '_> {
             VarSource::Property => "property".into(),
             VarSource::Method => "method".into(),
         };
+
         let ty = if v.type_text.is_empty() { String::new() } else { format!("{} ", v.type_text) };
         Some(Symbol { range, location: v.offset.and_then(|o| self.location(&v.file, o)), hover: Some(format!("{}\n\n{kind}", code("php", &format!("{ty}${}", v.name)))) })
     }
@@ -292,9 +315,11 @@ impl Resolver<'_, '_> {
         if !cls.extends.is_empty() {
             sig += &format!(" extends {}", cls.extends.join(", "));
         }
+
         if !cls.implements.is_empty() {
             sig += &format!(" implements {}", cls.implements.join(", "));
         }
+
         let summary = doc_tags(&cls.doc).summary;
         let summary = if summary.is_empty() { String::new() } else { format!("\n\n{summary}") };
         let hover = format!("{}{summary}{}", code("php", &sig), self.defined_in(Some(&found.source.file)));
@@ -320,6 +345,7 @@ impl Resolver<'_, '_> {
         if name.is_empty() {
             return None;
         }
+
         let range = (if is_var { start - 1 } else { start }, end);
         let scope = Scope::at(self.index, start);
         let before = trim_end(&masked[..range.0]);
@@ -335,6 +361,7 @@ impl Resolver<'_, '_> {
             if is_static && name.eq_ignore_ascii_case("class") {
                 return None;
             }
+
             let simple = expr.trim_start_matches('\\').starts_with(|c: char| c.is_ascii_alphabetic() || c == '_')
                 && expr.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '\\');
             let ty = if simple { scope.class_type(&expr) } else { scope.type_of_range(expr_start, op_start) };
@@ -348,6 +375,7 @@ impl Resolver<'_, '_> {
             } else {
                 MemberKind::Property
             };
+
             let m = self.index.member(&fqn, name, Some(kind))?;
             return Some(self.member_result(&m, range));
         }
@@ -357,6 +385,7 @@ impl Resolver<'_, '_> {
                 let cls = scope.self_.clone()?;
                 return self.class_result(&cls, range);
             }
+
             let v = scope.var(name)?;
             let ty = if v.type_text.is_empty() { String::new() } else { format!("{} ", v.type_text) };
             let kind = if v.kind == crate::scope::VarKind::Param { "Parameter" } else { "Local variable" };
@@ -372,23 +401,29 @@ impl Resolver<'_, '_> {
                 let found = self.index.find(SymbolKind::Function, &item.fqn)?;
                 return Some(self.function_result(&found, range));
             }
+
             return self.class_result(&item.fqn, range);
         }
+
         if ["function", "class", "interface", "trait", "enum", "const", "namespace"].iter().any(|w| ends_with_word(before, w.as_bytes())) {
             return None;
         }
+
         if call && !ends_with_word(before, b"new") {
             let found = scope.find_function(name)?;
             return Some(self.function_result(&found, range));
         }
+
         if name.eq_ignore_ascii_case("self") || name.eq_ignore_ascii_case("static") {
             let cls = scope.self_.clone()?;
             return self.class_result(&cls, range);
         }
+
         if name.eq_ignore_ascii_case("parent") {
             let parent = scope.parent.clone()?;
             return self.class_result(&parent, range);
         }
+
         let fqn = resolve_name(&self.index.current.parsed, name)?;
         self.class_result(&fqn, range)
     }
