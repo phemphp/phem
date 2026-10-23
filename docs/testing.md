@@ -77,6 +77,7 @@ element. The answer of the server morphs the components that changed.
 | `fire($selector, $type, $event)` | any DOM event | `->fire('div', 'click', ['value' => 'x'])` |
 | `load($selector)` | the load of a `<Suspense>` boundary | `->load()`, `->load('#report')` |
 | `receive()` | the pushes of other requests (a page with `#[Subscribe]`) | `$other->receive()->assertSee('Hi')` |
+| `settle()` | none: runs the work of the `#[Async]` handlers, as a worker does | `->settle()->receive()->assertSee('Ready')` |
 
 The value of `change()` and `fill()`:
 
@@ -120,6 +121,20 @@ $this->visit('/guestbook')->fill('[name=message]', 'Hi')->click('button');
 $other->receive()->assertSee('Hi');
 ```
 
+An `#[Async]` handler does not run its work in the event. In a page of `visit()`, its message
+goes to memory, not to a Messenger transport. Other tests (a `WebTestCase`, Panther) use the
+Messenger configuration of the application. `settle()` runs the waiting work of all the pages of the
+test, in their order, as a worker does. The work pushes its result: get it with `receive()`. Test
+an `#[Async]` handler with `visit()`: a mounted component has no page for the worker.
+
+```php
+$this->visit('/reports')
+    ->click('button')
+    ->receive()->assertSee('Building a report')
+    ->settle()
+    ->receive()->assertSee('4 scientists');
+```
+
 An action fails when it cannot work in a browser:
 
 - no element matches the selector;
@@ -128,6 +143,7 @@ An action fails when it cannot work in a browser:
 - the form has no field with the name, or the select has no option with the value;
 - `load()` finds no boundary that shows its fallback;
 - `receive()` gets a page with no `#[Subscribe]`;
+- `settle()` finds no waiting work;
 - `upload()` gets an element that is not a file input, more than one path for an input with no
   `multiple` attribute, or a file that does not exist.
 

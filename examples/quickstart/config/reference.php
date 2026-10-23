@@ -427,7 +427,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         resources?: Param|string|array<string, scalar|Param|null>,
  *     },
  *     messenger?: bool|array{ // Messenger configuration
- *         enabled?: bool|Param, // Default: false
+ *         enabled?: bool|Param, // Default: true
  *         routing?: array<string, Param|string|list<scalar|Param|null>>,
  *         serializer?: array{
  *             default_serializer?: scalar|Param|null, // Service id to use as the default serializer for the transports. // Default: "messenger.transport.native_php_serializer"
@@ -942,6 +942,8 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         subscriber_key?: scalar|Param|null, // The subscriber key of the hub (`issuer … { subscriber { jwt <key> } }` in the Caddyfile). With a key, the updates are private and each page gets an access token for its topics. With null, the updates are public: the hub needs the `anonymous` directive. // Default: null
  *         issuer?: scalar|Param|null, // The issuer of the hub configuration (`issuer phem { … }`) // Default: "phem"
  *         cookie_name?: scalar|Param|null, // The cookie of the access token (`cookie_name` of the hub) // Default: "__Secure-mercure_access_token"
+ *         publisher_key?: scalar|Param|null, // The publisher key of the hub (`issuer … { publisher { jwt <key> } }` in the Caddyfile). With a key, a process with no FrankenPHP request (a Messenger worker of an #[Async] handler, a command) publishes with the HTTP API of the hub at publish_url. With null, only a FrankenPHP request publishes (mercure_publish()). // Default: null
+ *         publish_url?: scalar|Param|null, // The URL of the hub for the server, with publisher_key (`http://localhost:8080/.well-known/mercure`) // Default: null
  *     },
  * }
  * @psalm-type WebProfilerConfig = array{

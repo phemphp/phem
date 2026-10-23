@@ -15,6 +15,7 @@ namespace Phem;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Phem\DependencyInjection\ComponentPass;
+use Phem\DependencyInjection\TestAsyncPass;
 use Phem\DependencyInjection\TestPublisherPass;
 use Phem\Handler\HandlerMiddleware;
 use Phem\Handler\RateLimitMiddleware;
@@ -27,14 +28,18 @@ use Phem\Profiler\ProfiledTransactionRunner;
 use Phem\Profiler\ProfilerMiddleware;
 use Phem\Rendering\SkippedRenderCheck;
 use Phem\State\StateCache;
+use Phem\Stream\HubPublisher;
+use Phem\Stream\SapiPublisher;
 use Phem\Stream\SubscriberToken;
 use Symfony\Component\AssetMapper\AssetMapperInterface;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\HttpKernel\Attribute\RateLimit;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
@@ -53,6 +58,10 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_lo
  *         state_cache: true          # keep the signed states in the cache.phem.state pool
  *         max_event_size: 1048576    # bytes; 0 for no limit
  *         max_upload_size: 8388608   # bytes; 0 for no limit
+ *         mercure:
+ *             subscriber_key: ~      # private updates, with an access token for each page
+ *             publisher_key: ~       # publish from a worker, with the HTTP API of the hub
+ *             publish_url: ~         # the URL of the hub for the server
  *
  *     # config/routes/phem.yaml
  *     phem:
@@ -136,13 +145,29 @@ final class PhemBundle extends AbstractBundle
                             ->info('The cookie of the access token (`cookie_name` of the hub)')
                             ->defaultValue('__Secure-mercure_access_token')
                         ->end()
+                        ->scalarNode('publisher_key')
+                            ->info('The publisher key of the hub (`issuer … { publisher { jwt <key> } }` in the Caddyfile). With a key, a process with no FrankenPHP request (a Messenger worker of an #[Async] handler, a command) publishes with the HTTP API of the hub at publish_url. With null, only a FrankenPHP request publishes (mercure_publish()).')
+                            ->defaultNull()
+                        ->end()
+                        ->scalarNode('publish_url')
+                            ->info('The URL of the hub for the server, with publisher_key (`http://localhost:8080/.well-known/mercure`)')
+                            ->defaultNull()
+                        ->end()
+                    ->end()
+                    ->validate()
+                        ->ifTrue(static fn (array $mercure): bool => null !== $mercure['publisher_key'] && null === $mercure['publish_url'])
+                        ->thenInvalid('The phem.mercure.publisher_key option needs the publish_url option: the URL of the hub for the server.')
+                    ->end()
+                    ->validate()
+                        ->ifTrue(static fn (array $mercure): bool => null !== $mercure['publisher_key'] && !class_exists(HttpClient::class))
+                        ->thenInvalid('The phem.mercure.publisher_key option needs Symfony HttpClient: run "composer require symfony/http-client".')
                     ->end()
                 ->end()
             ->end();
     }
 
     /**
-     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, max_event_size: int, max_upload_size: int, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string}} $config
+     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, max_event_size: int, max_upload_size: int, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string, publisher_key: string|null, publish_url: string|null}} $config
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
@@ -175,6 +200,20 @@ final class PhemBundle extends AbstractBundle
             ->arg(3, $mercure['cookie_name']);
         $container->services()->get('phem.streams')
             ->arg(3, null !== $mercure['subscriber_key']);
+        if (null !== $mercure['publisher_key']) {
+            // mercure_publish() in a request, the HTTP API of the hub in a worker.
+            $container->services()
+                ->set('phem.stream_publisher.hub', HubPublisher::class)
+                    ->args([service('http_client'), $mercure['publish_url'], $mercure['publisher_key'], $mercure['issuer'], service('logger')->nullOnInvalid()])
+                ->set('phem.stream_publisher', SapiPublisher::class)
+                    ->args([service('phem.stream_publisher.frankenphp'), service('phem.stream_publisher.hub')]);
+        }
+        $container->services()->get('phem.async.dispatcher')->arg(1, $config['secret']);
+        if (interface_exists(MessageBusInterface::class)) {
+            // The #[Async] handlers: their work runs in a Messenger worker.
+            $container->import('../config/messenger.php');
+            $container->services()->get('phem.async.handler')->arg(4, $config['secret']);
+        }
         if ($builder->getParameter('kernel.debug')) {
             // As React StrictMode: render the full page after each event, and warn when a kept
             // component changed (a render() that is not pure).
@@ -248,6 +287,7 @@ final class PhemBundle extends AbstractBundle
         // Before the autoconfiguration passes, so the component services are autoconfigured.
         $container->addCompilerPass(new ComponentPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 200);
         $container->addCompilerPass(new TestPublisherPass());
+        $container->addCompilerPass(new TestAsyncPass());
     }
 
     public function boot(): void

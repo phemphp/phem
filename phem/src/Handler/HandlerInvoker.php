@@ -29,9 +29,14 @@ final class HandlerInvoker
     ) {
     }
 
-    public function invoke(\Closure $handler, Event $event): mixed
+    /**
+     * @param \Closure(): mixed|null $call runs the handler at the end of the chain, in place of
+     *                                     `$handler($event)` (the work of an #[Async] handler, see
+     *                                     Phem\Async\AsyncHandler)
+     */
+    public function invoke(\Closure $handler, Event $event, ?\Closure $call = null): mixed
     {
-        $next = static fn (): mixed => $handler($event);
+        $next = $call ?? static fn (): mixed => $handler($event);
         $middlewares = $this->middlewares instanceof \Traversable ? iterator_to_array($this->middlewares, false) : $this->middlewares;
         foreach (array_reverse($middlewares) as $middleware) {
             $next = static fn (): mixed => $middleware->handle($handler, $event, $next);

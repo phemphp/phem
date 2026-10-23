@@ -78,6 +78,8 @@ final class TestKernel extends Kernel
             'http_method_override' => false,
             'handle_all_throwables' => true,
             'php_errors' => ['log' => true],
+            // For the #[Async] handlers of async.phpm: their work goes to a MemoryBus (see TestAsyncPass).
+            'messenger' => ['enabled' => true],
             // For the #[RateLimit] page of access.phpm. The storage is in memory, so each test starts with no hits.
             'rate_limiter' => ['phem_events' => ['policy' => 'fixed_window', 'limit' => 2, 'interval' => '1 minute', 'lock_factory' => null, 'storage_service' => InMemoryStorage::class]],
         ]);

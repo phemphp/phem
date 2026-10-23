@@ -68,6 +68,8 @@ pub mod codes {
     pub const EXPORT_DEFAULT: &str = "E050";
     pub const ROUTE_NOT_COMPONENT: &str = "E052";
     pub const SUBSCRIBE_NOT_PAGE: &str = "E053";
+    pub const ASYNC_NOT_METHOD: &str = "E054";
+    pub const ASYNC_WITHOUT_PROMISE: &str = "E055";
     pub const HANDLER_CALLED: &str = "W001";
     pub const MISSING_KEY: &str = "W002";
     pub const UNKNOWN_EVENT: &str = "W003";

@@ -62,18 +62,7 @@ final class EventRenderer
      */
     public function run(Tree $tree, ?string $handler, array $bound, BrowserEventDispatcher $dispatcher, \Closure $event, array $stale = []): EventOutcome
     {
-        $owners = [];
-        foreach ($bound as $key => $value) {
-            if (\is_string($key)) {
-                $owners[] = PathScope::fiberOf($key);
-            }
-        }
-        // An id that the shape does not know is not in the page any more.
-        $stale = array_values(array_filter(array_unique($stale), $tree->shape->has(...)));
-        $tree->markStale(...$stale);
-        $scope = PathScope::to($tree->shape, null !== $handler ? [PathScope::fiberOf($handler)] : [], array_values(array_unique([...$owners, ...$stale])));
-        $this->renderer->render($tree, $scope);
-        $this->staleAncestors($tree, $stale);
+        $scoped = $this->firstPass($tree, $handler, $bound, $stale);
         $closure = null !== $handler ? $tree->handler($handler) : null;
         if (null !== $handler && null === $closure) {
             return EventOutcome::reload();
@@ -85,7 +74,7 @@ final class EventRenderer
         $this->bound->apply($tree, $bound);
         // Only the handler sends browser events: not the render before it.
         $dispatcher->reset();
-        $refresh = null === $scope;
+        $refresh = !$scoped;
         if (null !== $closure) {
             $e = $event();
             $result = $this->renderer->dispatch($tree, $closure, $e);
@@ -104,6 +93,49 @@ final class EventRenderer
         $this->renderer->rerender($tree, self::roots($dirty), new UpdateScope(array_fill_keys(array_keys($dirty), true), $tree->shape, $this->inputs, $this->metadata));
 
         return EventOutcome::rendered($this->check?->check($tree, $this->state->snapshot($tree)) ?? []);
+    }
+
+    /**
+     * The handler of an event, after the first pass and the bound values, as run() gets it: an
+     * #[Async] handler in a worker (see Phem\Async\AsyncHandler). Null when the page does not
+     * have the handler any more.
+     *
+     * @param array<array-key, mixed> $bound the bound values: "<fiber>.<property>" => value (see BoundValues)
+     */
+    public function handlerOf(Tree $tree, string $handler, array $bound): ?\Closure
+    {
+        $this->firstPass($tree, $handler, $bound, []);
+        $closure = $tree->handler($handler);
+        $this->bound->apply($tree, $bound);
+
+        return $closure;
+    }
+
+    /**
+     * Renders the paths to the handler, to the components of the bound values and to the stale
+     * fibers (see the class).
+     *
+     * @param array<array-key, mixed> $bound
+     * @param list<string>            $stale
+     *
+     * @return bool false when the full page rendered (the shape does not know a fiber of the paths)
+     */
+    private function firstPass(Tree $tree, ?string $handler, array $bound, array $stale): bool
+    {
+        $owners = [];
+        foreach ($bound as $key => $value) {
+            if (\is_string($key)) {
+                $owners[] = PathScope::fiberOf($key);
+            }
+        }
+        // An id that the shape does not know is not in the page any more.
+        $stale = array_values(array_filter(array_unique($stale), $tree->shape->has(...)));
+        $tree->markStale(...$stale);
+        $scope = PathScope::to($tree->shape, null !== $handler ? [PathScope::fiberOf($handler)] : [], array_values(array_unique([...$owners, ...$stale])));
+        $this->renderer->render($tree, $scope);
+        $this->staleAncestors($tree, $stale);
+
+        return null !== $scope;
     }
 
     /**

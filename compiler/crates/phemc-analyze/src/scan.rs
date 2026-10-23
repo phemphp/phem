@@ -2,7 +2,7 @@
 //! function that contains each markup literal. It is not a PHP parser; it reads only the
 //! declarations that the compiler needs.
 
-use crate::{Kind, ATTR_COMPONENT, ATTR_CONTEXT, ATTR_PAGE, ATTR_PATH, ATTR_PROP, ATTR_PROVIDE, ATTR_ROUTE, ATTR_STATE, ATTR_SUBSCRIBE};
+use crate::{Kind, ATTR_ASYNC, ATTR_COMPONENT, ATTR_CONTEXT, ATTR_PAGE, ATTR_PATH, ATTR_PROP, ATTR_PROVIDE, ATTR_ROUTE, ATTR_STATE, ATTR_SUBSCRIBE};
 use phemc_syntax::php::{Lexed, TokKind, Token};
 use phemc_syntax::Span;
 use std::collections::HashMap;
@@ -89,6 +89,10 @@ pub struct Func {
     pub template_markup: Option<usize>,
     /// A `private` method: a child class cannot call it, but a class that uses its trait can.
     pub is_private: bool,
+    /// The declared return type, as written (`Promise`, `?Node`), or empty.
+    pub return_type: String,
+    /// The span of an `#[Async]` attribute on the function or the method.
+    pub async_attr: Option<Span>,
 }
 
 #[derive(Clone, Debug)]
@@ -271,6 +275,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                         if let Some(span) = subscribe_attr(&info, &attrs) {
                             info.subscribes.push((f.fqn.clone(), span));
                         }
+                        f.async_attr = async_attr(&info, &attrs);
                         info.functions.push(f);
                         i = end + 1;
                         continue;
@@ -508,6 +513,11 @@ fn parse_function(toks: &Toks, at: usize, ns: &str) -> (Func, usize) {
     while j < toks.t.len() && !toks.is_op(j, "{") && !toks.is_op(j, ";") {
         j += 1;
     }
+    let return_type = if toks.is_op(params_end + 1, ":") && params_end + 2 < j {
+        toks.src[toks.t[params_end + 2].span.start..toks.t[j - 1].span.end].trim().to_string()
+    } else {
+        String::new()
+    };
     let (body, end) = if toks.is_op(j, "{") {
         let close = toks.matching(j);
         (Span::new(toks.t[j].span.end, toks.t[close].span.start), close)
@@ -524,6 +534,8 @@ fn parse_function(toks: &Toks, at: usize, ns: &str) -> (Func, usize) {
         component_kind: None,
         template_markup: None,
         is_private: false,
+        return_type,
+        async_attr: None,
     };
     (f, end)
 }
@@ -608,6 +620,11 @@ fn subscribe_attr(info: &FileInfo, attrs: &[(String, Span)]) -> Option<Span> {
     attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_SUBSCRIBE).map(|(_, s)| *s)
 }
 
+/// The span of an `#[Async]` of a function or a method.
+fn async_attr(info: &FileInfo, attrs: &[(String, Span)]) -> Option<Span> {
+    attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_ASYNC).map(|(_, s)| *s)
+}
+
 /// Records `#[Page]` / `#[Route]` / `#[Component]` / `#[State]` / `#[Prop]` / `#[Path]` that do not resolve to the expected
 /// attributes (usually a missing `use ...;`).
 fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
@@ -623,6 +640,7 @@ fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
             "Context" => ATTR_CONTEXT,
             "Provide" => ATTR_PROVIDE,
             "Subscribe" => ATTR_SUBSCRIBE,
+            "Async" => ATTR_ASYNC,
             _ => continue,
         };
         let resolved = info.resolve_class(a);
@@ -737,7 +755,9 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
                     });
                 }
             }
-            class.methods.push(Func { fqn: format!("{}::{}", class.fqn, m.name), is_private: mods.iter().any(|x| x == "private"), ..m });
+            check_attrs(info, &member_attrs);
+            let async_attr = async_attr(info, &member_attrs);
+            class.methods.push(Func { fqn: format!("{}::{}", class.fqn, m.name), is_private: mods.iter().any(|x| x == "private"), async_attr, ..m });
             member_attrs.clear();
             member_rest.clear();
             mods.clear();

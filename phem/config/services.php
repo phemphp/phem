@@ -13,6 +13,9 @@ declare(strict_types=1);
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
+use Phem\Async\AsyncDispatcher;
+use Phem\Async\AsyncMiddleware;
+use Phem\Async\AsyncUser;
 use Phem\Binding\PropBinder;
 use Phem\BrowserEventDispatcher;
 use Phem\Command\RenderCommand;
@@ -107,6 +110,14 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.handler_middleware.transactional', TransactionalMiddleware::class)
             ->args([service('phem.transaction_runner')->nullOnInvalid()])
             ->tag('phem.handler_middleware', ['priority' => -100])
+        // Inside the transaction: a check or a dispatch that fails rolls back the handler.
+        ->set('phem.handler_middleware.async', AsyncMiddleware::class)
+            ->args([service('phem.async.dispatcher')])
+            ->tag('phem.handler_middleware', ['priority' => -200])
+        ->set('phem.async.user', AsyncUser::class)
+            ->args([service('security.token_storage')->nullOnInvalid(), service('security.user_providers')->nullOnInvalid()])
+        ->set('phem.async.dispatcher', AsyncDispatcher::class)
+            ->args([service('messenger.default_bus')->nullOnInvalid(), abstract_arg('secret, set by PhemBundle'), service('phem.async.user')])
         // Outside the transaction: a commit that fails drops the streams too.
         ->set('phem.handler_middleware.streams', StreamsMiddleware::class)
             ->args([service('phem.streams')])
@@ -154,8 +165,9 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.topics', Topics::class)
             ->args([service('phem.metadata'), abstract_arg('secret, set by PhemBundle')])
             ->tag('kernel.reset', ['method' => 'reset'])
-        ->set('phem.stream_publisher', FrankenPhpPublisher::class)
+        ->set('phem.stream_publisher.frankenphp', FrankenPhpPublisher::class)
             ->args([service('logger')->nullOnInvalid()])
+        ->alias('phem.stream_publisher', 'phem.stream_publisher.frankenphp')
         ->set('phem.streams', Streams::class)
             ->args([service('phem.renderer'), service('phem.stream_publisher'), service('phem.topics'), false])
             ->tag('kernel.reset', ['method' => 'reset'])

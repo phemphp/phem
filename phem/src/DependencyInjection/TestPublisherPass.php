@@ -30,11 +30,11 @@ final class TestPublisherPass implements CompilerPassInterface
 
     public function process(ContainerBuilder $container): void
     {
-        if (!$container->hasDefinition('test.service_container') || !$container->hasDefinition('phem.stream_publisher')) {
+        // phem.stream_publisher is an alias, or a definition with phem.mercure.publisher_key.
+        if (!$container->hasDefinition('test.service_container') || !$container->has('phem.stream_publisher')) {
             return;
         }
         $container->setDefinition(self::ID, new Definition(MemoryPublisher::class))->setPublic(true);
-        $container->removeDefinition('phem.stream_publisher');
         $container->setAlias('phem.stream_publisher', self::ID);
     }
 }

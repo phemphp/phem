@@ -1,0 +1,101 @@
+<?phpm
+
+namespace App\Pages;
+
+use Phem\Async\Promise;
+use Phem\Attribute\{Async, Component, Page, Path, Prop, State, Subscribe};
+use Phem\Event;
+use Phem\Node;
+use Phem\Stream\Streams;
+use Phem\Tests\Fixtures\Guestbook;
+
+use function App\Components\Document;
+
+// The #[Async] handlers: the work of a Promise runs in a worker (settle() in the tests).
+
+#[Component]
+final class AsyncExport
+{
+    #[Prop] public string $room;
+    #[State] public string $status = 'idle';
+    #[State] public string $format = 'csv';
+
+    public function __construct(
+        private readonly Guestbook $guestbook,
+        private readonly Streams $streams,
+    ) {
+    }
+
+    // The work gets the prop, the state, the bound value and the form of the event again in the
+    // worker. The push of the method body goes out one time: in the request.
+    #[Async]
+    public function export(Event $e): Promise
+    {
+        $this->status = 'pending';
+        $name = (string) ($e->form['name'] ?? '');
+        $this->streams->to(AsyncPage::class, ['room' => $this->room])->update('notice', <b>Started</b>);
+
+        return new Promise(function () use ($name): void {
+            $entry = $this->guestbook->add($this->room, $name.'.'.$this->format);
+            $this->streams->to(AsyncPage::class, ['room' => $this->room])
+                ->update('result', <span>{{ entry.text }}</span>);
+        });
+    }
+
+    // A closure of render() calls it, with a value of the render.
+    #[Async]
+    public function ship(int $id): Promise
+    {
+        return new Promise(function () use ($id): void {
+            $this->streams->to(AsyncPage::class, ['room' => $this->room])->update('result', <span>Shipped {{ id }}</span>);
+        });
+    }
+
+    // A work that throws: its pushes are dropped.
+    #[Async]
+    public function crash(): Promise
+    {
+        return new Promise(function (): void {
+            $this->streams->to(AsyncPage::class, ['room' => $this->room])->update('result', <span>Lost</span>);
+
+            throw new \RuntimeException('The work failed.');
+        });
+    }
+
+    public function render(): Node
+    {
+        $ships = [];
+        foreach ([1, 2] as $id) {
+            $ship = fn () => $this->ship($id);
+            $ships[] = <button key={{ id }} id="ship-{{ id }}" type="button" onClick={{ ship }}>Ship</button>;
+        }
+
+        return (
+            <form onSubmit={{ export }}>
+                <input name="name" />
+                <input name="format" phem:bind={{ format }} />
+                <p id="status">{{ status }}</p>
+                <button id="export" type="submit">Export</button>
+                {{ ships }}
+                <button id="crash" type="button" onClick={{ crash }}>Crash</button>
+            </form>
+        );
+    }
+}
+
+#[Page('/async/{room}'), Subscribe]
+final class AsyncPage
+{
+    #[Path] public string $room;
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <p id="notice"></p>
+                <p id="result"></p>
+                <AsyncExport room={{ room }} />
+            </Document>
+        );
+    }
+}

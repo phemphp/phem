@@ -13,7 +13,10 @@ declare(strict_types=1);
 
 namespace Phem\Test;
 
+use Phem\Async\AsyncHandler;
+use Phem\Async\MemoryBus;
 use Phem\BrowserEventDispatcher;
+use Phem\DependencyInjection\TestAsyncPass;
 use Phem\DependencyInjection\TestPublisherPass;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Rendering\EventRenderer;
@@ -117,8 +120,23 @@ trait InteractsWithPhem
         \assert($dispatcher instanceof EventDispatcherInterface && null !== static::$kernel);
         $publisher = static::getContainer()->get(TestPublisherPass::ID);
         $updates = $publisher instanceof MemoryPublisher ? $publisher->updates(...) : null;
+        $bus = static::getContainer()->has(TestAsyncPass::ID) ? static::getContainer()->get(TestAsyncPass::ID) : null;
+        $handler = static::getContainer()->has('phem.async.handler') ? static::getContainer()->get('phem.async.handler') : null;
+        if ($bus instanceof MemoryBus) {
+            // The messages of the #[Async] handlers wait for settle().
+            $bus->keep();
+        }
+        // As a worker: the messages of the #[Async] handlers, in their order.
+        $settle = $bus instanceof MemoryBus && $handler instanceof AsyncHandler ? static function () use ($bus, $handler): int {
+            $messages = $bus->take();
+            foreach ($messages as $message) {
+                $handler($message);
+            }
+
+            return \count($messages);
+        } : null;
         $driver = new PageDriver(static::$kernel, $dispatcher, $uri, $server, $cookies);
 
-        return new ComponentTester($driver, fn (string $url): ComponentTester => $this->visitWithCookies($url, $server, $driver->cookies()), $updates);
+        return new ComponentTester($driver, fn (string $url): ComponentTester => $this->visitWithCookies($url, $server, $driver->cookies()), $updates, $settle);
     }
 }

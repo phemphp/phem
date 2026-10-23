@@ -27,9 +27,6 @@ Talk about each item before its implementation. The open questions are a start, 
 - [ ] **Colocated client code** (section 4). Is the extracted script a Stimulus controller (as
       the `data-phem-client` controllers), or a smaller hook API? How does `phemc` give it to
       AssetMapper in development (`phemc watch`) and in production?
-- [ ] **Async handlers** (section 2). A worker has no request, no browser state and no tree.
-      What does the method get (its props, its context, the `Event`), and how does the result
-      go back to the browser of the user who clicked?
 
 ## 1. Rendering and performance
 
@@ -140,62 +137,52 @@ handler or a service pushes Turbo Streams with `Phem\Stream\Streams`:
     resolves through the stale component could work, with a `key` on the pushed component.
   - A component that handles a Messenger message (`#[AsMessageHandler]` on a component method)
     and returns its streams, so the markup stays next to the markup that it changes.
-  - Publish from a CLI process (a Messenger worker): a publisher for the HTTP API of the hub,
-    with a publisher key. `mercure_publish()` works only in a request of FrankenPHP.
   - A replay of the lost updates (`lastEventID`, with a transport that keeps a history), in
     place of the refresh after a lost connection.
 - **Out of scope:** polling (LW `wire:poll`, LC `data-poll`). Each tick is a full event (the
   state, two render passes, a transaction) also when nothing changed. A push sends data only
   when it changes.
 
-### [ ] Async handlers (fire and forget) — P3
+### [x] Async handlers (fire and forget) — P3
 
 A slow handler (a payment, an export, a call to an API) blocks the event and its morph.
 
-- **Proposal:** `#[Async]` on a handler method. The browser sends the event as usual. The server
-  does not run the method. It dispatches a generic Messenger message with the handler reference
-  (`FQCN::method`) and the data of the event, and it answers at once. A generic message handler
-  in the worker makes the component, and calls the method. The result goes to the open pages as
-  a push (`Streams`), also to the browser of the user who clicked: its response is gone.
+Done: `#[Async]` on a handler method that returns a `Phem\Async\Promise`, with the slow work in
+a closure. In the request, the method runs as a normal handler: the event renders with the state
+changes of the method body, and its pushes go out. `EventController` sets an `EventReplay` on the
+request, and `AsyncMiddleware` (inside the transaction) dispatches a signed `AsyncHandlerMessage`
+(the state JSON of the event, the route attributes, the bound values, the handler id, the event
+data, and the serialized security token). A dispatch that fails rolls back the event. In the worker, `AsyncHandler` builds the tree from the
+state, renders the first pass to the handler (`EventRenderer::handlerOf()`), calls the method
+again (its state changes and pushes are dropped), and runs the closure, through the middleware
+of the handlers (with no rate limit, no profiler and no `AsyncMiddleware`). The result goes to the
+browsers only with explicit `Streams` pushes.
 
-  ```php
-  #[Async]
-  public function ship(Event $e): void
-  {
-      $order = $this->orders->find($this->id);
-      $order->ship();   // slow
-      // A push: the worker has no response.
-      $this->streams->to(OrderPage::class, ['id' => $this->id])
-          ->update('order-status', <OrderStatus order={{ order }} />);
-  }
-  ```
+- The method body runs two times with the same state: no side effects. The closure must be
+  idempotent (a retry of Messenger runs it again).
+- `AsyncMiddleware` checks the pair at runtime: `#[Async]` with no Promise, or a Promise with no
+  `#[Async]`, throws. A closure in `render()` that calls an `#[Async]` method is accepted. It
+  checks Messenger and the files before an `#[Async]` method runs.
+- The worker has the user of the request (`AsyncUser`: the token is serialized as in the session,
+  and the user provider refreshes the user).
+- The message has an HMAC with `phem.secret`. An event with files throws. A handler that returns
+  no Promise in the worker drops the message (no retry).
+- The worker publishes with the HTTP API of the hub (`HubPublisher`, `phem.mercure.publisher_key`
+  and `publish_url`); a request still uses `mercure_publish()` (`SapiPublisher`).
+- `phemc` reports E054 (on a function) and E055 (no `Promise` return type). The tests run the
+  work with `settle()` (a `MemoryBus` that decorates the bus with `framework.test`, and keeps the
+  messages of a page of `visit()`). The Reports example uses it, with a Messenger worker in the dev and prod
+  containers. See [docs/phpm-syntax.md](docs/phpm-syntax.md#slow-work-after-the-response).
 
 - **Best peer:** LV `start_async` / `assign_async` (a task in the LiveView process, the result
   comes back as a message). LW `#[Async]` on an action (it runs in parallel, but in a request).
   Symfony Messenger with `#[AsMessage(transport: 'async')]`.
-- **Open questions:**
-  - The reference. `FQCN::method` from the browser must not call any method: sign it (as the
-    handler ids now), and accept only a method with `#[Async]`. Is the compiler the place to
-    check this (a new E code)?
-  - The component in the worker. It has no tree, no fiber, no parent: what gives its props, its
-    context (`#[Context]`) and its `#[State]`? Options: the signed state of the event, a
-    serialized copy of the props (only scalars and entities by id), or a rule that an async
-    method reads only its arguments and its services.
-  - The `Event`. Serialize its data (the form fields, the route values of the page), but not the
-    uploaded files and not the request. Is it a smaller `AsyncEvent` with no `refresh()`, no
-    redirect and no response?
-  - The user. The worker has no session and no token. Keep the user identifier in the message,
-    and check the access rules (`#[IsGranted]`) at dispatch and again in the worker?
-  - The sync part. Does the event still render (for example a "pending" state that the handler
-    sets before the dispatch), or does the browser get only an empty answer?
-  - The push from the worker. `mercure_publish()` works only in a request of FrankenPHP, so this
-    needs the publisher for the HTTP API of the hub (see Real-time push, Later).
-  - The transaction, the retries and the failures. The worker runs the method in a transaction
-    (`doctrine_transaction` middleware). A retry runs it again: the method must be idempotent.
-    How does the user see a failure (a push of an error)?
-  - Is it worth it? A sync handler can already dispatch its own message
-    (`$bus->dispatch(new ShipOrder($id))`). `#[Async]` saves the message class and its handler,
-    but it hides a queue behind a method call.
+- **Later:**
+  - A failure push: a `catch` of the Promise that runs in the worker after the last retry, so the
+    user sees the error.
+  - A smaller message: a reference to the state in a store that lives as long as the retries, in
+    place of the full state JSON.
+  - The profiler of the worker: the render and the work of each message.
 
 ## 3. Forms and validation
 

@@ -95,6 +95,8 @@ make phpstorm  # the PhpStorm plugin for .phpm files (needs Java 21 and Gradle)
 
 `make up` and `make prod` also make the SQLite database of the quickstart on the first start:
 `docker/init-db.sh` makes the schema from the Doctrine mapping and loads the Doctrine fixtures.
+They also run the Messenger worker of the `#[Async]` handlers (`messenger:consume async`), next to
+FrankenPHP.
 
 To build and install the editor support, run `make vscode-install` or `make phpstorm-install`.
 Both use the Phem language server (`phemc lsp`), compiled to WebAssembly: diagnostics as you
@@ -191,6 +193,9 @@ type, completion, go to definition, hover, and outline. See
    plain markup (`prepend`, `update`, `remove`, ...), or a `refresh()` that renders a component
    again in each browser with a normal event. The next event of a page renders again the
    components that a push changed (see [Real-time updates](docs/phpm-syntax.md#real-time-updates)).
+   An `#[Async]` handler returns its slow work in a `Promise`: the event answers at once, and a
+   Messenger worker runs the work and pushes its result (see
+   [Slow work after the response](docs/phpm-syntax.md#slow-work-after-the-response)).
 6. **Server.** [FrankenPHP](https://frankenphp.dev) runs `public/index.php` in worker mode
    (see `examples/quickstart/Caddyfile`). Each worker boots the Symfony kernel once and keeps
    it in memory for many requests. Symfony Runtime gives each request to the kernel, which
@@ -246,8 +251,9 @@ finds an error:
 | E030–E033 | Undefined variable in markup, markup in an unsupported expression, invalid attribute, invalid `phem:bind` (not a `#[State]` property, not a form field, or a type that does not take the value of the field) |
 | E040–E044 | Class component without `render()`, readonly `#[State]` property, `#[Prop]` property that is not public, static, or `#[State]`, a second `#[Prop(rest: true)]` property or one whose type does not accept an array, a `#[Context]` or `#[Provide]` type that is not one class, interface or enum (or a `#[Context]` property that is static, readonly, a prop or state) |
 | E050, E052, E053 | `export default` (not PHP; use `#[Page]`), `#[Page]` or `#[Route]` on a function, or on a class that is not a component, `#[Subscribe]` on a class that is not a page |
+| E054, E055 | `#[Async]` on a function; an `#[Async]` method that does not declare `Promise` as its return type |
 | W001–W003 | A handler is called instead of passed; a list item without `key`; an event that the browser does not send (`onMouseEnter`) |
-| W004 | `#[Page]`, `#[Route]`, `#[Component]`, `#[State]`, `#[Prop]`, `#[Path]`, `#[Context]`, `#[Provide]` or `#[Subscribe]` without its `use` import (`Phem\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
+| W004 | `#[Page]`, `#[Route]`, `#[Component]`, `#[State]`, `#[Prop]`, `#[Path]`, `#[Context]`, `#[Provide]`, `#[Subscribe]` or `#[Async]` without its `use` import (`Phem\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
 | W005 | a `<title>` outside `<head>` and `<svg>`: the document component prints the title, and a page gives it with `<Document:title>` |
 | W006 | `phem:debounce` or `phem:throttle` on an element with no handler |
 | W007 | `phem:live` on an element with no `phem:bind` |

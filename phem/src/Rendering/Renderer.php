@@ -104,6 +104,21 @@ final class Renderer implements ResetInterface
     }
 
     /**
+     * Runs a callback with a tree as the current tree, as dispatch() runs a handler: the work of
+     * an #[Async] handler in a worker (see Phem\Async\AsyncHandler).
+     *
+     * @template T
+     *
+     * @param \Closure(): T $callback
+     *
+     * @return T
+     */
+    public function inside(Tree $tree, \Closure $callback): mixed
+    {
+        return $this->within($tree, $callback);
+    }
+
+    /**
      * Renders markup outside the page, for a push (see Phem\Stream\Streams): a component in it
      * renders with no `<phem-c>`, because the pages that get it have their own fibers. An event
      * handler, a `phem:bind`, a `phem:loading` and a `<Suspense>` throw: they need a fiber of

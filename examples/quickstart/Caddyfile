@@ -17,15 +17,20 @@
 	header -X-Powered-By
 
 	# The Mercure hub of FrankenPHP, at /.well-known/mercure, for the pages with #[Subscribe].
-	# PHP publishes with mercure_publish(), with no HTTP request and no publisher JWT. The `local`
-	# transport keeps the updates in memory, with no history. A subscriber needs an access token
-	# of the `phem` issuer: Phem puts one in a cookie for the topics of each page. The key is the
+	# A request publishes with mercure_publish(), with no HTTP request and no publisher JWT. The
+	# worker of the #[Async] handlers publishes with the HTTP API of the hub and a publisher JWT
+	# (phem.mercure.publisher_key, MERCURE_PUBLISHER_JWT_KEY in .env). The `local` transport keeps
+	# the updates in memory, with no history. A subscriber needs an access token of the `phem`
+	# issuer: Phem puts one in a cookie for the topics of each page. The key is the
 	# phem.mercure.subscriber_key option (MERCURE_SUBSCRIBER_JWT_KEY in .env).
 	mercure {
 		transport local
 		issuer phem {
 			subscriber {
 				jwt {$MERCURE_SUBSCRIBER_JWT_KEY:!ChangeThisMercureHubSubscriberKey!-quickstart-only}
+			}
+			publisher {
+				jwt {$MERCURE_PUBLISHER_JWT_KEY:!ChangeThisMercureHubPublisherKey!-quickstart-only}
 			}
 		}
 	}

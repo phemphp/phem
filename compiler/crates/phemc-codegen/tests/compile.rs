@@ -398,3 +398,11 @@ fn a_member_path_in_a_handler_is_the_method() {
     assert!(twig.contains("phem_on('click', select)"), "{twig}");
     assert!(twig.contains("phem_loading(phem_method(form, 'save'))"), "{twig}");
 }
+
+#[test]
+fn async_checks_only_the_attribute_and_its_return_type() {
+    // A helper that returns the Promise of a handler, and an #[Async] handler of an abstract base
+    // class: the runtime checks the handler that an event calls.
+    let src = "<?phpm\nuse Phem\\Async\\Promise;\nuse Phem\\Attribute\\{Async, Component};\nuse Phem\\Node;\nabstract class Base\n{\n    #[Async]\n    public function run(): Promise { return $this->work(); }\n\n    private function work(): Promise { return new Promise(static function (): void {}); }\n}\n#[Component]\nfinal class Export extends Base\n{\n    public function render(): Node { return <button onClick={{ run }}>Export</button>; }\n}\n";
+    assert_eq!(codes(src), Vec::<&str>::new());
+}

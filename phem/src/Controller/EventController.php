@@ -18,6 +18,7 @@ use Phem\Dom\UrlScheme;
 use Phem\Event;
 use Phem\Http\EventBody;
 use Phem\Http\EventPayload;
+use Phem\Http\EventReplay;
 use Phem\Http\RouteValues;
 use Phem\Http\TurboStreams;
 use Phem\Metadata\ComponentMetadata;
@@ -57,9 +58,11 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
  * that can change (see EventRenderer), and answers with Turbo Streams that morph the components
  * that changed, the entries of the state that changed and the new signature (see StateJson),
  * the query of the #[Url] properties (see UrlQuery), and the
- * browser events of the handler (see BrowserEventDispatcher). The browser also sends the
- * components whose element a push changed: they render again (see EventRenderer). When the handler returns a
- * RedirectResponse, the server answers with its URL, and the browser visits it.
+ * browser events of the handler (see BrowserEventDispatcher). The request has the EventReplay of
+ * the event: an #[Async] handler sends it to a worker (see Phem\Async\AsyncMiddleware). The browser
+ * also sends the components whose element a push changed: they render again (see EventRenderer).
+ * When the handler returns a RedirectResponse, the server answers with its URL, and the browser
+ * visits it.
  *
  * An event with the files of a form is `multipart/form-data` (see EventBody). The handler
  * gets them as UploadedFile objects (see Event::$files). PHP removes a file that the handler does
@@ -153,6 +156,9 @@ final class EventController
             return self::reload();
         }
         $tree = new Tree($page, $state->fibers, $props, $state->values, shape: $state->shape);
+        if (null !== $payload->handler) {
+            $request->attributes->set(EventReplay::ATTRIBUTE, new EventReplay($page, $json, $payload->bound, $payload->handler, $payload->event));
+        }
         $outcome = $this->events->run($tree, $payload->handler, $payload->bound, $this->dispatcher, fn (): Event => Event::fromArray($payload->event, $request, $this->dispatcher), $payload->stale);
         if ($outcome->reload) {
             // The page changed since the browser rendered it (for example after a deploy).

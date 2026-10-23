@@ -72,6 +72,7 @@ final class ComponentTester
     /**
      * @param \Closure(string): self|null                                      $visit   opens a URL (for followRedirect())
      * @param \Closure(): list<array{topics: list<string>, data: string}>|null $updates the published updates (see Phem\Stream\MemoryPublisher)
+     * @param \Closure(): int|null                                             $settle  runs the waiting work of the #[Async] handlers, and returns its number (see Phem\Async\MemoryBus)
      *
      * @internal use InteractsWithPhem::mount() or InteractsWithPhem::visit()
      */
@@ -79,6 +80,7 @@ final class ComponentTester
         private readonly Driver $driver,
         private readonly ?\Closure $visit = null,
         private readonly ?\Closure $updates = null,
+        private readonly ?\Closure $settle = null,
     ) {
         // The page gets the updates that come after its render.
         $this->seen = null !== $updates ? \count($updates()) : 0;
@@ -298,6 +300,27 @@ final class ComponentTester
         $this->dispatched = [];
         if ($refresh && [] !== $this->stale) {
             return $this->send([null, ['type' => 'refresh', 'value' => null, 'checked' => null, 'key' => null, 'form' => null, 'refresh' => true]]);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Runs the work of the #[Async] handlers that wait, as a Messenger worker does (see
+     * Phem\Attribute\Async): the work of all the pages of the test, in their order. The work
+     * pushes its result: get it with receive(). A page only:
+     *
+     *     $this->visit('/export')
+     *         ->click('button')->assertSee('Pending')
+     *         ->settle()->receive()->assertSee('Download');
+     */
+    public function settle(): self
+    {
+        if (null === $this->settle) {
+            Assert::fail('No #[Async] work can run here: install symfony/messenger, and test a page with visit().');
+        }
+        if (0 === ($this->settle)()) {
+            Assert::fail(\sprintf('No #[Async] work waits: no handler returned a Promise. %s', $this->context()));
         }
 
         return $this;

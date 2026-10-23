@@ -16,6 +16,8 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends git unzip \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+# pcntl: messenger:consume ends the message that runs on SIGTERM (`docker stop`), then stops.
+RUN install-php-extensions pcntl
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
 # --- Dev: FrankenPHP + Rust toolchain (cargo, phemc watch) ------------------

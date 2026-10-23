@@ -1498,6 +1498,145 @@ The Symfony profiler shows the streams that a request pushed, and the stale comp
 event. `phemc` reports E053 for `#[Subscribe]` on a class that is not a page. The tests get the
 pushes with `receive()` (see [Testing](testing.md#actions)).
 
+### Slow work after the response
+
+A slow handler (an export, a payment, a call to an API) blocks the event and its morph. Put
+`#[Async]` on the handler method, and return the slow work in a `Phem\Async\Promise`. The event
+answers at once, and a Symfony Messenger worker runs the work after the response:
+
+```php
+use Phem\Async\Promise;
+use Phem\Attribute\{Async, Component, State, Transactional};
+use Phem\Event;
+use Phem\Stream\Streams;
+
+#[Component]
+final class BuildReport
+{
+    // The ticket of the next report: the request and the worker read the same value.
+    #[State] public string $ticket = '';
+
+    public function __construct(
+        private readonly ReportRepository $reports,
+        private readonly Streams $streams,
+    ) {
+    }
+
+    public function mount(): void
+    {
+        $this->ticket = bin2hex(random_bytes(4));
+    }
+
+    #[Async, Transactional]
+    public function build(Event $e): Promise
+    {
+        $ticket = $this->ticket;
+        $this->ticket = bin2hex(random_bytes(4));
+        $this->streams->to(Reports::class)
+            ->prepend('reports', <li id="report-{{ ticket }}">Building a report…</li>);
+
+        return new Promise(function () use ($ticket): void {
+            $report = $this->reports->build($ticket);   // slow
+            $this->streams->to(Reports::class)
+                ->replace('report-'.$ticket, <ReportRow report={{ report }} />);
+        });
+    }
+    // ...
+}
+```
+
+1. **In the request**, the method runs as a normal handler. The event renders as usual, with the
+   state changes of the method body. The pushes of the method body go out at the end of the
+   request. Phem does not run the closure: it dispatches a `Phem\Async\AsyncHandlerMessage`, in
+   the transaction of the handler. When the dispatch fails, the event fails: the writes of the
+   method body roll back, and its pushes are dropped.
+2. **In the worker**, Phem builds the page again from the state of the event, renders the path to
+   the handler, sets the bound values, and calls the method again. The handler gets its props,
+   its context, its state, the form fields of the event, the route values of the request, and the
+   values of its closure in `render()` (`fn () => $this->ship($id)`) again. The request of the
+   worker has no session, no cookies and no files. Phem drops the state changes and the pushes of
+   this second call, and runs the closure of the Promise. Then it publishes the pushes of the
+   closure.
+
+Rules:
+
+- The method body before `return` runs **two times**, with the same state: keep it fast, with
+  no side effects. Read the values that the work needs in the body, and pass them to the closure
+  (`use ($ticket)`).
+- The worker has no response. The closure shows its result with `Streams` (the page needs
+  `#[Subscribe]`). The same markup goes to all the viewers of the page.
+- A retry of Messenger runs the closure again: make it idempotent (the ticket above finds the
+  report of a retry).
+- With `#[Transactional]` on the method or the class, the method body runs in a transaction in
+  the request, and the closure runs in a transaction in the worker. When the closure throws, the
+  transaction rolls back, its pushes are dropped, and Messenger retries the message.
+- The worker has the user of the request: Phem serializes the security token, as the session
+  does, and the worker loads the user again with the user provider. A user that does not exist
+  any more drops the message.
+- Do not read the session, the cookies or a CSRF token in the method body: the worker does not
+  have them. When the method returns no `Promise` in the worker, the worker drops the message.
+- The event cannot have files (PHP removes them at the end of the request): move the files in a
+  normal handler. Phem checks the files and Messenger before the method runs.
+- Use the Doctrine transport on the connection of the entities: the message is then part of the
+  commit of a `#[Transactional]` handler. With another transport (Redis, AMQP), the worker can
+  start before the commit: the closure must not need the rows of the method body.
+- The message has an HMAC with the secret of Phem: the worker rejects a message that it did not
+  make. When the page changed since the event (a deploy), the worker logs a warning and drops the
+  message.
+
+Install Messenger, route the message to a transport, and run a worker:
+
+```yaml
+# config/packages/messenger.yaml
+framework:
+    messenger:
+        transports:
+            async: '%env(MESSENGER_TRANSPORT_DSN)%'
+        routing:
+            Phem\Async\AsyncHandlerMessage: async
+```
+
+```sh
+php bin/console messenger:consume async
+```
+
+The worker has no FrankenPHP request, so `mercure_publish()` does not work in it. Give Phem the
+publisher key of the hub: the worker publishes with the HTTP API of the hub, and a request still
+uses `mercure_publish()`.
+
+```caddyfile
+mercure {
+    issuer phem {
+        subscriber {
+            jwt {$MERCURE_SUBSCRIBER_JWT_KEY}
+        }
+        publisher {
+            jwt {$MERCURE_PUBLISHER_JWT_KEY}
+        }
+    }
+}
+```
+
+```yaml
+# config/packages/phem.yaml
+phem:
+    mercure:
+        publisher_key: '%env(MERCURE_PUBLISHER_JWT_KEY)%'
+        publish_url: 'http://localhost:8080/.well-known/mercure'   # the URL of the hub for the server
+```
+
+Performance: a handler with no `#[Async]` has no extra cost. An `#[Async]` event writes one
+message (with the state of the page) to the transport. The worker renders the path to the
+handler again (as the first pass of an event), calls the method body again, and publishes with
+one HTTP request for each topic. The Doctrine transport polls the database: use Redis or AMQP in
+production, and enable OPcache in the CLI (`opcache.enable_cli=1`).
+
+`phemc` reports E054 for `#[Async]` on a function, and E055 for an `#[Async]` method that does not
+declare `Promise` as its return type. The runtime also checks the handler that an event calls: an
+`#[Async]` handler that returns no `Promise`, or a handler method that returns a `Promise` with no
+`#[Async]`, throws. The tests run the work with `settle()` (see
+[Testing](testing.md#actions)). The Reports example uses it.
+
 ## 9. Props and lifting state up
 
 The props of a function component (a function with `#[Component]`) are its named parameters.

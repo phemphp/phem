@@ -6,3 +6,7 @@ phem:
     # the subscriber key, the updates are private: each page gets an access token for its topics.
     mercure:
         subscriber_key: '%env(MERCURE_SUBSCRIBER_JWT_KEY)%'
+        # The worker of the #[Async] handlers has no FrankenPHP request: it publishes with the
+        # HTTP API of the hub, with the publisher key.
+        publisher_key: '%env(MERCURE_PUBLISHER_JWT_KEY)%'
+        publish_url: '%env(MERCURE_PUBLISH_URL)%'

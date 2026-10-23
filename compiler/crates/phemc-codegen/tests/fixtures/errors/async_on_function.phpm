@@ -1,0 +1,5 @@
+<?phpm // expect: E054
+use Phem\Async\Promise;
+use Phem\Attribute\Async;
+#[Async]
+function export(): Promise { return new Promise(static function (): void {}); }
