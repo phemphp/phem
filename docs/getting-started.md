@@ -248,10 +248,11 @@ function Home(): Node
 docker compose up --build
 ```
 
-On the first start, the container installs the packages and `phemc`, then builds the `.phpm`
-files:
+On the first start, the container installs the packages and downloads `phemc`, then builds the
+`.phpm` files:
 
 ```
+Downloading phemc v0.1.0 (phemc-linux-aarch64)...
 phemc: compiled 2 file(s), 2 template(s), 1 page(s); 8 file(s) changed, 0 warning(s) in 5 ms
 phem: compiled 2 template(s) into the Twig cache in 27 ms
 phemc: $ frankenphp run --config Caddyfile
