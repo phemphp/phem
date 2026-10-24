@@ -57,6 +57,7 @@ use Phem\Rendering\Renderer;
 use Phem\Rendering\SuspenseRenderer;
 use Phem\Rendering\TemplateComponentRenderer;
 use Phem\Routing\PageLoader;
+use Phem\Routing\PageRouteValues;
 use Phem\Routing\PageUrlGenerator;
 use Phem\State\BoundValues;
 use Phem\State\StateAccessor;
@@ -191,7 +192,7 @@ return static function (ContainerConfigurator $container): void {
 
         // Streams: the push to the pages with #[Subscribe], through the Mercure hub
         ->set('phem.topics', Topics::class)
-            ->args([service('phem.metadata'), abstract_arg('secret, set by PhemBundle')])
+            ->args([service('phem.metadata'), abstract_arg('secret, set by PhemBundle'), service('phem.page_route_values')])
             ->tag('kernel.reset', ['method' => 'reset'])
         ->set('phem.stream_publisher.frankenphp', FrankenPhpPublisher::class)
             ->args([service('logger')->nullOnInvalid()])
@@ -228,6 +229,8 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.route_loader', PageLoader::class)
             ->args([service('phem.manifest'), param('kernel.environment'), service('phem.metadata')])
             ->tag('routing.loader')
+        ->set('phem.page_route_values', PageRouteValues::class)
+            ->args([service('router')])
         ->set('phem.page_url_generator', PageUrlGenerator::class)
             ->args([service('router')])
         ->alias(PageUrlGenerator::class, 'phem.page_url_generator')

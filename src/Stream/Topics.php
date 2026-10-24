@@ -15,14 +15,15 @@ namespace Phem\Stream;
 
 use Phem\Attribute\Subscribe;
 use Phem\Metadata\ComponentMetadata;
+use Phem\Routing\PageRouteValues;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
- * The Mercure topics of the pages with #[Subscribe]:
+ * The Mercure topics of the pages with #[Subscribe] (a class or a function):
  *
- * - `phem:<page class>`: all the URLs of the page;
- * - `phem:<page class>?<route values>`: the URL of the page with these #[Path] route values
- *   (`phem:App\Page\ScientistPage?id=42`), for a page with #[Path] props;
+ * - `phem:<page>`: all the URLs of the page;
+ * - `phem:<page>?<route values>`: the URL of the page with these route values
+ *   (`phem:App\Page\ScientistPage?id=42`), for a page with route values;
  * - `phem:*`: all the pages with #[Subscribe] (see Streams::everywhere()).
  *
  * The browser, the access token and the hub see only an HMAC of the name of a page topic, with
@@ -44,11 +45,14 @@ final class Topics implements ResetInterface
     private array $names = [];
 
     /**
-     * @param string $secret the key of the HMAC of the topics (`phem.secret`)
+     * @param string               $secret the key of the HMAC of the topics (`phem.secret`)
+     * @param PageRouteValues|null $routes the route values of the pages: without them, all the
+     *                                     parameters of a function page are route values
      */
     public function __construct(
         private readonly ComponentMetadata $metadata = new ComponentMetadata(),
         private readonly string $secret = '',
+        private readonly ?PageRouteValues $routes = null,
     ) {
     }
 
@@ -66,7 +70,7 @@ final class Topics implements ResetInterface
     /**
      * The topics of a page render, or none when the page has no #[Subscribe].
      *
-     * @param array<string, mixed> $values the #[Path] route values of the request
+     * @param array<string, mixed> $values the route values of the request
      *
      * @return list<string>
      */
@@ -87,11 +91,11 @@ final class Topics implements ResetInterface
     }
 
     /**
-     * The topic of Streams::to(): the page, or the page with all its #[Path] route values.
+     * The topic of Streams::to(): the page, or the page with all its route values.
      *
      * @param array<string, mixed> $values
      *
-     * @throws \LogicException when the class is not a page with #[Subscribe], or when the values are not the #[Path] route values of the page
+     * @throws \LogicException when the page has no #[Subscribe], or when the values are not the route values of the page
      */
     public function to(string $page, array $values = []): string
     {
@@ -104,13 +108,14 @@ final class Topics implements ResetInterface
             return $this->topic(self::PREFIX.$page);
         }
 
-        $paths = $this->metadata->pathProps($page);
+        $paths = $this->paths($page);
+        $what = class_exists($page) ? '#[Path] prop' : 'route value parameter';
         if ([] !== $unknown = array_diff_key($values, $paths)) {
-            throw new \LogicException(\sprintf('The page "%s" has no #[Path] prop "%s": give the route values of its #[Path] props (%s).', $page, implode('", "', array_keys($unknown)), [] !== $paths ? '"'.implode('", "', array_keys($paths)).'"' : 'it has none'));
+            throw new \LogicException(\sprintf('The page "%s" has no %s "%s": give the route values of its %ss (%s).', $page, $what, implode('", "', array_keys($unknown)), $what, [] !== $paths ? '"'.implode('", "', array_keys($paths)).'"' : 'it has none'));
         }
 
         if ([] !== $missing = array_diff_key($paths, $values)) {
-            throw new \LogicException(\sprintf('The streams to one URL of the page "%s" need all its #[Path] route values, but "%s" is missing. Give no values for all the URLs of the page.', $page, implode('", "', array_keys($missing))));
+            throw new \LogicException(\sprintf('The streams to one URL of the page "%s" need all its route values, but "%s" is missing. Give no values for all the URLs of the page.', $page, implode('", "', array_keys($missing))));
         }
 
         return $this->scoped($page, $values);
@@ -118,7 +123,30 @@ final class Topics implements ResetInterface
 
     public function subscribes(string $page): bool
     {
-        return $this->subscribes[$page] ??= class_exists($page) && [] !== new \ReflectionClass($page)->getAttributes(Subscribe::class);
+        $reflection = match (true) {
+            isset($this->subscribes[$page]) => null,
+            class_exists($page) => new \ReflectionClass($page),
+            \function_exists($page) => new \ReflectionFunction($page),
+            default => null,
+        };
+
+        return $this->subscribes[$page] ??= [] !== ($reflection?->getAttributes(Subscribe::class) ?? []);
+    }
+
+    /**
+     * The props of a page that get a route value: the #[Path] props of a class, the parameters
+     * of a function that its routes give a value.
+     *
+     * @return array<string, ?\ReflectionType>
+     */
+    private function paths(string $page): array
+    {
+        $paths = $this->metadata->pathProps($page);
+        if (null === $this->routes) {
+            return $paths;
+        }
+
+        return array_intersect_key($paths, array_flip($this->routes->of($page)));
     }
 
     /** @param array<string, mixed> $values */

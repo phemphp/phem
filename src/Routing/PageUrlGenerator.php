@@ -41,7 +41,7 @@ final class PageUrlGenerator
      */
     public function generate(string|\Closure $page, array $values = []): string
     {
-        $name = \is_string($page) ? ltrim($page, '\\') : self::functionName($page);
+        $name = PageName::of($page);
 
         try {
             return $this->urls->generate($name, $values);
@@ -54,16 +54,5 @@ final class PageUrlGenerator
     public function redirect(RedirectTo $redirect): RedirectResponse
     {
         return new RedirectResponse($this->generate($redirect->page, $redirect->values));
-    }
-
-    private static function functionName(\Closure $page): string
-    {
-        // A method (`$this->show(...)`) or an anonymous function has no function name.
-        $name = (new \ReflectionFunction($page))->getName();
-        if (!\function_exists($name)) {
-            throw new \InvalidArgumentException(\sprintf('A redirect gets a page class name, or the first-class callable of a function page (`ScientistPage(...)`), "%s" given.', $name));
-        }
-
-        return $name;
     }
 }

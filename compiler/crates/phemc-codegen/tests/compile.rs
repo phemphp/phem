@@ -383,9 +383,8 @@ fn a_page_class_is_a_component_with_a_route() {
     assert_eq!(d.message, "the Symfony `#[Route]` cannot mark a function, and `App\\Home` is one");
     assert_eq!(d.help.as_deref(), Some("use `#[Page('/path')]` and `use Phem\\Attribute\\Page;`: a function page needs no `#[Component]`"));
 
-    let (_, diags) = page("#[Page('/')]\n#[Subscribe]", "function Home() { return <p />; }");
-    let d = &diags[0].diags[0];
-    assert_eq!((d.code, d.message.as_str()), ("E053", "`#[Subscribe]` must mark a class page, and `App\\Home` is a function"));
+    assert_eq!(codes("#[Page('/')]\n#[Subscribe]", "function Home() { return <p />; }"), Vec::<&str>::new(), "a function page can subscribe");
+    assert_eq!(codes("#[Component]\n#[Subscribe]", "function Home() { return <p />; }"), ["E053"], "a function component cannot subscribe");
 }
 
 #[test]

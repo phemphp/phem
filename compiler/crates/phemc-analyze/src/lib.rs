@@ -354,15 +354,10 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
     }
 
     for (fqn, span) in &file.subscribes {
-        let diag = if file.routes.iter().any(|r| r.is_function && r.is_component && r.fqn == *fqn) {
-            Diagnostic::error(codes::SUBSCRIBE_NOT_PAGE, format!("`#[Subscribe]` must mark a class page, and `{fqn}` is a function"), *span)
-                .with_help("make the page a class with a `render()` method, and keep `#[Subscribe]` next to `#[Page]`")
-        } else {
+        diags.push(
             Diagnostic::error(codes::SUBSCRIBE_NOT_PAGE, format!("`#[Subscribe]` must mark a page, and `{fqn}` is not one"), *span)
-                .with_help("a page opens the connection to the Mercure hub: put `#[Subscribe]` next to `#[Page]`")
-        };
-
-        diags.push(diag);
+                .with_help("a page opens the connection to the Mercure hub: put `#[Subscribe]` next to `#[Page]`"),
+        );
     }
 
     diags.extend(check_async(file));

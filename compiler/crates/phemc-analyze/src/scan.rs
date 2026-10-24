@@ -280,11 +280,12 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
 
                         // The Symfony `#[Route]` cannot mark a function: report it before `#[Page]`.
                         let route = attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_ROUTE).map(|(_, s)| ("Route", *s)).or_else(|| route_attr(&info, &attrs));
+                        let is_page = route.is_some_and(|(attr, _)| attr == "Page");
                         if let Some((attr, span)) = route {
                             info.routes.push(RouteDecl { fqn: f.fqn.clone(), attr, span, is_component: attr == "Page", is_function: true });
                         }
 
-                        if let Some(span) = subscribe_attr(&info, &attrs) {
+                        if let Some(span) = subscribe_attr(&info, &attrs).filter(|_| !is_page) {
                             info.subscribes.push((f.fqn.clone(), span));
                         }
 

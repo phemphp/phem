@@ -130,10 +130,7 @@ In an event of a component of the page, the page function runs again with the re
 event: a `POST` request with the same route values. Thus `$request->getMethod()` is `POST`
 there. Read the data in the function, not in the request of the first render.
 
-A function page has these limits:
-
-- It cannot have `#[Subscribe]` (E053).
-- The Symfony `#[Route]` attribute cannot mark a function (E052). Use `#[Page]`.
+The Symfony `#[Route]` attribute cannot mark a function (E052). Use `#[Page]`.
 
 ### Route values
 
@@ -1648,8 +1645,11 @@ final class SignForm
 ```
 
 - `to(Page::class)` names all the URLs of a page. `to(Page::class, ['id' => 42])` names one URL:
-  give all the `#[Path]` route values of the page, as the URL has them. `everywhere()` names all
-  the pages with `#[Subscribe]`, for a part of the layout. A class with no `#[Subscribe]` throws.
+  give all the route values of the page, as the URL has them. `everywhere()` names all the pages
+  with `#[Subscribe]`, for a part of the layout. A page with no `#[Subscribe]` throws.
+- A function page can have `#[Subscribe]` too. A function has no `::class`, so give its
+  first-class callable: `to(Guestbook(...), ['room' => 'lobby'])` (with `use function`). Its
+  route values are the parameters that its routes give a value, not the services or the Request.
 - Each action takes the `id` of the target element: `append`, `prepend`, `before`, `after`,
   `replace`, `update` and `remove`, as in Turbo. `replace` and `update` morph by default
   (`morph: false` turns it off), so the focus, a bound field that the user changes, and the
@@ -1732,8 +1732,8 @@ connects again.
   the error, and the response does not change.
 
 The Symfony profiler shows the streams that a request pushed, and the stale components of an
-event. `phemc` reports E053 for `#[Subscribe]` on a class that is not a page, or on a function
-page. The tests get the pushes with `receive()` (see [Testing](testing.md#actions)).
+event. `phemc` reports E053 for `#[Subscribe]` on a class or a function that is not a page. The
+tests get the pushes with `receive()` (see [Testing](testing.md#actions)).
 
 ### Slow work after the response
 

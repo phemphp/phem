@@ -53,6 +53,14 @@ final class StreamTest extends KernelTestCase
         self::assertStringNotContainsString('lobby', (string) $source);
     }
 
+    public function testAFunctionPageWithSubscribeGetsThePushes(): void
+    {
+        $other = $this->visit('/board/lobby')->assertSee('0 on the board');
+        $this->visit('/guestbook/lobby')->click('#board');
+
+        $other->receive()->assertSee('1 on the board');
+    }
+
     public function testAPageWithNoSubscribeDoesNotConnect(): void
     {
         $this->visit('/notify')->assertSelectorNotExists('[data-phem-stream-value]');

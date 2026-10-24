@@ -15,6 +15,7 @@ namespace Phem\Stream;
 
 use Phem\Node;
 use Phem\Rendering\Renderer;
+use Phem\Routing\PageName;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
@@ -30,8 +31,9 @@ use Symfony\Contracts\Service\ResetInterface;
  *             ->refresh('stats');
  *     }
  *
- * - to() names a page: all its URLs, or one URL with its #[Path] route values. everywhere()
- *   names all the pages with #[Subscribe] (for a part of the layout).
+ * - to() names a page (a class name, or `Guestbook(...)` for a function page): all its URLs, or
+ *   one URL with its route values. everywhere() names all the pages with #[Subscribe] (for a
+ *   part of the layout).
  * - The markup renders at once, outside the page, so it shows the data of now. It is plain
  *   markup: a component in it renders with no `<phem-c>`, and an event handler or a `phem:bind`
  *   throws. For interactive content, use refresh(): each browser renders the component of the
@@ -56,15 +58,16 @@ final class Streams implements ResetInterface
     }
 
     /**
-     * The streams to a page: to all its URLs, or with all its #[Path] route values to one URL
-     * (`to(ScientistPage::class, ['id' => 42])`).
+     * The streams to a page: to all its URLs, or with all its route values to one URL
+     * (`to(ScientistPage::class, ['id' => 42])`). A function page is its first-class callable
+     * (`to(Guestbook(...))`).
      *
-     * @param class-string|string  $page
-     * @param array<string, mixed> $values
+     * @param class-string|string|\Closure $page
+     * @param array<string, mixed>         $values
      */
-    public function to(string $page, array $values = []): PageStreams
+    public function to(string|\Closure $page, array $values = []): PageStreams
     {
-        return new PageStreams($this, $this->topics->to($page, $values));
+        return new PageStreams($this, $this->topics->to(PageName::of($page), $values));
     }
 
     /** The streams to all the pages with #[Subscribe]. */

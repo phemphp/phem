@@ -150,6 +150,13 @@ final class GuestbookForm
         $this->streams->everywhere()->append('entries', <li><button onClick={{ fail }}>Fail</button></li>);
     }
 
+    // The streams to a function page name it by its first-class callable.
+    public function board(): void
+    {
+        $this->guestbook->add($this->room, 'On the board');
+        $this->streams->to(GuestbookBoard(...), ['room' => $this->room])->refresh('board');
+    }
+
     // A page with no #[Subscribe] gets no streams.
     public function elsewhere(): void
     {
@@ -167,6 +174,7 @@ final class GuestbookForm
                 <button id="welcome" type="button" onClick={{ motd }}>Motd</button>
                 <button id="fail" type="button" onClick={{ fail }}>Fail</button>
                 <button id="interactive" type="button" onClick={{ interactive }}>Interactive</button>
+                <button id="board" type="button" onClick={{ board }}>Board</button>
                 <button id="elsewhere" type="button" onClick={{ elsewhere }}>Elsewhere</button>
             </form>
         );
@@ -189,4 +197,17 @@ final class GuestbookPage
             </Document>
         );
     }
+}
+
+// A function page with #[Subscribe]: its route value and a service in its parameters.
+#[Page('/board/{room}'), Subscribe]
+function GuestbookBoard(string $room, Guestbook $guestbook): Node
+{
+    $count = \count($guestbook->entries($room));
+
+    return (
+        <Document>
+            <p id="board">{{ count }} on the board</p>
+        </Document>
+    );
 }

@@ -77,7 +77,7 @@ final class PageUrlGeneratorTest extends TestCase
     public function testAnonymousClosureIsAnError(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('A redirect gets a page class name, or the first-class callable of a function page');
+        $this->expectExceptionMessage('A page is a class name, or the first-class callable of a function page');
 
         $this->urls()->generate(static fn (): null => null);
     }

@@ -117,13 +117,8 @@ final class PageLoader extends Loader
         $what = class_exists($page) ? '#[Path] property' : 'parameter';
         $mapping = (array) ($route->getDefault('_route_mapping') ?? []);
 
-        foreach (array_unique([...$route->compile()->getVariables(), ...array_keys($route->getDefaults())]) as $value) {
-            if (str_starts_with($value, '_')) {
-                continue;
-            }
-
+        foreach (PageRouteValues::props($route) as $value => $prop) {
             if (isset($mapping[$value])) {
-                $prop = \is_array($mapping[$value]) ? $mapping[$value][0] : $mapping[$value];
                 if (!\array_key_exists($prop, $paths)) {
                     throw new \InvalidArgumentException(\sprintf('The route "%s" maps the value "%s" to "%s", but the page "%s" has no %s "%s".', $name, $value, $prop, $page, $what, $prop));
                 }
@@ -136,7 +131,7 @@ final class PageLoader extends Loader
                 continue;
             }
 
-            if (!\array_key_exists($value, $paths)) {
+            if (!\array_key_exists($prop, $paths)) {
                 throw new \InvalidArgumentException(\sprintf('The route "%s" has the value "%s", but the page "%s" has no %s "%s". Add one, or remove the value from the route.', $name, $value, $page, $what, $value));
             }
         }

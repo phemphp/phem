@@ -13,11 +13,18 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Runtime;
 
+use Phem\Routing\PageRouteValues;
 use Phem\Stream\Topics;
 use Phem\Tests\Fixtures\Scientist;
 use Phem\Tests\Fixtures\Size;
 use Phem\Tests\Fixtures\Subscribed;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Routing\Loader\ClosureLoader;
+use Symfony\Component\Routing\Route;
+use Symfony\Component\Routing\RouteCollection;
+use Symfony\Component\Routing\Router;
+
+require_once \dirname(__DIR__).'/Fixtures/SubscribedPages.php';
 
 final class TopicsTest extends TestCase
 {
@@ -72,7 +79,7 @@ final class TopicsTest extends TestCase
     public function testThePublisherNeedsAllTheRouteValues(): void
     {
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('need all its #[Path] route values, but "size" is missing');
+        $this->expectExceptionMessage('need all its route values, but "size" is missing');
 
         new Topics()->to(Subscribed::class, ['id' => 42]);
     }
@@ -85,11 +92,53 @@ final class TopicsTest extends TestCase
         new Topics()->to(Subscribed::class, ['slug' => 'x']);
     }
 
+    public function testAFunctionPageSubscribes(): void
+    {
+        $topics = new Topics();
+        $page = 'Phem\Tests\Fixtures\SubscribedPage';
+
+        self::assertSame(['phem:'.$page, 'phem:'.$page.'?id=42', 'phem:*'], array_map($topics->name(...), $topics->ofPage($page, ['id' => '42'])));
+        self::assertSame([], $topics->ofPage('Phem\Tests\Fixtures\NotSubscribedPage', ['id' => '42']));
+    }
+
+    public function testThePublisherGetsTheRouteValuesOfAFunctionPageFromItsRoutes(): void
+    {
+        $topics = self::routed();
+        $page = 'Phem\Tests\Fixtures\SubscribedPage';
+
+        // The Request and the service are parameters, but not route values.
+        self::assertSame($topics->ofPage($page, ['id' => '42', 'tab' => 'all'])[1], $topics->to($page, ['tab' => 'all', 'id' => 42]));
+    }
+
+    public function testThePublisherNeedsAllTheRouteValuesOfAFunctionPage(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('need all its route values, but "tab" is missing');
+
+        self::routed()->to('Phem\Tests\Fixtures\SubscribedPage', ['id' => 42]);
+    }
+
+    public function testAParameterOfAFunctionPageThatIsNotARouteValueIsUnknown(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('has no route value parameter "guestbook": give the route values of its route value parameters ("id", "tab")');
+
+        self::routed()->to('Phem\Tests\Fixtures\SubscribedPage', ['id' => 42, 'guestbook' => 'x']);
+    }
+
     public function testARouteValueIsNotAnObject(): void
     {
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessage('The route value "id" of a topic is a "stdClass"');
 
         new Topics()->to(Subscribed::class, ['id' => new \stdClass(), 'size' => 'l']);
+    }
+
+    private static function routed(): Topics
+    {
+        $routes = new RouteCollection();
+        $routes->add('board', new Route('/board/{id}/{tab}', ['_phem_page' => 'Phem\Tests\Fixtures\SubscribedPage']));
+
+        return new Topics(routes: new PageRouteValues(new Router(new ClosureLoader(), static fn (): RouteCollection => $routes)));
     }
 }
