@@ -88,3 +88,13 @@ before you report the work as done:
 - For a fast check while you work, run PHPUnit in the dev image:
   `docker compose -f docker/compose.yaml run --rm dev vendor/bin/phpunit`. Run `make test` at the end.
 - Report the result. If a test fails, show the output.
+
+## Editor plugins
+
+The VS Code and PhpStorm plugins do not use the compiler source. They run a bundled build of the
+language server (`editors/server/phem-lsp.wasm`). An old build shows old diagnostics in the editor.
+
+- After a change in `compiler/` (the diagnostics, the analysis, the codegen or the language
+  server) or in `editors/`, run `make vscode-install phpstorm-install`. It rebuilds the server and
+  installs the two plugins.
+- Tell the user to reload the VS Code window and to restart PhpStorm.
