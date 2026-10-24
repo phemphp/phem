@@ -355,7 +355,7 @@ fn a_parent_class_and_a_trait_load_before_the_classes_that_use_them() {
 #[test]
 fn a_page_class_is_a_component_with_a_route() {
     let page = |attrs: &str, class: &str| {
-        let src = format!("<?phpm\nnamespace App;\nuse Phem\\Attribute\\{{Component, Page}};\nuse Symfony\\Component\\Routing\\Attribute\\Route;\n{attrs}\n{class}\n");
+        let src = format!("<?phpm\nnamespace App;\nuse Phem\\Attribute\\{{Component, Page, Subscribe}};\nuse Symfony\\Component\\Routing\\Attribute\\Route;\n{attrs}\n{class}\n");
         compile(vec![SourceInput { rel: "Home.phpm".into(), text: src }])
     };
     let render = "final class Home { public function render() { return <p>Home</p>; } }";
@@ -374,9 +374,39 @@ fn a_page_class_is_a_component_with_a_route() {
     assert_eq!(codes("#[Route('/')]", "final class Home { public function render() { return <p />; } }"), ["E052"], "#[Route] needs #[Component]");
     assert_eq!(codes("#[Page('/')]", "final class Home {}"), ["E040"], "a page needs render()");
     assert_eq!(codes("#[Page('/')]", "final class Home extends \\Vendor\\Base {}"), Vec::<&str>::new(), "the parent outside the sources can have render()");
-    assert_eq!(codes("#[Page('/')]", "function Home() { return <p />; }"), ["E052"], "a function component is not a page");
-    assert_eq!(codes("#[Route('/')]", "function Home() { return <p />; }"), ["E052"]);
-    assert_eq!(codes("#[Page('/')]\n#[Component]", "function Home() { return <p />; }"), ["E052"]);
+    assert_eq!(codes("#[Route('/')]", "function Home() { return <p />; }"), ["E052"], "the Symfony #[Route] cannot mark a function");
+    assert_eq!(codes("#[Route('/')]\n#[Component]", "function Home() { return <p />; }"), ["E052"]);
+    assert_eq!(codes("#[Page('/')]\n#[Route('/b')]", "function Home() { return <p />; }"), ["E052"]);
+
+    let (_, diags) = page("#[Route('/')]", "function Home() { return <p />; }");
+    let d = &diags[0].diags[0];
+    assert_eq!(d.message, "the Symfony `#[Route]` cannot mark a function, and `App\\Home` is one");
+    assert_eq!(d.help.as_deref(), Some("use `#[Page('/path')]` and `use Phem\\Attribute\\Page;`: a function page needs no `#[Component]`"));
+
+    let (_, diags) = page("#[Page('/')]\n#[Subscribe]", "function Home() { return <p />; }");
+    let d = &diags[0].diags[0];
+    assert_eq!((d.code, d.message.as_str()), ("E053", "`#[Subscribe]` must mark a class page, and `App\\Home` is a function"));
+}
+
+#[test]
+fn a_function_with_page_is_a_page() {
+    let page = |attrs: &str, function: &str| {
+        let src = format!("<?phpm\nnamespace App;\nuse Phem\\Attribute\\{{Component, Page}};\n{attrs}\n{function}\n");
+        compile(vec![SourceInput { rel: "Home.phpm".into(), text: src }])
+    };
+
+    for (attrs, body, kind) in [
+        ("#[Page('/')]", "function Home() { return <p>Home</p>; }", phemc_analyze::Kind::Template),
+        ("#[Page('/')]\n#[Component]", "function Home() { return <p>Home</p>; }", phemc_analyze::Kind::Template),
+        ("#[Page('/a')]\n#[Page('/b', name: 'b')]", "function Home() { $title = 'Home'; return <p>{{ title }}</p>; }", phemc_analyze::Kind::Function),
+    ] {
+        let (out, diags) = page(attrs, body);
+
+        assert!(diags.iter().all(|f| f.diags.is_empty()), "{attrs}: {:?}", diags[0].diags);
+        let out = out.expect("output");
+        assert_eq!(out.manifest.pages, ["App\\Home"], "{attrs}");
+        assert_eq!(out.manifest.components["App\\Home"].kind, kind, "{attrs}");
+    }
 }
 
 #[test]

@@ -25,7 +25,3 @@ parameters:
         -
             identifier: class.extendsFinalByPhpDoc
             path: src/Html.php
-        # Function pages take #[Route]: the runtime reads its arguments and does not call newInstance().
-        -
-            identifier: attribute.target
-            message: '#^Attribute class Symfony\\Component\\Routing\\Attribute\\Route does not have the function target\.$#'

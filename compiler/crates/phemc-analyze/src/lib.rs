@@ -22,8 +22,8 @@ pub const ATTR_CONTEXT: &str = "Phem\\Attribute\\Context";
 pub const ATTR_PROVIDE: &str = "Phem\\Attribute\\Provide";
 /// The route value attribute of a page property: the property is a prop, with no `#[Prop]`.
 pub const ATTR_PATH: &str = "Phem\\Attribute\\Path";
-/// The Phem page attribute: it exposes a class as a page (it extends `Route`). The class is a
-/// component, with no `#[Component]`.
+/// The Phem page attribute: it exposes a class or a function as a page (it extends `Route`). The
+/// class or the function is a component, with no `#[Component]`.
 pub const ATTR_PAGE: &str = "Phem\\Attribute\\Page";
 /// A page that gets the Turbo Streams of other requests (`Phem\Stream\Streams`). Only a page can
 /// have it: each page opens its own connection to the Mercure hub.
@@ -33,7 +33,8 @@ pub const ATTR_SUBSCRIBE: &str = "Phem\\Attribute\\Subscribe";
 pub const ATTR_ASYNC: &str = "Phem\\Attribute\\Async";
 /// The return type of an `#[Async]` handler: its work in a closure.
 pub const PROMISE: &str = "Phem\\Async\\Promise";
-/// The Symfony route attribute: it exposes a class component as a page too.
+/// The Symfony route attribute: it exposes a class component as a page too. It cannot mark a
+/// function.
 pub const ATTR_ROUTE: &str = "Symfony\\Component\\Routing\\Attribute\\Route";
 /// The built-in root element of a page: `<Root tag="main">{{ children }}</Root>` in the document
 /// component. The runtime renders it (the `phem` controller, the state and the event boundary).
@@ -331,20 +332,28 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
         );
     }
 
-    for r in &file.routes {
-        if !r.is_component {
-            diags.push(
-                Diagnostic::error(codes::ROUTE_NOT_COMPONENT, format!("`#[{}]` must mark a class component, and `{}` is not one", r.attr, r.fqn), r.span)
-                    .with_help("a page is a class with `#[Page]` and a `render()` method"),
-            );
-        }
+    for r in file.routes.iter().filter(|r| !r.is_component) {
+        let diag = if r.is_function {
+            Diagnostic::error(codes::ROUTE_NOT_COMPONENT, format!("the Symfony `#[Route]` cannot mark a function, and `{}` is one", r.fqn), r.span)
+                .with_help("use `#[Page('/path')]` and `use Phem\\Attribute\\Page;`: a function page needs no `#[Component]`")
+        } else {
+            Diagnostic::error(codes::ROUTE_NOT_COMPONENT, format!("`#[{}]` must mark a class component, and `{}` is not one", r.attr, r.fqn), r.span)
+                .with_help("add `#[Component]`, or use `#[Page('/path')]`: a page class needs no `#[Component]`")
+        };
+
+        diags.push(diag);
     }
 
     for (fqn, span) in &file.subscribes {
-        diags.push(
+        let diag = if file.routes.iter().any(|r| r.is_function && r.is_component && r.fqn == *fqn) {
+            Diagnostic::error(codes::SUBSCRIBE_NOT_PAGE, format!("`#[Subscribe]` must mark a class page, and `{fqn}` is a function"), *span)
+                .with_help("make the page a class with a `render()` method, and keep `#[Subscribe]` next to `#[Page]`")
+        } else {
             Diagnostic::error(codes::SUBSCRIBE_NOT_PAGE, format!("`#[Subscribe]` must mark a page, and `{fqn}` is not one"), *span)
-                .with_help("a page opens the connection to the Mercure hub: put `#[Subscribe]` next to `#[Page]`"),
-        );
+                .with_help("a page opens the connection to the Mercure hub: put `#[Subscribe]` next to `#[Page]`")
+        };
+
+        diags.push(diag);
     }
 
     diags.extend(check_async(file));

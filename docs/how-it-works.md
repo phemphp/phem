@@ -13,7 +13,7 @@ ideas of React map to Phem.
      bin/console phem:warmup ──► the Twig cache (compiled at build time, not at runtime)
                               │
  PhemBundle ── class components → services (autowired, not shared)
-             ── #[Page] classes → routes ── PageController / EventController
+             ── #[Page] classes and functions → routes ── PageController / EventController
                               │
  Browser ◄── HTML ─────── HttpKernel (FrankenPHP in worker mode, or PHP-FPM)
    phem Stimulus controller ── POST <page URL> {signature, handler, event}
@@ -29,8 +29,8 @@ ideas of React map to Phem.
 2. **Symfony.** `PhemBundle` reads the phemc manifest. Its compiler pass registers each
    `#[Component]` and `#[Page]` class as an autowired service that is not shared, so each
    component on a page is a new object with its dependencies. Its route loader reads the
-   `#[Page]` attributes (a Symfony `#[Route]`) of the pages, as the attribute loader does for
-   controllers. A page renders its document: a component of the app with a `<Root>`
+   `#[Page]` attributes (a Symfony `#[Route]`) of the pages, classes and functions, as the
+   attribute loader does for controllers. A page renders its document: a component of the app with a `<Root>`
    (`Phem\Root`), the root element of the page.
    The compiled templates use the application Twig environment, so Twig extensions such as
    `path()` work in markup. In debug mode, the container and the routes are built again after
@@ -98,7 +98,7 @@ ideas of React map to Phem.
 | React (react.dev/learn) | Phem |
 |---|---|
 | `function MyButton() { return <button/> }` | `#[Component] function MyButton()`: the same, in PHP (a function without `#[Component]` is a plain PHP function) |
-| `export default function MyApp()` | `#[Page('/')] final class MyApp`: a Symfony route |
+| `export default function MyApp()` | `#[Page('/')] function MyApp()`: a Symfony route (a class page for its own state or route values) |
 | the root layout (`<html>`, metadata) | a `Document` component of the app, with a `<Root>`: each page renders in it, and gives the title with `<Document:title>` |
 | `{user.name}`, `src={user.imageUrl}` | `{{ user.name }}`, `src={{ user.imageUrl }}` |
 | `className`, `style={{ width: 90 }}` | `className`, `style={{ {width: 90} }}` |

@@ -175,6 +175,7 @@ pub struct Function {
     pub params: Vec<Param>,
     pub return_type: String,
     pub attrs: Vec<String>,
+    pub attributes: Vec<Attribute>,
     pub doc: String,
     pub offset: usize,
     pub start: usize,
@@ -499,7 +500,8 @@ impl Parser<'_> {
                     fqn: join_name(&self.namespace, &name.v),
                     params,
                     return_type,
-                    attrs: std::mem::take(&mut attrs).into_iter().map(|a| a.name).collect(),
+                    attrs: attrs.iter().map(|a| a.name.clone()).collect(),
+                    attributes: std::mem::take(&mut attrs),
                     doc: doc_before(self.text, tok.start),
                     offset: name.start,
                     start: tok.start,
@@ -1145,8 +1147,8 @@ fn nullable(ty: &str) -> bool {
 fn components(parsed: &Parsed) -> Vec<Component> {
     let mut list = Vec::new();
     for f in &parsed.functions {
-        // A function without `#[Component]` is a plain PHP function.
-        if !has_attr(&f.attrs, "Component") {
+        // A function without `#[Component]` (or `#[Page]`) is a plain PHP function.
+        if !(has_attr(&f.attrs, "Component") || has_attr(&f.attrs, "Page")) {
             continue;
         }
 
@@ -1154,7 +1156,7 @@ fn components(parsed: &Parsed) -> Vec<Component> {
             kind: ComponentKind::Function,
             name: f.name.clone(),
             fqn: f.fqn.clone(),
-            page: false,
+            page: has_attr(&f.attrs, "Page"),
             props: vec![],
             slots: vec![],
             children: false,
@@ -1342,12 +1344,14 @@ mod tests {
 
     #[test]
     fn a_page_class_is_a_component() {
-        let src = "<?phpm\nnamespace App\\Page;\n\n#[Page('/home')]\nfinal class Home {}\n\n#[Route('/plain')]\nfinal class Plain {}\n\n#[Page('/function')]\n#[Component]\nfunction Fn() { return <p />; }\n";
+        let src = "<?phpm\nnamespace App\\Page;\n\n#[Page('/home')]\nfinal class Home {}\n\n#[Route('/plain')]\nfinal class Plain {}\n\n#[Page('/function')]\n#[Component]\nfunction Fn() { return <p />; }\n\n#[Page('/bare')]\nfunction Bare() { return <p />; }\n\n#[Route('/routed')]\n#[Component]\nfunction Routed() { return <p />; }\n";
         let parsed = parse(src);
         let find = |name: &str| parsed.components.iter().find(|c| c.name == name);
         assert!(find("Home").unwrap().page);
         assert!(find("Plain").is_none(), "#[Route] without #[Component]");
-        assert!(!find("Fn").unwrap().page, "a function is not a page");
+        assert!(find("Fn").unwrap().page, "a function page");
+        assert!(find("Bare").unwrap().page, "#[Page] needs no #[Component]");
+        assert!(!find("Routed").unwrap().page, "the Symfony #[Route] cannot mark a function");
     }
 
     #[test]

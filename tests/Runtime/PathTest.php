@@ -91,12 +91,38 @@ final class PathTest extends TestCase
         $this->load('StatePath');
     }
 
-    public function testAFunctionIsNotAPage(): void
+    public function testAFunctionIsAPage(): void
+    {
+        $routes = $this->load('FunctionPage');
+
+        self::assertSame('/function', $routes->get('phem_tests_fixtures_pathpages_functionpage')?->getPath(), 'the default name comes from the function');
+        self::assertSame(self::NS.'FunctionPage', $routes->get('phem_tests_fixtures_pathpages_functionpage')->getDefault('_phem_page'));
+        self::assertSame(['POST'], $routes->get('phem_event.phem_tests_fixtures_pathpages_functionpage')?->getMethods(), 'its components can have handlers');
+        self::assertSame('/function-too', $routes->get('function_too')?->getPath(), 'a repeated #[Page]');
+    }
+
+    public function testRouteValueOnAFunctionPageIsAnError(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('The page "Phem\\Tests\\Fixtures\\PathPages\\FunctionPage" must be a class component: a function cannot be a page.');
+        $this->expectExceptionMessage('The route "phem_tests_fixtures_pathpages_functionvalue" has the value "slug", but the page "Phem\\Tests\\Fixtures\\PathPages\\FunctionValue" is a function: a function page has no route values. Make it a class page with a #[Path] property "slug", or remove the value from the route.');
 
-        $this->load('FunctionPage');
+        $this->load('FunctionValue');
+    }
+
+    public function testDefaultOnAFunctionPageIsAnError(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('has the value "mode", but the page "Phem\\Tests\\Fixtures\\PathPages\\FunctionDefault" is a function');
+
+        $this->load('FunctionDefault');
+    }
+
+    public function testAPageThatIsNotLoadedIsAnError(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The page "Phem\\Tests\\Fixtures\\PathPages\\Missing" is not loaded. Run `phemc build` again.');
+
+        $this->load('Missing');
     }
 
     public function testPageAttributeIsARoute(): void

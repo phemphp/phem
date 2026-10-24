@@ -7,7 +7,7 @@
 //! The members of the classes come from the class index ([`crate::classes`]), on demand.
 
 use crate::classes::ClassCache;
-use crate::decl::{builtin_components, has_attr, parse, Component, Parsed};
+use crate::decl::{builtin_components, has_attr, parse, Attribute, Component, Parsed};
 use regex::Regex;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -32,7 +32,7 @@ pub struct Symbol {
     pub file: PathBuf,
 }
 
-/// The route of a page (a `#[Page]` class, or a `#[Route]` class component).
+/// The route of a page (a `#[Page]` class or function, or a `#[Route]` class component).
 #[derive(Clone, Debug)]
 pub struct Route {
     pub name: String,
@@ -344,19 +344,27 @@ fn quoted(re: &Regex, s: &str) -> Option<String> {
 pub fn routes_of(parsed: &Parsed, file: &Path) -> Vec<Route> {
     let mut list = Vec::new();
     for decl in &parsed.classes {
-        let attrs: Vec<_> = decl.attributes.iter().filter(|a| a.name.rsplit('\\').next().is_some_and(|n| n == "Page" || n == "Route")).collect();
-        if attrs.is_empty() || !(has_attr(&decl.attrs, "Component") || has_attr(&decl.attrs, "Page")) {
-            continue;
-        }
-
-        for (i, attr) in attrs.iter().enumerate() {
-            let name = quoted(&ATTR_NAME, &attr.args).unwrap_or_else(|| route_name(&decl.fqn) + &if i > 0 { format!("_{i}") } else { String::new() });
-            let path = quoted(&ATTR_PATH, &attr.args).or_else(|| quoted(&ATTR_PATH_NAMED, &attr.args)).unwrap_or_default();
-            list.push(Route { name, path, fqn: decl.fqn.clone(), file: file.to_path_buf(), offset: decl.offset });
+        if has_attr(&decl.attrs, "Component") || has_attr(&decl.attrs, "Page") {
+            push_routes(&mut list, &decl.attributes, &["Page", "Route"], &decl.fqn, file, decl.offset);
         }
     }
 
+    // The Symfony `#[Route]` cannot mark a function: only `#[Page]` makes a function page.
+    for decl in &parsed.functions {
+        push_routes(&mut list, &decl.attributes, &["Page"], &decl.fqn, file, decl.offset);
+    }
+
     list
+}
+
+/// The routes of the route attributes of one declaration.
+fn push_routes(list: &mut Vec<Route>, attributes: &[Attribute], names: &[&str], fqn: &str, file: &Path, offset: usize) {
+    let attrs = attributes.iter().filter(|a| a.name.rsplit('\\').next().is_some_and(|n| names.contains(&n)));
+    for (i, attr) in attrs.enumerate() {
+        let name = quoted(&ATTR_NAME, &attr.args).unwrap_or_else(|| route_name(fqn) + &if i > 0 { format!("_{i}") } else { String::new() });
+        let path = quoted(&ATTR_PATH, &attr.args).or_else(|| quoted(&ATTR_PATH_NAMED, &attr.args)).unwrap_or_default();
+        list.push(Route { name, path, fqn: fqn.to_string(), file: file.to_path_buf(), offset });
+    }
 }
 
 /// `App\Page\Counter` → `app_page_counter`, as in `src/Routing/PageLoader.php` of phem/phem.
@@ -410,13 +418,20 @@ final class Legacy
 final class Plain
 {
 }
+
+#[Page('/about')]
+function About() { return <p />; }
+
+#[Route('/routed')]
+#[Component]
+function Routed() { return <p />; }
 ";
 
     #[test]
-    fn a_page_is_a_class_with_page_or_with_route_and_component() {
+    fn a_page_is_a_class_or_a_function_with_page_or_a_class_with_route_and_component() {
         let routes: Vec<_> = routes_of(&parse(SOURCE), Path::new("src/page/home.phpm")).into_iter().map(|r| (r.name, r.path, r.fqn)).collect();
         let r = |n: &str, p: &str, f: &str| (n.to_string(), p.to_string(), f.to_string());
-        assert_eq!(routes, [r("home", "/home", "App\\Page\\Home"), r("app_page_home_1", "/start", "App\\Page\\Home"), r("app_page_legacy", "/legacy", "App\\Page\\Legacy")]);
+        assert_eq!(routes, [r("home", "/home", "App\\Page\\Home"), r("app_page_home_1", "/start", "App\\Page\\Home"), r("app_page_legacy", "/legacy", "App\\Page\\Legacy"), r("app_page_about", "/about", "App\\Page\\About")]);
     }
 
     #[test]

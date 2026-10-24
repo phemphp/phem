@@ -7,26 +7,23 @@ use Phem\Node;
 use function App\Component\{Layout, Profile, Document};
 
 #[Page('/examples/Gallery')]
-final class Gallery
+function Gallery(): Node
 {
-    public function render(): Node
-    {
-        $scientists = [
-            ['id' => 1, 'name' => 'Maria Skłodowska-Curie', 'profession' => 'physicist and chemist'],
-            ['id' => 2, 'name' => 'Katsuko Saruhashi', 'profession' => 'geochemist'],
-            ['id' => 3, 'name' => 'Lise Meitner', 'profession' => 'physicist'],
-        ];
+    $scientists = [
+        ['id' => 1, 'name' => 'Maria Skłodowska-Curie', 'profession' => 'physicist and chemist'],
+        ['id' => 2, 'name' => 'Katsuko Saruhashi', 'profession' => 'geochemist'],
+        ['id' => 3, 'name' => 'Lise Meitner', 'profession' => 'physicist'],
+    ];
 
-        return (
-            <Document>
-                <Document:title>Amazing scientists</Document:title>
-                <Layout title="Amazing scientists">
-                    {% for person in scientists %}
-                        <Profile key={{ person.id }} person={{ person }} />
-                    {% endfor %}
-                    <Layout:footer>{{ scientists|length }} profiles</Layout:footer>
-                </Layout>
-            </Document>
-        );
-    }
+    return (
+        <Document>
+            <Document:title>Amazing scientists</Document:title>
+            <Layout title="Amazing scientists">
+                {% for person in scientists %}
+                    <Profile key={{ person.id }} person={{ person }} />
+                {% endfor %}
+                <Layout:footer>{{ scientists|length }} profiles</Layout:footer>
+            </Layout>
+        </Document>
+    );
 }

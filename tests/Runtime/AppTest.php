@@ -307,8 +307,22 @@ final class AppTest extends TestCase
         foreach (['/about', '/about-us'] as $path) {
             $response = $this->request('GET', $path);
             self::assertSame(200, $response->getStatusCode());
-            self::assertStringContainsString('<p id="about">About</p>', (string) $response->getContent(), 'a function component page');
+            self::assertStringContainsString('<p id="about">About</p>', (string) $response->getContent(), 'a function page');
         }
+    }
+
+    public function testAFunctionPageRendersComponentsWithState(): void
+    {
+        $html = $this->open('/welcome');
+
+        self::assertStringContainsString('<title>Welcome</title>', $html);
+        self::assertStringContainsString('<p id="welcome">Welcome, Ada!</p>', $html, 'the PHP code of the function');
+        self::assertStringContainsString('data-count="0"', $html);
+
+        $r = $this->click(0, uri: '/welcome');
+
+        self::assertSame(200, $r['status'], json_encode($r['data'], \JSON_THROW_ON_ERROR));
+        self::assertStringContainsString('"count":1', $this->state, 'the event of the page URL runs the handler of the component');
     }
 
     public function testAPageChoosesItsDocument(): void

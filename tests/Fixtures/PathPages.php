@@ -54,9 +54,22 @@ final class Paged
 {
 }
 
-// A function is not a page.
-#[Route('/function')]
+// A function page, with a controller attribute of Symfony.
+#[Page('/function')]
+#[Page('/function-too', name: 'function_too')]
+#[Cache(maxage: 60, public: true)]
 function FunctionPage(): void
+{
+}
+
+// A function page has no route values.
+#[Page('/function/{slug}')]
+function FunctionValue(): void
+{
+}
+
+#[Page('/function-default', defaults: ['mode' => 'dark', '_format' => 'html'])]
+function FunctionDefault(): void
 {
 }
 

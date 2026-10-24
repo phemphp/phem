@@ -1,24 +1,15 @@
 # Getting started: a new app from scratch
 
-This guide adds Phem to a new Symfony application, step by step. The Symfony CLI makes the
-application. Docker runs it: PHP, Composer, [FrankenPHP](https://frankenphp.dev) and the `phemc`
-compiler.
+This guide adds Phem to a new Symfony application. Docker runs it with PHP,
+[FrankenPHP](https://frankenphp.dev) and the `phemc` compiler. At the end, you have a dev server
+that builds the `.phpm` files when you save them, a page with an interactive component, and a
+production image.
 
-At the end, you have:
-
-- a dev server on http://localhost:8080 that builds the `.phpm` files again when you save them,
-- a page with an interactive component,
-- a production image.
-
-You need:
-
-- the [Symfony CLI](https://symfony.com/download), with PHP 8.5 and Composer,
-- [Docker](https://docs.docker.com/get-docker/) with Docker Compose.
-
-## The files
+You need the [Symfony CLI](https://symfony.com/download) (with PHP 8.5 and Composer) and
+[Docker](https://docs.docker.com/get-docker/) with Docker Compose.
 
 `symfony new` and the Symfony Flex recipes make most of the files. The guide adds these files,
-and changes one (`config/preload.php`):
+and changes `config/preload.php`:
 
 ```
 my-app/
@@ -40,41 +31,27 @@ my-app/
 └── Dockerfile              the dev and the prod images
 ```
 
-## Step 1: Make the Symfony application
+## Step 1: Make the application and install Phem
 
 ```sh
 symfony new my-app && cd my-app
-```
-
-Run all the commands of this guide in `my-app/`.
-
-## Step 2: Install Phem
-
-Install AssetMapper and StimulusBundle first, then Phem:
-
-```sh
 composer require symfony/asset-mapper symfony/stimulus-bundle
 composer require phem/phem
 ```
 
-Symfony Flex does the setup:
+Run all the commands of this guide in `my-app/`.
 
-- It enables `PhemBundle` (and `TwigBundle`) in `config/bundles.php`.
-- It adds the `phem` Stimulus controller and its CSS to `assets/controllers.json`. This controller
-  is the client of Phem. It sends the events to the server and updates the page with Turbo.
-- It adds `@hotwired/turbo` to `importmap.php`.
+Symfony Flex enables `PhemBundle`, and adds the `phem` Stimulus controller and Turbo to the
+assets. This controller is the client of Phem: it sends the events to the server and updates the
+page. `vendor/bin/phemc` downloads the `phemc` compiler of the same version on the first run.
 
-`phem/phem` also gives `vendor/bin/phemc`. On the first run, it downloads the `phemc` binary of
-the same version from the GitHub release. The compiler and the runtime always have the same
-version.
+The defaults of PhemBundle fit this layout: it reads `src/` and writes the build output to
+`var/cache/phem/`. You do not need a `config/packages/phem.yaml` file.
 
-The defaults of PhemBundle are correct for this layout: it reads `src/` and the build output is
-in `var/cache/phem/`. You do not need a `config/packages/phem.yaml` file.
+## Step 2: Configure Phem
 
-## Step 3: Configure Phem
-
-`config/routes/phem.yaml` loads the routes of the pages (the `#[Page]` attributes) and the
-routes of their events:
+`config/routes/phem.yaml` loads the routes of the pages (the `#[Page]` attributes) and of their
+events:
 
 ```yaml
 phem:
@@ -91,10 +68,10 @@ if (file_exists(dirname(__DIR__).'/var/cache/phem/preload.php')) {
 }
 ```
 
-## Step 4: Add the Docker files
+## Step 3: Add the Docker files
 
-The image is based on the FrankenPHP image. It has PHP 8.5 and the Caddy web server. The `dev`
-target runs the project from a bind mount. The `prod` target copies the project and compiles it.
+The image comes from the FrankenPHP image (PHP 8.5 and Caddy). The `dev` target runs the project
+from a bind mount. The `prod` target copies the project and compiles it.
 
 `Dockerfile`:
 
@@ -129,7 +106,7 @@ COPY docker/php-prod.ini /usr/local/etc/php/conf.d/zz-app.ini
 CMD ["frankenphp", "run", "--config", "Caddyfile"]
 ```
 
-`APP_SECRET` signs the component state in the browser. The prod image makes a random value in
+`APP_SECRET` signs the component state in the browser. The prod image puts a random value in
 `.env.local`.
 
 `.dockerignore`:
@@ -155,7 +132,8 @@ services:
 ```
 
 `docker/dev.sh` is the command of the dev server. `phemc watch` builds the `.phpm` files, starts
-FrankenPHP, and builds again when a `.phpm` file changes:
+FrankenPHP, and builds again when a `.phpm` file changes. Make it executable
+(`chmod +x docker/dev.sh`):
 
 ```sh
 #!/bin/sh
@@ -168,12 +146,6 @@ export FRANKENPHP_WORKER_CONFIG='watch ./src/**/*.php'
 exec vendor/bin/phemc watch src --exec "frankenphp run --config Caddyfile"
 ```
 
-Make it executable:
-
-```sh
-chmod +x docker/dev.sh
-```
-
 `docker/php-prod.ini` enables the OPcache preload in production:
 
 ```ini
@@ -182,9 +154,8 @@ opcache.preload=/app/config/preload.php
 opcache.preload_user=root
 ```
 
-## Step 5: Configure FrankenPHP
-
-`Caddyfile`:
+`Caddyfile` runs `public/index.php` in worker mode: each worker boots the kernel once and
+handles many requests:
 
 ```caddyfile
 {
@@ -204,14 +175,11 @@ opcache.preload_user=root
 }
 ```
 
-`public/index.php` runs in worker mode: each worker boots the kernel once and handles many
-requests.
+## Step 4: Write the document and the first page
 
-## Step 6: Write the HTML document
-
-The application owns the HTML document. It is a component, as the others. Each page renders its
-content in it. `<Root>` is the root element of the page: the `phem` controller gets the events of
-the elements in it.
+The application owns the HTML document. It is a component, and each page renders its content in
+it. `<Root>` is the root element of the page: the `phem` controller gets the events of the
+elements in it.
 
 `src/Component/Document.phpm`:
 
@@ -244,13 +212,11 @@ function Document(Html $title, Html $children): Node
 }
 ```
 
-`{{ importmap('app') }}` loads `assets/app.js` from the AssetMapper recipe. This file starts
-Stimulus with the `phem` controller.
+`{{ importmap('app') }}` loads `assets/app.js`, which starts Stimulus with the `phem`
+controller.
 
-## Step 7: Write the first page
-
-A page is a class with the `#[Page]` attribute: a Symfony route. Its `render()` method returns
-the markup.
+A page is a component with the `#[Page]` attribute: a Symfony route. This page has no state, so
+it is a function that returns the markup.
 
 `src/Page/Home.phpm`:
 
@@ -265,28 +231,25 @@ use Phem\Node;
 use function App\Component\Document;
 
 #[Page('/')]
-final class Home
+function Home(): Node
 {
-    public function render(): Node
-    {
-        return (
-            <Document>
-                <Document:title>My app</Document:title>
-                <h1>Hello, Phem!</h1>
-            </Document>
-        );
-    }
+    return (
+        <Document>
+            <Document:title>My app</Document:title>
+            <h1>Hello, Phem!</h1>
+        </Document>
+    );
 }
 ```
 
-## Step 8: Start the dev server
+## Step 5: Start the dev server
 
 ```sh
 docker compose up --build
 ```
 
-On the first start, the container installs the Composer packages, downloads `phemc` and the
-JavaScript packages, then builds the `.phpm` files:
+On the first start, the container installs the packages and `phemc`, then builds the `.phpm`
+files:
 
 ```
 phemc: compiled 2 file(s), 2 template(s), 1 page(s); 8 file(s) changed, 0 warning(s) in 5 ms
@@ -295,11 +258,9 @@ phemc: $ frankenphp run --config Caddyfile
 phemc: watching src for changes
 ```
 
-Open http://localhost:8080. The page shows "Hello, Phem!".
+Open http://localhost:8080. The page shows "Hello, Phem!". Keep the server on.
 
-Keep the server on. The next steps change the files while it runs.
-
-## Step 9: Add an interactive component
+## Step 6: Add an interactive component
 
 A class component keeps its state in `#[State]` properties. The state stays in the browser
 between the events. An event handler, such as `increment()`, runs on the server.
@@ -336,35 +297,23 @@ final class Counter
 }
 ```
 
-Use it two times in the page. Each `<Counter />` has its own state.
-
-`src/Page/Home.phpm`:
+Import it in `src/Page/Home.phpm`, and use it two times. Each `<Counter />` has its own state. The
+page has no state of its own, so it stays a function:
 
 ```php
-<?phpm
-
-namespace App\Page;
-
-use Phem\Attribute\Page;
-use Phem\Node;
-
 use App\Component\Counter;
-use function App\Component\Document;
 
 #[Page('/')]
-final class Home
+function Home(): Node
 {
-    public function render(): Node
-    {
-        return (
-            <Document>
-                <Document:title>My app</Document:title>
-                <h1>Hello, Phem!</h1>
-                <Counter />
-                <Counter />
-            </Document>
-        );
-    }
+    return (
+        <Document>
+            <Document:title>My app</Document:title>
+            <h1>Hello, Phem!</h1>
+            <Counter />
+            <Counter />
+        </Document>
+    );
 }
 ```
 
@@ -379,22 +328,15 @@ phemc: $ frankenphp run --config Caddyfile
 Reload the page, and click the buttons. Each button counts its own clicks.
 
 If a file has an error, `phemc` shows the diagnostic with the `.phpm` line, and the previous
-server keeps running. To see all the diagnostics, run:
+server keeps running. Run the tools in the container:
 
 ```sh
-docker compose exec app vendor/bin/phemc check src
+docker compose exec app vendor/bin/phemc check src         # all the diagnostics
+docker compose exec app bin/console debug:router           # the routes of the pages and their events
+docker compose exec app bin/console phem:render /          # the HTML of a page, with no server
 ```
 
-## Step 10: Use the console
-
-Run the Symfony console in the container:
-
-```sh
-docker compose exec app bin/console debug:router     # the routes of the pages and their events
-docker compose exec app bin/console phem:render /    # the HTML of a page, with no server
-```
-
-## Step 11: Build the production image
+## Step 7: Build the production image
 
 The `prod` target installs the packages with no dev dependencies, compiles the `.phpm` files,
 builds the Symfony cache, and writes the assets to `public/assets/`:
@@ -404,10 +346,8 @@ docker build --target prod -t my-app .
 docker run --rm -p 8081:8080 my-app
 ```
 
-Open http://localhost:8081.
-
-In production, Symfony does not check the cache for changes. Build the image again after each
-change.
+Open http://localhost:8081. In production, Symfony does not check the cache for changes: build
+the image again after each change.
 
 ## Next steps
 

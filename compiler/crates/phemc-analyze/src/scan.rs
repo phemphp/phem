@@ -20,7 +20,8 @@ pub struct FileInfo {
     pub classes: Vec<Class>,
     /// The declarations marked with `#[Page]` or `#[Route]`: the pages.
     pub routes: Vec<RouteDecl>,
-    /// The declarations with `#[Subscribe]` that are not class pages (the compiler reports them).
+    /// The declarations with `#[Subscribe]` that are not class pages (the compiler reports them):
+    /// a function page cannot subscribe either.
     pub subscribes: Vec<(String, Span)>,
     /// `export default` keywords (not PHP; the compiler reports them).
     pub export_defaults: Vec<Span>,
@@ -71,8 +72,11 @@ pub struct RouteDecl {
     pub attr: &'static str,
     /// The attribute name.
     pub span: Span,
-    /// False for a function, or a class without `#[Component]`: a page is a class component.
+    /// False for a class without `#[Component]`, or a function with `#[Route]`: a page is a
+    /// component (`#[Page]` makes it one).
     pub is_component: bool,
+    /// A function page: it has no `#[Path]` properties, so it has no route values.
+    pub is_function: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -268,14 +272,16 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                             p.is_context = p.attrs.iter().any(|(a, _)| info.resolve_class(a) == ATTR_CONTEXT);
                         }
 
-                        // Only a function with `#[Component]` is a component: the other functions
-                        // of the file are plain PHP functions.
-                        if attrs.iter().any(|(a, _)| info.resolve_class(a) == ATTR_COMPONENT) {
+                        // Only a function with `#[Component]` (or `#[Page]`) is a component: the
+                        // other functions of the file are plain PHP functions.
+                        if attrs.iter().any(|(a, _)| matches!(info.resolve_class(a).as_str(), ATTR_COMPONENT | ATTR_PAGE)) {
                             f.component_kind = Some(Kind::Function);
                         }
 
-                        if let Some((attr, span)) = route_attr(&info, &attrs) {
-                            info.routes.push(RouteDecl { fqn: f.fqn.clone(), attr, span, is_component: false });
+                        // The Symfony `#[Route]` cannot mark a function: report it before `#[Page]`.
+                        let route = attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_ROUTE).map(|(_, s)| ("Route", *s)).or_else(|| route_attr(&info, &attrs));
+                        if let Some((attr, span)) = route {
+                            info.routes.push(RouteDecl { fqn: f.fqn.clone(), attr, span, is_component: attr == "Page", is_function: true });
                         }
 
                         if let Some(span) = subscribe_attr(&info, &attrs) {
@@ -303,7 +309,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                             }
 
                             if let Some((attr, span)) = route {
-                                info.routes.push(RouteDecl { fqn: c.fqn.clone(), attr, span, is_component: c.is_component });
+                                info.routes.push(RouteDecl { fqn: c.fqn.clone(), attr, span, is_component: c.is_component, is_function: false });
                             }
 
                             info.classes.push(c);
@@ -932,7 +938,7 @@ function helper() {}
         assert_eq!(f.functions[2].component_kind, None);
         assert_eq!(f.routes.len(), 1);
         assert_eq!(f.routes[0].fqn, "App\\Component\\Card");
-        assert!(!f.routes[0].is_component, "a function is not a page");
+        assert_eq!((f.routes[0].is_component, f.routes[0].is_function), (false, true), "the Symfony #[Route] cannot mark a function");
         assert_eq!(f.markup_scopes, vec![MarkupScope::Function(0), MarkupScope::Function(1)]);
     }
 
@@ -959,7 +965,16 @@ function Other() { return <p />; }
     fn a_page_class_is_a_component() {
         let f = scan_src("<?phpm\nnamespace App;\nuse Phem\\Attribute\\Page;\n#[Page('/')]\nfinal class Home { public function render() { return <p />; } }\n");
         assert!(f.classes[0].is_component, "#[Page] needs no #[Component]");
-        assert_eq!((f.routes[0].attr, f.routes[0].is_component), ("Page", true));
+        assert_eq!((f.routes[0].attr, f.routes[0].is_component, f.routes[0].is_function), ("Page", true, false));
+    }
+
+    #[test]
+    fn a_page_function_is_a_component() {
+        let f = scan_src("<?phpm\nnamespace App;\nuse Phem\\Attribute\\Page;\n#[Page('/a')]\n#[Page('/b', name: 'b')]\nfunction About() { return <p />; }\n#[Page('/c')]\nfunction Contact() { $to = 'me'; return <p>{{ to }}</p>; }\n");
+        let kinds: Vec<_> = f.functions.iter().map(|x| x.component_kind).collect();
+        assert_eq!(kinds, [Some(Kind::Template), Some(Kind::Function)], "#[Page] needs no #[Component]");
+        let routes: Vec<_> = f.routes.iter().map(|r| (r.fqn.as_str(), r.attr, r.is_component, r.is_function)).collect();
+        assert_eq!(routes, [("App\\About", "Page", true, true), ("App\\Contact", "Page", true, true)], "one route declaration for the repeated #[Page]");
     }
 
     #[test]

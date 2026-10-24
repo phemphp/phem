@@ -26,12 +26,12 @@ use Symfony\Component\Routing\RouteCollection;
 /**
  * The routes of the pages and the event endpoint.
  *
- * A page is a class component with the `#[Page]` attribute (or the Symfony `#[Route]` attribute;
- * phemc lists them in the manifest). It renders its document, with a `<Root>` (see Phem\Root).
- * The attribute works as on a controller: path (or localized paths), name,
- * requirements, defaults, methods, host, schemes, condition, priority, env and aliases.
- * Without a name, the route name comes from the component: `App\Page\Counter` →
- * `app_page_counter`.
+ * A page is a component with the `#[Page]` attribute: a class, or a function (a class component
+ * can also have the Symfony `#[Route]` attribute; phemc lists them in the manifest). It renders
+ * its document, with a `<Root>` (see Phem\Root). The attribute works as on a controller: path
+ * (or localized paths), name, requirements, defaults, methods, host, schemes, condition,
+ * priority, env and aliases. Without a name, the route name comes from the component:
+ * `App\Page\Counter` → `app_page_counter`.
  *
  * The events of a page go to the URL of the page (`POST`, see EventController), so the access
  * rules of the page (`access_control`, the firewall, the host and the condition of the route)
@@ -39,9 +39,10 @@ use Symfony\Component\Routing\RouteCollection;
  * path and the `POST` method. It comes first, so a page route without methods does not take
  * the events.
  *
- * A route value (`{id}`, or a `defaults` key) goes to the #[Path] property with the same name. A route value without one is an error. The keys that start with `_` are not
- * route values. As for the Doctrine controller arguments, `{slug:post}` maps the value `slug`
- * to the entity prop `post`.
+ * A route value (`{id}`, or a `defaults` key) goes to the #[Path] property with the same name. A
+ * route value without one is an error. The keys that start with `_` are not route values. As for
+ * the Doctrine controller arguments, `{slug:post}` maps the value `slug` to the entity prop
+ * `post`. A function page has no #[Path] properties, so a route value on it is an error.
  *
  * Import them in the application routes:
  *
@@ -75,11 +76,11 @@ final class PageLoader extends Loader
         $routes->addResource(new FileResource($this->manifest->file()));
 
         foreach ($this->manifest->pages() as $page) {
-            if (!class_exists($page, false)) {
-                throw new \InvalidArgumentException(\sprintf('The page "%s" must be a class component: a function cannot be a page.', $page));
-            }
-
-            $reflection = new \ReflectionClass($page);
+            $reflection = match (true) {
+                class_exists($page, false) => new \ReflectionClass($page),
+                \function_exists($page) => new \ReflectionFunction($page),
+                default => throw new \InvalidArgumentException(\sprintf('The page "%s" is not loaded. Run `phemc build` again.', $page)),
+            };
             // A route change does not change the manifest, only the compiled file.
             $routes->addResource(new FileResource((string) $reflection->getFileName()));
 
@@ -104,7 +105,7 @@ final class PageLoader extends Loader
 
     /**
      * Each route value needs a #[Path] property. A mapped value (`{slug:post}`)
-     * needs a #[Path] prop with an entity type.
+     * needs a #[Path] prop with an entity type. A function page has no route values.
      */
     private function checkValues(Route $route, string $name, string $page): void
     {
@@ -114,6 +115,10 @@ final class PageLoader extends Loader
         foreach (array_unique([...$route->compile()->getVariables(), ...array_keys($route->getDefaults())]) as $value) {
             if (str_starts_with($value, '_')) {
                 continue;
+            }
+
+            if (!class_exists($page)) {
+                throw new \InvalidArgumentException(\sprintf('The route "%s" has the value "%s", but the page "%s" is a function: a function page has no route values. Make it a class page with a #[Path] property "%s", or remove the value from the route.', $name, $value, $page, $value));
             }
 
             if (isset($mapping[$value])) {

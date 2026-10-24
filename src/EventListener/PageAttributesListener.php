@@ -18,8 +18,8 @@ use Symfony\Component\HttpKernel\Kernel;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Gives the attributes of a page component to the controller of its requests, as for a
- * controller method: `#[IsGranted]`, `#[Cache]` and the other controller attributes of
+ * Gives the attributes of a page component (a class or a function) to the controller of its
+ * requests, as for a controller method: `#[IsGranted]`, `#[Cache]` and the other controller attributes of
  * Symfony apply to the page (PageController) and to its events (EventController).
  *
  * Without it, Symfony reads the attributes of PageController, and it ignores the attributes of
@@ -61,12 +61,17 @@ final class PageAttributesListener
             return $this->attributes[$page];
         }
 
-        if (!class_exists($page)) {
+        $reflection = match (true) {
+            class_exists($page) => new \ReflectionClass($page),
+            \function_exists($page) => new \ReflectionFunction($page),
+            default => null,
+        };
+        if (null === $reflection) {
             return $this->attributes[$page] = [];
         }
 
         $out = [];
-        foreach ((new \ReflectionClass($page))->getAttributes() as $attribute) {
+        foreach ($reflection->getAttributes() as $attribute) {
             $class = $attribute->getName();
             if (!class_exists($class) || is_a($class, Route::class, true)) {
                 continue;

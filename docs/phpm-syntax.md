@@ -41,13 +41,13 @@ list it. Without `use Phem\Attribute\Component;`, `#[Component]` is another attr
 Use a component with a tag: `<MyButton />`. The compiler resolves the tag with the PHP rules:
 a `use function` import, then a `use` (class) import, then the current namespace.
 
-A page is a class with the `#[Page]` attribute. React uses `export default` for the page
-component of a file. In Phem, `#[Page]` exposes a class at a URL, as `#[Route]` does for a
-Symfony controller. The file stays valid PHP. A page class is a component: it needs no
+A page is a class or a function with the `#[Page]` attribute. React uses `export default` for
+the page component of a file. In Phem, `#[Page]` exposes a component at a URL, as `#[Route]` does
+for a Symfony controller. The file stays valid PHP. A page is a component: it needs no
 `#[Component]`. It renders its content in the document of the application, a component that
 renders the `<html>` element and the `<Root>` of the page (see
 [compiling.md](compiling.md#the-document-of-the-pages)). The page gives the title with the
-`title` slot of the document. A function cannot be a page.
+`title` slot of the document.
 
 ```php
 use Phem\Attribute\Page;
@@ -77,10 +77,43 @@ give a page more than one URL. Without a `name`, the route name comes from the c
 `App\Page\Example\Counter` → `app_page_example_counter`. A file can have any number of
 pages, in any directory. The Symfony `#[Route]` attribute works too, on a `#[Component]` class.
 
+### Function pages
+
+A page with no state of its own and no route values can be a function:
+
+```php
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Component\Document;
+
+#[Page('/about')]
+function About(): Node
+{
+    return (
+        <Document>
+            <Document:title>About</Document:title>
+            <h1>About us</h1>
+            <Counter />
+        </Document>
+    );
+}
+```
+
+The components of a function page can have state and handlers, as `<Counter />` here: their
+events go to the URL of the page. A function page has these limits:
+
+- It has no route values (`{id}`, or a `defaults` key), because a function has no `#[Path]`
+  properties. The route loader reports a route value on a function page. Use a class page for
+  it.
+- It cannot have `#[Subscribe]` (E053).
+- The Symfony `#[Route]` attribute cannot mark a function (E052). Use `#[Page]`.
+
 ### Route values
 
 A route value goes to the page as a prop. Mark the public property with `#[Path]` (it needs no
-`#[Prop]`). The name of the property is the name of the route value.
+`#[Prop]`). The name of the property is the name of the route value. Only a class page can have
+route values.
 
 ```php
 use Phem\Attribute\{Page, Path};
@@ -310,7 +343,7 @@ entity counts by its identifier.
 An event is a `POST` request to the URL of the page, with the `X-Phem-Event` header. Thus the
 access rules of the page apply to its events too: `access_control`, the firewall, and the host
 and condition of the `#[Page]`. The controller attributes of Symfony (`#[IsGranted]`, `#[Cache]`)
-apply to a page class, for the page and for its events. Phem accepts an event only
+apply to a page (a class or a function), for the page and for its events. Phem accepts an event only
 from the same origin (`Sec-Fetch-Site`, or `Origin`), as JSON or as `multipart/form-data` with
 files, so another site cannot send one (CSRF). A `POST` request without the header renders the page, if its route accepts `POST`.
 
@@ -1495,8 +1528,8 @@ connects again.
   the error, and the response does not change.
 
 The Symfony profiler shows the streams that a request pushed, and the stale components of an
-event. `phemc` reports E053 for `#[Subscribe]` on a class that is not a page. The tests get the
-pushes with `receive()` (see [Testing](testing.md#actions)).
+event. `phemc` reports E053 for `#[Subscribe]` on a class that is not a page, or on a function
+page. The tests get the pushes with `receive()` (see [Testing](testing.md#actions)).
 
 ### Slow work after the response
 

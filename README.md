@@ -46,8 +46,8 @@ final class MyApp
 }
 ```
 
-A page is a class with `#[Page]`: a Symfony route. A `#[Component]` or `#[Page]` class is a
-Symfony service, so its constructor gets the services that it needs. A `#[State]` property keeps
+A page is a class with `#[Page]`: a Symfony route. A page with no state of its own can also be a
+function with `#[Page]`. A `#[Component]` or `#[Page]` class is a Symfony service, so its constructor gets the services that it needs. A `#[State]` property keeps
 its value in the browser between events, and an event handler such as `handleClick()` runs on the
 server.
 

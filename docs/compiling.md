@@ -29,7 +29,7 @@ my-app/
 │   ├── DataFixtures/      optional: Doctrine fixtures, the first rows of a new database
 │   ├── Component/        components that are not pages
 │   │   └── Document.phpm   the HTML document: each page renders in it, with a <Root>
-│   └── Page/             the pages: classes with a #[Page] attribute
+│   └── Page/             the pages: classes and functions with a #[Page] attribute
 │       ├── index.phpm      #[Page('/')]
 │       └── Example/
 │           └── Counter.phpm #[Page('/examples/Counter')]
@@ -43,7 +43,7 @@ my-app/
 ```
 
 The directories are only a convention: a page is a class with the `#[Page]` attribute and a
-`render()` method, in any file.
+`render()` method, or a function with the `#[Page]` attribute, in any file.
 
 ### The document of the pages
 
@@ -259,7 +259,7 @@ E011
 | E020 | A call to a React Hook (`Phem\useState`, ...): Phem keeps state in `#[Component]` classes |
 | E030–E033 | Undefined variable in markup, markup in an unsupported expression, invalid attribute, invalid `phem:bind` (not a `#[State]` property, not a form field, or a type that does not take the value of the field) |
 | E040–E044 | Class component without `render()`, readonly `#[State]` property, `#[Prop]` property that is not public, static, or `#[State]`, a second `#[Prop(rest: true)]` property or one whose type does not accept an array, a `#[Context]` or `#[Provide]` type that is not one class, interface or enum (or a `#[Context]` property that is static, readonly, a prop or state) |
-| E050, E052, E053 | `export default` (not PHP; use `#[Page]`), `#[Page]` or `#[Route]` on a function, or on a class that is not a component, `#[Subscribe]` on a class that is not a page |
+| E050, E052, E053 | `export default` (not PHP; use `#[Page]`), the Symfony `#[Route]` on a function (use `#[Page]`) or on a class that is not a component, `#[Subscribe]` on a class that is not a page or on a function page |
 | E054, E055 | `#[Async]` on a function; an `#[Async]` method that does not declare `Promise` as its return type |
 | W001–W003 | A handler is called instead of passed; a list item without `key`; an event that the browser does not send (`onMouseEnter`) |
 | W004 | `#[Page]`, `#[Route]`, `#[Component]`, `#[State]`, `#[Prop]`, `#[Path]`, `#[Context]`, `#[Provide]`, `#[Subscribe]` or `#[Async]` without its `use` import (`Phem\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
