@@ -52,9 +52,9 @@ final class CallableArguments
     }
 
     /**
-     * @param \Closure|string      $callable a handler, or the name of a function page
-     * @param Request|null         $request  the request of the page or of the event, or null outside a request
-     * @param array<string, mixed> $path     the converted route values of a function page
+     * @param \Closure|callable-string $callable a handler, or the name of a function page
+     * @param Request|null             $request  the request of the page or of the event, or null outside a request
+     * @param array<string, mixed>     $path     the converted route values of a function page
      *
      * @return list<mixed>
      */

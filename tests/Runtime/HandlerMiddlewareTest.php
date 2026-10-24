@@ -53,6 +53,9 @@ final class HandlerMiddlewareTest extends TestCase
         $resolver = new class implements ArgumentResolverInterface {
             public int $calls = 0;
 
+            /**
+             * @return list<mixed>
+             */
             public function getArguments(Request $request, callable $controller, ?\ReflectionFunctionAbstract $reflector = null): array
             {
                 ++$this->calls;
