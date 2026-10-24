@@ -3,17 +3,20 @@
 #
 # 1. vendor/bin/phemc of the application: the server has the version of the compiler and the
 #    runtime of the application.
-# 2. editors/server/phem-lsp.wasm of the Phem repository (`make lsp`), with Node.
+# 2. editors/server/phem-lsp.cjs next to the plugin (`make lsp`), with Node: the plugin is loaded
+#    from a clone of the Phem repository. Never a file of the project, so another project cannot
+#    give its own server.
 # 3. phemc on the PATH.
 
 project=${CLAUDE_PROJECT_DIR:-$PWD}
+server=$(cd "$(dirname "$0")/../.." && pwd)/server
 
 if [ -f "$project/vendor/bin/phemc" ]; then
     exec php "$project/vendor/bin/phemc" lsp
 fi
 
-if [ -f "$project/editors/server/phem-lsp.wasm" ]; then
-    exec node --no-warnings "$project/editors/server/phem-lsp.cjs"
+if [ -f "$server/phem-lsp.cjs" ] && [ -f "$server/phem-lsp.wasm" ]; then
+    exec node --no-warnings "$server/phem-lsp.cjs"
 fi
 
 if command -v phemc > /dev/null 2>&1; then

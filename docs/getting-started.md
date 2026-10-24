@@ -366,7 +366,9 @@ claude plugin install phem@phem
 In a running session, run `/reload-plugins` after the install.
 
 The plugin runs `phemc` on the host, not in the container, so it uses the PHP of the host.
-On the first start, `vendor/bin/phemc` downloads the `phemc` binary for the host.
+On the first start, `vendor/bin/phemc` downloads the `phemc` binary for the host. The plugin
+runs the `vendor/bin/phemc` of each project that has one, so use it only in projects that you
+trust.
 
 The server starts the first time Claude Code edits a `.phpm` file. After each edit, the
 conversation shows a summary, for example `Found 1 new diagnostic issues in 1 files`. Press

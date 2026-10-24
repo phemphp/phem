@@ -19,8 +19,12 @@ In a running session, run `/reload-plugins` after the install.
 
 1. `vendor/bin/phemc lsp` of the application, with PHP. The server has the same version as the
    compiler and the runtime of the application. You need PHP on the host.
-2. `editors/server/phem-lsp.wasm` of the Phem repository (`make lsp`), with Node.
+2. `editors/server/phem-lsp.cjs` next to the plugin (`make lsp`), with Node, when you load the
+   plugin from a clone of the Phem repository. The launcher never runs this file from the
+   project, so another project cannot give its own server.
 3. `phemc lsp`, with the `phemc` on the `PATH`.
+
+The plugin runs the `vendor/bin/phemc` of the project. Use it only in projects that you trust.
 
 ## Use
 
