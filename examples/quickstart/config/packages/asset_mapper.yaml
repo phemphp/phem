@@ -1,8 +1,0 @@
-# The JavaScript and CSS of the pages: assets/ (and the phemjs assets of the bundle),
-# with the importmap of importmap.php. `bin/console asset-map:compile` writes them to
-# public/assets/ for production.
-framework:
-    asset_mapper:
-        paths:
-            - assets/
-        missing_import_mode: strict

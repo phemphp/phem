@@ -1,6 +1,0 @@
-when@dev:
-    framework:
-        profiler:
-            collect_serializer_data: true
-    web_profiler:
-        toolbar: true

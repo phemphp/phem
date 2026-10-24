@@ -88,7 +88,7 @@ ideas of React map to Phem.
    Messenger worker runs the work and pushes its result (see
    [Slow work after the response](phpm-syntax.md#slow-work-after-the-response)).
 6. **Server.** [FrankenPHP](https://frankenphp.dev) runs `public/index.php` in worker mode
-   (see `examples/quickstart/Caddyfile`). Each worker boots the Symfony kernel once and keeps
+   (see the Caddyfile in [Getting started](getting-started.md#step-3-add-the-docker-files)). Each worker boots the Symfony kernel once and keeps
    it in memory for many requests. Symfony Runtime gives each request to the kernel, which
    resets the services (`kernel.reset`) between requests. Caddy serves the static files of
    `public/`. The same `public/index.php` also runs on PHP-FPM.

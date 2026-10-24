@@ -1,24 +1,15 @@
-.PHONY: up test test-js check prod shell lsp vscode vscode-install phpstorm phpstorm-install
+.PHONY: test test-js shell lsp vscode vscode-install phpstorm phpstorm-install
 
-# The Docker files are in the quickstart. The build context is the repository.
-COMPOSE = docker compose -f examples/quickstart/compose.yaml
-
-up:     ## Run the quickstart in watch mode on http://localhost:8080
-	$(COMPOSE) up --build dev
+# The build context of the dev image is the repository.
+COMPOSE = docker compose -f docker/compose.yaml
 
 test: test-js ## Run cargo test, PHPUnit and the JS tests
-	$(COMPOSE) run --rm --build test
+	$(COMPOSE) run --rm --build dev
 
 test-js: ## Run the tests of the phem Stimulus controller (Vitest, jsdom)
 	docker run --rm -e NPM_CONFIG_UPDATE_NOTIFIER=false -e NPM_CONFIG_LOGLEVEL=warn -v "$(CURDIR)/assets:/assets" -w /assets node:22-alpine sh -c ' \
 		npm install --ignore-scripts --no-fund --no-audit && \
 		npm test'
-
-check:  ## Run the phemc diagnostics on the quickstart sources
-	$(COMPOSE) run --rm dev phemc check examples/quickstart/src
-
-prod:   ## Build and run the production image on http://localhost:8081
-	$(COMPOSE) up --build prod
 
 lsp:    ## Build the language server for the editors: editors/server/phem-lsp.wasm
 	$(COMPOSE) run --rm --build --no-deps dev sh -c ' \
@@ -52,5 +43,5 @@ phpstorm-install: phpstorm ## Build the PhpStorm plugin and install it (then res
 	unzip -q editors/phpstorm/build/distributions/phem-phpstorm-$(PHPSTORM_VERSION).zip -d "$(PHPSTORM_PLUGINS)"
 	@echo "Installed in $(PHPSTORM_PLUGINS)/phem-phpstorm. Restart PhpStorm."
 
-shell:
+shell:  ## Open a shell in the dev image (phemc, cargo, composer and PHPUnit)
 	$(COMPOSE) run --rm dev sh

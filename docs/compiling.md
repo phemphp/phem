@@ -179,7 +179,7 @@ Without Docker, you need PHP 8.5, [FrankenPHP](https://frankenphp.dev), and Rust
 ```sh
 cargo build --release --manifest-path compiler/Cargo.toml -p phemc-cli
 export PATH="$PWD/compiler/target/release:$PATH"
-cd examples/quickstart && composer install   # also runs importmap:install (assets/vendor/)
+composer install
 ```
 
 ## 2. Build
@@ -308,17 +308,13 @@ frankenphp run --config Caddyfile
   kernel once and gives it many requests. The kernel resets the services (`kernel.reset`)
   between requests.
 - Caddy serves the static files of `public/` at `/`. A directory serves its `index.html`.
-  In development, Symfony serves the AssetMapper assets at `/assets/`. The quickstart also
-  serves `assets/vendor/` at `/vendor/`, for the Stimulus controllers of its static pages.
-- A `handle_path` block serves one more static directory. The quickstart uses it to show the
-  example sources in the sandboxes (`/examples-src/`, `/components-src/`, `/repository-src/`).
+  In development, Symfony serves the AssetMapper assets at `/assets/`.
 - `FRANKENPHP_WORKER_CONFIG` adds options to the worker. For example, `watch ./src/**/*.php`
   restarts the workers when a PHP class changes.
 - `APP_ENV=dev` (the default in `.env`) shows the Symfony error pages, with the `.phpm` location.
 - The application assumes that the database exists. Make it before the first run, for example
-  `bin/console doctrine:schema:create` and `bin/console doctrine:fixtures:load`. In Docker, the
-  quickstart entrypoints run `examples/quickstart/docker/init-db.sh` for this. The script changes nothing when the
-  database already exists.
+  `bin/console doctrine:schema:create` and `bin/console doctrine:fixtures:load`. In Docker, run
+  these commands in the entrypoint, only when the database does not exist yet.
 
 With PHP-FPM, use `public/index.php` as the front controller, as for any Symfony application.
 
@@ -330,7 +326,7 @@ In debug mode, Phem adds a panel to the Symfony profiler. Install the profiler i
 composer require --dev symfony/web-profiler-bundle symfony/stopwatch
 ```
 
-The quickstart has it in the `dev` environment. The Phem panel shows each page request and
+The Phem panel shows each page request and
 each event:
 
 - the page, the handler and its source, and the outcome (rendered, redirect, reload, or a
@@ -355,7 +351,7 @@ Other commands:
 
 ```sh
 php bin/console phem:warmup                          # compile the templates into the Twig cache again
-php bin/console phem:render /examples/CounterTogether   # print the HTML of a page (no server)
+php bin/console phem:render /examples/Counter        # print the HTML of a page (no server)
 php bin/console debug:router                          # the routes of the pages and their events (phem_event.*)
 ```
 
@@ -367,8 +363,8 @@ phemc watch src --exec "frankenphp run --config Caddyfile"
 
 When a `.phpm` file changes, `phemc` rebuilds. If the build passes, it restarts FrankenPHP, so
 the workers load the new components. If the build fails, it prints the diagnostics and the
-previous server keeps running. `make up` runs this in Docker for the quickstart, with
-`FRANKENPHP_WORKER_CONFIG="watch ./src/**/*.php"`.
+previous server keeps running. Set `FRANKENPHP_WORKER_CONFIG="watch ./src/**/*.php"` to restart
+the workers also when a PHP class changes.
 
 ## 6. Production
 
@@ -385,17 +381,11 @@ In production, Symfony does not check the cache for changes. Build the cache aga
 and the Twig cache of the phemc templates. `asset-map:compile` writes the assets to
 `public/assets/`. Set a random `APP_SECRET` (for example in `.env.local`).
 
-Then enable the preload (see `examples/quickstart/docker/php-prod.ini`). `config/preload.php` loads the Symfony
-container and the compiled components:
+Then enable the preload. `config/preload.php` loads the Symfony container and the compiled
+components:
 
 ```ini
 opcache.validate_timestamps=0
 opcache.preload=/app/config/preload.php
 opcache.preload_user=root
 ```
-
-`make prod` builds and runs the production image on http://localhost:8081. The image is based
-on the FrankenPHP image. It builds `phemc` in a Rust stage, compiles the project and the caches
-at image build time, preloads the compiled components and templates, and runs
-`frankenphp run --config Caddyfile` (worker mode). On each start, its entrypoint runs
-`examples/quickstart/docker/init-db.sh`: a new volume gets the schema and the fixtures.

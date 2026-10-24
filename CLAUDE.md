@@ -13,8 +13,7 @@ This project has no release yet. We are still designing it, so the public API ca
 
 The repository root is the `phem/phem` Composer package (`src/`, `config/`, `templates/`,
 `assets/`, `bin/phemc`). The compiler (`compiler/`), the editor support (`editors/`), the docs and
-the quickstart (`examples/quickstart/`, with its Docker files) live in the same repository, so one
-change can update all of them. `.gitattributes` keeps them out of the Composer dist.
+the Docker dev image (`docker/`) live in the same repository, so one change can update all of them. `.gitattributes` keeps them out of the Composer dist.
 
 ## Design
 
@@ -86,6 +85,6 @@ before you report the work as done:
 
 - Run `make test` from the root of the repository. It runs the JS tests (Vitest), cargo test and
   PHPUnit.
-- For a fast check while you work, run PHPUnit in the dev container:
-  `docker exec phem-dev-1 sh -c 'cd /app && vendor/bin/phpunit'`. Run `make test` at the end.
+- For a fast check while you work, run PHPUnit in the dev image:
+  `docker compose -f docker/compose.yaml run --rm dev vendor/bin/phpunit`. Run `make test` at the end.
 - Report the result. If a test fails, show the output.

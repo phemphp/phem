@@ -1,0 +1,16 @@
+# Run it from the root of the repository: `make test`, `make shell`. The build context and the
+# bind mount are the whole repository, because the image builds phemc from compiler/.
+name: phem
+
+services:
+  dev:
+    build: { context: .., dockerfile: docker/Dockerfile }
+    command: test
+    volumes:
+      - ..:/app
+      - cargo-target:/cargo-target
+      - cargo-registry:/usr/local/cargo/registry
+
+volumes:
+  cargo-target:
+  cargo-registry:

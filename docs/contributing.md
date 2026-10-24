@@ -1,25 +1,22 @@
 # Contributing
 
-This document is for work on Phem itself: the runtime, the compiler, the editor support and the
-quickstart. To use Phem in an application, start with the [README](../README.md).
+This document is for work on Phem itself: the runtime, the compiler and the editor support. To
+use Phem in an application, start with the [README](../README.md).
 
-## Run the quickstart
+## Run the tests
 
 You need only Docker. Run the commands from the root of the repository.
 
 ```sh
-make up      # http://localhost:8080/learn — phemc watch + FrankenPHP (worker mode)
-make test    # the JS tests, cargo test and PHPUnit
-make check   # phemc diagnostics for the quickstart sources
-make prod    # the production image on http://localhost:8081
+make test      # the JS tests, cargo test and PHPUnit
+make shell     # a shell in the dev image: phemc (built from compiler/), cargo, composer, PHPUnit
 make vscode    # the VS Code extension for .phpm files (editors/vscode/phem-<version>.vsix)
 make phpstorm  # the PhpStorm plugin for .phpm files (needs Java 21 and Gradle)
 ```
 
-`make up` and `make prod` also make the SQLite database of the quickstart on the first start:
-`examples/quickstart/docker/init-db.sh` makes the schema from the Doctrine mapping and loads the Doctrine fixtures.
-They also run the Messenger worker of the `#[Async]` handlers (`messenger:consume async`), next to
-FrankenPHP.
+The dev image is in `docker/`: FrankenPHP (PHP 8.5), Composer and the Rust toolchain. Its
+entrypoint builds `phemc` from the mounted `compiler/` before each command. For a fast PHPUnit
+run, use `docker compose -f docker/compose.yaml run --rm dev vendor/bin/phpunit`.
 
 To build and install the editor support, run `make vscode-install` or `make phpstorm-install`.
 To give Claude Code the compiler diagnostics after each edit, run `make lsp` and start
@@ -30,18 +27,13 @@ hover, and outline. In an application, the Claude Code plugin runs `vendor/bin/p
 [editors/phpstorm/README.md](../editors/phpstorm/README.md) and
 [editors/claude-code/README.md](../editors/claude-code/README.md).
 
-- `/learn` is the Quick Start page (static HTML + CSS, like react.dev/learn).
-- Each sandbox in it runs a real `.phpm` file from `examples/quickstart/src/Page/Example/`.
-  Its `#[Page]` attribute serves it at `/examples/<Name>`.
-- `/learn/describing-the-ui.html` has a multi-file example: the page `Gallery.phpm` uses
-  components from `examples/quickstart/src/Component/`. The page `DurableGallery.phpm` reads and
-  writes its data in SQLite through a Doctrine ORM entity and its repository. Its handlers run in
-  a Doctrine transaction (`#[Transactional]`), and a Symfony form adds a scientist. The data stays after a reload.
+To try a change in a browser, make an application as in [Getting started](getting-started.md),
+and require this checkout with a Composer path repository.
 
 ## Repository layout
 
-The repository root is the `phem/phem` Composer package. The compiler, the editor support, the
-docs and the quickstart are in the same repository, and `.gitattributes` keeps them out of the
+The repository root is the `phem/phem` Composer package. The compiler, the editor support and the
+docs are in the same repository, and `.gitattributes` keeps them out of the
 Composer dist.
 
 ```
@@ -51,9 +43,7 @@ assets/              the phem Stimulus controller (a Symfony UX package for Asse
 bin/phemc            the phemc launcher: downloads the binary of the release on the first run
 tests/               PHPUnit tests of the package (assets/tests/: the Vitest tests of the controller)
 compiler/            Rust workspace: phemc-syntax, phemc-twig-scan, phemc-analyze, phemc-codegen, phemc-lsp, phemc-cli
-examples/quickstart/ a Symfony application: the react.dev/learn-style site (public/), its
-                     runnable .phpm examples (src/), its FrankenPHP Caddyfile, compose.yaml, and
-                     docker/ (Dockerfile: dev, prod; the entrypoints; init-db.sh)
+docker/              the dev image (Dockerfile, compose.yaml, entrypoint.sh): `make test`, `make shell`
 editors/server/      the Node launcher of the language server (phem-lsp.wasm: `make lsp`)
 editors/vscode/      VS Code extension: .phpm syntax highlighting (TextMate grammar) and the language server
 editors/phpstorm/    PhpStorm plugin: the same grammar and language server

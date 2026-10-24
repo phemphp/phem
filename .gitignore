@@ -8,7 +8,6 @@ composer.lock
 .php-cs-fixer.cache
 .playwright-mcp/
 *.vsix
-/examples/quickstart/public/assets/
 .env.local
 # The client of the phem package (a global dist/ rule must not ignore it).
 !/assets/dist/

@@ -519,9 +519,7 @@ The other events stay JSON. The files of an event have a maximum size together:
 the `post_max_size` option of PHP, the server answers `413 Content Too Large` and does not run
 the handler. A file over the `upload_max_filesize` option of PHP gets to the handler with an
 upload error and no content (`$file->isValid()` is false), so `#[Assert\File]` shows the error
-in the form. The `File` and `Image` constraints need the `symfony/mime` package. The
-[PhotoUpload](../examples/quickstart/src/Page/Example/PhotoUpload.phpm) example of the
-quickstart checks images with the `Image` constraint.
+in the form. The `File` and `Image` constraints need the `symfony/mime` package.
 
 ```yaml
 # config/packages/phem.yaml
@@ -1130,8 +1128,7 @@ changes the page with no transition.
 
 Some changes need no server: open a menu, toggle a class, give the focus to a field. Write them as
 [Stimulus](https://stimulus.hotwired.dev/) controllers, and use them in markup with
-`data-controller` and `data-action`, as in any Symfony page. The
-[Inbox](../examples/quickstart/src/Page/Example/Inbox.phpm) example uses them.
+`data-controller` and `data-action`, as in any Symfony page.
 
 The morph of an event sets the attributes of the server render, so it undoes the changes of a
 controller. `data-phem-client` gives a list of attributes to the client: the morph does not change

@@ -12,9 +12,9 @@
 /assets/tests export-ignore
 /assets/vitest.config.js export-ignore
 /compiler export-ignore
+/docker export-ignore
 /docs export-ignore
 /editors export-ignore
-/examples export-ignore
 /install.ps1 export-ignore
 /install.sh export-ignore
 /phem-logo.svg export-ignore

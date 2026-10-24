@@ -1,4 +1,0 @@
-twig:
-    default_path: '%kernel.project_dir%/templates'
-    strict_variables: true
-    form_themes: ['form/theme.html.twig']

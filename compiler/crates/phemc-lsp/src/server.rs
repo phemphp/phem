@@ -681,7 +681,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn a_new_class_of_a_linked_package_goes_into_the_index_of_the_app() {
-        // As the quickstart: `vendor/phem/phem` is a link to the package, outside the app.
+        // As a Composer path repository: `vendor/phem/phem` is a link to the package, outside the app.
         let dir = crate::tests::temp_dir();
         let package = dir.join("phem");
         std::fs::create_dir_all(package.join("src")).unwrap();
