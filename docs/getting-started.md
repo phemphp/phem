@@ -159,19 +159,19 @@ handles many requests:
 
 ```caddyfile
 {
-	frankenphp {
-		worker {
-			file ./public/index.php
-			{$FRANKENPHP_WORKER_CONFIG}
-		}
-	}
+    frankenphp {
+        worker {
+            file ./public/index.php
+            {$FRANKENPHP_WORKER_CONFIG}
+        }
+    }
 }
 
 {$SERVER_NAME::8080} {
-	encode zstd gzip
+    encode zstd gzip
 
-	root * public
-	php_server
+    root * public
+    php_server
 }
 ```
 
