@@ -1,4 +1,4 @@
-.PHONY: up test test-js check prod shell lsp vscode vscode-install phpstorm phpstorm-install claude
+.PHONY: up test test-js check prod shell lsp vscode vscode-install phpstorm phpstorm-install
 
 # The Docker files are in the quickstart. The build context is the repository.
 COMPOSE = docker compose -f examples/quickstart/compose.yaml
@@ -51,9 +51,6 @@ phpstorm-install: phpstorm ## Build the PhpStorm plugin and install it (then res
 	rm -rf "$(PHPSTORM_PLUGINS)/phem-phpstorm"
 	unzip -q editors/phpstorm/build/distributions/phem-phpstorm-$(PHPSTORM_VERSION).zip -d "$(PHPSTORM_PLUGINS)"
 	@echo "Installed in $(PHPSTORM_PLUGINS)/phem-phpstorm. Restart PhpStorm."
-
-claude: lsp ## Build the Claude Code plugin: editors/claude-code/ (load it with `claude --plugin-dir editors/claude-code`)
-	rm -rf editors/claude-code/server && mkdir editors/claude-code/server && cp editors/server/phem-lsp.cjs editors/server/phem-lsp.wasm editors/claude-code/server/
 
 shell:
 	$(COMPOSE) run --rm dev sh

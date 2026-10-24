@@ -1,7 +1,7 @@
 {
     "phem": {
-        "command": "node",
-        "args": ["--no-warnings", "${CLAUDE_PLUGIN_ROOT}/server/phem-lsp.cjs"],
+        "command": "sh",
+        "args": ["${CLAUDE_PLUGIN_ROOT}/bin/phem-lsp"],
         "extensionToLanguage": {
             ".phpm": "phpm"
         },

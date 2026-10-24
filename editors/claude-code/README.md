@@ -4,31 +4,23 @@ A Claude Code plugin that runs the Phem language server for `.phpm` files. After
 write of a `.phpm` file, Claude Code gets the errors and warnings of `phemc` in real time. It also
 gets the `LSP` tool for go to definition, hover, and outline.
 
-The plugin contains the server, compiled to WebAssembly (the same server as the VS Code extension
-and the PhpStorm plugin), and runs it with Node. You need Node 20 or later on the `PATH`. You do
-not need to install `phemc` or Rust.
-
-## Build and load
-
-Run the commands from the root of the repository.
+## Install
 
 ```sh
-make claude                                # copy the server into editors/claude-code/server/
-claude --plugin-dir editors/claude-code    # start a session with the plugin
-```
-
-After `make claude` in a running session, run `/reload-plugins`.
-
-To load the plugin in every session, install it from the marketplace of the repository
-(`.claude-plugin/marketplace.json`):
-
-```sh
-make claude
-claude plugin marketplace add "$PWD"
+claude plugin marketplace add phemphp/phem
 claude plugin install phem@phem
 ```
 
-After a new `make claude`, run `claude plugin update phem@phem`, then `/reload-plugins`.
+In a running session, run `/reload-plugins` after the install.
+
+## The server
+
+`bin/phem-lsp` starts the first server that it finds in the project directory:
+
+1. `vendor/bin/phemc lsp` of the application, with PHP. The server has the same version as the
+   compiler and the runtime of the application. You need PHP on the host.
+2. `editors/server/phem-lsp.wasm` of the Phem repository (`make lsp`), with Node.
+3. `phemc lsp`, with the `phemc` on the `PATH`.
 
 ## Use
 
@@ -42,3 +34,26 @@ After a new `make claude`, run `claude plugin update phem@phem`, then `/reload-p
 The server checks the `src/` directory of the project. A project is the nearest directory with a
 `composer.json` file. To use another directory, change `sourceDir` in
 `initializationOptions` of `.lsp.json`.
+
+## Work on the plugin
+
+Run the commands from the root of the repository. `make lsp` builds the server that the plugin
+uses in the repository.
+
+```sh
+make lsp
+claude --plugin-dir editors/claude-code    # start a session with the plugin
+```
+
+After a new `make lsp` in a running session, run `/reload-plugins`.
+
+To load the plugin of the repository in every session, install it from the marketplace of the
+repository (`.claude-plugin/marketplace.json`):
+
+```sh
+claude plugin marketplace add "$PWD"
+claude plugin install phem@phem
+```
+
+Claude Code reads this plugin from `editors/claude-code/`. After a change to the plugin files or a
+new `make lsp`, run `/reload-plugins`.

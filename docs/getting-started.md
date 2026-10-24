@@ -349,6 +349,30 @@ docker run --rm -p 8081:8080 my-app
 Open http://localhost:8081. In production, Symfony does not check the cache for changes: build
 the image again after each change.
 
+## Use Claude Code
+
+The Phem plugin for [Claude Code](https://claude.com/claude-code) runs the language server of
+the application (`vendor/bin/phemc lsp`). After each edit of a `.phpm` file, Claude Code gets the
+errors and warnings of `phemc`, so it can correct them at once. It also gets go to definition,
+hover, and outline through its `LSP` tool.
+
+Install the plugin:
+
+```sh
+claude plugin marketplace add phemphp/phem
+claude plugin install phem@phem
+```
+
+In a running session, run `/reload-plugins` after the install.
+
+The plugin runs `phemc` on the host, not in the container, so it uses the PHP of the host.
+On the first start, `vendor/bin/phemc` downloads the `phemc` binary for the host.
+
+The server starts the first time Claude Code edits a `.phpm` file. After each edit, the
+conversation shows a summary, for example `Found 1 new diagnostic issues in 1 files`. Press
+`Ctrl+O` to read the diagnostics. If the server does not start, open `/plugin` and read the
+**Errors** tab.
+
 ## Next steps
 
 - [The `.phpm` syntax](phpm-syntax.md): props, slots, lists, forms, and events

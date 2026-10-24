@@ -1,0 +1,24 @@
+#!/bin/sh
+# Runs the Phem language server of the project on stdin and stdout.
+#
+# 1. vendor/bin/phemc of the application: the server has the version of the compiler and the
+#    runtime of the application.
+# 2. editors/server/phem-lsp.wasm of the Phem repository (`make lsp`), with Node.
+# 3. phemc on the PATH.
+
+project=${CLAUDE_PROJECT_DIR:-$PWD}
+
+if [ -f "$project/vendor/bin/phemc" ]; then
+    exec php "$project/vendor/bin/phemc" lsp
+fi
+
+if [ -f "$project/editors/server/phem-lsp.wasm" ]; then
+    exec node --no-warnings "$project/editors/server/phem-lsp.cjs"
+fi
+
+if command -v phemc > /dev/null 2>&1; then
+    exec phemc lsp
+fi
+
+echo "phem-lsp: no phemc in $project/vendor/bin/ and none on the PATH. Run \`composer require phem/phem\`." >&2
+exit 1

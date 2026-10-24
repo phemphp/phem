@@ -14,7 +14,6 @@ make check   # phemc diagnostics for the quickstart sources
 make prod    # the production image on http://localhost:8081
 make vscode    # the VS Code extension for .phpm files (editors/vscode/phem-<version>.vsix)
 make phpstorm  # the PhpStorm plugin for .phpm files (needs Java 21 and Gradle)
-make claude    # the Claude Code plugin for .phpm files (editors/claude-code/)
 ```
 
 `make up` and `make prod` also make the SQLite database of the quickstart on the first start:
@@ -23,10 +22,10 @@ They also run the Messenger worker of the `#[Async]` handlers (`messenger:consum
 FrankenPHP.
 
 To build and install the editor support, run `make vscode-install` or `make phpstorm-install`.
-To give Claude Code the compiler diagnostics after each edit, run `make claude` and start
+To give Claude Code the compiler diagnostics after each edit, run `make lsp` and start
 `claude --plugin-dir editors/claude-code`. All three use the Phem language server
 (`phemc lsp`), compiled to WebAssembly: diagnostics as you type, completion, go to definition,
-hover, and outline. See
+hover, and outline. In an application, the Claude Code plugin runs `vendor/bin/phemc lsp`. See
 [editors/vscode/README.md](../editors/vscode/README.md),
 [editors/phpstorm/README.md](../editors/phpstorm/README.md) and
 [editors/claude-code/README.md](../editors/claude-code/README.md).
