@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Fixtures;
 
-/** The number of rows of the pages with many components (tests/Fixtures/app/src/pages/many.phpm). */
+/** The number of rows of the pages with many components (tests/Fixtures/app/src/page/many.phpm). */
 final class Many
 {
     public static int $rows = 3;

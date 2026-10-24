@@ -28,12 +28,12 @@ final class InteractsWithPhemTest extends KernelTestCase
     use InteractsWithPhem;
 
     // Compiled from tests/Fixtures/app by phemc (PHPStan does not see them).
-    private const COUNTER = 'App\Components\Counter';
-    private const SIGNUP = 'App\Pages\Signup';
-    private const NOTIFIER = 'App\Pages\Notifier';
-    private const PROFILE = 'App\Pages\Profile';
-    private const CATALOG = 'App\Pages\Catalog';
-    private const UPLOADER = 'App\Pages\Uploader';
+    private const COUNTER = 'App\Component\Counter';
+    private const SIGNUP = 'App\Page\Signup';
+    private const NOTIFIER = 'App\Page\Notifier';
+    private const PROFILE = 'App\Page\Profile';
+    private const CATALOG = 'App\Page\Catalog';
+    private const UPLOADER = 'App\Page\Uploader';
 
     public static function setUpBeforeClass(): void
     {

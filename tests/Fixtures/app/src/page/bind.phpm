@@ -1,0 +1,121 @@
+<?phpm
+
+namespace App\Page;
+
+use Phem\Attribute\{Component, Page, State};
+use Phem\Node;
+use Phem\Tests\Fixtures\Size;
+
+use function App\Component\Document;
+
+// The bound fields (`phem:bind`): the next event sends their values.
+#[Component]
+final class Profile
+{
+    #[State] public string $name = '';
+    #[State] public ?int $age = null;
+    #[State] public bool $agree = false;
+    #[State] public array $tags = [];
+    #[State] public Size $size = Size::Small;
+    #[State] public string $plan = 'free';
+    #[State] public array $fields = [];
+    #[State] public string $bio = '';
+    #[State] public string $query = '';
+    #[State] public int $saves = 0;
+    #[State] public array $filters = ['status' => 'open', 'min' => 0, 'ids' => [1, 2]];
+    #[State] public array $rows = [['name' => 'Ada'], ['name' => 'Eve']];
+
+    public function save(): void
+    {
+        ++$this->saves;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form onSubmit={{ save }}>
+                <input name="name" phem:bind={{ name }} />
+                <input type="number" name="age" phem:bind={{ age }} />
+                <input type="checkbox" name="agree" phem:bind={{ agree }} />
+                <input type="checkbox" name="tag-a" value="a" phem:bind={{ tags }} />
+                <input type="checkbox" name="tag-b" value="b" phem:bind={{ tags }} />
+                <input type="radio" name="size" value="s" phem:bind={{ size }} />
+                <input type="radio" name="size" value="l" phem:bind={{ size }} />
+                <select name="plan" phem:bind={{ plan }}>
+                    <option value="free">Free</option>
+                    <option value="pro">Pro</option>
+                </select>
+                <select name="fields" multiple phem:bind={{ fields }}>
+                    <option>name</option>
+                    <option>year</option>
+                </select>
+                <textarea name="bio" phem:bind={{ bio }}></textarea>
+                <input type="search" name="query" phem:bind={{ query }} phem:live />
+                <input name="status" phem:bind={{ filters.status }} />
+                <input type="number" name="min" phem:bind={{ filters['min'] }} />
+                <select name="ids" multiple phem:bind={{ filters.ids }}>
+                    <option>1</option>
+                    <option>2</option>
+                    <option>3</option>
+                </select>
+                {% for i, row in rows %}
+                    <input name={{ 'row-' ~ i }} phem:bind={{ rows[i].name }} />
+                {% endfor %}
+                <button type="submit">Save</button>
+                <p id="summary">{{ name }}, {{ age ?? 'no age' }}, {{ agree ? 'agreed' : 'not agreed' }}, {{ tags|join('+') }}, {{ size.value }}, {{ plan }}, {{ fields|join('+') }}, {{ bio }}, saves {{ saves }}</p>
+                <p id="results">Results for {{ query }}</p>
+                <p id="filters">{{ filters.status }}, {{ filters.min }}, {{ filters.ids|join('+') }}, {{ rows|column('name')|join('+') }}</p>
+            </form>
+        );
+    }
+}
+
+#[Page('/bind')]
+final class BindPage
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>Bind</Document:title>
+                <Profile />
+            </Document>
+        );
+    }
+}
+
+// A bound field of a page, in the slot of its document: the field is in the fiber of the
+// <Root>, but the property is a property of the page.
+#[Page('/bind-page')]
+final class BoundPage
+{
+    #[State] public string $name = '';
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>Bound page</Document:title>
+                <input name="name" phem:bind={{ name }} phem:live />
+                <p id="hello">Hello {{ name }}</p>
+            </Document>
+        );
+    }
+}
+
+// A bound path with no key in the value of its property: the render fails.
+#[Page('/bind-missing-key')]
+final class MissingKeyPage
+{
+    #[State] public array $filters = [];
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>Missing key</Document:title>
+                <input name="status" phem:bind={{ filters.status }} />
+            </Document>
+        );
+    }
+}

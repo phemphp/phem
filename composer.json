@@ -3,6 +3,7 @@
     "description": "A component model for Symfony apps",
     "type": "symfony-bundle",
     "license": "MIT",
+    "keywords": ["symfony-ux"],
     "authors": [
         { "name": "Yonel Ceruto", "email": "open@yceruto.dev" }
     ],

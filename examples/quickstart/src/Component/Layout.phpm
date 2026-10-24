@@ -1,0 +1,22 @@
+<?phpm
+
+namespace App\Component;
+
+use Phem\Attribute\Component;
+use Phem\Html;
+use Phem\Node;
+
+// The page shell: a header, the page content (children) and a footer slot.
+#[Component]
+function Layout(string $title, ?Html $children = null, ?Html $footer = null): Node
+{
+    return (
+        <div className="layout">
+            <header className="layout-header">
+                <h1>{{ title }}</h1>
+            </header>
+            <main className="layout-main">{{ children }}</main>
+            <footer className="layout-footer">{{ footer }}</footer>
+        </div>
+    );
+}

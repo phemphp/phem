@@ -1,5 +1,5 @@
 <?phpm // expect: W004
-namespace App\Pages;
+namespace App\Page;
 use Phem\Attribute\Page;
 use Phem\Node;
 #[Page('/feed'), Subscribe]

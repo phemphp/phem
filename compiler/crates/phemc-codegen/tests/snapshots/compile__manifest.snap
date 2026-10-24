@@ -5,11 +5,11 @@ expression: out.manifest.to_json()
 {
   "version": "0.1.0",
   "components": {
-    "App\\Components\\Badge": {
-      "fqcn": "App\\Components\\Badge",
+    "App\\Component\\Badge": {
+      "fqcn": "App\\Component\\Badge",
       "kind": "template",
-      "file": "components/Buttons.phpm",
-      "template": "components/Buttons.2.twig",
+      "file": "component/Buttons.phpm",
+      "template": "component/Buttons.2.twig",
       "props": [
         "label",
         "tone"
@@ -20,11 +20,11 @@ expression: out.manifest.to_json()
       ],
       "rest": false
     },
-    "App\\Components\\Card": {
-      "fqcn": "App\\Components\\Card",
+    "App\\Component\\Card": {
+      "fqcn": "App\\Component\\Card",
       "kind": "template",
-      "file": "components/Buttons.phpm",
-      "template": "components/Buttons.1.twig",
+      "file": "component/Buttons.phpm",
+      "template": "component/Buttons.1.twig",
       "props": [
         "title",
         "children",
@@ -39,10 +39,10 @@ expression: out.manifest.to_json()
       ],
       "rest": false
     },
-    "App\\Components\\ColorPicker": {
-      "fqcn": "App\\Components\\ColorPicker",
+    "App\\Component\\ColorPicker": {
+      "fqcn": "App\\Component\\ColorPicker",
       "kind": "class",
-      "file": "components/Bound.phpm",
+      "file": "component/Bound.phpm",
       "props": [
         "value"
       ],
@@ -52,10 +52,10 @@ expression: out.manifest.to_json()
       ],
       "rest": false
     },
-    "App\\Components\\Counter": {
-      "fqcn": "App\\Components\\Counter",
+    "App\\Component\\Counter": {
+      "fqcn": "App\\Component\\Counter",
       "kind": "class",
-      "file": "components/Counter.phpm",
+      "file": "component/Counter.phpm",
       "props": [
         "label",
         "children"
@@ -66,11 +66,11 @@ expression: out.manifest.to_json()
       "required": [],
       "rest": false
     },
-    "App\\Components\\Document": {
-      "fqcn": "App\\Components\\Document",
+    "App\\Component\\Document": {
+      "fqcn": "App\\Component\\Document",
       "kind": "template",
-      "file": "components/Document.phpm",
-      "template": "components/Document.0.twig",
+      "file": "component/Document.phpm",
+      "template": "component/Document.0.twig",
       "props": [
         "title",
         "children"
@@ -82,20 +82,20 @@ expression: out.manifest.to_json()
       "required": [],
       "rest": false
     },
-    "App\\Components\\Filters": {
-      "fqcn": "App\\Components\\Filters",
+    "App\\Component\\Filters": {
+      "fqcn": "App\\Component\\Filters",
       "kind": "class",
-      "file": "components/Filters.phpm",
+      "file": "component/Filters.phpm",
       "props": [],
       "slots": [],
       "required": [],
       "rest": false
     },
-    "App\\Components\\MyButton": {
-      "fqcn": "App\\Components\\MyButton",
+    "App\\Component\\MyButton": {
+      "fqcn": "App\\Component\\MyButton",
       "kind": "template",
-      "file": "components/Buttons.phpm",
-      "template": "components/Buttons.0.twig",
+      "file": "component/Buttons.phpm",
+      "template": "component/Buttons.0.twig",
       "props": [
         "count",
         "onClick"
@@ -107,10 +107,10 @@ expression: out.manifest.to_json()
       ],
       "rest": false
     },
-    "App\\Components\\NameField": {
-      "fqcn": "App\\Components\\NameField",
+    "App\\Component\\NameField": {
+      "fqcn": "App\\Component\\NameField",
       "kind": "function",
-      "file": "components/Bound.phpm",
+      "file": "component/Bound.phpm",
       "props": [
         "value"
       ],
@@ -120,30 +120,30 @@ expression: out.manifest.to_json()
       ],
       "rest": false
     },
-    "App\\Components\\Nav": {
-      "fqcn": "App\\Components\\Nav",
+    "App\\Component\\Nav": {
+      "fqcn": "App\\Component\\Nav",
       "kind": "template",
-      "file": "components/Rest.phpm",
-      "template": "components/Rest.3.twig",
+      "file": "component/Rest.phpm",
+      "template": "component/Rest.3.twig",
       "props": [],
       "slots": [],
       "required": [],
       "rest": false
     },
-    "App\\Components\\Profile": {
-      "fqcn": "App\\Components\\Profile",
+    "App\\Component\\Profile": {
+      "fqcn": "App\\Component\\Profile",
       "kind": "class",
-      "file": "components/Bound.phpm",
+      "file": "component/Bound.phpm",
       "props": [],
       "slots": [],
       "required": [],
       "rest": false
     },
-    "App\\Components\\RestButton": {
-      "fqcn": "App\\Components\\RestButton",
+    "App\\Component\\RestButton": {
+      "fqcn": "App\\Component\\RestButton",
       "kind": "template",
-      "file": "components/Rest.phpm",
-      "template": "components/Rest.0.twig",
+      "file": "component/Rest.phpm",
+      "template": "component/Rest.0.twig",
       "props": [
         "count"
       ],
@@ -153,10 +153,10 @@ expression: out.manifest.to_json()
       ],
       "rest": true
     },
-    "App\\Components\\RestLink": {
-      "fqcn": "App\\Components\\RestLink",
+    "App\\Component\\RestLink": {
+      "fqcn": "App\\Component\\RestLink",
       "kind": "class",
-      "file": "components/Rest.phpm",
+      "file": "component/Rest.phpm",
       "props": [
         "label"
       ],
@@ -164,20 +164,20 @@ expression: out.manifest.to_json()
       "required": [],
       "rest": true
     },
-    "App\\Components\\Settings": {
-      "fqcn": "App\\Components\\Settings",
+    "App\\Component\\Settings": {
+      "fqcn": "App\\Component\\Settings",
       "kind": "template",
-      "file": "components/Tabs.phpm",
-      "template": "components/Tabs.3.twig",
+      "file": "component/Tabs.phpm",
+      "template": "component/Tabs.3.twig",
       "props": [],
       "slots": [],
       "required": [],
       "rest": false
     },
-    "App\\Components\\Tab": {
-      "fqcn": "App\\Components\\Tab",
+    "App\\Component\\Tab": {
+      "fqcn": "App\\Component\\Tab",
       "kind": "function",
-      "file": "components/Tabs.phpm",
+      "file": "component/Tabs.phpm",
       "props": [
         "name",
         "label"
@@ -189,19 +189,19 @@ expression: out.manifest.to_json()
       ],
       "rest": false
     },
-    "App\\Components\\TabCount": {
-      "fqcn": "App\\Components\\TabCount",
+    "App\\Component\\TabCount": {
+      "fqcn": "App\\Component\\TabCount",
       "kind": "class",
-      "file": "components/Tabs.phpm",
+      "file": "component/Tabs.phpm",
       "props": [],
       "slots": [],
       "required": [],
       "rest": false
     },
-    "App\\Components\\Tabs": {
-      "fqcn": "App\\Components\\Tabs",
+    "App\\Component\\Tabs": {
+      "fqcn": "App\\Component\\Tabs",
       "kind": "class",
-      "file": "components/Tabs.phpm",
+      "file": "component/Tabs.phpm",
       "props": [
         "children"
       ],
@@ -211,11 +211,11 @@ expression: out.manifest.to_json()
       "required": [],
       "rest": false
     },
-    "App\\Components\\Tag": {
-      "fqcn": "App\\Components\\Tag",
+    "App\\Component\\Tag": {
+      "fqcn": "App\\Component\\Tag",
       "kind": "template",
-      "file": "components/Buttons.phpm",
-      "template": "components/Buttons.3.twig",
+      "file": "component/Buttons.phpm",
+      "template": "component/Buttons.3.twig",
       "props": [
         "children"
       ],
@@ -225,11 +225,11 @@ expression: out.manifest.to_json()
       "required": [],
       "rest": false
     },
-    "App\\Components\\TextField": {
-      "fqcn": "App\\Components\\TextField",
+    "App\\Component\\TextField": {
+      "fqcn": "App\\Component\\TextField",
       "kind": "template",
-      "file": "components/Bound.phpm",
-      "template": "components/Bound.0.twig",
+      "file": "component/Bound.phpm",
+      "template": "component/Bound.0.twig",
       "props": [
         "value",
         "label"
@@ -241,28 +241,28 @@ expression: out.manifest.to_json()
       ],
       "rest": false
     },
-    "App\\Components\\Toolbar": {
-      "fqcn": "App\\Components\\Toolbar",
+    "App\\Component\\Toolbar": {
+      "fqcn": "App\\Component\\Toolbar",
       "kind": "function",
-      "file": "components/Rest.phpm",
+      "file": "component/Rest.phpm",
       "props": [],
       "slots": [],
       "required": [],
       "rest": true
     },
-    "App\\Pages\\About": {
-      "fqcn": "App\\Pages\\About",
+    "App\\Page\\About": {
+      "fqcn": "App\\Page\\About",
       "kind": "class",
-      "file": "pages/about.phpm",
+      "file": "page/about.phpm",
       "props": [],
       "slots": [],
       "required": [],
       "rest": false
     },
-    "App\\Pages\\Greeting": {
-      "fqcn": "App\\Pages\\Greeting",
+    "App\\Page\\Greeting": {
+      "fqcn": "App\\Page\\Greeting",
       "kind": "function",
-      "file": "pages/index.phpm",
+      "file": "page/index.phpm",
       "props": [
         "name"
       ],
@@ -272,29 +272,29 @@ expression: out.manifest.to_json()
       ],
       "rest": false
     },
-    "App\\Pages\\Home": {
-      "fqcn": "App\\Pages\\Home",
+    "App\\Page\\Home": {
+      "fqcn": "App\\Page\\Home",
       "kind": "class",
-      "file": "pages/index.phpm",
+      "file": "page/index.phpm",
       "props": [],
       "slots": [],
       "required": [],
       "rest": false
     },
-    "App\\Pages\\Toggle": {
-      "fqcn": "App\\Pages\\Toggle",
+    "App\\Page\\Toggle": {
+      "fqcn": "App\\Page\\Toggle",
       "kind": "class",
-      "file": "pages/index.phpm",
+      "file": "page/index.phpm",
       "props": [],
       "slots": [],
       "required": [],
       "rest": false
     },
-    "App\\Pages\\Toolbar": {
-      "fqcn": "App\\Pages\\Toolbar",
+    "App\\Page\\Toolbar": {
+      "fqcn": "App\\Page\\Toolbar",
       "kind": "template",
-      "file": "pages/index.phpm",
-      "template": "pages/index.0.twig",
+      "file": "page/index.phpm",
+      "template": "page/index.0.twig",
       "props": [
         "theme"
       ],
@@ -304,128 +304,128 @@ expression: out.manifest.to_json()
     }
   },
   "pages": [
-    "App\\Pages\\About",
-    "App\\Pages\\Home"
+    "App\\Page\\About",
+    "App\\Page\\Home"
   ],
   "templates": {
-    "components/Bound.0.twig": {
-      "source": "components/Bound.phpm",
+    "component/Bound.0.twig": {
+      "source": "component/Bound.phpm",
       "line": 13
     },
-    "components/Bound.1.twig": {
-      "source": "components/Bound.phpm",
+    "component/Bound.1.twig": {
+      "source": "component/Bound.phpm",
       "line": 22
     },
-    "components/Bound.2.twig": {
-      "source": "components/Bound.phpm",
+    "component/Bound.2.twig": {
+      "source": "component/Bound.phpm",
       "line": 34
     },
-    "components/Bound.3.twig": {
-      "source": "components/Bound.phpm",
+    "component/Bound.3.twig": {
+      "source": "component/Bound.phpm",
       "line": 52
     },
-    "components/Buttons.0.twig": {
-      "source": "components/Buttons.phpm",
+    "component/Buttons.0.twig": {
+      "source": "component/Buttons.phpm",
       "line": 13
     },
-    "components/Buttons.1.twig": {
-      "source": "components/Buttons.phpm",
+    "component/Buttons.1.twig": {
+      "source": "component/Buttons.phpm",
       "line": 22
     },
-    "components/Buttons.2.twig": {
-      "source": "components/Buttons.phpm",
+    "component/Buttons.2.twig": {
+      "source": "component/Buttons.phpm",
       "line": 32
     },
-    "components/Buttons.3.twig": {
-      "source": "components/Buttons.phpm",
+    "component/Buttons.3.twig": {
+      "source": "component/Buttons.phpm",
       "line": 37
     },
-    "components/Counter.0.twig": {
-      "source": "components/Counter.phpm",
+    "component/Counter.0.twig": {
+      "source": "component/Counter.phpm",
       "line": 29
     },
-    "components/Document.0.twig": {
-      "source": "components/Document.phpm",
+    "component/Document.0.twig": {
+      "source": "component/Document.phpm",
       "line": 14
     },
-    "components/Filters.0.twig": {
-      "source": "components/Filters.phpm",
+    "component/Filters.0.twig": {
+      "source": "component/Filters.phpm",
       "line": 30
     },
-    "components/Rest.0.twig": {
-      "source": "components/Rest.phpm",
+    "component/Rest.0.twig": {
+      "source": "component/Rest.phpm",
       "line": 11
     },
-    "components/Rest.1.twig": {
-      "source": "components/Rest.phpm",
+    "component/Rest.1.twig": {
+      "source": "component/Rest.phpm",
       "line": 20
     },
-    "components/Rest.2.twig": {
-      "source": "components/Rest.phpm",
+    "component/Rest.2.twig": {
+      "source": "component/Rest.phpm",
       "line": 31
     },
-    "components/Rest.3.twig": {
-      "source": "components/Rest.phpm",
+    "component/Rest.3.twig": {
+      "source": "component/Rest.phpm",
       "line": 37
     },
-    "components/Tabs.0.twig": {
-      "source": "components/Tabs.phpm",
+    "component/Tabs.0.twig": {
+      "source": "component/Tabs.phpm",
       "line": 22
     },
-    "components/Tabs.1.twig": {
-      "source": "components/Tabs.phpm",
+    "component/Tabs.1.twig": {
+      "source": "component/Tabs.phpm",
       "line": 30
     },
-    "components/Tabs.2.twig": {
-      "source": "components/Tabs.phpm",
+    "component/Tabs.2.twig": {
+      "source": "component/Tabs.phpm",
       "line": 41
     },
-    "components/Tabs.3.twig": {
-      "source": "components/Tabs.phpm",
+    "component/Tabs.3.twig": {
+      "source": "component/Tabs.phpm",
       "line": 49
     },
-    "pages/about.0.twig": {
-      "source": "pages/about.phpm",
+    "page/about.0.twig": {
+      "source": "page/about.phpm",
       "line": 16
     },
-    "pages/index.0.twig": {
-      "source": "pages/index.phpm",
+    "page/index.0.twig": {
+      "source": "page/index.phpm",
       "line": 12
     },
-    "pages/index.1.twig": {
-      "source": "pages/index.phpm",
+    "page/index.1.twig": {
+      "source": "page/index.phpm",
       "line": 23
     },
-    "pages/index.2.twig": {
-      "source": "pages/index.phpm",
+    "page/index.2.twig": {
+      "source": "page/index.phpm",
       "line": 39
     },
-    "pages/index.3.twig": {
-      "source": "pages/index.phpm",
+    "page/index.3.twig": {
+      "source": "page/index.phpm",
       "line": 41
     },
-    "pages/index.4.twig": {
-      "source": "pages/index.phpm",
+    "page/index.4.twig": {
+      "source": "page/index.phpm",
       "line": 45
     },
-    "pages/index.5.twig": {
-      "source": "pages/index.phpm",
+    "page/index.5.twig": {
+      "source": "page/index.phpm",
       "line": 82
     },
-    "pages/index.6.twig": {
-      "source": "pages/index.phpm",
+    "page/index.6.twig": {
+      "source": "page/index.phpm",
       "line": 85
     }
   },
   "files": [
-    "php/components/Bound.php",
-    "php/components/Buttons.php",
-    "php/components/Counter.php",
-    "php/components/Document.php",
-    "php/components/Filters.php",
-    "php/components/Rest.php",
-    "php/components/Tabs.php",
-    "php/pages/about.php",
-    "php/pages/index.php"
+    "php/component/Bound.php",
+    "php/component/Buttons.php",
+    "php/component/Counter.php",
+    "php/component/Document.php",
+    "php/component/Filters.php",
+    "php/component/Rest.php",
+    "php/component/Tabs.php",
+    "php/page/about.php",
+    "php/page/index.php"
   ]
 }

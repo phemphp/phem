@@ -1,7 +1,7 @@
 import { Controller } from "/vendor/@hotwired/stimulus/stimulus.index.js";
 import { highlight, escapeHtml } from "../highlight.js";
 
-// A live example: the real source of src/Pages/Examples/<Name>.phpm (highlighted)
+// A live example: the real source of src/Page/Example/<Name>.phpm (highlighted)
 // and a preview iframe of the page /examples/<Name>.
 // A multi-file example has one tab for each file: <button data-sandbox-target="tab" data-src="/url">.
 export default class extends Controller {

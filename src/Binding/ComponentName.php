@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Phem\Binding;
 
 /**
- * The name of a component in the error messages: `App\Pages\Counter` → `Counter`.
+ * The name of a component in the error messages: `App\Page\Counter` → `Counter`.
  */
 final class ComponentName
 {

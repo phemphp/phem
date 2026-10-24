@@ -116,26 +116,26 @@
 <h2 id="importing-and-exporting" class="heading">Importing and exporting components<a class="heading-anchor" href="#importing-and-exporting" aria-label="Link to this section">#</a></h2>
 <p>You can declare many components in one file. When an app grows, put the reusable components in their own files and compose them in a page. React uses <code>export</code> and <code>import</code> for this. Phem uses PHP namespaces:</p>
 <ul>
-    <li>Put the shared components in <code>src/Components/</code>, in the namespace <code>App\Components</code>. They have no <code>#[Page]</code> attribute, so they are not pages.</li>
-    <li>In the page file, import a function component with <code>use function App\Components\{Layout, Profile};</code>.</li>
-    <li>Import a class component with <code>use App\Components\LikeButton;</code>.</li>
+    <li>Put the shared components in <code>src/Component/</code>, in the namespace <code>App\Component</code>. They have no <code>#[Page]</code> attribute, so they are not pages.</li>
+    <li>In the page file, import a function component with <code>use function App\Component\{Layout, Profile};</code>.</li>
+    <li>Import a class component with <code>use App\Component\LikeButton;</code>.</li>
     <li>A component in the same namespace needs no import. <code>Profile</code> uses <code>&lt;LikeButton /&gt;</code> without an import.</li>
 </ul>
 <p>The page <code>Gallery.phpm</code> below uses components from three other files. <code>Layout</code> is the page shell: it gets the page content as <code>children</code> and a named slot <code>&lt;Layout:footer&gt;</code>. Each <code>LikeButton</code> keeps its own state. Click the tabs to see each file:</p>
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="Gallery">
     <div class="sandbox-bar">
         <div class="sandbox-tabs" role="tablist" aria-label="Files">
-            <button type="button" class="sandbox-tab" role="tab" aria-selected="true" data-sandbox-target="tab" data-action="sandbox#select" data-src="/examples-src/Gallery.phpm" title="src/Pages/Examples/Gallery.phpm">Gallery.phpm</button>
-            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/Layout.phpm" title="src/Components/Layout.phpm">Layout.phpm</button>
-            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/Profile.phpm" title="src/Components/Profile.phpm">Profile.phpm</button>
-            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/LikeButton.phpm" title="src/Components/LikeButton.phpm">LikeButton.phpm</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="true" data-sandbox-target="tab" data-action="sandbox#select" data-src="/examples-src/Gallery.phpm" title="src/Page/Example/Gallery.phpm">Gallery.phpm</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/Layout.phpm" title="src/Component/Layout.phpm">Layout.phpm</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/Profile.phpm" title="src/Component/Profile.phpm">Profile.phpm</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/LikeButton.phpm" title="src/Component/LikeButton.phpm">LikeButton.phpm</button>
         </div>
         <div class="sandbox-actions">
             <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
             <a class="sandbox-button" href="/examples/Gallery" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
         </div>
     </div>
-    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/Gallery.phpm...</code></pre>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Page/Example/Gallery.phpm...</code></pre>
     <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
     <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/Gallery" loading="lazy" title="Gallery preview"></iframe>
 </div>
@@ -155,17 +155,17 @@
 <div class="sandbox" data-controller="sandbox" data-sandbox-example-value="DurableGallery">
     <div class="sandbox-bar">
         <div class="sandbox-tabs" role="tablist" aria-label="Files">
-            <button type="button" class="sandbox-tab" role="tab" aria-selected="true" data-sandbox-target="tab" data-action="sandbox#select" data-src="/examples-src/DurableGallery.phpm" title="src/Pages/Examples/DurableGallery.phpm">DurableGallery.phpm</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="true" data-sandbox-target="tab" data-action="sandbox#select" data-src="/examples-src/DurableGallery.phpm" title="src/Page/Example/DurableGallery.phpm">DurableGallery.phpm</button>
             <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/repository-src/ScientistRepository.php" title="src/Repository/ScientistRepository.php">ScientistRepository.php</button>
-            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/ScientistCard.phpm" title="src/Components/ScientistCard.phpm">ScientistCard.phpm</button>
-            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/AddScientist.phpm" title="src/Components/AddScientist.phpm">AddScientist.phpm</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/ScientistCard.phpm" title="src/Component/ScientistCard.phpm">ScientistCard.phpm</button>
+            <button type="button" class="sandbox-tab" role="tab" aria-selected="false" data-sandbox-target="tab" data-action="sandbox#select" data-src="/components-src/AddScientist.phpm" title="src/Component/AddScientist.phpm">AddScientist.phpm</button>
         </div>
         <div class="sandbox-actions">
             <button type="button" class="sandbox-button" data-action="sandbox#reset" title="Load the preview again">&#8635; Reset</button>
             <a class="sandbox-button" href="/examples/DurableGallery" target="_blank" rel="noopener" title="Open the example in a new tab">&#8599; Open</a>
         </div>
     </div>
-    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Pages/Examples/DurableGallery.phpm...</code></pre>
+    <pre class="sandbox-code" data-sandbox-target="code"><code>Loading src/Page/Example/DurableGallery.phpm...</code></pre>
     <div class="sandbox-preview-bar"><span class="sandbox-dot"></span><span>Preview</span></div>
     <iframe class="sandbox-preview" data-sandbox-target="preview" src="/examples/DurableGallery" loading="lazy" title="DurableGallery preview"></iframe>
 </div>

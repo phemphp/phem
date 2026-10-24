@@ -30,8 +30,8 @@ use Symfony\Component\Routing\RouteCollection;
  * phemc lists them in the manifest). It renders its document, with a `<Root>` (see Phem\Root).
  * The attribute works as on a controller: path (or localized paths), name,
  * requirements, defaults, methods, host, schemes, condition, priority, env and aliases.
- * Without a name, the route name comes from the component: `App\Pages\Counter` →
- * `app_pages_counter`.
+ * Without a name, the route name comes from the component: `App\Page\Counter` →
+ * `app_page_counter`.
  *
  * The events of a page go to the URL of the page (`POST`, see EventController), so the access
  * rules of the page (`access_control`, the firewall, the host and the condition of the route)
@@ -51,7 +51,7 @@ use Symfony\Component\Routing\RouteCollection;
  */
 final class PageLoader extends Loader
 {
-    /** The prefix of the event route names: `phem_event.app_pages_counter`. */
+    /** The prefix of the event route names: `phem_event.app_page_counter`. */
     public const EVENT_ROUTE = 'phem_event';
 
     public function __construct(
@@ -96,7 +96,7 @@ final class PageLoader extends Loader
         return 'phem' === $type;
     }
 
-    /** `App\Pages\Counter` → `app_pages_counter` (the Symfony convention for an invokable controller). */
+    /** `App\Page\Counter` → `app_page_counter` (the Symfony convention for an invokable controller). */
     public static function routeName(string $page): string
     {
         return strtolower(str_replace('\\', '_', $page));

@@ -1,0 +1,119 @@
+<?phpm
+namespace App\Page\Example;
+
+use App\Model\Report;
+use App\Repository\ReportRepository;
+use Phem\Async\Promise;
+use Phem\Attribute\{Async, Component, Page, State, Subscribe, Transactional};
+use Phem\Event;
+use Phem\Node;
+use Phem\Stream\Streams;
+
+use function App\Component\Document;
+
+// Slow work after the response: open this page in two tabs, and build a report in one of them.
+// - #[Async] runs the closure of the Promise in a Messenger worker (`messenger:consume async`),
+//   so the click answers at once.
+// - The method body runs in the request and again in the worker, with the same state: the
+//   ticket is the same in both. Its push goes out one time, from the request: each tab shows
+//   the pending row at once.
+// - The worker builds the report in a transaction (#[Transactional]), and pushes the row.
+#[Page('/examples/Reports'), Subscribe]
+final class Reports
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>Reports</Document:title>
+                <h1>Reports</h1>
+                <BuildReport />
+                <ReportList />
+            </Document>
+        );
+    }
+}
+
+#[Component]
+final class BuildReport
+{
+    // The ticket of the next report: the request and the worker read the same value.
+    #[State] public string $ticket = '';
+
+    public function __construct(
+        private readonly ReportRepository $reports,
+        private readonly Streams $streams,
+    ) {
+    }
+
+    public function mount(): void
+    {
+        $this->ticket = bin2hex(random_bytes(4));
+    }
+
+    #[Async, Transactional]
+    public function build(Event $e): Promise
+    {
+        $ticket = $this->ticket;
+        $this->ticket = bin2hex(random_bytes(4));
+
+        $this->streams->to(Reports::class)
+            ->prepend('reports', <li id="report-{{ ticket }}" className="pending">Building a report…</li>);
+
+        return new Promise(function () use ($ticket): void {
+            sleep(3); // a slow query, an export, or a call to an API
+
+            $report = $this->reports->build($ticket);
+
+            $this->streams->to(Reports::class)
+                ->replace('report-'.$ticket, <ReportRow report={{ report }} />);
+        });
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form className="sign" onSubmit={{ build }}>
+                <button type="submit">Build a report</button>
+            </form>
+        );
+    }
+}
+
+// The reports: data with no #[State], so mount() reads it in each render.
+#[Component]
+final class ReportList
+{
+    /** @var list<Report> */
+    public array $reports = [];
+
+    public function __construct(private readonly ReportRepository $repository)
+    {
+    }
+
+    public function mount(): void
+    {
+        $this->reports = $this->repository->latest();
+    }
+
+    public function render(): Node
+    {
+        return (
+            <ul id="reports" className="entries">
+                {% for report in reports %}<ReportRow key={{ report.id }} report={{ report }} />{% endfor %}
+            </ul>
+        );
+    }
+}
+
+// One report: the page and the push of the worker render it.
+#[Component]
+function ReportRow(Report $report): Node
+{
+    return (
+        <li id="report-{{ report.ticket }}">
+            <strong>{{ report.scientists }} scientists</strong>: {{ report.professions }}
+            <small>{{ report.builtAt|date('H:i:s') }}</small>
+        </li>
+    );
+}

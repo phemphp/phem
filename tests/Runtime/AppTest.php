@@ -301,7 +301,7 @@ final class AppTest extends TestCase
         $router = $this->service('router', RouterInterface::class);
 
         self::assertSame('/', $router->generate('home'), 'the name of the #[Route]');
-        self::assertSame('/about', $router->generate('app_pages_about'), 'the default name');
+        self::assertSame('/about', $router->generate('app_page_about'), 'the default name');
         self::assertSame('/about-us', $router->generate('about_us'), 'a repeated #[Route]');
 
         foreach (['/about', '/about-us'] as $path) {
@@ -317,7 +317,10 @@ final class AppTest extends TestCase
 
         self::assertStringContainsString('<html lang="es">', $html, 'another document component');
         self::assertStringContainsString('<title>Documento 3</title>', $html, 'the title slot of the page, with its state');
-        self::assertMatchesRegularExpression('#<body>\s*<main id="phem-root" data-controller="phem extra" data-action="click->phem\#dispatch [^"]*" data-phem-state-value="\{\n"_tree":"[^"]*",\n"phem[0-9a-f]+":\{"count":3\},\n"phem[0-9a-f]+":\{"on":false\}\n\}" data-phem-signature-value="[^"]*" class="custom page"><phem-c id="phem[0-9a-f]+">\s*<p id="document">Document</p>\s*</phem-c></main>\s*<footer id="doc-footer">#', $html);
+        self::assertMatchesRegularExpression('#<body>\s*<main id="phem-root" data-controller="phem extra" data-action="click->phem\#dispatch [^"]*" data-phem-state-value="\{\n"_tree":"[^"]*",(?:\n"phem[0-9a-f]+":\{[^}]*\},?){2}\n\}" data-phem-signature-value="[^"]*" class="custom page"><phem-c id="phem[0-9a-f]+">\s*<p id="document">Document</p>\s*</phem-c></main>\s*<footer id="doc-footer">#', $html);
+        // The ids of the states come from the names of the components, so their order can change.
+        self::assertMatchesRegularExpression('#\n"phem[0-9a-f]+":\{"count":3\}#', $html);
+        self::assertMatchesRegularExpression('#\n"phem[0-9a-f]+":\{"on":false\}#', $html);
 
         $html = (string) $this->request('GET', '/about')->getContent();
         self::assertStringContainsString('<title>Fixture</title>', $html, 'a page with the title of the document');
@@ -343,7 +346,7 @@ final class AppTest extends TestCase
     public function testComponentInAPlainTwigTemplate(): void
     {
         $twig = $this->service('twig', Environment::class);
-        $html = $twig->createTemplate("{% component 'App\\\\Pages\\\\Greeting' with {name: 'twig'} %}")->render();
+        $html = $twig->createTemplate("{% component 'App\\\\Page\\\\Greeting' with {name: 'twig'} %}")->render();
 
         self::assertMatchesRegularExpression('#^<phem-c id="phem[0-9a-f]+"><p class="greeting">Hello, TWIG!</p></phem-c>$#', $html);
     }
@@ -353,25 +356,25 @@ final class AppTest extends TestCase
         /** @var Manifest $manifest */
         $manifest = $this->fixtureKernel()->getContainer()->get('phem.manifest');
 
-        self::assertNotNull($manifest->component('App\\Pages\\Greeting'));
-        self::assertNull($manifest->component('App\\Pages\\Shout'), 'no #[Component]');
-        self::assertTrue(\function_exists('App\\Pages\\Shout'), 'the compiled file declares the function');
+        self::assertNotNull($manifest->component('App\\Page\\Greeting'));
+        self::assertNull($manifest->component('App\\Page\\Shout'), 'no #[Component]');
+        self::assertTrue(\function_exists('App\\Page\\Shout'), 'the compiled file declares the function');
     }
 
     public function testTwigErrorsPointToThePhpmSource(): void
     {
         /** @var Manifest $manifest */
         $manifest = $this->fixtureKernel()->getContainer()->get('phem.manifest');
-        $error = new \RuntimeException('outer', 0, new RuntimeError('Boom.', 3, new Source('', '@phpm/pages/index.6.twig')));
+        $error = new \RuntimeException('outer', 0, new RuntimeError('Boom.', 3, new Source('', '@phpm/page/index.6.twig')));
 
         (new SourceMapListener(new SourceMap($manifest)))->map($error);
 
         $twigError = $error->getPrevious();
         self::assertInstanceOf(RuntimeError::class, $twigError);
         self::assertNotNull($twigError->getSourceContext());
-        self::assertSame('src/pages/index.phpm', $twigError->getSourceContext()->getName());
-        self::assertSame($manifest->sourceDir().'/pages/index.phpm', $twigError->getFile());
-        $templateLine = (require $manifest->file())['templates']['pages/index.6.twig']['line'];
+        self::assertSame('src/page/index.phpm', $twigError->getSourceContext()->getName());
+        self::assertSame($manifest->sourceDir().'/page/index.phpm', $twigError->getFile());
+        $templateLine = (require $manifest->file())['templates']['page/index.6.twig']['line'];
         self::assertSame($templateLine + 2, $twigError->getLine(), 'line 3 of the template');
     }
 

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * The importmap of the pages: `{{ importmap('app') }}` in src/Components/Document.phpm.
+ * The importmap of the pages: `{{ importmap('app') }}` in src/Component/Document.phpm.
  *
  * `bin/console importmap:install` downloads the packages with a version to assets/vendor/
  * (Composer runs it after `composer install`).

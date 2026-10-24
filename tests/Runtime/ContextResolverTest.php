@@ -77,11 +77,11 @@ final class ContextResolverTest extends TestCase
 
     public function testARequiredContextWithNoProviderThrows(): void
     {
-        $page = self::fiber('page', new \stdClass(), null, 'App\Pages\Settings');
+        $page = self::fiber('page', new \stdClass(), null, 'App\Page\Settings');
         $consumer = self::fiber('consumer', $component = new class {
             #[Context]
             public Theme $theme;
-        }, $page, 'App\Components\Chart');
+        }, $page, 'App\Component\Chart');
 
         $this->expectException(ContextError::class);
         $this->expectExceptionMessage('<Chart> needs a "Phem\Tests\Fixtures\Theme" context for "theme", but no component above it provides one. Render <Chart> inside a component with #[Provide] for this type, or give "theme" a default value. Path: <Settings> > <Chart>.');

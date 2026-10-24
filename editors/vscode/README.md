@@ -36,7 +36,7 @@ is not there). A project is the nearest directory with a `composer.json` file.
 - **Component tags**: after `<`, it suggests the components of the project (`#[Component]`
   functions and classes). A function without `#[Component]` is a plain PHP function. The tag gets the required props, and a closing tag when the
   component has `$children` or slots. If the component is not in scope, the server adds the
-  import: `use function App\Components\Layout;` or `use App\Components\Counter;`. It uses the
+  import: `use function App\Component\Layout;` or `use App\Component\Counter;`. It uses the
   rules of phemc: a `use function` import, then a `use` import, then the current namespace.
   It also suggests the built-in `<Root>` (the root element of a page, in the document), and
   adds `use Phem\Root;`.

@@ -1,0 +1,36 @@
+<?phpm
+namespace App\Page\Example;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Component\Document;
+
+#[Page('/examples/ShoppingList')]
+final class ShoppingList
+{
+    public function render(): Node
+    {
+        $products = [
+            ['title' => 'Cabbage', 'isFruit' => false, 'id' => 1],
+            ['title' => 'Garlic', 'isFruit' => false, 'id' => 2],
+            ['title' => 'Apple', 'isFruit' => true, 'id' => 3],
+        ];
+
+        return (
+            <Document>
+                <Document:title>ShoppingList</Document:title>
+                <ul>
+                    {% for product in products %}
+                        <li
+                            key={{ product.id }}
+                            style={{ {color: product.isFruit ? 'magenta' : 'darkgreen'} }}
+                        >
+                            {{ product.title }}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </Document>
+        );
+    }
+}

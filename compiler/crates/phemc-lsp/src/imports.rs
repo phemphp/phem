@@ -58,7 +58,7 @@ pub fn use_edit(text: &str, parsed: &Parsed, kind: UseKind, fqn: &str) -> Insert
     let statement = format!("{} {fqn};", kind.keyword());
     let same_kind: Vec<_> = parsed.uses.iter().filter(|u| u.kind == kind).collect();
 
-    // Add the name to a group on one line: use function App\Components\{Layout, Profile};
+    // Add the name to a group on one line: use function App\Component\{Layout, Profile};
     let group = same_kind.iter().find_map(|u| {
         let g = u.group.as_ref()?;
         let close = g.close?;
@@ -147,28 +147,28 @@ mod tests {
 
     #[test]
     fn adds_imports_in_order() {
-        let text = "<?phpm\nnamespace App\\Pages;\n\nuse Phem\\Html;\n\nuse function App\\Components\\Layout;\n";
+        let text = "<?phpm\nnamespace App\\Page;\n\nuse Phem\\Html;\n\nuse function App\\Component\\Layout;\n";
         let parsed = parse(text);
         let e = import_for(text, &parsed, UseKind::Class, "App\\Repository\\TodoRepository").edit.unwrap();
         assert_eq!(apply(text, &e), text.replace("use Phem", "use App\\Repository\\TodoRepository;\nuse Phem"));
         let e = import_for(text, &parsed, UseKind::Function, "Acme\\slugify").edit.unwrap();
         assert_eq!(apply(text, &e), text.replace("use function App", "use function Acme\\slugify;\nuse function App"));
         assert!(import_for(text, &parsed, UseKind::Class, "Phem\\Html").edit.is_none());
-        assert!(import_for(text, &parsed, UseKind::Class, "App\\Pages\\X").edit.is_none());
+        assert!(import_for(text, &parsed, UseKind::Class, "App\\Page\\X").edit.is_none());
         assert!(import_for(text, &parsed, UseKind::Class, "Other\\Html").qualified);
     }
 
     #[test]
     fn adds_a_name_to_a_group_on_one_line() {
-        let text = "<?phpm\nnamespace App;\n\nuse function App\\Components\\{Layout};\n";
-        let e = import_for(text, &parse(text), UseKind::Function, "App\\Components\\Avatar").edit.unwrap();
-        assert!(apply(text, &e).contains("use function App\\Components\\{Layout, Avatar};"));
+        let text = "<?phpm\nnamespace App;\n\nuse function App\\Component\\{Layout};\n";
+        let e = import_for(text, &parse(text), UseKind::Function, "App\\Component\\Avatar").edit.unwrap();
+        assert!(apply(text, &e).contains("use function App\\Component\\{Layout, Avatar};"));
     }
 
     #[test]
     fn adds_the_first_import_after_the_namespace() {
-        let text = "<?phpm\nnamespace App\\Pages;\n\nfunction Home() {}\n";
-        let e = import_for(text, &parse(text), UseKind::Function, "App\\Components\\Layout").edit.unwrap();
-        assert_eq!(apply(text, &e), "<?phpm\nnamespace App\\Pages;\n\nuse function App\\Components\\Layout;\n\nfunction Home() {}\n");
+        let text = "<?phpm\nnamespace App\\Page;\n\nfunction Home() {}\n";
+        let e = import_for(text, &parse(text), UseKind::Function, "App\\Component\\Layout").edit.unwrap();
+        assert_eq!(apply(text, &e), "<?phpm\nnamespace App\\Page;\n\nuse function App\\Component\\Layout;\n\nfunction Home() {}\n");
     }
 }

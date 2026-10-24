@@ -1,0 +1,42 @@
+<?phpm
+namespace App\Page\Example;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Component\Document;
+
+#[Page('/examples/StarRating')]
+final class StarRating
+{
+    private const int MAX_STARS = 5;
+
+    #[State]
+    public int $stars = 0;
+
+    public function addStar(): void
+    {
+        $this->stars = min($this->stars + 1, self::MAX_STARS);
+    }
+
+    public function clear(): void
+    {
+        $this->stars = 0;
+    }
+
+    public function render(): Node
+    {
+        $display = str_repeat('★', $this->stars) . str_repeat('☆', self::MAX_STARS - $this->stars);
+
+        return (
+            <Document>
+                <Document:title>StarRating</Document:title>
+                <div>
+                    <p>Rate this page: <span className="stars">{{ display }}</span></p>
+                    <button onClick={{ addStar }}>Add a star</button>
+                    <button onClick={{ clear }}>Clear</button>
+                </div>
+            </Document>
+        );
+    }
+}

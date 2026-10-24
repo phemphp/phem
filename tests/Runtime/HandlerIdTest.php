@@ -23,7 +23,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * A handler id comes from the handler, not from its position: a click never runs the handler
- * of another row (tests/Fixtures/app/src/pages/rows.phpm).
+ * of another row (tests/Fixtures/app/src/page/rows.phpm).
  */
 final class HandlerIdTest extends TestCase
 {

@@ -1,0 +1,88 @@
+<?phpm
+
+namespace App\Page;
+
+use Phem\Attribute\{Component, Page, Prop, State};
+use Phem\Bound;
+use Phem\Node;
+
+use function App\Component\Document;
+
+// The fields of child components bind the properties of their parent (`phem:bind` on the tag of
+// a component, and a `Bound` prop in the child).
+
+/** A template component. */
+#[Component]
+function TextField(Bound $value, string $name): Node
+{
+    return <label>{{ name }} <input name={{ name }} phem:bind={{ value }} /></label>;
+}
+
+/** A function component: it passes its Bound prop on. */
+#[Component]
+function NoteField(Bound $value): Node
+{
+    $name = 'note';
+
+    return <TextField phem:bind={{ value }} name={{ name }} />;
+}
+
+/** A class component, with its own state: the field binds the property of the parent. */
+#[Component]
+final class PlanField
+{
+    #[Prop] public Bound $value;
+    #[State] public int $opens = 0;
+
+    public function render(): Node
+    {
+        return (
+            <select name="plan" phem:bind={{ value }}>
+                <option value="free">Free</option>
+                <option value="pro">Pro</option>
+            </select>
+        );
+    }
+}
+
+#[Component]
+final class Account
+{
+    #[State] public string $email = '';
+    #[State] public string $note = '';
+    #[State] public string $plan = 'free';
+    #[State] public array $address = ['city' => 'Paris'];
+    #[State] public int $saves = 0;
+
+    public function save(): void
+    {
+        ++$this->saves;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form onSubmit={{ save }}>
+                <TextField phem:bind={{ email }} name="email" />
+                <NoteField phem:bind={{ note }} />
+                <PlanField phem:bind={{ plan }} />
+                <TextField phem:bind={{ address.city }} name="city" />
+                <p id="account">{{ email }}, {{ note }}, {{ plan }}, {{ address.city }}, saves {{ saves }}</p>
+            </form>
+        );
+    }
+}
+
+#[Page('/bind-child')]
+final class BindChildPage
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>Bind child</Document:title>
+                <Account />
+            </Document>
+        );
+    }
+}

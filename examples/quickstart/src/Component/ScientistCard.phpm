@@ -1,0 +1,42 @@
+<?phpm
+
+namespace App\Component;
+
+use App\Model\Scientist;
+use Phem\Attribute\{Component, Prop, Transactional};
+use Phem\Node;
+
+#[Component, Transactional]
+final class LikeCounter
+{
+    #[Prop]
+    public Scientist $scientist;
+
+    public function like(): void
+    {
+        ++$this->scientist->likes;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <button onClick={{ like }}>♥ {{ scientist.likes }}</button>
+        );
+    }
+}
+
+// Avatar is in Profile.phpm, in this namespace: it needs no import.
+#[Component]
+function ScientistCard(Scientist $scientist): Node
+{
+    return (
+        <section className="profile">
+            <Avatar name={{ scientist.name }} />
+            <div>
+                <h2><a href={{ path('app_page_example_scientistpage', {id: scientist.id}) }}>{{ scientist.name }}</a></h2>
+                <p>{{ scientist.profession }}</p>
+                <LikeCounter key={{ scientist.id }} scientist={{ scientist }} />
+            </div>
+        </section>
+    );
+}

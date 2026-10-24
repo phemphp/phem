@@ -4,12 +4,12 @@ Phem brings the React component model to PHP and Symfony. A `.phpm` file is a PH
 
 ```php
 <?phpm
-namespace App\Pages\Examples;
+namespace App\Page\Example;
 
 use Phem\Attribute\{Component, Page, State};
 use Phem\Node;
 
-use function App\Components\Document;
+use function App\Component\Document;
 
 #[Component]
 function MyButton(int $count, Closure $onClick): Node 
@@ -67,6 +67,7 @@ the GitHub release. Without Composer, use
 
 ## Documentation
 
+- [Getting started](docs/getting-started.md): a new app from scratch, with Docker
 - [The `.phpm` syntax](docs/phpm-syntax.md)
 - [Compiling and running `.phpm` files](docs/compiling.md), with the list of diagnostics
 - [Testing components and pages](docs/testing.md)

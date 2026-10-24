@@ -1,0 +1,44 @@
+<?phpm
+
+namespace App\Page\Example;
+
+use Phem\Attribute\{Component, Page, State};
+use Phem\Node;
+
+use function App\Component\Document;
+
+#[Component]
+function CountButton(int $count, mixed ...$props): Node
+{
+    return (
+        <button type="button" {{ ...props }}>
+            Clicked {{ count }} times
+        </button>
+    );
+}
+
+#[Page('/examples/CounterTogether')]
+final class CounterTogether
+{
+    #[State]
+    public int $count = 0;
+
+    public function handleClick(): void
+    {
+        ++$this->count;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>CounterTogether</Document:title>
+                <>
+                    <h1>Counters that update together</h1>
+                    <CountButton count={{ count }} onClick={{ handleClick }} />
+                    <CountButton count={{ count }} onClick={{ handleClick }} />
+                </>
+            </Document>
+        );
+    }
+}

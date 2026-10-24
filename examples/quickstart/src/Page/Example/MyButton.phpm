@@ -1,0 +1,46 @@
+<?phpm
+namespace App\Page\Example;
+
+use Phem\Attribute\{Component, Page};
+use Phem\Html;
+use Phem\Node;
+
+use function App\Component\Document;
+
+#[Component]
+function MyButton(): Node
+{
+    return (
+        <button>I'm a button</button>
+    );
+}
+
+#[Component]
+function IconButton(string $icon, ?Html $children = null, mixed ...$props): Node
+{
+    return (
+        <button type="button" onclick="alert('Clicked!')" {{ ...props }}>
+            <span aria-hidden="true">{{ icon }}</span> {{ children }}
+        </button>
+    );
+}
+
+#[Page('/examples/MyButton')]
+final class MyApp
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>MyButton</Document:title>
+                <div>
+                    <h1>Welcome to my app</h1>
+                    <MyButton />
+                    <IconButton icon="★" title="Add to favorites" aria-label="Add to favorites">
+                        Favorite
+                    </IconButton>
+                </div>
+            </Document>
+        );
+    }
+}

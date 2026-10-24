@@ -359,7 +359,7 @@ pub fn routes_of(parsed: &Parsed, file: &Path) -> Vec<Route> {
     list
 }
 
-/// `App\Pages\Counter` → `app_pages_counter`, as in `src/Routing/PageLoader.php` of phem/phem.
+/// `App\Page\Counter` → `app_page_counter`, as in `src/Routing/PageLoader.php` of phem/phem.
 fn route_name(fqn: &str) -> String {
     fqn.replace('\\', "_").to_lowercase()
 }
@@ -387,7 +387,7 @@ mod tests {
     use super::*;
 
     const SOURCE: &str = r"<?phpm
-namespace App\Pages;
+namespace App\Page;
 
 use Phem\Attribute\{Component, Page};
 use Symfony\Component\Routing\Attribute\Route;
@@ -414,9 +414,9 @@ final class Plain
 
     #[test]
     fn a_page_is_a_class_with_page_or_with_route_and_component() {
-        let routes: Vec<_> = routes_of(&parse(SOURCE), Path::new("src/pages/home.phpm")).into_iter().map(|r| (r.name, r.path, r.fqn)).collect();
+        let routes: Vec<_> = routes_of(&parse(SOURCE), Path::new("src/page/home.phpm")).into_iter().map(|r| (r.name, r.path, r.fqn)).collect();
         let r = |n: &str, p: &str, f: &str| (n.to_string(), p.to_string(), f.to_string());
-        assert_eq!(routes, [r("home", "/home", "App\\Pages\\Home"), r("app_pages_home_1", "/start", "App\\Pages\\Home"), r("app_pages_legacy", "/legacy", "App\\Pages\\Legacy")]);
+        assert_eq!(routes, [r("home", "/home", "App\\Page\\Home"), r("app_page_home_1", "/start", "App\\Page\\Home"), r("app_page_legacy", "/legacy", "App\\Page\\Legacy")]);
     }
 
     #[test]

@@ -1,0 +1,35 @@
+<?phpm
+
+namespace App\Component;
+
+use Phem\Attribute\{Component, Prop, State};
+use Phem\Html;
+use Phem\Node;
+use Phem\Tests\Fixtures\Limits;
+
+#[Component]
+final class Counter
+{
+    #[Prop] public string $label = 'Clicked';
+    #[Prop] public ?Html $children = null;
+    #[State] public int $count = 0;
+
+    public function __construct(private readonly Limits $limits)
+    {
+    }
+
+    public function increment(): void
+    {
+        $this->count = min($this->count + 1, $this->limits->max);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <button onClick={{ increment }} data-count={{ count }}>
+                {{ label }} {{ count }} times {{ children }}
+                <span phem:loading={{ increment }} className="spinner"></span>
+            </button>
+        );
+    }
+}

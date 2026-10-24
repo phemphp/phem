@@ -83,7 +83,7 @@ final class SkipTest extends TestCase
         $codec = $this->service('phem.state_codec', StateCodec::class);
         $data = json_decode($this->state, true);
         unset($data['_tree']);
-        [$this->state, $this->signature] = $codec->encode($data, 'App\Pages\SkipPage');
+        [$this->state, $this->signature] = $codec->encode($data, 'App\Page\SkipPage');
 
         $data = $this->click('clicker');
 

@@ -1,0 +1,76 @@
+<?phpm
+namespace App\Page\Example;
+
+use Phem\Attribute\{Component, Page, State, Subscribe};
+use Phem\Event;
+use Phem\Node;
+use Phem\Stream\Streams;
+
+use function App\Component\Document;
+
+// A minimal chat: open this page in two tabs, and send a message in one of them.
+// - #[Subscribe] connects the page to the Mercure hub of FrankenPHP.
+// - The handler pushes plain markup: `append()` adds the message in each open tab.
+// - There is no database: a tab shows only the messages that come after it opens.
+// - The server render of the list is always empty: `data-phem-ignore` keeps the pushed messages
+//   when the next event of the tab renders the page again (it is stale after a push).
+#[Page('/examples/Chat'), Subscribe]
+final class Chat
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>Chat</Document:title>
+                <h1>Chat</h1>
+                <ul id="messages" data-phem-ignore></ul>
+                <ChatForm />
+            </Document>
+        );
+    }
+}
+
+// One message: only the push renders it, so it has no handler.
+#[Component]
+function ChatMessage(string $name, string $text): Node
+{
+    return (
+        <li><strong>{{ name }}</strong>: {{ text }}</li>
+    );
+}
+
+#[Component]
+final class ChatForm
+{
+    #[State] public string $name = '';
+    #[State] public string $text = '';
+
+    public function __construct(private readonly Streams $streams)
+    {
+    }
+
+    public function send(Event $e): void
+    {
+        $name = mb_substr(trim($this->name), 0, 40);
+        $text = mb_substr(trim($this->text), 0, 280);
+        if ('' === $name || '' === $text) {
+            return;
+        }
+
+        $this->text = '';
+
+        $this->streams->to(Chat::class)
+            ->append('messages', <ChatMessage name={{ name }} text={{ text }} />);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form onSubmit={{ send }}>
+                <input name="name" placeholder="Your name" maxlength="40" phem:bind={{ name }} />
+                <input name="text" placeholder="A message" maxlength="280" phem:bind={{ text }} />
+                <button type="submit">Send</button>
+            </form>
+        );
+    }
+}

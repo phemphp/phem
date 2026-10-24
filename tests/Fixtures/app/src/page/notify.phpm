@@ -1,0 +1,90 @@
+<?phpm
+
+namespace App\Page;
+
+use Phem\Attribute\{Component, Page, State};
+use Phem\BrowserEventDispatcher;
+use Phem\Event;
+use Phem\Node;
+use Phem\Tests\Fixtures\Announcer;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+
+use function App\Component\Document;
+
+// Handlers that send browser events (see Phem\BrowserEventDispatcher).
+#[Component]
+final class Notifier
+{
+    #[State] public int $count = 0;
+
+    public function __construct(
+        private readonly BrowserEventDispatcher $dispatcher,
+        private readonly Announcer $announcer,
+    ) {
+    }
+
+    public function save(Event $e): void
+    {
+        ++$this->count;
+        $e->dispatcher->dispatch('toast', ['message' => 'Saved '.$this->count]);
+        $e->dispatcher->dispatch('saved', $this->count);
+    }
+
+    // No Event parameter: the injected dispatcher, and a service that has it too.
+    public function announce(): void
+    {
+        ++$this->count;
+        $this->dispatcher->dispatch('toast', ['message' => 'Announced '.$this->count]);
+        $this->announcer->announce('Hello');
+    }
+
+    public function quiet(): void
+    {
+        ++$this->count;
+    }
+
+    public function leave(Event $e): RedirectResponse
+    {
+        $e->dispatcher->dispatch('toast', ['message' => 'Bye']);
+
+        return new RedirectResponse('/about');
+    }
+
+    public function clicked(Event $e): void
+    {
+        $e->dispatcher->dispatch('clicked');
+    }
+
+    public function submitted(Event $e): void
+    {
+        $e->dispatcher->dispatch('submitted', $e->form);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div>
+                <button id="save" onClick={{ save }}>Save {{ count }}</button>
+                <button id="announce" onClick={{ announce }}>Announce</button>
+                <button id="quiet" onClick={{ quiet }}>Quiet</button>
+                <button id="leave" onClick={{ leave }}>Leave</button>
+                <form onSubmit={{ submitted }}>
+                    <button type="submit" id="send" name="action" value="send" onClick={{ clicked }}>Send</button>
+                </form>
+            </div>
+        );
+    }
+}
+
+#[Page('/notify')]
+final class NotifyPage
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Notifier />
+            </Document>
+        );
+    }
+}

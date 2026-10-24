@@ -1,0 +1,44 @@
+<?phpm
+namespace App\Page\Example;
+
+use App\Component\AddScientist;
+use App\Model\Scientist;
+use App\Repository\ScientistRepository;
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Component\{Layout, ScientistCard, Document};
+
+#[Page('/examples/DurableGallery')]
+final class DurableGallery
+{
+    /** @var list<Scientist> */
+    private array $scientists = [];
+
+    public function __construct(
+        private readonly ScientistRepository $repository,
+    ) {
+    }
+
+
+    public function mount(): void
+    {
+        $this->scientists = $this->repository->all();
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>Amazing scientists</Document:title>
+                <Layout title="Amazing scientists">
+                    {% for scientist in scientists %}
+                        <ScientistCard key={{ scientist.id }} scientist={{ scientist }} />
+                    {% endfor %}
+                    <AddScientist />
+                    <Layout:footer>{{ scientists|length }} profiles in var/data/gallery.sqlite</Layout:footer>
+                </Layout>
+            </Document>
+        );
+    }
+}

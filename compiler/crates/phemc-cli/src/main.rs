@@ -160,7 +160,7 @@ fn check_json(src: &Path) -> Result<bool> {
 }
 
 /// The diagnostics as JSON:
-/// `{"files": [{"file": "Pages/index.phpm", "diagnostics": [{"severity", "code", "message", "label",
+/// `{"files": [{"file": "Page/index.phpm", "diagnostics": [{"severity", "code", "message", "label",
 /// "help", "start": {"line", "character"}, "end": {...}}]}]}`.
 /// The file is relative to the source directory. The lines start at 0, and the characters count
 /// UTF-16 code units, as the Language Server Protocol and VS Code do.
@@ -414,18 +414,18 @@ mod tests {
         let start = text.find("Foo").unwrap();
         let files = vec![
             FileDiagnostics {
-                rel: "Pages/index.phpm".into(),
+                rel: "Page/index.phpm".into(),
                 text: text.clone(),
                 diags: vec![Diagnostic::error("E001", "Unknown component", Span::new(start, start + 3))
                     .with_label("here")
                     .with_help("Import it")],
             },
-            FileDiagnostics { rel: "Pages/ok.phpm".into(), text: String::new(), diags: vec![] },
+            FileDiagnostics { rel: "Page/ok.phpm".into(), text: String::new(), diags: vec![] },
         ];
 
         assert_eq!(
             diagnostics_json(&files),
-            json!({"files": [{"file": "Pages/index.phpm", "diagnostics": [{
+            json!({"files": [{"file": "Page/index.phpm", "diagnostics": [{
                 "severity": "error",
                 "code": "E001",
                 "message": "Unknown component",

@@ -16,7 +16,7 @@ A component with state is a `#[Component]` class (see section 7).
 
 ```php
 <?phpm
-namespace App\Components;
+namespace App\Component;
 
 use Phem\Attribute\Component;
 use Phem\Node;
@@ -53,7 +53,7 @@ renders the `<html>` element and the `<Root>` of the page (see
 use Phem\Attribute\Page;
 use Phem\Node;
 
-use function App\Components\Document;
+use function App\Component\Document;
 
 #[Page('/', name: 'home')]
 final class MyApp
@@ -74,7 +74,7 @@ final class MyApp
 `#[Page]` extends the Symfony `#[Route]` attribute, and it has the same options: `name`, `methods`, `requirements`, `defaults`, `host`,
 `schemes`, `condition`, `priority`, `env`, `alias`, and localized paths. Use it more than once to
 give a page more than one URL. Without a `name`, the route name comes from the component:
-`App\Pages\Examples\Counter` → `app_pages_examples_counter`. A file can have any number of
+`App\Page\Example\Counter` → `app_page_example_counter`. A file can have any number of
 pages, in any directory. The Symfony `#[Route]` attribute works too, on a `#[Component]` class.
 
 ### Route values
@@ -86,7 +86,7 @@ A route value goes to the page as a prop. Mark the public property with `#[Path]
 use Phem\Attribute\{Page, Path};
 use Phem\Node;
 
-use function App\Components\Document;
+use function App\Component\Document;
 
 #[Page('/hello/{name}', defaults: ['name' => 'World'])]
 final class Hello
@@ -133,7 +133,7 @@ use App\Model\Scientist;
 use Phem\Attribute\{Page, Path};
 use Phem\Node;
 
-use function App\Components\Document;
+use function App\Component\Document;
 
 #[Page('/scientists/{id:scientist}', requirements: ['id' => '\d+'])]
 final class ScientistPage
@@ -384,7 +384,7 @@ the `post_max_size` option of PHP, the server answers `413 Content Too Large` an
 the handler. A file over the `upload_max_filesize` option of PHP gets to the handler with an
 upload error and no content (`$file->isValid()` is false), so `#[Assert\File]` shows the error
 in the form. The `File` and `Image` constraints need the `symfony/mime` package. The
-[PhotoUpload](../examples/quickstart/src/Pages/Examples/PhotoUpload.phpm) example of the
+[PhotoUpload](../examples/quickstart/src/Page/Example/PhotoUpload.phpm) example of the
 quickstart checks images with the `Image` constraint.
 
 ```yaml
@@ -908,7 +908,7 @@ changes the page with no transition.
 Some changes need no server: open a menu, toggle a class, give the focus to a field. Write them as
 [Stimulus](https://stimulus.hotwired.dev/) controllers, and use them in markup with
 `data-controller` and `data-action`, as in any Symfony page. The
-[Inbox](../examples/quickstart/src/Pages/Examples/Inbox.phpm) example uses them.
+[Inbox](../examples/quickstart/src/Page/Example/Inbox.phpm) example uses them.
 
 The morph of an event sets the attributes of the server render, so it undoes the changes of a
 controller. `data-phem-client` gives a list of attributes to the client: the morph does not change
@@ -1862,7 +1862,7 @@ Both are a `Node`. Use `?Node` for a component that can render nothing (`return 
 PHP and PHPStan then check what the component returns.
 
 Components also work in the normal Twig templates of the application, without state:
-`{% component 'App\\Components\\Profile' with {person: person} %}`.
+`{% component 'App\\Component\\Profile' with {person: person} %}`.
 
 ## 11. Template components (fast path)
 

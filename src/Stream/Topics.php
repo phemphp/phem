@@ -22,7 +22,7 @@ use Symfony\Contracts\Service\ResetInterface;
  *
  * - `phem:<page class>`: all the URLs of the page;
  * - `phem:<page class>?<route values>`: the URL of the page with these #[Path] route values
- *   (`phem:App\Pages\ScientistPage?id=42`), for a page with #[Path] props;
+ *   (`phem:App\Page\ScientistPage?id=42`), for a page with #[Path] props;
  * - `phem:*`: all the pages with #[Subscribe] (see Streams::everywhere()).
  *
  * The browser, the access token and the hub see only an HMAC of the name of a page topic, with
@@ -52,7 +52,7 @@ final class Topics implements ResetInterface
     ) {
     }
 
-    /** The name of a topic of this request (`phem:App\Pages\Guestbook`), or the topic. */
+    /** The name of a topic of this request (`phem:App\Page\Guestbook`), or the topic. */
     public function name(string $topic): string
     {
         return $this->names[$topic] ?? $topic;

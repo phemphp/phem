@@ -1,5 +1,0 @@
----
-source: crates/phemc-codegen/tests/compile.rs
-expression: t.content
----
-{% component 'App\\Components\\RestLink' with {'label': 'Home', 'href': '/', 'aria-current': 'page'} only %}

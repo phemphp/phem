@@ -84,9 +84,9 @@ final class DocumentTest extends TestCase
         $pages = $this->service('phem.page_renderer', PageRenderer::class);
 
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('The page "App\Pages\NoRootPage" renders no <Root>: render it in a document component with `<Root>{{ children }}</Root>` (see "Phem\Root").');
+        $this->expectExceptionMessage('The page "App\Page\NoRootPage" renders no <Root>: render it in a document component with `<Root>{{ children }}</Root>` (see "Phem\Root").');
 
-        $pages->document('App\Pages\NoRootPage', Request::create('/document/none'));
+        $pages->document('App\Page\NoRootPage', Request::create('/document/none'));
     }
 
     public function testAPageRendersOneRoot(): void
@@ -94,9 +94,9 @@ final class DocumentTest extends TestCase
         $pages = $this->service('phem.page_renderer', PageRenderer::class);
 
         $this->expectException(RuntimeError::class);
-        $this->expectExceptionMessage('The page "App\Pages\TwoRootsPage" renders more than one <Root>: render one, in the document of the page.');
+        $this->expectExceptionMessage('The page "App\Page\TwoRootsPage" renders more than one <Root>: render one, in the document of the page.');
 
-        $pages->document('App\Pages\TwoRootsPage', Request::create('/document/two'));
+        $pages->document('App\Page\TwoRootsPage', Request::create('/document/two'));
     }
 
     public function testARootIsInAPage(): void

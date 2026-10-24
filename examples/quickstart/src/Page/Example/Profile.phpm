@@ -1,0 +1,35 @@
+<?phpm
+namespace App\Page\Example;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Component\Document;
+
+#[Page('/examples/Profile')]
+final class Profile
+{
+    public function render(): Node
+    {
+        $user = [
+            'name' => 'Hedy Lamarr',
+            'imageUrl' => '/img/avatar.svg',
+            'imageSize' => 90,
+        ];
+
+        return (
+            <Document>
+                <Document:title>Profile</Document:title>
+                <>
+                    <h1>{{ user.name }}</h1>
+                    <img
+                        className="avatar"
+                        src={{ user.imageUrl }}
+                        alt="Photo of {{ user.name }}"
+                        style={{ {width: user.imageSize, height: user.imageSize} }}
+                    />
+                </>
+            </Document>
+        );
+    }
+}

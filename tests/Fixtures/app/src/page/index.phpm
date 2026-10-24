@@ -1,0 +1,114 @@
+<?phpm
+
+namespace App\Page;
+
+use App\Component\Counter;
+use Phem\Attribute\{Component, Page, State};
+use Phem\Node;
+use function App\Component\{MyButton, Card, Badge, Tag, Document};
+
+#[Component]
+function Toolbar(string $theme = 'light'): Node {
+    return <p className="theme-{{ theme }}">Theme: {{ theme }}</p>;
+}
+
+// A plain PHP function, with no `#[Component]`: it is not a component.
+function Shout(string $name): string {
+    return strtoupper($name);
+}
+
+#[Component]
+function Greeting(string $name): Node {
+    $upper = Shout($name);
+    return <p className="greeting">Hello, {{ upper }}!</p>;
+}
+
+#[Component]
+final class Toggle
+{
+    #[State] public bool $on = false;
+
+    public function toggle(): void
+    {
+        $this->on = !$this->on;
+    }
+
+    public function render(): Node
+    {
+        if ($this->on) {
+            $content = <Badge label="on" tone="ok" />;
+        } else {
+            $content = <Badge label="off" />;
+        }
+
+        return (
+            <div class="toggle">
+                <button id="toggle" onClick={{ toggle }}>Toggle</button>
+                {{ content }}
+                {{ on ? <strong id="yes">Yes</strong> : <em id="no">No</em> }}
+                {{ on and <span id="and">and-shown</span> }}
+            </div>
+        );
+    }
+}
+
+#[Page('/', name: 'home', methods: ['GET', 'HEAD'])]
+final class Home
+{
+    #[State] public int $count = 0;
+    #[State] public array $items = [];
+
+    public function mount(): void
+    {
+        $this->items = ['item1'];
+    }
+
+    public function handleClick(): void
+    {
+        ++$this->count;
+    }
+
+    public function add(): void
+    {
+        $this->items[] = 'item'.(count($this->items) + 1);
+    }
+
+    public function render(): Node
+    {
+        $products = [
+            ['title' => 'Cabbage', 'isFruit' => false, 'id' => 1],
+            ['title' => 'Apple', 'isFruit' => true, 'id' => 3],
+        ];
+        $listItems = array_map(fn($p) => <li key={{ p.id }}>{{ p.title }}</li>, $products);
+
+        return (
+            <Document>
+                <Document:title>Fixture Home</Document:title>
+                <main>
+                    <h1>Counters that update together</h1>
+                    <MyButton count={{ count }} onClick={{ handleClick }} />
+                    <MyButton count={{ count }} onClick={{ handleClick }} />
+                    <ul id="shopping">
+                        {% for product in products %}
+                            <li key={{ product.id }} style={{ {color: product.isFruit ? 'magenta' : 'darkgreen', fontWeight: 700} }}>{{ product.title }}</li>
+                        {% endfor %}
+                    </ul>
+                    <ol id="mapped">{{ listItems }}</ol>
+                    <Card title="Hello">
+                        <p>Body {{ count }}</p>
+                        <Card:footer><Badge label="foot" /></Card:footer>
+                    </Card>
+                    <Counter label="Hits">!</Counter>
+                    <Toggle />
+                    <button id="add" onClick={{ add }}>Add</button>
+                    <span id="items">{{ items|join(',') }}</span>
+                    <Toolbar theme="dark" />
+                    <Toolbar />
+                    <Greeting name="ada" />
+                    <Tag />
+                    <Tag>urgent</Tag>
+                </main>
+            </Document>
+        );
+    }
+}

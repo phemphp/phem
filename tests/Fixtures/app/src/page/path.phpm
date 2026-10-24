@@ -1,0 +1,88 @@
+<?phpm
+
+namespace App\Page;
+
+use Phem\Attribute\{Page, Path, Prop, State};
+use Phem\Node;
+use Phem\Tests\Fixtures\Scientist;
+
+use function App\Component\Document;
+
+// A class page: the {id} route value goes to the #[Path] property.
+#[Page('/items/{id}')]
+final class ItemPage
+{
+    #[Path] public int $id;
+    #[Prop] public string $label = 'Item';
+    #[State] public int $count = 0;
+
+    public function increment(): void
+    {
+        ++$this->count;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <button id="item" onClick={{ increment }}>{{ label }} {{ id }}: {{ count }}</button>
+            </Document>
+        );
+    }
+}
+
+// A route default: the {name} route value (or its default) goes to the #[Path] property.
+#[Page('/hello/{name}', defaults: ['name' => 'World'])]
+final class Hello
+{
+    #[Path] public string $name;
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <p id="hello">Hello {{ name }}</p>
+            </Document>
+        );
+    }
+}
+
+// An entity page: {id:scientist} finds the scientist by its id, {name:scientist} by its name.
+#[Page('/scientists/{id:scientist}')]
+#[Page('/scientists/by-name/{name:scientist}')]
+final class ScientistPage
+{
+    #[Path] public Scientist $scientist;
+    #[State] public int $likes = 0;
+
+    public function like(): void
+    {
+        ++$this->likes;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>{{ scientist.name }}</Document:title>
+                <button id="scientist" onClick={{ like }}>{{ scientist.name }}: {{ likes }}</button>
+            </Document>
+        );
+    }
+}
+
+// A nullable entity property: {scientist} finds the scientist by its id, or gives null.
+#[Page('/maybe/{scientist}')]
+final class MaybeScientist
+{
+    #[Path] public ?Scientist $scientist = null;
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <p id="maybe">{{ scientist ? scientist.name : 'Nobody' }}</p>
+            </Document>
+        );
+    }
+}

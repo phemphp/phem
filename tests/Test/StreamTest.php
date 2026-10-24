@@ -24,7 +24,7 @@ use PHPUnit\Framework\AssertionFailedError;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Twig\Error\RuntimeError;
 
-/** The pushes of Phem\Stream\Streams to the pages with #[Subscribe] (tests/Fixtures/app/src/pages/push.phpm). */
+/** The pushes of Phem\Stream\Streams to the pages with #[Subscribe] (tests/Fixtures/app/src/page/push.phpm). */
 final class StreamTest extends KernelTestCase
 {
     use InteractsWithPhem;
@@ -47,7 +47,7 @@ final class StreamTest extends KernelTestCase
         $topics = static::getContainer()->get('phem.topics');
         \assert($topics instanceof Topics);
 
-        self::assertSame('/.well-known/mercure?match='.implode('&match=', array_map(rawurlencode(...), $topics->ofPage('App\Pages\GuestbookPage', ['room' => 'lobby']))), $source);
+        self::assertSame('/.well-known/mercure?match='.implode('&match=', array_map(rawurlencode(...), $topics->ofPage('App\Page\GuestbookPage', ['room' => 'lobby']))), $source);
         // An HMAC of the names: no class name and no route value.
         self::assertStringNotContainsString('Guestbook', (string) $source);
         self::assertStringNotContainsString('lobby', (string) $source);
@@ -193,7 +193,7 @@ final class StreamTest extends KernelTestCase
     public function testAPageWithNoSubscribeGetsNoStreams(): void
     {
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('The streams go to the pages with #[Subscribe], but "App\Pages\NotifyPage" has no #[Phem\Attribute\Subscribe] attribute.');
+        $this->expectExceptionMessage('The streams go to the pages with #[Subscribe], but "App\Page\NotifyPage" has no #[Phem\Attribute\Subscribe] attribute.');
 
         $this->visit('/guestbook/lobby')->click('#elsewhere');
     }
@@ -208,7 +208,7 @@ final class StreamTest extends KernelTestCase
         $topics = static::getContainer()->get('phem.topics');
         \assert($topics instanceof Topics);
 
-        self::assertSame([$topics->to('App\Pages\GuestbookPage', ['room' => 'lobby'])], $update['topics']);
+        self::assertSame([$topics->to('App\Page\GuestbookPage', ['room' => 'lobby'])], $update['topics']);
         self::assertFalse($update['private']);
         self::assertSame('<turbo-stream action="prepend" target="entries"><template><li id="entry-1">Hi</li></template></turbo-stream><turbo-stream action="phem-refresh" target="stats"></turbo-stream>', $update['data']);
     }

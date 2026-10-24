@@ -28,10 +28,10 @@ type, completion, go to definition, hover, and outline. See
 [editors/phpstorm/README.md](../editors/phpstorm/README.md).
 
 - `/learn` is the Quick Start page (static HTML + CSS, like react.dev/learn).
-- Each sandbox in it runs a real `.phpm` file from `examples/quickstart/src/Pages/Examples/`.
+- Each sandbox in it runs a real `.phpm` file from `examples/quickstart/src/Page/Example/`.
   Its `#[Page]` attribute serves it at `/examples/<Name>`.
 - `/learn/describing-the-ui.html` has a multi-file example: the page `Gallery.phpm` uses
-  components from `examples/quickstart/src/Components/`. The page `DurableGallery.phpm` reads and
+  components from `examples/quickstart/src/Component/`. The page `DurableGallery.phpm` reads and
   writes its data in SQLite through a Doctrine ORM entity and its repository. Its handlers run in
   a Doctrine transaction (`#[Transactional]`), and a Symfony form adds a scientist. The data stays after a reload.
 

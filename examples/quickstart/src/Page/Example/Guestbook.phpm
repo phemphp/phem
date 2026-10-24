@@ -1,0 +1,154 @@
+<?phpm
+namespace App\Page\Example;
+
+use App\Model\GuestbookEntry as Entry;
+use App\Repository\GuestbookRepository;
+use Phem\Attribute\{Component, Page, Prop, State, Subscribe, Transactional};
+use Phem\Event;
+use Phem\Node;
+use Phem\Stream\Streams;
+
+use function App\Component\Document;
+
+// Real-time push: open this page in two tabs, and sign in one of them.
+// - #[Subscribe] connects the page to the Mercure hub of FrankenPHP (see the Caddyfile).
+// - The handler pushes plain markup: `prepend()` adds the new entry in each tab.
+// - `refresh()` renders the stats again in each tab, with a normal event: GuestbookStats has no
+//   #[State], so mount() reads the new data; the open list of names (a #[State] of its child)
+//   stays open.
+// The streams go to the hub after the transaction of the event.
+#[Page('/examples/Guestbook'), Subscribe]
+final class Guestbook
+{
+    /** @var list<Entry> */
+    private array $entries = [];
+
+    public function __construct(private readonly GuestbookRepository $repository)
+    {
+    }
+
+    public function mount(): void
+    {
+        $this->entries = $this->repository->latest();
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>Guestbook</Document:title>
+                <h1>Guestbook</h1>
+                <SignForm />
+                <GuestbookStats />
+                <ul id="entries" className="entries">
+                    {% for entry in entries %}<GuestbookEntry key={{ entry.id }} entry={{ entry }} />{% endfor %}
+                </ul>
+            </Document>
+        );
+    }
+}
+
+// One entry: the page and the push render it. It has no handler, so it can be pushed.
+#[Component]
+function GuestbookEntry(Entry $entry): Node
+{
+    return (
+        <li id="entry-{{ entry.id }}">
+            <strong>{{ entry.name }}</strong>: {{ entry.message }}
+            <small>{{ entry.signedAt|date('H:i:s') }}</small>
+        </li>
+    );
+}
+
+#[Component]
+final class SignForm
+{
+    #[State] public string $name = '';
+    #[State] public string $message = '';
+
+    public function __construct(
+        private readonly GuestbookRepository $repository,
+        private readonly Streams $streams,
+    ) {
+    }
+
+    #[Transactional]
+    public function sign(Event $e): void
+    {
+        if ('' === trim($this->name) || '' === trim($this->message)) {
+            return;
+        }
+
+        $entry = new Entry(mb_substr(trim($this->name), 0, 40), mb_substr(trim($this->message), 0, 280));
+        $this->repository->add($entry);
+        $this->message = '';
+
+        $this->streams->to(Guestbook::class)
+            ->prepend('entries', <GuestbookEntry entry={{ entry }} />)
+            ->refresh('guestbook-stats');
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form className="sign" onSubmit={{ sign }}>
+                <input name="name" placeholder="Your name" maxlength="40" phem:bind={{ name }} />
+                <input name="message" placeholder="A message" maxlength="280" phem:bind={{ message }} />
+                <button type="submit">Sign</button>
+            </form>
+        );
+    }
+}
+
+// The stats: data with no #[State], so mount() reads it in each render (and in a refresh).
+#[Component]
+final class GuestbookStats
+{
+    /** @var list<string> */
+    public array $names = [];
+
+    public function __construct(private readonly GuestbookRepository $repository)
+    {
+    }
+
+    public function mount(): void
+    {
+        $this->names = $this->repository->names();
+    }
+
+    public function render(): Node
+    {
+        return (
+            <section id="guestbook-stats">
+                <SignedNames names={{ names }} />
+            </section>
+        );
+    }
+}
+
+// A state of the UI: the list of names is open or closed. The names are a prop.
+#[Component]
+final class SignedNames
+{
+    /** @var list<string> */
+    #[Prop] public array $names = [];
+    #[State] public bool $open = false;
+
+    public function toggle(): void
+    {
+        $this->open = !$this->open;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div>
+                <p>
+                    {{ names|length }} people signed.
+                    <button type="button" onClick={{ toggle }}>{{ open ? 'Hide' : 'Show' }} the names</button>
+                </p>
+                {% if open %}<p>{{ names|join(', ') }}</p>{% endif %}
+            </div>
+        );
+    }
+}

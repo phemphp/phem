@@ -27,11 +27,11 @@ my-app/
 │   ├── Model/             optional: Doctrine entities
 │   ├── Repository/        normal PHP services, injected into components
 │   ├── DataFixtures/      optional: Doctrine fixtures, the first rows of a new database
-│   ├── Components/        components that are not pages
+│   ├── Component/        components that are not pages
 │   │   └── Document.phpm   the HTML document: each page renders in it, with a <Root>
-│   └── Pages/             the pages: classes with a #[Page] attribute
+│   └── Page/             the pages: classes with a #[Page] attribute
 │       ├── index.phpm      #[Page('/')]
-│       └── Examples/
+│       └── Example/
 │           └── Counter.phpm #[Page('/examples/Counter')]
 ├── assets/                the JavaScript and CSS of the pages (AssetMapper)
 │   ├── app.js             the `app` entry of the importmap: bootstrap.js and styles/app.css
@@ -54,7 +54,7 @@ the `<!DOCTYPE html>`.
 ```php
 <?phpm
 
-namespace App\Components;
+namespace App\Component;
 
 use Phem\Attribute\Component;
 use Phem\{Html, Node, Root};
@@ -79,7 +79,7 @@ Each page renders its content in it. A page gives the title with the `title` slo
 ```php
 use Phem\Node;
 
-use function App\Components\Document;
+use function App\Component\Document;
 
 #[Page('/scientists/{id:scientist}')]
 final class ScientistPage
@@ -214,8 +214,8 @@ page, or route needs no `cache:clear`.
 
 ```
 var/cache/phem/
-├── php/Pages/index.php          the PHP code; each markup literal becomes new \Phem\Element('Pages/index.0.twig', [...])
-├── templates/Pages/index.0.twig one Twig template for each markup literal (Twig name: @phpm/Pages/index.0.twig)
+├── php/Page/index.php          the PHP code; each markup literal becomes new \Phem\Element('Page/index.0.twig', [...])
+├── templates/Page/index.0.twig one Twig template for each markup literal (Twig name: @phpm/Page/index.0.twig)
 ├── manifest.php / manifest.json components (kind, props, slots), pages, template → .phpm line map
 ├── autoload.php                 requires all compiled PHP files
 └── preload.php                  for opcache.preload (production)
@@ -239,7 +239,7 @@ Each diagnostic shows the `.phpm` line and column, a label, and a hint:
 E011
 
   × `<Profile>` has no prop `persn`
-    ╭─[src/Pages/App.phpm:16:22]
+    ╭─[src/Page/App.phpm:16:22]
  15 │         <div>
  16 │             <Profile persn={{ user }} />
     ·                      ─────
@@ -275,8 +275,8 @@ phemc check src --format json
 ```
 
 ```json
-{"files": [{"file": "Components/ScientistCard.phpm", "diagnostics": [{"severity": "error",
-  "code": "E010", "message": "unknown component `<Avatr>` (resolved to `App\\Components\\Avatr`)",
+{"files": [{"file": "Component/ScientistCard.phpm", "diagnostics": [{"severity": "error",
+  "code": "E010", "message": "unknown component `<Avatr>` (resolved to `App\\Component\\Avatr`)",
   "label": null, "help": "declare `#[Component] function Avatr()` in a .phpm file, or check the `use` imports",
   "start": {"line": 30, "character": 13}, "end": {"line": 30, "character": 18}}]}]}
 ```
