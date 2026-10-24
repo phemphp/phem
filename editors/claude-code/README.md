@@ -19,6 +19,17 @@ claude --plugin-dir editors/claude-code    # start a session with the plugin
 
 After `make claude` in a running session, run `/reload-plugins`.
 
+To load the plugin in every session, install it from the marketplace of the repository
+(`.claude-plugin/marketplace.json`):
+
+```sh
+make claude
+claude plugin marketplace add "$PWD"
+claude plugin install phem@phem
+```
+
+After a new `make claude`, run `claude plugin update phem@phem`, then `/reload-plugins`.
+
 ## Use
 
 - The server starts the first time Claude edits a `.phpm` file.

@@ -1,0 +1,17 @@
+{
+    "name": "phem",
+    "owner": {
+        "name": "Yonel Ceruto",
+        "email": "open@yceruto.dev"
+    },
+    "metadata": {
+        "description": "Claude Code plugins for Phem, a Symfony component framework with .phpm files."
+    },
+    "plugins": [
+        {
+            "name": "phem",
+            "source": "./editors/claude-code",
+            "description": "The Phem language server for .phpm files: compiler diagnostics after each edit, go to definition, hover, and outline."
+        }
+    ]
+}
