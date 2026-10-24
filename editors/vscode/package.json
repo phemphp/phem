@@ -56,6 +56,13 @@
                 "configuration": "./markup-language-configuration.json"
             }
         ],
+        "commands": [
+            {
+                "command": "phem.restartServer",
+                "title": "Restart Language Server",
+                "category": "Phem"
+            }
+        ],
         "configuration": {
             "title": "Phem",
             "properties": {

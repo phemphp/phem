@@ -11,6 +11,8 @@
   showed only on save, and only with a `phem.phemc.path` setting.
 - `phem.phemc.path` now runs a native `phemc lsp` as the server. Empty: the bundled server.
 - Completion for the Phem attributes `phem:bind`, `phem:live` and `phem:progress`.
+- The **Phem: Restart Language Server** command starts the server again. Use it after you
+  install a new server build.
 
 ## 0.4.0
 

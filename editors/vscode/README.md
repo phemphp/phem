@@ -118,7 +118,8 @@ The server does not check a `.phpm` file outside of the source directory.
 | `phem.phemc.sourceDir` | `src`   | The source directory of the `.phpm` files, relative to the project root.                          |
 | `phem.phemc.path`      | empty   | The path of a native `phemc` binary. When you set it, the extension runs `phemc lsp` as the server. Empty: the bundled server. |
 
-The extension restarts the server when you change a setting. In an untrusted workspace, VS Code
+The extension restarts the server when you change a setting. To restart it yourself, run
+**Phem: Restart Language Server**. In an untrusted workspace, VS Code
 ignores the `phem.phemc.path` value of the workspace settings.
 
 To see the messages of the server, open the **Output** view and select **Phem**.
@@ -148,7 +149,9 @@ profile, set `VSCODE_PROFILE`:
 make vscode-install VSCODE_PROFILE=Personal
 ```
 
-Then run **Developer: Reload Window** in VS Code. To only build the package, run `make vscode`.
+Then run **Developer: Reload Window** in VS Code. A running server keeps its old build until it
+starts again: after a change in the server only, **Phem: Restart Language Server** is
+enough. To only build the package, run `make vscode`.
 `make vscode` builds the server (`make lsp`, the WebAssembly build of `phemc-lsp`), copies it to
 `editors/vscode/server/`, and packages the extension. It does not install the package. If you
 install it yourself, add `--force` to replace an installed version:

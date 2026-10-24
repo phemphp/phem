@@ -42,6 +42,13 @@ async function stop() {
     }
 }
 
+// A new server build (`make vscode-install`) replaces server/phem-lsp.wasm, but the running
+// server keeps the old build until it starts again.
+async function restart(context) {
+    await stop();
+    await start(context);
+}
+
 // Bracket pair colorization gives a bracket the color of its depth, so the Twig delimiters were
 // yellow in a template and blue in a function body. The delimiters are not colorized brackets
 // (see colorizedBracketPairs); they always get the color of the first bracket level. The server
@@ -82,6 +89,7 @@ function activate(context) {
     context.subscriptions.push(
         delimiterType,
         { dispose: stop },
+        vscode.commands.registerCommand('phem.restartServer', () => restart(context)),
         vscode.window.onDidChangeVisibleTextEditors((editors) => editors.forEach(decorate)),
         vscode.workspace.onDidChangeTextDocument(({ document }) => {
             if (document.languageId !== 'phpm') {
@@ -95,8 +103,7 @@ function activate(context) {
         }),
         vscode.workspace.onDidChangeConfiguration(async (e) => {
             if (e.affectsConfiguration('phem.phemc')) {
-                await stop();
-                await start(context);
+                await restart(context);
             } else if (e.affectsConfiguration('editor.bracketPairColorization')) {
                 decorateAll();
             }
