@@ -46,7 +46,8 @@ ideas of React map to Phem.
 4. **State in the browser.** The server keeps no session. The `phem` Stimulus controller on the
    `<Root>` element keeps the `#[State]` properties of all components in a signed JSON value. The
    signature is an HMAC (`kernel.secret`, from `APP_SECRET`) of the state and its page
-   component. An event sends only the signature: the server keeps each state that it signs in a
+   component. An event sends a small state with the signature. For a large state (4 KiB or more by
+   default), it sends only the signature: the server keeps each large state that it signs in a
    cache pool, by its signature. When the pool does not have it (an expired entry, another
    machine), the browser sends the event again with the full state, compressed. The cache is only
    an optimization: the browser keeps the state (see

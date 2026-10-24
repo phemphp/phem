@@ -116,7 +116,7 @@ final class SuspenseTest extends KernelTestCase
         $this->visit('/suspense')->load('#fatal-fallback');
     }
 
-    public function testLoadWithNoSelectorLoadsEachBoundaryInOrder(): void
+    public function testLoadWithNoSelectorLoadsAllTheBoundariesInOneEvent(): void
     {
         $page = $this->visit('/suspense');
         $page->document()->querySelector('#fatal')?->remove();
@@ -125,6 +125,17 @@ final class SuspenseTest extends KernelTestCase
             ->assertSee('Rows 3')
             ->assertSee('No chart.')
             ->assertSelectorNotExists('phem-suspense');
+
+        self::assertSame(1, Renders::of('Report.mount'));
+    }
+
+    public function testABoundaryThatThrowsFailsTheLoadOfAllTheBoundaries(): void
+    {
+        // In the browser, the load event fails (500): all the fallbacks stay.
+        $this->expectException(RuntimeError::class);
+        $this->expectExceptionMessage('The chart service is down.');
+
+        $this->visit('/suspense')->load();
     }
 
     public function testLoadFailsWithNoPendingBoundary(): void

@@ -56,6 +56,7 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_lo
  *         state_max_age: 86400       # seconds; 0 for no limit
  *         state_bind_session: false
  *         state_cache: true          # keep the signed states in the cache.phem.state pool
+ *         state_cache_min_size: 4096 # bytes; a smaller state goes with each event, not in the pool
  *         max_event_size: 1048576    # bytes; 0 for no limit
  *         max_upload_size: 8388608   # bytes; 0 for no limit
  *         mercure:
@@ -115,6 +116,11 @@ final class PhemBundle extends AbstractBundle
                     ->info('Keep each signed state in the cache.phem.state pool (framework.cache.pools), so an event can send only its signature. The browser sends the full state when the pool does not have it.')
                     ->defaultTrue()
                 ->end()
+                ->integerNode('state_cache_min_size')
+                    ->info('The bytes of the smallest state that the cache.phem.state pool keeps. An event sends a smaller state with its signature: no request more on a miss, and no cache write. 0 keeps all the states.')
+                    ->defaultValue(4096)
+                    ->min(0)
+                ->end()
                 ->integerNode('max_event_size')
                     ->info('The maximum size of an event body in bytes, with the state of the page (0 for no limit). A larger event gets a 413 response.')
                     ->defaultValue(1048576)
@@ -167,7 +173,7 @@ final class PhemBundle extends AbstractBundle
     }
 
     /**
-     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, max_event_size: int, max_upload_size: int, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string, publisher_key: string|null, publish_url: string|null}} $config
+     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, state_cache_min_size: int, max_event_size: int, max_upload_size: int, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string, publisher_key: string|null, publish_url: string|null}} $config
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
@@ -180,6 +186,8 @@ final class PhemBundle extends AbstractBundle
             ->arg(0, $config['secret'])
             ->arg(1, $config['state_max_age'])
             ->arg(2, $config['state_bind_session']);
+        $container->services()->get('phem.state_cache')
+            ->arg(1, $config['state_cache_min_size']);
         if (!$config['state_cache']) {
             $container->services()->get('phem.state_cache')->arg(0, null);
         }

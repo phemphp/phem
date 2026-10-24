@@ -86,7 +86,7 @@ final class ComponentDriver implements Driver
         return false;
     }
 
-    public function dispatch(?string $handler, array $event, array $bound = [], array $stale = []): EventResult
+    public function dispatch(array $handlers, array $event, array $bound = [], array $stale = []): EventResult
     {
         $this->resetter?->reset();
         $this->redirect = null;
@@ -95,13 +95,13 @@ final class ComponentDriver implements Driver
         $request->files->replace(TestFiles::of($event['files'] ?? []));
         unset($event['files']);
 
-        return $this->within($request, function (Request $request) use ($handler, $event, $bound, $stale): EventResult {
+        return $this->within($request, function (Request $request) use ($handlers, $event, $bound, $stale): EventResult {
             $tree = new Tree($this->component, $this->state->fibers, $this->props, shape: $this->state->shape);
 
             // As the browser sends them: JSON values.
             $bound = json_decode(json_encode((object) $bound, \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR);
             $events = $this->events ?? new EventRenderer($this->renderer);
-            $outcome = $events->run($tree, $handler, $bound, $this->dispatcher, fn (): Event => Event::fromArray($event, $this->dispatcher, $request->files->all()), $stale, EventRequest::of($request, $event));
+            $outcome = $events->run($tree, $handlers, $bound, $this->dispatcher, fn (): Event => Event::fromArray($event, $this->dispatcher, $request->files->all()), $stale, EventRequest::of($request, $event));
             if ($outcome->reload) {
                 return EventResult::reload();
             }

@@ -30,6 +30,61 @@ Talk about each item before its implementation. The open questions are a start, 
 
 ## 1. Rendering and performance
 
+### [ ] Client commands — P1
+
+Each UI change is a round trip: a menu toggle, a tab, a modal. Without a server event, the app
+needs its own Stimulus controller.
+
+- **Best peer:** LV `Phoenix.LiveView.JS`: `JS.toggle`, `JS.show`, `JS.add_class`,
+  `JS.dispatch`, chained with `JS.push` (a server event).
+- **Proposal:** `onClick={{ js.toggle('#menu') }}`, `js.show()`, `js.hide()`, `js.addClass()`,
+  `js.setAttr()`, `js.focus()`, `js.dispatch()`, and `.then(handler)` for a server event after
+  them. `phemc` checks them and writes data attributes. The morph keeps their DOM changes, as it
+  keeps the `data-phem-client` attributes.
+
+### [ ] Optimistic updates — P2
+
+- **Best peer:** React `useOptimistic`, LV `phx-click` + `JS` commands.
+- **Proposal:** with the client commands: `phem:optimistic={{ js.addClass('liked') }}` runs at
+  once, and the morph of the event confirms it or reverts it.
+
+### [ ] A fiber id on the root element, not a `<phem-c>` — P2
+
+The `<phem-c>` wrapper is not valid in `<table>`, `<tr>` and `<select>`, and each component has
+one more DOM node. `phemc` checks that a markup literal has one root element.
+
+- **Best peer:** React and Blazor have no wrapper; LV puts the id on the root element.
+- **Proposal:** `data-phem-c="<id>"` on the root element of the component. Keep `<phem-c>` only
+  for a root that is a text, a fragment or another component. The morph targets and the
+  `data-phem-keep` placeholders change with it.
+
+### [ ] Smaller keep placeholders and shape changes — P2
+
+`make bench`: a click on a page with 200 row components that changes only the page sends about
+15 KB. About 10 KB are the `<phem-c … data-phem-keep>` placeholders of the rows, and about 3.5 KB
+are the new `_tree` value (all its entries, also when only one hash changed).
+
+- **Proposal:** a range placeholder for a run of kept siblings, and a diff of the `_tree` entries
+  (the fibers that rendered), as for the state entries.
+
+### [ ] Streaming SSR of the `<Suspense>` boundaries — P3
+
+A boundary loads with a second request after the page (now one load event for all of them).
+
+- **Best peer:** React 18 streaming SSR: the shell first, then each boundary as a `<template>` and
+  a small script in the same response.
+- **Open question:** the state is signed at the end of the render. The last chunk must give the
+  final state and signature, and an event before it must wait.
+
+### [ ] An event with no render of the path to its handler — P3
+
+The first pass of an event renders the ancestors of the handler component, to get the handler
+closure. `make bench`: about 0.24 ms for a leaf under 11 levels, so it is not a problem now.
+
+- **Proposal (only when the benchmark shows a need):** a method handler with no captured values,
+  of a component with no `#[Prop]`, runs on the instance from the state, with no render of the
+  path.
+
 ### [ ] Streams for long lists — P3
 
 - **Best peer:** LV streams: insert, update and delete items in a list without the list in

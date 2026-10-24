@@ -260,7 +260,7 @@ return static function (ContainerConfigurator $container): void {
             ])
         ->alias(EventRenderer::class, 'phem.event_renderer')
         ->set('phem.state_cache', StateCache::class)
-            ->args([service(StateCache::POOL)])
+            ->args([service(StateCache::POOL), 4096])
         ->set('phem.event_body', EventBody::class)
             ->args([1048576])
         ->set('phem.controller.event', EventController::class)

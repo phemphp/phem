@@ -112,7 +112,7 @@ describe("the state", () => {
   })
 
   it("sends the new state when the server does not have it", async () => {
-    await mount(`<button data-phem-on-click="c1.save">Save</button>`)
+    await mount(`<button data-phem-on-click="c1.save">Save</button>`, `data-phem-state-inline-value="0"`)
     root().setAttribute("data-phem-state-value", vector.before)
     respond(`<button data-phem-on-click="c1.save">Save</button>`, vector.changes)
     let done = nextDone()
@@ -126,9 +126,44 @@ describe("the state", () => {
     await done
 
     expect(fetch).toHaveBeenCalledTimes(3)
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).not.toHaveProperty("state")
     const body = JSON.parse(fetch.mock.calls[2][1].body)
     expect(body.state).toBe(vector.after)
     expect(body.signature).toBe("s2")
+  })
+
+  it("sends a state shorter than the inline size with the event", async () => {
+    await mount(`<button data-phem-on-click="c1.save">Save</button>`, `data-phem-state-inline-value="${vector.before.length + 1}"`)
+    root().setAttribute("data-phem-state-value", vector.before)
+    respond(`<button data-phem-on-click="c1.save">Save</button>`, vector.changes)
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({ state: vector.before, signature: "s1" })
+  })
+
+  it("sends only the signature of a state with the inline size or more", async () => {
+    await mount(`<button data-phem-on-click="c1.save">Save</button>`, `data-phem-state-inline-value="${vector.before.length}"`)
+    root().setAttribute("data-phem-state-value", vector.before)
+    respond(`<button data-phem-on-click="c1.save">Save</button>`, vector.changes)
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).not.toHaveProperty("state")
+  })
+
+  it("always sends the state when the server has no cache", async () => {
+    await mount(`<button data-phem-on-click="c1.save">Save</button>`)
+    root().setAttribute("data-phem-state-value", vector.before)
+    respond(`<button data-phem-on-click="c1.save">Save</button>`, vector.changes)
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect(JSON.parse(fetch.mock.calls[0][1].body).state).toBe(vector.before)
   })
 })
 
@@ -310,6 +345,47 @@ describe("<Suspense>", () => {
     expect(event.detail).toEqual({ handler: "c1.load", ok: true, status: 200 })
     expect(document.getElementById("report").textContent).toBe("Rows 3")
     expect(document.querySelector("phem-suspense")).toBeNull()
+  })
+
+  it("loads the boundaries of the page start in one event", async () => {
+    respond(`<p id="sales">Sales</p><p id="orders">Orders</p><p id="users">Users</p>`)
+    const done = nextDone()
+    await mount(`
+      <phem-suspense data-phem-load="c1.sales"><p>Loading…</p></phem-suspense>
+      <phem-suspense data-phem-load="c1.orders"><p>Loading…</p></phem-suspense>
+      <phem-suspense data-phem-load="c1.users"><p>Loading…</p></phem-suspense>`)
+    const event = await done
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(sent(0)).toMatchObject({ handler: ["c1.sales", "c1.orders", "c1.users"], event: { type: "load" } })
+    expect(sent(0).event).not.toHaveProperty("loads")
+    expect(event.detail).toEqual({ handler: "c1.sales", ok: true, status: 200 })
+    expect(document.querySelectorAll("phem-suspense")).toHaveLength(0)
+
+    // The loading state ends after phem:done, for each boundary.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(document.querySelectorAll("[aria-busy]")).toHaveLength(0)
+  })
+
+  it("loads each boundary alone after a failed load of all of them", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    const quiet = (e) => e.preventDefault()
+    window.addEventListener("phem:error", quiet)
+    fetch.mockResolvedValueOnce(new Response("Error", { status: 500 }))
+    fetch.mockResolvedValueOnce(new Response("Error", { status: 500 }))
+    respond(`<phem-suspense data-phem-load="c1.sales"><p>Loading…</p></phem-suspense><p id="orders">Orders</p>`)
+    const loaded = new Promise((resolve) => window.addEventListener("phem:done", (e) => e.detail.handler === "c1.orders" && resolve(e)))
+    await mount(`
+      <phem-suspense data-phem-load="c1.sales"><p>Loading…</p></phem-suspense>
+      <phem-suspense data-phem-load="c1.orders"><p>Loading…</p></phem-suspense>`)
+    await loaded
+
+    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(sent(0).handler).toEqual(["c1.sales", "c1.orders"])
+    expect(sent(1).handler).toBe("c1.sales")
+    expect(sent(2).handler).toBe("c1.orders")
+    expect(document.getElementById("orders")).not.toBeNull()
+    window.removeEventListener("phem:error", quiet)
   })
 
   it("loads a lazy boundary only when it comes into view", async () => {

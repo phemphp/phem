@@ -9,6 +9,7 @@ You need only Docker. Run the commands from the root of the repository.
 
 ```sh
 make test      # the JS tests, cargo test and PHPUnit
+make bench     # the benchmark of the client/server flow (bench/run.php)
 make shell     # a shell in the dev image: phemc (built from compiler/), cargo, composer, PHPUnit
 make vscode    # the VS Code extension for .phpm files (editors/vscode/phem-<version>.vsix)
 make phpstorm  # the PhpStorm plugin for .phpm files (needs Java 21 and Gradle)
@@ -27,6 +28,12 @@ hover, and outline. In an application, the Claude Code plugin runs `vendor/bin/p
 [editors/phpstorm/README.md](../editors/phpstorm/README.md) and
 [editors/claude-code/README.md](../editors/claude-code/README.md).
 
+`make bench` runs the pages of `tests/Fixtures/app` (and its `bench.phpm`) as the browser sends
+their events. It prints the median server time, the bytes of each request and response, the
+requests of each step, and the writes to the state cache. The time has no network: one request
+more is one round trip more in a browser. Run it before and after a change of the client/server
+flow, and put the two tables in the pull request.
+
 To try a change in a browser, make an application as in [Getting started](getting-started.md),
 and require this checkout with a Composer path repository.
 
@@ -42,6 +49,7 @@ src/ config/ templates/  phem/phem (Composer): PhemBundle, Renderer, Twig extens
 assets/              the phem Stimulus controller (a Symfony UX package for AssetMapper)
 bin/phemc            the phemc launcher: downloads the binary of the release on the first run
 tests/               PHPUnit tests of the package (assets/tests/: the Vitest tests of the controller)
+bench/               the benchmark of the client/server flow: `make bench`
 compiler/            Rust workspace: phemc-syntax, phemc-twig-scan, phemc-analyze, phemc-codegen, phemc-lsp, phemc-cli
 docker/              the dev image (Dockerfile, compose.yaml, entrypoint.sh): `make test`, `make shell`
 editors/server/      the Node launcher of the language server (phem-lsp.wasm: `make lsp`)

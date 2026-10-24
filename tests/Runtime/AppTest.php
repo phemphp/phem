@@ -244,15 +244,15 @@ final class AppTest extends TestCase
         self::assertStringContainsString('<span id="items">item1,item2,item3</span>', $r['data']['streams']);
     }
 
-    public function testCacheHasTheStateOfThePageAndOfEachEvent(): void
+    /** A state under phem.state_cache_min_size goes with each event: the cache does not keep it. */
+    public function testCacheDoesNotKeepASmallState(): void
     {
         $cache = $this->service('phem.state_cache', StateCache::class);
-        self::assertSame($this->state, $cache->find($this->signature), 'the page render');
+        self::assertLessThan(4096, \strlen($this->state));
+        self::assertNull($cache->find($this->signature), 'the page render');
 
-        $first = $this->signature;
         self::assertSame(200, $this->click(0)['status']);
-        self::assertNotSame($first, $this->signature);
-        self::assertSame($this->state, $cache->find($this->signature), 'the event');
+        self::assertNull($cache->find($this->signature), 'the event');
     }
 
     /** The phem controller reads the answer with JSON.parse() only: no HEX escapes make it larger. */
@@ -348,7 +348,7 @@ final class AppTest extends TestCase
 
         self::assertStringContainsString('<html lang="es">', $html, 'another document component');
         self::assertStringContainsString('<title>Documento 3</title>', $html, 'the title slot of the page, with its state');
-        self::assertMatchesRegularExpression('#<body>\s*<main id="phem-root" data-controller="phem extra" data-action="click->phem\#dispatch [^"]*" data-phem-state-value="\{\n"_tree":"[^"]*",(?:\n"phem[0-9a-f]+":\{[^}]*\},?){2}\n\}" data-phem-signature-value="[^"]*" class="custom page"><phem-c id="phem[0-9a-f]+">\s*<p id="document">Document</p>\s*</phem-c></main>\s*<footer id="doc-footer">#', $html);
+        self::assertMatchesRegularExpression('#<body>\s*<main id="phem-root" data-controller="phem extra" data-action="click->phem\#dispatch [^"]*" data-phem-state-value="\{\n"_tree":"[^"]*",(?:\n"phem[0-9a-f]+":\{[^}]*\},?){2}\n\}" data-phem-signature-value="[^"]*" data-phem-state-inline-value="4096" class="custom page"><phem-c id="phem[0-9a-f]+">\s*<p id="document">Document</p>\s*</phem-c></main>\s*<footer id="doc-footer">#', $html);
         // The ids of the states come from the names of the components, so their order can change.
         self::assertMatchesRegularExpression('#\n"phem[0-9a-f]+":\{"count":3\}#', $html);
         self::assertMatchesRegularExpression('#\n"phem[0-9a-f]+":\{"on":false\}#', $html);

@@ -50,8 +50,8 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
  * The events go to the URL of the page, so the access rules of the page apply to them too
  * (see PageLoader). The page comes from the route, not from the browser.
  *
- * The `phem` Stimulus controller sends the signature of the state of the page, the handler id,
- * and the values of the bound inputs that changed (see BoundValues). The server finds the state
+ * The `phem` Stimulus controller sends the signature of the state of the page, the handler id
+ * (or the ids of the `<Suspense>` boundaries that load together), and the values of the bound inputs that changed (see BoundValues). The server finds the state
  * of the signature in the StateCache. When the cache does not have it, the server answers 409
  * with `{"state": "required"}` before the handler runs, and the browser sends the event again
  * with its full state. An event with files always sends its full state. The server renders the path to
@@ -166,11 +166,12 @@ final class EventController
         }
 
         $tree = new Tree($page, $state->fibers, $props, $state->values, shape: $state->shape);
-        if (null !== $payload->handler) {
-            $request->attributes->set(EventReplay::ATTRIBUTE, new EventReplay($page, $json, $payload->bound, $payload->handler, $payload->event));
+        if (1 === \count($payload->handlers)) {
+            // Only an event with one handler: a load event of many boundaries is not #[Async].
+            $request->attributes->set(EventReplay::ATTRIBUTE, new EventReplay($page, $json, $payload->bound, $payload->handlers[0], $payload->event));
         }
 
-        $outcome = $this->events->run($tree, $payload->handler, $payload->bound, $this->dispatcher, fn (): Event => Event::fromArray($payload->event, $this->dispatcher, $request->files->all()), $payload->stale, EventRequest::of($request, $payload->event));
+        $outcome = $this->events->run($tree, $payload->handlers, $payload->bound, $this->dispatcher, fn (): Event => Event::fromArray($payload->event, $this->dispatcher, $request->files->all()), $payload->stale, EventRequest::of($request, $payload->event));
         if ($outcome->reload) {
             // The page changed since the browser rendered it (for example after a deploy).
             return self::reload();

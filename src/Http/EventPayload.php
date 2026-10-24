@@ -32,15 +32,19 @@ final class EventPayload
     /** The maximum number of stale fibers of an event. */
     public const MAX_STALE = 100;
 
+    /** The maximum number of handlers of a load event (the `<Suspense>` boundaries that load together). */
+    public const MAX_LOADS = 100;
+
     /**
-     * @param string|null          $handler the handler id, or null for an event of `phem:live` with no handler
-     * @param string|null          $state   the signed JSON of the page state, or null when the event sends only the signature (see StateCache)
-     * @param array<string, mixed> $event   the DOM event (type, value, checked, key, form)
-     * @param array<string, mixed> $bound   the values of the bound inputs that changed: "<fiber>.<property>" => value (see BoundValues)
-     * @param list<string>         $stale   the fibers whose element a push changed (see Phem\Rendering\Tree::markStale())
+     * @param list<string>         $handlers the handler ids: one, none for an event of `phem:live` or a refresh, or the
+     *                                       handlers of the `<Suspense>` boundaries that load together
+     * @param string|null          $state    the signed JSON of the page state, or null when the event sends only the signature (see StateCache)
+     * @param array<string, mixed> $event    the DOM event (type, value, checked, key, form)
+     * @param array<string, mixed> $bound    the values of the bound inputs that changed: "<fiber>.<property>" => value (see BoundValues)
+     * @param list<string>         $stale    the fibers whose element a push changed (see Phem\Rendering\Tree::markStale())
      */
     public function __construct(
-        public readonly ?string $handler,
+        public readonly array $handlers,
         public readonly ?string $state,
         public readonly string $signature,
         public readonly array $event,
@@ -55,20 +59,59 @@ final class EventPayload
     public static function fromJson(string $json): self
     {
         $data = json_decode($json, true, self::MAX_DEPTH);
-
-        // A `phem:live` event has a null handler: it only sends the bound values.
-        if (!\is_array($data) || !\array_key_exists('handler', $data) || (!\is_string($data['handler']) && (null !== $data['handler'] || !\is_array($data['bound'] ?? null)))) {
+        if (!\is_array($data) || !\array_key_exists('handler', $data)) {
             throw new BadRequestHttpException('An event needs a handler.');
         }
 
+        $event = \is_array($data['event'] ?? null) ? $data['event'] : [];
+
         return new self(
-            $data['handler'],
+            self::handlers($data['handler'], \is_array($data['bound'] ?? null), $event),
             \is_string($data['state'] ?? null) ? $data['state'] : null,
             (string) ($data['signature'] ?? ''),
-            \is_array($data['event'] ?? null) ? $data['event'] : [],
+            $event,
             \is_array($data['bound'] ?? null) ? $data['bound'] : [],
             self::stale($data['stale'] ?? null),
         );
+    }
+
+    /**
+     * The handler ids of the `handler` value: a string, null for an event with only the bound
+     * values (`phem:live`) or a refresh, or a list for the `<Suspense>` boundaries that load
+     * together (a `load` event).
+     *
+     * @param array<string, mixed> $event
+     *
+     * @return list<string>
+     */
+    private static function handlers(mixed $handler, bool $bound, array $event): array
+    {
+        if (\is_string($handler)) {
+            return [$handler];
+        }
+
+        if (null === $handler && $bound) {
+            return [];
+        }
+
+        if (!\is_array($handler) || [] === $handler || !array_is_list($handler) || 'load' !== ($event['type'] ?? null)) {
+            throw new BadRequestHttpException('An event needs a handler. Only a load event has a list of handlers.');
+        }
+
+        if (\count($handler) > self::MAX_LOADS) {
+            throw new BadRequestHttpException(\sprintf('A load event has %d handlers at most.', self::MAX_LOADS));
+        }
+
+        $ids = [];
+        foreach ($handler as $id) {
+            if (!\is_string($id)) {
+                throw new BadRequestHttpException('The handlers of a load event are strings.');
+            }
+
+            $ids[] = $id;
+        }
+
+        return $ids;
     }
 
     /**

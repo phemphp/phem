@@ -20,14 +20,14 @@ use Phem\Dom\DomEvents;
  * The root element of a page (see Phem\Root): the attributes of the `phem` Stimulus controller
  * around the content.
  *
- *     <div id="phem-root" data-controller="phem" data-action="…" data-phem-state-value="…" data-phem-signature-value="…" data-phem-query-value="…">…</div>
+ *     <div id="phem-root" data-controller="phem" data-action="…" data-phem-state-value="…" data-phem-signature-value="…" data-phem-query-value="…" data-phem-state-inline-value="…">…</div>
  *
  * @internal
  */
 final class RootElement
 {
     /** The attributes that the application cannot change. */
-    private const OWN = ['data-phem-state-value' => true, 'data-phem-signature-value' => true, 'data-phem-query-value' => true, 'data-phem-stream-value' => true];
+    private const OWN = ['data-phem-state-value' => true, 'data-phem-signature-value' => true, 'data-phem-query-value' => true, 'data-phem-state-inline-value' => true, 'data-phem-stream-value' => true];
 
     /**
      * The `data-controller` and `data-action` values of the application come after the values of
@@ -75,13 +75,18 @@ final class RootElement
     /**
      * The state attributes of the root element.
      *
-     * @param array{values: array<string, string|array<array-key, mixed>|null>, push: list<string>}|null $query the query of the #[Url] properties (see Phem\State\UrlQuery::of()), or null for none
+     * @param array{values: array<string, string|array<array-key, mixed>|null>, push: list<string>}|null $query  the query of the #[Url] properties (see Phem\State\UrlQuery::of()), or null for none
+     * @param int|null                                                                                   $inline the size under which an event sends the state (see Phem\State\StateCache::inlineSize()), or null to send it always
      */
-    public static function state(string $state, string $signature, ?array $query = null): string
+    public static function state(string $state, string $signature, ?array $query = null, ?int $inline = null): string
     {
         $html = Attributes::attr('data-phem-state-value', $state).' '.Attributes::attr('data-phem-signature-value', $signature);
         if (null !== $query && [] !== $query['values']) {
             $html .= ' '.Attributes::attr('data-phem-query-value', json_encode(['values' => (object) $query['values'], 'push' => $query['push']], \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
+        }
+
+        if (null !== $inline) {
+            $html .= ' '.Attributes::attr('data-phem-state-inline-value', (string) $inline);
         }
 
         return $html;

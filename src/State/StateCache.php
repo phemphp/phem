@@ -25,8 +25,12 @@ use Psr\Cache\CacheItemPoolInterface;
  * The cache does not make a state trusted: give the JSON to StateCodec::decode() with its
  * signature, as a JSON from the browser.
  *
+ * A small state does not go in the pool: the browser sends it with each event (see
+ * inlineSize()). So the pool keeps only the states that make a request large, and a page view
+ * with a small state writes nothing.
+ *
  * The pool is `cache.phem.state` (see PhemBundle). With no pool (`phem.state_cache: false`), the
- * cache keeps nothing.
+ * cache keeps nothing, and the browser sends each state.
  */
 final class StateCache
 {
@@ -36,15 +40,21 @@ final class StateCache
     /** The form of a signature (see StateCodec): the time, a dot, and the HMAC in hex. */
     private const SIGNATURE = '/^\d{1,20}\.[0-9a-f]{64}$/D';
 
-    public function __construct(private readonly ?CacheItemPoolInterface $pool = null)
-    {
+    /**
+     * @param int $minSize the `phem.state_cache_min_size` option: the bytes of the smallest state
+     *                     that the pool keeps
+     */
+    public function __construct(
+        private readonly ?CacheItemPoolInterface $pool = null,
+        private readonly int $minSize = 4096,
+    ) {
     }
 
     /** @param string $json the signed JSON of a state, and its signature from StateCodec::encode() */
     public function save(string $signature, string $json): void
     {
         $key = $this->key($signature);
-        if (null === $key || null === $this->pool) {
+        if (null === $key || null === $this->pool || \strlen($json) < $this->minSize) {
             return;
         }
 
@@ -62,6 +72,15 @@ final class StateCache
         $json = $this->pool->getItem($key)->get();
 
         return \is_string($json) ? $json : null;
+    }
+
+    /**
+     * The size under which the browser sends the state with each event, because the pool does not
+     * keep it. Null with no pool: the browser always sends the state.
+     */
+    public function inlineSize(): ?int
+    {
+        return null !== $this->pool ? $this->minSize : null;
     }
 
     /**

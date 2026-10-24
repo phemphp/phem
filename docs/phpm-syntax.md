@@ -1006,9 +1006,22 @@ phem:
 
 ### State cache
 
-The browser keeps the full signed state of the page, but an event sends only its signature. The
-server keeps each state that it signs (the page render and each event) in the `cache.phem.state`
-pool, by its signature, so the request of an event stays small on a big page.
+The browser keeps the full signed state of the page. A small state goes with each event. For a
+large state, an event sends only its signature: the server keeps each large state that it signs
+(the page render and each event) in the `cache.phem.state` pool, by its signature, so the request
+of an event stays small on a big page.
+
+A state is large from `phem.state_cache_min_size` bytes (default 4096). A smaller state is about
+one KiB or less after gzip, so it costs less to send it than to write it to the pool and read it
+again. A page view with a small state writes nothing to the pool, and its events never get a
+miss. The `<Root>` element tells the browser the size (`data-phem-state-inline-value`). Set the
+option to `0` to keep all the states in the pool.
+
+```yaml
+# config/packages/phem.yaml
+phem:
+    state_cache_min_size: 8192
+```
 
 The response of an event is small too: it has only the entries of the state that changed (the
 state of a component, the shape of the render), and the new signature. The signed JSON has one
@@ -1026,7 +1039,7 @@ The state from the pool has the same checks as a state from the browser: the sig
 that the server did not sign.
 
 The pool uses the `cache.app` adapter, with a lifetime of 3600 seconds. A lifetime shorter than
-`phem.state_max_age` is correct. Each page view and each event writes one entry, so use a pool
+`phem.state_max_age` is correct. Each page view and each event with a large state writes one entry, so use a pool
 that removes old entries: Redis or APCu in production. A filesystem pool (the default
 `cache.app`) needs `bin/console cache:pool:prune`. With many machines, a shared pool (Redis)
 gives more hits.
@@ -1041,7 +1054,8 @@ framework:
                 default_lifetime: 1800
 ```
 
-`phem.state_cache: false` turns the cache off: then each event sends the full state.
+`phem.state_cache: false` turns the cache off: then each event sends the full state, with no
+miss.
 
 A `#[RateLimit]` on a page counts each request: a miss of the cache (and the second request) uses
 two tokens. A `#[RateLimit]` on a handler counts only the request that runs the handler.
@@ -1528,8 +1542,9 @@ final class Dashboard
 - The load is a normal event: it sends the state of the page, and has the same access rules,
   rate limits and profiler panel. It renders only the boundary, and the morph puts the children
   in place of the fallback.
-- Each boundary sends its own load event, in the event queue. A slow load makes the events after
-  it wait.
+- The boundaries that start to load together (when the page starts, after a morph, or when they
+  come into view at the same time) send one load event, in the event queue: one request, and
+  one render for all of them. A slow load makes the events after it wait.
 - The state keeps the status of the boundary. After the load, the next events render the
   children directly, and they keep their state.
 - The fallback is in a `<phem-suspense>` element, with `display: block`. Style it with CSS.
@@ -1538,8 +1553,10 @@ When the render of the children throws, the `error` slot shows in place of the c
 for this boundary. The response is a normal answer (200). The boundary drops what the children
 rendered before the exception, and the logger gets the exception (the profiler shows it). With
 no `error` slot, the exception goes on: the event fails (see [Failed events](#failed-events)),
-and the fallback stays. A boundary loads one time: the browser does not send the load event
-again after a failed load. A reload of the page tries again.
+and the fallback stays. When this event loads more than one boundary, the browser then sends one
+load event for each of them, so the other boundaries show their children. A boundary loads one
+time: the browser does not send its load event again after a failed load. A reload of the page
+tries again.
 
 The status of a boundary does not go back. An error of a later event (for example after a click
 in the children) also shows the `error` slot.

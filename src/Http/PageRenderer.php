@@ -78,6 +78,6 @@ final class PageRenderer
 
         $stream = $this->subscription?->attribute($page, $values, $request) ?? '';
 
-        return "<!DOCTYPE html>\n".str_replace($tree->rootToken(), RootElement::state($state, $signature, $this->url->of($tree)).('' !== $stream ? ' '.$stream : ''), $html);
+        return "<!DOCTYPE html>\n".str_replace($tree->rootToken(), RootElement::state($state, $signature, $this->url->of($tree), $this->cache->inlineSize()).('' !== $stream ? ' '.$stream : ''), $html);
     }
 }

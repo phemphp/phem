@@ -111,12 +111,14 @@ final class EventAccessTest extends TestCase
         self::assertSame(409, $response->getStatusCode());
         self::assertSame('{"state":"required"}', $response->getContent(), 'the cache does not have the state');
 
-        $this->service('phem.state_cache', StateCache::class)->save($payload['signature'], $state);
+        // The state of the page is small: the app does not cache it, but the server finds any entry.
+        $cache = new StateCache($this->service(StateCache::POOL, CacheItemPoolInterface::class), 0);
+        $cache->save($payload['signature'], $state);
         $response = $this->event('/leave', $payload);
         self::assertSame(200, $response->getStatusCode());
         self::assertStringContainsString('redirect', (string) $response->getContent(), 'the handler runs with the state of the cache');
 
-        $this->service('phem.state_cache', StateCache::class)->save($payload['signature'], '{"phem1":{"n":1}}');
+        $cache->save($payload['signature'], '{"phem1":{"n":1}}');
         self::assertSame('{"reload":true}', $this->event('/leave', $payload)->getContent(), 'a cache entry that does not fit the signature');
 
         $payload['signature'] = '1.'.str_repeat('a', 64);
@@ -274,6 +276,38 @@ final class EventAccessTest extends TestCase
 
         $response = $this->event('/leave', ['handler' => 'h', 'event' => ['value' => $value]]);
         self::assertSame(400, $response->getStatusCode());
+    }
+
+    public function testOnlyALoadEventHasAListOfHandlers(): void
+    {
+        $load = ['type' => 'load', 'value' => null, 'checked' => null, 'key' => null, 'form' => null];
+
+        self::assertSame(400, $this->event('/leave', ['handler' => ['a', 'b'], 'event' => ['type' => 'click'] + $load])->getStatusCode(), 'a click');
+        self::assertSame(400, $this->event('/leave', ['handler' => [], 'event' => $load])->getStatusCode(), 'no handler');
+        self::assertSame(400, $this->event('/leave', ['handler' => ['a', 1], 'event' => $load])->getStatusCode(), 'not a string');
+        self::assertSame(400, $this->event('/leave', ['handler' => ['b' => 'a'], 'event' => $load])->getStatusCode(), 'not a list');
+        self::assertSame(400, $this->event('/leave', ['handler' => array_fill(0, EventPayload::MAX_LOADS + 1, 'a'), 'event' => $load])->getStatusCode(), 'too many');
+    }
+
+    public function testLoadEventRendersAllItsBoundariesInOneResponse(): void
+    {
+        $html = (string) $this->request('GET', '/bench/dashboard')->getContent();
+        self::assertSame(1, preg_match('/data-phem-state-value="([^"]*)" data-phem-signature-value="([^"]*)"/', $html, $m));
+        self::assertSame(4, preg_match_all('/data-phem-load="([^"]+)"/', $html, $loads));
+        $page = ['state' => html_entity_decode($m[1], \ENT_QUOTES | \ENT_HTML5), 'signature' => html_entity_decode($m[2], \ENT_QUOTES | \ENT_HTML5), 'event' => ['type' => 'load', 'value' => null, 'checked' => null, 'key' => null, 'form' => null], 'bound' => new \stdClass()];
+
+        $response = $this->event('/bench/dashboard', ['handler' => $loads[1]] + $page);
+        self::assertSame(200, $response->getStatusCode());
+        $data = json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+        foreach (['Sales', 'Orders', 'Users', 'Stock'] as $name) {
+            self::assertStringContainsString($name.': 3 rows', $data['streams']);
+        }
+
+        self::assertStringNotContainsString('data-phem-load', $data['streams']);
+
+        $response = $this->event('/bench/dashboard', ['handler' => [$loads[1][0], 'phem000000000000.x']] + $page);
+        self::assertSame(409, $response->getStatusCode(), 'a handler that the page does not have');
+        self::assertSame('{"reload":true}', $response->getContent());
     }
 
     public function testPostWithoutTheEventHeaderIsAPageRequest(): void

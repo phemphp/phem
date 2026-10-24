@@ -32,6 +32,9 @@ use Symfony\Component\HttpFoundation\Request;
  *    change (see UpdateScope). A dirty fiber is the owner of the handler (the `$this` of the
  *    handler closure, or the fiber that registered it), or a fiber whose state changed.
  *
+ * A load event can have the handlers of many `<Suspense>` boundaries: the two passes are for all
+ * of them, and the handlers run in their order.
+ *
  * The browser also sends the stale fibers: the components whose element a push changed (see
  * Phem\Stream\Streams). They render in the two passes with their full subtree, and their HTML
  * goes to the browser (see Tree::markStale()). An event with no handler and only stale fibers is
@@ -55,19 +58,25 @@ final class EventRenderer
     }
 
     /**
-     * @param string|null             $handler    the handler id, or null for an event with only bound values (`phem:live`)
+     * @param list<string>            $handlers   the handler ids: none for an event with only bound values (`phem:live`) or a refresh, more than one for a load of many boundaries
      * @param array<array-key, mixed> $bound      the bound values: "<fiber>.<property>" => value (see BoundValues)
-     * @param \Closure(): Event       $event      makes the event for the handler
-     * @param BrowserEventDispatcher  $dispatcher it gets only the browser events of the handler
+     * @param \Closure(): Event       $event      makes the event for a handler
+     * @param BrowserEventDispatcher  $dispatcher it gets only the browser events of the handlers
      * @param list<string>            $stale      the ids of the stale fibers (see Tree::markStale())
-     * @param Request|null            $request    the request that the handler gets (see Phem\Http\EventRequest)
+     * @param Request|null            $request    the request that the handlers get (see Phem\Http\EventRequest)
      */
-    public function run(Tree $tree, ?string $handler, array $bound, BrowserEventDispatcher $dispatcher, \Closure $event, array $stale = [], ?Request $request = null): EventOutcome
+    public function run(Tree $tree, array $handlers, array $bound, BrowserEventDispatcher $dispatcher, \Closure $event, array $stale = [], ?Request $request = null): EventOutcome
     {
-        $scoped = $this->firstPass($tree, $handler, $bound, $stale);
-        $closure = null !== $handler ? $tree->handler($handler) : null;
-        if (null !== $handler && null === $closure) {
-            return EventOutcome::reload();
+        $scoped = $this->firstPass($tree, $handlers, $bound, $stale);
+
+        $closures = [];
+        foreach ($handlers as $handler) {
+            $closure = $tree->handler($handler);
+            if (null === $closure) {
+                return EventOutcome::reload();
+            }
+
+            $closures[$handler] = $closure;
         }
 
         $before = $this->states($tree);
@@ -76,11 +85,11 @@ final class EventRenderer
         // values as a change.
         $this->bound->apply($tree, $bound);
 
-        // Only the handler sends browser events: not the render before it.
+        // Only the handlers send browser events: not the render before them.
         $dispatcher->reset();
 
         $refresh = !$scoped;
-        if (null !== $closure) {
+        foreach ($closures as $closure) {
             $e = $event();
             $result = $this->renderer->dispatch($tree, $closure, $e, $request);
             if ($result instanceof RedirectResponse) {
@@ -96,7 +105,7 @@ final class EventRenderer
             return EventOutcome::rendered();
         }
 
-        $dirty = $this->dirty($tree, $before, $closure, $handler);
+        $dirty = $this->dirty($tree, $before, $closures);
         $this->renderer->rerender($tree, self::roots($dirty), new UpdateScope(array_fill_keys(array_keys($dirty), true), $tree->shape, $this->inputs, $this->metadata));
 
         return EventOutcome::rendered($this->check?->check($tree, $this->state->snapshot($tree)) ?? []);
@@ -111,7 +120,7 @@ final class EventRenderer
      */
     public function handlerOf(Tree $tree, string $handler, array $bound): ?\Closure
     {
-        $this->firstPass($tree, $handler, $bound, []);
+        $this->firstPass($tree, [$handler], $bound, []);
         $closure = $tree->handler($handler);
         $this->bound->apply($tree, $bound);
 
@@ -119,15 +128,16 @@ final class EventRenderer
     }
 
     /**
-     * Renders the paths to the handler, to the components of the bound values and to the stale
+     * Renders the paths to the handlers, to the components of the bound values and to the stale
      * fibers (see the class).
      *
+     * @param list<string>            $handlers
      * @param array<array-key, mixed> $bound
      * @param list<string>            $stale
      *
      * @return bool false when the full page rendered (the shape does not know a fiber of the paths)
      */
-    private function firstPass(Tree $tree, ?string $handler, array $bound, array $stale): bool
+    private function firstPass(Tree $tree, array $handlers, array $bound, array $stale): bool
     {
         $owners = [];
         foreach ($bound as $key => $value) {
@@ -139,7 +149,7 @@ final class EventRenderer
         // An id that the shape does not know is not in the page any more.
         $stale = array_values(array_filter(array_unique($stale), $tree->shape->has(...)));
         $tree->markStale(...$stale);
-        $scope = PathScope::to($tree->shape, null !== $handler ? [PathScope::fiberOf($handler)] : [], array_values(array_unique([...$owners, ...$stale])));
+        $scope = PathScope::to($tree->shape, array_values(array_unique(array_map(PathScope::fiberOf(...), $handlers))), array_values(array_unique([...$owners, ...$stale])));
         $this->renderer->render($tree, $scope);
         $this->staleAncestors($tree, $stale);
 
@@ -189,15 +199,16 @@ final class EventRenderer
     }
 
     /**
-     * The fibers that render again: the fibers whose state changed, the owner of the handler, and
-     * the stale fibers. The owner is always dirty: a handler can change a property that is not
+     * The fibers that render again: the fibers whose state changed, the owner of each handler, and
+     * the stale fibers. An owner is always dirty: a handler can change a property that is not
      * state (a form).
      *
      * @param array<string, array<string, mixed>> $before
+     * @param array<string, \Closure>             $closures handler id => handler
      *
      * @return array<string, Fiber>
      */
-    private function dirty(Tree $tree, array $before, ?\Closure $closure, ?string $handler): array
+    private function dirty(Tree $tree, array $before, array $closures): array
     {
         $dirty = [];
         foreach ($tree->rendered() as $fiber) {
@@ -206,7 +217,7 @@ final class EventRenderer
             }
         }
 
-        if (null !== $closure && null !== $handler) {
+        foreach ($closures as $handler => $closure) {
             $object = new \ReflectionFunction($closure)->getClosureThis();
             $owner = (null !== $object ? $tree->fiberOf($object) : null) ?? $tree->fiberById(PathScope::fiberOf($handler));
             if (null !== $owner) {

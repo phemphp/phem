@@ -16,6 +16,8 @@ namespace Phem\Tests\Runtime;
 use Phem\PhemBundle;
 use Phem\State\StateCache;
 use Phem\State\StateCodec;
+use Phem\State\StateJson;
+use Phem\Tests\Fixtures\Many;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemPoolInterface;
@@ -31,13 +33,55 @@ final class StateCacheTest extends TestCase
     public function testCacheFindsTheStateOfASignature(): void
     {
         $pool = new ArrayAdapter();
-        $cache = new StateCache($pool);
+        $cache = new StateCache($pool, 0);
         [$json, $signature] = new StateCodec('secret')->encode(['phem1' => ['n' => 1]], 'App\\A');
         $cache->save($signature, $json);
 
         self::assertSame([hash('xxh128', $signature)], array_keys($pool->getValues()), 'the key is a hash of the signature');
         self::assertSame($json, $cache->find($signature));
         self::assertNull($cache->find(new StateCodec('secret')->encode(['phem1' => ['n' => 2]], 'App\\A')[1]), 'another state');
+    }
+
+    public function testCacheDoesNotKeepAStateUnderItsMinimumSize(): void
+    {
+        $pool = new ArrayAdapter();
+        $cache = new StateCache($pool, 64);
+        [$small, $signature] = new StateCodec('secret')->encode(['phem1' => ['n' => 1]], 'App\\A');
+        $cache->save($signature, $small);
+
+        self::assertLessThan(64, \strlen($small));
+        self::assertSame([], $pool->getValues());
+
+        [$large, $signature] = new StateCodec('secret')->encode(['phem1' => ['text' => str_repeat('a', 64)]], 'App\\A');
+        $cache->save($signature, $large);
+        self::assertSame($large, $cache->find($signature));
+
+        self::assertSame(64, $cache->inlineSize(), 'the browser sends a smaller state with each event');
+        self::assertNull(new StateCache(null, 64)->inlineSize(), 'with no pool, the browser always sends the state');
+    }
+
+    /** A page with a large state: the cache keeps the state of the page render and of each event. */
+    public function testAppCachesALargeState(): void
+    {
+        $cache = $this->service('phem.state_cache', StateCache::class);
+        Many::$rows = 200;
+
+        try {
+            $html = (string) $this->request('GET', '/many')->getContent();
+            self::assertSame(1, preg_match('/data-phem-state-value="([^"]*)" data-phem-signature-value="([^"]*)" data-phem-state-inline-value="4096"/', $html, $m));
+            $state = html_entity_decode($m[1], \ENT_QUOTES | \ENT_HTML5);
+            self::assertGreaterThanOrEqual(4096, \strlen($state));
+            self::assertSame($state, $cache->find(html_entity_decode($m[2], \ENT_QUOTES | \ENT_HTML5)), 'the page render');
+
+            self::assertSame(1, preg_match('/id="bump" data-phem-on-click="([^"]+)"/', $html, $handler));
+            $response = $this->event('/many', ['signature' => html_entity_decode($m[2], \ENT_QUOTES | \ENT_HTML5), 'handler' => $handler[1], 'event' => ['type' => 'click'], 'bound' => new \stdClass()]);
+            self::assertSame(200, $response->getStatusCode(), 'only the signature');
+
+            $data = json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+            self::assertSame(StateJson::apply($state, $data['changes']), $cache->find($data['signature']), 'the event');
+        } finally {
+            Many::$rows = 3;
+        }
     }
 
     /** @return iterable<string, array{string}> */
@@ -87,6 +131,8 @@ final class StateCacheTest extends TestCase
 
         self::assertInstanceOf(Reference::class, $argument);
         self::assertSame(StateCache::POOL, (string) $argument);
+        self::assertSame(4096, $this->load([])->getDefinition('phem.state_cache')->getArgument(1));
+        self::assertSame(0, $this->load(['state_cache_min_size' => 0])->getDefinition('phem.state_cache')->getArgument(1), 'the option sets the minimum size');
         self::assertNull($this->load(['state_cache' => false])->getDefinition('phem.state_cache')->getArgument(0), 'the option turns the cache off');
     }
 

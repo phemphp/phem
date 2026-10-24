@@ -27,15 +27,15 @@ interface Driver
     public function isDocument(): bool;
 
     /**
-     * Runs an event handler, as the `phem` Stimulus controller sends it.
+     * Runs the event handlers of one event, as the `phem` Stimulus controller sends it.
      *
-     * @param string|null          $handler the handler id, or null for a `phem:live` event
-     * @param array<string, mixed> $event   the DOM event (type, value, checked, key, form), and the
-     *                                      files of the form (`files`: [field name, path] pairs)
-     * @param array<string, mixed> $bound   the bound fields that changed: "<fiber>.<property>" => value
-     * @param list<string>         $stale   the components whose element a push changed (see Phem\Rendering\Tree::markStale())
+     * @param list<string>         $handlers the handler ids: none for a `phem:live` event or a refresh, more than one for a load of many boundaries
+     * @param array<string, mixed> $event    the DOM event (type, value, checked, key, form), and the
+     *                                       files of the form (`files`: [field name, path] pairs)
+     * @param array<string, mixed> $bound    the bound fields that changed: "<fiber>.<property>" => value
+     * @param list<string>         $stale    the components whose element a push changed (see Phem\Rendering\Tree::markStale())
      */
-    public function dispatch(?string $handler, array $event, array $bound = [], array $stale = []): EventResult;
+    public function dispatch(array $handlers, array $event, array $bound = [], array $stale = []): EventResult;
 
     /**
      * The #[State] properties of a component, as the browser keeps them: the root component

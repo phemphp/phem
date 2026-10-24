@@ -251,6 +251,9 @@ export default class PhemController extends Controller {
     guardMessage: { type: String, default: "You have unsaved changes. Leave the page?" },
     query: Object,
     stream: String,
+    // An event sends a state shorter than this with its signature: the server does not cache it.
+    // With no value, the server has no cache, and each event sends the state.
+    stateInline: { type: Number, default: Infinity },
   }
 
   connect() {
@@ -394,6 +397,8 @@ export default class PhemController extends Controller {
 
     // The handlers of the `<Suspense>` boundaries that loaded, or that load now: one load each.
     this.loads = new Set()
+    // The boundaries that start to load in this task: {el, handler} (see sendLoads())
+    this.loadBatch = []
     // A `lazy` boundary loads when it comes into view, or a little before.
     this.boundaryObserver =
       typeof IntersectionObserver === "function"
@@ -564,13 +569,39 @@ export default class PhemController extends Controller {
     }
   }
 
+  // The boundaries that start to load in the same task (when the page starts, after a morph, or
+  // when they come into view together) go in one load event (see sendLoads()).
   loadBoundary(el) {
     this.boundaryObserver?.unobserve(el)
     const handler = el.getAttribute("data-phem-load")
     if (!handler || this.loads.has(handler)) return
 
     this.loads.add(handler)
-    this.enqueue(el, "data-phem-load", handler, { type: "load", value: null, checked: null, key: null, form: null })
+    this.loadBatch.push({ el, handler })
+    if (this.loadBatch.length === 1) queueMicrotask(() => this.sendLoads())
+  }
+
+  // Sends one load event for the boundaries of loadBoundary(): one request, and the server renders
+  // them in one pass. The event goes from the first boundary, so its `phem:send` and `phem:done`
+  // have the first handler id. Each boundary shows the loading state.
+  sendLoads() {
+    const batch = this.loadBatch.splice(0)
+    const load = { type: "load", value: null, checked: null, key: null, form: null }
+    if (batch.length < 2) {
+      for (const { el, handler } of batch) this.enqueue(el, "data-phem-load", handler, load)
+      return
+    }
+
+    const [first, ...rest] = batch
+    const ends = rest.map(({ el, handler }) => this.startLoading(el, handler))
+    this.enqueue(first.el, "data-phem-load", first.handler, { ...load, loads: batch.map(({ handler }) => handler) })
+    this.queue = this.queue.then((ok) => {
+      ends.forEach((end) => end())
+
+      // A boundary with no error slot that throws fails the event of all of them (a server
+      // error): load each one alone, so the others show their children.
+      if (ok === false) for (const { el, handler } of batch) if (el.isConnected) this.enqueue(el, "data-phem-load", handler, load)
+    })
   }
 
   // data-action="click->phem#dispatch input->phem#dispatch ..." on the root element.
@@ -880,11 +911,11 @@ export default class PhemController extends Controller {
 
   // Sends the event of the element `el`. `beforeRender` runs when the last response arrives,
   // before the page changes. `onProgress` gets the progress of an upload. The pushes that come
-  // while it runs wait for its end (see receive()).
+  // while it runs wait for its end (see receive()). Resolves with false after a server error.
   async send(el, handler, event, beforeRender, onProgress = null) {
     this.busy++
     try {
-      await this.sendNow(el, handler, event, beforeRender, onProgress)
+      return await this.sendNow(el, handler, event, beforeRender, onProgress)
     } finally {
       this.busy--
       if (!this.busy) this.held.splice(0).forEach((data) => this.applyPush(data))
@@ -947,7 +978,7 @@ export default class PhemController extends Controller {
       console.error(`[phem] event failed (${response.status})`, text)
       this.showError(handler, response.status)
       failed(response.status)
-      return
+      return false
     }
 
     // A PHP error that PHP prints before the handler (an HTML page with a 200) is not an answer.
@@ -1100,11 +1131,11 @@ export default class PhemController extends Controller {
     return transition.updateCallbackDone
   }
 
-  // Posts the event with only the signature of the state. When the server does not have the
-  // state (a 409 with `{"state": "required"}`), posts it again with the state. An event with files
-  // always has the state.
+  // Posts the event with only the signature of a large state. When the server does not have the
+  // state (a 409 with `{"state": "required"}`), posts it again with the state. A small state (see
+  // `stateInline`) and an event with files always go with the event.
   async fetchEvent(handler, event, bound = {}, onProgress = null) {
-    const withState = Boolean(event.files?.length)
+    const withState = Boolean(event.files?.length) || this.stateValue.length < this.stateInlineValue
     const response = await this.fetchWithRetry(handler, event, bound, onProgress, withState)
     if (withState || response.status !== 409) return response
 
@@ -1118,12 +1149,13 @@ export default class PhemController extends Controller {
   // each time. The last try returns its response, or throws its network error. An event with
   // files goes with XHR when `onProgress` wants the progress of the upload.
   async fetchWithRetry(handler, event, bound, onProgress, withState) {
-    const { files = [], stale = [], ...data } = event
+    const { files = [], stale = [], loads = null, ...data } = event
 
     // A `phem:live` event has no handler: the server only sets the bound values. A refresh has
-    // no handler either: the server renders the stale components.
+    // no handler either: the server renders the stale components. A load of many boundaries has
+    // the list of their handlers.
     const state = withState ? { state: this.stateValue } : {}
-    const json = JSON.stringify({ ...state, signature: this.signatureValue, handler: data.live ? null : handler, event: data, bound, ...(stale.length ? { stale } : {}) })
+    const json = JSON.stringify({ ...state, signature: this.signatureValue, handler: data.live ? null : (loads ?? handler), event: data, bound, ...(stale.length ? { stale } : {}) })
 
     // An event with files is not compressed: the files are most of the body.
     const plain = files.length ? null : await jsonBody(json)

@@ -252,9 +252,9 @@ final class ComponentTester
 
     /**
      * Loads the `<Suspense>` boundaries that show their fallback, as the browser does when the
-     * page starts (or when a `lazy` boundary comes into view): one load event for each, in their
-     * order. A selector loads only one boundary: the boundary of the element (an element in its
-     * fallback, or the boundary). Loaded children can have boundaries too: call load() again.
+     * page starts (or when `lazy` boundaries come into view): one load event for all of them. A
+     * selector loads only one boundary: the boundary of the element (an element in its fallback,
+     * or the boundary). Loaded children can have boundaries too: call load() again.
      *
      *     ->assertSee('Loading the report')->load()->assertSee('Rows 3')
      */
@@ -272,7 +272,7 @@ final class ComponentTester
 
         $event = ['type' => 'load', 'value' => null, 'checked' => null, 'key' => null, 'form' => null];
 
-        return $this->send(...array_map(static fn (Element $boundary): array => [(string) $boundary->getAttribute('data-phem-load'), $event], $boundaries));
+        return $this->send([array_map(static fn (Element $boundary): string => (string) $boundary->getAttribute('data-phem-load'), $boundaries), $event]);
     }
 
     /**
@@ -570,7 +570,7 @@ final class ComponentTester
      * did not render again gets the server value back, as in a browser: the server did not take
      * its value, or the value is the same.
      *
-     * @param array{0: string|null, 1: array<string, mixed>} ...$events handler id (null for `phem:live`), DOM event
+     * @param array{0: string|list<string>|null, 1: array<string, mixed>} ...$events handler id (null for `phem:live`, a list for a load of many boundaries), DOM event
      */
     private function send(array ...$events): self
     {
@@ -579,7 +579,7 @@ final class ComponentTester
         foreach ($events as [$handler, $event]) {
             $bound = array_map(self::boundValue(...), array_map(static fn (array $fields): array => array_column($fields, 0), $this->edited));
             $stale = array_keys($this->stale);
-            $result = $this->driver->dispatch($handler, $event, $bound, $stale);
+            $result = $this->driver->dispatch(null === $handler ? [] : (array) $handler, $event, $bound, $stale);
             $this->status = $result->status;
             $this->redirect = $result->redirect;
             $this->reload = $result->reload;

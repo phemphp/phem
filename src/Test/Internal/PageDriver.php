@@ -39,6 +39,8 @@ final class PageDriver implements Driver
     private string $page = '';
     private string $state = '{}';
     private string $signature = '';
+    /** The size under which an event sends the state, as the `phem` controller does (see StateCache::inlineSize()). */
+    private int|float $inline = \INF;
     private int $status = 0;
     private ?string $redirect = null;
     private string $url;
@@ -60,12 +62,16 @@ final class PageDriver implements Driver
         $this->html = (string) $response->getContent();
         $this->page = (string) $request->attributes->get('_phem_page', '');
 
-        if (1 === preg_match('/data-phem-state-value="([^"]*)" data-phem-signature-value="([^"]*)"(?: data-phem-query-value="([^"]*)")?/', $this->html, $m)) {
+        if (1 === preg_match('/data-phem-state-value="([^"]*)" data-phem-signature-value="([^"]*)"(?: data-phem-query-value="([^"]*)")?(?: data-phem-state-inline-value="(\d+)")?/', $this->html, $m)) {
             $this->state = html_entity_decode($m[1], \ENT_QUOTES | \ENT_HTML5);
             $this->signature = html_entity_decode($m[2], \ENT_QUOTES | \ENT_HTML5);
 
-            if (isset($m[3])) {
+            if (isset($m[3]) && '' !== $m[3]) {
                 $this->query(json_decode(html_entity_decode($m[3], \ENT_QUOTES | \ENT_HTML5), true, 512, \JSON_THROW_ON_ERROR));
+            }
+
+            if (isset($m[4])) {
+                $this->inline = (int) $m[4];
             }
         }
     }
@@ -80,7 +86,7 @@ final class PageDriver implements Driver
         return true;
     }
 
-    public function dispatch(?string $handler, array $event, array $bound = [], array $stale = []): EventResult
+    public function dispatch(array $handlers, array $event, array $bound = [], array $stale = []): EventResult
     {
         if ('' === $this->signature) {
             throw new \LogicException(\sprintf('The response of "%s" is not a page with a state (status %d): it has no events.', $this->uri, $this->status));
@@ -90,11 +96,11 @@ final class PageDriver implements Driver
         $files = $event['files'] ?? [];
         unset($event['files']);
 
-        // As the browser: only the signature, and the state again when the server does not have
-        // it. An event with files always sends the state.
-        $response = $this->post($handler, $event, $bound, $files, [] !== $files, $stale);
+        // As the browser: only the signature of a large state, and the state again when the server
+        // does not have it. A small state and an event with files always go with the event.
+        $response = $this->post($handlers, $event, $bound, $files, [] !== $files || \strlen($this->state) < $this->inline, $stale);
         if ([] === $files && 409 === $response->getStatusCode() && '{"state":"required"}' === $response->getContent()) {
-            $response = $this->post($handler, $event, $bound, $files, true, $stale);
+            $response = $this->post($handlers, $event, $bound, $files, true, $stale);
         }
 
         if (409 === $response->getStatusCode()) {
@@ -126,14 +132,21 @@ final class PageDriver implements Driver
      * Posts an event to the URL that the browser shows, as the controller sends it. With files,
      * the JSON is the `_phem` part of a multipart body.
      *
+     * @param list<string>                      $handlers
      * @param array<string, mixed>              $event
      * @param array<string, mixed>              $bound
-     * @param list<array{0: string, 1: string}> $files [field name, path] pairs
+     * @param list<array{0: string, 1: string}> $files    [field name, path] pairs
      * @param list<string>                      $stale
      */
-    private function post(?string $handler, array $event, array $bound, array $files, bool $withState, array $stale = []): Response
+    private function post(array $handlers, array $event, array $bound, array $files, bool $withState, array $stale = []): Response
     {
         $state = $withState ? ['state' => $this->state] : [];
+        // As the browser: one id, null for no handler, or a list for a load of many boundaries.
+        $handler = match (\count($handlers)) {
+            0 => null,
+            1 => $handlers[0],
+            default => $handlers,
+        };
         $body = json_encode($state + ['signature' => $this->signature, 'handler' => $handler, 'event' => $event, 'bound' => (object) $bound] + ([] !== $stale ? ['stale' => $stale] : []), \JSON_THROW_ON_ERROR);
 
         $server = [
