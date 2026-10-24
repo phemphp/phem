@@ -23,8 +23,9 @@ final class Guestbook
     /** @var list<Entry> */
     private array $entries = [];
 
-    public function __construct(private readonly GuestbookRepository $repository)
-    {
+    public function __construct(
+        private readonly GuestbookRepository $repository,
+    ) {
     }
 
     public function mount(): void
