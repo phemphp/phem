@@ -220,8 +220,57 @@ final class ScientistPage
 - When no entity matches, the response is a 404. A nullable prop (`?Scientist`) gets `null`.
 - The signed state keeps the route values, not the entity. Each event finds the entity again.
   When the entity is not there any more, the browser loads the page again.
-- A mapped route value needs a `#[Path]` prop with an entity type. Other class types are an
-  error.
+- A mapped route value needs a `#[Path]` prop with a class type. A class type that no converter
+  supports is an error (see [Other types of route values](#other-types-of-route-values)).
+
+### Other types of route values
+
+A converter gives a route value another type: a date, an enum, a value object. Make a service
+that implements `Phem\Path\PathValueConverter`. Phem autoconfigures it with the
+`phem.path_converter` tag:
+
+```php
+use Phem\Path\PathProp;
+use Phem\Path\PathValueConverter;
+
+final class DateConverter implements PathValueConverter
+{
+    public function supports(PathProp $prop): bool
+    {
+        return \DateTimeImmutable::class === $prop->type->getName();
+    }
+
+    public function convert(PathProp $prop, mixed $value): ?\DateTimeImmutable
+    {
+        if (null === $value) {
+            return $prop->type->allowsNull() ? null : throw new \UnexpectedValueException('No date.');
+        }
+
+        return \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $value) ?: throw new \UnexpectedValueException(\sprintf('"%s" is not a date.', $value));
+    }
+}
+```
+
+```php
+#[Page('/agenda/{day}')]
+final class AgendaPage
+{
+    #[Path] public \DateTimeImmutable $day;
+    // ...
+}
+```
+
+- `$prop` has the class of the page (`$prop->page`), the name of the prop (`$prop->name`), and
+  its type (`$prop->type`, a `\ReflectionNamedType`). A function page gives its parameters in the
+  same way.
+- `$value` is the route value: a string, a default of the route, or the criteria of a mapped
+  value (`{slug:post}` gives `['slug' => '...']`).
+- Throw an `\UnexpectedValueException` when the value does not match: the page gives a 404
+  response, and an event loads the page again.
+- The first converter that supports the prop converts it. The built-in converters (the scalar
+  types and the Doctrine entities) have the priority -100, so a converter of the application
+  goes first.
+- The signed state keeps the route value, not the converted value. Each event converts it again.
 
 ## 2. Markup rules (the same as JSX)
 
@@ -866,6 +915,76 @@ does not run the handler. The page does not change. The browser dispatches a
 ```
 
 Do not use `rate-limited` or `error` as the name of a browser event of a handler.
+
+### Code around the handlers
+
+A handler middleware runs code around each event handler: a security check, a log entry, a
+metric. Make a service that implements `Phem\Handler\HandlerMiddleware`. Phem autoconfigures it
+with the `phem.handler_middleware` tag:
+
+```php
+use App\Page\LoginPage;
+use Phem\Event;
+use Phem\Handler\HandlerMiddleware;
+use Phem\RedirectTo;
+use Symfony\Bundle\SecurityBundle\Security;
+
+final class LoginRequired implements HandlerMiddleware
+{
+    public function __construct(private readonly Security $security)
+    {
+    }
+
+    public function handle(\Closure $handler, Event $event, \Closure $next): mixed
+    {
+        if (null === $this->security->getUser()) {
+            return new RedirectTo(LoginPage::class);
+        }
+
+        return $next();
+    }
+}
+```
+
+- `$next()` runs the next middleware, and then the handler. Return its result: for example the
+  `RedirectTo` of the handler.
+- To stop the event, return without a call to `$next()`. The handler does not run, and the
+  handler gets no arguments. The event renders as usual. A middleware can also return a
+  `RedirectTo`, or throw (for example an `AccessDeniedException`: the browser then dispatches
+  `phem:error`, see [Failed events](#failed-events)).
+- `$handler` is the handler closure. Its bound object is the component of the handler: a method,
+  or a closure in `render()`. Use `(new \ReflectionFunction($handler))->getClosureThis()` to
+  read the component, for example to find an attribute on its class.
+- The middleware runs for all the handlers of all the pages. Check the component or the event
+  in the middleware to apply it to some handlers only.
+
+The tag priority sets the order. A higher priority runs first, around the others. The built-in
+middleware has these priorities:
+
+| Priority | Middleware |
+|---|---|
+| 100 | `#[RateLimit]` (see [Rate limits](#rate-limits)) |
+| 50 | the Symfony profiler (debug only) |
+| 10 | `RedirectTo` to a redirect response |
+| 0 | the pushes of `Phem\Stream\Streams` (see [Real-time updates](#real-time-updates)) |
+| -100 | `#[Transactional]` (see [Transactions](#transactions)) |
+| -200 | `#[Async]` (see [Slow work after the response](#slow-work-after-the-response)) |
+
+The default priority is 0: the middleware runs outside the transaction. To run inside the
+transaction, so that an error rolls back the handler, give a priority between -100 and -200:
+
+```php
+use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
+
+#[AsTaggedItem(priority: -150)]
+final class AuditLog implements HandlerMiddleware
+{
+    // ...
+}
+```
+
+An `#[Async]` handler runs the middleware again in the Messenger worker, with the user of the
+request. The worker does not run the rate limit, the redirect, and the profiler middleware.
 
 ### Event size
 
@@ -1962,7 +2081,15 @@ component and of `render()`:
 - A prop or a slot with markup (`$this->children`) is a `Phem\Html` (rendered markup).
 
 Both are a `Node`. Use `?Node` for a component that can render nothing (`return null;`), and
-`Node|string` for a component that can return text. phemc does not need the return type, but
+`Node|string` for a component that can return text.
+
+The type of a prop decides what an array of markup becomes (`items={{ [<li>A</li>, null] }}`):
+
+- A prop with the type `array` (or `?array`) gets a PHP array, with the same items. The markup
+  items are `Phem\Html`, and the `null` and boolean items stay. Use it to read or reorder the items.
+- A prop with another type (`Node`, `Html`, `iterable`, `mixed`) gets a `Phem\HtmlList`: it prints
+  as one block, and you can iterate it. It has only the markup items: a string or a number becomes
+  text, and a `null` or a boolean item goes out. phemc does not need the return type, but
 PHP and PHPStan then check what the component returns.
 
 Components also work in the normal Twig templates of the application, without state:

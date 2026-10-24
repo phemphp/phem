@@ -267,6 +267,7 @@ E011
 | W005 | a `<title>` outside `<head>` and `<svg>`: the document component prints the title, and a page gives it with `<Document:title>` |
 | W006 | `phem:debounce` or `phem:throttle` on an element with no handler |
 | W007 | `phem:live` on an element with no `phem:bind` |
+| W008 | a `render()` (or a function component) that is not pure: it reads a service of the constructor, a static property, a superglobal, the clock, or a random value (see [Keep `render()` pure](phpm-syntax.md#keep-render-pure)) |
 
 For editors and other tools, `--format json` prints the diagnostics to stdout as JSON. The exit
 code does not change:

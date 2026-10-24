@@ -166,7 +166,9 @@ Each assertion returns the tester, so you can chain the actions and the assertio
 | `assertQuery($key, $value)` | a key of the query string of the URL (`#[Url]`), after the last action: a string, a list, or null for no key |
 | `assertDispatched($name)`, `assertDispatched($name, $detail)`, `assertNotDispatched($name)` | a browser event of the last action (`$e->dispatcher->dispatch()`), and its detail as JSON gives it |
 
-To read the values, use `html()`, `text()`, `state()`, and `document()` (a `Dom\HTMLDocument`).
+To read the values, use `html()`, `text()`, `state()`, `url()`, and `document()` (a
+`Dom\HTMLDocument`). `url()` gives the URL that the browser shows: the URL of the page (`/` for a
+component), with the query string of the `#[Url]` properties after the last action.
 
 ### The state of a child component
 
