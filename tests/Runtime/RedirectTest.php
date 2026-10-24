@@ -36,6 +36,12 @@ final class RedirectTest extends TestCase
         self::assertSame(['redirect' => '/about'], json_decode((string) $response->getContent(), true), 'no streams and no state: the page does not render again');
     }
 
+    public function testHandlerThatReturnsARedirectSendsTheUrlOfThePage(): void
+    {
+        self::assertSame(['redirect' => '/about'], $this->json('/go', '#about'), 'a function page');
+        self::assertSame(['redirect' => '/items/5?tab=notes'], $this->json('/go', '#item'), 'a class page, with a route value and the query string');
+    }
+
     public function testHandlerThatRedirectsDropsItsBrowserEvents(): void
     {
         $response = $this->click('/notify', '#leave');
@@ -60,11 +66,24 @@ final class RedirectTest extends TestCase
         self::assertSame([['name' => 'toast', 'detail' => ['message' => 'Announced 1']], ['name' => 'announced', 'detail' => 'Hello']], $data['events']);
     }
 
+    /** @return array<string, mixed> */
+    private function json(string $uri, string $id): array
+    {
+        $response = $this->click($uri, $id);
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getContent());
+
+        $data = json_decode((string) $response->getContent(), true);
+        self::assertIsArray($data);
+
+        return $data;
+    }
+
     private function click(string $uri, string $id): \Symfony\Component\HttpFoundation\Response
     {
         $html = (string) $this->request('GET', $uri)->getContent();
         self::assertSame(1, preg_match('/data-phem-state-value="([^"]*)" data-phem-signature-value="([^"]*)"/', $html, $m));
         self::assertSame(1, preg_match('/id="'.substr($id, 1).'" data-phem-on-click="([^"]+)"/', $html, $h));
+        // DEBUG
 
         return $this->event($uri, [
             'state' => html_entity_decode($m[1]),

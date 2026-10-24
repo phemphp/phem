@@ -289,6 +289,15 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->assertState('count', 1, in: 'button');
     }
 
+    public function testVisitFollowsARedirectToAPage(): void
+    {
+        $this->visit('/go')
+            ->click('#item')
+            ->assertRedirect('/items/5?tab=notes')
+            ->followRedirect()
+            ->assertSelectorExists('#item');
+    }
+
     public function testVisitFollowsTheRedirectOfAHandler(): void
     {
         $this->visit('/leave')

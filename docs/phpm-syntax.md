@@ -517,20 +517,37 @@ and the `files`. The body has the JSON of the event too: the browser shares the 
 the files by their size, in their order. An event with files goes with `XMLHttpRequest`, because
 `fetch` cannot give the progress of an upload. A retry starts the progress again from 0.
 
-A handler can return a Symfony `RedirectResponse`. Then the page does not render again: the
-browser goes to its URL (a Turbo visit). The URL is relative, or an `http:` or `https:` URL:
-another scheme (`javascript:`) is an error. For example, after a delete:
+A handler can return a `Phem\RedirectTo` to a page. Then the page does not render again: the
+browser goes to the page (a Turbo visit). The redirect names the page by its class name, or a
+function page by its first-class callable (`ScientistPage(...)`, with `use function`). The second
+argument has the route values. The values that are not route values go to the query string, and
+`_fragment` sets the fragment. For example, after a delete:
 
 ```php
-use Symfony\Component\HttpFoundation\RedirectResponse;
+use Phem\RedirectTo;
 
-public function delete(): RedirectResponse
+public function delete(): RedirectTo
 {
     $this->scientists->remove($this->scientist);
 
-    return new RedirectResponse('/scientists');
+    return new RedirectTo(ScientistList::class, ['page' => 2]);
 }
 ```
+
+```php
+use function App\Page\ScientistPage;
+
+return new RedirectTo(ScientistPage(...), ['id' => $scientist->id]);
+```
+
+The URL comes from the first route of the page: each page has its class name (or its function
+name) as an alias of that route. Thus `path('App\\Page\\ScientistList')` in Twig, and
+`$urlGenerator->generate(ScientistList::class)` in PHP, also give its URL. A redirect to a class or
+a function that is not a page is an error.
+
+For a URL that is not a page (for example another site), a handler can return a Symfony
+`RedirectResponse`. Its URL is relative, or an `http:` or `https:` URL: another scheme
+(`javascript:`) is an error.
 
 A handler can send browser events with the dispatcher of its event:
 `$e->dispatcher->dispatch($name, $detail)`. After the morph, the
@@ -574,8 +591,8 @@ public function save(): void
 }
 ```
 
-The events go in their order. A handler that fails, or that returns a `RedirectResponse`,
-sends no events: the browser leaves the page.
+The events go in their order. A handler that fails, or that returns a `RedirectTo` (or a
+`RedirectResponse`), sends no events: the browser leaves the page.
 
 ### Loading states
 

@@ -153,6 +153,13 @@ final class PathTest extends TestCase
         self::assertSame('/en/paged', $routes->get('phem_event.paged_i18n.en')?->getPath());
     }
 
+    public function testNameOfAPageIsAnAliasOfItsFirstRoute(): void
+    {
+        self::assertSame('paged', $this->load('Paged')->getAlias(self::NS.'Paged')?->getId());
+        self::assertNull($this->load('Paged')->getAlias(self::NS.'Paged.es'), 'only the first route');
+        self::assertSame('phem_tests_fixtures_pathpages_functionpage', $this->load('FunctionPage')->getAlias(self::NS.'FunctionPage')?->getId());
+    }
+
     public function testAFunctionPageWithNoParametersHasNoPathProps(): void
     {
         self::assertSame([], (new ComponentMetadata())->pathProps(self::NS.'FunctionPage'));

@@ -503,8 +503,8 @@ final class ComponentTester
     }
 
     /**
-     * Asserts that the last response is a redirect: a handler that returns a RedirectResponse,
-     * or a page that redirects.
+     * Asserts that the last response is a redirect: a handler that returns a Phem\RedirectTo or
+     * a RedirectResponse, or a page that redirects.
      */
     public function assertRedirect(?string $url = null): self
     {

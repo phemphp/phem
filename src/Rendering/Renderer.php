@@ -98,7 +98,7 @@ final class Renderer implements ResetInterface
     /**
      * Runs an event handler of the last pass (see Tree::handler()) through the handler middleware.
      *
-     * @return mixed the result of the handler (for example a RedirectResponse)
+     * @return mixed the result of the handler (for example a Phem\RedirectTo)
      */
     public function dispatch(Tree $tree, \Closure $handler, Event $event, ?Request $request = null): mixed
     {

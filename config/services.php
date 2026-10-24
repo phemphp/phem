@@ -31,6 +31,7 @@ use Phem\EventListener\SourceMapListener;
 use Phem\EventListener\StreamListener;
 use Phem\Handler\HandlerFingerprint;
 use Phem\Handler\HandlerInvoker;
+use Phem\Handler\RedirectMiddleware;
 use Phem\Handler\StreamsMiddleware;
 use Phem\Handler\TransactionalMiddleware;
 use Phem\Http\EventBody;
@@ -56,6 +57,7 @@ use Phem\Rendering\Renderer;
 use Phem\Rendering\SuspenseRenderer;
 use Phem\Rendering\TemplateComponentRenderer;
 use Phem\Routing\PageLoader;
+use Phem\Routing\PageUrlGenerator;
 use Phem\State\BoundValues;
 use Phem\State\StateAccessor;
 use Phem\State\StateCache;
@@ -140,6 +142,10 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.handler_middleware.streams', StreamsMiddleware::class)
             ->args([service('phem.streams')])
             ->tag('phem.handler_middleware', ['priority' => 0])
+        // Inside the profiler: it sees the RedirectResponse.
+        ->set('phem.handler_middleware.redirect', RedirectMiddleware::class)
+            ->args([service('phem.page_url_generator')])
+            ->tag('phem.handler_middleware', ['priority' => 10])
         ->set('phem.browser_event_dispatcher', BrowserEventDispatcher::class)
             ->tag('kernel.reset', ['method' => 'reset'])
         ->alias(BrowserEventDispatcher::class, 'phem.browser_event_dispatcher')
@@ -222,6 +228,9 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.route_loader', PageLoader::class)
             ->args([service('phem.manifest'), param('kernel.environment'), service('phem.metadata')])
             ->tag('routing.loader')
+        ->set('phem.page_url_generator', PageUrlGenerator::class)
+            ->args([service('router')])
+        ->alias(PageUrlGenerator::class, 'phem.page_url_generator')
         ->set('phem.turbo_streams', TurboStreams::class)
         ->set('phem.page_renderer', PageRenderer::class)
             ->args([

@@ -161,7 +161,7 @@ Each assertion returns the tester, so you can chain the actions and the assertio
 | `assertState($name, $value)` | a `#[State]` property of the page, or of the mounted component |
 | `assertState($name, $value, in: $selector)` | a `#[State]` property of a child component (see below) |
 | `assertStatus($status)` | the HTTP status of the last response |
-| `assertRedirect($url)`, `assertNoRedirect()` | a handler that returns a `RedirectResponse`, or a page that redirects |
+| `assertRedirect($url)`, `assertNoRedirect()` | a handler that returns a `RedirectTo` or a `RedirectResponse`, or a page that redirects |
 | `assertReload()` | the last event answered 409: the browser loads the page again |
 | `assertQuery($key, $value)` | a key of the query string of the URL (`#[Url]`), after the last action: a string, a list, or null for no key |
 | `assertDispatched($name)`, `assertDispatched($name, $detail)`, `assertNotDispatched($name)` | a browser event of the last action (`$e->dispatcher->dispatch()`), and its detail as JSON gives it |

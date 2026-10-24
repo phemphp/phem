@@ -62,8 +62,8 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
  * browser events of the handler (see BrowserEventDispatcher). The request has the EventReplay of
  * the event: an #[Async] handler sends it to a worker (see Phem\Async\AsyncMiddleware). The browser
  * also sends the components whose element a push changed: they render again (see EventRenderer).
- * When the handler returns a RedirectResponse, the server answers with its URL, and the browser
- * visits it.
+ * When the handler returns a Phem\RedirectTo or a RedirectResponse, the server answers with its
+ * URL, and the browser visits it.
  *
  * An event with the files of a form is `multipart/form-data` (see EventBody). The handler
  * gets them as UploadedFile objects (see Event::$files). PHP removes a file that the handler does

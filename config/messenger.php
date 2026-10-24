@@ -20,9 +20,10 @@ use Phem\Handler\HandlerInvoker;
 return static function (ContainerConfigurator $container): void {
     $container->services()
         // The middleware of the handlers, with no AsyncMiddleware (the worker runs the work), no
-        // rate limit (the event had it) and no profiler (a worker has no profile).
+        // redirect (no browser waits for the worker), no rate limit (the event had it) and no
+        // profiler (a worker has no profile).
         ->set('phem.async.handler_invoker', HandlerInvoker::class)
-            ->args([tagged_iterator('phem.handler_middleware', exclude: ['phem.handler_middleware.async', 'phem.handler_middleware.rate_limit', 'phem.handler_middleware.profiler']), service('phem.callable_arguments')])
+            ->args([tagged_iterator('phem.handler_middleware', exclude: ['phem.handler_middleware.async', 'phem.handler_middleware.redirect', 'phem.handler_middleware.rate_limit', 'phem.handler_middleware.profiler']), service('phem.callable_arguments')])
         ->set('phem.async.handler', AsyncHandler::class)
             ->public()
             ->args([

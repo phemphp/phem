@@ -31,7 +31,9 @@ use Symfony\Component\Routing\RouteCollection;
  * its document, with a `<Root>` (see Phem\Root). The attribute works as on a controller: path
  * (or localized paths), name, requirements, defaults, methods, host, schemes, condition,
  * priority, env and aliases. Without a name, the route name comes from the component:
- * `App\Page\Counter` → `app_page_counter`.
+ * `App\Page\Counter` → `app_page_counter`. The first route of a page also has the name of the
+ * page as an alias: `$urlGenerator->generate(Counter::class)`, `path('App\\Page\\Counter')`, and
+ * Phem\RedirectTo use it.
  *
  * The events of a page go to the URL of the page (`POST`, see EventController), so the access
  * rules of the page (`access_control`, the firewall, the host and the condition of the route)
@@ -84,8 +86,10 @@ final class PageLoader extends Loader
             // A route change does not change the manifest, only the compiled file.
             $routes->addResource(new FileResource((string) $reflection->getFileName()));
 
+            // The first route of the page has its name as an alias (see PageUrlGenerator).
+            $aliased = false;
             foreach ($reflection->getAttributes(RouteAttribute::class, \ReflectionAttribute::IS_INSTANCEOF) as $i => $attribute) {
-                $this->addRoute($routes, $attribute->newInstance(), $page, $i);
+                $aliased = $this->addRoute($routes, $attribute->newInstance(), $page, $i, !$aliased) || $aliased;
             }
         }
 
@@ -138,10 +142,15 @@ final class PageLoader extends Loader
         }
     }
 
-    private function addRoute(RouteCollection $routes, RouteAttribute $attr, string $page, int $index): void
+    /**
+     * @param bool $alias true to add the name of the page as an alias of the route
+     *
+     * @return bool false when the route is not for this environment
+     */
+    private function addRoute(RouteCollection $routes, RouteAttribute $attr, string $page, int $index, bool $alias): bool
     {
         if ($attr->envs && !\in_array($this->env, $attr->envs, true)) {
-            return;
+            return false;
         }
 
         $name = $attr->name ?? self::routeName($page).($index > 0 ? '_'.$index : '');
@@ -169,15 +178,17 @@ final class PageLoader extends Loader
             $routes->add($routeName, $route, $attr->priority ?? 0);
         }
 
-        foreach ($attr->aliases as $alias) {
-            $aliasName = $alias instanceof DeprecatedAlias ? $alias->aliasName : $alias;
+        foreach ($alias ? [$page, ...$attr->aliases] : $attr->aliases as $aliasOf) {
+            $aliasName = $aliasOf instanceof DeprecatedAlias ? $aliasOf->aliasName : $aliasOf;
             foreach (array_keys($paths) as $locale) {
                 $suffix = 0 !== $locale ? '.'.$locale : '';
                 $added = $routes->addAlias($aliasName.$suffix, $name.$suffix);
-                if ($alias instanceof DeprecatedAlias) {
-                    $added->setDeprecated($alias->package, $alias->version, $alias->message);
+                if ($aliasOf instanceof DeprecatedAlias) {
+                    $added->setDeprecated($aliasOf->package, $aliasOf->version, $aliasOf->message);
                 }
             }
         }
+
+        return true;
     }
 }

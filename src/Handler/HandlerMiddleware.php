@@ -28,7 +28,7 @@ interface HandlerMiddleware
      * @param \Closure          $handler the event handler. Its bound object is the component (a method, or a closure in `render()`).
      * @param \Closure(): mixed $next    runs the next middleware, then the handler
      *
-     * @return mixed the result of the handler (for example a RedirectResponse)
+     * @return mixed the result of the handler (for example a Phem\RedirectTo)
      */
     public function handle(\Closure $handler, Event $event, \Closure $next): mixed;
 }

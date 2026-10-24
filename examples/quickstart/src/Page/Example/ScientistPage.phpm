@@ -4,8 +4,7 @@ namespace App\Page\Example;
 use App\Model\Scientist;
 use App\Repository\ScientistRepository;
 use Phem\Attribute\{Component, Page, Prop, Transactional};
-use Phem\Node;
-use Symfony\Component\HttpFoundation\RedirectResponse;
+use Phem\{Node, RedirectTo};
 
 use function App\Component\{Layout, ScientistCard, Document};
 
@@ -31,13 +30,14 @@ final class DeleteScientistButton
     #[Prop]
     public Scientist $scientist;
 
-    // The handler gets the repository as an argument, as the action of a controller.
+    // The handler gets the repository as an argument, as the action of a controller. It
+    // redirects to the gallery page by its class name.
     #[Transactional]
-    public function delete(ScientistRepository $scientists): RedirectResponse
+    public function delete(ScientistRepository $scientists): RedirectTo
     {
         $scientists->remove($this->scientist);
 
-        return new RedirectResponse('/examples/DurableGallery');
+        return new RedirectTo(DurableGallery::class);
     }
 
     public function render(): Node
