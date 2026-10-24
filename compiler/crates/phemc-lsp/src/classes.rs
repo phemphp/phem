@@ -3,7 +3,8 @@
 //! modification time changes.
 //!
 //! An [`Index`] serves one request. Its `current` source is the open document (its text can be
-//! unsaved): it replaces the file on disk. The index caches the lookups of the request.
+//! unsaved): it replaces the file on disk. The `open` sources replace their files too. The index
+//! caches the lookups of the request.
 
 use crate::decl::{param_text, parse, Method, Param, Parsed};
 use crate::project::{Project, SymbolKind};
@@ -122,6 +123,7 @@ impl Found {
 pub struct Index<'a> {
     pub project: &'a Project,
     pub current: Rc<Source>,
+    open: Rc<HashMap<PathBuf, Rc<Source>>>,
     members: RefCell<HashMap<(String, String), Rc<Vec<Member>>>>,
 }
 
@@ -134,17 +136,26 @@ fn method_signature(m: &Method, return_text: &str) -> String {
 
 impl<'a> Index<'a> {
     pub fn new(project: &'a Project, current: Rc<Source>) -> Self {
-        Index { project, current, members: RefCell::new(HashMap::new()) }
+        Index { project, current, open: Rc::default(), members: RefCell::new(HashMap::new()) }
+    }
+
+    /// The same index, where the `open` sources replace their files on disk.
+    pub fn with_open(self, open: Rc<HashMap<PathBuf, Rc<Source>>>) -> Self {
+        Index { open, ..self }
     }
 
     pub fn root(&self) -> &Path {
         &self.project.root
     }
 
-    /// The source of a file: the current source, or the file on disk.
+    /// The source of a file: the current source, an open source, or the file on disk.
     pub fn source(&self, file: &Path) -> Option<Rc<Source>> {
         if file == self.current.file {
             return Some(self.current.clone());
+        }
+
+        if let Some(source) = self.open.get(file) {
+            return Some(source.clone());
         }
 
         self.project.classes.source(file)

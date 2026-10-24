@@ -355,7 +355,7 @@ the image again after each change.
 The Phem plugin for [Claude Code](https://claude.com/claude-code) runs the language server of
 the application (`vendor/bin/phemc lsp`). After each edit of a `.phpm` file, Claude Code gets the
 errors and warnings of `phemc`, so it can correct them at once. It also gets go to definition,
-hover, and outline through its `LSP` tool.
+find references, hover, and outline through its `LSP` tool.
 
 Install the plugin:
 

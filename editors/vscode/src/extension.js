@@ -75,6 +75,22 @@ async function decorate(editor) {
     }
 }
 
+// The command of a usage count (a code lens of the server). The arguments are the URI of the
+// document, the position of the declaration, and the locations of the references, as JSON.
+// VS Code then shows the references in a peek view. Click one to go to it.
+function showReferences(uri, position, locations) {
+    if (!client) {
+        return;
+    }
+    const c = client.protocol2CodeConverter;
+    return vscode.commands.executeCommand(
+        'editor.action.showReferences',
+        c.asUri(uri),
+        c.asPosition(position),
+        locations.map((l) => c.asLocation(l)),
+    );
+}
+
 function activate(context) {
     start(context);
 
@@ -90,6 +106,7 @@ function activate(context) {
         delimiterType,
         { dispose: stop },
         vscode.commands.registerCommand('phem.restartServer', () => restart(context)),
+        vscode.commands.registerCommand('phem.showReferences', showReferences),
         vscode.window.onDidChangeVisibleTextEditors((editors) => editors.forEach(decorate)),
         vscode.workspace.onDidChangeTextDocument(({ document }) => {
             if (document.languageId !== 'phpm') {

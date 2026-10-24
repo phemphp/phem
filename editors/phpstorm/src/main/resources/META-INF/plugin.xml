@@ -6,8 +6,8 @@
         Support for Phem <code>.phpm</code> files: PHP with markup literals and Twig.
         <ul>
             <li>Syntax highlighting (TextMate grammar).</li>
-            <li>Diagnostics, completion, go to definition, hover, and structure view
-                (Phem language server).</li>
+            <li>Diagnostics, completion, go to definition, find usages (with usage counts),
+                hover, and structure view (Phem language server).</li>
         </ul>
         Configure it in <b>Settings | Languages &amp; Frameworks | Phem</b>.
     ]]></description>

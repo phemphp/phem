@@ -2,7 +2,7 @@
 
 A Claude Code plugin that runs the Phem language server for `.phpm` files. After each edit or
 write of a `.phpm` file, Claude Code gets the errors and warnings of `phemc` in real time. It also
-gets the `LSP` tool for go to definition, hover, and outline.
+gets the `LSP` tool for go to definition, find references, hover, and outline.
 
 ## Install
 

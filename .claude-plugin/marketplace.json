@@ -11,7 +11,7 @@
         {
             "name": "phem",
             "source": "./editors/claude-code",
-            "description": "The Phem language server for .phpm files: compiler diagnostics after each edit, go to definition, hover, and outline."
+            "description": "The Phem language server for .phpm files: compiler diagnostics after each edit, go to definition, find references, hover, and outline."
         }
     ]
 }

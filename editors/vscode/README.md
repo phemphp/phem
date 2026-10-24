@@ -1,7 +1,7 @@
 # Phem for Visual Studio Code
 
-Syntax highlighting, completion, go to definition, hover, outline, and compiler diagnostics for
-Phem `.phpm` files. A `.phpm` file is a PHP file that contains markup literals, the same way a
+Syntax highlighting, completion, go to definition, find references, hover, outline, and compiler
+diagnostics for Phem `.phpm` files. A `.phpm` file is a PHP file that contains markup literals, the same way a
 `.jsx` file contains JSX.
 
 The PHP extensions (Intelephense, PHP Tools) do not read `.phpm` files. Thus the Phem language
@@ -89,6 +89,27 @@ the file changes.
 
 The hover also shows the description of the Twig filters, functions, tests, and tags, and of the
 HTML elements and attributes.
+
+## References and usage counts
+
+**Go to References** (`Shift+F12`) and **Find All References** (`Shift+Alt+F12`) on a component,
+a function, or a method show where the project uses it:
+
+- a component: its tags (`<Card />`). The closing tags, the slot tags, and the imports do not
+  count;
+- a function: its calls;
+- a method: its calls (`$this->increment()`) and the Twig handlers (`onClick={{ increment }}`).
+
+`Cmd`+click (or **Go to Definition**) on the name of a declaration also shows its references,
+because the definition of a declaration is the declaration.
+
+Above each component, function, and method of a `.phpm` file, a usage count (`2 usages`) shows
+the number of usages. Click it to see the usages in a peek view. Click a usage to go to its file
+and position. A page, `render()`, and the magic methods (`__construct()`) have no usage count.
+To hide the counts, set `"editor.codeLens": false`.
+
+The server finds the usages in the `.phpm` files of the project. It does not search the `.php`
+files.
 
 ## Outline
 

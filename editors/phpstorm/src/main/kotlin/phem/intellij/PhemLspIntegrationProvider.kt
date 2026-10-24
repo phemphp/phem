@@ -9,6 +9,8 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.lsp.api.LspClientManager
 import com.intellij.platform.lsp.api.LspIntegrationProvider
 import com.intellij.platform.lsp.api.ProjectWideLspClientDescriptor
+import com.intellij.platform.lsp.api.customization.LspCodeLensCustomizer
+import com.intellij.platform.lsp.api.customization.LspCustomization
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -73,6 +75,10 @@ class PhemLspClientDescriptor(project: Project) : ProjectWideLspClientDescriptor
             .withCharset(StandardCharsets.UTF_8)
             .withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE)
             .apply { project.basePath?.let { withWorkDirectory(it) } }
+    }
+
+    override val lspCustomization: LspCustomization = object : LspCustomization() {
+        override val codeLensCustomizer: LspCodeLensCustomizer = PhemCodeLensSupport()
     }
 
     override fun createInitializationOptions(): Any =

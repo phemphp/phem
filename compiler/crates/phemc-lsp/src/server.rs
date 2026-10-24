@@ -6,6 +6,7 @@ use crate::check;
 use crate::classes::{Index, Source};
 use crate::complete::{complete, ItemKind};
 use crate::project::{find_root, Project};
+use crate::references::{counted, declaration_at, target_at, Reference, Usages};
 use crate::resolve::symbol_at;
 use crate::scanner::scan;
 use crate::symbols::{document_symbols, Outline, OutlineKind};
@@ -17,6 +18,11 @@ use std::path::{Path, PathBuf};
 
 /// The custom request that returns the ranges of the Twig delimiters of a document.
 pub const TWIG_DELIMITERS: &str = "phem/twigDelimiters";
+
+/// The command of a usage count (a code lens). The client shows the references. The arguments
+/// are the URI of the document, the position of the declaration, and the locations of the
+/// references.
+pub const SHOW_REFERENCES: &str = "phem.showReferences";
 
 const TRIGGER_CHARACTERS: &[&str] = &["<", "\\", ":", "/", ".", ">", "|", "$", "%", "'", "\""];
 
@@ -159,6 +165,8 @@ impl<W: Write> Server<W> {
             "textDocument/completion" => self.completion(parse(params)?),
             "textDocument/hover" => self.hover(parse(params)?),
             "textDocument/definition" => self.definition(parse(params)?),
+            "textDocument/references" => self.references(parse(params)?),
+            "textDocument/codeLens" => self.code_lens(parse(params)?),
             "textDocument/documentSymbol" => self.document_symbol(parse(params)?),
             TWIG_DELIMITERS => self.twig_delimiters(parse(params)?),
             _ => return Err((-32601, format!("unknown method `{method}`"))),
@@ -226,6 +234,8 @@ impl<W: Write> Server<W> {
             }),
             hover_provider: Some(lsp::HoverProviderCapability::Simple(true)),
             definition_provider: Some(lsp::OneOf::Left(true)),
+            references_provider: Some(lsp::OneOf::Left(true)),
+            code_lens_provider: Some(lsp::CodeLensOptions { resolve_provider: Some(false) }),
             document_symbol_provider: Some(lsp::OneOf::Left(true)),
             ..Default::default()
         };
@@ -423,6 +433,18 @@ impl<W: Write> Server<W> {
         Some(f(&index, &text))
     }
 
+    /// The `.phpm` sources of the project of a document, for a request on the document.
+    fn with_usages<T>(&mut self, uri: &lsp::Url, f: impl FnOnce(&Usages, &Index) -> T) -> Option<T> {
+        let file = file_of(uri)?;
+        let open: HashMap<PathBuf, String> = self.docs.iter().map(|(p, d)| (p.clone(), d.text.clone())).collect();
+
+        let (_, project) = self.project(&file);
+        let usages = Usages::load(project, &open);
+        let index = usages.index(&file)?;
+
+        Some(f(&usages, &index))
+    }
+
     fn completion(&mut self, params: lsp::CompletionParams) -> Value {
         let pos = params.text_document_position;
         let trigger = params.context.and_then(|c| c.trigger_character).and_then(|c| c.chars().next());
@@ -451,8 +473,16 @@ impl<W: Write> Server<W> {
         let docs: HashMap<PathBuf, String> = self.docs.iter().map(|(p, d)| (p.clone(), d.text.clone())).collect();
 
         let result = self.with_index(&pos.text_document.uri, |index, text| {
-            let symbol = symbol_at(index, offset_of(text, pos.position))?;
-            let location = symbol.location?;
+            let offset = offset_of(text, pos.position);
+            let (origin, location) = match symbol_at(index, offset).and_then(|s| Some((s.range, s.location?))) {
+                Some(found) => found,
+                // A declaration goes to itself: the editor then shows its references.
+                None => {
+                    let d = declaration_at(&index.current.parsed, &index.current.file, offset)?;
+                    (d.range(), d.location)
+                }
+            };
+
             let target_text = match docs.get(&location.file) {
                 Some(t) => t.clone(),
                 None => index.source(&location.file)?.text.clone(),
@@ -463,7 +493,7 @@ impl<W: Write> Server<W> {
 
             Some(if link_support {
                 lsp::GotoDefinitionResponse::Link(vec![lsp::LocationLink {
-                    origin_selection_range: Some(range(text, symbol.range.0, symbol.range.1)),
+                    origin_selection_range: Some(range(text, origin.0, origin.1)),
                     target_uri: uri,
                     target_range: at,
                     target_selection_range: at,
@@ -473,6 +503,47 @@ impl<W: Write> Server<W> {
             })
         });
         json!(result.flatten())
+    }
+
+    fn references(&mut self, params: lsp::ReferenceParams) -> Value {
+        let pos = params.text_document_position;
+        let include_declaration = params.context.include_declaration;
+        let result = self.with_usages(&pos.text_document.uri, |usages, index| {
+            let target = target_at(index, offset_of(&index.current.text, pos.position))?;
+            let mut list = usages.find(std::slice::from_ref(&target)).pop().unwrap_or_default();
+            if include_declaration {
+                list.insert(0, Reference { file: target.location.file.clone(), range: target.range() });
+            }
+
+            Some(list.iter().filter_map(|r| location_of(index, r)).collect::<Vec<_>>())
+        });
+        json!(result.flatten())
+    }
+
+    /// A usage count above each function, class, and method of a document.
+    fn code_lens(&mut self, params: lsp::CodeLensParams) -> Value {
+        let uri = params.text_document.uri;
+        let lenses = self.with_usages(&uri, |usages, index| {
+            let source = &index.current;
+            let targets = counted(&source.parsed, &source.file);
+            let found = usages.find(&targets);
+
+            targets
+                .iter()
+                .zip(found)
+                .map(|(target, list)| {
+                    let at = range(&source.text, target.range().0, target.range().1);
+                    let locations: Vec<_> = list.iter().filter_map(|r| location_of(index, r)).collect();
+                    let title = if list.len() == 1 { "1 usage".to_string() } else { format!("{} usages", list.len()) };
+                    lsp::CodeLens {
+                        range: at,
+                        command: Some(lsp::Command { title, command: SHOW_REFERENCES.into(), arguments: Some(vec![json!(uri), json!(at.start), json!(locations)]) }),
+                        data: None,
+                    }
+                })
+                .collect::<Vec<_>>()
+        });
+        json!(lenses.unwrap_or_default())
     }
 
     fn document_symbol(&mut self, params: lsp::DocumentSymbolParams) -> Value {
@@ -493,6 +564,14 @@ impl<W: Write> Server<W> {
         let ranges: Vec<_> = scan(&doc.text).delimiters.into_iter().map(|(s, e)| range(&doc.text, s, e)).collect();
         json!(ranges)
     }
+}
+
+/// The LSP location of a reference.
+fn location_of(index: &Index, reference: &Reference) -> Option<lsp::Location> {
+    let source = index.source(&reference.file)?;
+    let uri = lsp::Url::from_file_path(&reference.file).ok()?;
+
+    Some(lsp::Location { uri, range: range(&source.text, reference.range.0, reference.range.1) })
 }
 
 fn file_of(uri: &lsp::Url) -> Option<PathBuf> {
@@ -674,6 +753,58 @@ mod tests {
         let diagnostics = out.iter().find(|m| m["method"] == "textDocument/publishDiagnostics").unwrap();
         assert_eq!(diagnostics["params"]["diagnostics"][0]["code"], "E010");
         assert_eq!(diagnostics["params"]["diagnostics"][0]["range"]["start"], json!({"line": 5, "character": 12}));
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn answers_references_and_usage_counts() {
+        let dir = crate::tests::temp_dir();
+        std::fs::write(dir.join("composer.json"), "{}").unwrap();
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        let card = dir.join("src/Card.phpm");
+        let card_text = "<?phpm\nnamespace App;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Card()\n{\n    return <p />;\n}\n";
+        std::fs::write(&card, card_text).unwrap();
+        let page = dir.join("src/index.phpm");
+        std::fs::write(&page, "<?phpm\nnamespace App;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Home()\n{\n    return <div><Card /><Card /></div>;\n}\n").unwrap();
+        let card_uri = lsp::Url::from_file_path(&card).unwrap();
+        let page_uri = lsp::Url::from_file_path(&page).unwrap();
+
+        let mut server = Server::new(Vec::new());
+        let input = [
+            json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}}}),
+            json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": card_uri, "languageId": "phpm", "version": 1, "text": card_text}}}),
+            json!({"jsonrpc": "2.0", "id": 2, "method": "textDocument/codeLens", "params": {"textDocument": {"uri": card_uri}}}),
+            json!({"jsonrpc": "2.0", "id": 3, "method": "textDocument/references", "params": {"textDocument": {"uri": card_uri}, "position": {"line": 6, "character": 10}, "context": {"includeDeclaration": true}}}),
+            json!({"jsonrpc": "2.0", "id": 4, "method": "textDocument/definition", "params": {"textDocument": {"uri": card_uri}, "position": {"line": 6, "character": 10}}}),
+        ];
+        let bytes: String = input.into_iter().map(frame).collect();
+        let mut reader = BufReader::new(bytes.as_bytes());
+        while let Some(m) = read_message(&mut reader).unwrap() {
+            server.handle(m);
+        }
+
+        let out = responses(&server.out);
+        assert_eq!(out[0]["result"]["capabilities"]["referencesProvider"], true);
+
+        // The usage count of `Card`: the client shows the two tags of the page.
+        let lens = &out.iter().find(|m| m["id"] == 2).unwrap()["result"][0];
+        assert_eq!(lens["range"]["start"], json!({"line": 6, "character": 9}));
+        assert_eq!(lens["command"]["title"], "2 usages");
+        assert_eq!(lens["command"]["command"], SHOW_REFERENCES);
+        assert_eq!(lens["command"]["arguments"][0], json!(card_uri));
+        assert_eq!(lens["command"]["arguments"][1], json!({"line": 6, "character": 9}));
+        let tag = |character: u32| json!({"uri": page_uri, "range": {"start": {"line": 8, "character": character}, "end": {"line": 8, "character": character + 4}}});
+        assert_eq!(lens["command"]["arguments"][2], json!([tag(17), tag(25)]));
+
+        let references = &out.iter().find(|m| m["id"] == 3).unwrap()["result"];
+        assert_eq!(references.as_array().unwrap().len(), 3);
+        assert_eq!(references[0]["uri"], json!(card_uri));
+        assert_eq!(references[1], tag(17));
+
+        // A declaration goes to itself.
+        let definition = &out.iter().find(|m| m["id"] == 4).unwrap()["result"];
+        assert_eq!(definition, &json!({"uri": card_uri, "range": {"start": {"line": 6, "character": 9}, "end": {"line": 6, "character": 9}}}));
 
         std::fs::remove_dir_all(dir).unwrap();
     }

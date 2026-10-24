@@ -1,7 +1,7 @@
 {
     "name": "phem",
     "displayName": "Phem",
-    "description": "Syntax highlighting, and the Phem language server for .phpm files: diagnostics as you type, completion, go to definition, hover, and outline.",
+    "description": "Syntax highlighting, and the Phem language server for .phpm files: diagnostics as you type, completion, go to definition, find references with usage counts, hover, and outline.",
     "version": "0.5.0",
     "publisher": "phem",
     "license": "MIT",

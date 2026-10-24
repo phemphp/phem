@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Find references on a component, a function, or a method: the tags of a component, the calls
+  of a function, and the calls and the Twig handlers of a method, in the `.phpm` files of the
+  project. `Cmd`+click on a declaration also shows them.
+- A usage count (`2 usages`) above each component, function, and method. Click it to see the
+  usages, then click one to go to it.
+
 ## 0.5.0
 
 - The extension runs the Phem language server (the `phemc-lsp` crate of the compiler). The

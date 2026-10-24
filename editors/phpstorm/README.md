@@ -14,8 +14,27 @@ The plugin gives:
   - diagnostics, as you type;
   - completion, with snippets and `use` imports;
   - go to definition;
+  - find usages of the components, the functions, and the methods, and a usage count above
+    each declaration (see [Usages](#usages));
   - hover (quick documentation);
   - the structure view and the breadcrumbs (document symbols).
+
+## Usages
+
+**Find Usages** (`Alt+F7`) and **Show Usages** (`Cmd+Alt+F7`) on a component, a function, or a
+method show where the project uses it:
+
+- a component: its tags (`<Card />`). The closing tags, the slot tags, and the imports do not
+  count;
+- a function: its calls;
+- a method: its calls (`$this->increment()`) and the Twig handlers (`onClick={{ increment }}`).
+
+Above each component, function, and method of a `.phpm` file, a usage count (`2 usages`) shows
+the number of usages. Click it to see the usages in a popup. Click a usage to go to its file and
+position. A page, `render()`, and the magic methods (`__construct()`) have no usage count.
+
+The server finds the usages in the `.phpm` files of the project. It does not search the `.php`
+files.
 
 ## Requirements
 
@@ -101,7 +120,7 @@ When you change a setting, the plugin restarts the server.
 The plugin uses the LSP API of the IntelliJ Platform (`com.intellij.platform.lsp`). PhpStorm 2026.2
 has this API, and it supports all the features of the Phem server: diagnostics, completion
 (with snippets, `additionalTextEdits`, `completionItem/resolve`, and trigger characters), go to
-definition, hover, and document symbols. Thus the plugin does not need LSP4IJ or another plugin.
+definition, references, code lenses, hover, and document symbols. Thus the plugin does not need LSP4IJ or another plugin.
 
 The plugin starts one server for each project, when you open the first `.phpm` file. The plugin
 sends the language id `phpm` and these `initializationOptions`:
@@ -124,8 +143,8 @@ To see the messages between the IDE and the server, add `#com.intellij.platform.
 ## Limits
 
 - The file type of `.phpm` files is the TextMate file type. PhpStorm does not parse `.phpm`
-  files as PHP. The PHP features of PhpStorm (inspections, refactorings, find usages) do not
-  work in `.phpm` files.
+  files as PHP. The PHP features of PhpStorm (inspections, refactorings) do not work in `.phpm`
+  files. Find usages comes from the Phem server.
 - The grammar includes `source.php`, `source.js`, and `source.css`. They come from the TextMate
   bundles of PhpStorm (PHP, JavaScript, and CSS). If you disable these bundles in
   **Settings > Editor > TextMate Bundles**, the PHP, JavaScript, and CSS code has no highlighting.

@@ -1,9 +1,11 @@
-//! The tests of the completion, the definition, and the hover, on a fixture project.
+//! The tests of the completion, the definition, the hover, and the references, on a fixture
+//! project.
 
 use crate::classes::{Index, Source};
 use crate::complete::{complete, Item, ItemKind};
 use crate::imports::Insert;
 use crate::project::Project;
+use crate::references::{counted, target_at, Usages};
 use crate::resolve::{symbol_at, Symbol};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -1026,4 +1028,109 @@ fn no_panic_at_any_offset() {
 
     let odd = "<?phpm\n$s = \"é{$a[\"k\"]}\"; /* ♥ */ return <p a=\"😀\" {{ ...b }}>{{ x|y(\"é\") }}{% for é in ü %}</p>; <<<EOT\nx\n";
     every_offset(&project, &root().join("src/odd.phpm"), odd);
+}
+
+// --- References ----------------------------------------------------------------------------------
+
+const USER: &str = r"<?phpm
+namespace App\Page;
+
+use Phem\Attribute\{Component, Page, State};
+use function App\Component\{Layout, Avatar, Initials};
+
+#[Page('/team')]
+final class Team
+{
+    #[State] public int $count = 0;
+
+    public function increment(): void
+    {
+        $this->count++;
+    }
+
+    public function reset(): void
+    {
+        $this->increment();
+    }
+
+    public function render()
+    {
+        $short = Initials('Ada');
+
+        return (
+            <Layout title=x>
+                <Avatar name={{ short }} />
+                <button onClick={{ increment }}>+</button>
+                <Layout:footer><Avatar name=y /></Layout:footer>
+            </Layout>
+        );
+    }
+}
+";
+
+/// The project with the `USER` page, and its usages.
+fn with_usages<T>(f: impl FnOnce(&Usages, &Path) -> T) -> T {
+    let file = root().join("src/page/team.phpm");
+    let mut project = Project::load(root());
+    project.update_phpm(&file, Some(USER));
+
+    let mut sources: Vec<_> = project.phpm.keys().filter(|f| **f != file).map(|f| Source::new(f.clone(), std::fs::read_to_string(f).unwrap())).collect();
+    sources.push(Source::new(file.clone(), USER.to_string()));
+    let usages = Usages::new(&project, sources);
+
+    f(&usages, &file)
+}
+
+/// The references of the declaration at the first `needle` of a file, as `file:text`.
+fn references_of(file: &str, needle: &str) -> Vec<String> {
+    with_usages(|usages, team| {
+        let path = root().join(file);
+        let index = usages.index(&path).unwrap();
+        let offset = index.current.text.find(needle).expect("no needle");
+        let target = target_at(&index, offset).expect("no declaration");
+
+        usages.find(&[target]).remove(0).iter().map(|r| {
+            let text = if r.file == team { USER.to_string() } else { std::fs::read_to_string(&r.file).unwrap() };
+            let line = text[..r.range.0].matches('\n').count() + 1;
+            format!("{}:{line}:{}", r.file.strip_prefix(root()).unwrap().display(), &text[r.range.0..r.range.1])
+        }).collect()
+    })
+}
+
+#[test]
+fn the_references_of_a_function_component_are_its_tags() {
+    // No import, no closing tag, and no slot tag.
+    assert_eq!(references_of("src/component/Layout.phpm", "Layout("), ["src/page/team.phpm:27:Layout"]);
+    assert_eq!(references_of("src/component/Layout.phpm", "Avatar("), ["src/page/team.phpm:28:Avatar", "src/page/team.phpm:30:Avatar"]);
+}
+
+#[test]
+fn the_references_of_a_tag_are_the_references_of_its_component() {
+    assert_eq!(references_of("src/page/team.phpm", "Avatar name=y"), ["src/page/team.phpm:28:Avatar", "src/page/team.phpm:30:Avatar"]);
+}
+
+#[test]
+fn the_references_of_a_plain_function_are_its_calls() {
+    assert_eq!(references_of("src/component/Layout.phpm", "Initials("), ["src/page/team.phpm:24:Initials"]);
+}
+
+#[test]
+fn the_references_of_a_method_are_its_calls_and_its_handlers() {
+    assert_eq!(references_of("src/page/team.phpm", "increment(): void"), ["src/page/team.phpm:19:increment", "src/page/team.phpm:29:increment"]);
+    assert_eq!(references_of("src/page/team.phpm", "increment();"), ["src/page/team.phpm:19:increment", "src/page/team.phpm:29:increment"]);
+    assert!(references_of("src/page/team.phpm", "reset").is_empty());
+}
+
+#[test]
+fn a_page_render_and_magic_methods_get_no_usage_count() {
+    with_usages(|usages, team| {
+        let index = usages.index(team).unwrap();
+        let names: Vec<_> = counted(&index.current.parsed, team).into_iter().map(|d| d.name).collect();
+        assert_eq!(names, ["increment", "reset"]);
+
+        let counter = root().join("src/component/Counter.phpm");
+        let index = usages.index(&counter).unwrap();
+        let names: Vec<_> = counted(&index.current.parsed, &counter).into_iter().map(|d| d.name).collect();
+        assert_eq!(names, ["Counter"]);
+    });
 }
