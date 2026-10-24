@@ -4,6 +4,7 @@ Phem brings a component model to Symfony. A `.phpm` file is a PHP file that cont
 
 ```php
 <?phpm
+
 namespace App\Page\Example;
 
 use Phem\Attribute\{Component, Page, State};
@@ -51,20 +52,6 @@ function with `#[Page]`. A `#[Component]` or `#[Page]` class is a Symfony servic
 its value in the browser between events, and an event handler such as `handleClick()` runs on the
 server.
 
-## Install
-
-In a Symfony application:
-
-```sh
-composer require phem/phem
-vendor/bin/phemc build src --out var/cache/phem
-```
-
-On the first run, `vendor/bin/phemc` downloads the `phemc` compiler of the installed version from
-the GitHub release. Without Composer, use
-`curl -fsSL https://github.com/phemphp/phem/raw/refs/heads/main/install.sh | sh`
-(on Windows, `install.ps1`).
-
 ## Documentation
 
 - [Getting started](docs/getting-started.md): a new app from scratch, with Docker
@@ -72,18 +59,7 @@ the GitHub release. Without Composer, use
 - [Compiling and running `.phpm` files](docs/compiling.md), with the list of diagnostics
 - [Testing components and pages](docs/testing.md)
 - [How it works](docs/how-it-works.md), from React to Phem, and the limits
-
-## Contributing
-
-You need only Docker:
-
-```sh
-make up      # the quickstart on http://localhost:8080/learn, in watch mode
-make test    # the JS tests, cargo test and PHPUnit
-```
-
-See [docs/contributing.md](docs/contributing.md) for the repository layout, the editor support and
-the release steps.
+- [Contributing](docs/contributing.md): the repository layout, the editor support and the release steps
 
 ## License
 
