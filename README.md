@@ -1,6 +1,6 @@
 # Phem
 
-Phem brings the React component model to PHP and Symfony. A `.phpm` file is a PHP file that contains markup literals, the same way a `.jsx` file contains JSX:
+Phem brings a component model to PHP and Symfony. A `.phpm` file is a PHP file that contains markup literals (built on top of Twig):
 
 ```php
 <?phpm
