@@ -17,6 +17,7 @@ use Phem\Event;
 use Symfony\Component\ExpressionLanguage\Expression;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Attribute\RateLimit;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
@@ -45,6 +46,7 @@ final class RateLimitMiddleware implements HandlerMiddleware
     public function __construct(
         private readonly ServiceProviderInterface $limiters,
         private readonly ?ExpressionLanguage $expressionLanguage = null,
+        private readonly ?RequestStack $requests = null,
     ) {
     }
 
@@ -57,7 +59,7 @@ final class RateLimitMiddleware implements HandlerMiddleware
         }
 
         $method = $class->getMethod($function->getName());
-        $request = $event->request;
+        $request = $this->requests?->getCurrentRequest();
 
         foreach ($this->attributesOf($method) as $attribute) {
             if (null !== $request && $attribute->methods && !\in_array($request->getMethod(), $attribute->methods, true)) {

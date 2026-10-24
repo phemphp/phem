@@ -5,11 +5,12 @@ namespace App\Page;
 use Phem\Attribute\{Component, Page, State};
 use Phem\Event;
 use Phem\Node;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 use function App\Component\Document;
 
-// The files of a form (see Phem\Event::$files).
+// The files of a form (see Phem\Event::$files), and the request of the event.
 #[Component]
 final class Uploader
 {
@@ -18,7 +19,7 @@ final class Uploader
     #[State] public string $photo = '';
     #[State] public bool $moved = false;
 
-    public function save(Event $e): void
+    public function save(Event $e, Request $request): void
     {
         $this->uploaded = [];
         $files = $e->files;
@@ -26,8 +27,8 @@ final class Uploader
             $this->uploaded[] = $file->getClientOriginalName().' '.$file->getSize().' '.trim((string) file_get_contents($file->getPathname()));
         });
         // The copy of the request has the fields and the files of the form, as a normal submit.
-        $this->title = (string) $e->request?->request->get('title');
-        $this->photo = (string) $e->request?->files->get('photo')?->getClientOriginalName();
+        $this->title = (string) $request->request->get('title');
+        $this->photo = (string) $request->files->get('photo')?->getClientOriginalName();
         $photo = $e->files['photo'] ?? null;
         if ('move' === ($e->form['action'] ?? null) && $photo instanceof UploadedFile) {
             $photo->move(sys_get_temp_dir(), uniqid('phem-moved-'));

@@ -19,6 +19,7 @@ use Phem\Attribute\Path;
 use Phem\Attribute\Prop;
 use Phem\Attribute\State;
 use Phem\Tests\Fixtures\Scientist;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Attribute\Cache;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -62,7 +63,7 @@ function FunctionPage(): void
 {
 }
 
-// A function page has no route values.
+// A route value needs a parameter with its name.
 #[Page('/function/{slug}')]
 function FunctionValue(): void
 {
@@ -70,6 +71,22 @@ function FunctionValue(): void
 
 #[Page('/function-default', defaults: ['mode' => 'dark', '_format' => 'html'])]
 function FunctionDefault(): void
+{
+}
+
+// A function page with route values: they go to the parameters with their names.
+#[Page('/function-items/{id}')]
+function FunctionItem(int $id, Request $request): void
+{
+}
+
+#[Page('/function-scientists/{name:scientist}')]
+function FunctionMapped(Scientist $scientist): void
+{
+}
+
+#[Page('/function-scalar/{name:id}')]
+function FunctionMappedToScalar(int $id): void
 {
 }
 

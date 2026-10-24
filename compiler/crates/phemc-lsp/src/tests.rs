@@ -383,10 +383,10 @@ fn a_component_tag_adds_a_use_function_import() {
 }
 
 #[test]
-fn a_page_of_another_file_is_not_a_component_tag() {
+fn a_page_is_not_a_component_tag() {
     assert!(run(&format!("{PAGE}function Home()\n{{\n    return <Ab|\n}}\n")).find("About").is_none());
     let about = format!("{PAGE}use Phem\\Attribute\\Page;\n\n#[Page('/about')]\nfinal class About\n{{\n    public function render()\n    {{\n        return <p><Ab|</p>;\n    }}\n}}\n");
-    assert_eq!(run_in(&about, "src/page/about.phpm").get("About").detail, "App\\Page\\About (page)");
+    assert!(run_in(&about, "src/page/about.phpm").find("About").is_none(), "not in its own file either");
 }
 
 #[test]

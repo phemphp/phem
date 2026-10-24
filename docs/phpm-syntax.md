@@ -79,7 +79,7 @@ pages, in any directory. The Symfony `#[Route]` attribute works too, on a `#[Com
 
 ### Function pages
 
-A page with no state of its own and no route values can be a function:
+A page with no state of its own can be a function:
 
 ```php
 use Phem\Attribute\Page;
@@ -101,19 +101,45 @@ function About(): Node
 ```
 
 The components of a function page can have state and handlers, as `<Counter />` here: their
-events go to the URL of the page. A function page has these limits:
+events go to the URL of the page.
 
-- It has no route values (`{id}`, or a `defaults` key), because a function has no `#[Path]`
-  properties. The route loader reports a route value on a function page. Use a class page for
-  it.
+A page is not a tag (E056), so a function page has no props. Its parameters get the arguments
+of a Symfony controller: the route values, the `Request`, the services, `#[CurrentUser]`,
+`#[MapQueryParameter]`, `#[Autowire]`, and the other value resolvers of Symfony.
+
+```php
+use App\Repository\ItemRepository;
+use Phem\Attribute\Page;
+use Phem\Node;
+use Symfony\Component\HttpFoundation\Request;
+
+#[Page('/items/{id}')]
+function Item(int $id, ItemRepository $items, Request $request): Node
+{
+    $item = $items->find($id);
+
+    return <Document><h1>{{ item.title }}</h1></Document>;
+}
+```
+
+A route value goes to the parameter with its name, as for a `#[Path]` property: Phem converts
+it to the type of the parameter (an `int`, an entity with `{slug:item}`), and a value that does
+not match gives a 404 response. The route loader reports a route value with no parameter.
+
+In an event of a component of the page, the page function runs again with the request of the
+event: a `POST` request with the same route values. Thus `$request->getMethod()` is `POST`
+there. Read the data in the function, not in the request of the first render.
+
+A function page has these limits:
+
 - It cannot have `#[Subscribe]` (E053).
 - The Symfony `#[Route]` attribute cannot mark a function (E052). Use `#[Page]`.
 
 ### Route values
 
 A route value goes to the page as a prop. Mark the public property with `#[Path]` (it needs no
-`#[Prop]`). The name of the property is the name of the route value. Only a class page can have
-route values.
+`#[Prop]`). The name of the property is the name of the route value. A function page gets its
+route values as parameters (see [Function pages](#function-pages)).
 
 ```php
 use Phem\Attribute\{Page, Path};
@@ -323,9 +349,9 @@ runs the closure in `$row['onRemove']`.
 
 Supported events: `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`, `onKeyDown`, `onKeyUp`,
 `onFocus`, `onBlur`. phemc warns about another event (W003): the browser does not send it.
-The handler runs on the server. It receives a `Phem\Event` object with `$e->value`,
-`$e->checked`, `$e->key`, `$e->form` (an array, for `onSubmit`), `$e->files` (the files of the
-form, see [File uploads](#file-uploads)), and `$e->request`.
+The handler runs on the server. It can receive a `Phem\Event` object with `$e->value`,
+`$e->checked`, `$e->key`, `$e->form` (an array, for `onSubmit`), and `$e->files` (the files of
+the form, see [File uploads](#file-uploads)). See [Handler arguments](#handler-arguments).
 `onChange` on a text input fires on each key (as in React), but the browser waits until the user
 stops typing for 150 ms before it sends the event (see [Debounce and throttle](#debounce-and-throttle)).
 A field that only copies its value into the state needs no handler: see [Bound fields](#bound-fields).
@@ -347,15 +373,43 @@ apply to a page (a class or a function), for the page and for its events. Phem a
 from the same origin (`Sec-Fetch-Site`, or `Origin`), as JSON or as `multipart/form-data` with
 files, so another site cannot send one (CSRF). A `POST` request without the header renders the page, if its route accepts `POST`.
 
-`$e->request` is the Symfony `Request` of the event, with the form fields as its POST data.
-The keys with brackets become nested arrays (`scientist[name]` → `['scientist' => ['name' => ...]]`),
-as in a normal POST. A Symfony form can read it directly:
+### Handler arguments
+
+A handler gets its arguments as the action of a Symfony controller. The event is one of them: a
+handler declares it at any position, or not at all. A method of a class component can also get
+the `Request`, the services, `#[CurrentUser]`, `#[Autowire]`, and the other value resolvers of
+Symfony:
 
 ```php
-public function add(Event $e): void
+use Phem\Event;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
+
+public function save(Request $request, NoteRepository $notes, #[CurrentUser] User $user, Event $e): void
+{
+    $notes->add($user, $e->value);
+}
+
+public function reset(): void
+{
+    $this->count = 0;
+}
+```
+
+A closure of `render()` gets the event and the `Request`, but no services: it has no method for
+the Symfony locator. Use `$this` and the constructor for them. A parameter with no type gets
+nothing: write `fn (Event $e) => ...`. An `#[Async]` handler gets its arguments again in the
+worker, with the request of the worker: it has the route values and the user, but no session.
+
+The `Request` of a handler has the form fields as its POST data. The keys with brackets become
+nested arrays (`scientist[name]` → `['scientist' => ['name' => ...]]`), as in a normal POST. A
+Symfony form can read it directly:
+
+```php
+public function add(Request $request): void
 {
     $form = $this->forms->create(ScientistType::class);
-    $form->handleRequest($e->request);
+    $form->handleRequest($request);
     if ($form->isSubmitted() && $form->isValid()) {
         // $form->getData()
     }
@@ -388,13 +442,13 @@ public function render(): Node
 ### File uploads
 
 The browser sends the files of a form with its submit event. The handler gets each file as a
-Symfony `UploadedFile`, in `$e->files` and in `$e->request->files`. Thus a form with a `FileType`
-field works with `handleRequest($e->request)`, as in a normal POST:
+Symfony `UploadedFile`, in `$e->files` and in the files of the `Request` argument. Thus a form
+with a `FileType` field works with `handleRequest($request)`, as in a normal POST:
 
 ```php
-public function add(Event $e): void
+public function add(Request $request): void
 {
-    $form = $this->forms->create(ScientistType::class)->handleRequest($e->request);
+    $form = $this->forms->create(ScientistType::class)->handleRequest($request);
     if ($form->isSubmitted() && $form->isValid()) {
         $photo = $form->get('photo')->getData(); // an UploadedFile, or null
         $photo?->move($this->photoDir, $photo->guessExtension() ?? 'bin');

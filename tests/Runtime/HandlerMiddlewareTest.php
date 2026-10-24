@@ -13,10 +13,13 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Runtime;
 
+use Phem\Argument\CallableArguments;
 use Phem\Event;
 use Phem\Handler\HandlerInvoker;
 use Phem\Handler\HandlerMiddleware;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Controller\ArgumentResolverInterface;
 
 final class HandlerMiddlewareTest extends TestCase
 {
@@ -34,6 +37,34 @@ final class HandlerMiddlewareTest extends TestCase
 
         self::assertSame('done', $result);
         self::assertSame(['a before', 'b before', 'handler click', 'b after', 'a after'], $log->getArrayCopy());
+    }
+
+    public function testHandlerGetsTheEventAtAnyPositionAndTheRequest(): void
+    {
+        $request = Request::create('/page', 'POST');
+
+        $result = new HandlerInvoker()->invoke(static fn (Request $r, Event $e): string => $r->getPathInfo().' '.$e->type, new Event('click'), $request);
+
+        self::assertSame('/page click', $result);
+    }
+
+    public function testHandlerWithNoParametersResolvesNoArguments(): void
+    {
+        $resolver = new class implements ArgumentResolverInterface {
+            public int $calls = 0;
+
+            public function getArguments(Request $request, callable $controller, ?\ReflectionFunctionAbstract $reflector = null): array
+            {
+                ++$this->calls;
+
+                return [];
+            }
+        };
+
+        $result = new HandlerInvoker([], new CallableArguments($resolver))->invoke(static fn (): string => 'done', new Event('click'));
+
+        self::assertSame('done', $result);
+        self::assertSame(0, $resolver->calls);
     }
 
     public function testMiddlewareCanStopTheEvent(): void

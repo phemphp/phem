@@ -1152,21 +1152,23 @@ fn components(parsed: &Parsed) -> Vec<Component> {
             continue;
         }
 
+        let page = has_attr(&f.attrs, "Page");
         let mut comp = Component {
             kind: ComponentKind::Function,
             name: f.name.clone(),
             fqn: f.fqn.clone(),
-            page: has_attr(&f.attrs, "Page"),
+            page,
             props: vec![],
             slots: vec![],
             children: false,
             rest: false,
             offset: Some(f.offset),
-            signature: format!("#[Component]\nfunction {}({})", f.name, f.params.iter().map(param_text).collect::<Vec<_>>().join(", ")),
+            signature: format!("#[{}]\nfunction {}({})", if page { "Page" } else { "Component" }, f.name, f.params.iter().map(param_text).collect::<Vec<_>>().join(", ")),
             doc: None,
         };
 
-        for p in &f.params {
+        // A function page has no props: its parameters are the arguments of a controller.
+        for p in f.params.iter().filter(|_| !page) {
             // A `#[Context]` parameter is not a prop: a component above gives it.
             if has_attr(&p.attrs, "Context") {
                 continue;

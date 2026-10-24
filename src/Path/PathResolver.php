@@ -18,8 +18,8 @@ use Phem\Binding\PropError;
 use Phem\Metadata\ComponentMetadata;
 
 /**
- * The props of a page from its route values: the values of the #[Path] properties, converted
- * to their types by the PathValueConverters.
+ * The props of a page from its route values: the values of the #[Path] properties (the
+ * parameters of a function page), converted to their types by the PathValueConverters.
  */
 final class PathResolver
 {
@@ -64,6 +64,8 @@ final class PathResolver
             }
         }
 
-        throw new PropError(\sprintf('The #[Path] prop "%s" of <%s> has the type %s, which is not a Doctrine entity. A #[Path] prop is an int, float, bool, string, or a Doctrine entity (install doctrine/orm and doctrine/doctrine-bundle).', $name, ComponentName::short($page), $type->getName()));
+        $what = class_exists($page) ? 'The #[Path] prop' : 'The route value parameter';
+
+        throw new PropError(\sprintf('%s "%s" of <%s> has the type %s, which is not a Doctrine entity. A route value is an int, float, bool, string, or a Doctrine entity (install doctrine/orm and doctrine/doctrine-bundle).', $what, $name, ComponentName::short($page), $type->getName()));
     }
 }

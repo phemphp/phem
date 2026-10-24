@@ -13,11 +13,14 @@ declare(strict_types=1);
 
 namespace Phem\Handler;
 
+use Phem\Argument\CallableArguments;
 use Phem\Event;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Runs an event handler through the HandlerMiddleware chain. The first middleware is the
- * outermost one.
+ * outermost one. At the end of the chain, the handler gets its arguments as a Symfony
+ * controller (see CallableArguments): the event, the request, the services.
  */
 final class HandlerInvoker
 {
@@ -26,17 +29,22 @@ final class HandlerInvoker
      */
     public function __construct(
         private readonly iterable $middlewares = [],
+        private readonly CallableArguments $arguments = new CallableArguments(),
     ) {
     }
 
     /**
-     * @param \Closure(): mixed|null $call runs the handler at the end of the chain, in place of
-     *                                     `$handler($event)` (the work of an #[Async] handler, see
-     *                                     Phem\Async\AsyncHandler)
+     * @param Request|null                      $request the request of the event (see Phem\Http\EventRequest)
+     * @param \Closure(list<mixed>): mixed|null $call    runs the handler with its arguments at the end of
+     *                                                   the chain, in place of `$handler(...$arguments)`
+     *                                                   (the work of an #[Async] handler, see
+     *                                                   Phem\Async\AsyncHandler)
      */
-    public function invoke(\Closure $handler, Event $event, ?\Closure $call = null): mixed
+    public function invoke(\Closure $handler, Event $event, ?Request $request = null, ?\Closure $call = null): mixed
     {
-        $next = $call ?? static fn (): mixed => $handler($event);
+        $call ??= static fn (array $arguments): mixed => $handler(...$arguments);
+        // After the middlewares: a handler that a middleware stops resolves no arguments.
+        $next = fn (): mixed => $call($this->arguments->of($handler, $request, $event));
         $middlewares = $this->middlewares instanceof \Traversable ? iterator_to_array($this->middlewares, false) : $this->middlewares;
 
         foreach (array_reverse($middlewares) as $middleware) {

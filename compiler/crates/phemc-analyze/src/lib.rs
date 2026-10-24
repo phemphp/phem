@@ -91,6 +91,10 @@ pub struct ComponentDef {
     /// The types of the contexts that the class provides (`#[Provide]`), resolved.
     #[serde(skip)]
     pub provides: Vec<String>,
+    /// A page (`#[Page]`, or `#[Route]` on a class component): it is not a tag. The parameters of
+    /// a function page are the arguments of a controller, not props.
+    #[serde(skip)]
+    pub page: bool,
 }
 
 /// A `#[Context]` property or parameter of a component.
@@ -154,11 +158,14 @@ pub fn context_type(file: &FileInfo, ty: &str) -> String {
 /// The components that a scanned file declares.
 pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
     let mut out = Vec::new();
+    let is_page = |fqn: &str| file.routes.iter().any(|r| r.is_component && r.fqn == fqn);
     for f in &file.functions {
         let Some(kind) = f.component_kind else { continue };
 
-        // A `#[Context]` parameter is not a prop.
-        let params: Vec<&Param> = f.params.iter().filter(|p| !p.is_context).collect();
+        // A `#[Context]` parameter is not a prop. A function page has no props: its parameters
+        // get the route values, the request and the services.
+        let page = is_page(&f.fqn);
+        let params: Vec<&Param> = f.params.iter().filter(|p| !p.is_context && !page).collect();
         out.push(ComponentDef {
             fqcn: f.fqn.clone(),
             kind,
@@ -181,6 +188,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
                 .map(|p| ContextNeed { name: p.name.clone(), ty: context_type(file, &p.ty), required: p.default.is_none() && !allows_null(&p.ty), span: p.span })
                 .collect(),
             provides: vec![],
+            page,
         });
     }
 
@@ -204,6 +212,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
                 .map(|p| ContextNeed { name: p.name.clone(), ty: context_type(file, &p.ty), required: !p.has_default && !allows_null(&p.ty), span: p.span })
                 .collect(),
             provides,
+            page: is_page(&c.fqn),
         });
     }
 
@@ -467,6 +476,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         bound: Vec::new(),
         contexts: Vec::new(),
         provides: Vec::new(),
+        page: false,
     }, ComponentDef {
         fqcn: SUSPENSE.into(),
         kind: Kind::Class,
@@ -480,6 +490,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         bound: Vec::new(),
         contexts: Vec::new(),
         provides: Vec::new(),
+        page: false,
     }, ComponentDef {
         fqcn: ERROR_BOUNDARY.into(),
         kind: Kind::Class,
@@ -493,6 +504,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         bound: Vec::new(),
         contexts: Vec::new(),
         provides: Vec::new(),
+        page: false,
     }]
 }
 

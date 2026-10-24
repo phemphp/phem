@@ -24,6 +24,7 @@ use Phem\Metadata\ComponentMetadata;
 use Phem\Node;
 use Phem\Root;
 use Phem\Slot;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\Service\ResetInterface;
 use Twig\Template;
 
@@ -99,9 +100,9 @@ final class Renderer implements ResetInterface
      *
      * @return mixed the result of the handler (for example a RedirectResponse)
      */
-    public function dispatch(Tree $tree, \Closure $handler, Event $event): mixed
+    public function dispatch(Tree $tree, \Closure $handler, Event $event, ?Request $request = null): mixed
     {
-        return $this->within($tree, fn (): mixed => $this->handlers->invoke($handler, $event));
+        return $this->within($tree, fn (): mixed => $this->handlers->invoke($handler, $event, $request));
     }
 
     /**

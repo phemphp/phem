@@ -101,20 +101,36 @@ final class PathTest extends TestCase
         self::assertSame('/function-too', $routes->get('function_too')?->getPath(), 'a repeated #[Page]');
     }
 
-    public function testRouteValueOnAFunctionPageIsAnError(): void
+    public function testRouteValueWithoutAParameterOfAFunctionPageIsAnError(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('The route "phem_tests_fixtures_pathpages_functionvalue" has the value "slug", but the page "Phem\\Tests\\Fixtures\\PathPages\\FunctionValue" is a function: a function page has no route values. Make it a class page with a #[Path] property "slug", or remove the value from the route.');
+        $this->expectExceptionMessage('The route "phem_tests_fixtures_pathpages_functionvalue" has the value "slug", but the page "Phem\\Tests\\Fixtures\\PathPages\\FunctionValue" has no parameter "slug". Add one, or remove the value from the route.');
 
         $this->load('FunctionValue');
     }
 
-    public function testDefaultOnAFunctionPageIsAnError(): void
+    public function testDefaultWithoutAParameterOfAFunctionPageIsAnError(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('has the value "mode", but the page "Phem\\Tests\\Fixtures\\PathPages\\FunctionDefault" is a function');
+        $this->expectExceptionMessage('has the value "mode", but the page "Phem\\Tests\\Fixtures\\PathPages\\FunctionDefault" has no parameter "mode"');
 
         $this->load('FunctionDefault');
+    }
+
+    public function testRouteValuesOfAFunctionPageGoToItsParameters(): void
+    {
+        self::assertSame('/function-items/{id}', $this->load('FunctionItem')->get('phem_tests_fixtures_pathpages_functionitem')?->getPath());
+        self::assertSame(['name' => 'scientist'], $this->load('FunctionMapped')->get('phem_tests_fixtures_pathpages_functionmapped')?->getDefault('_route_mapping'));
+        self::assertSame(['id', 'request'], array_keys((new ComponentMetadata())->pathProps(self::NS.'FunctionItem')), 'the parameters with no route value get no value');
+        self::assertSame(['id' => 7], self::resolver()->resolve(self::NS.'FunctionItem', ['id' => '7']), 'converted to the type of the parameter');
+    }
+
+    public function testRouteValueOfAFunctionPageMappedToABuiltinTypeIsAnError(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('maps the value "name" to the parameter "id" of the page "Phem\\Tests\\Fixtures\\PathPages\\FunctionMappedToScalar", but its type is not an entity class.');
+
+        $this->load('FunctionMappedToScalar');
     }
 
     public function testAPageThatIsNotLoadedIsAnError(): void
@@ -137,7 +153,7 @@ final class PathTest extends TestCase
         self::assertSame('/en/paged', $routes->get('phem_event.paged_i18n.en')?->getPath());
     }
 
-    public function testAFunctionComponentHasNoPathProps(): void
+    public function testAFunctionPageWithNoParametersHasNoPathProps(): void
     {
         self::assertSame([], (new ComponentMetadata())->pathProps(self::NS.'FunctionPage'));
     }

@@ -15,6 +15,7 @@ namespace Phem\Async;
 
 use Phem\Event;
 use Phem\Handler\HandlerInvoker;
+use Phem\Http\EventRequest;
 use Phem\Path\PathResolver;
 use Phem\Rendering\EventRenderer;
 use Phem\Rendering\Renderer;
@@ -95,11 +96,11 @@ final class AsyncHandler
                 return;
             }
 
-            $event = Event::fromArray($message->event, $request);
+            $event = Event::fromArray($message->event);
 
-            $this->renderer->inside($tree, fn (): mixed => $this->handlers->invoke($handler, $event, function () use ($handler, $event, $message): void {
+            $this->renderer->inside($tree, fn (): mixed => $this->handlers->invoke($handler, $event, EventRequest::of($request, $message->event), function (array $arguments) use ($handler, $message): void {
                 $mark = $this->streams->mark();
-                $promise = $handler($event);
+                $promise = $handler(...$arguments);
                 $this->streams->rollback($mark);
 
                 if (!$promise instanceof Promise) {

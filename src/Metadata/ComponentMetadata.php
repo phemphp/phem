@@ -212,8 +212,8 @@ final class ComponentMetadata
     }
 
     /**
-     * The #[Path] public properties of a page: they get the route values. A function component
-     * has none.
+     * The #[Path] public properties of a class page, or the parameters of a function page: they
+     * get the route values with their names.
      *
      * @return array<string, ?\ReflectionType> name => type
      */
@@ -228,6 +228,12 @@ final class ComponentMetadata
             foreach ($this->props($page) as $name => $p) {
                 if ([] !== $p->getAttributes(Path::class)) {
                     $out[$name] = $p->getType();
+                }
+            }
+        } elseif (\function_exists($page)) {
+            foreach ((new \ReflectionFunction($page))->getParameters() as $p) {
+                if (!$p->isVariadic()) {
+                    $out[$p->getName()] = $p->getType();
                 }
             }
         }

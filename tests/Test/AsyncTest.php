@@ -49,7 +49,7 @@ final class AsyncTest extends KernelTestCase
             // The method body ran in the request: the event renders its state.
             ->assertSelectorTextContains('#status', 'pending')
             ->receive()
-            ->assertSelectorTextContains('#notice', 'Started')
+            ->assertSelectorTextContains('#notice', 'Started submit')
             // The work did not run.
             ->assertDontSee('report.pdf');
 

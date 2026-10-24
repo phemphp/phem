@@ -8,6 +8,7 @@ use Phem\Event;
 use Phem\Node;
 use Phem\Stream\Streams;
 use Phem\Tests\Fixtures\Guestbook;
+use Symfony\Component\HttpFoundation\Request;
 
 use function App\Component\Document;
 
@@ -21,22 +22,22 @@ final class AsyncExport
     #[State] public string $format = 'csv';
 
     public function __construct(
-        private readonly Guestbook $guestbook,
         private readonly Streams $streams,
     ) {
     }
 
     // The work gets the prop, the state, the bound value and the form of the event again in the
-    // worker. The push of the method body goes out one time: in the request.
+    // worker. The push of the method body goes out one time: in the request. The method gets its
+    // arguments in the worker too: the event, the request with the form, a service.
     #[Async]
-    public function export(Event $e): Promise
+    public function export(Request $request, Guestbook $guestbook, Event $e): Promise
     {
         $this->status = 'pending';
-        $name = (string) ($e->form['name'] ?? '');
-        $this->streams->to(AsyncPage::class, ['room' => $this->room])->update('notice', <b>Started</b>);
+        $name = (string) $request->request->get('name', '');
+        $this->streams->to(AsyncPage::class, ['room' => $this->room])->update('notice', <b>Started {{ e.type }}</b>);
 
-        return new Promise(function () use ($name): void {
-            $entry = $this->guestbook->add($this->room, $name.'.'.$this->format);
+        return new Promise(function () use ($name, $guestbook): void {
+            $entry = $guestbook->add($this->room, $name.'.'.$this->format);
             $this->streams->to(AsyncPage::class, ['room' => $this->room])
                 ->update('result', <span>{{ entry.text }}</span>);
         });

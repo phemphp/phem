@@ -16,6 +16,7 @@ namespace Phem\Async;
 use Phem\Attribute\Async;
 use Phem\Event;
 use Phem\Handler\HandlerMiddleware;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Runs an #[Async] handler (see Phem\Attribute\Async): it dispatches the work of its Promise to a
@@ -33,6 +34,7 @@ final class AsyncMiddleware implements HandlerMiddleware
 {
     public function __construct(
         private readonly AsyncDispatcher $dispatcher,
+        private readonly ?RequestStack $requests = null,
     ) {
     }
 
@@ -43,7 +45,7 @@ final class AsyncMiddleware implements HandlerMiddleware
 
         if ($async) {
             // Before the handler: a failed check runs no handler.
-            $this->dispatcher->check($event->request);
+            $this->dispatcher->check($this->requests?->getCurrentRequest());
         }
 
         $result = $next();
@@ -57,7 +59,7 @@ final class AsyncMiddleware implements HandlerMiddleware
         }
 
         if ($result instanceof Promise) {
-            $this->dispatcher->dispatch($event->request);
+            $this->dispatcher->dispatch($this->requests?->getCurrentRequest());
         }
 
         return $result;

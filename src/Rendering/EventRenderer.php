@@ -19,6 +19,7 @@ use Phem\Metadata\ComponentMetadata;
 use Phem\State\BoundValues;
 use Phem\State\StateAccessor;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Runs an event on a tree, as React renders after a state change:
@@ -59,8 +60,9 @@ final class EventRenderer
      * @param \Closure(): Event       $event      makes the event for the handler
      * @param BrowserEventDispatcher  $dispatcher it gets only the browser events of the handler
      * @param list<string>            $stale      the ids of the stale fibers (see Tree::markStale())
+     * @param Request|null            $request    the request that the handler gets (see Phem\Http\EventRequest)
      */
-    public function run(Tree $tree, ?string $handler, array $bound, BrowserEventDispatcher $dispatcher, \Closure $event, array $stale = []): EventOutcome
+    public function run(Tree $tree, ?string $handler, array $bound, BrowserEventDispatcher $dispatcher, \Closure $event, array $stale = [], ?Request $request = null): EventOutcome
     {
         $scoped = $this->firstPass($tree, $handler, $bound, $stale);
         $closure = null !== $handler ? $tree->handler($handler) : null;
@@ -80,7 +82,7 @@ final class EventRenderer
         $refresh = !$scoped;
         if (null !== $closure) {
             $e = $event();
-            $result = $this->renderer->dispatch($tree, $closure, $e);
+            $result = $this->renderer->dispatch($tree, $closure, $e, $request);
             if ($result instanceof RedirectResponse) {
                 return EventOutcome::redirect($result);
             }

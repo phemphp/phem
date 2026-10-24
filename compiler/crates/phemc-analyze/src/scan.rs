@@ -75,7 +75,7 @@ pub struct RouteDecl {
     /// False for a class without `#[Component]`, or a function with `#[Route]`: a page is a
     /// component (`#[Page]` makes it one).
     pub is_component: bool,
-    /// A function page: it has no `#[Path]` properties, so it has no route values.
+    /// A function page: its parameters get the route values, the request and the services.
     pub is_function: bool,
 }
 

@@ -35,17 +35,17 @@ use Symfony\Component\Routing\Attribute\Route;
  *         }
  *     }
  *
- * A page with no state and no route values can be a function:
+ * A page with no state can be a function. Its parameters get the arguments of a controller:
+ * the route values by name, the Request, the services (see Phem\Argument\CallableArguments):
  *
- *     #[Page('/about')]
- *     function About()
+ *     #[Page('/items/{id}')]
+ *     function Item(int $id, ItemRepository $items)
  *     {
  *         return <Document>...</Document>;
  *     }
  *
- * The class or the function needs no `#[Component]`. A function page has no #[Path] properties,
- * so its path has no route values (`{id}`) and its defaults have no route values either. Its
- * components can have state and handlers.
+ * The class or the function needs no `#[Component]`. A page is not a tag, so a function page
+ * has no props. Its components can have state and handlers.
  *
  * It has the options of `#[Route]`: path (or localized paths), name, requirements, defaults,
  * methods, host, schemes, condition, priority, env and aliases.

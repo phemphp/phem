@@ -13,10 +13,15 @@ declare(strict_types=1);
 
 namespace Phem;
 
-use Symfony\Component\HttpFoundation\Request;
+use Phem\Http\FormFields;
 
 /**
  * The event that a handler receives (`onClick={{ handleClick }}` → `handleClick(Event $e)`).
+ *
+ * The event is an argument of the handler as the others (see Phem\Argument\CallableArguments):
+ * the handler declares it at any position, or not at all. A handler that needs the request
+ * declares `Request $request`: it has the form fields as its POST data (see
+ * Phem\Http\EventRequest).
  */
 final class Event
 {
@@ -25,8 +30,6 @@ final class Event
     /**
      * @param array<string, mixed>   $form       the form fields, for `submit`: name => value, or the
      *                                           list of values of a name with more than one value
-     * @param Request|null           $request    the HTTP request of the event, with the form fields
-     *                                           as its POST data (`$form->handleRequest($e->request)`)
      * @param BrowserEventDispatcher $dispatcher sends browser events with the response
      *                                           (`$e->dispatcher->dispatch('toast', [...])`)
      * @param array<string, mixed>   $files      the files of the form, for `submit`: name => an
@@ -40,7 +43,6 @@ final class Event
         public readonly ?bool $checked = null,
         public readonly ?string $key = null,
         public readonly array $form = [],
-        public readonly ?Request $request = null,
         public readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
         public readonly array $files = [],
     ) {
@@ -66,21 +68,14 @@ final class Event
     /**
      * @param array<string, mixed>        $data
      * @param BrowserEventDispatcher|null $dispatcher the `phem.browser_event_dispatcher` service, or a new one
+     * @param array<string, mixed>        $files      the files of a multipart event (`$request->files->all()`)
      */
-    public static function fromArray(array $data, ?Request $request = null, ?BrowserEventDispatcher $dispatcher = null): self
+    public static function fromArray(array $data, ?BrowserEventDispatcher $dispatcher = null, array $files = []): self
     {
-        $fields = self::fields($data['form'] ?? null);
         $form = [];
-        foreach ($fields as [$name, $value]) {
+        foreach (FormFields::of($data['form'] ?? null) as [$name, $value]) {
             $form[$name] = \array_key_exists($name, $form) ? [...(array) $form[$name], $value] : $value;
         }
-
-        // FormData gives flat keys ("scientist[name]", "tags[]"). PHP makes nested arrays of
-        // them, as it does for the body of a normal POST.
-        parse_str(implode('&', array_map(static fn (array $f): string => rawurlencode($f[0]).'='.rawurlencode($f[1]), $fields)), $post);
-
-        // A multipart event has the files of the form as its files.
-        $files = $request?->files->all() ?? [];
 
         return new self(
             (string) ($data['type'] ?? ''),
@@ -88,35 +83,8 @@ final class Event
             isset($data['checked']) ? (bool) $data['checked'] : null,
             isset($data['key']) ? (string) $data['key'] : null,
             $form,
-            // The browser sends the event as JSON. A copy of the request with the form fields
-            // as POST data lets a Symfony form read them like a normal form submission.
-            $request?->duplicate(request: $post, files: $files),
             $dispatcher ?? new BrowserEventDispatcher(),
             $files,
         );
-    }
-
-    /**
-     * The form fields in their order. The browser sends [name, value] pairs, so a name can have
-     * more than one value (`<select multiple>`, checkboxes). A hash of name => value also works.
-     *
-     * @return list<array{string, string}>
-     */
-    private static function fields(mixed $form): array
-    {
-        if (!\is_array($form)) {
-            return [];
-        }
-
-        $fields = [];
-        foreach ($form as $name => $value) {
-            if (\is_int($name) && \is_array($value) && \is_string($value[0] ?? null) && \is_scalar($value[1] ?? null)) {
-                $fields[] = [$value[0], (string) $value[1]];
-            } elseif (\is_string($name) && \is_scalar($value)) {
-                $fields[] = [$name, (string) $value];
-            }
-        }
-
-        return $fields;
     }
 }

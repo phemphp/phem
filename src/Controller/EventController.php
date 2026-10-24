@@ -19,6 +19,7 @@ use Phem\Event;
 use Phem\Http\EventBody;
 use Phem\Http\EventPayload;
 use Phem\Http\EventReplay;
+use Phem\Http\EventRequest;
 use Phem\Http\RouteValues;
 use Phem\Http\TurboStreams;
 use Phem\Metadata\ComponentMetadata;
@@ -169,7 +170,7 @@ final class EventController
             $request->attributes->set(EventReplay::ATTRIBUTE, new EventReplay($page, $json, $payload->bound, $payload->handler, $payload->event));
         }
 
-        $outcome = $this->events->run($tree, $payload->handler, $payload->bound, $this->dispatcher, fn (): Event => Event::fromArray($payload->event, $request, $this->dispatcher), $payload->stale);
+        $outcome = $this->events->run($tree, $payload->handler, $payload->bound, $this->dispatcher, fn (): Event => Event::fromArray($payload->event, $this->dispatcher, $request->files->all()), $payload->stale, EventRequest::of($request, $payload->event));
         if ($outcome->reload) {
             // The page changed since the browser rendered it (for example after a deploy).
             return self::reload();

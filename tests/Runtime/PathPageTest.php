@@ -105,6 +105,32 @@ final class PathPageTest extends TestCase
         self::assertSame(['streams', 'changes', 'signature', 'query', 'events'], array_keys($data), 'the document does not render again');
     }
 
+    public function testFunctionPageGetsTheRouteValueTheRequestAndTheServices(): void
+    {
+        $response = $this->request('GET', '/memos/3');
+
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getContent());
+        self::assertStringContainsString('<p id="memo">Memo 3 GET /memos/4</p>', (string) $response->getContent());
+        self::assertSame(404, $this->request('GET', '/memos/abc')->getStatusCode(), 'a value that does not match the type of its parameter');
+    }
+
+    public function testFunctionPageRendersAgainInAnEventWithTheEventRequest(): void
+    {
+        [$state, $signature, $handler] = $this->page('/memos/3');
+        self::assertSame(['id' => '3'], json_decode($state, true)['_path'], 'the route values are in the signed state');
+
+        $response = $this->click('/memos/3', $state, $signature, $handler);
+
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getContent());
+        self::assertSame(409, $this->click('/memos/4', $state, $signature, $handler)->getStatusCode(), 'the state is for another URL');
+    }
+
+    public function testFunctionPageGetsTheEntityOfItsRouteValue(): void
+    {
+        self::assertStringContainsString('<p id="card">Ada</p>', (string) $this->request('GET', '/scientist-cards/1')->getContent());
+        self::assertSame(404, $this->request('GET', '/scientist-cards/9')->getStatusCode());
+    }
+
     /** @return array{0: string, 1: string, 2: string} the state, its signature, and the click handler */
     private function page(string $uri): array
     {

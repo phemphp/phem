@@ -15,6 +15,7 @@ namespace Phem\Test\Internal;
 
 use Phem\BrowserEventDispatcher;
 use Phem\Event;
+use Phem\Http\EventRequest;
 use Phem\Rendering\EventRenderer;
 use Phem\Rendering\Fiber;
 use Phem\Rendering\Renderer;
@@ -100,7 +101,7 @@ final class ComponentDriver implements Driver
             // As the browser sends them: JSON values.
             $bound = json_decode(json_encode((object) $bound, \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR);
             $events = $this->events ?? new EventRenderer($this->renderer);
-            $outcome = $events->run($tree, $handler, $bound, $this->dispatcher, fn (): Event => Event::fromArray($event, $request, $this->dispatcher), $stale);
+            $outcome = $events->run($tree, $handler, $bound, $this->dispatcher, fn (): Event => Event::fromArray($event, $this->dispatcher, $request->files->all()), $stale, EventRequest::of($request, $event));
             if ($outcome->reload) {
                 return EventResult::reload();
             }

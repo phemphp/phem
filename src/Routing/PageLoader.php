@@ -39,10 +39,10 @@ use Symfony\Component\Routing\RouteCollection;
  * path and the `POST` method. It comes first, so a page route without methods does not take
  * the events.
  *
- * A route value (`{id}`, or a `defaults` key) goes to the #[Path] property with the same name. A
- * route value without one is an error. The keys that start with `_` are not route values. As for
- * the Doctrine controller arguments, `{slug:post}` maps the value `slug` to the entity prop
- * `post`. A function page has no #[Path] properties, so a route value on it is an error.
+ * A route value (`{id}`, or a `defaults` key) goes to the #[Path] property with the same name,
+ * or to the parameter with the same name of a function page. A route value without one is an
+ * error. The keys that start with `_` are not route values. As for the Doctrine controller
+ * arguments, `{slug:post}` maps the value `slug` to the entity prop `post`.
  *
  * Import them in the application routes:
  *
@@ -104,12 +104,13 @@ final class PageLoader extends Loader
     }
 
     /**
-     * Each route value needs a #[Path] property. A mapped value (`{slug:post}`)
-     * needs a #[Path] prop with an entity type. A function page has no route values.
+     * Each route value needs a #[Path] property (a parameter of a function page). A mapped value
+     * (`{slug:post}`) needs one with an entity type.
      */
     private function checkValues(Route $route, string $name, string $page): void
     {
         $paths = $this->metadata->pathProps($page);
+        $what = class_exists($page) ? '#[Path] property' : 'parameter';
         $mapping = (array) ($route->getDefault('_route_mapping') ?? []);
 
         foreach (array_unique([...$route->compile()->getVariables(), ...array_keys($route->getDefaults())]) as $value) {
@@ -117,26 +118,22 @@ final class PageLoader extends Loader
                 continue;
             }
 
-            if (!class_exists($page)) {
-                throw new \InvalidArgumentException(\sprintf('The route "%s" has the value "%s", but the page "%s" is a function: a function page has no route values. Make it a class page with a #[Path] property "%s", or remove the value from the route.', $name, $value, $page, $value));
-            }
-
             if (isset($mapping[$value])) {
                 $prop = \is_array($mapping[$value]) ? $mapping[$value][0] : $mapping[$value];
                 if (!\array_key_exists($prop, $paths)) {
-                    throw new \InvalidArgumentException(\sprintf('The route "%s" maps the value "%s" to "%s", but the page "%s" has no #[Path] property "%s".', $name, $value, $prop, $page, $prop));
+                    throw new \InvalidArgumentException(\sprintf('The route "%s" maps the value "%s" to "%s", but the page "%s" has no %s "%s".', $name, $value, $prop, $page, $what, $prop));
                 }
 
                 $type = $paths[$prop];
                 if (!$type instanceof \ReflectionNamedType || $type->isBuiltin()) {
-                    throw new \InvalidArgumentException(\sprintf('The route "%s" maps the value "%s" to the #[Path] property "%s" of the page "%s", but its type is not an entity class.', $name, $value, $prop, $page));
+                    throw new \InvalidArgumentException(\sprintf('The route "%s" maps the value "%s" to the %s "%s" of the page "%s", but its type is not an entity class.', $name, $value, $what, $prop, $page));
                 }
 
                 continue;
             }
 
             if (!\array_key_exists($value, $paths)) {
-                throw new \InvalidArgumentException(\sprintf('The route "%s" has the value "%s", but the page "%s" has no #[Path] property "%s". Add one, or remove the value from the route.', $name, $value, $page, $value));
+                throw new \InvalidArgumentException(\sprintf('The route "%s" has the value "%s", but the page "%s" has no %s "%s". Add one, or remove the value from the route.', $name, $value, $page, $what, $value));
             }
         }
     }

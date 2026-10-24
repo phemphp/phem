@@ -13,6 +13,10 @@ declare(strict_types=1);
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
+use Phem\Argument\CallableArguments;
+use Phem\Argument\EventValueResolver;
+use Phem\Argument\PathValueResolver;
+use Phem\Argument\ServiceValueResolver;
 use Phem\Async\AsyncDispatcher;
 use Phem\Async\AsyncMiddleware;
 use Phem\Async\AsyncUser;
@@ -45,6 +49,7 @@ use Phem\Rendering\ContextResolver;
 use Phem\Rendering\ErrorBoundaryRenderer;
 use Phem\Rendering\EventRenderer;
 use Phem\Rendering\FunctionComponentRenderer;
+use Phem\Rendering\FunctionPageRenderer;
 use Phem\Rendering\InputsComparator;
 use Phem\Rendering\MarkupResolver;
 use Phem\Rendering\Renderer;
@@ -102,17 +107,30 @@ return static function (ContainerConfigurator $container): void {
             ->args([service('phem.entity_finder')->nullOnInvalid()])
             ->tag('phem.path_converter', ['priority' => -100])
 
+        // Arguments: the function pages and the event handlers get them as a Symfony controller
+        ->set('phem.callable_arguments', CallableArguments::class)
+            ->args([service('argument_resolver')])
+        ->set('phem.argument_resolver.event', EventValueResolver::class)
+            ->tag('controller.argument_value_resolver', ['priority' => 150, 'name' => EventValueResolver::class])
+        // Before the EntityValueResolver of Doctrine (110): the entity is already in the value.
+        ->set('phem.argument_resolver.path', PathValueResolver::class)
+            ->tag('controller.argument_value_resolver', ['priority' => 150, 'name' => PathValueResolver::class])
+        // As the Symfony ServiceValueResolver.
+        ->set('phem.argument_resolver.service', ServiceValueResolver::class)
+            ->args([abstract_arg('function pages, set by ComponentPass')])
+            ->tag('controller.argument_value_resolver', ['priority' => -50, 'name' => ServiceValueResolver::class])
+
         // Event handlers: the middleware around them
         ->set('phem.handler_fingerprint', HandlerFingerprint::class)
             ->args([service('phem.object_identifier')->nullOnInvalid()])
         ->set('phem.handler_invoker', HandlerInvoker::class)
-            ->args([tagged_iterator('phem.handler_middleware')])
+            ->args([tagged_iterator('phem.handler_middleware'), service('phem.callable_arguments')])
         ->set('phem.handler_middleware.transactional', TransactionalMiddleware::class)
             ->args([service('phem.transaction_runner')->nullOnInvalid()])
             ->tag('phem.handler_middleware', ['priority' => -100])
         // Inside the transaction: a check or a dispatch that fails rolls back the handler.
         ->set('phem.handler_middleware.async', AsyncMiddleware::class)
-            ->args([service('phem.async.dispatcher')])
+            ->args([service('phem.async.dispatcher'), service('request_stack')])
             ->tag('phem.handler_middleware', ['priority' => -200])
         ->set('phem.async.user', AsyncUser::class)
             ->args([service('security.token_storage')->nullOnInvalid(), service('security.user_providers')->nullOnInvalid()])
@@ -139,6 +157,10 @@ return static function (ContainerConfigurator $container): void {
         // Before the class renderer: <ErrorBoundary> is a built-in class component.
         ->set('phem.component_renderer.error_boundary', ErrorBoundaryRenderer::class)
             ->args([service_closure('phem.renderer'), service('phem.prop_binder'), service('logger')->nullOnInvalid()])
+            ->tag('phem.component_renderer', ['priority' => 10])
+        // Before the function renderer: a function page gets the arguments of a controller.
+        ->set('phem.component_renderer.function_page', FunctionPageRenderer::class)
+            ->args([service('phem.manifest'), service('phem.callable_arguments'), service('request_stack')])
             ->tag('phem.component_renderer', ['priority' => 10])
         ->set('phem.component_renderer.function', FunctionComponentRenderer::class)
             ->args([service('phem.prop_binder'), service('phem.context_resolver')])

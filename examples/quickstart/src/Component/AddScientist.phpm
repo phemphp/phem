@@ -10,6 +10,7 @@ use Phem\Event;
 use Phem\Node;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
+use Symfony\Component\HttpFoundation\Request;
 
 #[Component]
 final class AddScientist
@@ -19,21 +20,21 @@ final class AddScientist
     }
 
     public function __construct(
-        private readonly ScientistRepository $scientists,
         private readonly FormFactoryInterface $forms,
     ) {
     }
 
+    // The request has the form fields as its POST data. The repository is an argument too.
     #[Transactional]
-    public function add(Event $e): void
+    public function add(Request $request, ScientistRepository $scientists, Event $e): void
     {
         $scientist = new NewScientist();
 
         $this->form = $this->forms->create(ScientistType::class, $scientist)
-            ->handleRequest($e->request);
+            ->handleRequest($request);
 
         if ($this->form->isSubmitted() && $this->form->isValid()) {
-            $this->scientists->add(new Scientist($scientist->name, $scientist->profession));
+            $scientists->add(new Scientist($scientist->name, $scientist->profession));
             $e->dispatcher->dispatch('toast', ['message' => \sprintf('%s was added.', $scientist->name)]);
 
             $this->form = null;

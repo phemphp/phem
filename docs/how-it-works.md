@@ -107,7 +107,7 @@ ideas of React map to Phem.
 | `onClick={handleClick}` | `onClick={{ handleClick }}` (the handler runs on the server) |
 | `useState` | a `#[State]` property of a `#[Component]` class; a method changes it |
 | initial state from props or data | `mount()`, called when the component has no state yet |
-| a form `onSubmit` handler | a Symfony form: `$form->handleRequest($e->request)` in the handler |
+| a form `onSubmit` handler | a Symfony form: `$form->handleRequest($request)` in the handler (`Request $request`) |
 | `createContext` + `useContext` | `#[Provide]` on a class component (or a property), and `#[Context]` on a property or a parameter |
 | a WebSocket or a subscription | `#[Subscribe]` on a page, and `Phem\Stream\Streams` in a handler: Turbo Streams through the Mercure hub of FrankenPHP |
 | imported modules | services, injected in the constructor |

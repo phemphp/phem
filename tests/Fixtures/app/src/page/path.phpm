@@ -2,9 +2,12 @@
 
 namespace App\Page;
 
+use App\Component\Counter;
 use Phem\Attribute\{Page, Path, Prop, State};
 use Phem\Node;
 use Phem\Tests\Fixtures\Scientist;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 use function App\Component\Document;
 
@@ -85,4 +88,31 @@ final class MaybeScientist
             </Document>
         );
     }
+}
+
+// A function page: the {id} route value goes to the parameter with its name, with its type. The
+// Request and the services are arguments too, as for a Symfony controller.
+#[Page('/memos/{id}', name: 'memo')]
+function Memo(Request $request, int $id, UrlGeneratorInterface $urls): Node
+{
+    $method = $request->getMethod();
+    $url = $urls->generate('memo', ['id' => $id + 1]);
+
+    return (
+        <Document>
+            <p id="memo">Memo {{ id }} {{ method }} {{ url }}</p>
+            <Counter label="Likes" />
+        </Document>
+    );
+}
+
+// A function page with an entity: {id:scientist} finds the scientist by its id.
+#[Page('/scientist-cards/{id:scientist}')]
+function ScientistCard(Scientist $scientist): Node
+{
+    return (
+        <Document>
+            <p id="card">{{ scientist.name }}</p>
+        </Document>
+    );
 }

@@ -265,7 +265,7 @@ final class PhemBundle extends AbstractBundle
             // The #[RateLimit] attribute of Symfony 8.1 on a handler method (the limiters of
             // framework.rate_limiter). Before the transaction, so a limited event does not open one.
             $container->services()->set('phem.handler_middleware.rate_limit', RateLimitMiddleware::class)
-                ->args([tagged_locator('rate_limiter', 'name'), service('controller.expression_language')->nullOnInvalid()])
+                ->args([tagged_locator('rate_limiter', 'name'), service('controller.expression_language')->nullOnInvalid(), service('request_stack')])
                 ->tag('phem.handler_middleware', ['priority' => 100]);
         }
     }

@@ -15,48 +15,29 @@ namespace Phem\Tests\Runtime;
 
 use Phem\Event;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\HttpFoundation\Request;
 
 final class EventTest extends TestCase
 {
-    public function testRequestHasTheFormFieldsAsPostData(): void
+    public function testFormHasTheFields(): void
     {
-        $request = Request::create('/_phem/event', 'POST', content: '{"handler":"h"}');
-        $event = Event::fromArray(['type' => 'submit', 'form' => ['name' => 'Ada', 'profession' => 'mathematician']], $request);
+        $event = Event::fromArray(['type' => 'submit', 'form' => ['name' => 'Ada', 'profession' => 'mathematician']]);
 
+        self::assertSame('submit', $event->type);
         self::assertSame(['name' => 'Ada', 'profession' => 'mathematician'], $event->form);
-        self::assertNotNull($event->request);
-        self::assertNotSame($request, $event->request);
-        self::assertSame('POST', $event->request->getMethod());
-        self::assertSame(['name' => 'Ada', 'profession' => 'mathematician'], $event->request->request->all());
-        self::assertSame([], $request->request->all());
-    }
-
-    public function testRequestNestsTheFieldsOfANamedForm(): void
-    {
-        $request = Request::create('/_phem/event', 'POST');
-        $event = Event::fromArray(['type' => 'submit', 'form' => ['scientist[name]' => 'Ada', 'scientist[profession]' => 'mathematician']], $request);
-
-        self::assertSame(['scientist[name]' => 'Ada', 'scientist[profession]' => 'mathematician'], $event->form);
-        self::assertNotNull($event->request);
-        self::assertSame(['scientist' => ['name' => 'Ada', 'profession' => 'mathematician']], $event->request->request->all());
     }
 
     public function testFieldPairsKeepEachValueOfAName(): void
     {
-        $request = Request::create('/_phem/event', 'POST');
-        $event = Event::fromArray(['type' => 'submit', 'form' => [['tags[]', 'a'], ['tags[]', 'b'], ['role', 'x'], ['role', 'y'], ['action', 'delete']]], $request);
+        $event = Event::fromArray(['type' => 'submit', 'form' => [['tags[]', 'a'], ['tags[]', 'b'], ['role', 'x'], ['role', 'y'], ['action', 'delete']]]);
 
         self::assertSame(['tags[]' => ['a', 'b'], 'role' => ['x', 'y'], 'action' => 'delete'], $event->form);
-        self::assertNotNull($event->request);
-        self::assertSame(['tags' => ['a', 'b'], 'role' => 'y', 'action' => 'delete'], $event->request->request->all(), 'as PHP parses a POST body');
     }
 
-    public function testRequestIsNullWithoutAnHttpRequest(): void
+    public function testFilesAreTheFilesOfTheEvent(): void
     {
-        $event = Event::fromArray(['type' => 'click']);
+        $event = Event::fromArray(['type' => 'click'], files: ['photo' => 'x']);
 
         self::assertSame([], $event->form);
-        self::assertNull($event->request);
+        self::assertSame(['photo' => 'x'], $event->files);
     }
 }

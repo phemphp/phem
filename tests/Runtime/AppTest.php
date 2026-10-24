@@ -325,6 +325,23 @@ final class AppTest extends TestCase
         self::assertStringContainsString('"count":1', $this->state, 'the event of the page URL runs the handler of the component');
     }
 
+    public function testAHandlerGetsTheArgumentsOfAController(): void
+    {
+        $this->open('/arguments');
+
+        $r = $this->click(0, uri: '/arguments');
+        self::assertSame(200, $r['status'], json_encode($r['data'], \JSON_THROW_ON_ERROR));
+        self::assertStringContainsString('<p id="log">/arguments click</p>', $r['data']['streams'], 'a service, then the event');
+
+        $r = $this->click(1, uri: '/arguments');
+        self::assertSame(200, $r['status'], json_encode($r['data'], \JSON_THROW_ON_ERROR));
+        self::assertStringContainsString('<p id="log">POST - test</p>', $r['data']['streams'], 'the request and #[Autowire], with no event');
+
+        $r = $this->click(2, uri: '/arguments');
+        self::assertSame(200, $r['status'], json_encode($r['data'], \JSON_THROW_ON_ERROR));
+        self::assertStringContainsString('<p id="log">closure click /arguments</p>', $r['data']['streams'], 'a closure of render()');
+    }
+
     public function testAPageChoosesItsDocument(): void
     {
         $html = html_entity_decode((string) $this->request('GET', '/document')->getContent());

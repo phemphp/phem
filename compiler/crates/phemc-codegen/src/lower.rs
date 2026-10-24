@@ -748,6 +748,13 @@ impl<'a> Lowerer<'a> {
             return;
         };
 
+        // A page renders at its URL, with its document: it has no props, and it is not a tag.
+        if def.page {
+            self.error(codes::PAGE_AS_TAG, format!("`<{}>` is a page, and a page cannot be a tag", e.name), e.name_span).help =
+                Some("move the markup that both need to a component, and render that component in the page and here".into());
+            return;
+        }
+
         let mut props = Vec::new();
         let mut key: Option<String> = None;
         let mut has_spread = false;

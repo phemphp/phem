@@ -3,42 +3,45 @@ namespace App\Page\Example;
 
 use App\Model\Scientist;
 use App\Repository\ScientistRepository;
-use Phem\Attribute\{Page, Path, Transactional};
+use Phem\Attribute\{Component, Page, Prop, Transactional};
 use Phem\Node;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 use function App\Component\{Layout, ScientistCard, Document};
 
+// A function page: the {id:scientist} route value goes to the $scientist parameter.
 #[Page('/examples/ScientistPage/{id:scientist}', requirements: ['id' => '\d+'])]
-final class ScientistPage
+function ScientistPage(Scientist $scientist): Node
 {
-    #[Path]
+    return (
+        <Document>
+            <Document:title>{{ scientist.name }}</Document:title>
+            <Layout title={{ scientist.name }}>
+                <ScientistCard scientist={{ scientist }} />
+                <DeleteScientistButton scientist={{ scientist }} />
+                <Layout:footer><a href="/examples/DurableGallery">All the scientists</a></Layout:footer>
+            </Layout>
+        </Document>
+    );
+}
+
+#[Component]
+final class DeleteScientistButton
+{
+    #[Prop]
     public Scientist $scientist;
 
-    public function __construct(
-        private readonly ScientistRepository $scientists,
-    ) {
-    }
-
+    // The handler gets the repository as an argument, as the action of a controller.
     #[Transactional]
-    public function delete(): RedirectResponse
+    public function delete(ScientistRepository $scientists): RedirectResponse
     {
-        $this->scientists->remove($this->scientist);
+        $scientists->remove($this->scientist);
 
         return new RedirectResponse('/examples/DurableGallery');
     }
 
     public function render(): Node
     {
-        return (
-            <Document>
-                <Document:title>{{ scientist.name }}</Document:title>
-                <Layout title={{ scientist.name }}>
-                    <ScientistCard scientist={{ scientist }} />
-                    <button onClick={{ delete }}>Delete</button>
-                    <Layout:footer><a href="/examples/DurableGallery">All the scientists</a></Layout:footer>
-                </Layout>
-            </Document>
-        );
+        return <button onClick={{ delete }}>Delete</button>;
     }
 }

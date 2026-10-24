@@ -23,6 +23,7 @@ use Phem\Http\EventReplay;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -94,7 +95,7 @@ final class AsyncMiddlewareTest extends TestCase
         $component = new AsyncHandlers();
 
         try {
-            new AsyncMiddleware(new AsyncDispatcher(null, 'secret'))->handle($component->export(...), new Event('click', request: self::request()), $component->export(...));
+            new AsyncMiddleware(new AsyncDispatcher(null, 'secret'), self::stack(self::request()))->handle($component->export(...), new Event('click'), $component->export(...));
             self::fail('The handler ran.');
         } catch (\LogicException $e) {
             self::assertStringContainsString('needs Symfony Messenger', $e->getMessage());
@@ -105,7 +106,15 @@ final class AsyncMiddlewareTest extends TestCase
 
     private function handle(\Closure $handler, SpyBus $bus = new SpyBus(), ?Request $request = null): mixed
     {
-        return new AsyncMiddleware(new AsyncDispatcher($bus, 'secret'))->handle($handler, new Event('click', request: $request ?? self::request()), $handler);
+        return new AsyncMiddleware(new AsyncDispatcher($bus, 'secret'), self::stack($request ?? self::request()))->handle($handler, new Event('click'), $handler);
+    }
+
+    private static function stack(Request $request): RequestStack
+    {
+        $stack = new RequestStack();
+        $stack->push($request);
+
+        return $stack;
     }
 
     private static function request(): Request

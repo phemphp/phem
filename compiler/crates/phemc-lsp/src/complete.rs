@@ -314,7 +314,8 @@ impl<'a, 'p> Completer<'a, 'p> {
         let mut items = Vec::new();
         let mut seen: Vec<&str> = Vec::new();
         for comp in &components {
-            if seen.contains(&comp.fqn.as_str()) || (comp.page && comp.file.as_deref() != Some(self.file())) {
+            // A page is not a tag (E056).
+            if seen.contains(&comp.fqn.as_str()) || comp.page {
                 continue;
             }
 
@@ -340,7 +341,7 @@ impl<'a, 'p> Completer<'a, 'p> {
             let kind = if comp.kind == ComponentKind::Class { ItemKind::Class } else { ItemKind::Function };
             let sort = format!("{}{name}", self.rank(!edits.is_empty(), comp.file.as_deref()));
             let mut item = Item::new(name, kind, (start, end), sort)
-                .detail(format!("{}{}", comp.fqn, if comp.page { " (page)" } else { "" }))
+                .detail(comp.fqn.clone())
                 .doc(Some(component_doc(comp, self.root())))
                 .snippet(snippet);
             item.edits = edits;

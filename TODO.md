@@ -68,22 +68,3 @@ Some behavior must run in the browser: a chart, a map, a rich text editor, a foc
     controller and registers it with AssetMapper. The component root gets its
     `data-controller` automatically.
   - The controller gets the server events of the item "Server-to-browser events".
-
-## 4. Pages
-
-### [ ] Route values for function pages — P3
-
-A function page (`#[Page]` on a function) has no `#[Path]` properties, so it cannot have route
-values (`{id}`, or a `defaults` key). Today the route loader reports them, and a page with route
-values must be a class.
-
-- **Best peer:** React Router and Next.js give the route params to the page function
-  (`useParams()`, `params`). Symfony gives the route values to the arguments of a controller,
-  with the value resolvers (`{slug:post}` for an entity).
-- **Proposal:**
-  - A route value goes to the parameter of the function with the same name, as a prop
-    (`#[Page('/items/{id}')] function Item(int $id)`). `PathResolver` converts it with the same
-    `PathValueConverter`s as a `#[Path]` property (also the entities).
-  - `ComponentMetadata::pathProps()` reads these parameters, so the signed state and the event
-    check of the route values work as for a class page.
-  - `phemc` reports a route value with no parameter, as the route loader does today.
