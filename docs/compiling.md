@@ -289,8 +289,8 @@ code units, as the Language Server Protocol does.
 `phemc lsp` runs the language server on stdin and stdout. It shows the same diagnostics as
 `phemc check` as you type, and it gives the completion, the definition, the hover, and the
 outline of `.phpm` files. The editors bundle the same server, compiled to WebAssembly
-(`make lsp`), so they do not need a `phemc` binary. See `editors/vscode/README.md` and
-`editors/phpstorm/README.md`.
+(`make lsp`), so they do not need a `phemc` binary. See `editors/vscode/README.md`,
+`editors/phpstorm/README.md` and `editors/claude-code/README.md`.
 
 ## 4. Run
 

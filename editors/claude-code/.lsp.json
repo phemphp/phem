@@ -1,0 +1,13 @@
+{
+    "phem": {
+        "command": "node",
+        "args": ["--no-warnings", "${CLAUDE_PLUGIN_ROOT}/server/phem-lsp.cjs"],
+        "extensionToLanguage": {
+            ".phpm": "phpm"
+        },
+        "initializationOptions": {
+            "sourceDir": "src"
+        },
+        "startupTimeout": 10000
+    }
+}

@@ -1,0 +1,11 @@
+{
+    "name": "phem",
+    "description": "The Phem language server for .phpm files: compiler diagnostics after each edit, go to definition, hover, and outline.",
+    "version": "0.1.0",
+    "author": {
+        "name": "Yonel Ceruto",
+        "email": "open@yceruto.dev"
+    },
+    "license": "MIT",
+    "keywords": ["phpm", "phem", "lsp"]
+}

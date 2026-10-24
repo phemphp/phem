@@ -14,6 +14,7 @@ make check   # phemc diagnostics for the quickstart sources
 make prod    # the production image on http://localhost:8081
 make vscode    # the VS Code extension for .phpm files (editors/vscode/phem-<version>.vsix)
 make phpstorm  # the PhpStorm plugin for .phpm files (needs Java 21 and Gradle)
+make claude    # the Claude Code plugin for .phpm files (editors/claude-code/)
 ```
 
 `make up` and `make prod` also make the SQLite database of the quickstart on the first start:
@@ -22,10 +23,13 @@ They also run the Messenger worker of the `#[Async]` handlers (`messenger:consum
 FrankenPHP.
 
 To build and install the editor support, run `make vscode-install` or `make phpstorm-install`.
-Both use the Phem language server (`phemc lsp`), compiled to WebAssembly: diagnostics as you
-type, completion, go to definition, hover, and outline. See
-[editors/vscode/README.md](../editors/vscode/README.md) and
-[editors/phpstorm/README.md](../editors/phpstorm/README.md).
+To give Claude Code the compiler diagnostics after each edit, run `make claude` and start
+`claude --plugin-dir editors/claude-code`. All three use the Phem language server
+(`phemc lsp`), compiled to WebAssembly: diagnostics as you type, completion, go to definition,
+hover, and outline. See
+[editors/vscode/README.md](../editors/vscode/README.md),
+[editors/phpstorm/README.md](../editors/phpstorm/README.md) and
+[editors/claude-code/README.md](../editors/claude-code/README.md).
 
 - `/learn` is the Quick Start page (static HTML + CSS, like react.dev/learn).
 - Each sandbox in it runs a real `.phpm` file from `examples/quickstart/src/Page/Example/`.
@@ -54,6 +58,7 @@ examples/quickstart/ a Symfony application: the react.dev/learn-style site (publ
 editors/server/      the Node launcher of the language server (phem-lsp.wasm: `make lsp`)
 editors/vscode/      VS Code extension: .phpm syntax highlighting (TextMate grammar) and the language server
 editors/phpstorm/    PhpStorm plugin: the same grammar and language server
+editors/claude-code/ Claude Code plugin: the language server, for diagnostics after each edit
 docs/phpm-syntax.md  the .phpm syntax
 docs/compiling.md    how to build, check, watch, and run .phpm files
 docs/testing.md      how to test components and pages (Phem\Test\InteractsWithPhem)
