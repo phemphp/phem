@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="phem-logo.svg" alt="Phem" width="200">
+</p>
+
 # Phem
 
 Phem brings a component model to Symfony. A `.phpm` file is a PHP file that contains markup literals (built on top of Twig):
