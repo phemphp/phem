@@ -4,7 +4,8 @@
 #   0. Asks for the version (patch, minor or major bumps the latest stable tag) and to confirm it.
 #      Without arguments, it asks with menus: select with the arrow keys, then press Enter.
 #   1. Dispatches the Release workflow (version bump of the compiler, commit, tag, draft release).
-#      See .github/workflows/release.yaml.
+#      See .github/workflows/release.yaml. Then fast-forwards local main to the version commit
+#      that the workflow pushes, so the next push needs no pull.
 #   2. Watches it, then watches the build of the phemc binaries that it dispatches (phemc.yaml).
 #   3. Checks that the draft release has all the phemc binaries and phemc-checksums.txt.
 #   4. Publishes the draft release (bin/phemc downloads only from a published release).
@@ -233,6 +234,16 @@ step "Dispatching the Release workflow for ${TAG}"
 gh workflow run release.yaml --repo "$REPO" --ref main -f version="$VERSION"
 run_id="$(find_run release.yaml "$since")"
 watch_run "$run_id"
+
+# The workflow pushes the version commit to main. A failed fast-forward does not stop the release.
+step "Fast-forwarding local main to origin/main"
+git fetch --quiet --tags origin main
+if [[ "$(git branch --show-current 2>/dev/null)" == "main" ]] && git merge-base --is-ancestor HEAD origin/main \
+	&& git merge --quiet --ff-only origin/main; then
+	echo "Local main is at $(git log -1 --format='%h %s')."
+else
+	echo "Local main did not fast-forward to origin/main: pull it yourself." >&2
+fi
 
 step "Watching the build of the phemc binaries"
 run_id="$(find_run phemc.yaml "$since" "$TAG")"

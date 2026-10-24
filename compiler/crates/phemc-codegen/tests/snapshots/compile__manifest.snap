@@ -3,7 +3,7 @@ source: crates/phemc-codegen/tests/compile.rs
 expression: out.manifest.to_json()
 ---
 {
-  "version": "0.1.2",
+  "version": "[version]",
   "components": {
     "App\\Component\\Badge": {
       "fqcn": "App\\Component\\Badge",

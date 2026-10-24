@@ -38,7 +38,11 @@ fn compiles_the_fixture_app() {
         }
     }
 
-    insta::assert_snapshot!("manifest", out.manifest.to_json());
+    // The release sets the version: the snapshot has a placeholder.
+    let manifest = out.manifest.to_json();
+    let version = format!(r#""version": "{}""#, phemc_codegen::VERSION);
+    assert!(manifest.contains(&version), "the manifest has the version of phemc");
+    insta::assert_snapshot!("manifest", manifest.replacen(&version, r#""version": "[version]""#, 1));
 }
 
 #[test]
