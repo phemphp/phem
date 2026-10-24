@@ -14,16 +14,21 @@ declare(strict_types=1);
 namespace Phem\Stream;
 
 use Phem\Dom\Attributes;
+use Phem\Rendering\Fiber;
+use Phem\Rendering\Tree;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * The connection of a page with #[Subscribe] to the Mercure hub.
+ * The connection of a page with #[Subscribe], or with a component with #[Subscribe], to the
+ * Mercure hub.
  *
  * The root element of the page gets `data-phem-stream-value`: the URL of the hub with a `match`
  * parameter for each topic of the page (see Topics). The `phem` Stimulus controller opens one
- * EventSource to it.
+ * EventSource to it. The components with #[Subscribe] are the components of the first render of
+ * the page: the signed state keeps them (see PageState::$subscribed), so an event renews their
+ * topics. A component that renders first in an event gets no pushes until the page loads again.
  *
  * With a subscriber key, the updates are private, and the response sets the cookie of the hub
  * with an access token for the topics (see SubscriberToken). The page passed its access rules,
@@ -65,14 +70,25 @@ final class Subscription
     }
 
     /**
-     * The `data-phem-stream-value` attribute of the root element of a page, or '' for a page
-     * with no #[Subscribe]. The response gets the cookie of the topics (see cookie()).
+     * The components with #[Subscribe] of a page render.
      *
-     * @param array<string, mixed> $values the #[Path] route values of the page
+     * @return list<string>
      */
-    public function attribute(string $page, array $values, Request $request): string
+    public function components(Tree $tree): array
     {
-        $topics = $this->renew($page, $values, $request);
+        return $this->topics->components(array_map(static fn (Fiber $fiber): string => $fiber->fqcn, $tree->rendered()));
+    }
+
+    /**
+     * The `data-phem-stream-value` attribute of the root element of a page, or '' when nothing
+     * subscribes. The response gets the cookie of the topics (see cookie()).
+     *
+     * @param array<string, mixed> $values     the #[Path] route values of the page
+     * @param list<string>         $components the components with #[Subscribe] of the page (see components())
+     */
+    public function attribute(string $page, array $values, Request $request, array $components = []): string
+    {
+        $topics = $this->renew($page, $values, $request, $components);
         if ([] === $topics) {
             return '';
         }
@@ -84,15 +100,16 @@ final class Subscription
 
     /**
      * Asks for the cookie of the topics of a page in the response of the request (an event
-     * renews it). Returns the topics, or none for a page with no #[Subscribe].
+     * renews it). Returns the topics, or none when nothing subscribes.
      *
      * @param array<string, mixed> $values
+     * @param list<string>         $components the components with #[Subscribe] of the page
      *
      * @return list<string>
      */
-    public function renew(string $page, array $values, Request $request): array
+    public function renew(string $page, array $values, Request $request, array $components = []): array
     {
-        $topics = $this->topics->ofPage($page, $values);
+        $topics = $this->topics->ofPage($page, $values, $components);
         if ([] !== $topics) {
             $request->attributes->set(self::ATTRIBUTE, $topics);
         }

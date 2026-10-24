@@ -184,8 +184,8 @@ final class EventController
         }
 
         // A new access token for the hub, before the old one expires (see Subscription).
-        $this->subscription?->renew($page, $state->values, $request);
-        [$next, $signature] = $this->codec->encode($this->state->snapshot($tree)->toArray(), $page, $request);
+        $this->subscription?->renew($page, $state->values, $request, $state->subscribed);
+        [$next, $signature] = $this->codec->encode($this->state->snapshot($tree, $state->subscribed)->toArray(), $page, $request);
 
         // The next event can send only the signature (see StateCache).
         $this->cache->save($signature, $next);

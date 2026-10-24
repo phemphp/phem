@@ -61,6 +61,34 @@ final class StreamTest extends KernelTestCase
         $other->receive()->assertSee('1 on the board');
     }
 
+    public function testAComponentWithSubscribeGetsThePushesOnEachPageThatRendersIt(): void
+    {
+        $other = $this->visit('/inbox/lobby')->assertSee('0 in the inbox');
+        $this->visit('/guestbook/lobby')->click('#inbox');
+
+        $other->receive()->assertSee('1 in the inbox');
+    }
+
+    public function testAPageConnectsForItsComponentsWithSubscribe(): void
+    {
+        $page = $this->visit('/inbox/lobby');
+
+        $source = $page->document()->querySelector('[data-phem-stream-value]')?->getAttribute('data-phem-stream-value');
+        $topics = static::getContainer()->get('phem.topics');
+        \assert($topics instanceof Topics);
+
+        // Only the topic of the component: the page has no #[Subscribe].
+        self::assertSame('/.well-known/mercure?match='.rawurlencode($topics->toComponent('App\Page\GuestbookInbox')), $source);
+    }
+
+    public function testAnEventKeepsTheComponentsWithSubscribe(): void
+    {
+        $other = $this->visit('/inbox/lobby')->click('#open')->assertSee('0 in the inbox, open');
+        $this->visit('/guestbook/lobby')->click('#inbox');
+
+        $other->receive()->assertSee('1 in the inbox, open');
+    }
+
     public function testAPageWithNoSubscribeDoesNotConnect(): void
     {
         $this->visit('/notify')->assertSelectorNotExists('[data-phem-stream-value]');
@@ -216,7 +244,7 @@ final class StreamTest extends KernelTestCase
         $topics = static::getContainer()->get('phem.topics');
         \assert($topics instanceof Topics);
 
-        self::assertSame([$topics->to('App\Page\GuestbookPage', ['room' => 'lobby'])], $update['topics']);
+        self::assertSame([$topics->toPage('App\Page\GuestbookPage', ['room' => 'lobby'])], $update['topics']);
         self::assertFalse($update['private']);
         self::assertSame('<turbo-stream action="prepend" target="entries"><template><li id="entry-1">Hi</li></template></turbo-stream><turbo-stream action="phem-refresh" target="stats"></turbo-stream>', $update['data']);
     }

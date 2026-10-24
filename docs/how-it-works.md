@@ -80,8 +80,8 @@ ideas of React map to Phem.
    each time (see [Retries](phpm-syntax.md#retries)).
    Add `data-phem-transition` to an element to run the morph of its components in a view
    transition (see [Transitions](phpm-syntax.md#transitions)).
-5. **Real-time updates.** A page with `#[Subscribe]` opens one connection to the Mercure hub of
-   FrankenPHP. A handler pushes Turbo Streams to the open pages with `Phem\Stream\Streams`:
+5. **Real-time updates.** A page with `#[Subscribe]`, or with a component with `#[Subscribe]`,
+   opens one connection to the Mercure hub of FrankenPHP. A handler pushes Turbo Streams to the open pages with `Phem\Stream\Streams`:
    plain markup (`prepend`, `update`, `remove`, ...), or a `refresh()` that renders a component
    again in each browser with a normal event. The next event of a page renders again the
    components that a push changed (see [Real-time updates](phpm-syntax.md#real-time-updates)).

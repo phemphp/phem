@@ -388,7 +388,10 @@ fn a_page_class_is_a_component_with_a_route() {
     assert_eq!(d.help.as_deref(), Some("use `#[Page('/path')]` and `use Phem\\Attribute\\Page;`: a function page needs no `#[Component]`"));
 
     assert_eq!(codes("#[Page('/')]\n#[Subscribe]", "function Home() { return <p />; }"), Vec::<&str>::new(), "a function page can subscribe");
-    assert_eq!(codes("#[Component]\n#[Subscribe]", "function Home() { return <p />; }"), ["E053"], "a function component cannot subscribe");
+    assert_eq!(codes("#[Component]\n#[Subscribe]", "function Home() { return <p />; }"), Vec::<&str>::new(), "a function component can subscribe");
+    assert_eq!(codes("#[Component]\n#[Subscribe]", render), Vec::<&str>::new(), "a class component can subscribe");
+    assert_eq!(codes("#[Subscribe]", "function Home() { return <p />; }"), ["E053"], "a plain function cannot subscribe");
+    assert_eq!(codes("#[Subscribe]", "final class Home {}"), ["E053"], "a plain class cannot subscribe");
 }
 
 #[test]

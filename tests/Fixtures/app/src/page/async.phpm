@@ -34,11 +34,11 @@ final class AsyncExport
     {
         $this->status = 'pending';
         $name = (string) $request->request->get('name', '');
-        $this->streams->to(AsyncPage::class, ['room' => $this->room])->update('notice', <b>Started {{ e.type }}</b>);
+        $this->streams->toPage(AsyncPage::class, ['room' => $this->room])->update('notice', <b>Started {{ e.type }}</b>);
 
         return new Promise(function () use ($name, $guestbook): void {
             $entry = $guestbook->add($this->room, $name.'.'.$this->format);
-            $this->streams->to(AsyncPage::class, ['room' => $this->room])
+            $this->streams->toPage(AsyncPage::class, ['room' => $this->room])
                 ->update('result', <span>{{ entry.text }}</span>);
         });
     }
@@ -48,7 +48,7 @@ final class AsyncExport
     public function ship(int $id): Promise
     {
         return new Promise(function () use ($id): void {
-            $this->streams->to(AsyncPage::class, ['room' => $this->room])->update('result', <span>Shipped {{ id }}</span>);
+            $this->streams->toPage(AsyncPage::class, ['room' => $this->room])->update('result', <span>Shipped {{ id }}</span>);
         });
     }
 
@@ -57,7 +57,7 @@ final class AsyncExport
     public function crash(): Promise
     {
         return new Promise(function (): void {
-            $this->streams->to(AsyncPage::class, ['room' => $this->room])->update('result', <span>Lost</span>);
+            $this->streams->toPage(AsyncPage::class, ['room' => $this->room])->update('result', <span>Lost</span>);
 
             throw new \RuntimeException('The work failed.');
         });

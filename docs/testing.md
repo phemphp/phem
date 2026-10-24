@@ -107,10 +107,11 @@ $this->visit('/dashboard')
     ->assertSee('North: 1200 €');
 ```
 
-A page with `#[Subscribe]` gets the pushes of `Phem\Stream\Streams` with `receive()`: the updates of
-its topics since its render, or since the last `receive()`. In the tests (`framework.test: true`),
-the streams go to memory, not to a Mercure hub. A stream marks the component around its target as
-stale, and the next event sends it, as in a browser. A `refresh()` sends one event with no handler.
+A page with `#[Subscribe]` (or with a component with `#[Subscribe]`) gets the pushes of
+`Phem\Stream\Streams` with `receive()`: the updates of its topics since its render, or since the
+last `receive()`. In the tests (`framework.test: true`), the streams go to memory, not to a
+Mercure hub. A stream marks the component around its target as stale, and the next event sends
+it, as in a browser. A `refresh()` sends one event with no handler.
 As in a browser, an element with `data-phem-ignore` and an `id` (a target that only the pushes fill)
 keeps its content when an event renders it again. Open the page two times, as two tabs:
 
@@ -142,7 +143,7 @@ An action fails when it cannot work in a browser:
 - no handler gets the event;
 - the form has no field with the name, or the select has no option with the value;
 - `load()` finds no boundary that shows its fallback;
-- `receive()` gets a page with no `#[Subscribe]`;
+- `receive()` gets a page with no `#[Subscribe]` and no component with `#[Subscribe]`;
 - `settle()` finds no waiting work;
 - `upload()` gets an element that is not a file input, more than one path for an input with no
   `multiple` attribute, or a file that does not exist.

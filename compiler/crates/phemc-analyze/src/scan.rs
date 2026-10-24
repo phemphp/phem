@@ -20,8 +20,8 @@ pub struct FileInfo {
     pub classes: Vec<Class>,
     /// The declarations marked with `#[Page]` or `#[Route]`: the pages.
     pub routes: Vec<RouteDecl>,
-    /// The declarations with `#[Subscribe]` that are not class pages (the compiler reports them):
-    /// a function page cannot subscribe either.
+    /// The declarations with `#[Subscribe]` that are not pages or components (the compiler
+    /// reports them).
     pub subscribes: Vec<(String, Span)>,
     /// `export default` keywords (not PHP; the compiler reports them).
     pub export_defaults: Vec<Span>,
@@ -280,12 +280,11 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
 
                         // The Symfony `#[Route]` cannot mark a function: report it before `#[Page]`.
                         let route = attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_ROUTE).map(|(_, s)| ("Route", *s)).or_else(|| route_attr(&info, &attrs));
-                        let is_page = route.is_some_and(|(attr, _)| attr == "Page");
                         if let Some((attr, span)) = route {
                             info.routes.push(RouteDecl { fqn: f.fqn.clone(), attr, span, is_component: attr == "Page", is_function: true });
                         }
 
-                        if let Some(span) = subscribe_attr(&info, &attrs).filter(|_| !is_page) {
+                        if let Some(span) = subscribe_attr(&info, &attrs).filter(|_| f.component_kind.is_none()) {
                             info.subscribes.push((f.fqn.clone(), span));
                         }
 
@@ -305,7 +304,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                             let route = route_attr(&info, &attrs);
                             let subscribe = subscribe_attr(&info, &attrs);
                             let (c, end) = parse_class(&toks, i, &mut info, attrs.into_iter().map(|(a, _)| a).collect());
-                            if let Some(span) = subscribe.filter(|_| route.is_none() || !c.is_component) {
+                            if let Some(span) = subscribe.filter(|_| !c.is_component) {
                                 info.subscribes.push((c.fqn.clone(), span));
                             }
 

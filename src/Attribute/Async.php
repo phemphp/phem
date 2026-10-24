@@ -26,7 +26,7 @@ namespace Phem\Attribute;
  *
  *         return new Promise(function () use ($id): void {   // only in the worker
  *             $file = $this->exports->run($id);
- *             $this->streams->to(ExportPage::class)->update('export', <a href="{{ file }}">Download</a>);
+ *             $this->streams->toPage(ExportPage::class)->update('export', <a href="{{ file }}">Download</a>);
  *         });
  *     }
  *

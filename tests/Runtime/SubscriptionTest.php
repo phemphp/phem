@@ -18,6 +18,7 @@ use Phem\Stream\Subscription;
 use Phem\Stream\Topics;
 use Phem\Tests\Fixtures\Scientist;
 use Phem\Tests\Fixtures\Subscribed;
+use Phem\Tests\Fixtures\SubscribedComponent;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use Symfony\Component\HttpFoundation\Cookie;
@@ -58,6 +59,19 @@ final class SubscriptionTest extends TestCase
         self::assertTrue($cookie->isHttpOnly());
         self::assertSame(Cookie::SAMESITE_STRICT, $cookie->getSameSite());
         self::assertSame(new Topics()->ofPage(Subscribed::class, []), $tokens->topics((string) $cookie->getValue(), self::HUB, ''));
+    }
+
+    public function testTheCookieHasATokenForTheComponentsWithSubscribe(): void
+    {
+        $tokens = new SubscriberToken(self::KEY);
+        $subscription = new Subscription(new Topics(), $tokens);
+        $request = Request::create('https://example.com/');
+
+        self::assertNotSame('', $subscription->attribute(Scientist::class, [], $request, [SubscribedComponent::class]), 'a page with no #[Subscribe]');
+
+        $cookie = $subscription->cookie($request);
+        self::assertNotNull($cookie);
+        self::assertSame(new Topics()->ofPage(Scientist::class, [], [SubscribedComponent::class]), $tokens->topics((string) $cookie->getValue(), self::HUB, ''));
     }
 
     public function testTheTokenKeepsTheTopicsOfTheCookieOfAnotherTab(): void

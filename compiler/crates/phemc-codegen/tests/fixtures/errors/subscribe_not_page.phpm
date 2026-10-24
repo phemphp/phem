@@ -1,8 +1,0 @@
-<?phpm // expect: E053
-use Phem\Attribute\{Component, Subscribe};
-use Phem\Node;
-#[Component, Subscribe]
-final class Feed
-{
-    public function render(): Node { return <ul id="feed"></ul>; }
-}

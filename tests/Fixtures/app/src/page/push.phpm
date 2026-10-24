@@ -111,7 +111,7 @@ final class GuestbookForm
     {
         $entry = $this->guestbook->add($this->room, $this->text);
         $this->text = '';
-        $this->streams->to(GuestbookPage::class, ['room' => $this->room])
+        $this->streams->toPage(GuestbookPage::class, ['room' => $this->room])
             ->prepend('entries', <li id="entry-{{ entry.id }}">{{ entry.text }}</li>)
             ->refresh('stats');
     }
@@ -119,27 +119,27 @@ final class GuestbookForm
     // A push of markup that the server render does not have: the next event renders the list again.
     public function note(): void
     {
-        $this->streams->to(GuestbookPage::class)->append('entries', <li id="note">A note</li>);
+        $this->streams->toPage(GuestbookPage::class)->append('entries', <li id="note">A note</li>);
     }
 
     // Removes the newest entry: in the other tabs, its component is not in the page any more.
     public function forget(): void
     {
         if (null !== $id = $this->guestbook->forget($this->room)) {
-            $this->streams->to(GuestbookPage::class)->remove('entry-'.$id);
+            $this->streams->toPage(GuestbookPage::class)->remove('entry-'.$id);
         }
     }
 
     // A push in the markup of the page itself: the component around it is the <Root>.
     public function motd(): void
     {
-        $this->streams->to(GuestbookPage::class)->update('motd', <b>Welcome back</b>);
+        $this->streams->toPage(GuestbookPage::class)->update('motd', <b>Welcome back</b>);
     }
 
     // The streams of a handler that throws are dropped.
     public function fail(): void
     {
-        $this->streams->to(GuestbookPage::class)->refresh('stats');
+        $this->streams->toPage(GuestbookPage::class)->refresh('stats');
 
         throw new \RuntimeException('The handler failed.');
     }
@@ -154,13 +154,20 @@ final class GuestbookForm
     public function board(): void
     {
         $this->guestbook->add($this->room, 'On the board');
-        $this->streams->to(GuestbookBoard(...), ['room' => $this->room])->refresh('board');
+        $this->streams->toPage(GuestbookBoard(...), ['room' => $this->room])->refresh('board');
+    }
+
+    // The streams to a component go to all the pages that render it.
+    public function inbox(): void
+    {
+        $this->guestbook->add($this->room, 'In the inbox');
+        $this->streams->toComponent(GuestbookInbox::class)->refresh('inbox');
     }
 
     // A page with no #[Subscribe] gets no streams.
     public function elsewhere(): void
     {
-        $this->streams->to(NotifyPage::class)->refresh('save');
+        $this->streams->toPage(NotifyPage::class)->refresh('save');
     }
 
     public function render(): Node
@@ -175,6 +182,7 @@ final class GuestbookForm
                 <button id="fail" type="button" onClick={{ fail }}>Fail</button>
                 <button id="interactive" type="button" onClick={{ interactive }}>Interactive</button>
                 <button id="board" type="button" onClick={{ board }}>Board</button>
+                <button id="inbox" type="button" onClick={{ inbox }}>Inbox</button>
                 <button id="elsewhere" type="button" onClick={{ elsewhere }}>Elsewhere</button>
             </form>
         );
@@ -208,6 +216,47 @@ function GuestbookBoard(string $room, Guestbook $guestbook): Node
     return (
         <Document>
             <p id="board">{{ count }} on the board</p>
+        </Document>
+    );
+}
+
+// A component with #[Subscribe]: the pages that render it get its streams. It has a state of the
+// UI (open) for an event, so it reads the data in render(): a refresh does not mount it again.
+#[Component, Subscribe]
+final class GuestbookInbox
+{
+    #[Prop] public string $room;
+    #[State] public bool $open = false;
+
+    public function __construct(private readonly Guestbook $guestbook)
+    {
+    }
+
+    public function toggle(): void
+    {
+        $this->open = !$this->open;
+    }
+
+    public function render(): Node
+    {
+        $count = \count($this->guestbook->entries($this->room));
+
+        return (
+            <p id="inbox">
+                {{ count }} in the inbox{% if open %}, open{% endif %}
+                <button id="open" type="button" onClick={{ toggle }}>Open</button>
+            </p>
+        );
+    }
+}
+
+// A page with no #[Subscribe]: its component with #[Subscribe] connects it.
+#[Page('/inbox/{room}')]
+function GuestbookInboxPage(string $room): Node
+{
+    return (
+        <Document>
+            <GuestbookInbox room={{ room }} />
         </Document>
     );
 }

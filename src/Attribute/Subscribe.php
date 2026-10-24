@@ -14,14 +14,15 @@ declare(strict_types=1);
 namespace Phem\Attribute;
 
 /**
- * A page that gets the Turbo Streams of other requests (see Phem\Stream\Streams): when it
- * renders, the browser opens one connection to the Mercure hub for the topics of the page.
+ * A page or a component that gets the Turbo Streams of other requests (see
+ * Phem\Stream\Streams): when the page renders, the browser opens one connection to the Mercure
+ * hub for the topics of the page and of its components.
  *
  *     #[Page('/guestbook'), Subscribe]
  *     final class GuestbookPage { ... }
  *
  *     // in a handler of any page, or in a controller
- *     $this->streams->to(GuestbookPage::class)->refresh('entries');
+ *     $this->streams->toPage(GuestbookPage::class)->refresh('entries');
  *
  * A function page can subscribe too. A function has no `::class`, so the streams name it by its
  * first-class callable:
@@ -29,10 +30,19 @@ namespace Phem\Attribute;
  *     #[Page('/guestbook'), Subscribe]
  *     function Guestbook(EntryRepository $entries) { ... }
  *
- *     $this->streams->to(Guestbook(...))->refresh('entries');
+ *     $this->streams->toPage(Guestbook(...))->refresh('entries');
  *
- * The topics of a page are the page, the page with its route values, and the topic of
- * Streams::everywhere(). Only a page can subscribe: each page opens its own connection.
+ * A component with #[Subscribe] gets the streams on all the pages that render it, for example a
+ * part of the layout. Streams::toComponent() names it, with no route values:
+ *
+ *     #[Component, Subscribe]
+ *     final class Inbox { ... }
+ *
+ *     $this->streams->toComponent(Inbox::class)->refresh('inbox');
+ *
+ * The topics of a page are the page, the page with its route values, the topic of
+ * Streams::everywhere(), and the topic of each component with #[Subscribe] of its first render.
+ * Each page opens one connection, for all its topics.
  */
 #[\Attribute(\Attribute::TARGET_CLASS | \Attribute::TARGET_FUNCTION)]
 final class Subscribe

@@ -1,0 +1,6 @@
+<?phpm // expect: E053
+use Phem\Attribute\Subscribe;
+#[Subscribe]
+final class Feed
+{
+}

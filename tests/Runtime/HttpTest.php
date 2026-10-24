@@ -39,6 +39,15 @@ final class HttpTest extends TestCase
         self::assertSame([], PageState::fromArray(['_path' => 'not an array'])->values);
     }
 
+    public function testPageStateKeepsTheComponentsWithSubscribeInTheSubscribedKey(): void
+    {
+        $state = new PageState(['phem1' => ['n' => 1]], subscribed: ['App\Inbox']);
+
+        self::assertSame(['_subscribed' => ['App\Inbox'], 'phem1' => ['n' => 1]], $state->toArray());
+        self::assertEquals($state, PageState::fromArray($state->toArray()));
+        self::assertSame([], PageState::fromArray(['_subscribed' => 'not an array'])->subscribed);
+    }
+
     public function testRootElementHasTheStateOfThePage(): void
     {
         $state = RootElement::state('{"a":"<b>"}', 'sig');

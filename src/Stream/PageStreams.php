@@ -16,8 +16,8 @@ namespace Phem\Stream;
 use Phem\Node;
 
 /**
- * The streams to one topic (see Streams::to()). Each method takes the id of the target element
- * in the page, and returns the same object for the next stream.
+ * The streams to one topic (see Streams::toPage() and Streams::toComponent()). Each method takes
+ * the id of the target element in the page, and returns the same object for the next stream.
  *
  * In the root element of a page, the browser marks the component around the target: the next
  * event renders it again, so the state of the page knows the change (see the `phem` Stimulus
@@ -26,7 +26,7 @@ use Phem\Node;
  */
 final class PageStreams
 {
-    /** @internal use Streams::to() or Streams::everywhere() */
+    /** @internal use Streams::toPage(), Streams::toComponent() or Streams::everywhere() */
     public function __construct(
         private readonly Streams $streams,
         public readonly string $topic,

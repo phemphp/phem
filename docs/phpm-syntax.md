@@ -1636,7 +1636,7 @@ final class SignForm
         $this->repository->add($entry);
         $this->message = '';
 
-        $this->streams->to(Guestbook::class)
+        $this->streams->toPage(Guestbook::class)
             ->prepend('entries', <GuestbookEntry entry={{ entry }} />)
             ->refresh('guestbook-stats');
     }
@@ -1644,12 +1644,18 @@ final class SignForm
 }
 ```
 
-- `to(Page::class)` names all the URLs of a page. `to(Page::class, ['id' => 42])` names one URL:
-  give all the route values of the page, as the URL has them. `everywhere()` names all the pages
-  with `#[Subscribe]`, for a part of the layout. A page with no `#[Subscribe]` throws.
+- `toPage(Page::class)` names all the URLs of a page. `toPage(Page::class, ['id' => 42])` names
+  one URL: give all the route values of the page, as the URL has them. `everywhere()` names all
+  the pages with `#[Subscribe]`, for a part of the layout. A page with no `#[Subscribe]` throws.
 - A function page can have `#[Subscribe]` too. A function has no `::class`, so give its
-  first-class callable: `to(Guestbook(...), ['room' => 'lobby'])` (with `use function`). Its
+  first-class callable: `toPage(Guestbook(...), ['room' => 'lobby'])` (with `use function`). Its
   route values are the parameters that its routes give a value, not the services or the Request.
+- A component can have `#[Subscribe]` too (`#[Component, Subscribe]`), for example a part of the
+  layout. Each page that renders it connects to the hub, also a page with no `#[Subscribe]`.
+  `toComponent(Inbox::class)` (or `toComponent(Inbox(...))` for a function component) names all
+  the pages that render the component. It takes no route values. `toPage()` of a component and
+  `toComponent()` of a page throw. The page connects for the components of its first render: a
+  component that renders first in an event gets the pushes after the page loads again.
 - Each action takes the `id` of the target element: `append`, `prepend`, `before`, `after`,
   `replace`, `update` and `remove`, as in Turbo. `replace` and `update` morph by default
   (`morph: false` turns it off), so the focus, a bound field that the user changes, and the
@@ -1732,8 +1738,8 @@ connects again.
   the error, and the response does not change.
 
 The Symfony profiler shows the streams that a request pushed, and the stale components of an
-event. `phemc` reports E053 for `#[Subscribe]` on a class or a function that is not a page. The
-tests get the pushes with `receive()` (see [Testing](testing.md#actions)).
+event. `phemc` reports E053 for `#[Subscribe]` on a class or a function that is not a page or a
+component. The tests get the pushes with `receive()` (see [Testing](testing.md#actions)).
 
 ### Slow work after the response
 
@@ -1769,12 +1775,12 @@ final class BuildReport
     {
         $ticket = $this->ticket;
         $this->ticket = bin2hex(random_bytes(4));
-        $this->streams->to(Reports::class)
+        $this->streams->toPage(Reports::class)
             ->prepend('reports', <li id="report-{{ ticket }}">Building a report…</li>);
 
         return new Promise(function () use ($ticket): void {
             $report = $this->reports->build($ticket);   // slow
-            $this->streams->to(Reports::class)
+            $this->streams->toPage(Reports::class)
                 ->replace('report-'.$ticket, <ReportRow report={{ report }} />);
         });
     }

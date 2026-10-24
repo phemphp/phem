@@ -19,21 +19,23 @@ use Phem\Routing\PageName;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
- * Pushes Turbo Streams to the open pages with #[Subscribe], through the Mercure hub:
+ * Pushes Turbo Streams to the open pages with #[Subscribe], or with a component with
+ * #[Subscribe], through the Mercure hub:
  *
  *     public function __construct(private readonly Streams $streams) {}
  *
  *     public function sign(Event $e): void
  *     {
  *         $entry = $this->entries->add($this->name, $this->message);
- *         $this->streams->to(GuestbookPage::class)
+ *         $this->streams->toPage(GuestbookPage::class)
  *             ->prepend('entries', <li id="entry-{{ entry.id }}">{{ entry.message }}</li>)
  *             ->refresh('stats');
  *     }
  *
- * - to() names a page (a class name, or `Guestbook(...)` for a function page): all its URLs, or
- *   one URL with its route values. everywhere() names all the pages with #[Subscribe] (for a
- *   part of the layout).
+ * - toPage() names a page (a class name, or `Guestbook(...)` for a function page): all its URLs,
+ *   or one URL with its route values. toComponent() names a component with #[Subscribe]: all
+ *   the pages that render it. everywhere() names all the pages with #[Subscribe] (for a part of
+ *   the layout).
  * - The markup renders at once, outside the page, so it shows the data of now. It is plain
  *   markup: a component in it renders with no `<phem-c>`, and an event handler or a `phem:bind`
  *   throws. For interactive content, use refresh(): each browser renders the component of the
@@ -59,15 +61,26 @@ final class Streams implements ResetInterface
 
     /**
      * The streams to a page: to all its URLs, or with all its route values to one URL
-     * (`to(ScientistPage::class, ['id' => 42])`). A function page is its first-class callable
-     * (`to(Guestbook(...))`).
+     * (`toPage(ScientistPage::class, ['id' => 42])`). A function page is its first-class callable
+     * (`toPage(Guestbook(...))`).
      *
      * @param class-string|string|\Closure $page
      * @param array<string, mixed>         $values
      */
-    public function to(string|\Closure $page, array $values = []): PageStreams
+    public function toPage(string|\Closure $page, array $values = []): PageStreams
     {
-        return new PageStreams($this, $this->topics->to(PageName::of($page), $values));
+        return new PageStreams($this, $this->topics->toPage(PageName::of($page), $values));
+    }
+
+    /**
+     * The streams to a component with #[Subscribe]: to all the pages that render it
+     * (`toComponent(Inbox::class)`, or `toComponent(Inbox(...))` for a function component).
+     *
+     * @param class-string|string|\Closure $component
+     */
+    public function toComponent(string|\Closure $component): PageStreams
+    {
+        return new PageStreams($this, $this->topics->toComponent(PageName::of($component)));
     }
 
     /** The streams to all the pages with #[Subscribe]. */

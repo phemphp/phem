@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Fixtures;
 
+use Phem\Attribute\Component;
 use Phem\Attribute\Subscribe;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -25,5 +26,11 @@ function SubscribedPage(int $id, string $tab, Request $request, Guestbook $guest
 }
 
 function NotSubscribedPage(int $id): void
+{
+}
+
+// A function component with #[Subscribe].
+#[Component, Subscribe]
+function SubscribedWidget(string $label): void
 {
 }

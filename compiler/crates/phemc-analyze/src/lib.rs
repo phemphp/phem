@@ -355,8 +355,8 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
 
     for (fqn, span) in &file.subscribes {
         diags.push(
-            Diagnostic::error(codes::SUBSCRIBE_NOT_PAGE, format!("`#[Subscribe]` must mark a page, and `{fqn}` is not one"), *span)
-                .with_help("a page opens the connection to the Mercure hub: put `#[Subscribe]` next to `#[Page]`"),
+            Diagnostic::error(codes::SUBSCRIBE_NOT_COMPONENT, format!("`#[Subscribe]` must mark a page or a component, and `{fqn}` is neither"), *span)
+                .with_help("a page opens the connection to the Mercure hub for itself and its components: put `#[Subscribe]` next to `#[Page]` or `#[Component]`"),
         );
     }
 
