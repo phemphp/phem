@@ -15,6 +15,7 @@ namespace Phem\Test;
 
 use Dom\Element;
 use Dom\HTMLDocument;
+use Phem\Stream\BroadcastKeys;
 use Phem\Stream\Stream;
 use Phem\Test\Internal\Driver;
 use Phem\Test\Internal\EventResult;
@@ -66,6 +67,13 @@ final class ComponentTester
      * @var array<string, true>
      */
     private array $stale = [];
+    /**
+     * The tokens of the events of this page (see Phem\Stream\SenderToken): a refresh after one of
+     * them skips the component of its handler.
+     *
+     * @var list<string>
+     */
+    private array $sent = [];
     /** The number of the published updates that the page saw. */
     private int $seen;
 
@@ -592,6 +600,11 @@ final class ComponentTester
             }
 
             $this->stale = array_diff_key($this->stale, array_flip($stale));
+
+            if (null !== $result->sender) {
+                $this->sent[] = $result->sender;
+            }
+
             $this->morph($result);
 
             foreach ($this->edited as $fields) {
@@ -619,6 +632,11 @@ final class ComponentTester
         $refresh = false;
         foreach ($message->querySelectorAll('turbo-stream') as $stream) {
             $action = (string) $stream->getAttribute('action');
+            if (Stream::REFRESH === $action) {
+                $refresh = $this->markRefresh($stream) || $refresh;
+                continue;
+            }
+
             $target = $this->document->getElementById((string) $stream->getAttribute('target'));
             if (null === $target) {
                 continue;
@@ -626,11 +644,6 @@ final class ComponentTester
 
             $template = $stream->querySelector('template');
             $nodes = null !== $template ? $this->nodes($template->innerHTML) : [];
-
-            if (Stream::REFRESH === $action) {
-                $refresh = $this->markStale($target) || $refresh;
-                continue;
-            }
 
             $this->markStale(\in_array($action, ['remove', 'replace', 'before', 'after'], true) ? $target->parentElement : $target);
 
@@ -653,6 +666,33 @@ final class ComponentTester
                 'remove' => $target->remove(),
                 default => Assert::fail(\sprintf('A push has the Turbo Stream action "%s", which the tests do not know.', $action)),
             };
+        }
+
+        return $refresh;
+    }
+
+    /**
+     * Marks the components of a refresh as stale: the component around the target, the components
+     * of the `targets` selector, or the content of the page for a refresh with neither. As in the
+     * browser, a refresh after an event of this page skips the component of its handler.
+     */
+    private function markRefresh(Element $stream): bool
+    {
+        $selector = $stream->getAttribute('targets');
+        if (null === $selector) {
+            return $stream->hasAttribute('target')
+                ? $this->markStale($this->document->getElementById((string) $stream->getAttribute('target')))
+                : $this->markStale($this->document->querySelector('[data-phem-state-value] phem-c'));
+        }
+
+        [$token, $skip] = explode(' ', (string) $stream->getAttribute('data-phem-skip'), 2) + [1 => ''];
+        $own = '' !== $token && \in_array($token, $this->sent, true);
+
+        $refresh = false;
+        foreach ($this->document->querySelectorAll($selector) as $component) {
+            if (!$own || $component->id !== $skip) {
+                $refresh = $this->markStale($component) || $refresh;
+            }
         }
 
         return $refresh;
@@ -710,6 +750,11 @@ final class ComponentTester
             }
 
             $element->innerHTML = $html;
+
+            // As in the browser: the keys of a component with #[Broadcast] can change.
+            if (null !== $keys = $result->keys[$id] ?? null) {
+                $element->setAttribute(BroadcastKeys::ATTRIBUTE, $keys);
+            }
 
             foreach ($element->querySelectorAll('[data-phem-ignore][id]') as $new) {
                 if (null !== $old = $ignored[$new->id] ?? null) {

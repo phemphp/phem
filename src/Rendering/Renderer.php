@@ -24,6 +24,7 @@ use Phem\Metadata\ComponentMetadata;
 use Phem\Node;
 use Phem\Root;
 use Phem\Slot;
+use Phem\Stream\BroadcastKeys;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\Service\ResetInterface;
 use Twig\Template;
@@ -59,6 +60,7 @@ final class Renderer implements ResetInterface
         private readonly ComponentMetadata $metadata = new ComponentMetadata(),
         private readonly ?RenderProfiler $profiler = null,
         private readonly ContextResolver $contexts = new ContextResolver(),
+        private readonly BroadcastKeys $broadcasts = new BroadcastKeys(),
     ) {
     }
 
@@ -268,6 +270,12 @@ final class Renderer implements ResetInterface
         }
     }
 
+    /** The fiber of a component instance in the current tree (see Tree::fiberOf()). Null outside a page. */
+    public function fiberOf(object $instance): ?Fiber
+    {
+        return $this->tree?->fiberOf($instance);
+    }
+
     /** The scope of a handler for `phem:loading` (see Tree::handlerScope()). */
     public function handlerScope(\Closure $handler): ?string
     {
@@ -395,6 +403,8 @@ final class Renderer implements ResetInterface
         try {
             $slots = $this->slots($fiber);
             $out = null !== $renderer ? $renderer->render($fiber, $slots) : ($slots['children'] ?? null);
+            // After the render: the props of a class component are set.
+            $fiber->broadcast = $tree->detached ? [] : $this->broadcasts->ofFiber($fiber);
             // The markup is not rendered yet: the children read the contexts of this pass.
             $this->contexts->provide($fiber);
             $html = $this->markup->html($out);

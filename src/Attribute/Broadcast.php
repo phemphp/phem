@@ -33,18 +33,38 @@ namespace Phem\Attribute;
  *     $this->streams->toPage(Guestbook(...))->refresh('entries');
  *
  * A component with #[Broadcast] gets the streams on all the pages that render it, for example a
- * part of the layout. Streams::toComponent() names it, with no route values:
+ * part of the layout. Streams::toComponent() names it:
  *
  *     #[Component, Broadcast]
  *     final class Inbox { ... }
  *
  *     $this->streams->toComponent(Inbox::class)->refresh('inbox');
  *
+ * After each event handler of a class component with #[Broadcast] that does not throw, the other
+ * browsers render the component again (see Phem\Handler\BroadcastMiddleware): the handler needs
+ * no stream. With #[Broadcast] on some handler methods, only these handlers do it, and the
+ * class needs no #[Broadcast]:
+ *
+ *     #[Component]
+ *     final class LikeButton
+ *     {
+ *         #[Broadcast]
+ *         public function like(): void { ... }  // the other browsers render the button again
+ *
+ *         public function toggle(): void { ... } // a state of this browser only
+ *     }
+ *
+ * A closure of render() that calls such a handler needs its own #[Broadcast]
+ * (`#[Broadcast] fn () => $this->like($id)`): Phem sees the closure, not the calls in it.
+ *
+ * The refresh goes to all the instances of the component. The props with #[BroadcastKey]
+ * identify an instance: the refresh goes only to the instances with the same values.
+ *
  * The topics of a page are the page, the page with its route values, the topic of
  * Streams::everywhere(), and the topic of each component with #[Broadcast] of its first render.
  * Each page opens one connection, for all its topics.
  */
-#[\Attribute(\Attribute::TARGET_CLASS | \Attribute::TARGET_FUNCTION)]
+#[\Attribute(\Attribute::TARGET_CLASS | \Attribute::TARGET_FUNCTION | \Attribute::TARGET_METHOD)]
 final class Broadcast
 {
 }

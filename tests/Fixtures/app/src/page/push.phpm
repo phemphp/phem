@@ -2,7 +2,8 @@
 
 namespace App\Page;
 
-use Phem\Attribute\{Component, Page, Path, Prop, State, Broadcast};
+use Phem\Attribute\{Async, Component, Page, Path, Prop, State, Broadcast, BroadcastKey};
+use Phem\Async\Promise;
 use Phem\Event;
 use Phem\Node;
 use Phem\Stream\Streams;
@@ -257,6 +258,69 @@ function GuestbookInboxPage(string $room): Node
     return (
         <Document>
             <GuestbookInbox room={{ room }} />
+        </Document>
+    );
+}
+
+// A component with a #[BroadcastKey] prop, and #[Broadcast] on its handlers only: the class
+// needs no #[Broadcast]. A handler with #[Broadcast] renders again the instances of the same
+// room in the other browsers. Its other handler changes a state of this browser only.
+#[Component]
+final class GuestbookLikes
+{
+    #[Prop, BroadcastKey] public string $room;
+    #[State] public bool $open = false;
+
+    public function __construct(private readonly Guestbook $guestbook)
+    {
+    }
+
+    #[Broadcast]
+    public function like(): void
+    {
+        $this->guestbook->add($this->room, 'Like');
+    }
+
+    // The refresh goes after the work, from the worker.
+    #[Async, Broadcast]
+    public function later(): Promise
+    {
+        return new Promise(function (): void {
+            $this->guestbook->add($this->room, 'Like');
+        });
+    }
+
+    public function toggle(): void
+    {
+        $this->open = !$this->open;
+    }
+
+    public function render(): Node
+    {
+        $count = \count($this->guestbook->entries($this->room));
+        // A closure that calls a handler with #[Broadcast] needs its own #[Broadcast].
+        $cheer = #[Broadcast] fn () => $this->like();
+
+        return (
+            <p id="likes-{{ room }}">
+                {{ count }} likes in {{ room }}{% if open %}, open{% endif %}
+                <button id="like-{{ room }}" type="button" onClick={{ like }}>Like</button>
+                <button id="later-{{ room }}" type="button" onClick={{ later }}>Later</button>
+                <button id="cheer-{{ room }}" type="button" onClick={{ cheer }}>Cheer</button>
+                <button id="open-{{ room }}" type="button" onClick={{ toggle }}>Open</button>
+            </p>
+        );
+    }
+}
+
+// Two instances of the component, with two keys.
+#[Page('/likes')]
+function GuestbookLikesPage(): Node
+{
+    return (
+        <Document>
+            <GuestbookLikes room="lobby" />
+            <GuestbookLikes room="hall" />
         </Document>
     );
 }

@@ -13,8 +13,6 @@ declare(strict_types=1);
 
 namespace Phem\Stream;
 
-use Phem\Attribute\Component;
-use Phem\Attribute\Page;
 use Phem\Attribute\Broadcast;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Routing\PageRouteValues;
@@ -42,10 +40,6 @@ final class Topics implements ResetInterface
 
     private const PREFIX = 'phem:';
 
-    /** @var array<string, bool> */
-    private array $broadcasts = [];
-    /** @var array<string, bool> */
-    private array $components = [];
     /** @var array<string, string> topic => its name, for the topics of this request */
     private array $names = [];
 
@@ -112,7 +106,7 @@ final class Topics implements ResetInterface
     {
         $components = [];
         foreach ($names as $name) {
-            if ($this->broadcasts($name) && $this->isComponent($name)) {
+            if ($this->broadcasts($name) && $this->metadata->isComponent($name)) {
                 $components[$name] = $name;
             }
         }
@@ -134,7 +128,7 @@ final class Topics implements ResetInterface
             throw new \LogicException(\sprintf('The streams go to the pages with #[Broadcast], but "%s" has no #[%s] attribute.', $page, Broadcast::class));
         }
 
-        if ($this->isComponent($page)) {
+        if ($this->metadata->isComponent($page)) {
             throw new \LogicException(\sprintf('"%s" is a component, not a page: use Streams::toComponent().', $page));
         }
 
@@ -164,37 +158,20 @@ final class Topics implements ResetInterface
     {
         $component = ltrim($component, '\\');
         if (!$this->broadcasts($component)) {
-            throw new \LogicException(\sprintf('The streams go to the components with #[Broadcast], but "%s" has no #[%s] attribute.', $component, Broadcast::class));
+            throw new \LogicException(\sprintf('The streams go to the components with #[Broadcast], but "%s" has no #[%s] attribute on it or on a handler.', $component, Broadcast::class));
         }
 
-        if (!$this->isComponent($component)) {
+        if (!$this->metadata->isComponent($component)) {
             throw new \LogicException(\sprintf('"%s" is not a component (a #[Component] with no #[Page]): use Streams::toPage() for a page.', $component));
         }
 
         return $this->topic(self::PREFIX.$component);
     }
 
+    /** Whether a page or a component has #[Broadcast] (see ComponentMetadata::broadcasts()). */
     public function broadcasts(string $name): bool
     {
-        return $this->broadcasts[$name] ??= self::has($name, Broadcast::class);
-    }
-
-    /** Whether the name is a component that is not a page: it has #[Component] and no #[Page]. */
-    private function isComponent(string $name): bool
-    {
-        return $this->components[$name] ??= self::has($name, Component::class) && !self::has($name, Page::class);
-    }
-
-    /** @param class-string $attribute */
-    private static function has(string $name, string $attribute): bool
-    {
-        $reflection = match (true) {
-            class_exists($name) => new \ReflectionClass($name),
-            \function_exists($name) => new \ReflectionFunction($name),
-            default => null,
-        };
-
-        return [] !== ($reflection?->getAttributes($attribute) ?? []);
+        return $this->metadata->broadcasts($name);
     }
 
     /**
@@ -222,15 +199,14 @@ final class Topics implements ResetInterface
     /** The topic of a name: an HMAC of 128 bits (see the class). */
     private function topic(string $name): string
     {
-        $topic = self::PREFIX.rtrim(strtr(base64_encode(substr(hash_hmac('sha256', $name, $this->secret, true), 0, 16)), '+/', '-_'), '=');
+        $topic = self::PREFIX.NameHash::of($this->secret, $name);
         $this->names[$topic] = $name;
 
         return $topic;
     }
 
     /**
-     * The route values as strings, with their keys in order: the page and the publisher get the
-     * same topic for `42` and `"42"`.
+     * The route values as strings, with their keys in order (see NameValues).
      *
      * @param array<array-key, mixed> $values
      *
@@ -238,17 +214,6 @@ final class Topics implements ResetInterface
      */
     private static function normalize(array $values): array
     {
-        ksort($values);
-        foreach ($values as $key => $value) {
-            $values[$key] = match (true) {
-                \is_array($value) => self::normalize($value),
-                $value instanceof \BackedEnum => (string) $value->value,
-                \is_scalar($value), $value instanceof \Stringable => (string) $value,
-                null === $value => '',
-                default => throw new \LogicException(\sprintf('The route value "%s" of a topic is a "%s": give the value of the URL (an identifier or a slug), not the object.', $key, get_debug_type($value))),
-            };
-        }
-
-        return $values;
+        return new NameValues()->normalize($values, static fn (string $key, mixed $value): \Throwable => new \LogicException(\sprintf('The route value "%s" of a topic is a "%s": give the value of the URL (an identifier or a slug), not the object.', $key, get_debug_type($value))));
     }
 }

@@ -32,6 +32,8 @@ use Phem\State\StateCache;
 use Phem\State\StateCodec;
 use Phem\State\StateJson;
 use Phem\State\UrlQuery;
+use Phem\Stream\BroadcastKeys;
+use Phem\Stream\SenderToken;
 use Phem\Stream\Subscription;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -97,6 +99,7 @@ final class EventController
         private readonly int $maxUploadSize = 8388608,
         private readonly StateCache $cache = new StateCache(),
         private readonly ?Subscription $subscription = null,
+        private readonly SenderToken $sender = new SenderToken(),
     ) {
     }
 
@@ -196,7 +199,18 @@ final class EventController
         $query = $this->url->of($tree);
         // Only the entries of the state that changed: the browser has the state of this event.
         $changes = (object) StateJson::changes($json, $next);
-        $data = ['streams' => $this->streams->updates($tree->changedFibers()), 'changes' => $changes, 'signature' => $signature, 'query' => ['values' => (object) $query['values'], 'push' => $query['push']], 'events' => $this->dispatcher->dispatched()];
+        $changed = $tree->changedFibers();
+        $data = ['streams' => $this->streams->updates($changed), 'changes' => $changes, 'signature' => $signature, 'query' => ['values' => (object) $query['values'], 'push' => $query['push']], 'events' => $this->dispatcher->dispatched()];
+
+        // The browser sets them on the `<phem-c>` that the morph does not change.
+        if ([] !== $keys = BroadcastKeys::attributes($changed)) {
+            $data['keys'] = $keys;
+        }
+
+        // The refreshes of this event skip the component of the handler in this browser.
+        if (null !== $token = $this->sender->issued()) {
+            $data['sender'] = $token;
+        }
 
         if ([] !== $outcome->warnings) {
             // The dev-mode check (see SkippedRenderCheck): the phem controller logs them.

@@ -125,7 +125,9 @@ final class PageDriver implements Driver
         $this->signature = (string) $data['signature'];
         $this->query($data['query'] ?? null);
 
-        return EventResult::updates(self::streams((string) $data['streams']), self::events($data['events'] ?? []));
+        $keys = \is_array($data['keys'] ?? null) ? array_map(strval(...), $data['keys']) : [];
+
+        return EventResult::updates(self::streams((string) $data['streams']), self::events($data['events'] ?? []), $keys, \is_string($data['sender'] ?? null) ? $data['sender'] : null);
     }
 
     /**

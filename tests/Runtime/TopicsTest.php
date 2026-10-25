@@ -166,7 +166,7 @@ final class TopicsTest extends TestCase
     public function testThePublisherNeedsAComponentWithBroadcast(): void
     {
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('The streams go to the components with #[Broadcast], but "Phem\Tests\Fixtures\Scientist" has no #[Phem\Attribute\Broadcast] attribute.');
+        $this->expectExceptionMessage('The streams go to the components with #[Broadcast], but "Phem\Tests\Fixtures\Scientist" has no #[Phem\Attribute\Broadcast] attribute on it or on a handler.');
 
         new Topics()->toComponent(Scientist::class);
     }

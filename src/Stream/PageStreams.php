@@ -18,6 +18,7 @@ use Phem\Node;
 /**
  * The streams to one topic (see Streams::toPage() and Streams::toComponent()). Each method takes
  * the id of the target element in the page, and returns the same object for the next stream.
+ * refresh() can also take no target: the component of Streams::toComponent(), or the page.
  *
  * In the root element of a page, the browser marks the component around the target: the next
  * event renders it again, so the state of the page knows the change (see the `phem` Stimulus
@@ -26,10 +27,15 @@ use Phem\Node;
  */
 final class PageStreams
 {
-    /** @internal use Streams::toPage(), Streams::toComponent() or Streams::everywhere() */
+    /**
+     * @param string|null $key the key of the instances of Streams::toComponent() (see BroadcastKeys)
+     *
+     * @internal use Streams::toPage(), Streams::toComponent() or Streams::everywhere()
+     */
     public function __construct(
         private readonly Streams $streams,
         public readonly string $topic,
+        private readonly ?string $key = null,
     ) {
     }
 
@@ -86,12 +92,47 @@ final class PageStreams
      * with no #[State] reads its data again in mount(), and a #[State] keeps the value of the
      * browser. The browser sends one event for all the refreshes that come together, and none for
      * a target that the page does not show.
+     *
+     * With no target, it renders again the instances of the component of Streams::toComponent()
+     * (all of them, or the instances of its key), or the content of the page.
+     *
+     * @throws \InvalidArgumentException for an empty target
      */
-    public function refresh(string $target): self
+    public function refresh(?string $target = null): self
     {
-        $this->streams->add($this->topic, new Stream(Stream::REFRESH, $target));
+        if ('' === $target) {
+            throw new \InvalidArgumentException('The target of a refresh is the id of an element, and an empty id has no element. Give no target to refresh the component of Streams::toComponent() or the page.');
+        }
+
+        $this->streams->add($this->topic, null !== $target ? new Stream(Stream::REFRESH, $target) : $this->own());
 
         return $this;
+    }
+
+    /**
+     * The refresh of the component after a handler (see Phem\Handler\BroadcastMiddleware): the
+     * page that sent the event does not refresh the fiber of the handler, it rendered it already.
+     *
+     * @param string $token the token of the event (see SenderToken)
+     *
+     * @internal
+     */
+    public function refreshExcept(string $token, string $fiber): self
+    {
+        $stream = $this->own();
+        $this->streams->add($this->topic, new Stream($stream->action, $stream->target, many: $stream->many, skip: $token.' '.$fiber));
+
+        return $this;
+    }
+
+    /** The refresh with no target: the instances of the component, or the content of the page. */
+    private function own(): Stream
+    {
+        if (null === $this->key) {
+            return new Stream(Stream::REFRESH, null);
+        }
+
+        return new Stream(Stream::REFRESH, '['.BroadcastKeys::ATTRIBUTE.'~="'.$this->key.'"]', many: true);
     }
 
     private function add(string $action, string $target, Node $markup, bool $morph = false): self

@@ -1,0 +1,10 @@
+<?phpm // expect: E053
+use Phem\Attribute\{Broadcast, Page};
+#[Page('/feed')]
+final class Feed
+{
+    #[Broadcast]
+    public function save(): void
+    {
+    }
+}

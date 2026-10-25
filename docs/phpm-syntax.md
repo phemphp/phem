@@ -1667,7 +1667,10 @@ final class SignForm
   component in it renders with no `<phem-c>`. An event handler, a `phem:bind`, a `phem:loading`
   or a `<Suspense>` in it throws: no page has its fiber.
 - **`refresh($target)`** renders the component around the target again in each browser, with a
-  normal event, with its subtree. Use it for interactive content, and for data that depends on
+  normal event, with its subtree. With no target, `refresh()` renders again the instances of the
+  component of `toComponent()` (see [The refresh of a component after its
+  handlers](#the-refresh-of-a-component-after-its-handlers)), or the content of the page of
+  `toPage()` and `everywhere()`. Use it for interactive content, and for data that depends on
   the user: each browser sends its own request, with its access rules and its state. As after
   `$e->refresh()`, a component with no `#[State]` reads its data again in `mount()`, and a
   `#[State]` keeps the value of the browser. So put the data that a push changes in a component
@@ -1692,6 +1695,65 @@ final class SignForm
 - The same markup goes to all the viewers of the page: do not push data for one user only. Push
   a `refresh()` instead.
 - A stream outside the root element (`#phem-root`) is plain Turbo.
+
+#### The refresh of a component after its handlers
+
+A class component with `#[Broadcast]` needs no stream for its own changes. After each of its
+event handlers that does not throw, the other browsers that show the component render it again,
+as with `toComponent()->refresh()`:
+
+```php
+use Phem\Attribute\{Component, Prop, State, Broadcast, BroadcastKey, Transactional};
+
+#[Component]
+final class LikeButton
+{
+    #[Prop, BroadcastKey] public Post $post;
+    #[Prop] public string $size = 'md';
+    #[State] public bool $open = false;
+
+    #[Transactional, Broadcast]
+    public function like(): void
+    {
+        ++$this->post->likes;
+    }
+
+    // A state of this browser only: no refresh.
+    public function toggle(): void
+    {
+        $this->open = !$this->open;
+    }
+    // ...
+}
+```
+
+- With `#[Broadcast]` on the class and on no handler method, all the handlers of the component
+  refresh it. With `#[Broadcast]` on some handler methods, only these handlers do, and the
+  class needs no `#[Broadcast]`: the component connects its pages to the hub. A component with
+  no handler that only gets the pushes of other requests needs `#[Broadcast]` on the class.
+- The refresh goes to all the instances of the component, on all the pages. The props with
+  `#[BroadcastKey]` identify an instance: the refresh goes only to the instances with the same
+  values. An entity is its identifier, an enum is its value. Mark all the props that identify
+  the data, and no prop that only changes the look: a page that renders the same post with
+  another `size` must get the refresh too. A function component marks its parameters
+  (`function LikeCount(#[BroadcastKey] Post $post)`).
+- `toComponent(LikeButton::class, ['post' => $post])->refresh()` does the same from any
+  handler or service: give the values of all the key props, or none for all the instances.
+- The page that sent the event does not render again the component of the handler: the event
+  rendered it already. Its other instances on that page render again.
+- A closure of `render()` that calls a handler with `#[Broadcast]` needs its own
+  `#[Broadcast]`: `$like = #[Broadcast] fn () => $this->like($id);`. Phem sees the closure, not
+  the methods that it calls.
+- The component of a handler is the object of its closure, as for `#[Transactional]`: a
+  handler that a parent gives as a prop refreshes the parent. A function component has no
+  object, so its handlers do not refresh it: push `toComponent()->refresh()` yourself.
+- The refresh goes after the transaction, as the other streams. An `#[Async]` handler refreshes
+  after its work, in the worker.
+- Each browser renders the component with a normal event, with its own state and its access
+  rules. A component with no `#[State]` reads its data again in `mount()`.
+- `phemc` reports E053 for `#[Broadcast]` on a method of a page, and E057 for
+  `#[BroadcastKey]` on a property that is not a prop, or in a page or a component that does not
+  broadcast.
 
 The page opens one connection to the hub, for its topics: the page, the page with its route
 values, and the topic of `everywhere()`. A topic is an HMAC of its name with the secret of Phem
@@ -1742,7 +1804,7 @@ connects again.
 
 The Symfony profiler shows the streams that a request pushed, and the stale components of an
 event. `phemc` reports E053 for `#[Broadcast]` on a class or a function that is not a page or a
-component. The tests get the pushes with `receive()` (see [Testing](testing.md#actions)).
+component, or on a method of a page. The tests get the pushes with `receive()` (see [Testing](testing.md#actions)).
 
 ### Slow work after the response
 

@@ -81,6 +81,9 @@ const MAX_STALE = 100
 // The wait before a new connection to the hub after it refused one (an expired token).
 const STREAM_RETRY = 5000
 
+// The number of tokens of the last events that a page keeps (see `sent`).
+const MAX_SENT = 20
+
 // The DOM event of a refresh: an event with no handler.
 const REFRESH_EVENT = { type: "refresh", value: null, checked: null, key: null, form: null, refresh: true }
 
@@ -411,6 +414,9 @@ export default class PhemController extends Controller {
 
     // The ids of the stale components (see the header): the next event sends them.
     this.stale = new Set()
+    // The tokens of the last events of this page (`sender` in the answer): a refresh after one of
+    // these events does not render again the component that the event rendered.
+    this.sent = []
     // The number of events that run now, and the pushes that wait for them.
     this.busy = 0
     this.held = []
@@ -500,7 +506,7 @@ export default class PhemController extends Controller {
 
       if (action === "phem-refresh") {
         stream.remove()
-        refresh = (inRoot && this.markStale(target)) || refresh
+        refresh = this.markRefresh(stream, inRoot ? target : null) || refresh
         continue
       }
 
@@ -521,6 +527,25 @@ export default class PhemController extends Controller {
     }
 
     if (refresh) this.scheduleRefresh()
+  }
+
+  // Marks the components of a refresh as stale: the component around the target, the components of
+  // the `targets` selector (the instances of a component with #[Broadcast]), or the content of the
+  // root element for a refresh with neither. A refresh after a handler of this page skips the
+  // component of the handler (`data-phem-skip`): the event rendered it. Returns whether one is stale.
+  markRefresh(stream, target) {
+    const selector = stream.getAttribute("targets")
+    if (selector === null) return stream.hasAttribute("target") ? this.markStale(target) : this.markContentStale()
+
+    const [token, skip] = (stream.getAttribute("data-phem-skip") ?? "").split(" ")
+    const own = token !== "" && this.sent.includes(token)
+    let refresh = false
+    for (const component of this.element.querySelectorAll(selector)) {
+      if (own && component.id === skip) continue
+      refresh = this.markStale(component) || refresh
+    }
+
+    return refresh
   }
 
   // Marks the component around an element as stale. Returns false when the element is not in a component.
@@ -1013,9 +1038,14 @@ export default class PhemController extends Controller {
     for (const id of stale) this.stale.delete(id)
     this.stateValue = applyStateChanges(this.stateValue, data.changes ?? {})
     this.signatureValue = data.signature
+    // Before the pushes that wait for this event (see receive()).
+    if (data.sender) this.sent = [data.sender, ...this.sent].slice(0, MAX_SENT)
     if (data.query) this.updateUrl(data.query, true)
     this.sentBound = Object.fromEntries(Object.entries(fields).map(([key, { value }]) => [key, value]))
 
+    // A morph changes the content of a component, not the attributes of its `<phem-c>`: the keys of
+    // a component with #[Broadcast] (the values of its key props can change).
+    for (const [id, keys] of Object.entries(data.keys ?? {})) document.getElementById(id)?.setAttribute("data-phem-broadcast", keys)
     const rendered = data.streams ? this.renderStreams(data.streams, handler) : afterStreams()
     return rendered.then(() => {
       this.sentBound = null

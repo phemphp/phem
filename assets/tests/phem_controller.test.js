@@ -22,11 +22,12 @@ async function mount(markup, rootAttributes = "") {
 
 // The answer of the server to the next event: a morph of `c1` to `markup`, with no change of the
 // state, or the `changes` of the state.
-function respond(markup, changes = {}) {
+function respond(markup, changes = {}, extra = {}) {
   const body = {
     streams: `<turbo-stream action="update" method="morph" target="c1"><template>${markup}</template></turbo-stream>`,
     changes,
     signature: "s2",
+    ...extra,
   }
   fetch.mockResolvedValueOnce(new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } }))
 }
@@ -594,6 +595,56 @@ describe("pushes", () => {
     await new Promise((resolve) => setTimeout(resolve, 100))
 
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("refreshes the components of a targets selector", async () => {
+    const source = await subscribe('<phem-c id="b1" data-phem-broadcast="all post1"><p>1</p></phem-c><phem-c id="b2" data-phem-broadcast="all post2"><p>2</p></phem-c><phem-c id="b3" data-phem-broadcast="all post1"><p>1</p></phem-c>')
+    respond("<p>x</p>")
+    source.push('<turbo-stream action="phem-refresh" targets="[data-phem-broadcast~=&quot;post1&quot;]"></turbo-stream>')
+    const body = await nextBody()
+
+    expect(body.stale).toEqual(["b1", "b3"])
+  })
+
+  it("skips the component of its own handler in a refresh after the handler", async () => {
+    const markup = '<phem-c id="b1" data-phem-broadcast="all"><button data-phem-on-click="b1.like">Like</button></phem-c><phem-c id="b2" data-phem-broadcast="all"><p>2</p></phem-c>'
+    const source = await subscribe(markup)
+    respond(markup, {}, { sender: "t1" })
+    const done = nextDone()
+    click("button")
+    await done
+
+    respond(markup)
+    source.push('<turbo-stream action="phem-refresh" targets="[data-phem-broadcast~=&quot;all&quot;]" data-phem-skip="t1 b1"></turbo-stream>')
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+    expect(JSON.parse(fetch.mock.calls[1][1].body).stale).toEqual(["b2"])
+
+    // The token of an event of another page: no skip.
+    respond(markup.replace("<p>2</p>", "<p>3</p>"))
+    source.push('<turbo-stream action="phem-refresh" targets="[data-phem-broadcast~=&quot;all&quot;]" data-phem-skip="t2 b1"></turbo-stream>')
+    // The morph of the last refresh, before the next test.
+    await vi.waitFor(() => expect(document.getElementById("b2").textContent).toBe("3"))
+    expect(JSON.parse(fetch.mock.calls[2][1].body).stale).toEqual(["b1", "b2"])
+  })
+
+  it("sets the keys of a component with #[Broadcast] after an event", async () => {
+    await subscribe('<phem-c id="b1" data-phem-broadcast="all post1"><button data-phem-on-click="b1.next">Next</button></phem-c>')
+    const streams = '<turbo-stream action="update" method="morph" target="b1"><template><button data-phem-on-click="b1.next">Next</button></template></turbo-stream>'
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ streams, changes: {}, signature: "s2", keys: { b1: "all post2" } }), { status: 200, headers: { "Content-Type": "application/json" } }))
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect(document.getElementById("b1").getAttribute("data-phem-broadcast")).toBe("all post2")
+  })
+
+  it("refreshes the content of the root element for a refresh with no target", async () => {
+    const source = await subscribe("<p>Hi</p>")
+    respond("<p>Hi again</p>")
+    source.push('<turbo-stream action="phem-refresh"></turbo-stream>')
+    const body = await nextBody()
+
+    expect(body.stale).toEqual(["c1"])
   })
 
   it("renders a push that comes while an event runs after the morph of the event", async () => {

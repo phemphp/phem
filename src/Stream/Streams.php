@@ -34,8 +34,9 @@ use Symfony\Contracts\Service\ResetInterface;
  *
  * - toPage() names a page (a class name, or `Guestbook(...)` for a function page): all its URLs,
  *   or one URL with its route values. toComponent() names a component with #[Broadcast]: all
- *   the pages that render it. everywhere() names all the pages with #[Broadcast] (for a part of
- *   the layout).
+ *   the pages that render it. A class component with #[Broadcast] refreshes itself after its
+ *   handlers (see Phem\Handler\BroadcastMiddleware). everywhere() names all the pages with
+ *   #[Broadcast] (for a part of the layout).
  * - The markup renders at once, outside the page, so it shows the data of now. It is plain
  *   markup: a component in it renders with no `<phem-c>`, and an event handler or a `phem:bind`
  *   throws. For interactive content, use refresh(): each browser renders the component of the
@@ -56,6 +57,7 @@ final class Streams implements ResetInterface
         private readonly StreamPublisher $publisher,
         private readonly Topics $topics = new Topics(),
         private readonly bool $private = false,
+        private readonly BroadcastKeys $keys = new BroadcastKeys(),
     ) {
     }
 
@@ -75,12 +77,18 @@ final class Streams implements ResetInterface
     /**
      * The streams to a component with #[Broadcast]: to all the pages that render it
      * (`toComponent(Inbox::class)`, or `toComponent(Inbox(...))` for a function component).
+     * refresh() with no target renders its instances again: all of them, or with the values of
+     * all its key props only the instances with these values
+     * (`toComponent(LikeButton::class, ['post' => $post])`, see Phem\Attribute\Broadcast).
      *
      * @param class-string|string|\Closure $component
+     * @param array<string, mixed>         $key       the values of the key props
      */
-    public function toComponent(string|\Closure $component): PageStreams
+    public function toComponent(string|\Closure $component, array $key = []): PageStreams
     {
-        return new PageStreams($this, $this->topics->toComponent(PageName::of($component)));
+        $name = ltrim(PageName::of($component), '\\');
+
+        return new PageStreams($this, $this->topics->toComponent($name), [] !== $key ? $this->keys->ofInstance($name, $key) : $this->keys->ofComponent($name));
     }
 
     /** The streams to all the pages with #[Broadcast]. */

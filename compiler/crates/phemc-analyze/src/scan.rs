@@ -2,7 +2,7 @@
 //! function that contains each markup literal. It is not a PHP parser; it reads only the
 //! declarations that the compiler needs.
 
-use crate::{Kind, ATTR_ASYNC, ATTR_COMPONENT, ATTR_CONTEXT, ATTR_PAGE, ATTR_PATH, ATTR_PROP, ATTR_PROVIDE, ATTR_ROUTE, ATTR_STATE, ATTR_BROADCAST};
+use crate::{Kind, ATTR_ASYNC, ATTR_BROADCAST, ATTR_BROADCAST_KEY, ATTR_COMPONENT, ATTR_CONTEXT, ATTR_PAGE, ATTR_PATH, ATTR_PROP, ATTR_PROVIDE, ATTR_ROUTE, ATTR_STATE};
 use phemc_syntax::php::{Lexed, TokKind, Token};
 use phemc_syntax::Span;
 use std::collections::HashMap;
@@ -99,6 +99,8 @@ pub struct Func {
     pub return_type: String,
     /// The span of an `#[Async]` attribute on the function or the method.
     pub async_attr: Option<Span>,
+    /// The span of a `#[Broadcast]` attribute on the function or the method.
+    pub broadcast_attr: Option<Span>,
 }
 
 #[derive(Clone, Debug)]
@@ -145,6 +147,13 @@ pub struct Class {
     pub interfaces: Vec<String>,
     /// `#[Provide]` on the class: the component provides itself as a context.
     pub provides_self: bool,
+    /// `#[Broadcast]` on the class.
+    pub has_broadcast: bool,
+    /// `#[Page]` on the class: a page, not a component that other pages render.
+    pub is_page: bool,
+    /// A parent class or a trait in the sources has a method with `#[Broadcast]` (see
+    /// `resolve_inheritance()`).
+    pub inherited_broadcast: bool,
 }
 
 impl Class {
@@ -179,6 +188,8 @@ pub struct Prop {
     pub is_context: bool,
     /// `#[Provide]`: the property is a context for the components below.
     pub is_provide: bool,
+    /// The span of a `#[BroadcastKey]`: the prop identifies an instance of the component.
+    pub broadcast_key: Option<Span>,
     pub span: Span,
 }
 
@@ -284,7 +295,8 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                             info.routes.push(RouteDecl { fqn: f.fqn.clone(), attr, span, is_component: attr == "Page", is_function: true });
                         }
 
-                        if let Some(span) = broadcast_attr(&info, &attrs).filter(|_| f.component_kind.is_none()) {
+                        f.broadcast_attr = broadcast_attr(&info, &attrs);
+                        if let Some(span) = f.broadcast_attr.filter(|_| f.component_kind.is_none()) {
                             info.broadcasts.push((f.fqn.clone(), span));
                         }
 
@@ -577,6 +589,7 @@ fn parse_function(toks: &Toks, at: usize, ns: &str) -> (Func, usize) {
         is_private: false,
         return_type,
         async_attr: None,
+        broadcast_attr: None,
     };
 
     (f, end)
@@ -691,6 +704,7 @@ fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
             "Context" => ATTR_CONTEXT,
             "Provide" => ATTR_PROVIDE,
             "Broadcast" => ATTR_BROADCAST,
+            "BroadcastKey" => ATTR_BROADCAST_KEY,
             "Async" => ATTR_ASYNC,
             _ => continue,
         };
@@ -727,6 +741,8 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
     // A `#[Page]` class is a component too.
     let is_component = attrs.iter().any(|a| matches!(info.resolve_class(a).as_str(), ATTR_COMPONENT | ATTR_PAGE));
     let provides_self = attrs.iter().any(|a| info.resolve_class(a) == ATTR_PROVIDE);
+    let has_broadcast = attrs.iter().any(|a| info.resolve_class(a) == ATTR_BROADCAST);
+    let is_page = attrs.iter().any(|a| info.resolve_class(a) == ATTR_PAGE);
     let mut class = Class {
         fqn: qualify(&info.namespace, &name),
         name,
@@ -743,6 +759,9 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
         open: false,
         interfaces,
         provides_self,
+        has_broadcast,
+        is_page,
+        inherited_broadcast: false,
     };
 
     let mut i = j + 1;
@@ -797,6 +816,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
             let (m, end) = parse_function(toks, i, "");
             if m.name.eq_ignore_ascii_case("__construct") {
                 for p in m.params.iter().filter(|p| p.promoted) {
+                    check_attrs(info, &p.attrs);
                     class.props.push(Prop {
                         name: p.name.clone(),
                         ty: p.ty.clone(),
@@ -811,6 +831,8 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
                         has_default: p.default.is_some(),
                         is_context: false,
                         is_provide: false,
+                        // A promoted parameter is a service, not a prop: the analysis reports it.
+                        broadcast_key: p.attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_BROADCAST_KEY).map(|(_, s)| *s),
                         span: m.name_span,
                     });
                 }
@@ -818,7 +840,8 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
 
             check_attrs(info, &member_attrs);
             let async_attr = async_attr(info, &member_attrs);
-            class.methods.push(Func { fqn: format!("{}::{}", class.fqn, m.name), is_private: mods.iter().any(|x| x == "private"), async_attr, ..m });
+            let broadcast_attr = broadcast_attr(info, &member_attrs);
+            class.methods.push(Func { fqn: format!("{}::{}", class.fqn, m.name), is_private: mods.iter().any(|x| x == "private"), async_attr, broadcast_attr, ..m });
 
             member_attrs.clear();
             member_rest.clear();
@@ -853,6 +876,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
                 has_default,
                 is_context: has_attr(ATTR_CONTEXT),
                 is_provide: has_attr(ATTR_PROVIDE),
+                broadcast_key: member_attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_BROADCAST_KEY).map(|(_, s)| *s),
                 span: t.span,
             });
 

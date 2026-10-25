@@ -13,6 +13,10 @@ declare(strict_types=1);
 
 namespace Phem\Metadata;
 
+use Phem\Attribute\Broadcast;
+use Phem\Attribute\BroadcastKey;
+use Phem\Attribute\Component;
+use Phem\Attribute\Page;
 use Phem\Attribute\Path;
 use Phem\Attribute\Prop;
 use Phem\Attribute\State;
@@ -22,14 +26,26 @@ use Phem\Binding\PropError;
 use Phem\State\UrlQuery;
 
 /**
- * The reflection data of the components: the parameters of a function component, and the
- * #[Prop] and #[State] properties of a class component. It keeps the data for the life of the
+ * The reflection data of the components: the parameters of a function component, the #[Prop]
+ * and #[State] properties of a class component, and its #[Broadcast]. It keeps the data for the life of the
  * service.
  */
 final class ComponentMetadata
 {
     /** @var array<string, array<string, Parameter>> */
     private array $parameters = [];
+
+    /** @var array<string, bool> */
+    private array $broadcasts = [];
+
+    /** @var array<string, list<string>> */
+    private array $broadcastHandlers = [];
+
+    /** @var array<string, list<string>> */
+    private array $broadcastKeys = [];
+
+    /** @var array<string, bool> */
+    private array $components = [];
 
     /** @var array<string, array<string, \ReflectionProperty>> */
     private array $props = [];
@@ -148,6 +164,98 @@ final class ComponentMetadata
         ));
     }
 
+    /** Whether a name is a component that is not a page: it has #[Component] and no #[Page]. */
+    public function isComponent(string $name): bool
+    {
+        if (isset($this->components[$name])) {
+            return $this->components[$name];
+        }
+
+        $reflection = self::reflect($name);
+
+        return $this->components[$name] = null !== $reflection && [] !== $reflection->getAttributes(Component::class) && [] === $reflection->getAttributes(Page::class);
+    }
+
+    /**
+     * Whether a page or a component gets the streams of other requests (see
+     * Phem\Attribute\Broadcast): it has #[Broadcast], or a class component has #[Broadcast] on a
+     * handler method.
+     *
+     * @throws \LogicException when a handler method has #[Broadcast], and its class is not a component
+     */
+    public function broadcasts(string $name): bool
+    {
+        if (isset($this->broadcasts[$name])) {
+            return $this->broadcasts[$name];
+        }
+
+        $reflection = self::reflect($name);
+        if (null === $reflection) {
+            return $this->broadcasts[$name] = false;
+        }
+
+        // Before the attribute of the class: a page with #[Broadcast] has no handler that refreshes it.
+        $handlers = $reflection instanceof \ReflectionClass ? $this->broadcastHandlers($name) : [];
+        if ([] !== $handlers && !$this->isComponent($name)) {
+            throw new \LogicException(\sprintf('The method "%s::%s()" has #[Broadcast], but "%s" is not a component: only a handler of a class component refreshes its component. Put #[Broadcast] on the page itself.', $name, $handlers[0], $name));
+        }
+
+        return $this->broadcasts[$name] = [] !== $handlers || [] !== $reflection->getAttributes(Broadcast::class);
+    }
+
+    /**
+     * The props of a component with #[BroadcastKey], in their order: its properties, or the
+     * parameters of a function component.
+     *
+     * @return list<string>
+     */
+    public function broadcastKeys(string $name): array
+    {
+        if (isset($this->broadcastKeys[$name])) {
+            return $this->broadcastKeys[$name];
+        }
+
+        $reflection = self::reflect($name);
+        $members = match (true) {
+            $reflection instanceof \ReflectionClass => $reflection->getProperties(),
+            $reflection instanceof \ReflectionFunction => $reflection->getParameters(),
+            default => [],
+        };
+
+        $keys = [];
+        foreach ($members as $member) {
+            if ([] !== $member->getAttributes(BroadcastKey::class)) {
+                $keys[] = $member->getName();
+            }
+        }
+
+        return $this->broadcastKeys[$name] = $keys;
+    }
+
+    /**
+     * The handler methods of a class with #[Broadcast]: only they refresh the component (see
+     * Phem\Handler\BroadcastMiddleware).
+     *
+     * @param class-string $class
+     *
+     * @return list<string>
+     */
+    public function broadcastHandlers(string $class): array
+    {
+        if (isset($this->broadcastHandlers[$class])) {
+            return $this->broadcastHandlers[$class];
+        }
+
+        $methods = [];
+        foreach ((new \ReflectionClass($class))->getMethods() as $method) {
+            if ([] !== $method->getAttributes(Broadcast::class)) {
+                $methods[] = $method->getName();
+            }
+        }
+
+        return $this->broadcastHandlers[$class] = $methods;
+    }
+
     /**
      * Whether mount() of a class component runs each time that the component renders: the class
      * has a mount() and no #[State] property. The browser keeps no state for it, so mount() reads
@@ -260,6 +368,16 @@ final class ComponentMetadata
             $type instanceof \ReflectionNamedType => \in_array($type->getName(), ['array', 'iterable', 'mixed'], true),
             $type instanceof \ReflectionUnionType => array_any($type->getTypes(), self::acceptsArray(...)),
             default => false,
+        };
+    }
+
+    /** The reflection of a class or a function by its name, or null for another name (a template). */
+    private static function reflect(string $name): \ReflectionClass|\ReflectionFunction|null
+    {
+        return match (true) {
+            class_exists($name) => new \ReflectionClass($name),
+            \function_exists($name) => new \ReflectionFunction($name),
+            default => null,
         };
     }
 }

@@ -359,7 +359,7 @@ fn a_parent_class_and_a_trait_load_before_the_classes_that_use_them() {
 #[test]
 fn a_page_class_is_a_component_with_a_route() {
     let page = |attrs: &str, class: &str| {
-        let src = format!("<?phpm\nnamespace App;\nuse Phem\\Attribute\\{{Component, Page, Broadcast}};\nuse Symfony\\Component\\Routing\\Attribute\\Route;\n{attrs}\n{class}\n");
+        let src = format!("<?phpm\nnamespace App;\nuse Phem\\Attribute\\{{Component, Page, Prop, Broadcast, BroadcastKey}};\nuse Symfony\\Component\\Routing\\Attribute\\Route;\n{attrs}\n{class}\n");
         compile(vec![SourceInput { rel: "Home.phpm".into(), text: src }])
     };
     let render = "final class Home { public function render() { return <p>Home</p>; } }";
@@ -392,6 +392,15 @@ fn a_page_class_is_a_component_with_a_route() {
     assert_eq!(codes("#[Component]\n#[Broadcast]", render), Vec::<&str>::new(), "a class component can have #[Broadcast]");
     assert_eq!(codes("#[Broadcast]", "function Home() { return <p />; }"), ["E053"], "a plain function cannot have #[Broadcast]");
     assert_eq!(codes("#[Broadcast]", "final class Home {}"), ["E053"], "a plain class cannot have #[Broadcast]");
+
+    let handler = "final class Home { #[Prop, BroadcastKey] public int $id; #[Broadcast] public function like(): void {} public function render() { return <p />; } }";
+    assert_eq!(codes("#[Component]", handler), Vec::<&str>::new(), "#[Broadcast] on a handler makes the component broadcast");
+    assert_eq!(codes("#[Page('/')]", "final class Home { #[Broadcast] public function save(): void {} public function render() { return <p />; } }"), ["E053"], "a handler of a page does not refresh it");
+    assert_eq!(codes("#[Component]", "final class Home { #[Prop, BroadcastKey] public int $id; public function render() { return <p />; } }"), ["E057"], "a key needs a component that broadcasts");
+    assert_eq!(codes("#[Component]\n#[Broadcast]", "final class Home { public function __construct(#[BroadcastKey] private int $id) {} public function render() { return <p />; } }"), ["E057"], "a promoted parameter is not a prop");
+    // A parent with the handler or the key: the analysis does not report the parent or the child.
+    let base = "abstract class Base { #[Prop, BroadcastKey] public int $id; #[Broadcast] public function like(): void {} }";
+    assert_eq!(codes("", &format!("{base}\n#[Component]\nfinal class Home extends Base {{ #[Prop, BroadcastKey] public int $other; public function render() {{ return <p />; }} }}")), Vec::<&str>::new(), "an inherited handler with #[Broadcast]");
 }
 
 #[test]

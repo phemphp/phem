@@ -198,6 +198,8 @@ final class PhemBundle extends AbstractBundle
             ->arg(10, $config['max_upload_size']);
         $container->services()->get('phem.topics')
             ->arg(1, $config['secret']);
+        $container->services()->get('phem.broadcast_keys')
+            ->arg(0, $config['secret']);
 
         $mercure = $config['mercure'];
         if (null !== $mercure['subscriber_key']) {

@@ -25,9 +25,13 @@ pub const ATTR_PATH: &str = "Phem\\Attribute\\Path";
 /// The Phem page attribute: it exposes a class or a function as a page (it extends `Route`). The
 /// class or the function is a component, with no `#[Component]`.
 pub const ATTR_PAGE: &str = "Phem\\Attribute\\Page";
-/// A page that gets the Turbo Streams of other requests (`Phem\Stream\Streams`). Only a page can
-/// have it: each page opens its own connection to the Mercure hub.
+/// A page or a component that gets the Turbo Streams of other requests (`Phem\Stream\Streams`).
+/// On a handler method of a class component, the handler refreshes its component in the other
+/// browsers, and the class needs no `#[Broadcast]`.
 pub const ATTR_BROADCAST: &str = "Phem\\Attribute\\Broadcast";
+/// A prop that identifies an instance of a component that broadcasts: the refresh goes only to
+/// the instances with the same values (see `Phem\Attribute\BroadcastKey`).
+pub const ATTR_BROADCAST_KEY: &str = "Phem\\Attribute\\BroadcastKey";
 /// An event handler whose slow work runs in a Messenger worker: a method of a class component
 /// that returns a `Promise` (see `Phem\Attribute\Async`).
 pub const ATTR_ASYNC: &str = "Phem\\Attribute\\Async";
@@ -285,6 +289,8 @@ pub fn resolve_inheritance<'a>(files: impl IntoIterator<Item = &'a mut FileInfo>
                         continue;
                     }
 
+                    c.inherited_broadcast |= m.broadcast_attr.is_some();
+
                     if !c.has_method(&m.name) {
                         c.inherited_methods.push(m.name.clone());
                     }
@@ -327,6 +333,60 @@ fn check_async(file: &FileInfo) -> Vec<Diagnostic> {
     diags
 }
 
+/// `#[Broadcast]` on a handler method and `#[BroadcastKey]`: a handler refreshes its class
+/// component, and a key is a prop of a component that broadcasts (with `#[Broadcast]` on it or
+/// on a handler).
+fn check_broadcast(file: &FileInfo) -> Vec<Diagnostic> {
+    let mut diags = Vec::new();
+    // A class that is not a component can be the parent of one: only a page is checked.
+    for c in file.classes.iter().filter(|c| !c.is_trait) {
+        let handlers: Vec<_> = c.methods.iter().filter_map(|m| m.broadcast_attr.map(|span| (m, span))).collect();
+        if c.is_page {
+            for (m, span) in &handlers {
+                diags.push(
+                    Diagnostic::error(codes::BROADCAST_NOT_COMPONENT, format!("`#[Broadcast]` on `{}()` must mark a handler of a class component, and `{}` is a page", m.fqn, c.fqn), *span)
+                        .with_help("a handler refreshes its component in the other browsers: move it into a `#[Component]` class, or put `#[Broadcast]` on the page itself"),
+                );
+            }
+        }
+
+        // A parent outside the sources can have a handler with `#[Broadcast]`.
+        let broadcasts = c.has_broadcast || !handlers.is_empty() || c.inherited_broadcast || c.open;
+        for p in &c.props {
+            let Some(span) = p.broadcast_key else { continue };
+
+            if !p.is_prop() {
+                diags.push(
+                    Diagnostic::error(codes::INVALID_BROADCAST_KEY, format!("`#[BroadcastKey]` must mark a prop, and `${}` is not one", p.name), span)
+                        .with_help("put it on a public `#[Prop]` property: the parent gives the value that identifies the instance"),
+                );
+            } else if c.is_page || (c.is_component && !broadcasts) {
+                diags.push(
+                    Diagnostic::error(codes::INVALID_BROADCAST_KEY, format!("`#[BroadcastKey]` on `${}` needs a component that broadcasts, and `{}` is not one", p.name, c.fqn), span)
+                        .with_help("add `#[Broadcast]` to the component or to its handlers: the key identifies an instance for their refresh"),
+                );
+            }
+        }
+    }
+
+    for f in &file.functions {
+        let page = file.routes.iter().any(|r| r.fqn == f.fqn && r.attr == "Page");
+        let broadcasts = f.component_kind.is_some() && !page && f.broadcast_attr.is_some();
+        for p in &f.params {
+            let Some((_, span)) = p.attrs.iter().find(|(a, _)| file.resolve_class(a) == ATTR_BROADCAST_KEY) else { continue };
+
+            if !broadcasts {
+                diags.push(
+                    Diagnostic::error(codes::INVALID_BROADCAST_KEY, format!("`#[BroadcastKey]` on `${}` needs a component with `#[Broadcast]`, and `{}` is not one", p.name, f.fqn), *span)
+                        .with_help("add `#[Broadcast]` next to `#[Component]`: the key identifies an instance for the refresh of the component"),
+                );
+            }
+        }
+    }
+
+    diags
+}
+
 /// File-level checks: removed hooks, a `render()` that is not pure, class component rules, and
 /// `#[Page]` / `#[Route]`. Run it after `resolve_inheritance()`.
 pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
@@ -361,6 +421,7 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
     }
 
     diags.extend(check_async(file));
+    diags.extend(check_broadcast(file));
 
     for (short, expected, resolved, span) in &file.foreign_attrs {
         diags.push(

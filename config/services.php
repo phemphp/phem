@@ -29,6 +29,7 @@ use Phem\Controller\PageController;
 use Phem\EventListener\PageAttributesListener;
 use Phem\EventListener\SourceMapListener;
 use Phem\EventListener\StreamListener;
+use Phem\Handler\BroadcastMiddleware;
 use Phem\Handler\HandlerFingerprint;
 use Phem\Handler\HandlerInvoker;
 use Phem\Handler\RedirectMiddleware;
@@ -64,7 +65,9 @@ use Phem\State\StateAccessor;
 use Phem\State\StateCache;
 use Phem\State\StateCodec;
 use Phem\State\UrlQuery;
+use Phem\Stream\BroadcastKeys;
 use Phem\Stream\FrankenPhpPublisher;
+use Phem\Stream\SenderToken;
 use Phem\Stream\Streams;
 use Phem\Stream\Subscription;
 use Phem\Stream\Topics;
@@ -143,6 +146,11 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.handler_middleware.streams', StreamsMiddleware::class)
             ->args([service('phem.streams')])
             ->tag('phem.handler_middleware', ['priority' => 0])
+        // The last one before the handler: a middleware that stops the event refreshes nothing. A
+        // commit that fails drops the refresh (see the streams middleware).
+        ->set('phem.handler_middleware.broadcast', BroadcastMiddleware::class)
+            ->args([service('phem.streams'), service('phem.renderer'), service('phem.broadcast_keys'), service('phem.sender_token'), service('request_stack'), service('phem.metadata')])
+            ->tag('phem.handler_middleware', ['priority' => -1000])
         // Inside the profiler: it sees the RedirectResponse.
         ->set('phem.handler_middleware.redirect', RedirectMiddleware::class)
             ->args([service('phem.page_url_generator')])
@@ -186,6 +194,7 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.metadata'),
                 null,
                 service('phem.context_resolver'),
+                service('phem.broadcast_keys'),
             ])
             ->tag('kernel.reset', ['method' => 'reset'])
         ->alias(Renderer::class, 'phem.renderer')
@@ -194,11 +203,15 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.topics', Topics::class)
             ->args([service('phem.metadata'), abstract_arg('secret, set by PhemBundle'), service('phem.page_route_values')])
             ->tag('kernel.reset', ['method' => 'reset'])
+        ->set('phem.sender_token', SenderToken::class)
+            ->tag('kernel.reset', ['method' => 'reset'])
+        ->set('phem.broadcast_keys', BroadcastKeys::class)
+            ->args([abstract_arg('secret, set by PhemBundle'), service('phem.object_identifier')->nullOnInvalid(), service('phem.metadata')])
         ->set('phem.stream_publisher.frankenphp', FrankenPhpPublisher::class)
             ->args([service('logger')->nullOnInvalid()])
         ->alias('phem.stream_publisher', 'phem.stream_publisher.frankenphp')
         ->set('phem.streams', Streams::class)
-            ->args([service('phem.renderer'), service('phem.stream_publisher'), service('phem.topics'), false])
+            ->args([service('phem.renderer'), service('phem.stream_publisher'), service('phem.topics'), false, service('phem.broadcast_keys')])
             ->tag('kernel.reset', ['method' => 'reset'])
         ->alias(Streams::class, 'phem.streams')
         ->set('phem.subscription', Subscription::class)
@@ -282,6 +295,7 @@ return static function (ContainerConfigurator $container): void {
                 8388608,
                 service('phem.state_cache'),
                 service('phem.subscription'),
+                service('phem.sender_token'),
             ])
         ->set('phem.listener.page_attributes', PageAttributesListener::class)
             ->tag('kernel.event_listener', ['event' => 'kernel.controller', 'method' => 'onKernelController'])

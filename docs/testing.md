@@ -111,7 +111,9 @@ A page with `#[Broadcast]` (or with a component with `#[Broadcast]`) gets the pu
 `Phem\Stream\Streams` with `receive()`: the updates of its topics since its render, or since the
 last `receive()`. In the tests (`framework.test: true`), the streams go to memory, not to a
 Mercure hub. A stream marks the component around its target as stale, and the next event sends
-it, as in a browser. A `refresh()` sends one event with no handler.
+it, as in a browser. A `refresh()` sends one event with no handler. As in a browser, after a handler of
+a component with `#[Broadcast]`, the `receive()` of the same page does not render that component
+again: the event rendered it.
 As in a browser, an element with `data-phem-ignore` and an `id` (a target that only the pushes fill)
 keeps its content when an event renders it again. Open the page two times, as two tabs:
 

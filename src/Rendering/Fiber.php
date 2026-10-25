@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Rendering;
 
+use Phem\Stream\BroadcastKeys;
 use Twig\Template;
 
 /**
@@ -73,6 +74,13 @@ final class Fiber
     public bool $changesContext = false;
     /** The fiber rendered in the second pass of an event only because a context above it changed. */
     public bool $propagated = false;
+    /**
+     * The keys of a component with #[Broadcast] (see Phem\Stream\BroadcastKeys): the attribute
+     * of its `<phem-c>`, for a refresh with no target.
+     *
+     * @var list<string>
+     */
+    public array $broadcast = [];
     /** The inner HTML of the last render. */
     public string $html = '';
     /**
@@ -125,7 +133,9 @@ final class Fiber
             return '<phem-c id="'.$this->id.'" data-phem-keep></phem-c>';
         }
 
-        return '<phem-c id="'.$this->id.'">'.$this->html.'</phem-c>';
+        $broadcast = [] !== $this->broadcast ? ' '.BroadcastKeys::ATTRIBUTE.'="'.implode(' ', $this->broadcast).'"' : '';
+
+        return '<phem-c id="'.$this->id.'"'.$broadcast.'>'.$this->html.'</phem-c>';
     }
 
     /** What the parent gave the fiber in its last pass: its props, its slots and its caller context. */

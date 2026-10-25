@@ -13,12 +13,18 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Test;
 
+use Phem\Attribute\Broadcast;
 use Phem\DependencyInjection\TestPublisherPass;
+use Phem\Event;
+use Phem\Handler\BroadcastMiddleware;
 use Phem\Html;
 use Phem\Rendering\Renderer;
+use Phem\Stream\BroadcastKeys;
 use Phem\Stream\MemoryPublisher;
+use Phem\Stream\Streams;
 use Phem\Stream\Topics;
 use Phem\Test\InteractsWithPhem;
+use Phem\Tests\Fixtures\Guestbook;
 use Phem\Tests\Fixtures\TestKernel;
 use PHPUnit\Framework\AssertionFailedError;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -249,11 +255,238 @@ final class StreamTest extends KernelTestCase
         self::assertSame('<turbo-stream action="prepend" target="entries"><template><li id="entry-1">Hi</li></template></turbo-stream><turbo-stream action="phem-refresh" target="stats"></turbo-stream>', $update['data']);
     }
 
+    public function testAComponentWithBroadcastHasItsKeysInItsElement(): void
+    {
+        $page = $this->visit('/likes');
+        $keys = static::getContainer()->get('phem.broadcast_keys');
+        \assert($keys instanceof BroadcastKeys);
+
+        $component = $page->document()->getElementById('likes-lobby')?->closest('phem-c');
+        $all = $keys->ofComponent('App\Page\GuestbookLikes');
+
+        self::assertSame($all.' '.$keys->ofInstance('App\Page\GuestbookLikes', ['room' => 'lobby']), $component?->getAttribute(BroadcastKeys::ATTRIBUTE));
+        // An HMAC of the names: no class name and no value.
+        self::assertStringNotContainsString('lobby', $all);
+    }
+
+    public function testAHandlerWithBroadcastRefreshesTheInstancesOfItsKeyInTheOtherTabs(): void
+    {
+        // The handler with no #[Broadcast] sends no update.
+        $other = $this->visit('/likes')->click('#open-hall')->assertSee('0 likes in hall, open');
+        $this->visit('/likes')->click('#like-lobby')->assertSee('1 likes in lobby');
+
+        $topics = static::getContainer()->get('phem.topics');
+        \assert($topics instanceof Topics);
+        $keys = static::getContainer()->get('phem.broadcast_keys');
+        \assert($keys instanceof BroadcastKeys);
+        [$update] = $this->updates();
+
+        self::assertSame([$topics->toComponent('App\Page\GuestbookLikes')], $update['topics']);
+        self::assertMatchesRegularExpression('#^<turbo-stream action="phem-refresh" targets="\[data-phem-broadcast~=&quot;'.preg_quote($keys->ofInstance('App\Page\GuestbookLikes', ['room' => 'lobby']), '#').'&quot;\]" data-phem-skip="[0-9a-f]{24} phem[0-9a-f]{12}"></turbo-stream>$#', $update['data']);
+
+        // Only the instance of the lobby renders again: the other keeps its state.
+        $other->assertSee('0 likes in lobby')
+            ->receive()
+            ->assertSee('1 likes in lobby')
+            ->assertSee('0 likes in hall, open');
+    }
+
+    public function testAClosureWithBroadcastRefreshesTheComponent(): void
+    {
+        $other = $this->visit('/likes');
+        $this->visit('/likes')->click('#cheer-lobby')->assertSee('1 likes in lobby');
+
+        $other->receive()->assertSee('1 likes in lobby');
+    }
+
+    public function testAClosureWithBroadcastNeedsAComponentThatBroadcasts(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('has #[Broadcast], but the component does not broadcast');
+
+        $component = new class {
+            public function handler(): \Closure
+            {
+                return #[Broadcast] fn () => null;
+            }
+        };
+
+        $this->broadcastMiddleware()->handle($component->handler(), new Event('click'), static fn (): mixed => null);
+    }
+
+    public function testAHandlerWithNoBroadcastDoesNotRefreshWhenOtherHandlersHaveIt(): void
+    {
+        $this->visit('/likes')->click('#open-lobby')->assertSee('0 likes in lobby, open');
+
+        self::assertSame([], $this->updates());
+    }
+
+    public function testEachHandlerRefreshesTheComponentWhenNoHandlerHasBroadcast(): void
+    {
+        $other = $this->visit('/inbox/lobby');
+        $this->visit('/inbox/lobby')->click('#open');
+
+        $topics = static::getContainer()->get('phem.topics');
+        \assert($topics instanceof Topics);
+        $keys = static::getContainer()->get('phem.broadcast_keys');
+        \assert($keys instanceof BroadcastKeys);
+        [$update] = $this->updates();
+
+        self::assertSame([$topics->toComponent('App\Page\GuestbookInbox')], $update['topics']);
+        self::assertStringContainsString('targets="[data-phem-broadcast~=&quot;'.$keys->ofComponent('App\Page\GuestbookInbox').'&quot;]"', $update['data']);
+
+        // The other tab renders it again, with its own state.
+        $other->receive()->assertSee('0 in the inbox')->assertDontSee('open');
+    }
+
+    public function testTheTabThatSentTheEventSkipsTheComponentOfTheHandler(): void
+    {
+        $page = $this->visit('/likes')->click('#like-lobby')->assertSee('1 likes in lobby');
+        $fiber = $page->document()->getElementById('likes-lobby')?->closest('phem-c')?->id;
+        [$update] = $this->updates();
+
+        self::assertNotNull($fiber);
+        self::assertMatchesRegularExpression('/data-phem-skip="[0-9a-f]{24} '.$fiber.'"/', $update['data']);
+
+        // The tab that sent the event does not render the component again: it does not see a
+        // change after the event. Another tab does.
+        $guestbook = static::getContainer()->get(Guestbook::class);
+        \assert($guestbook instanceof Guestbook);
+        $guestbook->add('lobby', 'Like');
+
+        $page->receive()->assertSee('1 likes in lobby');
+    }
+
+    public function testAWorkerRefreshesTheComponentAfterTheWorkOfAnAsyncHandler(): void
+    {
+        $other = $this->visit('/likes');
+        $page = $this->visit('/likes')->click('#later-lobby');
+
+        // The request queues no refresh: the work did not run.
+        self::assertSame([], $this->updates());
+
+        $page->settle();
+        [$update] = $this->updates();
+
+        self::assertStringNotContainsString('data-phem-skip', $update['data']);
+        $other->receive()->assertSee('1 likes in lobby');
+    }
+
+    public function testAnotherActionKeepsAnEmptyTarget(): void
+    {
+        $streams = static::getContainer()->get('phem.streams');
+        \assert($streams instanceof Streams);
+        $streams->toPage('App\Page\GuestbookPage')->remove('');
+        $streams->flush();
+        [$update] = $this->updates();
+
+        // Turbo finds no element, as before: only a refresh with no target is the page.
+        self::assertSame('<turbo-stream action="remove" target=""></turbo-stream>', $update['data']);
+    }
+
+    public function testARefreshHasNoEmptyTarget(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The target of a refresh is the id of an element');
+
+        $streams = static::getContainer()->get('phem.streams');
+        \assert($streams instanceof Streams);
+        $streams->toPage('App\Page\GuestbookPage')->refresh('');
+    }
+
+    public function testTheStreamsRefreshTheInstancesOfAKey(): void
+    {
+        $other = $this->visit('/likes')->click('#open-lobby')->click('#open-hall');
+        $guestbook = static::getContainer()->get(Guestbook::class);
+        \assert($guestbook instanceof Guestbook);
+        $streams = static::getContainer()->get('phem.streams');
+        \assert($streams instanceof Streams);
+
+        $guestbook->add('lobby', 'Like');
+        $guestbook->add('hall', 'Like');
+        $streams->toComponent('App\Page\GuestbookLikes', ['room' => 'hall'])->refresh();
+        $streams->flush();
+
+        $other->receive()
+            ->assertSee('0 likes in lobby, open')
+            ->assertSee('1 likes in hall, open');
+    }
+
+    public function testTheStreamsRefreshAllTheInstancesOfAComponent(): void
+    {
+        $other = $this->visit('/likes');
+        $guestbook = static::getContainer()->get(Guestbook::class);
+        \assert($guestbook instanceof Guestbook);
+        $streams = static::getContainer()->get('phem.streams');
+        \assert($streams instanceof Streams);
+
+        $guestbook->add('lobby', 'Like');
+        $guestbook->add('hall', 'Like');
+        $streams->toComponent('App\Page\GuestbookLikes')->refresh();
+        $streams->flush();
+
+        $other->receive()
+            ->assertSee('1 likes in lobby')
+            ->assertSee('1 likes in hall');
+    }
+
+    public function testTheKeyOfARefreshHasTheKeyPropsOfTheComponent(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('The key of the component "App\Page\GuestbookLikes" has no prop "id": give the values of its key props ("room").');
+
+        $streams = static::getContainer()->get('phem.streams');
+        \assert($streams instanceof Streams);
+        $streams->toComponent('App\Page\GuestbookLikes', ['id' => 1]);
+    }
+
+    public function testAComponentWithNoKeyGetsNoValuesOfAKey(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('The component "App\Page\GuestbookInbox" has no #[BroadcastKey] prop');
+
+        $streams = static::getContainer()->get('phem.streams');
+        \assert($streams instanceof Streams);
+        $streams->toComponent('App\Page\GuestbookInbox', ['room' => 'lobby']);
+    }
+
+    public function testAHandlerWithBroadcastIsAHandlerOfAComponent(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('::like()" has #[Broadcast], but "class@anonymous');
+
+        $component = new class {
+            #[Broadcast]
+            public function like(): void
+            {
+            }
+        };
+
+        $this->broadcastMiddleware()->handle($component->like(...), new Event('click'), static fn (): mixed => null);
+    }
+
     public function testReceiveNeedsAPageWithBroadcast(): void
     {
         $this->expectException(AssertionFailedError::class);
         $this->expectExceptionMessage('The page has no #[Broadcast]: it gets no pushes.');
 
         $this->visit('/notify')->receive();
+    }
+
+    /** @return list<array{topics: list<string>, data: string, private: bool}> */
+    private function updates(): array
+    {
+        $publisher = static::getContainer()->get(TestPublisherPass::ID);
+        \assert($publisher instanceof MemoryPublisher);
+
+        return $publisher->updates();
+    }
+
+    private function broadcastMiddleware(): BroadcastMiddleware
+    {
+        $middleware = static::getContainer()->get('phem.handler_middleware.broadcast');
+        \assert($middleware instanceof BroadcastMiddleware);
+
+        return $middleware;
     }
 }

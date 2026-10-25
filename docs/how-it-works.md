@@ -83,7 +83,8 @@ ideas of React map to Phem.
 5. **Real-time updates.** A page with `#[Broadcast]`, or with a component with `#[Broadcast]`,
    opens one connection to the Mercure hub of FrankenPHP. A handler pushes Turbo Streams to the open pages with `Phem\Stream\Streams`:
    plain markup (`prepend`, `update`, `remove`, ...), or a `refresh()` that renders a component
-   again in each browser with a normal event. The next event of a page renders again the
+   again in each browser with a normal event. A component with `#[Broadcast]` refreshes itself
+   in the other browsers after its handlers. The next event of a page renders again the
    components that a push changed (see [Real-time updates](phpm-syntax.md#real-time-updates)).
    An `#[Async]` handler returns its slow work in a `Promise`: the event answers at once, and a
    Messenger worker runs the work and pushes its result (see
