@@ -24,7 +24,7 @@ use PHPUnit\Framework\AssertionFailedError;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Twig\Error\RuntimeError;
 
-/** The pushes of Phem\Stream\Streams to the pages with #[Subscribe] (tests/Fixtures/app/src/page/push.phpm). */
+/** The pushes of Phem\Stream\Streams to the pages with #[Broadcast] (tests/Fixtures/app/src/page/push.phpm). */
 final class StreamTest extends KernelTestCase
 {
     use InteractsWithPhem;
@@ -39,7 +39,7 @@ final class StreamTest extends KernelTestCase
         return TestKernel::class;
     }
 
-    public function testAPageWithSubscribeConnectsToTheHubForItsTopics(): void
+    public function testAPageWithBroadcastConnectsToTheHubForItsTopics(): void
     {
         $page = $this->visit('/guestbook/lobby');
 
@@ -53,7 +53,7 @@ final class StreamTest extends KernelTestCase
         self::assertStringNotContainsString('lobby', (string) $source);
     }
 
-    public function testAFunctionPageWithSubscribeGetsThePushes(): void
+    public function testAFunctionPageWithBroadcastGetsThePushes(): void
     {
         $other = $this->visit('/board/lobby')->assertSee('0 on the board');
         $this->visit('/guestbook/lobby')->click('#board');
@@ -61,7 +61,7 @@ final class StreamTest extends KernelTestCase
         $other->receive()->assertSee('1 on the board');
     }
 
-    public function testAComponentWithSubscribeGetsThePushesOnEachPageThatRendersIt(): void
+    public function testAComponentWithBroadcastGetsThePushesOnEachPageThatRendersIt(): void
     {
         $other = $this->visit('/inbox/lobby')->assertSee('0 in the inbox');
         $this->visit('/guestbook/lobby')->click('#inbox');
@@ -69,7 +69,7 @@ final class StreamTest extends KernelTestCase
         $other->receive()->assertSee('1 in the inbox');
     }
 
-    public function testAPageConnectsForItsComponentsWithSubscribe(): void
+    public function testAPageConnectsForItsComponentsWithBroadcast(): void
     {
         $page = $this->visit('/inbox/lobby');
 
@@ -77,11 +77,11 @@ final class StreamTest extends KernelTestCase
         $topics = static::getContainer()->get('phem.topics');
         \assert($topics instanceof Topics);
 
-        // Only the topic of the component: the page has no #[Subscribe].
+        // Only the topic of the component: the page has no #[Broadcast].
         self::assertSame('/.well-known/mercure?match='.rawurlencode($topics->toComponent('App\Page\GuestbookInbox')), $source);
     }
 
-    public function testAnEventKeepsTheComponentsWithSubscribe(): void
+    public function testAnEventKeepsTheComponentsWithBroadcast(): void
     {
         $other = $this->visit('/inbox/lobby')->click('#open')->assertSee('0 in the inbox, open');
         $this->visit('/guestbook/lobby')->click('#inbox');
@@ -89,7 +89,7 @@ final class StreamTest extends KernelTestCase
         $other->receive()->assertSee('1 in the inbox, open');
     }
 
-    public function testAPageWithNoSubscribeDoesNotConnect(): void
+    public function testAPageWithNoBroadcastDoesNotConnect(): void
     {
         $this->visit('/notify')->assertSelectorNotExists('[data-phem-stream-value]');
     }
@@ -226,10 +226,10 @@ final class StreamTest extends KernelTestCase
         self::assertSame($pass, $renderer->pass());
     }
 
-    public function testAPageWithNoSubscribeGetsNoStreams(): void
+    public function testAPageWithNoBroadcastGetsNoStreams(): void
     {
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('The streams go to the pages with #[Subscribe], but "App\Page\NotifyPage" has no #[Phem\Attribute\Subscribe] attribute.');
+        $this->expectExceptionMessage('The streams go to the pages with #[Broadcast], but "App\Page\NotifyPage" has no #[Phem\Attribute\Broadcast] attribute.');
 
         $this->visit('/guestbook/lobby')->click('#elsewhere');
     }
@@ -249,10 +249,10 @@ final class StreamTest extends KernelTestCase
         self::assertSame('<turbo-stream action="prepend" target="entries"><template><li id="entry-1">Hi</li></template></turbo-stream><turbo-stream action="phem-refresh" target="stats"></turbo-stream>', $update['data']);
     }
 
-    public function testReceiveNeedsAPageWithSubscribe(): void
+    public function testReceiveNeedsAPageWithBroadcast(): void
     {
         $this->expectException(AssertionFailedError::class);
-        $this->expectExceptionMessage('The page has no #[Subscribe]: it gets no pushes.');
+        $this->expectExceptionMessage('The page has no #[Broadcast]: it gets no pushes.');
 
         $this->visit('/notify')->receive();
     }

@@ -2,7 +2,7 @@
 namespace App\Page;
 use Phem\Attribute\Page;
 use Phem\Node;
-#[Page('/feed'), Subscribe]
+#[Page('/feed'), Broadcast]
 final class FeedPage
 {
     public function render(): Node { return <ul id="feed"></ul>; }

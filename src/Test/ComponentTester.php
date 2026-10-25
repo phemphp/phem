@@ -281,7 +281,7 @@ final class ComponentTester
      * receive(). A stream in the root element marks the component around its target as stale, and
      * the next event sends it. A `refresh()` sends one event with no handler. Before an `append`
      * or a `prepend`, an element of the target with the id of a new element is removed. A page
-     * with #[Subscribe], or with a component with #[Subscribe], only:
+     * with #[Broadcast], or with a component with #[Broadcast], only:
      *
      *     $other = $this->visit('/guestbook');
      *     $this->visit('/guestbook')->fill('textarea', 'Hi')->click('button');
@@ -291,7 +291,7 @@ final class ComponentTester
     {
         $source = $this->document->querySelector('[data-phem-stream-value]');
         if (null === $source || null === $this->updates) {
-            Assert::fail(\sprintf('The page has no #[Subscribe]: it gets no pushes. %s', $this->context()));
+            Assert::fail(\sprintf('The page has no #[Broadcast]: it gets no pushes. %s', $this->context()));
         }
 
         $topics = [];

@@ -19,8 +19,8 @@ use Phem\Stream\SubscriberToken;
 use Phem\Stream\Subscription;
 use Phem\Stream\Topics;
 use Phem\Tests\Fixtures\Scientist;
-use Phem\Tests\Fixtures\Subscribed;
-use Phem\Tests\Fixtures\SubscribedComponent;
+use Phem\Tests\Fixtures\Broadcasting;
+use Phem\Tests\Fixtures\BroadcastingComponent;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use Symfony\Component\HttpFoundation\Cookie;
@@ -37,11 +37,11 @@ final class SubscriptionTest extends TestCase
     {
         $topics = new Topics();
         $subscription = new Subscription($topics);
-        [$page] = $topics->ofPage(Subscribed::class, []);
+        [$page] = $topics->ofPage(Broadcasting::class, []);
 
         self::assertSame(
             'data-phem-stream-value="/.well-known/mercure?match='.rawurlencode($page).'&amp;match=phem%3A%2A"',
-            $subscription->attribute(Subscribed::class, [], Request::create('/')),
+            $subscription->attribute(Broadcasting::class, [], Request::create('/')),
         );
         self::assertSame('', $subscription->attribute(Scientist::class, [], Request::create('/')));
     }
@@ -51,7 +51,7 @@ final class SubscriptionTest extends TestCase
         $tokens = new SubscriberToken(self::KEY);
         $subscription = new Subscription(new Topics(), $tokens);
         $request = Request::create('https://example.com/guestbook');
-        $subscription->attribute(Subscribed::class, [], $request);
+        $subscription->attribute(Broadcasting::class, [], $request);
 
         $cookie = $subscription->cookie($request);
         self::assertInstanceOf(Cookie::class, $cookie);
@@ -60,20 +60,20 @@ final class SubscriptionTest extends TestCase
         self::assertTrue($cookie->isSecure());
         self::assertTrue($cookie->isHttpOnly());
         self::assertSame(Cookie::SAMESITE_STRICT, $cookie->getSameSite());
-        self::assertSame(new Topics()->ofPage(Subscribed::class, []), $tokens->topics((string) $cookie->getValue(), self::HUB, ''));
+        self::assertSame(new Topics()->ofPage(Broadcasting::class, []), $tokens->topics((string) $cookie->getValue(), self::HUB, ''));
     }
 
-    public function testTheCookieHasATokenForTheComponentsWithSubscribe(): void
+    public function testTheCookieHasATokenForTheComponentsWithBroadcast(): void
     {
         $tokens = new SubscriberToken(self::KEY);
         $subscription = new Subscription(new Topics(), $tokens);
         $request = Request::create('https://example.com/');
 
-        self::assertNotSame('', $subscription->attribute(Scientist::class, [], $request, [SubscribedComponent::class]), 'a page with no #[Subscribe]');
+        self::assertNotSame('', $subscription->attribute(Scientist::class, [], $request, [BroadcastingComponent::class]), 'a page with no #[Broadcast]');
 
         $cookie = $subscription->cookie($request);
         self::assertNotNull($cookie);
-        self::assertSame(new Topics()->ofPage(Scientist::class, [], [SubscribedComponent::class]), $tokens->topics((string) $cookie->getValue(), self::HUB, ''));
+        self::assertSame(new Topics()->ofPage(Scientist::class, [], [BroadcastingComponent::class]), $tokens->topics((string) $cookie->getValue(), self::HUB, ''));
     }
 
     /**
@@ -85,10 +85,10 @@ final class SubscriptionTest extends TestCase
         $subscription = new Subscription(new Topics());
         $tree = new Tree(Scientist::class);
         $tree->begin();
-        $tree->fiber('phem1', static fn (): Fiber => new Fiber('phem1', '0', SubscribedComponent::class))->begin($tree->pass);
+        $tree->fiber('phem1', static fn (): Fiber => new Fiber('phem1', '0', BroadcastingComponent::class))->begin($tree->pass);
         $tree->fiber('phem2', static fn (): Fiber => new Fiber('phem2', '1', Scientist::class))->begin($tree->pass);
 
-        self::assertSame([SubscribedComponent::class], $subscription->rendered($tree, [SubscribedComponent::class, 'Phem\Tests\Fixtures\SubscribedWidget']));
+        self::assertSame([BroadcastingComponent::class], $subscription->rendered($tree, [BroadcastingComponent::class, 'Phem\Tests\Fixtures\BroadcastingWidget']));
         self::assertSame([], $subscription->rendered($tree, []), 'only the components of the signed state');
     }
 
@@ -98,17 +98,17 @@ final class SubscriptionTest extends TestCase
         $subscription = new Subscription(new Topics(), $tokens);
         $old = $tokens->create($tokens->grant(['phem:App\Other', 'phem:*']), self::HUB, self::subject('s1'));
         $request = self::withSession('s1', ['__Secure-mercure_access_token' => $old]);
-        $subscription->renew(Subscribed::class, [], $request);
+        $subscription->renew(Broadcasting::class, [], $request);
 
         $cookie = $subscription->cookie($request);
         self::assertNotNull($cookie);
-        self::assertSame([...new Topics()->ofPage(Subscribed::class, []), 'phem:App\Other'], $tokens->topics((string) $cookie->getValue(), self::HUB, self::subject('s1')));
+        self::assertSame([...new Topics()->ofPage(Broadcasting::class, []), 'phem:App\Other'], $tokens->topics((string) $cookie->getValue(), self::HUB, self::subject('s1')));
     }
 
     /**
      * A topic of the old cookie did not pass the access rules of this request: the viewer can
      * have lost access to its page since (another role, another owner). It keeps its expiry, so
-     * an event on another page with #[Subscribe] does not extend it, and the viewer does not get
+     * an event on another page with #[Broadcast] does not extend it, and the viewer does not get
      * the private pushes of the page with no end. The token expires with its first topic.
      */
     public function testAKeptTopicKeepsItsExpiry(): void
@@ -118,7 +118,7 @@ final class SubscriptionTest extends TestCase
         $expiry = time() + 50000;
         $old = $tokens->create(['phem:App\Revoked' => $expiry], self::HUB, self::subject('s1'));
         $request = self::withSession('s1', ['__Secure-mercure_access_token' => $old]);
-        $subscription->renew(Subscribed::class, [], $request);
+        $subscription->renew(Broadcasting::class, [], $request);
 
         $cookie = $subscription->cookie($request);
         self::assertInstanceOf(Cookie::class, $cookie);
@@ -128,7 +128,7 @@ final class SubscriptionTest extends TestCase
         self::assertSame($expiry, $grants['phem:App\Revoked'] ?? null, 'the kept topic gets no new expiry');
         self::assertSame($expiry, self::expiry($token), 'the token expires with its first topic');
 
-        foreach (new Topics()->ofPage(Subscribed::class, []) as $topic) {
+        foreach (new Topics()->ofPage(Broadcasting::class, []) as $topic) {
             self::assertGreaterThan($expiry, $grants[$topic] ?? 0, 'a topic of the page gets a new expiry');
         }
     }
@@ -139,11 +139,11 @@ final class SubscriptionTest extends TestCase
         $subscription = new Subscription(new Topics(), $tokens);
         $old = $tokens->create(['phem:App\Revoked' => time() + 10], self::HUB, self::subject('s1'));
         $request = self::withSession('s1', ['__Secure-mercure_access_token' => $old]);
-        $subscription->renew(Subscribed::class, [], $request);
+        $subscription->renew(Broadcasting::class, [], $request);
 
         $cookie = $subscription->cookie($request);
         self::assertInstanceOf(Cookie::class, $cookie);
-        self::assertSame(new Topics()->ofPage(Subscribed::class, []), $tokens->topics((string) $cookie->getValue(), self::HUB, self::subject('s1')));
+        self::assertSame(new Topics()->ofPage(Broadcasting::class, []), $tokens->topics((string) $cookie->getValue(), self::HUB, self::subject('s1')));
     }
 
     private static function expiry(string $token): int
@@ -159,25 +159,25 @@ final class SubscriptionTest extends TestCase
         $subscription = new Subscription(new Topics(), $tokens);
         $old = $tokens->create($tokens->grant(['phem:App\Inbox?user=5', 'phem:*']), self::HUB, self::subject('alice'));
         $request = self::withSession('bob', ['__Secure-mercure_access_token' => $old]);
-        $subscription->renew(Subscribed::class, [], $request);
+        $subscription->renew(Broadcasting::class, [], $request);
 
         $cookie = $subscription->cookie($request);
         self::assertNotNull($cookie);
-        self::assertSame(new Topics()->ofPage(Subscribed::class, []), $tokens->topics((string) $cookie->getValue(), self::HUB, self::subject('bob')));
+        self::assertSame(new Topics()->ofPage(Broadcasting::class, []), $tokens->topics((string) $cookie->getValue(), self::HUB, self::subject('bob')));
     }
 
     public function testAFreshTokenWithTheTopicsIsNotRenewed(): void
     {
         $tokens = new SubscriberToken(self::KEY);
         $subscription = new Subscription(new Topics(), $tokens);
-        $fresh = $tokens->create($tokens->grant(new Topics()->ofPage(Subscribed::class, [])), self::HUB, '');
+        $fresh = $tokens->create($tokens->grant(new Topics()->ofPage(Broadcasting::class, [])), self::HUB, '');
         $request = Request::create('https://example.com/guestbook', cookies: ['__Secure-mercure_access_token' => $fresh]);
-        $subscription->renew(Subscribed::class, [], $request);
+        $subscription->renew(Broadcasting::class, [], $request);
         self::assertNull($subscription->cookie($request));
 
-        $old = $tokens->create(array_fill_keys(new Topics()->ofPage(Subscribed::class, []), time() + 10), self::HUB, '');
+        $old = $tokens->create(array_fill_keys(new Topics()->ofPage(Broadcasting::class, []), time() + 10), self::HUB, '');
         $request = Request::create('https://example.com/guestbook', cookies: ['__Secure-mercure_access_token' => $old]);
-        $subscription->renew(Subscribed::class, [], $request);
+        $subscription->renew(Broadcasting::class, [], $request);
         self::assertNotNull($subscription->cookie($request), 'it lived more than half of its time');
     }
 
@@ -195,7 +195,7 @@ final class SubscriptionTest extends TestCase
         $subscription = new Subscription(new Topics(), new SubscriberToken(self::KEY), logger: $logger);
         $cookie = static function (string $url) use ($subscription): ?Cookie {
             $request = Request::create($url);
-            $subscription->renew(Subscribed::class, [], $request);
+            $subscription->renew(Broadcasting::class, [], $request);
 
             return $subscription->cookie($request);
         };
@@ -221,11 +221,11 @@ final class SubscriptionTest extends TestCase
         return $request;
     }
 
-    public function testNoCookieForPublicUpdatesOrForAPageWithNoSubscribe(): void
+    public function testNoCookieForPublicUpdatesOrForAPageWithNoBroadcast(): void
     {
         $request = Request::create('https://example.com/');
         $public = new Subscription(new Topics());
-        $public->renew(Subscribed::class, [], $request);
+        $public->renew(Broadcasting::class, [], $request);
         self::assertNull($public->cookie($request));
 
         self::assertNull(new Subscription(new Topics(), new SubscriberToken(self::KEY))->cookie(Request::create('https://example.com/')));

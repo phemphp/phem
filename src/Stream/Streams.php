@@ -19,8 +19,8 @@ use Phem\Routing\PageName;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
- * Pushes Turbo Streams to the open pages with #[Subscribe], or with a component with
- * #[Subscribe], through the Mercure hub:
+ * Pushes Turbo Streams to the open pages with #[Broadcast], or with a component with
+ * #[Broadcast], through the Mercure hub:
  *
  *     public function __construct(private readonly Streams $streams) {}
  *
@@ -33,8 +33,8 @@ use Symfony\Contracts\Service\ResetInterface;
  *     }
  *
  * - toPage() names a page (a class name, or `Guestbook(...)` for a function page): all its URLs,
- *   or one URL with its route values. toComponent() names a component with #[Subscribe]: all
- *   the pages that render it. everywhere() names all the pages with #[Subscribe] (for a part of
+ *   or one URL with its route values. toComponent() names a component with #[Broadcast]: all
+ *   the pages that render it. everywhere() names all the pages with #[Broadcast] (for a part of
  *   the layout).
  * - The markup renders at once, outside the page, so it shows the data of now. It is plain
  *   markup: a component in it renders with no `<phem-c>`, and an event handler or a `phem:bind`
@@ -73,7 +73,7 @@ final class Streams implements ResetInterface
     }
 
     /**
-     * The streams to a component with #[Subscribe]: to all the pages that render it
+     * The streams to a component with #[Broadcast]: to all the pages that render it
      * (`toComponent(Inbox::class)`, or `toComponent(Inbox(...))` for a function component).
      *
      * @param class-string|string|\Closure $component
@@ -83,7 +83,7 @@ final class Streams implements ResetInterface
         return new PageStreams($this, $this->topics->toComponent(PageName::of($component)));
     }
 
-    /** The streams to all the pages with #[Subscribe]. */
+    /** The streams to all the pages with #[Broadcast]. */
     public function everywhere(): PageStreams
     {
         return new PageStreams($this, Topics::EVERYWHERE);

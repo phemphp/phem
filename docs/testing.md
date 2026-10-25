@@ -76,7 +76,7 @@ element. The answer of the server morphs the components that changed.
 | `focus($selector)`, `blur($selector)` | `onFocus`, `onBlur` | `->focus('input')` |
 | `fire($selector, $type, $event)` | any DOM event | `->fire('div', 'click', ['value' => 'x'])` |
 | `load($selector)` | the load of a `<Suspense>` boundary | `->load()`, `->load('#report')` |
-| `receive()` | the pushes of other requests (a page with `#[Subscribe]`) | `$other->receive()->assertSee('Hi')` |
+| `receive()` | the pushes of other requests (a page with `#[Broadcast]`) | `$other->receive()->assertSee('Hi')` |
 | `settle()` | none: runs the work of the `#[Async]` handlers, as a worker does | `->settle()->receive()->assertSee('Ready')` |
 
 The value of `change()` and `fill()`:
@@ -107,7 +107,7 @@ $this->visit('/dashboard')
     ->assertSee('North: 1200 €');
 ```
 
-A page with `#[Subscribe]` (or with a component with `#[Subscribe]`) gets the pushes of
+A page with `#[Broadcast]` (or with a component with `#[Broadcast]`) gets the pushes of
 `Phem\Stream\Streams` with `receive()`: the updates of its topics since its render, or since the
 last `receive()`. In the tests (`framework.test: true`), the streams go to memory, not to a
 Mercure hub. A stream marks the component around its target as stale, and the next event sends
@@ -143,7 +143,7 @@ An action fails when it cannot work in a browser:
 - no handler gets the event;
 - the form has no field with the name, or the select has no option with the value;
 - `load()` finds no boundary that shows its fallback;
-- `receive()` gets a page with no `#[Subscribe]` and no component with `#[Subscribe]`;
+- `receive()` gets a page with no `#[Broadcast]` and no component with `#[Broadcast]`;
 - `settle()` finds no waiting work;
 - `upload()` gets an element that is not a file input, more than one path for an input with no
   `multiple` attribute, or a file that does not exist.

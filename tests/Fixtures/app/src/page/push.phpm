@@ -2,7 +2,7 @@
 
 namespace App\Page;
 
-use Phem\Attribute\{Component, Page, Path, Prop, State, Subscribe};
+use Phem\Attribute\{Component, Page, Path, Prop, State, Broadcast};
 use Phem\Event;
 use Phem\Node;
 use Phem\Stream\Streams;
@@ -10,7 +10,7 @@ use Phem\Tests\Fixtures\Guestbook;
 
 use function App\Component\Document;
 
-// The pushes of Phem\Stream\Streams: a page with #[Subscribe], plain markup and refresh().
+// The pushes of Phem\Stream\Streams: a page with #[Broadcast], plain markup and refresh().
 
 // The entries: data with no state, so it reads them again in each render.
 #[Component]
@@ -164,7 +164,7 @@ final class GuestbookForm
         $this->streams->toComponent(GuestbookInbox::class)->refresh('inbox');
     }
 
-    // A page with no #[Subscribe] gets no streams.
+    // A page with no #[Broadcast] gets no streams.
     public function elsewhere(): void
     {
         $this->streams->toPage(NotifyPage::class)->refresh('save');
@@ -189,7 +189,7 @@ final class GuestbookForm
     }
 }
 
-#[Page('/guestbook/{room}'), Subscribe]
+#[Page('/guestbook/{room}'), Broadcast]
 final class GuestbookPage
 {
     #[Path] public string $room;
@@ -207,8 +207,8 @@ final class GuestbookPage
     }
 }
 
-// A function page with #[Subscribe]: its route value and a service in its parameters.
-#[Page('/board/{room}'), Subscribe]
+// A function page with #[Broadcast]: its route value and a service in its parameters.
+#[Page('/board/{room}'), Broadcast]
 function GuestbookBoard(string $room, Guestbook $guestbook): Node
 {
     $count = \count($guestbook->entries($room));
@@ -220,9 +220,9 @@ function GuestbookBoard(string $room, Guestbook $guestbook): Node
     );
 }
 
-// A component with #[Subscribe]: the pages that render it get its streams. It has a state of the
+// A component with #[Broadcast]: the pages that render it get its streams. It has a state of the
 // UI (open) for an event, so it reads the data in render(): a refresh does not mount it again.
-#[Component, Subscribe]
+#[Component, Broadcast]
 final class GuestbookInbox
 {
     #[Prop] public string $room;
@@ -250,7 +250,7 @@ final class GuestbookInbox
     }
 }
 
-// A page with no #[Subscribe]: its component with #[Subscribe] connects it.
+// A page with no #[Broadcast]: its component with #[Broadcast] connects it.
 #[Page('/inbox/{room}')]
 function GuestbookInboxPage(string $room): Node
 {

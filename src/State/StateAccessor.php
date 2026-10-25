@@ -70,7 +70,7 @@ final class StateAccessor
      * tree. A fiber that did not render in the last pass keeps the state that the browser sent:
      * a fiber whose state changes renders (see UpdateScope).
      *
-     * @param list<string> $subscribed the components with #[Subscribe] of the first render (see PageState)
+     * @param list<string> $subscribed the components with #[Broadcast] of the first render (see PageState)
      */
     public function snapshot(Tree $tree, array $subscribed = []): PageState
     {

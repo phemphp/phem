@@ -67,7 +67,7 @@ pub mod codes {
     pub const INVALID_CONTEXT: &str = "E044";
     pub const EXPORT_DEFAULT: &str = "E050";
     pub const ROUTE_NOT_COMPONENT: &str = "E052";
-    pub const SUBSCRIBE_NOT_COMPONENT: &str = "E053";
+    pub const BROADCAST_NOT_COMPONENT: &str = "E053";
     pub const ASYNC_NOT_METHOD: &str = "E054";
     pub const ASYNC_WITHOUT_PROMISE: &str = "E055";
     pub const PAGE_AS_TAG: &str = "E056";

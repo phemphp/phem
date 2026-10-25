@@ -16,7 +16,7 @@ namespace Phem\State;
 /**
  * The state that the browser keeps for a page: the state of each fiber, the route values of
  * the #[Path] props, the shape of the last render (see TreeShape), and the components with
- * #[Subscribe] of the first render (see Phem\Stream\Subscription). The events find the entities
+ * #[Broadcast] of the first render (see Phem\Stream\Subscription). The events find the entities
  * again from the route values.
  *
  * In the signed JSON, the `_path` key keeps the route values, the `_tree` key keeps the shape and
@@ -31,7 +31,7 @@ final class PageState
     /**
      * @param array<string, array<string, mixed>> $fibers fiber id => state
      * @param array<string, mixed>                $values     the route values of the #[Path] props
-     * @param list<string>                        $subscribed the components with #[Subscribe] of the first render
+     * @param list<string>                        $subscribed the components with #[Broadcast] of the first render
      */
     public function __construct(
         public readonly array $fibers = [],

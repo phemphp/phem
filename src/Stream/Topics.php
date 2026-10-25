@@ -15,18 +15,18 @@ namespace Phem\Stream;
 
 use Phem\Attribute\Component;
 use Phem\Attribute\Page;
-use Phem\Attribute\Subscribe;
+use Phem\Attribute\Broadcast;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Routing\PageRouteValues;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
- * The Mercure topics of the pages and the components with #[Subscribe] (a class or a function):
+ * The Mercure topics of the pages and the components with #[Broadcast] (a class or a function):
  *
  * - `phem:<page>`: all the URLs of the page;
  * - `phem:<page>?<route values>`: the URL of the page with these route values
  *   (`phem:App\Page\ScientistPage?id=42`), for a page with route values;
- * - `phem:*`: all the pages with #[Subscribe] (see Streams::everywhere());
+ * - `phem:*`: all the pages with #[Broadcast] (see Streams::everywhere());
  * - `phem:<component>`: all the pages that render the component (`phem:App\Component\Inbox`).
  *
  * The browser, the access token and the hub see only an HMAC of the name of a page topic, with
@@ -43,7 +43,7 @@ final class Topics implements ResetInterface
     private const PREFIX = 'phem:';
 
     /** @var array<string, bool> */
-    private array $subscribes = [];
+    private array $broadcasts = [];
     /** @var array<string, bool> */
     private array $components = [];
     /** @var array<string, string> topic => its name, for the topics of this request */
@@ -73,18 +73,18 @@ final class Topics implements ResetInterface
     }
 
     /**
-     * The topics of a page render: the topics of the page when it has #[Subscribe], and the
-     * topic of each component of the page with #[Subscribe]. None when nothing subscribes.
+     * The topics of a page render: the topics of the page when it has #[Broadcast], and the
+     * topic of each component of the page with #[Broadcast]. None when nothing has #[Broadcast].
      *
      * @param array<string, mixed> $values     the route values of the request
-     * @param list<string>         $components the components of the page with #[Subscribe] (see components())
+     * @param list<string>         $components the components of the page with #[Broadcast] (see components())
      *
      * @return list<string>
      */
     public function ofPage(string $page, array $values, array $components = []): array
     {
         $topics = [];
-        if ($this->subscribes($page)) {
+        if ($this->broadcasts($page)) {
             $topics[] = $this->topic(self::PREFIX.$page);
             if ([] !== $values) {
                 $topics[] = $this->scoped($page, $values);
@@ -101,7 +101,7 @@ final class Topics implements ResetInterface
     }
 
     /**
-     * The components with #[Subscribe] in a list of components (the fibers of a page render),
+     * The components with #[Broadcast] in a list of components (the fibers of a page render),
      * once each, with no page.
      *
      * @param iterable<string> $names
@@ -112,7 +112,7 @@ final class Topics implements ResetInterface
     {
         $components = [];
         foreach ($names as $name) {
-            if ($this->subscribes($name) && $this->isComponent($name)) {
+            if ($this->broadcasts($name) && $this->isComponent($name)) {
                 $components[$name] = $name;
             }
         }
@@ -125,13 +125,13 @@ final class Topics implements ResetInterface
      *
      * @param array<string, mixed> $values
      *
-     * @throws \LogicException when the page has no #[Subscribe], when it is a component, or when the values are not the route values of the page
+     * @throws \LogicException when the page has no #[Broadcast], when it is a component, or when the values are not the route values of the page
      */
     public function toPage(string $page, array $values = []): string
     {
         $page = ltrim($page, '\\');
-        if (!$this->subscribes($page)) {
-            throw new \LogicException(\sprintf('The streams go to the pages with #[Subscribe], but "%s" has no #[%s] attribute.', $page, Subscribe::class));
+        if (!$this->broadcasts($page)) {
+            throw new \LogicException(\sprintf('The streams go to the pages with #[Broadcast], but "%s" has no #[%s] attribute.', $page, Broadcast::class));
         }
 
         if ($this->isComponent($page)) {
@@ -158,13 +158,13 @@ final class Topics implements ResetInterface
     /**
      * The topic of Streams::toComponent(): all the pages that render the component.
      *
-     * @throws \LogicException when the component has no #[Subscribe], or when it is not a component
+     * @throws \LogicException when the component has no #[Broadcast], or when it is not a component
      */
     public function toComponent(string $component): string
     {
         $component = ltrim($component, '\\');
-        if (!$this->subscribes($component)) {
-            throw new \LogicException(\sprintf('The streams go to the components with #[Subscribe], but "%s" has no #[%s] attribute.', $component, Subscribe::class));
+        if (!$this->broadcasts($component)) {
+            throw new \LogicException(\sprintf('The streams go to the components with #[Broadcast], but "%s" has no #[%s] attribute.', $component, Broadcast::class));
         }
 
         if (!$this->isComponent($component)) {
@@ -174,9 +174,9 @@ final class Topics implements ResetInterface
         return $this->topic(self::PREFIX.$component);
     }
 
-    public function subscribes(string $name): bool
+    public function broadcasts(string $name): bool
     {
-        return $this->subscribes[$name] ??= self::has($name, Subscribe::class);
+        return $this->broadcasts[$name] ??= self::has($name, Broadcast::class);
     }
 
     /** Whether the name is a component that is not a page: it has #[Component] and no #[Page]. */

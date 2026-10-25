@@ -32,7 +32,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * a component of the application with a `<Root>` (see Phem\Root). The query string of the
  * request sets the #[Url] properties, and the root element tells the browser their query (see
  * Phem\State\UrlQuery). The signed state goes to the StateCache, so the first event of the page
- * can send only its signature. A page with #[Subscribe], or with a component with #[Subscribe],
+ * can send only its signature. A page with #[Broadcast], or with a component with #[Broadcast],
  * connects to the Mercure hub (see Phem\Stream\Subscription).
  *
  * PageController uses it for the page routes. The browser sends the events of a page to the URL

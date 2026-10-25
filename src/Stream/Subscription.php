@@ -21,12 +21,12 @@ use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * The connection of a page with #[Subscribe], or with a component with #[Subscribe], to the
+ * The connection of a page with #[Broadcast], or with a component with #[Broadcast], to the
  * Mercure hub.
  *
  * The root element of the page gets `data-phem-stream-value`: the URL of the hub with a `match`
  * parameter for each topic of the page (see Topics). The `phem` Stimulus controller opens one
- * EventSource to it. The components with #[Subscribe] are the components of the first render of
+ * EventSource to it. The components with #[Broadcast] are the components of the first render of
  * the page: the signed state keeps them (see PageState::$subscribed). An event renews the topic
  * of such a component only when it renders in the event (see rendered()): a component that does
  * not render did not pass the access rules of the request. A component that renders first in an
@@ -72,7 +72,7 @@ final class Subscription
     }
 
     /**
-     * The components with #[Subscribe] of a page render.
+     * The components with #[Broadcast] of a page render.
      *
      * @return list<string>
      */
@@ -82,7 +82,7 @@ final class Subscription
     }
 
     /**
-     * The components with #[Subscribe] of the first render that rendered again in an event. Only
+     * The components with #[Broadcast] of the first render that rendered again in an event. Only
      * they passed the access rules of the request (for example a component that renders for an
      * admin only): the topics of the others keep their expiry in the token (see cookie()).
      *
@@ -100,7 +100,7 @@ final class Subscription
      * subscribes. The response gets the cookie of the topics (see cookie()).
      *
      * @param array<string, mixed> $values     the #[Path] route values of the page
-     * @param list<string>         $components the components with #[Subscribe] of the page (see components())
+     * @param list<string>         $components the components with #[Broadcast] of the page (see components())
      */
     public function attribute(string $page, array $values, Request $request, array $components = []): string
     {
@@ -119,7 +119,7 @@ final class Subscription
      * renews it). Returns the topics, or none when nothing subscribes.
      *
      * @param array<string, mixed> $values
-     * @param list<string>         $components the components with #[Subscribe] of the page
+     * @param list<string>         $components the components with #[Broadcast] of the page
      *
      * @return list<string>
      */
@@ -135,7 +135,7 @@ final class Subscription
 
     /**
      * The cookie for the response of a request that renew() saw, or null (no page with
-     * #[Subscribe], or public updates).
+     * #[Broadcast], or public updates).
      */
     public function cookie(Request $request): ?Cookie
     {

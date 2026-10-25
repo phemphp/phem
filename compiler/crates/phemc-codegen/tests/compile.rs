@@ -359,7 +359,7 @@ fn a_parent_class_and_a_trait_load_before_the_classes_that_use_them() {
 #[test]
 fn a_page_class_is_a_component_with_a_route() {
     let page = |attrs: &str, class: &str| {
-        let src = format!("<?phpm\nnamespace App;\nuse Phem\\Attribute\\{{Component, Page, Subscribe}};\nuse Symfony\\Component\\Routing\\Attribute\\Route;\n{attrs}\n{class}\n");
+        let src = format!("<?phpm\nnamespace App;\nuse Phem\\Attribute\\{{Component, Page, Broadcast}};\nuse Symfony\\Component\\Routing\\Attribute\\Route;\n{attrs}\n{class}\n");
         compile(vec![SourceInput { rel: "Home.phpm".into(), text: src }])
     };
     let render = "final class Home { public function render() { return <p>Home</p>; } }";
@@ -387,11 +387,11 @@ fn a_page_class_is_a_component_with_a_route() {
     assert_eq!(d.message, "the Symfony `#[Route]` cannot mark a function, and `App\\Home` is one");
     assert_eq!(d.help.as_deref(), Some("use `#[Page('/path')]` and `use Phem\\Attribute\\Page;`: a function page needs no `#[Component]`"));
 
-    assert_eq!(codes("#[Page('/')]\n#[Subscribe]", "function Home() { return <p />; }"), Vec::<&str>::new(), "a function page can subscribe");
-    assert_eq!(codes("#[Component]\n#[Subscribe]", "function Home() { return <p />; }"), Vec::<&str>::new(), "a function component can subscribe");
-    assert_eq!(codes("#[Component]\n#[Subscribe]", render), Vec::<&str>::new(), "a class component can subscribe");
-    assert_eq!(codes("#[Subscribe]", "function Home() { return <p />; }"), ["E053"], "a plain function cannot subscribe");
-    assert_eq!(codes("#[Subscribe]", "final class Home {}"), ["E053"], "a plain class cannot subscribe");
+    assert_eq!(codes("#[Page('/')]\n#[Broadcast]", "function Home() { return <p />; }"), Vec::<&str>::new(), "a function page can have #[Broadcast]");
+    assert_eq!(codes("#[Component]\n#[Broadcast]", "function Home() { return <p />; }"), Vec::<&str>::new(), "a function component can have #[Broadcast]");
+    assert_eq!(codes("#[Component]\n#[Broadcast]", render), Vec::<&str>::new(), "a class component can have #[Broadcast]");
+    assert_eq!(codes("#[Broadcast]", "function Home() { return <p />; }"), ["E053"], "a plain function cannot have #[Broadcast]");
+    assert_eq!(codes("#[Broadcast]", "final class Home {}"), ["E053"], "a plain class cannot have #[Broadcast]");
 }
 
 #[test]

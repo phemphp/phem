@@ -80,7 +80,7 @@ ideas of React map to Phem.
    each time (see [Retries](phpm-syntax.md#retries)).
    Add `data-phem-transition` to an element to run the morph of its components in a view
    transition (see [Transitions](phpm-syntax.md#transitions)).
-5. **Real-time updates.** A page with `#[Subscribe]`, or with a component with `#[Subscribe]`,
+5. **Real-time updates.** A page with `#[Broadcast]`, or with a component with `#[Broadcast]`,
    opens one connection to the Mercure hub of FrankenPHP. A handler pushes Turbo Streams to the open pages with `Phem\Stream\Streams`:
    plain markup (`prepend`, `update`, `remove`, ...), or a `refresh()` that renders a component
    again in each browser with a normal event. The next event of a page renders again the
@@ -110,7 +110,7 @@ ideas of React map to Phem.
 | initial state from props or data | `mount()`, called when the component has no state yet |
 | a form `onSubmit` handler | a Symfony form: `$form->handleRequest($request)` in the handler (`Request $request`) |
 | `createContext` + `useContext` | `#[Provide]` on a class component (or a property), and `#[Context]` on a property or a parameter |
-| a WebSocket or a subscription | `#[Subscribe]` on a page, and `Phem\Stream\Streams` in a handler: Turbo Streams through the Mercure hub of FrankenPHP |
+| a WebSocket or a subscription | `#[Broadcast]` on a page, and `Phem\Stream\Streams` in a handler: Turbo Streams through the Mercure hub of FrankenPHP |
 | imported modules | services, injected in the constructor |
 | props, `children`, lifting state up | parameters or `#[Prop]` properties, `?Html $children`, the same pattern |
 

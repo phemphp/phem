@@ -1605,14 +1605,14 @@ failed, and the `<ErrorBoundary>` tries again on each render.
 ### Real-time updates
 
 A change by one user does not show for another user until that user sends an event. A page with
-`#[Subscribe]` gets the Turbo Streams of other requests: a handler (or any service) pushes them
+`#[Broadcast]` gets the Turbo Streams of other requests: a handler (or any service) pushes them
 with `Phem\Stream\Streams`, and the Mercure hub of FrankenPHP sends them to the open pages.
 
 ```php
-use Phem\Attribute\{Component, Page, State, Subscribe, Transactional};
+use Phem\Attribute\{Component, Page, State, Broadcast, Transactional};
 use Phem\Stream\Streams;
 
-#[Page('/guestbook'), Subscribe]
+#[Page('/guestbook'), Broadcast]
 final class Guestbook
 {
     // ... renders <SignForm />, <GuestbookStats /> (id="guestbook-stats") and <ul id="entries">
@@ -1646,12 +1646,12 @@ final class SignForm
 
 - `toPage(Page::class)` names all the URLs of a page. `toPage(Page::class, ['id' => 42])` names
   one URL: give all the route values of the page, as the URL has them. `everywhere()` names all
-  the pages with `#[Subscribe]`, for a part of the layout. A page with no `#[Subscribe]` throws.
-- A function page can have `#[Subscribe]` too. A function has no `::class`, so give its
+  the pages with `#[Broadcast]`, for a part of the layout. A page with no `#[Broadcast]` throws.
+- A function page can have `#[Broadcast]` too. A function has no `::class`, so give its
   first-class callable: `toPage(Guestbook(...), ['room' => 'lobby'])` (with `use function`). Its
   route values are the parameters that its routes give a value, not the services or the Request.
-- A component can have `#[Subscribe]` too (`#[Component, Subscribe]`), for example a part of the
-  layout. Each page that renders it connects to the hub, also a page with no `#[Subscribe]`.
+- A component can have `#[Broadcast]` too (`#[Component, Broadcast]`), for example a part of the
+  layout. Each page that renders it connects to the hub, also a page with no `#[Broadcast]`.
   `toComponent(Inbox::class)` (or `toComponent(Inbox(...))` for a function component) names all
   the pages that render the component. It takes no route values. `toPage()` of a component and
   `toComponent()` of a page throw. The page connects for the components of its first render: a
@@ -1741,7 +1741,7 @@ connects again.
   the error, and the response does not change.
 
 The Symfony profiler shows the streams that a request pushed, and the stale components of an
-event. `phemc` reports E053 for `#[Subscribe]` on a class or a function that is not a page or a
+event. `phemc` reports E053 for `#[Broadcast]` on a class or a function that is not a page or a
 component. The tests get the pushes with `receive()` (see [Testing](testing.md#actions)).
 
 ### Slow work after the response
@@ -1810,7 +1810,7 @@ Rules:
   no side effects. Read the values that the work needs in the body, and pass them to the closure
   (`use ($ticket)`).
 - The worker has no response. The closure shows its result with `Streams` (the page needs
-  `#[Subscribe]`). The same markup goes to all the viewers of the page.
+  `#[Broadcast]`). The same markup goes to all the viewers of the page.
 - A retry of Messenger runs the closure again: make it idempotent (the ticket above finds the
   report of a retry).
 - With `#[Transactional]` on the method or the class, the method body runs in a transaction in

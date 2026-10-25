@@ -39,7 +39,7 @@ final class HttpTest extends TestCase
         self::assertSame([], PageState::fromArray(['_path' => 'not an array'])->values);
     }
 
-    public function testPageStateKeepsTheComponentsWithSubscribeInTheSubscribedKey(): void
+    public function testPageStateKeepsTheComponentsWithBroadcastInTheSubscribedKey(): void
     {
         $state = new PageState(['phem1' => ['n' => 1]], subscribed: ['App\Inbox']);
 

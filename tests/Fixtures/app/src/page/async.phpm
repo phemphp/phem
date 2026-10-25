@@ -3,7 +3,7 @@
 namespace App\Page;
 
 use Phem\Async\Promise;
-use Phem\Attribute\{Async, Component, Page, Path, Prop, State, Subscribe};
+use Phem\Attribute\{Async, Component, Page, Path, Prop, State, Broadcast};
 use Phem\Event;
 use Phem\Node;
 use Phem\Stream\Streams;
@@ -84,7 +84,7 @@ final class AsyncExport
     }
 }
 
-#[Page('/async/{room}'), Subscribe]
+#[Page('/async/{room}'), Broadcast]
 final class AsyncPage
 {
     #[Path] public string $room;

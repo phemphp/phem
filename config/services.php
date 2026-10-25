@@ -190,7 +190,7 @@ return static function (ContainerConfigurator $container): void {
             ->tag('kernel.reset', ['method' => 'reset'])
         ->alias(Renderer::class, 'phem.renderer')
 
-        // Streams: the push to the pages with #[Subscribe], through the Mercure hub
+        // Streams: the push to the pages with #[Broadcast], through the Mercure hub
         ->set('phem.topics', Topics::class)
             ->args([service('phem.metadata'), abstract_arg('secret, set by PhemBundle'), service('phem.page_route_values')])
             ->tag('kernel.reset', ['method' => 'reset'])

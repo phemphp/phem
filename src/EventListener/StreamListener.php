@@ -18,7 +18,7 @@ use Phem\Stream\Subscription;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 
 /**
- * At the end of a request: sets the cookie of the Mercure hub for a page with #[Subscribe] (see
+ * At the end of a request: sets the cookie of the Mercure hub for a page with #[Broadcast] (see
  * Subscription), and publishes the streams of the request (see Streams::flush()). The event
  * handler and its transaction ended before the response, so a refresh reads the new data.
  */

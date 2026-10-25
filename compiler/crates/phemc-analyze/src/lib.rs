@@ -27,7 +27,7 @@ pub const ATTR_PATH: &str = "Phem\\Attribute\\Path";
 pub const ATTR_PAGE: &str = "Phem\\Attribute\\Page";
 /// A page that gets the Turbo Streams of other requests (`Phem\Stream\Streams`). Only a page can
 /// have it: each page opens its own connection to the Mercure hub.
-pub const ATTR_SUBSCRIBE: &str = "Phem\\Attribute\\Subscribe";
+pub const ATTR_BROADCAST: &str = "Phem\\Attribute\\Broadcast";
 /// An event handler whose slow work runs in a Messenger worker: a method of a class component
 /// that returns a `Promise` (see `Phem\Attribute\Async`).
 pub const ATTR_ASYNC: &str = "Phem\\Attribute\\Async";
@@ -353,10 +353,10 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
         diags.push(diag);
     }
 
-    for (fqn, span) in &file.subscribes {
+    for (fqn, span) in &file.broadcasts {
         diags.push(
-            Diagnostic::error(codes::SUBSCRIBE_NOT_COMPONENT, format!("`#[Subscribe]` must mark a page or a component, and `{fqn}` is neither"), *span)
-                .with_help("a page opens the connection to the Mercure hub for itself and its components: put `#[Subscribe]` next to `#[Page]` or `#[Component]`"),
+            Diagnostic::error(codes::BROADCAST_NOT_COMPONENT, format!("`#[Broadcast]` must mark a page or a component, and `{fqn}` is neither"), *span)
+                .with_help("a page opens the connection to the Mercure hub for itself and its components: put `#[Broadcast]` next to `#[Page]` or `#[Component]`"),
         );
     }
 

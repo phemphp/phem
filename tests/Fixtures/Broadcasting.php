@@ -14,11 +14,11 @@ declare(strict_types=1);
 namespace Phem\Tests\Fixtures;
 
 use Phem\Attribute\Path;
-use Phem\Attribute\Subscribe;
+use Phem\Attribute\Broadcast;
 
-/** A page with #[Subscribe] and two #[Path] props, for the topics (see Phem\Stream\Topics). */
-#[Subscribe]
-final class Subscribed
+/** A page with #[Broadcast] and two #[Path] props, for the topics (see Phem\Stream\Topics). */
+#[Broadcast]
+final class Broadcasting
 {
     #[Path] public int $id;
     #[Path] public Size $size;

@@ -15,11 +15,11 @@ namespace Phem\Tests\Fixtures;
 
 use Phem\Attribute\Component;
 use Phem\Attribute\Prop;
-use Phem\Attribute\Subscribe;
+use Phem\Attribute\Broadcast;
 
-/** A component with #[Subscribe], for the topics (see Phem\Stream\Topics). */
-#[Component, Subscribe]
-final class SubscribedComponent
+/** A component with #[Broadcast], for the topics (see Phem\Stream\Topics). */
+#[Component, Broadcast]
+final class BroadcastingComponent
 {
     #[Prop] public string $label = '';
 }

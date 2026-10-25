@@ -132,7 +132,7 @@ final class PhemBundle extends AbstractBundle
                     ->min(0)
                 ->end()
                 ->arrayNode('mercure')
-                    ->info('The Mercure hub of FrankenPHP, for the pages with #[Subscribe] (see Phem\\Stream\\Streams)')
+                    ->info('The Mercure hub of FrankenPHP, for the pages with #[Broadcast] (see Phem\\Stream\\Streams)')
                     ->addDefaultsIfNotSet()
                     ->children()
                         ->scalarNode('hub_url')
