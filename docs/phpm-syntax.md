@@ -1655,7 +1655,10 @@ final class SignForm
   `toComponent(Inbox::class)` (or `toComponent(Inbox(...))` for a function component) names all
   the pages that render the component. It takes no route values. `toPage()` of a component and
   `toComponent()` of a page throw. The page connects for the components of its first render: a
-  component that renders first in an event gets the pushes after the page loads again.
+  component that renders first in an event gets the pushes after the page loads again. With
+  private updates, an event extends the access to the topic of a component only when the
+  component renders in the event: a component that stops to render (for example after the
+  viewer loses a role) loses its pushes when its access expires.
 - Each action takes the `id` of the target element: `append`, `prepend`, `before`, `after`,
   `replace`, `update` and `remove`, as in Turbo. `replace` and `update` morph by default
   (`morph: false` turns it off), so the focus, a bound field that the user changes, and the

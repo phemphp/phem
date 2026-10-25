@@ -27,8 +27,10 @@ use Symfony\Component\HttpFoundation\Request;
  * The root element of the page gets `data-phem-stream-value`: the URL of the hub with a `match`
  * parameter for each topic of the page (see Topics). The `phem` Stimulus controller opens one
  * EventSource to it. The components with #[Subscribe] are the components of the first render of
- * the page: the signed state keeps them (see PageState::$subscribed), so an event renews their
- * topics. A component that renders first in an event gets no pushes until the page loads again.
+ * the page: the signed state keeps them (see PageState::$subscribed). An event renews the topic
+ * of such a component only when it renders in the event (see rendered()): a component that does
+ * not render did not pass the access rules of the request. A component that renders first in an
+ * event gets no pushes until the page loads again.
  *
  * With a subscriber key, the updates are private, and the response sets the cookie of the hub
  * with an access token for the topics (see SubscriberToken). The page passed its access rules,
@@ -77,6 +79,20 @@ final class Subscription
     public function components(Tree $tree): array
     {
         return $this->topics->components(array_map(static fn (Fiber $fiber): string => $fiber->fqcn, $tree->rendered()));
+    }
+
+    /**
+     * The components with #[Subscribe] of the first render that rendered again in an event. Only
+     * they passed the access rules of the request (for example a component that renders for an
+     * admin only): the topics of the others keep their expiry in the token (see cookie()).
+     *
+     * @param list<string> $subscribed the components of the signed state (see PageState::$subscribed)
+     *
+     * @return list<string>
+     */
+    public function rendered(Tree $tree, array $subscribed): array
+    {
+        return array_values(array_intersect($subscribed, $this->components($tree)));
     }
 
     /**

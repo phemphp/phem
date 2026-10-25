@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Runtime;
 
+use Phem\Rendering\Fiber;
+use Phem\Rendering\Tree;
 use Phem\Stream\SubscriberToken;
 use Phem\Stream\Subscription;
 use Phem\Stream\Topics;
@@ -72,6 +74,22 @@ final class SubscriptionTest extends TestCase
         $cookie = $subscription->cookie($request);
         self::assertNotNull($cookie);
         self::assertSame(new Topics()->ofPage(Scientist::class, [], [SubscribedComponent::class]), $tokens->topics((string) $cookie->getValue(), self::HUB, ''));
+    }
+
+    /**
+     * A component that does not render in an event did not pass the access rules of the request
+     * (it can render for an admin only): its topic does not renew.
+     */
+    public function testAnEventRenewsOnlyTheComponentsThatRenderedInIt(): void
+    {
+        $subscription = new Subscription(new Topics());
+        $tree = new Tree(Scientist::class);
+        $tree->begin();
+        $tree->fiber('phem1', static fn (): Fiber => new Fiber('phem1', '0', SubscribedComponent::class))->begin($tree->pass);
+        $tree->fiber('phem2', static fn (): Fiber => new Fiber('phem2', '1', Scientist::class))->begin($tree->pass);
+
+        self::assertSame([SubscribedComponent::class], $subscription->rendered($tree, [SubscribedComponent::class, 'Phem\Tests\Fixtures\SubscribedWidget']));
+        self::assertSame([], $subscription->rendered($tree, []), 'only the components of the signed state');
     }
 
     public function testTheTokenKeepsTheTopicsOfTheCookieOfAnotherTab(): void
