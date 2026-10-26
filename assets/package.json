@@ -17,6 +17,12 @@
                 "autoimport": {
                     "@phem/phem/dist/phem.css": true
                 }
+            },
+            "optimistic": {
+                "name": "phem-optimistic",
+                "main": "dist/phem_optimistic_controller.js",
+                "fetch": "lazy",
+                "enabled": false
             }
         },
         "importmap": {

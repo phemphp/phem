@@ -27,27 +27,6 @@ Talk about each item before its implementation. The open questions are a start, 
 
 ## 1. Rendering and performance
 
-### [ ] Client commands — P1
-
-Each UI change is a round trip: a menu toggle, a tab, a modal. Without a server event, the app
-needs its own Stimulus controller.
-
-- **Best peer:** LV `Phoenix.LiveView.JS`: `JS.toggle`, `JS.show`, `JS.add_class`,
-  `JS.dispatch`, chained with `JS.push` (a server event).
-- **Proposal:** `onClick={{ js.toggle('#menu') }}`, `js.show()`, `js.hide()`, `js.addClass()`,
-  `js.setAttr()`, `js.focus()`, `js.dispatch()`, and `.then(handler)` for a server event after
-  them. `phemc` checks them and writes data attributes. The morph keeps their DOM changes, as it
-  keeps the `data-phem-client` attributes.
-- **Overlap:** the built-in Stimulus controllers (section 3) do the same jobs. Decide if `phemc`
-  compiles the `js.*` commands into the `data-action` of a generic `phem-js` controller (one
-  runtime for the two), or if the controllers replace the commands.
-
-### [ ] Optimistic updates — P2
-
-- **Best peer:** React `useOptimistic`, LV `phx-click` + `JS` commands.
-- **Proposal:** with the client commands: `phem:optimistic={{ js.addClass('liked') }}` runs at
-  once, and the morph of the event confirms it or reverts it.
-
 ### [ ] A fiber id on the root element, not a `<phem-c>` — P2
 
 The `<phem-c>` wrapper is not valid in `<table>`, `<tr>` and `<select>`, and each component has
@@ -121,13 +100,13 @@ example stimulus-components) does not know the morph, so the user must add `data
 and `data-phem-ignore` by hand.
 
 - **Best peer:** LV `core_components` + `JS` commands, stimulus-components, Symfony UX packages.
-- **Proposal:** a small set of Phem controllers. Each controller sets its own `data-phem-client`
-  attributes in `connect()`, so its DOM changes stay after the morph of an event.
+- **Proposal:** a small set of Phem controllers. Each controller keeps its DOM changes after the
+  morph of an event: with its own `data-phem-client` attributes, or by applying the changes again
+  on `turbo:morph-element` (as `phem-optimistic` does). `phem-optimistic` is done.
   - `phem-dropdown` / `phem-toggle`: show and hide, `aria-expanded`, close on Escape and on a
     click outside.
   - `phem-dialog`: the native `<dialog>` with `showModal()`, open across morphs.
   - `phem-tabs`: tabs on the client, with ARIA roles and keyboard navigation.
-  - `phem-optimistic`: hide or show on `phem:send` and `phem:done` (the example in the docs).
   - `phem-toast`: shows `phem:toast`, `phem:error` and `phem:rate-limited`.
   - `phem-clipboard`, `phem-autofocus` (also after a morph), `phem-confirm` before a server
     event.

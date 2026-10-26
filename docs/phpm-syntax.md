@@ -1179,26 +1179,39 @@ bubble. A redirect, and a reload for a state that is not valid, send no `phem:do
 cannot send browser events with these names (or `error`, `rate-limited` and `upload-progress`).
 
 A Stimulus action on the element runs before the event goes, so it can change the page at once
-(optimistic UI). This row hides at once on a click on "Delete". On `phem:done`, it shows again: if
-the server still renders it (the handler did not delete it, or the event failed), it must show.
-If the server deleted it, the morph removed it.
+(optimistic UI). The `phem-optimistic` controller does this. Its actions change the controller
+element at once: `hide`, `show`, `addClass`, `removeClass` and `toggleClass`. The change stays
+while the event runs, also after the morph of another event. When the event ends, the element
+shows the server render: the morph confirms the change, and a failed event reverts it.
+
+This row hides at once on a click on "Delete". If the server deleted it, the morph removed it. If
+the server still renders it (the handler did not delete it, or the event failed), it shows again.
 
 ```html
-<li key={{ id }} data-controller="optimistic" data-phem-client="hidden">
+<li key={{ id }} data-controller="phem-optimistic">
     {{ subject }}
-    <button onClick={{ delete }} data-action="optimistic#hide phem:done->optimistic#show">Delete</button>
+    <button onClick={{ delete }} data-action="phem-optimistic#hide">Delete</button>
 </li>
 ```
 
-```js
-export default class extends Controller {
-    hide() { this.element.hidden = true }
-    show() { this.element.hidden = false }
-}
+A class action takes the class from `data-phem-optimistic-class-param` on the element of the
+action, else from `data-phem-optimistic-class-value`. At the end, the server render of the class
+decides:
+
+```html
+<button onClick={{ like }} class={{ liked ? 'liked' : '' }} data-controller="phem-optimistic"
+        data-action="phem-optimistic#toggleClass" data-phem-optimistic-class-value="liked">♥</button>
 ```
 
-With `data-phem-client="hidden"`, the morph of another event does not show the row while its own
-event waits.
+Put the action on the element with the event handler: the controller follows the events of the
+elements that ran an action. The controller is not enabled by default. Enable it in
+`assets/controllers.json`:
+
+```json
+"@phem/phem": {
+    "optimistic": { "enabled": true, "fetch": "lazy" }
+}
+```
 
 ## 7. State: class components
 

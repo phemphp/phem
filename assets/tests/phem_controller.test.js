@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
+import { click, mount, nextDone, respond } from "./support.js"
 
 let application
 
@@ -8,38 +9,6 @@ beforeAll(() => {
   application = Application.start()
   application.register("phem", PhemController)
 })
-
-// A page with one component (`c1`) and the markup of its server render.
-async function mount(markup, rootAttributes = "") {
-  document.body.innerHTML = `
-    <div id="phem-root" data-controller="phem" data-action="click->phem#dispatch"
-         data-phem-state-value="{}" data-phem-signature-value="s1" data-phem-loading-delay-value="0" ${rootAttributes}>
-      <phem-c id="c1">${markup}</phem-c>
-    </div>`
-  // Stimulus connects the controller in a mutation observer callback.
-  await new Promise((resolve) => setTimeout(resolve, 0))
-}
-
-// The answer of the server to the next event: a morph of `c1` to `markup`, with no change of the
-// state, or the `changes` of the state.
-function respond(markup, changes = {}, extra = {}) {
-  const body = {
-    streams: `<turbo-stream action="update" method="morph" target="c1"><template>${markup}</template></turbo-stream>`,
-    changes,
-    signature: "s2",
-    ...extra,
-  }
-  fetch.mockResolvedValueOnce(new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } }))
-}
-
-// Resolves with the `phem:done` event of the next event.
-function nextDone() {
-  return new Promise((resolve) => window.addEventListener("phem:done", resolve, { once: true }))
-}
-
-function click(selector) {
-  document.querySelector(selector).click()
-}
 
 beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn())
