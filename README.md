@@ -1,5 +1,7 @@
 <p align="center">
-  <img src="phem-logo.svg" alt="Phem" width="200">
+  <img src="phem-logo.svg" alt="Phem" height="180">
+  &nbsp;&nbsp;&nbsp;
+  <img src="symfony-logo.svg" alt="Symfony" height="180">
 </p>
 
 # Phem

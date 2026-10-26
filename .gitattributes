@@ -19,6 +19,7 @@
 /install.ps1 export-ignore
 /install.sh export-ignore
 /phem-logo.svg export-ignore
+/symfony-logo.svg export-ignore
 /phpstan.dist.neon export-ignore
 /phpunit.xml.dist export-ignore
 /release.sh export-ignore
