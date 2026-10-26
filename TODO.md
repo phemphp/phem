@@ -24,9 +24,6 @@ Talk about each item before its implementation. The open questions are a start, 
 - [ ] **Live validation** (section 2). The touched fields go in the signed state. How does
       this work with a Symfony form, and with `#[Assert]` on `#[State]` properties? Does
       validation run in the Doctrine transaction?
-- [ ] **Colocated client code** (section 3). Is the extracted script a Stimulus controller (as
-      the `data-phem-client` controllers), or a smaller hook API? How does `phemc` give it to
-      AssetMapper in development (`phemc watch`) and in production?
 
 ## 1. Rendering and performance
 
@@ -41,6 +38,9 @@ needs its own Stimulus controller.
   `js.setAttr()`, `js.focus()`, `js.dispatch()`, and `.then(handler)` for a server event after
   them. `phemc` checks them and writes data attributes. The morph keeps their DOM changes, as it
   keeps the `data-phem-client` attributes.
+- **Overlap:** the built-in Stimulus controllers (section 3) do the same jobs. Decide if `phemc`
+  compiles the `js.*` commands into the `data-action` of a generic `phem-js` controller (one
+  runtime for the two), or if the controllers replace the commands.
 
 ### [ ] Optimistic updates — P2
 
@@ -111,15 +111,29 @@ Symfony forms work in a submit handler. There is no validation while the user ty
 
 ## 3. Client escape hatch
 
-### [ ] Colocated client code and refs — P2
+Decision: the client code is a Stimulus controller, as in any Symfony page. `phemc` does not
+extract colocated client code (`<script>` in a `.phpm` file).
 
-Some behavior must run in the browser: a chart, a map, a rich text editor, a focus.
+### [ ] Built-in Stimulus controllers — P2
 
-- **Best peer:** LV 1.1 colocated hooks: a `<script :type={ColocatedHook}>` next to the markup,
-  extracted at compile time, with `mounted`, `updated` and `destroyed` callbacks. React refs and
-  `useEffect`. LW Alpine.
-- **Proposal:**
-  - `phemc` extracts a `<script type="phem/controller">` from a `.phpm` file into a Stimulus
-    controller and registers it with AssetMapper. The component root gets its
-    `data-controller` automatically.
-  - The controller gets the server events of the item "Server-to-browser events".
+Each app writes the same controllers again: a dropdown, a dialog, tabs. A generic library (for
+example stimulus-components) does not know the morph, so the user must add `data-phem-client`
+and `data-phem-ignore` by hand.
+
+- **Best peer:** LV `core_components` + `JS` commands, stimulus-components, Symfony UX packages.
+- **Proposal:** a small set of Phem controllers. Each controller sets its own `data-phem-client`
+  attributes in `connect()`, so its DOM changes stay after the morph of an event.
+  - `phem-dropdown` / `phem-toggle`: show and hide, `aria-expanded`, close on Escape and on a
+    click outside.
+  - `phem-dialog`: the native `<dialog>` with `showModal()`, open across morphs.
+  - `phem-tabs`: tabs on the client, with ARIA roles and keyboard navigation.
+  - `phem-optimistic`: hide or show on `phem:send` and `phem:done` (the example in the docs).
+  - `phem-toast`: shows `phem:toast`, `phem:error` and `phem:rate-limited`.
+  - `phem-clipboard`, `phem-autofocus` (also after a morph), `phem-confirm` before a server
+    event.
+- **Rules:**
+  - The `phem-` prefix, so the names do not clash with the controllers of the app.
+  - Each controller is an entry of `symfony.controllers` in `assets/package.json` with
+    `"fetch": "lazy"`. The app enables it in `controllers.json`.
+  - Accessible, with no dependency. Vitest + jsdom tests, as for `phem_controller.js`.
+  - Add a controller only when a Phem detail gives it value, or when almost all apps need it.
