@@ -59,6 +59,12 @@
                 "main": "dist/phem_autofocus_controller.js",
                 "fetch": "lazy",
                 "enabled": false
+            },
+            "confirm": {
+                "name": "phem-confirm",
+                "main": "dist/phem_confirm_controller.js",
+                "fetch": "lazy",
+                "enabled": false
             }
         },
         "importmap": {

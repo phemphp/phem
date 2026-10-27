@@ -178,6 +178,8 @@ syntax guide):
   keeps its "copied" feedback after the morph of an event.
 - `phem-autofocus` (`phemjs/phem_autofocus_controller.js`) gives the focus to an element when it
   connects, also when the morph of an event adds it.
+- `phem-confirm` (`phemjs/phem_confirm_controller.js`) asks the user to confirm before an event
+  of a handler goes to the server.
 
 Enable a controller in `assets/controllers.json` with its key in the `@phem/phem` entry, for
 example `"toggle": { "enabled": true, "fetch": "lazy" }`.
