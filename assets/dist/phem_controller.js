@@ -279,6 +279,8 @@ export default class PhemController extends Controller {
     this.running = new Set()
     // form => (control => the property that the lock set), for each locked form
     this.locked = new Map()
+    // The id of the last DOM event that makes an event (see schedule())
+    this.lastId = 0
 
     // The morph of an earlier event sets the attributes of the server render: show the loading
     // state again on an element with an event that still runs, lock a locked control again, and
@@ -661,40 +663,43 @@ export default class PhemController extends Controller {
     this.schedule(el, attr, handler, event.type, payload)
   }
 
-  // Sends an event after its wait (debounce or throttle), or at once.
+  // Sends an event after its wait (debounce or throttle), or at once. The DOM event gets an id:
+  // `phem:queue` gives it in the dispatch of the DOM event, so a Stimulus action of the element
+  // knows its event. The event that carries it gives it in `ids` (more than one when the DOM event
+  // replaced or joined an event that waits).
   schedule(el, attr, handler, type, payload) {
-    const send = () => this.enqueue(el, attr, handler, payload)
+    const id = ++this.lastId
+    const send = (ids) => this.enqueue(el, attr, handler, payload, ids)
     const wait = this.timing(el, type)
+    this.notify(el, handler, "queue", { id })
 
     if (wait) {
-      this.defer(el, attr, wait, send)
+      this.defer(el, attr, wait, id, send)
     } else {
       // The waiting events first, so the server gets all the input before this event.
       this.flush()
-      send()
+      send(new Set([id]))
     }
   }
 
   // Puts an event in the queue. An input or change event that waits in the queue for the same
   // handler and element takes the new value, and the new event does not go in the queue.
-  enqueue(el, attr, handler, payload) {
+  enqueue(el, attr, handler, payload, ids = new Set()) {
     const coalesce = payload.type === "input" || payload.type === "change"
     const waiting = coalesce ? (this.waiting.get(el) ?? new Map()) : null
     const old = waiting?.get(attr)
     if (old && old.handler === handler) {
       old.payload = payload
+      for (const id of ids) old.ids.add(id)
       return
     }
 
-    const job = { handler, payload }
+    const job = { handler, payload, ids }
     if (coalesce) {
       waiting.set(attr, job)
       this.waiting.set(el, waiting)
     }
 
-    // In the dispatch of the DOM event when the event has no wait, so a Stimulus action of the
-    // element knows that the event goes.
-    this.notify(el, handler, "queue")
     const upload = payload.files ? { progress: 0 } : null
     const done = this.startLoading(el, handler, upload)
     // After formFields(): a disabled control is not in the form data.
@@ -708,7 +713,7 @@ export default class PhemController extends Controller {
           if (!waiting.size) this.waiting.delete(el)
         }
 
-        return this.send(el, job.handler, job.payload, unlock, onProgress)
+        return this.send(el, job.handler, job.payload, unlock, onProgress, job.ids)
       })
       .catch((e) => console.error("[phem]", e))
       .finally(() => {
@@ -738,8 +743,8 @@ export default class PhemController extends Controller {
   }
 
   // Makes an event wait for its debounce or its throttle. A new event of the same handler and
-  // element replaces the event that waits.
-  defer(el, attr, wait, send) {
+  // element replaces the event that waits, and the event carries the ids of both DOM events.
+  defer(el, attr, wait, id, send) {
     const pending = this.pending.get(el) ?? new Map()
     this.pending.set(el, pending)
     const entry = pending.get(attr)
@@ -748,18 +753,19 @@ export default class PhemController extends Controller {
       if (entry) {
         // Keep the time of the throttle: send the newest event then.
         entry.send = send
+        entry.ids.add(id)
         return
       }
 
       const left = (this.sentAt.get(el)?.get(attr) ?? -Infinity) + wait.throttle - performance.now()
-      pending.set(attr, { send, timer: left > 0 ? setTimeout(() => this.release(el, attr), left) : null })
+      pending.set(attr, { send, ids: new Set([id]), timer: left > 0 ? setTimeout(() => this.release(el, attr), left) : null })
       if (left <= 0) this.release(el, attr)
       return
     }
 
     clearTimeout(entry?.timer)
     const timer = wait.debounce === "blur" ? null : setTimeout(() => this.release(el, attr), wait.debounce)
-    pending.set(attr, { send, timer })
+    pending.set(attr, { send, ids: (entry?.ids ?? new Set()).add(id), timer })
   }
 
   // Sends the waiting event of a handler of an element.
@@ -775,7 +781,7 @@ export default class PhemController extends Controller {
     const sent = this.sentAt.get(el) ?? new Map()
     sent.set(attr, performance.now())
     this.sentAt.set(el, sent)
-    entry.send()
+    entry.send(entry.ids)
   }
 
   // Sends the waiting events of an element, or of all the elements, in the order they came.
@@ -939,18 +945,21 @@ export default class PhemController extends Controller {
 
   // Sends the event of the element `el`. `beforeRender` runs when the last response arrives,
   // before the page changes. `onProgress` gets the progress of an upload. The pushes that come
-  // while it runs wait for its end (see receive()). Resolves with false after a server error.
-  async send(el, handler, event, beforeRender, onProgress = null) {
+  // while it runs wait for its end (see receive()). `ids` are the ids of the DOM events that it
+  // carries (see schedule()). Resolves with false after a server error.
+  async send(el, handler, event, beforeRender, onProgress = null, ids = new Set()) {
     this.busy++
     try {
-      return await this.sendNow(el, handler, event, beforeRender, onProgress)
+      return await this.sendNow(el, handler, event, beforeRender, onProgress, ids)
     } finally {
       this.busy--
       if (!this.busy) this.held.splice(0).forEach((data) => this.applyPush(data))
     }
   }
 
-  async sendNow(el, handler, event, beforeRender, onProgress) {
+  async sendNow(el, handler, event, beforeRender, onProgress, ids) {
+    const notify = (name, detail = {}) => this.notify(el, handler, name, { ids: [...ids], ...detail })
+
     // The bound fields when the event starts: the newest values. The request sends the fields
     // that changed.
     const fields = this.boundValues()
@@ -959,16 +968,17 @@ export default class PhemController extends Controller {
     if (event.live && !Object.keys(bound).length) {
       // The field has its server value again: nothing to send.
       beforeRender()
+      notify("done", { ok: true, status: null })
       return
     }
 
     // The stale components when the event starts: the server renders them again.
     const stale = [...this.stale]
     if (stale.length) event = { ...event, stale }
-    this.notify(el, handler, "send")
+    notify("send")
 
     // The end of an event that the server did not take: no morph.
-    const failed = (status) => this.notify(el, handler, "done", { ok: false, status })
+    const failed = (status) => notify("done", { ok: false, status })
     let response
     try {
       response = await this.fetchEvent(handler, event, bound, onProgress)
@@ -1051,8 +1061,14 @@ export default class PhemController extends Controller {
     for (const [id, keys] of Object.entries(data.keys ?? {})) document.getElementById(id)?.setAttribute("data-phem-broadcast", keys)
 
     // Before the morph, so a listener can stop its own changes of the page.
-    this.notify(el, handler, "receive")
+    notify("receive")
     const rendered = data.streams ? this.renderStreams(data.streams, handler) : afterStreams()
+    // The render of the answer failed: the event ends as an event that the server did not take.
+    const renderFailed = (e) => {
+      failed(response.status)
+      throw e
+    }
+
     return rendered.then(() => {
       this.sentBound = null
       this.resetRejected(bound)
@@ -1061,14 +1077,14 @@ export default class PhemController extends Controller {
       // After the morph, so a listener sees the new page.
       const target = this.componentRoot(handler)
       for (const { name, detail } of data.events ?? []) target.dispatchEvent(new CustomEvent(`phem:${name}`, { detail, bubbles: true }))
-      this.notify(el, handler, "done", { ok: true, status: response.status })
+      notify("done", { ok: true, status: response.status })
 
       // The morph can show a new boundary (also in the children of a boundary that loaded).
       this.loadBoundaries()
-    })
+    }, renderFailed)
   }
 
-  // Dispatches `phem:<name>` (`send` or `done`) for an event, with the `handler` id and `detail`.
+  // Dispatches `phem:<name>` (`queue`, `send`, `receive` or `done`) for an event, with the `handler` id and `detail`.
   // It starts on the element that sent the event, or on the root of its component when the morph
   // removed that element, and it bubbles.
   notify(el, handler, name, detail = {}) {

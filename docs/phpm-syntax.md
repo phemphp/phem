@@ -1169,13 +1169,18 @@ the server render does not have it.
 
 The element that sent an event gets four events, with the `handler` id in their detail:
 
-- `phem:queue` when the event goes in the queue: in the dispatch of the DOM event, or after its
-  debounce or throttle. An event that waits for another event in the queue gets it at once.
+- `phem:queue` in the dispatch of the DOM event, after the Stimulus actions of the element. Its
+  `id` is the id of the DOM event.
 - `phem:send` when the request starts.
 - `phem:receive` when the server took the event, before the morph.
 - `phem:done` when the event ends. After the morph, `ok` is `true`. When the server did not take
-  the event (an error, a network error, or a `429`), `ok` is `false`, `status` is the status (as
-  in `phem:error`), and the page does not change.
+  the event (an error, a network error, or a `429`), or the page could not render its answer, `ok`
+  is `false`, `status` is the status (as in `phem:error`), and the page does not change. A live
+  field with nothing to send ends with `ok` `true` and no `status`.
+
+`phem:send`, `phem:receive` and `phem:done` give in `ids` the ids of the DOM events that the event
+carries. An event with a debounce or a throttle, and an input event that waits in the queue, take
+the next DOM events of the element too: one request carries all of them.
 
 When the morph removed the element, the event starts on the root of its component. The events
 bubble. A redirect, and a reload for a state that is not valid, send no `phem:done`. A handler
@@ -1238,8 +1243,9 @@ action.
 
 `insert` adds a clone of the content of a `<template>` target before the template. An element of
 the clone with `data-phem-optimistic-field="<name>"` gets the value of that field of the form of
-the action, as text. The morph of the event shows the item of the server render in its place, and
-a failed event removes the clone:
+the action, as text (the values of a field with more than one value are joined with `, `). The
+morph of the event shows the item of the server render in its place, and a failed event removes
+the clone:
 
 ```html
 <div data-controller="phem-optimistic">

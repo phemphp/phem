@@ -25,23 +25,22 @@ export default class PhemOptimisticController extends Controller {
     // el => key => {kind, name, value}: the last server value of the changes of the element
     this.server = new Map()
 
-    // The event of a trigger goes in the queue: in the dispatch of the DOM event, or after its
-    // debounce. A DOM event that sends no event (a form that is locked) keeps its changes until
-    // the last event ends.
+    // The DOM event of a trigger makes an event: `phem:queue` comes in its dispatch, after the
+    // actions. A DOM event that makes no event (a submit of a form that is locked) keeps its
+    // changes until the last event ends.
     this.onQueue = (event) => {
-      const batch = this.batches.find((b) => !b.queued && b.trigger === event.target)
-      if (!batch) return
-
-      batch.queued = true
-      batch.handler = event.detail.handler
+      const batch = this.batches.findLast((b) => b.id === null && b.trigger === event.target)
+      if (batch) batch.id = event.detail.id
     }
     this.element.addEventListener("phem:queue", this.onQueue)
 
     // The answer of an event came: its morph shows the server render, so its changes stop. On the
     // document, as `phem:done`.
     this.onReceive = (event) => {
-      const batch = this.batches[this.pendingIndex(event)]
-      if (batch) batch.received = true
+      for (const batch of this.batchesOf(event)) {
+        batch.received = true
+        batch.morphed = new Set()
+      }
     }
     document.addEventListener("phem:receive", this.onReceive)
 
@@ -54,14 +53,17 @@ export default class PhemOptimisticController extends Controller {
 
       for (const entry of values.values()) entry.value = KINDS[entry.kind].read(event.target, entry.name)
       this.replay(event.target)
+      for (const batch of this.batches) batch.morphed?.add(event.target)
     }
     this.element.addEventListener("turbo:morph-element", this.onMorph)
 
-    // The server render does not have the inserted nodes: remove them before the morph, so the
-    // morph does not match a new item of the server render with them, and add them again after it.
+    // The server render does not have the inserted nodes: remove them before the render of a
+    // stream, so a morph does not match a new item of the server render with them, and add them
+    // again after it.
     this.onStream = (event) => {
-      const target = document.getElementById(event.detail.newStream.getAttribute("target"))
-      const batches = this.batches.filter((b) => b.inserted.some(({ template }) => target?.contains(template)))
+      const stream = event.detail.newStream
+      const targets = stream.hasAttribute("target") || stream.hasAttribute("targets") ? stream.targetElements : []
+      const batches = this.batches.filter((b) => b.inserted.some(({ template }) => targets.some((t) => t.contains(template))))
       if (!batches.length) return
 
       const render = event.detail.render
@@ -71,9 +73,7 @@ export default class PhemOptimisticController extends Controller {
         try {
           await render(element)
         } finally {
-          for (const { received, inserted } of batches) {
-            if (!received) for (const { template, nodes } of inserted) if (template.isConnected) template.before(...nodes)
-          }
+          for (const batch of batches) if (!batch.received) this.restore(batch)
         }
       }
     }
@@ -82,23 +82,30 @@ export default class PhemOptimisticController extends Controller {
     // On the document: when the morph removed the trigger, `phem:done` starts on the root of its
     // component.
     this.onDone = (event) => {
-      const i = this.pendingIndex(event)
-      if (i === -1) return
+      const ended = this.batchesOf(event)
+      if (!ended.length) return
 
-      remove(this.batches.splice(i, 1)[0])
+      this.batches = this.batches.filter((b) => !ended.includes(b))
 
-      // The last event ended: the DOM events that sent no event end too.
-      if (!this.batches.some((b) => b.queued)) {
-        for (const batch of this.batches) remove(batch)
-        this.batches = []
+      // The last event ended: the DOM events that made no event end too.
+      if (!this.batches.some((b) => b.id !== null)) ended.push(...this.batches.splice(0))
+
+      // Show the server values of the elements of the ended changes, with the changes of the
+      // events that wait. After a failed event this reverts its changes. An element that the
+      // morph of the event wrote shows them already.
+      const changed = new Set()
+      for (const batch of ended) {
+        remove(batch)
+        for (const { el } of batch.ops) if (!batch.morphed?.has(el)) changed.add(el)
       }
 
-      // Show the server values, with the changes of the events that wait. After a morph the
-      // values are on the page already, and after a failed event this reverts its changes.
-      for (const [el, values] of this.server) {
-        for (const { kind, name, value } of values.values()) KINDS[kind].write(el, name, value)
+      for (const el of changed) {
+        for (const { kind, name, value } of this.server.get(el)?.values() ?? []) KINDS[kind].write(el, name, value)
         this.replay(el)
-        if (!this.batches.some((b) => b.ops.some((op) => op.el === el))) this.server.delete(el)
+      }
+
+      for (const batch of ended) {
+        for (const { el } of batch.ops) if (!this.batches.some((b) => b.ops.some((op) => op.el === el))) this.server.delete(el)
       }
     }
     document.addEventListener("phem:done", this.onDone)
@@ -165,24 +172,27 @@ export default class PhemOptimisticController extends Controller {
   }
 
   // Adds a clone of the content of the `<template>` before the template, with the values of the
-  // form in its `data-phem-optimistic-field` elements. The morph of the event shows the item of the
-  // server render, and the clone goes away when the event ends.
+  // form in its `data-phem-optimistic-field` elements (the values of a field joined with ", "). The
+  // morph of the event shows the item of the server render, and the clone goes away when the event
+  // ends.
   insert(event) {
     const trigger = event.currentTarget
     const form = trigger instanceof HTMLFormElement ? trigger : (trigger.form ?? trigger.closest("form"))
     const data = form ? new FormData(form, event.submitter ?? null) : null
     const field = `data-${this.identifier}-field`
+    const name = this.param(event, "insert", "target")
+    const templates = this.elements(event, "insert")
+    if (!templates.every((template) => template instanceof HTMLTemplateElement)) throw new Error("[phem] phem-optimistic#insert needs a <template>: set data-phem-optimistic-target-param")
+
     const batch = this.batch(event)
 
-    for (const template of this.elements(event, "insert")) {
-      if (!(template instanceof HTMLTemplateElement)) throw new Error("[phem] phem-optimistic#insert needs a <template>: set data-phem-optimistic-target-param")
-
+    for (const [index, template] of templates.entries()) {
       const content = template.content.cloneNode(true)
-      for (const el of content.querySelectorAll(`[${field}]`)) el.textContent = text(data?.get(el.getAttribute(field)))
+      for (const el of content.querySelectorAll(`[${field}]`)) el.textContent = (data?.getAll(el.getAttribute(field)) ?? []).map(text).join(", ")
 
       const nodes = [...content.childNodes]
       template.before(content)
-      batch.inserted.push({ template, nodes })
+      batch.inserted.push({ name, index, template, nodes })
     }
   }
 
@@ -232,28 +242,38 @@ export default class PhemOptimisticController extends Controller {
     return targets
   }
 
-  // The changes of a DOM event: its actions add to one batch.
+  // The changes of a DOM event: its actions add to one batch. `id` is the id of the DOM event in
+  // `phem:queue`, and `morphed` the elements that the morph of its answer wrote.
   batch(event) {
     const last = this.batches.at(-1)
     if (last?.event === event) return last
 
-    const batch = { event, trigger: event.currentTarget, handler: null, queued: false, received: false, ops: [], inserted: [] }
+    const batch = { event, trigger: event.currentTarget, id: null, received: false, morphed: null, ops: [], inserted: [] }
     this.batches.push(batch)
 
     return batch
   }
 
-  // The index of the batch of the event of a `phem:receive` or `phem:done`, or -1: the oldest
-  // batch of the trigger in the queue, as the queue sends the events in order. When the morph
-  // removed the trigger, the event starts on the root of its component.
-  pendingIndex(event) {
-    return this.batches.findIndex(({ trigger, handler, queued }) => queued && (trigger === event.target || (!trigger.isConnected && handler === event.detail.handler)))
+  // The batches of the DOM events that the event of a `phem:receive` or `phem:done` carries.
+  batchesOf(event) {
+    const ids = event.detail?.ids ?? []
+
+    return this.batches.filter((b) => ids.includes(b.id))
   }
 
   // Makes the changes of the element again, for the events that did not get their answer.
   replay(el) {
     for (const { received, ops } of this.batches) {
       if (!received) for (const op of ops) if (op.el === el) op.apply(el)
+    }
+  }
+
+  // Adds the inserted nodes of a batch again, before their template. A render that replaced the
+  // template gives the new template of the same target.
+  restore({ inserted }) {
+    for (const entry of inserted) {
+      if (!entry.template.isConnected && entry.name !== null) entry.template = this.targets.findAll(entry.name)[entry.index] ?? entry.template
+      if (entry.template.isConnected) entry.template.before(...entry.nodes)
     }
   }
 

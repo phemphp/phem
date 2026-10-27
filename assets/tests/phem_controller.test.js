@@ -242,10 +242,10 @@ describe("phem:queue, phem:send, phem:receive and phem:done", () => {
     await done
 
     expect(events).toEqual([
-      ["queue", { handler: "c1.star" }, 0],
-      ["send", { handler: "c1.star" }, 0],
-      ["receive", { handler: "c1.star" }, "Star"],
-      ["done", { handler: "c1.star", ok: true, status: 200 }, "Unstar"],
+      ["queue", { handler: "c1.star", id: 1 }, 0],
+      ["send", { handler: "c1.star", ids: [1] }, 0],
+      ["receive", { handler: "c1.star", ids: [1] }, "Star"],
+      ["done", { handler: "c1.star", ids: [1], ok: true, status: 200 }, "Unstar"],
     ])
   })
 
@@ -264,6 +264,47 @@ describe("phem:queue, phem:send, phem:receive and phem:done", () => {
     await nextDone()
   })
 
+  it("gives the ids of the DOM events that a debounced event carries", async () => {
+    await mount(`<button id="star" data-phem-on-click="c1.star" data-phem-debounce="20">Star</button>`)
+    const queued = []
+    document.getElementById("star").addEventListener("phem:queue", (e) => queued.push(e.detail.id))
+    respond(`<button id="star" data-phem-on-click="c1.star" data-phem-debounce="20">Star</button>`)
+    const done = nextDone()
+    click("#star")
+    click("#star")
+
+    expect(queued).toEqual([1, 2])
+    expect((await done).detail.ids).toEqual([1, 2])
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("dispatches phem:done with no status for a live field with nothing to send", async () => {
+    await mount(`<input id="on" type="checkbox" data-phem-bind="c1.on" data-phem-live>`)
+    const done = nextDone()
+    document.getElementById("on").dispatchEvent(new Event("change", { bubbles: true }))
+
+    expect((await done).detail).toEqual({ handler: "c1.on", ids: [1], ok: true, status: null })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("dispatches phem:done with ok false when the render of the answer fails", async () => {
+    await mount(`<button id="star" data-phem-on-click="c1.star">Star</button>`, "data-phem-transition")
+    vi.stubGlobal("matchMedia", () => ({ matches: false }))
+    document.startViewTransition = ({ update }) => ({ updateCallbackDone: Promise.resolve().then(update) })
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    const fail = (e) => (e.detail.render = () => Promise.reject(new Error("render")))
+    document.addEventListener("turbo:before-stream-render", fail, { once: true })
+    respond(`<button id="star" data-phem-on-click="c1.star">Unstar</button>`)
+    const done = nextDone()
+    click("#star")
+
+    try {
+      expect((await done).detail).toEqual({ handler: "c1.star", ids: [1], ok: false, status: 200 })
+    } finally {
+      delete document.startViewTransition
+    }
+  })
+
   it("dispatches phem:done on the root of the component when the morph removed the element", async () => {
     await mount(`<ul><li id="row-1"><button data-phem-on-click="c1.remove">Delete</button></li></ul>`)
     respond(`<ul></ul>`)
@@ -272,7 +313,7 @@ describe("phem:queue, phem:send, phem:receive and phem:done", () => {
     const event = await done
 
     expect(event.target.id).toBe("c1")
-    expect(event.detail).toEqual({ handler: "c1.remove", ok: true, status: 200 })
+    expect(event.detail).toEqual({ handler: "c1.remove", ids: [1], ok: true, status: 200 })
   })
 
   it("lets a Stimulus action change the page before the event, and undo it on a failure", async () => {
@@ -296,7 +337,7 @@ describe("phem:queue, phem:send, phem:receive and phem:done", () => {
 
     expect(hiddenOnSend).toBe(true)
     expect(received).toBe(false)
-    expect(event.detail).toEqual({ handler: "c1.remove", ok: false, status: 500 })
+    expect(event.detail).toEqual({ handler: "c1.remove", ids: [1], ok: false, status: 500 })
     expect(row.hidden).toBe(false)
   })
 
@@ -307,7 +348,7 @@ describe("phem:queue, phem:send, phem:receive and phem:done", () => {
     const done = nextDone()
     click("button")
 
-    expect((await done).detail).toEqual({ handler: "c1.star", ok: false, status: 429 })
+    expect((await done).detail).toEqual({ handler: "c1.star", ids: [1], ok: false, status: 429 })
   })
 
   it("dispatches phem:done with no status for a network error", async () => {
@@ -318,7 +359,7 @@ describe("phem:queue, phem:send, phem:receive and phem:done", () => {
     const done = nextDone()
     click("button")
 
-    expect((await done).detail).toEqual({ handler: "c1.star", ok: false, status: null })
+    expect((await done).detail).toEqual({ handler: "c1.star", ids: [1], ok: false, status: null })
   })
 })
 
@@ -334,7 +375,7 @@ describe("<Suspense>", () => {
 
     expect(fetch).toHaveBeenCalledTimes(1)
     expect(sent(0)).toMatchObject({ handler: "c1.load", event: { type: "load" } })
-    expect(event.detail).toEqual({ handler: "c1.load", ok: true, status: 200 })
+    expect(event.detail).toEqual({ handler: "c1.load", ids: [], ok: true, status: 200 })
     expect(document.getElementById("report").textContent).toBe("Rows 3")
     expect(document.querySelector("phem-suspense")).toBeNull()
   })
@@ -351,7 +392,7 @@ describe("<Suspense>", () => {
     expect(fetch).toHaveBeenCalledTimes(1)
     expect(sent(0)).toMatchObject({ handler: ["c1.sales", "c1.orders", "c1.users"], event: { type: "load" } })
     expect(sent(0).event).not.toHaveProperty("loads")
-    expect(event.detail).toEqual({ handler: "c1.sales", ok: true, status: 200 })
+    expect(event.detail).toEqual({ handler: "c1.sales", ids: [], ok: true, status: 200 })
     expect(document.querySelectorAll("phem-suspense")).toHaveLength(0)
 
     // The loading state ends after phem:done, for each boundary.
@@ -416,7 +457,7 @@ describe("<Suspense>", () => {
     fetch.mockResolvedValueOnce(new Response("Error", { status: 500 }))
     const failed = nextDone()
     await mount(`<phem-suspense data-phem-load="c1.load"><p>Loading…</p></phem-suspense><button data-phem-on-click="c1.star">Star</button>`)
-    expect((await failed).detail).toEqual({ handler: "c1.load", ok: false, status: 500 })
+    expect((await failed).detail).toEqual({ handler: "c1.load", ids: [], ok: false, status: 500 })
 
     respond(`<phem-suspense data-phem-load="c1.load"><p>Loading…</p></phem-suspense><button data-phem-on-click="c1.star">Unstar</button>`)
     const done = nextDone()

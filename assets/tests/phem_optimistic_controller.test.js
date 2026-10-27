@@ -4,20 +4,31 @@ import PhemController from "../dist/phem_controller.js"
 import PhemOptimisticController from "../dist/phem_optimistic_controller.js"
 import { click, mount, nextDone, respond } from "./support.js"
 
+let application
+// The listeners of a test on the document end with the test.
+let listeners
+
 beforeAll(() => {
-  const application = Application.start()
+  application = Application.start()
   application.register("phem", PhemController)
   application.register("phem-optimistic", PhemOptimisticController)
 })
 
 beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn())
+  listeners = new AbortController()
 })
 
 afterEach(() => {
+  listeners.abort()
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
   document.body.innerHTML = ""
 })
+
+function listen(type, listener) {
+  document.addEventListener(type, listener, { signal: listeners.signal })
+}
 
 // A row with a "Delete" button that hides it at once, and a "Star" button with no action.
 const ROW = `<li id="row-1" data-controller="phem-optimistic">
@@ -145,7 +156,7 @@ describe("phem-optimistic", () => {
     respond(like("liked"))
     const done = nextDone()
     let morphed = null
-    document.addEventListener("turbo:morph-element", (e) => {
+    listen("turbo:morph-element", (e) => {
       if (e.target.id === "like") morphed = e.target.classList.contains("liked")
     })
     click("#like")
@@ -265,7 +276,7 @@ describe("phem-optimistic", () => {
     respond(like())
     const first = nextDone()
     let morphed = []
-    document.addEventListener("turbo:morph-element", (e) => {
+    listen("turbo:morph-element", (e) => {
       if (e.target.id === "like") morphed.push(e.target.classList.contains("liked"))
     })
     click("#like")
@@ -298,6 +309,76 @@ describe("phem-optimistic", () => {
     expect(count.textContent).toBe("13 likes")
   })
 
+  it("keeps the change of a debounced action until its own event ends", async () => {
+    const markup = (classes = "") => `<p id="other" data-phem-on-click="c1.other">Other</p>
+      <button id="like" class="${classes}" data-controller="phem-optimistic" data-phem-optimistic-class-value="liked"
+        data-action="phem-optimistic#addClass" data-phem-on-click="c1.like" data-phem-debounce="30">Like</button>`
+    await mount(markup())
+    respond(markup())
+    respond(markup("liked"))
+    const first = nextDone()
+    click("#other")
+    click("#like")
+    const button = document.getElementById("like")
+    await first
+
+    expect(button.classList.contains("liked")).toBe(true)
+    await nextDone()
+    expect(button.classList.contains("liked")).toBe(true)
+  })
+
+  it("ends the changes of all the DOM events that one debounced event carries", async () => {
+    const counter = (n) => `<div data-controller="phem-optimistic"><span id="count" data-phem-optimistic-target="count">${n} likes</span>
+      <button id="up" data-phem-on-click="c1.up" data-phem-debounce="20" data-action="phem-optimistic#increment"
+        data-phem-optimistic-target-param="count"></button></div>`
+    await mount(counter(12))
+    respond(counter(14))
+    const done = nextDone()
+    let morphed = null
+    listen("turbo:morph-element", (e) => {
+      if (e.target.id === "count") morphed = e.target.textContent
+    })
+    click("#up")
+    click("#up")
+
+    expect(document.getElementById("count").textContent).toBe("14 likes")
+    await done
+    expect(morphed).toBe("14 likes")
+    expect(document.getElementById("count").textContent).toBe("14 likes")
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not write an element that the morph of the event wrote when the event ends", async () => {
+    const counter = (n) => `<div data-controller="phem-optimistic"><span id="count" data-phem-optimistic-target="count">${n} likes</span>
+      <button id="up" data-phem-on-click="c1.up" data-action="phem-optimistic#increment" data-phem-optimistic-target-param="count"></button></div>`
+    await mount(counter(12))
+    respond(counter(13))
+    respond(counter(14))
+    const first = nextDone()
+    let node = null
+    listen("turbo:morph-element", (e) => {
+      if (e.target.id === "count") node = e.target.firstChild
+    })
+    click("#up")
+    click("#up")
+    await first
+
+    expect(document.getElementById("count").textContent).toBe("14 likes")
+    expect(document.getElementById("count").firstChild).toBe(node)
+    await nextDone()
+  })
+
+  it("makes no batch for an insert that has no <template>", async () => {
+    await mount(`<div id="box" data-controller="phem-optimistic"><p data-phem-optimistic-target="list"></p>
+      <button id="go" data-action="phem-optimistic#insert" data-phem-optimistic-target-param="list">Go</button></div>`)
+    const error = vi.spyOn(console, "error").mockImplementation(() => {})
+    click("#go")
+    const controller = application.getControllerForElementAndIdentifier(document.getElementById("box"), "phem-optimistic")
+
+    expect(error.mock.calls.flat().map(String).join(" ")).toContain("needs a <template>")
+    expect(controller.batches).toEqual([])
+  })
+
   describe("insert", () => {
     const chat = (items) => `<div id="chat" data-controller="phem-optimistic">
         <ul id="list">${items.map((m, i) => `<li key="${i}">${m}</li>`).join("")}<template data-phem-optimistic-target="message"><li class="pending"><span data-phem-optimistic-field="body"></span></li></template></ul>
@@ -313,7 +394,7 @@ describe("phem-optimistic", () => {
       respond(chat(["One", "Hi"]))
       const done = nextDone()
       let morphed = null
-      document.addEventListener("turbo:morph-element", (e) => {
+      listen("turbo:morph-element", (e) => {
         if (e.target.id === "list") morphed = items()
       })
       document.getElementById("send").click()
@@ -339,6 +420,49 @@ describe("phem-optimistic", () => {
       expect(items()).toEqual([":Zero", ":One", "pending:Hi"])
       await nextDone()
       expect(items()).toEqual([":Zero", ":One"])
+    })
+
+    it("removes the item before a stream with a `targets` selector", async () => {
+      await mount(chat(["One"]))
+      respond("", {}, { streams: `<turbo-stream action="update" method="morph" targets="#c1"><template>${chat(["One", "Hi"])}</template></turbo-stream>` })
+      const done = nextDone()
+      let morphed = null
+      listen("turbo:morph-element", (e) => {
+        if (e.target.id === "list") morphed = items()
+      })
+      document.getElementById("send").click()
+      await done
+
+      expect(morphed).toEqual([":One", ":Hi"])
+      expect(items()).toEqual([":One", ":Hi"])
+    })
+
+    it("adds the item again before the new template of a stream that replaced the list", async () => {
+      await mount(chat(["One"]))
+      const list = (items) => `${items.map((m, i) => `<li key="${i}">${m}</li>`).join("")}<template data-phem-optimistic-target="message"><li class="pending"><span data-phem-optimistic-field="body"></span></li></template>`
+      respond("", {}, { streams: `<turbo-stream action="update" target="list"><template>${list(["Zero", "One"])}</template></turbo-stream>` })
+      respond(chat(["Zero", "One", "Hi"]))
+      const first = nextDone()
+      click("#other")
+      document.getElementById("send").click()
+      await first
+
+      expect(items()).toEqual([":Zero", ":One", "pending:Hi"])
+      await nextDone()
+      expect(items()).toEqual([":Zero", ":One", ":Hi"])
+    })
+
+    it("joins the values of a field with more than one value", async () => {
+      await mount(`<div data-controller="phem-optimistic"><ul id="list"><template data-phem-optimistic-target="tag"><li data-phem-optimistic-field="tags"></li></template></ul>
+        <form id="form" data-phem-on-submit="c1.tag" data-action="phem-optimistic#insert" data-phem-optimistic-target-param="tag">
+          <input type="checkbox" name="tags" value="a" checked><input type="checkbox" name="tags" value="b" checked><button id="send">Send</button>
+        </form></div>`)
+      fail()
+      const done = nextDone()
+      document.getElementById("send").click()
+
+      expect(document.querySelector("#list li").textContent).toBe("a, b")
+      await done
     })
 
     it("removes the item of a submit that the locked form did not send when the event ends", async () => {
