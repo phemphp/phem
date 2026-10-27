@@ -1345,6 +1345,57 @@ The controller is not enabled by default. Enable it in `assets/controllers.json`
 }
 ```
 
+### Tabs
+
+The `phem-tabs` controller shows the panel of the selected tab on the client, with no event. The
+selected tab stays after the morph of an event:
+
+```html
+<div data-controller="phem-tabs">
+    <div data-phem-tabs-target="list" aria-label="Settings">
+        <button id="tab-profile" data-phem-tabs-target="tab">Profile</button>
+        <button id="tab-security" data-phem-tabs-target="tab">Security</button>
+    </div>
+    <div id="profile" data-phem-tabs-target="panel">
+        <input phem:bind={{ name }} />
+    </div>
+    <div id="security" data-phem-tabs-target="panel" hidden>
+        <button onClick={{ resetPassword }}>Reset the password</button>
+    </div>
+</div>
+```
+
+The tab at a position shows the panel at the same position. A click on a tab selects it. On a tab,
+the arrow keys select the next or the previous tab and move the focus to it, and Home and End select
+the first or the last tab. The arrow keys skip a disabled tab (`disabled` or
+`aria-disabled="true"`). For a vertical list, set `aria-orientation="vertical"` on the `list`
+target: the up and down arrow keys then replace the left and right arrow keys.
+
+The controller sets the ARIA attributes:
+
+- the `list` target gets `role="tablist"`;
+- a tab gets `role="tab"`, `aria-selected`, `tabindex` (`0` for the selected tab, `-1` for the
+  other tabs) and `aria-controls`;
+- a panel gets `role="tabpanel"`, `hidden`, `tabindex="0"` and `aria-labelledby`.
+
+`aria-controls` and `aria-labelledby` need an `id` on the panel and on the tab. When the server
+render gives `aria-controls`, `aria-labelledby` or the `tabindex` of a panel, the controller keeps
+it. The morph removes the attributes that the server render does not have: the controller sets
+them again after the morph. The other attributes of the elements still change.
+
+The `index` value (`data-phem-tabs-index-value="1"`) of the server render selects a tab at the
+start. The first tab has the index `0`. The morph does not change the `index` value: the state
+belongs to the client. When the server render gives a new `index` value, the state takes it. When
+the server render has less tabs, the last tab is selected.
+
+The controller is not enabled by default. Enable it in `assets/controllers.json`:
+
+```json
+"@phem/phem": {
+    "tabs": { "enabled": true, "fetch": "lazy" }
+}
+```
+
 ## 7. State: class components
 
 A component with state is a class with the `#[Component]` attribute and a `render()` method.

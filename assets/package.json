@@ -35,6 +35,12 @@
                 "main": "dist/phem_dialog_controller.js",
                 "fetch": "lazy",
                 "enabled": false
+            },
+            "tabs": {
+                "name": "phem-tabs",
+                "main": "dist/phem_tabs_controller.js",
+                "fetch": "lazy",
+                "enabled": false
             }
         },
         "importmap": {
