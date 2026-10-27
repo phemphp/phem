@@ -1459,6 +1459,60 @@ The controller is not enabled by default. Enable it in `assets/controllers.json`
 }
 ```
 
+### Clipboard
+
+The `phem-clipboard` controller copies a text to the clipboard on the client, with no event, and
+shows a short feedback. The feedback stays correct after the morph of an event:
+
+```html
+<div data-controller="phem-clipboard" data-phem-clipboard-copied-class="copied">
+    <code data-phem-clipboard-target="source">{{ token }}</code>
+    <button data-action="phem-clipboard#copy">Copy</button>
+    <span data-phem-clipboard-target="feedback"></span>
+</div>
+```
+
+The `copy` action copies the text with `navigator.clipboard.writeText()`. The browser lets a page
+copy only in a secure context (HTTPS or `localhost`), and only after a user action.
+
+- The `text` value (`data-phem-clipboard-text-value="…"`) gives the text to copy.
+- When the `text` value is not set, the controller copies the first `source` target: the value of
+  an `<input>`, a `<textarea>` or a `<select>`, or the text of another element. The controller
+  removes the whitespace at the start and at the end of the text of an element (the indentation of
+  the template), not of a value.
+
+After a copy, for the `duration` value (`data-phem-clipboard-duration-value`, in milliseconds,
+`2000` by default):
+
+- the `feedback` targets contain the `label` value (`data-phem-clipboard-label-value`, `Copied` by
+  default);
+- the controller element has the `copied` class (`data-phem-clipboard-copied-class`), when it is
+  set.
+
+Else the feedback targets are empty: the controller removes their content. A second copy starts
+the duration again. A copy that fails, or a disconnect of the controller, removes the feedback.
+
+A feedback target gets `role="status"`. It is a live region: it stays in the page, also when it is
+empty, so a screen reader reads the label when the controller puts it in. Do not hide a feedback
+target with `hidden` or `display: none`: a screen reader does not read a hidden live region. When
+the server render gives a `role`, the controller keeps it.
+
+The feedback belongs to the client. Before the morph of an event, the controller puts the label,
+the `role` and the `copied` class in the server render, so the morph does not change them, and the
+screen reader does not read the label again. The other attributes of the elements still change.
+
+The controller dispatches `phem-clipboard:copied`, with the `text` in the detail. When the browser
+does not copy the text, it dispatches `phem-clipboard:error`, with the `error` in the detail, and
+it shows no feedback.
+
+The controller is not enabled by default. Enable it in `assets/controllers.json`:
+
+```json
+"@phem/phem": {
+    "clipboard": { "enabled": true, "fetch": "lazy" }
+}
+```
+
 ## 7. State: class components
 
 A component with state is a class with the `#[Component]` attribute and a `render()` method.

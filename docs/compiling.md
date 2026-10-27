@@ -174,6 +174,8 @@ syntax guide):
   ARIA roles and the keyboard of a tab list, and keeps the tab after the morph of an event.
 - `phem-toast` (`phemjs/phem_toast_controller.js`) shows the `phem:toast`, `phem:error` and
   `phem:rate-limited` browser events as toasts.
+- `phem-clipboard` (`phemjs/phem_clipboard_controller.js`) copies a text to the clipboard, and
+  keeps its "copied" feedback after the morph of an event.
 
 Enable a controller in `assets/controllers.json` with its key in the `@phem/phem` entry, for
 example `"toggle": { "enabled": true, "fetch": "lazy" }`.
