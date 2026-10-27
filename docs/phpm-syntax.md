@@ -1306,6 +1306,45 @@ The controller is not enabled by default. Enable it in `assets/controllers.json`
 }
 ```
 
+### Dialog
+
+The `phem-dialog` controller opens a native `<dialog>` as a modal (`showModal()`), with no event.
+It stays open after the morph of an event:
+
+```html
+<div data-controller="phem-dialog">
+    <button data-action="phem-dialog#open">Edit</button>
+    <dialog data-phem-dialog-target="dialog" aria-labelledby="edit-title">
+        <h2 id="edit-title">Edit the title</h2>
+        <input phem:bind={{ title }} />
+        <button onClick={{ save }} data-action="phem-dialog#close">Save</button>
+        <button data-action="phem-dialog#close">Cancel</button>
+    </dialog>
+</div>
+```
+
+The actions are `open` and `close`. The `open` value (`data-phem-dialog-open-value="true"`) of the
+server render opens it at the start. The morph does not change the `open` attribute of the dialog
+and the `open` value: the state belongs to the client. When the server render gives a new `open`
+value, the state takes it. For example, `data-phem-dialog-open-value={{ editing }}` with an
+`editing` state that the handlers change. The browser moves the focus into the dialog when it
+opens, and back to the button when it closes.
+
+When the morph moves the dialog, the browser takes it out of the top layer. The controller shows
+it as a modal again.
+
+Escape and a click on the backdrop close it. A click on the padding of the dialog does not close
+it. A dialog that closes in another way (a `<form method="dialog">`) also sets the state. For a
+dialog that must stay open, set `data-phem-dialog-dismiss-value="false"`.
+
+The controller is not enabled by default. Enable it in `assets/controllers.json`:
+
+```json
+"@phem/phem": {
+    "dialog": { "enabled": true, "fetch": "lazy" }
+}
+```
+
 ## 7. State: class components
 
 A component with state is a class with the `#[Component]` attribute and a `render()` method.

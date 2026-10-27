@@ -168,6 +168,8 @@ syntax guide):
   answers an event.
 - `phem-toggle` (`phemjs/phem_toggle_controller.js`) shows and hides a dropdown, a menu or a
   section, and keeps it open after the morph of an event.
+- `phem-dialog` (`phemjs/phem_dialog_controller.js`) opens a native `<dialog>` as a modal, and
+  keeps it open after the morph of an event.
 
 Enable a controller in `assets/controllers.json` with its key in the `@phem/phem` entry, for
 example `"toggle": { "enabled": true, "fetch": "lazy" }`.

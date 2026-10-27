@@ -102,9 +102,8 @@ and `data-phem-ignore` by hand.
 - **Best peer:** LV `core_components` + `JS` commands, stimulus-components, Symfony UX packages.
 - **Proposal:** a small set of Phem controllers. Each controller keeps its DOM changes after the
   morph of an event: with its own `data-phem-client` attributes, or by applying the changes again
-  on `turbo:morph-element` (as `phem-optimistic` does). `phem-optimistic` and `phem-toggle`
-  are done.
-  - `phem-dialog`: the native `<dialog>` with `showModal()`, open across morphs.
+  on `turbo:morph-element` (as `phem-optimistic` does). `phem-optimistic`, `phem-toggle` and
+  `phem-dialog` are done.
   - `phem-tabs`: tabs on the client, with ARIA roles and keyboard navigation.
   - `phem-toast`: shows `phem:toast`, `phem:error` and `phem:rate-limited`.
   - `phem-clipboard`, `phem-autofocus` (also after a morph), `phem-confirm` before a server

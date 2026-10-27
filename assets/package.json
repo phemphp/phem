@@ -29,6 +29,12 @@
                 "main": "dist/phem_toggle_controller.js",
                 "fetch": "lazy",
                 "enabled": false
+            },
+            "dialog": {
+                "name": "phem-dialog",
+                "main": "dist/phem_dialog_controller.js",
+                "fetch": "lazy",
+                "enabled": false
             }
         },
         "importmap": {
