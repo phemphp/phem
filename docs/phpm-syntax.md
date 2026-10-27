@@ -1396,6 +1396,51 @@ The controller is not enabled by default. Enable it in `assets/controllers.json`
 }
 ```
 
+### Autofocus
+
+The `phem-autofocus` controller gives the focus to its element when it connects. The native
+`autofocus` attribute works only when the page loads. This controller also works when the morph of
+an event adds the element, for example the field of a form that an "Edit" button shows:
+
+```html
+<button onClick={{ edit }}>Edit</button>
+{% if editing %}
+    <form onSubmit={{ save }}>
+        <input name="title" data-controller="phem-autofocus" />
+    </form>
+{% endif %}
+```
+
+To give the focus to an element inside the controller element, set the `focus` target on it. When
+there are more `focus` targets, the first one gets the focus:
+
+```html
+<div data-controller="phem-autofocus">
+    <label for="title">Title</label>
+    <input id="title" name="title" data-phem-autofocus-target="focus" />
+</div>
+```
+
+The element gets the focus when the page loads, and in the morph of an event that the user started:
+when the morph adds or replaces the element (or adds a `focus` target). A push or a refresh of the
+server does not move the focus. When the morph keeps or moves the element, the element does not get
+the focus again, so each event does not move the focus. When more elements connect at the same
+time, the first one in the page gets the focus.
+
+The controller does not take the focus from a field that the user edits: a text `input` (also a
+number, a date, a range or a color), a `textarea`, a `select` or a `contenteditable` element. Thus a
+field that sends events as the user types (`phem:bind`) keeps the focus. A read-only or disabled
+field does not count. A field of the form that the user submitted does not count either: the user
+left it, so the focus goes to the new element after the submit.
+
+The controller is not enabled by default. Enable it in `assets/controllers.json`:
+
+```json
+"@phem/phem": {
+    "autofocus": { "enabled": true, "fetch": "lazy" }
+}
+```
+
 ## 7. State: class components
 
 A component with state is a class with the `#[Component]` attribute and a `render()` method.

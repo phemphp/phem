@@ -41,6 +41,12 @@
                 "main": "dist/phem_tabs_controller.js",
                 "fetch": "lazy",
                 "enabled": false
+            },
+            "autofocus": {
+                "name": "phem-autofocus",
+                "main": "dist/phem_autofocus_controller.js",
+                "fetch": "lazy",
+                "enabled": false
             }
         },
         "importmap": {
