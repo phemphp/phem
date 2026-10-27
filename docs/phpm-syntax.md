@@ -1167,22 +1167,29 @@ the server render does not have it.
 <div data-controller="chart" data-phem-ignore></div>
 ```
 
-The element that sent an event gets two events, with the `handler` id in their detail:
+The element that sent an event gets four events, with the `handler` id in their detail:
 
+- `phem:queue` when the event goes in the queue: in the dispatch of the DOM event, or after its
+  debounce or throttle. An event that waits for another event in the queue gets it at once.
 - `phem:send` when the request starts.
+- `phem:receive` when the server took the event, before the morph.
 - `phem:done` when the event ends. After the morph, `ok` is `true`. When the server did not take
   the event (an error, a network error, or a `429`), `ok` is `false`, `status` is the status (as
   in `phem:error`), and the page does not change.
 
-When the morph removed the element, the event starts on the root of its component. Both events
+When the morph removed the element, the event starts on the root of its component. The events
 bubble. A redirect, and a reload for a state that is not valid, send no `phem:done`. A handler
 cannot send browser events with these names (or `error`, `rate-limited` and `upload-progress`).
 
+### Optimistic UI
+
 A Stimulus action on the element runs before the event goes, so it can change the page at once
-(optimistic UI). The `phem-optimistic` controller does this. Its actions change the controller
-element at once: `hide`, `show`, `addClass`, `removeClass` and `toggleClass`. The change stays
-while the event runs, also after the morph of another event. When the event ends, the element
-shows the server render: the morph confirms the change, and a failed event reverts it.
+(optimistic UI). The `phem-optimistic` controller does this. The change stays until the server
+answers the event, also after the morph of another event. Then the page shows the server render:
+the morph confirms the change, and a failed event reverts it. The changes of the events that wait
+in the queue stay: two fast clicks on a "Like" button with `toggleClass` show the class of the
+second click while the first event runs. A DOM event that sends no event (a second submit of a
+form that is locked) keeps its change until the last event ends.
 
 This row hides at once on a click on "Delete". If the server deleted it, the morph removed it. If
 the server still renders it (the handler did not delete it, or the event failed), it shows again.
@@ -1194,18 +1201,61 @@ the server still renders it (the handler did not delete it, or the event failed)
 </li>
 ```
 
-A class action takes the class from `data-phem-optimistic-class-param` on the element of the
-action, else from `data-phem-optimistic-class-value`. At the end, the server render of the class
-decides:
+Put the action on the element with the event handler: the controller follows the events of the
+elements that ran an action. The actions and their params:
+
+| Action | Change | Params |
+|---|---|---|
+| `hide`, `show` | the `hidden` attribute | |
+| `addClass`, `removeClass`, `toggleClass` | a class | `class` (else the `class` value of the controller) |
+| `setAttribute` | an attribute | `attribute`, `value` (`""` by default) |
+| `removeAttribute`, `toggleAttribute` | an attribute | `attribute` |
+| `setText` | the text | `text` |
+| `increment`, `decrement` | the first integer in the text | `by` (`1` by default) |
+| `insert` | a clone of a `<template>` | |
+
+A param is an attribute of the element of the action, for example
+`data-phem-optimistic-class-param="liked"`. The value is a string, as it is in the attribute.
+
+An action changes the controller element. With a `target` param, it changes all the targets with
+that name (`data-phem-optimistic-target="count"`) in place of the controller element. A param
+applies to all the actions of the element. A param with the name of the action in it applies to
+that action only (`data-phem-optimistic-increment-target-param`). Here the click adds the class to
+the button and adds 1 to the count:
 
 ```html
 <button onClick={{ like }} class={{ liked ? 'liked' : '' }} data-controller="phem-optimistic"
-        data-action="phem-optimistic#toggleClass" data-phem-optimistic-class-value="liked">♥</button>
+        data-action="phem-optimistic#toggleClass phem-optimistic#increment"
+        data-phem-optimistic-class-param="liked" data-phem-optimistic-increment-target-param="count">
+    ♥ <span data-phem-optimistic-target="count">{{ likes }} likes</span>
+</button>
 ```
 
-Put the action on the element with the event handler: the controller follows the events of the
-elements that ran an action. The controller is not enabled by default. Enable it in
-`assets/controllers.json`:
+A morph of another event shows the new server render, and the changes apply to it again: when
+the server render gives `20 likes`, the count shows `21 likes`. `setText` and the number actions
+replace the content of the element: do not use them on an element that contains the element of the
+action.
+
+`insert` adds a clone of the content of a `<template>` target before the template. An element of
+the clone with `data-phem-optimistic-field="<name>"` gets the value of that field of the form of
+the action, as text. The morph of the event shows the item of the server render in its place, and
+a failed event removes the clone:
+
+```html
+<div data-controller="phem-optimistic">
+    <ul>
+        {% for message in messages %}<li key={{ message.id }}>{{ message.body }}</li>{% endfor %}
+        <template data-phem-optimistic-target="message">
+            <li class="pending"><span data-phem-optimistic-field="body"></span></li>
+        </template>
+    </ul>
+    <form onSubmit={{ send }} data-action="phem-optimistic#insert" data-phem-optimistic-target-param="message">
+        <input name="body">
+    </form>
+</div>
+```
+
+The controller is not enabled by default. Enable it in `assets/controllers.json`:
 
 ```json
 "@phem/phem": {

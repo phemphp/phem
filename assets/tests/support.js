@@ -3,7 +3,7 @@
 // A page with one component (`c1`) and the markup of its server render.
 export async function mount(markup, rootAttributes = "") {
   document.body.innerHTML = `
-    <div id="phem-root" data-controller="phem" data-action="click->phem#dispatch"
+    <div id="phem-root" data-controller="phem" data-action="click->phem#dispatch submit->phem#dispatch"
          data-phem-state-value="{}" data-phem-signature-value="s1" data-phem-loading-delay-value="0" ${rootAttributes}>
       <phem-c id="c1">${markup}</phem-c>
     </div>`

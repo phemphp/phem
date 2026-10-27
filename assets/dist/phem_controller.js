@@ -692,6 +692,9 @@ export default class PhemController extends Controller {
       this.waiting.set(el, waiting)
     }
 
+    // In the dispatch of the DOM event when the event has no wait, so a Stimulus action of the
+    // element knows that the event goes.
+    this.notify(el, handler, "queue")
     const upload = payload.files ? { progress: 0 } : null
     const done = this.startLoading(el, handler, upload)
     // After formFields(): a disabled control is not in the form data.
@@ -1046,6 +1049,9 @@ export default class PhemController extends Controller {
     // A morph changes the content of a component, not the attributes of its `<phem-c>`: the keys of
     // a component with #[Broadcast] (the values of its key props can change).
     for (const [id, keys] of Object.entries(data.keys ?? {})) document.getElementById(id)?.setAttribute("data-phem-broadcast", keys)
+
+    // Before the morph, so a listener can stop its own changes of the page.
+    this.notify(el, handler, "receive")
     const rendered = data.streams ? this.renderStreams(data.streams, handler) : afterStreams()
     return rendered.then(() => {
       this.sentBound = null

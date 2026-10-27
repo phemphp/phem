@@ -36,7 +36,7 @@ namespace Phem;
 final class BrowserEventDispatcher
 {
     /** The names of the events that the browser dispatches itself (`phem:done`, ...). */
-    private const RESERVED = ['send', 'done', 'error', 'rate-limited', 'upload-progress'];
+    private const RESERVED = ['queue', 'send', 'receive', 'done', 'error', 'rate-limited', 'upload-progress'];
 
     /** @var list<array{name: string, detail: mixed}> */
     private array $dispatched = [];

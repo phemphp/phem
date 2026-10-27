@@ -227,12 +227,14 @@ describe("the morph of a list", () => {
   })
 })
 
-describe("phem:send and phem:done", () => {
-  it("dispatches them on the element that sent the event, and phem:done after the morph", async () => {
+describe("phem:queue, phem:send, phem:receive and phem:done", () => {
+  it("dispatches them on the element that sent the event, phem:receive before the morph and phem:done after it", async () => {
     await mount(`<button id="star" data-phem-on-click="c1.star">Star</button>`)
     const events = []
     const button = document.getElementById("star")
+    button.addEventListener("phem:queue", (e) => events.push(["queue", e.detail, fetch.mock.calls.length]))
     button.addEventListener("phem:send", (e) => events.push(["send", e.detail, fetch.mock.calls.length]))
+    button.addEventListener("phem:receive", (e) => events.push(["receive", e.detail, e.target.textContent]))
     button.addEventListener("phem:done", (e) => events.push(["done", e.detail, e.target.textContent]))
     respond(`<button id="star" data-phem-on-click="c1.star">Unstar</button>`)
     const done = nextDone()
@@ -240,9 +242,26 @@ describe("phem:send and phem:done", () => {
     await done
 
     expect(events).toEqual([
+      ["queue", { handler: "c1.star" }, 0],
       ["send", { handler: "c1.star" }, 0],
+      ["receive", { handler: "c1.star" }, "Star"],
       ["done", { handler: "c1.star", ok: true, status: 200 }, "Unstar"],
     ])
+  })
+
+  it("dispatches phem:queue in the dispatch of the DOM event, also when the event waits for another event", async () => {
+    await mount(`<button id="star" data-phem-on-click="c1.star">Star</button>`)
+    const queued = []
+    document.getElementById("star").addEventListener("phem:queue", () => queued.push(fetch.mock.calls.length))
+    respond(`<button id="star" data-phem-on-click="c1.star">Star</button>`)
+    respond(`<button id="star" data-phem-on-click="c1.star">Star</button>`)
+    const first = nextDone()
+    click("#star")
+    click("#star")
+
+    expect(queued).toEqual([0, 0])
+    await first
+    await nextDone()
   })
 
   it("dispatches phem:done on the root of the component when the morph removed the element", async () => {
@@ -266,6 +285,8 @@ describe("phem:send and phem:done", () => {
     button.addEventListener("phem:done", () => (row.hidden = false))
     let hiddenOnSend = null
     button.addEventListener("phem:send", () => (hiddenOnSend = row.hidden))
+    let received = false
+    button.addEventListener("phem:receive", () => (received = true))
     vi.spyOn(console, "error").mockImplementation(() => {})
     window.addEventListener("phem:error", (e) => e.preventDefault(), { once: true })
     fetch.mockResolvedValueOnce(new Response("Error", { status: 500 }))
@@ -274,6 +295,7 @@ describe("phem:send and phem:done", () => {
     const event = await done
 
     expect(hiddenOnSend).toBe(true)
+    expect(received).toBe(false)
     expect(event.detail).toEqual({ handler: "c1.remove", ok: false, status: 500 })
     expect(row.hidden).toBe(false)
   })
