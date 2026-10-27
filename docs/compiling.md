@@ -161,10 +161,16 @@ Without StimulusBundle, add `'phemjs' => ['path' => 'phemjs/phem_controller.js']
 to `importmap.php`, register the controller (`application.register('phem', PhemController)`),
 and import `phemjs/phem.css`.
 
-The package also has optional controllers, which are not enabled by default:
-`phem-optimistic` (`phemjs/phem_optimistic_controller.js`) changes the page before the server
-answers an event (see the `.phpm` syntax guide). Enable it in `assets/controllers.json` with
-`"optimistic": { "enabled": true, "fetch": "lazy" }` in the `@phem/phem` entry.
+The package also has optional controllers, which are not enabled by default (see the `.phpm`
+syntax guide):
+
+- `phem-optimistic` (`phemjs/phem_optimistic_controller.js`) changes the page before the server
+  answers an event.
+- `phem-toggle` (`phemjs/phem_toggle_controller.js`) shows and hides a dropdown, a menu or a
+  section, and keeps it open after the morph of an event.
+
+Enable a controller in `assets/controllers.json` with its key in the `@phem/phem` entry, for
+example `"toggle": { "enabled": true, "fetch": "lazy" }`.
 
 ## 1. Get the tools
 

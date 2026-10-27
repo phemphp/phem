@@ -23,6 +23,12 @@
                 "main": "dist/phem_optimistic_controller.js",
                 "fetch": "lazy",
                 "enabled": false
+            },
+            "toggle": {
+                "name": "phem-toggle",
+                "main": "dist/phem_toggle_controller.js",
+                "fetch": "lazy",
+                "enabled": false
             }
         },
         "importmap": {

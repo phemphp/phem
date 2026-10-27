@@ -1154,7 +1154,8 @@ them, also when the server render changes them. The other attributes of the elem
 </span>
 ```
 
-A click on "Star" sends an event, and the menu stays open after the morph. The server render gives
+A click on "Star" sends an event, and the menu stays open after the morph. (The `phem-toggle`
+controller does this job for a dropdown: see "Show and hide" below.) The server render gives
 the first value of the attribute, and the list. The morph matches the items of a list by their
 `key`, so the attributes stay on the correct item when an item before it goes away. Two lists with
 the same keys in one component match by position: give each list an `id`.
@@ -1266,6 +1267,42 @@ The controller is not enabled by default. Enable it in `assets/controllers.json`
 ```json
 "@phem/phem": {
     "optimistic": { "enabled": true, "fetch": "lazy" }
+}
+```
+
+### Show and hide
+
+The `phem-toggle` controller shows and hides a dropdown, a menu or a section on the client, with
+no event. It stays open after the morph of an event:
+
+```html
+<span data-controller="phem-toggle">
+    <button data-action="phem-toggle#toggle" data-phem-toggle-target="button" aria-controls="actions">⋯</button>
+    <span id="actions" data-phem-toggle-target="content" hidden>
+        <button onClick={{ star }}>Star</button>
+        <button onClick={{ archive }} data-action="phem-toggle#close">Archive</button>
+    </span>
+</span>
+```
+
+The actions are `toggle`, `open` and `close`. The `content` targets get the `hidden` attribute,
+and the `button` targets get `aria-expanded`. The `open` value
+(`data-phem-toggle-open-value="true"`) of the server render opens it at the start. The morph does
+not change these three attributes: the state belongs to the client. The other attributes of the
+elements still change. When the server render gives a new `open` value, the state takes it. To
+close the menu after an item, add `phem-toggle#close` to the item. In a list, give each item a
+`key`, so the state stays on the correct item when an item before it goes away.
+
+Escape and a click outside the controller element close it. An Escape that another element
+handled (`preventDefault()`) does not close it. Escape gives the focus back to the first button
+outside the content when the focus was in the content. For a section that must stay open, set
+`data-phem-toggle-dismiss-value="false"`.
+
+The controller is not enabled by default. Enable it in `assets/controllers.json`:
+
+```json
+"@phem/phem": {
+    "toggle": { "enabled": true, "fetch": "lazy" }
 }
 ```
 
