@@ -176,6 +176,8 @@ syntax guide):
   `phem:rate-limited` browser events as toasts.
 - `phem-clipboard` (`phemjs/phem_clipboard_controller.js`) copies a text to the clipboard, and
   keeps its "copied" feedback after the morph of an event.
+- `phem-autofocus` (`phemjs/phem_autofocus_controller.js`) gives the focus to an element when it
+  connects, also when the morph of an event adds it.
 
 Enable a controller in `assets/controllers.json` with its key in the `@phem/phem` entry, for
 example `"toggle": { "enabled": true, "fetch": "lazy" }`.
