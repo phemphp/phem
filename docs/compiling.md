@@ -172,6 +172,8 @@ syntax guide):
   keeps it open after the morph of an event.
 - `phem-tabs` (`phemjs/phem_tabs_controller.js`) shows the panel of the selected tab, with the
   ARIA roles and the keyboard of a tab list, and keeps the tab after the morph of an event.
+- `phem-confirm` (`phemjs/phem_confirm_controller.js`) asks the user to confirm before an event
+  of a handler goes to the server.
 
 Enable a controller in `assets/controllers.json` with its key in the `@phem/phem` entry, for
 example `"toggle": { "enabled": true, "fetch": "lazy" }`.

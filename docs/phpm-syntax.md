@@ -1168,8 +1168,12 @@ the server render does not have it.
 <div data-controller="chart" data-phem-ignore></div>
 ```
 
-The element that sent an event gets four events, with the `handler` id in their detail:
+The element that sent an event gets five events, with the `handler` id in their detail:
 
+- `phem:before-queue` in the dispatch of the DOM event, before `phem:queue`. Its `type` is the
+  type of the DOM event. It is cancelable: a listener that calls `preventDefault()` stops the event.
+  The DOM event then does not do its default action, and a field that changed gets the value of the
+  server render again. The `phem-confirm` controller uses it.
 - `phem:queue` in the dispatch of the DOM event, after the Stimulus actions of the element. Its
   `id` is the id of the DOM event.
 - `phem:send` when the request starts.
@@ -1393,6 +1397,35 @@ The controller is not enabled by default. Enable it in `assets/controllers.json`
 ```json
 "@phem/phem": {
     "tabs": { "enabled": true, "fetch": "lazy" }
+}
+```
+
+### Confirm
+
+The `phem-confirm` controller asks the user to confirm before an event of a handler goes to the
+server. When the user cancels, no event goes:
+
+```html
+<button onClick={{ delete }} data-controller="phem-confirm"
+        data-phem-confirm-message-value="Delete this item?">Delete</button>
+```
+
+The `message` value is the text of the question. The default is "Are you sure?". The browser asks
+it with `window.confirm()`.
+
+The controller asks on `phem:before-queue` (see the events of an element that sent an event), so
+it needs no `data-action`. Put it on the element of the handler, or on an element around it: only
+an event of a handler asks, with the event type that the handler uses (for example `change` for a
+checkbox). On a cancel, the DOM event does not do its default action: a form does not submit and a
+link does not navigate. A field that changed (a checkbox, a radio button, a select or a text field)
+gets the value of the server render again. When two controllers are around the element, only the
+closest one asks.
+
+The controller is not enabled by default. Enable it in `assets/controllers.json`:
+
+```json
+"@phem/phem": {
+    "confirm": { "enabled": true, "fetch": "lazy" }
 }
 ```
 

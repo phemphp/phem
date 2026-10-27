@@ -363,6 +363,43 @@ describe("phem:queue, phem:send, phem:receive and phem:done", () => {
   })
 })
 
+describe("phem:before-queue", () => {
+  it("dispatches it on the element of the handler, and a cancel stops the event", async () => {
+    await mount(`<input id="star" type="checkbox" data-phem-on-click="c1.star">`)
+    const before = []
+    const queued = vi.fn()
+    const box = document.getElementById("star")
+    box.addEventListener("phem:before-queue", (e) => {
+      before.push(e.detail)
+      e.preventDefault()
+    })
+    box.addEventListener("phem:queue", queued)
+
+    click("#star")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    // The default action of the click does not run: the box stays unchecked.
+    expect(before).toEqual([{ handler: "c1.star", type: "click" }])
+    expect(box.checked).toBe(false)
+    expect(queued).not.toHaveBeenCalled()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("checks the radio button of the server render again on a cancel", async () => {
+    await mount(`<form>
+        <input id="small" type="radio" name="size" value="s" data-phem-bind="size" data-phem-on-change="c1.size" checked>
+        <input id="large" type="radio" name="size" value="l" data-phem-bind="size" data-phem-on-change="c1.size">
+      </form>`)
+    document.getElementById("phem-root").addEventListener("phem:before-queue", (e) => e.preventDefault())
+    click("#large")
+
+    expect(document.getElementById("small").checked).toBe(true)
+    expect(document.getElementById("large").checked).toBe(false)
+    expect(document.getElementById("large").classList.contains("phem-dirty")).toBe(false)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+})
+
 describe("<Suspense>", () => {
   // The JSON body of a call of fetch().
   const sent = (call) => JSON.parse(fetch.mock.calls[call][1].body)

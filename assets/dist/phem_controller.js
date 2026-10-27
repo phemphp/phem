@@ -649,6 +649,8 @@ export default class PhemController extends Controller {
 
     const attr = el._phemAttr
     const handler = el.getAttribute(attr)
+    if (!this.allowed(el, handler, event)) return
+
     const { fields, files } = el instanceof HTMLFormElement ? formFields(el, event.submitter) : { fields: null, files: [] }
     const payload = {
       type: event.type,
@@ -661,6 +663,24 @@ export default class PhemController extends Controller {
     // Not in the JSON: fetchWithRetry() sends them as parts of a multipart body.
     if (files.length) payload.files = files
     this.schedule(el, attr, handler, event.type, payload)
+  }
+
+  // Dispatches the cancelable `phem:before-queue` on the element of a handler, before its event goes.
+  // A listener that cancels it (as `phem-confirm` does) stops the event: the DOM event does not do
+  // its default action, and a field that changed gets the value of the server render again.
+  allowed(el, handler, event) {
+    const before = new CustomEvent("phem:before-queue", { detail: { handler, type: event.type }, bubbles: true, cancelable: true })
+    if (el.dispatchEvent(before)) return true
+
+    event.preventDefault()
+    if (event.type === "input" || event.type === "change") {
+      // All the radio buttons of the group: the radio button that was checked is checked again.
+      const radios = el.type === "radio" && el.name ? [...(el.form ?? this.element).querySelectorAll('input[type="radio"]')].filter((r) => r.name === el.name) : [el]
+      radios.forEach(resetField)
+      this.markDirty()
+    }
+
+    return false
   }
 
   // Sends an event after its wait (debounce or throttle), or at once. The DOM event gets an id:
