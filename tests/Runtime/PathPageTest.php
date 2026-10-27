@@ -31,8 +31,8 @@ final class PathPageTest extends TestCase
 
     public function testRouteValueOrItsDefaultGoesToThePathProperty(): void
     {
-        self::assertStringContainsString('<p id="hello">Hello Ada</p>', (string) $this->request('GET', '/hello/Ada')->getContent());
-        self::assertStringContainsString('<p id="hello">Hello World</p>', (string) $this->request('GET', '/hello')->getContent());
+        self::assertMatchesRegularExpression('#<p id="hello" data-phem-c="phem[0-9a-f]{12}">Hello Ada</p>#', (string) $this->request('GET', '/hello/Ada')->getContent());
+        self::assertMatchesRegularExpression('#<p id="hello" data-phem-c="phem[0-9a-f]{12}">Hello World</p>#', (string) $this->request('GET', '/hello')->getContent());
     }
 
     public function testRouteValueThatDoesNotMatchItsTypeIsNotFound(): void
@@ -88,8 +88,8 @@ final class PathPageTest extends TestCase
 
     public function testNullableEntityGetsNull(): void
     {
-        self::assertStringContainsString('<p id="maybe">Marie</p>', (string) $this->request('GET', '/maybe/2')->getContent());
-        self::assertStringContainsString('<p id="maybe">Nobody</p>', (string) $this->request('GET', '/maybe/9')->getContent());
+        self::assertMatchesRegularExpression('#<p id="maybe" data-phem-c="phem[0-9a-f]{12}">Marie</p>#', (string) $this->request('GET', '/maybe/2')->getContent());
+        self::assertMatchesRegularExpression('#<p id="maybe" data-phem-c="phem[0-9a-f]{12}">Nobody</p>#', (string) $this->request('GET', '/maybe/9')->getContent());
     }
 
     public function testEventFindsTheEntityAgain(): void
@@ -127,7 +127,7 @@ final class PathPageTest extends TestCase
 
     public function testFunctionPageGetsTheEntityOfItsRouteValue(): void
     {
-        self::assertStringContainsString('<p id="card">Ada</p>', (string) $this->request('GET', '/scientist-cards/1')->getContent());
+        self::assertMatchesRegularExpression('#<p id="card" data-phem-c="phem[0-9a-f]{12}">Ada</p>#', (string) $this->request('GET', '/scientist-cards/1')->getContent());
         self::assertSame(404, $this->request('GET', '/scientist-cards/9')->getStatusCode());
     }
 

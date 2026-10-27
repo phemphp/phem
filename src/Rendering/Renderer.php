@@ -124,7 +124,7 @@ final class Renderer implements ResetInterface
 
     /**
      * Renders markup outside the page, for a push (see Phem\Stream\Streams): a component in it
-     * renders with no `<phem-c>`, because the pages that get it have their own fibers. An event
+     * renders with no fiber id, because the pages that get it have their own fibers. An event
      * handler, a `phem:bind`, a `phem:loading` and a `<Suspense>` throw: they need a fiber of
      * the page.
      */
@@ -146,7 +146,7 @@ final class Renderer implements ResetInterface
 
         // Markup that rendered in the page before (a slot) has the fibers and the handlers of
         // this page.
-        if (1 === preg_match('/<phem-c[\s>]|\sdata-phem-(?:on-[\w-]+|bind|load|loading|progress)=/', $html)) {
+        if (1 === preg_match('/\sdata-phem-(?:c|on-[\w-]+|bind|load|loading|progress)=/', $html)) {
             $this->notDetached('a component or a handler of this page (markup that rendered in the page before, such as a slot)', true);
         }
 
@@ -352,7 +352,7 @@ final class Renderer implements ResetInterface
         if (null !== $this->scope && !$this->scope->renders($fiber, $previous)) {
             $fiber->begin($tree->pass);
             $fiber->kept = true;
-            $fiber->html = '';
+            $fiber->rendered('');
 
             if ($root) {
                 $this->holdRoot($tree, $fiber);
@@ -412,7 +412,7 @@ final class Renderer implements ResetInterface
             $tree->pop();
         }
 
-        $fiber->html = $html;
+        $fiber->rendered($html);
         // One strtr() for all the children: a replace for each child reads the HTML one time for
         // each child, so a list of components takes a time in the square of its length.
         $placeholders = [];
@@ -426,7 +426,7 @@ final class Renderer implements ResetInterface
         $fiber->ownHtml[$tree->pass] = strtr($html, $placeholders);
     }
 
-    /** The page and the document around the root element are not in a <phem-c>. */
+    /** The page and the document around the root element have no fiber id. */
     private function holdRoot(Tree $tree, Fiber $fiber): void
     {
         $tree->rootFiber = $fiber;

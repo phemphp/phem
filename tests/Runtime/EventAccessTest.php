@@ -314,7 +314,7 @@ final class EventAccessTest extends TestCase
     {
         $response = $this->request('POST', '/about');
         self::assertSame(200, $response->getStatusCode(), 'the route of /about accepts all methods');
-        self::assertStringContainsString('<p id="about">About</p>', (string) $response->getContent());
+        self::assertMatchesRegularExpression('#<p id="about" data-phem-c="phem[0-9a-f]{12}">About</p>#', (string) $response->getContent());
 
         $response = $this->request('POST', '/');
         self::assertSame(405, $response->getStatusCode(), 'the route of / accepts only GET and HEAD');

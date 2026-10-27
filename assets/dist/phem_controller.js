@@ -68,8 +68,13 @@ function resetField(field) {
   } else field.value = field.defaultValue
 }
 
-// The start of the id that an element with a `key` gets while a morph runs (see keyIds()).
+// The start of the id that an element with a `key` or a fiber id gets while a morph runs (see
+// keyIds() and componentIds()).
 const KEY_ID = "phem-key:"
+
+// The attribute of the fiber id of a component: on its root element, or on its `<phem-c>` when
+// the component renders a text, more than one element or another component.
+const FIBER = "data-phem-c"
 
 // The wait before a refresh: the refreshes that come in this time go in one event.
 const REFRESH_WAIT = 50
@@ -103,9 +108,40 @@ function dropKeyIds(root) {
   for (const el of root.querySelectorAll(`[id^="${KEY_ID}"]`)) el.removeAttribute("id")
 }
 
+// Gives each component with no id in `root` (and `root` itself) an id from its fiber id, so the
+// morph matches it by id.
+function componentIds(root) {
+  const selector = `[${FIBER}]:not([id])`
+  const components = [...root.querySelectorAll(selector)]
+  if (root.matches?.(selector)) components.push(root)
+
+  for (const el of components) el.id = `${KEY_ID}${el.getAttribute(FIBER)}`
+}
+
+// Replaces the placeholder of each component that the server did not render again (a
+// `<template data-phem-keep>`, valid in each parent, also in a `<table>` and a `<select>`) with
+// an empty copy of its element in the page, with `data-phem-keep`: the morph matches the copy with
+// the element by its id, and keeps the element as it is.
+function keptElements(content, page) {
+  for (const placeholder of content.querySelectorAll("template[data-phem-keep]")) {
+    const el = page.querySelector(`[${FIBER}="${placeholder.getAttribute("data-phem-keep")}"]`)
+    if (!el) continue
+
+    const copy = el.cloneNode(false)
+    copy.setAttribute("data-phem-keep", "")
+    placeholder.replaceWith(copy)
+  }
+}
+
+// The element of the component around an element: its root element with the fiber id, or its
+// `<phem-c>`.
+function componentOf(el) {
+  return el?.closest?.(`[${FIBER}]`) ?? null
+}
+
 // Before an `append` or a `prepend` of a push: removes each element of the target with the id of
 // a new element. Turbo removes only the children of the target, and the items of a list are often
-// in a component (<phem-c>).
+// in a component.
 function removeDuplicates(target, stream) {
   for (const el of stream.querySelector("template")?.content.children ?? []) {
     const old = el.id ? document.getElementById(el.id) : null
@@ -324,8 +360,8 @@ export default class PhemController extends Controller {
     }
     this.element.addEventListener("turbo:before-morph-attribute", this.keepEdited)
 
-    // The server did not render a component again (a <phem-c data-phem-keep> placeholder): keep
-    // its element and its content as they are. The same for a `data-phem-ignore` element that the
+    // The server did not render a component again (its placeholder, see keptElements()): keep its
+    // element and its content as they are. The same for a `data-phem-ignore` element that the
     // server renders again, because JS owns it. The morph removes it when the server render does
     // not have it.
     this.keepKept = (event) => {
@@ -344,23 +380,34 @@ export default class PhemController extends Controller {
     this.element.addEventListener("turbo:before-morph-attribute", this.keepClient)
 
     // The morph matches the elements by their id, and else by their position. While the morph of a
-    // stream runs, each element with a `key` and no id has an id from its key, in the page and in
-    // the server render. So a list item keeps its element (its client attributes, its focus, its
-    // JS library) when an item before it goes away. Two lists with the same keys and no id between
-    // them and their component get the same ids: the morph ignores these ids, and matches their
-    // items by position. Before the `take` of renderStreams(), which runs this render.
+    // stream runs, each component and each element with a `key` and no id has an id from its fiber
+    // id or its key, in the page and in the server render. So a component or a list item keeps its
+    // element (its client attributes, its focus, its JS library) when an item before it goes away.
+    // Two lists with the same keys and no id between them and their component get the same ids: the
+    // morph ignores these ids, and matches their items by position. The placeholders of the
+    // components that the server did not render again become copies of their elements. Before the
+    // `take` of renderStreams(), which runs this render.
     this.keyMorph = (event) => {
       const stream = event.detail.newStream
-      const target = stream.getAttribute("method") === "morph" && document.getElementById(stream.getAttribute("target"))
+      if (stream.getAttribute("method") !== "morph") return
+
+      const id = stream.getAttribute("target")
+      const selector = stream.getAttribute("targets")
+      const target = id ? document.getElementById(id) : selector ? document.querySelector(selector) : null
       if (!target || !this.element.contains(target)) return
+
       const render = event.detail.render
       event.detail.render = async (element) => {
+        const content = stream.templateElement.content
+        componentIds(target)
+        keptElements(content, this.element)
+        componentIds(content)
         keyIds(target, target)
-        keyIds(stream.templateElement.content, target)
+        keyIds(content, target)
         try {
           await render(element)
         } finally {
-          dropKeyIds(target)
+          dropKeyIds(this.element)
         }
       }
     }
@@ -543,7 +590,7 @@ export default class PhemController extends Controller {
     const own = token !== "" && this.sent.includes(token)
     let refresh = false
     for (const component of this.element.querySelectorAll(selector)) {
-      if (own && component.id === skip) continue
+      if (own && component.getAttribute(FIBER) === skip) continue
       refresh = this.markStale(component) || refresh
     }
 
@@ -552,10 +599,10 @@ export default class PhemController extends Controller {
 
   // Marks the component around an element as stale. Returns false when the element is not in a component.
   markStale(el) {
-    const component = el?.closest("phem-c")
+    const component = componentOf(el)
     if (!component || !this.element.contains(component)) return false
 
-    this.stale.add(component.id)
+    this.stale.add(component.getAttribute(FIBER))
 
     // Too many for one event: the content of the root element renders all of them.
     if (this.stale.size > MAX_STALE) {
@@ -568,8 +615,8 @@ export default class PhemController extends Controller {
 
   // Marks the content of the root element (its first component) as stale. Returns false when it has none.
   markContentStale() {
-    const content = this.element.querySelector("phem-c")
-    if (content) this.stale.add(content.id)
+    const content = this.element.querySelector(`[${FIBER}]`)
+    if (content) this.stale.add(content.getAttribute(FIBER))
     return content !== null
   }
 
@@ -832,7 +879,7 @@ export default class PhemController extends Controller {
 
   // Shows the loading state of an event after the delay. Returns the function that ends it.
   startLoading(el, handler, upload = null) {
-    const targets = new Set([el, el.closest("phem-c") ?? this.element])
+    const targets = new Set([el, componentOf(el) ?? this.element])
     const event = { handler, el, upload }
     let shown = false
 
@@ -1076,10 +1123,6 @@ export default class PhemController extends Controller {
     if (data.query) this.updateUrl(data.query, true)
     this.sentBound = Object.fromEntries(Object.entries(fields).map(([key, { value }]) => [key, value]))
 
-    // A morph changes the content of a component, not the attributes of its `<phem-c>`: the keys of
-    // a component with #[Broadcast] (the values of its key props can change).
-    for (const [id, keys] of Object.entries(data.keys ?? {})) document.getElementById(id)?.setAttribute("data-phem-broadcast", keys)
-
     // Before the morph, so a listener can stop its own changes of the page.
     notify("receive")
     const rendered = data.streams ? this.renderStreams(data.streams, handler) : afterStreams()
@@ -1292,7 +1335,7 @@ export default class PhemController extends Controller {
     const dirty = fields.filter(isDirty)
 
     for (const field of fields) field.classList.toggle("phem-dirty", dirty.includes(field))
-    for (const el of [this.element, ...this.element.querySelectorAll("phem-c, form, [data-phem-guard]")]) {
+    for (const el of [this.element, ...this.element.querySelectorAll(`[${FIBER}], form, [data-phem-guard]`)]) {
       el.classList.toggle("phem-dirty", dirty.some((field) => el.contains(field)))
     }
   }
@@ -1338,11 +1381,11 @@ export default class PhemController extends Controller {
     this.errorElement = null
   }
 
-  // The root of the component of a handler: the <phem-c> with the fiber id at the start of the
+  // The element of the component of a handler: the element with the fiber id at the start of the
   // handler id. The root element when the component is the page, or when the morph removed it.
   componentRoot(handler) {
     if (handler === null) return this.element
-    const el = document.getElementById(handler.slice(0, handler.indexOf(".")))
-    return el?.localName === "phem-c" && this.element.contains(el) ? el : this.element
+    const el = this.element.querySelector(`[${FIBER}="${handler.slice(0, handler.indexOf("."))}"]`)
+    return el ?? this.element
   }
 }

@@ -273,6 +273,10 @@ final class AgendaPage
 
 - Close all tags: `<br />`, `<img ... />`.
 - Return one root. To return more than one element, use a fragment: `<>...</>`.
+- When a component renders one element, this element gets the fiber id of the component
+  (`data-phem-c`). A fragment, a text or another component as the root gets a `<phem-c>` around
+  it. A `<phem-c>` is not valid in a `<table>`, a `<tr>` or a `<select>`: a row or an option
+  component returns one element (`<tr>`, `<option>`).
 - Lowercase tags are HTML elements. Capitalized tags are components.
 - `className` is an alias for `class`, and `htmlFor` is an alias for `for`.
 - A markup literal starts where a PHP expression starts: after `return`, `(`, `=`, `,`, `=>`, `?`, `:`, `??`, `[`, `echo`.
@@ -610,8 +614,8 @@ public function save(Event $e): void
 <div data-controller="toast" data-action="phem:toast@window->toast#show"></div>
 ```
 
-The event starts on the root of the component of the handler (its `<phem-c>`, or the root
-element for the page component), and it bubbles. An ancestor of the component gets it with no
+The event starts on the element of the component of the handler (its root element with the
+fiber id, its `<phem-c>`, or the root element for the page component), and it bubbles. An ancestor of the component gets it with no
 `@window`, and `event.target` tells which component sent it. If the morph removed the component,
 the event starts on the root element. It always reaches `window`.
 
@@ -816,7 +820,7 @@ left.
 #### Unsaved changes
 
 A bound field that the user changed, and that the server did not get yet, has the `phem-dirty`
-class. Its component (`<phem-c>`), its form, its `data-phem-guard` element, and the root element
+class. Its component (its root element with the fiber id, or its `<phem-c>`), its form, its `data-phem-guard` element, and the root element
 get the class too, while they have a dirty field. The class goes when an event sends the value
 and the server takes it. Use it in CSS:
 
@@ -2055,7 +2059,7 @@ final class SignForm
   (`morph: false` turns it off), so the focus, a bound field that the user changes, and the
   client attributes (`data-phem-client`) stay.
 - The markup is **plain markup**: it renders at once, outside the page, with the data of now. A
-  component in it renders with no `<phem-c>`. An event handler, a `phem:bind`, a `phem:loading`
+  component in it renders with no fiber id. An event handler, a `phem:bind`, a `phem:loading`
   or a `<Suspense>` in it throws: no page has its fiber.
 - **`refresh($target)`** renders the component around the target again in each browser, with a
   normal event, with its subtree. With no target, `refresh()` renders again the instances of the

@@ -5,17 +5,17 @@ export async function mount(markup, rootAttributes = "") {
   document.body.innerHTML = `
     <div id="phem-root" data-controller="phem" data-action="click->phem#dispatch submit->phem#dispatch change->phem#dispatch"
          data-phem-state-value="{}" data-phem-signature-value="s1" data-phem-loading-delay-value="0" ${rootAttributes}>
-      <phem-c id="c1">${markup}</phem-c>
+      <phem-c data-phem-c="c1">${markup}</phem-c>
     </div>`
   // Stimulus connects the controller in a mutation observer callback.
   await new Promise((resolve) => setTimeout(resolve, 0))
 }
 
-// The answer of the server to the next event: a morph of `c1` to `markup`, with no change of the
-// state, or the `changes` of the state.
+// The answer of the server to the next event: a morph of `c1` to `markup` (in its `<phem-c>`),
+// with no change of the state, or the `changes` of the state.
 export function respond(markup, changes = {}, extra = {}) {
   const body = {
-    streams: `<turbo-stream action="update" method="morph" target="c1"><template>${markup}</template></turbo-stream>`,
+    streams: `<turbo-stream action="replace" method="morph" targets="[data-phem-c=c1]"><template><phem-c data-phem-c="c1">${markup}</phem-c></template></turbo-stream>`,
     changes,
     signature: "s2",
     ...extra,

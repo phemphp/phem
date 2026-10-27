@@ -143,7 +143,7 @@ describe("phem-autofocus", () => {
   it("does not take the focus in a push of the server", async () => {
     await mount(page())
     document.getElementById("edit").focus()
-    Turbo.renderStreamMessage(`<turbo-stream action="update" method="morph" target="c1"><template>${page(title)}</template></turbo-stream>`)
+    Turbo.renderStreamMessage(`<turbo-stream action="update" method="morph" targets="[data-phem-c=c1]"><template>${page(title)}</template></turbo-stream>`)
     await settle()
 
     expect(document.getElementById("title")).not.toBeNull()

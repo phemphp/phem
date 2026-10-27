@@ -125,9 +125,7 @@ final class PageDriver implements Driver
         $this->signature = (string) $data['signature'];
         $this->query($data['query'] ?? null);
 
-        $keys = \is_array($data['keys'] ?? null) ? array_map(strval(...), $data['keys']) : [];
-
-        return EventResult::updates(self::streams((string) $data['streams']), self::events($data['events'] ?? []), $keys, \is_string($data['sender'] ?? null) ? $data['sender'] : null);
+        return EventResult::updates(self::streams((string) $data['streams']), self::events($data['events'] ?? []), \is_string($data['sender'] ?? null) ? $data['sender'] : null);
     }
 
     /**
@@ -266,11 +264,11 @@ final class PageDriver implements Driver
      * The fibers in the Turbo Streams of an event (see TurboStreams). A string parser, not an
      * HTML parser: an HTML parser drops the table rows of a `<template>` in some contexts.
      *
-     * @return array<string, string> fiber id => inner HTML
+     * @return array<string, string> fiber id => the new HTML of its element
      */
     private static function streams(string $streams): array
     {
-        $open = '#<turbo-stream action="update" method="morph" target="([^"]*)"><template>#';
+        $open = '#<turbo-stream action="replace" method="morph" targets="\[data-phem-c=([^"\]]*)\]"><template>#';
         $close = '</template></turbo-stream>';
         $parts = preg_split($open, $streams, -1, \PREG_SPLIT_DELIM_CAPTURE) ?: [];
 

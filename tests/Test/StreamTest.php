@@ -137,20 +137,21 @@ final class StreamTest extends KernelTestCase
             ->assertSee('0 entries, open');
     }
 
-    public function testAStaleComponentThatIsNotInThePageMakesItsParentStale(): void
+    public function testAPushThatRemovesTheElementOfAComponentMakesItsParentStale(): void
     {
         $signer = $this->visit('/guestbook/lobby');
         $signer->fill('input[name=text]', 'Hi')->click('#sign');
-        $other = $this->visit('/guestbook/lobby')->assertSelectorCount(1, '#entries phem-c');
+        $other = $this->visit('/guestbook/lobby')->assertSelectorCount(1, '#entries [data-phem-c]');
         $signer->click('#forget');
 
-        // The push removes the <li> in the <phem-c> of the entry: the entry is stale. The server
-        // does not render it any more, so the list renders again, with no <phem-c> of the entry.
+        // The push removes the <li> of the entry, which has the fiber id of the entry: the list
+        // is stale, and it renders again with the next event.
         $other->receive()
             ->assertDontSee('Hi')
-            ->assertSelectorCount(1, '#entries phem-c')
+            ->assertSelectorCount(0, '#entries [data-phem-c]')
             ->click('#toggle')
-            ->assertSelectorCount(0, '#entries phem-c');
+            ->assertSelectorCount(0, '#entries [data-phem-c]')
+            ->assertSee('0 entries');
     }
 
     public function testAStaleRootKeepsTheStateOfItsComponents(): void
@@ -261,7 +262,7 @@ final class StreamTest extends KernelTestCase
         $keys = static::getContainer()->get('phem.broadcast_keys');
         \assert($keys instanceof BroadcastKeys);
 
-        $component = $page->document()->getElementById('likes-lobby')?->closest('phem-c');
+        $component = $page->document()->getElementById('likes-lobby')?->closest('[data-phem-c]');
         $all = $keys->ofComponent('App\Page\GuestbookLikes');
 
         self::assertSame($all.' '.$keys->ofInstance('App\Page\GuestbookLikes', ['room' => 'lobby']), $component?->getAttribute(BroadcastKeys::ATTRIBUTE));
@@ -342,7 +343,7 @@ final class StreamTest extends KernelTestCase
     public function testTheTabThatSentTheEventSkipsTheComponentOfTheHandler(): void
     {
         $page = $this->visit('/likes')->click('#like-lobby')->assertSee('1 likes in lobby');
-        $fiber = $page->document()->getElementById('likes-lobby')?->closest('phem-c')?->id;
+        $fiber = $page->document()->getElementById('likes-lobby')?->closest('[data-phem-c]')?->getAttribute('data-phem-c');
         [$update] = $this->updates();
 
         self::assertNotNull($fiber);

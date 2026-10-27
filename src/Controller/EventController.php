@@ -32,7 +32,6 @@ use Phem\State\StateCache;
 use Phem\State\StateCodec;
 use Phem\State\StateJson;
 use Phem\State\UrlQuery;
-use Phem\Stream\BroadcastKeys;
 use Phem\Stream\SenderToken;
 use Phem\Stream\Subscription;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -199,13 +198,7 @@ final class EventController
         $query = $this->url->of($tree);
         // Only the entries of the state that changed: the browser has the state of this event.
         $changes = (object) StateJson::changes($json, $next);
-        $changed = $tree->changedFibers();
-        $data = ['streams' => $this->streams->updates($changed), 'changes' => $changes, 'signature' => $signature, 'query' => ['values' => (object) $query['values'], 'push' => $query['push']], 'events' => $this->dispatcher->dispatched()];
-
-        // The browser sets them on the `<phem-c>` that the morph does not change.
-        if ([] !== $keys = BroadcastKeys::attributes($changed)) {
-            $data['keys'] = $keys;
-        }
+        $data = ['streams' => $this->streams->updates($tree->changedFibers()), 'changes' => $changes, 'signature' => $signature, 'query' => ['values' => (object) $query['values'], 'push' => $query['push']], 'events' => $this->dispatcher->dispatched()];
 
         // The refreshes of this event skip the component of the handler in this browser.
         if (null !== $token = $this->sender->issued()) {

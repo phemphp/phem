@@ -27,21 +27,11 @@ Talk about each item before its implementation. The open questions are a start, 
 
 ## 1. Rendering and performance
 
-### [ ] A fiber id on the root element, not a `<phem-c>` — P2
-
-The `<phem-c>` wrapper is not valid in `<table>`, `<tr>` and `<select>`, and each component has
-one more DOM node. `phemc` checks that a markup literal has one root element.
-
-- **Best peer:** React and Blazor have no wrapper; LV puts the id on the root element.
-- **Proposal:** `data-phem-c="<id>"` on the root element of the component. Keep `<phem-c>` only
-  for a root that is a text, a fragment or another component. The morph targets and the
-  `data-phem-keep` placeholders change with it.
-
 ### [ ] Smaller keep placeholders and shape changes — P2
 
 `make bench`: a click on a page with 200 row components that changes only the page sends about
-15 KB. About 10 KB are the `<phem-c … data-phem-keep>` placeholders of the rows, and about 3.5 KB
-are the new `_tree` value (all its entries, also when only one hash changed).
+15.7 KB. About 10 KB are the `<template data-phem-keep="…">` placeholders of the rows, and about
+3.5 KB are the new `_tree` value (all its entries, also when only one hash changed).
 
 - **Proposal:** a range placeholder for a run of kept siblings, and a diff of the `_tree` entries
   (the fibers that rendered), as for the state entries.
@@ -87,27 +77,3 @@ Symfony forms work in a submit handler. There is no validation while the user ty
     submit.
   - For a Symfony form: keep the submitted values in the state, and call `submit()` with
     `clearMissing: false` on each change (as LC does).
-
-## 3. Client escape hatch
-
-Decision: the client code is a Stimulus controller, as in any Symfony page. `phemc` does not
-extract colocated client code (`<script>` in a `.phpm` file).
-
-### [ ] Built-in Stimulus controllers — P2
-
-Each app writes the same controllers again: a dropdown, a dialog, tabs. A generic library (for
-example stimulus-components) does not know the morph, so the user must add `data-phem-client`
-and `data-phem-ignore` by hand.
-
-- **Best peer:** LV `core_components` + `JS` commands, stimulus-components, Symfony UX packages.
-- **Proposal:** a small set of Phem controllers. Each controller keeps its DOM changes after the
-  morph of an event: with its own `data-phem-client` attributes, or by applying the changes again
-  on `turbo:morph-element` (as `phem-optimistic` does). `phem-optimistic`, `phem-toggle`,
-  `phem-dialog`, `phem-tabs`, `phem-toast`, `phem-clipboard`, `phem-autofocus` and
-  `phem-confirm` are done.
-- **Rules:**
-  - The `phem-` prefix, so the names do not clash with the controllers of the app.
-  - Each controller is an entry of `symfony.controllers` in `assets/package.json` with
-    `"fetch": "lazy"`. The app enables it in `controllers.json`.
-  - Accessible, with no dependency. Vitest + jsdom tests, as for `phem_controller.js`.
-  - Add a controller only when a Phem detail gives it value, or when almost all apps need it.

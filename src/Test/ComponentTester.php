@@ -15,7 +15,6 @@ namespace Phem\Test;
 
 use Dom\Element;
 use Dom\HTMLDocument;
-use Phem\Stream\BroadcastKeys;
 use Phem\Stream\Stream;
 use Phem\Test\Internal\Driver;
 use Phem\Test\Internal\EventResult;
@@ -643,9 +642,10 @@ final class ComponentTester
             }
 
             $template = $stream->querySelector('template');
-            $nodes = null !== $template ? $this->nodes($template->innerHTML) : [];
+            $outside = \in_array($action, ['remove', 'replace', 'before', 'after'], true);
+            $nodes = null !== $template ? $this->nodes($template->innerHTML, $outside ? $target->parentElement : $target) : [];
 
-            $this->markStale(\in_array($action, ['remove', 'replace', 'before', 'after'], true) ? $target->parentElement : $target);
+            $this->markStale($outside ? $target->parentElement : $target);
 
             if ('append' === $action || 'prepend' === $action) {
                 foreach ($nodes as $node) {
@@ -682,7 +682,7 @@ final class ComponentTester
         if (null === $selector) {
             return $stream->hasAttribute('target')
                 ? $this->markStale($this->document->getElementById((string) $stream->getAttribute('target')))
-                : $this->markStale($this->document->querySelector('[data-phem-state-value] phem-c'));
+                : $this->markStale($this->document->querySelector('[data-phem-state-value] [data-phem-c]'));
         }
 
         [$token, $skip] = explode(' ', (string) $stream->getAttribute('data-phem-skip'), 2) + [1 => ''];
@@ -690,7 +690,7 @@ final class ComponentTester
 
         $refresh = false;
         foreach ($this->document->querySelectorAll($selector) as $component) {
-            if (!$own || $component->id !== $skip) {
+            if (!$own || $component->getAttribute('data-phem-c') !== $skip) {
                 $refresh = $this->markStale($component) || $refresh;
             }
         }
@@ -701,24 +701,25 @@ final class ComponentTester
     /** Marks the component around an element as stale. Returns false when the element is not in a component. */
     private function markStale(?Element $element): bool
     {
-        $component = $element?->closest('phem-c');
+        $component = $element?->closest('[data-phem-c]');
         if (null === $component) {
             return false;
         }
 
-        $this->stale[$component->id] = true;
+        $this->stale[(string) $component->getAttribute('data-phem-c')] = true;
 
         return true;
     }
 
     /**
-     * The nodes of an HTML fragment, in the document of the page.
+     * The nodes of an HTML fragment, in the document of the page. The HTML parses as the content of
+     * its parent element: a `<tr>` in a `<tbody>`, an `<option>` in a `<select>`.
      *
      * @return list<\Dom\Node>
      */
-    private function nodes(string $html): array
+    private function nodes(string $html, ?Element $parent): array
     {
-        $container = $this->document->createElement('div');
+        $container = $this->document->createElement($parent->localName ?? 'div');
         $container->innerHTML = $html;
 
         return iterator_to_array($container->childNodes, false);
@@ -727,17 +728,17 @@ final class ComponentTester
     private function morph(EventResult $result): void
     {
         foreach ($result->updates as $id => $html) {
-            $element = $this->document->getElementById($id);
+            $element = $this->component($id);
             if (null === $element) {
-                Assert::fail(\sprintf('The event updates the component "%s", but the page has no element with this id.', $id));
+                Assert::fail(\sprintf('The event updates the component "%s", but the page has no element with this fiber id.', $id));
             }
 
             // A component that did not render again is a placeholder: as in the browser, the
             // morph keeps its element.
             $kept = [];
-            preg_match_all('/<phem-c id="([^"]+)" data-phem-keep><\/phem-c>/', $html, $ids);
+            preg_match_all('/<template data-phem-keep="([^"]+)"><\/template>/', $html, $ids);
             foreach ($ids[1] as $kid) {
-                if (null !== $old = $this->document->getElementById($kid)) {
+                if (null !== $old = $this->component($kid)) {
                     $kept[$kid] = $old;
                 }
             }
@@ -749,28 +750,38 @@ final class ComponentTester
                 $ignored[$old->id] = $old;
             }
 
-            $element->innerHTML = $html;
+            // The new HTML is the element with the fiber id: it replaces the element of the page.
+            $nodes = $this->nodes($html, $element->parentElement);
+            $element->replaceWith(...$nodes);
 
-            // As in the browser: the keys of a component with #[Broadcast] can change.
-            if (null !== $keys = $result->keys[$id] ?? null) {
-                $element->setAttribute(BroadcastKeys::ATTRIBUTE, $keys);
-            }
-
-            foreach ($element->querySelectorAll('[data-phem-ignore][id]') as $new) {
-                if (null !== $old = $ignored[$new->id] ?? null) {
-                    $new->replaceWith($old);
-                }
-            }
-
-            foreach ($element->querySelectorAll('phem-c[data-phem-keep]') as $placeholder) {
-                $old = $kept[$placeholder->id] ?? null;
-                if (null === $old) {
-                    Assert::fail(\sprintf('The event keeps the component "%s", but the page has no element with this id.', $placeholder->id));
+            foreach ($nodes as $node) {
+                if (!$node instanceof Element) {
+                    continue;
                 }
 
-                $placeholder->replaceWith($old);
+                foreach ($node->querySelectorAll('[data-phem-ignore][id]') as $new) {
+                    if (null !== $old = $ignored[$new->id] ?? null) {
+                        $new->replaceWith($old);
+                    }
+                }
+
+                foreach ($node->querySelectorAll('template[data-phem-keep]') as $placeholder) {
+                    $kid = (string) $placeholder->getAttribute('data-phem-keep');
+                    $old = $kept[$kid] ?? null;
+                    if (null === $old) {
+                        Assert::fail(\sprintf('The event keeps the component "%s", but the page has no element with this fiber id.', $kid));
+                    }
+
+                    $placeholder->replaceWith($old);
+                }
             }
         }
+    }
+
+    /** The element with a fiber id: the root element of the component, or its `<phem-c>`. */
+    private function component(string $id): ?Element
+    {
+        return $this->document->querySelector('[data-phem-c="'.$id.'"]');
     }
 
     /**
@@ -818,17 +829,18 @@ final class ComponentTester
     }
 
     /**
-     * The fiber id of the closest component with state around an element (the id of its
-     * `<phem-c>`), or null for the root component. A component with no #[State] property
+     * The fiber id of the closest component with state around an element (its `data-phem-c`),
+     * or null for the root component. A component with no #[State] property
      * (a `<Root>`, a function component) is not a match.
      */
     private function fiberOf(string $selector): ?string
     {
         $element = $this->document->querySelector($selector) ?? Assert::fail(\sprintf('No element matches "%s". %s', $selector, $this->context()));
 
-        for ($c = $element->closest('phem-c'); null !== $c; $c = $c->parentElement?->closest('phem-c')) {
-            if ([] !== $this->driver->state($c->id)) {
-                return $c->id;
+        for ($c = $element->closest('[data-phem-c]'); null !== $c; $c = $c->parentElement?->closest('[data-phem-c]')) {
+            $id = (string) $c->getAttribute('data-phem-c');
+            if ([] !== $this->driver->state($id)) {
+                return $id;
             }
         }
 

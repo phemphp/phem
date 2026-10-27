@@ -1,4 +1,4 @@
-/* A component boundary (<phem-c>) does not change the layout. */
+/* The wrapper of a component that does not render one element (<phem-c>) does not change the layout. */
 phem-c{display:contents}
 /* The fallback of a <Suspense>: a box, so a lazy boundary can come into view. */
 phem-suspense{display:block}

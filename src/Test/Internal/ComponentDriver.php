@@ -25,7 +25,6 @@ use Phem\State\PageState;
 use Phem\State\StateAccessor;
 use Phem\State\StateCodec;
 use Phem\State\UrlQuery;
-use Phem\Stream\BroadcastKeys;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
@@ -117,11 +116,11 @@ final class ComponentDriver implements Driver
 
             $updates = [];
             foreach ($tree->changedFibers() as $fiber) {
-                $updates[$fiber->id] = $fiber->html;
+                $updates[$fiber->id] = $fiber->wrapped();
             }
 
             // As the browser gets them: JSON values.
-            return EventResult::updates($updates, json_decode(json_encode($this->dispatcher->dispatched(), \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR), BroadcastKeys::attributes($tree->changedFibers()));
+            return EventResult::updates($updates, json_decode(json_encode($this->dispatcher->dispatched(), \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR));
         });
     }
 

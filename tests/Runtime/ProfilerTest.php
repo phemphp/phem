@@ -99,7 +99,7 @@ final class ProfilerTest extends TestCase
         self::assertSame(1, preg_match('/data-phem-state-value="([^"]*)" data-phem-signature-value="([^"]*)"/', $html, $state));
         self::assertSame(1, preg_match('/data-phem-on-submit="([^"]+)"/', $html, $submit));
         self::assertSame(1, preg_match('/data-phem-bind="([^"]+)"/', $html, $bind));
-        self::assertSame(1, preg_match('/<phem-c id="(phem[0-9a-f]{12})"><ul id="entries"/', $html, $entries));
+        self::assertSame(1, preg_match('/<ul id="entries" data-phem-c="(phem[0-9a-f]{12})"/', $html, $entries));
 
         $this->event('/guestbook/lobby', ['state' => html_entity_decode($state[1]), 'signature' => $state[2], 'handler' => $submit[1], 'event' => ['type' => 'submit'], 'bound' => [$bind[1] => 'Hi'], 'stale' => [$entries[1]]]);
         $collector = $this->collector($this->lastResponse());

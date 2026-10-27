@@ -16,7 +16,9 @@ namespace Phem\Http;
 use Phem\Rendering\Fiber;
 
 /**
- * The Turbo Streams that morph the fibers that changed in the browser.
+ * The Turbo Streams that morph the fibers that changed in the browser. Each stream replaces the
+ * element with the fiber id (its root element or its `<phem-c>`), so a morph also changes the
+ * attributes of the root element.
  */
 final class TurboStreams
 {
@@ -25,7 +27,7 @@ final class TurboStreams
     {
         $streams = '';
         foreach ($fibers as $fiber) {
-            $streams .= \sprintf('<turbo-stream action="update" method="morph" target="%s"><template>%s</template></turbo-stream>', $fiber->id, $fiber->html);
+            $streams .= \sprintf('<turbo-stream action="replace" method="morph" targets="[data-phem-c=%s]"><template>%s</template></turbo-stream>', $fiber->id, $fiber->wrapped());
         }
 
         return $streams;

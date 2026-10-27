@@ -134,7 +134,7 @@ describe("phem-optimistic", () => {
     click("#delete")
     const event = await done
 
-    expect(event.target.id).toBe("c1")
+    expect(event.target.getAttribute("data-phem-c")).toBe("c1")
     expect(document.getElementById("row-1").hidden).toBe(false)
   })
 
@@ -424,7 +424,7 @@ describe("phem-optimistic", () => {
 
     it("removes the item before a stream with a `targets` selector", async () => {
       await mount(chat(["One"]))
-      respond("", {}, { streams: `<turbo-stream action="update" method="morph" targets="#c1"><template>${chat(["One", "Hi"])}</template></turbo-stream>` })
+      respond("", {}, { streams: `<turbo-stream action="update" method="morph" targets="[data-phem-c=c1]"><template>${chat(["One", "Hi"])}</template></turbo-stream>` })
       const done = nextDone()
       let morphed = null
       listen("turbo:morph-element", (e) => {

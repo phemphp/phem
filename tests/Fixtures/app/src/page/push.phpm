@@ -39,7 +39,7 @@ final class GuestbookEntries
     }
 }
 
-// A class component: it has a fiber (a <phem-c>) in the list.
+// A class component: it has a fiber in the list, with its id on the <li>.
 #[Component]
 final class GuestbookEntry
 {

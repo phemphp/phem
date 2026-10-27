@@ -164,6 +164,63 @@ describe("data-phem-ignore", () => {
   })
 })
 
+describe("the components with the fiber id on their root element", () => {
+  const row = (id, text, cls = "") => `<tr data-phem-c="${id}" class="${cls}"><td>${text}</td></tr>`
+  const table = (rows) => `<table><tbody>${rows}</tbody></table><button data-phem-on-click="c1.change">Change</button>`
+
+  async function event(streams) {
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ streams, changes: {}, signature: "s2" }), { status: 200, headers: { "Content-Type": "application/json" } }))
+    const done = nextDone()
+    click("button")
+    await done
+  }
+
+  it("keeps the element of a component that the server did not render again, also in a table", async () => {
+    await mount(table(row("r1", "One") + row("r2", "Two")))
+    const [one, two] = document.querySelectorAll("tr")
+    one.hidden = true
+    one.querySelector("td").textContent = "Changed by JS"
+
+    // The page renders again, with a placeholder for "r1" and a new "r3" before "r2".
+    respond(table('<template data-phem-keep="r1"></template>' + row("r3", "Three") + row("r2", "Two 2")))
+    const done = nextDone()
+    click("button")
+    await done
+
+    const rows = [...document.querySelectorAll("tbody > tr")]
+    expect(rows.map((tr) => tr.getAttribute("data-phem-c"))).toEqual(["r1", "r3", "r2"])
+    expect(rows[0]).toBe(one)
+    expect(one.hidden).toBe(true)
+    expect(one.textContent).toBe("Changed by JS")
+    expect(rows[2]).toBe(two)
+    expect(two.textContent).toBe("Two 2")
+    expect(document.querySelector("template")).toBeNull()
+    expect(document.querySelector('[id^="phem-key:"]')).toBeNull()
+  })
+
+  it("morphs the attributes of the root element of a component", async () => {
+    await mount(table(row("r1", "One", "off")))
+    const tr = document.querySelector("tr")
+
+    await event('<turbo-stream action="replace" method="morph" targets="[data-phem-c=r1]"><template><tr data-phem-c="r1" class="on"><td>One</td></tr></template></turbo-stream>')
+
+    expect(document.querySelector("tr")).toBe(tr)
+    expect(tr.className).toBe("on")
+    expect(tr.hasAttribute("id")).toBe(false)
+  })
+
+  it("dispatches phem:done on the root element of the component when the morph removed the element", async () => {
+    await mount(`<div data-phem-c="p1"><button data-phem-on-click="p1.go">Go</button></div>`)
+    respond(`<div data-phem-c="p1"><p>Gone</p></div>`)
+    const done = nextDone()
+    click("button")
+    const event = await done
+
+    expect(event.target.localName).toBe("div")
+    expect(event.target.getAttribute("data-phem-c")).toBe("p1")
+  })
+})
+
 describe("the morph of a list", () => {
   const rows = (keys) => `<ul>${keys.map((k) => `<li data-phem-key="${k}" data-phem-client="hidden">Row ${k}</li>`).join("")}</ul><button data-phem-on-click="c1.change">Change</button>`
 
@@ -312,7 +369,7 @@ describe("phem:queue, phem:send, phem:receive and phem:done", () => {
     click("#row-1 button")
     const event = await done
 
-    expect(event.target.id).toBe("c1")
+    expect(event.target.getAttribute("data-phem-c")).toBe("c1")
     expect(event.detail).toEqual({ handler: "c1.remove", ids: [1], ok: true, status: 200 })
   })
 
@@ -628,7 +685,7 @@ describe("pushes", () => {
   })
 
   it("removes an element with the same id in the target before an append", async () => {
-    const source = await subscribe('<ul id="entries"><phem-c id="c2"><li id="entry-1">Old</li></phem-c></ul>')
+    const source = await subscribe('<ul id="entries"><li id="entry-1" data-phem-c="c2">Old</li></ul>')
     source.push(stream("prepend", "entries", '<li id="entry-1">New</li>'))
     await rendered()
 
@@ -667,7 +724,7 @@ describe("pushes", () => {
   })
 
   it("refreshes the components of a targets selector", async () => {
-    const source = await subscribe('<phem-c id="b1" data-phem-broadcast="all post1"><p>1</p></phem-c><phem-c id="b2" data-phem-broadcast="all post2"><p>2</p></phem-c><phem-c id="b3" data-phem-broadcast="all post1"><p>1</p></phem-c>')
+    const source = await subscribe('<p data-phem-c="b1" data-phem-broadcast="all post1">1</p><p data-phem-c="b2" data-phem-broadcast="all post2">2</p><phem-c data-phem-c="b3" data-phem-broadcast="all post1"><p>1</p></phem-c>')
     respond("<p>x</p>")
     source.push('<turbo-stream action="phem-refresh" targets="[data-phem-broadcast~=&quot;post1&quot;]"></turbo-stream>')
     const body = await nextBody()
@@ -676,7 +733,7 @@ describe("pushes", () => {
   })
 
   it("skips the component of its own handler in a refresh after the handler", async () => {
-    const markup = '<phem-c id="b1" data-phem-broadcast="all"><button data-phem-on-click="b1.like">Like</button></phem-c><phem-c id="b2" data-phem-broadcast="all"><p>2</p></phem-c>'
+    const markup = '<button data-phem-on-click="b1.like" data-phem-c="b1" data-phem-broadcast="all">Like</button><p id="b2" data-phem-c="b2" data-phem-broadcast="all">2</p>'
     const source = await subscribe(markup)
     respond(markup, {}, { sender: "t1" })
     const done = nextDone()
@@ -689,22 +746,24 @@ describe("pushes", () => {
     expect(JSON.parse(fetch.mock.calls[1][1].body).stale).toEqual(["b2"])
 
     // The token of an event of another page: no skip.
-    respond(markup.replace("<p>2</p>", "<p>3</p>"))
+    respond(markup.replace(">2</p>", ">3</p>"))
     source.push('<turbo-stream action="phem-refresh" targets="[data-phem-broadcast~=&quot;all&quot;]" data-phem-skip="t2 b1"></turbo-stream>')
     // The morph of the last refresh, before the next test.
     await vi.waitFor(() => expect(document.getElementById("b2").textContent).toBe("3"))
     expect(JSON.parse(fetch.mock.calls[2][1].body).stale).toEqual(["b1", "b2"])
   })
 
-  it("sets the keys of a component with #[Broadcast] after an event", async () => {
-    await subscribe('<phem-c id="b1" data-phem-broadcast="all post1"><button data-phem-on-click="b1.next">Next</button></phem-c>')
-    const streams = '<turbo-stream action="update" method="morph" target="b1"><template><button data-phem-on-click="b1.next">Next</button></template></turbo-stream>'
-    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ streams, changes: {}, signature: "s2", keys: { b1: "all post2" } }), { status: 200, headers: { "Content-Type": "application/json" } }))
+  it("morphs the keys of a component with #[Broadcast] after an event", async () => {
+    await subscribe('<button id="next" data-phem-on-click="b1.next" data-phem-c="b1" data-phem-broadcast="all post1">Next</button>')
+    const streams = '<turbo-stream action="replace" method="morph" targets="[data-phem-c=b1]"><template><button id="next" data-phem-on-click="b1.next" data-phem-c="b1" data-phem-broadcast="all post2">Next</button></template></turbo-stream>'
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ streams, changes: {}, signature: "s2" }), { status: 200, headers: { "Content-Type": "application/json" } }))
+    const button = document.getElementById("next")
     const done = nextDone()
     click("button")
     await done
 
-    expect(document.getElementById("b1").getAttribute("data-phem-broadcast")).toBe("all post2")
+    expect(document.getElementById("next")).toBe(button)
+    expect(button.getAttribute("data-phem-broadcast")).toBe("all post2")
   })
 
   it("refreshes the content of the root element for a refresh with no target", async () => {
@@ -730,7 +789,7 @@ describe("pushes", () => {
     expect(document.getElementById("entry-2")).toBeNull()
 
     const markup = '<ul id="entries"><li id="entry-1">One</li><li id="entry-2">Two</li></ul><button data-phem-on-click="c1.save">Save</button>'
-    answer(new Response(JSON.stringify({ streams: `<turbo-stream action="update" method="morph" target="c1"><template>${markup}</template></turbo-stream>`, changes: {}, signature: "s2" }), { status: 200 }))
+    answer(new Response(JSON.stringify({ streams: `<turbo-stream action="replace" method="morph" targets="[data-phem-c=c1]"><template><phem-c data-phem-c="c1">${markup}</phem-c></template></turbo-stream>`, changes: {}, signature: "s2" }), { status: 200 }))
     await done
     await rendered()
 
@@ -750,7 +809,7 @@ describe("pushes", () => {
   })
 
   it("sends the content of the root element when more than 100 components are stale", async () => {
-    const rows = Array.from({ length: 101 }, (_, i) => `<phem-c id="row${i}"><p id="cell${i}">${i}</p></phem-c>`).join("")
+    const rows = Array.from({ length: 101 }, (_, i) => `<p id="cell${i}" data-phem-c="row${i}">${i}</p>`).join("")
     const source = await subscribe(`<p id="top">Rows</p>${rows}`)
     source.push(Array.from({ length: 101 }, (_, i) => stream("update", `cell${i}`, "x")).join(""))
     source.push(stream("phem-refresh", "top"))

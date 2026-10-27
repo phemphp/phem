@@ -53,7 +53,7 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->assertSelectorExists('button[data-count="0"]')
             ->assertState('count', 0);
 
-        self::assertStringStartsWith('<phem-c id="phem', $counter->html());
+        self::assertMatchesRegularExpression('/^<button [^>]*data-phem-c="phem[0-9a-f]{12}">/', $counter->html(), 'the fiber id is on the root element');
     }
 
     public function testClickRunsTheHandlerAndMorphsTheComponent(): void

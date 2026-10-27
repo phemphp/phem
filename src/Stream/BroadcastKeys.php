@@ -21,8 +21,8 @@ use Phem\Metadata\Parameter;
 use Phem\Rendering\Fiber;
 
 /**
- * The keys of the instances of a component with #[Broadcast]: the `<phem-c>` of each instance
- * has them in `data-phem-broadcast`, and a refresh with no target selects them (see
+ * The keys of the instances of a component with #[Broadcast]: the element with the fiber id of
+ * each instance has them in `data-phem-broadcast`, and a refresh with no target selects them (see
  * PageStreams::refresh()).
  *
  * - The key of the component: all its instances.
@@ -165,26 +165,6 @@ final class BroadcastKeys
         return $this->props[$component] = $keys;
     }
 
-    /**
-     * The `data-phem-broadcast` values of the fibers of a component with #[Broadcast], for the
-     * answer of an event: a morph does not change the attributes of a `<phem-c>`, and the values
-     * of its key props can change.
-     *
-     * @param iterable<Fiber> $fibers
-     *
-     * @return array<string, string> fiber id => its keys
-     */
-    public static function attributes(iterable $fibers): array
-    {
-        $attributes = [];
-        foreach ($fibers as $fiber) {
-            if ([] !== $fiber->broadcast) {
-                $attributes[$fiber->id] = implode(' ', $fiber->broadcast);
-            }
-        }
-
-        return $attributes;
-    }
 
     /** @param array<string, mixed> $values the values of all the key props */
     private function instance(string $component, array $values): string

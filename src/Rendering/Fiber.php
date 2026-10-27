@@ -51,7 +51,7 @@ final class Fiber
     public bool $kept = false;
     /**
      * The fiber renders the `<Root>` of the page in this pass (the page, the document): it is
-     * around the root element, so it has no `<phem-c>` and the events do not update it.
+     * around the root element, so it has no fiber id and the events do not update it.
      */
     public bool $holdsRoot = false;
     /** The fiber or an ancestor is stale (see Tree::markStale()): it renders in this pass. */
@@ -75,14 +75,19 @@ final class Fiber
     /** The fiber rendered in the second pass of an event only because a context above it changed. */
     public bool $propagated = false;
     /**
-     * The keys of a component with #[Broadcast] (see Phem\Stream\BroadcastKeys): the attribute
-     * of its `<phem-c>`, for a refresh with no target.
+     * The keys of a component with #[Broadcast] (see Phem\Stream\BroadcastKeys): an attribute
+     * next to its fiber id, for a refresh with no target.
      *
      * @var list<string>
      */
     public array $broadcast = [];
-    /** The inner HTML of the last render. */
+    /** The HTML of the last render. */
     public string $html = '';
+    /**
+     * The end of the attributes of the root element of `$html`, or null when the HTML is not one
+     * element (see RootTag): the fiber id goes on this element.
+     */
+    public ?int $rootTag = null;
     /**
      * The HTML without the child fibers' content, by pass.
      *
@@ -112,6 +117,7 @@ final class Fiber
     {
         $this->pass = $pass;
         $this->kept = false;
+        $this->rootTag = null;
         $this->holdsRoot = false;
         $this->contexts = [];
         $this->changesContext = false;
@@ -126,16 +132,34 @@ final class Fiber
         return $this->childIndexes[$fqcn]++;
     }
 
+    /**
+     * Sets the HTML of a render, and finds its root element.
+     */
+    public function rendered(string $html): void
+    {
+        $root = RootTag::find($html);
+        [$this->html, $this->rootTag] = null !== $root ? $root : [$html, null];
+    }
+
+    /**
+     * The HTML with the fiber id: `data-phem-c` on the root element, or a `<phem-c>` around the
+     * HTML when it is a text, more than one element or another fiber.
+     */
     public function wrapped(): string
     {
         if ($this->kept) {
-            // The phem controller keeps the element of the browser for this placeholder.
-            return '<phem-c id="'.$this->id.'" data-phem-keep></phem-c>';
+            // The phem controller keeps the element of the browser for this placeholder. A
+            // `<template>` is valid in each parent, also in a `<table>` and a `<select>`.
+            return '<template data-phem-keep="'.$this->id.'"></template>';
         }
 
-        $broadcast = [] !== $this->broadcast ? ' '.BroadcastKeys::ATTRIBUTE.'="'.implode(' ', $this->broadcast).'"' : '';
+        $attributes = ' data-phem-c="'.$this->id.'"'.([] !== $this->broadcast ? ' '.BroadcastKeys::ATTRIBUTE.'="'.implode(' ', $this->broadcast).'"' : '');
 
-        return '<phem-c id="'.$this->id.'"'.$broadcast.'>'.$this->html.'</phem-c>';
+        if (null !== $this->rootTag) {
+            return substr_replace($this->html, $attributes, $this->rootTag, 0);
+        }
+
+        return '<phem-c'.$attributes.'>'.$this->html.'</phem-c>';
     }
 
     /** What the parent gave the fiber in its last pass: its props, its slots and its caller context. */

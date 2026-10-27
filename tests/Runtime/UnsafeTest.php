@@ -71,7 +71,7 @@ final class UnsafeTest extends TestCase
         self::assertStringContainsString('<span data-phem-key="'.$xss.'" class="badge badge-'.$xss.'">', $children, 'the key and a prop in an attribute');
         self::assertStringContainsString('IT&#039;S \ #{XSS} &quot;&gt;&lt;SCRIPT&gt;ALERT(3)&lt;/SCRIPT&gt;</span>', $children, 'a quoted prop: the literal is not a Twig string with interpolation');
         self::assertStringContainsString($xss.' 0 times '.$xss, $children, 'a prop and the children of a class component');
-        self::assertSame(1, preg_match('/<phem-c id="phem[0-9a-f]{12}"><button data-phem-on-click="phem[0-9a-f]{12}\.[0-9a-f]+" data-count="0">/', $children), 'the key of a class component is a hash in the fiber id and the handler id');
+        self::assertSame(1, preg_match('/<button data-phem-on-click="(phem[0-9a-f]{12})\.[0-9a-f]+" data-count="0" data-phem-c="\1">/', $children), 'the key of a class component is a hash in the fiber id and the handler id');
     }
 
     public function testHandlerRedirectsOnlyToARelativeOrAnHttpUrl(): void

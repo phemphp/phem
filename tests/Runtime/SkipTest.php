@@ -56,8 +56,8 @@ final class SkipTest extends TestCase
         self::assertSame(1, Renders::of('Probe'), 'only the probe of "n": the other probes get the same props');
         self::assertSame(0, Renders::of('Clicker'));
         self::assertStringContainsString('Bump 1', $data['streams']);
-        self::assertStringContainsString('<li>Probe 1</li>', $data['streams'], 'the probe of "n" renders, in the root');
-        self::assertSame(23, substr_count($data['streams'], 'data-phem-keep></phem-c>'), 'a placeholder for each kept component: the 20 probes of the list, Clicker, Note and Impure (Mounted and Reloader render)');
+        self::assertMatchesRegularExpression('#<li data-phem-c="phem[0-9a-f]{12}">Probe 1</li>#', $data['streams'], 'the probe of "n" renders, in the root');
+        self::assertSame(23, substr_count($data['streams'], '<template data-phem-keep="'), 'a placeholder for each kept component: the 20 probes of the list, Clicker, Note and Impure (Mounted and Reloader render)');
     }
 
     public function testTheOwnerOfTheHandlerRendersAlsoWithNoStateChange(): void

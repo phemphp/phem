@@ -24,9 +24,9 @@ final class HttpTest extends TestCase
     public function testTurboStreamsMorphTheFibers(): void
     {
         $fiber = new Fiber('phem1', '/A#0', 'A');
-        $fiber->html = '<b>x</b>';
+        $fiber->rendered('<b>x</b>');
 
-        self::assertSame('<turbo-stream action="update" method="morph" target="phem1"><template><b>x</b></template></turbo-stream>', new TurboStreams()->updates([$fiber]));
+        self::assertSame('<turbo-stream action="replace" method="morph" targets="[data-phem-c=phem1]"><template><b data-phem-c="phem1">x</b></template></turbo-stream>', new TurboStreams()->updates([$fiber]));
     }
 
     public function testPageStateKeepsTheRouteValuesInThePathKey(): void

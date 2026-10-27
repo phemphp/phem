@@ -22,15 +22,13 @@ namespace Phem\Test\Internal;
 final class EventResult
 {
     /**
-     * @param array<string, string>                    $updates    fiber id => the new inner HTML of its `<phem-c>`
+     * @param array<string, string>                    $updates    fiber id => the new HTML of its element (see Phem\Rendering\Fiber::wrapped())
      * @param list<array{name: string, detail: mixed}> $dispatched the browser events of the handler (see Phem\BrowserEventDispatcher)
-     * @param array<string, string>                    $keys       fiber id => the keys of a component with #[Broadcast] (see Phem\Stream\BroadcastKeys)
      * @param string|null                              $sender     the token of the refreshes of the event (see Phem\Stream\SenderToken)
      */
     private function __construct(
         public readonly array $updates = [],
         public readonly array $dispatched = [],
-        public readonly array $keys = [],
         public readonly ?string $sender = null,
         public readonly ?string $redirect = null,
         public readonly bool $reload = false,
@@ -41,11 +39,10 @@ final class EventResult
     /**
      * @param array<string, string>                    $updates
      * @param list<array{name: string, detail: mixed}> $dispatched
-     * @param array<string, string>                    $keys
      */
-    public static function updates(array $updates, array $dispatched = [], array $keys = [], ?string $sender = null): self
+    public static function updates(array $updates, array $dispatched = [], ?string $sender = null): self
     {
-        return new self($updates, $dispatched, $keys, $sender);
+        return new self($updates, $dispatched, $sender);
     }
 
     public static function redirect(string $url): self

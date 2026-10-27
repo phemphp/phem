@@ -57,11 +57,11 @@ ideas of React map to Phem.
    their state, and runs the PHP handler (in a Doctrine transaction, when the handler or its component
    has `#[Transactional]`). Then, as React does, it renders only the components that can change: the component
    of the handler, the components whose state changed, and their children with new props. It
-   compares their HTML with the hashes, and answers with a Turbo Stream `update`
+   compares their HTML with the hashes, and answers with a Turbo Stream `replace`
    (`method="morph"`) for each component that changed, plus the entries of the state that
    changed and the new signature: the browser sets them in its copy of the state, so a big page
    does not get all its state again with each event. A component that did not render again is
-   a `<phem-c data-phem-keep>` placeholder: the browser keeps it. This needs a pure `render()`
+   a `<template data-phem-keep>` placeholder: the browser keeps it. This needs a pure `render()`
    (see [Keep `render()` pure](phpm-syntax.md#keep-render-pure)). Only the content of the
    `<Root>` changes: the document around it (for example the title) stays the same.
    Events wait in a queue, so each event uses the newest state.
@@ -124,5 +124,9 @@ ideas of React map to Phem.
 - A page gets no props. A route placeholder such as `{id}` is not a prop of the page.
 - A markup literal is rendered when a component returns it or when markup prints it. Do not
   cast it to a string in PHP.
-- A component that is not a template component is wrapped in an `<phem-c>` element (CSS `display: contents`).
-  This wrapper is not valid inside `<table>`, `<tr>`, or `<select>`.
+- A component that is not a template component has a fiber id in `data-phem-c`. When the
+  component renders one element, the id goes on this element, so a component can be a `<tr>`
+  in a `<tbody>` or an `<option>` in a `<select>`. When it renders a text, more than one element
+  (a fragment) or another component, Phem puts a `<phem-c>` element around it (CSS
+  `display: contents`). This wrapper is not valid inside `<table>`, `<tr>`, or `<select>`: there,
+  give the component one root element.

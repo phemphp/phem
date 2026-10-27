@@ -132,7 +132,8 @@ them.
 
 ### The client assets
 
-The client of Phem is the `phem` Stimulus controller, and the `phem-c{display:contents}` CSS. The
+The client of Phem is the `phem` Stimulus controller, and the `phem-c{display:contents}` CSS (for
+the `<phem-c>` around a component that does not render one element). The
 bundle gives them as a Symfony UX package (`assets/package.json`). With AssetMapper,
 they are in the `phemjs` namespace. The controller imports `@hotwired/stimulus` and
 `@hotwired/turbo` from the importmap of the application, so the page has one Turbo and one

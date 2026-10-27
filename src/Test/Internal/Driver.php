@@ -41,7 +41,7 @@ interface Driver
      * The #[State] properties of a component, as the browser keeps them: the root component
      * (the page, or the mounted component) by default.
      *
-     * @param string|null $fiber the id of a fiber (the id of its `<phem-c>`), or null for the root component
+     * @param string|null $fiber the id of a fiber (its `data-phem-c`), or null for the root component
      *
      * @return array<string, mixed>
      */

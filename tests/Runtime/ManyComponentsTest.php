@@ -112,7 +112,7 @@ final class ManyComponentsTest extends TestCase
     {
         [$html, $state, $signature] = $this->open('/many-fields');
         self::assertSame(1, preg_match_all('/data-phem-bind="([^"]+)\.title"/', $html, $title));
-        preg_match_all('/<phem-c id="(phem[0-9a-f]{12})"><li>\s*<input name="name" data-phem-bind="([^"]+)"/', $html, $rows);
+        preg_match_all('/<li data-phem-c="(phem[0-9a-f]{12})">\s*<input name="name" data-phem-bind="([^"]+)"/', $html, $rows);
         self::assertCount(50, array_unique($rows[1]), 'a fiber for each row');
         self::assertNotContains($title[1][0], $rows[1], 'the title is a field of the page');
 
@@ -206,7 +206,7 @@ final class ManyComponentsTest extends TestCase
     /** @return array{0: string, 1: string} the fiber id of a row of /many, and the id of its handler */
     private static function row(string $html, int $index): array
     {
-        self::assertSame(1, preg_match('/<phem-c id="(phem[0-9a-f]{12})"><li>\s*<button data-phem-on-click="([^"]+)">Row '.$index.':/', $html, $m));
+        self::assertSame(1, preg_match('/<li data-phem-c="(phem[0-9a-f]{12})">\s*<button data-phem-on-click="([^"]+)">Row '.$index.':/', $html, $m));
 
         return [$m[1], $m[2]];
     }
@@ -214,7 +214,7 @@ final class ManyComponentsTest extends TestCase
     /** @return list<string> the target of each stream */
     private static function targets(string $streams): array
     {
-        preg_match_all('/<turbo-stream [^>]*target="([^"]+)"/', $streams, $m);
+        preg_match_all('/<turbo-stream [^>]*targets="\[data-phem-c=([^"\]]+)\]"/', $streams, $m);
 
         return $m[1];
     }

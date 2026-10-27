@@ -127,7 +127,7 @@ final class TreeShapeTest extends TestCase
         $after = $this->shapeOf(StateJson::apply($state, $data['changes']));
         self::assertSame(array_keys($before), array_keys($after), 'the same fibers');
         $changed = array_keys(array_filter($after, static fn (array $f, string $id): bool => $f !== $before[$id], \ARRAY_FILTER_USE_BOTH));
-        preg_match_all('/<turbo-stream [^>]*target="([^"]+)"/', $data['streams'], $targets);
+        preg_match_all('/<turbo-stream [^>]*targets="\[data-phem-c=([^"\]]+)\]"/', $data['streams'], $targets);
         self::assertSame($targets[1], $changed);
         self::assertCount(1, $changed, 'only the Toggle');
     }

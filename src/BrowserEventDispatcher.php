@@ -16,7 +16,7 @@ namespace Phem;
 /**
  * Sends browser events with the response of an event: after the morph, the browser dispatches
  * a `CustomEvent` named `phem:<name>`, with the detail. It starts on the root of the component
- * of the handler (its `<phem-c>`, or the root element of the page) and bubbles up to `window`.
+ * of the handler (the element with its fiber id, or the root element of the page) and bubbles up to `window`.
  * Stimulus controllers and plain JS listen to it on an ancestor (`data-action="phem:toast->toast#show"`)
  * or on `window` (`data-action="phem:toast@window->toast#show"`).
  *

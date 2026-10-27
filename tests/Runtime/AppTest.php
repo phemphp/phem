@@ -102,7 +102,7 @@ final class AppTest extends TestCase
         self::assertStringNotContainsString('id="and"', $html);
         self::assertStringContainsString('<p class="theme-dark">Theme: dark</p>', $html, 'template component prop');
         self::assertStringContainsString('<p class="theme-light">Theme: light</p>', $html, 'template component default');
-        self::assertStringContainsString('<p class="greeting">Hello, ADA!</p>', $html, 'function component');
+        self::assertMatchesRegularExpression('#<p class="greeting" data-phem-c="phem[0-9a-f]{12}">Hello, ADA!</p>#', $html, 'function component: the fiber id is on its root element');
         self::assertStringContainsString('<span class="tag">untagged</span>', $html, 'slot default without children');
         self::assertStringContainsString('<span class="tag">urgent</span>', $html, 'slot default with children');
         self::assertStringContainsString('<span id="items">item1</span>', $html, 'mount() sets the first state');
@@ -130,11 +130,11 @@ final class AppTest extends TestCase
         $this->handlers = $h[1];
 
         self::assertMatchesRegularExpression('#<button type="submit" data-phem-on-click="[^"]+" id="a" data-role="counter" aria-label="Count">Clicked 0 times</button>#', $html, 'a template component; the spread replaces type');
-        self::assertMatchesRegularExpression('#<button class="override" data-phem-on-dblclick="[^"]+">HI</button>#', $html, 'a function component; the spread replaces className');
+        self::assertMatchesRegularExpression('#<button class="override" data-phem-on-dblclick="[^"]+" data-phem-c="phem[0-9a-f]{12}">HI</button>#', $html, 'a function component; the spread replaces className');
         self::assertStringContainsString('<button type="button" id="forwarded">Clicked 7 times</button>', $html, 'rest props forwarded to a component');
         self::assertStringContainsString('<button type="button">Clicked 0 times</button>', $html, 'no rest props');
-        self::assertMatchesRegularExpression('#<a class="primary" href="/" data-phem-on-click="[^"]+">Home 0</a>#', $html, 'a class component; the rest prop replaces className');
-        self::assertStringContainsString('<a class="link">Plain</a>', $html, 'a class component without rest props');
+        self::assertMatchesRegularExpression('#<a class="primary" href="/" data-phem-on-click="[^"]+" data-phem-c="phem[0-9a-f]{12}">Home 0</a>#', $html, 'a class component; the rest prop replaces className');
+        self::assertMatchesRegularExpression('#<a class="link" data-phem-c="phem[0-9a-f]{12}">Plain</a>#', $html, 'a class component without rest props');
         self::assertCount(3, $this->handlers);
 
         $r = $this->click(0, uri: '/rest');
@@ -163,13 +163,13 @@ final class AppTest extends TestCase
         self::assertStringContainsString('<footer>Foot 0</footer>', $html, 'the template tests a given slot');
         self::assertSame(1, substr_count($html, '<footer>'), 'no footer without the slot');
         self::assertStringContainsString('<ul id="odd"><li data-phem-key="1">1</li><li data-phem-key="3">3</li></ul>', $html, 'a list of markup with null items');
-        self::assertStringContainsString('<span id="label">n=0</span>', $html);
-        self::assertMatchesRegularExpression('#<h3 id="heading" data-phem-on-click="[^"]+">Edge 0</h3>#', $html, 'the members of a parent class outside the sources');
+        self::assertMatchesRegularExpression('#<span id="label" data-phem-c="phem[0-9a-f]{12}">n=0</span>#', $html);
+        self::assertMatchesRegularExpression('#<h3 id="heading" data-phem-on-click="[^"]+" data-phem-c="phem[0-9a-f]{12}">Edge 0</h3>#', $html, 'the members of a parent class outside the sources');
         self::assertStringContainsString('<p id="path">/edge</p>', $html, 'the app global of Twig');
 
         $r = $this->click(0, uri: '/edge');
         self::assertSame(200, $r['status']);
-        self::assertStringContainsString('<span id="label">n=1</span>', $r['data']['streams'], 'a readonly prop gets the new value of the second pass');
+        self::assertMatchesRegularExpression('#<span id="label" data-phem-c="phem[0-9a-f]{12}">n=1</span>#', $r['data']['streams'], 'a readonly prop gets the new value of the second pass');
         self::assertStringContainsString('<footer>Foot 1</footer>', $r['data']['streams']);
 
         $r = $this->click(1, uri: '/edge');
@@ -179,7 +179,7 @@ final class AppTest extends TestCase
     public function testAReadonlySlotKeepsTheFiberOrder(): void
     {
         $html = $this->open('/edge/readonly-slot');
-        self::assertMatchesRegularExpression('#<div id="shelf"><phem-c id="phem[0-9a-f]+"><button data-phem-on-click="[^"]+">own 0</button></phem-c><phem-c id="phem[0-9a-f]+"><button data-phem-on-click="[^"]+">slot 0</button></phem-c></div>#', $html);
+        self::assertMatchesRegularExpression('#<div id="shelf" data-phem-c="phem[0-9a-f]+"><button data-phem-on-click="[^"]+" data-phem-c="phem[0-9a-f]+">own 0</button><button data-phem-on-click="[^"]+" data-phem-c="phem[0-9a-f]+">slot 0</button></div>#', $html);
 
         $r = $this->click(0, uri: '/edge/readonly-slot');
         self::assertSame(200, $r['status']);
@@ -189,16 +189,16 @@ final class AppTest extends TestCase
 
     public function testANewInstanceForAReadonlyPropIsMounted(): void
     {
-        self::assertStringContainsString('<span id="gauge">n0</span>', $this->open('/edge/mount'));
+        self::assertMatchesRegularExpression('#<span id="gauge" data-phem-c="phem[0-9a-f]{12}">n0</span>#', $this->open('/edge/mount'));
 
         $r = $this->click(0, uri: '/edge/mount');
         self::assertSame(200, $r['status']);
-        self::assertStringContainsString('<span id="gauge">n1</span>', $r['data']['streams']);
+        self::assertMatchesRegularExpression('#<span id="gauge" data-phem-c="phem[0-9a-f]{12}">n1</span>#', $r['data']['streams']);
     }
 
     public function testTheSlotsOfAParentClassOutsideTheSources(): void
     {
-        self::assertStringContainsString('<div id="boxed"><b>kid</b>|f</div>', $this->open('/edge/open-slots'));
+        self::assertMatchesRegularExpression('#<div id="boxed" data-phem-c="phem[0-9a-f]{12}"><b>kid</b>\|f</div>#', $this->open('/edge/open-slots'));
     }
 
     public function testASlotThatATemplateTestsRendersOnce(): void
@@ -206,7 +206,7 @@ final class AppTest extends TestCase
         $html = $this->open('/edge/if-slot');
         self::assertSame(1, substr_count($html, 'foot 0'));
 
-        preg_match_all('/<phem-c id="(phem[0-9a-f]+)">/', $html, $ids);
+        preg_match_all('/ data-phem-c="(phem[0-9a-f]+)"/', $html, $ids);
         $state = json_decode($this->state, true, flags: \JSON_THROW_ON_ERROR);
         self::assertIsArray($state);
         self::assertSame([], array_values(array_diff(array_keys(PageState::fromArray($state)->fibers), $ids[1])), 'each fiber of the state is in the page');
@@ -214,7 +214,7 @@ final class AppTest extends TestCase
 
     public function testAListWithNullItemsIsAnArrayProp(): void
     {
-        self::assertStringContainsString('<p id="count">2</p>', $this->open('/edge/list-prop'));
+        self::assertMatchesRegularExpression('#<p id="count" data-phem-c="phem[0-9a-f]{12}">2</p>#', $this->open('/edge/list-prop'));
     }
 
     public function testClassComponentUsesItsInjectedService(): void
@@ -269,7 +269,7 @@ final class AppTest extends TestCase
         self::assertSame(200, $response->getStatusCode());
         self::assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
         self::assertStringContainsString('"changes":{"_tree":"\\"', $json, 'a quote of the state is \\"');
-        self::assertStringContainsString('<turbo-stream action=\\"update\\"', $json, 'the streams keep their < and their slashes');
+        self::assertStringContainsString('<turbo-stream action=\\"replace\\"', $json, 'the streams keep their < and their slashes');
         self::assertStringNotContainsString('\\u00', $json);
         self::assertSame('nosniff', $this->event('/', ['handler' => 'h', 'signature' => '1.'.str_repeat('a', 64)])->headers->get('X-Content-Type-Options'), 'also a reload');
     }
@@ -307,7 +307,7 @@ final class AppTest extends TestCase
         foreach (['/about', '/about-us'] as $path) {
             $response = $this->request('GET', $path);
             self::assertSame(200, $response->getStatusCode());
-            self::assertStringContainsString('<p id="about">About</p>', (string) $response->getContent(), 'a function page');
+            self::assertMatchesRegularExpression('#<p id="about" data-phem-c="phem[0-9a-f]{12}">About</p>#', (string) $response->getContent(), 'a function page');
         }
     }
 
@@ -348,7 +348,7 @@ final class AppTest extends TestCase
 
         self::assertStringContainsString('<html lang="es">', $html, 'another document component');
         self::assertStringContainsString('<title>Documento 3</title>', $html, 'the title slot of the page, with its state');
-        self::assertMatchesRegularExpression('#<body>\s*<main id="phem-root" data-controller="phem extra" data-action="click->phem\#dispatch [^"]*" data-phem-state-value="\{\n"_tree":"[^"]*",(?:\n"phem[0-9a-f]+":\{[^}]*\},?){2}\n\}" data-phem-signature-value="[^"]*" data-phem-state-inline-value="4096" class="custom page"><phem-c id="phem[0-9a-f]+">\s*<p id="document">Document</p>\s*</phem-c></main>\s*<footer id="doc-footer">#', $html);
+        self::assertMatchesRegularExpression('#<body>\s*<main id="phem-root" data-controller="phem extra" data-action="click->phem\#dispatch [^"]*" data-phem-state-value="\{\n"_tree":"[^"]*",(?:\n"phem[0-9a-f]+":\{[^}]*\},?){2}\n\}" data-phem-signature-value="[^"]*" data-phem-state-inline-value="4096" class="custom page"><p id="document" data-phem-c="phem[0-9a-f]+">Document</p></main>\s*<footer id="doc-footer">#', $html);
         // The ids of the states come from the names of the components, so their order can change.
         self::assertMatchesRegularExpression('#\n"phem[0-9a-f]+":\{"count":3\}#', $html);
         self::assertMatchesRegularExpression('#\n"phem[0-9a-f]+":\{"on":false\}#', $html);
@@ -379,7 +379,7 @@ final class AppTest extends TestCase
         $twig = $this->service('twig', Environment::class);
         $html = $twig->createTemplate("{% component 'App\\\\Page\\\\Greeting' with {name: 'twig'} %}")->render();
 
-        self::assertMatchesRegularExpression('#^<phem-c id="phem[0-9a-f]+"><p class="greeting">Hello, TWIG!</p></phem-c>$#', $html);
+        self::assertMatchesRegularExpression('#^<p class="greeting" data-phem-c="phem[0-9a-f]+">Hello, TWIG!</p>$#', $html);
     }
 
     public function testAFunctionWithoutTheComponentAttributeIsAPlainFunction(): void
