@@ -41,6 +41,12 @@
                 "main": "dist/phem_tabs_controller.js",
                 "fetch": "lazy",
                 "enabled": false
+            },
+            "clipboard": {
+                "name": "phem-clipboard",
+                "main": "dist/phem_clipboard_controller.js",
+                "fetch": "lazy",
+                "enabled": false
             }
         },
         "importmap": {
