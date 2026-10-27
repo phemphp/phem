@@ -121,16 +121,61 @@ function componentIds(root) {
 // Replaces the placeholder of each component that the server did not render again (a
 // `<template data-phem-keep>`, valid in each parent, also in a `<table>` and a `<select>`) with
 // an empty copy of its element in the page, with `data-phem-keep`: the morph matches the copy with
-// the element by its id, and keeps the element as it is.
-function keptElements(content, page) {
+// the element by its id, and keeps the element as it is. A placeholder `<first>..<last>` is a run
+// of components (see keptRun()). False when the state before the event does not have a run.
+function keptElements(content, page, state) {
   for (const placeholder of content.querySelectorAll("template[data-phem-keep]")) {
-    const el = page.querySelector(`[${FIBER}="${placeholder.getAttribute("data-phem-keep")}"]`)
-    if (!el) continue
+    const keep = placeholder.getAttribute("data-phem-keep")
+    const ids = keep.includes("..") ? keptRun(state, ...keep.split("..")) : [keep]
+    if (!ids) return false
 
-    const copy = el.cloneNode(false)
-    copy.setAttribute("data-phem-keep", "")
-    placeholder.replaceWith(copy)
+    const copies = []
+    for (const id of ids) {
+      const el = page.querySelector(`[${FIBER}="${id}"]`)
+      if (!el) continue
+
+      const copy = el.cloneNode(false)
+      copy.setAttribute("data-phem-keep", "")
+      copies.push(copy)
+    }
+
+    if (copies.length) placeholder.replaceWith(...copies)
   }
+
+  return true
+}
+
+// The fiber ids of a run of kept components: `first`, then the next children of its parent up to
+// `last`, in the shape of a state (its `_tree` entry, see Phem\State\TreeShape). The shape has the
+// fibers from the page down, separated by a comma: each one is 8 base64url characters of its id,
+// 8 of its hash or none, its depth, and `c` for a consumer. Null when the shape does not have the run.
+function keptRun(state, first, last) {
+  const entries = /^"_tree":"([^"]*)"/m.exec(state)?.[1].split(",") ?? []
+  const start = entries.findIndex((entry) => shapeId(entry) === first)
+  if (start < 0) return null
+
+  const depth = shapeDepth(entries[start])
+  const ids = []
+  for (const entry of entries.slice(start)) {
+    const d = shapeDepth(entry)
+    if (d < depth) break
+    if (d > depth) continue
+
+    ids.push(shapeId(entry))
+    if (ids.at(-1) === last) return ids
+  }
+
+  return null
+}
+
+function shapeId(entry) {
+  const bytes = atob(entry.slice(0, 8).replace(/-/g, "+").replace(/_/g, "/"))
+  return `phem${[...bytes].map((c) => c.charCodeAt(0).toString(16).padStart(2, "0")).join("")}`
+}
+
+function shapeDepth(entry) {
+  const code = entry.endsWith("c") ? entry.slice(0, -1) : entry
+  return Number(code.slice(code.length > 16 ? 16 : 8))
 }
 
 // The element of the component around an element: its root element with the fiber id, or its
@@ -179,8 +224,8 @@ function nestedPairs(key, value) {
 
 // The state is a JSON object with one entry on each line, in the order of the keys (see
 // Phem\State\StateJson). An event response has only the entries that changed: key => the JSON text
-// of the value, or null for an entry that the state does not have any more. The controller sets
-// them and joins the lines again, with no JSON encoder, so the text is the text that the server
+// of the value, a patch of its JSON text (see applyPatch()), or null for an entry that the state
+// does not have any more. The controller sets them and joins the lines again, with no JSON encoder, so the text is the text that the server
 // signed. A state with another form counts as empty: then the response has all the entries.
 function applyStateChanges(state, changes) {
   const entries = new Map()
@@ -194,11 +239,22 @@ function applyStateChanges(state, changes) {
 
   for (const [key, value] of Object.entries(changes)) {
     if (value === null) entries.delete(key)
+    else if (Array.isArray(value)) entries.set(key, applyPatch(entries.get(key) ?? "", value))
     else entries.set(key, value)
   }
 
   const keys = [...entries.keys()].sort()
   return keys.length ? `{\n${keys.map((key) => `"${key}":${entries.get(key)}`).join(",\n")}\n}` : "{}"
+}
+
+// A patch of the JSON text of an entry (see Phem\State\TextPatch): splices [index, count, ...parts]
+// on the parts between its commas, in the order of their indexes. From the last splice, so the
+// indexes of the splices before it stay the same.
+function applyPatch(text, patch) {
+  const parts = text.split(",")
+  for (const [index, count, ...inserted] of [...patch].reverse()) parts.splice(index, count, ...inserted)
+
+  return parts.join(",")
 }
 
 // The smallest JSON body that the controller compresses: the gzip header and the time to compress
@@ -396,11 +452,20 @@ export default class PhemController extends Controller {
       const target = id ? document.getElementById(id) : selector ? document.querySelector(selector) : null
       if (!target || !this.element.contains(target)) return
 
+      // The state before the event, for the runs of kept components: the controller sets the
+      // new state before it renders the streams.
+      const state = this.stateBefore ?? this.stateValue
       const render = event.detail.render
       event.detail.render = async (element) => {
         const content = stream.templateElement.content
         componentIds(target)
-        keptElements(content, this.element)
+        if (!keptElements(content, this.element, state)) {
+          dropKeyIds(this.element)
+          console.error("[phem] the page does not have a run of components that the server kept: the page loads again")
+          this.reload()
+          return
+        }
+
         componentIds(content)
         keyIds(target, target)
         keyIds(content, target)
@@ -1062,8 +1127,7 @@ export default class PhemController extends Controller {
 
     if (response.status === 409) {
       // The state is not valid any more (a new build, or a new secret): load the page again.
-      this.leaving = true
-      Turbo.visit(window.location.href, { action: "replace" })
+      this.reload()
       return
     }
 
@@ -1116,6 +1180,7 @@ export default class PhemController extends Controller {
     }
 
     for (const id of stale) this.stale.delete(id)
+    const stateBefore = this.stateValue
     this.stateValue = applyStateChanges(this.stateValue, data.changes ?? {})
     this.signatureValue = data.signature
     // Before the pushes that wait for this event (see receive()).
@@ -1125,7 +1190,14 @@ export default class PhemController extends Controller {
 
     // Before the morph, so a listener can stop its own changes of the page.
     notify("receive")
-    const rendered = data.streams ? this.renderStreams(data.streams, handler) : afterStreams()
+    // Turbo dispatches `turbo:before-stream-render` while renderStreams() runs (see keyMorph).
+    this.stateBefore = stateBefore
+    let rendered
+    try {
+      rendered = data.streams ? this.renderStreams(data.streams, handler) : afterStreams()
+    } finally {
+      this.stateBefore = null
+    }
     // The render of the answer failed: the event ends as an event that the server did not take.
     const renderFailed = (e) => {
       failed(response.status)
@@ -1203,6 +1275,12 @@ export default class PhemController extends Controller {
     // state is for the new URL, not for the URL that loaded the page.
     const view = Turbo.session?.view
     if (view) view.lastRenderedLocation = url
+  }
+
+  // Loads the page again, with no question of a `data-phem-guard`.
+  reload() {
+    this.leaving = true
+    Turbo.visit(window.location.href, { action: "replace" })
   }
 
   // Renders the Turbo Streams of a response, in a view transition when the component of the

@@ -55,7 +55,22 @@ describe("the state", () => {
   // after a comma and escaped quotes: they are not the end of an entry.
   const vector = JSON.parse(String.raw`{"before":"{\n\"_path\":{\"id\":\"3\"},\n\"_tree\":\"AAAAAAAA0\",\n\"phem0a\":{\"text\":\"a,\\nb \\\"c\\\" é/\"},\n\"phem0b\":{\"n\":1.0}\n}","changes":{"phem0a":null,"phem0b":"{\"n\":2.5}","phem0c":"[]","_tree":"\"BBBBBBBB0,CCCCCCCC1\""},"after":"{\n\"_path\":{\"id\":\"3\"},\n\"_tree\":\"BBBBBBBB0,CCCCCCCC1\",\n\"phem0b\":{\"n\":2.5},\n\"phem0c\":[]\n}"}`)
 
+  // The same vector as in the tests of Phem\State\StateJson: a patch of the `_tree` entry (see
+  // Phem\State\TextPatch), with a splice for each run of other parts.
+  const patchVector = JSON.parse(String.raw`{"before":"{\n\"_tree\":\"AAAAAAAA0,BBBBBBBBbbbbbbbb1,CCCCCCCCcccccccc2,DDDDDDDDdddddddd1,EEEEEEEEeeeeeeee1\",\n\"phem0a\":{\"n\":1}\n}","changes":{"_tree":[[1,1,"BBBBBBBBxxxxxxxx1"],[4,1,"EEEEEEEEyyyyyyyy1\""]],"phem0a":"{\"n\":2}"},"after":"{\n\"_tree\":\"AAAAAAAA0,BBBBBBBBxxxxxxxx1,CCCCCCCCcccccccc2,DDDDDDDDdddddddd1,EEEEEEEEyyyyyyyy1\",\n\"phem0a\":{\"n\":2}\n}"}`)
+
   const root = () => document.getElementById("phem-root")
+
+  it("applies the patch of an entry, as the server does", async () => {
+    await mount(`<button data-phem-on-click="c1.save">Save</button>`)
+    root().setAttribute("data-phem-state-value", patchVector.before)
+    respond(`<button data-phem-on-click="c1.save">Save</button>`, patchVector.changes)
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect(root().getAttribute("data-phem-state-value")).toBe(patchVector.after)
+  })
 
   it("sets the changes of the response in the state, as the server does", async () => {
     await mount(`<button data-phem-on-click="c1.save">Save</button>`)
@@ -196,6 +211,45 @@ describe("the components with the fiber id on their root element", () => {
     expect(two.textContent).toBe("Two 2")
     expect(document.querySelector("template")).toBeNull()
     expect(document.querySelector('[id^="phem-key:"]')).toBeNull()
+  })
+
+  it("keeps the elements of a run of components from the shape of the state before the event", async () => {
+    // The page `p` with the rows 1 to 4: the shape has their ids (phem00000000000N) in base64url.
+    const id = (n) => `phem00000000000${n}`
+    await mount(table([1, 2, 3, 4].map((n) => row(id(n), `Row ${n}`)).join("")))
+    const tree = "AAAAAAAA0,AAAAAAAB1,AAAAAAAC1,AAAAAAAD1,AAAAAAAE2,AAAAAAAF1"
+    document.getElementById("phem-root").setAttribute("data-phem-state-value", `{\n"_tree":"${tree}"\n}`)
+    const before = [...document.querySelectorAll("tbody > tr")]
+    before[1].hidden = true
+
+    // Row 4 renders again, and the rows 1 to 3 are one run. The new state does not have them any
+    // more: the run is in the state before the event.
+    respond(table(`<template data-phem-keep="${id(1)}..${id(3)}"></template>` + row(id(4), "Row 4 changed")), { _tree: '"AAAAAAAA0"' })
+    const done = nextDone()
+    click("button")
+    await done
+
+    const rows = [...document.querySelectorAll("tbody > tr")]
+    expect(rows.map((tr) => tr.getAttribute("data-phem-c"))).toEqual([id(1), id(2), id(3), id(4)])
+    expect(rows.slice(0, 3)).toEqual(before.slice(0, 3))
+    expect(rows[1].hidden).toBe(true)
+    expect(rows[3].textContent).toBe("Row 4 changed")
+    expect(document.querySelector("template")).toBeNull()
+  })
+
+  it("loads the page again when the state does not have a run of components", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {})
+    const reload = vi.spyOn(PhemController.prototype, "reload").mockImplementation(() => {})
+    await mount(table(row("phem000000000001", "Row 1") + row("phem000000000002", "Row 2")))
+    respond(table('<template data-phem-keep="phem000000000001..phem000000000002"></template>'))
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect(error).toHaveBeenCalledWith(expect.stringContaining("does not have a run of components"))
+    expect(reload).toHaveBeenCalledOnce()
+    expect(document.querySelectorAll("tbody > tr")).toHaveLength(2)
+    reload.mockRestore()
   })
 
   it("morphs the attributes of the root element of a component", async () => {

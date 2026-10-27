@@ -15,6 +15,7 @@ namespace Phem\Test\Internal;
 
 use Phem\Http\EventBody;
 use Phem\Rendering\Fiber;
+use Phem\Rendering\KeptRuns;
 use Phem\State\PageState;
 use Phem\State\StateJson;
 use Phem\State\UrlQuery;
@@ -55,6 +56,7 @@ final class PageDriver implements Driver
         private readonly string $uri,
         private readonly array $server = [],
         private array $cookies = [],
+        private readonly KeptRuns $runs = new KeptRuns(),
     ) {
         $this->url = $this->uri;
 
@@ -120,12 +122,14 @@ final class PageDriver implements Driver
             return EventResult::redirect($this->redirect = $data['redirect']);
         }
 
-        // As the browser: the response has only the entries of the state that changed.
+        // As the browser: the runs of kept fibers are in the shape before the event, and the
+        // response has only the entries of the state that changed.
+        $updates = $this->updates((string) $data['streams']);
         $this->state = StateJson::apply($this->state, \is_array($data['changes'] ?? null) ? $data['changes'] : []);
         $this->signature = (string) $data['signature'];
         $this->query($data['query'] ?? null);
 
-        return EventResult::updates(self::streams((string) $data['streams']), self::events($data['events'] ?? []), \is_string($data['sender'] ?? null) ? $data['sender'] : null);
+        return EventResult::updates($updates, self::events($data['events'] ?? []), \is_string($data['sender'] ?? null) ? $data['sender'] : null);
     }
 
     /**
@@ -258,6 +262,24 @@ final class PageDriver implements Driver
         }
 
         return $list;
+    }
+
+    /**
+     * The fibers in the Turbo Streams of an event, with a placeholder for each kept fiber of a run
+     * (see KeptRuns), in the shape of the state before the event.
+     *
+     * @return array<string, string> fiber id => the new HTML of its element
+     */
+    private function updates(string $streams): array
+    {
+        $before = PageState::fromArray((array) json_decode($this->state, true))->shape;
+
+        $updates = [];
+        foreach (self::streams($streams) as $id => $html) {
+            $updates[$id] = $this->runs->expand($html, $before) ?? throw new \UnexpectedValueException(\sprintf('The event keeps a run of components in "%s" that the shape of the page does not have.', $id));
+        }
+
+        return $updates;
     }
 
     /**

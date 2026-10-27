@@ -27,15 +27,6 @@ Talk about each item before its implementation. The open questions are a start, 
 
 ## 1. Rendering and performance
 
-### [ ] Smaller keep placeholders and shape changes — P2
-
-`make bench`: a click on a page with 200 row components that changes only the page sends about
-15.7 KB. About 10 KB are the `<template data-phem-keep="…">` placeholders of the rows, and about
-3.5 KB are the new `_tree` value (all its entries, also when only one hash changed).
-
-- **Proposal:** a range placeholder for a run of kept siblings, and a diff of the `_tree` entries
-  (the fibers that rendered), as for the state entries.
-
 ### [ ] Streaming SSR of the `<Suspense>` boundaries — P3
 
 A boundary loads with a second request after the page (now one load event for all of them).

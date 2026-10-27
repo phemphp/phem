@@ -55,6 +55,10 @@ final class TreeShapeTest extends TestCase
         self::assertSame('AAAAAAAK0,AAAAAAAL'.$a.'1,AAAAAAAM'.$b.'2,________'.$a.'1', $encoded);
         self::assertSame($fibers, TreeShape::decode($encoded)->fibers);
         self::assertSame(['phem00000000000b', 'phemffffffffffff'], TreeShape::decode($encoded)->childrenOf('phem00000000000a'));
+        self::assertSame('phemffffffffffff', TreeShape::decode($encoded)->nextSiblingOf('phem00000000000b'));
+        self::assertNull(TreeShape::decode($encoded)->nextSiblingOf('phemffffffffffff'), 'the last child');
+        self::assertNull(TreeShape::decode($encoded)->nextSiblingOf('phem00000000000c'), 'the only child');
+        self::assertNull(TreeShape::decode($encoded)->nextSiblingOf('phem00000000000a'), 'the page');
         self::assertSame(1, preg_match('/^[A-Za-z0-9_-]{8}$/', $a), 'the hash has 8 base64url characters');
     }
 

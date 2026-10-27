@@ -77,6 +77,8 @@ final class ManyComponentsTest extends TestCase
 
         self::assertSame(['_tree', $row], array_keys($data['changes']), 'the shape, with the new hash of the row, and the state of the row');
         self::assertSame('{"clicks":1}', $data['changes'][$row]);
+        self::assertCount(1, $data['changes']['_tree'], 'a patch of the shape: one splice');
+        self::assertSame([1, 3], [$data['changes']['_tree'][0][1], \count($data['changes']['_tree'][0])], 'only the entry of the row');
 
         // The browser sets the changes in its state. The server accepts the text: it is the text
         // that the server signed.
@@ -105,7 +107,11 @@ final class ManyComponentsTest extends TestCase
 
         self::assertCount(1, self::targets($data['streams']), 'the root element');
         self::assertStringContainsString('Bumps 1', $data['streams']);
-        self::assertSame(50, substr_count($data['streams'], 'data-phem-keep'), 'each row is a placeholder');
+        [$first] = self::row($html, 0);
+        [$last] = self::row($html, 49);
+        self::assertSame(1, substr_count($data['streams'], 'data-phem-keep'), 'one placeholder for the run of rows');
+        self::assertStringContainsString('<template data-phem-keep="'.$first.'..'.$last.'"></template>', $data['streams']);
+        self::assertSame([[1, 1]], array_map(static fn (array $splice): array => \array_slice($splice, 0, 2), $data['changes']['_tree']), 'a patch of the shape: only the entry of the page, after the document');
     }
 
     public function testEachFieldBindsThePropertyOfItsRow(): void

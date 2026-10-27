@@ -22,9 +22,10 @@ namespace Phem\State;
  *     "phem0123456789ab":{"count":1}
  *     }
  *
- * An event response sends only the entries that changed (see changes()). The browser splits its
- * text into entries, sets the changes, and joins the entries again (see apply()): it never
- * encodes a value again, so the text that it sends back is the text that the server signed.
+ * An event response sends only the entries that changed (see changes()), and a patch of a long
+ * entry that changed only a bit (see TextPatch). The browser splits its text into entries, sets
+ * the changes, and joins the entries again (see apply()): it never encodes a value again, so the
+ * text that it sends back is the text that the server signed.
  * json_encode() writes no line break in a value (it escapes it in a string), so each line break
  * is between two entries.
  */
@@ -80,19 +81,32 @@ final class StateJson
      * text of its value, or null for an entry that the new state does not have. A state before
      * with another form counts as empty, as in the browser: the changes have all the entries.
      *
-     * @param string $after a text of encode()
+     * An entry of $patched that is in the two states gets a patch of its JSON text (see
+     * TextPatch), when the patch is shorter than the text.
      *
-     * @return array<string, string|null>
+     * @param string       $after   a text of encode()
+     * @param list<string> $patched the keys of the entries that can get a patch
+     *
+     * @return array<string, string|list<list<int|string>>|null>
      */
-    public static function changes(string $before, string $after): array
+    public static function changes(string $before, string $after, array $patched = []): array
     {
         $old = self::entries($before) ?? [];
         $new = self::entries($after) ?? throw new \InvalidArgumentException('The new state is not a text of StateJson::encode().');
         $changes = [];
 
         foreach ($new as $key => $value) {
-            if (($old[$key] ?? null) !== $value) {
-                $changes[$key] = $value;
+            if (($old[$key] ?? null) === $value) {
+                continue;
+            }
+
+            $changes[$key] = $value;
+
+            if (isset($old[$key]) && \in_array($key, $patched, true)) {
+                $patch = TextPatch::diff($old[$key], $value);
+                if (\strlen(json_encode($patch, self::FLAGS)) < \strlen($value)) {
+                    $changes[$key] = $patch;
+                }
             }
         }
 
@@ -106,7 +120,7 @@ final class StateJson
     /**
      * The text of a state after the changes, as the browser makes it (see changes()).
      *
-     * @param array<array-key, string|null> $changes
+     * @param array<array-key, string|array<array-key, mixed>|null> $changes
      */
     public static function apply(string $json, array $changes): string
     {
@@ -115,6 +129,8 @@ final class StateJson
         foreach ($changes as $key => $value) {
             if (null === $value) {
                 unset($entries[$key]);
+            } elseif (\is_array($value)) {
+                $entries[(string) $key] = TextPatch::apply($entries[$key] ?? '', $value) ?? throw new \UnexpectedValueException(\sprintf('The patch of the entry "%s" of a page state is not valid.', $key));
             } else {
                 $entries[(string) $key] = $value;
             }

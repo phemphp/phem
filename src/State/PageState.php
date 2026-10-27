@@ -25,7 +25,8 @@ namespace Phem\State;
 final class PageState
 {
     private const PATH_KEY = '_path';
-    private const TREE_KEY = '_tree';
+    /** The key of the shape: an event response sends a patch of it (see StateJson::changes()). */
+    public const TREE_KEY = '_tree';
     private const SUBSCRIBED_KEY = '_subscribed';
 
     /**

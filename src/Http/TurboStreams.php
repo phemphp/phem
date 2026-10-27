@@ -14,20 +14,30 @@ declare(strict_types=1);
 namespace Phem\Http;
 
 use Phem\Rendering\Fiber;
+use Phem\Rendering\KeptRuns;
+use Phem\State\TreeShape;
 
 /**
  * The Turbo Streams that morph the fibers that changed in the browser. Each stream replaces the
  * element with the fiber id (its root element or its `<phem-c>`), so a morph also changes the
- * attributes of the root element.
+ * attributes of the root element. A run of kept fibers has one placeholder (see KeptRuns).
  */
 final class TurboStreams
 {
-    /** @param iterable<Fiber> $fibers */
-    public function updates(iterable $fibers): string
+    public function __construct(
+        private readonly KeptRuns $runs = new KeptRuns(),
+    ) {
+    }
+
+    /**
+     * @param iterable<Fiber> $fibers
+     * @param TreeShape       $before the shape of the render before the event, in the browser
+     */
+    public function updates(iterable $fibers, TreeShape $before = new TreeShape()): string
     {
         $streams = '';
         foreach ($fibers as $fiber) {
-            $streams .= \sprintf('<turbo-stream action="replace" method="morph" targets="[data-phem-c=%s]"><template>%s</template></turbo-stream>', $fiber->id, $fiber->wrapped());
+            $streams .= \sprintf('<turbo-stream action="replace" method="morph" targets="[data-phem-c=%s]"><template>%s</template></turbo-stream>', $fiber->id, $this->runs->collapse($fiber->wrapped(), $before));
         }
 
         return $streams;

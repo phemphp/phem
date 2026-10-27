@@ -41,6 +41,8 @@ final class TreeShape
 
     /** @var array<string, list<string>>|null parent id => child ids */
     private ?array $children = null;
+    /** @var array<string, string>|null fiber id => the id of the next child of its parent */
+    private ?array $next = null;
     /** @var array<string, true>|null the consumers and their ancestors */
     private ?array $toConsumers = null;
 
@@ -198,6 +200,22 @@ final class TreeShape
         $this->children ??= self::children($this->fibers);
 
         return $this->children[$id] ?? [];
+    }
+
+    /** The next child of the parent of a fiber, in their order, or null. */
+    public function nextSiblingOf(string $id): ?string
+    {
+        if (null === $this->next) {
+            $this->next = [];
+            $this->children ??= self::children($this->fibers);
+            foreach ($this->children as $children) {
+                for ($i = 1, $n = \count($children); $i < $n; ++$i) {
+                    $this->next[$children[$i - 1]] = $children[$i];
+                }
+            }
+        }
+
+        return $this->next[$id] ?? null;
     }
 
     /**

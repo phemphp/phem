@@ -30,6 +30,14 @@ final class StateJsonTest extends TestCase
         {"before":"{\n\"_path\":{\"id\":\"3\"},\n\"_tree\":\"AAAAAAAA0\",\n\"phem0a\":{\"text\":\"a,\\nb \\\"c\\\" é/\"},\n\"phem0b\":{\"n\":1.0}\n}","changes":{"phem0a":null,"phem0b":"{\"n\":2.5}","phem0c":"[]","_tree":"\"BBBBBBBB0,CCCCCCCC1\""},"after":"{\n\"_path\":{\"id\":\"3\"},\n\"_tree\":\"BBBBBBBB0,CCCCCCCC1\",\n\"phem0b\":{\"n\":2.5},\n\"phem0c\":[]\n}"}
         JSON;
 
+    /**
+     * The same vector as in the tests of the phem controller: a patch of the `_tree` entry (see
+     * TextPatch), with a splice for each run of other parts. The last part ends with the quote.
+     */
+    private const PATCH_VECTOR = <<<'JSON'
+        {"before":"{\n\"_tree\":\"AAAAAAAA0,BBBBBBBBbbbbbbbb1,CCCCCCCCcccccccc2,DDDDDDDDdddddddd1,EEEEEEEEeeeeeeee1\",\n\"phem0a\":{\"n\":1}\n}","changes":{"_tree":[[1,1,"BBBBBBBBxxxxxxxx1"],[4,1,"EEEEEEEEyyyyyyyy1\""]],"phem0a":"{\"n\":2}"},"after":"{\n\"_tree\":\"AAAAAAAA0,BBBBBBBBxxxxxxxx1,CCCCCCCCcccccccc2,DDDDDDDDdddddddd1,EEEEEEEEyyyyyyyy1\",\n\"phem0a\":{\"n\":2}\n}"}
+        JSON;
+
     public function testEncodesOneEntryOnEachLineInTheOrderOfTheKeys(): void
     {
         $state = ['phem0b' => ['n' => 1.0], '_tree' => 'AAAAAAAA0', 'phem0a' => ['text' => "a,\nb \"c\" é/"], '_path' => ['id' => '3']];
@@ -80,6 +88,32 @@ final class StateJsonTest extends TestCase
         self::assertSame(['_path' => ['id' => '3'], '_tree' => 'BBBBBBBB0,CCCCCCCC1', 'phem0b' => ['n' => 2.5], 'phem0c' => []], json_decode($after, true));
     }
 
+    public function testAPatchedEntryGetsAPatchOfItsText(): void
+    {
+        ['before' => $before, 'changes' => $changes, 'after' => $after] = self::vector(self::PATCH_VECTOR);
+
+        self::assertSame($changes, StateJson::changes($before, $after, ['_tree']), 'a splice for each run of other parts');
+        self::assertSame($after, StateJson::apply($before, $changes));
+        self::assertSame(StateJson::entries($after)['_tree'] ?? null, StateJson::changes($before, $after)['_tree'], 'not a patched entry');
+    }
+
+    public function testAPatchedEntryGetsItsTextWhenThePatchIsNotShorter(): void
+    {
+        $before = StateJson::encode(['_tree' => 'AAAAAAAA0,BBBBBBBB1']);
+        $after = StateJson::encode(['_tree' => 'XXXXXXXX0,YYYYYYYY1']);
+
+        self::assertSame(['_tree' => '"XXXXXXXX0,YYYYYYYY1"'], StateJson::changes($before, $after, ['_tree']));
+        self::assertSame(['_tree' => '"XXXXXXXX0,YYYYYYYY1"'], StateJson::changes('{}', $after, ['_tree']), 'a new entry');
+    }
+
+    public function testAPatchWithAnotherFormIsNotValid(): void
+    {
+        $this->expectException(\UnexpectedValueException::class);
+        $this->expectExceptionMessage('The patch of the entry "_tree" of a page state is not valid.');
+
+        StateJson::apply(self::vector(self::PATCH_VECTOR)['before'], ['_tree' => [[9, 1, 'x']]]);
+    }
+
     public function testAKeyHasOnlyLettersDigitsAndUnderscores(): void
     {
         $this->expectException(\LogicException::class);
@@ -95,9 +129,9 @@ final class StateJsonTest extends TestCase
         StateJson::changes('{}', '{"phem0a":1}');
     }
 
-    /** @return array{before: string, changes: array<string, string|null>, after: string} */
-    private static function vector(): array
+    /** @return array{before: string, changes: array<string, string|list<list<int|string>>|null>, after: string} */
+    private static function vector(string $vector = self::VECTOR): array
     {
-        return json_decode(self::VECTOR, true, 512, \JSON_THROW_ON_ERROR);
+        return json_decode($vector, true, 512, \JSON_THROW_ON_ERROR);
     }
 }
