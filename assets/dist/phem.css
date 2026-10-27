@@ -6,3 +6,11 @@ phem-suspense{display:block}
 .phem-error{position:fixed;inset:auto 1rem 1rem;z-index:2147483647;max-width:32rem;margin:auto;padding:.75rem 1rem;border-radius:.375rem;background:#b91c1c;color:#fff;font:inherit;cursor:pointer}
 /* A phem:loading or phem:progress element shows only while its handler runs, also with a `display` of its own. */
 [data-phem-loading][hidden],[data-phem-progress][hidden]{display:none!important}
+/* The phem-toast controller: a stack of toasts at the bottom right. :where() lets the app change it. */
+:where([data-controller~="phem-toast"]){position:fixed;inset:auto 1rem 1rem auto;z-index:2147483646;display:flex;flex-direction:column;gap:.5rem;max-width:min(24rem,calc(100vw - 2rem))}
+:where(.phem-toast){display:flex;align-items:start;gap:.75rem;padding:.75rem 1rem;border-radius:.375rem;background:#1f2937;color:#fff;font:inherit;box-shadow:0 4px 12px rgb(0 0 0/.15)}
+:where(.phem-toast-error){background:#b91c1c}
+:where(.phem-toast-warning){background:#b45309}
+:where(.phem-toast-success){background:#15803d}
+:where(.phem-toast-message){flex:1}
+:where(.phem-toast-close){padding:0 .25rem;border:0;background:none;color:inherit;font:inherit;line-height:1;cursor:pointer}

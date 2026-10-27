@@ -103,8 +103,7 @@ and `data-phem-ignore` by hand.
 - **Proposal:** a small set of Phem controllers. Each controller keeps its DOM changes after the
   morph of an event: with its own `data-phem-client` attributes, or by applying the changes again
   on `turbo:morph-element` (as `phem-optimistic` does). `phem-optimistic`, `phem-toggle`,
-  `phem-dialog` and `phem-tabs` are done.
-  - `phem-toast`: shows `phem:toast`, `phem:error` and `phem:rate-limited`.
+  `phem-dialog`, `phem-tabs` and `phem-toast` are done.
   - `phem-clipboard`, `phem-autofocus` (also after a morph), `phem-confirm` before a server
     event.
 - **Rules:**

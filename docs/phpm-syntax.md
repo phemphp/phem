@@ -1396,6 +1396,69 @@ The controller is not enabled by default. Enable it in `assets/controllers.json`
 }
 ```
 
+### Toasts
+
+The `phem-toast` controller shows the browser events of Phem as toasts: short messages that go
+away after some seconds. Put one element in the layout of the page, or in the page component:
+
+```html
+<div data-controller="phem-toast"></div>
+```
+
+It listens on `window` for these events:
+
+- `phem:toast`, from the dispatcher of a handler event (`$e->dispatcher`). The detail is the
+  message, or an object with `message`, and an optional `type` and `duration`:
+
+  ```php
+  $e->dispatcher->dispatch('toast', ['message' => 'Saved', 'type' => 'success']);
+  ```
+
+- `phem:error` (see [Failed events](#failed-events)). It shows the error message in place of the
+  default message, and prevents the default. The error message is the `errorMessage` value, or else
+  the `data-phem-error-message-value` of the `<Root>` element. When a listener before it prevents
+  the default (to show its own message), the controller shows nothing.
+- `phem:rate-limited` (see [Rate limits](#rate-limits)). It shows the `rateLimitedMessage` value.
+
+The `show` action shows the detail of another event, with the same format as `phem:toast`:
+`data-action="cart:added@window->phem-toast#show"`. With two `phem-toast` elements, only one of
+them shows each event.
+
+A toast with the same type and message as a toast on the screen does not show again: the toast on
+the screen starts its time again. So 20 fast clicks over a rate limit show one toast. A `type` that
+is not one of the four types gives `info`, and a `duration` that is not a number gives the
+`duration` value.
+
+The message is text, not HTML. A toast gets the `phem-toast` class and a class for its type:
+`phem-toast-info` (the default), `phem-toast-success`, `phem-toast-warning` or `phem-toast-error`.
+The style is in `phem.css`. It has a low specificity (`:where()`), so the CSS of the app can change
+it.
+
+A toast goes away after the `duration` value, in milliseconds (`5000` by default), or with its
+close button. A duration of `0` keeps the toast until the close button. The time stops while the
+pointer or the focus is on the toast. The element is a live region (`aria-live="polite"`), so a
+screen reader reads each toast. The morph does not remove the toasts and the `aria-live`
+attribute, and the server render can still add elements to the element. A toast stays when the
+morph moves the element, and in a page from the Turbo cache.
+
+Change the texts with the values of the controller:
+
+```html
+<div data-controller="phem-toast"
+     data-phem-toast-duration-value={{ 8000 }}
+     data-phem-toast-error-message-value={{ 'The change was not saved.' }}
+     data-phem-toast-rate-limited-message-value={{ 'Slow down, please.' }}
+     data-phem-toast-close-label-value={{ 'Close' }}></div>
+```
+
+The controller is not enabled by default. Enable it in `assets/controllers.json`:
+
+```json
+"@phem/phem": {
+    "toast": { "enabled": true, "fetch": "lazy" }
+}
+```
+
 ## 7. State: class components
 
 A component with state is a class with the `#[Component]` attribute and a `render()` method.

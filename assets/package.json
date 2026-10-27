@@ -41,6 +41,12 @@
                 "main": "dist/phem_tabs_controller.js",
                 "fetch": "lazy",
                 "enabled": false
+            },
+            "toast": {
+                "name": "phem-toast",
+                "main": "dist/phem_toast_controller.js",
+                "fetch": "lazy",
+                "enabled": false
             }
         },
         "importmap": {
