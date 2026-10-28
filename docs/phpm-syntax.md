@@ -852,6 +852,109 @@ Only bound fields count. A field with no `phem:bind` (for example a field of a S
 its value with the submit, and it is never dirty. A `phem:live` field is dirty only until its event
 leaves.
 
+#### Live validation
+
+To show the errors of a field before the submit, validate the bound properties in a handler.
+Put the `#[Assert]` constraints of Symfony on the `#[State]` properties, and keep two more values
+in the state: the fields that the user touched, and the errors. A field shows its error only
+after the user touched it. A submit touches all the fields.
+
+```php
+use Phem\Attribute\{Component, State};
+use Phem\Node;
+use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
+
+#[Component]
+final class SignupForm
+{
+    #[State]
+    #[Assert\NotBlank]
+    #[Assert\Email]
+    public string $email = '';
+
+    #[State]
+    #[Assert\Length(min: 8)]
+    public string $password = '';
+
+    /** @var list<string> the fields that the user changed */
+    #[State] public array $touched = [];
+
+    /** @var array<string, string> the first error of each touched field */
+    #[State] public array $errors = [];
+
+    public function __construct(
+        private readonly ValidatorInterface $validator,
+        private readonly Accounts $accounts,
+    ) {
+    }
+
+    public function touch(string $field): void
+    {
+        if (!\in_array($field, $this->touched, true)) {
+            $this->touched[] = $field;
+        }
+
+        $this->validate();
+    }
+
+    public function save(): void
+    {
+        $this->touched = ['email', 'password'];
+        $this->validate();
+
+        if ([] !== $this->errors) {
+            return;
+        }
+
+        $this->accounts->open($this->email, $this->password);
+    }
+
+    public function render(): Node
+    {
+        $touchEmail = fn () => $this->touch('email');
+        $touchPassword = fn () => $this->touch('password');
+
+        return (
+            <form onSubmit={{ save }}>
+                <input type="email" phem:bind={{ email }} onChange={{ touchEmail }} phem:debounce={{ 'blur' }} />
+                {% if errors.email is defined %}<p className="error">{{ errors.email }}</p>{% endif %}
+                <input type="password" phem:bind={{ password }} onChange={{ touchPassword }} phem:debounce={{ 'blur' }} />
+                {% if errors.password is defined %}<p className="error">{{ errors.password }}</p>{% endif %}
+                <button type="submit">Sign up</button>
+            </form>
+        );
+    }
+
+    private function validate(): void
+    {
+        $this->errors = [];
+
+        foreach ($this->validator->validate($this) as $violation) {
+            $field = $violation->getPropertyPath();
+            if (\in_array($field, $this->touched, true)) {
+                $this->errors[$field] ??= (string) $violation->getMessage();
+            }
+        }
+    }
+}
+```
+
+- The field sets its property first, then it runs its `onChange` handler (see
+  [Bound fields](#bound-fields)). Thus `touch()` validates the new value.
+- `phem:debounce={{ 'blur' }}` sends the event when the user leaves the field. Remove it to show
+  the errors while the user types (after the debounce of 150 ms).
+- The handler validates all the component, not only the changed field. Thus a constraint on two
+  fields (for example a `#[Assert\Callback]` that compares two passwords) updates the error of
+  the other field too.
+- The errors are in the state, because `render()` must not call the validator (see
+  [Keep `render()` pure](#keep-render-pure)).
+- A field that the user only focuses, with no change, is not touched. To touch it on blur, use
+  `onBlur={{ touchEmail }}` in place of `onChange`.
+- Install `symfony/validator`. A Symfony form validates only on its submit (see
+  [Handler arguments](#handler-arguments)). Use bound properties for the fields that need live
+  validation.
+
 
 ### Rate limits
 

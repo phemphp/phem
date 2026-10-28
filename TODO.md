@@ -21,9 +21,9 @@ Talk about each item before its implementation. The open questions are a start, 
 
 - [ ] **Streams** (section 1). The items of a stream are not in the state. How does a later
       event render the list, and how does the "before/after" comparison see it?
-- [ ] **Live validation** (section 2). The touched fields go in the signed state. How does
-      this work with a Symfony form, and with `#[Assert]` on `#[State]` properties? Does
-      validation run in the Doctrine transaction?
+- [ ] **Live validation** (section 2). The touched fields and the errors go in the signed
+      state. Does validation run in the Doctrine transaction? How does a submit handler stop when
+      the state has errors?
 
 ## 1. Rendering and performance
 
@@ -46,16 +46,29 @@ closure. `make bench`: about 0.24 ms for a leaf under 11 levels, so it is not a 
 
 ## 2. Forms and validation
 
-### [ ] Live validation of touched fields — P2
+### [ ] Validation of `#[State]` properties, with touched fields — P2
 
-Symfony forms work in a submit handler. There is no validation while the user types.
+Live validation works today, by hand: `#[Assert]` on the `#[State]` properties, a `touched` and
+an `errors` property, and a handler that calls the validator (see
+[Live validation](docs/phpm-syntax.md#live-validation)). Each form repeats this code. It is not a
+blocker, so build it only when a real form shows that the manual code is too much.
 
-- **Best peer:** LC `ValidatableComponentTrait` + `ComponentWithFormTrait`: it validates on each
-  change but shows the errors only for the fields that the user touched. LW `#[Validate]` on a
-  property, with real-time validation. LV changesets with `used_input?`.
+- **Best peer:** LC `ValidatableComponentTrait`: it validates on each change but shows the errors
+  only for the fields that the user touched. LW `#[Validate]` on a property, with real-time
+  validation. LV changesets with `used_input?`.
 - **Proposal:**
-  - `#[Assert\...]` constraints on `#[State]` properties, validated after `bind` changes.
-  - Track touched fields in the state. Show errors only for them, and for all fields after a
-    submit.
-  - For a Symfony form: keep the submitted values in the state, and call `submit()` with
-    `clearMissing: false` on each change (as LC does).
+  - Validate the `#[Assert\...]` constraints of the `#[State]` properties after a `phem:bind`
+    change, with no handler.
+  - Track the touched fields in the state. Show the errors only for them, and for all the fields
+    after a submit.
+  - Give the errors to `render()` (for example `errors.email`), and let a submit handler stop
+    when there are errors.
+- **Not in scope:** live validation of a Symfony form, as LC `ComponentWithFormTrait` does (it
+  keeps the submitted values and calls `submit()` with `clearMissing: false` on each change).
+  It does not fit Phem:
+  - The fields of a Symfony form are not bound fields, so their values are not in the state.
+  - The submitted values of all the form would go into the signed state.
+  - Each change would submit all the form again.
+
+  LC needs it because LC is built around Symfony forms. In Phem, use bound properties for the
+  fields that need live validation, and a Symfony form for the submit.
