@@ -125,6 +125,27 @@ final class ContextPage
     }
 }
 
+// Consumers that the page makes in render(), in the slot of a provider: after its event, the
+// provider renders alone and prints the same markup values again (one alone, and a list).
+#[Page('/context-values')]
+final class ContextValuesPage
+{
+    public function render(): Node
+    {
+        $alone = <Badge text="Alone" />;
+        $badges = [];
+        foreach (['First', 'Second'] as $text) {
+            $badges[] = <Badge key={{ text }} text={{ text }} />;
+        }
+
+        return (
+            <Document>
+                <ThemeScope>{{ alone }}{{ badges }}</ThemeScope>
+            </Document>
+        );
+    }
+}
+
 // A required context with no provider: the render throws.
 #[Page('/context-missing')]
 final class ContextMissingPage

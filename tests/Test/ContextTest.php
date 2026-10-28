@@ -83,6 +83,21 @@ final class ContextTest extends KernelTestCase
             ->assertSelectorTextContains('.badge-light', 'Outside');
     }
 
+    public function testAChangeOfTheProviderRendersTheConsumersInTheMarkupValuesOfItsSlot(): void
+    {
+        // The provider renders alone, and its slot prints the markup values of the page again: their
+        // consumers render in the new pass, and stay in the shape for the next event.
+        $this->visit('/context-values')
+            ->assertSelectorCount(3, '.badge-light')
+            ->click('#toggle')
+            ->assertSelectorCount(3, '.badge-dark')
+            ->assertSelectorCount(0, '.badge-light')
+            ->click('#toggle')
+            ->assertSelectorCount(3, '.badge-light')
+            ->assertSee('Alone')
+            ->assertSee('Second');
+    }
+
     public function testARequiredContextWithNoProviderThrows(): void
     {
         try {

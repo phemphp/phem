@@ -154,7 +154,7 @@ final class Renderer implements ResetInterface
         $this->pass = ++$this->passes;
 
         try {
-            $html = $this->within($tree, fn (): string => $this->markup->html($markup));
+            $html = $this->within($tree, fn (): string => $this->markup->html($markup, $this->pass(...)));
         } finally {
             $this->pass = $pass;
         }
@@ -434,7 +434,7 @@ final class Renderer implements ResetInterface
             $fiber->broadcast = $tree->detached ? [] : $this->broadcasts->ofFiber($fiber);
             // The markup is not rendered yet: the children read the contexts of this pass.
             $this->contexts->provide($fiber);
-            $html = $this->markup->html($out);
+            $html = $this->markup->html($out, $this->pass(...));
         } finally {
             $tree->pop();
         }

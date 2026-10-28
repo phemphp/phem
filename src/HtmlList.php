@@ -23,12 +23,13 @@ use Phem\Dom\Attributes;
 final class HtmlList extends LazyHtml implements \IteratorAggregate
 {
     /**
-     * @param list<Html>       $items
-     * @param list<mixed>|null $values the list that the items come from (see of()), or null for the items
+     * @param list<Html>             $items
+     * @param list<mixed>|null       $values the list that the items come from (see of()), or null for the items
+     * @param (\Closure(): int)|null $pass   the render pass now, or null to render one time only (see LazyHtml)
      */
-    public function __construct(private readonly array $items, private readonly ?array $values = null)
+    public function __construct(private readonly array $items, private readonly ?array $values = null, ?\Closure $pass = null)
     {
-        parent::__construct(static fn (): string => implode('', array_map(strval(...), $items)));
+        parent::__construct(static fn (): string => implode('', array_map(strval(...), $items)), $pass);
     }
 
     /**
@@ -71,8 +72,10 @@ final class HtmlList extends LazyHtml implements \IteratorAggregate
     /**
      * The list of a value with markup, or null for another value: a list with one Html item at
      * least. As in React, a null or boolean item renders nothing, and a string or a number is text.
+     *
+     * @param (\Closure(): int)|null $pass the render pass now, or null to render one time only (see LazyHtml)
      */
-    public static function of(mixed $value): ?self
+    public static function of(mixed $value, ?\Closure $pass = null): ?self
     {
         if (!\is_array($value) || !array_is_list($value) || !array_any($value, static fn (mixed $item): bool => $item instanceof Html)) {
             return null;
@@ -89,6 +92,6 @@ final class HtmlList extends LazyHtml implements \IteratorAggregate
             }
         }
 
-        return new self($items, $value);
+        return new self($items, $value, $pass);
     }
 }

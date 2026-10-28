@@ -26,6 +26,10 @@ use Twig\Markup;
  * Renders markup values: an Element becomes Html that renders on first use, and a list of
  * markup becomes an HtmlList.
  * Other values do not change.
+ *
+ * With the render pass of the Renderer, the markup renders one time in each pass (see
+ * Phem\LazyHtml): a component that renders alone in a later pass of an event can print the
+ * markup values of its parent again (a slot), and their components render again in it.
  */
 final class MarkupResolver
 {
@@ -33,18 +37,19 @@ final class MarkupResolver
     {
     }
 
-    public function resolve(mixed $value): mixed
+    /** @param (\Closure(): int)|null $pass the render pass now, or null to render one time only */
+    public function resolve(mixed $value, ?\Closure $pass = null): mixed
     {
         if ($value instanceof Element) {
             // The markup renders when a template prints it. Thus the markup of a branch that does
             // not show (`{{ on ? yes : no }}`) mounts no component and adds no handler.
-            return new LazyHtml(fn (): string => $this->twig->render(Manifest::templateName($value->template), $this->items($value->vars)));
+            return new LazyHtml(fn (): string => $this->twig->render(Manifest::templateName($value->template), $this->items($value->vars, $pass)), $pass);
         }
 
         if (\is_array($value)) {
-            $value = $this->items($value, $markup);
+            $value = $this->items($value, $pass, $markup);
 
-            return $markup ? (HtmlList::of($value) ?? $value) : $value;
+            return $markup ? (HtmlList::of($value, $pass) ?? $value) : $value;
         }
 
         return $value;
@@ -56,17 +61,18 @@ final class MarkupResolver
      * example its rows) is not copied for each element that gets it.
      *
      * @param array<array-key, mixed> $items
+     * @param (\Closure(): int)|null  $pass
      *
      * @param-out bool $markup whether an item is markup after the resolve
      *
      * @return array<array-key, mixed>
      */
-    private function items(array $items, ?bool &$markup = null): array
+    private function items(array $items, ?\Closure $pass, ?bool &$markup = null): array
     {
         $markup = false;
         foreach ($items as $key => $item) {
             if ($item instanceof Element || \is_array($item)) {
-                $resolved = $this->resolve($item);
+                $resolved = $this->resolve($item, $pass);
                 // The same array is identical with no comparison of its items.
                 if ($resolved !== $item) {
                     $items[$key] = $item = $resolved;
@@ -82,10 +88,12 @@ final class MarkupResolver
     /**
      * The HTML of the output of a component. As in React, a string is text: it is escaped.
      * Only markup (Html, or other Twig Markup) prints as HTML.
+     *
+     * @param (\Closure(): int)|null $pass the render pass now, or null to render one time only
      */
-    public function html(mixed $value): string
+    public function html(mixed $value, ?\Closure $pass = null): string
     {
-        return self::stringify($this->resolve($value));
+        return self::stringify($this->resolve($value, $pass));
     }
 
     private static function stringify(mixed $value): string
