@@ -39,7 +39,9 @@ my-app/
 │   └── controllers.json   enables the `phem` controller of phem/phem
 ├── importmap.php          app, @hotwired/stimulus, @hotwired/turbo, @symfony/stimulus-bundle
 ├── public/                static files, index.php (Symfony Runtime: FrankenPHP worker mode, PHP-FPM)
-└── var/cache/             build output (do not commit)
+└── var/
+    ├── phem/              the phemc output (do not commit)
+    └── cache/             the Symfony cache (do not commit)
 ```
 
 The directories are only a convention: a page is a class with the `#[Page]` attribute and a
@@ -226,7 +228,7 @@ OPcache stay valid. If there is an error, it writes nothing and exits with code 
 
 | Option | Default | Meaning |
 |---|---|---|
-| `--out <dir>` | `var/cache/phem` | The output directory (the same as the `phem.build_dir` option) |
+| `--out <dir>` | `var/phem` | The output directory (the same as the `phem.build_dir` option) |
 | `--php <bin>` | `php` | The PHP binary for the Twig warmup |
 | `--no-warmup` | off | Do not run `bin/console phem:warmup` |
 
@@ -237,7 +239,7 @@ page, or route needs no `cache:clear`.
 ### What the build writes
 
 ```
-var/cache/phem/
+var/phem/
 ├── php/Page/index.php          the PHP code; each markup literal becomes new \Phem\Element('Page/index.0.twig', [...])
 ├── templates/Page/index.0.twig one Twig template for each markup literal (Twig name: @phpm/Page/index.0.twig)
 ├── manifest.php / manifest.json components (kind, props, slots), pages, template → .phpm line map
@@ -245,6 +247,10 @@ var/cache/phem/
 └── preload.php                  for opcache.preload (production)
 var/cache/<env>/twig/            the Twig cache (filled by the warmup)
 ```
+
+`var/phem/` is not a cache: it holds the compiled code of the application, and only
+`phemc build` writes it. It is the same for all environments. `cache:clear` and
+`rm -rf var/cache` do not delete it.
 
 The compiled PHP keeps the line numbers of the `.phpm` file. The manifest maps each template
 back to its `.phpm` line, so the Symfony error page and the console show `src/<file>.phpm` and

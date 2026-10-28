@@ -46,7 +46,7 @@ assets. This controller is the client of Phem: it sends the events to the server
 page. `vendor/bin/phemc` downloads the `phemc` compiler of the same version on the first run.
 
 The defaults of PhemBundle fit this layout: it reads `src/` and writes the build output to
-`var/cache/phem/`. You do not need a `config/packages/phem.yaml` file.
+`var/phem/`. You do not need a `config/packages/phem.yaml` file.
 
 ## Step 2: Configure Phem
 
@@ -63,8 +63,8 @@ phem:
 the end of the file:
 
 ```php
-if (file_exists(dirname(__DIR__).'/var/cache/phem/preload.php')) {
-    require dirname(__DIR__).'/var/cache/phem/preload.php';
+if (file_exists(dirname(__DIR__).'/var/phem/preload.php')) {
+    require dirname(__DIR__).'/var/phem/preload.php';
 }
 ```
 

@@ -51,7 +51,7 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_lo
  *     # config/packages/phem.yaml (all options are optional)
  *     phem:
  *         source_dir: '%kernel.project_dir%/src'
- *         build_dir: '%kernel.project_dir%/var/cache/phem'
+ *         build_dir: '%kernel.project_dir%/var/phem'
  *         secret: '%kernel.secret%'
  *         state_max_age: 86400       # seconds; 0 for no limit
  *         state_bind_session: false
@@ -98,7 +98,7 @@ final class PhemBundle extends AbstractBundle
                 ->end()
                 ->scalarNode('build_dir')
                     ->info('The phemc output (`phemc build --out`)')
-                    ->defaultValue('%kernel.project_dir%/var/cache/phem')
+                    ->defaultValue('%kernel.project_dir%/var/phem')
                 ->end()
                 ->scalarNode('secret')
                     ->info('The key that signs the component state in the browser')

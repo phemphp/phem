@@ -54,7 +54,8 @@ final class TestKernel extends Kernel
             TestCase::fail("phemc build failed:\n".implode("\n", $out));
         }
 
-        exec('rm -rf '.escapeshellarg($dir.'/var/cache/test').' '.escapeshellarg($dir.'/var/cache/nodebug').' '.escapeshellarg($dir.'/var/cache/profiler'));
+        // The cache of all the environments: the phemc output is in var/phem.
+        exec('rm -rf '.escapeshellarg($dir.'/var/cache'));
         self::$built = true;
     }
 

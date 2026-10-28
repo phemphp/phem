@@ -56,7 +56,7 @@ struct BuildArgs {
     /// The source directory.
     src: PathBuf,
     /// The output directory.
-    #[arg(long, default_value = "var/cache/phem")]
+    #[arg(long, default_value = "var/phem")]
     out: PathBuf,
     /// The PHP binary for the Twig warmup.
     #[arg(long, default_value = "php")]
