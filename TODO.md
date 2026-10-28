@@ -27,15 +27,6 @@ Talk about each item before its implementation. The open questions are a start, 
 
 ## 1. Rendering and performance
 
-### [ ] Streaming SSR of the `<Suspense>` boundaries — P3
-
-A boundary loads with a second request after the page (now one load event for all of them).
-
-- **Best peer:** React 18 streaming SSR: the shell first, then each boundary as a `<template>` and
-  a small script in the same response.
-- **Open question:** the state is signed at the end of the render. The last chunk must give the
-  final state and signature, and an event before it must wait.
-
 ### [ ] An event with no render of the path to its handler — P3
 
 The first pass of an event renders the ancestors of the handler component, to get the handler

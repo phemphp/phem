@@ -1292,7 +1292,7 @@ pub fn builtin_components() -> Vec<Component> {
         rest: false,
         offset: None,
         signature: "final class Suspense\n{\n    public bool $lazy = false;\n    public ?Html $children = null;\n    public ?Html $fallback = null;\n    public ?Html $error = null;\n}".into(),
-        doc: Some("Content that loads after the page: the page shows the fallback, and the browser loads the children when the page starts (or, with `lazy`, when the fallback comes into view). When the children throw, the error slot shows."),
+        doc: Some("Content that loads after the page: the page shows the fallback, and the response of the page streams the children after the page (or, with `lazy`, the browser loads them with an event when the fallback comes into view). When the children throw, the error slot shows."),
     }, Component {
         kind: ComponentKind::Class,
         name: "ErrorBoundary".into(),

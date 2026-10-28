@@ -515,6 +515,72 @@ describe("<Suspense>", () => {
   // The JSON body of a call of fetch().
   const sent = (call) => JSON.parse(fetch.mock.calls[call][1].body)
 
+  it("has no events when the stream of the page failed", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {})
+    document.body.innerHTML = `
+      <div id="phem-root" data-controller="phem" data-action="click->phem#dispatch" data-phem-streaming data-phem-loading-delay-value="0">
+        <phem-c data-phem-c="c1">
+          <phem-suspense data-phem-c="b1" data-phem-load="b1.load"><p>Loading…</p></phem-suspense>
+          <button data-phem-on-click="c1.star">Star</button>
+        </phem-c>
+      </div>
+      <template data-phem-root-state data-phem-stream-error></template>`
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    click("button")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(fetch).not.toHaveBeenCalled()
+    expect(error).toHaveBeenCalledWith("[phem] the stream of the page failed: the page has no events")
+    expect(document.querySelector("template[data-phem-root-state]")).toBeNull()
+    expect(document.getElementById("phem-root").hasAttribute("data-phem-streaming")).toBe(false)
+    error.mockRestore()
+  })
+
+  it("runs the scripts of a boundary that the controller puts in the page", async () => {
+    document.body.innerHTML = `
+      <div id="phem-root" data-controller="phem" data-action="click->phem#dispatch" data-phem-streaming data-phem-loading-delay-value="0">
+        <phem-c data-phem-c="c1"><phem-suspense data-phem-c="b1" data-phem-load="b1.load"><p>Loading…</p></phem-suspense></phem-c>
+      </div>
+      <template data-phem-for="b1"><div data-phem-c="b1"><p id="chart">Chart</p><script>window.boundaryScript++</script></div></template>
+      <template data-phem-root-state data-phem-state-value="{}" data-phem-signature-value="s9"></template>`
+    // A script of a template does not run when it goes in the page: the page gets a copy, which runs.
+    const parsed = document.querySelector("template[data-phem-for]").content.querySelector("script")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const script = document.querySelector("#phem-root script")
+    expect(document.getElementById("chart")).not.toBeNull()
+    expect(script).not.toBe(parsed)
+    expect(script.textContent).toBe("window.boundaryScript++")
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("finishes a streamed page: the chunks that no script swapped, and the state at its end", async () => {
+    respond(`<p id="report" data-phem-c="b1">Rows 3</p><p id="chart">Chart</p>`)
+    const done = nextDone()
+    // innerHTML does not run scripts, as a CSP that blocks them.
+    document.body.innerHTML = `
+      <div id="phem-root" data-controller="phem" data-action="click->phem#dispatch" data-phem-streaming data-phem-loading-delay-value="0">
+        <phem-c data-phem-c="c1">
+          <phem-suspense data-phem-c="b1" data-phem-load="b1.load"><p>Loading the report…</p></phem-suspense>
+          <phem-suspense data-phem-c="b2" data-phem-load="b2.load"><p>Loading the chart…</p></phem-suspense>
+        </phem-c>
+      </div>
+      <template data-phem-for="b1"><p id="report" data-phem-c="b1">Rows 3</p></template><script>swap()</script>
+      <template data-phem-root-state data-phem-state-value='{"b1":{"status":"loaded"}}' data-phem-signature-value="s9"></template>`
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const root = document.getElementById("phem-root")
+    expect(document.getElementById("report").textContent).toBe("Rows 3")
+    expect(document.querySelector("[data-phem-load='b1.load']")).toBeNull()
+    expect(document.querySelector("template[data-phem-for], template[data-phem-root-state], script")).toBeNull()
+    expect(root.hasAttribute("data-phem-streaming")).toBe(false)
+
+    // The boundary whose stream failed keeps its fallback: it loads with an event, with the state of the end of the page.
+    await done
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(sent(0)).toMatchObject({ handler: "b2.load", signature: "s9", state: '{"b1":{"status":"loaded"}}' })
+  })
+
   it("sends the load event when the page starts, and morphs the children in", async () => {
     respond(`<p id="report">Rows 3</p>`)
     const done = nextDone()

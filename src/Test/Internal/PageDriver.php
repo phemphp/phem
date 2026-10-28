@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Test\Internal;
 
+use Dom\HTMLDocument;
 use Phem\Http\EventBody;
 use Phem\Rendering\Fiber;
 use Phem\Rendering\KeptRuns;
@@ -60,8 +61,8 @@ final class PageDriver implements Driver
     ) {
         $this->url = $this->uri;
 
-        [$request, $response] = $this->send(Request::create($this->uri, 'GET', cookies: $this->cookies, server: $this->server));
-        $this->html = (string) $response->getContent();
+        [$request, , $content] = $this->send(Request::create($this->uri, 'GET', cookies: $this->cookies, server: $this->server));
+        $this->html = self::finishStream($content);
         $this->page = (string) $request->attributes->get('_phem_page', '');
 
         if (1 === preg_match('/data-phem-state-value="([^"]*)" data-phem-signature-value="([^"]*)"(?: data-phem-query-value="([^"]*)")?(?: data-phem-state-inline-value="(\d+)")?/', $this->html, $m)) {
@@ -199,7 +200,7 @@ final class PageDriver implements Driver
      * Handles a request as a server does, and keeps the cookies of the response. A server error
      * throws its exception, so the test shows it with its trace.
      *
-     * @return array{0: Request, 1: Response}
+     * @return array{0: Request, 1: Response, 2: string} the request, the response and its content (the chunks of a streamed response)
      */
     private function send(Request $request): array
     {
@@ -211,6 +212,8 @@ final class PageDriver implements Driver
 
         try {
             $response = $this->kernel->handle($request);
+
+            $content = StreamedContent::of($response);
 
             if ($this->kernel instanceof TerminableInterface) {
                 $this->kernel->terminate($request, $response);
@@ -234,7 +237,54 @@ final class PageDriver implements Driver
             }
         }
 
-        return [$request, $response];
+        return [$request, $response, $content];
+    }
+
+    /**
+     * The page as the browser has it at the end of a stream (see Phem\Http\PageRenderer): each
+     * `<Suspense>` boundary of the stream in place of its fallback, and the state on the root
+     * element.
+     */
+    private static function finishStream(string $html): string
+    {
+        if (!str_contains($html, 'data-phem-streaming')) {
+            return $html;
+        }
+
+        $document = HTMLDocument::createFromString($html, \LIBXML_NOERROR, 'UTF-8');
+        $root = $document->querySelector('[data-phem-streaming]');
+        if (null === $root) {
+            return $html;
+        }
+
+        foreach ($document->querySelectorAll('template[data-phem-for]') as $template) {
+            $target = $root->querySelector('[data-phem-c="'.$template->getAttribute('data-phem-for').'"]');
+            if (null !== $target) {
+                $target->outerHTML = $template->innerHTML;
+            }
+
+            if ('script' === $template->nextElementSibling?->localName) {
+                $template->nextElementSibling->remove();
+            }
+
+            $template->remove();
+        }
+
+        $state = $document->querySelector('template[data-phem-root-state]');
+        if (null === $state || $state->hasAttribute('data-phem-stream-error')) {
+            throw new \LogicException('The stream of the page failed after the page: the page has no state (see the log).');
+        }
+
+        $root->removeAttribute('data-phem-streaming');
+        foreach ($state->attributes as $attribute) {
+            if ('data-phem-root-state' !== $attribute->name) {
+                $root->setAttribute($attribute->name, $attribute->value);
+            }
+        }
+
+        $state->remove();
+
+        return $document->saveHtml();
     }
 
     /** Writes the query of the #[Url] properties into the URL, as the browser does. */

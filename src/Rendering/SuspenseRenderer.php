@@ -27,9 +27,13 @@ use Psr\Log\LoggerInterface;
  *
  *  - pending: the fallback, in a `<phem-suspense>` element with the id of the load handler. The
  *    `phem` controller sends the load event when the page starts, or when the element comes
- *    into view (`data-phem-lazy`). The children do not render.
+ *    into view (`data-phem-lazy`). The children do not render. In the render of a page, a
+ *    boundary that is not `lazy` does not wait for the browser (see SuspenseLoad): the response
+ *    streams it (SuspenseStream). In a mounted component of a test, its children render in it.
  *  - loaded: the children. When their render throws, the error slot replaces them, and the
- *    status is failed. Without an error slot, the exception goes on: the event fails.
+ *    status is failed. Without an error slot, the exception goes on: the event fails. In a
+ *    stream or in the page, the fallback stays: the browser loads it with an event, and this
+ *    event fails.
  *  - failed: the error slot.
  */
 final class SuspenseRenderer implements ComponentRenderer
@@ -62,6 +66,11 @@ final class SuspenseRenderer implements ComponentRenderer
 
         $this->props->assign($suspense, $fiber->props, $slots);
         $renderer = ($this->renderer)();
+        $load = $suspense->lazy ? SuspenseLoad::Event : $renderer->suspenseLoad();
+
+        if ($load->loadsNow()) {
+            $suspense->load();
+        }
 
         if (SuspenseStatus::Loaded === $suspense->status) {
             if (null === $suspense->children) {
@@ -73,16 +82,23 @@ final class SuspenseRenderer implements ComponentRenderer
                 return new Html($html);
             }
 
-            if (null === $suspense->error) {
+            if (null !== $suspense->error) {
+                $this->logger?->error('[phem] The children of a <Suspense> threw: the error slot shows. '.$html->getMessage(), ['exception' => $html, 'fiber' => $fiber->id]);
+                $suspense->status = SuspenseStatus::Failed;
+            } elseif ($load->throws()) {
                 throw $html;
+            } else {
+                $this->logger?->error('[phem] The children of a <Suspense> threw: the fallback stays, and the browser loads them with an event. '.$html->getMessage(), ['exception' => $html, 'fiber' => $fiber->id]);
+                $suspense->status = SuspenseStatus::Pending;
             }
-
-            $this->logger?->error('[phem] The children of a <Suspense> threw: the error slot shows. '.$html->getMessage(), ['exception' => $html, 'fiber' => $fiber->id]);
-            $suspense->status = SuspenseStatus::Failed;
         }
 
         if (SuspenseStatus::Failed === $suspense->status) {
             return $suspense->error;
+        }
+
+        if ($load->defers()) {
+            $renderer->defer($fiber);
         }
 
         $handler = $renderer->addHandler($suspense->load(...)) ?? 'static';

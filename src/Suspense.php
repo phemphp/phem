@@ -18,8 +18,8 @@ use Phem\Attribute\State;
 
 /**
  * The `<Suspense>` tag: content that loads after the page, as in React. The page renders the
- * fallback, and the browser loads the children with an event when the page starts (or, with
- * `lazy`, when the fallback comes into view):
+ * fallback, and the response of the page streams the children after the page (or, with `lazy`,
+ * the browser loads them with an event when the fallback comes into view):
  *
  *     use Phem\Suspense;
  *
@@ -29,18 +29,20 @@ use Phem\Attribute\State;
  *         <SalesReport />
  *     </Suspense>
  *
- * The children do not render before the load: a slow `mount()` or a slow API call does not
- * make the page slow. After the load, the state keeps the status, so the next events render
+ * The children do not render before the page: a slow `mount()` or a slow API call does not
+ * make the browser wait for the page. After the load, the state keeps the status, so the next events render
  * the children directly.
  *
  * When the render of the children throws, the error slot replaces them, and only for this
- * boundary. Without an error slot, the event fails, and the fallback stays.
+ * boundary. Without an error slot, the fallback stays: the event fails, and a streamed boundary
+ * loads with an event.
  *
- * phemc and the Renderer know this component (see Phem\Rendering\SuspenseRenderer).
+ * phemc and the Renderer know this component (see Phem\Rendering\SuspenseRenderer and
+ * Phem\Rendering\SuspenseStream).
  */
 final class Suspense
 {
-    /** Load the children when the fallback comes into view, not when the page starts. */
+    /** Load the children with an event when the fallback comes into view, not in the response of the page. */
     #[Prop]
     public bool $lazy = false;
     #[Prop]
@@ -55,7 +57,7 @@ final class Suspense
     #[State]
     public SuspenseStatus $status = SuspenseStatus::Pending;
 
-    /** The handler of the load event, from the browser. */
+    /** The handler of the load event, from the browser, or from the stream of the page. */
     public function load(): void
     {
         if (SuspenseStatus::Pending === $this->status) {

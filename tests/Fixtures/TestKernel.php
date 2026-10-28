@@ -88,6 +88,11 @@ final class TestKernel extends Kernel
         ]);
         $container->extension('twig', ['strict_variables' => true]);
 
+        if ('nostream' === $this->environment) {
+            // The browser loads all the <Suspense> boundaries with an event.
+            $container->extension('phem', ['suspense_stream' => false]);
+        }
+
         if ('profiler' === $this->environment) {
             $container->extension('framework', ['profiler' => ['enabled' => true, 'collect' => true]]);
             $container->extension('web_profiler', ['toolbar' => false]);

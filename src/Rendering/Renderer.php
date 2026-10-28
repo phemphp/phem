@@ -98,6 +98,21 @@ final class Renderer implements ResetInterface
     }
 
     /**
+     * Renders a fiber of the last pass again, in the same pass, with what its parent gave it: a
+     * `<Suspense>` boundary of the stream of the page (see SuspenseStream). Its parent does not
+     * render: it has a placeholder for the fiber (see Fiber::$ownHtml).
+     */
+    public function resume(Tree $tree, Fiber $fiber): void
+    {
+        $definition = $this->manifest->component($fiber->fqcn) ?? throw new PropError(\sprintf('Unknown component "%s".', $fiber->fqcn));
+
+        // Its handlers of this pass get their ids again.
+        $tree->forget($fiber);
+
+        $this->within($tree, fn () => $this->renderFiber($tree, $fiber, $definition));
+    }
+
+    /**
      * Runs an event handler of the last pass (see Tree::handler()) through the handler middleware.
      *
      * @return mixed the result of the handler (for example a Phem\RedirectTo)
@@ -268,6 +283,18 @@ final class Renderer implements ResetInterface
 
             return $e;
         }
+    }
+
+    /** How the current tree loads the `<Suspense>` boundaries that show their fallback (see SuspenseLoad). */
+    public function suspenseLoad(): SuspenseLoad
+    {
+        return $this->tree->suspense ?? SuspenseLoad::Event;
+    }
+
+    /** Puts a `<Suspense>` boundary in the queue of the stream of the page (see Tree::defer()). */
+    public function defer(Fiber $fiber): void
+    {
+        $this->tree?->defer($fiber);
     }
 
     /** The fiber of a component instance in the current tree (see Tree::fiberOf()). Null outside a page. */

@@ -27,6 +27,7 @@ use Phem\Command\WarmupCommand;
 use Phem\Controller\EventController;
 use Phem\Controller\PageController;
 use Phem\EventListener\PageAttributesListener;
+use Phem\EventListener\PageStreamListener;
 use Phem\EventListener\SourceMapListener;
 use Phem\EventListener\StreamListener;
 use Phem\Handler\BroadcastMiddleware;
@@ -37,6 +38,7 @@ use Phem\Handler\StreamsMiddleware;
 use Phem\Handler\TransactionalMiddleware;
 use Phem\Http\EventBody;
 use Phem\Http\PageRenderer;
+use Phem\Http\PageStream;
 use Phem\Http\TurboStreams;
 use Phem\Manifest\Manifest;
 use Phem\Manifest\SourceMap;
@@ -56,6 +58,7 @@ use Phem\Rendering\InputsComparator;
 use Phem\Rendering\MarkupResolver;
 use Phem\Rendering\Renderer;
 use Phem\Rendering\SuspenseRenderer;
+use Phem\Rendering\SuspenseStream;
 use Phem\Rendering\TemplateComponentRenderer;
 use Phem\Routing\PageLoader;
 use Phem\Routing\PageRouteValues;
@@ -220,6 +223,7 @@ return static function (ContainerConfigurator $container): void {
             ->args([service('phem.streams'), service('phem.subscription')])
             // Before the profiler collects the data of the request (-100).
             ->tag('kernel.event_listener', ['event' => 'kernel.response', 'method' => 'onKernelResponse', 'priority' => -50])
+            ->tag('kernel.event_listener', ['event' => 'kernel.terminate', 'method' => 'onKernelTerminate'])
 
         // Twig
         ->set('phem.twig.extension', PhemExtension::class)
@@ -248,6 +252,19 @@ return static function (ContainerConfigurator $container): void {
             ->args([service('router')])
         ->alias(PageUrlGenerator::class, 'phem.page_url_generator')
         ->set('phem.turbo_streams', TurboStreams::class)
+        ->set('phem.suspense_stream', SuspenseStream::class)
+            ->args([service('phem.renderer')])
+        ->set('phem.page_stream', PageStream::class)
+            ->args([
+                service('phem.suspense_stream'),
+                service('request_stack')->nullOnInvalid(),
+                service('translation.locale_switcher')->nullOnInvalid(),
+                service('logger')->nullOnInvalid(),
+                param('kernel.debug'),
+            ])
+        ->set('phem.listener.page_stream', PageStreamListener::class)
+            // After the session listener of Symfony (-1000).
+            ->tag('kernel.event_listener', ['event' => 'kernel.response', 'method' => 'onKernelResponse', 'priority' => -1001])
         ->set('phem.page_renderer', PageRenderer::class)
             ->args([
                 service('phem.renderer'),
@@ -258,6 +275,7 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.url_query'),
                 service('phem.state_cache'),
                 service('phem.subscription'),
+                service('phem.page_stream'),
             ])
         ->alias(PageRenderer::class, 'phem.page_renderer')
         ->set('phem.controller.page', PageController::class)

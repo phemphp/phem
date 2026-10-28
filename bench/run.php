@@ -18,6 +18,7 @@ declare(strict_types=1);
 // trip more in a browser.
 
 use Phem\State\StateCache;
+use Phem\Test\Internal\StreamedContent;
 use Phem\Tests\Fixtures\Many;
 use Phem\Tests\Fixtures\TestKernel;
 use Psr\Cache\CacheItemPoolInterface;
@@ -44,6 +45,21 @@ $handle = static function (Request $request) use ($kernel): array {
 };
 
 $get = static fn (string $uri): array => $handle(Request::create($uri));
+
+/** @return array{float, float, string} the time to the first chunk and to the last chunk in ms, and the HTML of a streamed page */
+$stream = static function (string $uri) use ($kernel): array {
+    $request = Request::create($uri);
+    $start = hrtime(true);
+    $response = $kernel->handle($request);
+    $first = null;
+
+    $html = StreamedContent::of($response, static function () use (&$first, $start): void {
+        $first ??= (hrtime(true) - $start) / 1e6;
+    });
+    $kernel->terminate($request, $response);
+
+    return [$first ?? 0.0, (hrtime(true) - $start) / 1e6, $html];
+};
 
 /**
  * Sends an event as the controller does: only the signature, and the state again after a 409.
@@ -184,6 +200,11 @@ if (200 === $response->getStatusCode()) {
 } else {
     $row('load /bench/dashboard (one batched event)', 0.0, 0, 0, 0, 'n/a ('.$response->getStatusCode().')');
 }
+
+// --- The same dashboard, streamed in the response of the page -----------------------------
+[, , $html] = $stream('/bench/stream');
+$row('GET /bench/stream (first chunk)', $median(static fn () => $stream('/bench/stream')[0]), 1, 0, strlen($html), '-');
+$row('GET /bench/stream (4 streamed boundaries)', $median(static fn () => $stream('/bench/stream')[1]), 1, 0, strlen($html), '-');
 
 // --- The table -----------------------------------------------------------------------------
 $head = ['scenario', 'median ms', 'requests', 'request B', 'response B', 'state cache'];

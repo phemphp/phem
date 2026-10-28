@@ -44,6 +44,10 @@ final class Tree
     private ?string $rootToken = null;
     /** @var array<string, true> the stale fibers: they render with their full subtree, and their HTML always goes to the browser */
     private array $stale = [];
+    /** @var list<Fiber> the `<Suspense>` boundaries that wait for the stream of the page (see defer()) */
+    private array $deferred = [];
+    /** @var array<string, true> the ids of all the boundaries that defer() got */
+    private array $deferredIds = [];
 
     /**
      * @param string                              $page     the page component, or '' for a tree without a page
@@ -53,6 +57,7 @@ final class Tree
      * @param array<array-key, mixed>             $query    the query string of the page request, for the #[Url] properties of a new fiber (see Phem\State\UrlQuery)
      * @param TreeShape                           $shape    the shape of the last render, in the browser
      * @param bool                                $detached a tree outside a page, for the markup of a push (see Renderer::detached())
+     * @param SuspenseLoad                        $suspense how the `<Suspense>` boundaries that show their fallback load
      */
     public function __construct(
         public readonly string $page = '',
@@ -62,7 +67,43 @@ final class Tree
         public readonly array $query = [],
         public readonly TreeShape $shape = new TreeShape(),
         public readonly bool $detached = false,
+        public readonly SuspenseLoad $suspense = SuspenseLoad::Event,
     ) {
+    }
+
+    /**
+     * Puts a `<Suspense>` boundary in the queue of the stream of the page (see SuspenseStream). A
+     * boundary goes in the queue one time only: when its stream fails, it keeps its fallback.
+     */
+    public function defer(Fiber $fiber): void
+    {
+        if (isset($this->deferredIds[$fiber->id])) {
+            return;
+        }
+
+        $this->deferredIds[$fiber->id] = true;
+        $this->deferred[] = $fiber;
+    }
+
+    /**
+     * The next boundary in the queue of the stream that is still in the page, or null. A boundary
+     * in the fallback of a boundary that loaded before it is not in the page any more.
+     */
+    public function nextDeferred(): ?Fiber
+    {
+        while (null !== $fiber = array_shift($this->deferred)) {
+            if ($this->inPage($fiber)) {
+                return $fiber;
+            }
+        }
+
+        return null;
+    }
+
+    /** Whether boundaries wait for the stream of the page. */
+    public function hasDeferred(): bool
+    {
+        return [] !== $this->deferred;
     }
 
     /**
@@ -234,8 +275,23 @@ final class Tree
         }
 
         unset($this->fibers[$fiber->id]);
+        $this->forget($fiber);
+    }
+
+    /**
+     * Removes the handlers and the bound properties that a fiber registered in this pass, with
+     * the ones of its subtree: the fiber renders again in the same pass (see Renderer::resume()),
+     * and its handlers get the same ids again.
+     */
+    public function forget(Fiber $fiber): void
+    {
+        foreach ($fiber->children as $child) {
+            $this->forget($child);
+        }
+
         $prefix = $fiber->id.'.';
         $this->handlers = array_filter($this->handlers, static fn (string $id): bool => !str_starts_with($id, $prefix), \ARRAY_FILTER_USE_KEY);
+        $this->handlerCounts = array_filter($this->handlerCounts, static fn (string $base): bool => !str_starts_with($base, $prefix), \ARRAY_FILTER_USE_KEY);
         $this->binds = array_filter($this->binds, static fn (array $bind): bool => $bind[0] !== $fiber->id);
     }
 
@@ -326,6 +382,18 @@ final class Tree
         }
 
         return $out;
+    }
+
+    /** Whether a fiber rendered in this pass, under the fibers of this pass up to the page. */
+    private function inPage(Fiber $fiber): bool
+    {
+        for ($f = $fiber; null !== $f->parent; $f = $f->parent) {
+            if ($f->pass !== $this->pass || !\in_array($f, $f->parent->children, true)) {
+                return false;
+            }
+        }
+
+        return $f->pass === $this->pass;
     }
 
     /** @param array<string, array{0: string|null, 1: Fiber|null}> $out */

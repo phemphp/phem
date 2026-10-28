@@ -334,6 +334,46 @@ function lockControl(control) {
   return prop
 }
 
+// Copies of the scripts of a fragment: a script of a `<template>` does not run when it goes in the
+// page, but a copy does, as in the page.
+function activateScripts(fragment) {
+  for (const script of fragment.querySelectorAll("script")) {
+    const copy = document.createElement("script")
+    for (const { name, value } of script.attributes) copy.setAttribute(name, value)
+    copy.nonce = script.nonce
+    copy.textContent = script.textContent
+    script.replaceWith(copy)
+  }
+}
+
+// The end of a streamed page (see Phem\Http\PageStream): the `<Suspense>` boundaries that the
+// scripts of the stream did not put in the page (a CSP that blocks the scripts), and the state of
+// the page, in the attributes of the root element. False when the stream failed: the page has no
+// state.
+function finishStream(root) {
+  for (const template of document.querySelectorAll("template[data-phem-for]")) {
+    const target = root.querySelector(`[data-phem-c="${template.getAttribute("data-phem-for")}"]`)
+    if (target) {
+      activateScripts(template.content)
+      target.replaceWith(template.content)
+    }
+
+    if (template.nextElementSibling?.localName === "script") template.nextElementSibling.remove()
+    template.remove()
+  }
+
+  const state = document.querySelector("template[data-phem-root-state]")
+  const failed = !state || state.hasAttribute("data-phem-stream-error")
+  if (state && !failed) {
+    for (const { name, value } of state.attributes) if (name !== "data-phem-root-state") root.setAttribute(name, value)
+  }
+
+  state?.remove()
+  root.removeAttribute("data-phem-streaming")
+
+  return !failed
+}
+
 export default class PhemController extends Controller {
   static values = {
     state: String,
@@ -352,6 +392,27 @@ export default class PhemController extends Controller {
   }
 
   connect() {
+    // A streamed page has its state at its end: Stimulus starts after the parse of the page, but
+    // an application can start it before. The actions of the root element do nothing before the
+    // state.
+    this.inactive = true
+    if (this.element.hasAttribute("data-phem-streaming")) {
+      if (document.readyState === "loading") {
+        this.waitStream = () => {
+          this.waitStream = null
+          this.connect()
+        }
+        document.addEventListener("DOMContentLoaded", this.waitStream, { once: true })
+        return
+      }
+
+      if (!finishStream(this.element)) {
+        console.error("[phem] the stream of the page failed: the page has no events")
+        return
+      }
+    }
+
+    this.inactive = false
     this.queue = Promise.resolve()
     // element => (handler attribute => {send, timer}): the events that wait for a debounce or a throttle
     this.pending = new Map()
@@ -542,6 +603,10 @@ export default class PhemController extends Controller {
   }
 
   disconnect() {
+    if (this.waitStream) document.removeEventListener("DOMContentLoaded", this.waitStream)
+    this.waitStream = null
+    if (this.inactive) return
+
     this.source?.close()
     this.source = null
     clearTimeout(this.refreshTimer)
@@ -745,6 +810,8 @@ export default class PhemController extends Controller {
 
   // data-action="click->phem#dispatch input->phem#dispatch ..." on the root element.
   dispatch(event) {
+    if (this.inactive) return
+
     const el = this.handlerElement(event)
     if (!el) {
       const live = this.liveElement(event)

@@ -95,14 +95,16 @@ removes the files. The handler gets a copy of each file in the temporary directo
 move the file. As in a browser, the files stay in the input after an event, also when the morph
 renders the input again.
 
-The first render of a page with a `<Suspense>` boundary shows its fallback, as in a browser.
+The first render of a page shows its `<Suspense>` boundaries as the browser has them at the end
+of the stream of the page: a boundary with no `lazy` shows its children. A `lazy` boundary shows
+its fallback, and so does a streamed boundary whose children threw with no `error` slot.
 `load()` sends the load event of each boundary that shows its fallback, in their order. A
 selector loads only the boundary of the element: the `<phem-suspense>` element, or an element in
 its fallback. The loaded children can have boundaries too: call `load()` again.
 
 ```php
 $this->visit('/dashboard')
-    ->assertSee('Loading the sales report')
+    ->assertSee('Loading the chart')
     ->load()
     ->assertSee('North: 1200 €');
 ```

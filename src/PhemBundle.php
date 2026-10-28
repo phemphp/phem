@@ -59,6 +59,7 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_lo
  *         state_cache_min_size: 4096 # bytes; a smaller state goes with each event, not in the pool
  *         max_event_size: 1048576    # bytes; 0 for no limit
  *         max_upload_size: 8388608   # bytes; 0 for no limit
+ *         suspense_stream: true      # stream the <Suspense> boundaries in the response of the page
  *         mercure:
  *             subscriber_key: ~      # private updates, with an access token for each page
  *             publisher_key: ~       # publish from a worker, with the HTTP API of the hub
@@ -131,6 +132,10 @@ final class PhemBundle extends AbstractBundle
                     ->defaultValue(8388608)
                     ->min(0)
                 ->end()
+                ->booleanNode('suspense_stream')
+                    ->info('Stream the <Suspense> boundaries that are not lazy in the response of the page, after the page. With false, the browser loads them with an event after the page.')
+                    ->defaultTrue()
+                ->end()
                 ->arrayNode('mercure')
                     ->info('The Mercure hub of FrankenPHP, for the pages with #[Broadcast] (see Phem\\Stream\\Streams)')
                     ->addDefaultsIfNotSet()
@@ -173,7 +178,7 @@ final class PhemBundle extends AbstractBundle
     }
 
     /**
-     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, state_cache_min_size: int, max_event_size: int, max_upload_size: int, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string, publisher_key: string|null, publish_url: string|null}} $config
+     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, state_cache_min_size: int, max_event_size: int, max_upload_size: int, suspense_stream: bool, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string, publisher_key: string|null, publish_url: string|null}} $config
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
@@ -190,6 +195,11 @@ final class PhemBundle extends AbstractBundle
             ->arg(1, $config['state_cache_min_size']);
         if (!$config['state_cache']) {
             $container->services()->get('phem.state_cache')->arg(0, null);
+        }
+
+        if (!$config['suspense_stream']) {
+            $container->services()->get('phem.page_renderer')->arg(8, null);
+            $container->services()->remove('phem.page_stream');
         }
 
         $container->services()->get('phem.event_body')

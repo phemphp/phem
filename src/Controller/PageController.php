@@ -32,6 +32,6 @@ final class PageController
 
     public function __invoke(Request $request): Response
     {
-        return new Response($this->pages->document((string) $request->attributes->get('_phem_page'), $request));
+        return $this->pages->response((string) $request->attributes->get('_phem_page'), $request);
     }
 }

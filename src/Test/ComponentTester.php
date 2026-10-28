@@ -258,8 +258,9 @@ final class ComponentTester
     }
 
     /**
-     * Loads the `<Suspense>` boundaries that show their fallback, as the browser does when the
-     * page starts (or when `lazy` boundaries come into view): one load event for all of them. A
+     * Loads the `<Suspense>` boundaries that show their fallback, as the browser does when `lazy`
+     * boundaries come into view, or when the stream of a boundary failed: one load event for all
+     * of them. The page shows the other boundaries as at the end of its stream. A
      * selector loads only one boundary: the boundary of the element (an element in its fallback,
      * or the boundary). Loaded children can have boundaries too: call load() again.
      *

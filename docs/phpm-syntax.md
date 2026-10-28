@@ -1899,7 +1899,7 @@ final class AddScientist
 A slow component (a report with a heavy query, a call to an external API) makes the full page
 slow: the server renders the full page before it sends it. Put the slow component in a
 `<Suspense>` boundary, as in React. The page renders the `fallback` slot in place of the
-children. Then the browser loads the children with an event:
+children, and the response sends the page first. Then the children load after the page:
 
 ```php
 use Phem\Node;
@@ -1927,28 +1927,60 @@ final class Dashboard
 }
 ```
 
-- The children do not render before the load. So the `mount()` of `SalesReport` does not run
-  in the page request: the slow work runs in the load event.
-- Without `lazy`, the browser loads the children when the page starts. With `lazy`, it loads
-  them when the fallback comes into view (200px before).
-- The load is a normal event: it sends the state of the page, and has the same access rules,
-  rate limits and profiler panel. It renders only the boundary, and the morph puts the children
-  in place of the fallback.
-- The boundaries that start to load together (when the page starts, after a morph, or when they
-  come into view at the same time) send one load event, in the event queue: one request, and
-  one render for all of them. A slow load makes the events after it wait.
+- The children do not render before the page. So the slow `mount()` of `SalesReport` does not
+  make the browser wait for the page.
+- Without `lazy`, the response of the page streams the children, as React streams its
+  boundaries. The response sends the page with the fallbacks first. Then the server renders each
+  boundary, in their order, and sends a chunk that replaces its fallback while the page loads. A
+  boundary in the children of a boundary comes after it. The state of the page comes at the
+  end: the events of the page start when the browser has the full page. There is no second
+  request.
+- With `lazy`, the browser loads the children with an event when the fallback comes into view
+  (200px before). The load is a normal event: it sends the state of the page, and has the same
+  access rules, rate limits and profiler panel. It renders only the boundary, and the morph puts
+  the children in place of the fallback. The boundaries that come into view at the same time send
+  one load event, in the event queue: one request, and one render for all of them. A slow load
+  makes the events after it wait.
 - The state keeps the status of the boundary. After the load, the next events render the
   children directly, and they keep their state.
 - The fallback is in a `<phem-suspense>` element, with `display: block`. Style it with CSS.
 
+The stream has these rules:
+
+- A page with no boundary to stream is a normal response. The Symfony web debug toolbar does not
+  show on a streamed page, and the profiler does not see the render of its boundaries.
+- A Turbo visit (a link, a form, a frame or a prefetch) reads the full response before it shows
+  the page. So it gets no stream: the page shows the fallbacks at once, and the browser loads the
+  boundaries with an event, as `lazy` does.
+- The boundaries render after the headers, in the request: the request stack has the request,
+  and the locale is the locale of the request. The session starts before the headers (when the
+  application has sessions), it stays open while the boundaries render, and it is saved at the
+  end. So a boundary can use the session (a form with a CSRF token).
+- No cache keeps a streamed page (`Cache-Control: no-store, private`). Make the boundaries of a
+  page with `#[Cache]` `lazy`.
+- Each chunk has a small inline `<script>`. With a CSP, it gets the nonce of the
+  `csp_script_nonce` request attribute, or the nonce of the first `<script>` of the page (the
+  script of `importmap()`). When the CSP blocks the scripts, the `phem` controller puts the
+  children in place when the page starts. The scripts in the children run, as in the page.
+- When the render of the boundaries fails after the page (an error that is not in the children
+  of a boundary), the page ends with no state: it has no events. The logger gets the exception,
+  and in debug, the exception shows after the page.
+- The response has the `X-Accel-Buffering: no` header, so nginx sends each chunk at once. Turn
+  off the other buffers between PHP and the browser (for example the compression of a proxy that
+  waits for the full response).
+- With private updates (see [Real-time updates](#real-time-updates)), the cookie of the Mercure hub goes
+  with the headers, before the boundaries render. A component with `#[Broadcast]` in a streamed
+  boundary gets its pushes after the first event that renders it.
+- Set `phem.suspense_stream: false` to load all the boundaries with an event, as `lazy` does.
+
 When the render of the children throws, the `error` slot shows in place of the children, only
-for this boundary. The response is a normal answer (200). The boundary drops what the children
-rendered before the exception, and the logger gets the exception (the profiler shows it). With
-no `error` slot, the exception goes on: the event fails (see [Failed events](#failed-events)),
-and the fallback stays. When this event loads more than one boundary, the browser then sends one
-load event for each of them, so the other boundaries show their children. A boundary loads one
-time: the browser does not send its load event again after a failed load. A reload of the page
-tries again.
+for this boundary. The boundary drops what the children rendered before the exception, and the
+logger gets the exception (the profiler shows it). With no `error` slot, a streamed boundary
+keeps its fallback, and the browser loads it with an event. In an event, the exception goes on:
+the event fails (see [Failed events](#failed-events)), and the fallback stays. When this event
+loads more than one boundary, the browser then sends one load event for each of them, so the
+other boundaries show their children. A boundary loads one time: the browser does not send its
+load event again after a failed load. A reload of the page tries again.
 
 The status of a boundary does not go back. An error of a later event (for example after a click
 in the children) also shows the `error` slot.

@@ -20,6 +20,7 @@ use Phem\Rendering\EventRenderer;
 use Phem\Rendering\Fiber;
 use Phem\Rendering\Renderer;
 use Phem\Rendering\RootElement;
+use Phem\Rendering\SuspenseLoad;
 use Phem\Rendering\Tree;
 use Phem\State\PageState;
 use Phem\State\StateAccessor;
@@ -66,7 +67,8 @@ final class ComponentDriver implements Driver
         private readonly UrlQuery $query = new UrlQuery(),
     ) {
         $this->state = new PageState();
-        $this->tree = new Tree($this->component, props: $this->props);
+        // As the end of the stream of a page: the `<Suspense>` boundaries that are not lazy show their children.
+        $this->tree = new Tree($this->component, props: $this->props, suspense: SuspenseLoad::Inline);
 
         $this->html = $this->within($this->request('GET'), function (Request $request): string {
             $html = $this->renderer->render($this->tree);

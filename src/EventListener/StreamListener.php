@@ -16,11 +16,14 @@ namespace Phem\EventListener;
 use Phem\Stream\Streams;
 use Phem\Stream\Subscription;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
+use Symfony\Component\HttpKernel\Event\TerminateEvent;
 
 /**
  * At the end of a request: sets the cookie of the Mercure hub for a page with #[Broadcast] (see
  * Subscription), and publishes the streams of the request (see Streams::flush()). The event
- * handler and its transaction ended before the response, so a refresh reads the new data.
+ * handler and its transaction ended before the response, so a refresh reads the new data. The
+ * `<Suspense>` boundaries of a streamed page render after the response event (see
+ * Phem\Http\PageRenderer): their streams go after the response.
  */
 final class StreamListener
 {
@@ -40,6 +43,11 @@ final class StreamListener
             $event->getResponse()->headers->setCookie($cookie);
         }
 
+        $this->streams->flush();
+    }
+
+    public function onKernelTerminate(TerminateEvent $event): void
+    {
         $this->streams->flush();
     }
 }

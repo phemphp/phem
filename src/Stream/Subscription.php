@@ -42,7 +42,9 @@ use Symfony\Component\HttpFoundation\Request;
  * extends it. A kept topic that lived half of its time goes, so the token lives at least that
  * long. The subject of a token is a hash of the session id: after a logout or a login (a new
  * session), the topics of the old cookie are not kept. An event renews the token when it lived
- * half of its time, or when it lacks a topic.
+ * half of its time, or when it lacks a topic. A streamed page sets the cookie before its
+ * `<Suspense>` boundaries render (see Phem\Http\PageRenderer): a component of a boundary gets
+ * its private updates after the first event that renders it.
  * With no key, the updates are public: the hub needs the `anonymous` directive.
  *
  * The audience of the token is the URL of the hub that the browser connects to. A relative hub

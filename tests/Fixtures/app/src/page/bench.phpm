@@ -76,6 +76,38 @@ final class BenchWidget
     }
 }
 
+/** The 4 boundaries of a dashboard. */
+#[Component]
+final class BenchWidgets
+{
+    #[Prop] public bool $lazy = false;
+
+    public function render(): Node
+    {
+        return (
+            <div class="widgets">
+                <Suspense lazy={{ lazy }}>
+                    <Suspense:fallback><p>Loading the sales…</p></Suspense:fallback>
+                    <BenchWidget name="Sales" />
+                </Suspense>
+                <Suspense lazy={{ lazy }}>
+                    <Suspense:fallback><p>Loading the orders…</p></Suspense:fallback>
+                    <BenchWidget name="Orders" />
+                </Suspense>
+                <Suspense lazy={{ lazy }}>
+                    <Suspense:fallback><p>Loading the users…</p></Suspense:fallback>
+                    <BenchWidget name="Users" />
+                </Suspense>
+                <Suspense lazy={{ lazy }}>
+                    <Suspense:fallback><p>Loading the stock…</p></Suspense:fallback>
+                    <BenchWidget name="Stock" />
+                </Suspense>
+            </div>
+        );
+    }
+}
+
+/** The browser loads the boundaries with an event: they are lazy. */
 #[Page('/bench/dashboard')]
 final class BenchDashboard
 {
@@ -83,22 +115,21 @@ final class BenchDashboard
     {
         return (
             <Document>
-                <Suspense>
-                    <Suspense:fallback><p>Loading the sales…</p></Suspense:fallback>
-                    <BenchWidget name="Sales" />
-                </Suspense>
-                <Suspense>
-                    <Suspense:fallback><p>Loading the orders…</p></Suspense:fallback>
-                    <BenchWidget name="Orders" />
-                </Suspense>
-                <Suspense>
-                    <Suspense:fallback><p>Loading the users…</p></Suspense:fallback>
-                    <BenchWidget name="Users" />
-                </Suspense>
-                <Suspense>
-                    <Suspense:fallback><p>Loading the stock…</p></Suspense:fallback>
-                    <BenchWidget name="Stock" />
-                </Suspense>
+                <BenchWidgets lazy={{ true }} />
+            </Document>
+        );
+    }
+}
+
+/** The response of the page streams the boundaries (see Phem\Rendering\SuspenseStream). */
+#[Page('/bench/stream')]
+final class BenchStream
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <BenchWidgets />
             </Document>
         );
     }

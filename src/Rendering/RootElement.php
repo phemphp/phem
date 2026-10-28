@@ -27,7 +27,7 @@ use Phem\Dom\DomEvents;
 final class RootElement
 {
     /** The attributes that the application cannot change. */
-    private const OWN = ['data-phem-state-value' => true, 'data-phem-signature-value' => true, 'data-phem-query-value' => true, 'data-phem-state-inline-value' => true, 'data-phem-stream-value' => true];
+    private const OWN = ['data-phem-state-value' => true, 'data-phem-signature-value' => true, 'data-phem-query-value' => true, 'data-phem-state-inline-value' => true, 'data-phem-stream-value' => true, 'data-phem-streaming' => true];
 
     /**
      * The `data-controller` and `data-action` values of the application come after the values of

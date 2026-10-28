@@ -34,6 +34,28 @@ final class Report
     }
 }
 
+// The content of a boundary in a boundary.
+#[Component]
+function Notes(): Node
+{
+    return <p id="notes">Notes</p>;
+}
+
+// The content of a boundary in a fallback: the fallback goes away before it loads.
+#[Component]
+final class Hint
+{
+    public function mount(): void
+    {
+        Renders::count('Hint.mount');
+    }
+
+    public function render(): Node
+    {
+        return <p id="hint">A hint</p>;
+    }
+}
+
 #[Component]
 final class Part
 {
@@ -79,8 +101,18 @@ final class SuspensePage
                 <button id="click" onClick={{ click }}>Clicks {{ clicks }}</button>
                 <section id="report">
                     <Suspense>
-                        <Suspense:fallback><p id="report-fallback">Loading the report…</p></Suspense:fallback>
+                        <Suspense:fallback>
+                            <p id="report-fallback">Loading the report…</p>
+                            <Suspense>
+                                <Suspense:fallback><p id="hint-fallback">…</p></Suspense:fallback>
+                                <Hint />
+                            </Suspense>
+                        </Suspense:fallback>
                         <Report />
+                        <Suspense>
+                            <Suspense:fallback><p id="notes-fallback">Loading the notes…</p></Suspense:fallback>
+                            <Notes />
+                        </Suspense>
                     </Suspense>
                 </section>
                 <section id="chart">
