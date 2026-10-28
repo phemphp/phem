@@ -123,7 +123,7 @@ final class PhemBundle extends AbstractBundle
                     ->min(0)
                 ->end()
                 ->integerNode('max_event_size')
-                    ->info('The maximum size of an event body in bytes, with the state of the page (0 for no limit). A larger event gets a 413 response.')
+                    ->info('The maximum size of an event body in bytes, with the state of the page (0 for no limit). A larger event gets a 413 response. A page whose state is too large for an event throws in debug mode, and logs an error in production.')
                     ->defaultValue(1048576)
                     ->min(0)
                 ->end()
@@ -203,6 +203,8 @@ final class PhemBundle extends AbstractBundle
         }
 
         $container->services()->get('phem.event_body')
+            ->arg(0, $config['max_event_size']);
+        $container->services()->get('phem.state_size_limit')
             ->arg(0, $config['max_event_size']);
         $container->services()->get('phem.controller.event')
             ->arg(10, $config['max_upload_size']);

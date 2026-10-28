@@ -1102,6 +1102,14 @@ the compressed body and to the JSON after the server unzips it, so a small body 
 very large one also gets `413`. A body that is not valid gzip gets `400`, and another content
 encoding gets `415`.
 
+The state of a page must fit in an event body: after a miss of the [state cache](#state-cache),
+the browser sends the full state. The server checks this each time that it signs a state (the
+page render and each event). The size is the state as a JSON string in the body: each quote,
+backslash and line break takes one byte more. A state that is too large throws in debug mode,
+with the largest entry of the state (often a list in a `#[State]` property). In production, the
+server logs an error and the page works while the pool has its state. Keep less in `#[State]`
+(an id, not the rows), or raise the limit.
+
 ```yaml
 # config/packages/phem.yaml
 phem:

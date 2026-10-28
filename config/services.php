@@ -67,6 +67,7 @@ use Phem\State\BoundValues;
 use Phem\State\StateAccessor;
 use Phem\State\StateCache;
 use Phem\State\StateCodec;
+use Phem\State\StateSizeLimit;
 use Phem\State\UrlQuery;
 use Phem\Stream\BroadcastKeys;
 use Phem\Stream\FrankenPhpPublisher;
@@ -276,6 +277,7 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.state_cache'),
                 service('phem.subscription'),
                 service('phem.page_stream'),
+                service('phem.state_size_limit'),
             ])
         ->alias(PageRenderer::class, 'phem.page_renderer')
         ->set('phem.controller.page', PageController::class)
@@ -297,6 +299,8 @@ return static function (ContainerConfigurator $container): void {
             ->args([service(StateCache::POOL), 4096])
         ->set('phem.event_body', EventBody::class)
             ->args([1048576])
+        ->set('phem.state_size_limit', StateSizeLimit::class)
+            ->args([1048576, param('kernel.debug'), service('logger')->nullOnInvalid()])
         ->set('phem.controller.event', EventController::class)
             ->public()
             ->args([
@@ -314,6 +318,7 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.state_cache'),
                 service('phem.subscription'),
                 service('phem.sender_token'),
+                service('phem.state_size_limit'),
             ])
         ->set('phem.listener.page_attributes', PageAttributesListener::class)
             ->tag('kernel.event_listener', ['event' => 'kernel.controller', 'method' => 'onKernelController'])

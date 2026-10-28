@@ -23,6 +23,7 @@ use Phem\Root;
 use Phem\State\StateAccessor;
 use Phem\State\StateCache;
 use Phem\State\StateCodec;
+use Phem\State\StateSizeLimit;
 use Phem\State\UrlQuery;
 use Phem\Stream\Subscription;
 use Symfony\Component\HttpFoundation\Request;
@@ -64,6 +65,7 @@ final class PageRenderer
         private readonly StateCache $cache = new StateCache(),
         private readonly ?Subscription $subscription = null,
         private readonly ?PageStream $stream = null,
+        private readonly StateSizeLimit $limit = new StateSizeLimit(),
     ) {
     }
 
@@ -104,6 +106,7 @@ final class PageRenderer
     {
         $subscribed = $this->subscription?->components($tree) ?? [];
         [$state, $signature] = $this->codec->encode($this->state->snapshot($tree, $subscribed)->toArray(), $tree->page, $request);
+        $this->limit->check($state, $tree);
         $this->cache->save($signature, $state);
 
         $stream = $this->subscription?->attribute($tree->page, $tree->values, $request, $subscribed) ?? '';

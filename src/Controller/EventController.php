@@ -31,6 +31,7 @@ use Phem\State\StateAccessor;
 use Phem\State\StateCache;
 use Phem\State\StateCodec;
 use Phem\State\StateJson;
+use Phem\State\StateSizeLimit;
 use Phem\State\UrlQuery;
 use Phem\Stream\SenderToken;
 use Phem\Stream\Subscription;
@@ -99,6 +100,7 @@ final class EventController
         private readonly StateCache $cache = new StateCache(),
         private readonly ?Subscription $subscription = null,
         private readonly SenderToken $sender = new SenderToken(),
+        private readonly StateSizeLimit $limit = new StateSizeLimit(),
     ) {
     }
 
@@ -191,6 +193,7 @@ final class EventController
         }
 
         [$next, $signature] = $this->codec->encode($this->state->snapshot($tree, $state->subscribed)->toArray(), $page, $request);
+        $this->limit->check($next, $tree);
 
         // The next event can send only the signature (see StateCache).
         $this->cache->save($signature, $next);
