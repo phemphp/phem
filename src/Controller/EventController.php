@@ -196,9 +196,9 @@ final class EventController
         $this->cache->save($signature, $next);
 
         $query = $this->url->of($tree);
-        // Only the entries of the state that changed, and a patch of the shape: the browser has the
-        // state of this event.
-        $changes = (object) StateJson::changes($json, $next, [PageState::TREE_KEY]);
+        // Only the entries of the state that changed, or a patch of them: the browser has the state
+        // of this event.
+        $changes = (object) StateJson::changes($json, $next);
         $data = ['streams' => $this->streams->updates($tree->changedFibers(), $tree->shape), 'changes' => $changes, 'signature' => $signature, 'query' => ['values' => (object) $query['values'], 'push' => $query['push']], 'events' => $this->dispatcher->dispatched()];
 
         // The refreshes of this event skip the component of the handler in this browser.

@@ -60,8 +60,9 @@ ideas of React map to Phem.
    compares their HTML with the hashes, and answers with a Turbo Stream `replace`
    (`method="morph"`) for each component that changed, plus the entries of the state that
    changed and the new signature: the browser sets them in its copy of the state, so a big page
-   does not get all its state again with each event. The shape gets a patch with only the hashes
-   that changed. A component that did not render again is a `<template data-phem-keep>`
+   does not get all its state again with each event. An entry that changed only a bit gets a
+   patch of its JSON text: the shape gets only the hashes that changed, and a large `#[State]`
+   list that changed in one item gets only that item. A component that did not render again is a `<template data-phem-keep>`
    placeholder: the browser keeps it. A run of kept components that are next to each other has
    one placeholder (`first..last`), and the browser finds the components of the run in the shape
    that it has. This needs a pure `render()`

@@ -96,6 +96,25 @@ final class ManyComponentsTest extends TestCase
         self::assertStringContainsString('Row 37: 2 clicks', $data['streams']);
     }
 
+    public function testAChangeOfOneItemOfALargeStateSendsAPatchOfItsText(): void
+    {
+        [$html, $state, $signature] = $this->open('/many-items');
+        self::assertSame(1, preg_match('/<button id="toggle" data-phem-on-click="([^"]+)"/', $html, $m));
+        $handler = $m[1];
+        // The entry of the page: the state of its fiber has the list.
+        $page = array_key_first(array_filter((array) StateJson::entries($state), static fn (string $json): bool => str_starts_with($json, '{"items":')));
+
+        $data = $this->send('/many-items', $state, $signature, $handler);
+
+        self::assertStringContainsString('Done: yes', $data['streams']);
+        self::assertSame([[5, 1, '"done":true}']], $data['changes'][$page], 'one part of the text of the list: the "done" of the second item');
+
+        // The browser applies the patch. The server accepts the text: it is the text that the server signed.
+        $data = $this->send('/many-items', StateJson::apply($state, $data['changes']), $data['signature'], $handler);
+        self::assertStringContainsString('Done: no', $data['streams']);
+        self::assertSame([[5, 1, '"done":false}']], $data['changes'][$page]);
+    }
+
     public function testThePageRendersAgainWithTheSameHtmlAndKeepsTheRows(): void
     {
         [$html, $state, $signature] = $this->open('/many');

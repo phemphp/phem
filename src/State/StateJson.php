@@ -22,7 +22,7 @@ namespace Phem\State;
  *     "phem0123456789ab":{"count":1}
  *     }
  *
- * An event response sends only the entries that changed (see changes()), and a patch of a long
+ * An event response sends only the entries that changed (see changes()), and a patch of an
  * entry that changed only a bit (see TextPatch). The browser splits its text into entries, sets
  * the changes, and joins the entries again (see apply()): it never encodes a value again, so the
  * text that it sends back is the text that the server signed.
@@ -81,15 +81,15 @@ final class StateJson
      * text of its value, or null for an entry that the new state does not have. A state before
      * with another form counts as empty, as in the browser: the changes have all the entries.
      *
-     * An entry of $patched that is in the two states gets a patch of its JSON text (see
-     * TextPatch), when the patch is shorter than the text.
+     * An entry that is in the two states gets a patch of its JSON text (see TextPatch), when the
+     * patch is shorter than the text in the JSON of the response: the shape, and a large #[State]
+     * value of which only a part changed.
      *
-     * @param string       $after   a text of encode()
-     * @param list<string> $patched the keys of the entries that can get a patch
+     * @param string $after a text of encode()
      *
      * @return array<string, string|list<list<int|string>>|null>
      */
-    public static function changes(string $before, string $after, array $patched = []): array
+    public static function changes(string $before, string $after): array
     {
         $old = self::entries($before) ?? [];
         $new = self::entries($after) ?? throw new \InvalidArgumentException('The new state is not a text of StateJson::encode().');
@@ -102,9 +102,9 @@ final class StateJson
 
             $changes[$key] = $value;
 
-            if (isset($old[$key]) && \in_array($key, $patched, true)) {
+            if (isset($old[$key])) {
                 $patch = TextPatch::diff($old[$key], $value);
-                if (\strlen(json_encode($patch, self::FLAGS)) < \strlen($value)) {
+                if (\strlen(json_encode($patch, self::FLAGS)) < \strlen(json_encode($value, self::FLAGS))) {
                     $changes[$key] = $patch;
                 }
             }

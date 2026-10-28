@@ -72,6 +72,20 @@ describe("the state", () => {
     expect(root().getAttribute("data-phem-state-value")).toBe(patchVector.after)
   })
 
+  it("applies a patch with more new parts than a call can have arguments", async () => {
+    // A large #[State] list: one splice puts 300000 new parts in it. The event sends only the
+    // signature of the state, as for a large state of a page.
+    const count = 300000
+    await mount(`<button data-phem-on-click="c1.save">Save</button>`, `data-phem-state-inline-value="4096"`)
+    root().setAttribute("data-phem-state-value", `{\n"phem0a":[${Array(count + 2).fill("0").join(",")}]\n}`)
+    respond(`<button data-phem-on-click="c1.save">Save</button>`, { phem0a: [[1, count, ...Array(count).fill("1")]] })
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect(root().getAttribute("data-phem-state-value")).toBe(`{\n"phem0a":[0,${Array(count).fill("1").join(",")},0]\n}`)
+  })
+
   it("sets the changes of the response in the state, as the server does", async () => {
     await mount(`<button data-phem-on-click="c1.save">Save</button>`)
     root().setAttribute("data-phem-state-value", vector.before)

@@ -248,13 +248,22 @@ function applyStateChanges(state, changes) {
 }
 
 // A patch of the JSON text of an entry (see Phem\State\TextPatch): splices [index, count, ...parts]
-// on the parts between its commas, in the order of their indexes. From the last splice, so the
-// indexes of the splices before it stay the same.
+// on the parts between its commas, in the order of their indexes. One pass over the parts, with no
+// spread: a splice of a large value can have more new parts than a call can have arguments.
 function applyPatch(text, patch) {
   const parts = text.split(",")
-  for (const [index, count, ...inserted] of [...patch].reverse()) parts.splice(index, count, ...inserted)
+  const out = []
+  let at = 0
 
-  return parts.join(",")
+  for (const splice of patch) {
+    while (at < splice[0]) out.push(parts[at++])
+    for (let i = 2; i < splice.length; i++) out.push(splice[i])
+    at = splice[0] + splice[1]
+  }
+
+  while (at < parts.length) out.push(parts[at++])
+
+  return out.join(",")
 }
 
 // The smallest JSON body that the controller compresses: the gzip header and the time to compress

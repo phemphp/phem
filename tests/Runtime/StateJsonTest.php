@@ -88,22 +88,43 @@ final class StateJsonTest extends TestCase
         self::assertSame(['_path' => ['id' => '3'], '_tree' => 'BBBBBBBB0,CCCCCCCC1', 'phem0b' => ['n' => 2.5], 'phem0c' => []], json_decode($after, true));
     }
 
-    public function testAPatchedEntryGetsAPatchOfItsText(): void
+    public function testAnEntryGetsAPatchOfItsText(): void
     {
         ['before' => $before, 'changes' => $changes, 'after' => $after] = self::vector(self::PATCH_VECTOR);
 
-        self::assertSame($changes, StateJson::changes($before, $after, ['_tree']), 'a splice for each run of other parts');
+        self::assertSame($changes, StateJson::changes($before, $after), 'a splice for each run of other parts');
         self::assertSame($after, StateJson::apply($before, $changes));
-        self::assertSame(StateJson::entries($after)['_tree'] ?? null, StateJson::changes($before, $after)['_tree'], 'not a patched entry');
     }
 
-    public function testAPatchedEntryGetsItsTextWhenThePatchIsNotShorter(): void
+    public function testALargeStateValueGetsAPatchOfThePartsThatChanged(): void
     {
-        $before = StateJson::encode(['_tree' => 'AAAAAAAA0,BBBBBBBB1']);
-        $after = StateJson::encode(['_tree' => 'XXXXXXXX0,YYYYYYYY1']);
+        $items = array_map(static fn (int $i): array => ['id' => $i, 'title' => 'Item '.$i, 'done' => false], range(0, 99));
+        $before = StateJson::encode(['phem0a' => ['items' => $items, 'n' => 1]]);
+        $items[40]['done'] = true;
+        $after = StateJson::encode(['phem0a' => ['items' => $items, 'n' => 2]]);
 
-        self::assertSame(['_tree' => '"XXXXXXXX0,YYYYYYYY1"'], StateJson::changes($before, $after, ['_tree']));
-        self::assertSame(['_tree' => '"XXXXXXXX0,YYYYYYYY1"'], StateJson::changes('{}', $after, ['_tree']), 'a new entry');
+        $changes = StateJson::changes($before, $after);
+
+        self::assertSame(['phem0a' => [[122, 1, '"done":true}'], [300, 1, '"n":2}']]], $changes, 'a splice for the item, and a splice for the counter');
+        self::assertSame($after, StateJson::apply($before, $changes));
+    }
+
+    public function testAnEntryGetsItsTextWhenThePatchIsNotShorter(): void
+    {
+        $before = StateJson::encode(['_tree' => 'AAAAAAAA0,BBBBBBBB1', 'phem0a' => ['n' => 1]]);
+        $after = StateJson::encode(['_tree' => 'XXXXXXXX0,YYYYYYYY1', 'phem0a' => ['n' => 2]]);
+
+        self::assertSame(['_tree' => '"XXXXXXXX0,YYYYYYYY1"', 'phem0a' => '{"n":2}'], StateJson::changes($before, $after));
+        self::assertSame(['_tree' => '"XXXXXXXX0,YYYYYYYY1"', 'phem0a' => '{"n":2}'], StateJson::changes('{}', $after), 'a new entry');
+    }
+
+    public function testThePatchIsShorterInTheJsonOfTheResponse(): void
+    {
+        // Each quote of a value is escaped in the response: the patch is shorter there, not in the text.
+        $before = StateJson::encode(['phem0a' => ['a' => 'x', 'b' => 'y', 'c' => 'z']]);
+        $after = StateJson::encode(['phem0a' => ['a' => 'x', 'b' => 'y', 'c' => 'w']]);
+
+        self::assertSame(['phem0a' => [[2, 1, '"c":"w"}']]], StateJson::changes($before, $after));
     }
 
     public function testAPatchWithAnotherFormIsNotValid(): void

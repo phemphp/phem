@@ -18,10 +18,11 @@ namespace Phem\State;
  * `[index, count, ...parts]`. A splice removes `count` parts of the old text at `index`, and puts
  * the new parts there. The splices are in the order of their indexes, and they do not overlap.
  *
- * An event response sends a patch of the `_tree` entry of the state, and not all its text (see
- * StateJson::changes()): the shape is a long list, and an event changes only some of its hashes.
- * The browser applies the patch to the JSON text of the entry with no JSON encoder, so its text
- * is the text that the server signed.
+ * An event response sends a patch of an entry of the state, and not all its text, when the patch
+ * is shorter (see StateJson::changes()): the shape is a long list, and an event changes only some
+ * of its hashes; a large #[State] value (a list of items) often changes in one item only. The
+ * browser applies the patch to the JSON text of the entry with no JSON encoder, so its text is
+ * the text that the server signed.
  */
 final class TextPatch
 {

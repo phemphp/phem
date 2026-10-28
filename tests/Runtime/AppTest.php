@@ -268,7 +268,8 @@ final class AppTest extends TestCase
 
         self::assertSame(200, $response->getStatusCode());
         self::assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
-        self::assertMatchesRegularExpression('/"phem[0-9a-f]{12}":"\\{\\\\"/', $json, 'a quote of the state is \\"');
+        // The entry of the counter, or a patch of it: both start with the text of its first property.
+        self::assertStringContainsString('"{\\"count\\":1', $json, 'a quote of the state is \\"');
         self::assertStringContainsString('<turbo-stream action=\\"replace\\"', $json, 'the streams keep their < and their slashes');
         self::assertStringNotContainsString('\\u00', $json);
         self::assertSame('nosniff', $this->event('/', ['handler' => 'h', 'signature' => '1.'.str_repeat('a', 64)])->headers->get('X-Content-Type-Options'), 'also a reload');
