@@ -12,7 +12,8 @@ it can run:
 
 ```
 my-app/
-├── composer.json          requires phem/phem, symfony/asset-mapper, symfony/stimulus-bundle (and symfony/runtime, symfony/yaml, symfony/dotenv)
+├── composer.json          requires phem/phem (with symfony/stimulus-bundle) and symfony/asset-mapper (and symfony/runtime, symfony/yaml, symfony/dotenv)
+├── .symfony.local.yaml    the phemc worker of `symfony serve`: `vendor/bin/phemc watch src`
 ├── .env                   APP_ENV, APP_SECRET (it signs the component state in the browser)
 ├── Caddyfile              FrankenPHP: public/index.php in worker mode, and the static files
 ├── bin/console
@@ -20,7 +21,7 @@ my-app/
 │   ├── bundles.php        FrameworkBundle, TwigBundle, StimulusBundle, PhemBundle (and DoctrineBundle for transactions and #[Path] entities)
 │   ├── packages/phem.yaml   optional: source_dir, build_dir, secret
 │   ├── packages/asset_mapper.yaml   the assets/ directory
-│   ├── routes/phem.yaml     { resource: ., type: phem }: the #[Page] attributes of the pages
+│   ├── routes.yaml        { resource: routing.controllers }: the #[Route] controllers and the #[Page] pages
 │   └── services.yaml      your services (for example repositories)
 ├── src/                   the .phpm sources (the "source root"), and your PHP classes
 │   ├── Kernel.php
@@ -132,6 +133,30 @@ in the markup of a page is not the title of the page: phemc reports it (W005). A
 The browser sends the events of a page to the URL of the page, and only a page route runs
 them.
 
+### The routes of the pages
+
+The `config/routes.yaml` file of a Symfony application (7.4 and later) imports the
+`routing.controllers` resource: the routes of the `#[Route]` controllers. PhemBundle adds the
+routes of the `#[Page]` pages to this resource, so the pages need no routes file:
+
+```yaml
+controllers:
+    resource: routing.controllers
+```
+
+An application without this resource (made before Symfony 7.4) imports the pages with the `phem`
+type:
+
+```yaml
+# config/routes/phem.yaml
+phem:
+    resource: .
+    type: phem
+```
+
+Use only one of the two. With the two, each page has its routes two times, and the last import
+replaces the routes of the first one.
+
 ### The client assets
 
 The client of Phem is the `phem` Stimulus controller, and the `phem-c{display:contents}` CSS (for
@@ -139,15 +164,16 @@ the `<phem-c>` around a component that does not render one element). The
 bundle gives them as a Symfony UX package (`assets/package.json`). With AssetMapper,
 they are in the `phemjs` namespace. The controller imports `@hotwired/stimulus` and
 `@hotwired/turbo` from the importmap of the application, so the page has one Turbo and one
-Stimulus. To set up an application:
+Stimulus. `phem/phem` requires StimulusBundle. Install AssetMapper and StimulusBundle before
+`phem/phem` (the `--webapp` skeleton has them):
 
 ```sh
 composer require symfony/asset-mapper symfony/stimulus-bundle
-php bin/console importmap:require @hotwired/stimulus @hotwired/turbo
+composer require phem/phem
 ```
 
-Then enable the controller in `assets/controllers.json` (Symfony Flex does it when it installs
-the bundle):
+Symfony Flex enables the controller in `assets/controllers.json`, and adds `@hotwired/stimulus`
+and `@hotwired/turbo` to `importmap.php`:
 
 ```json
 {
@@ -159,10 +185,6 @@ the bundle):
     "entrypoints": []
 }
 ```
-
-Without StimulusBundle, add `'phemjs' => ['path' => 'phemjs/phem_controller.js']`
-to `importmap.php`, register the controller (`application.register('phem', PhemController)`),
-and import `phemjs/phem.css`.
 
 The package also has optional controllers, which are not enabled by default (see the `.phpm`
 syntax guide):
@@ -244,7 +266,7 @@ var/phem/
 ├── templates/Page/index.0.twig one Twig template for each markup literal (Twig name: @phpm/Page/index.0.twig)
 ├── manifest.php / manifest.json components (kind, props, slots), pages, template → .phpm line map
 ├── autoload.php                 requires all compiled PHP files
-└── preload.php                  for opcache.preload (production)
+└── preload.php                  the Composer autoloader and autoload.php, for an opcache.preload of its own
 var/cache/<env>/twig/            the Twig cache (filled by the warmup)
 ```
 
@@ -388,6 +410,20 @@ php bin/console debug:router                          # the routes of the pages 
 
 ## 5. Watch mode (development)
 
+With the Symfony CLI, `symfony serve` runs `phemc watch` as a worker of the web server. The
+Flex recipe of `phem/phem` adds it to `.symfony.local.yaml`:
+
+```yaml
+workers:
+    phemc:
+        cmd: ['vendor/bin/phemc', 'watch', 'src']
+```
+
+When a `.phpm` file changes, `phemc` rebuilds. With PHP-FPM, the next request uses the new build:
+no restart is necessary. Run `symfony server:log` to see the diagnostics.
+
+With FrankenPHP in worker mode, give the command of the server to `--exec`:
+
 ```sh
 phemc watch src --exec "frankenphp run --config Caddyfile"
 ```
@@ -412,8 +448,9 @@ In production, Symfony does not check the cache for changes. Build the cache aga
 and the Twig cache of the phemc templates. `asset-map:compile` writes the assets to
 `public/assets/`. Set a random `APP_SECRET` (for example in `.env.local`).
 
-Then enable the preload. `config/preload.php` loads the Symfony container and the compiled
-components:
+Then enable the preload. `config/preload.php` loads the preload file of the Symfony container.
+PhemBundle adds the compiled components to this file (with `var/cache/prod/phem-preload.php`),
+so `config/preload.php` needs no change:
 
 ```ini
 opcache.validate_timestamps=0

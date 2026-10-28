@@ -61,6 +61,7 @@ docs/compiling.md    how to build, check, watch, and run .phpm files
 docs/testing.md      how to test components and pages (Phem\Test\InteractsWithPhem)
 docs/how-it-works.md the path from the compiler to the browser, and React to Phem
 docs/contributing.md this document
+recipe/              the Symfony Flex recipe of phem/phem (a copy of the recipe in symfony/recipes-contrib)
 release.sh           releases a version: runs and watches the release workflows, publishes the release
 install.sh           downloads the phemc binary of the latest release (install.ps1 on Windows)
 ```
@@ -110,6 +111,14 @@ release. The script then does all the steps and shows the progress of each workf
 6. It waits until Packagist has the version.
 
 After the release, run `git pull`: the `Release` workflow pushed a commit to `main`.
+
+### The Flex recipe
+
+`recipe/` is a copy of the recipe of `phem/phem` in
+[symfony/recipes-contrib](https://github.com/symfony/recipes-contrib), in
+`phem/phem/<version>/`. Flex uses the recipe with the highest version that is not higher than the
+installed `major.minor` version. When a release needs other recipe files, change `recipe/`, and
+send a pull request to `symfony/recipes-contrib` with a new `<major>.<minor>` directory.
 
 ### Options
 

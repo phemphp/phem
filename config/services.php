@@ -41,6 +41,7 @@ use Phem\Http\PageRenderer;
 use Phem\Http\PageStream;
 use Phem\Http\TurboStreams;
 use Phem\Manifest\Manifest;
+use Phem\Manifest\PreloadWarmer;
 use Phem\Manifest\SourceMap;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Metadata\ContextMetadata;
@@ -60,6 +61,7 @@ use Phem\Rendering\Renderer;
 use Phem\Rendering\SuspenseRenderer;
 use Phem\Rendering\SuspenseStream;
 use Phem\Rendering\TemplateComponentRenderer;
+use Phem\Routing\ControllersLoader;
 use Phem\Routing\PageLoader;
 use Phem\Routing\PageRouteValues;
 use Phem\Routing\PageUrlGenerator;
@@ -80,6 +82,7 @@ use Phem\Twig\PhemExtension;
 use Phem\Twig\PhemRuntime;
 use Phem\Twig\TemplateLoader;
 use Phem\Twig\TemplateWarmer;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 return static function (ContainerConfigurator $container): void {
     $container->services()
@@ -90,6 +93,9 @@ return static function (ContainerConfigurator $container): void {
         ->alias(Manifest::class, 'phem.manifest')
         ->set('phem.source_map', SourceMap::class)
             ->args([service('phem.manifest')])
+        ->set('phem.preload_warmer', PreloadWarmer::class)
+            ->args([service('phem.manifest')])
+            ->tag('kernel.cache_warmer')
 
         // Props and state
         ->set('phem.metadata', ComponentMetadata::class)
@@ -248,6 +254,10 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.route_loader', PageLoader::class)
             ->args([service('phem.manifest'), param('kernel.environment'), service('phem.metadata')])
             ->tag('routing.loader')
+        // The pages in the routing.controllers resource of config/routes.yaml (Symfony 7.4+).
+        ->set('phem.route_loader.controllers', ControllersLoader::class)
+            ->decorate('routing.loader.attribute.services', null, 0, ContainerInterface::IGNORE_ON_INVALID_REFERENCE)
+            ->args([service('.inner'), service('phem.route_loader')])
         ->set('phem.page_route_values', PageRouteValues::class)
             ->args([service('router')])
         ->set('phem.page_url_generator', PageUrlGenerator::class)

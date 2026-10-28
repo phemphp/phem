@@ -65,10 +65,10 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_lo
  *             publisher_key: ~       # publish from a worker, with the HTTP API of the hub
  *             publish_url: ~         # the URL of the hub for the server
  *
- *     # config/routes/phem.yaml
- *     phem:
- *         resource: .
- *         type: phem
+ *     # config/routes.yaml: the routes of the pages are in the routing.controllers resource
+ *     # (see Phem\Routing\ControllersLoader)
+ *     controllers:
+ *         resource: routing.controllers
  *
  * A page is a class component with `#[Page]` (or `#[Route]`). It renders the document of the
  * application (`<html>`, `<head>`, `<body>`): a component that renders the page content in a

@@ -83,3 +83,20 @@ blocker, so build it only when a real form shows that the manual code is too muc
 
   LC needs it because LC is built around Symfony forms. In Phem, use bound properties for the
   fields that need live validation, and a Symfony form for the submit.
+
+## 3. Installation
+
+### [ ] The Flex recipe in symfony/recipes-contrib — P1
+
+The getting-started guide and the README show 3 commands: `symfony new my-app --webapp`,
+`composer require phem/phem`, and `symfony serve`. This flow needs the recipe of `phem/phem` in
+[symfony/recipes-contrib](https://github.com/symfony/recipes-contrib). Until the recipe is there,
+Flex does not enable the bundle and does not add the first page or the `phemc` worker.
+
+- **Plan:**
+  - Release Phem 0.3.0. The recipe goes in `phem/phem/0.3/`. A 0.2 recipe would also apply to
+    0.2.3, which has no automatic routes of the pages.
+  - Copy `recipe/` to `phem/phem/0.3/` in symfony/recipes-contrib, and open the pull request.
+  - After the merge, test the 3 commands in a new application, with no local Flex endpoint.
+- **Follow-up:** the `preload.php` output of `phemc` is now redundant: `PreloadWarmer` adds the
+  compiled components to the container preload file. Remove it from the compiler.

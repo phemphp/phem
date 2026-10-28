@@ -56,9 +56,20 @@ function with `#[Page]`. A `#[Component]` or `#[Page]` class is a Symfony servic
 its value in the browser between events, and an event handler such as `handleClick()` runs on the
 server.
 
+## Install
+
+```sh
+symfony new my-app --webapp && cd my-app
+composer require phem/phem
+symfony serve
+```
+
+Flex asks to run the recipe of `phem/phem`: answer `y`. Open the URL that `symfony serve` shows:
+the page of `src/Page/Home.phpm` is at `/`. See [Getting started](docs/getting-started.md).
+
 ## Documentation
 
-- [Getting started](docs/getting-started.md): a new app from scratch, with Docker
+- [Getting started](docs/getting-started.md): a new app from scratch, and a production image
 - [The `.phpm` syntax](docs/phpm-syntax.md)
 - [Compiling and running `.phpm` files](docs/compiling.md), with the list of diagnostics
 - [Testing components and pages](docs/testing.md)

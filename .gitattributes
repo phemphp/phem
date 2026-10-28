@@ -22,6 +22,7 @@
 /phem-logo.svg export-ignore
 /phpstan.dist.neon export-ignore
 /phpunit.xml.dist export-ignore
+/recipe export-ignore
 /release.sh export-ignore
 /stubs export-ignore
 /tests export-ignore

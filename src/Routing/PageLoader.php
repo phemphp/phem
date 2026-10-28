@@ -46,7 +46,8 @@ use Symfony\Component\Routing\RouteCollection;
  * error. The keys that start with `_` are not route values. As for the Doctrine controller
  * arguments, `{slug:post}` maps the value `slug` to the entity prop `post`.
  *
- * Import them in the application routes:
+ * The `routing.controllers` resource of the application routes has them (see
+ * ControllersLoader). An application without this resource imports them:
  *
  *     phem:
  *         resource: .

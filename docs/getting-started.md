@@ -1,185 +1,87 @@
 # Getting started: a new app from scratch
 
-This guide adds Phem to a new Symfony application. Docker runs it with PHP,
-[FrankenPHP](https://frankenphp.dev) and the `phemc` compiler. At the end, you have a dev server
-that builds the `.phpm` files when you save them, a page with an interactive component, and a
-production image.
+This guide adds Phem to a new Symfony application. At the end, you have a dev server that builds
+the `.phpm` files when you save them, a page with an interactive component, and a production
+image with [FrankenPHP](https://frankenphp.dev).
 
-You need the [Symfony CLI](https://symfony.com/download) (with PHP 8.5 and Composer) and
-[Docker](https://docs.docker.com/get-docker/) with Docker Compose.
-
-`symfony new` and the Symfony Flex recipes make most of the files. The guide adds these files,
-and changes `config/preload.php`:
-
-```
-my-app/
-├── config/
-│   ├── routes/phem.yaml
-│   └── preload.php         changed: the compiled components
-├── docker/
-│   ├── dev.sh              the command of the dev server
-│   └── php-prod.ini        OPcache in production
-├── src/
-│   ├── Component/
-│   │   ├── Counter.phpm
-│   │   └── Document.phpm
-│   └── Page/
-│       └── Home.phpm
-├── .dockerignore
-├── Caddyfile               FrankenPHP: public/index.php in worker mode
-├── compose.yaml            the dev server
-└── Dockerfile              the dev and the prod images
-```
+You need the [Symfony CLI](https://symfony.com/download) (with PHP 8.5 and Composer). For the
+production image, you also need [Docker](https://docs.docker.com/get-docker/).
 
 ## Step 1: Make the application and install Phem
 
 ```sh
-symfony new my-app && cd my-app
-composer require symfony/asset-mapper symfony/stimulus-bundle
+symfony new my-app --webapp
+cd my-app
 composer require phem/phem
 ```
 
 Run all the commands of this guide in `my-app/`.
 
-Symfony Flex enables `PhemBundle`, and adds the `phem` Stimulus controller and Turbo to the
-assets. This controller is the client of Phem: it sends the events to the server and updates the
-page. `vendor/bin/phemc` downloads the `phemc` compiler of the same version on the first run.
+The recipe of `phem/phem` is in the "contrib" repository of Symfony Flex. Flex asks before it runs
+the recipe: answer `y`.
+
+Symfony Flex and PhemBundle configure the application:
+
+- Flex enables `PhemBundle`, and adds the `phem` Stimulus controller and Turbo to the assets.
+  This controller is the client of Phem: it sends the events to the server and updates the page.
+- The recipe adds the document of the pages, the first page, and the `phemc` worker of the dev
+  server:
+
+  ```
+  my-app/
+  ├── src/
+  │   ├── Component/
+  │   │   └── Document.phpm   the HTML document of the pages
+  │   └── Page/
+  │       └── Home.phpm       the page at /
+  └── .symfony.local.yaml     `symfony serve` also runs `phemc watch src`
+  ```
+
+- The `routing.controllers` resource of `config/routes.yaml` loads the routes of the pages (the
+  `#[Page]` attributes), as it does for the controllers. You do not add a routes file.
+- In production, `config/preload.php` also preloads the compiled components. You do not change it.
+- `vendor/bin/phemc` downloads the `phemc` compiler of the same version on the first run.
 
 The defaults of PhemBundle fit this layout: it reads `src/` and writes the build output to
 `var/phem/`. You do not need a `config/packages/phem.yaml` file.
 
-## Step 2: Configure Phem
+If Flex does not run the recipe (for example, with `composer require --no-interaction`), enable
+`Phem\PhemBundle` in `config/bundles.php`, and copy the files of the
+[recipe](../recipe) to the application.
 
-`config/routes/phem.yaml` loads the routes of the pages (the `#[Page]` attributes) and of their
-events:
-
-```yaml
-phem:
-    resource: .
-    type: phem
-```
-
-`config/preload.php` loads the Symfony container in production. Add the compiled components at
-the end of the file:
-
-```php
-if (file_exists(dirname(__DIR__).'/var/phem/preload.php')) {
-    require dirname(__DIR__).'/var/phem/preload.php';
-}
-```
-
-## Step 3: Add the Docker files
-
-The image comes from the FrankenPHP image (PHP 8.5 and Caddy). The `dev` target runs the project
-from a bind mount. The `prod` target copies the project and compiles it.
-
-`Dockerfile`:
-
-```dockerfile
-# syntax=docker/dockerfile:1.7
-FROM dunglas/frankenphp:1-php8.5 AS base
-RUN apt-get update \
- && apt-get install -y --no-install-recommends git unzip \
- && rm -rf /var/lib/apt/lists/*
-# pcntl: vendor/bin/phemc gives the signals (Ctrl+C) to the compiler.
-RUN install-php-extensions pcntl
-COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
-ENV COMPOSER_ALLOW_SUPERUSER=1
-WORKDIR /app
-
-# --- Dev: the project is mounted at /app --------------------------------
-FROM base AS dev
-CMD ["docker/dev.sh"]
-
-# --- Prod: the compiled application -------------------------------------
-FROM base AS prod
-ENV APP_ENV=prod APP_DEBUG=0
-COPY . /app
-# composer install boots the kernel before phemc build: build its cache again after.
-RUN printf 'APP_SECRET=%s\n' "$(od -An -tx1 -N32 /dev/urandom | tr -d ' \n')" > .env.local \
- && composer install --no-dev --optimize-autoloader --no-interaction \
- && vendor/bin/phemc build src --no-warmup \
- && rm -rf var/cache/prod \
- && php bin/console cache:warmup \
- && php bin/console asset-map:compile
-COPY docker/php-prod.ini /usr/local/etc/php/conf.d/zz-app.ini
-CMD ["frankenphp", "run", "--config", "Caddyfile"]
-```
-
-`APP_SECRET` signs the component state in the browser. The prod image puts a random value in
-`.env.local`.
-
-`.dockerignore`:
-
-```
-.git
-vendor
-var
-public/assets
-assets/vendor
-.env.local
-```
-
-`compose.yaml`:
-
-```yaml
-services:
-  app:
-    build: { context: ., target: dev }
-    ports: ["8080:8080"]
-    volumes:
-      - .:/app
-```
-
-`docker/dev.sh` is the command of the dev server. `phemc watch` builds the `.phpm` files, starts
-FrankenPHP, and builds again when a `.phpm` file changes. Make it executable
-(`chmod +x docker/dev.sh`):
+Without `--webapp`, install AssetMapper and StimulusBundle first, in a separate command. Then
+Flex adds the `phem` controller to the `assets/controllers.json` file that StimulusBundle makes:
 
 ```sh
-#!/bin/sh
-# Install the dependencies, then run FrankenPHP in watch mode.
-set -e
-composer install --no-interaction
-# The workers restart when a PHP class in src/ changes.
-export FRANKENPHP_WORKER_CONFIG='watch ./src/**/*.php'
-# phemc builds again when a .phpm file changes, then restarts FrankenPHP.
-exec vendor/bin/phemc watch src --exec "frankenphp run --config Caddyfile"
+symfony new my-app
+cd my-app
+composer require symfony/asset-mapper symfony/stimulus-bundle
+composer require phem/phem
 ```
 
-`docker/php-prod.ini` enables the OPcache preload in production:
+## Step 2: Start the dev server
 
-```ini
-opcache.validate_timestamps=0
-opcache.preload=/app/config/preload.php
-opcache.preload_user=root
+```sh
+symfony serve
 ```
 
-`Caddyfile` runs `public/index.php` in worker mode: each worker boots the kernel once and
-handles many requests:
+The server also starts the `phemc` worker of `.symfony.local.yaml`. On the first start, the worker
+downloads `phemc`, then builds the `.phpm` files:
 
-```caddyfile
-{
-    frankenphp {
-        worker {
-            file ./public/index.php
-            {$FRANKENPHP_WORKER_CONFIG}
-        }
-    }
-}
-
-{$SERVER_NAME::8080} {
-    encode zstd gzip
-
-    root * public
-    php_server
-}
+```
+[phemc] Downloading phemc v0.3.0 (phemc-mac-arm64)...
+[phemc] phemc: compiled 2 file(s), 2 template(s), 1 page(s); 8 file(s) changed, 0 warning(s) in 4 ms
+[phemc] phem: compiled 2 template(s) into the Twig cache in 25 ms
+[phemc] phemc: watching src for changes
 ```
 
-## Step 4: Write the document and the first page
+Open the URL that `symfony serve` shows (by default https://127.0.0.1:8000). The page shows
+"Hello, Phem!". Keep the server on.
 
 The application owns the HTML document. It is a component, and each page renders its content in
 it. `<Root>` is the root element of the page: the `phem` controller gets the events of the
-elements in it.
+elements in it. `{{ importmap('app') }}` loads `assets/app.js`, which starts Stimulus with the
+`phem` controller.
 
 `src/Component/Document.phpm`:
 
@@ -212,9 +114,6 @@ function Document(Html $title, Html $children): Node
 }
 ```
 
-`{{ importmap('app') }}` loads `assets/app.js`, which starts Stimulus with the `phem`
-controller.
-
 A page is a component with the `#[Page]` attribute: a Symfony route. This page has no state, so
 it is a function that returns the markup.
 
@@ -242,26 +141,7 @@ function Home(): Node
 }
 ```
 
-## Step 5: Start the dev server
-
-```sh
-docker compose up --build
-```
-
-On the first start, the container installs the packages and downloads `phemc`, then builds the
-`.phpm` files:
-
-```
-Downloading phemc v0.1.0 (phemc-linux-aarch64)...
-phemc: compiled 2 file(s), 2 template(s), 1 page(s); 8 file(s) changed, 0 warning(s) in 5 ms
-phem: compiled 2 template(s) into the Twig cache in 27 ms
-phemc: $ frankenphp run --config Caddyfile
-phemc: watching src for changes
-```
-
-Open http://localhost:8080. The page shows "Hello, Phem!". Keep the server on.
-
-## Step 6: Add an interactive component
+## Step 3: Add an interactive component
 
 A class component keeps its state in `#[State]` properties. The state stays in the browser
 between the events. An event handler, such as `increment()`, runs on the server.
@@ -318,37 +198,119 @@ function Home(): Node
 }
 ```
 
-Save the files. `phemc` builds them again and restarts FrankenPHP:
+Save the files. The `phemc` worker builds them again:
 
 ```
-phemc: change detected, rebuilding
-phemc: compiled 3 file(s), 3 template(s), 1 page(s); 7 file(s) changed, 0 warning(s) in 13 ms
-phemc: $ frankenphp run --config Caddyfile
+[phemc] phemc: change detected, rebuilding
+[phemc] phemc: compiled 3 file(s), 3 template(s), 1 page(s); 7 file(s) changed, 0 warning(s) in 8 ms
+[phemc] phem: compiled 3 template(s) into the Twig cache in 15 ms
 ```
 
 Reload the page, and click the buttons. Each button counts its own clicks.
 
-If a file has an error, `phemc` shows the diagnostic with the `.phpm` line, and the previous
-server keeps running. Run the tools in the container:
+If a file has an error, the worker shows the diagnostic with the `.phpm` line, and the previous
+build stays. Run `symfony server:log` to see the log of the worker in another terminal. Other
+tools:
 
 ```sh
-docker compose exec app vendor/bin/phemc check src         # all the diagnostics
-docker compose exec app bin/console debug:router           # the routes of the pages and their events
-docker compose exec app bin/console phem:render /          # the HTML of a page, with no server
+vendor/bin/phemc check src          # all the diagnostics
+bin/console debug:router            # the routes of the pages and their events
+bin/console phem:render /           # the HTML of a page, with no server
 ```
 
-## Step 7: Build the production image
+## Step 4: Build the production image
 
-The `prod` target installs the packages with no dev dependencies, compiles the `.phpm` files,
-builds the Symfony cache, and writes the assets to `public/assets/`:
+The production image runs `public/index.php` in the worker mode of FrankenPHP (PHP 8.5 and
+Caddy). It installs the packages with no dev dependencies, compiles the `.phpm` files, builds the
+Symfony cache, and writes the assets to `public/assets/`. Add these files:
+
+```
+my-app/
+├── docker/
+│   └── php-prod.ini        OPcache in production
+├── .dockerignore
+├── Caddyfile               FrankenPHP: public/index.php in worker mode
+└── Dockerfile              the production image
+```
+
+`Dockerfile`:
+
+```dockerfile
+# syntax=docker/dockerfile:1.7
+FROM dunglas/frankenphp:1-php8.5
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git unzip \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+ENV COMPOSER_ALLOW_SUPERUSER=1 APP_ENV=prod APP_DEBUG=0
+WORKDIR /app
+COPY . /app
+# composer install boots the kernel before phemc build: build its cache again after.
+RUN printf 'APP_SECRET=%s\n' "$(od -An -tx1 -N32 /dev/urandom | tr -d ' \n')" > .env.local \
+ && composer install --no-dev --optimize-autoloader --no-interaction \
+ && vendor/bin/phemc build src --no-warmup \
+ && rm -rf var/cache/prod \
+ && php bin/console cache:warmup \
+ && php bin/console asset-map:compile
+COPY docker/php-prod.ini /usr/local/etc/php/conf.d/zz-app.ini
+CMD ["frankenphp", "run", "--config", "Caddyfile"]
+```
+
+`APP_SECRET` signs the component state in the browser. The image puts a random value in
+`.env.local`.
+
+`.dockerignore`:
+
+```
+.git
+vendor
+var
+public/assets
+assets/vendor
+.env.local
+```
+
+`docker/php-prod.ini` enables the OPcache preload. `config/preload.php` loads the Symfony
+container and the compiled components:
+
+```ini
+opcache.validate_timestamps=0
+opcache.preload=/app/config/preload.php
+opcache.preload_user=root
+```
+
+`Caddyfile` runs `public/index.php` in worker mode: each worker boots the kernel once and
+handles many requests:
+
+```caddyfile
+{
+    frankenphp {
+        worker {
+            file ./public/index.php
+        }
+    }
+}
+
+{$SERVER_NAME::8080} {
+    encode zstd gzip
+
+    root * public
+    php_server
+}
+```
+
+Build and run the image:
 
 ```sh
-docker build --target prod -t my-app .
-docker run --rm -p 8081:8080 my-app
+docker build -t my-app .
+docker run --rm -p 8080:8080 my-app
 ```
 
-Open http://localhost:8081. In production, Symfony does not check the cache for changes: build
+Open http://localhost:8080. In production, Symfony does not check the cache for changes: build
 the image again after each change.
+
+To use FrankenPHP in development too, see
+[Watch mode](compiling.md#5-watch-mode-development).
 
 ## Use Claude Code
 
@@ -366,10 +328,8 @@ claude plugin install phem@phem
 
 In a running session, run `/reload-plugins` after the install.
 
-The plugin runs `phemc` on the host, not in the container, so it uses the PHP of the host.
-On the first start, `vendor/bin/phemc` downloads the `phemc` binary for the host. The plugin
-runs the `vendor/bin/phemc` of each project that has one, so use it only in projects that you
-trust.
+The plugin runs the `vendor/bin/phemc` of each project that has one, so use it only in projects
+that you trust.
 
 The server starts the first time Claude Code edits a `.phpm` file. After each edit, the
 conversation shows a summary, for example `Found 1 new diagnostic issues in 1 files`. Press

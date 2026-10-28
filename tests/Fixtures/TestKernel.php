@@ -122,6 +122,6 @@ final class TestKernel extends Kernel
             $routes->import('@WebProfilerBundle/Resources/config/routing/profiler.php')->prefix('/_profiler');
         }
 
-        $routes->import('.', 'phem');
+        $routes->import('routing.controllers');
     }
 }
