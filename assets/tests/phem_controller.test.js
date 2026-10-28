@@ -864,6 +864,8 @@ describe("pushes", () => {
     const body = await nextBody()
 
     expect(body.stale).toEqual(["b1", "b3"])
+    // The morph of the refresh, before the next test: else it can morph the markup of the next test.
+    await vi.waitFor(() => expect(document.querySelector('[data-phem-c="c1"]').innerHTML).toBe("<p>x</p>"))
   })
 
   it("skips the component of its own handler in a refresh after the handler", async () => {
