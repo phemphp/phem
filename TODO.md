@@ -30,11 +30,22 @@ Talk about each item before its implementation. The open questions are a start, 
 ### [ ] An event with no render of the path to its handler — P3
 
 The first pass of an event renders the ancestors of the handler component, to get the handler
-closure. `make bench`: about 0.24 ms for a leaf under 11 levels, so it is not a problem now.
+closure and the props of the component. This is a documented limit (docs/how-it-works.md, Limits).
+A stress run on 2026-10-28 (the server time, with no network):
+
+- A leaf with no `#[Prop]`: about 0.3 ms under 10 levels, 15 ms under 400 levels, 45 ms under 800.
+  Real pages have fewer than 50 levels.
+- A click on one row of a list: about 9 ms for 1000 rows and 46 ms for 5000 rows, with a full
+  render of the page in 24 ms and 130 ms. About half of the event is the first pass: the
+  `render()` of the list, and Twig for each row. The rest is the state (decode, sign, shape, the
+  cache write).
 
 - **Proposal (only when the benchmark shows a need):** a method handler with no captured values,
-  of a component with no `#[Prop]`, runs on the instance from the state, with no render of the
-  path.
+  of a component with no `#[Prop]`, no `#[Context]` and no slot, runs on the instance from the
+  state, with no render of the path. It helps a deep leaf, not a row of a list: a row has props.
+- **Open question for lists:** the JSON props of each fiber in the signed state, so a row renders
+  with no render of its parent. The state gets larger, and a prop that is not a JSON value (a
+  closure, markup, an entity) still needs the render of the path.
 
 ### [ ] Streams for long lists — P3
 

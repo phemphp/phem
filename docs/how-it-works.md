@@ -134,3 +134,12 @@ ideas of React map to Phem.
   (a fragment) or another component, Phem puts a `<phem-c>` element around it (CSS
   `display: contents`). This wrapper is not valid inside `<table>`, `<tr>`, or `<select>`: there,
   give the component one root element.
+- The server keeps no session, so an event runs the `render()` of the components on the path to
+  its handler again: they give the handler and the props of its component. A click on one row of
+  a list thus runs the `render()` of the list, and Twig goes through all its rows (the other rows
+  do not render, the browser keeps them). On a list of 5000 rows, a click on one row takes about
+  46 ms on the server, and the full page about 130 ms. Show a long list in pages.
+- The HTML of a component contains the HTML of all the components under it, and each level
+  reads it again. So the render time grows faster than the depth of the tree: 200 nested
+  components take about 5 ms, but 800 take about 45 ms. A real page has fewer than 50 levels,
+  and there the cost is less than 1 ms.
