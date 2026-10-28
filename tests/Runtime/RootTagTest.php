@@ -67,6 +67,25 @@ final class RootTagTest extends TestCase
         self::assertSame('<phem-c data-phem-c="phem1">'.$html.'</phem-c>', self::wrapped($html));
     }
 
+    /** @return iterable<string, array{0: string, 1: string, 2: string|null}> */
+    public static function ownHtml(): iterable
+    {
+        yield 'a child inside' => ['<ul><li data-phem-c="phem2">a</li></ul>', '<ul><phem-c id="phem2"></phem-c></ul>', '<ul data-phem-c="phem1"><li data-phem-c="phem2">a</li></ul>'];
+        yield 'whitespace around it' => ["\n <div class=\"x\"><b data-phem-c=\"phem2\">a</b></div>\n", "\n <div class=\"x\"><phem-c id=\"phem2\"></phem-c></div>\n", '<div class="x" data-phem-c="phem1"><b data-phem-c="phem2">a</b></div>'];
+        yield 'a child at the root' => ['<li data-phem-c="phem2">a</li>', '<phem-c id="phem2"></phem-c>', null];
+        yield 'a child after the element' => ['<p>a</p><li data-phem-c="phem2">a</li>', '<p>a</p><phem-c id="phem2"></phem-c>', null];
+    }
+
+    /** The scan reads the HTML with a placeholder for each child, and the fiber id goes in the full HTML. */
+    #[DataProvider('ownHtml')]
+    public function testTheRootElementIsInTheOwnHtml(string $html, string $own, ?string $expected): void
+    {
+        $fiber = new Fiber('phem1', '/A#0', 'A');
+        $fiber->rendered($html, $own);
+
+        self::assertSame($expected ?? '<phem-c data-phem-c="phem1">'.$html.'</phem-c>', $fiber->wrapped());
+    }
+
     public function testAKeptFiberIsATemplatePlaceholder(): void
     {
         $fiber = new Fiber('phem1', '/A#0', 'A');

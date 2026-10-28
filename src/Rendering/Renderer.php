@@ -439,7 +439,6 @@ final class Renderer implements ResetInterface
             $tree->pop();
         }
 
-        $fiber->rendered($html);
         // One strtr() for all the children: a replace for each child reads the HTML one time for
         // each child, so a list of components takes a time in the square of its length.
         $placeholders = [];
@@ -450,7 +449,12 @@ final class Renderer implements ResetInterface
             }
         }
 
-        $fiber->ownHtml[$tree->pass] = strtr($html, $placeholders);
+        $own = strtr($html, $placeholders);
+        $fiber->ownHtml[$tree->pass] = $own;
+
+        // The root element is in the own HTML: the scan does not read the HTML of the children
+        // again for each ancestor, so a deep tree takes a linear time.
+        $fiber->rendered($html, $own);
     }
 
     /** The page and the document around the root element have no fiber id. */

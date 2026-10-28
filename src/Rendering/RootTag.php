@@ -28,16 +28,22 @@ final class RootTag
 {
     private const VOID = ['area' => true, 'base' => true, 'br' => true, 'col' => true, 'embed' => true, 'hr' => true, 'img' => true, 'input' => true, 'link' => true, 'meta' => true, 'source' => true, 'track' => true, 'wbr' => true];
     private const RAW_TEXT = ['script' => true, 'style' => true, 'textarea' => true, 'title' => true];
+    private const WHITESPACE = " \t\n\r\f";
 
     /**
      * The root element of the HTML, or null when the HTML is not one element or when its root is
      * another fiber (a `<phem-c>`, an element with a fiber id, or a placeholder).
      *
+     * The scan reads `$own` when it is given: the same HTML with a short placeholder for each child
+     * fiber (see Fiber::$ownHtml). The HTML of a fiber contains the HTML of all its subtree, so a
+     * scan of it for each fiber reads a deep tree again for each ancestor. The open tag of the root
+     * element comes before the children, so the end of its attributes is the same in the two texts.
+     *
      * @return array{0: string, 1: int}|null the element with no whitespace around it, and the end of the attributes of its open tag
      */
-    public static function find(string $html): ?array
+    public static function find(string $html, ?string $own = null): ?array
     {
-        $element = trim($html, " \t\n\r\f");
+        $element = trim($own ?? $html, self::WHITESPACE);
         if (1 !== preg_match('/^<([a-zA-Z][a-zA-Z0-9-]*)/', $element, $m)) {
             return null;
         }
@@ -89,7 +95,7 @@ final class RootTag
             }
 
             if (0 === $depth) {
-                return $end === $length ? [$element, $attributesEnd] : null;
+                return $end === $length ? [null !== $own ? trim($html, self::WHITESPACE) : $element, $attributesEnd] : null;
             }
 
             $offset = self::next($element, $end);

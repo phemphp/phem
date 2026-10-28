@@ -133,11 +133,12 @@ final class Fiber
     }
 
     /**
-     * Sets the HTML of a render, and finds its root element.
+     * Sets the HTML of a render, and finds its root element: in `$own`, the HTML with a placeholder
+     * for each child, when it is given (see RootTag::find()).
      */
-    public function rendered(string $html): void
+    public function rendered(string $html, ?string $own = null): void
     {
-        $root = RootTag::find($html);
+        $root = RootTag::find($html, $own);
         [$this->html, $this->rootTag] = null !== $root ? $root : [$html, null];
     }
 

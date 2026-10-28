@@ -41,6 +41,16 @@ final class ManyComponentsTest extends TestCase
      */
     private const MAX_FACTOR = 20;
 
+    /**
+     * The levels of the small and of the large deep page: 8 times more. The HTML of a level has
+     * all the levels under it, so the strings that the render copies are not linear, and a linear
+     * render is about 17 to 20 times slower. A render that scans the HTML of each level again (to
+     * find its root element) is about 40 times slower.
+     */
+    private const SMALL_DEPTH = 50;
+    private const LARGE_DEPTH = 400;
+    private const MAX_DEPTH_FACTOR = 26;
+
     public function fixtureKernel(): TestKernel
     {
         if (null === $this->kernel) {
@@ -161,23 +171,32 @@ final class ManyComponentsTest extends TestCase
         $this->assertLinear('/many-fields');
     }
 
-    private function assertLinear(string $uri): void
+    #[Group('performance')]
+    public function testTheRenderTimeGrowsLinearlyWithTheDepth(): void
+    {
+        $this->assertLinear('/many-levels', self::SMALL_DEPTH, self::LARGE_DEPTH, self::MAX_DEPTH_FACTOR);
+    }
+
+    private function assertLinear(string $uri, int $small = self::SMALL, int $large = self::LARGE, int $maxFactor = self::MAX_FACTOR): void
     {
         // The first request builds the container and compiles the templates.
         $this->renderTime($uri, 20);
-        $small = $this->renderTime($uri, self::SMALL);
-        $large = $this->renderTime($uri, self::LARGE);
+        $smallTime = $this->renderTime($uri, $small);
+        $largeTime = $this->renderTime($uri, $large);
 
-        self::assertLessThan(self::MAX_FACTOR, $large / $small, \sprintf('%s: %d rows in %.1f ms, %d rows in %.1f ms (%.1f times).', $uri, self::SMALL, $small * 1e3, self::LARGE, $large * 1e3, $large / $small));
+        self::assertLessThan($maxFactor, $largeTime / $smallTime, \sprintf('%s: size %d in %.1f ms, size %d in %.1f ms (%.1f times).', $uri, $small, $smallTime * 1e3, $large, $largeTime * 1e3, $largeTime / $smallTime));
     }
 
-    /** The shortest time of three renders of a page with this number of rows, in seconds. */
-    private function renderTime(string $uri, int $rows): float
+    /** The shortest time of five renders of a page with this size (its rows, or its levels), in seconds. */
+    private function renderTime(string $uri, int $size): float
     {
-        Many::$rows = $rows;
+        Many::$rows = Many::$levels = $size;
         $best = \INF;
 
-        for ($i = 0; $i < 3; ++$i) {
+        for ($i = 0; $i < 5; ++$i) {
+            // The fibers of a request are cycles: the collector frees them before the render, not in it.
+            gc_collect_cycles();
+
             $start = hrtime(true);
             $response = $this->request('GET', $uri);
             $best = min($best, hrtime(true) - $start);
