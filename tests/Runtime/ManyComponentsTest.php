@@ -115,6 +115,20 @@ final class ManyComponentsTest extends TestCase
         self::assertSame([[5, 1, '"done":false}']], $data['changes'][$page]);
     }
 
+    public function testARequestLeavesNoCyclesForTheCollector(): void
+    {
+        // The first request builds the container and compiles the templates.
+        [$html, $state, $signature] = $this->open('/many');
+        self::assertSame(1, preg_match('/<button id="bump" data-phem-on-click="([^"]+)"/', $html, $m));
+        gc_collect_cycles();
+
+        // A worker frees the fibers of a request with no run of the collector (see Tree::__destruct()).
+        $this->open('/many');
+        self::assertSame(0, gc_collect_cycles(), 'the page');
+        $this->send('/many', $state, $signature, $m[1]);
+        self::assertSame(0, gc_collect_cycles(), 'an event');
+    }
+
     public function testThePageRendersAgainWithTheSameHtmlAndKeepsTheRows(): void
     {
         [$html, $state, $signature] = $this->open('/many');

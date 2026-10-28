@@ -72,6 +72,20 @@ final class Tree
     }
 
     /**
+     * Breaks the links between the fibers. A fiber and its parent point to each other, so with no
+     * break only the cycle collector of PHP frees the fibers of a request, with their components
+     * and their HTML: a worker keeps them in memory until the collector runs, and each run reads
+     * them all.
+     */
+    public function __destruct()
+    {
+        foreach ($this->fibers as $fiber) {
+            $fiber->parent = null;
+            $fiber->children = [];
+        }
+    }
+
+    /**
      * Puts a `<Suspense>` boundary in the queue of the stream of the page (see SuspenseStream). A
      * boundary goes in the queue one time only: when its stream fails, it keeps its fallback.
      */
@@ -276,6 +290,10 @@ final class Tree
 
         unset($this->fibers[$fiber->id]);
         $this->forget($fiber);
+
+        // As in __destruct(): the tree does not have the fiber any more.
+        $fiber->parent = null;
+        $fiber->children = [];
     }
 
     /**
