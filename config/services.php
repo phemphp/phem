@@ -188,6 +188,7 @@ return static function (ContainerConfigurator $container): void {
             ->args([service('phem.prop_binder')])
         ->set('phem.markup_resolver', MarkupResolver::class)
             ->args([service('twig')])
+            ->tag('kernel.reset', ['method' => 'reset'])
         ->set('phem.renderer', Renderer::class)
             ->args([
                 service('phem.manifest'),

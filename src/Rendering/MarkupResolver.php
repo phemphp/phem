@@ -19,8 +19,10 @@ use Phem\Html;
 use Phem\HtmlList;
 use Phem\LazyHtml;
 use Phem\Manifest\Manifest;
+use Symfony\Contracts\Service\ResetInterface;
 use Twig\Environment;
 use Twig\Markup;
+use Twig\TemplateWrapper;
 
 /**
  * Renders markup values: an Element becomes Html that renders on first use, and a list of
@@ -31,8 +33,17 @@ use Twig\Markup;
  * Phem\LazyHtml): a component that renders alone in a later pass of an event can print the
  * markup values of its parent again (a slot), and their components render again in it.
  */
-final class MarkupResolver
+final class MarkupResolver implements ResetInterface
 {
+    /**
+     * The templates of the markup literals of this request, by name. Environment::render() makes
+     * the cache key and the class of the template again for each call: a list of 5000 rows has
+     * 5000 calls for one template.
+     *
+     * @var array<string, TemplateWrapper>
+     */
+    private array $templates = [];
+
     public function __construct(private readonly Environment $twig)
     {
     }
@@ -43,7 +54,7 @@ final class MarkupResolver
         if ($value instanceof Element) {
             // The markup renders when a template prints it. Thus the markup of a branch that does
             // not show (`{{ on ? yes : no }}`) mounts no component and adds no handler.
-            return new LazyHtml(fn (): string => $this->twig->render(Manifest::templateName($value->template), $this->items($value->vars, $pass)), $pass);
+            return new LazyHtml(fn (): string => $this->template($value->template)->render($this->items($value->vars, $pass)), $pass);
         }
 
         if (\is_array($value)) {
@@ -94,6 +105,17 @@ final class MarkupResolver
     public function html(mixed $value, ?\Closure $pass = null): string
     {
         return self::stringify($this->resolve($value, $pass));
+    }
+
+    /** A new request can have new templates (after a phemc build in debug mode). */
+    public function reset(): void
+    {
+        $this->templates = [];
+    }
+
+    private function template(string $template): TemplateWrapper
+    {
+        return $this->templates[$template] ??= $this->twig->load(Manifest::templateName($template));
     }
 
     private static function stringify(mixed $value): string
