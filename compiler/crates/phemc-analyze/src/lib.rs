@@ -68,8 +68,12 @@ pub enum Kind {
 pub struct ComponentDef {
     pub fqcn: String,
     pub kind: Kind,
-    /// The source file, relative to the source root (empty for built-in components).
+    /// The key of the source file in the build (empty for built-in components): the path in the
+    /// source root of the app, or `vendor/<package>/<path in the package root>`.
     pub file: String,
+    /// The path of the source file from the project root, for the messages.
+    #[serde(skip)]
+    pub path: String,
     /// The Twig template of a template component.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub template: Option<String>,
@@ -174,6 +178,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
             fqcn: f.fqn.clone(),
             kind,
             file: file.rel.clone(),
+            path: if file.path.is_empty() { file.rel.clone() } else { file.path.clone() },
             template: f.template_markup.map(|i| template_name(&file.rel, i)),
             props: params.iter().filter(|p| !p.variadic).map(|p| p.name.clone()).collect(),
             slots: params.iter().filter(|p| is_html_type(&p.ty)).map(|p| p.name.clone()).collect(),
@@ -203,6 +208,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
             fqcn: c.fqn.clone(),
             kind: Kind::Class,
             file: file.rel.clone(),
+            path: if file.path.is_empty() { file.rel.clone() } else { file.path.clone() },
             template: None,
             props: props.iter().map(|p| p.name.clone()).collect(),
             slots: props.iter().filter(|p| is_html_type(&p.ty)).map(|p| p.name.clone()).collect(),
@@ -523,6 +529,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         fqcn: ROOT.into(),
         kind: Kind::Function,
         file: String::new(),
+        path: String::new(),
         template: None,
         props: vec!["tag".into()],
         slots: vec!["children".into()],
@@ -537,6 +544,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         fqcn: SUSPENSE.into(),
         kind: Kind::Class,
         file: String::new(),
+        path: String::new(),
         template: None,
         props: vec!["lazy".into(), "children".into(), "fallback".into(), "error".into()],
         slots: vec!["children".into(), "fallback".into(), "error".into()],
@@ -551,6 +559,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         fqcn: ERROR_BOUNDARY.into(),
         kind: Kind::Class,
         file: String::new(),
+        path: String::new(),
         template: None,
         props: vec!["children".into(), "fallback".into()],
         slots: vec!["children".into(), "fallback".into()],
@@ -581,7 +590,7 @@ pub fn registry<'a>(files: impl IntoIterator<Item = &'a FileInfo>) -> (Registry,
                 let message = if prev.file.is_empty() {
                     format!("component `{}` is a built-in component of Phem", c.fqcn)
                 } else {
-                    format!("component `{}` is already declared in `{}`", c.fqcn, prev.file)
+                    format!("component `{}` is already declared in `{}`", c.fqcn, prev.path)
                 };
 
                 diags.push((f.rel.clone(), Diagnostic::error(codes::DUPLICATE_COMPONENT, message, span)));

@@ -31,11 +31,6 @@ final class SuspenseTest extends KernelTestCase
 {
     use InteractsWithPhem;
 
-    public static function setUpBeforeClass(): void
-    {
-        TestKernel::compileSources();
-    }
-
     protected function setUp(): void
     {
         Renders::reset();

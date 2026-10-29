@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Compiles tests/Fixtures/app with phemc (once per test run, see TestKernel::compileSources()) and boots its kernel.
+ * Boots the kernel of tests/Fixtures/app. The kernel compiles the app with phemc, one time in each test run (see Phem\Test\TestKernel).
  */
 trait FixtureApp
 {
@@ -32,7 +32,6 @@ trait FixtureApp
             return $this->kernel;
         }
 
-        TestKernel::compileSources();
         $this->kernel = new TestKernel('test', true);
         $this->kernel->boot();
 

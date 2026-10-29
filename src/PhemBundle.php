@@ -50,7 +50,6 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_lo
  *
  *     # config/packages/phem.yaml (all options are optional)
  *     phem:
- *         source_dir: '%kernel.project_dir%/src'
  *         build_dir: '%kernel.project_dir%/var/phem'
  *         secret: '%kernel.secret%'
  *         state_max_age: 86400       # seconds; 0 for no limit
@@ -92,10 +91,6 @@ final class PhemBundle extends AbstractBundle
     {
         $definition->rootNode()
             ->children()
-                ->scalarNode('source_dir')
-                    ->info('The .phpm sources (the directory that you pass to `phemc build`)')
-                    ->defaultValue('%kernel.project_dir%/src')
-                ->end()
                 ->scalarNode('build_dir')
                     ->info('The phemc output (`phemc build --out`)')
                     ->defaultValue('%kernel.project_dir%/var/phem')
@@ -178,12 +173,11 @@ final class PhemBundle extends AbstractBundle
     }
 
     /**
-     * @param array{source_dir: string, build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, state_cache_min_size: int, max_event_size: int, max_upload_size: int, suspense_stream: bool, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string, publisher_key: string|null, publish_url: string|null}} $config
+     * @param array{build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, state_cache_min_size: int, max_event_size: int, max_upload_size: int, suspense_stream: bool, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string, publisher_key: string|null, publish_url: string|null}} $config
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
         $container->parameters()
-            ->set('phem.source_dir', $config['source_dir'])
             ->set('phem.build_dir', $config['build_dir']);
         $container->import('../config/services.php');
 

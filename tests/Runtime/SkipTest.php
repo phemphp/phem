@@ -31,7 +31,6 @@ final class SkipTest extends TestCase
     public function fixtureKernel(): TestKernel
     {
         if (null === $this->kernel) {
-            TestKernel::compileSources();
             $this->kernel = new TestKernel('nodebug', false);
             $this->kernel->boot();
         }

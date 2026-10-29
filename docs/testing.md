@@ -35,6 +35,9 @@ final class CounterTest extends KernelTestCase
 3. Run `phemc build` before the tests. The tests use the compiled `.phpm` files.
 4. Use the `InteractsWithPhem` trait in a `KernelTestCase` (or a `WebTestCase`).
 
+A Composer package with `.phpm` components has no app: test it with `Phem\Test\TestKernel` and
+a small test app (see [Test a package](packages.md#test-a-package)).
+
 ## Two ways to test
 
 | | `mount(Component::class, $props)` | `visit('/url')` |

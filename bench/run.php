@@ -29,7 +29,6 @@ require dirname(__DIR__).'/vendor/autoload.php';
 
 const RUNS = 30;
 
-TestKernel::compileSources();
 $kernel = new TestKernel('nodebug', false);
 $kernel->boot();
 $pool = $kernel->getContainer()->get('test.service_container')->get(StateCache::POOL);

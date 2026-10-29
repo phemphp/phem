@@ -51,7 +51,7 @@ final class CacheKeyLoaderTest extends TestCase
     {
         file_put_contents($this->dir.'/manifest.php', '<?php return '.var_export(['components' => []], true).';');
         $inner = new ArrayLoader(['page.twig' => '']);
-        $manifest = new Manifest($this->dir, $this->dir);
+        $manifest = new Manifest($this->dir);
 
         // The key of the runtime before it removed @Phem/slot_host.twig. Its compiled templates
         // extend that template, so the new runtime must not use them.
@@ -63,7 +63,7 @@ final class CacheKeyLoaderTest extends TestCase
     public function testCacheKeyWithoutBuild(): void
     {
         $inner = new ArrayLoader(['page.twig' => '']);
-        $loader = new CacheKeyLoader($inner, new Manifest($this->dir.'/missing', $this->dir));
+        $loader = new CacheKeyLoader($inner, new Manifest($this->dir.'/missing'));
 
         self::assertSame($inner->getCacheKey('page.twig').'::'.CacheKeyLoader::FORMAT, $loader->getCacheKey('page.twig'));
     }
@@ -72,7 +72,7 @@ final class CacheKeyLoaderTest extends TestCase
     private function cacheKey(array $components): string
     {
         file_put_contents($this->dir.'/manifest.php', '<?php return '.var_export(['components' => $components], true).';');
-        $loader = new CacheKeyLoader(new ArrayLoader(['page.twig' => '']), new Manifest($this->dir, $this->dir));
+        $loader = new CacheKeyLoader(new ArrayLoader(['page.twig' => '']), new Manifest($this->dir));
 
         return $loader->getCacheKey('page.twig');
     }

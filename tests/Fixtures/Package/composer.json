@@ -1,0 +1,10 @@
+{
+    "name": "acme/kit",
+    "description": "A fixture package repo: its tests use Phem\\Test\\TestKernel (see tests/Test/PackageKernelTest.php)",
+    "type": "library",
+    "extra": {
+        "phem": {
+            "source": "components"
+        }
+    }
+}

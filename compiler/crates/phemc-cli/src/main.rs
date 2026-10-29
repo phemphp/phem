@@ -1,7 +1,8 @@
 //! `phemc` — the `.phpm` compiler.
 //!
 //! - `phemc build <src>`: compiles to PHP + Twig, writes the manifest, and warms up the Twig cache
-//!   (`bin/console phem:warmup` of the Symfony application).
+//!   (`bin/console phem:warmup` of the Symfony application). It compiles the `.phpm` roots of the
+//!   Composer packages with the app (see `phemc_sources`). It runs from the project root.
 //! - `phemc check <src>`: reports diagnostics only. `--format json` prints them as JSON (for editors).
 //! - `phemc watch <src> --exec <cmd>`: rebuilds on change and restarts `<cmd>`.
 //! - `phemc lsp`: runs the language server on stdin and stdout (for editors).
@@ -9,7 +10,9 @@
 use anyhow::{bail, Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use phemc_codegen::{FileDiagnostics, ProjectOutput, SourceInput};
+use phemc_sources::SourceRoot;
 use phemc_syntax::Severity;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitCode};
 use std::sync::mpsc;
@@ -86,29 +89,21 @@ fn main() -> ExitCode {
     }
 }
 
-fn read_sources(src: &Path) -> Result<Vec<SourceInput>> {
-    if !src.is_dir() {
-        bail!("source directory `{}` does not exist", src.display());
-    }
-
-    let mut inputs = Vec::new();
-    for entry in walkdir::WalkDir::new(src).sort_by_file_name() {
-        let entry = entry?;
-        if entry.file_type().is_file() && entry.path().extension().is_some_and(|e| e == "phpm") {
-            let rel = entry.path().strip_prefix(src)?.to_string_lossy().replace('\\', "/");
-            let text = std::fs::read_to_string(entry.path()).with_context(|| format!("cannot read {}", entry.path().display()))?;
-            inputs.push(SourceInput { rel, text });
-        }
-    }
-
-    Ok(inputs)
+/// The source roots of the project in the current directory: the app and the packages.
+fn source_roots(src: &Path) -> Result<Vec<SourceRoot>> {
+    Ok(phemc_sources::roots(Path::new("."), src)?)
 }
 
-/// Prints the diagnostics. Returns (errors, warnings).
-fn report(src: &Path, files: &[FileDiagnostics]) -> (usize, usize) {
+fn read_sources(roots: &[SourceRoot]) -> Result<Vec<SourceInput>> {
+    Ok(phemc_sources::read(roots, &HashMap::new())?)
+}
+
+/// Prints the diagnostics that the tools show (see `FileDiagnostics::shown()`). Returns (errors,
+/// warnings).
+fn report(files: &[FileDiagnostics]) -> (usize, usize) {
     let (mut errors, mut warnings) = (0, 0);
     for f in files {
-        for d in &f.diags {
+        for d in f.shown() {
             let severity = match d.severity {
                 Severity::Error => {
                     errors += 1;
@@ -128,8 +123,7 @@ fn report(src: &Path, files: &[FileDiagnostics]) -> (usize, usize) {
                 md = md.with_help(h.clone());
             }
 
-            let name = src.join(&f.rel).display().to_string();
-            let report = miette::Report::new(md).with_source_code(miette::NamedSource::new(name, f.text.clone()));
+            let report = miette::Report::new(md).with_source_code(miette::NamedSource::new(f.path.clone(), f.text.clone()));
             eprintln!("{report:?}");
         }
     }
@@ -137,41 +131,60 @@ fn report(src: &Path, files: &[FileDiagnostics]) -> (usize, usize) {
     (errors, warnings)
 }
 
-fn compile(src: &Path) -> Result<(Option<ProjectOutput>, usize, usize, usize)> {
-    let inputs = read_sources(src)?;
-    let count = inputs.len();
+struct Compiled {
+    out: Option<ProjectOutput>,
+    /// The `.phpm` files, and the files in "(2 package(s))" when there are packages.
+    files: String,
+    errors: usize,
+    warnings: usize,
+}
+
+fn compile(src: &Path) -> Result<Compiled> {
+    let roots = source_roots(src)?;
+    let inputs = read_sources(&roots)?;
+    let files = files_summary(inputs.len(), roots.iter().filter(|r| r.package.is_some()).count());
+
     let (out, diags) = phemc_codegen::compile(inputs);
-    let (errors, warnings) = report(src, &diags);
-    Ok((out, count, errors, warnings))
+    let (errors, warnings) = report(&diags);
+
+    Ok(Compiled { out, files, errors, warnings })
+}
+
+/// "42 file(s)", or "42 file(s) (2 package(s))" when there are packages.
+fn files_summary(files: usize, packages: usize) -> String {
+    match packages {
+        0 => format!("{files} file(s)"),
+        n => format!("{files} file(s) ({n} package(s))"),
+    }
 }
 
 fn check(src: &Path) -> Result<bool> {
-    let (_, count, errors, warnings) = compile(src)?;
-    eprintln!("phemc: checked {count} file(s): {errors} error(s), {warnings} warning(s)");
+    let Compiled { files, errors, warnings, .. } = compile(src)?;
+    eprintln!("phemc: checked {files}: {errors} error(s), {warnings} warning(s)");
     Ok(errors == 0)
 }
 
 /// `phemc check --format json`: prints the diagnostics to stdout. The exit code is the same as
 /// with `--format text`.
 fn check_json(src: &Path) -> Result<bool> {
-    let (_, diags) = phemc_codegen::compile(read_sources(src)?);
+    let (_, diags) = phemc_codegen::compile(read_sources(&source_roots(src)?)?);
     println!("{}", diagnostics_json(&diags));
     Ok(!diags.iter().flat_map(|f| &f.diags).any(|d| d.is_error()))
 }
 
 /// The diagnostics as JSON:
-/// `{"files": [{"file": "Page/index.phpm", "diagnostics": [{"severity", "code", "message", "label",
+/// `{"files": [{"file": "src/Page/index.phpm", "diagnostics": [{"severity", "code", "message", "label",
 /// "help", "start": {"line", "character"}, "end": {...}}]}]}`.
-/// The file is relative to the source directory. The lines start at 0, and the characters count
-/// UTF-16 code units, as the Language Server Protocol and VS Code do.
+/// The file is relative to the project root. The diagnostics are the ones that the tools show (see
+/// `FileDiagnostics::shown()`). The lines start at 0, and the characters count UTF-16 code units,
+/// as the Language Server Protocol and VS Code do.
 fn diagnostics_json(files: &[FileDiagnostics]) -> serde_json::Value {
     let files: Vec<_> = files
         .iter()
-        .filter(|f| !f.diags.is_empty())
+        .filter(|f| f.shown().next().is_some())
         .map(|f| {
             let diags: Vec<_> = f
-                .diags
-                .iter()
+                .shown()
                 .map(|d| {
                     serde_json::json!({
                         "severity": if d.is_error() { "error" } else { "warning" },
@@ -184,7 +197,7 @@ fn diagnostics_json(files: &[FileDiagnostics]) -> serde_json::Value {
                     })
                 })
                 .collect();
-            serde_json::json!({ "file": f.rel, "diagnostics": diags })
+            serde_json::json!({ "file": f.path, "diagnostics": diags })
         })
         .collect();
 
@@ -220,7 +233,7 @@ fn position(text: &str, offset: usize) -> serde_json::Value {
 
 fn build(args: &BuildArgs) -> Result<bool> {
     let started = Instant::now();
-    let (out, count, errors, warnings) = compile(&args.src)?;
+    let Compiled { out, files, errors, warnings } = compile(&args.src)?;
     let Some(project) = out else {
         eprintln!("phemc: build failed: {errors} error(s), {warnings} warning(s)");
         return Ok(false);
@@ -228,7 +241,7 @@ fn build(args: &BuildArgs) -> Result<bool> {
 
     let written = write_output(args, &project)?;
     eprintln!(
-        "phemc: compiled {count} file(s), {} template(s), {} page(s); {written} file(s) changed, {warnings} warning(s) in {} ms",
+        "phemc: compiled {files}, {} template(s), {} page(s); {written} file(s) changed, {warnings} warning(s) in {} ms",
         project.manifest.templates.len(),
         project.manifest.pages.len(),
         started.elapsed().as_millis()
@@ -338,34 +351,79 @@ fn spawn(cmd: &str) -> Result<Child> {
     Command::new("sh").arg("-c").arg(format!("exec {cmd}")).spawn().context("cannot start the command")
 }
 
-fn watch(args: &BuildArgs, exec: Option<&str>) -> Result<()> {
-    use notify::{RecursiveMode, Watcher};
+/// The dirs that `phemc watch` watches: the source roots (recursive), and the Composer dir of the
+/// vendor dir (not recursive) for a change of `installed.json` (a `composer require` or a
+/// `composer update`). Composer writes a new file, so the watch is on the dir.
+struct Watched {
+    roots: Vec<PathBuf>,
+    composer: Option<PathBuf>,
+}
 
-    let mut child = None;
-    if build(args)? {
-        if let Some(cmd) = exec {
-            child = Some(spawn(cmd)?);
+impl Watched {
+    /// Watches the roots of the project again: it watches the new dirs and unwatches the old ones.
+    /// When the roots cannot be read (a wrong package root), it keeps the dirs that it watches and
+    /// adds the source dir of the app, so the app still rebuilds, and a later fix in
+    /// `composer.json` or `installed.json` reads the roots again.
+    fn update(&mut self, watcher: &mut impl notify::Watcher, project: &Path, src: &Path) -> Result<()> {
+        use notify::RecursiveMode;
+
+        let composer = phemc_sources::vendor_dir(project).join("composer");
+        if self.composer.as_ref() != Some(&composer) && composer.is_dir() {
+            watcher.watch(&composer, RecursiveMode::NonRecursive)?;
+            self.composer = Some(composer);
         }
-    }
 
-    let (tx, rx) = mpsc::channel();
-    let mut watcher = notify::recommended_watcher(tx)?;
-    watcher.watch(&args.src, RecursiveMode::Recursive)?;
-    eprintln!("phemc: watching {} for changes", args.src.display());
-
-    loop {
-        let event = rx.recv()?;
-        let relevant = |e: &notify::Result<notify::Event>| {
-            e.as_ref().is_ok_and(|e| !e.kind.is_access() && e.paths.iter().any(|p| p.extension().is_some_and(|x| x == "phpm")))
+        let mut failed = None;
+        let dirs: Vec<PathBuf> = match phemc_sources::roots(project, src) {
+            Ok(roots) => roots.into_iter().map(|r| r.dir).collect(),
+            Err(e) => {
+                failed = Some(anyhow::Error::from(e));
+                self.roots.iter().cloned().chain(phemc_sources::app_root(project, src).map(|r| r.dir)).collect()
+            }
         };
 
-        if !relevant(&event) {
-            continue;
+        for dir in self.roots.iter().filter(|d| !dirs.contains(d)) {
+            let _ = watcher.unwatch(dir);
         }
 
-        // Debounce: editors write files in several steps.
-        while rx.recv_timeout(Duration::from_millis(150)).is_ok() {}
-        eprintln!("phemc: change detected, rebuilding");
+        let mut watched: Vec<PathBuf> = self.roots.iter().filter(|d| dirs.contains(d)).cloned().collect();
+        for dir in dirs.into_iter().filter(|d| !self.roots.contains(d)) {
+            match watcher.watch(&dir, RecursiveMode::Recursive) {
+                Ok(()) => watched.push(dir),
+                Err(e) => failed = Some(anyhow::Error::from(e).context(format!("cannot watch {}", dir.display()))),
+            }
+        }
+
+        self.roots = watched;
+
+        failed.map_or(Ok(()), Err)
+    }
+}
+
+/// Whether a change of the watched files needs a build, and whether `installed.json` changed.
+fn change_of(event: &notify::Result<notify::Event>) -> (bool, bool) {
+    let is_installed = |p: &PathBuf| p.file_name().is_some_and(|n| n == "installed.json");
+
+    match event {
+        Ok(e) if !e.kind.is_access() => {
+            let installed = e.paths.iter().any(is_installed);
+            (installed || e.paths.iter().any(|p| p.extension().is_some_and(|x| x == "phpm")), installed)
+        }
+        _ => (false, false),
+    }
+}
+
+fn watch(args: &BuildArgs, exec: Option<&str>) -> Result<()> {
+    let project = Path::new(".");
+
+    // A missing source dir is an error (a typo). A wrong package root is reported, and the watch
+    // waits for its fix.
+    if phemc_sources::app_root(project, &args.src).is_err() {
+        source_roots(&args.src)?;
+    }
+
+    let mut child = None;
+    let rebuild = |child: &mut Option<Child>, first: bool| -> Result<()> {
         match build(args) {
             Ok(true) => {
                 if let Some(cmd) = exec {
@@ -374,12 +432,49 @@ fn watch(args: &BuildArgs, exec: Option<&str>) -> Result<()> {
                         let _ = c.wait();
                     }
 
-                    child = Some(spawn(cmd)?);
+                    *child = Some(spawn(cmd)?);
                 }
             }
-            Ok(false) => eprintln!("phemc: the previous build keeps running"),
+            // The first build has no previous build.
+            Ok(false) if !first => eprintln!("phemc: the previous build keeps running"),
+            Ok(false) => {}
             Err(e) => eprintln!("phemc: {e:#}"),
         }
+
+        Ok(())
+    };
+
+    rebuild(&mut child, true)?;
+
+    let (tx, rx) = mpsc::channel();
+    let mut watcher = notify::recommended_watcher(tx)?;
+    let mut watched = Watched { roots: Vec::new(), composer: None };
+    if let Err(e) = watched.update(&mut watcher, project, &args.src) {
+        eprintln!("phemc: {e:#}");
+    }
+
+    eprintln!("phemc: watching {} source dir(s) for changes", watched.roots.len());
+
+    loop {
+        let (relevant, mut installed) = change_of(&rx.recv()?);
+        if !relevant {
+            continue;
+        }
+
+        // Debounce: editors write files in several steps, and Composer writes several files.
+        while let Ok(e) = rx.recv_timeout(Duration::from_millis(150)) {
+            installed |= change_of(&e).1;
+        }
+
+        if installed {
+            eprintln!("phemc: the Composer packages changed");
+            if let Err(e) = watched.update(&mut watcher, project, &args.src) {
+                eprintln!("phemc: {e:#}");
+            }
+        }
+
+        eprintln!("phemc: change detected, rebuilding");
+        rebuild(&mut child, false)?;
     }
 }
 
@@ -415,17 +510,27 @@ mod tests {
         let files = vec![
             FileDiagnostics {
                 rel: "Page/index.phpm".into(),
+                path: "src/Page/index.phpm".into(),
+                package: None,
                 text: text.clone(),
                 diags: vec![Diagnostic::error("E001", "Unknown component", Span::new(start, start + 3))
                     .with_label("here")
                     .with_help("Import it")],
             },
-            FileDiagnostics { rel: "Page/ok.phpm".into(), text: String::new(), diags: vec![] },
+            FileDiagnostics { rel: "Page/ok.phpm".into(), path: "src/Page/ok.phpm".into(), package: None, text: String::new(), diags: vec![] },
+            // The app cannot fix a warning of a package.
+            FileDiagnostics {
+                rel: "vendor/acme/ui/Badge.phpm".into(),
+                path: "vendor/acme/ui/components/Badge.phpm".into(),
+                package: Some("acme/ui".into()),
+                text: text.clone(),
+                diags: vec![Diagnostic::warning("W002", "No key", Span::new(start, start + 3))],
+            },
         ];
 
         assert_eq!(
             diagnostics_json(&files),
-            json!({"files": [{"file": "Page/index.phpm", "diagnostics": [{
+            json!({"files": [{"file": "src/Page/index.phpm", "diagnostics": [{
                 "severity": "error",
                 "code": "E001",
                 "message": "Unknown component",
@@ -435,5 +540,106 @@ mod tests {
                 "end": {"line": 1, "character": 11},
             }]}]})
         );
+    }
+
+    /// A watcher that keeps the watched paths.
+    #[derive(Default)]
+    struct FakeWatcher {
+        paths: Vec<PathBuf>,
+    }
+
+    impl notify::Watcher for FakeWatcher {
+        fn new<F: notify::EventHandler>(_: F, _: notify::Config) -> notify::Result<Self> {
+            Ok(Self::default())
+        }
+
+        fn watch(&mut self, path: &Path, _: notify::RecursiveMode) -> notify::Result<()> {
+            self.paths.push(path.to_path_buf());
+            Ok(())
+        }
+
+        fn unwatch(&mut self, path: &Path) -> notify::Result<()> {
+            self.paths.retain(|p| p != path);
+            Ok(())
+        }
+
+        fn kind() -> notify::WatcherKind {
+            notify::WatcherKind::NullWatcher
+        }
+    }
+
+    #[test]
+    fn watch_keeps_the_app_and_composer_when_a_package_root_is_wrong() {
+        let dir = std::env::temp_dir().join(format!("phemc-cli-watch-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let write = |file: &str, text: &str| {
+            std::fs::create_dir_all(dir.join(file).parent().unwrap()).unwrap();
+            std::fs::write(dir.join(file), text).unwrap();
+        };
+
+        write("src/Home.phpm", "");
+        write("vendor/acme/ui/components/Badge.phpm", "");
+        write("vendor/composer/installed.json", r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}]}"#);
+
+        let mut watcher = FakeWatcher::default();
+        let mut watched = Watched { roots: Vec::new(), composer: None };
+        watched.update(&mut watcher, &dir, Path::new("src")).unwrap();
+        assert_eq!(watcher.paths, [dir.join("vendor/composer"), dir.join("src"), dir.join("vendor/acme/ui/components")]);
+
+        // `composer update` gives a wrong root: the app and Composer stay watched.
+        write("vendor/composer/installed.json", r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "missing"}}}]}"#);
+        assert!(watched.update(&mut watcher, &dir, Path::new("src")).unwrap_err().to_string().contains("missing"));
+        assert!(watcher.paths.contains(&dir.join("vendor/composer")) && watcher.paths.contains(&dir.join("src")));
+
+        // The fix removes the package: its dir is not watched any more, and the other dirs are not
+        // watched two times.
+        write("vendor/composer/installed.json", r#"{"packages": []}"#);
+        watched.update(&mut watcher, &dir, Path::new("src")).unwrap();
+        assert_eq!(watcher.paths, [dir.join("vendor/composer"), dir.join("src")]);
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn the_summary_gives_the_packages() {
+        assert_eq!(files_summary(3, 0), "3 file(s)");
+        assert_eq!(files_summary(42, 2), "42 file(s) (2 package(s))");
+    }
+
+    #[test]
+    fn the_build_removes_the_output_of_a_removed_package() {
+        let out = std::env::temp_dir().join(format!("phemc-cli-out-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&out);
+        let args = BuildArgs { src: "src".into(), out: out.clone(), php: "php".into(), no_warmup: true };
+        let home = SourceInput::app("Home.phpm", "<?phpm\nnamespace App;\nfunction Home() { return <p />; }\n");
+        let badge = SourceInput { rel: "vendor/acme/ui/Badge.phpm".into(), path: "vendor/acme/ui/components/Badge.phpm".into(), package: Some("acme/ui".into()), text: "<?phpm\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\Component;\n#[Component]\nfunction Badge() { return <b />; }\n".into() };
+
+        let (project, _) = phemc_codegen::compile(vec![home.clone(), badge]);
+        write_output(&args, &project.unwrap()).unwrap();
+        assert!(out.join("php/vendor/acme/ui/Badge.php").is_file());
+        assert!(out.join("templates/vendor/acme/ui/Badge.0.twig").is_file());
+
+        // `composer remove acme/ui`: the next build has no file of the package.
+        let (project, _) = phemc_codegen::compile(vec![home]);
+        write_output(&args, &project.unwrap()).unwrap();
+        assert!(!out.join("php/vendor/acme/ui/Badge.php").exists());
+        assert!(!out.join("templates/vendor/acme/ui/Badge.0.twig").exists());
+        assert!(!std::fs::read_to_string(out.join("autoload.php")).unwrap().contains("vendor/acme"));
+
+        std::fs::remove_dir_all(out).unwrap();
+    }
+
+    #[test]
+    fn a_change_of_a_source_or_of_installed_json_needs_a_build() {
+        use notify::event::{AccessKind, EventKind, ModifyKind};
+
+        let event = |kind: EventKind, path: &str| Ok(notify::Event::new(kind).add_path(PathBuf::from(path)));
+        let modify = EventKind::Modify(ModifyKind::Any);
+
+        assert_eq!(change_of(&event(modify, "/app/src/Home.phpm")), (true, false));
+        assert_eq!(change_of(&event(modify, "/app/vendor/composer/installed.json")), (true, true));
+        assert_eq!(change_of(&event(modify, "/app/src/Kernel.php")), (false, false));
+        assert_eq!(change_of(&event(EventKind::Access(AccessKind::Any), "/app/src/Home.phpm")), (false, false));
+        assert_eq!(change_of(&Err(notify::Error::generic("lost"))), (false, false));
     }
 }

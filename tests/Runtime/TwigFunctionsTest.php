@@ -211,7 +211,7 @@ final class TwigFunctionsTest extends TestCase
     {
         $twig = new Environment(new ArrayLoader());
 
-        return new PhemRuntime(new Renderer(new Manifest('/nonexistent', ''), new MarkupResolver($twig), []));
+        return new PhemRuntime(new Renderer(new Manifest('/nonexistent'), new MarkupResolver($twig), []));
     }
 
     public function testStyle(): void

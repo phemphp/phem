@@ -9,8 +9,10 @@ use std::collections::HashMap;
 
 #[derive(Clone, Debug, Default)]
 pub struct FileInfo {
-    /// Path relative to the source root, with `/` separators.
+    /// The key of the file in the build, with `/` separators (see `phemc_codegen::SourceInput`).
     pub rel: String,
+    /// The path of the file from the project root, for the messages. Empty when it is the key.
+    pub path: String,
     pub namespace: String,
     /// Class imports: lowercase alias → FQCN.
     pub class_uses: HashMap<String, String>,

@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Routing;
 
+use Composer\InstalledVersions;
 use Phem\Manifest\Manifest;
 use Phem\Metadata\ComponentMetadata;
 use Symfony\Component\Config\Loader\Loader;
@@ -46,12 +47,20 @@ use Symfony\Component\Routing\RouteCollection;
  * error. The keys that start with `_` are not route values. As for the Doctrine controller
  * arguments, `{slug:post}` maps the value `slug` to the entity prop `post`.
  *
- * The `routing.controllers` resource of the application routes has them (see
- * ControllersLoader). An application without this resource imports them:
+ * The `routing.controllers` resource of the application routes has the pages of the application
+ * (see ControllersLoader). An application without this resource imports them:
  *
  *     phem:
  *         resource: .
  *         type: phem
+ *
+ * The pages of a Composer package are not in this resource. The application imports them with
+ * the name of the package, for example with a prefix:
+ *
+ *     acme_ui:
+ *         resource: acme/ui
+ *         type: phem
+ *         prefix: /ui
  */
 final class PageLoader extends Loader
 {
@@ -78,7 +87,7 @@ final class PageLoader extends Loader
 
         $routes->addResource(new FileResource($this->manifest->file()));
 
-        foreach ($this->manifest->pages() as $page) {
+        foreach ($this->pages((string) $resource) as $page) {
             $reflection = match (true) {
                 class_exists($page, false) => new \ReflectionClass($page),
                 \function_exists($page) => new \ReflectionFunction($page),
@@ -106,6 +115,32 @@ final class PageLoader extends Loader
     public static function routeName(string $page): string
     {
         return strtolower(str_replace('\\', '_', $page));
+    }
+
+    /**
+     * The pages of a resource: `.` for the pages of the application, or the name of a Composer
+     * package (`acme/ui`) for the pages of this package.
+     *
+     * @return list<string>
+     */
+    private function pages(string $resource): array
+    {
+        if ('.' === $resource) {
+            return $this->manifest->pagesOf('');
+        }
+
+        $pages = $this->manifest->pagesOf($resource);
+
+        // An installed package with no pages in the build: the build is older than the package
+        // (after `composer require`, before `phemc build`). Its routes come with the next build,
+        // because the manifest is a resource of the routes.
+        if ([] === $pages && !(class_exists(InstalledVersions::class) && InstalledVersions::isInstalled($resource))) {
+            $packages = $this->manifest->pagePackages();
+
+            throw new \InvalidArgumentException(\sprintf('The package "%s" is not installed, and it has no pages in the build. The packages with pages: %s.', $resource, [] !== $packages ? '"'.implode('", "', $packages).'"' : 'none'));
+        }
+
+        return $pages;
     }
 
     /**

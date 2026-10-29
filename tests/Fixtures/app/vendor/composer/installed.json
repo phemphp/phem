@@ -1,0 +1,17 @@
+{
+    "packages": [
+        {
+            "name": "acme/ui",
+            "version": "1.0.0",
+            "type": "library",
+            "extra": {
+                "phem": {
+                    "source": "components"
+                }
+            },
+            "install-path": "../acme/ui"
+        }
+    ],
+    "dev": true,
+    "dev-package-names": []
+}

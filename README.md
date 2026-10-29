@@ -80,6 +80,7 @@ Build a new app from scratch using Phem. See [Getting started](docs/getting-star
 - [Compiling `.phpm` files](docs/compiling.md)
 - [The `.phpm` syntax](docs/phpm-syntax.md)
 - [Testing components and pages](docs/testing.md)
+- [Component packages](docs/packages.md)
 
 ## License
 

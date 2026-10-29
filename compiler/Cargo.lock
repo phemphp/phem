@@ -730,6 +730,7 @@ dependencies = [
  "phemc-analyze",
  "phemc-codegen",
  "phemc-lsp",
+ "phemc-sources",
  "phemc-syntax",
  "serde",
  "serde_json",
@@ -755,9 +756,19 @@ version = "0.2.3"
 dependencies = [
  "lsp-types",
  "phemc-codegen",
+ "phemc-sources",
  "phemc-syntax",
  "regex",
  "serde",
+ "serde_json",
+ "walkdir",
+]
+
+[[package]]
+name = "phemc-sources"
+version = "0.2.3"
+dependencies = [
+ "phemc-codegen",
  "serde_json",
  "walkdir",
 ]

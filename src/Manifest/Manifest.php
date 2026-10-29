@@ -18,7 +18,9 @@ use Phem\Root;
 use Phem\Suspense;
 
 /**
- * The output of `phemc build`: the components, the pages, and the template line map.
+ * The output of `phemc build`: the components, the pages, and the template line map. It has the
+ * `.phpm` sources of the application and of its Composer packages. Each page has the name of its
+ * package (`''` for a page of the application).
  *
  * It loads the manifest and the compiled PHP files on first use, so an application without a
  * build can still boot (for example to run `cache:clear`).
@@ -26,7 +28,7 @@ use Phem\Suspense;
  * @phpstan-type ManifestData array{
  *     version?: string,
  *     components?: array<string, array<string, mixed>>,
- *     pages?: list<string>,
+ *     pages?: array<string, string>,
  *     templates?: array<string, array{source: string, line: int}>,
  *     files?: list<string>,
  * }
@@ -42,20 +44,13 @@ final class Manifest
     /** @var array<string, ComponentDefinition|null> */
     private array $definitions = [];
 
-    public function __construct(
-        private readonly string $buildDir,
-        private readonly string $sourceDir,
-    ) {
+    public function __construct(private readonly string $buildDir)
+    {
     }
 
     public function buildDir(): string
     {
         return $this->buildDir;
-    }
-
-    public function sourceDir(): string
-    {
-        return $this->sourceDir;
     }
 
     public function file(): string
@@ -105,10 +100,28 @@ final class Manifest
         }
     }
 
-    /** @return list<string> the page components: the components with a `#[Route]` attribute */
+    /** @return list<string> all the page components: the components with a `#[Route]` attribute */
     public function pages(): array
     {
-        return $this->data()['pages'] ?? [];
+        return array_keys($this->data()['pages'] ?? []);
+    }
+
+    /**
+     * The page components of one package.
+     *
+     * @param string $package the Composer package name (`acme/ui`), or `''` for the application
+     *
+     * @return list<string>
+     */
+    public function pagesOf(string $package): array
+    {
+        return array_keys(array_filter($this->data()['pages'] ?? [], static fn (string $of): bool => $of === $package));
+    }
+
+    /** @return list<string> the Composer package names that have pages, without the application */
+    public function pagePackages(): array
+    {
+        return array_values(array_unique(array_filter($this->data()['pages'] ?? [], static fn (string $of): bool => '' !== $of)));
     }
 
     /** @return list<string> the template names, without the Twig namespace */
@@ -148,7 +161,8 @@ final class Manifest
     }
 
     /**
-     * The `.phpm` source of a compiled template.
+     * The `.phpm` source of a compiled template. The source is a path from the project root
+     * (`src/page/index.phpm`, `vendor/acme/ui/components/Badge.phpm`).
      *
      * @param string $template the template name, without the Twig namespace
      *
@@ -183,6 +197,12 @@ final class Manifest
         }
 
         $data = require $this->file();
+
+        // An older phemc wrote the pages as a list. The other values do not show the version.
+        if ([] !== ($data['pages'] ?? []) && array_is_list($data['pages'])) {
+            throw new \RuntimeException(\sprintf('The compiled project in "%s" comes from another version of phemc. Run `phemc build` again.', $this->buildDir));
+        }
+
         require_once $this->buildDir.'/autoload.php';
 
         return $this->data = $data;

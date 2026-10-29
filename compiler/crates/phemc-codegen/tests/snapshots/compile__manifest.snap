@@ -1,6 +1,7 @@
 ---
 source: crates/phemc-codegen/tests/compile.rs
-expression: out.manifest.to_json()
+assertion_line: 46
+expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
 ---
 {
   "version": "[version]",
@@ -303,10 +304,10 @@ expression: out.manifest.to_json()
       "rest": false
     }
   },
-  "pages": [
-    "App\\Page\\About",
-    "App\\Page\\Home"
-  ],
+  "pages": {
+    "App\\Page\\About": "",
+    "App\\Page\\Home": ""
+  },
   "templates": {
     "component/Bound.0.twig": {
       "source": "component/Bound.phpm",

@@ -1,0 +1,13 @@
+<?phpm
+
+namespace Acme\Kit;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+
+// A component of the package.
+#[Component]
+function Button(string $label): Node
+{
+    return <button className="kit">{{ label }}</button>;
+}

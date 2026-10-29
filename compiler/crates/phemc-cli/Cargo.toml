@@ -14,6 +14,7 @@ phemc-syntax.workspace = true
 phemc-analyze.workspace = true
 phemc-codegen.workspace = true
 phemc-lsp.workspace = true
+phemc-sources.workspace = true
 anyhow.workspace = true
 blake3.workspace = true
 clap.workspace = true

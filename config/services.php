@@ -89,10 +89,10 @@ return static function (ContainerConfigurator $container): void {
         // Build
         ->set('phem.manifest', Manifest::class)
             ->public()
-            ->args([param('phem.build_dir'), param('phem.source_dir')])
+            ->args([param('phem.build_dir')])
         ->alias(Manifest::class, 'phem.manifest')
         ->set('phem.source_map', SourceMap::class)
-            ->args([service('phem.manifest')])
+            ->args([service('phem.manifest'), param('kernel.project_dir')])
         ->set('phem.preload_warmer', PreloadWarmer::class)
             ->args([service('phem.manifest')])
             ->tag('kernel.cache_warmer')

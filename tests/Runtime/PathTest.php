@@ -275,8 +275,8 @@ final class PathTest extends TestCase
 
     private function load(string $page): RouteCollection
     {
-        file_put_contents($this->dir.'/manifest.php', '<?php return '.var_export(['pages' => [self::NS.$page]], true).';');
+        file_put_contents($this->dir.'/manifest.php', '<?php return '.var_export(['pages' => [self::NS.$page => '']], true).';');
 
-        return (new PageLoader(new Manifest($this->dir, $this->dir)))->load('.', 'phem');
+        return (new PageLoader(new Manifest($this->dir)))->load('.', 'phem');
     }
 }

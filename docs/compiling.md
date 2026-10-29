@@ -19,7 +19,7 @@ my-app/
 ├── bin/console
 ├── config/
 │   ├── bundles.php        FrameworkBundle, TwigBundle, StimulusBundle, PhemBundle (and DoctrineBundle for transactions and #[Path] entities)
-│   ├── packages/phem.yaml   optional: source_dir, build_dir, secret
+│   ├── packages/phem.yaml   optional: build_dir, secret
 │   ├── packages/asset_mapper.yaml   the assets/ directory
 │   ├── routes.yaml        { resource: routing.controllers }: the #[Route] controllers and the #[Page] pages
 │   └── services.yaml      your services (for example repositories)
@@ -248,6 +248,10 @@ phem: compiled 24 template(s) into the Twig cache in 250 ms
 The build is incremental: it writes only the files that changed, so the Twig cache and
 OPcache stay valid. If there is an error, it writes nothing and exits with code 1.
 
+The build also compiles the `.phpm` files of the Composer packages that give
+`extra.phem.source` in their `composer.json` (see [Component packages](packages.md)). The
+summary then gives their number: `compiled 42 file(s) (2 package(s)), ...`.
+
 | Option | Default | Meaning |
 |---|---|---|
 | `--out <dir>` | `var/phem` | The output directory (the same as the `phem.build_dir` option) |
@@ -263,6 +267,7 @@ page, or route needs no `cache:clear`.
 ```
 var/phem/
 ├── php/Page/index.php          the PHP code; each markup literal becomes new \Phem\Element('Page/index.0.twig', [...])
+├── php/vendor/acme/ui/...      the PHP code of a Composer package (its templates are in templates/vendor/acme/ui/)
 ├── templates/Page/index.0.twig one Twig template for each markup literal (Twig name: @phpm/Page/index.0.twig)
 ├── manifest.php / manifest.json components (kind, props, slots), pages, template → .phpm line map
 ├── autoload.php                 requires all compiled PHP files
@@ -275,8 +280,9 @@ var/cache/<env>/twig/            the Twig cache (filled by the warmup)
 `rm -rf var/cache` do not delete it.
 
 The compiled PHP keeps the line numbers of the `.phpm` file. The manifest maps each template
-back to its `.phpm` line, so the Symfony error page and the console show `src/<file>.phpm` and
-its line for an error in markup.
+back to its `.phpm` file (from the project root) and line, so the Symfony error page and the
+console show `src/<file>.phpm` (or `vendor/<package>/...` for a package) and its line for an
+error in markup.
 
 ## 3. Check only (CI)
 
@@ -330,14 +336,15 @@ phemc check src --format json
 ```
 
 ```json
-{"files": [{"file": "Component/ScientistCard.phpm", "diagnostics": [{"severity": "error",
+{"files": [{"file": "src/Component/ScientistCard.phpm", "diagnostics": [{"severity": "error",
   "code": "E010", "message": "unknown component `<Avatr>` (resolved to `App\\Component\\Avatr`)",
   "label": null, "help": "declare `#[Component] function Avatr()` in a .phpm file, or check the `use` imports",
   "start": {"line": 30, "character": 13}, "end": {"line": 30, "character": 18}}]}]}
 ```
 
-`file` is relative to the source directory. `line` starts at 0, and `character` counts UTF-16
-code units, as the Language Server Protocol does.
+`file` is relative to the project root (`src/Component/ScientistCard.phpm`). `line` starts at 0,
+and `character` counts UTF-16 code units, as the Language Server Protocol does. The warnings of a
+Composer package are not in the list.
 
 ### The language server
 
@@ -348,6 +355,14 @@ outline of `.phpm` files. The editors bundle the same server, compiled to WebAss
 `editors/phpstorm/README.md`. The Claude Code plugin runs `vendor/bin/phemc lsp` of the
 application: see [Getting started](getting-started.md#use-claude-code) and
 `editors/claude-code/README.md`.
+
+The server also checks the `.phpm` files of the Composer packages with the app. It shows the
+errors of a package file in the file (also at its real path, for a package of a Composer path
+repository). The app that installs a package checks its files: a linked package in the same
+workspace does not check itself. The server reads the package roots and the package files one
+time. It reads them again after a Composer change, after a change of a package file on disk, and
+when a source dir or a package root is new or goes away. When it cannot read a package root (a wrong `extra.phem.source`), it shows the
+error one time (and again after a Composer change), and it checks the files of the app only.
 
 ## 4. Run
 
@@ -420,7 +435,9 @@ workers:
 ```
 
 When a `.phpm` file changes, `phemc` rebuilds. With PHP-FPM, the next request uses the new build:
-no restart is necessary. Run `symfony server:log` to see the diagnostics.
+no restart is necessary. Run `symfony server:log` to see the diagnostics. `phemc watch` also
+rebuilds after `composer require` or `composer update` (a change of
+`vendor/composer/installed.json`), and when a `.phpm` file of a Composer package changes.
 
 With FrankenPHP in worker mode, give the command of the server to `--exec`:
 

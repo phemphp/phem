@@ -372,6 +372,24 @@ fn route_name(fqn: &str) -> String {
     fqn.replace('\\', "_").to_lowercase()
 }
 
+/// The project that installs the package of a file in `vendor/`: the directory with the
+/// `vendor/` directory and a `composer.json`. It compiles the `.phpm` files of the package with its
+/// own (see `phemc_sources`), so the diagnostics of the file come from its check. The class index
+/// of the file stays the one of [`find_root`].
+pub fn installer_root(file: &Path, fallback: Option<&Path>) -> Option<PathBuf> {
+    for dir in file.ancestors().skip(1) {
+        if dir.file_name().is_some_and(|n| n == "vendor") && dir.parent().is_some_and(|p| p.join("composer.json").exists()) {
+            return dir.parent().map(Path::to_path_buf);
+        }
+
+        if fallback == Some(dir) {
+            break;
+        }
+    }
+
+    None
+}
+
 /// The directory of the nearest `composer.json` file, or `fallback`, or the directory of the file.
 pub fn find_root(file: &Path, fallback: Option<&Path>) -> PathBuf {
     let mut dir = file.parent();

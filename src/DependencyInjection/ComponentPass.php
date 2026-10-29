@@ -61,7 +61,7 @@ final class ComponentPass implements CompilerPassInterface
 
         $components = [];
         $pages = [];
-        $manifest = new Manifest($buildDir, '');
+        $manifest = new Manifest($buildDir);
         if ($manifest->exists()) {
             $container->addResource(new FileResource($manifestFile));
 

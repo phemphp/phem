@@ -1,8 +1,10 @@
 //! The compiler diagnostics of a project. The check compiles all the `.phpm` files of the source
-//! directory, because a file can use the components of the other files. The open documents
-//! replace the files on disk.
+//! roots of the project (see `crate::sources`): the source directory of the app and the Composer
+//! packages, because a file can use the components of the other files. The open documents replace
+//! the files on disk.
 
-use phemc_codegen::SourceInput;
+use crate::sources::Roots;
+use phemc_sources::SourceRoot;
 use phemc_syntax::Diagnostic;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -11,32 +13,71 @@ pub struct FileCheck {
     pub file: PathBuf,
     /// The text that the compiler checked.
     pub text: String,
+    /// The diagnostics that the tools show: only the errors of a package file.
     pub diags: Vec<Diagnostic>,
 }
 
-/// Checks the `.phpm` files of `src`. `open` has the text of the open documents.
-pub fn check(src: &Path, open: &HashMap<PathBuf, String>) -> Vec<FileCheck> {
-    let mut inputs = Vec::new();
-    for entry in walkdir::WalkDir::new(src).sort_by_file_name().into_iter().filter_map(Result::ok) {
-        let path = entry.path();
-        if !entry.file_type().is_file() || path.extension().is_none_or(|e| e != "phpm") {
-            continue;
+pub struct Checked {
+    pub files: Vec<FileCheck>,
+    /// Why the check could not read the packages (a wrong `extra.phem.source`, a broken
+    /// `installed.json`). The check then has only the files of the app.
+    pub error: Option<String>,
+}
+
+/// Checks the project in `root` with its source roots. `open` has the text of the open documents.
+/// The files of the installed packages come from the kept texts of the roots, and the check keeps
+/// the texts that it reads.
+pub fn check(root: &Path, roots: &mut Roots, open: &HashMap<PathBuf, String>) -> Checked {
+    let mut error = roots.error.clone();
+    let texts = &mut roots.texts;
+    let read = phemc_sources::read_with(&roots.roots, |source, file, inner| {
+        if let Some(text) = open.get(file).or_else(|| open.get(&source.real_dir.as_ref()?.join(inner))) {
+            return Ok(text.clone());
         }
 
-        let Ok(rel) = path.strip_prefix(src) else { continue };
-        let text = match open.get(path) {
-            Some(t) => t.clone(),
-            None => match std::fs::read_to_string(path) {
-                Ok(t) => t,
-                Err(_) => continue,
-            },
-        };
+        if let Some(text) = texts.get(file) {
+            return Ok(text.clone());
+        }
 
-        inputs.push(SourceInput { rel: rel.to_string_lossy().replace('\\', "/"), text });
-    }
+        let text = std::fs::read_to_string(file).map_err(|e| phemc_sources::Error::new(format!("cannot read {}: {e}", file.display())))?;
+        if source.installed {
+            texts.insert(file.to_path_buf(), text.clone());
+        }
+
+        Ok(text)
+    });
+
+    let inputs = read.unwrap_or_else(|e| {
+        error = Some(e.to_string());
+        vec![]
+    });
 
     let (_, files) = phemc_codegen::compile(inputs);
-    files.into_iter().map(|f| FileCheck { file: src.join(&f.rel), text: f.text, diags: f.diags }).collect()
+    let files = files
+        .into_iter()
+        .map(|f| {
+            let file = editor_path(root, &roots.roots, &f.path, f.package.as_deref(), open);
+            FileCheck { file, diags: f.shown().cloned().collect(), text: f.text }
+        })
+        .collect();
+
+    Checked { files, error }
+}
+
+/// The path of a file as the editor opens it: the real path of a file of a linked package (see
+/// `SourceRoot::real_dir`), unless a document is open at its path in `vendor/`.
+fn editor_path(root: &Path, roots: &[SourceRoot], path: &str, package: Option<&str>, open: &HashMap<PathBuf, String>) -> PathBuf {
+    let file = root.join(path);
+    if package.is_none() || open.contains_key(&file) {
+        return file;
+    }
+
+    let linked = roots.iter().find(|r| r.package.as_deref() == package).and_then(|r| Some((r.real_dir.as_ref()?, path.strip_prefix(&r.path)?.trim_start_matches('/'))));
+
+    match linked {
+        Some((real_dir, inner)) => real_dir.join(inner),
+        None => file,
+    }
 }
 
 /// The message of a diagnostic, with its label and its help.

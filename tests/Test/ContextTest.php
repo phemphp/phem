@@ -25,11 +25,6 @@ final class ContextTest extends KernelTestCase
 {
     use InteractsWithPhem;
 
-    public static function setUpBeforeClass(): void
-    {
-        TestKernel::compileSources();
-    }
-
     protected static function getKernelClass(): string
     {
         return TestKernel::class;

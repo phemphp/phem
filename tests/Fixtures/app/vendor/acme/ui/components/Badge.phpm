@@ -1,0 +1,28 @@
+<?phpm
+
+namespace Acme\Ui;
+
+use Phem\Attribute\Component;
+use Phem\{Html, Node, Root};
+
+// A component of a package: the pages of the app use it.
+#[Component]
+function Badge(string $label): Node
+{
+    return <span className="badge">{{ label }}</span>;
+}
+
+// The layout of the pages of the package: the app can replace it.
+#[Component]
+function Layout(?Html $children = null): Node
+{
+    return (
+        <html lang="en">
+            <head>
+                <meta charset="utf-8" />
+                <title>Acme UI</title>
+            </head>
+            <body><Root>{{ children }}</Root></body>
+        </html>
+    );
+}

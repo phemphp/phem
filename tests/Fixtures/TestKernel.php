@@ -13,55 +13,22 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Fixtures;
 
-use Phem\PhemBundle;
-use PHPUnit\Framework\TestCase;
+use Phem\Test\TestKernel as PhemTestKernel;
 use Psr\Log\NullLogger;
-use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
-use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
-use Symfony\Bundle\TwigBundle\TwigBundle;
 use Symfony\Bundle\WebProfilerBundle\WebProfilerBundle;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
-use Symfony\Component\HttpKernel\Kernel;
 use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
-use Symfony\UX\StimulusBundle\StimulusBundle;
 
 /**
  * A Symfony application for the fixture project in tests/Fixtures/app.
  */
-final class TestKernel extends Kernel
+final class TestKernel extends PhemTestKernel
 {
-    use MicroKernelTrait;
-
-    private static bool $built = false;
-
-    /** Compiles tests/Fixtures/app with phemc, once per test run. */
-    public static function compileSources(): void
-    {
-        if (self::$built) {
-            return;
-        }
-
-        $dir = __DIR__.'/app';
-        $phemc = getenv('PHEMC_BIN') ?: trim((string) shell_exec('command -v phemc'));
-        if ('' === $phemc) {
-            TestCase::markTestSkipped('phemc is not installed (build it with cargo, or set PHEMC_BIN).');
-        }
-
-        exec(\sprintf('cd %s && %s build src --no-warmup 2>&1', escapeshellarg($dir), escapeshellarg($phemc)), $out, $code);
-        if (0 !== $code) {
-            TestCase::fail("phemc build failed:\n".implode("\n", $out));
-        }
-
-        // The cache of all the environments: the phemc output is in var/phem.
-        exec('rm -rf '.escapeshellarg($dir.'/var/cache'));
-        self::$built = true;
-    }
-
     public function registerBundles(): iterable
     {
-        $bundles = [new FrameworkBundle(), new TwigBundle(), new StimulusBundle(), new PhemBundle()];
+        $bundles = [...parent::registerBundles()];
         if ('profiler' === $this->environment) {
             $bundles[] = new WebProfilerBundle();
         }
@@ -74,20 +41,21 @@ final class TestKernel extends Kernel
         return __DIR__.'/app';
     }
 
+    protected function sourceDir(): string
+    {
+        return 'src';
+    }
+
     protected function configureContainer(ContainerConfigurator $container): void
     {
+        parent::configureContainer($container);
+
         $container->extension('framework', [
-            'secret' => 'test-secret',
-            'test' => true,
-            'http_method_override' => false,
-            'handle_all_throwables' => true,
-            'php_errors' => ['log' => true],
             // For the #[Async] handlers of async.phpm: their work goes to a MemoryBus (see TestAsyncPass).
             'messenger' => ['enabled' => true],
             // For the #[RateLimit] page of access.phpm. The storage is in memory, so each test starts with no hits.
             'rate_limiter' => ['phem_events' => ['policy' => 'fixed_window', 'limit' => 2, 'interval' => '1 minute', 'lock_factory' => null, 'storage_service' => InMemoryStorage::class]],
         ]);
-        $container->extension('twig', ['strict_variables' => true]);
 
         if ('nostream' === $this->environment) {
             // The browser loads all the <Suspense> boundaries with an event.
@@ -122,6 +90,9 @@ final class TestKernel extends Kernel
             $routes->import('@WebProfilerBundle/Resources/config/routing/profiler.php')->prefix('/_profiler');
         }
 
-        $routes->import('routing.controllers');
+        parent::configureRoutes($routes);
+
+        // The pages of the fixture package (app/vendor/acme/ui).
+        $routes->import('acme/ui', 'phem')->prefix('/ui');
     }
 }

@@ -5,10 +5,11 @@
 use crate::check;
 use crate::classes::{Index, Source};
 use crate::complete::{complete, ItemKind};
-use crate::project::{find_root, Project};
+use crate::project::{find_root, installer_root, Project};
 use crate::references::{counted, declaration_at, target_at, Reference, Usages};
 use crate::resolve::symbol_at;
 use crate::scanner::scan;
+use crate::sources::Sources;
 use crate::symbols::{document_symbols, Outline, OutlineKind};
 use lsp_types as lsp;
 use serde_json::{json, Value};
@@ -78,8 +79,8 @@ struct Document {
 
 struct Server<W: Write> {
     out: W,
-    /// The source directory of the `.phpm` files, relative to the project root.
-    source_dir: String,
+    /// The source roots of the projects.
+    sources: Sources,
     /// The root of the first workspace folder: the fallback for a file outside a project.
     workspace: Option<PathBuf>,
     docs: HashMap<PathBuf, Document>,
@@ -89,6 +90,8 @@ struct Server<W: Write> {
     dirty: BTreeSet<PathBuf>,
     /// The files with diagnostics, for each project.
     published: HashMap<PathBuf, BTreeSet<PathBuf>>,
+    /// The last error of the source roots that the user saw, for each project.
+    root_errors: HashMap<PathBuf, String>,
     link_support: bool,
     watch_registration: bool,
     next_id: i64,
@@ -99,13 +102,14 @@ impl<W: Write> Server<W> {
     fn new(out: W) -> Self {
         Server {
             out,
-            source_dir: "src".into(),
+            sources: Sources::new("src"),
             workspace: None,
             docs: HashMap::new(),
             projects: HashMap::new(),
             roots: HashMap::new(),
             dirty: BTreeSet::new(),
             published: HashMap::new(),
+            root_errors: HashMap::new(),
             link_support: false,
             watch_registration: false,
             next_id: 0,
@@ -195,7 +199,7 @@ impl<W: Write> Server<W> {
                 if let Ok(p) = serde_json::from_value::<lsp::DidCloseTextDocumentParams>(params) {
                     if let Some(file) = file_of(&p.text_document.uri) {
                         self.docs.remove(&file);
-                        self.phpm_changed(&file);
+                        self.phpm_changed(&file, true);
                     }
                 }
             }
@@ -216,7 +220,7 @@ impl<W: Write> Server<W> {
 
     fn initialize(&mut self, params: lsp::InitializeParams) -> Value {
         if let Some(dir) = params.initialization_options.as_ref().and_then(|o| o.get("sourceDir")).and_then(Value::as_str) {
-            self.source_dir = dir.to_string();
+            self.sources = Sources::new(dir);
         }
 
         #[allow(deprecated)]
@@ -307,11 +311,12 @@ impl<W: Write> Server<W> {
         let Some(file) = file_of(&uri) else { return };
 
         self.docs.insert(file.clone(), Document { uri, text });
-        self.phpm_changed(&file);
+        self.phpm_changed(&file, false);
     }
 
-    /// A `.phpm` file changed: in an open document, on disk, or both.
-    fn phpm_changed(&mut self, file: &Path) {
+    /// A `.phpm` file changed: in an open document, or on disk (`on_disk`: also a closed
+    /// document, whose text is the one on disk again).
+    fn phpm_changed(&mut self, file: &Path, on_disk: bool) {
         if file.extension().is_none_or(|e| e != "phpm") {
             return;
         }
@@ -322,15 +327,44 @@ impl<W: Write> Server<W> {
             project.update_phpm(file, text.as_deref());
         }
 
-        self.dirty.insert(root);
+        self.check_again(file, root, on_disk);
+    }
+
+    /// Marks the projects that compile a `.phpm` file as dirty (see `Sources::compiling()`): the
+    /// projects that install its package (in `vendor/`, or through a link), else the project of
+    /// the file. The workspace and the project that installs the file in `vendor/` are known
+    /// projects, also before the first check. A change on disk can change the roots (a new source
+    /// dir, a new package root): see `Sources::changed()`.
+    fn check_again(&mut self, file: &Path, root: PathBuf, on_disk: bool) {
+        let known: Vec<PathBuf> = self.workspace.clone().into_iter().chain(installer_root(file, self.workspace.as_deref())).collect();
+        if on_disk {
+            let candidates: Vec<PathBuf> = known.iter().cloned().chain([root.clone()]).collect();
+            self.sources.changed(file, &candidates);
+        }
+
+        for project in &known {
+            self.sources.of(project);
+        }
+
+        let compiling = self.sources.compiling(file);
+        if compiling.is_empty() {
+            self.dirty.insert(root);
+        } else {
+            self.dirty.extend(compiling);
+        }
     }
 
     fn file_changed(&mut self, file: &Path, typ: lsp::FileChangeType) {
         let name = file.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
         if name == "composer.json" || name == "installed.json" {
-            // A Composer update: index the projects again.
+            // A Composer update: index the projects again, read their source roots again, and check
+            // them again (a package can add or remove components). An error of the roots shows
+            // again if it is still there.
+            self.dirty.extend(self.projects.keys().chain(self.published.keys()).cloned());
             self.projects.clear();
             self.roots.clear();
+            self.sources.clear();
+            self.root_errors.clear();
             return;
         }
 
@@ -341,9 +375,9 @@ impl<W: Write> Server<W> {
                     project.delete_phpm(file);
                 }
 
-                self.dirty.insert(root);
+                self.check_again(file, root, true);
             } else if !self.docs.contains_key(file) {
-                self.phpm_changed(file);
+                self.phpm_changed(file, true);
             }
 
             return;
@@ -372,15 +406,30 @@ impl<W: Write> Server<W> {
     fn check_dirty(&mut self) {
         let open: HashMap<PathBuf, String> = self.docs.iter().map(|(p, d)| (p.clone(), d.text.clone())).collect();
 
-        for root in std::mem::take(&mut self.dirty) {
-            let src = root.join(&self.source_dir);
-            if !src.is_dir() {
+        // All the known projects first: a package that another project installs does not check
+        // itself.
+        let dirty = std::mem::take(&mut self.dirty);
+        for project in dirty.iter().chain(&self.workspace.clone()) {
+            self.sources.of(project);
+        }
+
+        for root in dirty {
+            if self.sources.installed_elsewhere(&root) {
+                // Its diagnostics go away, except on the files that another project publishes.
+                let before = self.published.remove(&root).unwrap_or_default();
+                let others: BTreeSet<PathBuf> = self.published.values().flatten().cloned().collect();
+                for file in before.difference(&others) {
+                    self.publish(file, vec![]);
+                }
+
                 continue;
             }
 
-            let files = check::check(&src, &open);
+            let checked = check::check(&root, self.sources.of(&root), &open);
+            self.root_error(&root, checked.error);
+
             let mut now = BTreeSet::new();
-            for f in &files {
+            for f in &checked.files {
                 if f.diags.is_empty() {
                     continue;
                 }
@@ -406,6 +455,22 @@ impl<W: Write> Server<W> {
                 self.publish(file, vec![]);
             }
         }
+    }
+
+    /// Shows an error of the source roots of a project (a wrong package root) one time: the check
+    /// runs on each change.
+    fn root_error(&mut self, root: &Path, error: Option<String>) {
+        let Some(error) = error else {
+            self.root_errors.remove(root);
+            return;
+        };
+
+        if self.root_errors.get(root) == Some(&error) {
+            return;
+        }
+
+        self.notify("window/showMessage", lsp::ShowMessageParams { typ: lsp::MessageType::ERROR, message: format!("phemc: {error}") });
+        self.root_errors.insert(root.to_path_buf(), error);
     }
 
     fn publish(&mut self, file: &Path, diagnostics: Vec<lsp::Diagnostic>) {
@@ -753,6 +818,339 @@ mod tests {
         let diagnostics = out.iter().find(|m| m["method"] == "textDocument/publishDiagnostics").unwrap();
         assert_eq!(diagnostics["params"]["diagnostics"][0]["code"], "E010");
         assert_eq!(diagnostics["params"]["diagnostics"][0]["range"]["start"], json!({"line": 5, "character": 12}));
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn checks_the_components_of_the_packages_with_the_app() {
+        let dir = crate::tests::temp_dir();
+        std::fs::write(dir.join("composer.json"), "{}").unwrap();
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        std::fs::create_dir_all(dir.join("vendor/composer")).unwrap();
+        std::fs::create_dir_all(dir.join("vendor/acme/ui/components")).unwrap();
+        std::fs::write(dir.join("vendor/acme/ui/composer.json"), "{}").unwrap();
+        std::fs::write(dir.join("vendor/composer/installed.json"), r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}]}"#).unwrap();
+        // W002 in the package: a list item with no key.
+        let badge = dir.join("vendor/acme/ui/components/Badge.phpm");
+        std::fs::write(&badge, "<?phpm\nnamespace Acme\\Ui;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Badge()\n{\n    return <ul>{% for i in [1] %}<li>{{ i }}</li>{% endfor %}</ul>;\n}\n").unwrap();
+        let file = dir.join("src/index.phpm");
+        let text = "<?phpm\nnamespace App;\n\nuse Acme\\Ui\\Badge;\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Home()\n{\n    return <div><Badge /><Missing /></div>;\n}\n";
+        std::fs::write(&file, text).unwrap();
+        let uri = lsp::Url::from_file_path(&file).unwrap();
+
+        let mut server = Server::new(Vec::new());
+        let input = [
+            json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}}}),
+            json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": uri, "languageId": "phpm", "version": 1, "text": text}}}),
+        ];
+        let bytes: String = input.into_iter().map(frame).collect();
+        let mut reader = BufReader::new(bytes.as_bytes());
+        while let Some(m) = read_message(&mut reader).unwrap() {
+            server.handle(m);
+        }
+        server.check_dirty();
+
+        // `<Badge>` is a component of the package. Only the app file has diagnostics.
+        let out = responses(&server.out);
+        let published: Vec<_> = out.iter().filter(|m| m["method"] == "textDocument/publishDiagnostics").collect();
+        assert_eq!(published.len(), 1, "{published:?}");
+        assert_eq!(published[0]["params"]["uri"], json!(uri));
+        let codes: Vec<_> = published[0]["params"]["diagnostics"].as_array().unwrap().iter().map(|d| d["code"].clone()).collect();
+        assert_eq!(codes, [json!("E010")]);
+
+        // The app checks a file of the package, but the class index of the file is the one of
+        // the package.
+        assert_eq!(installer_root(&badge, None), Some(dir.clone()));
+        assert_eq!(find_root(&badge, None), dir.join("vendor/acme/ui"));
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    /// Opens the documents in the workspace, and checks the dirty projects two times, as after
+    /// two changes. `between` comes before the second check.
+    fn open_and_check(workspace: &Path, docs: &[(&Path, &str)], between: Option<Value>) -> Vec<Value> {
+        let handle = |server: &mut Server<Vec<u8>>, input: Vec<Value>| {
+            let bytes: String = input.into_iter().map(frame).collect();
+            let mut reader = BufReader::new(bytes.as_bytes());
+            while let Some(m) = read_message(&mut reader).unwrap() {
+                server.handle(m);
+            }
+        };
+
+        let mut server = Server::new(Vec::new());
+        let root = lsp::Url::from_file_path(workspace).unwrap();
+        let mut input = vec![json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}, "rootUri": root}})];
+        for (file, text) in docs {
+            let uri = lsp::Url::from_file_path(file).unwrap();
+            input.push(json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": uri, "languageId": "phpm", "version": 1, "text": text}}}));
+        }
+
+        handle(&mut server, input);
+        server.check_dirty();
+
+        handle(&mut server, between.into_iter().collect());
+        let checked: Vec<PathBuf> = server.published.keys().cloned().collect();
+        server.dirty.extend(checked);
+        server.check_dirty();
+
+        responses(&server.out)
+    }
+
+    #[test]
+    fn a_wrong_package_root_shows_an_error_and_checks_the_app() {
+        let dir = crate::tests::temp_dir();
+        std::fs::write(dir.join("composer.json"), "{}").unwrap();
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        std::fs::create_dir_all(dir.join("vendor/composer")).unwrap();
+        std::fs::write(dir.join("vendor/composer/installed.json"), r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}]}"#).unwrap();
+        let file = dir.join("src/index.phpm");
+        let text = "<?phpm\nnamespace App;\n\nfunction Home()\n{\n    return <Missing />;\n}\n";
+        std::fs::write(&file, text).unwrap();
+
+        let out = open_and_check(&dir, &[(&file, text)], None);
+
+        // One message for two checks with the same error.
+        let messages: Vec<_> = out.iter().filter(|m| m["method"] == "window/showMessage").collect();
+        assert_eq!(messages.len(), 1, "{messages:?}");
+        assert!(messages[0]["params"]["message"].as_str().unwrap().contains("the package `acme/ui` gives the source dir `components`"));
+        let diagnostics = out.iter().find(|m| m["method"] == "textDocument/publishDiagnostics").unwrap();
+        assert_eq!(diagnostics["params"]["diagnostics"][0]["code"], "E010");
+
+        // After a Composer change, the error shows again.
+        let installed = lsp::Url::from_file_path(dir.join("vendor/composer/installed.json")).unwrap();
+        let change = json!({"jsonrpc": "2.0", "method": "workspace/didChangeWatchedFiles", "params": {"changes": [{"uri": installed, "type": 2}]}});
+        let out = open_and_check(&dir, &[(&file, text)], Some(change));
+        assert_eq!(out.iter().filter(|m| m["method"] == "window/showMessage").count(), 2);
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    /// An app in `dir` with two packages: `acme/base` in `vendor/`, and `acme/ui` in
+    /// `packages/ui`, linked in `vendor/` (a Composer path repository). `acme/ui` gives its own root
+    /// too, but it has no `vendor/`: only the app has `acme/base`.
+    #[cfg(unix)]
+    fn linked_app(dir: &Path) {
+        let write = |file: &str, text: &str| {
+            std::fs::create_dir_all(dir.join(file).parent().unwrap()).unwrap();
+            std::fs::write(dir.join(file), text).unwrap();
+        };
+
+        write("composer.json", "{}");
+        write("src/index.phpm", "<?phpm\nnamespace App;\n\nfunction Home()\n{\n    return <p />;\n}\n");
+        write("vendor/acme/base/components/Base.phpm", "<?phpm\nnamespace Acme\\Base;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Base()\n{\n    return <b />;\n}\n");
+        write("packages/ui/composer.json", r#"{"name": "acme/ui", "extra": {"phem": {"source": "components"}}}"#);
+        write("packages/ui/components/Badge.phpm", "<?phpm\n");
+        write("vendor/composer/installed.json", r#"{"packages": [
+            {"name": "acme/base", "install-path": "../acme/base", "extra": {"phem": {"source": "components"}}},
+            {"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}
+        ]}"#);
+        std::os::unix::fs::symlink(dir.join("packages/ui"), dir.join("vendor/acme/ui")).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_app_checks_a_linked_package_at_its_real_files() {
+        let dir = crate::tests::temp_dir();
+        linked_app(&dir);
+        let badge = dir.join("packages/ui/components/Badge.phpm");
+        let uri = json!(lsp::Url::from_file_path(&badge).unwrap());
+        let publishes = |out: &[Value]| out.iter().filter(|m| m["method"] == "textDocument/publishDiagnostics" && m["params"]["uri"] == uri).map(|m| m["params"]["diagnostics"].clone()).collect::<Vec<_>>();
+
+        // Only the package file is open, and the app has no check yet. The editor has the text of
+        // the document, not the text on disk. `<Base>` is in the app only, so the package does
+        // not check itself: it would report E010.
+        let text = "<?phpm\nnamespace Acme\\Ui;\n\nuse Acme\\Base\\Base;\n\nfunction Badge()\n{\n    return <div><Base /><Missing /></div>;\n}\n";
+        let out = open_and_check(&dir, &[(&badge, text)], None);
+        let codes: Vec<_> = publishes(&out).iter().flat_map(|d| d.as_array().unwrap().iter().map(|d| d["code"].clone()).collect::<Vec<_>>()).collect();
+        assert!(!codes.is_empty() && codes.iter().all(|c| c == "E010"), "{codes:?}");
+        assert!(publishes(&out).iter().all(|d| d.as_array().unwrap().len() == 1), "only `<Missing>`: {:?}", publishes(&out));
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    /// Gives the messages to a server.
+    fn feed(server: &mut Server<Vec<u8>>, input: Vec<Value>) {
+        let bytes: String = input.into_iter().map(frame).collect();
+        let mut reader = BufReader::new(bytes.as_bytes());
+        while let Some(m) = read_message(&mut reader).unwrap() {
+            server.handle(m);
+        }
+    }
+
+    fn file_event(file: &Path, typ: u32) -> Value {
+        json!({"jsonrpc": "2.0", "method": "workspace/didChangeWatchedFiles", "params": {"changes": [{"uri": lsp::Url::from_file_path(file).unwrap(), "type": typ}]}})
+    }
+
+    /// The codes of the last diagnostics of a file.
+    fn last_codes(server: &Server<Vec<u8>>, file: &Path) -> Vec<Value> {
+        let uri = json!(lsp::Url::from_file_path(file).unwrap());
+        let out = responses(&server.out);
+        let last = out.iter().rev().find(|m| m["method"] == "textDocument/publishDiagnostics" && m["params"]["uri"] == uri);
+        last.map(|m| m["params"]["diagnostics"].as_array().unwrap().iter().map(|d| d["code"].clone()).collect()).unwrap_or_default()
+    }
+
+    #[test]
+    fn a_new_package_root_is_checked_after_its_first_file() {
+        // A package whose root does not exist yet.
+        let dir = crate::tests::temp_dir();
+        std::fs::write(dir.join("composer.json"), r#"{"name": "acme/ui", "extra": {"phem": {"source": "components"}}}"#).unwrap();
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        let mut server = Server::new(Vec::new());
+        feed(&mut server, vec![json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}, "rootUri": lsp::Url::from_file_path(&dir).unwrap()}})]);
+        assert!(server.sources.of(&dir).error.is_some());
+
+        let badge = dir.join("components/Badge.phpm");
+        std::fs::create_dir_all(badge.parent().unwrap()).unwrap();
+        std::fs::write(&badge, "<?phpm\nnamespace Acme\\Ui;\n\nfunction Badge()\n{\n    return <Missing />;\n}\n").unwrap();
+        feed(&mut server, vec![file_event(&badge, 1)]);
+        server.check_dirty();
+
+        assert_eq!(last_codes(&server, &badge), [json!("E010")]);
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_package_that_the_app_installs_does_not_check_itself() {
+        let dir = crate::tests::temp_dir();
+        linked_app(&dir);
+        let badge = dir.join("packages/ui/components/Badge.phpm");
+        std::fs::write(&badge, "<?phpm\nnamespace Acme\\Ui;\n\nuse Acme\\Base\\Base;\n\nfunction Badge()\n{\n    return <div><Base /><Missing /></div>;\n}\n").unwrap();
+
+        // The package checked itself before (E010 for `<Base>` and `<Missing>`), then a Composer
+        // change makes the app and the package dirty.
+        let mut server = Server::new(Vec::new());
+        feed(&mut server, vec![json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}, "rootUri": lsp::Url::from_file_path(&dir).unwrap()}})]);
+        let package = dir.join("packages/ui");
+        server.dirty.insert(package.clone());
+        server.workspace = None;
+        server.check_dirty();
+        assert_eq!(last_codes(&server, &badge), [json!("E010"), json!("E010")]);
+
+        server.workspace = Some(dir.clone());
+        server.dirty.extend([dir.clone(), package.clone()]);
+        server.check_dirty();
+
+        // Only the app checks the file: `<Base>` is a component of the app.
+        assert_eq!(last_codes(&server, &badge), [json!("E010")]);
+        assert!(!server.published.contains_key(&package));
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn the_files_of_the_packages_are_read_one_time() {
+        let dir = crate::tests::temp_dir();
+        std::fs::write(dir.join("composer.json"), "{}").unwrap();
+        std::fs::create_dir_all(dir.join("vendor/acme/ui/components")).unwrap();
+        std::fs::create_dir_all(dir.join("vendor/composer")).unwrap();
+        std::fs::write(dir.join("vendor/composer/installed.json"), r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}]}"#).unwrap();
+        let badge = dir.join("vendor/acme/ui/components/Badge.phpm");
+        std::fs::write(&badge, "<?phpm\nnamespace Acme\\Ui;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Badge()\n{\n    return <b />;\n}\n").unwrap();
+        let home = dir.join("src/index.phpm");
+        let text = "<?phpm\nnamespace App;\n\nuse Acme\\Ui\\Badge;\n\nfunction Home()\n{\n    return <Badge />;\n}\n";
+        std::fs::create_dir_all(home.parent().unwrap()).unwrap();
+        std::fs::write(&home, text).unwrap();
+
+        let mut server = Server::new(Vec::new());
+        feed(&mut server, vec![
+            json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}, "rootUri": lsp::Url::from_file_path(&dir).unwrap()}}),
+            json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": lsp::Url::from_file_path(&home).unwrap(), "languageId": "phpm", "version": 1, "text": text}}}),
+        ]);
+        server.check_dirty();
+        assert_eq!(last_codes(&server, &home), Vec::<Value>::new());
+
+        // A change on disk with no event: the check keeps the text that it read.
+        std::fs::write(&badge, "<?phpm\nnamespace Acme\\Ui;\n").unwrap();
+        server.dirty.insert(dir.clone());
+        server.check_dirty();
+        assert_eq!(last_codes(&server, &home), Vec::<Value>::new());
+
+        // The event of the change: the check reads the file again.
+        feed(&mut server, vec![file_event(&badge, 2)]);
+        server.check_dirty();
+        assert_eq!(last_codes(&server, &home), [json!("E010")]);
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_linked_package_file_open_in_vendor_keeps_its_path() {
+        let dir = crate::tests::temp_dir();
+        linked_app(&dir);
+        let badge = dir.join("vendor/acme/ui/components/Badge.phpm");
+        let text = "<?phpm\nnamespace Acme\\Ui;\n\nfunction Badge()\n{\n    return <Missing />;\n}\n";
+
+        let out = open_and_check(&dir, &[(&badge, text)], None);
+
+        // The editor opened the file in `vendor/`: the diagnostics go there, not to the real path.
+        let uri = json!(lsp::Url::from_file_path(&badge).unwrap());
+        let published = out.iter().find(|m| m["method"] == "textDocument/publishDiagnostics" && m["params"]["uri"] == uri).unwrap();
+        assert_eq!(published["params"]["diagnostics"][0]["code"], "E010");
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    /// An app in `dir` with the package `acme/ui` in `vendor/`, and its page that renders `<Badge>`.
+    /// Returns the file of the package and the file of the page.
+    fn app_with_badge(dir: &Path) -> (PathBuf, PathBuf) {
+        std::fs::write(dir.join("composer.json"), "{}").unwrap();
+        std::fs::create_dir_all(dir.join("vendor/composer")).unwrap();
+        std::fs::create_dir_all(dir.join("vendor/acme/ui/components")).unwrap();
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        std::fs::write(dir.join("vendor/composer/installed.json"), r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}]}"#).unwrap();
+        let badge = dir.join("vendor/acme/ui/components/Badge.phpm");
+        std::fs::write(&badge, "<?phpm\nnamespace Acme\\Ui;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Badge()\n{\n    return <b />;\n}\n").unwrap();
+        let home = dir.join("src/index.phpm");
+        std::fs::write(&home, "<?phpm\nnamespace App;\n\nuse Acme\\Ui\\Badge;\n\nfunction Home()\n{\n    return <Badge />;\n}\n").unwrap();
+
+        (badge, home)
+    }
+
+    fn open(file: &Path) -> Value {
+        let text = std::fs::read_to_string(file).unwrap();
+        json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": lsp::Url::from_file_path(file).unwrap(), "languageId": "phpm", "version": 1, "text": text}}})
+    }
+
+    #[test]
+    fn a_closed_package_document_is_read_again_from_disk() {
+        let dir = crate::tests::temp_dir();
+        let (badge, home) = app_with_badge(&dir);
+        let mut server = Server::new(Vec::new());
+        feed(&mut server, vec![json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}, "rootUri": lsp::Url::from_file_path(&dir).unwrap()}}), open(&home)]);
+        server.check_dirty();
+        assert_eq!(last_codes(&server, &home), Vec::<Value>::new());
+
+        // The package file changes on disk with no event, and the editor opens and closes it.
+        std::fs::write(&badge, "<?phpm\nnamespace Acme\\Ui;\n").unwrap();
+        let uri = lsp::Url::from_file_path(&badge).unwrap();
+        feed(&mut server, vec![open(&badge), json!({"jsonrpc": "2.0", "method": "textDocument/didClose", "params": {"textDocument": {"uri": uri}}})]);
+        server.check_dirty();
+
+        assert_eq!(last_codes(&server, &home), [json!("E010")]);
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn a_removed_package_root_is_read_again() {
+        let dir = crate::tests::temp_dir();
+        let (badge, home) = app_with_badge(&dir);
+        let mut server = Server::new(Vec::new());
+        feed(&mut server, vec![json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}, "rootUri": lsp::Url::from_file_path(&dir).unwrap()}}), open(&home)]);
+        server.check_dirty();
+
+        // The package goes away, and `installed.json` has it still (a `composer update` that runs).
+        std::fs::remove_dir_all(dir.join("vendor/acme")).unwrap();
+        feed(&mut server, vec![file_event(&badge, 3)]);
+        server.check_dirty();
+
+        let out = responses(&server.out);
+        assert!(out.iter().any(|m| m["method"] == "window/showMessage" && m["params"]["message"].as_str().unwrap().contains("acme/ui")));
+        assert_eq!(last_codes(&server, &home), [json!("E010")]);
 
         std::fs::remove_dir_all(dir).unwrap();
     }

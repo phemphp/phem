@@ -31,7 +31,6 @@ final class ContextProfilerTest extends TestCase
     public function fixtureKernel(): TestKernel
     {
         if (null === $this->kernel) {
-            TestKernel::compileSources();
             $this->kernel = new TestKernel('profiler', true);
             $this->kernel->boot();
         }

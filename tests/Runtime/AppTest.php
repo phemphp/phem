@@ -397,15 +397,16 @@ final class AppTest extends TestCase
     {
         /** @var Manifest $manifest */
         $manifest = $this->fixtureKernel()->getContainer()->get('phem.manifest');
+        $projectDir = $this->fixtureKernel()->getProjectDir();
         $error = new \RuntimeException('outer', 0, new RuntimeError('Boom.', 3, new Source('', '@phpm/page/index.6.twig')));
 
-        (new SourceMapListener(new SourceMap($manifest)))->map($error);
+        (new SourceMapListener(new SourceMap($manifest, $projectDir)))->map($error);
 
         $twigError = $error->getPrevious();
         self::assertInstanceOf(RuntimeError::class, $twigError);
         self::assertNotNull($twigError->getSourceContext());
         self::assertSame('src/page/index.phpm', $twigError->getSourceContext()->getName());
-        self::assertSame($manifest->sourceDir().'/page/index.phpm', $twigError->getFile());
+        self::assertSame($projectDir.'/src/page/index.phpm', $twigError->getFile());
         $templateLine = (require $manifest->file())['templates']['page/index.6.twig']['line'];
         self::assertSame($templateLine + 2, $twigError->getLine(), 'line 3 of the template');
     }

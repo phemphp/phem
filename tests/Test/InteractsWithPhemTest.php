@@ -35,11 +35,6 @@ final class InteractsWithPhemTest extends KernelTestCase
     private const CATALOG = 'App\Page\Catalog';
     private const UPLOADER = 'App\Page\Uploader';
 
-    public static function setUpBeforeClass(): void
-    {
-        TestKernel::compileSources();
-    }
-
     protected static function getKernelClass(): string
     {
         return TestKernel::class;

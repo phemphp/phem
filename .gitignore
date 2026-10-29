@@ -1,6 +1,8 @@
 .DS_Store
 /compiler/target/
 vendor/
+# The fixture Composer packages of the test app.
+!/tests/Fixtures/app/vendor/
 var/
 composer.lock
 .phpunit.cache/

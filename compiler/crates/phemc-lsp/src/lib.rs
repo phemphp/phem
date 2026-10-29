@@ -17,6 +17,7 @@ mod resolve;
 mod scanner;
 mod scope;
 mod server;
+mod sources;
 mod symbols;
 mod twig;
 mod types;

@@ -84,8 +84,8 @@ final class PageUrlGeneratorTest extends TestCase
 
     private function urls(): PageUrlGenerator
     {
-        file_put_contents($this->dir.'/manifest.php', '<?php return '.var_export(['pages' => [Paged::class, Known::class, 'Phem\\Tests\\Fixtures\\PathPages\\FunctionPage']], true).';');
-        $routes = (new PageLoader(new Manifest($this->dir, $this->dir)))->load('.', 'phem');
+        file_put_contents($this->dir.'/manifest.php', '<?php return '.var_export(['pages' => [Paged::class => '', Known::class => '', 'Phem\\Tests\\Fixtures\\PathPages\\FunctionPage' => '']], true).';');
+        $routes = (new PageLoader(new Manifest($this->dir)))->load('.', 'phem');
 
         return new PageUrlGenerator(new UrlGenerator($routes, new RequestContext()));
     }

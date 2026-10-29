@@ -13,6 +13,7 @@ phemc-twig-scan = { path = "crates/phemc-twig-scan" }
 phemc-analyze = { path = "crates/phemc-analyze" }
 phemc-codegen = { path = "crates/phemc-codegen" }
 phemc-lsp = { path = "crates/phemc-lsp" }
+phemc-sources = { path = "crates/phemc-sources" }
 anyhow = "1"
 blake3 = "1"
 clap = { version = "4", features = ["derive"] }

@@ -21,9 +21,24 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Clone, Debug)]
 pub struct SourceInput {
-    /// Path relative to the source root, with `/` separators.
+    /// The key of the file in the build, with `/` separators: the path in the source root of the
+    /// app, or `vendor/<package>/<path in the package root>` for a package file. The output
+    /// paths and the template names come from it.
     pub rel: String,
+    /// The path of the file from the project root (`src/Page/index.phpm`), for the diagnostics
+    /// and the source map of the runtime.
+    pub path: String,
+    /// The Composer package of the file, or `None` for a file of the app.
+    pub package: Option<String>,
     pub text: String,
+}
+
+impl SourceInput {
+    /// A file of the app whose path is its key (the tests, and a build with no project root).
+    pub fn app(rel: impl Into<String>, text: impl Into<String>) -> Self {
+        let rel = rel.into();
+        Self { path: rel.clone(), rel, package: None, text: text.into() }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -41,6 +56,7 @@ pub struct TemplateOutput {
     pub name: String,
     #[serde(skip)]
     pub content: String,
+    /// The path of the `.phpm` file from the project root.
     pub source: String,
     /// The `.phpm` line of the template's first line.
     pub line: usize,
@@ -49,8 +65,21 @@ pub struct TemplateOutput {
 #[derive(Debug)]
 pub struct FileDiagnostics {
     pub rel: String,
+    /// The path of the file from the project root.
+    pub path: String,
+    /// The Composer package of the file, or `None` for a file of the app.
+    pub package: Option<String>,
     pub text: String,
     pub diags: Vec<Diagnostic>,
+}
+
+impl FileDiagnostics {
+    /// The diagnostics that the tools show: all of them for a file of the app, and only the
+    /// errors for a package file. An error stops the build, but the app cannot fix a warning of
+    /// a package.
+    pub fn shown(&self) -> impl Iterator<Item = &Diagnostic> {
+        self.diags.iter().filter(|d| self.package.is_none() || d.is_error())
+    }
 }
 
 #[derive(Debug)]
@@ -63,8 +92,9 @@ pub struct ProjectOutput {
 pub struct Manifest {
     pub version: String,
     pub components: Registry,
-    /// The class components with a `#[Page]` or `#[Route]` attribute (the runtime reads the routes from them).
-    pub pages: Vec<String>,
+    /// The class components with a `#[Page]` or `#[Route]` attribute (the runtime reads the routes
+    /// from them), with the Composer package of each one (`""` for a page of the app).
+    pub pages: BTreeMap<String, String>,
     pub templates: BTreeMap<String, TemplateOutput>,
     /// Compiled PHP files, relative to the output directory.
     pub files: Vec<String>,
@@ -85,7 +115,8 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
         .into_par_iter()
         .map(|input| match lex(&input.text) {
             Ok(lexed) => {
-                let info = phemc_analyze::scan(&input.rel, &input.text, &lexed);
+                let mut info = phemc_analyze::scan(&input.rel, &input.text, &lexed);
+                info.path = input.path.clone();
                 Parsed { input, lexed: Some(lexed), info, diags: vec![] }
             }
             Err(d) => Parsed { info: FileInfo { rel: input.rel.clone(), ..Default::default() }, input, lexed: None, diags: vec![d] },
@@ -108,7 +139,7 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
     dup.extend(contexts::check(&registry, &infos, &uses));
 
     // Pass 2: generate each file.
-    let results: Vec<(Option<FileOutput>, FileDiagnostics, Vec<String>)> = parsed
+    let results: Vec<(Option<FileOutput>, FileDiagnostics, Vec<(String, String)>)> = parsed
         .into_par_iter()
         .map(|p| {
             let mut diags = p.diags;
@@ -121,15 +152,17 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
             });
 
             diags.sort_by_key(|d| d.span.start);
-            let pages = p.info.routes.iter().map(|r| r.fqn.clone()).collect();
-            (out, FileDiagnostics { rel: p.input.rel.clone(), text: p.input.text, diags }, pages)
+            let package = p.input.package.clone().unwrap_or_default();
+            let pages = p.info.routes.iter().map(|r| (r.fqn.clone(), package.clone())).collect();
+            let SourceInput { rel, path, package, text } = p.input;
+            (out, FileDiagnostics { rel, path, package, text, diags }, pages)
         })
         .collect();
 
     let has_errors = results.iter().any(|(_, d, _)| d.diags.iter().any(Diagnostic::is_error));
     let mut files = Vec::new();
     let mut all_diags = Vec::new();
-    let mut pages = Vec::new();
+    let mut pages = BTreeMap::new();
     for (out, d, p) in results {
         pages.extend(p);
         if let Some(o) = out {
@@ -144,7 +177,6 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
 
     files.sort_by(|a, b| a.rel.cmp(&b.rel));
     let files = load_order(files, &bases);
-    pages.sort();
 
     let mut templates = BTreeMap::new();
     for f in &files {
@@ -266,14 +298,14 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
         let newlines = m.span.text(src).matches('\n').count();
         let call = format!("new \\Phem\\Element({}, [{}]){}", php_str(&name), vars.join(", "), "\n".repeat(newlines));
         replacements.push((m.span, call));
-        templates.push(TemplateOutput { name, content, source: input.rel.clone(), line: line_col(src, m.span.start).0 });
+        templates.push(TemplateOutput { name, content, source: input.path.clone(), line: line_col(src, m.span.start).0 });
     }
 
     diags.append(&mut lowerer.diags);
 
     // Each `<?phpm` tag becomes `<?php`. The first one gets a header comment on its line (keeps line numbers).
     for (i, open) in lexed.tokens.iter().filter(|t| t.kind == TokKind::OpenTag).enumerate() {
-        let tag = if i == 0 { format!("<?php /* compiled by phemc from {}; do not edit */", input.rel) } else { "<?php".into() };
+        let tag = if i == 0 { format!("<?php /* compiled by phemc from {}; do not edit */", input.path) } else { "<?php".into() };
         replacements.push((open.span, tag));
     }
 

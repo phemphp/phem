@@ -1,0 +1,21 @@
+<?phpm
+
+namespace Acme\Kit\Page;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+use Phem\Root;
+
+use function Acme\Kit\Button;
+
+// A page of the package: the test app imports its route.
+#[Page('/demo')]
+function Demo(): Node
+{
+    return (
+        <html lang="en">
+            <head><title>Demo</title></head>
+            <body><Root><p id="demo"><Button label="Demo" /></p></Root></body>
+        </html>
+    );
+}

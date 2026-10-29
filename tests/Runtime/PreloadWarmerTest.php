@@ -62,6 +62,6 @@ final class PreloadWarmerTest extends TestCase
 
     private function warmer(): PreloadWarmer
     {
-        return new PreloadWarmer(new Manifest($this->dir.'/var/phem', $this->dir.'/src'));
+        return new PreloadWarmer(new Manifest($this->dir.'/var/phem'));
     }
 }

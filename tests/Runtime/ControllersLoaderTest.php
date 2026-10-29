@@ -45,8 +45,8 @@ final class ControllersLoaderTest extends TestCase
 
     public function testTheResourceHasTheRoutesOfTheControllersAndOfThePages(): void
     {
-        file_put_contents($this->dir.'/manifest.php', '<?php return '.var_export(['pages' => [Paged::class]], true).';');
-        $loader = new ControllersLoader(new ClosureLoader(), new PageLoader(new Manifest($this->dir, $this->dir)));
+        file_put_contents($this->dir.'/manifest.php', '<?php return '.var_export(['pages' => [Paged::class => '']], true).';');
+        $loader = new ControllersLoader(new ClosureLoader(), new PageLoader(new Manifest($this->dir)));
 
         $routes = $loader->load(static function (): RouteCollection {
             $routes = new RouteCollection();
@@ -62,14 +62,14 @@ final class ControllersLoaderTest extends TestCase
 
     public function testTheResourceWithoutBuild(): void
     {
-        $loader = new ControllersLoader(new AttributeServicesLoader(), new PageLoader(new Manifest($this->dir.'/missing', $this->dir)));
+        $loader = new ControllersLoader(new AttributeServicesLoader(), new PageLoader(new Manifest($this->dir.'/missing')));
 
         self::assertCount(0, $loader->load('routing.controllers'));
     }
 
     public function testItSupportsTheResourceOfTheDecoratedLoader(): void
     {
-        $loader = new ControllersLoader(new AttributeServicesLoader(), new PageLoader(new Manifest($this->dir, $this->dir)));
+        $loader = new ControllersLoader(new AttributeServicesLoader(), new PageLoader(new Manifest($this->dir)));
 
         self::assertTrue($loader->supports('routing.controllers'));
         self::assertFalse($loader->supports('.', 'phem'));
@@ -78,7 +78,7 @@ final class ControllersLoaderTest extends TestCase
     public function testItGivesTheResolverToTheDecoratedLoader(): void
     {
         $controllers = new AttributeServicesLoader();
-        $loader = new ControllersLoader($controllers, new PageLoader(new Manifest($this->dir, $this->dir)));
+        $loader = new ControllersLoader($controllers, new PageLoader(new Manifest($this->dir)));
         $resolver = new LoaderResolver([$loader]);
 
         self::assertSame($resolver, $controllers->getResolver());
