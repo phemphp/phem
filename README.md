@@ -72,15 +72,14 @@ composer require phem/phem
 symfony serve
 ```
 
-See [Getting started](docs/getting-started.md). Build a new app from scratch, and a production image.
+Build a new app from scratch using Phem. See [Getting started](docs/getting-started.md).
 
-## Documentation
+## More documentation
 
+- [How it works](docs/how-it-works.md)
+- [Compiling `.phpm` files](docs/compiling.md)
 - [The `.phpm` syntax](docs/phpm-syntax.md)
-- [Compiling and running `.phpm` files](docs/compiling.md), with the list of diagnostics
 - [Testing components and pages](docs/testing.md)
-- [How it works](docs/how-it-works.md), from React to Phem, and the limits
-- [Contributing](docs/contributing.md): the repository layout, the editor support and the release steps
 
 ## License
 
