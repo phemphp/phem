@@ -996,6 +996,86 @@ fn a_route_name_goes_to_the_page() {
     assert!(hover(&r).contains("/gallery"));
 }
 
+// --- The components of the installed packages ----------------------------------------------------
+
+const BADGE: &str = "<?phpm\nnamespace Acme\\Ui;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Badge(string $label)\n{\n    return <b>{{ label }}</b>;\n}\n";
+
+/// A project that installs the package `acme/ui` (with the `.phpm` root `components`) in its
+/// vendor dir `vendor_dir`.
+fn package_project(vendor_dir: &str) -> PathBuf {
+    let dir = temp_dir();
+    let files = [
+        ("composer.json".to_string(), format!(r#"{{"config": {{"vendor-dir": "{vendor_dir}"}}}}"#)),
+        (format!("{vendor_dir}/composer/installed.json"), r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}]}"#.to_string()),
+        (format!("{vendor_dir}/acme/ui/composer.json"), "{}".to_string()),
+        (format!("{vendor_dir}/acme/ui/components/Badge.phpm"), BADGE.to_string()),
+    ];
+
+    for (name, content) in files {
+        let path = dir.join(name);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, content).unwrap();
+    }
+
+    dir
+}
+
+/// The completion items at the cursor of `source`, in the page of the project.
+fn complete_in(project: &Project, source: &str) -> Vec<Item> {
+    let (text, offset) = cursor(source);
+    let index = Index::new(project, Source::new(project.root.join("src/page/index.phpm"), text));
+
+    complete(&index, offset, None)
+}
+
+#[test]
+fn a_component_of_an_installed_package_completes_and_goes_to_its_file() {
+    let dir = package_project("deps");
+    let badge = dir.join("deps/acme/ui/components/Badge.phpm");
+    let mut project = Project::load(&dir);
+
+    let source = format!("{PAGE}function Home()\n{{\n    return <Bad|\n}}\n");
+    let items = complete_in(&project, &source);
+    let item = items.iter().find(|i| i.label == "Badge").expect("no item `Badge`");
+    assert!(apply(&cursor(&source).0, item).contains("use function Acme\\Ui\\Badge;"));
+
+    let (text, offset) = cursor(&format!("{PAGE}use function Acme\\Ui\\Badge;\n\nfunction Home()\n{{\n    return <Ba‸dge label=\"x\" />;\n}}\n"));
+    let symbol = symbol_at(&Index::new(&project, Source::new(dir.join("src/page/index.phpm"), text)), offset).expect("no symbol");
+    assert_eq!(symbol.location.expect("no location").file, badge);
+
+    // The package file changes on disk: the index of the project reads it again.
+    std::fs::write(&badge, BADGE.replace("Badge", "Chip")).unwrap();
+    project.package_changed(&badge, None);
+    let items = complete_in(&project, &format!("{PAGE}function Home()\n{{\n    return <C|\n}}\n"));
+    assert!(items.iter().any(|i| i.label == "Chip") && !items.iter().any(|i| i.label == "Badge"));
+
+    // The project that installs the package comes from its vendor dir.
+    assert_eq!(crate::project::installer_root(&badge, None), Some(dir.clone()));
+
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn a_component_of_a_linked_package_has_its_real_path() {
+    // As a Composer path repository: `vendor/acme/ui` is a link to `packages/ui`.
+    let dir = package_project("vendor");
+    std::fs::rename(dir.join("vendor/acme/ui"), dir.join("packages-ui")).unwrap();
+    std::os::unix::fs::symlink(dir.join("packages-ui"), dir.join("vendor/acme/ui")).unwrap();
+    let real = dir.join("packages-ui/components/Badge.phpm");
+    let mut project = Project::load(&dir);
+
+    assert_eq!(project.package_file(&dir.join("vendor/acme/ui/components/Badge.phpm")), Some(real.clone()));
+    assert_eq!(project.package_file(&real), Some(real.clone()));
+
+    // The open document at the real path replaces the file.
+    project.package_changed(&real, Some(&BADGE.replace("Badge", "Chip")));
+    let items = complete_in(&project, &format!("{PAGE}function Home()\n{{\n    return <C|\n}}\n"));
+    assert!(items.iter().any(|i| i.label == "Chip") && !items.iter().any(|i| i.label == "Badge"));
+
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
 // --- Robustness -----------------------------------------------------------------------------------
 
 /// Runs the completion and the resolver at each offset of `text`. They must not panic: a panic

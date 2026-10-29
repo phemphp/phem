@@ -70,9 +70,11 @@ pub struct ComponentDef {
     pub kind: Kind,
     /// The key of the source file in the build (empty for built-in components): the path in the
     /// source root of the app, or `vendor/<package>/<path in the package root>`.
-    pub file: String,
-    /// The path of the source file from the project root, for the messages.
     #[serde(skip)]
+    pub file: String,
+    /// The path of the source file from the project root, for the messages. The manifest has it
+    /// as `source`, as the `source` of a template.
+    #[serde(rename = "source")]
     pub path: String,
     /// The Twig template of a template component.
     #[serde(skip_serializing_if = "Option::is_none")]

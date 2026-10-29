@@ -180,17 +180,16 @@ diagnostics also compile only the source directory of the app.
   - **`Phem\Test\TestKernel`.** `phem/phem` ships a base kernel, from the `TestKernel` of the
     Phem tests (`tests/Fixtures/TestKernel.php`): FrameworkBundle, TwigBundle,
     StimulusBundle and PhemBundle, `framework.test`, the `routing.controllers` routes, and the
-    build of the test app with `phemc` once per test run (`vendor/bin/phemc`, or `PHEMC_BIN`).
-    A package gives the dir of its test app, and adds its bundles, its config and its routes.
-    The tests of Phem use it too. Peer: `nyholm/symfony-bundle-test`.
+    build of the test app with `phemc` once per test run (`PHEMC_BIN`, `vendor/bin/phemc`, or
+    the `PATH`). The project dir is the root of the package, so `phemc` reads the
+    `extra.phem.source` of its `composer.json`. The test app is in `tests/app/src`
+    (`sourceDir()`), and the output in `var/phem` (`buildDir()`). A package adds its bundles,
+    its config and its routes. The tests of Phem use it too. Peer: `nyholm/symfony-bundle-test`.
 
     ```php
+    // tests/Kernel.php
     final class Kernel extends \Phem\Test\TestKernel
     {
-        public function getProjectDir(): string
-        {
-            return __DIR__.'/app';
-        }
     }
     ```
 

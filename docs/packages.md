@@ -71,7 +71,8 @@ in one build:
   the components of a package (an unknown prop, a missing slot) show as usual.
 - Two packages that declare the same component are E014. The message gives the path of the
   other file.
-- The language server checks the packages with the app too (see
+- The language server checks the packages with the app too, and it gives the completion, the
+  definition and the hover of their components (see
   [The language server](compiling.md#the-language-server)).
 - `phemc watch` also watches `vendor/composer/installed.json`: after `composer require` or
   `composer update`, it builds again with the new packages. It also watches the directory of
@@ -152,7 +153,8 @@ final class Kernel extends \Phem\Test\TestKernel
 - The kernel has FrameworkBundle, TwigBundle, StimulusBundle and PhemBundle, `framework.test`,
   and the `routing.controllers` routes. Override `registerBundles()`, `configureContainer()` or
   `configureRoutes()` to add more, and call the parent method. Override `sourceDir()` for
-  another directory of the test app.
+  another directory of the test app, and `buildDir()` for another directory of the `phemc`
+  output (the default is `var/phem`, and it is also the `phem.build_dir` option).
 
 The tests use `InteractsWithPhem`, as in an app (see [Testing](testing.md)):
 

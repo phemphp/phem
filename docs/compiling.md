@@ -269,7 +269,7 @@ var/phem/
 ├── php/Page/index.php          the PHP code; each markup literal becomes new \Phem\Element('Page/index.0.twig', [...])
 ├── php/vendor/acme/ui/...      the PHP code of a Composer package (its templates are in templates/vendor/acme/ui/)
 ├── templates/Page/index.0.twig one Twig template for each markup literal (Twig name: @phpm/Page/index.0.twig)
-├── manifest.php / manifest.json components (kind, props, slots), pages, template → .phpm line map
+├── manifest.php / manifest.json components (kind, source, props, slots), pages, template → .phpm line map
 ├── autoload.php                 requires all compiled PHP files
 └── preload.php                  the Composer autoloader and autoload.php, for an opcache.preload of its own
 var/cache/<env>/twig/            the Twig cache (filled by the warmup)
@@ -356,7 +356,8 @@ outline of `.phpm` files. The editors bundle the same server, compiled to WebAss
 application: see [Getting started](getting-started.md#use-claude-code) and
 `editors/claude-code/README.md`.
 
-The server also checks the `.phpm` files of the Composer packages with the app. It shows the
+The server also checks the `.phpm` files of the Composer packages with the app, and it gives the
+completion, the definition and the hover of their components in the files of the app. It shows the
 errors of a package file in the file (also at its real path, for a package of a Composer path
 repository). The app that installs a package checks its files: a linked package in the same
 workspace does not check itself. The server reads the package roots and the package files one

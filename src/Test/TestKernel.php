@@ -44,7 +44,8 @@ use Symfony\UX\StimulusBundle\StimulusBundle;
  *     </php>
  *
  * Use InteractsWithPhem in a KernelTestCase to mount the components and visit the pages.
- * Override sourceDir() for another directory of the test application. To add bundles,
+ * Override sourceDir() for another directory of the test application, and buildDir() for
+ * another directory of the phemc output (it is also the `phem.build_dir` option). To add bundles,
  * configuration or routes, override registerBundles(), configureContainer() or
  * configureRoutes(), and call the parent method.
  *
@@ -76,6 +77,12 @@ abstract class TestKernel extends Kernel
         return 'tests/app/src';
     }
 
+    /** The phemc output (`phemc build --out`, and the `phem.build_dir` option), relative to the project dir. */
+    protected function buildDir(): string
+    {
+        return 'var/phem';
+    }
+
     protected function configureContainer(ContainerConfigurator $container): void
     {
         $container->extension('framework', [
@@ -86,6 +93,7 @@ abstract class TestKernel extends Kernel
             'php_errors' => ['log' => true],
         ]);
         $container->extension('twig', ['strict_variables' => true]);
+        $container->extension('phem', ['build_dir' => '%kernel.project_dir%/'.$this->buildDir()]);
     }
 
     protected function configureRoutes(RoutingConfigurator $routes): void
@@ -106,7 +114,7 @@ abstract class TestKernel extends Kernel
             TestCase::markTestSkipped('phemc is not installed (install phem/phem, build phemc with cargo, or set PHEMC_BIN).');
         }
 
-        exec(\sprintf('cd %s && %s build %s --no-warmup 2>&1', escapeshellarg($projectDir), escapeshellarg($phemc), escapeshellarg($this->sourceDir())), $out, $code);
+        exec(\sprintf('cd %s && %s build %s --out %s --no-warmup 2>&1', escapeshellarg($projectDir), escapeshellarg($phemc), escapeshellarg($this->sourceDir()), escapeshellarg($this->buildDir())), $out, $code);
         if (0 !== $code) {
             TestCase::fail("phemc build failed:\n".implode("\n", $out));
         }

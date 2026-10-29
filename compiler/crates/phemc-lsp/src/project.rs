@@ -2,12 +2,14 @@
 //! - the classes of the Composer autoload maps (PSR-4 directories and the class map). For speed,
 //!   the index reads only the file names here;
 //! - the functions and the constants of the Composer `files` autoload entries;
-//! - the components, the functions, and the classes of the `.phpm` files.
+//! - the components, the functions, and the classes of the `.phpm` files: the files of the project,
+//!   and the files of the installed packages with a `.phpm` root (see `phemc_sources`).
 //!
 //! The members of the classes come from the class index ([`crate::classes`]), on demand.
 
 use crate::classes::ClassCache;
 use crate::decl::{builtin_components, has_attr, parse, Attribute, Component, Parsed};
+use phemc_sources::SourceRoot;
 use regex::Regex;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -65,12 +67,14 @@ pub struct Project {
     /// The PSR-4 directories of the index, with no symbolic links: a directory of a package that
     /// `vendor/` links to (a Composer path repository) is the directory of the package.
     dirs: Vec<PathBuf>,
+    /// The `.phpm` roots of the installed packages.
+    packages: Vec<SourceRoot>,
 }
 
 impl Project {
     pub fn load(root: &Path) -> Self {
-        let mut p = Project { root: root.to_path_buf(), symbols: BTreeMap::new(), phpm: BTreeMap::new(), classes: ClassCache::default(), dirs: vec![] };
-        let vendor = root.join("vendor");
+        let mut p = Project { root: root.to_path_buf(), symbols: BTreeMap::new(), phpm: BTreeMap::new(), classes: ClassCache::default(), dirs: vec![], packages: vec![] };
+        let vendor = phemc_sources::vendor_dir(root);
         if vendor.join("composer/autoload_psr4.php").exists() {
             p.load_vendor(&vendor);
         } else {
@@ -78,8 +82,48 @@ impl Project {
         }
 
         p.walk_phpm(root, true);
+        p.load_packages();
 
         p
+    }
+
+    /// Indexes the `.phpm` files of the installed packages: the files of the project use their
+    /// components. A wrong package root (the check shows its error) gives no package files.
+    fn load_packages(&mut self) {
+        let Ok(packages) = phemc_sources::installed_roots(&self.root) else { return };
+
+        let mut files = Vec::new();
+        let read = phemc_sources::read_with(&packages, |root, file, inner| {
+            let text = phemc_sources::read_file(file)?;
+            files.push((editor_file(root, file, inner), text.clone()));
+
+            Ok(text)
+        });
+
+        if read.is_ok() {
+            for (file, text) in files {
+                self.phpm.insert(file, Rc::new(parse(&text)));
+            }
+        }
+
+        self.packages = packages;
+    }
+
+    /// The file in the index of a `.phpm` file of an installed package: its path as the editor
+    /// opens it (see [`editor_file`]). `None` for a file that is not in a package root.
+    pub fn package_file(&self, file: &Path) -> Option<PathBuf> {
+        self.packages.iter().find_map(|root| match file.strip_prefix(&root.dir) {
+            Ok(inner) => Some(editor_file(root, file, inner)),
+            Err(_) => root.real_dir.as_ref().filter(|d| file.starts_with(d)).map(|_| file.to_path_buf()),
+        })
+    }
+
+    /// A `.phpm` file of an installed package changed: `text` is the text of an open document,
+    /// else the index reads the file on disk again (a deleted file goes away).
+    pub fn package_changed(&mut self, file: &Path, text: Option<&str>) {
+        if let Some(file) = self.package_file(file) {
+            self.update_phpm(&file, text);
+        }
     }
 
     /// Whether the class index reads a file of this directory. The path has no symbolic links.
@@ -372,14 +416,20 @@ fn route_name(fqn: &str) -> String {
     fqn.replace('\\', "_").to_lowercase()
 }
 
-/// The project that installs the package of a file in `vendor/`: the directory with the
-/// `vendor/` directory and a `composer.json`. It compiles the `.phpm` files of the package with its
-/// own (see `phemc_sources`), so the diagnostics of the file come from its check. The class index
-/// of the file stays the one of [`find_root`].
+/// The path of a file of a package root as the editor opens it: its real path for a linked root
+/// (see `SourceRoot::real_dir`), else its path in the root dir.
+pub fn editor_file(root: &SourceRoot, file: &Path, inner: &Path) -> PathBuf {
+    root.real_dir.as_ref().map_or_else(|| file.to_path_buf(), |d| d.join(inner))
+}
+
+/// The project that installs the package of a file in its Composer vendor dir (see
+/// `phemc_sources::vendor_dir`): the nearest directory with a `composer.json` whose vendor dir
+/// has the file. It compiles the `.phpm` files of the package with its own, so the diagnostics of
+/// the file come from its check. The class index of the file stays the one of [`find_root`].
 pub fn installer_root(file: &Path, fallback: Option<&Path>) -> Option<PathBuf> {
     for dir in file.ancestors().skip(1) {
-        if dir.file_name().is_some_and(|n| n == "vendor") && dir.parent().is_some_and(|p| p.join("composer.json").exists()) {
-            return dir.parent().map(Path::to_path_buf);
+        if dir.join("composer.json").exists() && file.starts_with(phemc_sources::vendor_dir(dir)) {
+            return Some(dir.to_path_buf());
         }
 
         if fallback == Some(dir) {

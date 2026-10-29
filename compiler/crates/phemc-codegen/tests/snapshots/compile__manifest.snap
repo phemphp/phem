@@ -1,6 +1,5 @@
 ---
 source: crates/phemc-codegen/tests/compile.rs
-assertion_line: 46
 expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
 ---
 {
@@ -9,7 +8,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\Badge": {
       "fqcn": "App\\Component\\Badge",
       "kind": "template",
-      "file": "component/Buttons.phpm",
+      "source": "component/Buttons.phpm",
       "template": "component/Buttons.2.twig",
       "props": [
         "label",
@@ -24,7 +23,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\Card": {
       "fqcn": "App\\Component\\Card",
       "kind": "template",
-      "file": "component/Buttons.phpm",
+      "source": "component/Buttons.phpm",
       "template": "component/Buttons.1.twig",
       "props": [
         "title",
@@ -43,7 +42,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\ColorPicker": {
       "fqcn": "App\\Component\\ColorPicker",
       "kind": "class",
-      "file": "component/Bound.phpm",
+      "source": "component/Bound.phpm",
       "props": [
         "value"
       ],
@@ -56,7 +55,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\Counter": {
       "fqcn": "App\\Component\\Counter",
       "kind": "class",
-      "file": "component/Counter.phpm",
+      "source": "component/Counter.phpm",
       "props": [
         "label",
         "children"
@@ -70,7 +69,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\Document": {
       "fqcn": "App\\Component\\Document",
       "kind": "template",
-      "file": "component/Document.phpm",
+      "source": "component/Document.phpm",
       "template": "component/Document.0.twig",
       "props": [
         "title",
@@ -86,7 +85,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\Filters": {
       "fqcn": "App\\Component\\Filters",
       "kind": "class",
-      "file": "component/Filters.phpm",
+      "source": "component/Filters.phpm",
       "props": [],
       "slots": [],
       "required": [],
@@ -95,7 +94,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\MyButton": {
       "fqcn": "App\\Component\\MyButton",
       "kind": "template",
-      "file": "component/Buttons.phpm",
+      "source": "component/Buttons.phpm",
       "template": "component/Buttons.0.twig",
       "props": [
         "count",
@@ -111,7 +110,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\NameField": {
       "fqcn": "App\\Component\\NameField",
       "kind": "function",
-      "file": "component/Bound.phpm",
+      "source": "component/Bound.phpm",
       "props": [
         "value"
       ],
@@ -124,7 +123,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\Nav": {
       "fqcn": "App\\Component\\Nav",
       "kind": "template",
-      "file": "component/Rest.phpm",
+      "source": "component/Rest.phpm",
       "template": "component/Rest.3.twig",
       "props": [],
       "slots": [],
@@ -134,7 +133,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\Profile": {
       "fqcn": "App\\Component\\Profile",
       "kind": "class",
-      "file": "component/Bound.phpm",
+      "source": "component/Bound.phpm",
       "props": [],
       "slots": [],
       "required": [],
@@ -143,7 +142,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\RestButton": {
       "fqcn": "App\\Component\\RestButton",
       "kind": "template",
-      "file": "component/Rest.phpm",
+      "source": "component/Rest.phpm",
       "template": "component/Rest.0.twig",
       "props": [
         "count"
@@ -157,7 +156,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\RestLink": {
       "fqcn": "App\\Component\\RestLink",
       "kind": "class",
-      "file": "component/Rest.phpm",
+      "source": "component/Rest.phpm",
       "props": [
         "label"
       ],
@@ -168,7 +167,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\Settings": {
       "fqcn": "App\\Component\\Settings",
       "kind": "template",
-      "file": "component/Tabs.phpm",
+      "source": "component/Tabs.phpm",
       "template": "component/Tabs.3.twig",
       "props": [],
       "slots": [],
@@ -178,7 +177,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\Tab": {
       "fqcn": "App\\Component\\Tab",
       "kind": "function",
-      "file": "component/Tabs.phpm",
+      "source": "component/Tabs.phpm",
       "props": [
         "name",
         "label"
@@ -193,7 +192,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\TabCount": {
       "fqcn": "App\\Component\\TabCount",
       "kind": "class",
-      "file": "component/Tabs.phpm",
+      "source": "component/Tabs.phpm",
       "props": [],
       "slots": [],
       "required": [],
@@ -202,7 +201,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\Tabs": {
       "fqcn": "App\\Component\\Tabs",
       "kind": "class",
-      "file": "component/Tabs.phpm",
+      "source": "component/Tabs.phpm",
       "props": [
         "children"
       ],
@@ -215,7 +214,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\Tag": {
       "fqcn": "App\\Component\\Tag",
       "kind": "template",
-      "file": "component/Buttons.phpm",
+      "source": "component/Buttons.phpm",
       "template": "component/Buttons.3.twig",
       "props": [
         "children"
@@ -229,7 +228,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\TextField": {
       "fqcn": "App\\Component\\TextField",
       "kind": "template",
-      "file": "component/Bound.phpm",
+      "source": "component/Bound.phpm",
       "template": "component/Bound.0.twig",
       "props": [
         "value",
@@ -245,7 +244,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Component\\Toolbar": {
       "fqcn": "App\\Component\\Toolbar",
       "kind": "function",
-      "file": "component/Rest.phpm",
+      "source": "component/Rest.phpm",
       "props": [],
       "slots": [],
       "required": [],
@@ -254,7 +253,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Page\\About": {
       "fqcn": "App\\Page\\About",
       "kind": "class",
-      "file": "page/about.phpm",
+      "source": "page/about.phpm",
       "props": [],
       "slots": [],
       "required": [],
@@ -263,7 +262,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Page\\Greeting": {
       "fqcn": "App\\Page\\Greeting",
       "kind": "function",
-      "file": "page/index.phpm",
+      "source": "page/index.phpm",
       "props": [
         "name"
       ],
@@ -276,7 +275,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Page\\Home": {
       "fqcn": "App\\Page\\Home",
       "kind": "class",
-      "file": "page/index.phpm",
+      "source": "page/index.phpm",
       "props": [],
       "slots": [],
       "required": [],
@@ -285,7 +284,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Page\\Toggle": {
       "fqcn": "App\\Page\\Toggle",
       "kind": "class",
-      "file": "page/index.phpm",
+      "source": "page/index.phpm",
       "props": [],
       "slots": [],
       "required": [],
@@ -294,7 +293,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Page\\Toolbar": {
       "fqcn": "App\\Page\\Toolbar",
       "kind": "template",
-      "file": "page/index.phpm",
+      "source": "page/index.phpm",
       "template": "page/index.0.twig",
       "props": [
         "theme"

@@ -51,7 +51,7 @@ final class TestKernelTest extends TestCase
     {
         $this->script('vendor/bin/phemc', 'vendor phemc');
 
-        self::assertSame("phemc build failed:\nvendor phemc build src --no-warmup", $this->bootFailure());
+        self::assertSame("phemc build failed:\nvendor phemc build src --out var/phem --no-warmup", $this->bootFailure());
     }
 
     public function testPhemcBinComesFirst(): void
@@ -59,7 +59,14 @@ final class TestKernelTest extends TestCase
         $this->script('vendor/bin/phemc', 'vendor phemc');
         putenv('PHEMC_BIN='.$this->script('bin/phemc', 'env phemc'));
 
-        self::assertSame("phemc build failed:\nenv phemc build src --no-warmup", $this->bootFailure());
+        self::assertSame("phemc build failed:\nenv phemc build src --out var/phem --no-warmup", $this->bootFailure());
+    }
+
+    public function testTheBuildGoesToTheBuildDirOfTheKernel(): void
+    {
+        $this->script('vendor/bin/phemc', 'vendor phemc');
+
+        self::assertSame("phemc build failed:\nvendor phemc build src --out build/phem --no-warmup", $this->bootFailure('build/phem'));
     }
 
     public function testNoPhemcSkipsTheTest(): void
@@ -74,10 +81,10 @@ final class TestKernelTest extends TestCase
         }
     }
 
-    private function bootFailure(): string
+    private function bootFailure(string $buildDir = 'var/phem'): string
     {
         try {
-            $this->kernel()->boot();
+            $this->kernel($buildDir)->boot();
         } catch (AssertionFailedError $e) {
             return $e->getMessage();
         }
@@ -95,10 +102,10 @@ final class TestKernelTest extends TestCase
         return $path;
     }
 
-    private function kernel(): TestKernel
+    private function kernel(string $buildDir = 'var/phem'): TestKernel
     {
-        return new class('test', false, $this->dir) extends TestKernel {
-            public function __construct(string $environment, bool $debug, private readonly string $dir)
+        return new class('test', false, $this->dir, $buildDir) extends TestKernel {
+            public function __construct(string $environment, bool $debug, private readonly string $dir, private readonly string $build)
             {
                 parent::__construct($environment, $debug);
             }
@@ -111,6 +118,11 @@ final class TestKernelTest extends TestCase
             protected function sourceDir(): string
             {
                 return 'src';
+            }
+
+            protected function buildDir(): string
+            {
+                return $this->build;
             }
         };
     }

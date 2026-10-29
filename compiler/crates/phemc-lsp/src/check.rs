@@ -31,15 +31,11 @@ pub fn check(root: &Path, roots: &mut Roots, open: &HashMap<PathBuf, String>) ->
     let mut error = roots.error.clone();
     let texts = &mut roots.texts;
     let read = phemc_sources::read_with(&roots.roots, |source, file, inner| {
-        if let Some(text) = open.get(file).or_else(|| open.get(&source.real_dir.as_ref()?.join(inner))) {
+        if let Some(text) = phemc_sources::open_text(open, source, file, inner).or_else(|| texts.get(file)) {
             return Ok(text.clone());
         }
 
-        if let Some(text) = texts.get(file) {
-            return Ok(text.clone());
-        }
-
-        let text = std::fs::read_to_string(file).map_err(|e| phemc_sources::Error::new(format!("cannot read {}: {e}", file.display())))?;
+        let text = phemc_sources::read_file(file)?;
         if source.installed {
             texts.insert(file.to_path_buf(), text.clone());
         }

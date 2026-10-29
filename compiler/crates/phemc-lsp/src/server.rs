@@ -256,7 +256,7 @@ impl<W: Write> Server<W> {
             return;
         }
 
-        let watchers: Vec<_> = ["**/*.phpm", "**/*.php", "**/composer.json", "**/vendor/composer/installed.json"]
+        let watchers: Vec<_> = ["**/*.phpm", "**/*.php", "**/composer.json", "**/composer/installed.json"]
             .iter()
             .map(|g| lsp::FileSystemWatcher { glob_pattern: lsp::GlobPattern::String(g.to_string()), kind: None })
             .collect();
@@ -293,10 +293,12 @@ impl<W: Write> Server<W> {
         if !self.projects.contains_key(&root) {
             let mut project = Project::load(&root);
 
-            // The open documents replace the files on disk.
-            for (path, doc) in &self.docs {
-                if path.starts_with(&root) && path.extension().is_some_and(|e| e == "phpm") {
+            // The open documents replace the files on disk, also the files of the packages.
+            for (path, doc) in self.docs.iter().filter(|(p, _)| p.extension().is_some_and(|e| e == "phpm")) {
+                if path.starts_with(&root) {
                     project.update_phpm(path, Some(&doc.text));
+                } else {
+                    project.package_changed(path, Some(&doc.text));
                 }
             }
 
@@ -315,7 +317,8 @@ impl<W: Write> Server<W> {
     }
 
     /// A `.phpm` file changed: in an open document, or on disk (`on_disk`: also a closed
-    /// document, whose text is the one on disk again).
+    /// document, whose text is the one on disk again). The projects that install the package of
+    /// the file index it again too.
     fn phpm_changed(&mut self, file: &Path, on_disk: bool) {
         if file.extension().is_none_or(|e| e != "phpm") {
             return;
@@ -325,6 +328,10 @@ impl<W: Write> Server<W> {
         let text = self.docs.get(file).map(|d| d.text.clone());
         if let Some(project) = self.projects.get_mut(&root) {
             project.update_phpm(file, text.as_deref());
+        }
+
+        for project in self.projects.values_mut() {
+            project.package_changed(file, text.as_deref());
         }
 
         self.check_again(file, root, on_disk);
@@ -375,6 +382,10 @@ impl<W: Write> Server<W> {
                     project.delete_phpm(file);
                 }
 
+                for project in self.projects.values_mut() {
+                    project.package_changed(file, None);
+                }
+
                 self.check_again(file, root, true);
             } else if !self.docs.contains_key(file) {
                 self.phpm_changed(file, true);
@@ -384,12 +395,12 @@ impl<W: Write> Server<W> {
         }
 
         // A new or a deleted class file: index the project again. The class index reads a changed
-        // class file again (it checks the modification time). The files in `vendor/`, `var/`
-        // (caches), and `node_modules/` do not count.
+        // class file again (it checks the modification time). The files in the Composer vendor
+        // dir, `var/` (caches), and `node_modules/` do not count.
         if name.ends_with(".php") && typ != lsp::FileChangeType::CHANGED {
             let root = self.root_of(file);
             let inside = file.strip_prefix(&root).ok().and_then(|r| r.components().next()).map(|c| c.as_os_str().to_string_lossy().into_owned());
-            if !matches!(inside.as_deref(), Some("vendor" | "var" | "node_modules")) {
+            if !matches!(inside.as_deref(), Some("var" | "node_modules")) && !file.starts_with(phemc_sources::vendor_dir(&root)) {
                 self.projects.remove(&root);
             }
 

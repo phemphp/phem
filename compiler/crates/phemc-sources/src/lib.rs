@@ -41,12 +41,6 @@ impl fmt::Display for Error {
     }
 }
 
-impl Error {
-    pub fn new(message: impl Into<String>) -> Self {
-        Error(message.into())
-    }
-}
-
 impl std::error::Error for Error {}
 
 /// The roots of a project: the source dir of the app (`src`, relative to `project` or absolute),
@@ -72,8 +66,24 @@ pub fn roots(project: &Path, src: &Path) -> Result<Vec<SourceRoot>, Error> {
     Ok(roots)
 }
 
-/// The source dir of the app only (the language server checks it when a package root is wrong).
-pub fn app_root(project: &Path, src: &Path) -> Result<SourceRoot, Error> {
+/// The roots of a project, or only the source dir of the app when the packages cannot be read (a
+/// wrong `extra.phem.source`, a broken `installed.json`), with this error. The tools that run
+/// for a long time (`phemc watch`, the language server) still check the app, and they show the
+/// error. When the source dir of the app is missing too, it is the error of [`roots`].
+pub fn roots_or_app(project: &Path, src: &Path) -> Result<(Vec<SourceRoot>, Option<Error>), Error> {
+    let e = match roots(project, src) {
+        Ok(roots) => return Ok((roots, None)),
+        Err(e) => e,
+    };
+
+    match app_root(project, src) {
+        Ok(app) => Ok((vec![app], Some(e))),
+        Err(_) => Err(e),
+    }
+}
+
+/// The source dir of the app only.
+fn app_root(project: &Path, src: &Path) -> Result<SourceRoot, Error> {
     let dir = project.join(src);
     if !dir.is_dir() {
         return Err(Error(format!("source directory `{}` does not exist", src.display())));
@@ -113,8 +123,8 @@ fn vendor_dir_with(project: &Path, env: Option<String>) -> PathBuf {
     project.join(configured.as_deref().unwrap_or("vendor"))
 }
 
-/// The roots of the installed packages, by name.
-fn installed_roots(project: &Path) -> Result<Vec<SourceRoot>, Error> {
+/// The roots of the installed packages, by name (the language server indexes their components).
+pub fn installed_roots(project: &Path) -> Result<Vec<SourceRoot>, Error> {
     let composer_dir = vendor_dir(project).join("composer");
     let Some(installed) = read_json(&composer_dir.join("installed.json"))? else {
         return Ok(vec![]);
@@ -142,13 +152,22 @@ fn installed_roots(project: &Path) -> Result<Vec<SourceRoot>, Error> {
 /// server) replaces its file on disk. The editor can open a file of a linked package at its real
 /// path (see `SourceRoot::real_dir`): this document replaces the file too.
 pub fn read(roots: &[SourceRoot], open: &HashMap<PathBuf, String>) -> Result<Vec<SourceInput>, Error> {
-    read_with(roots, |root, file, inner| {
-        if let Some(text) = open.get(file).or_else(|| open.get(&root.real_dir.as_ref()?.join(inner))) {
-            return Ok(text.clone());
-        }
-
-        std::fs::read_to_string(file).map_err(|e| Error(format!("cannot read {}: {e}", file.display())))
+    read_with(roots, |root, file, inner| match open_text(open, root, file, inner) {
+        Some(text) => Ok(text.clone()),
+        None => read_file(file),
     })
+}
+
+/// The text of an open document for a file of a root (`inner` is the path in the root): the
+/// document at the path of the file, or at its real path for a linked root (see
+/// `SourceRoot::real_dir`).
+pub fn open_text<'a>(open: &'a HashMap<PathBuf, String>, root: &SourceRoot, file: &Path, inner: &Path) -> Option<&'a String> {
+    open.get(file).or_else(|| open.get(&root.real_dir.as_ref()?.join(inner)))
+}
+
+/// The text of a file on disk.
+pub fn read_file(file: &Path) -> Result<String, Error> {
+    std::fs::read_to_string(file).map_err(|e| Error(format!("cannot read {}: {e}", file.display())))
 }
 
 /// The `.phpm` files of the roots, with the text that `text_of(root, file, path in the root)`
@@ -443,6 +462,19 @@ mod tests {
 
         let error = read(&roots(&dir, Path::new("src")).unwrap(), &HashMap::new()).unwrap_err().to_string();
         assert_eq!(error, "the files `src/vendor/acme/ui/Badge.phpm` and `vendor/acme/ui/components/Badge.phpm` have the same key `vendor/acme/ui/Badge.phpm` in the build: rename or move one of them");
+    }
+
+    #[test]
+    fn a_wrong_package_root_keeps_the_app_root_with_the_error() {
+        let dir = project();
+        write(&dir, "vendor/composer/installed.json", r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "missing"}}}]}"#);
+
+        let (roots, error) = roots_or_app(&dir, Path::new("src")).unwrap();
+        assert_eq!(summary(&roots), [("src".into(), String::new(), None)]);
+        assert!(error.unwrap().to_string().contains("the package `acme/ui` gives the source dir `missing`"));
+
+        // With no source dir of the app, it is the error of the roots.
+        assert!(roots_or_app(&dir, Path::new("lib")).unwrap_err().to_string().contains("`lib` does not exist"));
     }
 
     #[test]

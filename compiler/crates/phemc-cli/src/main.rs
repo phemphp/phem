@@ -373,13 +373,10 @@ impl Watched {
             self.composer = Some(composer);
         }
 
-        let mut failed = None;
-        let dirs: Vec<PathBuf> = match phemc_sources::roots(project, src) {
-            Ok(roots) => roots.into_iter().map(|r| r.dir).collect(),
-            Err(e) => {
-                failed = Some(anyhow::Error::from(e));
-                self.roots.iter().cloned().chain(phemc_sources::app_root(project, src).map(|r| r.dir)).collect()
-            }
+        let (dirs, mut failed): (Vec<PathBuf>, _) = match phemc_sources::roots_or_app(project, src) {
+            Ok((roots, None)) => (roots.into_iter().map(|r| r.dir).collect(), None),
+            Ok((app, Some(e))) => (self.roots.iter().cloned().chain(app.into_iter().map(|r| r.dir)).collect(), Some(anyhow::Error::from(e))),
+            Err(e) => (self.roots.clone(), Some(anyhow::Error::from(e))),
         };
 
         for dir in self.roots.iter().filter(|d| !dirs.contains(d)) {
@@ -418,9 +415,7 @@ fn watch(args: &BuildArgs, exec: Option<&str>) -> Result<()> {
 
     // A missing source dir is an error (a typo). A wrong package root is reported, and the watch
     // waits for its fix.
-    if phemc_sources::app_root(project, &args.src).is_err() {
-        source_roots(&args.src)?;
-    }
+    phemc_sources::roots_or_app(project, &args.src)?;
 
     let mut child = None;
     let rebuild = |child: &mut Option<Child>, first: bool| -> Result<()> {

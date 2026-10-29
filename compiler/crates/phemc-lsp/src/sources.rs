@@ -22,13 +22,9 @@ impl Roots {
     /// A project with no source dir and no package root has no roots, and no error: it is not a
     /// project of Phem.
     fn load(project: &Path, source_dir: &str) -> Self {
-        let src = Path::new(source_dir);
-        match phemc_sources::roots(project, src) {
-            Ok(roots) => Roots { roots, ..Default::default() },
-            Err(e) => match phemc_sources::app_root(project, src) {
-                Ok(app) => Roots { roots: vec![app], error: Some(e.to_string()), ..Default::default() },
-                Err(_) => Roots::default(),
-            },
+        match phemc_sources::roots_or_app(project, Path::new(source_dir)) {
+            Ok((roots, error)) => Roots { roots, error: error.map(|e| e.to_string()), ..Default::default() },
+            Err(_) => Roots::default(),
         }
     }
 
