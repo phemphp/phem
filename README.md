@@ -18,27 +18,6 @@ namespace App\Page;
 use Phem\Attribute\{Component, Page, State};
 use Phem\{Node, Root};
 
-#[Component]
-final class LikeButton
-{
-    #[State]
-    public bool $liked = false;
-
-    public function toggle(): void
-    {
-        $this->liked = !$this->liked;
-    }
-
-    public function render(): Node
-    {
-        return (
-            <button onClick={{ toggle }}>
-                {{ liked ? '♥ Liked' : '♡ Like' }}
-            </button>
-        );
-    }
-}
-
 #[Page('/')]
 function Home(): Node
 {
@@ -58,6 +37,27 @@ function Home(): Node
             </body>
         </html>
     );
+}
+
+#[Component]
+final class LikeButton
+{
+    #[State]
+    public bool $liked = false;
+
+    public function toggle(): void
+    {
+        $this->liked = !$this->liked;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <button onClick={{ toggle }}>
+                {{ liked ? '♥ Liked' : '♡ Like' }}
+            </button>
+        );
+    }
 }
 ```
 
