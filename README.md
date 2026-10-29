@@ -76,6 +76,7 @@ Build a new app from scratch using Phem. See [Getting started](docs/getting-star
 ## More documentation
 
 - [How it works](docs/how-it-works.md)
+- [Philosophy and conventions](docs/philosophy.md)
 - [Compiling `.phpm` files](docs/compiling.md)
 - [The `.phpm` syntax](docs/phpm-syntax.md)
 - [Testing components and pages](docs/testing.md)

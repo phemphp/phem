@@ -338,6 +338,7 @@ conversation shows a summary, for example `Found 1 new diagnostic issues in 1 fi
 
 ## Next steps
 
+- [Philosophy and conventions](philosophy.md): the rules to keep in mind when you design with Phem
 - [The `.phpm` syntax](phpm-syntax.md): props, slots, lists, forms, and events
 - [Compiling and running `.phpm` files](compiling.md): the build output and the diagnostics
 - [Testing components and pages](testing.md)
