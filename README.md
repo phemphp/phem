@@ -4,57 +4,65 @@
 
 # Phem
 
-Phem brings a component model to Symfony. A `.phpm` file is a PHP file that contains markup literals (built on top of Twig):
+Phem is the place where PHP and Twig stop passing notes and start writing together. Logic and
+markup live in one file, one component, one thought. It is built for Symfony web apps.
+
+A `.phpm` file is PHP at heart, with a component layer built on top of Twig, so your markup lives
+right beside the code that gives it life:
 
 ```php
 <?phpm
 
-namespace App\Page\Example;
+namespace App\Page;
 
 use Phem\Attribute\{Component, Page, State};
-use Phem\Node;
-
-use function App\Component\Document;
+use Phem\{Node, Root};
 
 #[Component]
-function MyButton(int $count, Closure $onClick): Node 
-{
-    return (
-        <button onClick={{ onClick }}>
-            Clicked {{ count }} times
-        </button>
-    );
-}
-
-#[Page('/')]
-final class MyApp
+final class LikeButton
 {
     #[State]
-    public int $count = 0;
+    public bool $liked = false;
 
-    public function handleClick(): void
+    public function toggle(): void
     {
-        ++$this->count;
+        $this->liked = !$this->liked;
     }
 
     public function render(): Node
     {
         return (
-            <Document>
-                <Document:title>Counters</Document:title>
-                <h1>Counters that update together</h1>
-                <MyButton count={{ count }} onClick={{ handleClick }} />
-                <MyButton count={{ count }} onClick={{ handleClick }} />
-            </Document>
+            <button onClick={{ toggle }}>
+                {{ liked ? '♥ Liked' : '♡ Like' }}
+            </button>
         );
     }
 }
+
+#[Page('/')]
+function Home(): Node
+{
+    return (
+        <html lang="en">
+            <head>
+                <meta charset="utf-8" />
+                <title>Phem</title>
+                {{ importmap('app') }}
+            </head>
+            <body>
+                <Root>
+                    <h1>Hello Phem!</h1>
+                    <p>Components for Symfony web apps, written the way you think.</p>
+                    <LikeButton />
+                </Root>
+            </body>
+        </html>
+    );
+}
 ```
 
-A page is a class with `#[Page]`: a Symfony route. A page with no state of its own can also be a
-function with `#[Page]`. A `#[Component]` or `#[Page]` class is a Symfony service, so its constructor gets the services that it needs. A `#[State]` property keeps
-its value in the browser between events, and an event handler such as `handleClick()` runs on the
-server.
+Phem is new, and it is made of old friends. It brings a modern component model to Symfony, built
+from PHP and Twig, with no new language to learn and no second stack to keep.
 
 ## Install
 
@@ -64,12 +72,10 @@ composer require phem/phem
 symfony serve
 ```
 
-Flex asks to run the recipe of `phem/phem`: answer `y`. Open the URL that `symfony serve` shows:
-the page of `src/Page/Home.phpm` is at `/`. See [Getting started](docs/getting-started.md).
+See [Getting started](docs/getting-started.md). Build a new app from scratch, and a production image.
 
 ## Documentation
 
-- [Getting started](docs/getting-started.md): a new app from scratch, and a production image
 - [The `.phpm` syntax](docs/phpm-syntax.md)
 - [Compiling and running `.phpm` files](docs/compiling.md), with the list of diagnostics
 - [Testing components and pages](docs/testing.md)
