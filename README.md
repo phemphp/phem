@@ -24,14 +24,13 @@ function Home(): Node
     return (
         <html lang="en">
             <head>
-                <meta charset="utf-8" />
-                <title>Phem</title>
+                <title>Welcome to Phem</title>
                 {{ importmap('app') }}
             </head>
             <body>
                 <Root>
-                    <h1>Hello Phem!</h1>
-                    <p>Components for Symfony web apps, written the way you think.</p>
+                    <h1>Welcome to Phem!</h1>
+                    <p>UI server components for Symfony web apps, written the way you think.</p>
                     <LikeButton />
                 </Root>
             </body>
