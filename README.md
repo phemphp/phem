@@ -83,4 +83,4 @@ Build a new app from scratch using Phem. See [Getting started](docs/getting-star
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT.
