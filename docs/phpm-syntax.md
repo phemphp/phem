@@ -425,15 +425,18 @@ function Button(string $tag = 'button', ?Html $children = null, mixed ...$rest):
   component id (`data-phem-c`) goes on it, as on a static element. So it is valid in a `<ul>`
   or a `<table>`.
 - The tag can come from data, so the runtime checks it: an HTML element name (letters, digits
-  and `-`), and not `script` or `style`. Write a `<script>` or a `<style>` as static markup.
-  phemc checks a quoted tag (`tag="h2"`) when it builds.
+  and `-`) that does not start with `phem-`. The tag also cannot be an element whose text runs
+  with no escape (`script`, `style`), or whose attributes load a document or a resource, also
+  from a spread: `iframe` (`srcdoc`), `frame`, `frameset`, `object` (`data`), `embed`, `base`
+  (`href`), `link` and `meta`. Write these elements as static markup. phemc checks a quoted tag
+  (`tag="h2"`) when it builds.
 - The tag is an element, not a component. To render a component (for example a router link),
   use a slot or a condition.
 
-The compiled Twig renders the children first, and then the element:
+The compiled Twig checks the tag once, renders the children, and then the element:
 
 ```twig
-{% set _phem_content_0 %}{% block children %}{{ children }}{% endblock %}{% endset %}<{{ phem_tag((tag)) }} {{ phem_attrs({'className': (classes('px-4 py-2'))}, rest) }}>{{ phem_end_tag((tag), _phem_content_0) }}
+{% set _phem_tag_0 = phem_tag((tag)) %}{% set _phem_content_0 %}{% block children %}{{ children }}{% endblock %}{% endset %}<{{ _phem_tag_0 }} {{ phem_attrs({'className': (classes('px-4 py-2'))}, rest) }}>{{ phem_end_tag(_phem_tag_0, _phem_content_0) }}
 ```
 
 ## 4. Conditional rendering

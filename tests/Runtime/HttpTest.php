@@ -67,7 +67,12 @@ final class HttpTest extends TestCase
         self::assertStringStartsWith('<main id="app" ', (new RootElement())->render(['tag' => 'main', 'id' => 'app'], $state, ''));
         self::assertStringEndsWith(' class="app px-4 bg-red-500"></div>', (new RootElement(new ClassAttribute(new TailwindClassMerger(new TailwindMerge()))))->render(['className' => ClassList::of('app px-2 bg-blue-500'), 'class' => 'px-4 bg-red-500'], $state, ''), 'the classes of <Root> merge as on an element');
 
-        $this->expectException(\InvalidArgumentException::class);
-        (new RootElement())->render(['tag' => 'div onclick=x'], $state, '');
+        foreach (['div onclick=x', "script\n", 'phem-c'] as $tag) {
+            try {
+                (new RootElement())->render(['tag' => $tag], $state, '');
+                self::fail(\sprintf('"%s" is not a valid tag name.', addcslashes($tag, "\n")));
+            } catch (\InvalidArgumentException) {
+            }
+        }
     }
 }

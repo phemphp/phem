@@ -17,6 +17,7 @@ use Phem\ClassList;
 use Phem\Dom\Attributes;
 use Phem\Dom\ClassAttribute;
 use Phem\Dom\DomEvents;
+use Phem\Dom\TagName;
 
 /**
  * The root element of a page (see Phem\Root): the attributes of the `phem` Stimulus controller
@@ -45,7 +46,7 @@ final class RootElement
     public function render(array $props, string $state, string $content): string
     {
         $tag = $props['tag'] ?? 'div';
-        if (!\is_string($tag) || 1 !== preg_match('/^[a-z][a-z0-9-]*$/i', $tag)) {
+        if (!TagName::isValid($tag)) {
             throw new \InvalidArgumentException(\sprintf('"%s" is not a valid tag name for the root of a page.', \is_string($tag) ? $tag : get_debug_type($tag)));
         }
 

@@ -1,5 +1,6 @@
 //! Free variables of a markup literal, with Twig scopes (`for` and `set` bindings).
 
+use phemc_analyze::FileInfo;
 use phemc_syntax::markup::{AttrKind, AttrValue, ExprPart, Node, StrPart, TwigExpr};
 use phemc_twig_scan::{expr_free_vars, tag_vars};
 
@@ -35,10 +36,10 @@ impl Scope {
     }
 }
 
-pub fn free_vars(root: &Node) -> Vec<FreeVar> {
+pub fn free_vars(info: &FileInfo, root: &Node) -> Vec<FreeVar> {
     let mut out = Vec::new();
     let mut scope = Scope::default();
-    node(root, &mut scope, &mut out);
+    node(info, root, &mut scope, &mut out);
 
     // Keep the first use of each name. It is strict when one of its uses is strict.
     let strict: std::collections::HashSet<String> = out.iter().filter(|v| v.strict).map(|v| v.name.clone()).collect();
@@ -58,7 +59,7 @@ fn push(out: &mut Vec<FreeVar>, scope: &Scope, name: String, offset: usize, stri
     }
 }
 
-fn expr(x: &TwigExpr, scope: &mut Scope, out: &mut Vec<FreeVar>) {
+fn expr(info: &FileInfo, x: &TwigExpr, scope: &mut Scope, out: &mut Vec<FreeVar>) {
     // Offsets are exact only for expressions without markup.
     let exact = !x.has_markup();
     for p in &x.parts {
@@ -69,7 +70,7 @@ fn expr(x: &TwigExpr, scope: &mut Scope, out: &mut Vec<FreeVar>) {
                     push(out, scope, n.name, off, true);
                 }
             }
-            ExprPart::Markup(m) => node(m, scope, out),
+            ExprPart::Markup(m) => node(info, m, scope, out),
         }
     }
 }
@@ -78,30 +79,30 @@ fn expr(x: &TwigExpr, scope: &mut Scope, out: &mut Vec<FreeVar>) {
 /// Other tags (`if`, `apply`, `autoescape`) and HTML elements share the scope of their parent.
 const SCOPED_TAGS: &[&str] = &["for", "with", "block", "embed", "macro"];
 
-fn children(nodes: &[Node], scope: &mut Scope, out: &mut Vec<FreeVar>) {
+fn children(info: &FileInfo, nodes: &[Node], scope: &mut Scope, out: &mut Vec<FreeVar>) {
     for n in nodes {
-        node(n, scope, out);
+        node(info, n, scope, out);
     }
 }
 
 /// Nodes with their own scope: a `{% set %}` binds for the following nodes in it only.
-fn scoped(nodes: &[Node], scope: &mut Scope, out: &mut Vec<FreeVar>) {
+fn scoped(info: &FileInfo, nodes: &[Node], scope: &mut Scope, out: &mut Vec<FreeVar>) {
     let mark = scope.mark();
-    children(nodes, scope, out);
+    children(info, nodes, scope, out);
     scope.truncate(mark);
 }
 
-fn node(n: &Node, scope: &mut Scope, out: &mut Vec<FreeVar>) {
+fn node(info: &FileInfo, n: &Node, scope: &mut Scope, out: &mut Vec<FreeVar>) {
     match n {
         Node::Element(e) => {
             for a in &e.attrs {
                 match &a.kind {
-                    AttrKind::Spread(x) => expr(x, scope, out),
-                    AttrKind::Plain { value: AttrValue::Expr(x), .. } => expr(x, scope, out),
+                    AttrKind::Spread(x) => expr(info, x, scope, out),
+                    AttrKind::Plain { value: AttrValue::Expr(x), .. } => expr(info, x, scope, out),
                     AttrKind::Plain { value: AttrValue::Quoted { parts, .. }, .. } => {
                         for p in parts {
                             if let StrPart::Expr(x) = p {
-                                expr(x, scope, out);
+                                expr(info, x, scope, out);
                             }
                         }
                     }
@@ -110,14 +111,15 @@ fn node(n: &Node, scope: &mut Scope, out: &mut Vec<FreeVar>) {
             }
 
             // The children of a component are slots: blocks with `{% with _phem_caller only %}`.
-            if e.is_component() {
-                scoped(&e.children, scope, out);
+            // The children of `<Dynamic>` are in the markup of its parent.
+            if e.is_component() && !info.is_dynamic(&e.name) {
+                scoped(info, &e.children, scope, out);
             } else {
-                children(&e.children, scope, out);
+                children(info, &e.children, scope, out);
             }
         }
-        Node::Fragment(f) => children(&f.children, scope, out),
-        Node::Output(o) => expr(&o.expr, scope, out),
+        Node::Fragment(f) => children(info, &f.children, scope, out),
+        Node::Output(o) => expr(info, &o.expr, scope, out),
         Node::Tag(t) => {
             let tv = tag_vars(&t.name, &t.head);
             for u in tv.used {
@@ -149,7 +151,7 @@ fn node(n: &Node, scope: &mut Scope, out: &mut Vec<FreeVar>) {
                 }
 
                 let start = scope.mark();
-                children(&br.children, scope, out);
+                children(info, &br.children, scope, out);
                 if shares_scope {
                     set_in_branches.push(scope.bound.drain(start.0..).collect());
                     maybe.extend(scope.maybe.drain(start.1..));

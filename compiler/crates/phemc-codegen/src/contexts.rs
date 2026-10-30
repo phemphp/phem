@@ -52,9 +52,8 @@ pub(crate) fn uses(info: &FileInfo, lexed: &Lexed) -> Vec<Use> {
 
 fn walk(info: &FileInfo, owner: &str, node: &Node, enclosing: &mut Vec<String>, out: &mut Vec<Use>) {
     match node {
-        // `<Dynamic>` is an element: its children are in the markup of the owner.
-        Node::Element(e) if e.is_component() && resolve(info, &e.name) != phemc_analyze::DYNAMIC => {
-            let child = resolve(info, &e.name);
+        Node::Element(e) if e.is_component() && !info.is_dynamic(&e.name) => {
+            let child = info.resolve_component(&e.name);
             out.push(Use { owner: owner.to_string(), child: child.clone(), enclosing: enclosing.clone(), rel: info.rel.clone(), span: e.name_span });
 
             let slot_prefix = format!("{}:", e.name);
@@ -93,17 +92,6 @@ fn walk(info: &FileInfo, owner: &str, node: &Node, enclosing: &mut Vec<String>, 
         // Markup in an expression (`{{ on ? <A /> : <B /> }}`) is not followed: unknown.
         _ => {}
     }
-}
-
-/// The FQN of a component tag, as `Lowerer::resolve_component()` resolves it.
-fn resolve(info: &FileInfo, name: &str) -> String {
-    if !name.contains('\\') {
-        if let Some(f) = info.function_uses.get(&name.to_ascii_lowercase()) {
-            return f.clone();
-        }
-    }
-
-    info.resolve_class(name)
 }
 
 /// Where a use is, for a context type.

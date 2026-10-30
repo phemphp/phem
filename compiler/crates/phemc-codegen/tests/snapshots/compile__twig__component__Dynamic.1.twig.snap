@@ -2,4 +2,4 @@
 source: crates/phemc-codegen/tests/compile.rs
 expression: t.content
 ---
-<{{ phem_tag((tag)) }} {{ phem_attrs({'src': (src)}) }}>{{ phem_end_tag((tag)) }}
+{% set _phem_tag_1 = phem_tag((tag)) %}<{{ _phem_tag_1 }} {{ phem_attrs({'src': (src)}) }}>{{ phem_end_tag(_phem_tag_1) }}

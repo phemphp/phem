@@ -33,7 +33,8 @@ namespace Phem;
  *
  * `tag` is required. The other props are the attributes and the handlers of the element, as
  * with a spread, and the children are its content. A void element (`img`, `input`) has no end
- * tag and no children. The tag cannot be `script` or `style` (see Phem\Dom\DynamicTag).
+ * tag and no children. The tag cannot be `script`, `style`, or an element whose attributes load
+ * a document or a resource, such as `iframe` (see Phem\Dom\DynamicTag).
  *
  * It is an element, not a component: when it is the root of a component, the id of the
  * component goes on it, as on a static element.

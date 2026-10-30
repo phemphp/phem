@@ -780,19 +780,8 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// The FQN of a component tag: a function imported with `use function`, or a class name.
-    pub fn resolve_component(&self, name: &str) -> String {
-        if !name.contains('\\') {
-            if let Some(f) = self.info.function_uses.get(&name.to_ascii_lowercase()) {
-                return f.clone();
-            }
-        }
-
-        self.info.resolve_class(name)
-    }
-
     fn component(&mut self, e: &Element, out: &mut String) {
-        let fqcn = self.resolve_component(&e.name);
+        let fqcn = self.info.resolve_component(&e.name);
         let Some(def) = self.reg.get(&fqcn).cloned() else {
             let short = fqcn.rsplit('\\').next().unwrap_or(&fqcn).to_string();
             let similar: Vec<&str> = self.reg.keys().filter(|k| k.rsplit('\\').next() == Some(short.as_str())).map(|s| s.as_str()).collect();
@@ -993,15 +982,24 @@ impl<'a> Lowerer<'a> {
 
     /// `<Dynamic tag={{ tag }}>`: an element whose tag name is a value. It is an element in the
     /// template, not a component with a fiber, so the id of its component goes on it, as on a
-    /// static element. Its attributes go through phem_attrs(), as with a spread:
-    /// `<{{ phem_tag(tag) }} {{ phem_attrs(...) }}>{{ phem_end_tag(tag, content) }}`. The children
-    /// render first, in a variable: phem_end_tag() refuses children for a void element.
+    /// static element. Its attributes go through phem_attrs(), as with a spread. The tag is
+    /// checked once, in a variable, and the children render before the element, in a variable:
+    /// phem_end_tag() refuses children for a void element.
+    ///
+    /// `{% set _phem_tag_0 = phem_tag(tag) %}{% set _phem_content_0 %}...{% endset %}<{{ _phem_tag_0 }} {{ phem_attrs(...) }}>{{ phem_end_tag(_phem_tag_0, _phem_content_0) }}`
     fn dynamic(&mut self, e: &Element, out: &mut String) {
         let mut tag = None;
+        let mut has_tag = false;
         let mut attrs = Vec::new();
         for a in &e.attrs {
             match &a.kind {
-                AttrKind::Plain { name, name_span, value } if name == "tag" => tag = self.dynamic_tag(value, *name_span, a.span),
+                AttrKind::Plain { name, name_span, .. } if name == "tag" && has_tag => {
+                    self.error(codes::BAD_ATTRIBUTE, "`<Dynamic>` has two `tag` attributes", *name_span).help = Some("keep one `tag`".into());
+                }
+                AttrKind::Plain { name, name_span, value } if name == "tag" => {
+                    has_tag = true;
+                    tag = self.dynamic_tag(value, *name_span, a.span);
+                }
                 AttrKind::Plain { name, name_span, .. } if name == BIND => {
                     self.error(codes::INVALID_BIND, "`phem:bind` is for a form field, not a `<Dynamic>`", *name_span).help =
                         Some("write the field as a static element: `<input phem:bind={{ query }} />`".into());
@@ -1010,7 +1008,6 @@ impl<'a> Lowerer<'a> {
             }
         }
 
-        let has_tag = e.attrs.iter().any(|a| matches!(&a.kind, AttrKind::Plain { name, .. } if name == "tag"));
         if !has_tag {
             self.error(codes::UNKNOWN_PROP, format!("`<{}>` needs the prop `tag`", e.name), e.name_span).help =
                 Some(format!("give the name of the element: `<{} tag={{{{ tag }}}}>`", e.name));
@@ -1020,26 +1017,31 @@ impl<'a> Lowerer<'a> {
 
         self.check_timing(e);
 
+        // The tag, before the children: a tag that is not valid renders no children.
+        let n = self.dynamics;
+        self.dynamics += 1;
+        let var = format!("_phem_tag_{n}");
+        out.push_str(&format!("{{% set {var} = phem_tag({tag}) %}}"));
+
         // The children, before the element.
         let mut content = None;
-        if e.children.iter().any(|n| !n.is_blank() && !matches!(n, Node::TwigComment(_))) {
-            let var = format!("_phem_content_{}", self.dynamics);
-            self.dynamics += 1;
-            out.push_str(&format!("{{% set {var} %}}"));
+        if e.children.iter().any(|c| !c.is_blank() && !matches!(c, Node::TwigComment(_))) {
+            let content_var = format!("_phem_content_{n}");
+            out.push_str(&format!("{{% set {content_var} %}}"));
             self.nodes(&e.children, out);
             out.push_str("{% endset %}");
-            content = Some(var);
+            content = Some(content_var);
         }
 
-        out.push_str(&format!("<{{{{ phem_tag({tag}) }}}}"));
+        out.push_str(&format!("<{{{{ {var} }}}}"));
         if !attrs.is_empty() {
             self.merged_attrs(&attrs, out);
         }
 
         out.push('>');
         match content {
-            Some(var) => out.push_str(&format!("{{{{ phem_end_tag({tag}, {var}) }}}}")),
-            None => out.push_str(&format!("{{{{ phem_end_tag({tag}) }}}}")),
+            Some(content_var) => out.push_str(&format!("{{{{ phem_end_tag({var}, {content_var}) }}}}")),
+            None => out.push_str(&format!("{{{{ phem_end_tag({var}) }}}}")),
         }
     }
 
@@ -1051,12 +1053,8 @@ impl<'a> Lowerer<'a> {
             AttrValue::Quoted { parts, .. } if has_expr(parts) => Some(self.quoted_expr(parts, span)),
             AttrValue::Quoted { parts, .. } => {
                 let name: String = parts.iter().map(|p| if let StrPart::Lit(s) = p { s.as_str() } else { "" }).collect();
-                if let Some(reason) = dynamic_tag_error(&name) {
-                    self.error(codes::BAD_ATTRIBUTE, reason, span).help = Some(if is_raw_text(&name) {
-                        format!("write the `<{}>` as static markup", name.to_ascii_lowercase())
-                    } else {
-                        "write the name of an HTML element: letters, digits and `-`, for example `tag=\"a\"`".into()
-                    });
+                if let Some((reason, help)) = dynamic_tag_error(&name) {
+                    self.error(codes::BAD_ATTRIBUTE, reason, span).help = Some(help);
                     return None;
                 }
 
@@ -1135,26 +1133,31 @@ const PROGRESS: &str = "phem:progress";
 /// The attributes with a URL that the browser opens or sends a form to (see `Attributes::URLS` of the runtime).
 const URL_ATTRS: &[&str] = &["action", "formaction", "href", "src", "xlink:href"];
 
-/// Why a literal `tag` of `<Dynamic>` is not valid, or None (the check of `Phem\Dom\DynamicTag`).
-fn dynamic_tag_error(name: &str) -> Option<String> {
+/// Why a literal `tag` of `<Dynamic>` is not valid, with a help, or None (the check of
+/// `Phem\Dom\TagName` and `Phem\Dom\DynamicTag`).
+fn dynamic_tag_error(name: &str) -> Option<(String, String)> {
     let mut chars = name.chars();
     let valid = chars.next().is_some_and(|c| c.is_ascii_alphabetic()) && chars.all(|c| c.is_ascii_alphanumeric() || c == '-');
     if !valid {
-        return Some(format!("`{name}` is not a valid tag name"));
+        return Some((format!("`{name}` is not a valid tag name"), "write the name of an HTML element: letters, digits and `-`, for example `tag=\"a\"`".into()));
     }
 
-    if is_raw_text(name) {
-        return Some(format!("`<Dynamic>` cannot render a `<{}>`", name.to_ascii_lowercase()));
+    let lower = name.to_ascii_lowercase();
+    if lower.starts_with("phem-") {
+        return Some((format!("`<{lower}>` is an element of Phem"), "give a name that does not start with `phem-`".into()));
+    }
+
+    if UNSAFE_TAGS.contains(&lower.as_str()) {
+        return Some((format!("`<Dynamic>` cannot render a `<{lower}>`"), format!("write the `<{lower}>` as static markup")));
     }
 
     None
 }
 
-/// `<script>` and `<style>`: their text runs or applies with no escape, so a tag from a value
-/// cannot make one.
-fn is_raw_text(name: &str) -> bool {
-    name.eq_ignore_ascii_case("script") || name.eq_ignore_ascii_case("style")
-}
+/// The elements that a tag from a value cannot make (see `DynamicTag::UNSAFE` of the runtime):
+/// the text of `<script>` and `<style>` runs or applies with no escape, and the attributes of the
+/// others load a document or a resource (`<iframe srcdoc>`, `<object data>`, `<base href>`).
+const UNSAFE_TAGS: &[&str] = &["base", "embed", "frame", "frameset", "iframe", "link", "meta", "object", "script", "style"];
 
 fn is_url_attr(name: &str) -> bool {
     URL_ATTRS.iter().any(|u| u.eq_ignore_ascii_case(name))

@@ -297,7 +297,7 @@ final class ComponentMetadata
             }
 
             // PHP changes "." and " " in a query key to "_", and "[" starts a list.
-            if (1 !== preg_match('/^[A-Za-z0-9_-]+$/', $key)) {
+            if (1 !== preg_match('/\A[A-Za-z0-9_-]+\z/', $key)) {
                 throw new \LogicException(\sprintf('The query key "%s" of the #[Url] property "%s" of <%s> can have only letters, digits, "_" and "-".', $key, $p->getName(), $short));
             }
 

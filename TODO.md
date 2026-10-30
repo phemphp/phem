@@ -299,7 +299,7 @@ takes a `tag` prop.
     ```
 
   - **An element, not a component.** phemc compiles `<Dynamic>` to an element in the template
-    of its parent: `<{{ phem_tag(tag) }} {{ phem_attrs(...) }}>...</{{ phem_tag(tag) }}>`. It
+    of its parent: `<{{ tag }} {{ phem_attrs(...) }}>...</{{ tag }}>`, with the tag checked once. It
     has no fiber. So when it is the root of a component, the `data-phem-c` id goes on it, as on
     a static element. A component with its own fiber would make the parent render "another
     component", and Phem would put a `<phem-c>` around it (not valid in a `<ul>` or a `<table>`).
@@ -309,9 +309,12 @@ takes a `tag` prop.
   - **Elements only.** The tag is an HTML element name, not a component, so phemc keeps its
     checks. A package that needs a component (for example a router link) uses a slot or a
     condition.
-  - **The runtime checks the tag.** `phem_tag` refuses a name that is not `[a-z][a-z0-9-]*`
-    (the check of `RootElement`), and the raw text elements `script` and `style`: the tag can
-    come from data, and escaped children do not make a script safe. Write them as static markup.
+  - **The runtime checks the tag.** `phem_tag` refuses a name that is not `[a-z][a-z0-9-]*` or
+    that starts with `phem-` (`TagName`, also the check of `RootElement`). It also refuses the
+    raw text elements `script` and `style`, and the elements whose attributes load a document
+    or a resource (`iframe srcdoc`, `object data`, `base href`, and others): the tag and a
+    spread can come from data, and escaped values do not make them safe. Write them as static
+    markup.
     A void element (`img`, `input`, the list of `RootTag`) renders with no end tag, and with
     children it is an error.
 - **Not in scope:** `asChild` (the props merged into the child element), because the child is

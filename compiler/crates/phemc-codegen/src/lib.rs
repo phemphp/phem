@@ -250,7 +250,7 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
 
         // Resolve the free variables to PHP expressions.
         let mut vars = Vec::new();
-        for v in vars::free_vars(&m.root) {
+        for v in vars::free_vars(info, &m.root) {
             let php = if has_variable(scope_text, &v.name) {
                 format!("${} ?? null", v.name)
             } else if let Some(c) = class {

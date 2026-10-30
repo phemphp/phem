@@ -76,7 +76,7 @@ final class Attributes
      */
     public static function isValidName(string $name): bool
     {
-        return 1 === preg_match('/^[^\s\x00-\x1F\x7F"\'<>\/=]+$/', $name);
+        return 1 === preg_match('/\A[^\s\x00-\x1F\x7F"\'<>\/=]+\z/', $name);
     }
 
     /**
@@ -192,7 +192,7 @@ final class Attributes
 
                 // A style object can come from data: a name or a value that adds another
                 // declaration (`red; position: fixed`) is not rendered.
-                if (null === $value || false === $value || 1 !== preg_match('/^-?-?[a-zA-Z][\w-]*$/', $prop) || !self::isCssValue((string) $value)) {
+                if (null === $value || false === $value || 1 !== preg_match('/\A-?-?[a-zA-Z][\w-]*\z/', $prop) || !self::isCssValue((string) $value)) {
                     continue;
                 }
 

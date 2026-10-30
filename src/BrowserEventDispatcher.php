@@ -49,7 +49,7 @@ final class BrowserEventDispatcher
      */
     public function dispatch(string $name, mixed $detail = null): void
     {
-        if (1 !== preg_match('/^[\w.:-]+$/', $name)) {
+        if (1 !== preg_match('/\A[\w.:-]+\z/', $name)) {
             throw new \InvalidArgumentException(\sprintf('The name of a browser event has only letters, digits and "_-.:", "%s" given.', $name));
         }
 

@@ -2,4 +2,4 @@
 source: crates/phemc-codegen/tests/compile.rs
 expression: t.content
 ---
-{% set _phem_content_3 %}{% set _phem_content_4 %}{% block children %}{{ children }}{% endblock %}{% endset %}<{{ phem_tag((inner)) }}>{{ phem_end_tag((inner), _phem_content_4) }}{% endset %}<{{ phem_tag((outer)) }}>{{ phem_end_tag((outer), _phem_content_3) }}
+{% set _phem_tag_4 = phem_tag((outer)) %}{% set _phem_content_4 %}{% set _phem_tag_5 = phem_tag((inner)) %}{% set _phem_content_5 %}{% block children %}{{ children }}{% endblock %}{% endset %}<{{ _phem_tag_5 }}>{{ phem_end_tag(_phem_tag_5, _phem_content_5) }}{% endset %}<{{ _phem_tag_4 }}>{{ phem_end_tag(_phem_tag_4, _phem_content_4) }}

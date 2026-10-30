@@ -89,6 +89,8 @@ final class BindTest extends TestCase
         yield 'a float string for an int' => ['int', '1.5'];
         yield 'an empty field for a non-null int' => ['int', ''];
         yield 'a space in a number' => ['float', ' 1'];
+        yield 'a final newline in an int' => ['int', "1\n"];
+        yield 'a final newline in a float' => ['float', "1.5\n"];
         yield 'a string for a bool' => ['bool', '1'];
         yield 'a string for an array' => ['array', 'a'];
         yield 'a hash for an array' => ['array', ['k' => 'a']];

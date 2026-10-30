@@ -1316,7 +1316,7 @@ pub fn builtin_components() -> Vec<Component> {
         rest: true,
         offset: None,
         signature: "final class Dynamic\n{\n    public string $tag;\n    public ?Html $children = null;\n}".into(),
-        doc: Some("An element whose tag name is a value: `<Dynamic tag={{ tag }}>`. The other attributes and the handlers go to the element. It is an element, not a component: when it is the root of a component, the id of the component goes on it. A void element has no children, and the tag cannot be `script` or `style`."),
+        doc: Some("An element whose tag name is a value: `<Dynamic tag={{ tag }}>`. The other attributes and the handlers go to the element. It is an element, not a component: when it is the root of a component, the id of the component goes on it. A void element has no children. The tag cannot start with `phem-`, and it cannot be `script`, `style`, or an element whose attributes load a document or a resource (`iframe`, `object`, `embed`, `base`, `link`, `meta`)."),
     }]
 }
 

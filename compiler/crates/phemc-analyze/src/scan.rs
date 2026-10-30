@@ -56,6 +56,23 @@ impl FileInfo {
 
         qualify(&self.namespace, name)
     }
+
+    /// The FQN of a component tag: a function imported with `use function`, or a class name.
+    pub fn resolve_component(&self, name: &str) -> String {
+        if !name.contains('\\') {
+            if let Some(f) = self.function_uses.get(&name.to_ascii_lowercase()) {
+                return f.clone();
+            }
+        }
+
+        self.resolve_class(name)
+    }
+
+    /// Whether a component tag is `<Dynamic>`: phemc compiles it to an element, so its children
+    /// are in the markup of its parent, not in a slot.
+    pub fn is_dynamic(&self, name: &str) -> bool {
+        self.resolve_component(name) == crate::DYNAMIC
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

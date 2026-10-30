@@ -99,7 +99,7 @@ final class TreeShape
             $hash = $length > 16 ? substr($entry, 8, 8) : null;
             $depth = substr($entry, null !== $hash ? 16 : 8);
 
-            if (1 !== preg_match('/^[A-Za-z0-9_-]{8}$/', $code = substr($entry, 0, 8)) || (null !== $hash && 1 !== preg_match('/^[A-Za-z0-9_-]{8}$/', $hash))
+            if (1 !== preg_match('/\A[A-Za-z0-9_-]{8}\z/', $code = substr($entry, 0, 8)) || (null !== $hash && 1 !== preg_match('/\A[A-Za-z0-9_-]{8}\z/', $hash))
                 || !ctype_digit($depth) || (int) $depth > \count($ancestors) || isset($fibers[$id = self::FIBER_PREFIX.bin2hex(self::fromBase64($code))])) {
                 return new self();
             }
@@ -236,7 +236,7 @@ final class TreeShape
     /** @param list<string> $entries */
     private function encodeFrom(string $id, int $depth, array &$entries): void
     {
-        if (1 !== preg_match('/^'.self::FIBER_PREFIX.'([0-9a-f]{12})$/', $id, $m)) {
+        if (1 !== preg_match('/\A'.self::FIBER_PREFIX.'([0-9a-f]{12})\z/', $id, $m)) {
             throw new \LogicException(\sprintf('The fiber id "%s" is not an id of Fiber::idOf().', $id));
         }
 

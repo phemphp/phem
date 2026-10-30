@@ -130,6 +130,6 @@ final class EventPayload
             throw new BadRequestHttpException(\sprintf('An event has %d stale components at most.', self::MAX_STALE));
         }
 
-        return array_values(array_filter($stale, static fn (mixed $id): bool => \is_string($id) && 1 === preg_match('/^phem[0-9a-f]{12}$/', $id)));
+        return array_values(array_filter($stale, static fn (mixed $id): bool => \is_string($id) && 1 === preg_match('/\Aphem[0-9a-f]{12}\z/', $id)));
     }
 }

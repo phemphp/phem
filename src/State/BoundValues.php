@@ -230,8 +230,8 @@ final class BoundValues
             'bool' => \is_bool($value),
             'true' => true === $value,
             'false' => false === $value,
-            'int' => \is_int($value) || (!$exact && \is_string($value) && 1 === preg_match('/^-?\d{1,18}$/', $value)),
-            'float' => \is_float($value) || (!$exact && (\is_int($value) || (\is_string($value) && 1 === preg_match('/^-?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/', $value)))),
+            'int' => \is_int($value) || (!$exact && \is_string($value) && 1 === preg_match('/\A-?\d{1,18}\z/', $value)),
+            'float' => \is_float($value) || (!$exact && (\is_int($value) || (\is_string($value) && 1 === preg_match('/\A-?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?\z/', $value)))),
             'array', 'iterable' => \is_array($value),
             default => false,
         };
@@ -253,7 +253,7 @@ final class BoundValues
 
         $backing = (new \ReflectionEnum($type))->getBackingType()?->getName();
         if ('int' === $backing) {
-            if (\is_string($value) && 1 !== preg_match('/^-?\d{1,18}$/', $value)) {
+            if (\is_string($value) && 1 !== preg_match('/\A-?\d{1,18}\z/', $value)) {
                 return false;
             }
 

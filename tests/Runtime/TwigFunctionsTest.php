@@ -59,7 +59,7 @@ final class TwigFunctionsTest extends TestCase
         self::assertSame('xlink:href="a"', (string) Attributes::attr('xlink:href', 'a'));
         self::assertSame('@click="a"', (string) Attributes::attr('@click', 'a'));
 
-        foreach (['x onfocus=alert(1) autofocus', 'a"b', 'a>b', 'a/b', "a\tb", "a\0b", ''] as $name) {
+        foreach (['x onfocus=alert(1) autofocus', 'a"b', 'a>b', 'a/b', "a\tb", "a\0b", "a\n", ''] as $name) {
             self::assertSame('', (string) Attributes::attr($name, 'v'), $name);
             self::assertSame('', (string) Attributes::attr($name, true), $name);
         }
@@ -246,12 +246,12 @@ final class TwigFunctionsTest extends TestCase
 
     public function testDynamicTag(): void
     {
-        self::assertSame('a', DynamicTag::open('a'));
-        self::assertSame('my-card', DynamicTag::open('my-card'));
-        self::assertSame('Docs</a>', (string) DynamicTag::close('a', 'Docs'));
-        self::assertSame('</section>', (string) DynamicTag::close('section'));
-        self::assertSame('', (string) DynamicTag::close('img'), 'a void element has no end tag');
-        self::assertSame('', (string) DynamicTag::close('IMG', "\n  "), 'only whitespace in a void element');
+        self::assertSame('a', (string) DynamicTag::of('a'));
+        self::assertSame('my-card', DynamicTag::of('my-card')->name);
+        self::assertSame('Docs</a>', (string) DynamicTag::close(DynamicTag::of('a'), 'Docs'));
+        self::assertSame('</section>', (string) DynamicTag::close(DynamicTag::of('section')));
+        self::assertSame('', (string) DynamicTag::close(DynamicTag::of('img')), 'a void element has no end tag');
+        self::assertSame('', (string) DynamicTag::close(DynamicTag::of('IMG'), "\n  "), 'only whitespace in a void element');
     }
 
     #[DataProvider('invalidDynamicTags')]
@@ -260,7 +260,7 @@ final class TwigFunctionsTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage($message);
 
-        DynamicTag::open($tag);
+        DynamicTag::of($tag);
     }
 
     /** @return iterable<string, array{mixed, string}> */
@@ -268,10 +268,17 @@ final class TwigFunctionsTest extends TestCase
     {
         yield 'an attribute in the name' => ['a onclick=x', '"a onclick=x" is not a valid tag name for <Dynamic>.'];
         yield 'an end of tag' => ['a>', '"a>" is not a valid tag name for <Dynamic>.'];
+        yield 'a final newline' => ["script\n", "\"script\n\" is not a valid tag name for <Dynamic>."];
+        yield 'a final newline after a name' => ["a\n", "\"a\n\" is not a valid tag name for <Dynamic>."];
         yield 'empty' => ['', '"" is not a valid tag name for <Dynamic>.'];
         yield 'not a string' => [null, '"null" is not a valid tag name for <Dynamic>.'];
+        yield 'an element of Phem' => ['phem-c', '"phem-c" is not a valid tag name for <Dynamic>.'];
+        yield 'the fallback of a Suspense' => ['PHEM-suspense', '"PHEM-suspense" is not a valid tag name for <Dynamic>.'];
         yield 'a script' => ['script', '<Dynamic> cannot render a <script>: write it as static markup.'];
         yield 'a style' => ['STYLE', '<Dynamic> cannot render a <style>: write it as static markup.'];
+        yield 'an iframe (srcdoc)' => ['iframe', '<Dynamic> cannot render a <iframe>: write it as static markup.'];
+        yield 'an object (data)' => ['Object', '<Dynamic> cannot render a <object>: write it as static markup.'];
+        yield 'a base (href)' => ['base', '<Dynamic> cannot render a <base>: write it as static markup.'];
     }
 
     public function testDynamicVoidTagRefusesChildren(): void
@@ -279,7 +286,7 @@ final class TwigFunctionsTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('<input> is a void element: <Dynamic tag="input"> cannot have children.');
 
-        DynamicTag::close('input', 'Text');
+        DynamicTag::close(DynamicTag::of('input'), 'Text');
     }
 
     public function testStyle(): void

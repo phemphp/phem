@@ -262,13 +262,14 @@ fn dynamic_is_an_element_with_a_tag_from_a_value() {
     let out = out.expect("output");
     assert_eq!(
         out.files[0].templates[0].content,
-        "{% set _phem_content_0 %}{% block children %}{{ children }}{% endblock %}{% endset %}<{{ phem_tag((tag)) }} {{ phem_attrs({'type': 'button'}, rest, {'onClick': (phem_method(rest, 'onPress'))}) }}>{{ phem_end_tag((tag), _phem_content_0) }}"
+        "{% set _phem_tag_0 = phem_tag((tag)) %}{% set _phem_content_0 %}{% block children %}{{ children }}{% endblock %}{% endset %}<{{ _phem_tag_0 }} {{ phem_attrs({'type': 'button'}, rest, {'onClick': (phem_method(rest, 'onPress'))}) }}>{{ phem_end_tag(_phem_tag_0, _phem_content_0) }}",
+        "the tag is evaluated and checked once"
     );
     assert!(!out.manifest.components.contains_key("Phem\\Dynamic"), "phemc compiles the built-in element");
 
     // No children, no attributes.
     let (out, _) = compile(vec![SourceInput::app("Button.phpm", src("use Phem\\{Dynamic, Html};", "<Dynamic tag={{ tag }} />"))]);
-    assert_eq!(out.expect("output").files[0].templates[0].content, "<{{ phem_tag((tag)) }}>{{ phem_end_tag((tag)) }}");
+    assert_eq!(out.expect("output").files[0].templates[0].content, "{% set _phem_tag_0 = phem_tag((tag)) %}<{{ _phem_tag_0 }}>{{ phem_end_tag(_phem_tag_0) }}");
 
     let (_, diags) = compile(vec![SourceInput::app("Button.phpm", src("use Phem\\Html;", body))]);
 
@@ -280,6 +281,25 @@ fn dynamic_is_an_element_with_a_tag_from_a_value() {
     let d = diags.iter().flat_map(|f| &f.diags).find(|d| d.code == "E032").expect("E032 for a <style>");
     assert_eq!(d.message, "`<Dynamic>` cannot render a `<style>`");
     assert_eq!(d.help.as_deref(), Some("write the `<style>` as static markup"));
+
+    let error = |body: &str| {
+        let (_, diags) = compile(vec![SourceInput::app("Button.phpm", src("use Phem\\{Dynamic, Html};", body))]);
+        diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {} ({})", d.code, d.message, d.help.as_deref().unwrap_or("")))).collect::<Vec<_>>()
+    };
+    assert_eq!(error("<Dynamic tag=\"iframe\" />"), ["E032 `<Dynamic>` cannot render a `<iframe>` (write the `<iframe>` as static markup)"], "an iframe runs its `srcdoc`");
+    assert_eq!(error("<Dynamic tag=\"phem-c\" />"), ["E032 `<phem-c>` is an element of Phem (give a name that does not start with `phem-`)"]);
+    assert_eq!(error("<Dynamic tag=\"a\" tag={{ tag }} />"), ["E032 `<Dynamic>` has two `tag` attributes (keep one `tag`)"]);
+}
+
+#[test]
+fn a_set_in_a_dynamic_element_binds_in_its_parent() {
+    let src = "<?phpm\nnamespace App;\nuse Phem\\Dynamic;\n#[\\Phem\\Attribute\\Component]\nfunction Card() {\n    return <div><Dynamic tag=\"p\">{% set label = 'x' %}</Dynamic>{{ label }}</div>;\n}\n";
+    let (out, diags) = compile(vec![SourceInput::app("Card.phpm", src)]);
+
+    let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
+    assert!(msgs.is_empty(), "{msgs:?}");
+    let php = &out.expect("output").files[0].php;
+    assert!(!php.contains("label"), "the children of <Dynamic> are in the scope of the parent: {php}");
 }
 
 #[test]
