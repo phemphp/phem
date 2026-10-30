@@ -1,0 +1,7 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+{% set _phem_content_0 %}
+            {% block children %}{{ children }}{% endblock %}
+        {% endset %}<{{ phem_tag((tag)) }} {{ phem_attrs({'className': (classes('px-4 py-2'))}, rest) }}>{{ phem_end_tag((tag), _phem_content_0) }}

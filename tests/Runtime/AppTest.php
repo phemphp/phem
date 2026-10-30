@@ -151,6 +151,28 @@ final class AppTest extends TestCase
         self::assertStringContainsString('Home 3', $r['data']['streams'], 'onClick in the rest prop of a class component');
     }
 
+    public function testDynamicElementTakesItsTagFromAValue(): void
+    {
+        $html = (string) $this->request('GET', '/dynamic')->getContent();
+        self::assertSame(1, preg_match('/data-phem-state-value="([^"]*)" data-phem-signature-value="([^"]*)"/', $html, $m));
+        $this->state = html_entity_decode($m[1]);
+        $this->signature = $m[2];
+        preg_match_all('/data-phem-on-click="([^"]+)"/', $html, $h);
+        $this->handlers = $h[1];
+
+        self::assertStringContainsString('<button class="btn" type="button">Save</button>', $html, 'the default tag');
+        self::assertStringContainsString('<a class="btn wide" href="/docs">Docs</a>', $html, 'the tag of the caller, and the classes merge');
+        self::assertStringContainsString('<img src="/a.png">', $html, 'a void element has no end tag');
+        self::assertStringNotContainsString('</img>', $html);
+        self::assertMatchesRegularExpression('#<article id="counter" data-phem-on-click="[^"]+" data-phem-c="phem[0-9a-f]{12}">Count 0</article>#', $html, 'the id of the component goes on the element');
+        self::assertStringContainsString('<ul><li data-phem-key="1">1</li><li data-phem-key="2">2</li></ul>', $html, 'a key');
+        self::assertCount(2, $this->handlers);
+
+        $r = $this->click(0, uri: '/dynamic');
+        self::assertSame(200, $r['status']);
+        self::assertMatchesRegularExpression('#<article id="counter" data-phem-on-click="[^"]+" data-phem-c="phem[0-9a-f]{12}">Count 1</article>#', $r['data']['streams'], 'a handler on the element');
+    }
+
     public function testSlotsListsTitlesAndReadonlyProps(): void
     {
         $html = (string) $this->request('GET', '/edge')->getContent();

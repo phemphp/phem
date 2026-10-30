@@ -49,6 +49,9 @@ pub const SUSPENSE: &str = "Phem\\Suspense";
 /// The built-in boundary of render errors: `<ErrorBoundary>` with the `fallback` slot. The runtime
 /// renders it (see `Phem\ErrorBoundary`).
 pub const ERROR_BOUNDARY: &str = "Phem\\ErrorBoundary";
+/// The built-in element with a tag name from a value: `<Dynamic tag={{ tag }}>`. phemc compiles
+/// it to an element in the template of its parent, so the runtime does not know it.
+pub const DYNAMIC: &str = "Phem\\Dynamic";
 /// The type of a prop that takes a #[State] property of the parent: `<TextField phem:bind={{ query }} />`.
 pub const BOUND: &str = "Phem\\Bound";
 
@@ -524,8 +527,8 @@ fn context_declarations(file: &FileInfo) -> Vec<(&'static str, &str, &str, Span)
 /// All components of a project, by FQCN.
 pub type Registry = BTreeMap<String, ComponentDef>;
 
-/// The built-in components: they have no source file. The runtime knows them, so the manifest
-/// does not list them.
+/// The built-in components: they have no source file. The runtime knows them (or phemc compiles
+/// them, as `<Dynamic>`), so the manifest does not list them.
 pub fn builtins() -> Vec<ComponentDef> {
     vec![ComponentDef {
         fqcn: ROOT.into(),
@@ -572,12 +575,27 @@ pub fn builtins() -> Vec<ComponentDef> {
         contexts: Vec::new(),
         provides: Vec::new(),
         page: false,
+    }, ComponentDef {
+        fqcn: DYNAMIC.into(),
+        kind: Kind::Function,
+        file: String::new(),
+        path: String::new(),
+        template: None,
+        props: vec!["tag".into()],
+        slots: vec!["children".into()],
+        required: vec!["tag".into()],
+        rest: true,
+        open: false,
+        bound: Vec::new(),
+        contexts: Vec::new(),
+        provides: Vec::new(),
+        page: false,
     }]
 }
 
 /// Whether a component is a built-in component of Phem (see `builtins()`).
 pub fn is_builtin(fqcn: &str) -> bool {
-    fqcn == ROOT || fqcn == SUSPENSE || fqcn == ERROR_BOUNDARY
+    fqcn == ROOT || fqcn == SUSPENSE || fqcn == ERROR_BOUNDARY || fqcn == DYNAMIC
 }
 
 pub fn registry<'a>(files: impl IntoIterator<Item = &'a FileInfo>) -> (Registry, Vec<(String, Diagnostic)>) {

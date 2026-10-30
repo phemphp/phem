@@ -1,0 +1,8 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<section>
+            {% set _phem_content_1 %}{% block children %}{{ children }}{% endblock %}{% endset %}<{{ phem_tag('h' ~ (level)) }} {{ phem_attrs({'id': 'title'}) }}>{{ phem_end_tag('h' ~ (level), _phem_content_1) }}
+            {% set _phem_content_2 %}Text{% endset %}<{{ phem_tag('p') }}>{{ phem_end_tag('p', _phem_content_2) }}
+        </section>

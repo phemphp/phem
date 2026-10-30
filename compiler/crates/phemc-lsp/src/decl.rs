@@ -1305,6 +1305,18 @@ pub fn builtin_components() -> Vec<Component> {
         offset: None,
         signature: "final class ErrorBoundary\n{\n    public ?Html $children = null;\n    public ?Html $fallback = null;\n}".into(),
         doc: Some("Catches the render errors of the children: when the render of the children throws, the fallback shows in place of them, only for this boundary. Each render tries the children again. An error in an event handler is not caught: the event fails."),
+    }, Component {
+        kind: ComponentKind::Class,
+        name: "Dynamic".into(),
+        fqn: "Phem\\Dynamic".into(),
+        page: false,
+        props: vec![Prop { name: "tag".into(), ty: "string".into(), default: None, required: true }],
+        slots: vec![],
+        children: true,
+        rest: true,
+        offset: None,
+        signature: "final class Dynamic\n{\n    public string $tag;\n    public ?Html $children = null;\n}".into(),
+        doc: Some("An element whose tag name is a value: `<Dynamic tag={{ tag }}>`. The other attributes and the handlers go to the element. It is an element, not a component: when it is the root of a component, the id of the component goes on it. A void element has no children, and the tag cannot be `script` or `style`."),
     }]
 }
 

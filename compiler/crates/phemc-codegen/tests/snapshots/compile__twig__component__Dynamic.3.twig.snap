@@ -1,0 +1,5 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+{% set _phem_content_3 %}{% set _phem_content_4 %}{% block children %}{{ children }}{% endblock %}{% endset %}<{{ phem_tag((inner)) }}>{{ phem_end_tag((inner), _phem_content_4) }}{% endset %}<{{ phem_tag((outer)) }}>{{ phem_end_tag((outer), _phem_content_3) }}

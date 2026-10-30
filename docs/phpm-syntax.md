@@ -393,6 +393,49 @@ phem:
   Tailwind merger already removes the defaults that conflict with the classes of the caller.
 - `style` does not merge: it keeps "last value wins".
 
+### Dynamic element
+
+A tag name is static. To render an element whose tag name is a value, use the built-in
+`<Dynamic>` (`use Phem\Dynamic;`). For example, a package `Button` can render as a link:
+
+```php
+use Phem\{Dynamic, Html, Node};
+
+#[Component]
+function Button(string $tag = 'button', ?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <Dynamic tag={{ tag }} className={{ classes('px-4 py-2') }} {{ ...rest }}>
+            {{ children }}
+        </Dynamic>
+    );
+}
+
+<Button type="submit">Save</Button>     // <button class="px-4 py-2" type="submit">Save</button>
+<Button tag="a" href="/docs">Docs</Button>   // <a class="px-4 py-2" href="/docs">Docs</a>
+```
+
+- `tag` is the name of the element. It is required.
+- The other props are the attributes and the handlers of the element, as with a spread: the
+  handlers, the merge of classes, `style` and `key` work. `phem:bind` is an error: write a
+  bound field as a static element.
+- The children are the content of the element. A void element (`img`, `input`, `br`) has no
+  end tag, and children in it are an error.
+- `<Dynamic>` is an element, not a component. When it is the root of a component, the
+  component id (`data-phem-c`) goes on it, as on a static element. So it is valid in a `<ul>`
+  or a `<table>`.
+- The tag can come from data, so the runtime checks it: an HTML element name (letters, digits
+  and `-`), and not `script` or `style`. Write a `<script>` or a `<style>` as static markup.
+  phemc checks a quoted tag (`tag="h2"`) when it builds.
+- The tag is an element, not a component. To render a component (for example a router link),
+  use a slot or a condition.
+
+The compiled Twig renders the children first, and then the element:
+
+```twig
+{% set _phem_content_0 %}{% block children %}{{ children }}{% endblock %}{% endset %}<{{ phem_tag((tag)) }} {{ phem_attrs({'className': (classes('px-4 py-2'))}, rest) }}>{{ phem_end_tag((tag), _phem_content_0) }}
+```
+
 ## 4. Conditional rendering
 
 ```php

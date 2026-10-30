@@ -26,7 +26,8 @@ namespace Phem\Rendering;
  */
 final class RootTag
 {
-    private const VOID = ['area' => true, 'base' => true, 'br' => true, 'col' => true, 'embed' => true, 'hr' => true, 'img' => true, 'input' => true, 'link' => true, 'meta' => true, 'source' => true, 'track' => true, 'wbr' => true];
+    /** The void elements of HTML: they have no end tag. */
+    public const VOID = ['area' => true, 'base' => true, 'br' => true, 'col' => true, 'embed' => true, 'hr' => true, 'img' => true, 'input' => true, 'link' => true, 'meta' => true, 'source' => true, 'track' => true, 'wbr' => true];
     private const RAW_TEXT = ['script' => true, 'style' => true, 'textarea' => true, 'title' => true];
     private const WHITESPACE = " \t\n\r\f";
 

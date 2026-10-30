@@ -1,0 +1,3 @@
+<?phpm // expect: E032
+use Phem\Dynamic;
+function App() { return <Dynamic tag="my tag" />; }

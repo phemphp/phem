@@ -887,6 +887,15 @@ fn a_component_tag_goes_to_the_component() {
 }
 
 #[test]
+fn the_builtin_dynamic_tag_needs_its_tag() {
+    let r = run(&format!("{PAGE}function Button()\n{{\n    return <Dyn|;\n}}\n"));
+    let item = r.get("Dynamic");
+    assert_eq!(item.detail, "Phem\\Dynamic");
+    assert!(item.documentation.as_ref().unwrap().contains("tag name is a value"));
+    assert!(apply(&r.text, item).contains("namespace App\\Page;\n\nuse Phem\\Dynamic;\n"));
+}
+
+#[test]
 fn the_builtin_root_tag_has_a_hover_and_no_location() {
     let src = DEF_USES.replace("use App\\Model", "use Phem\\{Html, Root};\nuse App\\Model")
         + "function Document(?Html $children = null)\n{\n    return <body><Ro‸ot tag=\"main\">{{ children }}</Root></body>;\n}\n";

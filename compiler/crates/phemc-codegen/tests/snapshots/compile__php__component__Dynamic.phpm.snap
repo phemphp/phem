@@ -1,0 +1,43 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from component/Dynamic.phpm; do not edit */
+
+namespace App\Component;
+
+use Phem\Attribute\Component;
+use Phem\{Dynamic, Html, Node};
+
+// A button that renders as a link: the tag is a prop.
+#[Component]
+function DynamicButton(string $tag = 'button', ?Html $children = null, mixed ...$rest): Node {
+    return (
+        new \Phem\Element('component/Dynamic.0.twig', ['tag' => $tag ?? null, 'rest' => $rest ?? null, 'children' => $children ?? null])
+
+
+    );
+}
+
+// No children: a void element is valid.
+#[Component]
+function DynamicMedia(string $tag, string $src): Node {
+    return new \Phem\Element('component/Dynamic.1.twig', ['tag' => $tag ?? null, 'src' => $src ?? null]);
+}
+
+// A literal tag, and a tag from a quoted value.
+#[Component]
+function DynamicHeading(int $level = 2, ?Html $children = null): Node {
+    return (
+        new \Phem\Element('component/Dynamic.2.twig', ['level' => $level ?? null, 'children' => $children ?? null])
+
+
+
+    );
+}
+
+// Nested elements: each one captures its children in its own variable.
+#[Component]
+function DynamicNested(string $outer, string $inner, ?Html $children = null): Node {
+    return new \Phem\Element('component/Dynamic.3.twig', ['outer' => $outer ?? null, 'inner' => $inner ?? null, 'children' => $children ?? null]);
+}

@@ -252,6 +252,47 @@ fn root_is_a_built_in_component() {
 }
 
 #[test]
+fn dynamic_is_an_element_with_a_tag_from_a_value() {
+    let src = |imports: &str, body: &str| format!("<?phpm\nnamespace App;\n{imports}\n#[\\Phem\\Attribute\\Component]\nfunction Button(string $tag = 'button', ?Html $children = null, mixed ...$rest) {{\n    return {body};\n}}\n");
+    let body = "<Dynamic tag={{ tag }} type=\"button\" {{ ...rest }} onClick={{ rest.onPress }}>{{ children }}</Dynamic>";
+    let (out, diags) = compile(vec![SourceInput::app("Button.phpm", src("use Phem\\{Dynamic, Html};", body))]);
+
+    let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
+    assert!(msgs.is_empty(), "{msgs:?}");
+    let out = out.expect("output");
+    assert_eq!(
+        out.files[0].templates[0].content,
+        "{% set _phem_content_0 %}{% block children %}{{ children }}{% endblock %}{% endset %}<{{ phem_tag((tag)) }} {{ phem_attrs({'type': 'button'}, rest, {'onClick': (phem_method(rest, 'onPress'))}) }}>{{ phem_end_tag((tag), _phem_content_0) }}"
+    );
+    assert!(!out.manifest.components.contains_key("Phem\\Dynamic"), "phemc compiles the built-in element");
+
+    // No children, no attributes.
+    let (out, _) = compile(vec![SourceInput::app("Button.phpm", src("use Phem\\{Dynamic, Html};", "<Dynamic tag={{ tag }} />"))]);
+    assert_eq!(out.expect("output").files[0].templates[0].content, "<{{ phem_tag((tag)) }}>{{ phem_end_tag((tag)) }}");
+
+    let (_, diags) = compile(vec![SourceInput::app("Button.phpm", src("use Phem\\Html;", body))]);
+
+    let d = diags.iter().flat_map(|f| &f.diags).find(|d| d.code == "E010").expect("E010 without the import");
+    assert_eq!(d.help.as_deref(), Some("import it: `use Phem\\Dynamic;`"));
+
+    let (_, diags) = compile(vec![SourceInput::app("Button.phpm", src("use Phem\\{Dynamic, Html};", "<Dynamic tag=\"Style\" />"))]);
+
+    let d = diags.iter().flat_map(|f| &f.diags).find(|d| d.code == "E032").expect("E032 for a <style>");
+    assert_eq!(d.message, "`<Dynamic>` cannot render a `<style>`");
+    assert_eq!(d.help.as_deref(), Some("write the `<style>` as static markup"));
+}
+
+#[test]
+fn a_context_consumer_in_a_dynamic_element_is_placed() {
+    let src = TABS.replace("use Phem\\Html;", "use Phem\\{Dynamic, Html};")
+        + "#[Page('/')]\nfinal class Home { public function render() { return <Dynamic tag=\"main\"><Tab name=\"a\" /></Dynamic>; } }\n";
+    assert_eq!(project(&[("App.phpm", &src)]), ["App.phpm E015"], "`<Dynamic>` is not a component: the page is the parent of the tag");
+
+    let src = src.replace("<Dynamic tag=\"main\"><Tab name=\"a\" /></Dynamic>", "<Tabs><Dynamic tag=\"main\"><Tab name=\"a\" /></Dynamic></Tabs>");
+    assert!(project(&[("App.phpm", &src)]).is_empty());
+}
+
+#[test]
 fn suspense_is_a_built_in_component() {
     let src = |imports: &str, body: &str| format!("<?phpm\nnamespace App;\n{imports}\n#[\\Phem\\Attribute\\Component]\nfunction Report() {{ return <p />; }}\n#[\\Phem\\Attribute\\Component]\nfunction Home() {{\n    return {body};\n}}\n");
     let body = "<Suspense lazy><Suspense:fallback>Loading</Suspense:fallback><Suspense:error>Error</Suspense:error><Report /></Suspense>";

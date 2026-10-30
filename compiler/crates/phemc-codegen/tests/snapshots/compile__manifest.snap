@@ -97,6 +97,71 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       "required": [],
       "rest": false
     },
+    "App\\Component\\DynamicButton": {
+      "fqcn": "App\\Component\\DynamicButton",
+      "kind": "template",
+      "source": "component/Dynamic.phpm",
+      "template": "component/Dynamic.0.twig",
+      "props": [
+        "tag",
+        "children"
+      ],
+      "slots": [
+        "children"
+      ],
+      "required": [],
+      "rest": true
+    },
+    "App\\Component\\DynamicHeading": {
+      "fqcn": "App\\Component\\DynamicHeading",
+      "kind": "template",
+      "source": "component/Dynamic.phpm",
+      "template": "component/Dynamic.2.twig",
+      "props": [
+        "level",
+        "children"
+      ],
+      "slots": [
+        "children"
+      ],
+      "required": [],
+      "rest": false
+    },
+    "App\\Component\\DynamicMedia": {
+      "fqcn": "App\\Component\\DynamicMedia",
+      "kind": "template",
+      "source": "component/Dynamic.phpm",
+      "template": "component/Dynamic.1.twig",
+      "props": [
+        "tag",
+        "src"
+      ],
+      "slots": [],
+      "required": [
+        "tag",
+        "src"
+      ],
+      "rest": false
+    },
+    "App\\Component\\DynamicNested": {
+      "fqcn": "App\\Component\\DynamicNested",
+      "kind": "template",
+      "source": "component/Dynamic.phpm",
+      "template": "component/Dynamic.3.twig",
+      "props": [
+        "outer",
+        "inner",
+        "children"
+      ],
+      "slots": [
+        "children"
+      ],
+      "required": [
+        "outer",
+        "inner"
+      ],
+      "rest": false
+    },
     "App\\Component\\Filters": {
       "fqcn": "App\\Component\\Filters",
       "kind": "class",
@@ -418,6 +483,22 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       "source": "component/Document.phpm",
       "line": 14
     },
+    "component/Dynamic.0.twig": {
+      "source": "component/Dynamic.phpm",
+      "line": 12
+    },
+    "component/Dynamic.1.twig": {
+      "source": "component/Dynamic.phpm",
+      "line": 21
+    },
+    "component/Dynamic.2.twig": {
+      "source": "component/Dynamic.phpm",
+      "line": 28
+    },
+    "component/Dynamic.3.twig": {
+      "source": "component/Dynamic.phpm",
+      "line": 38
+    },
     "component/Filters.0.twig": {
       "source": "component/Filters.phpm",
       "line": 30
@@ -493,6 +574,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "php/component/Classes.php",
     "php/component/Counter.php",
     "php/component/Document.php",
+    "php/component/Dynamic.php",
     "php/component/Filters.php",
     "php/component/Rest.php",
     "php/component/Tabs.php",

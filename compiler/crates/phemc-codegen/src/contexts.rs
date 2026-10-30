@@ -52,7 +52,8 @@ pub(crate) fn uses(info: &FileInfo, lexed: &Lexed) -> Vec<Use> {
 
 fn walk(info: &FileInfo, owner: &str, node: &Node, enclosing: &mut Vec<String>, out: &mut Vec<Use>) {
     match node {
-        Node::Element(e) if e.is_component() => {
+        // `<Dynamic>` is an element: its children are in the markup of the owner.
+        Node::Element(e) if e.is_component() && resolve(info, &e.name) != phemc_analyze::DYNAMIC => {
             let child = resolve(info, &e.name);
             out.push(Use { owner: owner.to_string(), child: child.clone(), enclosing: enclosing.clone(), rel: info.rel.clone(), span: e.name_span });
 

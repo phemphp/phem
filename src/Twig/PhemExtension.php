@@ -16,6 +16,7 @@ namespace Phem\Twig;
 use Phem\Binding\SpreadProps;
 use Phem\ClassList;
 use Phem\Dom\Attributes;
+use Phem\Dom\DynamicTag;
 use Phem\Handler\MemberHandler;
 use Phem\Manifest\Manifest;
 use Twig\Extension\AbstractExtension;
@@ -25,7 +26,7 @@ use Twig\TwigFunction;
  * The `{% component %}` tag and the `phem_*` functions that compiled templates use.
  *
  * The functions that need the current render tree or a service (`phem_on`, `phem_loading`, `phem_progress`, `phem_bind`, `phem_class`, `phem_attrs`) are in PhemRuntime.
- * The attribute functions render with Phem\Dom\Attributes. `classes()` gives a mergeable class list (Phem\ClassList).
+ * The attribute functions render with Phem\Dom\Attributes, and the tag of `<Dynamic>` with Phem\Dom\DynamicTag. `classes()` gives a mergeable class list (Phem\ClassList).
  */
 final class PhemExtension extends AbstractExtension
 {
@@ -54,6 +55,8 @@ final class PhemExtension extends AbstractExtension
             new TwigFunction('phem_attr', Attributes::attr(...), $safe),
             new TwigFunction('phem_style', Attributes::style(...), $safe),
             new TwigFunction('phem_timing', Attributes::timing(...), $safe),
+            new TwigFunction('phem_tag', DynamicTag::open(...), $safe),
+            new TwigFunction('phem_end_tag', DynamicTag::close(...), $safe),
             new TwigFunction('phem_class', [PhemRuntime::class, 'class'], $safe),
             new TwigFunction('phem_attrs', [PhemRuntime::class, 'attrs'], $safe),
             new TwigFunction('phem_props', SpreadProps::merge(...)),

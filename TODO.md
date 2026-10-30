@@ -268,7 +268,12 @@ and add the classes of the caller.
   yet, because a theme uses classes and the CSS variables of its CSS. When a package shows the
   need, add a mergeable `Phem\Style` (a merge by CSS property, as Twig `html_attr()` does).
 
-### [ ] Polymorphic element — P2
+### [x] Polymorphic element — P2
+
+Done: see [Dynamic element](docs/phpm-syntax.md#dynamic-element). The text below keeps the
+design decisions. One detail of the implementation: the children render first, in a Twig
+variable (`{% set %}`), so `phem_end_tag()` sees them and refuses children for a void element.
+Children in the markup with no content at runtime (an empty `{{ children }}`) are not an error.
 
 A tag name is static. A package `Button` cannot render as an `<a>` for a link. Only `<Root>`
 takes a `tag` prop.

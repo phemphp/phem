@@ -54,6 +54,9 @@ The components of a package mark their default classes with `classes()`, so the 
 classes where it uses a component: `<Button className="w-full" />` keeps the classes of
 `Button`. See [Merge of classes](phpm-syntax.md#merge-of-classes).
 
+A component that can render as another element (a `Button` as a link) takes its tag in a prop,
+and renders `<Dynamic tag={{ tag }}>`. See [Dynamic element](phpm-syntax.md#dynamic-element).
+
 ## How the app compiles a package
 
 `phemc build`, `check` and `watch` read `installed.json` in the Composer dir of the vendor dir

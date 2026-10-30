@@ -17,6 +17,7 @@ use Phem\ClassList;
 use Phem\Dom\Attributes;
 use Phem\Dom\ClassAttribute;
 use Phem\Dom\ClassMerger;
+use Phem\Dom\DynamicTag;
 use Phem\Dom\TailwindClassMerger;
 use Phem\Element;
 use Phem\Html;
@@ -241,6 +242,44 @@ final class TwigFunctionsTest extends TestCase
         $classes = null !== $merger ? new ClassAttribute($merger) : new ClassAttribute();
 
         return new PhemRuntime(new Renderer(new Manifest('/nonexistent'), new MarkupResolver($twig), []), classes: $classes);
+    }
+
+    public function testDynamicTag(): void
+    {
+        self::assertSame('a', DynamicTag::open('a'));
+        self::assertSame('my-card', DynamicTag::open('my-card'));
+        self::assertSame('Docs</a>', (string) DynamicTag::close('a', 'Docs'));
+        self::assertSame('</section>', (string) DynamicTag::close('section'));
+        self::assertSame('', (string) DynamicTag::close('img'), 'a void element has no end tag');
+        self::assertSame('', (string) DynamicTag::close('IMG', "\n  "), 'only whitespace in a void element');
+    }
+
+    #[DataProvider('invalidDynamicTags')]
+    public function testDynamicTagRefusesAnInvalidTag(mixed $tag, string $message): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage($message);
+
+        DynamicTag::open($tag);
+    }
+
+    /** @return iterable<string, array{mixed, string}> */
+    public static function invalidDynamicTags(): iterable
+    {
+        yield 'an attribute in the name' => ['a onclick=x', '"a onclick=x" is not a valid tag name for <Dynamic>.'];
+        yield 'an end of tag' => ['a>', '"a>" is not a valid tag name for <Dynamic>.'];
+        yield 'empty' => ['', '"" is not a valid tag name for <Dynamic>.'];
+        yield 'not a string' => [null, '"null" is not a valid tag name for <Dynamic>.'];
+        yield 'a script' => ['script', '<Dynamic> cannot render a <script>: write it as static markup.'];
+        yield 'a style' => ['STYLE', '<Dynamic> cannot render a <style>: write it as static markup.'];
+    }
+
+    public function testDynamicVoidTagRefusesChildren(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('<input> is a void element: <Dynamic tag="input"> cannot have children.');
+
+        DynamicTag::close('input', 'Text');
     }
 
     public function testStyle(): void

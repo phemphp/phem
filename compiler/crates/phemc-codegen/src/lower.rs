@@ -29,11 +29,13 @@ pub struct Lowerer<'a> {
     pub params: &'a [Param],
     /// The bound value of the open `<select phem:bind>`: its options get `selected`.
     bound_select: Option<String>,
+    /// The number of `<Dynamic>` elements with children: each one captures them in its own variable.
+    dynamics: usize,
 }
 
 impl<'a> Lowerer<'a> {
     pub fn new(info: &'a FileInfo, reg: &'a Registry) -> Self {
-        Self { info, reg, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None }
+        Self { info, reg, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, dynamics: 0 }
     }
 
     pub fn lower_root(&mut self, node: &Node, slots: Vec<String>) -> String {
@@ -806,6 +808,11 @@ impl<'a> Lowerer<'a> {
             return;
         };
 
+        if fqcn == phemc_analyze::DYNAMIC {
+            self.dynamic(e, out);
+            return;
+        }
+
         // A page renders at its URL, with its document: it has no props, and it is not a tag.
         if def.page {
             self.error(codes::PAGE_AS_TAG, format!("`<{}>` is a page, and a page cannot be a tag", e.name), e.name_span).help =
@@ -984,6 +991,84 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// `<Dynamic tag={{ tag }}>`: an element whose tag name is a value. It is an element in the
+    /// template, not a component with a fiber, so the id of its component goes on it, as on a
+    /// static element. Its attributes go through phem_attrs(), as with a spread:
+    /// `<{{ phem_tag(tag) }} {{ phem_attrs(...) }}>{{ phem_end_tag(tag, content) }}`. The children
+    /// render first, in a variable: phem_end_tag() refuses children for a void element.
+    fn dynamic(&mut self, e: &Element, out: &mut String) {
+        let mut tag = None;
+        let mut attrs = Vec::new();
+        for a in &e.attrs {
+            match &a.kind {
+                AttrKind::Plain { name, name_span, value } if name == "tag" => tag = self.dynamic_tag(value, *name_span, a.span),
+                AttrKind::Plain { name, name_span, .. } if name == BIND => {
+                    self.error(codes::INVALID_BIND, "`phem:bind` is for a form field, not a `<Dynamic>`", *name_span).help =
+                        Some("write the field as a static element: `<input phem:bind={{ query }} />`".into());
+                }
+                _ => attrs.push(a.clone()),
+            }
+        }
+
+        let has_tag = e.attrs.iter().any(|a| matches!(&a.kind, AttrKind::Plain { name, .. } if name == "tag"));
+        if !has_tag {
+            self.error(codes::UNKNOWN_PROP, format!("`<{}>` needs the prop `tag`", e.name), e.name_span).help =
+                Some(format!("give the name of the element: `<{} tag={{{{ tag }}}}>`", e.name));
+        }
+
+        let Some(tag) = tag else { return };
+
+        self.check_timing(e);
+
+        // The children, before the element.
+        let mut content = None;
+        if e.children.iter().any(|n| !n.is_blank() && !matches!(n, Node::TwigComment(_))) {
+            let var = format!("_phem_content_{}", self.dynamics);
+            self.dynamics += 1;
+            out.push_str(&format!("{{% set {var} %}}"));
+            self.nodes(&e.children, out);
+            out.push_str("{% endset %}");
+            content = Some(var);
+        }
+
+        out.push_str(&format!("<{{{{ phem_tag({tag}) }}}}"));
+        if !attrs.is_empty() {
+            self.merged_attrs(&attrs, out);
+        }
+
+        out.push('>');
+        match content {
+            Some(var) => out.push_str(&format!("{{{{ phem_end_tag({tag}, {var}) }}}}")),
+            None => out.push_str(&format!("{{{{ phem_end_tag({tag}) }}}}")),
+        }
+    }
+
+    /// The `tag` of `<Dynamic>` as a Twig expression. phemc checks a literal name, and the
+    /// runtime checks the other values (see `Phem\Dom\DynamicTag`).
+    fn dynamic_tag(&mut self, value: &AttrValue, name_span: Span, span: Span) -> Option<String> {
+        match value {
+            AttrValue::Expr(x) => Some(format!("({})", self.expr_code(x))),
+            AttrValue::Quoted { parts, .. } if has_expr(parts) => Some(self.quoted_expr(parts, span)),
+            AttrValue::Quoted { parts, .. } => {
+                let name: String = parts.iter().map(|p| if let StrPart::Lit(s) = p { s.as_str() } else { "" }).collect();
+                if let Some(reason) = dynamic_tag_error(&name) {
+                    self.error(codes::BAD_ATTRIBUTE, reason, span).help = Some(if is_raw_text(&name) {
+                        format!("write the `<{}>` as static markup", name.to_ascii_lowercase())
+                    } else {
+                        "write the name of an HTML element: letters, digits and `-`, for example `tag=\"a\"`".into()
+                    });
+                    return None;
+                }
+
+                Some(php_str(&name))
+            }
+            AttrValue::None => {
+                self.error(codes::BAD_ATTRIBUTE, "`tag` takes the name of an element", name_span).help = Some("write `tag=\"a\"` or `tag={{ tag }}`".into());
+                None
+            }
+        }
+    }
+
     /// `{{ c ? <A /> : <B /> }}` → `{% if c %}...{% else %}...{% endif %}`; `{{ c and <A /> }}` → `{% if c %}...{% endif %}`.
     fn markup_expr(&mut self, x: &TwigExpr) -> Result<String, Diagnostic> {
         let mut code = String::new();
@@ -1049,6 +1134,27 @@ const PROGRESS: &str = "phem:progress";
 
 /// The attributes with a URL that the browser opens or sends a form to (see `Attributes::URLS` of the runtime).
 const URL_ATTRS: &[&str] = &["action", "formaction", "href", "src", "xlink:href"];
+
+/// Why a literal `tag` of `<Dynamic>` is not valid, or None (the check of `Phem\Dom\DynamicTag`).
+fn dynamic_tag_error(name: &str) -> Option<String> {
+    let mut chars = name.chars();
+    let valid = chars.next().is_some_and(|c| c.is_ascii_alphabetic()) && chars.all(|c| c.is_ascii_alphanumeric() || c == '-');
+    if !valid {
+        return Some(format!("`{name}` is not a valid tag name"));
+    }
+
+    if is_raw_text(name) {
+        return Some(format!("`<Dynamic>` cannot render a `<{}>`", name.to_ascii_lowercase()));
+    }
+
+    None
+}
+
+/// `<script>` and `<style>`: their text runs or applies with no escape, so a tag from a value
+/// cannot make one.
+fn is_raw_text(name: &str) -> bool {
+    name.eq_ignore_ascii_case("script") || name.eq_ignore_ascii_case("style")
+}
 
 fn is_url_attr(name: &str) -> bool {
     URL_ATTRS.iter().any(|u| u.eq_ignore_ascii_case(name))

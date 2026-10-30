@@ -1,0 +1,5 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<{{ phem_tag((tag)) }} {{ phem_attrs({'src': (src)}) }}>{{ phem_end_tag((tag)) }}
