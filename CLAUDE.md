@@ -15,6 +15,16 @@ The repository root is the `phem/phem` Composer package (`src/`, `config/`, `tem
 `assets/`, `bin/phemc`). The compiler (`compiler/`), the editor support (`editors/`), the docs and
 the Docker dev image (`docker/`) live in the same repository, so one change can update all of them. `.gitattributes` keeps them out of the Composer dist.
 
+## Feature discussions
+
+Always show usage examples when we discuss a feature: a TODO item, a design, a proposal, or a
+change that you made.
+
+- Show the `.phpm` code that an app or a package writes.
+- Show the result: the rendered HTML, and the compiled Twig when the compiler changes.
+- Show the config (`config/packages/phem.yaml`) when the feature adds an option.
+- Use the real output of the tests or the snapshots when it exists.
+
 ## Design
 
 Use the SOLID principles in all new and changed code. Follow the patterns that the code already has:
