@@ -8,7 +8,7 @@ ideas of React map to Phem.
 ```
  .phpm ──► phemc (Rust) ──► php/*.php        markup replaced by new \Phem\Element('x.0.twig', [...])
                      ├──► templates/*.twig one template for each markup literal (@phpm/x.0.twig)
-                     └──► manifest.php, autoload.php, preload.php
+                     └──► manifest.php, autoload.php
                               │
      bin/console phem:warmup ──► the Twig cache (compiled at build time, not at runtime)
                               │

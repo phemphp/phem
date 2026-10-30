@@ -270,8 +270,7 @@ var/phem/
 ├── php/vendor/acme/ui/...      the PHP code of a Composer package (its templates are in templates/vendor/acme/ui/)
 ├── templates/Page/index.0.twig one Twig template for each markup literal (Twig name: @phpm/Page/index.0.twig)
 ├── manifest.php / manifest.json components (kind, source, props, slots), pages, template → .phpm line map
-├── autoload.php                 requires all compiled PHP files
-└── preload.php                  the Composer autoloader and autoload.php, for an opcache.preload of its own
+└── autoload.php                 requires all compiled PHP files
 var/cache/<env>/twig/            the Twig cache (filled by the warmup)
 ```
 

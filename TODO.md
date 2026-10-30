@@ -102,8 +102,6 @@ Flex does not enable the bundle and does not add the first page or the `phemc` w
     0.2.3, which has no automatic routes of the pages.
   - Copy `recipe/` to `phem/phem/0.3/` in symfony/recipes-contrib, and open the pull request.
   - After the merge, test the 3 commands in a new application, with no local Flex endpoint.
-- **Follow-up:** the `preload.php` output of `phemc` is now redundant: `PreloadWarmer` adds the
-  compiled components to the container preload file. Remove it from the compiler.
 
 ## 4. Component libraries
 
@@ -128,8 +126,7 @@ diagnostics also compile only the source directory of the app.
     `"extra": {"phem": {"source": "components"}}`. `phemc` reads
     `vendor/composer/installed.json` and takes each package with this key. The root is relative
     to the `install-path` of the package, so a path repository also works. `phemc` already runs
-    from the project root (the warmup runs `bin/console`, and `preload.php` uses
-    `vendor/autoload.php`), so it needs no `--root` option. A component that the app does not
+    from the project root (the warmup runs `bin/console`), so it needs no `--root` option. A component that the app does not
     import costs only build time.
   - **One build.** `phemc build`, `check` and `watch` compile the roots of the packages with
     the app, into the build directory of the app: one registry, one manifest and one templates
