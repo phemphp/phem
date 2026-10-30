@@ -226,6 +226,56 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// A quoted `class` value with an expression as a Twig list, one class (or one part of a
+    /// class) in each item: `"btn btn-{{ size }} {{ extra }}"` → `['btn', 'btn-' ~ (size), (extra)]`.
+    /// So an expression can give a list or a ClassList, and the runtime merges it.
+    fn class_list_expr(&mut self, parts: &[StrPart], span: Span) -> String {
+        let mut items: Vec<String> = Vec::new();
+        let mut item: Vec<String> = Vec::new();
+        let flush = |item: &mut Vec<String>, items: &mut Vec<String>| {
+            if !item.is_empty() {
+                items.push(item.join(" ~ "));
+                item.clear();
+            }
+        };
+
+        for p in parts {
+            match p {
+                StrPart::Lit(s) => {
+                    if s.contains("{%") || s.contains("{#") {
+                        self.error(codes::BAD_ATTRIBUTE, "Twig tags are not allowed in this attribute value", span)
+                            .help = Some("use an expression: `name={{ ok ? 'a' : 'b' }}`".into());
+                    }
+
+                    if s.starts_with(char::is_whitespace) {
+                        flush(&mut item, &mut items);
+                    }
+
+                    let words: Vec<&str> = s.split_whitespace().collect();
+                    for (i, w) in words.iter().enumerate() {
+                        if i > 0 {
+                            flush(&mut item, &mut items);
+                        }
+
+                        item.push(php_str(w));
+                    }
+
+                    if s.ends_with(char::is_whitespace) {
+                        flush(&mut item, &mut items);
+                    }
+                }
+                StrPart::Expr(x) => {
+                    let c = self.expr_code(x);
+                    item.push(format!("({c})"));
+                }
+            }
+        }
+
+        flush(&mut item, &mut items);
+
+        format!("[{}]", items.join(", "))
+    }
+
     /// The attributes of an element with a spread, in one call: `<a x="1" {{ ...rest }} y={{ v }}>`
     /// → `phem_attrs({'x': '1'}, rest, {'y': (v)})`. A later value replaces an earlier one, as in React.
     fn merged_attrs(&mut self, attrs: &[Attr], out: &mut String) {
@@ -282,6 +332,7 @@ impl<'a> Lowerer<'a> {
                             continue;
                         }
                         AttrValue::None => "true".to_string(),
+                        AttrValue::Quoted { parts, .. } if is_class_attr(name) && has_expr(parts) => self.class_list_expr(parts, a.span),
                         AttrValue::Quoted { parts, .. } => self.quoted_expr(parts, a.span),
                     };
 
@@ -701,8 +752,13 @@ impl<'a> Lowerer<'a> {
 
                 match value {
                     AttrValue::None => out.push_str(&format!("{ws}{html_name}")),
+                    // A class from an expression can be a list or a ClassList: phem_class() merges it.
+                    AttrValue::Quoted { parts, .. } if html_name == "class" && has_expr(parts) => {
+                        let c = self.class_list_expr(parts, a.span);
+                        out.push_str(&format!("{ws}{{{{ phem_class({c}) }}}}"));
+                    }
                     // A URL from an expression goes through phem_attr(), which drops a `javascript:` URL.
-                    AttrValue::Quoted { parts, .. } if is_url_attr(html_name) && parts.iter().any(|p| matches!(p, StrPart::Expr(_))) => {
+                    AttrValue::Quoted { parts, .. } if is_url_attr(html_name) && has_expr(parts) => {
                         let c = self.quoted_expr(parts, a.span);
                         out.push_str(&format!("{ws}{{{{ phem_attr('{html_name}', {c}) }}}}"));
                     }
@@ -711,6 +767,8 @@ impl<'a> Lowerer<'a> {
                         let c = self.expr_code(x);
                         if html_name == "style" {
                             out.push_str(&format!("{ws}{{{{ phem_style({c}) }}}}"));
+                        } else if html_name == "class" {
+                            out.push_str(&format!("{ws}{{{{ phem_class({c}) }}}}"));
                         } else {
                             out.push_str(&format!("{ws}{{{{ phem_attr('{html_name}', {c}) }}}}"));
                         }
@@ -755,6 +813,8 @@ impl<'a> Lowerer<'a> {
             return;
         }
 
+        // With a spread, the groups of props go to phem_props(): `{'a': 1}, rest, {'b': 2}`.
+        let mut groups: Vec<String> = Vec::new();
         let mut props = Vec::new();
         let mut key: Option<String> = None;
         let mut has_spread = false;
@@ -769,8 +829,12 @@ impl<'a> Lowerer<'a> {
                 }
                 AttrKind::Spread(x) => {
                     has_spread = true;
-                    let c = self.expr_code(x);
-                    props.push(format!("...({c})"));
+                    if !props.is_empty() {
+                        groups.push(format!("{{{}}}", props.join(", ")));
+                        props.clear();
+                    }
+
+                    groups.push(self.expr_code(x));
                 }
                 AttrKind::Plain { name, name_span, value } => {
                     let v = match value {
@@ -886,7 +950,15 @@ impl<'a> Lowerer<'a> {
         }
 
         let mut head = format!("component {}", php_str(&fqcn));
-        if !props.is_empty() {
+        if has_spread {
+            // A later value replaces an earlier one, and two values of `className` merge when one
+            // of them is a ClassList.
+            if !props.is_empty() {
+                groups.push(format!("{{{}}}", props.join(", ")));
+            }
+
+            head.push_str(&format!(" with phem_props({})", groups.join(", ")));
+        } else if !props.is_empty() {
             head.push_str(&format!(" with {{{}}}", props.join(", ")));
         }
 
@@ -980,6 +1052,15 @@ const URL_ATTRS: &[&str] = &["action", "formaction", "href", "src", "xlink:href"
 
 fn is_url_attr(name: &str) -> bool {
     URL_ATTRS.iter().any(|u| u.eq_ignore_ascii_case(name))
+}
+
+/// `class` and `className`: a value with an expression is a list of classes (see `Lowerer::class_list_expr()`).
+fn is_class_attr(name: &str) -> bool {
+    name == "class" || name == "className"
+}
+
+fn has_expr(parts: &[StrPart]) -> bool {
+    parts.iter().any(|p| matches!(p, StrPart::Expr(_)))
 }
 
 /// `phem:bind={{ query }}`: the field shows a #[State] property, and the browser sends its new

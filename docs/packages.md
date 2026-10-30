@@ -50,6 +50,10 @@ acme-ui/
 The `.phpm` files have no PSR-4 autoload: `phemc` compiles them. The other PHP classes of the
 package (an enum of variants, a service) use the normal Composer autoload.
 
+The components of a package mark their default classes with `classes()`, so the app can add
+classes where it uses a component: `<Button className="w-full" />` keeps the classes of
+`Button`. See [Merge of classes](phpm-syntax.md#merge-of-classes).
+
 ## How the app compiles a package
 
 `phemc build`, `check` and `watch` read `installed.json` in the Composer dir of the vendor dir

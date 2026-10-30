@@ -1,0 +1,7 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<button {{ phem_attrs({'className': (classes('px-4 py-2'))}, rest, {'data-size': '' ~ (size)}) }}>
+            {% block children %}{{ children }}{% endblock %}
+        </button>

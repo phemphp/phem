@@ -196,7 +196,12 @@ diagnostics also compile only the source directory of the app.
     With `KERNEL_CLASS` in `phpunit.xml.dist`, the tests use `InteractsWithPhem` as in an app.
     In the CI, `vendor/bin/phemc check tests/app/src` also checks the package.
 
-### [ ] Merge of classes — P1
+### [x] Merge of classes — P1
+
+Done: see [Merge of classes](docs/phpm-syntax.md#merge-of-classes). The text below keeps the
+design decisions. Two details of the implementation: a plain `class` array also goes through
+the merger (a plain string does not), and the quoted `className` of a component tag stays a
+string, because the prop can have the type `string`.
 
 A spread uses "last value wins", as in React: `className="btn" {{ ...rest }}` with a
 `className` from the caller prints only the class of the caller. A class array ignores its keys,

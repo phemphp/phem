@@ -1,0 +1,5 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<p {{ phem_attrs({'className': ['note', 'note-' ~ (1)]}, rest) }}>x</p>

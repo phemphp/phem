@@ -39,6 +39,18 @@ final class RestLink
     }
 }
 
+// Its default classes merge with the classes of the caller.
+#[Component]
+function MergedButton(mixed ...$rest): Node {
+    return <button className={{ classes('btn btn-md') }} {{ ...rest }}>Merged</button>;
+}
+
+// A wrapper keeps its classes: the props of the tag merge too.
+#[Component]
+function PrimaryButton(mixed ...$rest): Node {
+    return <MergedButton className={{ classes('btn-primary') }} {{ ...rest }} />;
+}
+
 #[Page('/rest')]
 final class RestPage
 {
@@ -60,6 +72,9 @@ final class RestPage
                     <RestButton count={{ count }} />
                     <RestLink label="Home {{ count }}" href="/" className="primary" onClick={{ increment }} />
                     <RestLink label="Plain" />
+                    <MergedButton className="btn wide" />
+                    <PrimaryButton className={{ ['big', {'zero': count == 0, 'more': count > 0}] }} />
+                    <p className="note note-{{ count }}">Note</p>
                 </main>
             </Document>
         );

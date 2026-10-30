@@ -39,6 +39,21 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       ],
       "rest": false
     },
+    "App\\Component\\ClassButton": {
+      "fqcn": "App\\Component\\ClassButton",
+      "kind": "template",
+      "source": "component/Classes.phpm",
+      "template": "component/Classes.0.twig",
+      "props": [
+        "size",
+        "children"
+      ],
+      "slots": [
+        "children"
+      ],
+      "required": [],
+      "rest": true
+    },
     "App\\Component\\ColorPicker": {
       "fqcn": "App\\Component\\ColorPicker",
       "kind": "class",
@@ -130,6 +145,20 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       "required": [],
       "rest": false
     },
+    "App\\Component\\PrimaryButton": {
+      "fqcn": "App\\Component\\PrimaryButton",
+      "kind": "template",
+      "source": "component/Classes.phpm",
+      "template": "component/Classes.1.twig",
+      "props": [
+        "children"
+      ],
+      "slots": [
+        "children"
+      ],
+      "required": [],
+      "rest": true
+    },
     "App\\Component\\Profile": {
       "fqcn": "App\\Component\\Profile",
       "kind": "class",
@@ -173,6 +202,16 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       "slots": [],
       "required": [],
       "rest": false
+    },
+    "App\\Component\\SpreadNote": {
+      "fqcn": "App\\Component\\SpreadNote",
+      "kind": "template",
+      "source": "component/Classes.phpm",
+      "template": "component/Classes.3.twig",
+      "props": [],
+      "slots": [],
+      "required": [],
+      "rest": true
     },
     "App\\Component\\Tab": {
       "fqcn": "App\\Component\\Tab",
@@ -238,6 +277,21 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       "required": [
         "value",
         "label"
+      ],
+      "rest": false
+    },
+    "App\\Component\\ToneBadge": {
+      "fqcn": "App\\Component\\ToneBadge",
+      "kind": "template",
+      "source": "component/Classes.phpm",
+      "template": "component/Classes.2.twig",
+      "props": [
+        "tone",
+        "active"
+      ],
+      "slots": [],
+      "required": [
+        "tone"
       ],
       "rest": false
     },
@@ -340,6 +394,22 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       "source": "component/Buttons.phpm",
       "line": 37
     },
+    "component/Classes.0.twig": {
+      "source": "component/Classes.phpm",
+      "line": 12
+    },
+    "component/Classes.1.twig": {
+      "source": "component/Classes.phpm",
+      "line": 21
+    },
+    "component/Classes.2.twig": {
+      "source": "component/Classes.phpm",
+      "line": 27
+    },
+    "component/Classes.3.twig": {
+      "source": "component/Classes.phpm",
+      "line": 36
+    },
     "component/Counter.0.twig": {
       "source": "component/Counter.phpm",
       "line": 29
@@ -420,6 +490,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
   "files": [
     "php/component/Bound.php",
     "php/component/Buttons.php",
+    "php/component/Classes.php",
     "php/component/Counter.php",
     "php/component/Document.php",
     "php/component/Filters.php",

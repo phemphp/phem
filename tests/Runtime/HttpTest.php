@@ -13,11 +13,15 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Runtime;
 
+use Phem\ClassList;
+use Phem\Dom\ClassAttribute;
+use Phem\Dom\TailwindClassMerger;
 use Phem\Http\TurboStreams;
 use Phem\Rendering\Fiber;
 use Phem\Rendering\RootElement;
 use Phem\State\PageState;
 use PHPUnit\Framework\TestCase;
+use TalesFromADev\TailwindMerge\TailwindMerge;
 
 final class HttpTest extends TestCase
 {
@@ -54,15 +58,16 @@ final class HttpTest extends TestCase
         $actions = 'click->phem#dispatch dblclick->phem#dispatch input->phem#dispatch change->phem#dispatch submit->phem#dispatch keydown->phem#dispatch keyup->phem#dispatch focusin->phem#dispatch focusout->phem#dispatch';
         $actions = htmlspecialchars($actions);
 
-        self::assertSame('<div id="phem-root" data-controller="phem" data-action="'.$actions.'" data-phem-state-value="{&quot;a&quot;:&quot;&lt;b&gt;&quot;}" data-phem-signature-value="sig"><p>x</p></div>', RootElement::render([], $state, '<p>x</p>'));
+        self::assertSame('<div id="phem-root" data-controller="phem" data-action="'.$actions.'" data-phem-state-value="{&quot;a&quot;:&quot;&lt;b&gt;&quot;}" data-phem-signature-value="sig"><p>x</p></div>', (new RootElement())->render([], $state, '<p>x</p>'));
         self::assertSame(
             '<section data-controller="phem menu" data-action="'.$actions.' keydown.esc-&gt;menu#close" data-phem-state-value="{&quot;a&quot;:&quot;&lt;b&gt;&quot;}" data-phem-signature-value="sig" class="a b" hidden style="color: red"></section>',
-            RootElement::render(['tag' => 'section', 'id' => null, 'data-controller' => 'menu', 'data-action' => 'keydown.esc->menu#close', 'data-phem-state-value' => 'forged', 'className' => ['a', '', 'b'], 'hidden' => true, 'x" onclick="y' => 1, 'onClick' => 'f', 'style' => ['color' => 'red']], $state, ''),
+            (new RootElement())->render(['tag' => 'section', 'id' => null, 'data-controller' => 'menu', 'data-action' => 'keydown.esc->menu#close', 'data-phem-state-value' => 'forged', 'className' => ['a', '', 'b'], 'hidden' => true, 'x" onclick="y' => 1, 'onClick' => 'f', 'style' => ['color' => 'red']], $state, ''),
             'the application adds attributes, but it cannot change the state or add a handler',
         );
-        self::assertStringStartsWith('<main id="app" ', RootElement::render(['tag' => 'main', 'id' => 'app'], $state, ''));
+        self::assertStringStartsWith('<main id="app" ', (new RootElement())->render(['tag' => 'main', 'id' => 'app'], $state, ''));
+        self::assertStringEndsWith(' class="app px-4 bg-red-500"></div>', (new RootElement(new ClassAttribute(new TailwindClassMerger(new TailwindMerge()))))->render(['className' => ClassList::of('app px-2 bg-blue-500'), 'class' => 'px-4 bg-red-500'], $state, ''), 'the classes of <Root> merge as on an element');
 
         $this->expectException(\InvalidArgumentException::class);
-        RootElement::render(['tag' => 'div onclick=x'], $state, '');
+        (new RootElement())->render(['tag' => 'div onclick=x'], $state, '');
     }
 }

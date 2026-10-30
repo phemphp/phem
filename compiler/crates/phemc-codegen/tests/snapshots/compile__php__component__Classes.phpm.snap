@@ -1,0 +1,41 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from component/Classes.phpm; do not edit */
+
+namespace App\Component;
+
+use Phem\Attribute\Component;
+use Phem\{Html, Node};
+
+// The default classes merge with the classes of the caller.
+#[Component]
+function ClassButton(string $size = 'md', ?Html $children = null, mixed ...$rest): Node {
+    return (
+        new \Phem\Element('component/Classes.0.twig', ['rest' => $rest ?? null, 'size' => $size ?? null, 'children' => $children ?? null])
+
+
+    );
+}
+
+// A wrapper keeps its classes: the props of the tag go through phem_props().
+#[Component]
+function PrimaryButton(?Html $children = null, mixed ...$rest): Node {
+    return new \Phem\Element('component/Classes.1.twig', ['rest' => $rest ?? null, 'children' => $children ?? null]);
+}
+
+#[Component]
+function ToneBadge(string $tone, bool $active = false): Node {
+    return (
+        new \Phem\Element('component/Classes.2.twig', ['active' => $active ?? null, 'tone' => $tone ?? null])
+
+
+
+    );
+}
+
+#[Component]
+function SpreadNote(mixed ...$rest): Node {
+    return new \Phem\Element('component/Classes.3.twig', ['rest' => $rest ?? null]);
+}

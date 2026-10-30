@@ -26,6 +26,9 @@ use Phem\Command\RenderCommand;
 use Phem\Command\WarmupCommand;
 use Phem\Controller\EventController;
 use Phem\Controller\PageController;
+use Phem\Dom\ClassAttribute;
+use Phem\Dom\ClassMerger;
+use Phem\Dom\UniqueClassMerger;
 use Phem\EventListener\PageAttributesListener;
 use Phem\EventListener\PageStreamListener;
 use Phem\EventListener\SourceMapListener;
@@ -58,6 +61,7 @@ use Phem\Rendering\FunctionPageRenderer;
 use Phem\Rendering\InputsComparator;
 use Phem\Rendering\MarkupResolver;
 use Phem\Rendering\Renderer;
+use Phem\Rendering\RootElement;
 use Phem\Rendering\SuspenseRenderer;
 use Phem\Rendering\SuspenseStream;
 use Phem\Rendering\TemplateComponentRenderer;
@@ -195,6 +199,14 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.markup_resolver', MarkupResolver::class)
             ->args([service('twig')])
             ->tag('kernel.reset', ['method' => 'reset'])
+        // The `class` attribute: the phem.class_merger option of PhemBundle selects the merger.
+        ->set('phem.class_merger.unique', UniqueClassMerger::class)
+        ->alias('phem.class_merger', 'phem.class_merger.unique')
+        ->alias(ClassMerger::class, 'phem.class_merger')
+        ->set('phem.class_attribute', ClassAttribute::class)
+            ->args([service('phem.class_merger')])
+        ->set('phem.root_element', RootElement::class)
+            ->args([service('phem.class_attribute')])
         ->set('phem.renderer', Renderer::class)
             ->args([
                 service('phem.manifest'),
@@ -206,6 +218,7 @@ return static function (ContainerConfigurator $container): void {
                 null,
                 service('phem.context_resolver'),
                 service('phem.broadcast_keys'),
+                service('phem.root_element'),
             ])
             ->tag('kernel.reset', ['method' => 'reset'])
         ->alias(Renderer::class, 'phem.renderer')
@@ -238,7 +251,7 @@ return static function (ContainerConfigurator $container): void {
             ->args([service('phem.manifest')])
             ->tag('twig.extension')
         ->set('phem.twig.runtime', PhemRuntime::class)
-            ->args([service('phem.renderer'), service('phem.template_renderer')])
+            ->args([service('phem.renderer'), service('phem.template_renderer'), service('phem.class_attribute')])
             ->tag('twig.runtime')
         ->set('phem.twig.loader', TemplateLoader::class)
             ->args(['%phem.build_dir%/templates'])

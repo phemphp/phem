@@ -135,6 +135,9 @@ final class AppTest extends TestCase
         self::assertStringContainsString('<button type="button">Clicked 0 times</button>', $html, 'no rest props');
         self::assertMatchesRegularExpression('#<a class="primary" href="/" data-phem-on-click="[^"]+" data-phem-c="phem[0-9a-f]{12}">Home 0</a>#', $html, 'a class component; the rest prop replaces className');
         self::assertMatchesRegularExpression('#<a class="link" data-phem-c="phem[0-9a-f]{12}">Plain</a>#', $html, 'a class component without rest props');
+        self::assertStringContainsString('<button class="btn btn-md wide">Merged</button>', $html, 'a ClassList merges with the class of the caller');
+        self::assertStringContainsString('<button class="btn btn-md btn-primary big zero">Merged</button>', $html, 'a wrapper keeps its classes');
+        self::assertStringContainsString('<p class="note note-0">Note</p>', $html, 'a quoted class with an expression');
         self::assertCount(3, $this->handlers);
 
         $r = $this->click(0, uri: '/rest');

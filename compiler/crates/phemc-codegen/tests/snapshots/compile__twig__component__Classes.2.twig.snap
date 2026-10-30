@@ -1,0 +1,8 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<span {{ phem_class(['badge', {'active': active}]) }}>
+            <i {{ phem_class(['icon', 'icon-' ~ (tone), (active ? 'on')]) }}></i>
+            <b class="static">{{ tone }}</b>
+        </span>

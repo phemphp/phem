@@ -391,6 +391,7 @@ pub const FILTERS: &[(&str, &str, &str)] = &[
 pub const FUNCTIONS: &[(&str, &str, &str)] = &[
     ("attribute", "attribute(object, method, arguments = [])", "A dynamic attribute of a variable"),
     ("block", "block(name, template = null)", "The content of a block"),
+    ("classes", "classes(...classes)", "A mergeable class list (Phem\\ClassList): the classes of the caller merge into it"),
     ("constant", "constant(name, object = null)", "The value of a PHP constant: constant('App\\\\Foo::BAR')"),
     ("cycle", "cycle(values, position)", "Cycle over a sequence of values"),
     ("date", "date(date = null, timezone = null)", "A date, for comparison"),

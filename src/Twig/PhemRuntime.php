@@ -14,7 +14,9 @@ declare(strict_types=1);
 namespace Phem\Twig;
 
 use Phem\Bound;
+use Phem\ClassList;
 use Phem\Dom\Attributes;
+use Phem\Dom\ClassAttribute;
 use Phem\Dom\DomEvents;
 use Phem\Rendering\Renderer;
 use Phem\Rendering\TemplateComponentRenderer;
@@ -24,7 +26,7 @@ use Twig\Template;
 
 /**
  * The Twig runtime of the compiled templates: `{% component %}`, `phem_on()`, `phem_loading()`,
- * `phem_progress()` and `phem_attrs()`.
+ * `phem_progress()`, `phem_class()` and `phem_attrs()`.
  * The compiled code gets it with `$this->env->getRuntime(PhemRuntime::class)`.
  */
 final class PhemRuntime implements RuntimeExtensionInterface
@@ -32,6 +34,7 @@ final class PhemRuntime implements RuntimeExtensionInterface
     public function __construct(
         private readonly Renderer $renderer,
         private readonly TemplateComponentRenderer $templates = new TemplateComponentRenderer(),
+        private readonly ClassAttribute $classes = new ClassAttribute(),
     ) {
     }
 
@@ -168,9 +171,20 @@ final class PhemRuntime implements RuntimeExtensionInterface
     }
 
     /**
+     * `className={{ x }}` → `class="…"`: a string, a `class` array or a ClassList (see
+     * ClassAttribute). phemc gives a quoted value with an expression as a list:
+     * `className="btn {{ extra }}"` → `phem_class(['btn', extra])`.
+     */
+    public function class(mixed $value): Markup
+    {
+        return $this->classes->render($value);
+    }
+
+    /**
      * The attributes of an HTML element with a spread: `<button type="button" {{ ...rest }}>`
      * → `phem_attrs({'type': 'button'}, rest)`. As in React, a later value replaces an earlier
      * value of the same attribute. `onClick` (and the other `on*` names) binds a handler.
+     * Two values of `class` merge when one of them is a ClassList (see ClassList::merge()).
      *
      * A spread can contain data, so its names are not trusted: an invalid name is not rendered,
      * and an `on*` name is never an inline script (`onclick="..."`), as in React. phemc writes
@@ -186,7 +200,8 @@ final class PhemRuntime implements RuntimeExtensionInterface
             }
 
             foreach ($attrs ?? [] as $name => $value) {
-                $merged[Attributes::name((string) $name)] = $value;
+                $name = Attributes::name((string) $name);
+                $merged[$name] = 'class' === $name && \array_key_exists($name, $merged) ? ClassList::merge($merged[$name], $value) : $value;
             }
         }
 
@@ -194,6 +209,7 @@ final class PhemRuntime implements RuntimeExtensionInterface
         foreach ($merged as $name => $value) {
             $out[] = (string) match (true) {
                 'key' === $name => Attributes::key($value),
+                'class' === $name => $this->classes->render($value),
                 'style' === $name => Attributes::style($value),
                 'phem:loading' === $name => $this->loading($value),
                 'phem:progress' === $name => $this->progress($value),

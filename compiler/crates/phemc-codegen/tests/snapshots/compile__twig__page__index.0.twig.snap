@@ -2,4 +2,4 @@
 source: crates/phemc-codegen/tests/compile.rs
 expression: t.content
 ---
-<p class="theme-{{ theme }}">Theme: {{ theme }}</p>
+<p {{ phem_class(['theme-' ~ (theme)]) }}>Theme: {{ theme }}</p>

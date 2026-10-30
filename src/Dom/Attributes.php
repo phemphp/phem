@@ -18,7 +18,7 @@ use Twig\Markup;
 
 /**
  * Renders the HTML attributes of the compiled markup, as React does: boolean attributes, a
- * `class` list, a `style` object, and the `key` of an element.
+ * `style` object, and the `key` of an element. ClassAttribute renders the `class` attribute.
  */
 final class Attributes
 {
@@ -99,9 +99,7 @@ final class Attributes
             return new Markup(self::e($name), 'UTF-8');
         }
 
-        if ('class' === $name && \is_array($value)) {
-            $value = implode(' ', array_filter(array_map(strval(...), $value), static fn ($v) => '' !== $v));
-        } elseif (\is_array($value)) {
+        if (\is_array($value)) {
             $value = json_encode($value, \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE);
         }
 

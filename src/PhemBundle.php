@@ -17,6 +17,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Phem\DependencyInjection\ComponentPass;
 use Phem\DependencyInjection\TestAsyncPass;
 use Phem\DependencyInjection\TestPublisherPass;
+use Phem\Dom\TailwindClassMerger;
 use Phem\Handler\HandlerMiddleware;
 use Phem\Handler\RateLimitMiddleware;
 use Phem\Manifest\Manifest;
@@ -41,6 +42,7 @@ use Symfony\Component\HttpKernel\Attribute\RateLimit;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
+use TalesFromADev\TailwindMerge\TailwindMerge;
 
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_locator;
@@ -131,6 +133,38 @@ final class PhemBundle extends AbstractBundle
                     ->info('Stream the <Suspense> boundaries that are not lazy in the response of the page, after the page. With false, the browser loads them with an event after the page.')
                     ->defaultTrue()
                 ->end()
+                ->arrayNode('class_merger')
+                    ->info('Merges the classes of a ClassList (`classes()`) when the attribute renders. By default, it removes the duplicates.')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->arrayNode('tailwind')
+                            ->info('The Tailwind CSS v4 merger (tales-from-a-dev/tailwind-merge-php): a later class removes the earlier classes of the same group (`px-2` and then `px-4` gives `px-4`)')
+                            ->canBeEnabled()
+                            ->children()
+                                ->scalarNode('prefix')
+                                    ->info('The prefix of the Tailwind classes (`@import "tailwindcss" prefix(tw);`), with no colon')
+                                    ->defaultNull()
+                                ->end()
+                                ->scalarNode('cache')
+                                    ->info('The id of a PSR-16 cache service for the merged classes. The merger also keeps them in memory, between the requests of a worker.')
+                                    ->defaultNull()
+                                ->end()
+                            ->end()
+                        ->end()
+                        ->scalarNode('service')
+                            ->info('The id of the Phem\\Dom\\ClassMerger service of the application')
+                            ->defaultNull()
+                        ->end()
+                    ->end()
+                    ->validate()
+                        ->ifTrue(static fn (array $merger): bool => $merger['tailwind']['enabled'] && null !== $merger['service'])
+                        ->thenInvalid('Configure phem.class_merger.tailwind or phem.class_merger.service, not both.')
+                    ->end()
+                    ->validate()
+                        ->ifTrue(static fn (array $merger): bool => $merger['tailwind']['enabled'] && !class_exists(TailwindMerge::class))
+                        ->thenInvalid('The phem.class_merger.tailwind option needs TailwindMerge: run "composer require tales-from-a-dev/tailwind-merge-php".')
+                    ->end()
+                ->end()
                 ->arrayNode('mercure')
                     ->info('The Mercure hub, for the pages with #[Broadcast] (see Phem\\Stream\\Streams): the hub of FrankenPHP, or a standalone hub with publisher_key')
                     ->addDefaultsIfNotSet()
@@ -173,7 +207,7 @@ final class PhemBundle extends AbstractBundle
     }
 
     /**
-     * @param array{build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, state_cache_min_size: int, max_event_size: int, max_upload_size: int, suspense_stream: bool, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string, publisher_key: string|null, publish_url: string|null}} $config
+     * @param array{build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, state_cache_min_size: int, max_event_size: int, max_upload_size: int, suspense_stream: bool, class_merger: array{tailwind: array{enabled: bool, prefix: string|null, cache: string|null}, service: string|null}, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string, publisher_key: string|null, publish_url: string|null}} $config
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
@@ -194,6 +228,18 @@ final class PhemBundle extends AbstractBundle
         if (!$config['suspense_stream']) {
             $container->services()->get('phem.page_renderer')->arg(8, null);
             $container->services()->remove('phem.page_stream');
+        }
+
+        $merger = $config['class_merger'];
+        if ($merger['tailwind']['enabled']) {
+            $container->services()
+                ->set('phem.class_merger.tailwind.merge', TailwindMerge::class)
+                    ->args([array_filter(['prefix' => $merger['tailwind']['prefix']]), null !== $merger['tailwind']['cache'] ? service($merger['tailwind']['cache']) : null])
+                ->set('phem.class_merger.tailwind', TailwindClassMerger::class)
+                    ->args([service('phem.class_merger.tailwind.merge')])
+                ->alias('phem.class_merger', 'phem.class_merger.tailwind');
+        } elseif (null !== $merger['service']) {
+            $container->services()->alias('phem.class_merger', $merger['service']);
         }
 
         $container->services()->get('phem.event_body')

@@ -13,7 +13,9 @@ declare(strict_types=1);
 
 namespace Phem\Rendering;
 
+use Phem\ClassList;
 use Phem\Dom\Attributes;
+use Phem\Dom\ClassAttribute;
 use Phem\Dom\DomEvents;
 
 /**
@@ -29,14 +31,18 @@ final class RootElement
     /** The attributes that the application cannot change. */
     private const OWN = ['data-phem-state-value' => true, 'data-phem-signature-value' => true, 'data-phem-query-value' => true, 'data-phem-state-inline-value' => true, 'data-phem-stream-value' => true, 'data-phem-streaming' => true];
 
+    public function __construct(private readonly ClassAttribute $classes = new ClassAttribute())
+    {
+    }
+
     /**
      * The `data-controller` and `data-action` values of the application come after the values of
      * Phem. The `id` is `phem-root` (null removes it).
      *
-     * @param array<string, mixed> $props the props of `<Root>`: `tag` and the attributes, as in a component (`className`, a `class` list)
+     * @param array<string, mixed> $props the props of `<Root>`: `tag` and the attributes, as in a component (`className`, a `class` list, a ClassList)
      * @param string               $state the state attributes (see state()), or the token that PageRenderer replaces with them
      */
-    public static function render(array $props, string $state, string $content): string
+    public function render(array $props, string $state, string $content): string
     {
         $tag = $props['tag'] ?? 'div';
         if (!\is_string($tag) || 1 !== preg_match('/^[a-z][a-z0-9-]*$/i', $tag)) {
@@ -46,7 +52,8 @@ final class RootElement
         unset($props['tag']);
         $attributes = [];
         foreach ($props as $name => $value) {
-            $attributes[Attributes::name((string) $name)] = $value;
+            $name = Attributes::name((string) $name);
+            $attributes[$name] = 'class' === $name && \array_key_exists($name, $attributes) ? ClassList::merge($attributes[$name], $value) : $value;
         }
 
         $html = [];
@@ -62,6 +69,7 @@ final class RootElement
 
         foreach (array_diff_key($attributes, ['id' => true, 'data-controller' => true, 'data-action' => true, 'key' => true] + self::OWN) as $name => $value) {
             $html[] = (string) match (true) {
+                'class' === $name => $this->classes->render($value),
                 'style' === $name => Attributes::style($value),
                 // No event handler: the root element dispatches the events of the page.
                 0 === stripos($name, 'on') => '',

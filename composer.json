@@ -33,7 +33,8 @@
         "symfony/messenger": "^7.4|^8.0",
         "symfony/rate-limiter": "^7.4|^8.0",
         "symfony/security-core": "^7.4|^8.0",
-        "symfony/web-profiler-bundle": "^7.4|^8.0"
+        "symfony/web-profiler-bundle": "^7.4|^8.0",
+        "tales-from-a-dev/tailwind-merge-php": "^0.5"
     },
     "suggest": {
         "doctrine/doctrine-bundle": "To run the event handlers of #[Transactional] handlers in a Doctrine ORM transaction, and to give #[Path] props the entities of their route values",
@@ -41,11 +42,13 @@
         "symfony/asset-mapper": "To load the phem Stimulus controller and its CSS with an importmap (the phemjs assets)",
         "symfony/http-client": "To publish the streams from a Messenger worker or a command, with the HTTP API of the Mercure hub (phem.mercure.publisher_key)",
         "symfony/messenger": "To run the work of the #[Async] event handlers in a worker, after the response",
-        "symfony/rate-limiter": "To limit the events of a page or of one handler with the #[RateLimit] attribute of Symfony 8.1"
+        "symfony/rate-limiter": "To limit the events of a page or of one handler with the #[RateLimit] attribute of Symfony 8.1",
+        "tales-from-a-dev/tailwind-merge-php": "To merge the conflicting Tailwind CSS classes of a ClassList (phem.class_merger.tailwind)"
     },
     "bin": ["bin/phemc"],
     "autoload": {
-        "psr-4": { "Phem\\": "src/" }
+        "psr-4": { "Phem\\": "src/" },
+        "files": ["src/functions.php"]
     },
     "autoload-dev": {
         "psr-4": { "Phem\\Tests\\": "tests/" }

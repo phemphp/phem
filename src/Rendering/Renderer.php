@@ -61,6 +61,7 @@ final class Renderer implements ResetInterface
         private readonly ?RenderProfiler $profiler = null,
         private readonly ContextResolver $contexts = new ContextResolver(),
         private readonly BroadcastKeys $broadcasts = new BroadcastKeys(),
+        private readonly RootElement $rootElement = new RootElement(),
     ) {
     }
 
@@ -390,7 +391,7 @@ final class Renderer implements ResetInterface
                 }
             }
 
-            return $root ? RootElement::render($props, $tree->rootToken(), $fiber->wrapped()) : $fiber->output();
+            return $root ? $this->rootElement->render($props, $tree->rootToken(), $fiber->wrapped()) : $fiber->output();
         }
 
         $this->renderFiber($tree, $fiber, $def);
@@ -399,7 +400,7 @@ final class Renderer implements ResetInterface
             return $fiber->html;
         }
 
-        return $root ? RootElement::render($props, $tree->rootToken(), $fiber->wrapped()) : $fiber->output();
+        return $root ? $this->rootElement->render($props, $tree->rootToken(), $fiber->wrapped()) : $fiber->output();
     }
 
     /**

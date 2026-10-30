@@ -2,6 +2,6 @@
 source: crates/phemc-codegen/tests/compile.rs
 expression: t.content
 ---
-<button onclick="track()" {{ phem_attrs({'type': 'button'}, rest, {'className': 'btn btn-' ~ (count), 'disabled': true}) }}>
+<button onclick="track()" {{ phem_attrs({'type': 'button'}, rest, {'className': ['btn', 'btn-' ~ (count)], 'disabled': true}) }}>
             Clicked {{ count }} times
         </button>

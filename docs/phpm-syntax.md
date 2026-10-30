@@ -309,7 +309,8 @@ function Profile(): Node {
 - `{{ expr }}` in text prints the value. Twig escapes it, except `Html` values (markup).
 - `attr="text {{ expr }}"` is a string with interpolation.
 - `attr={{ expr }}` is a dynamic value. `null` and `false` remove the attribute. `true` makes a
-  boolean attribute. For `class`, a list is joined with spaces (empty items are dropped).
+  boolean attribute. For `class`, a list takes the inputs of `classes()` (see
+  [Merge of classes](#merge-of-classes)): `className={{ ['btn', {'active': isActive}] }}`.
   As in React, `data-*`, `aria-*`, `contenteditable`, `draggable`, `spellcheck` and `value`
   take the text of a boolean: `data-open={{ false }}` gives `data-open="false"`. A CSS selector
   `[data-open]` and `hasAttribute()` find it; use `null` to remove the attribute.
@@ -326,6 +327,71 @@ function Profile(): Node {
   (`href="{{ url }}"`) and for a spread. A click on the element would run the URL as a script.
 - All Twig filters, tests, and tags work: `|upper`, `|length`, `{% set %}`, `{% for %}`, and more.
 - Do not put PHP code in markup. Compute values in PHP before the `return`.
+
+### Merge of classes
+
+A spread uses "last value wins", as in React. So with `className="btn" {{ ...rest }}`, a
+`className` of the caller replaces `btn`. To keep the default classes of a component, mark
+them with `classes()`. The classes of the caller then merge into them:
+
+```php
+#[Component]
+function Button(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <button className={{ classes('px-4 py-2 bg-blue-500') }} {{ ...rest }}>
+            {{ children }}
+        </button>
+    );
+}
+
+<Button className="bg-red-500">Delete</Button>
+// class="px-4 py-2 bg-red-500" with the Tailwind merger
+```
+
+- `classes()` gives a `Phem\ClassList`. When one of two values of `class` (or `className`) is
+  a `ClassList`, the result is a `ClassList` with the earlier classes and then the later
+  classes. The later class wins a conflict. Two plain values keep "last value wins".
+- The order counts. `classes()` before the spread gives defaults that the caller can change.
+  `classes()` after the spread gives classes that the caller cannot remove.
+- The inputs are as in clsx: strings (split on white space), lists, nested lists, maps of
+  conditions (`{'active': isActive}` keeps `active` when the value is true), other `ClassList`
+  values, and `null` or `false` (no class).
+- The same rule applies to the props of a component tag with a spread. So a wrapper keeps its
+  classes: `<Button className={{ classes('rounded-full') }} {{ ...rest }} />`. A prop that
+  gets a `ClassList` must accept it: use a rest prop, or the type `mixed`.
+- A quoted value with an expression (`className="btn btn-{{ size }}"`) is a list, so the
+  expression can give a list or a `ClassList`.
+- The classes merge only when the attribute renders. In PHP code, `Phem\classes(...)` gives the
+  same value, also in a function component with no services (for example the classes of a
+  variant).
+
+The `phem.class_merger` option selects the merger. The default merger removes the duplicates.
+The Tailwind merger (Tailwind CSS v4) also removes the earlier classes of the same group:
+`px-2` and then `px-4` gives `px-4`. It needs `tales-from-a-dev/tailwind-merge-php`:
+
+```sh
+composer require tales-from-a-dev/tailwind-merge-php
+```
+
+```yaml
+# config/packages/phem.yaml
+phem:
+    class_merger:
+        tailwind: true
+        # With the options:
+        # tailwind: { prefix: tw, cache: app.psr16_cache }
+        # Or the service of a Phem\Dom\ClassMerger of the application:
+        # service: App\Ui\MyClassMerger
+```
+
+- `prefix` is the prefix of the Tailwind classes (`@import "tailwindcss" prefix(tw);`), with no
+  colon.
+- `cache` is the id of a PSR-16 cache service. The merger also keeps the merged classes in
+  memory, between the requests of a worker.
+- To replace all the default classes, a component gives a prop (for example `unstyled`). The
+  Tailwind merger already removes the defaults that conflict with the classes of the caller.
+- `style` does not merge: it keeps "last value wins".
 
 ## 4. Conditional rendering
 

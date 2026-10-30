@@ -13,7 +13,11 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Runtime;
 
+use Phem\ClassList;
 use Phem\Dom\Attributes;
+use Phem\Dom\ClassAttribute;
+use Phem\Dom\ClassMerger;
+use Phem\Dom\TailwindClassMerger;
 use Phem\Element;
 use Phem\Html;
 use Phem\HtmlList;
@@ -23,6 +27,7 @@ use Phem\Rendering\Renderer;
 use Phem\Twig\PhemRuntime;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use TalesFromADev\TailwindMerge\TailwindMerge;
 use Twig\Environment;
 use Twig\Loader\ArrayLoader;
 
@@ -34,7 +39,6 @@ final class TwigFunctionsTest extends TestCase
         self::assertSame('', (string) Attributes::attr('title', null));
         self::assertSame('disabled', (string) Attributes::attr('disabled', true));
         self::assertSame('src="/a.png?x=1&amp;y=&quot;2&quot;"', (string) Attributes::attr('src', '/a.png?x=1&y="2"'));
-        self::assertSame('class="a c"', (string) Attributes::attr('class', ['a', '', 'c']));
     }
 
     public function testBooleanOfAnAttributeThatTakesTrueOrFalseIsText(): void
@@ -207,11 +211,36 @@ final class TwigFunctionsTest extends TestCase
         self::assertSame(['rows' => $rows, 'title' => 'Rows'], $same);
     }
 
-    private function runtime(): PhemRuntime
+    public function testClass(): void
+    {
+        self::assertSame('class="a c"', (string) $this->runtime()->class(['a', '', 'c']));
+        self::assertSame('class="btn active"', (string) $this->runtime()->class(['btn', ['active' => true, 'off' => false]]), 'the list of a quoted value with an expression');
+        self::assertSame('class="px-4 py-2"', (string) $this->runtime()->class(ClassList::of('px-4 py-2')));
+        self::assertSame('', (string) $this->runtime()->class(null));
+    }
+
+    public function testSpreadKeepsTheLastClassOfTwoPlainValues(): void
+    {
+        self::assertSame('class="override"', (string) $this->runtime()->attrs(['className' => 'loud'], ['className' => 'override']));
+        self::assertSame('class="b"', (string) $this->runtime()->attrs(['class' => 'a'], ['className' => 'b']), '`class` and `className` are the same attribute');
+    }
+
+    public function testSpreadMergesAClassListWithTheClassOfTheCaller(): void
+    {
+        $runtime = $this->runtime(new TailwindClassMerger(new TailwindMerge()));
+
+        self::assertSame('type="button" class="px-4 py-2 bg-red-500"', (string) $runtime->attrs(['type' => 'button', 'className' => ClassList::of('px-4 py-2 bg-blue-500')], ['className' => 'bg-red-500']), 'the caller wins a conflict');
+        self::assertSame('class="w-full bg-blue-500"', (string) $runtime->attrs(['className' => 'w-full bg-red-500'], ['className' => ClassList::of('bg-blue-500')]), 'a ClassList after the spread wins a conflict');
+        self::assertSame('class="px-4"', (string) $runtime->attrs(['className' => ClassList::of('px-4')], ['className' => null]), 'a null class of the caller');
+        self::assertSame('class="a b c"', (string) $this->runtime()->attrs(['class' => ClassList::of('a b')], ['className' => ['b', 'c' => true]]), 'the default merger removes the duplicates');
+    }
+
+    private function runtime(?ClassMerger $merger = null): PhemRuntime
     {
         $twig = new Environment(new ArrayLoader());
+        $classes = null !== $merger ? new ClassAttribute($merger) : new ClassAttribute();
 
-        return new PhemRuntime(new Renderer(new Manifest('/nonexistent'), new MarkupResolver($twig), []));
+        return new PhemRuntime(new Renderer(new Manifest('/nonexistent'), new MarkupResolver($twig), []), classes: $classes);
     }
 
     public function testStyle(): void
