@@ -50,6 +50,10 @@ use Symfony\Component\HttpFoundation\Request;
  * The audience of the token is the URL of the hub that the browser connects to. A relative hub
  * URL takes the scheme and the host of the request: behind a proxy that ends TLS, configure the
  * trusted proxies of Symfony, or give an absolute hub URL.
+ *
+ * With no publisher key, only a request of FrankenPHP publishes (see SapiPublisher). A page with
+ * #[Broadcast] that renders in another SAPI (PHP-FPM, the Symfony CLI server) gets no updates:
+ * the logger gets a warning.
  */
 final class Subscription
 {
@@ -64,6 +68,8 @@ final class Subscription
         private readonly string $hub = '/.well-known/mercure',
         private readonly string $cookie = '__Secure-mercure_access_token',
         private readonly ?LoggerInterface $logger = null,
+        private readonly bool $frankenphpOnly = true,
+        private readonly string $sapi = \PHP_SAPI,
     ) {
     }
 
@@ -109,6 +115,10 @@ final class Subscription
         $topics = $this->renew($page, $values, $request, $components);
         if ([] === $topics) {
             return '';
+        }
+
+        if ($this->frankenphpOnly && 'frankenphp' !== $this->sapi) {
+            $this->logger?->warning('The page "{page}" has #[Broadcast], but it gets no updates: only a request of FrankenPHP publishes them, and this server is "{sapi}". Run the application with FrankenPHP, with the `mercure` directive in its Caddyfile, or set the phem.mercure.publisher_key and phem.mercure.publish_url options to publish with the HTTP API of a hub.', ['page' => $page, 'sapi' => $this->sapi]);
         }
 
         $query = implode('&', array_map(static fn (string $topic): string => 'match='.rawurlencode($topic), $topics));

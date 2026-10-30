@@ -61,7 +61,7 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_lo
  *         suspense_stream: true      # stream the <Suspense> boundaries in the response of the page
  *         mercure:
  *             subscriber_key: ~      # private updates, with an access token for each page
- *             publisher_key: ~       # publish from a worker, with the HTTP API of the hub
+ *             publisher_key: ~       # publish with the HTTP API of the hub: PHP-FPM, a worker
  *             publish_url: ~         # the URL of the hub for the server
  *
  *     # config/routes.yaml: the routes of the pages are in the routing.controllers resource
@@ -132,7 +132,7 @@ final class PhemBundle extends AbstractBundle
                     ->defaultTrue()
                 ->end()
                 ->arrayNode('mercure')
-                    ->info('The Mercure hub of FrankenPHP, for the pages with #[Broadcast] (see Phem\\Stream\\Streams)')
+                    ->info('The Mercure hub, for the pages with #[Broadcast] (see Phem\\Stream\\Streams): the hub of FrankenPHP, or a standalone hub with publisher_key')
                     ->addDefaultsIfNotSet()
                     ->children()
                         ->scalarNode('hub_url')
@@ -152,7 +152,7 @@ final class PhemBundle extends AbstractBundle
                             ->defaultValue('__Secure-mercure_access_token')
                         ->end()
                         ->scalarNode('publisher_key')
-                            ->info('The publisher key of the hub (`issuer … { publisher { jwt <key> } }` in the Caddyfile). With a key, a process with no FrankenPHP request (a Messenger worker of an #[Async] handler, a command) publishes with the HTTP API of the hub at publish_url. With null, only a FrankenPHP request publishes (mercure_publish()).')
+                            ->info('The publisher key of the hub (`issuer … { publisher { jwt <key> } }` in the Caddyfile). With a key, a process with no FrankenPHP request (a request of PHP-FPM with a standalone hub, a Messenger worker of an #[Async] handler, a command) publishes with the HTTP API of the hub at publish_url. With null, only a FrankenPHP request publishes (mercure_publish()).')
                             ->defaultNull()
                         ->end()
                         ->scalarNode('publish_url')
@@ -222,12 +222,15 @@ final class PhemBundle extends AbstractBundle
             ->arg(3, null !== $mercure['subscriber_key']);
 
         if (null !== $mercure['publisher_key']) {
-            // mercure_publish() in a request, the HTTP API of the hub in a worker.
+            // mercure_publish() in a request of FrankenPHP, the HTTP API of the hub in another SAPI.
             $container->services()
                 ->set('phem.stream_publisher.hub', HubPublisher::class)
                     ->args([service('http_client'), $mercure['publish_url'], $mercure['publisher_key'], $mercure['issuer'], service('logger')->nullOnInvalid()])
                 ->set('phem.stream_publisher', SapiPublisher::class)
                     ->args([service('phem.stream_publisher.frankenphp'), service('phem.stream_publisher.hub')]);
+            $container->services()
+                ->get('phem.subscription')
+                    ->arg(5, false);
         }
 
         $container->services()->get('phem.async.dispatcher')->arg(1, $config['secret']);

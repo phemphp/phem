@@ -34,7 +34,7 @@ final class FrankenPhpPublisher implements StreamPublisher
     public function publish(array $topics, string $data, bool $private): void
     {
         if (!\function_exists('mercure_publish')) {
-            $this->logger?->error('Phem publishes the streams with the Mercure hub of FrankenPHP, but mercure_publish() does not exist: run the application with FrankenPHP, with the `mercure` directive in its Caddyfile. In a worker or a command, set the phem.mercure.publisher_key option. The streams to {topics} are lost.', ['topics' => implode(', ', $topics)]);
+            $this->logger?->error('Phem publishes the streams with the Mercure hub of FrankenPHP, but mercure_publish() does not exist: run the application with FrankenPHP, with the `mercure` directive in its Caddyfile. With another server (PHP-FPM), in a worker or in a command, set the phem.mercure.publisher_key and phem.mercure.publish_url options: Phem then publishes with the HTTP API of the hub. The streams to {topics} are lost.', ['topics' => implode(', ', $topics)]);
 
             return;
         }

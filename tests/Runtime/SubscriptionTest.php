@@ -206,6 +206,31 @@ final class SubscriptionTest extends TestCase
         self::assertStringContainsString('set phem.mercure.cookie_name', implode(' ', $logger->messages));
     }
 
+    public function testThePageWarnsWhenOnlyFrankenPhpPublishesAndTheServerIsAnother(): void
+    {
+        $logger = new class extends AbstractLogger {
+            /** @var list<string> */
+            public array $messages = [];
+
+            public function log($level, \Stringable|string $message, array $context = []): void
+            {
+                $this->messages[] = (string) $message;
+            }
+        };
+        $render = static function (string $page, bool $frankenphpOnly, string $sapi) use ($logger): void {
+            new Subscription(new Topics(), logger: $logger, frankenphpOnly: $frankenphpOnly, sapi: $sapi)->attribute($page, [], Request::create('/'));
+        };
+
+        $render(Broadcasting::class, true, 'frankenphp');
+        $render(Broadcasting::class, false, 'fpm-fcgi');
+        $render(Scientist::class, true, 'fpm-fcgi');
+        self::assertSame([], $logger->messages, 'FrankenPHP, a publisher key, or a page with no #[Broadcast]');
+
+        $render(Broadcasting::class, true, 'fpm-fcgi');
+        self::assertCount(1, $logger->messages);
+        self::assertStringContainsString('set the phem.mercure.publisher_key and phem.mercure.publish_url options', $logger->messages[0]);
+    }
+
     private static function subject(string $session): string
     {
         return hash('xxh128', $session);

@@ -86,6 +86,10 @@ const MAX_STALE = 100
 // The wait before a new connection to the hub after it refused one (an expired token).
 const STREAM_RETRY = 5000
 
+// The connections in a row that the hub refuses before it opens one: then the page stops, because
+// it has no hub at its URL, or the hub never accepts its token.
+const STREAM_ATTEMPTS = 3
+
 // The number of tokens of the last events that a page keeps (see `sent`).
 const MAX_SENT = 20
 
@@ -608,6 +612,8 @@ export default class PhemController extends Controller {
     this.pushing = 0
     this.refreshTimer = null
     this.streamTimer = null
+    // The connections in a row that the hub refused before it opened one (see openStream()).
+    this.streamFailures = 0
     this.openStream()
   }
 
@@ -638,7 +644,7 @@ export default class PhemController extends Controller {
     this.hideError()
   }
 
-  // Opens the EventSource of a page with #[Subscribe] (see the header).
+  // Opens the EventSource of a page with #[Broadcast] (see the header).
   openStream() {
     if (!this.streamValue || typeof EventSource !== "function") return
 
@@ -654,6 +660,15 @@ export default class PhemController extends Controller {
       // A refresh renews the token (an event sets the cookie), then the controller connects again.
       this.source = null
       clearTimeout(this.streamTimer)
+
+      // The hub refused all the connections since the last open one: the URL has no hub (no
+      // FrankenPHP, or no `mercure` directive), or the hub does not accept the token. A refresh
+      // does not change that: stop.
+      if (++this.streamFailures >= STREAM_ATTEMPTS) {
+        console.warn(`[phem] the Mercure hub at ${this.streamValue.split("?")[0]} refused ${STREAM_ATTEMPTS} connections: the page gets no pushes. Run the application with FrankenPHP and the \`mercure\` directive in its Caddyfile, or set phem.mercure.hub_url to the URL of your hub. Check the subscriber key and the cookie of the hub.`)
+        return
+      }
+
       this.streamTimer = setTimeout(() => {
         this.markContentStale()
         this.queue = this.queue
@@ -664,6 +679,7 @@ export default class PhemController extends Controller {
     })
 
     source.addEventListener("open", () => {
+      this.streamFailures = 0
       if (!lost) return
       lost = false
       // The `local` transport of the hub has no history: the updates of the lost time are lost.

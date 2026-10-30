@@ -2144,7 +2144,7 @@ failed, and the `<ErrorBoundary>` tries again on each render.
 
 A change by one user does not show for another user until that user sends an event. A page with
 `#[Broadcast]` gets the Turbo Streams of other requests: a handler (or any service) pushes them
-with `Phem\Stream\Streams`, and the Mercure hub of FrankenPHP sends them to the open pages.
+with `Phem\Stream\Streams`, and the Mercure hub sends them to the open pages.
 
 ```php
 use Phem\Attribute\{Component, Page, State, Broadcast, Transactional};
@@ -2297,7 +2297,8 @@ The page opens one connection to the hub, for its topics: the page, the page wit
 values, and the topic of `everywhere()`. A topic is an HMAC of its name with the secret of Phem
 (`phem.secret`): the HTML, the access token and the hub do not show the class names or the route
 values. The profiler shows the names. Phem publishes with `mercure_publish()` of FrankenPHP:
-no HTTP request, and no publisher key. Add the hub to the site of the Caddyfile:
+no HTTP request, and no publisher key (for another server, see
+[A standalone hub](#a-standalone-hub)). Add the hub to the site of the Caddyfile:
 
 ```caddyfile
 mercure {
@@ -2338,11 +2339,59 @@ connects again.
   (`http://app.test`), set `cookie_name` (and the `cookie_name` of the hub) to a name with no
   `__Secure-` prefix. Phem logs a warning.
 - When `mercure_publish()` does not exist (no FrankenPHP), or the publish fails, the logger gets
-  the error, and the response does not change.
+  the error, and the response does not change. A page with `#[Broadcast]` that renders with no
+  hub to publish (no FrankenPHP and no `publisher_key`) logs a warning.
+- When the hub refuses three connections in a row, with no open connection between them, the
+  page stops and writes a warning in the browser console. The URL has no hub (no `mercure`
+  directive, or another server), or the hub does not accept the token.
 
 The Symfony profiler shows the streams that a request pushed, and the stale components of an
 event. `phemc` reports E053 for `#[Broadcast]` on a class or a function that is not a page or a
 component, or on a method of a page. The tests get the pushes with `receive()` (see [Testing](testing.md#actions)).
+
+#### A standalone hub
+
+With another server (PHP-FPM), or when the hub runs apart from the application, use a standalone
+Mercure hub with the same `issuer` configuration. Phem publishes with the HTTP API of the hub:
+give it the publisher key and the URL of the hub for the server. A request of FrankenPHP still
+uses `mercure_publish()`.
+
+```caddyfile
+mercure {
+    transport local
+    issuer phem {
+        subscriber {
+            jwt {$MERCURE_SUBSCRIBER_JWT_KEY}
+        }
+        publisher {
+            jwt {$MERCURE_PUBLISHER_JWT_KEY}
+        }
+    }
+}
+```
+
+```yaml
+# config/packages/phem.yaml
+phem:
+    mercure:
+        subscriber_key: '%env(MERCURE_SUBSCRIBER_JWT_KEY)%'
+        publisher_key: '%env(MERCURE_PUBLISHER_JWT_KEY)%'
+        publish_url: 'http://mercure/.well-known/mercure'   # the URL of the hub for the server
+```
+
+The cookie of the access token goes only to the host of the application. For private updates,
+serve the hub on the same host: the web server sends `/.well-known/mercure` to the hub. Turn off
+the buffer of the proxy, so each update goes at once:
+
+```nginx
+location /.well-known/mercure {
+    proxy_pass http://mercure;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_buffering off;
+    proxy_read_timeout 24h;
+}
+```
 
 ### Slow work after the response
 
@@ -2447,8 +2496,8 @@ php bin/console messenger:consume async
 ```
 
 The worker has no FrankenPHP request, so `mercure_publish()` does not work in it. Give Phem the
-publisher key of the hub: the worker publishes with the HTTP API of the hub, and a request still
-uses `mercure_publish()`.
+publisher key of the hub: the worker publishes with the HTTP API of the hub, and a request of
+FrankenPHP still uses `mercure_publish()` (see [A standalone hub](#a-standalone-hub)).
 
 ```caddyfile
 mercure {

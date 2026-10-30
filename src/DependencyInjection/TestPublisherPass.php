@@ -21,7 +21,8 @@ use Symfony\Component\DependencyInjection\Definition;
 /**
  * In the tests (`framework.test: true`), the streams go to a MemoryPublisher: a test runs with
  * no Mercure hub, and a ComponentTester gets the updates of its page (see
- * Phem\Test\ComponentTester::receive()).
+ * Phem\Test\ComponentTester::receive()). The pages with #[Broadcast] get their updates in each
+ * SAPI: no warning (see Phem\Stream\Subscription).
  */
 final class TestPublisherPass implements CompilerPassInterface
 {
@@ -37,5 +38,6 @@ final class TestPublisherPass implements CompilerPassInterface
 
         $container->setDefinition(self::ID, new Definition(MemoryPublisher::class))->setPublic(true);
         $container->setAlias('phem.stream_publisher', self::ID);
+        $container->getDefinition('phem.subscription')->setArgument(5, false);
     }
 }

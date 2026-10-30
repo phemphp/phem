@@ -974,6 +974,48 @@ describe("pushes", () => {
     await vi.waitFor(() => expect(FakeEventSource.count).toBe(2))
   })
 
+  // The hub refuses the connection, and a refresh does not change that.
+  async function refuse(source) {
+    vi.useFakeTimers({ toFake: ["setTimeout"] })
+    try {
+      source.readyState = FakeEventSource.CLOSED
+      source.emit("error")
+      vi.advanceTimersByTime(5000)
+    } finally {
+      vi.useRealTimers()
+    }
+  }
+
+  it("stops with a warning when the hub refuses three connections in a row", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      await subscribe("<p>Hi</p>")
+      for (let i = 1; i <= 3; i++) {
+        respond("<p>Hi</p>")
+        await refuse(FakeEventSource.last)
+        if (i < 3) await vi.waitFor(() => expect(FakeEventSource.count).toBe(i + 1))
+      }
+
+      await rendered()
+
+      expect(FakeEventSource.count).toBe(3)
+      expect(fetch).toHaveBeenCalledTimes(2)
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("the Mercure hub at /.well-known/mercure refused 3 connections"))
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it("counts again the refused connections after an open one", async () => {
+    await subscribe("<p>Hi</p>")
+    for (let i = 1; i <= 3; i++) {
+      respond("<p>Hi</p>")
+      FakeEventSource.last.emit("open")
+      await refuse(FakeEventSource.last)
+      await vi.waitFor(() => expect(FakeEventSource.count).toBe(i + 1))
+    }
+  })
+
   it("keeps a dirty bound field only in a pushed morph", async () => {
     await mount('<input data-phem-bind="c1.name" value="Ada">')
     const input = document.querySelector("input")

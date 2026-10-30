@@ -18,7 +18,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * Publishes to a Mercure hub with its HTTP API: a POST with a publisher token, for a process
- * with no FrankenPHP request (a Messenger worker, a command, see SapiPublisher).
+ * with no FrankenPHP request (a request of PHP-FPM, a Messenger worker, a command, see
+ * SapiPublisher).
  *
  * The token is a JWT (HS256, `typ: at+jwt`) of the modern Mercure protocol: it grants the
  * `publish` action on all the topics, for one minute. The hub needs the publisher key in the
