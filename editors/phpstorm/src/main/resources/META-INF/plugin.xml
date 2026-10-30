@@ -3,13 +3,55 @@
     <name>Phem</name>
     <vendor>Phem</vendor>
     <description><![CDATA[
-        Support for Phem <code>.phpm</code> files: PHP with markup literals and Twig.
+        <p>
+            Language support for Phem <code>.phpm</code> files. A <code>.phpm</code> file is a PHP
+            file with markup literals and Twig, the same way a <code>.jsx</code> file is
+            JavaScript with JSX.
+        </p>
+
+        <h3>Features</h3>
         <ul>
-            <li>Syntax highlighting (TextMate grammar).</li>
-            <li>Diagnostics, completion, go to definition, find usages (with usage counts),
-                hover, and structure view (Phem language server).</li>
+            <li><b>Syntax highlighting:</b> PHP, markup literals (elements, components, named slots,
+                fragments), Twig (<code>{{ }}</code>, <code>{% %}</code>, <code>{# #}</code>), and
+                the JavaScript and CSS of <code>&lt;script&gt;</code> and <code>&lt;style&gt;</code>.</li>
+            <li><b>Diagnostics as you type:</b> the errors and warnings of the compiler, also for
+                unsaved changes.</li>
+            <li><b>Completion:</b>
+                <ul>
+                    <li>component tags, with the required props and the <code>use</code> import;</li>
+                    <li>props, named slots (<code>&lt;Card:footer&gt;</code>), and closing tags;</li>
+                    <li>HTML elements and attributes, Phem events (<code>onClick</code>), and Phem
+                        attributes (<code>phem:loading</code>, <code>phem:bind</code>, ...);</li>
+                    <li>Twig variables, attributes, filters, tests, functions, tags, and route names
+                        in <code>path('...')</code>;</li>
+                    <li>PHP members after <code>-&gt;</code> and <code>::</code>, variables, classes,
+                        functions, and <code>use</code> statements.</li>
+                </ul>
+            </li>
+            <li><b>Go to Declaration:</b> components, slots, props, PHP symbols, Twig variables and
+                attributes, handlers (<code>onClick={{ like }}</code>), and route names.</li>
+            <li><b>Quick Documentation:</b> signatures and props, and the docs of Twig, HTML elements,
+                and HTML attributes.</li>
+            <li><b>Find Usages and usage counts:</b> the tags of a component, the calls of a function,
+                and the calls and Twig handlers of a method. A count (<code>2 usages</code>) shows
+                above each declaration.</li>
+            <li><b>Structure view and breadcrumbs:</b> the namespace, components with their props and
+                slots, pages with their paths, and classes with their members.</li>
+            <li><b>Twig comments:</b> <b>Comment with Line Comment</b> writes <code>{# ... #}</code>
+                in markup.</li>
         </ul>
-        Configure it in <b>Settings | Languages &amp; Frameworks | Phem</b>.
+
+        <h3>Requirements</h3>
+        <ul>
+            <li>Node.js, for the bundled language server. Or a native <code>phemc</code> binary.</li>
+        </ul>
+
+        <h3>Settings</h3>
+        <p>
+            Open <b>Settings | Languages &amp; Frameworks | Phem</b> to set the source directory of
+            the <code>.phpm</code> files (default: <code>src</code>), the Node.js path, and the
+            <code>phemc</code> path.
+        </p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>

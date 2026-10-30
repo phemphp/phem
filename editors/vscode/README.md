@@ -1,127 +1,226 @@
 # Phem for Visual Studio Code
 
-Syntax highlighting, completion, go to definition, find references, hover, outline, and compiler
-diagnostics for Phem `.phpm` files. A `.phpm` file is a PHP file that contains markup literals, the same way a
-`.jsx` file contains JSX.
+Language support for Phem `.phpm` files. A `.phpm` file is a PHP file with markup literals, the
+same way a `.jsx` file is JavaScript with JSX.
 
-The PHP extensions (Intelephense, PHP Tools) do not read `.phpm` files. Thus the Phem language
-server (the `phemc-lsp` crate of the compiler) gives the PHP, Twig, and HTML support. The
-extension contains the server, compiled to WebAssembly, and runs it with the Node of VS Code. You
-do not need to install `phemc` or Rust. The PhpStorm plugin (`editors/phpstorm/`) uses the same
-server.
+```php
+<?phpm
+
+namespace App\Component;
+
+use Phem\Attribute\{Component, State};
+use Phem\Node;
+
+#[Component]
+final class Counter
+{
+    #[State]
+    public int $count = 0;
+
+    public function increment(): void
+    {
+        ++$this->count;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <button type="button" onClick={{ increment }}>
+                Clicked {{ count }} times
+            </button>
+        );
+    }
+}
+```
+
+The extension contains the Phem language server, compiled to WebAssembly. It runs with the Node
+of VS Code. You do not need to install `phemc`, PHP, or Rust.
+
+## Features at a glance
+
+| Feature             | What you get                                                                      | How to use it                          |
+|---------------------|-----------------------------------------------------------------------------------|----------------------------------------|
+| Syntax highlighting | PHP, markup, Twig, and the JavaScript and CSS of `<script>` and `<style>`.         | Open a `.phpm` file.                   |
+| Diagnostics         | The errors and warnings of the compiler, as you type. Unsaved changes too.         | Problems view (`Cmd+Shift+M`)          |
+| Completion          | Components, props, slots, HTML, Twig, PHP members, and imports.                    | Type, or `Ctrl+Space`                  |
+| Auto import         | A `use` statement when you accept a component, a class, or a function.             | Accept a completion item.              |
+| Go to definition    | Components, slots, props, PHP symbols, Twig variables, handlers, and routes.       | `F12` or `Cmd`+click                   |
+| Hover               | Signatures, props, and the docs of Twig, HTML elements, and HTML attributes.       | Move the pointer on a name.            |
+| Find references     | The tags of a component, and the calls of a function or a method.                  | `Shift+F12`, `Shift+Alt+F12`           |
+| Usage counts        | `2 usages` above each component, function, and method.                             | Click the count.                       |
+| Outline             | The namespace, components, pages, and classes of the file.                         | Outline view, `Cmd+Shift+O`            |
+| Twig comments       | `{# ... #}` in markup, because a PHP comment is not valid there.                   | `Cmd+/` or `Ctrl+/`                    |
+
+On Windows and Linux, use `Ctrl` for `Cmd`.
+
+## Syntax highlighting
 
 The extension highlights:
 
-- PHP code. It uses the grammar of the built-in PHP extension (`vscode.php`), so keep that
+- **PHP code.** It uses the grammar of the built-in PHP extension (`vscode.php`). Keep that
   extension enabled.
-- Markup literals: HTML elements, components (`<MyButton />`), named slots (`<Card:footer>`),
-  fragments (`<>...</>`), attributes, and HTML entities.
-- Twig in markup: `{{ expr }}`, `{% tag %}`, `{# comment #}`, filters, tests, hashes
+- **Markup literals:** HTML elements, components (`<MyButton />`), named slots
+  (`<Card:footer>`), fragments (`<>...</>`), attributes, and HTML entities.
+- **Twig in markup:** `{{ expr }}`, `{% tag %}`, `{# comment #}`, filters, tests, hashes
   (`style={{ {width: 90} }}`), spreads (`{{ ...props }}`), and markup in Twig expressions
   (`{{ ok ? <A /> : <B /> }}`).
-- JavaScript in `<script>` and CSS in `<style>`.
-
-In markup, **Toggle Line Comment** (`Cmd+/` or `Ctrl+/`) writes a Twig comment (`{# ... #}`),
-because a PHP comment is not valid there.
+- **JavaScript** in `<script>` and **CSS** in `<style>`.
 
 A markup literal starts where a PHP expression starts: after `return`, `(`, `=`, `,`, `=>`, `?`,
 `:`, `??`, `[`, or `echo`, or at the start of a line. Thus `$a < $b` stays a comparison.
 
+## Diagnostics
+
+The server shows the errors and the warnings of `phemc` as you type. It checks all the `.phpm`
+files of the source directory, because a file can use the components of other files. An open
+document replaces its file on disk, also when you did not save it.
+
+The server checks only the files in `phem.phemc.sourceDir` (default: `src`). See
+[Settings](#settings).
+
 ## Completion
 
-The server reads the `.phpm` files of the project and the Composer autoload maps
-(`vendor/composer/autoload_*.php`, or the `autoload` section of `composer.json` when `vendor/`
-is not there). A project is the nearest directory with a `composer.json` file.
+| Where you type                    | What it suggests                                                                                       |
+|-----------------------------------|--------------------------------------------------------------------------------------------------------|
+| `<`                               | The components of the project, the built-in `<Root>`, and the HTML elements.                           |
+| `<Card ` (in a component tag)     | The props that are not set yet. The required props come first.                                        |
+| `<Layout:`                        | The named slots of the component.                                                                      |
+| `<a ` (in an HTML tag)            | The attributes of the element, global and `aria-*` attributes, Phem events, and Phem attributes.        |
+| `type="` (an enumerated value)    | The values of the attribute (`type`, `target`, `rel`, `loading`, ...).                                  |
+| `</`                              | The name of the open element.                                                                          |
+| `->`, `?->`, `::`                 | The properties, methods, and constants of the class, with its parents, traits, and interfaces.        |
+| `$`                               | The variables of the function.                                                                         |
+| `{{ ` or `{% `                    | Twig variables, filters (after `\|`), tests (after `is`), functions, and tags.                          |
+| `{{ user.`                        | Twig attributes: public properties, public methods, getters (`getFullName()` is `fullName`), and array keys. |
+| `path('` or `url('`               | The route names of the pages.                                                                          |
+| `use App\`                        | The next part of the namespace, and the symbols.                                                       |
+| A name in PHP code                | The classes and namespaced functions of the project and of `vendor/`.                                  |
 
-- **Component tags**: after `<`, it suggests the components of the project (`#[Component]`
-  functions and classes). A function without `#[Component]` is a plain PHP function. The tag gets the required props, and a closing tag when the
-  component has `$children` or slots. If the component is not in scope, the server adds the
-  import: `use function App\Component\Layout;` or `use App\Component\Counter;`. It uses the
-  rules of phemc: a `use function` import, then a `use` import, then the current namespace.
-  It also suggests the built-in `<Root>` (the root element of a page, in the document), and
-  adds `use Phem\Root;`.
-- **HTML elements**: after `<`, it also suggests the HTML elements. A void element gets ` />`
-  (`<img />`); the others get a closing tag.
-- **Props and slots**: in a component tag, it suggests the props that are not set yet (required
-  props first). After `<Layout:`, it suggests the named slots.
-- **HTML attributes**: in an HTML tag, it suggests the attributes of the element, the global
-  attributes, the `aria-*` attributes, the Phem events (`onClick`, `onSubmit`, ...), the Phem
-  attributes (`phem:loading`, `phem:progress`, `phem:debounce`, `phem:throttle`, `phem:bind`,
-  `phem:live`), `className`, and `key`. In the value of an enumerated attribute (`type="`, `target="`, `rel="`,
-  `loading="`, ...), it suggests the values. In `phem:debounce={{ `, it also suggests `'blur'`.
-- **Closing tags**: after `</`, it suggests the name of the open element.
-- **Members**: after `->`, `?->`, and `::`, it suggests the properties, the methods, and the
-  constants of the class, with its parents, traits, and interfaces. Private and protected
-  members show only where PHP allows them. The type of an expression comes from the parameter
-  types, `new Foo()`, the property types, the return types, `foreach`, and the docblocks
-  (`@var`, `@param`, `@return`, `@property`, `@method`, `list<Foo>`, `Foo[]`).
-- **Variables**: after `$`, it suggests the variables of the function.
-- **Twig**: in `{{ }}` and `{% %}`, it suggests:
-  - the variables: the PHP variables of the scope, the properties and the methods of the class
-    (in a `#[Component]` class), and the `{% for %}` and `{% set %}` variables (with `loop`);
-  - the attributes after a dot, with the Twig rules: `scientist.` gives the public properties,
-    the public methods, and the getters as names (`getFullName()` is `fullName`). An array
-    literal (`$user = ['name' => ...]`) gives its keys;
-  - the filters after `|`, the tests after `is`, and the functions of Twig and Symfony
-    (`path`, `asset`, `form_widget`, `is_granted`, ...);
-  - the tags after `{%`, with the end tags of the open blocks first (`endfor`, `endif`);
-  - the route names of the pages in `path('` and `url('`.
-- **Imports**: in `use`, `use function`, and `use const` statements (and in groups,
-  `use App\{...}`), it suggests the next part of the namespace and the symbols.
-- **Classes and functions**: in PHP code, it suggests the classes and the namespaced functions
-  of the project and of `vendor/`, and adds the `use` statement when you accept one. A name with a
-  leading `\` (`\Phem\Html`) completes part by part, with no import.
+### Components
 
-The index updates when you change a `.phpm` file, add or remove a `.php` file, or run Composer.
-The server reads a class file when it needs the members of the class, and reads it again when
-the file changes.
+A component tag gets its required props, and a closing tag when the component has `$children`
+or slots:
+
+```php
+// Type <Lay and accept "Layout". You get:
+return <Layout title="">
+
+</Layout>;
+```
+
+If the component is not in scope, the server adds the import (`use function App\Component\Layout;`
+or `use App\Component\Counter;`). It uses the rules of `phemc`: a `use function` import, then a
+`use` import, then the current namespace.
+
+Only a function or a class with `#[Component]` is a component. Other functions are plain PHP
+functions, and completion does not suggest them as tags.
+
+### HTML and Phem attributes
+
+In an HTML tag, completion also gives:
+
+- the Phem events: `onClick`, `onSubmit`, ...;
+- the Phem attributes: `phem:loading`, `phem:progress`, `phem:debounce`, `phem:throttle`,
+  `phem:bind`, and `phem:live`;
+- `className` and `key`.
+
+A void element gets ` />` (`<img />`). Other elements get a closing tag. In
+`phem:debounce={{ `, completion also suggests `'blur'`.
+
+### Twig
+
+In `{{ }}` and `{% %}`, completion uses the Twig rules:
+
+- **Variables:** the PHP variables of the scope, the properties and methods of a
+  `#[Component]` class, and the `{% for %}` and `{% set %}` variables (with `loop`).
+- **Attributes after a dot:** the public properties, the public methods, and the getters as
+  names. An array literal (`$user = ['name' => ...]`) gives its keys.
+- **Filters, tests, and functions:** the ones of Twig and of Symfony (`path`, `asset`,
+  `form_widget`, `is_granted`, ...).
+- **Tags:** the end tags of the open blocks come first (`endfor`, `endif`).
+
+### PHP types
+
+The type of an expression comes from:
+
+- the parameter types, the property types, and the return types;
+- `new Foo()` and `foreach`;
+- the docblocks: `@var`, `@param`, `@return`, `@property`, `@method`, `list<Foo>`, and `Foo[]`.
+
+Private and protected members show only where PHP allows them.
+
+### Classes, functions, and imports
+
+In PHP code, completion suggests the classes and the namespaced functions of the project and of
+`vendor/`. When you accept one, the server adds the `use` statement. A name with a leading `\`
+(`\Phem\Html`) completes part by part, with no import.
+
+In `use`, `use function`, and `use const` statements (and in groups, `use App\{...}`),
+completion suggests the next part of the namespace and the symbols.
 
 ## Go to definition and hover
 
 **Go to Definition** (`F12` or `Cmd`+click) and the hover work on:
 
-- component tags (`<Layout>`, `</Layout>`), named slots (`<Layout:footer>`), and props;
-- class names, function names, members (`$this->repo->all()`, `Status::Active`), and variables
-  in PHP code;
-- Twig variables (they go to the PHP variable, parameter, property, or method), attributes
-  (`scientist.name` goes to the property or the getter), and handlers (`onClick={{ like }}`);
-- route names in `path('...')`: they go to the page.
+| You point at                                 | It goes to                                     |
+|----------------------------------------------|------------------------------------------------|
+| A component tag (`<Layout>`, `</Layout>`)    | The component                                  |
+| A named slot (`<Layout:footer>`) or a prop   | The slot or the prop of the component          |
+| A class, function, member, or PHP variable   | Its declaration                                |
+| A Twig variable (`{{ count }}`)              | The PHP variable, parameter, property, or method |
+| A Twig attribute (`scientist.name`)          | The property or the getter                     |
+| A handler (`onClick={{ like }}`)             | The method                                     |
+| A route name (`path('blog_show')`)           | The page                                       |
 
-The hover also shows the description of the Twig filters, functions, tests, and tags, and of the
-HTML elements and attributes.
+The hover also shows the description of the Twig filters, functions, tests, and tags, and of
+the HTML elements and attributes.
 
-## References and usage counts
+## Find references and usage counts
 
-**Go to References** (`Shift+F12`) and **Find All References** (`Shift+Alt+F12`) on a component,
-a function, or a method show where the project uses it:
+**Go to References** (`Shift+F12`) and **Find All References** (`Shift+Alt+F12`) show where the
+project uses a declaration:
 
-- a component: its tags (`<Card />`). The closing tags, the slot tags, and the imports do not
-  count;
-- a function: its calls;
-- a method: its calls (`$this->increment()`) and the Twig handlers (`onClick={{ increment }}`).
+| Declaration | Its references                                                                   |
+|-------------|----------------------------------------------------------------------------------|
+| Component   | Its tags (`<Card />`). The closing tags, the slot tags, and the imports do not count. |
+| Function    | Its calls                                                                        |
+| Method      | Its calls (`$this->increment()`) and the Twig handlers (`onClick={{ increment }}`) |
 
-`Cmd`+click (or **Go to Definition**) on the name of a declaration also shows its references,
-because the definition of a declaration is the declaration.
+`Cmd`+click on the name of a declaration also shows its references.
 
-Above each component, function, and method of a `.phpm` file, a usage count (`2 usages`) shows
-the number of usages. Click it to see the usages in a peek view. Click a usage to go to its file
-and position. A page, `render()`, and the magic methods (`__construct()`) have no usage count.
-To hide the counts, set `"editor.codeLens": false`.
+Above each component, function, and method, a usage count (`2 usages`) shows the number of
+usages. Click it to see the usages in a peek view. Then click a usage to go to it. A page,
+`render()`, and the magic methods (`__construct()`) have no usage count. To hide the counts, set
+`"editor.codeLens": false`.
 
-The server finds the usages in the `.phpm` files of the project. It does not search the `.php`
-files.
+The server searches the `.phpm` files of the project. It does not search the `.php` files.
 
 ## Outline
 
-The **Outline** view, the breadcrumbs, and **Go to Symbol in Editor** (`Cmd+Shift+O`) show the
-namespace, the components (with their props and slots), the pages (with their paths), and the
-classes with their members.
+The **Outline** view, the breadcrumbs, and **Go to Symbol in Editor** (`Cmd+Shift+O`) show:
 
-## Diagnostics
+- the namespace;
+- the components, with their props and slots;
+- the pages, with their paths;
+- the classes, with their members.
 
-The server shows the errors and the warnings of the compiler as you type. It checks all the
-`.phpm` files of the source directory, because a file can use the components of the other files.
-The open documents replace the files on disk, also when you did not save them.
+## How the server finds your code
+
+- The project is the nearest directory with a `composer.json` file.
+- The server reads the `.phpm` files of the project and the Composer autoload maps
+  (`vendor/composer/autoload_*.php`). When `vendor/` is not there, it reads the `autoload`
+  section of `composer.json`.
+- The index updates when you change a `.phpm` file, add or remove a `.php` file, or run
+  Composer.
+- The server reads a class file when it needs the members of the class. It reads the file again
+  when the file changes.
+
+## Settings
+
+| Setting                | Default | Description                                                                                                         |
+|------------------------|---------|---------------------------------------------------------------------------------------------------------------------|
+| `phem.phemc.sourceDir` | `src`   | The source directory of the `.phpm` files, relative to the project root. The server checks only the files in it.    |
+| `phem.phemc.path`      | empty   | The path of a native `phemc` binary. When you set it, the extension runs `phemc lsp` as the server. Empty: the bundled server. |
 
 ```json
 {
@@ -129,77 +228,36 @@ The open documents replace the files on disk, also when you did not save them.
 }
 ```
 
-`phem.phemc.sourceDir` is the source directory, relative to the project root (default: `src`).
-The server does not check a `.phpm` file outside of the source directory.
-
-## Settings
-
-| Setting                | Default | Description                                                                                       |
-|------------------------|---------|---------------------------------------------------------------------------------------------------|
-| `phem.phemc.sourceDir` | `src`   | The source directory of the `.phpm` files, relative to the project root.                          |
-| `phem.phemc.path`      | empty   | The path of a native `phemc` binary. When you set it, the extension runs `phemc lsp` as the server. Empty: the bundled server. |
-
-The extension restarts the server when you change a setting. To restart it yourself, run
-**Phem: Restart Language Server**. In an untrusted workspace, VS Code
+The extension restarts the server when you change a setting. In an untrusted workspace, VS Code
 ignores the `phem.phemc.path` value of the workspace settings.
 
-To see the messages of the server, open the **Output** view and select **Phem**.
+## Commands
+
+| Command                            | What it does                                                         |
+|------------------------------------|----------------------------------------------------------------------|
+| **Phem: Restart Language Server**  | Starts the server again. Use it after you install a new server build. |
+
+## Troubleshooting
+
+- **No PHP highlighting:** enable the built-in PHP extension (`vscode.php`).
+- **No diagnostics for a file:** make sure that the file is in `phem.phemc.sourceDir`.
+- **Server messages:** open the **Output** view and select **Phem**.
+- **Token scopes:** run **Developer: Inspect Editor Tokens and Scopes**.
+
+The PHP extensions (Intelephense, PHP Tools) do not read `.phpm` files. The Phem server gives the
+PHP, Twig, and HTML support in these files.
 
 ## Limits
 
-- The server has no stubs for the PHP built-in classes (`DateTime`, `ArrayObject`, ...), so
-  their members do not show.
-- It does not read the generic templates of a class (`@extends ServiceEntityRepository<Scientist>`
-  does not make `find()` return a `Scientist`). Add a `@return` or a `@var` tag for these cases.
+- The server has no stubs for the PHP built-in classes (`DateTime`, `ArrayObject`, ...). Their
+  members do not show.
+- The server does not read the generic templates of a class. For example,
+  `@extends ServiceEntityRepository<Scientist>` does not make `find()` return a `Scientist`. Add a
+  `@return` or a `@var` tag for these cases.
 - A Twig attribute resolves only from a known type. An array without an array literal
   (`array $items`) gives no keys.
 
-## Install
+## Build from source
 
-Build and install the package (you need Docker and the `code` command). Run the command in the
-repository root:
-
-```sh
-make vscode-install    # builds editors/vscode/phem-<version>.vsix and installs it
-```
-
-The command installs the extension in the Default profile of VS Code. To install it in a different
-profile, set `VSCODE_PROFILE`:
-
-```sh
-make vscode-install VSCODE_PROFILE=Personal
-```
-
-Then run **Developer: Reload Window** in VS Code. A running server keeps its old build until it
-starts again: after a change in the server only, **Phem: Restart Language Server** is
-enough. To only build the package, run `make vscode`.
-`make vscode` builds the server (`make lsp`, the WebAssembly build of `phemc-lsp`), copies it to
-`editors/vscode/server/`, and packages the extension. It does not install the package. If you
-install it yourself, add `--force` to replace an installed version:
-
-```sh
-code --install-extension editors/vscode/phem-0.5.0.vsix --force
-```
-
-Or, in VS Code, open the Extensions view, select **...** > **Install from VSIX...**, and select the file.
-
-## Develop
-
-The extension is a thin client: `src/extension.js` starts the server with
-`vscode-languageclient`, and colors the Twig delimiters. The server is in
-`compiler/crates/phemc-lsp/`. Its tests run with `make test`.
-
-esbuild bundles `src/extension.js` and its dependencies into one file, `dist/extension.js`
-(`npm run vscode:prepublish`). The package has only this file, not `node_modules/`.
-
-To run the extension from the sources, build the server, install the dependencies and bundle
-the extension. Then open `editors/vscode/` in VS Code and push `F5`. Bundle again after a change
-in `src/`.
-
-```sh
-make lsp
-mkdir -p editors/vscode/server && cp editors/server/phem-lsp.cjs editors/server/phem-lsp.wasm editors/vscode/server/
-(cd editors/vscode && npm install && npm run vscode:prepublish)
-```
-
-To see the scopes of a token, run **Developer: Inspect Editor Tokens and Scopes**.
+To build, install, or work on the extension, see
+[DEVELOPMENT.md](https://github.com/phemphp/phem/blob/main/editors/vscode/DEVELOPMENT.md).

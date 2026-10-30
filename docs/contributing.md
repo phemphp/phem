@@ -24,7 +24,8 @@ To give Claude Code the compiler diagnostics after each edit, run `make lsp` and
 `claude --plugin-dir editors/claude-code`. All three use the Phem language server
 (`phemc lsp`), compiled to WebAssembly: diagnostics as you type, completion, go to definition,
 find references, hover, and outline. In an application, the Claude Code plugin runs `vendor/bin/phemc lsp`. See
-[editors/vscode/README.md](../editors/vscode/README.md),
+[editors/vscode/README.md](../editors/vscode/README.md) (to build it:
+[editors/vscode/DEVELOPMENT.md](../editors/vscode/DEVELOPMENT.md)),
 [editors/phpstorm/README.md](../editors/phpstorm/README.md) and
 [editors/claude-code/README.md](../editors/claude-code/README.md).
 
