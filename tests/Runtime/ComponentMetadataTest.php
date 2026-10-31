@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Runtime;
 
+use Phem\Attribute\Component;
 use Phem\Attribute\Path;
 use Phem\Attribute\Prop;
 use Phem\Attribute\State;
@@ -36,6 +37,18 @@ final class ComponentMetadataTest extends TestCase
         };
 
         self::assertSame(['label', 'id'], array_keys((new ComponentMetadata())->props($component::class)));
+    }
+
+    public function testReplacesIsTheComponentInTheAttribute(): void
+    {
+        $metadata = new ComponentMetadata();
+
+        self::assertSame('Acme\\Ui\\Button', $metadata->replaces((new #[Component(replaces: 'Acme\\Ui\\Button')] class {})::class));
+        self::assertSame('Acme\\Ui\\Button', $metadata->replaces((new #[Component('\\Acme\\Ui\\Button')] class {})::class), 'a positional argument, with a leading backslash');
+        self::assertNull($metadata->replaces((new #[Component(replaces: null)] class {})::class));
+        self::assertNull($metadata->replaces((new #[Component] class {})::class));
+        self::assertNull($metadata->replaces((new class {})::class), 'not a component');
+        self::assertNull($metadata->replaces('App\\Missing'));
     }
 
     public function testPrivatePropIsAnError(): void

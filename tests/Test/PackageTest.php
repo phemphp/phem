@@ -87,6 +87,71 @@ final class PackageTest extends KernelTestCase
         self::assertStringContainsString('<span class="badge">Twig</span>', $html);
     }
 
+    public function testAReplacementRendersInTheTagsOfTheAppAndOfThePackage(): void
+    {
+        $this->visit('/replaced')
+            ->assertSelectorCount(2, '#replaced .alert')
+            ->assertSelectorTextContains('#replaced > .alert-info', 'Note Saved')
+            ->assertSelectorTextContains('#replaced .notice > .alert-warning', 'Careful Read this');
+    }
+
+    public function testThePagesOfAPackageRenderInTheLayoutOfThePackage(): void
+    {
+        $this->visit('/ui/gallery')
+            ->assertSelectorExists('body > #phem-root #gallery')
+            ->assertSelectorTextContains('title', 'Acme UI');
+    }
+
+    public function testATwigTemplateOfTheAppRendersTheReplacement(): void
+    {
+        self::bootKernel();
+
+        /** @var Environment $twig */
+        $twig = self::getContainer()->get('twig');
+        $html = $twig->createTemplate("{% component 'Acme\\\\Ui\\\\Alert' with {type: 'warning'} %}")->render();
+
+        self::assertStringContainsString('<strong>Careful</strong>', $html);
+        self::assertSame(1, substr_count($html, 'role="alert"'), 'the replacement renders the original once');
+    }
+
+    public function testATwigTemplateOfTheAppRendersTheReplacementWithSlots(): void
+    {
+        self::bootKernel();
+
+        /** @var Environment $twig */
+        $twig = self::getContainer()->get('twig');
+        $html = $twig->createTemplate("{% component embed 'Acme\\\\Ui\\\\Alert' %}{% block children %}Body{% endblock %}{% endcomponent %}")->render();
+
+        self::assertStringContainsString('<strong>Note</strong> Body', $html);
+        self::assertSame(1, substr_count($html, 'role="alert"'));
+    }
+
+    public function testAClassReplacementKeepsItsStateAndTheStateOfTheOriginal(): void
+    {
+        $this->visit('/replaced')
+            ->assertSelectorTextContains('#my-toggle #flip', 'Lamp off')
+            ->click('#count')
+            ->assertSelectorTextContains('#count', 'Flips 1')
+            ->click('#flip')
+            ->assertSelectorTextContains('#my-toggle #flip', 'Lamp on')
+            ->assertSelectorTextContains('#count', 'Flips 1')
+            ->click('#count')
+            ->assertSelectorTextContains('#count', 'Flips 2')
+            ->assertSelectorTextContains('#flip', 'Lamp on');
+    }
+
+    public function testTheManifestKeepsTheReplacements(): void
+    {
+        self::bootKernel();
+
+        /** @var Manifest $manifest */
+        $manifest = self::getContainer()->get('phem.manifest');
+
+        self::assertSame('App\\Component\\Alert', $manifest->replacement('Acme\\Ui\\Alert'));
+        self::assertSame('App\\Component\\Alert', $manifest->replacement('\\Acme\\Ui\\Alert'), 'with a leading backslash');
+        self::assertNull($manifest->replacement('Acme\\Ui\\Badge'));
+    }
+
     public function testATwigErrorOfAPackagePointsToItsSource(): void
     {
         self::bootKernel();

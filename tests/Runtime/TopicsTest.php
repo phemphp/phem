@@ -19,6 +19,8 @@ use Phem\Tests\Fixtures\Scientist;
 use Phem\Tests\Fixtures\Size;
 use Phem\Tests\Fixtures\Broadcasting;
 use Phem\Tests\Fixtures\BroadcastingComponent;
+use Phem\Tests\Fixtures\KeyedBroadcastingComponent;
+use Phem\Tests\Fixtures\KeyedBroadcastingReplacement;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Routing\Loader\ClosureLoader;
 use Symfony\Component\Routing\Route;
@@ -137,6 +139,13 @@ final class TopicsTest extends TestCase
         self::assertSame([BroadcastingComponent::class, $widget], $components);
         self::assertSame(['phem:'.Broadcasting::class, 'phem:*', 'phem:'.BroadcastingComponent::class, 'phem:'.$widget], array_map($topics->name(...), $topics->ofPage(Broadcasting::class, [], $components)));
         self::assertSame(['phem:'.BroadcastingComponent::class], array_map($topics->name(...), $topics->ofPage(Scientist::class, [], [BroadcastingComponent::class])), 'a page with no #[Broadcast]');
+    }
+
+    public function testAReplacementSubscribesToTheComponentThatItReplaces(): void
+    {
+        $components = new Topics()->components([KeyedBroadcastingReplacement::class]);
+
+        self::assertSame([KeyedBroadcastingComponent::class], $components);
     }
 
     public function testThePublisherGetsTheTopicOfAComponent(): void

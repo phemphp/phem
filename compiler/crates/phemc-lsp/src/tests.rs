@@ -872,6 +872,64 @@ fn pair(file: &str, line: &str) -> (String, String) {
 }
 
 #[test]
+fn a_tag_of_a_replaced_component_goes_to_the_replacement() {
+    let src = |tag: &str, inner: &str| {
+        format!("{PAGE}use Phem\\Attribute\\Component;\nuse Phem\\Html;\n\n#[Component]\nfunction Plate(?Html $children = null) {{ return <div>{{{{ children }}}}</div>; }}\n\n#[Component(replaces: Plate::class)]\nfunction MyPlate(?Html $children = null) {{ return <{inner}>{{{{ children }}}}</Plate>; }}\n\nfunction Home() {{ return <{tag} />; }}\n")
+    };
+
+    // A tag of the original: the replacement, and the hover shows both.
+    let page = src("Pla‸te", "Plate");
+    let r = at_page(&page);
+    assert_eq!(target(&r, &page).1, "MyPlate(?Html $children = null) { return <Plate>{{ children }}</Plate>; }");
+    assert!(hover(&r).starts_with("```php\n#[Component]\nfunction MyPlate("), "{}", hover(&r));
+    assert!(hover(&r).contains("Replaces `App\\Page\\Plate`:\n\n```php\n#[Component]\nfunction Plate("), "{}", hover(&r));
+
+    // In the replacement: the tag stays the original.
+    let page = src("Plate", "Pla‸te");
+    let r = at_page(&page);
+    assert_eq!(target(&r, &page).1, "Plate(?Html $children = null) { return <div>{{ children }}</div>; }");
+    assert!(hover(&r).contains("Replaced by `App\\Page\\MyPlate` in the other tags"), "{}", hover(&r));
+
+    // Two replacements are an error of the compiler: the tag goes to the original.
+    let page = src("Pla‸te", "Plate") + "\n#[Component(replaces: Plate::class)]\nfunction OtherPlate(?Html $children = null) { return <b />; }\n";
+    let r = at_page(&page);
+    assert_eq!(target(&r, &page).1, "Plate(?Html $children = null) { return <div>{{ children }}</div>; }");
+}
+
+#[test]
+fn a_tag_in_a_parent_class_or_a_trait_of_a_replacement_stays_the_original() {
+    let src = |base: &str, part: &str| {
+        format!("{PAGE}use Phem\\Attribute\\Component;\nuse Phem\\Node;\n\n#[Component]\nfunction Plate() {{ return <div />; }}\n\nabstract class Base\n{{\n    public function render(): Node {{ return <{base} />; }}\n}}\n\ntrait Parts\n{{\n    public function part(): Node {{ return <{part} />; }}\n}}\n\n#[Component(replaces: Plate::class)]\nfinal class MyPlate extends Base\n{{\n    use Parts;\n}}\n\nfunction Home() {{ return <Plate />; }}\n")
+    };
+
+    for page in [src("Pla‸te", "Plate"), src("Plate", "Pla‸te")] {
+        let r = at_page(&page);
+        assert_eq!(target(&r, &page).1, "Plate() { return <div />; }", "{page}");
+        assert!(hover(&r).contains("Replaced by `App\\Page\\MyPlate` in the other tags"), "{}", hover(&r));
+    }
+}
+
+#[test]
+fn a_replacement_that_the_compiler_refuses_changes_no_tag() {
+    let plate = "#[Component]\nfunction Plate() { return <div />; }\n";
+    let my_plate = "#[Component(replaces: Plate::class)]\nfunction MyPlate() { return <b />; }\n";
+    let cases = [
+        (format!("{plate}#[Component(replaces: null)]\nfunction MyPlate() {{ return <b />; }}\n"), "Pla‸te", "Plate() { return <div />; }"),
+        ("#[Component(replaces: Plate::class)]\nfunction Plate() { return <div />; }\n".to_string(), "Pla‸te", "Plate() { return <div />; }"),
+        // The replacement of a replacement: MyPlate stays MyPlate.
+        (format!("{plate}{my_plate}#[Component(replaces: MyPlate::class)]\nfunction OtherPlate() {{ return <b />; }}\n"), "My‸Plate", "MyPlate() { return <b />; }"),
+        (format!("{plate}#[Page('/my'), Component(replaces: Plate::class)]\nfunction MyPlate() {{ return <b />; }}\n"), "Pla‸te", "Plate() { return <div />; }"),
+    ];
+
+    for (i, (decls, tag, line)) in cases.iter().enumerate() {
+        let page = format!("{PAGE}use Phem\\Attribute\\{{Component, Page}};\n\n{decls}\nfunction Home() {{ return <{tag} />; }}\n");
+        let r = at_page(&page);
+        assert_eq!(target(&r, &page).1, *line, "case {i}");
+        assert!(!hover(&r).contains("Replaces"), "case {i}: {}", hover(&r));
+    }
+}
+
+#[test]
 fn a_component_tag_goes_to_the_component() {
     let src = def_fn("<Lay‸out title=\"x\"></Layout>", "");
     let r = at_page(&src);

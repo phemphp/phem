@@ -320,7 +320,13 @@ takes a `tag` prop.
 - **Not in scope:** `asChild` (the props merged into the child element), because the child is
   rendered `Html`.
 
-### [ ] Override of a package component in the app — P2
+### [x] Override of a package component in the app — P2
+
+Done: see [Replace a component of a package](docs/packages.md#replace-a-component-of-a-package).
+The text below keeps the design decisions. Three details of the implementation: a tag of the
+original keeps the checks of the original (its props are the props that the caller knows), an
+unknown component in `replaces` is E010, and the Twig tag uses the replacements of the manifest
+only in a template that phemc did not compile (phemc already resolves its tags).
 
 A tag resolves to a fixed FQCN at compile time. The app cannot replace a package `Button` that
 a package `Dialog` renders.

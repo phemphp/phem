@@ -43,6 +43,8 @@ final class Manifest
     private ?string $twigSignature = null;
     /** @var array<string, ComponentDefinition|null> */
     private array $definitions = [];
+    /** @var array<string, string>|null */
+    private ?array $replacements = null;
 
     public function __construct(private readonly string $buildDir)
     {
@@ -100,6 +102,25 @@ final class Manifest
         }
     }
 
+    /**
+     * The component that replaces a component in the tags (`#[Component(replaces: ...)]`), or
+     * null. phemc already resolves the tags of the `.phpm` files: a Twig template of the app
+     * uses it.
+     */
+    public function replacement(string $fqcn): ?string
+    {
+        if (null === $this->replacements) {
+            $this->replacements = [];
+            foreach ($this->data()['components'] ?? [] as $replacement => $def) {
+                if (isset($def['replaces'])) {
+                    $this->replacements[(string) $def['replaces']] = $replacement;
+                }
+            }
+        }
+
+        return $this->replacements[ltrim($fqcn, '\\')] ?? null;
+    }
+
     /** @return list<string> all the page components: the components with a `#[Route]` attribute */
     public function pages(): array
     {
@@ -131,8 +152,8 @@ final class Manifest
     }
 
     /**
-     * A hash of what Twig reads from the manifest when it compiles `{% component %}`: the kind
-     * and the template of each component. It is empty without a build.
+     * A hash of what Twig reads from the manifest when it compiles `{% component %}`: the kind,
+     * the template and the replaced component of each component. It is empty without a build.
      */
     public function twigSignature(): string
     {
@@ -146,7 +167,7 @@ final class Manifest
 
         $parts = [];
         foreach ($this->data()['components'] ?? [] as $fqcn => $def) {
-            $parts[$fqcn] = [$def['kind'] ?? null, $def['template'] ?? null];
+            $parts[$fqcn] = [$def['kind'] ?? null, $def['template'] ?? null, $def['replaces'] ?? null];
         }
 
         ksort($parts);

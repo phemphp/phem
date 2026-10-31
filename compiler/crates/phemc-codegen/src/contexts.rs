@@ -8,6 +8,7 @@
 //! markup in a prop or a variable, a Twig template): it stops the check. The error is for a
 //! chain of placed uses from a page to the consumer, with no provider.
 
+use crate::replaces::Replacements;
 use phemc_analyze::{Class, FileInfo, MarkupScope, Registry};
 use phemc_syntax::diag::codes;
 use phemc_syntax::markup::Node;
@@ -28,8 +29,9 @@ pub(crate) struct Use {
     span: Span,
 }
 
-/// The uses of components in the markup that the components of a file return.
-pub(crate) fn uses(info: &FileInfo, lexed: &Lexed) -> Vec<Use> {
+/// The uses of components in the markup that the components of a file return. A tag uses the
+/// replacement of its component (see `Replacements`).
+pub(crate) fn uses(info: &FileInfo, lexed: &Lexed, replacements: &Replacements) -> Vec<Use> {
     let mut out = Vec::new();
     for (index, m) in lexed.markups.iter().enumerate() {
         if !info.returned_markups.get(index).copied().unwrap_or(false) {
@@ -44,16 +46,16 @@ pub(crate) fn uses(info: &FileInfo, lexed: &Lexed) -> Vec<Use> {
             _ => continue,
         };
 
-        walk(info, &owner, &m.root, &mut Vec::new(), &mut out);
+        walk(info, replacements, &owner, &m.root, &mut Vec::new(), &mut out);
     }
 
     out
 }
 
-fn walk(info: &FileInfo, owner: &str, node: &Node, enclosing: &mut Vec<String>, out: &mut Vec<Use>) {
+fn walk(info: &FileInfo, replacements: &Replacements, owner: &str, node: &Node, enclosing: &mut Vec<String>, out: &mut Vec<Use>) {
     match node {
         Node::Element(e) if e.is_component() && !info.is_dynamic(&e.name) => {
-            let child = info.resolve_component(&e.name);
+            let child = replacements.resolve(&info.resolve_component(&e.name), Some(owner)).to_string();
             out.push(Use { owner: owner.to_string(), child: child.clone(), enclosing: enclosing.clone(), rel: info.rel.clone(), span: e.name_span });
 
             let slot_prefix = format!("{}:", e.name);
@@ -63,10 +65,10 @@ fn walk(info: &FileInfo, owner: &str, node: &Node, enclosing: &mut Vec<String>, 
                     // A named slot of the tag: its content is in the slot too.
                     Node::Element(s) if s.name.starts_with(&slot_prefix) => {
                         for n in &s.children {
-                            walk(info, owner, n, enclosing, out);
+                            walk(info, replacements, owner, n, enclosing, out);
                         }
                     }
-                    other => walk(info, owner, other, enclosing, out),
+                    other => walk(info, replacements, owner, other, enclosing, out),
                 }
             }
 
@@ -74,18 +76,18 @@ fn walk(info: &FileInfo, owner: &str, node: &Node, enclosing: &mut Vec<String>, 
         }
         Node::Element(e) => {
             for c in &e.children {
-                walk(info, owner, c, enclosing, out);
+                walk(info, replacements, owner, c, enclosing, out);
             }
         }
         Node::Fragment(f) => {
             for c in &f.children {
-                walk(info, owner, c, enclosing, out);
+                walk(info, replacements, owner, c, enclosing, out);
             }
         }
         Node::Block(b) => {
             for br in &b.branches {
                 for c in &br.children {
-                    walk(info, owner, c, enclosing, out);
+                    walk(info, replacements, owner, c, enclosing, out);
                 }
             }
         }

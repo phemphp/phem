@@ -274,6 +274,11 @@ pub struct Component {
     pub children: bool,
     pub rest: bool,
     pub offset: Option<usize>,
+    /// The declaration, from its first token to its end: a tag of the component that it replaces
+    /// stays the original inside it.
+    pub span: Option<(usize, usize)>,
+    /// The component that this component replaces in the tags (`#[Component(replaces: ...)]`).
+    pub replaces: Option<String>,
     pub signature: String,
     pub doc: Option<&'static str>,
 }
@@ -1163,6 +1168,8 @@ fn components(parsed: &Parsed) -> Vec<Component> {
             children: false,
             rest: false,
             offset: Some(f.offset),
+            span: Some((f.start, f.end)),
+            replaces: replaced(parsed, &f.attributes),
             signature: format!("#[{}]\nfunction {}({})", if page { "Page" } else { "Component" }, f.name, f.params.iter().map(param_text).collect::<Vec<_>>().join(", ")),
             doc: None,
         };
@@ -1203,6 +1210,8 @@ fn components(parsed: &Parsed) -> Vec<Component> {
             children: false,
             rest: false,
             offset: Some(c.offset),
+            span: Some((c.start, c.end)),
+            replaces: replaced(parsed, &c.attributes),
             signature: format!("#[Component]\nfinal class {}", c.name),
             doc: None,
         };
@@ -1244,6 +1253,27 @@ fn components(parsed: &Parsed) -> Vec<Component> {
     list
 }
 
+/// The component that `#[Component(replaces: ...)]` replaces: the named argument `replaces`, or
+/// the first argument with no name. The value is `Name::class` or a string.
+fn replaced(parsed: &Parsed, attributes: &[Attribute]) -> Option<String> {
+    let attr = attributes.iter().find(|a| has_attr(std::slice::from_ref(&a.name), "Component"))?;
+    let value = attr.args.split(',').map(str::trim).enumerate().find_map(|(i, arg)| {
+        let named = arg.find(':').filter(|&c| !arg[c + 1..].starts_with(':') && arg[..c].trim().bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_'));
+        match named {
+            Some(c) if arg[..c].trim().eq_ignore_ascii_case("replaces") => Some(arg[c + 1..].trim()),
+            None if i == 0 => Some(arg),
+            _ => None,
+        }
+    })?;
+
+    if let Some(name) = value.strip_suffix("::class") {
+        return crate::types::resolve_name(parsed, name.trim());
+    }
+
+    let unquoted = value.strip_prefix('\'').and_then(|v| v.strip_suffix('\'')).or_else(|| value.strip_prefix('"').and_then(|v| v.strip_suffix('"')))?;
+    Some(unquoted.replace("\\\\", "\\").trim_start_matches('\\').to_string()).filter(|f| !f.is_empty())
+}
+
 pub fn param_text(p: &Param) -> String {
     let mut s = String::new();
     if !p.ty.is_empty() {
@@ -1279,6 +1309,8 @@ pub fn builtin_components() -> Vec<Component> {
         children: true,
         rest: true,
         offset: None,
+        span: None,
+        replaces: None,
         signature: "final class Root\n{\n    public string $tag = 'div';\n    public ?Html $children = null;\n}".into(),
         doc: Some("The root element of the page, in the document: it keeps the state of the page and gets its events. The other attributes go to the element."),
     }, Component {
@@ -1291,6 +1323,8 @@ pub fn builtin_components() -> Vec<Component> {
         children: true,
         rest: false,
         offset: None,
+        span: None,
+        replaces: None,
         signature: "final class Suspense\n{\n    public bool $lazy = false;\n    public ?Html $children = null;\n    public ?Html $fallback = null;\n    public ?Html $error = null;\n}".into(),
         doc: Some("Content that loads after the page: the page shows the fallback, and the response of the page streams the children after the page (or, with `lazy`, the browser loads them with an event when the fallback comes into view). When the children throw, the error slot shows."),
     }, Component {
@@ -1303,6 +1337,8 @@ pub fn builtin_components() -> Vec<Component> {
         children: true,
         rest: false,
         offset: None,
+        span: None,
+        replaces: None,
         signature: "final class ErrorBoundary\n{\n    public ?Html $children = null;\n    public ?Html $fallback = null;\n}".into(),
         doc: Some("Catches the render errors of the children: when the render of the children throws, the fallback shows in place of them, only for this boundary. Each render tries the children again. An error in an event handler is not caught: the event fails."),
     }, Component {
@@ -1315,6 +1351,8 @@ pub fn builtin_components() -> Vec<Component> {
         children: true,
         rest: true,
         offset: None,
+        span: None,
+        replaces: None,
         signature: "final class Dynamic\n{\n    public string $tag;\n    public ?Html $children = null;\n}".into(),
         doc: Some("An element whose tag name is a value: `<Dynamic tag={{ tag }}>`. The other attributes and the handlers go to the element. It is an element, not a component: when it is the root of a component, the id of the component goes on it. A void element has no children. The tag cannot start with `phem-`, and it cannot be `script`, `style`, or an element whose attributes load a document or a resource (`iframe`, `object`, `embed`, `base`, `link`, `meta`)."),
     }]

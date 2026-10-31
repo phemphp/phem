@@ -96,7 +96,7 @@ final class Topics implements ResetInterface
 
     /**
      * The components with #[Broadcast] in a list of components (the fibers of a page render),
-     * once each, with no page.
+     * and the components with #[Broadcast] that they replace, once each, with no page.
      *
      * @param iterable<string> $names
      *
@@ -106,8 +106,11 @@ final class Topics implements ResetInterface
     {
         $components = [];
         foreach ($names as $name) {
-            if ($this->broadcasts($name) && $this->metadata->isComponent($name)) {
-                $components[$name] = $name;
+            // A replacement gets the streams to the component that it replaces too.
+            foreach ([$name, $this->metadata->replaces($name)] as $component) {
+                if (null !== $component && $this->broadcasts($component) && $this->metadata->isComponent($component)) {
+                    $components[$component] = $component;
+                }
             }
         }
 

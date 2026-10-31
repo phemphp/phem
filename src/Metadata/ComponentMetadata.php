@@ -47,6 +47,9 @@ final class ComponentMetadata
     /** @var array<string, bool> */
     private array $components = [];
 
+    /** @var array<string, string|null> */
+    private array $replaces = [];
+
     /** @var array<string, array<string, \ReflectionProperty>> */
     private array $props = [];
 
@@ -174,6 +177,19 @@ final class ComponentMetadata
         $reflection = self::reflect($name);
 
         return $this->components[$name] = null !== $reflection && [] !== $reflection->getAttributes(Component::class) && [] === $reflection->getAttributes(Page::class);
+    }
+
+    /** The component that a component replaces (`#[Component(replaces: ...)]`), or null. */
+    public function replaces(string $name): ?string
+    {
+        if (\array_key_exists($name, $this->replaces)) {
+            return $this->replaces[$name];
+        }
+
+        $attribute = self::reflect($name)?->getAttributes(Component::class)[0] ?? null;
+        $replaces = $attribute?->newInstance()->replaces;
+
+        return $this->replaces[$name] = null !== $replaces ? ltrim($replaces, '\\') : null;
     }
 
     /**

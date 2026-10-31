@@ -33,7 +33,10 @@ use Twig\TokenParser\AbstractTokenParser;
  *         {% block children %}{% with _phem_caller only %}<p>Body</p>{% endwith %}{% endblock %}
  *     {% endcomponent %}
  *
- * The component is resolved from the manifest when Twig compiles the template.
+ * The component is resolved from the manifest when Twig compiles the template. In a template of
+ * the app, a component with a replacement (`#[Component(replaces: ...)]`) renders the replacement.
+ * phemc already resolves the tags of its templates, and a tag of the original in the replacement
+ * itself stays the original.
  */
 final class ComponentTokenParser extends AbstractTokenParser
 {
@@ -47,6 +50,10 @@ final class ComponentTokenParser extends AbstractTokenParser
         $line = $token->getLine();
         $embed = null !== $stream->nextIf(Token::NAME_TYPE, 'embed');
         $fqcn = ltrim((string) $stream->expect(Token::STRING_TYPE)->getValue(), '\\');
+        if (!str_starts_with($stream->getSourceContext()->getName(), '@'.Manifest::TEMPLATE_NAMESPACE.'/')) {
+            $fqcn = $this->manifest->replacement($fqcn) ?? $fqcn;
+        }
+
         $def = $this->manifest->component($fqcn)
             ?? throw new SyntaxError(\sprintf('Unknown component "%s". Run `phemc build` again.', $fqcn), $line, $stream->getSourceContext());
 

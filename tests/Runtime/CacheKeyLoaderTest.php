@@ -41,9 +41,11 @@ final class CacheKeyLoaderTest extends TestCase
         $function = $this->cacheKey(['App\\MyButton' => ['kind' => 'function', 'props' => []]]);
         $otherTemplate = $this->cacheKey(['App\\MyButton' => ['kind' => 'template', 'template' => 'a.1.twig', 'props' => []]]);
         $otherProps = $this->cacheKey(['App\\MyButton' => ['kind' => 'template', 'template' => 'a.0.twig', 'props' => ['label']]]);
+        $replaced = $this->cacheKey(['App\\MyButton' => ['kind' => 'template', 'template' => 'a.0.twig', 'props' => [], 'replaces' => 'Acme\\Button']]);
 
         self::assertNotSame($template, $function);
         self::assertNotSame($template, $otherTemplate);
+        self::assertNotSame($template, $replaced, 'a Twig template of the app renders the replacement');
         self::assertSame($template, $otherProps, 'props are checked at runtime, not compiled into the template');
     }
 

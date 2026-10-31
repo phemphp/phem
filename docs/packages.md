@@ -57,6 +57,9 @@ classes where it uses a component: `<Button className="w-full" />` keeps the cla
 A component that can render as another element (a `Button` as a link) takes its tag in a prop,
 and renders `<Dynamic tag={{ tag }}>`. See [Dynamic element](phpm-syntax.md#dynamic-element).
 
+The app can replace a component of a package in all its tags, also in the other components of
+the package. See [Replace a component of a package](#replace-a-component-of-a-package).
+
 ## How the app compiles a package
 
 `phemc build`, `check` and `watch` read `installed.json` in the Composer dir of the vendor dir
@@ -127,6 +130,126 @@ function Gallery(): Node
     return <Layout><Badge label="New" /></Layout>;
 }
 ```
+
+The app replaces the layout with a component that renders its own `Document`, so the pages of
+the package get the document of the app:
+
+```php
+use Acme\Ui\Layout;
+
+#[Component(replaces: Layout::class)]
+function PackageLayout(?Html $children = null): Node
+{
+    return <Document>{{ children }}</Document>;
+}
+```
+
+## Replace a component of a package
+
+Put `#[Component(replaces: ...)]` on a component of the app. Each tag of the original renders
+the replacement: in the app, and in the components and the pages of all the packages. Inside
+the replacement, a tag of the original stays the original, so the replacement can wrap it:
+
+```php
+// vendor/acme/ui/components/Alert.phpm
+namespace Acme\Ui;
+
+#[Component]
+function Alert(string $type = 'info', ?Html $children = null): Node
+{
+    return <div className="alert alert-{{ type }}" role="alert">{{ children }}</div>;
+}
+
+// The Notice of the package renders the replacement of the app.
+#[Component]
+function Notice(?Html $children = null): Node
+{
+    return <section className="notice"><Alert type="warning">{{ children }}</Alert></section>;
+}
+```
+
+```php
+// src/Component/Alert.phpm
+namespace App\Component;
+
+use Acme\Ui\Alert as UiAlert;
+
+#[Component(replaces: UiAlert::class)]
+function Alert(string $type = 'info', ?Html $children = null): Node
+{
+    $label = 'warning' === $type ? 'Careful' : 'Note';
+
+    return <UiAlert type={{ type }}><strong>{{ label }}</strong> {{ children }}</UiAlert>;
+}
+```
+
+```php
+// src/Page/Replaced.phpm
+use Acme\Ui\Alert;
+use function Acme\Ui\Notice;
+
+#[Page('/replaced')]
+function ReplacedPage(): Node
+{
+    return (
+        <Document>
+            <Alert>Saved</Alert>
+            <Notice>Read this</Notice>
+        </Document>
+    );
+}
+```
+
+The result:
+
+```html
+<div class="alert alert-info" role="alert" data-phem-c="phemf06a118edb20"><strong>Note</strong> Saved</div>
+<section class="notice"><div class="alert alert-warning" role="alert" data-phem-c="phem57a1d908ae81"><strong>Careful</strong> Read this</div></section>
+```
+
+`phemc` changes the tags when it compiles. The template of `Notice` renders the replacement,
+and the template of the replacement renders the original:
+
+```twig
+{# vendor/acme/ui/Alert.1.twig (Notice) #}
+<section class="notice">{% component embed 'App\\Component\\Alert' with {'type': 'warning'} only %}...{% endcomponent %}</section>
+
+{# component/Alert.0.twig (the replacement) #}
+{% component embed 'Acme\\Ui\\Alert' with {'type': (type)} only %}...{% endcomponent %}
+```
+
+The value of `replaces` is `Name::class` or a string with the class name. A function component
+also uses `Name::class`, with a `use` import (not `use function`): PHP does not check that the
+class exists.
+
+The rules:
+
+- Only the app replaces a component. A `replaces` in a package is an error (E017): a theme
+  package extends the classes of a base package.
+- One replacement for each component (E017). The replacement of a replacement, of a page or of
+  a built-in component (`<Root>`, `<Suspense>`) is also E017, and so is a page that replaces a
+  component: a page is not a tag. A component cannot replace itself. A tag of the replacement
+  itself is correct. `replaces: null` is no replacement.
+- The replacement accepts each prop and each slot of the original, or it has a rest prop
+  (`mixed ...$rest`). It requires no prop and no slot that the original does not require. A
+  `Bound` prop of the original stays a `Bound` prop: `phem:bind` on a tag of the original gives
+  it a `Bound`. Else `phemc` reports E016. It does not compare the other types: PHP checks them.
+- In a class replacement, a tag of the original stays the original in all its methods, also in
+  the methods of its parent classes and its traits in the sources (up to the original).
+- The tags of the original keep the checks of the original: an unknown prop is E011, also when
+  the replacement has a rest prop.
+- A consumer of a context finds its provider by type. A replacement of a provider extends the
+  class of the original or wraps the original, so the consumers of the package still find it.
+- A replacement gets the streams of the original with `#[Broadcast]`:
+  `$streams->toComponent(Counter::class)` also refreshes the replacements of `Counter`, with the
+  `#[BroadcastKey]` props of `Counter`.
+- `{% component 'Acme\\Ui\\Alert' %}` in a plain Twig template of the app also renders the
+  replacement: the manifest keeps the replacements. A plain Twig template is not inside the
+  replacement, so it cannot render the original: wrap the original in the `.phpm` markup of the
+  replacement.
+- The profiler shows the component that each replacement replaces. In the editor, the
+  definition of a tag of the original goes to the replacement, and the hover shows both. The
+  editor uses the rules of `phemc`: with no valid replacement, the tag goes to the original.
 
 ## Test a package
 

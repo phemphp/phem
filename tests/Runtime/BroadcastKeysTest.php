@@ -24,6 +24,7 @@ use Phem\Tests\Fixtures\Broadcasting;
 use Phem\Tests\Fixtures\BroadcastingPageWithAHandler;
 use Phem\Tests\Fixtures\BroadcastingComponent;
 use Phem\Tests\Fixtures\KeyedBroadcastingComponent;
+use Phem\Tests\Fixtures\KeyedBroadcastingReplacement;
 use Phem\Tests\Fixtures\KeyOnPage;
 use Phem\Tests\Fixtures\KeyOnState;
 use Phem\Tests\Fixtures\KeyWithoutBroadcast;
@@ -32,6 +33,7 @@ use Phem\Tests\Fixtures\Size;
 use PHPUnit\Framework\TestCase;
 
 require_once \dirname(__DIR__).'/Fixtures/InvalidBroadcasts.php';
+require_once \dirname(__DIR__).'/Fixtures/KeyedBroadcastingFunctions.php';
 
 final class BroadcastKeysTest extends TestCase
 {
@@ -43,6 +45,33 @@ final class BroadcastKeysTest extends TestCase
         self::assertSame([
             $keys->ofComponent(KeyedBroadcastingComponent::class),
             $keys->ofInstance(KeyedBroadcastingComponent::class, ['scientist' => new Scientist(42, 'Grace'), 'size' => Size::Large]),
+        ], $keys->ofFiber($fiber));
+    }
+
+    public function testAReplacementHasTheKeysOfTheComponentThatItReplaces(): void
+    {
+        $keys = self::keys();
+        $replacement = new KeyedBroadcastingReplacement();
+        $replacement->scientist = new Scientist(42, 'Ada');
+        $replacement->size = Size::Large;
+        $fiber = new Fiber('phem0123456789ab', '/c', KeyedBroadcastingReplacement::class);
+        $fiber->instance = $replacement;
+
+        self::assertSame([
+            $keys->ofComponent(KeyedBroadcastingComponent::class),
+            $keys->ofInstance(KeyedBroadcastingComponent::class, ['scientist' => new Scientist(42, 'Grace'), 'size' => Size::Large]),
+        ], $keys->ofFiber($fiber));
+    }
+
+    public function testAFunctionReplacementWithARestPropHasTheDefaultsOfTheOriginal(): void
+    {
+        $keys = self::keys();
+        $fiber = new Fiber('phem0123456789ab', '/c', 'Phem\\Tests\\Fixtures\\KeyedBroadcastingFunction');
+        $fiber->props = ['scientist' => new Scientist(42, 'Ada')];
+
+        self::assertSame([
+            $keys->ofComponent(KeyedBroadcastingComponent::class),
+            $keys->ofInstance(KeyedBroadcastingComponent::class, ['scientist' => new Scientist(42, 'Ada'), 'size' => Size::Small]),
         ], $keys->ofFiber($fiber));
     }
 

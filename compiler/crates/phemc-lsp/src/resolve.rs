@@ -139,8 +139,51 @@ impl Resolver<'_, '_> {
             return Some(Symbol { range: (start + colon + 1, end), location, hover: Some(hover) });
         }
 
+        let range = (start, start + comp_name.len());
+
+        // A tag of a replaced component renders the replacement, except in the replacement itself.
+        let hover = match self.replacement(&components, comp) {
+            Some(r) if !self.inside(r, &comp.fqn) => {
+                let location = r.file.as_ref().zip(r.offset).and_then(|(f, o)| self.location(f, o));
+                let hover = format!("{}\n\n---\n\nReplaces `{}`:\n\n{}", self.component_hover(r), comp.fqn, self.component_hover(comp));
+                return Some(Symbol { range, location, hover: Some(hover) });
+            }
+            Some(r) => format!("{}\n\nReplaced by `{}` in the other tags", self.component_hover(comp), r.fqn),
+            None => self.component_hover(comp),
+        };
+
         let location = comp.file.as_ref().zip(comp.offset).and_then(|(f, o)| self.location(f, o));
-        Some(Symbol { range: (start, start + comp_name.len()), location, hover: Some(self.component_hover(comp)) })
+        Some(Symbol { range, location, hover: Some(hover) })
+    }
+
+    /// The replacement of a component, with the rules of the compiler (E017): one replacement, in
+    /// the app, of a component that is not a built-in, a page, a replacement or itself.
+    fn replacement<'c>(&self, components: &'c [FileComponent], original: &FileComponent) -> Option<&'c FileComponent> {
+        if original.file.is_none() || original.page || original.replaces.is_some() {
+            return None;
+        }
+
+        let found: Vec<&FileComponent> = components
+            .iter()
+            .filter(|c| c.replaces.as_deref() == Some(original.fqn.as_str()) && c.fqn != original.fqn && !c.page)
+            .filter(|c| c.file.as_deref().is_some_and(|f| self.index.project.package_file(f).is_none()))
+            .collect();
+
+        match found[..] {
+            [r] => Some(r),
+            _ => None,
+        }
+    }
+
+    /// Whether the cursor is in the markup of a replacement: in its declaration, or in a parent
+    /// class or a trait of it, up to the original (as in the compiler).
+    fn inside(&self, replacement: &FileComponent, original: &str) -> bool {
+        if replacement.file.as_deref() == Some(self.file()) && replacement.span.is_some_and(|(start, end)| (start..end).contains(&self.offset)) {
+            return true;
+        }
+
+        let here = self.index.current.parsed.classes.iter().find(|c| (c.start..c.end).contains(&self.offset));
+        here.is_some_and(|c| self.index.inherits(&replacement.fqn, &c.fqn, original))
     }
 
     fn component_hover(&self, comp: &FileComponent) -> String {

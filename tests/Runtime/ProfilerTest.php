@@ -110,6 +110,16 @@ final class ProfilerTest extends TestCase
         self::assertStringContainsString('<turbo-stream action="prepend" target="entries">', $update['data']);
     }
 
+    public function testThePanelShowsTheComponentThatAReplacementReplaces(): void
+    {
+        $collector = $this->collector($this->request('GET', '/replaced'));
+
+        $fibers = array_column($collector->getFibers(), 'replaces', 'fqcn');
+        self::assertSame('Acme\Ui\Alert', $fibers['App\Component\Alert'] ?? null);
+        self::assertNull($fibers['App\Page\ReplacedPage'] ?? null);
+        self::assertContains('Alert', array_column($collector->getFibers(), 'replacesName'));
+    }
+
     public function testAnotherRequestHasNoPanel(): void
     {
         $collector = $this->service('phem.data_collector', PhemDataCollector::class);

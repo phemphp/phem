@@ -5,7 +5,7 @@ mod purity;
 mod scan;
 
 pub use purity::HELP as PURE_RENDER_HELP;
-pub use scan::{scan, Class, FileInfo, Func, MarkupScope, Param, Prop, RouteDecl};
+pub use scan::{scan, Class, FileInfo, Func, MarkupScope, Param, Prop, Replaces, RouteDecl};
 
 use phemc_syntax::diag::codes;
 use phemc_syntax::php::Lexed;
@@ -108,6 +108,9 @@ pub struct ComponentDef {
     /// a function page are the arguments of a controller, not props.
     #[serde(skip)]
     pub page: bool,
+    /// The component that this component replaces in all the tags (`#[Component(replaces: ...)]`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub replaces: Option<String>,
 }
 
 /// A `#[Context]` property or parameter of a component.
@@ -203,6 +206,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
                 .collect(),
             provides: vec![],
             page,
+            replaces: replaced(f.replaces.as_ref()),
         });
     }
 
@@ -228,10 +232,16 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
                 .collect(),
             provides,
             page: is_page(&c.fqn),
+            replaces: replaced(c.replaces.as_ref()),
         });
     }
 
     out
+}
+
+/// The FQCN of a `replaces` argument that the compiler can read.
+fn replaced(replaces: Option<&Replaces>) -> Option<String> {
+    replaces.map(|r| r.fqcn.clone()).filter(|f| !f.is_empty())
 }
 
 /// Why a type cannot be the key of a context, or None: the key is one class, interface or enum,
@@ -545,6 +555,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         contexts: Vec::new(),
         provides: Vec::new(),
         page: false,
+        replaces: None,
     }, ComponentDef {
         fqcn: SUSPENSE.into(),
         kind: Kind::Class,
@@ -560,6 +571,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         contexts: Vec::new(),
         provides: Vec::new(),
         page: false,
+        replaces: None,
     }, ComponentDef {
         fqcn: ERROR_BOUNDARY.into(),
         kind: Kind::Class,
@@ -575,6 +587,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         contexts: Vec::new(),
         provides: Vec::new(),
         page: false,
+        replaces: None,
     }, ComponentDef {
         fqcn: DYNAMIC.into(),
         kind: Kind::Function,
@@ -590,6 +603,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         contexts: Vec::new(),
         provides: Vec::new(),
         page: false,
+        replaces: None,
     }]
 }
 

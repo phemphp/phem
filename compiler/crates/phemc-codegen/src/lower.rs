@@ -6,11 +6,16 @@ use phemc_syntax::markup::{Attr, AttrKind, AttrValue, Element, ExprPart, Node, S
 use phemc_syntax::{Diagnostic, Span};
 use std::collections::HashSet;
 
+use crate::replaces::Replacements;
 use crate::{has_variable, php_str};
 
 pub struct Lowerer<'a> {
     pub info: &'a FileInfo,
     pub reg: &'a Registry,
+    replacements: &'a Replacements,
+    /// The component of the function or the class of the markup, if any: a tag of the component
+    /// that it replaces stays the original.
+    pub owner: Option<&'a str>,
     pub diags: Vec<Diagnostic>,
     /// When lowering the template of a template component: its slot names.
     pub slots: Vec<String>,
@@ -34,8 +39,8 @@ pub struct Lowerer<'a> {
 }
 
 impl<'a> Lowerer<'a> {
-    pub fn new(info: &'a FileInfo, reg: &'a Registry) -> Self {
-        Self { info, reg, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, dynamics: 0 }
+    pub fn new(info: &'a FileInfo, reg: &'a Registry, replacements: &'a Replacements) -> Self {
+        Self { info, reg, replacements, owner: None, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, dynamics: 0 }
     }
 
     pub fn lower_root(&mut self, node: &Node, slots: Vec<String>) -> String {
@@ -945,7 +950,9 @@ impl<'a> Lowerer<'a> {
             }
         }
 
-        let mut head = format!("component {}", php_str(&fqcn));
+        // The tag renders the replacement of the component. The checks above use the original:
+        // its props are the props that the caller knows.
+        let mut head = format!("component {}", php_str(self.replacements.resolve(&fqcn, self.owner)));
         if has_spread {
             // A later value replaces an earlier one, and two values of `className` merge when one
             // of them is a ClassList.

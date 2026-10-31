@@ -375,6 +375,30 @@ impl<'a> Index<'a> {
             .cloned()
     }
 
+    /// True if `fqn` extends or uses `ancestor` (a parent class or a trait in the sources), up to
+    /// `stop`: the classes above `stop` do not count.
+    pub fn inherits(&self, fqn: &str, ancestor: &str, stop: &str) -> bool {
+        let mut queue = vec![fqn.to_string()];
+        let mut seen = Vec::new();
+        while let Some(c) = queue.pop() {
+            if c.eq_ignore_ascii_case(stop) || seen.contains(&c.to_lowercase()) {
+                continue;
+            }
+
+            if c.eq_ignore_ascii_case(ancestor) {
+                return true;
+            }
+
+            seen.push(c.to_lowercase());
+            if let Some(found) = self.find(SymbolKind::Class, &c) {
+                queue.extend(Self::parent_of(&found));
+                queue.extend(found.class().traits.iter().filter_map(|t| resolve_name(&found.source.parsed, t)));
+            }
+        }
+
+        false
+    }
+
     /// True if `fqn` is `ancestor` or extends it (for the protected members).
     pub fn is_a(&self, fqn: &str, ancestor: &str) -> bool {
         let mut seen = Vec::new();

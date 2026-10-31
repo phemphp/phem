@@ -17,6 +17,7 @@ use Phem\Binding\ComponentName;
 use Phem\Controller\EventController;
 use Phem\Http\EventBody;
 use Phem\Http\EventPayload;
+use Phem\Metadata\ComponentMetadata;
 use Phem\Rendering\Tree;
 use Phem\State\StateAccessor;
 use Phem\State\StateJson;
@@ -39,6 +40,7 @@ final class PhemDataCollector extends DataCollector
         private readonly Profile $profile,
         private readonly StateAccessor $state = new StateAccessor(),
         private readonly EventBody $body = new EventBody(0),
+        private readonly ComponentMetadata $metadata = new ComponentMetadata(),
     ) {
     }
 
@@ -243,7 +245,7 @@ final class PhemDataCollector extends DataCollector
     /**
      * The fibers of the page, from the page down.
      *
-     * @return list<array{id: string, fqcn: string|null, name: string|null, depth: int, renders: array<int, array{time: float, own: float}>, changed: bool, state: Data|null, reads: array<string, string|null>, provides: list<string>, propagated: bool}>
+     * @return list<array{id: string, fqcn: string|null, name: string|null, depth: int, renders: array<int, array{time: float, own: float}>, changed: bool, state: Data|null, reads: array<string, string|null>, provides: list<string>, propagated: bool, replaces: string|null, replacesName: string|null}>
      */
     public function getFibers(): array
     {
@@ -360,7 +362,7 @@ final class PhemDataCollector extends DataCollector
     /**
      * @param list<Tree> $trees
      *
-     * @return list<array{id: string, fqcn: string|null, name: string|null, depth: int, renders: array<int, array{time: float, own: float}>, changed: bool, state: Data|null, reads: array<string, string|null>, provides: list<string>, propagated: bool}>
+     * @return list<array{id: string, fqcn: string|null, name: string|null, depth: int, renders: array<int, array{time: float, own: float}>, changed: bool, state: Data|null, reads: array<string, string|null>, provides: list<string>, propagated: bool, replaces: string|null, replacesName: string|null}>
      */
     private function fibers(Tree $tree, array $trees, bool $event): array
     {
@@ -385,6 +387,7 @@ final class PhemDataCollector extends DataCollector
         foreach ($tree->page() as $id => [$parent, $rendered]) {
             $depth = $depths[$id] = null !== $parent ? ($depths[$parent] ?? -1) + 1 : 0;
             $fqcn = $names[$id] ?? null;
+            $replaces = null !== $fqcn ? $this->metadata->replaces($fqcn) : null;
 
             // The contexts of the last render of the fiber in this request (see ContextResolver).
             $fiber = $tree->fiberById($id);
@@ -405,6 +408,9 @@ final class PhemDataCollector extends DataCollector
                 'reads' => $reads,
                 'provides' => null !== $fiber && $fiber->providedPass > 0 ? array_map(ComponentName::short(...), array_keys($fiber->provided)) : [],
                 'propagated' => $event && null !== $rendered && $rendered->propagated,
+                // The component that the fiber replaces (`#[Component(replaces: ...)]`).
+                'replaces' => $replaces,
+                'replacesName' => null !== $replaces ? ComponentName::short($replaces) : null,
             ];
         }
 

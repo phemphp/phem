@@ -6,6 +6,7 @@
 
 mod contexts;
 mod lower;
+mod replaces;
 mod vars;
 
 use rayon::prelude::*;
@@ -133,8 +134,14 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
     let (registry, mut dup) = phemc_analyze::registry(parsed.iter().map(|p| &p.info));
     let bases = base_files(&parsed);
 
+    // E016, E017: the replacements of the components (`#[Component(replaces: ...)]`). Only the
+    // valid ones change the tags.
+    let files: Vec<(&FileInfo, bool)> = parsed.iter().map(|p| (&p.info, p.input.package.is_some())).collect();
+    let (replacements, errors) = replaces::check(&registry, &files);
+    dup.extend(errors);
+
     // E015: the uses of the components across the files, for the providers of the contexts.
-    let uses: Vec<contexts::Use> = parsed.iter().filter_map(|p| p.lexed.as_ref().map(|l| contexts::uses(&p.info, l))).flatten().collect();
+    let uses: Vec<contexts::Use> = parsed.iter().filter_map(|p| p.lexed.as_ref().map(|l| contexts::uses(&p.info, l, &replacements))).flatten().collect();
     let infos: Vec<&FileInfo> = parsed.iter().map(|p| &p.info).collect();
     dup.extend(contexts::check(&registry, &infos, &uses));
 
@@ -146,7 +153,7 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
             diags.extend(dup.iter().filter(|(r, _)| *r == p.input.rel).map(|(_, d)| d.clone()));
 
             let out = p.lexed.as_ref().map(|lexed| {
-                let (out, d) = emit_file(&p.input, lexed, &p.info, &registry);
+                let (out, d) = emit_file(&p.input, lexed, &p.info, &registry, &replacements);
                 diags.extend(d);
                 out
             });
@@ -218,11 +225,11 @@ pub(crate) fn has_variable(text: &str, name: &str) -> bool {
     false
 }
 
-fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry) -> (FileOutput, Vec<Diagnostic>) {
+fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry, replacements: &replaces::Replacements) -> (FileOutput, Vec<Diagnostic>) {
     let src = input.text.as_str();
     let mut diags = Vec::new();
-    let mut lowerer = lower::Lowerer::new(info, reg);
-    let mut replacements: Vec<(Span, String)> = Vec::new();
+    let mut lowerer = lower::Lowerer::new(info, reg, replacements);
+    let mut edits: Vec<(Span, String)> = Vec::new();
     let mut templates = Vec::new();
 
     for (index, m) in lexed.markups.iter().enumerate() {
@@ -237,13 +244,14 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
             _ => vec![],
         };
 
-        let (scope_text, class, params) = match scope {
-            MarkupScope::Function(fi) => (info.functions[fi].span.text(src), None, info.functions[fi].params.as_slice()),
-            MarkupScope::Method(ci, mi) => (info.classes[ci].methods[mi].span.text(src), Some(&info.classes[ci]), &[][..]),
-            MarkupScope::TopLevel => (src, None, &[][..]),
+        let (scope_text, class, params, owner) = match scope {
+            MarkupScope::Function(fi) => (info.functions[fi].span.text(src), None, info.functions[fi].params.as_slice(), Some(info.functions[fi].fqn.as_str())),
+            MarkupScope::Method(ci, mi) => (info.classes[ci].methods[mi].span.text(src), Some(&info.classes[ci]), &[][..], Some(info.classes[ci].fqn.as_str())),
+            MarkupScope::TopLevel => (src, None, &[][..], None),
         };
 
         lowerer.class = class;
+        lowerer.owner = owner;
         lowerer.params = params;
         lowerer.scope_text = scope_text;
         let content = lowerer.lower_root(&m.root, slots);
@@ -297,7 +305,7 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
         }
         let newlines = m.span.text(src).matches('\n').count();
         let call = format!("new \\Phem\\Element({}, [{}]){}", php_str(&name), vars.join(", "), "\n".repeat(newlines));
-        replacements.push((m.span, call));
+        edits.push((m.span, call));
         templates.push(TemplateOutput { name, content, source: input.path.clone(), line: line_col(src, m.span.start).0 });
     }
 
@@ -306,14 +314,14 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
     // Each `<?phpm` tag becomes `<?php`. The first one gets a header comment on its line (keeps line numbers).
     for (i, open) in lexed.tokens.iter().filter(|t| t.kind == TokKind::OpenTag).enumerate() {
         let tag = if i == 0 { format!("<?php /* compiled by phemc from {}; do not edit */", input.path) } else { "<?php".into() };
-        replacements.push((open.span, tag));
+        edits.push((open.span, tag));
     }
 
-    replacements.sort_by_key(|(s, _)| s.start);
+    edits.sort_by_key(|(s, _)| s.start);
 
     let mut php = String::with_capacity(src.len());
     let mut last = 0;
-    for (span, text) in replacements {
+    for (span, text) in edits {
         php.push_str(&src[last..span.start]);
         php.push_str(&text);
         last = span.end;

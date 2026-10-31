@@ -55,22 +55,25 @@ final class BroadcastKeys
 
     /**
      * The keys of a fiber for its `data-phem-broadcast`: the key of its component, and the key
-     * of the instance when it has #[BroadcastKey] props. None when the component has no
-     * #[Broadcast].
+     * of the instance when it has #[BroadcastKey] props. A replacement also has the keys of the
+     * component that it replaces (`#[Component(replaces: ...)]`), with the same props. None when
+     * the components have no #[Broadcast].
      *
      * @return list<string>
      */
     public function ofFiber(Fiber $fiber): array
     {
-        $props = $this->props($fiber->fqcn);
-        if (null === $props) {
-            return [];
-        }
+        $keys = [];
+        foreach ([$fiber->fqcn, $this->metadata->replaces($fiber->fqcn)] as $component) {
+            if (null === $component || null === $props = $this->props($component)) {
+                continue;
+            }
 
-        $keys = [$this->ofComponent($fiber->fqcn)];
-        if ([] !== $props) {
-            // The values of the component itself: no check of their names.
-            $keys[] = $this->instance($fiber->fqcn, $this->valuesOf($fiber));
+            $keys[] = $this->ofComponent($component);
+            if ([] !== $props) {
+                // The values of the component itself: no check of their names.
+                $keys[] = $this->instance($component, $this->valuesOf($fiber, $component));
+            }
         }
 
         return $keys;
@@ -79,25 +82,41 @@ final class BroadcastKeys
     /**
      * The values of the key props of a fiber: the props of a class component after its render,
      * or the props that the parent gave a function component, with the default values of its
-     * parameters. A prop with no value is null.
+     * parameters. A prop with no value is null. For the keys of the component that the fiber
+     * replaces, a prop that the replacement takes in its rest prop has the value that the parent
+     * gave, or the default value in the original.
+     *
+     * @param string|null $component the component of the key props: the component of the fiber, or the component that it replaces
      *
      * @return array<string, mixed>
      */
-    public function valuesOf(Fiber $fiber): array
+    public function valuesOf(Fiber $fiber, ?string $component = null): array
     {
-        $parameters = null === $fiber->instance ? $this->metadata->parameters($fiber->fqcn) : [];
+        $component ??= $fiber->fqcn;
 
         $values = [];
-        foreach ($this->props($fiber->fqcn) ?? [] as $name) {
+        foreach ($this->props($component) ?? [] as $name) {
             $values[$name] = match (true) {
-                null !== $fiber->instance => $fiber->instance->{$name} ?? null,
+                null !== $fiber->instance && property_exists($fiber->instance, $name) => $fiber->instance->{$name} ?? null,
                 \array_key_exists($name, $fiber->props) => $fiber->props[$name],
-                // The parent did not give it: the default value of the parameter.
-                default => $parameters[$name]->default,
+                // The parent did not give it: the default value of the prop.
+                default => $this->defaultOf($component, $name),
             };
         }
 
         return $values;
+    }
+
+    /** The default value of a prop of a component: a parameter of a function, or a #[Prop] property. */
+    private function defaultOf(string $component, string $name): mixed
+    {
+        if (\function_exists($component)) {
+            return ($this->metadata->parameters($component)[$name] ?? null)?->default;
+        }
+
+        $property = class_exists($component) ? $this->metadata->props($component)[$name] ?? null : null;
+
+        return null !== $property && $property->hasDefaultValue() ? $property->getDefaultValue() : null;
     }
 
     /** The key of all the instances of a component. */

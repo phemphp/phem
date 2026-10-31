@@ -1,0 +1,27 @@
+<?phpm
+
+namespace App\Page;
+
+use Acme\Ui\Alert;
+use Acme\Ui\Toggle;
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function Acme\Ui\Notice;
+use function App\Component\Document;
+
+// The tags of a package component render its replacement (src/component/Alert.phpm), in the app
+// and in the package (Notice). The class replacement of Toggle has state, as the original.
+#[Page('/replaced')]
+function ReplacedPage(): Node
+{
+    return (
+        <Document>
+            <div id="replaced">
+                <Alert>Saved</Alert>
+                <Notice>Read this</Notice>
+                <Toggle label="Lamp" />
+            </div>
+        </Document>
+    );
+}

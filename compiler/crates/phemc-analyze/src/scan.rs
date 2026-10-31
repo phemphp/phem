@@ -120,6 +120,19 @@ pub struct Func {
     pub async_attr: Option<Span>,
     /// The span of a `#[Broadcast]` attribute on the function or the method.
     pub broadcast_attr: Option<Span>,
+    /// `#[Component(replaces: ...)]` on a function component.
+    pub replaces: Option<Replaces>,
+}
+
+/// The `replaces` argument of `#[Component(replaces: Button::class)]`: the component replaces
+/// another component in all the tags of the project.
+#[derive(Clone, Debug)]
+pub struct Replaces {
+    /// The FQCN of the replaced component. It is empty when the compiler cannot read the value:
+    /// the value must be `Name::class` or a string.
+    pub fqcn: String,
+    /// The value of the argument.
+    pub span: Span,
 }
 
 #[derive(Clone, Debug)]
@@ -173,6 +186,8 @@ pub struct Class {
     /// A parent class or a trait in the sources has a method with `#[Broadcast]` (see
     /// `resolve_inheritance()`).
     pub inherited_broadcast: bool,
+    /// `#[Component(replaces: ...)]` on the class.
+    pub replaces: Option<Replaces>,
 }
 
 impl Class {
@@ -265,6 +280,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
     let toks = Toks { src, t: lexed.tokens.iter().copied().filter(|t| !t.is_trivia()).collect() };
     let mut info = FileInfo { rel: rel.to_string(), ..Default::default() };
     let mut attrs: Vec<(String, Span)> = Vec::new();
+    let mut replaces: Option<Replaces> = None;
     let mut i = 0;
     let n = toks.t.len();
     while i < n {
@@ -273,6 +289,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
             TokKind::AttrOpen => {
                 let end = toks.matching(i);
                 attrs.extend(attr_names(&toks, i + 1, end));
+                replaces = replaces.or_else(|| replaces_arg(&toks, i + 1, end, &info));
                 i = end + 1;
                 continue;
             }
@@ -320,6 +337,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                         }
 
                         f.async_attr = async_attr(&info, &attrs);
+                        f.replaces = replaces.take();
                         info.functions.push(f);
                         i = end + 1;
                         continue;
@@ -334,7 +352,8 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                             check_attrs(&mut info, &attrs);
                             let route = route_attr(&info, &attrs);
                             let broadcast = broadcast_attr(&info, &attrs);
-                            let (c, end) = parse_class(&toks, i, &mut info, attrs.into_iter().map(|(a, _)| a).collect());
+                            let (mut c, end) = parse_class(&toks, i, &mut info, attrs.into_iter().map(|(a, _)| a).collect());
+                            c.replaces = replaces.take();
                             if let Some(span) = broadcast.filter(|_| !c.is_component) {
                                 info.broadcasts.push((c.fqn.clone(), span));
                             }
@@ -350,6 +369,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                     }
                     "trait" if toks.t.get(i + 1).is_some_and(|x| x.kind == TokKind::Ident) => {
                         attrs.clear();
+                        replaces = None;
                         let (mut c, end) = parse_class(&toks, i, &mut info, vec![]);
                         c.is_trait = true;
                         info.classes.push(c);
@@ -364,6 +384,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                         }
 
                         attrs.clear();
+                        replaces = None;
                         i = toks.matching(j) + 1;
                         continue;
                     }
@@ -452,6 +473,78 @@ fn attr_names(toks: &Toks, from: usize, to: usize) -> Vec<(String, Span)> {
     }
 
     out
+}
+
+/// The `replaces` argument of a `#[Component(...)]` in a list of attributes: the named argument
+/// `replaces`, or the first argument with no name.
+fn replaces_arg(toks: &Toks, from: usize, to: usize, info: &FileInfo) -> Option<Replaces> {
+    let mut i = from;
+    while i < to {
+        if toks.t[i].kind == TokKind::Ident && toks.is_op(i + 1, "(") {
+            let end = toks.matching(i + 1);
+            if info.resolve_class(toks.text(i)) == ATTR_COMPONENT {
+                return component_replaces(toks, i + 2, end, info);
+            }
+
+            i = end;
+        } else if toks.is_op(i, "(") || toks.is_op(i, "[") {
+            i = toks.matching(i);
+        }
+
+        i += 1;
+    }
+
+    None
+}
+
+/// The `replaces` value in the arguments of `#[Component(...)]`: `Name::class` (resolved with the
+/// imports) or a string.
+fn component_replaces(toks: &Toks, from: usize, to: usize, info: &FileInfo) -> Option<Replaces> {
+    let mut start = from;
+    let mut first = true;
+    while start < to {
+        let mut end = start;
+        while end < to && !toks.is_op(end, ",") {
+            if toks.is_op(end, "(") || toks.is_op(end, "[") {
+                end = toks.matching(end);
+            }
+
+            end += 1;
+        }
+
+        let named = toks.t[start].kind == TokKind::Ident && toks.is_op(start + 1, ":");
+        let value = if named && toks.text(start).eq_ignore_ascii_case("replaces") {
+            Some(start + 2)
+        } else if !named && first {
+            Some(start)
+        } else {
+            None
+        };
+
+        if let Some(v) = value.filter(|v| *v < end) {
+            // `replaces: null`, the default value: no replacement.
+            if end - v == 1 && toks.is_word(v, "null") {
+                return None;
+            }
+
+            let span = Span::new(toks.t[v].span.start, toks.t[end - 1].span.end);
+            let fqcn = match end - v {
+                1 if toks.t[v].kind == TokKind::Str => {
+                    let raw = toks.text(v);
+                    raw.get(1..raw.len().saturating_sub(1)).unwrap_or_default().replace("\\\\", "\\").trim_start_matches('\\').to_string()
+                }
+                3 if toks.t[v].kind == TokKind::Ident && toks.is_op(v + 1, "::") && toks.is_word(v + 2, "class") => info.resolve_class(toks.text(v)),
+                _ => String::new(),
+            };
+
+            return Some(Replaces { fqcn, span });
+        }
+
+        first = false;
+        start = end + 1;
+    }
+
+    None
 }
 
 /// The attributes of a list whose only argument is `rest: true` (or `true`): `#[Prop(rest: true)]`.
@@ -609,6 +702,7 @@ fn parse_function(toks: &Toks, at: usize, ns: &str) -> (Func, usize) {
         return_type,
         async_attr: None,
         broadcast_attr: None,
+        replaces: None,
     };
 
     (f, end)
@@ -781,6 +875,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
         has_broadcast,
         is_page,
         inherited_broadcast: false,
+        replaces: None,
     };
 
     let mut i = j + 1;

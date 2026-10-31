@@ -165,6 +165,7 @@
                                     <tr>
                                         <td class="phem-name font-normal" style="padding-left: {{ 8 + fiber.depth * 16 }}px">
                                             <span title="{{ fiber.fqcn }}">{{ fiber.name ? '<' ~ fiber.name ~ '>' : '(not rendered)' }}</span>
+                                            {% if fiber.replaces %}<span class="phem-id" title="{{ fiber.replaces }}">replaces {{ '<' ~ fiber.replacesName ~ '>' }}</span>{% endif %}
                                             <span class="phem-id">{{ fiber.id }}</span>
                                         </td>
                                         {% for pass in collector.mainPasses %}
