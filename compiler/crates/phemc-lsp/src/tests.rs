@@ -930,6 +930,52 @@ fn a_replacement_that_the_compiler_refuses_changes_no_tag() {
 }
 
 #[test]
+fn a_replacement_takes_a_string_or_a_class_name() {
+    let plate = "#[Component]\nfunction Plate() { return <div />; }\n";
+    for arg in ["replaces: Plate::class", "Plate::class", "\\App\\Page\\Plate::class", "'App\\Page\\Plate'", "\"\\\\App\\\\Page\\\\Plate\""] {
+        let page = format!("{PAGE}use Phem\\Attribute\\Component;\n\n{plate}#[Component({arg})]\nfunction MyPlate() {{ return <b />; }}\n\nfunction Home() {{ return <Pla‸te />; }}\n");
+        let r = at_page(&page);
+        assert_eq!(target(&r, &page).1, "MyPlate() { return <b />; }", "{arg}");
+    }
+}
+
+#[test]
+fn a_replacement_that_the_compiler_cannot_read_or_of_a_builtin_changes_no_tag() {
+    // `self::class` is E017: the tag stays the original.
+    let page = format!("{PAGE}use Phem\\Attribute\\Component;\nuse Phem\\Node;\n\n#[Component]\nfinal class Plate {{ public function render(): Node {{ return <div />; }} }}\n\n#[Component(replaces: self::class)]\nfinal class MyPlate {{ public function render(): Node {{ return <b />; }} }}\n\nfunction Home() {{ return <Pla‸te />; }}\n");
+    let r = at_page(&page);
+    assert!(!hover(&r).contains("Replaces"), "{}", hover(&r));
+
+    // A built-in component cannot be replaced (E017).
+    let page = format!("{PAGE}use Phem\\Attribute\\Component;\nuse Phem\\Html;\nuse Phem\\Root;\n\n#[Component(replaces: Root::class)]\nfunction MyRoot(?Html $children = null, mixed ...$rest) {{ return <b />; }}\n\nfunction Home() {{ return <Ro‸ot />; }}\n");
+    let r = at_page(&page);
+    assert!(r.location.is_none() && !hover(&r).contains("Replaces"), "{}", hover(&r));
+}
+
+#[test]
+fn a_prop_or_a_slot_of_a_replaced_tag_goes_to_the_replacement() {
+    let src = |signature: &str, tag: &str| {
+        format!("{PAGE}use Phem\\Attribute\\Component;\nuse Phem\\Html;\n\n#[Component]\nfunction Plate(string $title = '', ?Html $children = null, ?Html $footer = null) {{ return <div />; }}\n\n#[Component(replaces: Plate::class)]\nfunction MyPlate({signature}) {{ return <b />; }}\n\nfunction Home() {{ return {tag}; }}\n")
+    };
+    let own = "string $title = '', ?Html $children = null, ?Html $footer = null";
+    let page = src(own, "<Plate ti‸tle=\"x\" />");
+    let r = at_page(&page);
+    assert_eq!(target(&r, &page).1, "$title = '', ?Html $children = null, ?Html $footer = null) { return <b />; }");
+    assert!(hover(&r).contains("Prop of `App\\Page\\MyPlate`, the replacement of `App\\Page\\Plate`"), "{}", hover(&r));
+
+    let page = src(own, "<Plate><Plate:foo‸ter>x</Plate:footer></Plate>");
+    let r = at_page(&page);
+    assert_eq!(target(&r, &page).1, "$footer = null) { return <b />; }");
+    assert!(hover(&r).contains("Slot of `App\\Page\\MyPlate`, the replacement of `App\\Page\\Plate`"), "{}", hover(&r));
+
+    // The replacement takes the prop in its rest prop: the prop of the original.
+    let page = src("?Html $children = null, ?Html $footer = null, mixed ...$rest", "<Plate ti‸tle=\"x\" />");
+    let r = at_page(&page);
+    assert_eq!(target(&r, &page).1, "$title = '', ?Html $children = null, ?Html $footer = null) { return <div />; }");
+    assert!(hover(&r).contains("Prop of `App\\Page\\Plate`") && !hover(&r).contains("the replacement"), "{}", hover(&r));
+}
+
+#[test]
 fn a_component_tag_goes_to_the_component() {
     let src = def_fn("<Lay‸out title=\"x\"></Layout>", "");
     let r = at_page(&src);
@@ -1093,6 +1139,22 @@ fn complete_in(project: &Project, source: &str) -> Vec<Item> {
     let index = Index::new(project, Source::new(project.root.join("src/page/index.phpm"), text));
 
     complete(&index, offset, None)
+}
+
+#[test]
+fn a_replacement_in_a_package_changes_no_tag() {
+    // A package cannot replace a component (E017): the tag goes to the original.
+    let dir = package_project("vendor");
+    let chip = "<?phpm\nnamespace Acme\\Ui;\n\nuse Phem\\Attribute\\Component;\n\n#[Component(replaces: Badge::class)]\nfunction Chip(string $label) { return <i />; }\n";
+    std::fs::write(dir.join("vendor/acme/ui/components/Chip.phpm"), chip).unwrap();
+    let project = Project::load(&dir);
+
+    let (text, offset) = cursor(&format!("{PAGE}use function Acme\\Ui\\Badge;\n\nfunction Home()\n{{\n    return <Ba‸dge label=\"x\" />;\n}}\n"));
+    let symbol = symbol_at(&Index::new(&project, Source::new(dir.join("src/page/index.phpm"), text)), offset).expect("no symbol");
+    assert_eq!(symbol.location.expect("no location").file, dir.join("vendor/acme/ui/components/Badge.phpm"));
+    assert!(!symbol.hover.unwrap().contains("Replace"));
+
+    std::fs::remove_dir_all(dir).unwrap();
 }
 
 #[test]

@@ -426,6 +426,27 @@ final class StreamTest extends KernelTestCase
             ->assertSee('1 likes in hall');
     }
 
+    public function testTheStreamsOfAComponentRefreshItsReplacement(): void
+    {
+        // src/component/Tally.phpm replaces the Tally of acme/ui, with no #[Broadcast] of its own.
+        $other = $this->visit('/replaced/tally')
+            ->assertSelectorTextContains('#tally-lobby', '0 in lobby')
+            ->assertSelectorTextContains('#tally-hall', '0 in hall');
+        $guestbook = static::getContainer()->get(Guestbook::class);
+        \assert($guestbook instanceof Guestbook);
+        $streams = static::getContainer()->get('phem.streams');
+        \assert($streams instanceof Streams);
+
+        $guestbook->add('lobby', 'Like');
+        $guestbook->add('hall', 'Like');
+        $streams->toComponent('Acme\Ui\Tally', ['room' => 'hall'])->refresh();
+        $streams->flush();
+
+        $other->receive()
+            ->assertSelectorTextContains('#tally-lobby', '0 in lobby')
+            ->assertSelectorTextContains('#tally-hall', '1 in hall');
+    }
+
     public function testTheKeyOfARefreshHasTheKeyPropsOfTheComponent(): void
     {
         $this->expectException(\LogicException::class);

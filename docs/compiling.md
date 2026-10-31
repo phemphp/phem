@@ -269,7 +269,7 @@ var/phem/
 ├── php/Page/index.php          the PHP code; each markup literal becomes new \Phem\Element('Page/index.0.twig', [...])
 ├── php/vendor/acme/ui/...      the PHP code of a Composer package (its templates are in templates/vendor/acme/ui/)
 ├── templates/Page/index.0.twig one Twig template for each markup literal (Twig name: @phpm/Page/index.0.twig)
-├── manifest.php / manifest.json components (kind, source, props, slots), pages, template → .phpm line map
+├── manifest.php / manifest.json components (kind, source, props, slots, replaces), pages, template → .phpm line map
 └── autoload.php                 requires all compiled PHP files
 var/cache/<env>/twig/            the Twig cache (filled by the warmup)
 ```
@@ -313,7 +313,7 @@ E011
 |---|---|
 | E001–E006 | Syntax: unclosed or mismatched tags, a void element that is not self-closed, more than one root, a `<?php` open tag instead of `<?phpm` |
 | E010–E015 | Unknown component (also a function without `#[Component]`, or the component of a `replaces`), unknown or missing prop, children or slot not accepted, duplicate component (also a component with the name of a built-in component, `Phem\Root`), a required context with no provider above the component |
-| E016, E017 | A replacement (`#[Component(replaces: ...)]`) that does not accept a prop or a slot of the original, that requires one that the original does not require, or that declares a `Bound` prop of the original with another type; a replacement in a package, a second replacement of a component, a component that replaces itself, the replacement of a replacement, of a page or of a built-in component, a page that replaces a component, or a `replaces` value that is not `Name::class` or a string |
+| E016, E017 | A replacement (`#[Component(replaces: ...)]`) that does not accept a prop or a slot of the original, that requires one that the original does not require, or that declares a `Bound` prop of the original with another type; a replacement in a package, a second replacement of a component, a component that replaces itself, the replacement of a replacement, of a page or of a built-in component, a page that replaces a component, or a `replaces` value that is not `Name::class` or a string (also `self::class`) |
 | E020 | A call to a React Hook (`Phem\useState`, ...): Phem keeps state in `#[Component]` classes |
 | E030–E033 | Undefined variable in markup, markup in an unsupported expression, invalid attribute, invalid `phem:bind` (not a `#[State]` property, not a form field, or a type that does not take the value of the field) |
 | E040–E044 | Class component without `render()`, readonly `#[State]` property, `#[Prop]` property that is not public, static, or `#[State]`, a second `#[Prop(rest: true)]` property or one whose type does not accept an array, a `#[Context]` or `#[Provide]` type that is not one class, interface or enum (or a `#[Context]` property that is static, readonly, a prop or state) |

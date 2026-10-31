@@ -75,6 +75,18 @@ final class BroadcastKeysTest extends TestCase
         ], $keys->ofFiber($fiber));
     }
 
+    public function testAReplacementOfAFunctionHasTheDefaultsOfTheFunction(): void
+    {
+        $keys = self::keys();
+        $original = 'Phem\\Tests\\Fixtures\\KeyedBroadcastingOriginal';
+        $fiber = new Fiber('phem0123456789ab', '/c', 'Phem\\Tests\\Fixtures\\KeyedBroadcastingWrapper');
+
+        self::assertSame([$keys->ofComponent($original), $keys->ofInstance($original, ['size' => Size::Small])], $keys->ofFiber($fiber), 'the default value of the parameter');
+
+        $fiber->props = ['size' => Size::Large];
+        self::assertSame([$keys->ofComponent($original), $keys->ofInstance($original, ['size' => Size::Large])], $keys->ofFiber($fiber), 'the value that the parent gave');
+    }
+
     public function testTheKeyOfAnInstanceIsAnHmacOfTheValuesOfItsKeyProps(): void
     {
         $keys = self::keys();

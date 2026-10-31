@@ -126,6 +126,29 @@ final class PackageTest extends KernelTestCase
         self::assertSame(1, substr_count($html, 'role="alert"'));
     }
 
+    public function testAnyTwigTemplateThatPhemcDidNotCompileRendersTheReplacement(): void
+    {
+        self::bootKernel();
+
+        /** @var Environment $twig */
+        $twig = self::getContainer()->get('twig');
+        $code = "{% component 'Acme\\\\Ui\\\\Alert' with {type: 'warning'} %}";
+
+        // A plain Twig template of a package, in its own namespace.
+        self::assertStringContainsString('<strong>Careful</strong>', $twig->createTemplate($code, '@AcmeUi/notice.html.twig')->render());
+        // A template of phemc keeps its tag: phemc already resolved it.
+        self::assertStringNotContainsString('<strong>', $twig->createTemplate($code, '@'.Manifest::TEMPLATE_NAMESPACE.'/component/Alert.9.twig')->render());
+    }
+
+    public function testPhemBindOnATagOfThePackageGoesThroughTheReplacementToTheOriginal(): void
+    {
+        $this->visit('/replaced')
+            ->assertSelectorExists('#newsletter label.my-field input[name=email]')
+            ->submit('#newsletter', ['email' => 'ada@example.com'])
+            ->assertSelectorTextContains('#newsletter-email', 'ada@example.com, saves 1')
+            ->assertState('email', 'ada@example.com', '#newsletter');
+    }
+
     public function testAClassReplacementKeepsItsStateAndTheStateOfTheOriginal(): void
     {
         $this->visit('/replaced')

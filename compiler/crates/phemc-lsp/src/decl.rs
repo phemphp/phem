@@ -1266,8 +1266,9 @@ fn replaced(parsed: &Parsed, attributes: &[Attribute]) -> Option<String> {
         }
     })?;
 
-    if let Some(name) = value.strip_suffix("::class") {
-        return crate::types::resolve_name(parsed, name.trim());
+    // `self::class`, `static::class` and `parent::class` are not a class name (E017).
+    if let Some(name) = value.strip_suffix("::class").map(str::trim) {
+        return crate::types::resolve_name(parsed, name).filter(|_| !["self", "static", "parent"].iter().any(|w| name.eq_ignore_ascii_case(w)));
     }
 
     let unquoted = value.strip_prefix('\'').and_then(|v| v.strip_suffix('\'')).or_else(|| value.strip_prefix('"').and_then(|v| v.strip_suffix('"')))?;

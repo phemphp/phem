@@ -533,7 +533,10 @@ fn component_replaces(toks: &Toks, from: usize, to: usize, info: &FileInfo) -> O
                     let raw = toks.text(v);
                     raw.get(1..raw.len().saturating_sub(1)).unwrap_or_default().replace("\\\\", "\\").trim_start_matches('\\').to_string()
                 }
-                3 if toks.t[v].kind == TokKind::Ident && toks.is_op(v + 1, "::") && toks.is_word(v + 2, "class") => info.resolve_class(toks.text(v)),
+                // `self::class`, `static::class` and `parent::class` are not a class name.
+                3 if toks.t[v].kind == TokKind::Ident && toks.is_op(v + 1, "::") && toks.is_word(v + 2, "class") && !["self", "static", "parent"].iter().any(|w| toks.is_word(v, w)) => {
+                    info.resolve_class(toks.text(v))
+                }
                 _ => String::new(),
             };
 

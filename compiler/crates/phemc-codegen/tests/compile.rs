@@ -717,6 +717,13 @@ fn a_replacement_must_be_unique_and_in_the_app() {
         replaces("#[Component(replaces: self::NAME)]\nfunction Button() { return <b />; }\n"),
         ["src/Button.phpm E017 the compiler cannot read the value of `replaces`"]
     );
+    for name in ["self", "static", "parent"] {
+        assert_eq!(
+            replaces(&format!("#[Component(replaces: {name}::class)]\nfinal class Button {{ public function render() {{ return <b />; }} }}\n")),
+            ["src/Button.phpm E017 the compiler cannot read the value of `replaces`"],
+            "{name}"
+        );
+    }
 
     // A package cannot replace a component of another package.
     let theme = "<?phpm\nnamespace Acme\\Theme;\nuse Acme\\Ui\\Button as UiButton;\nuse Phem\\Attribute\\Component;\n#[Component(replaces: UiButton::class)]\nfunction Button(mixed ...$rest) { return <b />; }\n";
@@ -730,8 +737,14 @@ fn a_context_consumer_under_a_replacement_needs_a_provider() {
     // The page renders the Dialog of the package, whose Button is the replacement of the app: the
     // replacement needs a context that no component above provides.
     let replacement = app("use Acme\\Ui\\Dialog;\nuse Phem\\Attribute\\{Context, Page};\n#[Component(replaces: UiButton::class)]\nfunction Button(#[Context] Theme $theme, ?Html $children = null, mixed ...$rest) { return <b />; }\n#[Page('/')]\nfunction Home() { return <main><Dialog /></main>; }\n");
-    let codes: Vec<String> = compile(vec![replacement, ui()]).1.iter().flat_map(|f| f.shown().map(move |d| format!("{} {}", f.path, d.code))).collect();
-    assert_eq!(codes, ["vendor/acme/ui/components/Ui.phpm E015"]);
+    let diags = compile(vec![replacement, ui()]).1;
+    assert_eq!(
+        shown(&diags),
+        ["vendor/acme/ui/components/Ui.phpm E015 `<Button>` renders `App\\Button`, the replacement of `Acme\\Ui\\Button`, and it needs a `Theme` context, but no component above it provides one"]
+    );
+
+    let help = diags.iter().flat_map(|f| f.shown()).find_map(|d| d.help.clone()).unwrap();
+    assert_eq!(help, "give `$theme` of `App\\Button` a default value, or render the tag inside a component with `#[Provide]` for `Theme`");
 }
 
 #[test]
@@ -830,6 +843,47 @@ fn a_page_cannot_be_a_replacement() {
 #[test]
 fn a_context_consumer_under_a_class_replacement_needs_a_provider() {
     let replacement = app("use Acme\\Ui\\Dialog;\nuse Phem\\Attribute\\{Context, Page, Prop};\nuse Phem\\Node;\n#[Component(replaces: UiButton::class)]\nfinal class Button\n{\n    #[Context] public Theme $theme;\n    #[Prop(rest: true)] public array $attrs = [];\n    #[Prop] public ?Html $children = null;\n    public function render(): Node { return <b />; }\n}\n#[Page('/')]\nfunction Home() { return <main><Dialog /></main>; }\n");
-    let codes: Vec<String> = compile(vec![replacement, ui()]).1.iter().flat_map(|f| f.shown().map(move |d| format!("{} {}", f.path, d.code))).collect();
-    assert_eq!(codes, ["vendor/acme/ui/components/Ui.phpm E015"]);
+    assert_eq!(
+        shown(&compile(vec![replacement, ui()]).1),
+        ["vendor/acme/ui/components/Ui.phpm E015 `<Button>` renders `App\\Button`, the replacement of `Acme\\Ui\\Button`, and it needs a `Theme` context, but no component above it provides one"]
+    );
+}
+
+const CARD: &str = "<?phpm\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\{Component, Prop};\nuse Phem\\{Html, Node};\n#[Component]\nclass Card\n{\n    #[Prop] public string $title = '';\n    #[Prop] public ?Html $children = null;\n    public function render(): Node { return <div>{{ title }}<Card title=\"Inner\" /></div>; }\n}\n#[Component]\nfunction Panel() { return <aside><Card title=\"Panel\" /></aside>; }\n";
+
+#[test]
+fn a_class_replacement_can_extend_the_original_class() {
+    // The replacement takes the props of the original from the parent class: no E016.
+    let replacement = app("use Acme\\Ui\\Card as UiCard;\nuse Phem\\Node;\n#[Component(replaces: UiCard::class)]\nfinal class Card extends UiCard\n{\n    public function render(): Node { return <section><UiCard title={{ title }} /></section>; }\n}\n");
+    let (out, diags) = compile(vec![replacement, package("vendor/acme/ui/Card.phpm", "vendor/acme/ui/components/Card.phpm", CARD)]);
+    let out = out.unwrap_or_else(|| panic!("{:?}", shown(&diags)));
+    let twig = |name: &str| out.files.iter().flat_map(|f| &f.templates).find(|t| t.name == name).unwrap().content.clone();
+
+    // In the replacement: the original.
+    assert!(twig("Button.0.twig").contains("{% component 'Acme\\\\Ui\\\\Card' with {'title': (title)} only %}"), "{}", twig("Button.0.twig"));
+    // In the original and in the other components of the package: the replacement. The keep of
+    // the original stops at the original class.
+    assert!(twig("vendor/acme/ui/Card.0.twig").contains("{% component 'App\\\\Card' with {'title': 'Inner'} only %}"), "{}", twig("vendor/acme/ui/Card.0.twig"));
+    assert!(twig("vendor/acme/ui/Card.1.twig").contains("{% component 'App\\\\Card' with {'title': 'Panel'} only %}"), "{}", twig("vendor/acme/ui/Card.1.twig"));
+}
+
+#[test]
+fn an_open_original_has_no_prop_check() {
+    // The parent class of the original is outside the sources: the compiler does not see all its props.
+    let card = "<?phpm\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\{Component, Prop};\nuse Phem\\Node;\n#[Component]\nfinal class Card extends \\Vendor\\Base\n{\n    #[Prop] public string $title = '';\n    public function render(): Node { return <div />; }\n}\n";
+    let replacement = app("use Acme\\Ui\\Card as UiCard;\n#[Component(replaces: UiCard::class)]\nfunction Card() { return <b />; }\n");
+    let (_, diags) = compile(vec![replacement, package("vendor/acme/ui/Card.phpm", "vendor/acme/ui/components/Card.phpm", card)]);
+    assert!(!shown(&diags).iter().any(|d| d.contains("E016")), "{:?}", shown(&diags));
+}
+
+#[test]
+fn a_parent_class_of_a_replacement_keeps_the_original_for_the_other_components_too() {
+    let replacement = app("use Phem\\Attribute\\Prop;\nuse Phem\\Node;\nabstract class Base\n{\n    #[Prop(rest: true)] public array $attrs = [];\n    #[Prop] public ?Html $children = null;\n    public function render(): Node { return <UiButton label=\"Base\" />; }\n}\n#[Component(replaces: UiButton::class)]\nfinal class Button extends Base {}\n#[Component]\nfinal class Other extends Base {}\nfunction Home() { return <Other />; }\n");
+    let (out, diags) = compile(vec![replacement, ui()]);
+    let out = out.unwrap_or_else(|| panic!("{:?}", shown(&diags)));
+    let templates: Vec<&str> = out.files.iter().flat_map(|f| &f.templates).map(|t| t.content.as_str()).collect();
+
+    // One template for the render of Base: Other renders the original too.
+    assert!(templates.iter().any(|t| t.contains("{% component 'Acme\\\\Ui\\\\Button' with {'label': 'Base'} only %}")), "{templates:?}");
+    assert!(!templates.iter().any(|t| t.contains("{% component 'App\\\\Button' with {'label': 'Base'} only %}")), "{templates:?}");
 }

@@ -134,8 +134,16 @@ impl Resolver<'_, '_> {
         let comp = components.iter().find(|c| c.fqn == found.fqn)?;
         if let Some(colon) = colon.filter(|c| self.offset > start + c) {
             let slot = &name[colon + 1..];
-            let location = self.prop_decl(comp, slot).and_then(|offset| self.location(comp.file.as_ref()?, offset));
-            let hover = format!("{}\n\nSlot of `{}`{}", code("php", &format!("?Html ${slot}")), comp.fqn, self.defined_in(comp.file.as_deref()));
+
+            // The slot of the replacement gets the content, as a prop (see `attr()`).
+            let target = match self.replacement(&components, comp) {
+                Some(r) if !self.inside(r, &comp.fqn) && r.slots.iter().any(|s| s == slot) => r,
+                _ => comp,
+            };
+
+            let replaces = if target.fqn != comp.fqn { format!(", the replacement of `{}`", comp.fqn) } else { String::new() };
+            let location = self.prop_decl(target, slot).and_then(|offset| self.location(target.file.as_ref()?, offset));
+            let hover = format!("{}\n\nSlot of `{}`{replaces}{}", code("php", &format!("?Html ${slot}")), target.fqn, self.defined_in(target.file.as_deref()));
             return Some(Symbol { range: (start + colon + 1, end), location, hover: Some(hover) });
         }
 
@@ -227,7 +235,16 @@ impl Resolver<'_, '_> {
             let components = self.components();
             let plain: Vec<_> = components.iter().map(|c| c.component.clone()).collect();
             let found = resolve_component(&self.index.current.parsed, &plain, tag)?;
-            let comp = components.iter().find(|c| c.fqn == found.fqn)?;
+            let original = components.iter().find(|c| c.fqn == found.fqn)?;
+            original.props.iter().find(|p| p.name == name)?;
+
+            // The tag renders the replacement: its prop gets the value. A prop that the
+            // replacement takes in its rest prop goes to the original.
+            let comp = match self.replacement(&components, original) {
+                Some(r) if !self.inside(r, &original.fqn) && r.props.iter().any(|p| p.name == name) => r,
+                _ => original,
+            };
+
             let prop = comp.props.iter().find(|p| p.name == name)?;
             let location = self.prop_decl(comp, name).and_then(|o| self.location(comp.file.as_ref()?, o));
             let text = format!(
@@ -236,8 +253,9 @@ impl Resolver<'_, '_> {
                 prop.name,
                 prop.default.as_ref().map_or(String::new(), |d| format!(" = {d}"))
             );
+            let replaces = if comp.fqn != original.fqn { format!(", the replacement of `{}`", original.fqn) } else { String::new() };
             let hover = format!(
-                "{}\n\nProp of `{}`{}{}",
+                "{}\n\nProp of `{}`{replaces}{}{}",
                 code("php", &text),
                 comp.fqn,
                 if prop.required { " (required)" } else { "" },

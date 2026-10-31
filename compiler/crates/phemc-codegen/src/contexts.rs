@@ -23,6 +23,8 @@ pub(crate) struct Use {
     owner: String,
     /// The component of the tag.
     child: String,
+    /// The component in the tag, when the tag renders its replacement.
+    replaced: Option<String>,
     /// The component tags around the tag, in the same markup: the tag is in their slots.
     enclosing: Vec<String>,
     rel: String,
@@ -55,8 +57,10 @@ pub(crate) fn uses(info: &FileInfo, lexed: &Lexed, replacements: &Replacements) 
 fn walk(info: &FileInfo, replacements: &Replacements, owner: &str, node: &Node, enclosing: &mut Vec<String>, out: &mut Vec<Use>) {
     match node {
         Node::Element(e) if e.is_component() && !info.is_dynamic(&e.name) => {
-            let child = replacements.resolve(&info.resolve_component(&e.name), Some(owner)).to_string();
-            out.push(Use { owner: owner.to_string(), child: child.clone(), enclosing: enclosing.clone(), rel: info.rel.clone(), span: e.name_span });
+            let tag = info.resolve_component(&e.name);
+            let child = replacements.resolve(&tag, Some(owner)).to_string();
+            let replaced = (child != tag).then_some(tag);
+            out.push(Use { owner: owner.to_string(), child: child.clone(), replaced, enclosing: enclosing.clone(), rel: info.rel.clone(), span: e.name_span });
 
             let slot_prefix = format!("{}:", e.name);
             enclosing.push(child);
@@ -220,12 +224,17 @@ pub(crate) fn check(reg: &Registry, infos: &[&FileInfo], uses: &[Use]) -> Vec<(S
                     format!("`{}` renders it, and the page `{}` renders `{}` with no `{ty_short}` above", short(&u.owner), short(&page), short(&u.owner))
                 };
 
-                out.push((
-                    u.rel.clone(),
-                    Diagnostic::error(codes::MISSING_CONTEXT, format!("`<{}>` needs a `{ty_short}` context, but no component above it provides one", short(&def.fqcn)), u.span)
-                        .with_label(label)
-                        .with_help(help.clone()),
-                ));
+                // The tag renders the replacement of the app: the message names it, because the
+                // fix is in the replacement or above the tag.
+                let (message, help) = match &u.replaced {
+                    Some(original) => (
+                        format!("`<{}>` renders `{}`, the replacement of `{original}`, and it needs a `{ty_short}` context, but no component above it provides one", short(original), def.fqcn),
+                        format!("give `${}` of `{}` a default value, or render the tag inside a component with `#[Provide]` for `{ty_short}`", need.name, def.fqcn),
+                    ),
+                    None => (format!("`<{}>` needs a `{ty_short}` context, but no component above it provides one", short(&def.fqcn)), help.clone()),
+                };
+
+                out.push((u.rel.clone(), Diagnostic::error(codes::MISSING_CONTEXT, message, u.span).with_label(label).with_help(help)));
             }
         }
     }

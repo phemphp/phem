@@ -1,0 +1,13 @@
+<?phpm
+
+namespace Acme\Ui;
+
+use Phem\Attribute\Component;
+use Phem\{Bound, Node};
+
+// A field of a package with a Bound prop: the app replaces it (src/component/Field.phpm).
+#[Component]
+function Field(Bound $value, string $name = 'field'): Node
+{
+    return <input name={{ name }} phem:bind={{ value }} />;
+}

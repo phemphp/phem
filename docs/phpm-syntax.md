@@ -39,7 +39,9 @@ start with a capital letter or not. A tag cannot use it (E010), and the manifest
 list it. Without `use Phem\Attribute\Component;`, `#[Component]` is another attribute (W004).
 
 Use a component with a tag: `<MyButton />`. The compiler resolves the tag with the PHP rules:
-a `use function` import, then a `use` (class) import, then the current namespace.
+a `use function` import, then a `use` (class) import, then the current namespace. A component of
+the app with `#[Component(replaces: ...)]` replaces a component in all the tags (see
+[Replace a component of a package](packages.md#replace-a-component-of-a-package)).
 
 A page is a class or a function with the `#[Page]` attribute. React uses `export default` for
 the page component of a file. In Phem, `#[Page]` exposes a component at a URL, as `#[Route]` does

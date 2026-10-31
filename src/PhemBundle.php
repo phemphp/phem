@@ -306,6 +306,7 @@ final class PhemBundle extends AbstractBundle
                     ->tag('phem.handler_middleware', ['priority' => 50])
                 ->set('phem.data_collector', PhemDataCollector::class)
                     ->args([service('phem.profile'), service('phem.state_accessor')])
+                    ->arg('$metadata', service('phem.metadata'))
                     ->tag('data_collector', ['id' => 'phem', 'template' => '@Phem/Collector/phem.html.twig', 'priority' => 260])
                 ->get('phem.renderer')
                     ->arg(6, service('phem.profile'));

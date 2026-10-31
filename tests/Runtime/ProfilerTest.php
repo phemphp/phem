@@ -120,6 +120,17 @@ final class ProfilerTest extends TestCase
         self::assertContains('Alert', array_column($collector->getFibers(), 'replacesName'));
     }
 
+    public function testThePanelHtmlShowsWhatAReplacementReplaces(): void
+    {
+        $token = $this->request('GET', '/replaced')->headers->get('X-Debug-Token');
+        self::assertNotNull($token);
+
+        $panel = $this->request('GET', '/_profiler/'.$token.'?panel=phem');
+
+        self::assertSame(200, $panel->getStatusCode(), (string) $panel->getContent());
+        self::assertStringContainsString('<span class="phem-id" title="Acme\Ui\Alert">replaces &lt;Alert&gt;</span>', (string) $panel->getContent());
+    }
+
     public function testAnotherRequestHasNoPanel(): void
     {
         $collector = $this->service('phem.data_collector', PhemDataCollector::class);

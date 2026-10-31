@@ -1,0 +1,28 @@
+<?phpm
+
+namespace App\Component;
+
+use Acme\Ui\Tally as UiTally;
+use Phem\Attribute\{Component, Prop};
+use Phem\Node;
+use Phem\Tests\Fixtures\Guestbook;
+
+// Replaces the Tally of the acme/ui package, with no #[Broadcast] of its own: a refresh of the
+// original renders it again, with the key of its `room` prop.
+#[Component(replaces: UiTally::class)]
+final class Tally
+{
+    #[Prop] public string $room = 'lobby';
+    #[Prop] public int $count = 0;
+
+    public function __construct(private readonly Guestbook $guestbook)
+    {
+    }
+
+    public function render(): Node
+    {
+        $count = \count($this->guestbook->entries($this->room));
+
+        return <p id="tally-{{ room }}"><UiTally room={{ room }} count={{ count }} /></p>;
+    }
+}

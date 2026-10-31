@@ -218,9 +218,9 @@ and the template of the replacement renders the original:
 {% component embed 'Acme\\Ui\\Alert' with {'type': (type)} only %}...{% endcomponent %}
 ```
 
-The value of `replaces` is `Name::class` or a string with the class name. A function component
-also uses `Name::class`, with a `use` import (not `use function`): PHP does not check that the
-class exists.
+The value of `replaces` is `Name::class` or a string with the class name (`self::class` is
+E017). A function component also uses `Name::class`, with a `use` import (not `use function`):
+PHP does not check that the class exists.
 
 The rules:
 
@@ -248,8 +248,12 @@ The rules:
   replacement, so it cannot render the original: wrap the original in the `.phpm` markup of the
   replacement.
 - The profiler shows the component that each replacement replaces. In the editor, the
-  definition of a tag of the original goes to the replacement, and the hover shows both. The
-  editor uses the rules of `phemc`: with no valid replacement, the tag goes to the original.
+  definition of a tag of the original goes to the replacement, and the hover shows both. A prop
+  or a slot of the tag goes to the prop or the slot of the replacement, or to the original when
+  the replacement takes it in its rest prop. The editor uses the rules of `phemc`: with no valid
+  replacement, the tag goes to the original.
+- A required context of the replacement with no provider above a tag of the original is E015,
+  at the tag: the message names the replacement.
 
 ## Test a package
 
