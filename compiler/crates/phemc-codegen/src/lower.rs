@@ -1,6 +1,6 @@
 //! Lowers a markup tree to Twig source.
 
-use phemc_analyze::{is_bound_type, Class, FileInfo, Param, Prop, Registry};
+use phemc_analyze::{is_bound_type, Class, ComponentDef, Enums, FileInfo, Param, Prop, Registry};
 use phemc_syntax::diag::codes;
 use phemc_syntax::markup::{Attr, AttrKind, AttrValue, Element, ExprPart, Node, StrPart, TwigExpr};
 use phemc_syntax::{Diagnostic, Span};
@@ -12,6 +12,8 @@ use crate::{has_variable, php_str};
 pub struct Lowerer<'a> {
     pub info: &'a FileInfo,
     pub reg: &'a Registry,
+    /// The backed enums of the project: a literal value of an enum prop is one of its cases.
+    enums: &'a Enums,
     replacements: &'a Replacements,
     /// The component of the function or the class of the markup, if any: a tag of the component
     /// that it replaces stays the original.
@@ -39,8 +41,8 @@ pub struct Lowerer<'a> {
 }
 
 impl<'a> Lowerer<'a> {
-    pub fn new(info: &'a FileInfo, reg: &'a Registry, replacements: &'a Replacements) -> Self {
-        Self { info, reg, replacements, owner: None, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, dynamics: 0 }
+    pub fn new(info: &'a FileInfo, reg: &'a Registry, enums: &'a Enums, replacements: &'a Replacements) -> Self {
+        Self { info, reg, enums, replacements, owner: None, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, dynamics: 0 }
     }
 
     pub fn lower_root(&mut self, node: &Node, slots: Vec<String>) -> String {
@@ -204,6 +206,28 @@ impl<'a> Lowerer<'a> {
         }
 
         x.code().trim().to_string()
+    }
+
+    /// E018: a literal value of a backed enum prop (`variant="outline"`) is the value of a case.
+    /// The runtime converts it to the case. An enum outside the sources is checked only there.
+    /// A bare attribute gives `true`, which is not a case either.
+    fn check_enum_value(&mut self, def: &ComponentDef, tag: &str, prop: &str, value: &AttrValue, span: Span) {
+        let Some(values) = def.types.get(prop).and_then(|t| self.enums.get(&t.to_ascii_lowercase())) else { return };
+        let value = match value {
+            AttrValue::None => "true",
+            AttrValue::Quoted { parts, .. } => match parts.as_slice() {
+                [] => "",
+                [StrPart::Lit(v)] => v.as_str(),
+                _ => return,
+            },
+            AttrValue::Expr(_) => return,
+        };
+
+        if values.iter().any(|v| v == value) {
+            return;
+        }
+
+        self.error(codes::UNKNOWN_ENUM_VALUE, format!("`<{tag}>` has no {prop} `{value}`"), span).help = Some(format!("its values are: {}", values.join(", ")));
     }
 
     /// A quoted value as a Twig string expression: `'a ' ~ (b)`.
@@ -856,6 +880,8 @@ impl<'a> Lowerer<'a> {
                         let list = if def.props.is_empty() { "none".to_string() } else { def.props.join(", ") };
                         self.error(codes::UNKNOWN_PROP, format!("`<{}>` has no prop `{name}`", e.name), *name_span).help =
                             Some(format!("its props are: {list}"));
+                    } else {
+                        self.check_enum_value(&def, &e.name, name, value, a.span);
                     }
 
                     given.insert(name.clone());

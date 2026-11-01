@@ -2735,6 +2735,41 @@ A class has at most one rest prop, and its type must accept an array: `array`, `
 `mixed`, or no type (compiler error E043). The other rules of a prop also apply to it (E042).
 The rest prop is not a named prop: `<CountButton attrs="x" />` puts `attrs` in the hash.
 
+### Enum props
+
+A prop with a backed enum type takes the value of a case. Phem converts a string or an int
+with `::from()`, so the caller writes `variant="outline"`, not the case:
+
+```php
+enum Variant: string
+{
+    case Primary = 'primary';
+    case Outline = 'outline';
+}
+
+#[Component]
+function Button(Variant $variant = Variant::Primary, ?Html $children = null): Node {
+    return <button className="btn btn-{{ variant.value }}">{{ children }}</button>;
+}
+
+<Button variant="outline">Save</Button>   // $variant is Variant::Outline
+```
+
+- This applies to the parameters of a function component, to the `#[Prop]` properties of a
+  class component, and to the props of a Twig `{% component %}` tag.
+- A case stays as it is: `variant={{ enum('App\\Variant').Outline }}` also works. A nullable
+  prop takes `null`.
+- For an int-backed enum, the string is the text of the int: `level="3"`, not `level="03"` or
+  `level="+3"`. A bound field of an enum (`phem:bind`) uses the same rule.
+- A value that is not a case is an error, with the values of the enum:
+  `<Button> has no variant "big". Its values are: primary, outline.` A bare attribute
+  (`<Button variant />`) gives `true`, and it is an error too.
+- When the enum is in a `.phpm` file of the app or of a package, `phemc` also checks a literal
+  value, an empty value and a bare attribute (E018): `` `<Button>` has no variant `big` ``. It
+  does not check an expression (`variant={{ v }}`), an enum in a `.php` file, or an enum with a
+  case whose value is a constant: the runtime checks them. Two `.phpm` files that declare the
+  same enum are E014.
+
 ### Context
 
 Props pass data one level at a time. When a deep component needs a value of a component far

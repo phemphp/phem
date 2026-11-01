@@ -446,7 +446,14 @@ so an abstract `#[Component]` class is a tag (and its instance fails at runtime)
     The app can then extend a theme class (for example to override a handler), and replace the
     original with `#[Component(replaces: ...)]`.
 
-### [ ] Backed enum props — P2
+### [x] Backed enum props — P2
+
+Done: see [Enum props](docs/phpm-syntax.md#enum-props). The text below keeps the design
+decisions. Details of the implementation: `phemc` reads the enums of the `.phpm` files only
+(an enum in a `.php` file is checked at runtime), and the error is E018. An enum with a case
+whose value is not a literal (a constant) has no compiler check. For an int-backed enum, the
+string is the text of the int (`"3"`, not `"03"`), in a prop and in a bound field. A
+`PropConverter` (`HtmlListConverter`, `EnumConverter`) converts the value of a prop.
 
 `PropBinder` gives a prop its value as it is. With a `Variant $variant` prop,
 `<Button variant="outline">` throws a `TypeError`, and the caller must write

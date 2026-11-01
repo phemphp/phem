@@ -5,7 +5,7 @@ mod purity;
 mod scan;
 
 pub use purity::HELP as PURE_RENDER_HELP;
-pub use scan::{scan, Class, FileInfo, Func, MarkupScope, Param, Prop, Replaces, RouteDecl};
+pub use scan::{scan, Class, EnumDecl, FileInfo, Func, MarkupScope, Param, Prop, Replaces, RouteDecl};
 
 use phemc_syntax::diag::codes;
 use phemc_syntax::php::Lexed;
@@ -98,6 +98,10 @@ pub struct ComponentDef {
     /// The props of type `Bound`: `phem:bind` on the tag of the component gives one of them.
     #[serde(skip)]
     pub bound: Vec<String>,
+    /// The class of each prop with one class type (nullable or not), resolved in the file of the
+    /// declaration: the compiler checks a literal value of a backed enum prop against its cases.
+    #[serde(skip)]
+    pub types: BTreeMap<String, String>,
     /// The `#[Context]` properties or parameters: they are not props.
     #[serde(skip)]
     pub contexts: Vec<ContextNeed>,
@@ -166,6 +170,16 @@ pub fn is_bound_type(file: &FileInfo, ty: &str) -> bool {
     !t.is_empty() && !t.contains('|') && file.resolve_class(t).eq_ignore_ascii_case(BOUND)
 }
 
+/// The scalar types and the pseudo-types of PHP: they are not classes.
+const BUILTIN_TYPES: &[&str] = &[
+    "string", "int", "float", "bool", "array", "iterable", "mixed", "object", "callable", "null", "void", "never", "false", "true", "self", "static", "parent",
+];
+
+/// Whether a type name is a scalar type or a pseudo-type of PHP, not a class.
+fn is_builtin_type(ty: &str) -> bool {
+    BUILTIN_TYPES.iter().any(|b| ty.eq_ignore_ascii_case(b))
+}
+
 /// The type of a context, resolved: `?Theme` → `App\Theme`.
 pub fn context_type(file: &FileInfo, ty: &str) -> String {
     file.resolve_class(ty.trim().trim_start_matches('?'))
@@ -198,6 +212,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
             rest: params.iter().any(|p| p.variadic),
             open: false,
             bound: params.iter().filter(|p| !p.variadic && is_bound_type(file, &p.ty)).map(|p| p.name.clone()).collect(),
+            types: params.iter().filter(|p| !p.variadic).filter_map(|p| Some((p.name.clone(), p.class_ty.clone()?))).collect(),
             contexts: f
                 .params
                 .iter()
@@ -230,6 +245,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
             rest: c.all_props().any(|p| p.is_prop() && p.is_rest),
             open: c.open,
             bound: props.iter().filter(|p| is_bound_type(file, &p.ty)).map(|p| p.name.clone()).collect(),
+            types: props.iter().filter_map(|p| Some((p.name.clone(), p.class_ty.clone()?))).collect(),
             contexts: c
                 .all_props()
                 .filter(|p| p.is_context)
@@ -252,16 +268,12 @@ fn replaced(replaces: Option<&Replaces>) -> Option<String> {
 /// Why a type cannot be the key of a context, or None: the key is one class, interface or enum,
 /// nullable or not.
 fn bad_context_type(file: &FileInfo, ty: &str) -> Option<&'static str> {
-    const BUILTIN: &[&str] = &[
-        "string", "int", "float", "bool", "array", "iterable", "mixed", "object", "callable", "null", "void", "never", "false", "true", "self", "static", "parent",
-    ];
-
     let t = ty.trim().trim_start_matches('?').trim();
     if t.is_empty() {
         Some("it has no type")
     } else if t.contains('|') || t.contains('&') {
         Some("a union or intersection type has no single key")
-    } else if BUILTIN.iter().any(|b| t.eq_ignore_ascii_case(b)) {
+    } else if is_builtin_type(t) {
         Some("a scalar, an array or a pseudo-type is not a key: use an enum or a value object")
     } else if file.resolve_class(t).eq_ignore_ascii_case("Closure") {
         Some("all closures have the same type: provide the object that has the handler")
@@ -556,6 +568,35 @@ fn context_declarations(file: &FileInfo) -> Vec<(&'static str, &str, &str, Span)
 /// All components of a project, by FQCN.
 pub type Registry = BTreeMap<String, ComponentDef>;
 
+/// The values of the backed enums of a project, by lowercase FQCN (PHP class names ignore the
+/// case). An enum with a case that is not a literal is not in it: the compiler cannot check its
+/// values.
+pub type Enums = BTreeMap<String, Vec<String>>;
+
+/// The backed enums of the files, and E014 for an enum that two files declare.
+pub fn enums<'a>(files: impl IntoIterator<Item = &'a FileInfo>) -> (Enums, Vec<(String, Diagnostic)>) {
+    let mut enums = Enums::new();
+    let mut paths: HashMap<String, &str> = HashMap::new();
+    let mut diags = Vec::new();
+    for f in files {
+        let path = if f.path.is_empty() { &f.rel } else { &f.path };
+        for e in &f.enums {
+            let key = e.fqn.to_ascii_lowercase();
+            if let Some(prev) = paths.get(&key) {
+                diags.push((f.rel.clone(), Diagnostic::error(codes::DUPLICATE_COMPONENT, format!("enum `{}` is already declared in `{prev}`", e.fqn), e.name_span)));
+                continue;
+            }
+
+            paths.insert(key.clone(), path);
+            if let Some(values) = &e.values {
+                enums.insert(key, values.clone());
+            }
+        }
+    }
+
+    (enums, diags)
+}
+
 /// The built-in components: they have no source file. The runtime knows them (or phemc compiles
 /// them, as `<Dynamic>`), so the manifest does not list them.
 pub fn builtins() -> Vec<ComponentDef> {
@@ -571,6 +612,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         rest: true,
         open: false,
         bound: Vec::new(),
+        types: BTreeMap::new(),
         contexts: Vec::new(),
         provides: Vec::new(),
         page: false,
@@ -587,6 +629,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         rest: false,
         open: false,
         bound: Vec::new(),
+        types: BTreeMap::new(),
         contexts: Vec::new(),
         provides: Vec::new(),
         page: false,
@@ -603,6 +646,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         rest: false,
         open: false,
         bound: Vec::new(),
+        types: BTreeMap::new(),
         contexts: Vec::new(),
         provides: Vec::new(),
         page: false,
@@ -619,6 +663,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         rest: true,
         open: false,
         bound: Vec::new(),
+        types: BTreeMap::new(),
         contexts: Vec::new(),
         provides: Vec::new(),
         page: false,

@@ -20,6 +20,8 @@ pub struct FileInfo {
     pub function_uses: HashMap<String, String>,
     pub functions: Vec<Func>,
     pub classes: Vec<Class>,
+    /// The backed enums: a prop of their type takes the value of a case.
+    pub enums: Vec<EnumDecl>,
     /// The declarations marked with `#[Page]` or `#[Route]`: the pages.
     pub routes: Vec<RouteDecl>,
     /// The declarations with `#[Broadcast]` that are not pages or components (the compiler
@@ -66,6 +68,18 @@ impl FileInfo {
         }
 
         self.resolve_class(name)
+    }
+
+    /// The class of a type with one class, nullable or not, resolved: `?Variant` →
+    /// `App\Variant`. None for a built-in type, a union or an intersection.
+    pub fn class_type(&self, ty: &str) -> Option<String> {
+        let mut parts = ty.trim().trim_start_matches('?').split('|').map(str::trim).filter(|t| !t.eq_ignore_ascii_case("null"));
+        let t = parts.next()?;
+        if parts.next().is_some() || t.is_empty() || t.contains(['&', '(']) || crate::is_builtin_type(t) {
+            return None;
+        }
+
+        Some(self.resolve_class(t))
     }
 
     /// Whether a component tag is `<Dynamic>`: phemc compiles it to an element, so its children
@@ -135,6 +149,16 @@ pub struct Replaces {
     pub span: Span,
 }
 
+/// A backed enum: `enum Variant: string { case Outline = 'outline'; }`.
+#[derive(Clone, Debug)]
+pub struct EnumDecl {
+    pub fqn: String,
+    pub name_span: Span,
+    /// The values of the cases, as strings (`'outline'`, `3`). None when the value of a case is
+    /// not a literal (a constant expression): the compiler cannot check the values.
+    pub values: Option<Vec<String>>,
+}
+
 #[derive(Clone, Debug)]
 pub struct Param {
     pub name: String,
@@ -148,6 +172,9 @@ pub struct Param {
     pub attrs: Vec<(String, Span)>,
     /// `#[Context]` on a parameter of a function component: a context, not a prop.
     pub is_context: bool,
+    /// The class of the type, resolved in the file of the declaration (see
+    /// `FileInfo::class_type()`). Only for the parameters of a function.
+    pub class_ty: Option<String>,
     /// The variable name.
     pub span: Span,
 }
@@ -232,6 +259,9 @@ pub struct Prop {
     pub is_provide: bool,
     /// The span of a `#[BroadcastKey]`: the prop identifies an instance of the component.
     pub broadcast_key: Option<Span>,
+    /// The class of the type, resolved in the file of the declaration (see
+    /// `FileInfo::class_type()`): a child class in another file keeps it.
+    pub class_ty: Option<String>,
     pub span: Span,
 }
 
@@ -385,6 +415,14 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                         i = end + 1;
                         continue;
                     }
+                    "enum" if toks.t.get(i + 1).is_some_and(|x| x.kind == TokKind::Ident) && toks.is_op(i + 2, ":") => {
+                        attrs.clear();
+                        replaces = None;
+                        let (e, end) = parse_enum(&toks, i, &info.namespace);
+                        info.enums.push(e);
+                        i = end + 1;
+                        continue;
+                    }
                     "interface" | "trait" | "enum" => {
                         // Skip the whole declaration.
                         let mut j = i;
@@ -433,6 +471,21 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
     }
 
     info.returned_markups = returned;
+
+    // The class types, with the imports of this file: a child class in another file keeps them.
+    let params: Vec<Vec<Option<String>>> = info.functions.iter().map(|f| f.params.iter().map(|p| info.class_type(&p.ty)).collect()).collect();
+    let props: Vec<Vec<Option<String>>> = info.classes.iter().map(|c| c.props.iter().map(|p| info.class_type(&p.ty)).collect()).collect();
+    for (f, types) in info.functions.iter_mut().zip(params) {
+        for (p, ty) in f.params.iter_mut().zip(types) {
+            p.class_ty = ty;
+        }
+    }
+
+    for (c, types) in info.classes.iter_mut().zip(props) {
+        for (p, ty) in c.props.iter_mut().zip(types) {
+            p.class_ty = ty;
+        }
+    }
 
     // A component function whose body is only `return <markup>;` is a template component. A
     // function with a `#[Context]` parameter needs a fiber for the lookup: it is not one.
@@ -669,6 +722,59 @@ fn qualify(ns: &str, name: &str) -> String {
     }
 }
 
+/// Parses `enum Name: string { case A = 'a'; ... }` starting at the `enum` token. The `case`
+/// statements of the methods (`switch`) are in nested braces, so they are not cases.
+fn parse_enum(toks: &Toks, at: usize, ns: &str) -> (EnumDecl, usize) {
+    let fqn = qualify(ns, toks.text(at + 1));
+    let name_span = toks.t[at + 1].span;
+    let mut open = at + 2;
+    while open < toks.t.len() && !toks.is_op(open, "{") {
+        open += 1;
+    }
+
+    let close = toks.matching(open);
+    let mut values = Some(Vec::new());
+    let mut i = open + 1;
+    while i < close {
+        if toks.is_op(i, "{") || toks.is_op(i, "(") || toks.is_op(i, "[") || toks.t[i].kind == TokKind::AttrOpen {
+            i = toks.matching(i) + 1;
+            continue;
+        }
+
+        if toks.is_word(i, "case") && toks.is_op(i + 2, "=") {
+            let value = case_value(toks, i + 3);
+            values = values.zip(value).map(|(mut v, x)| {
+                v.push(x);
+                v
+            });
+        }
+
+        i += 1;
+    }
+
+    (EnumDecl { fqn, name_span, values }, close)
+}
+
+/// The value of a case as a string, when it is a literal: `'a'`, `"a"`, `3`, `-1`.
+fn case_value(toks: &Toks, at: usize) -> Option<String> {
+    let negative = toks.is_op(at, "-");
+    let at = if negative { at + 1 } else { at };
+    if !toks.is_op(at + 1, ";") {
+        return None;
+    }
+
+    let raw = toks.text(at);
+    let inner = raw.get(1..raw.len().saturating_sub(1)).unwrap_or_default();
+    match toks.t.get(at)?.kind {
+        // The canonical text of the int, as the runtime compares it: no `-0`, no leading zero.
+        TokKind::Number if raw.bytes().all(|b| b.is_ascii_digit()) && (raw == "0" || !raw.starts_with('0')) => Some(if negative && raw != "0" { format!("-{raw}") } else { raw.to_string() }),
+        TokKind::Str if !negative && raw.starts_with('\'') => Some(inner.replace("\\\\", "\u{0}").replace("\\'", "'").replace('\u{0}', "\\")),
+        // A double-quoted string with no escape and no variable.
+        TokKind::Str if !negative && raw.starts_with('"') && !inner.contains(['\\', '$']) => Some(inner.to_string()),
+        _ => None,
+    }
+}
+
 /// Parses `function name(params): type { body }` starting at the `function` token.
 fn parse_function(toks: &Toks, at: usize, ns: &str) -> (Func, usize) {
     let mut i = at + 1;
@@ -743,6 +849,7 @@ fn parse_params(toks: &Toks, from: usize, to: usize) -> Vec<Param> {
             promoted_private: false,
             attrs: vec![],
             is_context: false,
+            class_ty: None,
             span: Span::default(),
         };
 
@@ -976,6 +1083,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
                         is_provide: false,
                         // A promoted parameter is a service, not a prop: the analysis reports it.
                         broadcast_key: p.attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_BROADCAST_KEY).map(|(_, s)| *s),
+                        class_ty: None,
                         span: m.name_span,
                     });
                 }
@@ -1020,6 +1128,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
                 is_context: has_attr(ATTR_CONTEXT),
                 is_provide: has_attr(ATTR_PROVIDE),
                 broadcast_key: member_attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_BROADCAST_KEY).map(|(_, s)| *s),
+                class_ty: None,
                 span: t.span,
             });
 

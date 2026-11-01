@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\State;
 
+use Phem\Binding\EnumCase;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Rendering\Tree;
 
@@ -251,18 +252,7 @@ final class BoundValues
             return false;
         }
 
-        $backing = (new \ReflectionEnum($type))->getBackingType()?->getName();
-        if ('int' === $backing) {
-            if (\is_string($value) && 1 !== preg_match('/\A-?\d{1,18}\z/', $value)) {
-                return false;
-            }
-
-            $value = (int) $value;
-        } else {
-            $value = (string) $value;
-        }
-
-        $out = $type::tryFrom($value);
+        $out = EnumCase::from($type, $value);
 
         return null !== $out;
     }

@@ -954,3 +954,58 @@ fn a_parent_class_of_a_replacement_keeps_the_original_for_the_other_components_t
     assert!(templates.iter().any(|t| t.contains("{% component 'Acme\\\\Ui\\\\Button' with {'label': 'Base'} only %}")), "{templates:?}");
     assert!(!templates.iter().any(|t| t.contains("{% component 'App\\\\Button' with {'label': 'Base'} only %}")), "{templates:?}");
 }
+
+#[test]
+fn a_literal_value_of_a_backed_enum_prop_is_a_case() {
+    // The enums are in a package root. A `case` of a `switch` in a method is not a case.
+    let enums = "<?phpm\nnamespace Acme\\Ui;\nenum Variant: string\n{\n    case Primary = 'primary';\n    case Outline = \"outline\";\n    public function classes(): string { switch ($this) { case self::Primary: return 'a'; default: return 'b'; } }\n}\nenum Level: int { case Low = 1; case High = 3; }\nenum Computed: string { const P = 'p'; case A = self::P; }\n";
+    let ui = "<?phpm\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\{Component, Prop};\nuse Phem\\Node;\n#[Component]\nfunction Button(Variant $variant = Variant::Primary, ?Level $level = null, Computed $computed = Computed::A, \\Vendor\\Size $size = \\Vendor\\Size::S) { return <b />; }\n#[Component]\nfinal class Badge\n{\n    #[Prop] public Variant|null $variant = null;\n    public function render(): Node { return <i />; }\n}\n";
+    let home = |body: &str| SourceInput::app("Home.phpm", format!("<?phpm\nnamespace App;\nuse Acme\\Ui\\{{Badge, Button}};\nfunction Home() {{ $v = 'big'; return <main>{body}</main>; }}\n"));
+    let check = |body: &str| {
+        let (_, diags) = compile(vec![home(body), package("vendor/acme/ui/Variant.phpm", "vendor/acme/ui/components/Variant.phpm", enums), package("vendor/acme/ui/Button.phpm", "vendor/acme/ui/components/Button.phpm", ui)]);
+        diags.iter().flat_map(|f| f.shown().map(move |d| format!("{} {} {}", d.code, d.message, d.help.clone().unwrap_or_default()))).collect::<Vec<_>>()
+    };
+
+    assert_eq!(check("<Button variant=\"big\" />"), ["E018 `<Button>` has no variant `big` its values are: primary, outline"]);
+    assert_eq!(check("<Button level=\"2\" />"), ["E018 `<Button>` has no level `2` its values are: 1, 3"]);
+    assert_eq!(check("<Badge variant=\"big\" />"), ["E018 `<Badge>` has no variant `big` its values are: primary, outline"]);
+
+    // The runtime takes only the text of the int: no leading zero.
+    assert_eq!(check("<Button level=\"03\" />"), ["E018 `<Button>` has no level `03` its values are: 1, 3"]);
+    // An empty value and a bare attribute (`true`) are not cases either.
+    assert_eq!(check("<Button variant=\"\" />"), ["E018 `<Button>` has no variant `` its values are: primary, outline"]);
+    assert_eq!(check("<Button variant />"), ["E018 `<Button>` has no variant `true` its values are: primary, outline"]);
+
+    // A case, an expression, a case with no literal value, and an enum outside the sources: no check.
+    let ok = "<Button variant=\"outline\" level=\"3\" /><Badge variant=\"primary\" /><Button variant={{ v }} /><Button variant=\"x{{ v }}\" /><Button computed=\"z\" /><Button size=\"z\" />";
+    assert!(check(ok).is_empty(), "{:?}", check(ok));
+}
+
+#[test]
+fn an_inherited_enum_prop_keeps_the_type_of_its_file() {
+    // The base declares `Variant` in its namespace. The theme has another `Variant`, with other
+    // values, and its class name differs in case: PHP class names ignore the case.
+    let base = "<?phpm\nnamespace Acme\\Base;\nuse Phem\\Attribute\\Prop;\nenum Variant: string { case Primary = 'primary'; }\nabstract class AbstractButton { #[Prop] public variant $variant = Variant::Primary; }\n";
+    let theme = "<?phpm\nnamespace Acme\\Ui;\nuse Acme\\Base\\AbstractButton;\nuse Phem\\Attribute\\Component;\nuse Phem\\Node;\nenum Variant: string { case Solid = 'solid'; }\n#[Component]\nclass Button extends AbstractButton { public function render(): Node { return <button />; } }\n";
+    let home = |body: &str| SourceInput::app("Home.phpm", format!("<?phpm\nnamespace App;\nuse Acme\\Ui\\Button;\nfunction Home() {{ return {body}; }}\n"));
+    let check = |body: &str| {
+        let base = SourceInput { rel: "vendor/acme/base/Button.phpm".into(), path: "vendor/acme/base/src/Button.phpm".into(), package: Some("acme/base".into()), text: base.into() };
+        let (_, diags) = compile(vec![home(body), base, package("vendor/acme/ui/Button.phpm", "vendor/acme/ui/components/Button.phpm", theme)]);
+        shown(&diags)
+    };
+
+    assert!(check("<Button variant=\"primary\" />").is_empty(), "{:?}", check("<Button variant=\"primary\" />"));
+    assert_eq!(check("<Button variant=\"solid\" />"), ["Home.phpm E018 `<Button>` has no variant `solid`"]);
+}
+
+#[test]
+fn an_enum_that_two_files_declare_is_an_error() {
+    let size = "<?phpm\nnamespace Acme\\Ui;\nenum Size: string { case S = 's'; }\n";
+    let (out, diags) = compile(vec![
+        SourceInput { rel: "Size.phpm".into(), path: "src/Size.phpm".into(), package: None, text: size.into() },
+        package("vendor/acme/ui/Size.phpm", "vendor/acme/ui/components/Size.phpm", size),
+    ]);
+
+    assert!(out.is_none());
+    assert_eq!(shown(&diags), ["vendor/acme/ui/components/Size.phpm E014 enum `Acme\\Ui\\Size` is already declared in `src/Size.phpm`"]);
+}

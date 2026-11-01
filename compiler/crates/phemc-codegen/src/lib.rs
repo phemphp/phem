@@ -10,7 +10,7 @@ mod replaces;
 mod vars;
 
 use rayon::prelude::*;
-use phemc_analyze::{FileInfo, Kind, MarkupScope, Registry};
+use phemc_analyze::{Enums, FileInfo, Kind, MarkupScope, Registry};
 use phemc_syntax::diag::codes;
 use phemc_syntax::php::{lex, Lexed, TokKind};
 use phemc_syntax::span::line_col;
@@ -132,6 +132,8 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
     });
 
     let (registry, mut dup) = phemc_analyze::registry(parsed.iter().map(|p| &p.info));
+    let (enums, errors) = phemc_analyze::enums(parsed.iter().map(|p| &p.info));
+    dup.extend(errors);
     let bases = base_files(&parsed);
 
     // E016, E017: the replacements of the components (`#[Component(replaces: ...)]`). Only the
@@ -153,7 +155,7 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
             diags.extend(dup.iter().filter(|(r, _)| *r == p.input.rel).map(|(_, d)| d.clone()));
 
             let out = p.lexed.as_ref().map(|lexed| {
-                let (out, d) = emit_file(&p.input, lexed, &p.info, &registry, &replacements);
+                let (out, d) = emit_file(&p.input, lexed, &p.info, &registry, &enums, &replacements);
                 diags.extend(d);
                 out
             });
@@ -225,10 +227,10 @@ pub(crate) fn has_variable(text: &str, name: &str) -> bool {
     false
 }
 
-fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry, replacements: &replaces::Replacements) -> (FileOutput, Vec<Diagnostic>) {
+fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry, enums: &Enums, replacements: &replaces::Replacements) -> (FileOutput, Vec<Diagnostic>) {
     let src = input.text.as_str();
     let mut diags = Vec::new();
-    let mut lowerer = lower::Lowerer::new(info, reg, replacements);
+    let mut lowerer = lower::Lowerer::new(info, reg, enums, replacements);
     let mut edits: Vec<(Span, String)> = Vec::new();
     let mut templates = Vec::new();
 

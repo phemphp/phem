@@ -57,6 +57,7 @@ pub mod codes {
     pub const MISSING_CONTEXT: &str = "E015";
     pub const REPLACEMENT_MISMATCH: &str = "E016";
     pub const INVALID_REPLACEMENT: &str = "E017";
+    pub const UNKNOWN_ENUM_VALUE: &str = "E018";
     pub const HOOK_REMOVED: &str = "E020";
     pub const UNDEFINED_VARIABLE: &str = "E030";
     pub const MARKUP_IN_EXPRESSION: &str = "E031";

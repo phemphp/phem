@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Phem\Binding;
 
 use Phem\Html;
-use Phem\HtmlList;
 use Phem\LazyHtml;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Metadata\Parameter;
@@ -25,8 +24,13 @@ use Phem\Metadata\Parameter;
  */
 final class PropBinder
 {
-    public function __construct(private readonly ComponentMetadata $metadata = new ComponentMetadata())
-    {
+    /**
+     * @param iterable<PropConverter> $converters
+     */
+    public function __construct(
+        private readonly ComponentMetadata $metadata = new ComponentMetadata(),
+        private readonly iterable $converters = [new HtmlListConverter(), new EnumConverter()],
+    ) {
     }
 
     /**
@@ -49,7 +53,7 @@ final class PropBinder
                 throw new PropError(\sprintf('<%s> has no prop "%s". Its props are: %s.', ComponentName::short($fqcn), $name, implode(', ', array_keys($params)) ?: 'none'));
             }
 
-            $args[$name] = $value instanceof HtmlList && ($params[$name]->wantsArray ?? false) ? $value->toArray() : $value;
+            $args[$name] = isset($params[$name]) ? $this->convert($params[$name]->type, $value, $fqcn, $name) : $value;
         }
 
         foreach ($params as $name => $p) {
@@ -119,7 +123,7 @@ final class PropBinder
                 continue;
             }
 
-            if (self::differs($p->getValue($component), self::value($p, $all[$name]))) {
+            if (self::differs($p->getValue($component), $this->convert($p->getType(), $all[$name], $component::class, $name))) {
                 return true;
             }
         }
@@ -157,7 +161,7 @@ final class PropBinder
             }
 
             if (\array_key_exists($name, $all)) {
-                $p->setValue($component, self::value($p, $all[$name]));
+                $p->setValue($component, $this->convert($p->getType(), $all[$name], $class, $name));
             } elseif ($p->hasDefaultValue()) {
                 $p->setValue($component, $p->getDefaultValue());
             } elseif ($p->getType()?->allowsNull() ?? true) {
@@ -193,9 +197,13 @@ final class PropBinder
         return $old !== $new;
     }
 
-    /** The value of a prop for a property: a list of markup is an array for an `array` property. */
-    private static function value(\ReflectionProperty $p, mixed $value): mixed
+    /** The value of a prop for its type: each converter gets the value of the one before. */
+    private function convert(?\ReflectionType $type, mixed $value, string $component, string $prop): mixed
     {
-        return $value instanceof HtmlList && HtmlList::wantsArray($p->getType()) ? $value->toArray() : $value;
+        foreach ($this->converters as $converter) {
+            $value = $converter->convert($type, $value, $component, $prop);
+        }
+
+        return $value;
     }
 }
