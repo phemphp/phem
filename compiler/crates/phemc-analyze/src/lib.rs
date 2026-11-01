@@ -212,7 +212,12 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
 
     for c in file.classes.iter().filter(|c| c.is_component) {
         let props: Vec<&Prop> = c.all_props().filter(|p| p.is_prop() && !p.is_rest).collect();
-        let provides = c.provides_self.then(|| c.fqn.clone()).into_iter().chain(c.all_props().filter(|p| p.is_provide).map(|p| context_type(file, &p.ty))).collect();
+
+        // `#[Provide]` on the class or on a parent class. A parent outside the sources can have
+        // it: the component can provide itself.
+        let provides_self = c.provides_self || c.inherited_provide || c.parent_open;
+        let provides = provides_self.then(|| c.fqn.clone()).into_iter().chain(c.all_props().filter(|p| p.is_provide).map(|p| context_type(file, &p.ty))).collect();
+
         out.push(ComponentDef {
             fqcn: c.fqn.clone(),
             kind: Kind::Class,
@@ -282,16 +287,18 @@ pub fn resolve_inheritance<'a>(files: impl IntoIterator<Item = &'a mut FileInfo>
 
     for f in &mut files {
         for c in &mut f.classes {
-            // Each base, and whether it comes through a parent class.
-            let mut queue: VecDeque<(String, bool)> = c.traits.iter().map(|t| (t.clone(), false)).chain(c.parent.iter().map(|p| (p.clone(), true))).collect();
+            // Each base, whether it comes through a parent class, and whether it is a parent class
+            // (not a trait).
+            let mut queue: VecDeque<(String, bool, bool)> = c.traits.iter().map(|t| (t.clone(), false, false)).chain(c.parent.iter().map(|p| (p.clone(), true, true))).collect();
             let mut seen = HashSet::new();
-            while let Some((name, from_parent)) = queue.pop_front() {
+            while let Some((name, from_parent, is_parent)) = queue.pop_front() {
                 if !seen.insert(name.to_ascii_lowercase()) {
                     continue;
                 }
 
                 let Some(base) = declared.get(&name.to_ascii_lowercase()) else {
                     c.open = true;
+                    c.parent_open |= is_parent;
                     continue;
                 };
 
@@ -305,6 +312,10 @@ pub fn resolve_inheritance<'a>(files: impl IntoIterator<Item = &'a mut FileInfo>
                     }
                 }
 
+                // `#[Provide]` on a parent class: PHP does not inherit the attributes of a class,
+                // but the runtime looks at the parents too.
+                c.inherited_provide |= from_parent && base.provides_self;
+
                 for m in &base.methods {
                     if from_parent && m.is_private {
                         continue;
@@ -317,7 +328,7 @@ pub fn resolve_inheritance<'a>(files: impl IntoIterator<Item = &'a mut FileInfo>
                     }
                 }
 
-                queue.extend(base.traits.iter().map(|t| (t.clone(), from_parent)).chain(base.parent.iter().map(|p| (p.clone(), true))));
+                queue.extend(base.traits.iter().map(|t| (t.clone(), from_parent, false)).chain(base.parent.iter().map(|p| (p.clone(), true, true))));
             }
         }
     }
@@ -452,6 +463,14 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
     }
 
     for c in &file.classes {
+        if c.abstract_component {
+            let (what, attr) = if c.is_page { ("page", "Page") } else { ("component", "Component") };
+            diags.push(
+                Diagnostic::error(codes::ABSTRACT_COMPONENT, format!("{what} class `{}` is abstract", c.name), c.name_span)
+                    .with_help(format!("remove `#[{attr}]`: the children declare it")),
+            );
+        }
+
         if !c.is_component {
             continue;
         }

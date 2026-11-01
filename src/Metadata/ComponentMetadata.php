@@ -167,7 +167,10 @@ final class ComponentMetadata
         ));
     }
 
-    /** Whether a name is a component that is not a page: it has #[Component] and no #[Page]. */
+    /**
+     * Whether a name is a component that is not a page: it has #[Component] and no #[Page]. An
+     * abstract class is not a component: its children declare it.
+     */
     public function isComponent(string $name): bool
     {
         if (isset($this->components[$name])) {
@@ -175,8 +178,11 @@ final class ComponentMetadata
         }
 
         $reflection = self::reflect($name);
+        if (null === $reflection || ($reflection instanceof \ReflectionClass && $reflection->isAbstract())) {
+            return $this->components[$name] = false;
+        }
 
-        return $this->components[$name] = null !== $reflection && [] !== $reflection->getAttributes(Component::class) && [] === $reflection->getAttributes(Page::class);
+        return $this->components[$name] = [] !== $reflection->getAttributes(Component::class) && [] === $reflection->getAttributes(Page::class);
     }
 
     /** The component that a component replaces (`#[Component(replaces: ...)]`), or null. */

@@ -543,6 +543,73 @@ fn a_provider_of_a_type_that_the_compiler_cannot_see_can_be_a_subtype() {
 }
 
 #[test]
+fn an_abstract_class_is_not_a_component() {
+    let base = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\{Component, State};\n#[Component]\nabstract class Base { #[State] public string $active = ''; }\nfunction Page() { return <Base />; }\n";
+    let (out, diags) = compile(vec![SourceInput::app("Base.phpm", base)]);
+
+    let d: Vec<_> = diags.iter().flat_map(|f| &f.diags).collect();
+    assert_eq!(d.iter().map(|d| d.code).collect::<Vec<_>>(), ["E045", "E010"], "no E040: the children give `render()`");
+    assert_eq!(d[0].message, "component class `Base` is abstract");
+    assert_eq!(d[0].help.as_deref(), Some("remove `#[Component]`: the children declare it"));
+    assert!(out.is_none());
+
+    // With no `#[Component]`, the base is a plain class.
+    let plain = base.replace("#[Component]\n", "").replace("function Page() { return <Base />; }\n", "");
+    assert!(project(&[("Base.phpm", &plain)]).is_empty());
+
+    // The other modifiers can come before or after `abstract`.
+    for modifiers in ["readonly abstract", "abstract readonly"] {
+        assert_eq!(codes(&base.replace("abstract class", &format!("{modifiers} class"))), ["E045", "E010"], "{modifiers}");
+    }
+
+    // An `abstract` that is not a modifier of the class does not change it.
+    let card = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\Component;\nconst ABSTRACT = 1;\n#[Component]\nfinal class Card { public function render() { return <b />; } }\nfunction Page() { return <Card />; }\n";
+    assert!(codes(card).is_empty());
+
+    // An abstract page.
+    let page = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\Page;\n#[Page('/admin')]\nabstract class AdminPage {}\n";
+    let (out, diags) = compile(vec![SourceInput::app("Admin.phpm", page)]);
+
+    let d: Vec<_> = diags.iter().flat_map(|f| &f.diags).collect();
+    assert_eq!(d.iter().map(|d| (d.code, d.message.as_str(), d.help.as_deref())).collect::<Vec<_>>(), [("E045", "page class `AdminPage` is abstract", Some("remove `#[Page]`: the children declare it"))]);
+    assert!(out.is_none());
+}
+
+#[test]
+fn an_abstract_replacement_does_not_replace_the_original() {
+    let src = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfunction Button() { return <button />; }\n#[Component(replaces: Button::class)]\nabstract class MyButton {}\nfunction Page() { return <p><Button /><Button /></p>; }\n";
+    assert_eq!(codes(src), ["E045"], "the tags of `Button` render `Button`: no E010");
+}
+
+#[test]
+fn a_component_provides_itself_with_provide_on_a_parent_class() {
+    let base = "<?phpm\nnamespace Acme\\Base;\nuse Phem\\Attribute\\Provide;\n#[Provide]\nabstract class AbstractTabs {}\n";
+    let theme = "<?phpm\nnamespace App;\nuse Acme\\Base\\AbstractTabs;\nuse Phem\\Attribute\\{Component, Context, Page};\n#[Component]\nfinal class Tabs extends AbstractTabs { public function render() { return <div><Tab /></div>; } }\n#[Component]\nfunction Tab(#[Context] AbstractTabs $tabs) { return <b />; }\n#[Page('/')]\nfinal class Home { public function render() { return <Tabs />; } }\n";
+    assert!(project(&[("Base.phpm", base), ("App.phpm", theme)]).is_empty(), "`Tabs` provides `AbstractTabs` to the `<Tab>` that it renders");
+
+    // Also through a parent of the parent.
+    let middle = "<?phpm\nnamespace App;\nabstract class Middle extends \\Acme\\Base\\AbstractTabs {}\n";
+    let theme2 = theme.replace("extends AbstractTabs", "extends Middle");
+    assert!(project(&[("Base.phpm", base), ("Middle.phpm", middle), ("App.phpm", &theme2)]).is_empty());
+
+    // With no `#[Provide]` on the parent, `Tabs` provides nothing.
+    let plain = base.replace("#[Provide]\n", "");
+    assert_eq!(project(&[("Base.phpm", &plain), ("App.phpm", theme)]), ["App.phpm E015"]);
+
+    // A child of a component with `#[Provide]` provides itself too.
+    let tabs = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\{Component, Context, Page, Provide};\n#[Component, Provide]\nclass Tabs { public function render() { return <div />; } }\n#[Component]\nfinal class MyTabs extends Tabs { public function render() { return <div><Tab /></div>; } }\n#[Component]\nfunction Tab(#[Context] Tabs $tabs) { return <b />; }\n#[Page('/')]\nfinal class Home { public function render() { return <MyTabs />; } }\n";
+    assert!(project(&[("App.phpm", tabs)]).is_empty());
+}
+
+#[test]
+fn a_parent_outside_the_sources_can_provide_but_a_trait_cannot() {
+    let src = |body: &str| format!("<?phpm\nnamespace App;\nuse Phem\\Attribute\\{{Component, Context, Page}};\n#[Component]\nfinal class Tabs {body} {{ public function render() {{ return <div><Tab /></div>; }} }}\n#[Component]\nfunction Tab(#[Context] Tabs $tabs) {{ return <b />; }}\n#[Page('/')]\nfinal class Home {{ public function render() {{ return <Tabs />; }} }}\n");
+
+    assert!(project(&[("App.phpm", &src("extends \\Vendor\\Base"))]).is_empty(), "the parent can have `#[Provide]`");
+    assert_eq!(project(&[("App.phpm", &src("").replace("{ public function render", "{ use \\Vendor\\Tools; public function render"))]), ["App.phpm E015"], "a trait does not give its attributes");
+}
+
+#[test]
 fn a_member_path_in_a_handler_is_the_method() {
     let src = "<?phpm\nfunction App() { $tabs = $form = $select = null; return <p><button onClick={{ tabs.select }} /><button onClick={{ select }} phem:loading={{ form.save }} /></p>; }\n";
     let (out, diags) = compile(vec![SourceInput::app("App.phpm", src)]);

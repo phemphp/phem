@@ -255,6 +255,85 @@ The rules:
 - A required context of the replacement with no provider above a tag of the original is E015,
   at the tag: the message names the replacement.
 
+## Share the behavior between themes
+
+Two theme packages (for example `acme/ui-tailwind` and `acme/ui-shadcn`) can share the props,
+the state, the handlers and `#[Provide]` of their components. A base package has abstract
+classes with no `#[Component]` and no `render()`. Each theme extends them, adds `#[Component]`
+and gives `render()`:
+
+```php
+// vendor/acme/ui-base/components/AbstractTabs.phpm
+namespace Acme\UiBase;
+
+#[Provide]
+abstract class AbstractTabs
+{
+    #[State] public string $active = '';
+    #[Prop] public ?Html $children = null;
+
+    public function select(Event $e): void
+    {
+        $this->active = $e->value;
+    }
+}
+```
+
+```php
+// vendor/acme/ui-tailwind/components/Tabs.phpm
+namespace Acme\Ui;
+
+use Acme\UiBase\AbstractTabs;
+
+#[Component]
+class Tabs extends AbstractTabs
+{
+    public function render(): Node
+    {
+        return <div role="tablist" className={{ classes('flex gap-2') }}>{{ children }}</div>;
+    }
+}
+
+#[Component]
+function Tab(string $name, #[Context] AbstractTabs $tabs, ?Html $children = null): Node
+{
+    return (
+        <button role="tab" aria-selected={{ tabs.active == name }} onClick={{ tabs.select }} value={{ name }}>
+            {{ children }}
+        </button>
+    );
+}
+```
+
+The rules:
+
+- `#[Provide]` on a parent class applies to its children. PHP does not inherit the attributes
+  of a class, but Phem looks at the parents, in `phemc` (E015) and at runtime. `#[Component]`
+  does not inherit: the base is not a component.
+- The consumers declare the base type (`#[Context] AbstractTabs $tabs`). The lookup takes the
+  nearest provider whose value is an instance of the type, so they work with each theme.
+- `#[Component]` on an abstract class is E045. The base stays a plain class, and a tag of it is
+  E010.
+- Do not make the classes for extension `final`. The app can then extend a theme class (for
+  example to change a handler), and replace the original with `#[Component(replaces: ...)]`.
+
+To switch the theme, give the components of each theme the same names (`Acme\Ui\Tabs`), so
+the imports of the app do not change. Each theme has a Composer `conflict` with the other
+themes, and it can `provide` a virtual package for the packages that need a theme:
+
+```json
+{
+    "name": "acme/ui-tailwind",
+    "require": { "acme/ui-base": "^1.0" },
+    "conflict": { "acme/ui-shadcn": "*" },
+    "provide": { "acme/ui-theme": "1.0" },
+    "extra": { "phem": { "source": "components" } }
+}
+```
+
+`composer require acme/ui-shadcn` then removes `acme/ui-tailwind`. When two themes are
+installed, `phemc` reports the duplicate components (E014).
+
 ## Test a package
 
 A package has no app. Its tests use a small test app in `tests/app/src`, with the pages and the

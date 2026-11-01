@@ -159,6 +159,8 @@ pub struct Class {
     pub name_span: Span,
     pub span: Span,
     pub is_component: bool,
+    /// `#[Component]` or `#[Page]` on an `abstract` class (E045): the class is not a component.
+    pub abstract_component: bool,
     /// A `trait`: its members go into the classes that use it.
     pub is_trait: bool,
     /// The parent class (`extends`), resolved.
@@ -175,10 +177,16 @@ pub struct Class {
     /// A parent class or a trait is not in the sources (a `.php` file, a library), so the class
     /// can have more members than the compiler sees.
     pub open: bool,
+    /// A parent class is not in the sources, so the class can get `#[Provide]` from it. A trait
+    /// cannot: PHP does not give its attributes to the class.
+    pub parent_open: bool,
     /// The interfaces that the class implements, resolved.
     pub interfaces: Vec<String>,
     /// `#[Provide]` on the class: the component provides itself as a context.
     pub provides_self: bool,
+    /// A parent class in the sources has `#[Provide]`: the component provides itself too (see
+    /// `resolve_inheritance()`).
+    pub inherited_provide: bool,
     /// `#[Broadcast]` on the class.
     pub has_broadcast: bool,
     /// `#[Page]` on the class: a page, not a component that other pages render.
@@ -354,11 +362,12 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                             let broadcast = broadcast_attr(&info, &attrs);
                             let (mut c, end) = parse_class(&toks, i, &mut info, attrs.into_iter().map(|(a, _)| a).collect());
                             c.replaces = replaces.take();
-                            if let Some(span) = broadcast.filter(|_| !c.is_component) {
+                            if let Some(span) = broadcast.filter(|_| !c.is_component && !c.abstract_component) {
                                 info.broadcasts.push((c.fqn.clone(), span));
                             }
 
-                            if let Some((attr, span)) = route {
+                            // An abstract page has no route: E045 reports it.
+                            if let Some((attr, span)) = route.filter(|_| !c.abstract_component) {
                                 info.routes.push(RouteDecl { fqn: c.fqn.clone(), attr, span, is_component: c.is_component, is_function: false });
                             }
 
@@ -832,6 +841,19 @@ fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
     }
 }
 
+/// Whether the modifiers before the `class` keyword at `at` have `abstract`.
+fn is_abstract(toks: &Toks, at: usize) -> bool {
+    let mut j = at;
+    while j > 0 && ["abstract", "final", "readonly"].iter().any(|m| toks.is_word(j - 1, m)) {
+        j -= 1;
+        if toks.is_word(j, "abstract") {
+            return true;
+        }
+    }
+
+    false
+}
+
 fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) -> (Class, usize) {
     let name = toks.text(at + 1).to_string();
     let name_span = toks.t[at + 1].span;
@@ -854,8 +876,9 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
 
     let close = toks.matching(j);
 
-    // A `#[Page]` class is a component too.
-    let is_component = attrs.iter().any(|a| matches!(info.resolve_class(a).as_str(), ATTR_COMPONENT | ATTR_PAGE));
+    // A `#[Page]` class is a component too, but an abstract class is not one.
+    let component_attr = attrs.iter().any(|a| matches!(info.resolve_class(a).as_str(), ATTR_COMPONENT | ATTR_PAGE));
+    let is_abstract = is_abstract(toks, at);
     let provides_self = attrs.iter().any(|a| info.resolve_class(a) == ATTR_PROVIDE);
     let has_broadcast = attrs.iter().any(|a| info.resolve_class(a) == ATTR_BROADCAST);
     let is_page = attrs.iter().any(|a| info.resolve_class(a) == ATTR_PAGE);
@@ -864,7 +887,8 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
         name,
         name_span,
         span: Span::new(toks.t[at].span.start, toks.t[close].span.end),
-        is_component,
+        is_component: component_attr && !is_abstract,
+        abstract_component: component_attr && is_abstract,
         is_trait: false,
         parent,
         traits: vec![],
@@ -873,8 +897,10 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
         inherited_props: vec![],
         inherited_methods: vec![],
         open: false,
+        parent_open: false,
         interfaces,
         provides_self,
+        inherited_provide: false,
         has_broadcast,
         is_page,
         inherited_broadcast: false,

@@ -117,7 +117,7 @@ final class ContextMetadata
 
     /**
      * The contexts that a class component provides: its #[Provide] properties, and the component
-     * itself for #[Provide] on the class (first).
+     * itself for #[Provide] on the class or on a parent class (first).
      *
      * @param class-string $class
      *
@@ -132,7 +132,7 @@ final class ContextMetadata
         }
 
         $reflection = new \ReflectionClass($class);
-        $out = [] !== $reflection->getAttributes(Provide::class) ? [new ProvidedContext($class)] : [];
+        $out = self::providesItself($reflection) ? [new ProvidedContext($class)] : [];
         foreach ($reflection->getProperties() as $p) {
             if ([] === $p->getAttributes(Provide::class)) {
                 continue;
@@ -147,6 +147,22 @@ final class ContextMetadata
         }
 
         return $this->provides[$class] = $out;
+    }
+
+    /**
+     * Whether #[Provide] is on the class or on a parent class. PHP does not inherit the attributes
+     * of a class, but a base class gives its children the behavior of a provider, as it gives its
+     * props, its state and its handlers.
+     */
+    private static function providesItself(\ReflectionClass $class): bool
+    {
+        for ($c = $class; false !== $c; $c = $c->getParentClass()) {
+            if ([] !== $c->getAttributes(Provide::class)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

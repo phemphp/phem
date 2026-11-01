@@ -155,3 +155,49 @@ final class ContextMissingPage
         return <Document><Card title="Alone"><TabsNav /></Card></Document>;
     }
 }
+
+// The shared behavior of the theme packages: a base class with no #[Component] has the state,
+// the handlers and #[Provide]. A theme extends it and gives render(). The consumers declare the
+// base type, so they work with each theme.
+#[Provide]
+abstract class AbstractAccordion
+{
+    #[State] public string $open = '';
+    #[Prop] public ?Html $children = null;
+
+    public function toggle(Event $e): void
+    {
+        $this->open = $e->value === $this->open ? '' : $e->value;
+    }
+}
+
+#[Component]
+final class Accordion extends AbstractAccordion
+{
+    public function render(): Node
+    {
+        return <div class="accordion">{{ children }}</div>;
+    }
+}
+
+#[Component]
+function AccordionItem(string $name, #[Context] AbstractAccordion $accordion): Node
+{
+    return <button id="item-{{ name }}" aria-expanded={{ accordion.open == name ? 'true' : 'false' }} onClick={{ accordion.toggle }} value={{ name }}>{{ name }}</button>;
+}
+
+#[Page('/context-inherited')]
+final class ContextInheritedPage
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Accordion>
+                    <AccordionItem name="one" />
+                    <AccordionItem name="two" />
+                </Accordion>
+            </Document>
+        );
+    }
+}

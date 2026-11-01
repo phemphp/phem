@@ -66,6 +66,15 @@ final class ContextMetadataTest extends TestCase
         self::assertSame(Theme::Light, $provides[1]->valueOf($component));
     }
 
+    public function testProvideOnAParentClassInherits(): void
+    {
+        $metadata = new ContextMetadata();
+
+        self::assertSame([InheritedProvider::class], array_map(static fn ($p): string => $p->type, $metadata->provides(InheritedProvider::class)), 'through a parent of the parent');
+        self::assertSame([ConcreteChildProvider::class], array_map(static fn ($p): string => $p->type, $metadata->provides(ConcreteChildProvider::class)), 'a child of a concrete provider');
+        self::assertSame([], $metadata->provides(PlainProvider::class), 'no #[Provide] on the class or a parent');
+    }
+
     /** @return iterable<string, array{object, string}> */
     public static function invalidComponents(): iterable
     {
@@ -111,4 +120,30 @@ final class ContextMetadataTest extends TestCase
 function themedButton(string $label, #[Context] Theme $theme = Theme::Light): string
 {
     return $label.$theme->value;
+}
+
+#[Provide]
+abstract class AbstractProvider
+{
+}
+
+abstract class MiddleProvider extends AbstractProvider
+{
+}
+
+final class InheritedProvider extends MiddleProvider
+{
+}
+
+#[Provide]
+class ConcreteProvider
+{
+}
+
+final class ConcreteChildProvider extends ConcreteProvider
+{
+}
+
+final class PlainProvider
+{
 }

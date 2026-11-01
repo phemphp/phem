@@ -93,6 +93,17 @@ final class ContextTest extends KernelTestCase
             ->assertSee('Second');
     }
 
+    public function testAComponentProvidesItselfWithProvideOnAParentClass(): void
+    {
+        $this->visit('/context-inherited')
+            ->assertSelectorExists('#item-one[aria-expanded="false"]')
+            ->click('#item-two')
+            ->assertSelectorExists('#item-two[aria-expanded="true"]')
+            ->assertSelectorExists('#item-one[aria-expanded="false"]')
+            ->click('#item-two')
+            ->assertSelectorExists('#item-two[aria-expanded="false"]');
+    }
+
     public function testARequiredContextWithNoProviderThrows(): void
     {
         try {

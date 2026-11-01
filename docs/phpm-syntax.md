@@ -2845,6 +2845,9 @@ final class Chart
 - A consumer can change its provider: `onClick={{ tabs.select }}` runs the handler of the
   provider (see [Events](#6-events)), and a method of the consumer can call a method of the
   provider. The provider renders again.
+- `#[Provide]` on a parent class applies to its children, also when the parent is abstract and
+  has no `#[Component]`. A consumer that declares the parent type works with each child (see
+  [Share the behavior between themes](packages.md#share-the-behavior-between-themes)).
 - A function component with a `#[Context]` parameter is not a template component: it needs the
   render tree for the lookup.
 - In a plain Twig template, `{% component %}` renders in its own tree: no component outside it

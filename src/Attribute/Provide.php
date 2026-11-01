@@ -23,6 +23,9 @@ namespace Phem\Attribute;
  *     #[Component, Provide]
  *     final class Tabs { #[State] public string $active = 'general'; ... }
  *
+ * On a parent class, it applies to the children too (PHP does not inherit the attributes of a
+ * class): an abstract base class has the behavior, and each theme extends it and gives render().
+ *
  * The consumers render again when the context changes, also under components that do not render
  * again: when the provider renders, for the component itself or a mutable object, and when the
  * value is another value, for an enum or a readonly object.

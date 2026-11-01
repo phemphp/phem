@@ -379,7 +379,12 @@ a package `Dialog` renders.
   - **The tools.** The profiler shows the replaced component of each replacement. The LSP goes
     to the replacement from a tag of the original, and its hover shows both.
 
-### [ ] Shared behavior between theme packages — P2
+### [x] Shared behavior between theme packages — P2
+
+Done: see [Share the behavior between themes](docs/packages.md#share-the-behavior-between-themes).
+The text below keeps the design decisions. One detail of the implementation: a class with a
+parent outside the sources (a `.php` file, a library) can get `#[Provide]` from it, so `phemc`
+does not report E015 for its consumers.
 
 Two theme packages have the same behavior: the state, the handlers and the ARIA attributes.
 Most of the inheritance works today: a class gets the props, the state and the methods of a

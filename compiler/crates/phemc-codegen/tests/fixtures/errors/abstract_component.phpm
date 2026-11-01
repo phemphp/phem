@@ -1,0 +1,6 @@
+<?phpm // expect: E045
+use Phem\Attribute\{Component, State};
+#[Component]
+abstract class Tabs {
+    #[State] public string $active = '';
+}

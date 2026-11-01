@@ -67,6 +67,7 @@ pub mod codes {
     pub const INVALID_PROP: &str = "E042";
     pub const INVALID_REST_PROP: &str = "E043";
     pub const INVALID_CONTEXT: &str = "E044";
+    pub const ABSTRACT_COMPONENT: &str = "E045";
     pub const EXPORT_DEFAULT: &str = "E050";
     pub const ROUTE_NOT_COMPONENT: &str = "E052";
     pub const BROADCAST_NOT_COMPONENT: &str = "E053";

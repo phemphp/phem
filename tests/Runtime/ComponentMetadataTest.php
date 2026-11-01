@@ -51,6 +51,14 @@ final class ComponentMetadataTest extends TestCase
         self::assertNull($metadata->replaces('App\\Missing'));
     }
 
+    public function testAnAbstractClassIsNotAComponent(): void
+    {
+        $metadata = new ComponentMetadata();
+
+        self::assertFalse($metadata->isComponent(AbstractComponent::class), 'its children declare #[Component]');
+        self::assertTrue($metadata->isComponent(ConcreteComponent::class));
+    }
+
     public function testPrivatePropIsAnError(): void
     {
         $component = new class {
@@ -119,4 +127,14 @@ final class ComponentMetadataTest extends TestCase
 
         (new ComponentMetadata())->props($component::class);
     }
+}
+
+#[Component]
+abstract class AbstractComponent
+{
+}
+
+#[Component]
+final class ConcreteComponent extends AbstractComponent
+{
 }

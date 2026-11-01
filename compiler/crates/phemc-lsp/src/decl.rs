@@ -227,6 +227,8 @@ pub struct ClassConst {
 pub struct Class {
     /// `class`, `interface`, `trait`, or `enum`.
     pub kind: String,
+    /// An `abstract` class: it is not a component (E045).
+    pub is_abstract: bool,
     pub name: String,
     pub fqn: String,
     pub attrs: Vec<String>,
@@ -523,10 +525,11 @@ impl Parser<'_> {
                 && !prev.eq_ignore_ascii_case("new")
                 && self.peek(1).is_some_and(|n| n.t == Tok::Id && !n.is_word("extends") && !n.is_word("implements"))
             {
+                let is_abstract = self.abstract_before(self.k);
                 self.k += 1;
                 let name = self.next();
                 let list = std::mem::take(&mut attrs);
-                self.class_like(&word, name, list, &tok);
+                self.class_like(&word, is_abstract, name, list, &tok);
                 continue;
             }
 
@@ -723,10 +726,24 @@ impl Parser<'_> {
         params
     }
 
+    /// Whether the modifiers before the keyword at `at` have `abstract`.
+    fn abstract_before(&self, at: usize) -> bool {
+        let mut j = at;
+        while j > 0 && ["abstract", "final", "readonly"].iter().any(|m| self.tokens[j - 1].is_word(m)) {
+            j -= 1;
+            if self.tokens[j].is_word("abstract") {
+                return true;
+            }
+        }
+
+        false
+    }
+
     /// Reads a class, an interface, a trait, or an enum.
-    fn class_like(&mut self, kind: &str, name: Token, attrs: Vec<Attribute>, keyword: &Token) {
+    fn class_like(&mut self, kind: &str, is_abstract: bool, name: Token, attrs: Vec<Attribute>, keyword: &Token) {
         let mut cls = Class {
             kind: kind.to_string(),
+            is_abstract,
             fqn: join_name(&self.namespace, &name.v),
             name: name.v.clone(),
             attrs: attrs.iter().map(|a| a.name.clone()).collect(),
@@ -1196,7 +1213,8 @@ fn components(parsed: &Parsed) -> Vec<Component> {
     }
 
     for c in &parsed.classes {
-        if c.kind != "class" || !(has_attr(&c.attrs, "Component") || has_attr(&c.attrs, "Page")) {
+        // An abstract class is not a component (E045).
+        if c.kind != "class" || c.is_abstract || !(has_attr(&c.attrs, "Component") || has_attr(&c.attrs, "Page")) {
             continue;
         }
 
@@ -1405,6 +1423,14 @@ mod tests {
         assert!(find("Fn").unwrap().page, "a function page");
         assert!(find("Bare").unwrap().page, "#[Page] needs no #[Component]");
         assert!(!find("Routed").unwrap().page, "the Symfony #[Route] cannot mark a function");
+    }
+
+    #[test]
+    fn an_abstract_class_is_not_a_component() {
+        let src = "<?phpm\nnamespace App;\n\n#[Component]\nabstract class Base {}\n\n#[Component]\nreadonly abstract class Other {}\n\nconst ABSTRACT = 1;\n\n#[Component]\nfinal class Card extends Base {}\n";
+        let parsed = parse(src);
+        let names: Vec<&str> = parsed.components.iter().map(|c| c.name.as_str()).collect();
+        assert_eq!(names, ["Card"]);
     }
 
     #[test]
