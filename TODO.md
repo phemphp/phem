@@ -24,7 +24,7 @@ Talk about each item before its implementation. The open questions are a start, 
 - [ ] **Live validation** (section 2). The touched fields and the errors go in the signed
       state. Does validation run in the Doctrine transaction? How does a submit handler stop when
       the state has errors?
-- [ ] **Component libraries** (section 4). Each P1 and P2 item has its decisions, with no open
+- [x] **Component libraries** (section 4). Each item has its decisions, with no open
       question. The packages compile with the app, in one build, the classes merge through a
       `ClassList` value, and the app replaces a package component with
       `#[Component(replaces: ...)]`.
@@ -109,7 +109,7 @@ The goal: a Composer package of components for each theme (for example `acme/ui-
 `acme/ui-shadcn`). Each component has a default style and a default behavior. The app installs
 the package, and it customizes a component where it uses it. Rest props, `Closure` handler
 props, `#[Context]`, the inheritance of class components, and the Symfony UX format of the
-assets work today. The items below are missing.
+assets work today. The items below were missing, and they are all done now.
 
 ### [x] Components in Composer packages — P1
 
@@ -472,7 +472,11 @@ convert a string to a backed enum with `::from()` (`StateAccessor`).
     sources (the app or a package root). An enum in another place is checked only at runtime.
   - The same for a template component, in `PropBinder::templateContext()`.
 
-### [ ] Variants of a component — P3
+### [x] Variants of a component — P3
+
+Done: see [Variants of a component](docs/packages.md#variants-of-a-component). The text below
+keeps the design decisions. The `acme/kit` fixture package (`tests/Fixtures/Package`) has the
+pattern, and `PackagePatternsTest` checks it.
 
 - **Best peer:** cva, Symfony UX Toolkit `html_cva`.
 - **Decisions:** no core feature. Document the pattern, on top of the backed enum props and
@@ -511,7 +515,11 @@ convert a string to a backed enum with `::from()` (`StateAccessor`).
   - Look at a `cva()` helper again when the packages show repeated code (the compound
     variants, for example).
 
-### [ ] Controlled and uncontrolled state — P3
+### [x] Controlled and uncontrolled state — P3
+
+Done: see [Controlled and uncontrolled state](docs/packages.md#controlled-and-uncontrolled-state).
+The text below keeps the design decisions. `PackagePatternsTest` checks the two modes with the
+`Tabs` of the `acme/kit` fixture package.
 
 A package `Tabs` keeps the active tab in its `#[State]`. Some apps give only the first tab, and
 other apps keep the active tab in their own state.
@@ -528,7 +536,10 @@ other apps keep the active tab in their own state.
   - `render()` uses `value ?? active`, and the handler changes `active` only when `value` is
     `null`.
 
-### [ ] The CSS of a package — P3
+### [x] The CSS of a package — P3
+
+Done: see [The CSS of a package](docs/packages.md#the-css-of-a-package). The text below keeps the
+design decisions.
 
 - **Decisions:** no core change. Document:
   - **The classes.** Tailwind v4 does not scan the files in `.gitignore`, and `vendor/` is in

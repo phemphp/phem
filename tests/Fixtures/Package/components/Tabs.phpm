@@ -1,0 +1,52 @@
+<?phpm
+
+namespace Acme\Kit;
+
+use Closure;
+use Phem\Attribute\Component;
+use Phem\Attribute\Prop;
+use Phem\Attribute\State;
+use Phem\Event;
+use Phem\Node;
+
+// Controlled with `value` and `onChange`: the parent keeps the active tab. Uncontrolled with
+// `defaultValue`: the Tabs keep it.
+#[Component]
+class Tabs
+{
+    /** @var list<string> */
+    #[Prop] public array $names = [];
+    #[Prop] public ?string $value = null;
+    #[Prop] public ?string $defaultValue = null;
+    #[Prop] public ?Closure $onChange = null;
+    #[State] public string $active = '';
+
+    public function mount(): void
+    {
+        $this->active = $this->defaultValue ?? $this->names[0] ?? '';
+    }
+
+    public function select(Event $e): void
+    {
+        if (null === $this->value) {
+            $this->active = $e->value;
+        }
+
+        if (null !== $this->onChange) {
+            ($this->onChange)($e->value);
+        }
+    }
+
+    public function render(): Node
+    {
+        $current = $this->value ?? $this->active;
+
+        return (
+            <div role="tablist">
+                {% for name in names %}
+                    <button role="tab" aria-selected={{ name == current }} onClick={{ select }} value={{ name }}>{{ name }}</button>
+                {% endfor %}
+            </div>
+        );
+    }
+}

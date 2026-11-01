@@ -60,6 +60,11 @@ and renders `<Dynamic tag={{ tag }}>`. See [Dynamic element](phpm-syntax.md#dyna
 The app can replace a component of a package in all its tags, also in the other components of
 the package. See [Replace a component of a package](#replace-a-component-of-a-package).
 
+For the variants, the controlled state and the CSS of a package, see
+[Variants of a component](#variants-of-a-component),
+[Controlled and uncontrolled state](#controlled-and-uncontrolled-state) and
+[The CSS of a package](#the-css-of-a-package).
+
 ## How the app compiles a package
 
 `phemc build`, `check` and `watch` read `installed.json` in the Composer dir of the vendor dir
@@ -333,6 +338,212 @@ themes, and it can `provide` a virtual package for the packages that need a them
 
 `composer require acme/ui-shadcn` then removes `acme/ui-tailwind`. When two themes are
 installed, `phemc` reports the duplicate components (E014).
+
+## Variants of a component
+
+A variant (`primary`, `outline`) needs no special feature. Use a backed enum prop (see
+[Enum props](phpm-syntax.md#enum-props)), and give each case its classes in a method of the
+enum. `classes()` merges them with the base classes and with the classes of the caller:
+
+```php
+// vendor/acme/ui/components/Button.phpm
+namespace Acme\Ui;
+
+enum Variant: string
+{
+    case Primary = 'primary';
+    case Outline = 'outline';
+
+    public function classes(): string
+    {
+        return match ($this) {
+            self::Primary => 'bg-blue-500 text-white',
+            self::Outline => 'border border-blue-500 text-blue-500',
+        };
+    }
+}
+
+#[Component]
+function Button(string $label, Variant $variant = Variant::Primary, mixed ...$rest): Node
+{
+    return <button className={{ classes('px-4 py-2', variant.classes()) }} {{ ...rest }}>{{ label }}</button>;
+}
+```
+
+```php
+<Button label="Save" variant="outline" className="w-full" />
+```
+
+The result:
+
+```html
+<button class="px-4 py-2 border border-blue-500 text-blue-500 w-full">Save</button>
+```
+
+- Write the full class names in the source (`'bg-blue-500'`, not `'bg-'.$color`). Tailwind
+  reads the source files, and it does not find a class that the code makes at runtime.
+- `phemc` checks a literal value of the prop: `variant="big"` is E018.
+- With the Tailwind merger, a class of the caller replaces a class of the variant in the same
+  group: `<Button variant="outline" className="border-red-500" />` gives
+  `px-4 py-2 border text-blue-500 border-red-500`.
+
+## Controlled and uncontrolled state
+
+A component of a package often keeps a value in its `#[State]`, for example the active tab of
+`Tabs`. Some apps give only the first value. Other apps keep the value in their own state. As
+in React, give the component two props:
+
+- `defaultValue`: the component copies it to its `#[State]` in `mount()`, and it keeps the
+  value (uncontrolled).
+- `value` with an `onChange` closure: the parent keeps the value (controlled). The handler of
+  the component calls `onChange`, and it does not change its state.
+
+```php
+// vendor/acme/ui/components/Tabs.phpm
+namespace Acme\Ui;
+
+#[Component]
+class Tabs
+{
+    /** @var list<string> */
+    #[Prop] public array $names = [];
+    #[Prop] public ?string $value = null;
+    #[Prop] public ?string $defaultValue = null;
+    #[Prop] public ?Closure $onChange = null;
+    #[State] public string $active = '';
+
+    public function mount(): void
+    {
+        $this->active = $this->defaultValue ?? $this->names[0] ?? '';
+    }
+
+    public function select(Event $e): void
+    {
+        if (null === $this->value) {
+            $this->active = $e->value;
+        }
+
+        if (null !== $this->onChange) {
+            ($this->onChange)($e->value);
+        }
+    }
+
+    public function render(): Node
+    {
+        $current = $this->value ?? $this->active;
+
+        return (
+            <div role="tablist">
+                {% for name in names %}
+                    <button role="tab" aria-selected={{ name == current }} onClick={{ select }} value={{ name }}>{{ name }}</button>
+                {% endfor %}
+            </div>
+        );
+    }
+}
+```
+
+```php
+#[Page('/settings')]
+final class Settings
+{
+    #[State] public string $tab = 'general';
+
+    public function show(string $name): void
+    {
+        $this->tab = $name;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Tabs names={{ ['general', 'security'] }} defaultValue="security" />
+                <Tabs names={{ ['general', 'security'] }} value={{ tab }} onChange={{ show }} />
+                <p>{{ tab }}</p>
+            </Document>
+        );
+    }
+}
+```
+
+A click on "security" in the second `Tabs` runs `select()`, which calls `show()`. The page
+renders again with its new state, and the second `Tabs` gets the new `value` (the result
+has no `data-phem-*` attributes here):
+
+```html
+<div role="tablist">
+    <button role="tab" aria-selected="false" value="general">general</button>
+    <button role="tab" aria-selected="true" value="security">security</button>
+</div>
+<p>security</p>
+```
+
+- This needs no core feature. After an event, each component whose state changed renders
+  again, and the parent is on the path to the handler. So the parent renders again when
+  `onChange` changes its state.
+- `render()` shows `value ?? active`. The handler changes `active` only when `value` is `null`.
+- A controlled component with no `onChange` does not change: as in React, the value is read-only.
+
+## The CSS of a package
+
+Phem has no CSS feature for the packages. Use the Tailwind build of the app, and the Symfony UX
+format for the Stimulus controllers.
+
+**The classes.** Tailwind CSS v4 does not read the files in `.gitignore`, and `vendor/` is in
+it. Add the `.phpm` root of each package to the input CSS of the app. The `.phpm` sources have
+the classes, so Tailwind does not need the compiled templates in `var/phem`:
+
+```css
+/* assets/styles/app.css */
+@import "tailwindcss";
+
+@source "../../vendor/acme/ui/components";
+```
+
+**The theme tokens.** A theme (for example shadcn) gives its CSS variables and its `@theme`
+block in a CSS file of the package. The input CSS of the app imports it, so the Tailwind build
+reads it:
+
+```css
+/* assets/styles/app.css */
+@import "tailwindcss";
+@import "../../vendor/acme/ui/assets/theme.css";
+
+@source "../../vendor/acme/ui/components";
+```
+
+The Symfony UX `autoimport` of a CSS file (as `@phem/phem` does for `phem.css`) does not send
+the file through the Tailwind build. Use it only for plain CSS.
+
+**The prefix.** With a Tailwind prefix (`@import "tailwindcss" prefix(tw);`), give the same
+prefix to the Tailwind merger:
+
+```yaml
+# config/packages/phem.yaml
+phem:
+    class_merger:
+        tailwind: { prefix: tw }
+```
+
+**The Stimulus controllers.** A package gives its controllers in the Symfony UX format, as
+`phem/phem`: the `symfony-ux` keyword in its `composer.json`, and an `assets/package.json` with
+the `symfony.controllers` key. Flex then adds them to `assets/controllers.json`:
+
+```json
+{
+    "name": "@acme/ui",
+    "symfony": {
+        "controllers": {
+            "combobox": {
+                "main": "dist/combobox_controller.js",
+                "fetch": "lazy",
+                "enabled": true
+            }
+        }
+    }
+}
+```
 
 ## Test a package
 

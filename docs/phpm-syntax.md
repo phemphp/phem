@@ -2769,6 +2769,7 @@ function Button(Variant $variant = Variant::Primary, ?Html $children = null): No
   does not check an expression (`variant={{ v }}`), an enum in a `.php` file, or an enum with a
   case whose value is a constant: the runtime checks them. Two `.phpm` files that declare the
   same enum are E014.
+- For the classes of each case, see [Variants of a component](packages.md#variants-of-a-component).
 
 ### Context
 
