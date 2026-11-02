@@ -90,7 +90,10 @@ blocker, so build it only when a real form shows that the manual code is too muc
 
 ## 3. Installation
 
-### [ ] The Flex recipe in symfony/recipes-contrib — P1
+### [ ] The Flex recipe in symfony/recipes-contrib — P3
+
+Low priority for now. Until the recipe is in recipes-contrib, the app enables the bundle and
+copies the files of the recipe by hand (see docs/getting-started.md).
 
 The getting-started guide and the README show 3 commands: `symfony new my-app --webapp`,
 `composer require phem/phem`, and `symfony serve`. This flow needs the recipe of `phem/phem` in
