@@ -55,6 +55,8 @@ final class TestKernel extends PhemTestKernel
             'messenger' => ['enabled' => true],
             // For the #[RateLimit] page of access.phpm. The storage is in memory, so each test starts with no hits.
             'rate_limiter' => ['phem_events' => ['policy' => 'fixed_window', 'limit' => 2, 'interval' => '1 minute', 'lock_factory' => null, 'storage_service' => InMemoryStorage::class]],
+            // For the live validation of validation.phpm. FrameworkBundle does not enable it when symfony/validator is a dev package of the root.
+            'validation' => ['enabled' => true],
         ]);
 
         if ('nostream' === $this->environment) {

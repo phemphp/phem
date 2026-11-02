@@ -42,9 +42,14 @@ final class BoundValues
     {
     }
 
-    /** @param array<array-key, mixed> $bound "<fiber>.<property>" => the value from the browser */
-    public function apply(Tree $tree, array $bound): void
+    /**
+     * @param array<array-key, mixed> $bound "<fiber>.<property>" => the value from the browser
+     *
+     * @return array<string, array<string, bool>> the fields of each fiber id (a property, or a path: `address.city`) => whether the value fit (see Phem\State\StateValidator)
+     */
+    public function apply(Tree $tree, array $bound): array
     {
+        $applied = [];
         foreach ($bound as $key => $value) {
             $entry = \is_string($key) ? $tree->bound($key) : null;
             if (null === $entry) {
@@ -63,14 +68,23 @@ final class BoundValues
                 }
 
                 if ([] === $path) {
-                    if (self::convert($property->getType(), $value, $converted)) {
+                    $fits = self::convert($property->getType(), $value, $converted);
+                    if ($fits) {
                         $property->setValue($instance, $converted);
                     }
-                } elseif ($property->isInitialized($instance) && self::set($property->getValue($instance), $path, $value, $changed)) {
-                    $property->setValue($instance, $changed);
+                } else {
+                    $fits = false;
+                    if ($property->isInitialized($instance) && self::set($property->getValue($instance), $path, $value, $changed)) {
+                        $property->setValue($instance, $changed);
+                        $fits = true;
+                    }
                 }
+
+                $applied[$id][implode('.', [$name, ...$path])] = $fits;
             }
         }
+
+        return $applied;
     }
 
     /**

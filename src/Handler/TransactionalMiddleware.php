@@ -25,12 +25,13 @@ final class TransactionalMiddleware implements HandlerMiddleware
 {
     public function __construct(
         private readonly ?TransactionRunner $transactions = null,
+        private readonly HandlerAttributes $attributes = new HandlerAttributes(),
     ) {
     }
 
     public function handle(\Closure $handler, Event $event, \Closure $next): mixed
     {
-        if (!self::isTransactional($handler)) {
+        if (!$this->isTransactional($handler)) {
             return $next();
         }
 
@@ -44,21 +45,17 @@ final class TransactionalMiddleware implements HandlerMiddleware
      * a closure in `render()`. A handler that a parent passes as a prop runs with the parent.
      * The attribute is on the class of the component, or on the method of the handler.
      */
-    private static function isTransactional(\Closure $handler): bool
+    private function isTransactional(\Closure $handler): bool
     {
-        $function = new \ReflectionFunction($handler);
-        $component = $function->getClosureThis();
+        $component = new \ReflectionFunction($handler)->getClosureThis();
         if (null === $component) {
             return false;
         }
 
-        $class = new \ReflectionObject($component);
-        if ([] !== $class->getAttributes(Transactional::class)) {
+        if ([] !== new \ReflectionObject($component)->getAttributes(Transactional::class)) {
             return true;
         }
 
-        // A first-class callable of a method has the name of the method; a closure does not.
-        return $class->hasMethod($function->getName())
-            && [] !== $class->getMethod($function->getName())->getAttributes(Transactional::class);
+        return [] !== $this->attributes->of($handler, Transactional::class);
     }
 }

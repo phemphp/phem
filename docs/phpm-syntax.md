@@ -968,106 +968,120 @@ leaves.
 
 #### Live validation
 
-To show the errors of a field before the submit, validate the bound properties in a handler.
-Put the `#[Assert]` constraints of Symfony on the `#[State]` properties, and keep two more values
-in the state: the fields that the user touched, and the errors. A field shows its error only
-after the user touched it. A submit touches all the fields.
+To show the errors of a field before the submit, put the `#[Assert]` constraints of Symfony on the
+`#[State]` properties, and add a `#[State]` property of the type `Phem\Validation`. This property
+turns on the live validation. Phem sets it: the component does not write it.
 
 ```php
-use Phem\Attribute\{Component, State};
+use Phem\Attribute\{Component, State, Validated};
 use Phem\Node;
+use Phem\Validation;
 use Symfony\Component\Validator\Constraints as Assert;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Component]
 final class SignupForm
 {
-    #[State]
-    #[Assert\NotBlank]
-    #[Assert\Email]
+    #[State, Assert\NotBlank, Assert\Email]
     public string $email = '';
 
-    #[State]
-    #[Assert\Length(min: 8)]
+    #[State, Assert\Length(min: 8)]
     public string $password = '';
 
-    /** @var list<string> the fields that the user changed */
-    #[State] public array $touched = [];
+    #[State, Assert\Collection(fields: ['city' => new Assert\NotBlank()], allowExtraFields: true)]
+    public array $address = ['city' => ''];
 
-    /** @var array<string, string> the first error of each touched field */
-    #[State] public array $errors = [];
+    #[State] public Validation $validation;
 
-    public function __construct(
-        private readonly ValidatorInterface $validator,
-        private readonly Accounts $accounts,
-    ) {
-    }
-
-    public function touch(string $field): void
+    public function __construct(private readonly Accounts $accounts)
     {
-        if (!\in_array($field, $this->touched, true)) {
-            $this->touched[] = $field;
-        }
-
-        $this->validate();
     }
 
+    #[Validated]
     public function save(): void
     {
-        $this->touched = ['email', 'password'];
-        $this->validate();
-
-        if ([] !== $this->errors) {
-            return;
-        }
-
-        $this->accounts->open($this->email, $this->password);
+        $this->accounts->open($this->email, $this->password, $this->address);
+        $this->validation = new Validation();
     }
 
     public function render(): Node
     {
-        $touchEmail = fn () => $this->touch('email');
-        $touchPassword = fn () => $this->touch('password');
-
         return (
             <form onSubmit={{ save }}>
-                <input type="email" phem:bind={{ email }} onChange={{ touchEmail }} phem:debounce={{ 'blur' }} />
-                {% if errors.email is defined %}<p className="error">{{ errors.email }}</p>{% endif %}
-                <input type="password" phem:bind={{ password }} onChange={{ touchPassword }} phem:debounce={{ 'blur' }} />
-                {% if errors.password is defined %}<p className="error">{{ errors.password }}</p>{% endif %}
+                <input type="email" phem:bind={{ email }} phem:live phem:debounce={{ 'blur' }} />
+                {% if validation.error('email') %}<p className="error">{{ validation.error('email') }}</p>{% endif %}
+                <input type="password" phem:bind={{ password }} phem:live phem:debounce={{ 'blur' }} />
+                {% if validation.error('password') %}<p className="error">{{ validation.error('password') }}</p>{% endif %}
+                <input phem:bind={{ address.city }} phem:live phem:debounce={{ 'blur' }} />
+                {% if validation.error('address.city') %}<p className="error">{{ validation.error('address.city') }}</p>{% endif %}
                 <button type="submit">Sign up</button>
             </form>
         );
     }
-
-    private function validate(): void
-    {
-        $this->errors = [];
-
-        foreach ($this->validator->validate($this) as $violation) {
-            $field = $violation->getPropertyPath();
-            if (\in_array($field, $this->touched, true)) {
-                $this->errors[$field] ??= (string) $violation->getMessage();
-            }
-        }
-    }
 }
 ```
 
-- The field sets its property first, then it runs its `onChange` handler (see
-  [Bound fields](#bound-fields)). Thus `touch()` validates the new value.
-- `phem:debounce={{ 'blur' }}` sends the event when the user leaves the field. Remove it to show
-  the errors while the user types (after the debounce of 150 ms).
-- The handler validates all the component, not only the changed field. Thus a constraint on two
-  fields (for example a `#[Assert\Callback]` that compares two passwords) updates the error of
-  the other field too.
-- The errors are in the state, because `render()` must not call the validator (see
-  [Keep `render()` pure](#keep-render-pure)).
-- A field that the user only focuses, with no change, is not touched. To touch it on blur, use
-  `onBlur={{ touchEmail }}` in place of `onChange`.
-- Install `symfony/validator`. A Symfony form validates only on its submit (see
-  [Handler arguments](#handler-arguments)). Use bound properties for the fields that need live
-  validation.
+The user types `ada` in the email field and leaves it. The form renders the error of this field
+only, because the user did not touch the other fields:
+
+```html
+<form data-phem-on-submit="phema840f157349f.b1aa4931253e" data-phem-c="phema840f157349f">
+    <input type="email" data-phem-live="" data-phem-bind="phema840f157349f.email" value="ada">
+    <p class="error">This value is not a valid email address.</p>
+    <input type="password" data-phem-live="" data-phem-bind="phema840f157349f.password" value="">
+    <input data-phem-live="" data-phem-bind="phema840f157349f.address[&quot;city&quot;]" value="">
+    <button type="submit">Sign up</button>
+</form>
+```
+
+The state keeps the touched fields and their errors:
+
+```json
+"validation":{"touched":["email"],"errors":{"email":"This value is not a valid email address."}}
+```
+
+- **A change:** the event sets the bound values that the user changed, and Phem touches these
+  fields. After the handlers, Phem validates the components whose state changed: the errors are
+  for the values after the handlers (for example a handler that clears a field). A `phem:live`
+  field needs no handler. `phem:debounce={{ 'blur' }}` sends the event when the user leaves the
+  field. Remove it to show the errors while the user types.
+- **A value that does not fit:** a bound value that does not fit the type of the property (`abc`
+  for an `int`) does not go into the property. The field is touched, and it gets the error "This
+  value is not valid.". The next validation checks the value of the property again.
+- **All the component:** Phem validates all the component, not only the changed field. Thus a
+  constraint on two fields (for example a `#[Assert\Callback]` that compares two passwords)
+  updates the error of the other field too, when the user touched it.
+- **A submit:** `#[Validated]` on a handler method, or on a closure of `render()`
+  (`#[Validated] fn () => ...`), touches all the fields and validates. When there are errors, the
+  handler does not run, and the component renders with all its errors. The validation runs before
+  the transaction of a `#[Transactional]` handler: a form with errors opens no transaction. The
+  other handlers run with no validation. A validation runs only when its errors are not for the
+  current values: a submit with errors validates one time.
+- **Groups:** `#[Validated(groups: ['draft'])]` validates the groups of Symfony. The next changes
+  validate the same groups, until a new `Validation`. Without groups, the default group validates
+  (or the group sequence of the class).
+- **Paths:** the field of a path is the path of its `phem:bind`: `address.city`, `rows.0.name`
+  (Symfony gives `address[city]`). A touched property touches its paths, and a touched path
+  touches its property: the error of a constraint on all of `tags` shows when the user changed
+  `tags.0`. The error of a constraint on the class, with no path, is `validation.error('')`.
+- **Touch on blur:** a field that the user leaves with no change is not touched. To touch it, set
+  a touched Validation in an `onBlur` handler:
+
+  ```php
+  $touchEmail = fn () => $this->validation = $this->validation->touch('email');
+  // <input phem:bind={{ email }} phem:live onBlur={{ touchEmail }} />
+  ```
+- **The `Validation` value:** `error($field)` gives the first error of a touched field, or null.
+  `errors()` gives all of them, `touched($field)` tells if the user touched a field, and
+  `valid()` tells if there is no error. The value is immutable: `touch()` gives a new one. A child
+  component that gets it as a prop renders again when it changes. To remove the touched fields
+  and the errors (for example after a save that clears the form), set
+  `$this->validation = new Validation();`. A component has at most one `Validation` property.
+
+Install `symfony/validator`. `phemc` reports E058 for `#[Validated]` in a component with no
+`Validation` property (also a `#[Validated]` method of a trait or a parent class), on a function,
+and for a second `Validation` property. A Symfony form validates only on its submit (see
+[Handler arguments](#handler-arguments)). Use bound properties for the fields that need live
+validation.
 
 
 ### Rate limits
@@ -1183,6 +1197,7 @@ middleware has these priorities:
 | 50 | the Symfony profiler (debug only) |
 | 10 | `RedirectTo` to a redirect response |
 | 0 | the pushes of `Phem\Stream\Streams` (see [Real-time updates](#real-time-updates)) |
+| -50 | `#[Validated]` (see [Live validation](#live-validation)) |
 | -100 | `#[Transactional]` (see [Transactions](#transactions)) |
 | -200 | `#[Async]` (see [Slow work after the response](#slow-work-after-the-response)) |
 

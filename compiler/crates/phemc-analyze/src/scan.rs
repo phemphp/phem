@@ -2,7 +2,7 @@
 //! function that contains each markup literal. It is not a PHP parser; it reads only the
 //! declarations that the compiler needs.
 
-use crate::{Kind, ATTR_ASYNC, ATTR_BROADCAST, ATTR_BROADCAST_KEY, ATTR_COMPONENT, ATTR_CONTEXT, ATTR_PAGE, ATTR_PATH, ATTR_PROP, ATTR_PROVIDE, ATTR_ROUTE, ATTR_STATE};
+use crate::{Kind, ATTR_ASYNC, ATTR_BROADCAST, ATTR_BROADCAST_KEY, ATTR_COMPONENT, ATTR_CONTEXT, ATTR_PAGE, ATTR_PATH, ATTR_PROP, ATTR_PROVIDE, ATTR_ROUTE, ATTR_STATE, ATTR_VALIDATED};
 use phemc_syntax::php::{Lexed, TokKind, Token};
 use phemc_syntax::Span;
 use std::collections::HashMap;
@@ -134,6 +134,8 @@ pub struct Func {
     pub async_attr: Option<Span>,
     /// The span of a `#[Broadcast]` attribute on the function or the method.
     pub broadcast_attr: Option<Span>,
+    /// The span of a `#[Validated]` attribute on the method.
+    pub validated_attr: Option<Span>,
     /// `#[Component(replaces: ...)]` on a function component.
     pub replaces: Option<Replaces>,
 }
@@ -221,6 +223,9 @@ pub struct Class {
     /// A parent class or a trait in the sources has a method with `#[Broadcast]` (see
     /// `resolve_inheritance()`).
     pub inherited_broadcast: bool,
+    /// The methods with `#[Validated]` of the parent classes and the traits that the class does
+    /// not override.
+    pub inherited_validated: Vec<String>,
     /// `#[Component(replaces: ...)]` on the class.
     pub replaces: Option<Replaces>,
 }
@@ -375,6 +380,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                         }
 
                         f.async_attr = async_attr(&info, &attrs);
+                        f.validated_attr = validated_attr(&info, &attrs);
                         f.replaces = replaces.take();
                         info.functions.push(f);
                         i = end + 1;
@@ -820,6 +826,7 @@ fn parse_function(toks: &Toks, at: usize, ns: &str) -> (Func, usize) {
         return_type,
         async_attr: None,
         broadcast_attr: None,
+        validated_attr: None,
         replaces: None,
     };
 
@@ -921,6 +928,11 @@ fn async_attr(info: &FileInfo, attrs: &[(String, Span)]) -> Option<Span> {
     attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_ASYNC).map(|(_, s)| *s)
 }
 
+/// The span of a `#[Validated]` of a function or a method.
+fn validated_attr(info: &FileInfo, attrs: &[(String, Span)]) -> Option<Span> {
+    attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_VALIDATED).map(|(_, s)| *s)
+}
+
 /// Records `#[Page]` / `#[Route]` / `#[Component]` / `#[State]` / `#[Prop]` / `#[Path]` that do not resolve to the expected
 /// attributes (usually a missing `use ...;`).
 fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
@@ -938,6 +950,7 @@ fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
             "Broadcast" => ATTR_BROADCAST,
             "BroadcastKey" => ATTR_BROADCAST_KEY,
             "Async" => ATTR_ASYNC,
+            "Validated" => ATTR_VALIDATED,
             _ => continue,
         };
 
@@ -1011,6 +1024,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
         has_broadcast,
         is_page,
         inherited_broadcast: false,
+        inherited_validated: Vec::new(),
         replaces: None,
     };
 
@@ -1092,7 +1106,8 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
             check_attrs(info, &member_attrs);
             let async_attr = async_attr(info, &member_attrs);
             let broadcast_attr = broadcast_attr(info, &member_attrs);
-            class.methods.push(Func { fqn: format!("{}::{}", class.fqn, m.name), is_private: mods.iter().any(|x| x == "private"), async_attr, broadcast_attr, ..m });
+            let validated_attr = validated_attr(info, &member_attrs);
+            class.methods.push(Func { fqn: format!("{}::{}", class.fqn, m.name), is_private: mods.iter().any(|x| x == "private"), async_attr, broadcast_attr, validated_attr, ..m });
 
             member_attrs.clear();
             member_rest.clear();

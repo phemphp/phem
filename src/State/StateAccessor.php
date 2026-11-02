@@ -26,7 +26,7 @@ final class StateAccessor
     }
 
     /**
-     * The #[State] properties of a class component.
+     * The #[State] properties of a class component. A StateValue is its JSON value.
      *
      * @return array<string, mixed>
      */
@@ -35,7 +35,8 @@ final class StateAccessor
         $out = [];
         foreach ($this->metadata->stateProperties($component::class) as $p) {
             if ($p->isInitialized($component)) {
-                $out[$p->getName()] = $p->getValue($component);
+                $value = $p->getValue($component);
+                $out[$p->getName()] = $value instanceof StateValue ? $value->toState() : $value;
             }
         }
 
@@ -43,7 +44,22 @@ final class StateAccessor
     }
 
     /**
-     * A backed enum is its value in the JSON of the state: it becomes a case again.
+     * Sets the initial StateValue on each uninitialized or null StateValue property of a new
+     * component (for example a Phem\Validation): the component does not write it. The state of
+     * the browser replaces it (see restore()).
+     */
+    public function initialize(object $component): void
+    {
+        foreach ($this->metadata->stateValues($component::class) as [$property, $class]) {
+            if (!$property->isInitialized($component) || null === $property->getValue($component)) {
+                $property->setValue($component, $class::fromState(null));
+            }
+        }
+    }
+
+    /**
+     * A backed enum is its value in the JSON of the state: it becomes a case again. A
+     * StateValue becomes an object again.
      *
      * @param array<string, mixed> $state the state that the browser sent back
      */
@@ -58,6 +74,10 @@ final class StateAccessor
 
     private static function fromJson(?\ReflectionType $type, mixed $value): mixed
     {
+        if ($type instanceof \ReflectionNamedType && is_subclass_of($type->getName(), StateValue::class)) {
+            return $type->getName()::fromState($value);
+        }
+
         if (!$type instanceof \ReflectionNamedType || (!\is_int($value) && !\is_string($value)) || !is_subclass_of($type->getName(), \BackedEnum::class)) {
             return $value;
         }

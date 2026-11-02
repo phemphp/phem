@@ -37,6 +37,10 @@ pub const ATTR_BROADCAST_KEY: &str = "Phem\\Attribute\\BroadcastKey";
 pub const ATTR_ASYNC: &str = "Phem\\Attribute\\Async";
 /// The return type of an `#[Async]` handler: its work in a closure.
 pub const PROMISE: &str = "Phem\\Async\\Promise";
+/// A handler method that validates its component first (see `Phem\Attribute\Validated`).
+pub const ATTR_VALIDATED: &str = "Phem\\Attribute\\Validated";
+/// The type of the `#[State]` property that turns on the live validation of a class component.
+pub const VALIDATION: &str = "Phem\\Validation";
 /// The Symfony route attribute: it exposes a class component as a page too. It cannot mark a
 /// function.
 pub const ATTR_ROUTE: &str = "Symfony\\Component\\Routing\\Attribute\\Route";
@@ -337,6 +341,9 @@ pub fn resolve_inheritance<'a>(files: impl IntoIterator<Item = &'a mut FileInfo>
 
                     if !c.has_method(&m.name) {
                         c.inherited_methods.push(m.name.clone());
+                        if m.validated_attr.is_some() && !c.inherited_validated.contains(&m.name) {
+                            c.inherited_validated.push(m.name.clone());
+                        }
                     }
                 }
 
@@ -431,6 +438,58 @@ fn check_broadcast(file: &FileInfo) -> Vec<Diagnostic> {
     diags
 }
 
+/// `#[Validated]` marks a handler of a class component with one `#[State]` property of the type
+/// `Phem\Validation`, not static: the handler shows the errors in it. A parent outside the
+/// sources can have the property. A trait or an abstract parent is checked in the component that
+/// uses it.
+fn check_validated(file: &FileInfo) -> Vec<Diagnostic> {
+    let mut diags = Vec::new();
+    for f in &file.functions {
+        if let Some(span) = f.validated_attr {
+            diags.push(
+                Diagnostic::error(codes::INVALID_VALIDATED, format!("`#[Validated]` must mark a handler of a class component, and `{}` is a function", f.fqn), span)
+                    .with_help("a function component has no state to validate: move the handler into a class component"),
+            );
+        }
+    }
+
+    for c in file.classes.iter().filter(|c| !c.is_trait && !c.open && (c.is_component || c.is_page)) {
+        let is_validation = |p: &&Prop| p.is_state && !p.is_static && p.class_ty.as_deref() == Some(VALIDATION);
+        let validations: Vec<_> = c.props.iter().chain(&c.inherited_props).filter(is_validation).collect();
+        if validations.len() > 1 {
+            // On a property of this class when it has one: the span is in this file.
+            let span = c.props.iter().find(is_validation).map_or(c.name_span, |p| p.span);
+            let names: Vec<_> = validations.iter().map(|p| format!("${}", p.name)).collect();
+            diags.push(
+                Diagnostic::error(codes::INVALID_VALIDATED, format!("`{}` has more than one `Validation` property: `{}`", c.fqn, names.join("`, `")), span)
+                    .with_help("keep one `#[State] public Validation $validation;`: it validates all the `#[State]` properties of the component"),
+            );
+        }
+
+        if !validations.is_empty() {
+            continue;
+        }
+
+        for m in &c.methods {
+            let Some(span) = m.validated_attr else { continue };
+
+            diags.push(
+                Diagnostic::error(codes::INVALID_VALIDATED, format!("`#[Validated]` on `{}()` needs a `#[State]` property of the type `Validation`, and `{}` has none", m.fqn, c.fqn), span)
+                    .with_help("add `#[State] public Validation $validation;`, with `use Phem\\Validation;`: it keeps the errors that the handler shows"),
+            );
+        }
+
+        for name in &c.inherited_validated {
+            diags.push(
+                Diagnostic::error(codes::INVALID_VALIDATED, format!("`{}` inherits the `#[Validated]` handler `{name}()`, and it has no `#[State]` property of the type `Validation`", c.fqn), c.name_span)
+                    .with_help("add `#[State] public Validation $validation;`, with `use Phem\\Validation;`: it keeps the errors that the handler shows"),
+            );
+        }
+    }
+
+    diags
+}
+
 /// File-level checks: removed hooks, a `render()` that is not pure, class component rules, and
 /// `#[Page]` / `#[Route]`. Run it after `resolve_inheritance()`.
 pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
@@ -466,6 +525,7 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
 
     diags.extend(check_async(file));
     diags.extend(check_broadcast(file));
+    diags.extend(check_validated(file));
 
     for (short, expected, resolved, span) in &file.foreign_attrs {
         diags.push(

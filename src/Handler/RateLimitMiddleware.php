@@ -37,9 +37,6 @@ use Symfony\Contracts\Service\ServiceProviderInterface;
  */
 final class RateLimitMiddleware implements HandlerMiddleware
 {
-    /** @var array<string, list<RateLimit>> */
-    private array $attributes = [];
-
     /**
      * @param ServiceProviderInterface<RateLimiterFactoryInterface> $limiters
      */
@@ -47,6 +44,7 @@ final class RateLimitMiddleware implements HandlerMiddleware
         private readonly ServiceProviderInterface $limiters,
         private readonly ?ExpressionLanguage $expressionLanguage = null,
         private readonly ?RequestStack $requests = null,
+        private readonly HandlerAttributes $attributes = new HandlerAttributes(),
     ) {
     }
 
@@ -61,7 +59,7 @@ final class RateLimitMiddleware implements HandlerMiddleware
         $method = $class->getMethod($function->getName());
         $request = $this->requests?->getCurrentRequest();
 
-        foreach ($this->attributesOf($method) as $attribute) {
+        foreach ($this->attributes->of($handler, RateLimit::class) as $attribute) {
             if (null !== $request && $attribute->methods && !\in_array($request->getMethod(), $attribute->methods, true)) {
                 continue;
             }
@@ -95,14 +93,5 @@ final class RateLimitMiddleware implements HandlerMiddleware
         if (!$limit->isAccepted()) {
             throw new TooManyRequestsHttpException(max(0, $limit->getRetryAfter()->getTimestamp() - time()));
         }
-    }
-
-    /** @return list<RateLimit> */
-    private function attributesOf(\ReflectionMethod $method): array
-    {
-        return $this->attributes[$method->class.'::'.$method->name] ??= array_map(
-            static fn (\ReflectionAttribute $attribute): RateLimit => $attribute->newInstance(),
-            $method->getAttributes(RateLimit::class),
-        );
     }
 }

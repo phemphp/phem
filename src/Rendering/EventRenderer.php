@@ -18,6 +18,7 @@ use Phem\Event;
 use Phem\Metadata\ComponentMetadata;
 use Phem\State\BoundValues;
 use Phem\State\StateAccessor;
+use Phem\State\StateValidator;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -27,7 +28,9 @@ use Symfony\Component\HttpFoundation\Request;
  * 1. The first pass renders only the fibers on the paths from the page to the fiber of the
  *    handler, and the subtrees of the components of the bound values (see PathScope). It gives
  *    the handler and the bound properties.
- * 2. The bound values go into their #[State] properties, and the handler runs.
+ * 2. The bound values go into their #[State] properties, and the handler runs. The components
+ *    with a Validation property touch the changed fields before the handler, and validate after
+ *    it (see StateValidator).
  * 3. The second pass renders the dirty fibers and their subtrees, and keeps a child that cannot
  *    change (see UpdateScope). A dirty fiber is the owner of the handler (the `$this` of the
  *    handler closure, or the fiber that registered it), or a fiber whose state changed.
@@ -54,6 +57,7 @@ final class EventRenderer
         private readonly InputsComparator $inputs = new InputsComparator(),
         private readonly ComponentMetadata $metadata = new ComponentMetadata(),
         private readonly ?SkippedRenderCheck $check = null,
+        private readonly StateValidator $validator = new StateValidator(),
     ) {
     }
 
@@ -83,7 +87,7 @@ final class EventRenderer
 
         // After the first pass, as the page in the browser was: the second pass shows the new
         // values as a change.
-        $this->bound->apply($tree, $bound);
+        $touched = $this->applyBound($tree, $bound);
 
         // Only the handlers send browser events: not the render before them.
         $dispatcher->reset();
@@ -98,6 +102,8 @@ final class EventRenderer
 
             $refresh = $refresh || $e->refreshes();
         }
+
+        $this->settle($tree, $before, $touched);
 
         if ($refresh) {
             $this->renderer->render($tree);
@@ -122,9 +128,53 @@ final class EventRenderer
     {
         $this->firstPass($tree, [$handler], $bound, []);
         $closure = $tree->handler($handler);
+        // No live validation: the event had it, and the worker sends no state.
         $this->bound->apply($tree, $bound);
 
         return $closure;
+    }
+
+    /**
+     * Sets the bound values, and touches them in the components with a Validation property (see
+     * StateValidator).
+     *
+     * @param array<array-key, mixed> $bound
+     *
+     * @return array<string, true> the ids of the fibers with a bound value
+     */
+    private function applyBound(Tree $tree, array $bound): array
+    {
+        $touched = [];
+        foreach ($this->bound->apply($tree, $bound) as $id => $fields) {
+            $instance = $tree->fiberById($id)?->instance;
+            if (null !== $instance) {
+                $this->validator->touch($instance, $fields);
+                $touched[$id] = true;
+            }
+        }
+
+        return $touched;
+    }
+
+    /**
+     * Validates the components with a Validation property whose state changed in the event, or
+     * that got a bound value, after the handlers: the errors are for the new values.
+     *
+     * @param array<string, array<string, mixed>> $before
+     * @param array<string, true>                 $touched
+     */
+    private function settle(Tree $tree, array $before, array $touched): void
+    {
+        foreach ($tree->rendered() as $fiber) {
+            $instance = $fiber->instance;
+            if (null === $instance || null === $this->metadata->validationProperty($instance::class)) {
+                continue;
+            }
+
+            if (isset($touched[$fiber->id]) || !isset($before[$fiber->id]) || $before[$fiber->id] !== $this->state->export($instance)) {
+                $this->validator->settle($instance);
+            }
+        }
     }
 
     /**

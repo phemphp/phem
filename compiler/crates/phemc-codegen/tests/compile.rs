@@ -64,6 +64,20 @@ fn reports_each_diagnostic() {
 }
 
 #[test]
+fn accepts_validated_with_a_validation_property() {
+    // The property is in the class, or in a parent class.
+    let src = "<?phpm\nuse Phem\\Attribute\\{Component, State, Validated};\nuse Phem\\Node;\nuse Phem\\Validation;\n\
+        abstract class Form { #[State] public Validation $validation; }\n\
+        #[Component] final class Own { #[State] public Validation $validation;\n#[Validated] public function save(): void {}\npublic function render(): Node { return <form onSubmit={{ save }} />; } }\n\
+        #[Component] final class Child extends Form {\n#[Validated(groups: ['draft'])] public function save(): void {}\npublic function render(): Node { return <form onSubmit={{ save }} />; } }\n";
+    let (out, diags) = compile(vec![SourceInput::app("Forms.phpm", src)]);
+
+    let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
+    assert!(msgs.is_empty(), "unexpected diagnostics: {msgs:#?}");
+    assert!(out.is_some());
+}
+
+#[test]
 fn passes_the_variables_of_extension_tags() {
     let src = "<?phpm\nfunction App() { $user = []; $locale = 'fr';\n    return <p>{% trans with {'%name%': user.name} into locale %}Hi %name%{% endtrans %}</p>;\n}\n";
     let (out, diags) = compile(vec![SourceInput::app("App.phpm", src)]);

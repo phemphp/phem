@@ -23,7 +23,9 @@ use Phem\Attribute\State;
 use Phem\Attribute\Url;
 use Phem\Binding\ComponentName;
 use Phem\Binding\PropError;
+use Phem\State\StateValue;
 use Phem\State\UrlQuery;
+use Phem\Validation;
 
 /**
  * The reflection data of the components: the parameters of a function component, the #[Prop]
@@ -58,6 +60,12 @@ final class ComponentMetadata
 
     /** @var array<string, list<\ReflectionProperty>> */
     private array $states = [];
+
+    /** @var array<string, list<array{\ReflectionProperty, class-string<StateValue>}>> */
+    private array $stateValues = [];
+
+    /** @var array<string, ?\ReflectionProperty> */
+    private array $validations = [];
 
     /** @var array<string, array<string, ?\ReflectionType>> */
     private array $paths = [];
@@ -165,6 +173,52 @@ final class ComponentMetadata
             (new \ReflectionClass($class))->getProperties(),
             static fn (\ReflectionProperty $p) => !$p->isStatic() && [] !== $p->getAttributes(State::class),
         ));
+    }
+
+    /**
+     * The #[State] properties of a class component whose type is a StateValue, with the class.
+     *
+     * @param class-string $class
+     *
+     * @return list<array{\ReflectionProperty, class-string<StateValue>}>
+     */
+    public function stateValues(string $class): array
+    {
+        if (isset($this->stateValues[$class])) {
+            return $this->stateValues[$class];
+        }
+
+        $out = [];
+        foreach ($this->stateProperties($class) as $p) {
+            $type = $p->getType();
+            if ($type instanceof \ReflectionNamedType && is_subclass_of($type->getName(), StateValue::class)) {
+                $out[] = [$p, $type->getName()];
+            }
+        }
+
+        return $this->stateValues[$class] = $out;
+    }
+
+    /**
+     * The #[State] property of the type Validation of a class component: it turns on the live
+     * validation (see Phem\Validation). Null when the component has none.
+     *
+     * @param class-string $class
+     *
+     * @throws \LogicException when the component has more than one
+     */
+    public function validationProperty(string $class): ?\ReflectionProperty
+    {
+        if (\array_key_exists($class, $this->validations)) {
+            return $this->validations[$class];
+        }
+
+        $found = array_values(array_filter($this->stateValues($class), static fn (array $v): bool => Validation::class === $v[1]));
+        if (\count($found) > 1) {
+            throw new \LogicException(\sprintf('<%s> has more than one #[State] property of the type Phem\Validation ("%s"). A component has at most one: it validates all its #[State] properties.', ComponentName::short($class), implode('", "', array_map(static fn (array $v): string => $v[0]->getName(), $found))));
+        }
+
+        return $this->validations[$class] = $found[0][0] ?? null;
     }
 
     /**

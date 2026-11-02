@@ -21,9 +21,13 @@ Talk about each item before its implementation. The open questions are a start, 
 
 - [ ] **Streams** (section 1). The items of a stream are not in the state. How does a later
       event render the list, and how does the "before/after" comparison see it?
-- [ ] **Live validation** (section 2). The touched fields and the errors go in the signed
-      state. Does validation run in the Doctrine transaction? How does a submit handler stop when
-      the state has errors?
+- [x] **Live validation** (section 2). The `Validation` value keeps the touched fields and the
+      errors in the signed state. It runs after the handlers, with no transaction. A
+      `#[Validated]` handler validates before the transaction, and it does not run when there are
+      errors.
+- [ ] **Live validation of a Symfony form** (section 2). The values stay in the DOM, and each
+      change sends all the fields. How does the client track the touched fields, and how does the
+      morph keep the values of the fields that are not bound?
 - [x] **Component libraries** (section 4). Each item has its decisions, with no open
       question. The packages compile with the app, in one build, the classes merge through a
       `ClassList` value, and the app replaces a package component with
@@ -61,32 +65,67 @@ A stress run on 2026-10-28 (the server time, with no network):
 
 ## 2. Forms and validation
 
-### [ ] Validation of `#[State]` properties, with touched fields — P2
+### [x] Validation of `#[State]` properties, with touched fields — P2
 
-Live validation works today, by hand: `#[Assert]` on the `#[State]` properties, a `touched` and
-an `errors` property, and a handler that calls the validator (see
-[Live validation](docs/phpm-syntax.md#live-validation)). Each form repeats this code. It is not a
-blocker, so build it only when a real form shows that the manual code is too much.
+See [Live validation](docs/phpm-syntax.md#live-validation).
 
 - **Best peer:** LC `ValidatableComponentTrait`: it validates on each change but shows the errors
   only for the fields that the user touched. LW `#[Validate]` on a property, with real-time
   validation. LV changesets with `used_input?`.
-- **Proposal:**
-  - Validate the `#[Assert\...]` constraints of the `#[State]` properties after a `phem:bind`
-    change, with no handler.
-  - Track the touched fields in the state. Show the errors only for them, and for all the fields
-    after a submit.
-  - Give the errors to `render()` (for example `errors.email`), and let a submit handler stop
-    when there are errors.
-- **Not in scope:** live validation of a Symfony form, as LC `ComponentWithFormTrait` does (it
-  keeps the submitted values and calls `submit()` with `clearMissing: false` on each change).
-  It does not fit Phem:
-  - The fields of a Symfony form are not bound fields, so their values are not in the state.
-  - The submitted values of all the form would go into the signed state.
-  - Each change would submit all the form again.
+- **Decisions:**
+  - A `#[State] public Validation $validation;` property turns it on. Phem sets it. The value
+    is immutable (a `StateValue`), so a child that gets it as a prop renders again.
+  - The bound values of an event touch their fields (a value that does not fit the type gets
+    "This value is not valid."). After the handlers, the components whose state changed validate
+    all their properties (`StateValidator`): the errors are for the values after the handlers.
+  - `#[Validated]` on a handler method or a closure touches all the fields. With errors, the
+    handler does not run (`ValidationMiddleware`, priority -50, before the transaction).
+  - `#[Validated(groups: [...])]` sets the groups. The next changes use them, until a new
+    `Validation`.
+  - The field of a path is `address.city` (Symfony gives `address[city]`).
+  - `phemc` reports E058 for `#[Validated]` in a component with no `Validation` property, on a
+    function, and for a second `Validation` property.
 
-  LC needs it because LC is built around Symfony forms. In Phem, use bound properties for the
-  fields that need live validation, and a Symfony form for the submit.
+```php
+#[State, Assert\NotBlank, Assert\Email]
+public string $email = '';
+
+#[State] public Validation $validation;
+
+#[Validated]
+public function save(): void { /* runs only with no error */ }
+```
+
+```php
+<input phem:bind={{ email }} phem:live phem:debounce={{ 'blur' }} />
+{% if validation.error('email') %}<p>{{ validation.error('email') }}</p>{% endif %}
+```
+
+### [ ] Live validation of a Symfony form — P3
+
+The `Validation` value works with bound properties. A Symfony form keeps its constraints in its
+type, and it has form themes, CSRF and data mappers.
+
+- **Best peer:** LV `phx-change`: each change sends all the fields of the form, and the server
+  validates the changeset again. The values stay in the browser, not in the server.
+- **Proposal:** the app handles the form on each change, as on the submit. Nothing goes in the
+  signed state. An event of a `<form>` already sends all its fields, and the handler `Request`
+  has them as its POST data.
+
+  ```php
+  public function validate(Request $request): void
+  {
+      $this->form->handleRequest($request);
+  }
+
+  // <form onChange={{ validate }} onSubmit={{ save }}>{{ form_row(view.email) }} ...</form>
+  ```
+- **Gaps:**
+  - Touched fields: the client sends the names of the fields that the user changed. A form type
+    extension decorates the request handler, and clears the errors of the other fields.
+  - The morph sets the values of the server render on the fields that are not bound. On a
+    change, it must keep the values of the fields (a `PasswordType` renders no value).
+  - Another event of the form (an "Add" button of a `CollectionType`) does not send the fields.
 
 ## 3. Installation
 

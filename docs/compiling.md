@@ -322,8 +322,9 @@ E011
 | E054, E055 | `#[Async]` on a function; an `#[Async]` method that does not declare `Promise` as its return type |
 | E056 | a page (a class or a function) used as a tag |
 | E057 | `#[BroadcastKey]` on a property that is not a prop, on a page, or in a component with no `#[Broadcast]` on it or on a handler |
+| E058 | `#[Validated]` on a handler of a component with no `#[State]` property of the type `Phem\Validation` (not static; also a method of a trait or a parent class), or on a function; a component with more than one `Validation` property |
 | W001–W003 | A handler is called instead of passed; a list item without `key`; an event that the browser does not send (`onMouseEnter`) |
-| W004 | `#[Page]`, `#[Route]`, `#[Component]`, `#[State]`, `#[Prop]`, `#[Path]`, `#[Context]`, `#[Provide]`, `#[Broadcast]`, `#[BroadcastKey]` or `#[Async]` without its `use` import (`Phem\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
+| W004 | `#[Page]`, `#[Route]`, `#[Component]`, `#[State]`, `#[Prop]`, `#[Path]`, `#[Context]`, `#[Provide]`, `#[Broadcast]`, `#[BroadcastKey]`, `#[Async]` or `#[Validated]` without its `use` import (`Phem\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
 | W005 | a `<title>` outside `<head>` and `<svg>`: the document component prints the title, and a page gives it with `<Document:title>` |
 | W006 | `phem:debounce` or `phem:throttle` on an element with no handler |
 | W007 | `phem:live` on an element with no `phem:bind` |

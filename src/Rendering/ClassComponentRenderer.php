@@ -22,7 +22,8 @@ use Phem\State\UrlQuery;
 
 /**
  * Renders a class component. The first time a fiber renders in a request, the factory makes its
- * instance, and the props and the contexts go into it (see ContextResolver). Then the state that the browser sent back is restored;
+ * instance, and the props and the contexts go into it (see ContextResolver). A Validation property
+ * gets a new Validation. Then the state that the browser sent back is restored;
  * without one, `mount()` initializes it, and the query string of the page request sets the
  * #[Url] properties (see Phem\Attribute\Url). Each render writes the props and the contexts again
  * and calls `render()`.
@@ -53,6 +54,7 @@ final class ClassComponentRenderer implements ComponentRenderer
             $component = $fiber->instance = $this->factory->create($fiber->fqcn);
             $this->props->assign($component, $fiber->props, $slots);
             $this->contexts->assign($component, $fiber);
+            $this->state->initialize($component);
 
             if (null !== $fiber->restored) {
                 $this->state->restore($component, $fiber->restored);
@@ -70,6 +72,7 @@ final class ClassComponentRenderer implements ComponentRenderer
             $component = $fiber->instance = $this->factory->create($fiber->fqcn);
             $this->props->assign($component, $fiber->props, $slots);
             $this->contexts->assign($component, $fiber);
+            $this->state->initialize($component);
 
             if (null === $fiber->restored && method_exists($component, 'mount')) {
                 $component->mount();

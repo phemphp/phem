@@ -39,6 +39,7 @@ use Phem\Handler\HandlerInvoker;
 use Phem\Handler\RedirectMiddleware;
 use Phem\Handler\StreamsMiddleware;
 use Phem\Handler\TransactionalMiddleware;
+use Phem\Handler\ValidationMiddleware;
 use Phem\Http\EventBody;
 use Phem\Http\PageRenderer;
 use Phem\Http\PageStream;
@@ -74,6 +75,7 @@ use Phem\State\StateAccessor;
 use Phem\State\StateCache;
 use Phem\State\StateCodec;
 use Phem\State\StateSizeLimit;
+use Phem\State\StateValidator;
 use Phem\State\UrlQuery;
 use Phem\Stream\BroadcastKeys;
 use Phem\Stream\FrankenPhpPublisher;
@@ -145,6 +147,12 @@ return static function (ContainerConfigurator $container): void {
             ->args([service('phem.object_identifier')->nullOnInvalid()])
         ->set('phem.handler_invoker', HandlerInvoker::class)
             ->args([tagged_iterator('phem.handler_middleware'), service('phem.callable_arguments')])
+        // Before the transaction: a component with errors opens no transaction.
+        ->set('phem.handler_middleware.validation', ValidationMiddleware::class)
+            ->args([service('phem.state_validator')])
+            ->tag('phem.handler_middleware', ['priority' => -50])
+        ->set('phem.state_validator', StateValidator::class)
+            ->args([service('validator')->nullOnInvalid(), service('phem.metadata')])
         ->set('phem.handler_middleware.transactional', TransactionalMiddleware::class)
             ->args([service('phem.transaction_runner')->nullOnInvalid()])
             ->tag('phem.handler_middleware', ['priority' => -100])
@@ -317,6 +325,7 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.inputs_comparator'),
                 service('phem.metadata'),
                 null,
+                service('phem.state_validator'),
             ])
         ->alias(EventRenderer::class, 'phem.event_renderer')
         ->set('phem.state_cache', StateCache::class)
