@@ -352,6 +352,91 @@ describe("the morph of a list", () => {
   })
 })
 
+describe("the morph of the bound fields", () => {
+  // Two labels with a FieldError component each. The fiber id of a component comes from its index:
+  // when the error of the name goes away, the error of the phone gets the fiber id of the error of
+  // the name (phemE0).
+  const form = (nameError, phoneError, phone = "") => `<form>
+      <label><span>Name</span><input data-phem-bind="c1.name" value="Ada">${nameError ? '<p data-phem-c="phemE0">Name error</p>' : ""}</label>
+      <label><span>Phone</span><span class="wrapper"><span>+53</span><input data-phem-bind="c1.phone" value="${phone}"></span>${phoneError ? `<p data-phem-c="${nameError ? "phemE1" : "phemE0"}">Phone error</p>` : "<span>Hint</span>"}</label>
+    </form><button data-phem-on-click="c1.check">Check</button>`
+
+  // The answer of the server comes when the test resolves it.
+  function respondLater(markup) {
+    let resolve
+    fetch.mockImplementationOnce(() => new Promise((r) => (resolve = r)))
+    return () => resolve(new Response(JSON.stringify({ streams: `<turbo-stream action="replace" method="morph" targets="[data-phem-c=c1]"><template><phem-c data-phem-c="c1">${markup}</phem-c></template></turbo-stream>`, changes: {}, signature: "s2" }), { status: 200, headers: { "Content-Type": "application/json" } }))
+  }
+
+  it("keeps the focused field and its value when a component before it goes away", async () => {
+    await mount(form(true, true))
+    const phone = document.querySelector('[data-phem-bind="c1.phone"]')
+    const labels = [...document.querySelectorAll("label")]
+    phone.focus()
+
+    const answer = respondLater(form(false, true))
+    const done = nextDone()
+    click("button")
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+    // The user types while the request runs.
+    phone.focus()
+    phone.value = "555"
+    answer()
+    await done
+
+    expect(document.querySelector('[data-phem-bind="c1.phone"]')).toBe(phone)
+    expect([...document.querySelectorAll("label")]).toEqual(labels)
+    expect(document.activeElement).toBe(phone)
+    expect(phone.value).toBe("555")
+    expect([...document.querySelectorAll("p")].map((p) => p.textContent)).toEqual(["Phone error"])
+    expect(document.querySelector('[id^="phem-key:"]')).toBeNull()
+  })
+
+  it("keeps the focused field when the user submits the form while a live event runs", async () => {
+    const live = (markup) => markup.replace("<form>", '<form data-phem-on-submit="c1.save">').replaceAll("<input ", '<input data-phem-live data-phem-debounce="blur" ')
+    await mount(live(form(true, true)))
+    const root = document.getElementById("phem-root")
+    root.setAttribute("data-action", `${root.getAttribute("data-action")} input->phem#dispatch`)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const name = document.querySelector('[data-phem-bind="c1.name"]')
+    const phone = document.querySelector('[data-phem-bind="c1.phone"]')
+
+    // The blur of the name sends its live event. The user types a phone and submits the form
+    // before its answer comes.
+    const answer = respondLater(live(form(false, true)))
+    name.focus()
+    name.value = "Grace"
+    name.dispatchEvent(new Event("input", { bubbles: true }))
+    phone.focus()
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    phone.value = "555"
+    respond(live(form(false, true, "555")))
+    document.querySelector("form").requestSubmit()
+    const done = nextDone()
+    answer()
+    await done
+    await nextDone()
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch.mock.calls[1][1].body).toContain("555")
+    expect(document.querySelector('[data-phem-bind="c1.phone"]')).toBe(phone)
+    expect(document.activeElement).toBe(phone)
+    expect(phone.value).toBe("555")
+  })
+
+  it("matches each checkbox of a list by its value", async () => {
+    const boxes = (values) => `<div>${values.map((v) => `<label>${v === "a" ? '<p data-phem-c="phemE0">!</p>' : ""}<input type="checkbox" data-phem-bind="c1.tags" data-phem-bind-list value="${v}"></label>`).join("")}</div><button data-phem-on-click="c1.check">Check</button>`
+    await mount(boxes(["a", "b"]))
+    const b = document.querySelector('[value="b"]')
+    respond(boxes(["b"]).replace("<label>", '<label><p data-phem-c="phemE0">!</p>'))
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect(document.querySelector('[value="b"]')).toBe(b)
+  })
+})
+
 describe("phem:queue, phem:send, phem:receive and phem:done", () => {
   it("dispatches them on the element that sent the event, phem:receive before the morph and phem:done after it", async () => {
     await mount(`<button id="star" data-phem-on-click="c1.star">Star</button>`)
@@ -834,6 +919,19 @@ describe("pushes", () => {
 
     expect(document.querySelector("p").textContent).toBe("New")
     expect(document.querySelector("input").value).toBe("Grace")
+  })
+
+  it("keeps a bound field that the user changed when a component before it goes away", async () => {
+    const fields = (error) => `<label><input data-phem-bind="c1.name" value="Ada">${error ? '<p data-phem-c="phemE0">Name error</p>' : ""}</label><label><input data-phem-bind="c1.phone" value=""><p data-phem-c="${error ? "phemE1" : "phemE0"}">Phone error</p></label>`
+    const source = await subscribe(`<div id="form">${fields(true)}</div>`)
+    const phone = document.querySelector('[data-phem-bind="c1.phone"]')
+    phone.value = "555"
+    source.push(`<turbo-stream action="update" method="morph" target="form"><template>${fields(false)}</template></turbo-stream>`)
+    await rendered()
+
+    expect(document.querySelector('[data-phem-bind="c1.phone"]')).toBe(phone)
+    expect(phone.value).toBe("555")
+    expect([...document.querySelectorAll("p")].map((p) => p.textContent)).toEqual(["Phone error"])
   })
 
   it("sends one refresh with no handler for the refreshes that come together", async () => {

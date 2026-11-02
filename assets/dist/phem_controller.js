@@ -108,6 +108,22 @@ function keyIds(root, target) {
   }
 }
 
+// Gives each bound field with no id in `root` an id from its key, and from its value for a checkbox
+// or a radio button, so the morph matches the field and its parents by id. The fiber id of a
+// component comes from its index: when a component goes away, the next component of its class
+// gets its fiber id, and the morph can match the parent of an edited field with another element.
+// A key and value that more than one field has get no id.
+function bindIds(root) {
+  const fields = new Map()
+  for (const field of root.querySelectorAll("[data-phem-bind]:not([id])")) {
+    const choice = field instanceof HTMLInputElement && (field.type === "checkbox" || field.type === "radio")
+    const id = `${KEY_ID}bind:${field.getAttribute("data-phem-bind")}${choice ? `=${field.value}` : ""}`
+    fields.set(id, fields.has(id) ? null : field)
+  }
+
+  for (const [id, field] of fields) if (field) field.id = id
+}
+
 function dropKeyIds(root) {
   for (const el of root.querySelectorAll(`[id^="${KEY_ID}"]`)) el.removeAttribute("id")
 }
@@ -513,10 +529,11 @@ export default class PhemController extends Controller {
     // stream runs, each component and each element with a `key` and no id has an id from its fiber
     // id or its key, in the page and in the server render. So a component or a list item keeps its
     // element (its client attributes, its focus, its JS library) when an item before it goes away.
-    // Two lists with the same keys and no id between them and their component get the same ids: the
-    // morph ignores these ids, and matches their items by position. The placeholders of the
-    // components that the server did not render again become copies of their elements. Before the
-    // `take` of renderStreams(), which runs this render.
+    // Each bound field gets an id from its key (see bindIds()): the field that the user edits keeps
+    // its element, its focus and its value. Two lists with the same keys and no id between them and
+    // their component get the same ids: the morph ignores these ids, and matches their items by
+    // position. The placeholders of the components that the server did not render again become
+    // copies of their elements. Before the `take` of renderStreams(), which runs this render.
     this.keyMorph = (event) => {
       const stream = event.detail.newStream
       if (stream.getAttribute("method") !== "morph") return
@@ -543,6 +560,8 @@ export default class PhemController extends Controller {
         componentIds(content)
         keyIds(target, target)
         keyIds(content, target)
+        bindIds(target)
+        bindIds(content)
         try {
           await render(element)
         } finally {
