@@ -6,7 +6,21 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
-## Unreleased
+## 0.3.0 (2026-11-03)
+
+- No change in the code. The Flex recipe of `phem/phem` starts at this version
+  (`phem/phem/0.3/` in symfony/recipes-contrib): it enables `PhemBundle`, adds the document of
+  the pages, the first page at `/`, and the `phemc` worker of `symfony serve`.
+
+## 0.2.7 (2026-11-03)
+
+- Fix: the morph kept the files of a file input, so the next submit sent them again. A handler
+  calls `$e->clearFiles()` when it takes the files, and the controller empties the file inputs
+  that sent them. A handler that shows a validation error does not call it, so the user does not
+  select the files again. A file input with files makes its form dirty (`phem-dirty`, and
+  `data-phem-guard`).
+
+## 0.2.6 (2026-11-03)
 
 - Fix: the Tailwind merger removed the custom values of the theme. For example, with
   `--text-caption` in `@theme`, a class list with `text-caption` and then `text-ink-muted` gave
