@@ -619,6 +619,31 @@ describe("the file inputs", () => {
     await done
   })
 
+  it("unlocks the form before phem:done, so a listener can submit it again with its files", async () => {
+    await mount(form())
+    const input = document.querySelector("input[type=file]")
+    pick(input, ["a.txt"])
+    const bodies = stubXhr([answer(form()), answer(form())])
+    const locked = []
+    const again = new Promise((resolve) => {
+      window.addEventListener(
+        "phem:done",
+        () => {
+          locked.push(input.disabled, document.querySelector("[name=title]").readOnly, document.querySelector("[type=submit]").disabled)
+          pick(input, ["b.txt"])
+          window.addEventListener("phem:done", resolve, { once: true })
+          document.querySelector("form").requestSubmit()
+        },
+        { once: true },
+      )
+    })
+    document.querySelector("form").requestSubmit()
+    await again
+
+    expect(locked).toEqual([false, false, false])
+    expect(bodies.map((body) => body.get("photo").name)).toEqual(["a.txt", "b.txt"])
+  })
+
   it("empties only the file inputs that sent their files", async () => {
     const markup = `<form data-phem-on-submit="c1.save">
         <input type="file" name="photo" id="sent"><input type="file" id="unnamed"><input type="file" name="off" id="off" disabled>
