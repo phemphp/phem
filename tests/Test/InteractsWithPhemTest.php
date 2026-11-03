@@ -457,6 +457,9 @@ final class InteractsWithPhemTest extends KernelTestCase
 
             // A new pick after the clear goes with the next submit.
             $tester()->upload('input[name=photo]', $a)->click('button[value=store]')->upload('input[name=photo]', $b)->submit()->assertState('uploaded', ['b.txt 4 beta'], in: 'form');
+
+            // A handler that renders the full page too.
+            $tester()->upload('input[name=photo]', $a)->click('button[value=refresh]')->assertState('uploaded', ['a.txt 5 alpha'], in: 'form')->submit()->assertState('uploaded', [], in: 'form');
         }
     }
 

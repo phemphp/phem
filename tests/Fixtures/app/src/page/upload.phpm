@@ -36,9 +36,14 @@ final class Uploader
             $this->moved = true;
         }
 
-        // The handler took the files: the browser empties the file inputs.
-        if ('store' === ($e->form['action'] ?? null)) {
+        // The handler took the files: the browser empties the file inputs. The same with a
+        // render of the full page.
+        if (\in_array($e->form['action'] ?? null, ['store', 'refresh'], true)) {
             $e->clearFiles();
+        }
+
+        if ('refresh' === ($e->form['action'] ?? null)) {
+            $e->refresh();
         }
 
         // A new id: the morph replaces the element of the avatar input, and its files go away.
@@ -61,6 +66,7 @@ final class Uploader
                     <button type="submit" name="action" value="save">Save</button>
                     <button type="submit" name="action" value="move">Move</button>
                     <button type="submit" name="action" value="store">Store</button>
+                    <button type="submit" name="action" value="refresh">Refresh</button>
                     <button type="submit" name="action" value="version">Version</button>
                 </form>
                 <pre id="uploaded">{{ uploaded|json_encode }}</pre>

@@ -457,8 +457,10 @@ describe("the file inputs", () => {
   }
 
   // An event with files goes with XHR (see post()): each request gets the next answer. Resolves a
-  // request only when the test calls the function that it gives to `hold`.
+  // request only when the test calls the function that it gives to `hold`. Returns the bodies of
+  // the requests.
   function stubXhr(answers, hold = null) {
+    const bodies = []
     vi.stubGlobal(
       "XMLHttpRequest",
       class extends EventTarget {
@@ -468,7 +470,8 @@ describe("the file inputs", () => {
         getAllResponseHeaders() {
           return "content-type: application/json"
         }
-        send() {
+        send(body) {
+          bodies.push(body)
           Object.assign(this, { status: 200, statusText: "OK", response: JSON.stringify(answers.shift()) })
           const load = () => this.dispatchEvent(new Event("load"))
           if (hold) hold(load)
@@ -476,6 +479,15 @@ describe("the file inputs", () => {
         }
       },
     )
+
+    return bodies
+  }
+
+  // Whether the guard asks before the user leaves the page (`beforeunload`).
+  function asksBeforeUnload() {
+    const event = new Event("beforeunload", { cancelable: true })
+    window.dispatchEvent(event)
+    return event.defaultPrevented
   }
 
   it("empties the file inputs that sent their files when the handler takes them", async () => {
@@ -564,22 +576,80 @@ describe("the file inputs", () => {
   it("makes its form dirty while it has files, and the guard asks before the user leaves", async () => {
     await mount(form("data-phem-guard"))
     const input = document.querySelector("input[type=file]")
-    const leave = () => {
-      const event = new Event("beforeunload", { cancelable: true })
-      window.dispatchEvent(event)
-      return event.defaultPrevented
-    }
-    expect(leave()).toBe(false)
+    expect(asksBeforeUnload()).toBe(false)
 
     pick(input, ["a.txt"])
     expect(input.classList.contains("phem-dirty")).toBe(true)
     expect(document.querySelector("form").classList.contains("phem-dirty")).toBe(true)
-    expect(leave()).toBe(true)
+    expect(asksBeforeUnload()).toBe(true)
 
     input.value = ""
     input.dispatchEvent(new Event("change", { bubbles: true }))
     expect(document.querySelector("form").classList.contains("phem-dirty")).toBe(false)
-    expect(leave()).toBe(false)
+    expect(asksBeforeUnload()).toBe(false)
+  })
+
+  it("sends the files as parts, and not the file inputs in the JSON", async () => {
+    await mount(form())
+    pick(document.querySelector("input[type=file]"), ["a.txt"])
+    const bodies = stubXhr([answer(form())])
+    const done = nextDone()
+    document.querySelector("form").requestSubmit()
+    await done
+
+    expect(bodies[0].get("photo").name).toBe("a.txt")
+    expect(JSON.parse(bodies[0].get("_phem")).event).not.toHaveProperty("fileInputs")
+    expect(JSON.parse(bodies[0].get("_phem")).event).not.toHaveProperty("files")
+  })
+
+  it("keeps the form dirty while the submit locks it and its files upload", async () => {
+    await mount(form("data-phem-guard"))
+    const input = document.querySelector("input[type=file]")
+    pick(input, ["a.txt"])
+    let load
+    stubXhr([answer(form("data-phem-guard"))], (l) => (load = l))
+    const done = nextDone()
+    document.querySelector("form").requestSubmit()
+    await vi.waitFor(() => expect(load).toBeDefined())
+
+    expect(input.disabled).toBe(true)
+    expect(asksBeforeUnload()).toBe(true)
+
+    load()
+    await done
+  })
+
+  it("empties only the file inputs that sent their files", async () => {
+    const markup = `<form data-phem-on-submit="c1.save">
+        <input type="file" name="photo" id="sent"><input type="file" id="unnamed"><input type="file" name="off" id="off" disabled>
+      </form><input type="file" name="avatar" id="outside">`
+    await mount(markup)
+    for (const id of ["sent", "unnamed", "off", "outside"]) pick(document.getElementById(id), [`${id}.txt`])
+    stubXhr([answer(markup, {}, { clearFiles: true })])
+    const done = nextDone()
+    document.querySelector("form").requestSubmit()
+    await done
+
+    expect(document.getElementById("sent").files.length).toBe(0)
+    for (const id of ["unnamed", "off", "outside"]) expect(document.getElementById(id).files.length, id).toBe(1)
+  })
+
+  it("asks before a Turbo visit while a file input has files", async () => {
+    await mount(form('data-phem-guard="Drop the photos?"'))
+    const confirm = vi.fn(() => false)
+    vi.stubGlobal("confirm", confirm)
+    const visit = () => {
+      const event = new CustomEvent("turbo:before-visit", { cancelable: true, detail: { url: "/other" } })
+      document.dispatchEvent(event)
+      return event.defaultPrevented
+    }
+
+    expect(visit()).toBe(false)
+    expect(confirm).not.toHaveBeenCalled()
+
+    pick(document.querySelector("input[type=file]"), ["a.txt"])
+    expect(visit()).toBe(true)
+    expect(confirm).toHaveBeenCalledWith("Drop the photos?")
   })
 })
 

@@ -61,6 +61,29 @@ final class ComponentTesterFilesTest extends TestCase
         }
     }
 
+    public function testMorphKeepsTheFilesOfAKeptComponentAndOfAnIgnoredElement(): void
+    {
+        $page = <<<'HTML'
+            <div data-phem-state-value="{}">
+                <form data-phem-c="c1" data-phem-on-submit="c1.save">
+                    <div data-phem-c="c2"><input type="file" name="photo" /></div>
+                    <div id="widget" data-phem-ignore><input type="file" name="photo" /></div>
+                    <input type="file" name="cover" />
+                </form>
+            </div>
+            HTML;
+
+        // The server does not render c2 again, the widget belongs to JS, and the cover input
+        // gets an id: the morph keeps the three elements, and their files.
+        $form = '<form data-phem-c="c1" data-phem-on-submit="c1.save"><template data-phem-keep="c2"></template><div id="widget" data-phem-ignore><input type="file" name="photo" /></div><input type="file" name="cover" id="cover" /></form>';
+        $driver = self::driver([EventResult::updates(['c1' => $form])], $page);
+        $tester = new ComponentTester($driver);
+        $tester->upload('[data-phem-c=c2] input', __FILE__)->upload('#widget input', __DIR__.'/InteractsWithPhemTest.php')->upload('[name=cover]', __FILE__)->submit()->submit();
+
+        $files = [['photo', __FILE__], ['photo', __DIR__.'/InteractsWithPhemTest.php'], ['cover', __FILE__]];
+        self::assertSame([$files, $files], $driver->files);
+    }
+
     /**
      * A driver that renders the page, answers each event with the next answer, and keeps the
      * files of each event.
@@ -69,9 +92,9 @@ final class ComponentTesterFilesTest extends TestCase
      *
      * @return Driver&object{files: list<list<array{string, string}>>}
      */
-    private static function driver(array $answers = []): Driver
+    private static function driver(array $answers = [], string $html = self::PAGE): Driver
     {
-        return new class(self::PAGE, $answers) implements Driver {
+        return new class($html, $answers) implements Driver {
             /** @var list<list<array{string, string}>> */
             public array $files = [];
 
