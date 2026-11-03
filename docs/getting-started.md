@@ -74,10 +74,10 @@ The server also starts the `phemc` worker of `.symfony.local.yaml`. On the first
 downloads `phemc`, then builds the `.phpm` files:
 
 ```
-[phemc] Downloading phemc v0.3.0 (phemc-mac-arm64)...
-[phemc] phemc: compiled 2 file(s), 2 template(s), 1 page(s); 8 file(s) changed, 0 warning(s) in 4 ms
-[phemc] phem: compiled 2 template(s) into the Twig cache in 25 ms
-[phemc] phemc: watching src for changes
+[phemc] Downloading phemc v0.3.1 (phemc-mac-arm64)...
+[phemc] phemc: compiled 2 file(s), 2 template(s), 1 page(s); 7 file(s) changed, 0 warning(s) in 7 ms
+[phemc] phem: compiled 2 template(s) into the Twig cache in 32 ms
+[phemc] phemc: watching 1 source dir(s) for changes
 ```
 
 Open the URL that `symfony serve` shows (by default https://127.0.0.1:8000). The page shows
