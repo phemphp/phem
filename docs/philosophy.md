@@ -157,7 +157,7 @@ The markup is Twig. Prepare the values in PHP before the `return`, and keep the 
 return <p>{{ (order.items|reduce((s, i) => s + i.price * i.qty, 0)) * 1.21 }}</p>;
 
 // Correct: PHP computes the value. The markup shows it.
-$total = $this->pricing->totalWithTax($order);
+$total = $this->order->totalWithTax();
 
 return <p>{{ total }}</p>;
 ```

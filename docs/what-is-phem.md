@@ -102,21 +102,33 @@ keeps no session between two events.
 
 A component is a Symfony service. Get your repositories and services in the constructor. Use
 Symfony security (`#[IsGranted]`), forms, validation and Doctrine as you do in a controller.
+Read the data in `mount()`, not in `render()` (see
+[Keep `render()` pure](phpm-syntax.md#keep-render-pure)).
 
 ```php
 #[IsGranted('ROLE_ADMIN')]
 #[Page('/admin/users')]
 final class Users
 {
-    public function __construct(private readonly UserRepository $users)
+    /** @var list<User> */
+    private array $users = [];
+
+    public function __construct(private readonly UserRepository $repository)
     {
+    }
+
+    public function mount(): void
+    {
+        $this->users = $this->repository->findAll();
     }
 
     public function render(): Node
     {
-        $users = $this->users->findAll();
-
-        return <Document>...</Document>;
+        return (
+            <Document>
+                <ul>{% for user in users %}<li key={{ user.id }}>{{ user.email }}</li>{% endfor %}</ul>
+            </Document>
+        );
     }
 }
 ```
