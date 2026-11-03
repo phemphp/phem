@@ -1,0 +1,15 @@
+---
+import { render } from 'astro:content';
+import { docs } from '../docs';
+import DocsPage from '../layouts/DocsPage.astro';
+
+export async function getStaticPaths() {
+    return (await docs()).map((doc) => ({ params: { slug: doc.slug }, props: { doc } }));
+}
+
+const { doc } = Astro.props;
+const { Content } = await render(doc.entry);
+---
+<DocsPage doc={doc}>
+    <Content />
+</DocsPage>

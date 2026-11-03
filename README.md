@@ -73,7 +73,15 @@ symfony serve
 
 Build a new app from scratch using Phem. See [Getting started](docs/getting-started.md).
 
-## More documentation
+## Documentation
+
+Read the docs on the website: https://phemphp.github.io/phem/. New to Phem? Start here:
+
+- [What is Phem](docs/what-is-phem.md): the five ideas of Phem
+- [Getting started](docs/getting-started.md): install Phem in a new Symfony app
+- [Tutorial: a task list](docs/tutorial.md): build a small app, one idea at a time
+
+More documentation:
 
 - [How it works](docs/how-it-works.md)
 - [Philosophy and conventions](docs/philosophy.md)
@@ -81,6 +89,7 @@ Build a new app from scratch using Phem. See [Getting started](docs/getting-star
 - [The `.phpm` syntax](docs/phpm-syntax.md)
 - [Testing components and pages](docs/testing.md)
 - [Component packages](docs/packages.md)
+- [Deployment](docs/deployment.md)
 
 ## License
 

@@ -1,0 +1,39 @@
+---
+// The HTML document of all the pages. The design system: tokens.css, bundle.css, bundle.js.
+import '../styles/tokens.css';
+import '../../design/bundle.css';
+import '../styles/site.css';
+import bundle from '../../design/bundle.js?url';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import MobileNav from '../components/MobileNav.astro';
+import SearchDialog from '../components/SearchDialog.astro';
+import { url } from '../site';
+
+interface Props {
+    title: string;
+    description?: string;
+    current?: string;
+}
+
+const { title, description, current } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{title}</title>
+        {description && <meta name="description" content={description} />}
+        <link rel="icon" href={url('/favicon.svg')} type="image/svg+xml" />
+        <script is:inline src={bundle}></script>
+        <script is:inline>LivewireBlue.initTheme();</script>
+    </head>
+    <body>
+        <Header current={current} />
+        <slot />
+        <MobileNav current={current} />
+        <SearchDialog />
+        <Footer />
+    </body>
+</html>

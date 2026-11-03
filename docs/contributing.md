@@ -40,8 +40,8 @@ and require this checkout with a Composer path repository.
 
 ## Repository layout
 
-The repository root is the `phem/phem` Composer package. The compiler, the editor support and the
-docs are in the same repository, and `.gitattributes` keeps them out of the
+The repository root is the `phem/phem` Composer package. The compiler, the editor support, the
+docs and the docs website are in the same repository, and `.gitattributes` keeps them out of the
 Composer dist.
 
 ```
@@ -57,11 +57,15 @@ editors/server/      the Node launcher of the language server (phem-lsp.wasm: `m
 editors/vscode/      VS Code extension: .phpm syntax highlighting (TextMate grammar) and the language server
 editors/phpstorm/    PhpStorm plugin: the same grammar and language server
 editors/claude-code/ Claude Code plugin: the language server, for diagnostics after each edit
+docs/                the docs, as plain Markdown (GitHub, the website and LLMs read the same files)
+docs/what-is-phem.md the five ideas of Phem, for newcomers
+docs/tutorial.md     the tutorial: a task list, one idea at a time
 docs/phpm-syntax.md  the .phpm syntax
 docs/compiling.md    how to build, check, watch, and run .phpm files
 docs/testing.md      how to test components and pages (Phem\Test\InteractsWithPhem)
 docs/how-it-works.md the path from the compiler to the browser, and React to Phem
 docs/contributing.md this document
+website/             the docs website (Astro): `make docs`, `make docs-build`
 recipe/              the Symfony Flex recipe of phem/phem (a copy of the recipe in symfony/recipes-contrib)
 release.sh           releases a version: runs and watches the release workflows, publishes the release
 install.sh           downloads the phemc binary of the latest release (install.ps1 on Windows)

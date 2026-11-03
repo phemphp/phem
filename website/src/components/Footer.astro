@@ -1,0 +1,25 @@
+---
+// Design system: Footer.
+import { navigation } from '../navigation';
+import { repository, url } from '../site';
+---
+<footer class="lw-footer">
+    <div class="lw-footer__inner">
+        <div class="lw-footer__grid">
+            <div>
+                <p class="lw-footer__brand">Phem</p>
+                <p class="lw-footer__about">UI server components for Symfony web apps. Logic and markup in one .phpm file.</p>
+            </div>
+            {navigation.slice(0, 3).map((group) => (
+                <div>
+                    <p class="lw-footer__title">{group.title}</p>
+                    <ul>{group.pages.map((page) => <li><a href={url(`/${page.slug}/`)}>{page.label}</a></li>)}</ul>
+                </div>
+            ))}
+        </div>
+        <div class="lw-footer__bottom">
+            <span>Released under the MIT license.</span>
+            <span><a href={repository}>GitHub</a> · <a href={url('/llms.txt')}>llms.txt</a></span>
+        </div>
+    </div>
+</footer>

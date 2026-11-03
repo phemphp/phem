@@ -1,11 +1,9 @@
 # Getting started: a new app from scratch
 
 This guide adds Phem to a new Symfony application. At the end, you have a dev server that builds
-the `.phpm` files when you save them, a page with an interactive component, and a production
-image with [FrankenPHP](https://frankenphp.dev).
+the `.phpm` files when you save them, and a page with an interactive component.
 
-You need the [Symfony CLI](https://symfony.com/download) (with PHP 8.5 and Composer). For the
-production image, you also need [Docker](https://docs.docker.com/get-docker/).
+You need the [Symfony CLI](https://symfony.com/download) (with PHP 8.5 and Composer).
 
 ## Step 1: Make the application and install Phem
 
@@ -218,100 +216,6 @@ bin/console debug:router            # the routes of the pages and their events
 bin/console phem:render /           # the HTML of a page, with no server
 ```
 
-## Step 4: Build the production image
-
-The production image runs `public/index.php` in the worker mode of FrankenPHP (PHP 8.5 and
-Caddy). It installs the packages with no dev dependencies, compiles the `.phpm` files, builds the
-Symfony cache, and writes the assets to `public/assets/`. Add these files:
-
-```
-my-app/
-├── docker/
-│   └── php-prod.ini        OPcache in production
-├── .dockerignore
-├── Caddyfile               FrankenPHP: public/index.php in worker mode
-└── Dockerfile              the production image
-```
-
-`Dockerfile`:
-
-```dockerfile
-# syntax=docker/dockerfile:1.7
-FROM dunglas/frankenphp:1-php8.5
-RUN apt-get update \
- && apt-get install -y --no-install-recommends git unzip \
- && rm -rf /var/lib/apt/lists/*
-COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
-ENV COMPOSER_ALLOW_SUPERUSER=1 APP_ENV=prod APP_DEBUG=0
-WORKDIR /app
-COPY . /app
-# composer install boots the kernel before phemc build: build its cache again after.
-RUN printf 'APP_SECRET=%s\n' "$(od -An -tx1 -N32 /dev/urandom | tr -d ' \n')" > .env.local \
- && composer install --no-dev --optimize-autoloader --no-interaction \
- && vendor/bin/phemc build src --no-warmup \
- && rm -rf var/cache/prod \
- && php bin/console cache:warmup \
- && php bin/console asset-map:compile
-COPY docker/php-prod.ini /usr/local/etc/php/conf.d/zz-app.ini
-CMD ["frankenphp", "run", "--config", "Caddyfile"]
-```
-
-`APP_SECRET` signs the component state in the browser. The image puts a random value in
-`.env.local`.
-
-`.dockerignore`:
-
-```
-.git
-vendor
-var
-public/assets
-assets/vendor
-.env.local
-```
-
-`docker/php-prod.ini` enables the OPcache preload. `config/preload.php` loads the Symfony
-container and the compiled components:
-
-```ini
-opcache.validate_timestamps=0
-opcache.preload=/app/config/preload.php
-opcache.preload_user=root
-```
-
-`Caddyfile` runs `public/index.php` in worker mode: each worker boots the kernel once and
-handles many requests:
-
-```caddyfile
-{
-    frankenphp {
-        worker {
-            file ./public/index.php
-        }
-    }
-}
-
-{$SERVER_NAME::8080} {
-    encode zstd gzip
-
-    root * public
-    php_server
-}
-```
-
-Build and run the image:
-
-```sh
-docker build -t my-app .
-docker run --rm -p 8080:8080 my-app
-```
-
-Open http://localhost:8080. In production, Symfony does not check the cache for changes: build
-the image again after each change.
-
-To use FrankenPHP in development too, see
-[Watch mode](compiling.md#5-watch-mode-development).
-
 ## Use Claude Code
 
 The Phem plugin for [Claude Code](https://claude.com/claude-code) runs the language server of
@@ -338,6 +242,8 @@ conversation shows a summary, for example `Found 1 new diagnostic issues in 1 fi
 
 ## Next steps
 
+- [Tutorial: a task list](tutorial.md): build a small app, one idea at a time
+- [Deployment](deployment.md): the production image with FrankenPHP
 - [Philosophy and conventions](philosophy.md): the rules to keep in mind when you design with Phem
 - [The `.phpm` syntax](phpm-syntax.md): props, slots, lists, forms, and events
 - [Compiling and running `.phpm` files](compiling.md): the build output and the diagnostics

@@ -1,0 +1,6 @@
+/* Layout glue of the site that the design system has no class for. Tokens only. */
+.home-section { max-width: var(--page-width); margin: 0 auto; padding: 0 var(--space-6) var(--space-16); box-sizing: border-box; }
+.home-section__title { margin: 0 0 var(--space-6); color: var(--ink); font: 700 24px/32px var(--font-sans); letter-spacing: -0.01em; }
+.header-github { display: inline-flex; align-items: center; gap: var(--space-1); }
+@media (max-width: 767px) { .header-github { display: none; } }
+.lw-hero .lw-code { margin: 0; min-width: 0; }

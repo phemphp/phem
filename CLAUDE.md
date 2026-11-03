@@ -12,8 +12,14 @@ This project has no release yet. We are still designing it, so the public API ca
 ## Repository layout
 
 The repository root is the `phem/phem` Composer package (`src/`, `config/`, `templates/`,
-`assets/`, `bin/phemc`). The compiler (`compiler/`), the editor support (`editors/`), the docs and
-the Docker dev image (`docker/`) live in the same repository, so one change can update all of them. `.gitattributes` keeps them out of the Composer dist.
+`assets/`, `bin/phemc`). The compiler (`compiler/`), the editor support (`editors/`), the docs
+(`docs/`), the docs website (`website/`) and the Docker dev image (`docker/`) live in the same
+repository, so one change can update all of them. `.gitattributes` keeps them out of the Composer
+dist.
+
+The docs in `docs/` are plain Markdown: GitHub, the website and LLMs read the same files. Do not
+add frontmatter or MDX to them. A new doc must also go in `website/src/navigation.ts`, or the
+website build fails. Run `make docs-build` after a change in `docs/` or `website/`.
 
 ## Feature discussions
 

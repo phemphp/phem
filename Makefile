@@ -1,4 +1,4 @@
-.PHONY: test test-js bench shell lsp vscode vscode-install phpstorm phpstorm-install
+.PHONY: test test-js bench shell lsp vscode vscode-install phpstorm phpstorm-install docs docs-build
 
 # The build context of the dev image is the repository.
 COMPOSE = docker compose -f docker/compose.yaml
@@ -45,6 +45,21 @@ phpstorm-install: phpstorm ## Build the PhpStorm plugin and install it (then res
 	rm -rf "$(PHPSTORM_PLUGINS)/phem-phpstorm"
 	unzip -q editors/phpstorm/build/distributions/phem-phpstorm-$(PHPSTORM_VERSION).zip -d "$(PHPSTORM_PLUGINS)"
 	@echo "Installed in $(PHPSTORM_PLUGINS)/phem-phpstorm. Restart PhpStorm."
+
+# The docs website (website/, Astro). It reads docs/ and the grammar of editors/, so the container
+# gets the repository. git gives the "Last updated" date of each page. node_modules stays in a
+# volume: the host and the container need different native binaries.
+DOCS_NODE = docker run --rm $(DOCS_FLAGS) -e NPM_CONFIG_UPDATE_NOTIFIER=false -e NPM_CONFIG_LOGLEVEL=warn \
+	-v "$(CURDIR):/repo" -v phem-website-node-modules:/repo/website/node_modules -w /repo/website node:22-alpine sh -c ' \
+		apk add --no-cache git > /dev/null && git config --global --add safe.directory /repo && \
+		npm ci --no-fund --no-audit &&
+
+docs: DOCS_FLAGS = -it -p 4321:4321
+docs: ## Run the docs website on http://localhost:4321/phem/ (it builds the pages again on each save)
+	$(DOCS_NODE) npm run dev -- --host 0.0.0.0'
+
+docs-build: ## Build the docs website into website/dist/ and check its links
+	$(DOCS_NODE) npm run build'
 
 shell:  ## Open a shell in the dev image (phemc, cargo, composer and PHPUnit)
 	$(COMPOSE) run --rm dev sh

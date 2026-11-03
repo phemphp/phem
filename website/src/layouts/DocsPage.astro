@@ -1,0 +1,37 @@
+---
+// Design system: DocsPage. Sidebar, article and "On this page", in the order of the page anatomy:
+// Breadcrumbs, the article (h1 and lead), PrevNext and PageMeta.
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import PageMeta from '../components/PageMeta.astro';
+import PrevNext from '../components/PrevNext.astro';
+import SidebarNav from '../components/SidebarNav.astro';
+import TableOfContents from '../components/TableOfContents.astro';
+import type { Doc } from '../docs';
+import { pages } from '../navigation';
+import Base from './Base.astro';
+
+interface Props {
+    doc: Doc;
+}
+
+const { doc } = Astro.props;
+const label = pages.find((page) => page.slug === doc.slug)?.label ?? doc.title;
+---
+<Base title={`${doc.title} | Phem`} current={doc.slug}>
+    <div class="lw-docs">
+        <SidebarNav current={doc.slug} />
+        <main class="lw-docs__main" id="main">
+            <div class="lw-docs__content">
+                <Breadcrumbs slug={doc.slug} label={label} />
+                <article class="lw-prose">
+                    <slot />
+                </article>
+                <PrevNext slug={doc.slug} />
+                <PageMeta editUrl={doc.editUrl} updated={doc.updated} />
+            </div>
+        </main>
+        <aside class="lw-docs__aside">
+            <TableOfContents headings={doc.headings} editUrl={doc.editUrl} />
+        </aside>
+    </div>
+</Base>

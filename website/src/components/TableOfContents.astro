@@ -1,0 +1,40 @@
+---
+// Design system: TableOfContents. The h2 and h3 of the page; hidden with fewer than 3 headings.
+import type { MarkdownHeading } from 'astro';
+import Icon from './Icon.astro';
+
+interface Props {
+    headings: MarkdownHeading[];
+    editUrl: string;
+}
+
+const { headings, editUrl } = Astro.props;
+const sections: { heading: MarkdownHeading; children: MarkdownHeading[] }[] = [];
+
+for (const heading of headings) {
+    if (2 === heading.depth || 0 === sections.length) {
+        sections.push({ heading, children: [] });
+    } else {
+        sections[sections.length - 1].children.push(heading);
+    }
+}
+---
+{headings.length >= 3 && (
+    <nav class="lw-toc" aria-labelledby="toc-title" data-lw-toc>
+        <p class="lw-toc__title" id="toc-title">On this page</p>
+        <ul>
+            {sections.map(({ heading, children }) => (
+                <li>
+                    <a href={`#${heading.slug}`}>{heading.text}</a>
+                    {children.length > 0 && (
+                        <ul>{children.map((child) => <li><a href={`#${child.slug}`}>{child.text}</a></li>)}</ul>
+                    )}
+                </li>
+            ))}
+        </ul>
+        <div class="lw-toc__extra">
+            <a href={editUrl}><Icon name="pencil-square" />Edit this page</a>
+            <a href="#"><Icon name="arrow-up" />Back to top</a>
+        </div>
+    </nav>
+)}

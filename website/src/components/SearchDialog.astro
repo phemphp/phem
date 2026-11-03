@@ -1,0 +1,92 @@
+---
+// Design system: SearchDialog. The items come from search.json (all the pages and their h2 and
+// h3 headings); bundle.js opens the dialog and filters the items as the user types.
+import { svg } from '../icons';
+import { url } from '../site';
+import Icon from './Icon.astro';
+---
+<dialog class="lw-search" data-lw-search aria-label="Search documentation" data-index={url('/search.json')} data-icon-page={svg('document-text')} data-icon-section={svg('hashtag')} data-icon-enter={svg('arrow-turn-down-left', 'lw-search__item-enter')}>
+    <div class="lw-search__field">
+        <Icon name="magnifying-glass" />
+        <input class="lw-search__input" data-lw-search-input type="search" placeholder="Search docs" aria-label="Search docs" role="combobox" aria-expanded="true" aria-controls="search-results" autocomplete="off" />
+        <kbd class="lw-kbd">Esc</kbd>
+    </div>
+    <div class="lw-search__results" id="search-results" role="listbox" aria-label="Results">
+        <p class="lw-search__empty" data-lw-search-empty hidden>No results for “<span data-lw-search-query></span>”</p>
+    </div>
+    <div class="lw-search__foot">
+        <span><kbd class="lw-kbd">↑</kbd><kbd class="lw-kbd">↓</kbd> to navigate</span>
+        <span><kbd class="lw-kbd">↵</kbd> to open</span>
+        <span><kbd class="lw-kbd">Esc</kbd> to close</span>
+    </div>
+</dialog>
+
+<script>
+    interface SearchItem {
+        title: string;
+        path: string;
+        href: string;
+    }
+
+    interface SearchIndex {
+        pages: SearchItem[];
+        sections: SearchItem[];
+    }
+
+    const dialog = document.querySelector<HTMLDialogElement>('[data-lw-search]');
+
+    function group(title: string, items: SearchItem[], icon: string, enter: string): HTMLElement {
+        const element = document.createElement('div');
+        const heading = document.createElement('p');
+
+        element.className = 'lw-search__group';
+        element.setAttribute('data-lw-search-group', '');
+        element.setAttribute('role', 'group');
+        heading.className = 'lw-search__group-title';
+        heading.textContent = title;
+        element.append(heading);
+
+        for (const item of items) {
+            const link = document.createElement('a');
+            const text = document.createElement('span');
+            const name = document.createElement('span');
+            const path = document.createElement('span');
+
+            link.className = 'lw-search__item';
+            link.href = item.href;
+            link.setAttribute('role', 'option');
+            link.setAttribute('aria-selected', 'false');
+            link.setAttribute('data-lw-search-item', item.path);
+            text.className = 'lw-search__item-text';
+            name.className = 'lw-search__item-title';
+            name.textContent = item.title;
+            path.className = 'lw-search__item-path';
+            path.textContent = item.path;
+            text.append(name, path);
+            link.insertAdjacentHTML('afterbegin', icon);
+            link.append(text);
+            link.insertAdjacentHTML('beforeend', enter);
+            element.append(link);
+        }
+
+        return element;
+    }
+
+    async function load(dialog: HTMLDialogElement): Promise<void> {
+        const index: SearchIndex = await (await fetch(dialog.dataset.index!)).json();
+        const results = dialog.querySelector('.lw-search__results')!;
+        const enter = dialog.dataset.iconEnter!;
+
+        results.prepend(
+            group('Pages', index.pages, dialog.dataset.iconPage!, enter),
+            group('Sections', index.sections, dialog.dataset.iconSection!, enter),
+        );
+
+        // Filter the new items with the text that the user typed while the index loaded.
+        dialog.querySelector('[data-lw-search-input]')?.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    if (dialog) {
+        load(dialog);
+    }
+</script>

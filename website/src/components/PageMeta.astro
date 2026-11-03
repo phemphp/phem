@@ -1,0 +1,16 @@
+---
+// Design system: PageMeta. The edit link and the date of the last commit of the file.
+import Icon from './Icon.astro';
+
+interface Props {
+    editUrl: string;
+    updated?: string;
+}
+
+const { editUrl, updated } = Astro.props;
+const date = updated && new Date(`${updated}T00:00:00Z`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+---
+<div class="lw-meta">
+    <a href={editUrl}><Icon name="pencil-square" />Edit this page on GitHub</a>
+    {updated && <span><Icon name="clock" />Last updated <time datetime={updated}>{date}</time></span>}
+</div>

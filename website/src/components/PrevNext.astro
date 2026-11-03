@@ -1,0 +1,22 @@
+---
+// Design system: PrevNext, in the order of the navigation.
+import { pages } from '../navigation';
+import { url } from '../site';
+import Icon from './Icon.astro';
+
+interface Props {
+    slug: string;
+}
+
+const index = pages.findIndex((page) => page.slug === Astro.props.slug);
+const prev = pages[index - 1];
+const next = pages[index + 1];
+---
+<nav class="lw-pager" aria-label="Pagination">
+    {prev && (
+        <a class="lw-pager__link" href={url(`/${prev.slug}/`)} rel="prev"><span class="lw-pager__dir"><Icon name="arrow-left" />Previous</span><span class="lw-pager__title">{prev.label}</span></a>
+    )}
+    {next && (
+        <a class="lw-pager__link lw-pager__link--next" href={url(`/${next.slug}/`)} rel="next"><span class="lw-pager__dir">Next<Icon name="arrow-right" /></span><span class="lw-pager__title">{next.label}</span></a>
+    )}
+</nav>

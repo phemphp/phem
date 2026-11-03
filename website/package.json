@@ -1,0 +1,18 @@
+{
+  "name": "phem-website",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tokens": "node scripts/tokens.mjs",
+    "dev": "npm run tokens && astro dev",
+    "build": "npm run tokens && astro build && node scripts/check-links.mjs",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/markdown-satteri": "0.4.4",
+    "astro": "7.4.1",
+    "github-slugger": "2.0.0",
+    "satteri": "0.10.5",
+    "shiki": "4.5.0"
+  }
+}

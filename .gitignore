@@ -14,6 +14,11 @@ composer.lock
 # The client of the phem package (a global dist/ rule must not ignore it).
 !/assets/dist/
 /assets/node_modules/
+# The docs website: its packages, its build output, and the CSS that it builds from the tokens.
+/website/node_modules/
+/website/dist/
+/website/.astro/
+/website/src/styles/tokens.css
 # The phemc binary that bin/phemc downloads (and its temporary file).
 /bin/phemc-*
 /bin/.phemc-*

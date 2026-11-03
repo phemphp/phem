@@ -1,0 +1,27 @@
+---
+// Design system: Breadcrumbs. Docs › group › page.
+import { groupOf } from '../navigation';
+import { url } from '../site';
+import Icon from './Icon.astro';
+
+interface Props {
+    slug: string;
+    label: string;
+}
+
+const { slug, label } = Astro.props;
+const group = groupOf(slug);
+const first = group?.pages[0];
+---
+<nav class="lw-breadcrumbs" aria-label="Breadcrumb">
+    <ol>
+        <li><a href={url('/')}>Docs</a></li>
+        {group && first && first.slug !== slug && (
+            <li><Icon name="chevron-right" /><a href={url(`/${first.slug}/`)}>{group.title}</a></li>
+        )}
+        {group && first?.slug === slug && (
+            <li><Icon name="chevron-right" /><span>{group.title}</span></li>
+        )}
+        <li><Icon name="chevron-right" /><span aria-current="page">{label}</span></li>
+    </ol>
+</nav>
