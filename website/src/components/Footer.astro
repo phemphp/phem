@@ -1,7 +1,7 @@
 ---
 // Design system: Footer.
 import { navigation } from '../navigation';
-import { repository, url } from '../site';
+import { author, repository, url } from '../site';
 ---
 <footer class="lw-footer">
     <div class="lw-footer__inner">
@@ -18,7 +18,7 @@ import { repository, url } from '../site';
             ))}
         </div>
         <div class="lw-footer__bottom">
-            <span>Released under the MIT license.</span>
+            <span>Released under the MIT license. Created by <a href={`https://github.com/${author}`}>@{author}</a>.</span>
             <span><a href={repository}>GitHub</a> · <a href={url('/llms.txt')}>llms.txt</a></span>
         </div>
     </div>
