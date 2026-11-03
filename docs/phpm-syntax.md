@@ -1,8 +1,12 @@
 # The `.phpm` file format
 
-A `.phpm` file is a PHP 8.5 file that can contain **markup literals**, the same way a `.jsx` file is a
+A `.phpm` file is a PHP file that can contain **markup literals**, the same way a `.jsx` file is a
 JavaScript file that contains JSX. The `phemc` compiler turns each markup literal into a Twig
 template and turns the PHP code into plain PHP. All parsing happens at build time.
+
+Phem needs PHP 8.4 or later. The compiler keeps the PHP code as it is, so the syntax of PHP 8.5
+(for example the `|>` operator, or a closure in an attribute) works only when the application
+runs on PHP 8.5.
 
 A `.phpm` file opens PHP with `<?phpm`. A plain `<?php` tag is an error (E006). The compiler
 writes `<?php` in the PHP that it generates.

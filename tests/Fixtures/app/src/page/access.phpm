@@ -7,7 +7,6 @@ use Phem\Node;
 use Phem\Tests\Fixtures\Deny;
 use Symfony\Component\HttpKernel\Attribute\Cache;
 use Symfony\Component\ExpressionLanguage\Expression;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Attribute\RateLimit;
 
 use function App\Component\Document;
@@ -113,17 +112,10 @@ final class LimitedHandlerPage
     {
     }
 
-    // An Expression and a Closure key, as for a controller: both give the same key, so the two
-    // handlers share one count.
+    // An Expression key, as for a controller. A Closure key needs PHP 8.5 (see
+    // RateLimitMiddlewareTest).
     #[RateLimit('phem_events', key: new Expression('"ip-" ~ request.getClientIp()'))]
     public function like(): void
-    {
-    }
-
-    #[RateLimit('phem_events', key: static function (array $args, ?Request $request): string {
-        return 'ip-'.$request?->getClientIp();
-    })]
-    public function unlike(): void
     {
     }
 
@@ -137,7 +129,6 @@ final class LimitedHandlerPage
         return (
             <Document>
                 <button id="like" onClick={{ like }}>like</button>
-                <button id="unlike" onClick={{ unlike }}>unlike</button>
                 <button id="search" onClick={{ search }}>{{ searches }}</button>
                 <button id="heavy" onClick={{ heavy }}>heavy</button>
                 <button id="increment" onClick={{ increment }}>{{ count }}</button>

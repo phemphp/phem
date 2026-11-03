@@ -6,6 +6,12 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
+## Unreleased
+
+- Phem needs PHP 8.4 or later (before: 8.5). A `.phpm` file can use the syntax of PHP 8.5 (the
+  `|>` operator, a closure in an attribute such as the key of `#[RateLimit]`) only when the
+  application runs on PHP 8.5.
+
 ## 0.3.0 (2026-11-03)
 
 - No change in the code. The Flex recipe of `phem/phem` starts at this version

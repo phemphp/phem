@@ -212,7 +212,7 @@ example `"toggle": { "enabled": true, "fetch": "lazy" }`.
 
 In an application, `composer require phem/phem` gives `vendor/bin/phemc`. On the first run, it
 downloads the `phemc` binary of the installed version from the GitHub release. You also need
-PHP 8.5 and, for the worker mode, [FrankenPHP](https://frankenphp.dev).
+PHP 8.4 or later and, for the worker mode, [FrankenPHP](https://frankenphp.dev).
 
 To work on this repository, use Docker (recommended). The `dev` image has FrankenPHP (PHP 8.5), Composer, and the Rust
 toolchain:
@@ -221,7 +221,7 @@ toolchain:
 make shell      # a shell in the dev image; `phemc` (built from compiler/) is on the PATH
 ```
 
-Without Docker, you need PHP 8.5, [FrankenPHP](https://frankenphp.dev), and Rust:
+Without Docker, you need PHP 8.4 or later, [FrankenPHP](https://frankenphp.dev), and Rust:
 
 ```sh
 cargo build --release --manifest-path compiler/Cargo.toml -p phemc-cli

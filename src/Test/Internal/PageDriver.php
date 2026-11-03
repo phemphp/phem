@@ -260,7 +260,10 @@ final class PageDriver implements Driver
         foreach ($document->querySelectorAll('template[data-phem-for]') as $template) {
             $target = $root->querySelector('[data-phem-c="'.$template->getAttribute('data-phem-for').'"]');
             if (null !== $target) {
-                $target->outerHTML = $template->innerHTML;
+                // The HTML parses as the content of the parent of the fallback, as outerHTML of PHP 8.5.
+                $container = $document->createElement($target->parentElement->localName ?? 'div');
+                $container->innerHTML = $template->innerHTML;
+                $target->replaceWith(...iterator_to_array($container->childNodes, false));
             }
 
             if ('script' === $template->nextElementSibling?->localName) {

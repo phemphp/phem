@@ -92,8 +92,8 @@ final class EventAccessTest extends TestCase
         self::assertSame(429, $this->click('/limited-handler', 'App\\Page\\LimitedHandlerPage', 'heavy')->getStatusCode(), 'with `tokens: 2`, one event uses all the limit');
 
         self::assertSame(200, $this->click('/limited-handler', 'App\\Page\\LimitedHandlerPage', 'like')->getStatusCode());
-        self::assertSame(200, $this->click('/limited-handler', 'App\\Page\\LimitedHandlerPage', 'unlike')->getStatusCode());
-        self::assertSame(429, $this->click('/limited-handler', 'App\\Page\\LimitedHandlerPage', 'like')->getStatusCode(), 'an Expression key and a Closure key with the same value share one count');
+        self::assertSame(200, $this->click('/limited-handler', 'App\\Page\\LimitedHandlerPage', 'like')->getStatusCode());
+        self::assertSame(429, $this->click('/limited-handler', 'App\\Page\\LimitedHandlerPage', 'like')->getStatusCode(), 'the Expression gives the key');
     }
 
     /**

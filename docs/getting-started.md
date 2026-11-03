@@ -3,7 +3,7 @@
 This guide adds Phem to a new Symfony application. At the end, you have a dev server that builds
 the `.phpm` files when you save them, and a page with an interactive component.
 
-You need the [Symfony CLI](https://symfony.com/download) (with PHP 8.5 and Composer).
+You need the [Symfony CLI](https://symfony.com/download) (with PHP 8.4 or later, and Composer).
 
 ## Step 1: Make the application and install Phem
 
