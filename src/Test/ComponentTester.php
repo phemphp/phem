@@ -58,12 +58,13 @@ final class ComponentTester
      */
     private array $edited = [];
     /**
-     * The files that the user selected in the file inputs: input key => paths (see fileKey()).
-     * The morph keeps them, as in a browser: the morph does not change the files of an input.
+     * The files that the user selected in the file inputs: input => paths. As in a browser, the
+     * files belong to the element: the morph keeps them when it keeps the element (see
+     * moveFiles()), and a handler that calls `$e->clearFiles()` empties them.
      *
-     * @var array<string, list<string>>
+     * @var \SplObjectStorage<Element, list<string>>
      */
-    private array $selected = [];
+    private \SplObjectStorage $selected;
     /**
      * The components whose element a push changed: the next event sends them (see receive()).
      *
@@ -95,6 +96,7 @@ final class ComponentTester
     ) {
         // The page gets the updates that come after its render.
         $this->seen = null !== $updates ? \count($updates()) : 0;
+        $this->selected = new \SplObjectStorage();
 
         $html = $driver->html();
         $this->document = HTMLDocument::createFromString($driver->isDocument() ? $html : '<!DOCTYPE html><html><head></head><body>'.$html.'</body></html>', \LIBXML_NOERROR, 'UTF-8');
@@ -199,7 +201,7 @@ final class ComponentTester
             }
         }
 
-        $this->selected[$this->fileKey($element)] = $paths;
+        $this->selected[$element] = $paths;
 
         return $this;
     }
@@ -582,13 +584,14 @@ final class ComponentTester
      * did not render again gets the server value back, as in a browser: the server did not take
      * its value, or the value is the same.
      *
-     * @param array{0: string|list<string>|null, 1: array<string, mixed>} ...$events handler id (null for `phem:live`, a list for a load of many boundaries), DOM event
+     * @param array{0: string|list<string>|null, 1: array<string, mixed>, 2?: list<Element>} ...$events handler id (null for `phem:live`, a list for a load of many boundaries), DOM event, and the file inputs whose files it sends
      */
     private function send(array ...$events): self
     {
         $this->dispatched = [];
 
-        foreach ($events as [$handler, $event]) {
+        foreach ($events as $data) {
+            [$handler, $event] = $data;
             $bound = array_map(self::boundValue(...), array_map(static fn (array $fields): array => array_column($fields, 0), $this->edited));
             $stale = array_keys($this->stale);
             $result = $this->driver->dispatch(null === $handler ? [] : (array) $handler, $event, $bound, $stale);
@@ -607,6 +610,13 @@ final class ComponentTester
 
             if (null !== $result->sender) {
                 $this->sent[] = $result->sender;
+            }
+
+            // As in the browser, the handler took the files: their inputs are empty.
+            if ($result->clearFiles) {
+                foreach ($data[2] ?? [] as $input) {
+                    unset($this->selected[$input]);
+                }
             }
 
             $this->morph($result);
@@ -652,6 +662,10 @@ final class ComponentTester
 
             $this->markStale($outside ? $target->parentElement : $target);
 
+            // A morph moves the files of the inputs that it keeps. The other actions put new
+            // elements in the page: their inputs have no files.
+            $inputs = self::positions(self::fileInputsIn($target));
+
             if ('append' === $action || 'prepend' === $action) {
                 foreach ($nodes as $node) {
                     $old = $node instanceof Element && '' !== $node->id ? $this->document->getElementById($node->id) : null;
@@ -671,6 +685,8 @@ final class ComponentTester
                 'remove' => $target->remove(),
                 default => Assert::fail(\sprintf('A push has the Turbo Stream action "%s", which the tests do not know.', $action)),
             };
+
+            $this->moveFiles($inputs, 'morph' === $stream->getAttribute('method') ? $nodes : []);
         }
 
         return $refresh;
@@ -762,6 +778,9 @@ final class ComponentTester
                 $passwords[(string) $old->getAttribute('name')] = (string) $old->getAttribute('value');
             }
 
+            // As in the browser, the morph moves the files of the inputs that it keeps.
+            $inputs = self::positions(self::fileInputsIn($element));
+
             // The new HTML is the element with the fiber id: it replaces the element of the page.
             $nodes = $this->nodes($html, $element->parentElement);
             $element->replaceWith(...$nodes);
@@ -794,6 +813,8 @@ final class ComponentTester
                     $placeholder->replaceWith($old);
                 }
             }
+
+            $this->moveFiles($inputs, $nodes);
         }
     }
 
@@ -805,9 +826,9 @@ final class ComponentTester
 
     /**
      * The handler id and the DOM event of an element, as the `phem` Stimulus controller makes
-     * them, or null when no handler gets the event.
+     * them, and the file inputs whose files it sends, or null when no handler gets the event.
      *
-     * @return array{0: string, 1: array<string, mixed>}|null
+     * @return array{0: string, 1: array<string, mixed>, 2: list<Element>}|null
      */
     private function event(Element $target, string $type, ?Element $submitter = null): ?array
     {
@@ -840,11 +861,12 @@ final class ComponentTester
             $event['touched'] = self::touchedNames($form);
         }
 
-        if (null !== $form && 'submit' === $type && [] !== ($files = $this->files($form))) {
-            $event['files'] = $files;
+        $inputs = null !== $form && 'submit' === $type ? $this->fileInputs($form) : [];
+        if ([] !== $inputs) {
+            $event['files'] = $this->files($inputs);
         }
 
-        return [$handler, $event];
+        return [$handler, $event, $inputs];
     }
 
     /** The closest element with a handler for the event, in the root element of the page. */
@@ -1177,22 +1199,19 @@ final class ComponentTester
     }
 
     /**
-     * The files of a form as [name, path] pairs, as `new FormData(form)` has them: the files that
-     * the user selected in each file input with a name, and not disabled.
+     * The files of the file inputs of a form as [name, path] pairs, as `new FormData(form)` has
+     * them (see fileInputs()).
+     *
+     * @param list<Element> $inputs
      *
      * @return list<array{string, string}>
      */
-    private function files(Element $form): array
+    private function files(array $inputs): array
     {
         $files = [];
-        foreach (self::controls($form, 'input[type=file i]') as $input) {
-            $name = $input->getAttribute('name');
-            if (null === $name || '' === $name || $input->hasAttribute('disabled') || null !== $input->closest('fieldset[disabled]')) {
-                continue;
-            }
-
-            foreach ($this->selected[$this->fileKey($input)] ?? [] as $path) {
-                $files[] = [$name, $path];
+        foreach ($inputs as $input) {
+            foreach ($this->selected[$input] as $path) {
+                $files[] = [(string) $input->getAttribute('name'), $path];
             }
         }
 
@@ -1200,15 +1219,99 @@ final class ComponentTester
     }
 
     /**
-     * The key of a file input: its name, and its position in the file inputs of the page with
-     * that name. It stays the same when the morph renders the input again.
+     * The file inputs of a form whose files a submit sends: each file input with a name, not
+     * disabled, and with files.
+     *
+     * @return list<Element>
      */
-    private function fileKey(Element $input): string
+    private function fileInputs(Element $form): array
     {
-        $name = (string) $input->getAttribute('name');
-        $same = array_filter(iterator_to_array($this->document->querySelectorAll('input[type=file i]'), false), static fn (Element $e): bool => $e->getAttribute('name') === $name);
+        $inputs = [];
+        foreach (self::controls($form, 'input[type=file i]') as $input) {
+            $name = $input->getAttribute('name');
+            if (null !== $name && '' !== $name && !$input->hasAttribute('disabled') && null === $input->closest('fieldset[disabled]') && [] !== ($this->selected[$input] ?? [])) {
+                $inputs[] = $input;
+            }
+        }
 
-        return $name.'#'.(int) array_search($input, array_values($same), true);
+        return $inputs;
+    }
+
+    /**
+     * The file inputs of an element: the element itself, and the file inputs in it.
+     *
+     * @return list<Element>
+     */
+    private static function fileInputsIn(Element $element): array
+    {
+        return [...($element->matches('input[type=file i]') ? [$element] : []), ...$element->querySelectorAll('input[type=file i]')];
+    }
+
+    /**
+     * After a morph: moves the files of the replaced file inputs to the new inputs that the
+     * morph matches with them, as in a browser, where idiomorph keeps the element of the input
+     * and its files. An input with an id matches the new input with the same id. An input with no
+     * id matches the new input at its position among the inputs with its name. The other new
+     * inputs have no files. With no new nodes (a push that is not a morph), the files of the
+     * replaced inputs go away.
+     *
+     * @param list<array{0: Element, 1: int}> $old   the file inputs before the morph, with their position (see positions())
+     * @param list<\Dom\Node>                $nodes the new HTML, in the page
+     */
+    private function moveFiles(array $old, array $nodes): void
+    {
+        if (0 === $this->selected->count()) {
+            return;
+        }
+
+        $new = [];
+        foreach ($nodes as $node) {
+            if ($node instanceof Element) {
+                array_push($new, ...self::fileInputsIn($node));
+            }
+        }
+
+        $new = self::positions($new);
+        $olds = array_map(static fn (array $input): Element => $input[0], $old);
+
+        foreach ($old as [$input, $position]) {
+            // A kept component, or a `data-phem-ignore` element: the morph keeps the element.
+            if ($input->isConnected || !isset($this->selected[$input])) {
+                continue;
+            }
+
+            $paths = $this->selected[$input];
+            unset($this->selected[$input]);
+
+            $id = (string) $input->getAttribute('id');
+            foreach ($new as [$next, $at]) {
+                $match = '' !== $id ? $id === $next->getAttribute('id') : $at === $position && $next->getAttribute('name') === $input->getAttribute('name');
+                if ($match && !\in_array($next, $olds, true)) {
+                    $this->selected[$next] = $paths;
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * Each file input with its position among the inputs with the same name.
+     *
+     * @param list<Element> $inputs
+     *
+     * @return list<array{0: Element, 1: int}>
+     */
+    private static function positions(array $inputs): array
+    {
+        $counts = [];
+        $positions = [];
+        foreach ($inputs as $input) {
+            $name = (string) $input->getAttribute('name');
+            $counts[$name] = ($counts[$name] ?? -1) + 1;
+            $positions[] = [$input, $counts[$name]];
+        }
+
+        return $positions;
     }
 
     /** The value of an element, as `el.value` in the browser; null for an element without a value. */

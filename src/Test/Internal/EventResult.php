@@ -25,6 +25,7 @@ final class EventResult
      * @param array<string, string>                    $updates    fiber id => the new HTML of its element (see Phem\Rendering\Fiber::wrapped())
      * @param list<array{name: string, detail: mixed}> $dispatched the browser events of the handler (see Phem\BrowserEventDispatcher)
      * @param string|null                              $sender     the token of the refreshes of the event (see Phem\Stream\SenderToken)
+     * @param bool                                     $clearFiles whether the handler took the files of the form (see Phem\Event::clearFiles())
      */
     private function __construct(
         public readonly array $updates = [],
@@ -33,6 +34,7 @@ final class EventResult
         public readonly ?string $redirect = null,
         public readonly bool $reload = false,
         public readonly int $status = 200,
+        public readonly bool $clearFiles = false,
     ) {
     }
 
@@ -40,9 +42,9 @@ final class EventResult
      * @param array<string, string>                    $updates
      * @param list<array{name: string, detail: mixed}> $dispatched
      */
-    public static function updates(array $updates, array $dispatched = [], ?string $sender = null): self
+    public static function updates(array $updates, array $dispatched = [], ?string $sender = null, bool $clearFiles = false): self
     {
-        return new self($updates, $dispatched, $sender);
+        return new self($updates, $dispatched, $sender, clearFiles: $clearFiles);
     }
 
     public static function redirect(string $url): self

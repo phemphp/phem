@@ -1,7 +1,8 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
-import { click, mount, nextDone, respond } from "./support.js"
+import { createRequire } from "node:module"
+import { answer, click, mount, nextDone, respond } from "./support.js"
 
 let application
 
@@ -434,6 +435,151 @@ describe("the morph of the bound fields", () => {
     await done
 
     expect(document.querySelector('[value="b"]')).toBe(b)
+  })
+})
+
+describe("the file inputs", () => {
+  const form = (attributes = "") => `<form data-phem-on-submit="c1.save" ${attributes}>
+      <input type="file" name="photo"><input name="title" value="Notes"><button type="submit">Save</button>
+    </form>`
+
+  // Selects files in a file input, as the user does: a new FileList each time, as Chrome and
+  // Safari do, or the same FileList with other files (`sameList`), as Firefox does. jsdom has no
+  // API for it, so the files go into the FileList with the jsdom internals.
+  const { implForWrapper } = createRequire(import.meta.url)("jsdom/lib/generated/idl/utils.js")
+  function pick(input, names, { sameList = false } = {}) {
+    const files = sameList ? input.files : Object.assign(document.createElement("input"), { type: "file" }).files
+    const list = implForWrapper(files)
+    list.length = 0
+    list.push(...names.map((name) => implForWrapper(new File([name], name))))
+    input.files = files
+    input.dispatchEvent(new Event("change", { bubbles: true }))
+  }
+
+  // An event with files goes with XHR (see post()): each request gets the next answer. Resolves a
+  // request only when the test calls the function that it gives to `hold`.
+  function stubXhr(answers, hold = null) {
+    vi.stubGlobal(
+      "XMLHttpRequest",
+      class extends EventTarget {
+        upload = new EventTarget()
+        open() {}
+        setRequestHeader() {}
+        getAllResponseHeaders() {
+          return "content-type: application/json"
+        }
+        send() {
+          Object.assign(this, { status: 200, statusText: "OK", response: JSON.stringify(answers.shift()) })
+          const load = () => this.dispatchEvent(new Event("load"))
+          if (hold) hold(load)
+          else setTimeout(load, 0)
+        }
+      },
+    )
+  }
+
+  it("empties the file inputs that sent their files when the handler takes them", async () => {
+    await mount(form())
+    const input = document.querySelector("input[type=file]")
+    pick(input, ["a.txt"])
+    stubXhr([answer(form(), {}, { clearFiles: true })])
+    const done = nextDone()
+    document.querySelector("form").requestSubmit()
+    await done
+
+    expect(document.querySelector("input[type=file]")).toBe(input)
+    expect(input.files.length).toBe(0)
+    expect(document.querySelector("form").classList.contains("phem-dirty")).toBe(false)
+  })
+
+  it("keeps the files when the handler does not take them", async () => {
+    await mount(form())
+    const input = document.querySelector("input[type=file]")
+    pick(input, ["a.txt"])
+    stubXhr([answer(form())])
+    const done = nextDone()
+    document.querySelector("form").requestSubmit()
+    await done
+
+    expect(input.files.length).toBe(1)
+    expect(input.classList.contains("phem-dirty")).toBe(true)
+    expect(document.querySelector("form").classList.contains("phem-dirty")).toBe(true)
+  })
+
+  it("keeps the files that the user selects while the request runs", async () => {
+    await mount(form('data-phem-disable="false"'))
+    const input = document.querySelector("input[type=file]")
+    pick(input, ["a.txt"])
+    let load
+    stubXhr([answer(form('data-phem-disable="false"'), {}, { clearFiles: true })], (l) => (load = l))
+    const done = nextDone()
+    document.querySelector("form").requestSubmit()
+    await vi.waitFor(() => expect(load).toBeDefined())
+    pick(input, ["b.txt"])
+    load()
+    await done
+
+    expect([...input.files].map((f) => f.name)).toEqual(["b.txt"])
+  })
+
+  it("keeps the files that the user selects while the request runs in the same FileList", async () => {
+    await mount(form('data-phem-disable="false"'))
+    const input = document.querySelector("input[type=file]")
+    pick(input, ["a.txt"])
+    let load
+    stubXhr([answer(form('data-phem-disable="false"'), {}, { clearFiles: true })], (l) => (load = l))
+    const done = nextDone()
+    document.querySelector("form").requestSubmit()
+    await vi.waitFor(() => expect(load).toBeDefined())
+    pick(input, ["b.txt"], { sameList: true })
+    load()
+    await done
+
+    expect([...input.files].map((f) => f.name)).toEqual(["b.txt"])
+  })
+
+  it("empties the file inputs when the event sends stale components", async () => {
+    await mount(form())
+    const input = document.querySelector("input[type=file]")
+    application.getControllerForElementAndIdentifier(document.getElementById("phem-root"), "phem").stale.add("c9")
+    pick(input, ["a.txt"])
+    stubXhr([answer(form(), {}, { clearFiles: true })])
+    const done = nextDone()
+    document.querySelector("form").requestSubmit()
+    await done
+
+    expect(input.files.length).toBe(0)
+  })
+
+  it("does not make the page dirty for a file input that a submit does not send", async () => {
+    await mount(`<form data-phem-guard><input type="file"></form><input type="file" name="avatar">`, "data-phem-guard")
+    const [unnamed, outside] = document.querySelectorAll("input[type=file]")
+    pick(unnamed, ["a.txt"])
+    pick(outside, ["b.txt"])
+
+    expect(document.querySelector(".phem-dirty")).toBeNull()
+    expect(document.getElementById("phem-root").classList.contains("phem-dirty")).toBe(false)
+  })
+
+  it("makes its form dirty while it has files, and the guard asks before the user leaves", async () => {
+    await mount(form("data-phem-guard"))
+    const input = document.querySelector("input[type=file]")
+    const leave = () => {
+      const event = new Event("beforeunload", { cancelable: true })
+      window.dispatchEvent(event)
+      return event.defaultPrevented
+    }
+    expect(leave()).toBe(false)
+
+    pick(input, ["a.txt"])
+    expect(input.classList.contains("phem-dirty")).toBe(true)
+    expect(document.querySelector("form").classList.contains("phem-dirty")).toBe(true)
+    expect(leave()).toBe(true)
+
+    input.value = ""
+    input.dispatchEvent(new Event("change", { bubbles: true }))
+    expect(document.querySelector("form").classList.contains("phem-dirty")).toBe(false)
+    expect(leave()).toBe(false)
   })
 })
 

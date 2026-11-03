@@ -441,6 +441,43 @@ final class InteractsWithPhemTest extends KernelTestCase
         }
     }
 
+    public function testClearFilesEmptiesTheFileInputsOfTheForm(): void
+    {
+        [$a, $b] = self::files(['a.txt' => 'alpha', 'b.txt' => 'beta']);
+        $open = ['mount' => fn () => $this->mount(self::UPLOADER), 'visit' => fn () => $this->visit('/upload')];
+
+        foreach ($open as $tester) {
+            $tester()
+                ->upload('input[name=photo]', $a)
+                ->upload('input[name="photos[]"]', [$b])
+                ->click('button[value=store]')
+                ->assertState('uploaded', ['a.txt 5 alpha', 'b.txt 4 beta'], in: 'form')
+                ->submit()
+                ->assertState('uploaded', [], in: 'form');
+
+            // A new pick after the clear goes with the next submit.
+            $tester()->upload('input[name=photo]', $a)->click('button[value=store]')->upload('input[name=photo]', $b)->submit()->assertState('uploaded', ['b.txt 4 beta'], in: 'form');
+        }
+    }
+
+    public function testTheMorphDropsTheFilesOfAnInputThatItReplaces(): void
+    {
+        [$a, $b] = self::files(['a.txt' => 'alpha', 'b.txt' => 'beta']);
+        $open = ['mount' => fn () => $this->mount(self::UPLOADER), 'visit' => fn () => $this->visit('/upload')];
+
+        foreach ($open as $tester) {
+            // The avatar input gets a new id: as in the browser, the new element has no files.
+            // The photo input keeps its element and its files.
+            $tester()
+                ->upload('#avatar-0', $a)
+                ->upload('input[name=photo]', $b)
+                ->click('button[value=version]')
+                ->assertState('uploaded', ['b.txt 4 beta', 'a.txt 5 alpha'], in: 'form')
+                ->submit()
+                ->assertState('uploaded', ['b.txt 4 beta'], in: 'form');
+        }
+    }
+
     public function testUploadFailsForAnInputThatTakesNoSuchFiles(): void
     {
         [$a, $b] = self::files(['a.txt' => 'alpha', 'b.txt' => 'beta']);

@@ -96,7 +96,9 @@ of the values to check.
 `upload()` takes a path, or a list of paths for `<input type="file" multiple>`. An empty list
 removes the files. The handler gets a copy of each file in the temporary directory, so it can
 move the file. As in a browser, the files stay in the input after an event, also when the morph
-renders the input again.
+renders the input again. They go away when the handler calls `$e->clearFiles()`, or when the
+page gets a new element for the input: a morph that gives the input another `id`, or a push that
+is not a morph.
 
 The first render of a page shows its `<Suspense>` boundaries as the browser has them at the end
 of the stream of the page: a boundary with no `lazy` shows its children. A `lazy` boundary shows

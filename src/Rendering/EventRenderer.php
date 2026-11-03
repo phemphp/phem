@@ -93,6 +93,7 @@ final class EventRenderer
         $dispatcher->reset();
 
         $refresh = !$scoped;
+        $clearFiles = false;
         foreach ($closures as $closure) {
             $e = $event();
             $result = $this->renderer->dispatch($tree, $closure, $e, $request);
@@ -101,6 +102,7 @@ final class EventRenderer
             }
 
             $refresh = $refresh || $e->refreshes();
+            $clearFiles = $clearFiles || $e->clearsFiles();
         }
 
         $this->settle($tree, $before, $touched);
@@ -108,13 +110,13 @@ final class EventRenderer
         if ($refresh) {
             $this->renderer->render($tree);
 
-            return EventOutcome::rendered();
+            return EventOutcome::rendered(clearFiles: $clearFiles);
         }
 
         $dirty = $this->dirty($tree, $before, $closures);
         $this->renderer->rerender($tree, self::roots($dirty), new UpdateScope(array_fill_keys(array_keys($dirty), true), $tree->shape, $this->inputs, $this->metadata));
 
-        return EventOutcome::rendered($this->check?->check($tree, $this->state->snapshot($tree)) ?? []);
+        return EventOutcome::rendered($this->check?->check($tree, $this->state->snapshot($tree)) ?? [], $clearFiles);
     }
 
     /**

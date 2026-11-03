@@ -23,11 +23,15 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  */
 final class EventOutcome
 {
-    /** @param list<string> $warnings the warnings of the dev-mode check (see SkippedRenderCheck) */
+    /**
+     * @param list<string> $warnings   the warnings of the dev-mode check (see SkippedRenderCheck)
+     * @param bool         $clearFiles whether a handler took the files of the form (see Phem\Event::clearFiles())
+     */
     private function __construct(
         public readonly bool $reload = false,
         public readonly ?RedirectResponse $redirect = null,
         public readonly array $warnings = [],
+        public readonly bool $clearFiles = false,
     ) {
     }
 
@@ -44,8 +48,8 @@ final class EventOutcome
     }
 
     /** @param list<string> $warnings */
-    public static function rendered(array $warnings = []): self
+    public static function rendered(array $warnings = [], bool $clearFiles = false): self
     {
-        return new self(warnings: $warnings);
+        return new self(warnings: $warnings, clearFiles: $clearFiles);
     }
 }

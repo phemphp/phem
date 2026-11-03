@@ -22,6 +22,20 @@ function formFields(form, submitter) {
   return { fields, files }
 }
 
+// Whether a submit sends the files of a file input: it has a name and a form. A disabled input
+// sends nothing, but a submit locks its form while its files upload.
+function isFormFileInput(field) {
+  return field instanceof HTMLInputElement && field.type === "file" && field.name !== "" && field.form !== null
+}
+
+// The file inputs of a form whose files a submit sends (see formFields()), with a copy of their
+// files: the morph does not change them, so the controller empties them when the handler took the
+// files (see clearFiles()). A copy, because a browser can change the same FileList when the user
+// selects other files.
+function sentFileInputs(form) {
+  return [...form.elements].filter((f) => isFormFileInput(f) && !f.matches(":disabled") && f.files.length).map((f) => [f, [...f.files]])
+}
+
 // The mark of a field of a form that the user touched: the server renders it (see
 // Phem\Form\TouchedFieldsExtension), and the controller sets it on each change.
 const TOUCHED = "data-phem-touched"
@@ -79,8 +93,14 @@ function defaultOption(select) {
   return options.findLast((o) => o.defaultSelected) ?? options.find((o) => !o.disabled) ?? null
 }
 
-// Whether the user changed a bound field: its value is not the value of the server render.
+// The fields that can be dirty: the bound fields, and the file inputs of a form. The files go with
+// the submit only, so a file input is dirty while it has files.
+const DIRTY_FIELDS = '[data-phem-bind], input[type="file"][name]'
+
+// Whether the user changed a bound field: its value is not the value of the server render. A file
+// input is dirty while it has files that a submit sends.
 function isDirty(field) {
+  if (field instanceof HTMLInputElement && field.type === "file") return isFormFileInput(field) && field.files.length > 0
   if (field instanceof HTMLInputElement && (field.type === "checkbox" || field.type === "radio")) return field.checked !== field.defaultChecked
   if (field instanceof HTMLSelectElement) {
     if (field.multiple) return [...field.options].some((o) => o.selected !== o.defaultSelected)
@@ -640,7 +660,7 @@ export default class PhemController extends Controller {
     window.addEventListener("online", this.showOffline)
     window.addEventListener("offline", this.showOffline)
 
-    // The `phem-dirty` class of the bound fields that the user changed.
+    // The `phem-dirty` class of the bound fields that the user changed, and of the file inputs with files.
     this.showDirty = () => this.markDirty()
     this.element.addEventListener("input", this.showDirty)
     this.element.addEventListener("change", this.showDirty)
@@ -962,8 +982,13 @@ export default class PhemController extends Controller {
 
     if (fields && !submit) payload.touched = touchedNames(form)
 
-    // Not in the JSON: fetchWithRetry() sends them as parts of a multipart body.
-    if (submit && files.length) payload.files = files
+    // Not in the JSON: fetchWithRetry() sends the files as parts of a multipart body. The handler
+    // can take them: then the controller empties their inputs (see clearFiles()).
+    if (submit && files.length) {
+      payload.files = files
+      payload.fileInputs = sentFileInputs(form)
+    }
+
     this.schedule(el, attr, handler, event.type, payload)
   }
 
@@ -1414,6 +1439,7 @@ export default class PhemController extends Controller {
       this.sentBound = null
       this.sentForm = null
       this.resetRejected(bound)
+      if (data.clearFiles) this.clearFiles(event)
       this.markDirty()
 
       // After the morph, so a listener sees the new page.
@@ -1549,7 +1575,8 @@ export default class PhemController extends Controller {
   // each time. The last try returns its response, or throws its network error. An event with
   // files goes with XHR when `onProgress` wants the progress of the upload.
   async fetchWithRetry(handler, event, bound, onProgress, withState) {
-    const { files = [], stale = [], loads = null, ...data } = event
+    // The file inputs stay in the page (see clearFiles()).
+    const { files = [], fileInputs, stale = [], loads = null, ...data } = event
 
     // A `phem:live` event has no handler: the server only sets the bound values. A refresh has
     // no handler either: the server renders the stale components. A load of many boundaries has
@@ -1642,10 +1669,11 @@ export default class PhemController extends Controller {
     return values
   }
 
-  // Gives the `phem-dirty` class to each bound field that the user changed, and to each component,
-  // form, guard and root element with one. The server render has no such class, so it runs after each morph.
+  // Gives the `phem-dirty` class to each bound field that the user changed and to each file input
+  // with files, and to each component, form, guard and root element with one. The server render
+  // has no such class, so it runs after each morph.
   markDirty() {
-    const fields = [...this.element.querySelectorAll("[data-phem-bind]")]
+    const fields = [...this.element.querySelectorAll(DIRTY_FIELDS)]
     const dirty = fields.filter(isDirty)
 
     for (const field of fields) field.classList.toggle("phem-dirty", dirty.includes(field))
@@ -1654,14 +1682,23 @@ export default class PhemController extends Controller {
     }
   }
 
-  // The closest `data-phem-guard` element of a dirty bound field, or null.
+  // The closest `data-phem-guard` element of a dirty bound field or file input, or null.
   dirtyGuard() {
-    for (const field of this.element.querySelectorAll("[data-phem-bind]")) {
+    for (const field of this.element.querySelectorAll(DIRTY_FIELDS)) {
       const guard = field.closest("[data-phem-guard]")
       if (guard && this.element.contains(guard) && isDirty(field)) return guard
     }
 
     return null
+  }
+
+  // After the morph of a handler that took the files of its submit (`$e->clearFiles()`): empties
+  // the file inputs that sent them, as a full page POST does. An input whose files the user
+  // changed after the request left keeps its new files.
+  clearFiles(event) {
+    for (const [input, files] of event.fileInputs ?? []) {
+      if (input.files.length === files.length && files.every((file, i) => input.files[i] === file)) input.value = ""
+    }
   }
 
   // After the morph: a field that still has the value that the request sent, and not the value of

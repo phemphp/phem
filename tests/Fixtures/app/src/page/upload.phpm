@@ -18,6 +18,7 @@ final class Uploader
     #[State] public string $title = '';
     #[State] public string $photo = '';
     #[State] public bool $moved = false;
+    #[State] public int $version = 0;
 
     public function save(Event $e, Request $request): void
     {
@@ -34,6 +35,16 @@ final class Uploader
             $photo->move(sys_get_temp_dir(), uniqid('phem-moved-'));
             $this->moved = true;
         }
+
+        // The handler took the files: the browser empties the file inputs.
+        if ('store' === ($e->form['action'] ?? null)) {
+            $e->clearFiles();
+        }
+
+        // A new id: the morph replaces the element of the avatar input, and its files go away.
+        if ('version' === ($e->form['action'] ?? null)) {
+            ++$this->version;
+        }
     }
 
     public function render(): Node
@@ -46,8 +57,11 @@ final class Uploader
                     <input type="file" name="photos[]" multiple />
                     <input type="file" name="doc[file]" />
                     <input type="file" name="off" disabled />
+                    <input type="file" name="avatar" id={{ 'avatar-' ~ version }} />
                     <button type="submit" name="action" value="save">Save</button>
                     <button type="submit" name="action" value="move">Move</button>
+                    <button type="submit" name="action" value="store">Store</button>
+                    <button type="submit" name="action" value="version">Version</button>
                 </form>
                 <pre id="uploaded">{{ uploaded|json_encode }}</pre>
                 <p id="request">{{ title }} {{ photo }} {{ moved ? 'moved' : '' }}</p>

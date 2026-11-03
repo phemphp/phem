@@ -1,0 +1,123 @@
+<?php
+
+/*
+ * This file is part of the Phem package.
+ *
+ * (c) Yonel Ceruto <open@yceruto.dev>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+declare(strict_types=1);
+
+namespace Phem\Tests\Test;
+
+use Phem\Test\ComponentTester;
+use Phem\Test\Internal\Driver;
+use Phem\Test\Internal\EventResult;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * The files of the file inputs in a ComponentTester belong to the element, as in a browser: a
+ * morph keeps them while it keeps the element, and the other renders drop them.
+ */
+final class ComponentTesterFilesTest extends TestCase
+{
+    private const PAGE = <<<'HTML'
+        <div data-phem-state-value="{}" data-phem-stream-value="/hub?match=t">
+            <div data-phem-c="c1" id="first"><input type="file" name="photo" /></div>
+            <div data-phem-c="c2" id="second">
+                <form id="f" data-phem-on-submit="c2.save"><input type="file" name="photo" /></form>
+            </div>
+        </div>
+        HTML;
+
+    public function testMorphKeepsTheFilesOfAnInputWhenAnInputBeforeItGoesAway(): void
+    {
+        // The first component renders no input: the input of the form is now the first input
+        // named "photo" of the page, and it keeps its files.
+        $driver = self::driver([EventResult::updates(['c1' => '<div data-phem-c="c1" id="first"></div>'])]);
+        $tester = new ComponentTester($driver);
+        $tester->upload('#second input', __FILE__)->submit('#f')->submit('#f');
+
+        self::assertSame([[['photo', __FILE__]], [['photo', __FILE__]]], $driver->files);
+    }
+
+    public function testPushThatIsNotAMorphDropsTheFiles(): void
+    {
+        foreach (['update' => [], 'update" method="morph' => [['photo', __FILE__]]] as $action => $files) {
+            $driver = self::driver();
+            $updates = [];
+            $tester = new ComponentTester($driver, updates: static function () use (&$updates): array {
+                return $updates;
+            });
+            $tester->upload('#second input', __FILE__);
+
+            $updates[] = ['topics' => ['t'], 'data' => '<turbo-stream action="'.$action.'" target="second"><template><form id="f" data-phem-on-submit="c2.save"><input type="file" name="photo" /></form></template></turbo-stream>'];
+            $tester->receive()->submit('#f');
+
+            self::assertSame([$files], $driver->files, $action);
+        }
+    }
+
+    /**
+     * A driver that renders the page, answers each event with the next answer, and keeps the
+     * files of each event.
+     *
+     * @param list<EventResult> $answers
+     *
+     * @return Driver&object{files: list<list<array{string, string}>>}
+     */
+    private static function driver(array $answers = []): Driver
+    {
+        return new class(self::PAGE, $answers) implements Driver {
+            /** @var list<list<array{string, string}>> */
+            public array $files = [];
+
+            /** @param list<EventResult> $answers */
+            public function __construct(
+                private readonly string $html,
+                private array $answers,
+            ) {
+            }
+
+            public function html(): string
+            {
+                return $this->html;
+            }
+
+            public function isDocument(): bool
+            {
+                return false;
+            }
+
+            public function dispatch(array $handlers, array $event, array $bound = [], array $stale = []): EventResult
+            {
+                $this->files[] = $event['files'] ?? [];
+
+                return array_shift($this->answers) ?? EventResult::updates([]);
+            }
+
+            public function state(?string $fiber = null): array
+            {
+                return [];
+            }
+
+            public function url(): string
+            {
+                return '/';
+            }
+
+            public function status(): int
+            {
+                return 200;
+            }
+
+            public function redirect(): ?string
+            {
+                return null;
+            }
+        };
+    }
+}

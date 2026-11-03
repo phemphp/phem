@@ -11,16 +11,20 @@ export async function mount(markup, rootAttributes = "") {
   await new Promise((resolve) => setTimeout(resolve, 0))
 }
 
-// The answer of the server to the next event: a morph of `c1` to `markup` (in its `<phem-c>`),
-// with no change of the state, or the `changes` of the state.
-export function respond(markup, changes = {}, extra = {}) {
-  const body = {
+// The JSON of an answer of the server: a morph of `c1` to `markup` (in its `<phem-c>`), with no
+// change of the state, or the `changes` of the state.
+export function answer(markup, changes = {}, extra = {}) {
+  return {
     streams: `<turbo-stream action="replace" method="morph" targets="[data-phem-c=c1]"><template><phem-c data-phem-c="c1">${markup}</phem-c></template></turbo-stream>`,
     changes,
     signature: "s2",
     ...extra,
   }
-  fetch.mockResolvedValueOnce(new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } }))
+}
+
+// The answer of the server to the next event (see answer()).
+export function respond(markup, changes = {}, extra = {}) {
+  fetch.mockResolvedValueOnce(new Response(JSON.stringify(answer(markup, changes, extra)), { status: 200, headers: { "Content-Type": "application/json" } }))
 }
 
 // Resolves with the `phem:done` event of the next event.

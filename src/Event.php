@@ -26,6 +26,7 @@ use Phem\Http\FormFields;
 final class Event
 {
     private bool $refresh = false;
+    private bool $clearFiles = false;
 
     /**
      * @param array<string, mixed>   $form       the fields of the form of the element (a submit, a change
@@ -64,6 +65,23 @@ final class Event
     public function refreshes(): bool
     {
         return $this->refresh;
+    }
+
+    /**
+     * Empties the file inputs that sent their files with the submit, in the browser, after the
+     * morph. By default, the morph keeps the files of an input, and the next submit sends them
+     * again. Call it when the handler took the files (for example, it stored them). A handler
+     * that shows a validation error does not call it: the user does not select the files again.
+     */
+    public function clearFiles(): void
+    {
+        $this->clearFiles = true;
+    }
+
+    /** Whether the handler took the files of the form (see clearFiles()). */
+    public function clearsFiles(): bool
+    {
+        return $this->clearFiles;
     }
 
     /**

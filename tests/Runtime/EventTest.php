@@ -40,4 +40,13 @@ final class EventTest extends TestCase
         self::assertSame([], $event->form);
         self::assertSame(['photo' => 'x'], $event->files);
     }
+
+    public function testClearFilesTellsThatTheHandlerTookTheFiles(): void
+    {
+        $event = Event::fromArray(['type' => 'submit'], files: ['photo' => 'x']);
+        self::assertFalse($event->clearsFiles());
+
+        $event->clearFiles();
+        self::assertTrue($event->clearsFiles());
+    }
 }

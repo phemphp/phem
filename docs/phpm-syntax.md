@@ -705,7 +705,33 @@ phem:
     max_upload_size: 20971520
 ```
 
-The browser sends a file again with each new submit, and with each retry of a failed event.
+The morph does not change the files of an input. Thus the files stay in the input after the
+submit. The browser sends them again with the next submit, and with each retry of a failed event.
+A handler that shows a validation error keeps them: the user does not select the files again.
+When the handler took the files (for example, it stored them), call `$e->clearFiles()`. After the
+morph, the browser empties the file inputs that sent files, as after a full page POST:
+
+```php
+public function save(Event $e, Request $request): void
+{
+    $form = $this->forms->create(PhotosType::class)->handleRequest($request);
+    if (!$form->isSubmitted() || !$form->isValid()) {
+        return; // the files stay in the inputs
+    }
+
+    $this->photos->store($form->get('photos')->getData()); // a list of UploadedFile
+    $e->clearFiles(); // the next submit sends no files
+}
+```
+
+A file input with files makes its form dirty (see [Unsaved changes](#unsaved-changes)). Thus a
+handler that stores the files and stays on the page calls `$e->clearFiles()`. If it does not, the
+form stays dirty, and a `data-phem-guard` asks before the user leaves the page.
+
+An input whose files the user changed while the request ran keeps the new files. When the morph
+replaces the element of an input (for example, the new render gives it another `id`), the new
+input has no files, as in a browser.
+
 While the files upload, the loading state shows (see [Loading states](#loading-states)).
 
 To show the progress of the upload, give the handler to `phem:progress`:
@@ -1027,9 +1053,10 @@ root element ("You have unsaved changes. Leave the page?" by default). The back 
 of a Turbo page do not ask. A redirect of a handler does not ask: the server got the values with
 the event.
 
-Only bound fields count. A field with no `phem:bind` (for example a field of a Symfony form) sends
-its value with the submit, and it is never dirty. A `phem:live` field is dirty only until its event
-leaves.
+Only bound fields and file inputs count. A file input with a name in a form is dirty while it
+has files. A handler that takes the files empties it (see [File uploads](#file-uploads)). Another
+field with no `phem:bind` (for example a field of a Symfony form) sends its value with the
+submit, and it is never dirty. A `phem:live` field is dirty only until its event leaves.
 
 #### Live validation
 

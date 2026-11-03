@@ -130,7 +130,7 @@ final class PageDriver implements Driver
         $this->signature = (string) $data['signature'];
         $this->query($data['query'] ?? null);
 
-        return EventResult::updates($updates, self::events($data['events'] ?? []), \is_string($data['sender'] ?? null) ? $data['sender'] : null);
+        return EventResult::updates($updates, self::events($data['events'] ?? []), \is_string($data['sender'] ?? null) ? $data['sender'] : null, true === ($data['clearFiles'] ?? false));
     }
 
     /**

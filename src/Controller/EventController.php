@@ -209,6 +209,11 @@ final class EventController
             $data['sender'] = $token;
         }
 
+        if ($outcome->clearFiles) {
+            // The browser empties the file inputs that sent files (see Event::clearFiles()).
+            $data['clearFiles'] = true;
+        }
+
         if ([] !== $outcome->warnings) {
             // The dev-mode check (see SkippedRenderCheck): the phem controller logs them.
             $data['warnings'] = $outcome->warnings;
