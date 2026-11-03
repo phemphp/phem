@@ -16,7 +16,7 @@ export const lead = defineHastPlugin({
             const before = parent.children.slice(0, index).filter((child) => child.type === 'element');
 
             if (1 === before.length && 'h1' === before[0].tagName) {
-                ctx.setProperty(node, 'className', ['lw-lead']);
+                ctx.setProperty(node, 'className', ['ph-lead']);
             }
         },
     },

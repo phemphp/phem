@@ -8,17 +8,16 @@ import { phpmCode } from './src/markdown/phpm-code';
 import { codeBlock } from './src/shiki/code-block';
 import { phemCode } from './src/shiki/phem-code';
 import { phpm } from './src/shiki/phpm';
-import { base, repository } from './src/site';
+import { repository } from './src/site';
 
 export default defineConfig({
-    site: 'https://phemphp.github.io',
-    base,
+    site: 'https://phem.dev',
     trailingSlash: 'always',
     markdown: {
         processor: satteri({
             features: { smartPunctuation: false },
             mdastPlugins: [phpmCode],
-            hastPlugins: [links(base, repository), lead, anchors, callouts],
+            hastPlugins: [links(repository), lead, anchors, callouts],
         }),
         shikiConfig: {
             theme: phemCode,

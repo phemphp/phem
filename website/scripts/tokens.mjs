@@ -1,4 +1,4 @@
-// Writes src/styles/tokens.css from design/tokens.json (the "Livewire Blue" design system).
+// Writes src/styles/tokens.css from design/tokens.json (the "Phem Docs" design system).
 // bundle.css reads each token as a CSS variable with the name of the token: var(--primary).
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 

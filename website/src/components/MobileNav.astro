@@ -7,10 +7,10 @@ interface Props {
     current?: string;
 }
 ---
-<dialog class="lw-drawer" id="docs-drawer" aria-label="Documentation navigation">
-    <div class="lw-drawer__head">
-        <span class="lw-header__brand">Phem</span>
-        <button class="lw-icon-btn" type="button" data-lw-close aria-label="Close navigation"><Icon name="x-mark" /></button>
+<dialog class="ph-drawer" id="docs-drawer" aria-label="Documentation navigation">
+    <div class="ph-drawer__head">
+        <span class="ph-header__brand">Phem</span>
+        <button class="ph-icon-btn" type="button" data-ph-close aria-label="Close navigation"><Icon name="x-mark" /></button>
     </div>
     <SidebarNav current={Astro.props.current} />
 </dialog>

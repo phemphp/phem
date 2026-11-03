@@ -4,7 +4,6 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const dist = new URL('../dist/', import.meta.url).pathname;
-const base = '/phem/';
 const pages = new Map();
 
 for (const entry of readdirSync(dist, { recursive: true })) {
@@ -18,16 +17,16 @@ for (const entry of readdirSync(dist, { recursive: true })) {
 const errors = [];
 
 for (const [file, { html }] of pages) {
-    const page = `${base}${file.replace(/index\.html$/, '')}`;
+    const page = `/${file.replace(/index\.html$/, '')}`;
 
-    for (const [, href] of html.matchAll(/\shref="([^"]+)"/g)) {
+    for (const [, href] of html.matchAll(/<[a-z][^>]*\shref="([^"]+)"/g)) {
         const url = new URL(href.replaceAll('&amp;', '&'), `https://site${page}`);
 
-        if ('https://site' !== url.origin || !url.pathname.startsWith(base)) {
+        if ('https://site' !== url.origin) {
             continue;
         }
 
-        const path = url.pathname.slice(base.length);
+        const path = url.pathname.slice(1);
         const target = path.endsWith('/') || '' === path ? `${path}index.html` : path;
 
         if (!existsSync(join(dist, target))) {

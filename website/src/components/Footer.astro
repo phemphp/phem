@@ -1,25 +1,25 @@
 ---
 // Design system: Footer.
 import { navigation } from '../navigation';
-import { author, repository, url } from '../site';
+import { author, repository } from '../site';
 ---
-<footer class="lw-footer">
-    <div class="lw-footer__inner">
-        <div class="lw-footer__grid">
+<footer class="ph-footer">
+    <div class="ph-footer__inner">
+        <div class="ph-footer__grid">
             <div>
-                <p class="lw-footer__brand">Phem</p>
-                <p class="lw-footer__about">UI server components for Symfony web apps. Logic and markup in one .phpm file.</p>
+                <p class="ph-footer__brand">Phem</p>
+                <p class="ph-footer__about">UI server components for Symfony web apps. Logic and markup in one .phpm file.</p>
             </div>
             {navigation.slice(0, 3).map((group) => (
                 <div>
-                    <p class="lw-footer__title">{group.title}</p>
-                    <ul>{group.pages.map((page) => <li><a href={url(`/${page.slug}/`)}>{page.label}</a></li>)}</ul>
+                    <p class="ph-footer__title">{group.title}</p>
+                    <ul>{group.pages.map((page) => <li><a href={`/${page.slug}/`}>{page.label}</a></li>)}</ul>
                 </div>
             ))}
         </div>
-        <div class="lw-footer__bottom">
+        <div class="ph-footer__bottom">
             <span>Released under the MIT license. Created by <a href={`https://github.com/${author}`}>@{author}</a>.</span>
-            <span><a href={repository}>GitHub</a> · <a href={url('/llms.txt')}>llms.txt</a></span>
+            <span><a href={repository}>GitHub</a> · <a href="/llms.txt">llms.txt</a></span>
         </div>
     </div>
 </footer>

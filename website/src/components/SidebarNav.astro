@@ -1,7 +1,6 @@
 ---
 // Design system: SidebarNav. The drawer (MobileNav) uses the same markup.
 import { navigation } from '../navigation';
-import { url } from '../site';
 
 interface Props {
     current?: string;
@@ -9,12 +8,12 @@ interface Props {
 
 const { current } = Astro.props;
 ---
-<nav class="lw-nav" aria-label="Documentation">
+<nav class="ph-nav" aria-label="Documentation">
     {navigation.map((group) => (
-        <div class="lw-nav__group">
-            <p class="lw-nav__title">{group.title}</p>
+        <div class="ph-nav__group">
+            <p class="ph-nav__title">{group.title}</p>
             {group.pages.map((page) => (
-                <a class="lw-nav__link" href={url(`/${page.slug}/`)} aria-current={page.slug === current ? 'page' : undefined}>{page.label}</a>
+                <a class="ph-nav__link" href={`/${page.slug}/`} aria-current={page.slug === current ? 'page' : undefined}>{page.label}</a>
             ))}
         </div>
     ))}

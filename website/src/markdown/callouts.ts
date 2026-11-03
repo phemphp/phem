@@ -34,7 +34,7 @@ export const callouts = defineHastPlugin({
             return {
                 type: 'element',
                 tagName: 'div',
-                properties: { className: ['lw-callout', `lw-callout--${tone.tone}`], role: 'note' },
+                properties: { className: ['ph-callout', `ph-callout--${tone.tone}`], role: 'note' },
                 children: [
                     { type: 'raw', value: svg(tone.icon) },
                     {

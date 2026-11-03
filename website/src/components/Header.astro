@@ -1,6 +1,6 @@
 ---
 // Design system: Header, with the search trigger and the ThemeToggle.
-import { repository, url } from '../site';
+import { repository } from '../site';
 import Icon from './Icon.astro';
 
 interface Props {
@@ -10,25 +10,25 @@ interface Props {
 const { current } = Astro.props;
 const section = 'tutorial' === current ? 'tutorial' : current ? 'docs' : undefined;
 ---
-<a class="lw-skip" href="#main">Skip to content</a>
-<header class="lw-header">
-    <div class="lw-header__inner">
-        <button class="lw-icon-btn lw-header__menu" type="button" aria-label="Open navigation" data-lw-drawer-open="docs-drawer"><Icon name="bars-3" /></button>
-        <a class="lw-header__brand" href={url('/')}>Phem</a>
-        <nav class="lw-header__nav" aria-label="Main">
-            <a class="lw-header__link" href={url('/what-is-phem/')} aria-current={'docs' === section ? 'page' : undefined}>Docs</a>
-            <a class="lw-header__link" href={url('/tutorial/')} aria-current={'tutorial' === section ? 'page' : undefined}>Tutorial</a>
+<a class="ph-skip" href="#main">Skip to content</a>
+<header class="ph-header">
+    <div class="ph-header__inner">
+        <button class="ph-icon-btn ph-header__menu" type="button" aria-label="Open navigation" data-ph-drawer-open="docs-drawer"><Icon name="bars-3" /></button>
+        <a class="ph-header__brand" href="/">Phem</a>
+        <nav class="ph-header__nav" aria-label="Main">
+            <a class="ph-header__link" href="/what-is-phem/" aria-current={'docs' === section ? 'page' : undefined}>Docs</a>
+            <a class="ph-header__link" href="/tutorial/" aria-current={'tutorial' === section ? 'page' : undefined}>Tutorial</a>
         </nav>
-        <div class="lw-header__end">
-            <button class="lw-search-trigger" type="button" data-lw-search-open>
-                <Icon name="magnifying-glass" /><span class="lw-search-trigger__label">Search docs</span><span class="lw-search-trigger__keys"><kbd class="lw-kbd">⌘</kbd><kbd class="lw-kbd">K</kbd></span>
+        <div class="ph-header__end">
+            <button class="ph-search-trigger" type="button" data-ph-search-open>
+                <Icon name="magnifying-glass" /><span class="ph-search-trigger__label">Search docs</span><span class="ph-search-trigger__keys"><kbd class="ph-kbd">⌘</kbd><kbd class="ph-kbd">K</kbd></span>
             </button>
-            <div class="lw-theme" role="group" aria-label="Color theme">
-                <button type="button" data-lw-theme="light" aria-pressed="false" aria-label="Light"><Icon name="sun" /></button>
-                <button type="button" data-lw-theme="system" aria-pressed="true" aria-label="Match system"><Icon name="computer-desktop" /></button>
-                <button type="button" data-lw-theme="dark" aria-pressed="false" aria-label="Dark"><Icon name="moon" /></button>
+            <div class="ph-theme" role="group" aria-label="Color theme">
+                <button type="button" data-ph-theme="light" aria-pressed="false" aria-label="Light"><Icon name="sun" /></button>
+                <button type="button" data-ph-theme="system" aria-pressed="true" aria-label="Match system"><Icon name="computer-desktop" /></button>
+                <button type="button" data-ph-theme="dark" aria-pressed="false" aria-label="Dark"><Icon name="moon" /></button>
             </div>
-            <a class="lw-header__link header-github" href={repository}>GitHub <Icon name="arrow-top-right-on-square" class="lw-icon" /></a>
+            <a class="ph-header__link header-github" href={repository}>GitHub <Icon name="arrow-top-right-on-square" class="ph-icon" /></a>
         </div>
     </div>
 </header>

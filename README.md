@@ -75,7 +75,7 @@ Build a new app from scratch using Phem. See [Getting started](docs/getting-star
 
 ## Documentation
 
-Read the docs on the website: https://phemphp.github.io/phem/. New to Phem? Start here:
+Read the docs on the website: https://phem.dev/. New to Phem? Start here:
 
 - [What is Phem](docs/what-is-phem.md): the five ideas of Phem
 - [Getting started](docs/getting-started.md): install Phem in a new Symfony app

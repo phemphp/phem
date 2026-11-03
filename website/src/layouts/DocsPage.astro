@@ -18,19 +18,19 @@ const { doc } = Astro.props;
 const label = pages.find((page) => page.slug === doc.slug)?.label ?? doc.title;
 ---
 <Base title={`${doc.title} | Phem`} current={doc.slug}>
-    <div class="lw-docs">
+    <div class="ph-docs">
         <SidebarNav current={doc.slug} />
-        <main class="lw-docs__main" id="main">
-            <div class="lw-docs__content">
+        <main class="ph-docs__main" id="main">
+            <div class="ph-docs__content">
                 <Breadcrumbs slug={doc.slug} label={label} />
-                <article class="lw-prose">
+                <article class="ph-prose">
                     <slot />
                 </article>
                 <PrevNext slug={doc.slug} />
                 <PageMeta editUrl={doc.editUrl} updated={doc.updated} />
             </div>
         </main>
-        <aside class="lw-docs__aside">
+        <aside class="ph-docs__aside">
             <TableOfContents headings={doc.headings} editUrl={doc.editUrl} />
         </aside>
     </div>

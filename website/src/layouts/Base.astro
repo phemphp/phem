@@ -8,7 +8,6 @@ import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import MobileNav from '../components/MobileNav.astro';
 import SearchDialog from '../components/SearchDialog.astro';
-import { url } from '../site';
 
 interface Props {
     title: string;
@@ -25,9 +24,9 @@ const { title, description, current } = Astro.props;
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{title}</title>
         {description && <meta name="description" content={description} />}
-        <link rel="icon" href={url('/favicon.svg')} type="image/svg+xml" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <script is:inline src={bundle}></script>
-        <script is:inline>LivewireBlue.initTheme();</script>
+        <script is:inline>PhemDocs.initTheme();</script>
     </head>
     <body>
         <Header current={current} />

@@ -1,6 +1,6 @@
-/* Livewire Blue — behaviour for static docs pages. Plain JavaScript, no dependencies, no network.
+/* Phem Docs — behaviour for static docs pages. Plain JavaScript, no dependencies, no network.
    Everything is wired by data attributes through event delegation, so markup added later works too.
-   Public API: window.LivewireBlue = { init, initTheme, setTheme, openSearch, closeSearch, selectTab, version } */
+   Public API: window.PhemDocs = { init, initTheme, setTheme, openSearch, closeSearch, selectTab, version } */
 (function () {
   'use strict';
   var doc = document;
@@ -21,20 +21,20 @@
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
   function syncThemeButtons(mode) {
-    each(doc.querySelectorAll('[data-lw-theme]'), function (b) {
-      b.setAttribute('aria-pressed', String(b.getAttribute('data-lw-theme') === mode));
+    each(doc.querySelectorAll('[data-ph-theme]'), function (b) {
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-ph-theme') === mode));
     });
   }
   function setTheme(mode) {
     mode = mode === 'light' || mode === 'dark' ? mode : 'system';
-    store.set('lw-theme', mode);
+    store.set('ph-theme', mode);
     doc.documentElement.setAttribute('data-theme', resolve(mode));
     doc.documentElement.setAttribute('data-theme-mode', mode);
     syncThemeButtons(mode);
   }
   /* Call once, as early as possible (end of <head>), to apply the saved choice before paint. */
   function initTheme() {
-    var mode = store.get('lw-theme') || 'system';
+    var mode = store.get('ph-theme') || 'system';
     doc.documentElement.setAttribute('data-theme', resolve(mode));
     doc.documentElement.setAttribute('data-theme-mode', mode);
     if (window.matchMedia) {
@@ -58,12 +58,12 @@
       if (panel) panel.hidden = !on;
     });
     if (opts.focus) tab.focus();
-    var root = closest(list, '[data-lw-tabs]');
-    var group = root && root.getAttribute('data-lw-tabs');
+    var root = closest(list, '[data-ph-tabs]');
+    var group = root && root.getAttribute('data-ph-tabs');
     if (!group || opts.sync === false) return;
     var value = tab.getAttribute('data-value') || tab.textContent.trim();
-    store.set('lw-tabs:' + group, value);
-    each(doc.querySelectorAll('[data-lw-tabs="' + esc(group) + '"]'), function (other) {
+    store.set('ph-tabs:' + group, value);
+    each(doc.querySelectorAll('[data-ph-tabs="' + esc(group) + '"]'), function (other) {
       if (other === root) return;
       var match = other.querySelector('[role="tab"][data-value="' + esc(value) + '"]');
       if (match) selectTab(match, { sync: false });
@@ -83,9 +83,9 @@
 
   /* ---------- Copy ---------- */
   function codeText(btn) {
-    var literal = btn.getAttribute('data-lw-copy');
+    var literal = btn.getAttribute('data-ph-copy');
     if (literal) return literal;
-    var root = closest(btn, '.lw-code');
+    var root = closest(btn, '.ph-code');
     if (!root) return '';
     var codes = root.querySelectorAll('pre code');
     for (var i = 0; i < codes.length; i++) {
@@ -110,17 +110,17 @@
   function copy(btn) {
     var text = codeText(btn);
     var done = function () {
-      if (btn.__lwTimer) clearTimeout(btn.__lwTimer); else btn.__lwHtml = btn.innerHTML;
+      if (btn.__phTimer) clearTimeout(btn.__phTimer); else btn.__phHtml = btn.innerHTML;
       var label = btn.getAttribute('aria-label');
-      if (label && !btn.__lwLabel) btn.__lwLabel = label;
+      if (label && !btn.__phLabel) btn.__phLabel = label;
       btn.classList.add('is-copied');
       btn.setAttribute('aria-label', 'Copied');
       var svg = btn.querySelector('svg');
       if (svg) svg.innerHTML = '<path fill-rule="evenodd" clip-rule="evenodd" d="' + CHECK_PATH + '"/>';
-      btn.__lwTimer = setTimeout(function () {
-        btn.innerHTML = btn.__lwHtml; btn.classList.remove('is-copied');
-        if (btn.__lwLabel) btn.setAttribute('aria-label', btn.__lwLabel);
-        btn.__lwTimer = null;
+      btn.__phTimer = setTimeout(function () {
+        btn.innerHTML = btn.__phHtml; btn.classList.remove('is-copied');
+        if (btn.__phLabel) btn.setAttribute('aria-label', btn.__phLabel);
+        btn.__phTimer = null;
       }, 2000);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -137,31 +137,31 @@
     if (!dlg) return;
     if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open');
   }
-  function searchDialog() { return doc.querySelector('[data-lw-search]'); }
-  function visibleItems(dlg) { return Array.prototype.filter.call(dlg.querySelectorAll('[data-lw-search-item]'), function (i) { return !i.hidden; }); }
+  function searchDialog() { return doc.querySelector('[data-ph-search]'); }
+  function visibleItems(dlg) { return Array.prototype.filter.call(dlg.querySelectorAll('[data-ph-search-item]'), function (i) { return !i.hidden; }); }
   function setActive(dlg, item) {
-    each(dlg.querySelectorAll('[data-lw-search-item]'), function (i) { i.setAttribute('aria-selected', String(i === item)); });
-    var input = dlg.querySelector('[data-lw-search-input]');
+    each(dlg.querySelectorAll('[data-ph-search-item]'), function (i) { i.setAttribute('aria-selected', String(i === item)); });
+    var input = dlg.querySelector('[data-ph-search-input]');
     if (item) {
-      if (!item.id) item.id = 'lw-sr-' + Math.random().toString(36).slice(2, 8);
+      if (!item.id) item.id = 'ph-sr-' + Math.random().toString(36).slice(2, 8);
       if (input) input.setAttribute('aria-activedescendant', item.id);
       if (item.scrollIntoView) item.scrollIntoView({ block: 'nearest' });
     } else if (input) input.removeAttribute('aria-activedescendant');
   }
   function filterSearch(dlg, q) {
     q = (q || '').trim().toLowerCase();
-    each(dlg.querySelectorAll('[data-lw-search-item]'), function (item) {
-      var hay = (item.getAttribute('data-lw-search-item') || '') + ' ' + item.textContent;
+    each(dlg.querySelectorAll('[data-ph-search-item]'), function (item) {
+      var hay = (item.getAttribute('data-ph-search-item') || '') + ' ' + item.textContent;
       item.hidden = !!q && hay.toLowerCase().indexOf(q) === -1;
     });
-    each(dlg.querySelectorAll('[data-lw-search-group]'), function (g) {
-      g.hidden = !g.querySelector('[data-lw-search-item]:not([hidden])');
+    each(dlg.querySelectorAll('[data-ph-search-group]'), function (g) {
+      g.hidden = !g.querySelector('[data-ph-search-item]:not([hidden])');
     });
     var vis = visibleItems(dlg);
-    var empty = dlg.querySelector('[data-lw-search-empty]');
+    var empty = dlg.querySelector('[data-ph-search-empty]');
     if (empty) {
       empty.hidden = vis.length > 0;
-      var echo = empty.querySelector('[data-lw-search-query]');
+      var echo = empty.querySelector('[data-ph-search-query]');
       if (echo) echo.textContent = q;
     }
     setActive(dlg, vis[0] || null);
@@ -170,13 +170,13 @@
     var dlg = searchDialog();
     if (!dlg) return;
     openDialog(dlg);
-    var input = dlg.querySelector('[data-lw-search-input]');
+    var input = dlg.querySelector('[data-ph-search-input]');
     if (input) { input.focus(); input.select(); filterSearch(dlg, input.value); }
   }
   function closeSearch() { closeDialog(searchDialog()); }
   function onSearchKey(e, dlg) {
     var vis = visibleItems(dlg);
-    var cur = dlg.querySelector('[data-lw-search-item][aria-selected="true"]');
+    var cur = dlg.querySelector('[data-ph-search-item][aria-selected="true"]');
     var i = vis.indexOf(cur);
     if (e.key === 'ArrowDown') { e.preventDefault(); setActive(dlg, vis[Math.min(i + 1, vis.length - 1)] || null); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(dlg, vis[Math.max(i - 1, 0)] || null); }
@@ -210,76 +210,76 @@
 
   /* ---------- Banner ---------- */
   function initBanners() {
-    each(doc.querySelectorAll('[data-lw-banner]'), function (b) {
-      var key = b.getAttribute('data-lw-banner');
-      if (key && b.hasAttribute('data-lw-persist') && store.get('lw-dismiss:' + key)) b.hidden = true;
+    each(doc.querySelectorAll('[data-ph-banner]'), function (b) {
+      var key = b.getAttribute('data-ph-banner');
+      if (key && b.hasAttribute('data-ph-persist') && store.get('ph-dismiss:' + key)) b.hidden = true;
     });
   }
 
   /* ---------- Init + delegation ---------- */
   function init(root) {
     root = root || doc;
-    var mode = doc.documentElement.getAttribute('data-theme-mode') || store.get('lw-theme');
+    var mode = doc.documentElement.getAttribute('data-theme-mode') || store.get('ph-theme');
     if (mode) syncThemeButtons(mode);
-    each(root.querySelectorAll('[data-lw-tabs]'), function (set) {
-      var group = set.getAttribute('data-lw-tabs');
-      var saved = group && store.get('lw-tabs:' + group);
+    each(root.querySelectorAll('[data-ph-tabs]'), function (set) {
+      var group = set.getAttribute('data-ph-tabs');
+      var saved = group && store.get('ph-tabs:' + group);
       var tab = saved && set.querySelector('[role="tab"][data-value="' + esc(saved) + '"]');
       if (tab) selectTab(tab, { sync: false });
     });
-    each(root.querySelectorAll('[data-lw-toc]'), initToc);
+    each(root.querySelectorAll('[data-ph-toc]'), initToc);
     initBanners();
   }
 
   doc.addEventListener('click', function (e) {
     var t = e.target, el;
-    if ((el = closest(t, '[data-lw-theme]'))) { setTheme(el.getAttribute('data-lw-theme')); return; }
-    if ((el = closest(t, '[role="tab"]')) && closest(el, '[data-lw-tabs]')) { selectTab(el); return; }
-    if ((el = closest(t, '[data-lw-copy], .lw-code__copy'))) { copy(el); return; }
-    if ((el = closest(t, '[data-lw-search-open]'))) { e.preventDefault(); openSearch(); return; }
-    if ((el = closest(t, '[data-lw-drawer-open]'))) { openDialog(doc.getElementById(el.getAttribute('data-lw-drawer-open'))); return; }
-    if ((el = closest(t, '[data-lw-close]'))) { closeDialog(closest(el, 'dialog')); return; }
-    if ((el = closest(t, '[data-lw-dismiss]'))) {
-      var banner = closest(el, '[data-lw-banner]');
+    if ((el = closest(t, '[data-ph-theme]'))) { setTheme(el.getAttribute('data-ph-theme')); return; }
+    if ((el = closest(t, '[role="tab"]')) && closest(el, '[data-ph-tabs]')) { selectTab(el); return; }
+    if ((el = closest(t, '[data-ph-copy], .ph-code__copy'))) { copy(el); return; }
+    if ((el = closest(t, '[data-ph-search-open]'))) { e.preventDefault(); openSearch(); return; }
+    if ((el = closest(t, '[data-ph-drawer-open]'))) { openDialog(doc.getElementById(el.getAttribute('data-ph-drawer-open'))); return; }
+    if ((el = closest(t, '[data-ph-close]'))) { closeDialog(closest(el, 'dialog')); return; }
+    if ((el = closest(t, '[data-ph-dismiss]'))) {
+      var banner = closest(el, '[data-ph-banner]');
       if (banner) {
         banner.hidden = true;
-        if (banner.hasAttribute('data-lw-persist')) store.set('lw-dismiss:' + banner.getAttribute('data-lw-banner'), '1');
+        if (banner.hasAttribute('data-ph-persist')) store.set('ph-dismiss:' + banner.getAttribute('data-ph-banner'), '1');
       }
       return;
     }
-    if ((el = closest(t, '[data-lw-feedback]'))) {
-      var box = closest(el, '.lw-feedback');
+    if ((el = closest(t, '[data-ph-feedback]'))) {
+      var box = closest(el, '.ph-feedback');
       if (box) {
-        each(box.querySelectorAll('[data-lw-feedback]'), function (b) { b.setAttribute('aria-pressed', String(b === el)); });
-        var thanks = box.querySelector('.lw-feedback__thanks');
+        each(box.querySelectorAll('[data-ph-feedback]'), function (b) { b.setAttribute('aria-pressed', String(b === el)); });
+        var thanks = box.querySelector('.ph-feedback__thanks');
         if (thanks) thanks.hidden = false;
-        box.dispatchEvent(new CustomEvent('lw:feedback', { bubbles: true, detail: { value: el.getAttribute('data-lw-feedback') } }));
+        box.dispatchEvent(new CustomEvent('ph:feedback', { bubbles: true, detail: { value: el.getAttribute('data-ph-feedback') } }));
       }
       return;
     }
-    if (t && t.tagName === 'DIALOG' && (t.matches('[data-lw-search]') || t.classList.contains('lw-drawer'))) {
+    if (t && t.tagName === 'DIALOG' && (t.matches('[data-ph-search]') || t.classList.contains('ph-drawer'))) {
       var r = t.getBoundingClientRect();
       if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) closeDialog(t);
     }
-    if ((el = closest(t, '.lw-drawer a[href]'))) closeDialog(closest(el, 'dialog'));
+    if ((el = closest(t, '.ph-drawer a[href]'))) closeDialog(closest(el, 'dialog'));
   });
 
   doc.addEventListener('keydown', function (e) {
     if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { if (searchDialog()) { e.preventDefault(); openSearch(); } return; }
     if (e.key === '/' && !isTyping(e.target) && searchDialog()) { e.preventDefault(); openSearch(); return; }
-    var dlg = closest(e.target, '[data-lw-search]');
-    if (dlg && e.target.matches && e.target.matches('[data-lw-search-input]')) { onSearchKey(e, dlg); return; }
+    var dlg = closest(e.target, '[data-ph-search]');
+    if (dlg && e.target.matches && e.target.matches('[data-ph-search-input]')) { onSearchKey(e, dlg); return; }
     onTabKey(e);
   });
 
   doc.addEventListener('input', function (e) {
-    var dlg = closest(e.target, '[data-lw-search]');
-    if (dlg && e.target.matches('[data-lw-search-input]')) filterSearch(dlg, e.target.value);
+    var dlg = closest(e.target, '[data-ph-search]');
+    if (dlg && e.target.matches('[data-ph-search-input]')) filterSearch(dlg, e.target.value);
   });
 
   doc.addEventListener('change', function (e) {
     var sel = e.target;
-    if (sel && sel.matches && sel.matches('select[data-lw-version]')) {
+    if (sel && sel.matches && sel.matches('select[data-ph-version]')) {
       var url = sel.value;
       if (url && url.charAt(0) !== '#') window.location.href = url;
     }
@@ -288,7 +288,7 @@
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { init(); });
   else init();
 
-  window.LivewireBlue = {
+  window.PhemDocs = {
     version: '1.0.0',
     init: init,
     initTheme: initTheme,

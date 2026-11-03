@@ -20,8 +20,8 @@ for (const heading of headings) {
 }
 ---
 {headings.length >= 3 && (
-    <nav class="lw-toc" aria-labelledby="toc-title" data-lw-toc>
-        <p class="lw-toc__title" id="toc-title">On this page</p>
+    <nav class="ph-toc" aria-labelledby="toc-title" data-ph-toc>
+        <p class="ph-toc__title" id="toc-title">On this page</p>
         <ul>
             {sections.map(({ heading, children }) => (
                 <li>
@@ -32,7 +32,7 @@ for (const heading of headings) {
                 </li>
             ))}
         </ul>
-        <div class="lw-toc__extra">
+        <div class="ph-toc__extra">
             <a href={editUrl}><Icon name="pencil-square" />Edit this page</a>
             <a href="#"><Icon name="arrow-up" />Back to top</a>
         </div>

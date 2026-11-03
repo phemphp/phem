@@ -20,19 +20,19 @@ export const codeBlock: ShikiTransformer = {
             children.unshift({
                 type: 'element',
                 tagName: 'figcaption',
-                properties: { className: ['lw-code__bar'] },
+                properties: { className: ['ph-code__bar'] },
                 children: [
                     { type: 'element', tagName: 'span', properties: {}, children: [{ type: 'text', value: title }] },
                     {
                         type: 'element',
                         tagName: 'button',
-                        properties: { className: ['lw-code__copy'], type: 'button', ariaLabel: 'Copy code' },
+                        properties: { className: ['ph-code__copy'], type: 'button', ariaLabel: 'Copy code' },
                         children: [hast('clipboard-document')],
                     },
                 ],
             });
         }
 
-        root.children = [{ type: 'element', tagName: 'figure', properties: { className: ['lw-code'] }, children }];
+        root.children = [{ type: 'element', tagName: 'figure', properties: { className: ['ph-code'] }, children }];
     },
 };

@@ -23,7 +23,7 @@ export const anchors = () => {
                 ctx.appendChild(node, {
                     type: 'element',
                     tagName: 'a',
-                    properties: { className: ['lw-anchor'], href: `#${id}`, ariaLabel: 'Link to this section' },
+                    properties: { className: ['ph-anchor'], href: `#${id}`, ariaLabel: 'Link to this section' },
                     children: [{ type: 'raw', value: '#' }],
                 });
             },
