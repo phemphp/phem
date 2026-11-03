@@ -164,12 +164,11 @@ the `<phem-c>` around a component that does not render one element). The
 bundle gives them as a Symfony UX package (`assets/package.json`). With AssetMapper,
 they are in the `phemjs` namespace. The controller imports `@hotwired/stimulus` and
 `@hotwired/turbo` from the importmap of the application, so the page has one Turbo and one
-Stimulus. `phem/phem` requires StimulusBundle. Install AssetMapper and StimulusBundle before
-`phem/phem` (the `--webapp` skeleton has them):
+Stimulus. `phem/phem` requires StimulusBundle. Install AssetMapper with `phem/phem` (the
+`--webapp` skeleton has it):
 
 ```sh
-composer require symfony/asset-mapper symfony/stimulus-bundle
-composer require phem/phem
+composer require symfony/asset-mapper phem/phem
 ```
 
 Symfony Flex enables the controller in `assets/controllers.json`, and adds `@hotwired/stimulus`

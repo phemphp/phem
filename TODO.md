@@ -155,7 +155,7 @@ type, and it has form themes, CSRF and data mappers.
 ### [ ] The Flex recipe in symfony/recipes-contrib — P3
 
 Low priority for now. Until the recipe is in recipes-contrib, the app enables the bundle and
-copies the files of the recipe by hand (see docs/getting-started.md).
+copies the files of `recipe/` by hand.
 
 The getting-started guide and the README show 3 commands: `symfony new my-app --webapp`,
 `composer require phem/phem`, and `symfony serve`. This flow needs the recipe of `phem/phem` in

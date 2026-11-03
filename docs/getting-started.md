@@ -43,18 +43,25 @@ Symfony Flex and PhemBundle configure the application:
 The defaults of PhemBundle fit this layout: it reads `src/` and writes the build output to
 `var/phem/`. You do not need a `config/packages/phem.yaml` file.
 
-If Flex does not run the recipe (for example, with `composer require --no-interaction`), enable
-`Phem\PhemBundle` in `config/bundles.php`, and copy the files of the
-[recipe](../recipe) to the application.
+If Flex does not run the recipe (for example, with `composer require --no-interaction`), allow
+the contrib recipes and install the recipe again:
 
-Without `--webapp`, install AssetMapper and StimulusBundle first, in a separate command. Then
-Flex adds the `phem` controller to the `assets/controllers.json` file that StimulusBundle makes:
+```sh
+composer config extra.symfony.allow-contrib true
+composer recipes:install phem/phem --force
+```
+
+Flex keeps a skipped recipe as installed, so `--force` is necessary. `allow-contrib` applies to
+all the contrib recipes, and Flex does not ask again. Set it before `composer require phem/phem`
+to install with no question (for example, in CI).
+
+Without `--webapp`, install AssetMapper with `phem/phem`. `phem/phem` requires StimulusBundle, and
+Flex adds the `phem` controller to `assets/controllers.json`:
 
 ```sh
 symfony new my-app
 cd my-app
-composer require symfony/asset-mapper symfony/stimulus-bundle
-composer require phem/phem
+composer require symfony/asset-mapper phem/phem
 ```
 
 ## Step 2: Start the dev server
