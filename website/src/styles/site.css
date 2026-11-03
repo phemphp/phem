@@ -4,3 +4,7 @@
 .header-github { display: inline-flex; align-items: center; gap: var(--space-1); }
 @media (max-width: 767px) { .header-github { display: none; } }
 .ph-hero .ph-code { margin: 0; min-width: 0; }
+/* The tables of the docs hold long code: it wraps at its spaces, so the table fits the page. Each
+   word of the code is a span (src/markdown/tables.ts). */
+.ph-prose .ph-table code { font-size: 13px; white-space: normal; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.ph-prose .ph-table code > span { white-space: nowrap; }

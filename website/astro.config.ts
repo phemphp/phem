@@ -5,6 +5,7 @@ import { callouts } from './src/markdown/callouts';
 import { lead } from './src/markdown/lead';
 import { links } from './src/markdown/links';
 import { phpmCode } from './src/markdown/phpm-code';
+import { tables } from './src/markdown/tables';
 import { codeBlock } from './src/shiki/code-block';
 import { phemCode } from './src/shiki/phem-code';
 import { phpm } from './src/shiki/phpm';
@@ -17,7 +18,7 @@ export default defineConfig({
         processor: satteri({
             features: { smartPunctuation: false },
             mdastPlugins: [phpmCode],
-            hastPlugins: [links(repository), lead, anchors, callouts],
+            hastPlugins: [links(repository), lead, anchors, callouts, tables],
         }),
         shikiConfig: {
             theme: phemCode,
