@@ -382,7 +382,11 @@ phem:
     class_merger:
         tailwind: true
         # With the options:
-        # tailwind: { prefix: tw, cache: app.psr16_cache }
+        # tailwind:
+        #     prefix: tw
+        #     cache: app.psr16_cache
+        #     css: '%kernel.project_dir%/assets/styles/app.css'
+        #     theme: { text: [caption, price-lg] }
         # Or the service of a Phem\Dom\ClassMerger of the application:
         # service: App\Ui\MyClassMerger
 ```
@@ -391,9 +395,60 @@ phem:
   colon.
 - `cache` is the id of a PSR-16 cache service. The merger also keeps the merged classes in
   memory, between the requests of a worker.
+- `css` and `theme` give the custom values of the Tailwind theme to the merger. See below.
 - To replace all the default classes, a component gives a prop (for example `unstyled`). The
   Tailwind merger already removes the defaults that conflict with the classes of the caller.
 - `style` does not merge: it keeps "last value wins".
+
+The Tailwind merger knows only the default values of the theme (`text-xs` to `text-9xl`,
+`rounded-sm` to `rounded-4xl`). A custom value of the `@theme` of the app is not in its group. For
+example, `--text-caption: 0.875rem;` gives `text-caption`, and the merger puts it with the text
+colors. A later color then removes the size:
+
+```phpm
+<span className={{ ['text-caption', active ? 'text-magenta' : 'text-ink-muted'] }}>Home</span>
+// class="text-ink-muted": the size is gone
+```
+
+Give the custom values to the merger. With `css`, Phem reads the `@theme` blocks of the Tailwind
+entry CSS, and of its relative imports (`@import "./theme.css";`), when the container builds:
+
+```css
+/* assets/styles/app.css */
+@import "tailwindcss";
+
+@theme {
+    --text-caption: 0.875rem;
+    --text-caption--line-height: 1.25rem;
+    --text-price-lg: 2rem;
+    --radius-card: 1.25rem;
+}
+```
+
+```yaml
+# config/packages/phem.yaml
+phem:
+    class_merger:
+        tailwind:
+            css: '%kernel.project_dir%/assets/styles/app.css'
+            # Gives the theme { text: [caption, price-lg], radius: [card] }
+```
+
+```html
+<span class="text-caption text-ink-muted">Home</span>
+```
+
+- Phem collects the names of each theme key of tailwind-merge: `--text-*`, `--font-weight-*`,
+  `--tracking-*`, `--leading-*`, `--spacing-*`, `--radius-*`, `--shadow-*`, `--blur-*`,
+  `--animate-*` and the others. A sub-property (`--text-caption--line-height`) is not a name. The
+  merger already takes any color (`--color-*`) and any font family (`--font-*`).
+- A change of the CSS files rebuilds the container in debug mode. In production, clear the cache
+  after a change of the theme.
+- `theme` gives the names in the configuration, by theme key: `theme: { text: [caption, price-lg] }`.
+  The names of a key replace the names that Phem reads from the CSS. An empty list
+  (`spacing: []`) removes them.
+- With a theme, the merger builds its class map at the first merge, so the first merges of a
+  process are slower. The in-memory cache and the `cache` service still apply.
 
 ### Dynamic element
 

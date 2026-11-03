@@ -516,6 +516,21 @@ reads it:
 The Symfony UX `autoimport` of a CSS file (as `@phem/phem` does for `phem.css`) does not send
 the file through the Tailwind build. Use it only for plain CSS.
 
+With the Tailwind merger, give the input CSS of the app to the `css` option. Phem reads the
+`@theme` blocks of the file and of its relative imports, so it also reads the theme of the
+package. The merger then keeps a custom value of the theme (for example `text-caption`) with
+a later class of another group (`text-muted-foreground`):
+
+```yaml
+# config/packages/phem.yaml
+phem:
+    class_merger:
+        tailwind:
+            css: '%kernel.project_dir%/assets/styles/app.css'
+```
+
+See [Merge of classes](phpm-syntax.md#merge-of-classes) for the `css` and `theme` options.
+
 **The prefix.** With a Tailwind prefix (`@import "tailwindcss" prefix(tw);`), give the same
 prefix to the Tailwind merger:
 

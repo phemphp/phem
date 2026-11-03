@@ -15,6 +15,7 @@ namespace Phem;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Phem\DependencyInjection\ComponentPass;
+use Phem\DependencyInjection\TailwindTheme;
 use Phem\DependencyInjection\TestAsyncPass;
 use Phem\DependencyInjection\TestPublisherPass;
 use Phem\Dom\TailwindClassMerger;
@@ -34,6 +35,7 @@ use Phem\Stream\SapiPublisher;
 use Phem\Stream\SubscriberToken;
 use Symfony\Component\AssetMapper\AssetMapperInterface;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
+use Symfony\Component\Config\Resource\FileResource;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
@@ -150,6 +152,30 @@ final class PhemBundle extends AbstractBundle
                                     ->info('The id of a PSR-16 cache service for the merged classes. The merger also keeps them in memory, between the requests of a worker.')
                                     ->defaultNull()
                                 ->end()
+                                ->scalarNode('css')
+                                    ->info('The Tailwind entry CSS (`%kernel.project_dir%/assets/styles/app.css`). When the container builds, Phem reads the custom names of its `@theme` blocks and of the blocks of its relative imports, as the theme option. A change of these files rebuilds the container in debug mode.')
+                                    ->defaultNull()
+                                    ->validate()
+                                        ->ifTrue(static fn (mixed $file): bool => \is_string($file) && !is_file($file))
+                                        ->then(static function (string $file): never {
+                                            throw new \InvalidArgumentException(\sprintf('The CSS file "%s" does not exist.', $file));
+                                        })
+                                    ->end()
+                                ->end()
+                                ->arrayNode('theme')
+                                    ->info('The custom values of the Tailwind theme, by theme key (`text: [caption, price-lg]` for `--text-caption` and `--text-price-lg` in `@theme`). The merger knows only the default values: with no names, `text-caption` is a text color, so `text-caption` and then `text-ink-muted` gives `text-ink-muted`. The names of a key replace the names that Phem reads from the css file.')
+                                    ->normalizeKeys(false)
+                                    ->useAttributeAsKey('key')
+                                    ->arrayPrototype()
+                                        ->scalarPrototype()->end()
+                                    ->end()
+                                    ->validate()
+                                        ->ifTrue(static fn (array $theme): bool => [] !== array_diff(array_keys($theme), TailwindTheme::KEYS))
+                                        ->then(static function (array $theme): never {
+                                            throw new \InvalidArgumentException(\sprintf('The theme key "%s" is not a key of tailwind-merge. Use one of "%s".', implode('", "', array_diff(array_keys($theme), TailwindTheme::KEYS)), implode('", "', TailwindTheme::KEYS)));
+                                        })
+                                    ->end()
+                                ->end()
                             ->end()
                         ->end()
                         ->scalarNode('service')
@@ -208,7 +234,7 @@ final class PhemBundle extends AbstractBundle
     }
 
     /**
-     * @param array{build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, state_cache_min_size: int, max_event_size: int, max_upload_size: int, suspense_stream: bool, class_merger: array{tailwind: array{enabled: bool, prefix: string|null, cache: string|null}, service: string|null}, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string, publisher_key: string|null, publish_url: string|null}} $config
+     * @param array{build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, state_cache_min_size: int, max_event_size: int, max_upload_size: int, suspense_stream: bool, class_merger: array{tailwind: array{enabled: bool, prefix: string|null, cache: string|null, css: string|null, theme: array<string, list<string>>}, service: string|null}, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string, publisher_key: string|null, publish_url: string|null}} $config
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
@@ -233,9 +259,23 @@ final class PhemBundle extends AbstractBundle
 
         $merger = $config['class_merger'];
         if ($merger['tailwind']['enabled']) {
+            $tailwind = $merger['tailwind'];
+            $theme = $tailwind['theme'];
+
+            if (null !== $tailwind['css']) {
+                $css = TailwindTheme::fromCss($tailwind['css']);
+                foreach ($css->files as $file) {
+                    $builder->addResource(new FileResource($file));
+                }
+
+                // The names of the configuration win over the names of the CSS.
+                $theme = [...$css->names, ...$theme];
+            }
+
+            // A theme turns off the precompiled class map of TailwindMerge: give it only when it has names.
             $container->services()
                 ->set('phem.class_merger.tailwind.merge', TailwindMerge::class)
-                    ->args([array_filter(['prefix' => $merger['tailwind']['prefix']]), null !== $merger['tailwind']['cache'] ? service($merger['tailwind']['cache']) : null])
+                    ->args([array_filter(['prefix' => $tailwind['prefix'], 'theme' => array_filter($theme)]), null !== $tailwind['cache'] ? service($tailwind['cache']) : null])
                 ->set('phem.class_merger.tailwind', TailwindClassMerger::class)
                     ->args([service('phem.class_merger.tailwind.merge')])
                 ->alias('phem.class_merger', 'phem.class_merger.tailwind');

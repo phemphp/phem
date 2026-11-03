@@ -55,6 +55,47 @@ final class ClassMergerConfigTest extends TestCase
         self::assertNull($tailwind->getArgument(1));
     }
 
+    public function testTheTailwindMergerTakesTheTheme(): void
+    {
+        $container = self::load(['class_merger' => ['tailwind' => ['theme' => ['text' => ['caption', 'price-lg'], 'font-weight' => ['heavy']]]]]);
+
+        self::assertSame(['theme' => ['text' => ['caption', 'price-lg'], 'font-weight' => ['heavy']]], $container->getDefinition('phem.class_merger.tailwind.merge')->getArgument(0));
+    }
+
+    public function testTheTailwindMergerReadsTheThemeOfTheCss(): void
+    {
+        $css = __DIR__.'/../Fixtures/tailwind/app.css';
+        $container = self::load(['class_merger' => ['tailwind' => ['prefix' => 'tw', 'css' => $css, 'theme' => ['text' => ['label'], 'spacing' => []]]]]);
+
+        self::assertSame(['prefix' => 'tw', 'theme' => [
+            'font-weight' => ['heavy'],
+            'text' => ['label'],
+            'text-shadow' => ['glow'],
+            'animate' => ['wiggle'],
+            'radius' => ['card'],
+        ]], $container->getDefinition('phem.class_merger.tailwind.merge')->getArgument(0), 'the names of the configuration replace the names of the CSS, and an empty list removes them');
+
+        $resources = array_map(strval(...), $container->getResources());
+        self::assertContains(realpath($css), $resources, 'a change of the CSS rebuilds the container');
+        self::assertContains(realpath(__DIR__.'/../Fixtures/tailwind/theme.css'), $resources, 'a change of an import rebuilds the container');
+    }
+
+    public function testTheCssOfTheTailwindMergerMustExist(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('Invalid configuration for path "phem.class_merger.tailwind.css": The CSS file "assets/styles/missing.css" does not exist.');
+
+        self::load(['class_merger' => ['tailwind' => ['css' => 'assets/styles/missing.css']]]);
+    }
+
+    public function testAnUnknownThemeKey(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('The theme key "txt" is not a key of tailwind-merge.');
+
+        self::load(['class_merger' => ['tailwind' => ['theme' => ['txt' => ['caption']]]]]);
+    }
+
     public function testTheMergerOfTheApplication(): void
     {
         $container = self::load(['class_merger' => ['service' => 'app.class_merger']]);

@@ -8,6 +8,12 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Fix: the Tailwind merger removed the custom values of the theme. For example, with
+  `--text-caption` in `@theme`, a class list with `text-caption` and then `text-ink-muted` gave
+  `text-ink-muted`: tailwind-merge put the size with the text colors. The new
+  `phem.class_merger.tailwind.css` option reads the custom names of the `@theme` blocks of the
+  Tailwind entry CSS, and the new `phem.class_merger.tailwind.theme` option gives them in the
+  configuration (`theme: { text: [caption, price-lg] }`).
 - Live validation of a Symfony form. A handler of `onChange` on the `<form>` calls
   `handleRequest()`, and the view of the form shows the errors of the fields that the user
   touched only. The form keeps all its errors, so `isValid()` checks all the fields. The server

@@ -1,0 +1,7 @@
+@import "./app.css";
+
+@theme inline {
+    --radius-card: 1.25rem;
+    --spacing-gutter: 1.5rem;
+    --text-caption: 0.8rem;
+}

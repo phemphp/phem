@@ -114,6 +114,19 @@ final class ClassListTest extends TestCase
         self::assertSame('tw:px-4', $merger->merge(['tw:px-2', 'tw:px-4']));
     }
 
+    public function testTheTailwindMergerNeedsTheCustomValuesOfTheTheme(): void
+    {
+        $classes = ClassList::of('text-caption', 'text-ink-muted');
+
+        $attribute = new ClassAttribute(new TailwindClassMerger(new TailwindMerge()));
+        self::assertSame('class="text-ink-muted"', (string) $attribute->render($classes), 'with no theme, a custom text size is a text color');
+
+        $attribute = new ClassAttribute(new TailwindClassMerger(new TailwindMerge(['theme' => ['text' => ['caption', 'label']]])));
+        self::assertSame('class="text-caption text-ink-muted"', (string) $attribute->render($classes), 'a size and a color');
+        self::assertSame('class="text-label"', (string) $attribute->render(ClassList::of('text-caption text-label')), 'the later size wins');
+        self::assertSame('class="text-caption"', (string) $attribute->render(ClassList::of('text-lg text-caption')), 'a custom size and a default size are in the same group');
+    }
+
     public function testTheClassAttribute(): void
     {
         $attribute = new ClassAttribute();

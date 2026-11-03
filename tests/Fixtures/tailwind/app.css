@@ -1,0 +1,27 @@
+@import "tailwindcss";
+@import "./theme.css";
+
+/* --text-commented: 1rem; is not a name */
+@theme {
+    --color-*: initial;
+    --color-ink-muted: #6b7280;
+    --font-display: "Fraunces", serif;
+    --font-weight-heavy: 850;
+
+    --text-caption: 0.875rem;
+    --text-caption--line-height: 1.25rem;
+    --text-price-lg: 2rem;
+    --text-price-lg--font-weight: 600;
+    --text-shadow-glow: 0 0 4px #fff;
+
+    --animate-wiggle: wiggle 1s ease-in-out infinite;
+
+    @keyframes wiggle {
+        0%, 100% { --radius-frame: 0; transform: rotate(-3deg); }
+        50% { transform: rotate(3deg); }
+    }
+}
+
+.card {
+    --radius-local: 2px;
+}
