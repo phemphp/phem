@@ -396,7 +396,7 @@ describe("the morph of the bound fields", () => {
     const live = (markup) => markup.replace("<form>", '<form data-phem-on-submit="c1.save">').replaceAll("<input ", '<input data-phem-live data-phem-debounce="blur" ')
     await mount(live(form(true, true)))
     const root = document.getElementById("phem-root")
-    root.setAttribute("data-action", `${root.getAttribute("data-action")} input->phem#dispatch`)
+    root.setAttribute("data-action", `${root.getAttribute("data-action")} input->phem#dispatch keydown->phem#dispatch`)
     await new Promise((resolve) => setTimeout(resolve, 0))
     const name = document.querySelector('[data-phem-bind="c1.name"]')
     const phone = document.querySelector('[data-phem-bind="c1.phone"]')
@@ -434,6 +434,246 @@ describe("the morph of the bound fields", () => {
     await done
 
     expect(document.querySelector('[value="b"]')).toBe(b)
+  })
+})
+
+describe("the fields of a form with no phem:bind", () => {
+  // The markup of a Symfony form. A PasswordType renders no value. `touched` lists the fields
+  // that the server marks.
+  const form = ({ email = "", city = "", error = "", touched = [], extra = "" } = {}) => {
+    const mark = (name) => (touched.includes(name) ? " data-phem-touched" : "")
+    return `<form data-phem-on-change="c1.validate" data-phem-on-submit="c1.save">
+      <input type="email" name="a[email]" value="${email}"${mark("email")}>${error ? `<p>${error}</p>` : ""}
+      <input type="password" name="a[password]"${mark("password")}>
+      <input type="text" name="a[city]" value="${city}"${mark("city")}>
+      <input type="checkbox" name="a[tags][]" value="x"${mark("tags")}>
+      <button type="button" data-phem-on-click="c1.addPhone">Add a phone</button>
+      ${extra}
+    </form>`
+  }
+
+  async function mountForm(markup) {
+    await mount(markup, 'data-phem-debounce-value="0"')
+    const root = document.getElementById("phem-root")
+    root.setAttribute("data-action", `${root.getAttribute("data-action")} input->phem#dispatch keydown->phem#dispatch`)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  }
+
+  function respondLater(markup) {
+    let resolve
+    fetch.mockImplementationOnce(() => new Promise((r) => (resolve = r)))
+    return () => resolve(new Response(JSON.stringify({ streams: `<turbo-stream action="replace" method="morph" targets="[data-phem-c=c1]"><template><phem-c data-phem-c="c1">${markup}</phem-c></template></turbo-stream>`, changes: {}, signature: "s2" }), { status: 200, headers: { "Content-Type": "application/json" } }))
+  }
+
+  const field = (name) => document.querySelector(`[name="a[${name}]"]`)
+  const body = (call = 0) => JSON.parse(fetch.mock.calls[call][1].body)
+  const sent = (call = 0) => JSON.parse(fetch.mock.calls[call][1].body).event
+
+  function type(input, value) {
+    input.focus()
+    input.value = value
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+  }
+
+  it("sends each key of a text field to the onChange of the form, with the fields and the touched fields", async () => {
+    await mountForm(form({ touched: ["city"] }))
+    respond(form({ email: "ada", error: "Not valid.", touched: ["email", "city"] }))
+    const done = nextDone()
+    type(field("email"), "ada")
+    await done
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(sent()).toMatchObject({ type: "input", form: [["a[email]", "ada"], ["a[password]", ""], ["a[city]", ""]], touched: ["a[email]", "a[city]"] })
+    expect(sent().files).toBeUndefined()
+    // The change event of the text field when it loses the focus sends nothing.
+    field("email").dispatchEvent(new Event("change", { bubbles: true }))
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("sends the event of a form with phem:debounce blur when the user leaves a field", async () => {
+    await mountForm(form().replace("<form ", '<form data-phem-debounce="blur" '))
+    respond(form({ email: "ada", touched: ["email"] }))
+    const done = nextDone()
+    type(field("email"), "ad")
+    type(field("email"), "ada")
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(fetch).not.toHaveBeenCalled()
+
+    field("city").focus()
+    await done
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(sent()).toMatchObject({ type: "input", touched: ["a[email]"] })
+  })
+
+  it("sends one event for a checkbox", async () => {
+    await mountForm(form())
+    respond(form({ touched: ["tags"] }))
+    const done = nextDone()
+    document.querySelector('[name="a[tags][]"]').click()
+    await done
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(sent()).toMatchObject({ type: "change", touched: ["a[tags][]"] })
+  })
+
+  it("sends the fields of the form with the click of a button in it", async () => {
+    await mountForm(form())
+    field("email").value = "ada@example.com"
+    respond(form({ email: "ada@example.com" }))
+    const done = nextDone()
+    document.querySelector("button").click()
+    await done
+
+    expect(sent()).toMatchObject({ type: "click", form: [["a[email]", "ada@example.com"], ["a[password]", ""], ["a[city]", ""]], touched: [] })
+  })
+
+  it("sends no touched fields with a submit", async () => {
+    await mountForm(form({ touched: ["email"] }))
+    respond(form())
+    const done = nextDone()
+    document.querySelector("form").requestSubmit()
+    await done
+
+    expect(sent().type).toBe("submit")
+    expect(sent().touched).toBeUndefined()
+  })
+
+  it("keeps the values that the user changes while the request runs, and their marks", async () => {
+    await mountForm(form())
+    const answer = respondLater(form({ email: "ada", error: "Not valid.", touched: ["email"] }))
+    const done = nextDone()
+    type(field("email"), "ada")
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+    // The user goes on in the next field. Its event waits for the first one.
+    field("city").value = "Paris"
+    field("city").setAttribute("data-phem-touched", "")
+    field("email").value = "ada@example.com"
+    respond(form({ email: "ada@example.com", city: "Paris", touched: ["email", "city"] }))
+    answer()
+    await done
+
+    expect(field("email").value).toBe("ada@example.com")
+    expect(field("city").value).toBe("Paris")
+    expect(field("city").hasAttribute("data-phem-touched")).toBe(true)
+    expect(document.querySelector("p").textContent).toBe("Not valid.")
+  })
+
+  it("keeps the value of the focused text field that the server changes, but not after a submit", async () => {
+    await mountForm(form())
+    respond(form({ city: "New", touched: ["city"] }))
+    let done = nextDone()
+    type(field("city"), "New ")
+    await done
+
+    // The form trims the value: the user is still typing.
+    expect(field("city").value).toBe("New ")
+
+    respond(form())
+    done = nextDone()
+    document.querySelector("form").requestSubmit()
+    await done
+
+    // A new form.
+    expect(field("city").value).toBe("")
+  })
+
+  it("sets the value that the server changes in a field that the user did not change", async () => {
+    await mountForm(form())
+    respond(form({ email: "ada", city: "Paris", touched: ["email"] }))
+    const done = nextDone()
+    type(field("email"), "ada")
+    await done
+
+    expect(field("city").value).toBe("Paris")
+  })
+
+  it("keeps the value of a touched password that the server renders with no value", async () => {
+    await mountForm(form())
+    respond(form({ city: "Paris", touched: ["city", "password"] }))
+    let done = nextDone()
+    field("password").value = "secret123"
+    field("password").setAttribute("data-phem-touched", "")
+    type(field("city"), "Paris")
+    await done
+
+    expect(field("password").value).toBe("secret123")
+
+    // A new form has no mark: the password goes.
+    respond(form())
+    done = nextDone()
+    document.querySelector("form").requestSubmit()
+    await done
+
+    expect(field("password").value).toBe("")
+  })
+
+  it("sets the value of the server render in a focused controlled input", async () => {
+    // A field with no mark of the server: not a field of a Symfony form with live validation.
+    await mountForm(form())
+    respond(form({ city: "NEW" }))
+    const done = nextDone()
+    type(field("city"), "new")
+    await done
+
+    expect(field("city").value).toBe("NEW")
+  })
+
+  it("sends the newest fields when the event leaves after a wait", async () => {
+    await mountForm(form())
+    const answer = respondLater(form({ email: "ada", touched: ["email"] }))
+    let done = nextDone()
+    type(field("email"), "ada")
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+    // The click waits for the first event, and the user types in the city.
+    document.querySelector("button").click()
+    field("city").value = "Paris"
+    respond(form({ email: "ada", city: "Paris", touched: ["email"] }))
+    answer()
+    await done
+    done = nextDone()
+    await done
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(sent(1)).toMatchObject({ type: "click", form: [["a[email]", "ada"], ["a[password]", ""], ["a[city]", "Paris"]] })
+    expect(field("city").value).toBe("Paris")
+  })
+
+  it("lets a phem:live field send its own events in a form with onChange", async () => {
+    await mountForm(form({ extra: '<input name="a[nick]" data-phem-bind="c1.nick" data-phem-live value="">' }))
+    respond(form())
+    const done = nextDone()
+    type(field("nick"), "ada")
+    await done
+
+    expect(body().handler).toBeNull()
+    expect(body().bound).toEqual({ "c1.nick": "ada" })
+  })
+
+  it("does not touch a field when the change is cancelled", async () => {
+    await mountForm(form())
+    const box = document.querySelector('[name="a[tags][]"]')
+    const cancel = (e) => e.preventDefault()
+    window.addEventListener("phem:before-queue", cancel)
+    box.click()
+    window.removeEventListener("phem:before-queue", cancel)
+
+    expect(box.checked).toBe(false)
+    expect(box.hasAttribute("data-phem-touched")).toBe(false)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("sends no fields with a key of a field in the form", async () => {
+    await mountForm(form({ extra: '<input name="a[q]" data-phem-on-keydown="c1.press">' }))
+    respond(form())
+    const done = nextDone()
+    field("q").dispatchEvent(new KeyboardEvent("keydown", { key: "a", bubbles: true }))
+    await done
+
+    expect(sent()).toMatchObject({ type: "keydown", form: null })
+    expect(sent().touched).toBeUndefined()
   })
 })
 

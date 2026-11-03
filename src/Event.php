@@ -28,8 +28,9 @@ final class Event
     private bool $refresh = false;
 
     /**
-     * @param array<string, mixed>   $form       the form fields, for `submit`: name => value, or the
-     *                                           list of values of a name with more than one value
+     * @param array<string, mixed>   $form       the fields of the form of the element (a submit, a change
+     *                                           or a click of an element in a form): name => value,
+     *                                           or the list of values of a name with more than one value
      * @param BrowserEventDispatcher $dispatcher sends browser events with the response
      *                                           (`$e->dispatcher->dispatch('toast', [...])`)
      * @param array<string, mixed>   $files      the files of the form, for `submit`: name => an

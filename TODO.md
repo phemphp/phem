@@ -25,9 +25,9 @@ Talk about each item before its implementation. The open questions are a start, 
       errors in the signed state. It runs after the handlers, with no transaction. A
       `#[Validated]` handler validates before the transaction, and it does not run when there are
       errors.
-- [ ] **Live validation of a Symfony form** (section 2). The values stay in the DOM, and each
-      change sends all the fields. How does the client track the touched fields, and how does the
-      morph keep the values of the fields that are not bound?
+- [x] **Live validation of a Symfony form** (section 2). The values and the touched fields stay
+      in the DOM: the server marks the touched fields with `data-phem-touched`, and the browser
+      sends their names back. The morph keeps the values that the user changes.
 - [x] **Component libraries** (section 4). Each item has its decisions, with no open
       question. The packages compile with the app, in one build, the classes merge through a
       `ClassList` value, and the app replaces a package component with
@@ -101,31 +101,54 @@ public function save(): void { /* runs only with no error */ }
 {% if validation.error('email') %}<p>{{ validation.error('email') }}</p>{% endif %}
 ```
 
-### [ ] Live validation of a Symfony form — P3
+### [x] Live validation of a Symfony form — P3
+
+Done: see [Live validation of a Symfony form](docs/phpm-syntax.md#live-validation-of-a-symfony-form).
+The text below keeps the design decisions.
 
 The `Validation` value works with bound properties. A Symfony form keeps its constraints in its
 type, and it has form themes, CSRF and data mappers.
 
 - **Best peer:** LV `phx-change`: each change sends all the fields of the form, and the server
-  validates the changeset again. The values stay in the browser, not in the server.
-- **Proposal:** the app handles the form on each change, as on the submit. Nothing goes in the
-  signed state. An event of a `<form>` already sends all its fields, and the handler `Request`
-  has them as its POST data.
+  validates the changeset again. The values stay in the browser, not in the server. LC
+  `ComponentWithFormTrait` keeps the values and the validated fields in its state, and clears
+  the errors of the other fields after the submit.
+- **Decisions:**
+  - **No new API in the component.** The app handles the form on each change, as on the submit.
+    Nothing goes in the signed state.
 
-  ```php
-  public function validate(Request $request): void
-  {
-      $this->form->handleRequest($request);
-  }
+    ```php
+    public function validate(Request $request): void
+    {
+        $this->form->handleRequest($request);
+    }
 
-  // <form onChange={{ validate }} onSubmit={{ save }}>{{ form_row(view.email) }} ...</form>
-  ```
-- **Gaps:**
-  - Touched fields: the client sends the names of the fields that the user changed. A form type
-    extension decorates the request handler, and clears the errors of the other fields.
-  - The morph sets the values of the server render on the fields that are not bound. On a
-    change, it must keep the values of the fields (a `PasswordType` renders no value).
-  - Another event of the form (an "Add" button of a `CollectionType`) does not send the fields.
+    // <form onChange={{ validate }} onSubmit={{ save }} novalidate>{{ form_row(view.email) }} ...</form>
+    ```
+  - **The touched fields stay in the DOM.** `TouchedFieldsRequestHandler` decorates
+    `form.type_extension.form.request_handler`, and it keeps the touched fields of the event
+    request (`EventRequest`, `TouchedFields`) for the submitted root form.
+    `TouchedFieldsExtension` shows an error in the view when its origin field is touched (also
+    when it bubbles), and an error of the root form when all the fields are touched. It marks
+    the touched widgets with `data-phem-touched`. The browser sends the marked names and the
+    changed field with the next event. A submit touches all the fields, and
+    `TouchedFields::touchAll($request)` does it for another event (a save with a click). A new
+    form has no mark, so the touched fields start again.
+  - **The form keeps all its errors.** The browser chooses the event type and the touched
+    fields, so they change only the view: `isValid()` checks all the fields and the CSRF token.
+  - **`onChange` of a `<form>` follows React:** it gets each key of its text fields (with the
+    debounce), not only the native `change` on blur. `phem:debounce={{ 'blur' }}` gives the
+    blur behavior. A `phem:live` field keeps its own events.
+  - **A submit, a change or a click of an element in a form sends its fields** (a click on an
+    "Add" button of a `CollectionType`), read when the event leaves. A key or a focus does not.
+    Only the submit sends the files.
+  - **The morph keeps the values of the fields with no `phem:bind`:** a value that the user
+    changed after the request left (and its mark). For a field that the server marks, also the
+    focused text field (not after a submit) and a password field that renders with no value. A
+    controlled input gets the value of the server render.
+  - **No helper for a `CollectionType`.** The handler changes the POST data, then it calls
+    `handleRequest()`. Add a helper (as LC `LiveCollectionTrait`) when an app needs more.
+- **Not in scope:** a push that renders the form again. It sets the values of the server render.
 
 ## 3. Installation
 

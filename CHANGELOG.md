@@ -8,6 +8,27 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Live validation of a Symfony form. A handler of `onChange` on the `<form>` calls
+  `handleRequest()`, and the view of the form shows the errors of the fields that the user
+  touched only. The form keeps all its errors, so `isValid()` checks all the fields. The server
+  marks the touched fields with `data-phem-touched`, and a submit touches all of them.
+  `TouchedFields::touchAll($request)` does the same for a handler of another event (a save with
+  a click). Phem decorates the request handler of the forms when `symfony/form` is installed.
+- **Breaking:** `onChange` on a `<form>` gets each key of its text fields, as in React. Before, it
+  got the native `change` event only (when the user left the field). Add
+  `phem:debounce={{ 'blur' }}` to keep the old behavior. A `phem:live` field still sends its own
+  events.
+- **Breaking:** a submit, a change or a click of an element in a form sends the fields of the
+  form (`$e->form` and the POST data of the `Request`), also for a control with the `form`
+  attribute. The fields go with their values when the event leaves. Only the submit sends the
+  files: before, a change of a form sent them too.
+- The morph keeps the values of the form fields with no `phem:bind` that the user changes while
+  an event runs. For a field that the server marks as touched, it also keeps the value of the
+  focused text field and of a password field.
+- Fix: a change that `phem:before-queue` cancels (for example with `phem-confirm`) gives the old
+  value back to the field that changed, also when the handler is on its form.
+- `phem:debounce={{ 'blur' }}` on a `<form>` sends the event when the user leaves one of its
+  fields. Before, the event waited for another event.
 - Fix: a morph after an event or a push no longer replaces a bound field that the user edits.
   Before, when a component before the field went away (for example the `<FieldError>` of a
   field that became valid), the next component of the same class got its fiber id. The morph then

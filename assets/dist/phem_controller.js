@@ -22,6 +22,38 @@ function formFields(form, submitter) {
   return { fields, files }
 }
 
+// The mark of a field of a form that the user touched: the server renders it (see
+// Phem\Form\TouchedFieldsExtension), and the controller sets it on each change.
+const TOUCHED = "data-phem-touched"
+
+// The names of the touched fields of a form: an event of the form sends them, so the server shows
+// the errors of these fields only.
+function touchedNames(form) {
+  return [...new Set([...form.elements].filter((f) => f.name && f.hasAttribute(TOUCHED)).map((f) => f.name))]
+}
+
+// The DOM events that send the fields of the form of their element (see dispatch()).
+const FORM_EVENTS = new Set(["submit", "change", "input", "click"])
+
+// The form of an element: the form itself, the form of a control (also with a `form` attribute),
+// or the form around it.
+function formOf(el) {
+  return el instanceof HTMLFormElement ? el : (el.form ?? el.closest("form"))
+}
+
+// Whether the onChange of an element gets each key of a field, as the `input` event: the element is
+// its form, the field is a text field, and the field has no `phem:live` (it sends its own events).
+function formTakesKeys(el, field) {
+  return el instanceof HTMLFormElement && isTextLike(field) && !field.hasAttribute("data-phem-live")
+}
+
+// The value of a field of a form, to compare it with a later value.
+function fieldValue(field) {
+  if (field instanceof HTMLInputElement && (field.type === "checkbox" || field.type === "radio")) return field.checked
+  if (field instanceof HTMLSelectElement) return [...field.selectedOptions].map((o) => o.value)
+  return field.value
+}
+
 // Resolves after Turbo renders the streams of renderStreamMessage(): a <turbo-stream> waits for
 // the next repaint (an animation frame, or a task when the page is hidden), then it renders.
 // A callback of the same kind that starts later runs after it.
@@ -490,11 +522,14 @@ export default class PhemController extends Controller {
     // values when the request left, not with the default value.
     // A pushed morph runs with no event: it keeps a bound field that the user changed.
     this.keepEdited = (event) => {
-      if (!["value", "checked", "selected"].includes(event.detail.attributeName)) return
-
       const field = event.target instanceof HTMLOptionElement ? event.target.closest("select") : event.target
       const key = field?.getAttribute?.("data-phem-bind")
-      if (!key || !this.element.contains(field)) return
+      if (!key) {
+        this.keepFormField(event, field)
+        return
+      }
+
+      if (!["value", "checked", "selected"].includes(event.detail.attributeName) || !this.element.contains(field)) return
 
       if (!this.sentBound) {
         if (this.pushing && this.boundFields(key).some(isDirty)) event.preventDefault()
@@ -505,6 +540,31 @@ export default class PhemController extends Controller {
       if (!sameValue(boundValue(this.boundFields(key)), this.sentBound[key])) event.preventDefault()
     }
     this.element.addEventListener("turbo:before-morph-attribute", this.keepEdited)
+
+    // The values of the fields of the forms with no `phem:bind` when the request of the event that
+    // the morph renders now left: {submit, values: field => value} (see keepFormField()).
+    this.sentForm = null
+    // The fields whose value the morph keeps (see keepFormField()). The server marks them as
+    // touched, so they belong to a Symfony form with live validation: the focused text field (not
+    // after a submit: the server can give a new form), and a password field that the server
+    // renders with no value (a PasswordType). The other fields, for example a controlled input
+    // (`value={{ name }}`), get the value of the server render.
+    this.keptValues = new WeakSet()
+    // The fields that the controller marked as touched, and the server not yet (see dispatch()).
+    this.clientMarks = new WeakSet()
+    this.keepValue = (event) => {
+      const t = event.target
+      const next = event.detail.newElement
+      if (next?.hasAttribute?.(TOUCHED)) this.clientMarks.delete(t)
+      if (!(t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement)) return
+
+      const touched = this.sentForm !== null && next?.localName === t.localName && next.hasAttribute(TOUCHED)
+      const focused = touched && !this.sentForm.submit && t === document.activeElement && isTextLike(t)
+      const password = touched && t.type === "password" && next.type === "password" && t.value !== "" && !next.hasAttribute("value")
+      if (focused || password) this.keptValues.add(t)
+      else this.keptValues.delete(t)
+    }
+    this.element.addEventListener("turbo:before-morph-element", this.keepValue)
 
     // The server did not render a component again (its placeholder, see keptElements()): keep its
     // element and its content as they are. The same for a `data-phem-ignore` element that the
@@ -647,6 +707,7 @@ export default class PhemController extends Controller {
     clearTimeout(this.streamTimer)
     this.element.removeEventListener("turbo:morph-element", this.keepLoading)
     this.element.removeEventListener("turbo:before-morph-attribute", this.keepEdited)
+    this.element.removeEventListener("turbo:before-morph-element", this.keepValue)
     this.element.removeEventListener("turbo:before-morph-element", this.keepKept)
     this.element.removeEventListener("turbo:before-morph-attribute", this.keepClient)
     document.removeEventListener("turbo:before-stream-render", this.keyMorph)
@@ -856,6 +917,13 @@ export default class PhemController extends Controller {
   dispatch(event) {
     if (this.inactive) return
 
+    // A field of a form that the user changes is touched, also while its event waits.
+    const changed = event.target
+    if ((event.type === "input" || event.type === "change") && changed.name && changed.form && this.element.contains(changed.form) && !changed.hasAttribute(TOUCHED)) {
+      changed.setAttribute(TOUCHED, "")
+      this.clientMarks.add(changed)
+    }
+
     const el = this.handlerElement(event)
     if (!el) {
       const live = this.liveElement(event)
@@ -872,9 +940,18 @@ export default class PhemController extends Controller {
 
     const attr = el._phemAttr
     const handler = el.getAttribute(attr)
-    if (!this.allowed(el, handler, event)) return
+    if (!this.allowed(el, handler, event)) {
+      // The field has its value again: the user did not touch it.
+      if (this.clientMarks.delete(changed)) changed.removeAttribute(TOUCHED)
+      return
+    }
 
-    const { fields, files } = el instanceof HTMLFormElement ? formFields(el, event.submitter) : { fields: null, files: [] }
+    // A submit, a change or a click of an element in a form sends the fields of the form, so its
+    // handler can submit a Symfony form with them. The change and the click send the touched
+    // fields too. The files go with the submit only.
+    const submit = event.type === "submit"
+    const form = FORM_EVENTS.has(event.type) ? formOf(el) : null
+    const { fields, files } = form && this.element.contains(form) ? formFields(form, submit ? event.submitter : null) : { fields: null, files: [] }
     const payload = {
       type: event.type,
       value: "value" in el ? el.value : null,
@@ -883,8 +960,10 @@ export default class PhemController extends Controller {
       form: fields,
     }
 
+    if (fields && !submit) payload.touched = touchedNames(form)
+
     // Not in the JSON: fetchWithRetry() sends them as parts of a multipart body.
-    if (files.length) payload.files = files
+    if (submit && files.length) payload.files = files
     this.schedule(el, attr, handler, event.type, payload)
   }
 
@@ -897,8 +976,10 @@ export default class PhemController extends Controller {
 
     event.preventDefault()
     if (event.type === "input" || event.type === "change") {
-      // All the radio buttons of the group: the radio button that was checked is checked again.
-      const radios = el.type === "radio" && el.name ? [...(el.form ?? this.element).querySelectorAll('input[type="radio"]')].filter((r) => r.name === el.name) : [el]
+      // The field that changed: the element, or a field of a form with the handler. All the radio
+      // buttons of the group: the radio button that was checked is checked again.
+      const field = el instanceof HTMLFormElement ? event.target : el
+      const radios = field.type === "radio" && field.name ? [...(field.form ?? this.element).querySelectorAll('input[type="radio"]')].filter((r) => r.name === field.name) : [field]
       radios.forEach(resetField)
       this.markDirty()
     }
@@ -1027,10 +1108,11 @@ export default class PhemController extends Controller {
     entry.send(entry.ids)
   }
 
-  // Sends the waiting events of an element, or of all the elements, in the order they came.
+  // Sends the waiting events of an element and of the elements around it (the form of a field), or
+  // of all the elements, in the order they came.
   flush(target = null) {
     for (const [el, pending] of [...this.pending]) {
-      if (target === null || el === target) for (const attr of [...pending.keys()]) this.release(el, attr)
+      if (target === null || el.contains(target)) for (const attr of [...pending.keys()]) this.release(el, attr)
     }
   }
 
@@ -1170,16 +1252,18 @@ export default class PhemController extends Controller {
     }
 
     switch (event.type) {
-      // React's onChange fires on each key for text inputs.
+      // React's onChange fires on each key for text inputs. The onChange of a form gets each key of
+      // its text fields too, but not of a `phem:live` field: it sends its own events, and the form
+      // gets its native change.
       case "input": {
         const el = find("input")
         if (el) return el
         const change = find("change")
-        return change && isTextLike(change) ? change : null
+        return change && (isTextLike(change) || formTakesKeys(change, event.target)) ? change : null
       }
       case "change": {
         const el = find("change")
-        return el && !isTextLike(el) ? el : null
+        return el && !isTextLike(el) && !formTakesKeys(el, event.target) ? el : null
       }
       default:
         return find(event.type)
@@ -1206,6 +1290,14 @@ export default class PhemController extends Controller {
     // The bound fields when the event starts: the newest values. The request sends the fields
     // that changed.
     const fields = this.boundValues()
+    // The fields of the form of a change or a click when the event starts, as the bound fields:
+    // a field that the user changed while the event waited goes with it. A submit locks its form.
+    if (event.form && event.type !== "submit") {
+      const form = formOf(el)
+      if (form && this.element.contains(form)) event = { ...event, form: formFields(form, null).fields, touched: touchedNames(form) }
+    }
+
+    const formValues = this.formValues()
     const bound = Object.fromEntries(Object.entries(fields).filter(([, { dirty }]) => dirty).map(([key, { value }]) => [key, value]))
 
     if (event.live && !Object.keys(bound).length) {
@@ -1298,6 +1390,7 @@ export default class PhemController extends Controller {
     if (data.sender) this.sent = [data.sender, ...this.sent].slice(0, MAX_SENT)
     if (data.query) this.updateUrl(data.query, true)
     this.sentBound = Object.fromEntries(Object.entries(fields).map(([key, { value }]) => [key, value]))
+    this.sentForm = { submit: event.type === "submit", values: formValues }
 
     // Before the morph, so a listener can stop its own changes of the page.
     notify("receive")
@@ -1311,12 +1404,15 @@ export default class PhemController extends Controller {
     }
     // The render of the answer failed: the event ends as an event that the server did not take.
     const renderFailed = (e) => {
+      this.sentBound = null
+      this.sentForm = null
       failed(response.status)
       throw e
     }
 
     return rendered.then(() => {
       this.sentBound = null
+      this.sentForm = null
       this.resetRejected(bound)
       this.markDirty()
 
@@ -1496,6 +1592,35 @@ export default class PhemController extends Controller {
       await new Promise((resolve) => setTimeout(resolve, delay))
       if (!navigator.onLine) await new Promise((resolve) => window.addEventListener("online", resolve, { once: true }))
     }
+  }
+
+  // The morph of a field of a form with no `phem:bind` (a Symfony form): the value stays in the
+  // page. The morph keeps the value that the user changed after the request left, and the values
+  // of keepValue(). A field that keeps its value keeps its touched mark.
+  keepFormField(event, field) {
+    if (!this.sentForm || !field?.name || !field.form || !this.element.contains(field)) return
+
+    const { attributeName, mutationType } = event.detail
+    const sent = this.sentForm.values
+    const changed = sent.has(field) && !sameValue(fieldValue(field), sent.get(field))
+    if (attributeName === TOUCHED) {
+      if (mutationType === "remove" && changed) event.preventDefault()
+      return
+    }
+
+    if (!["value", "checked", "selected"].includes(attributeName)) return
+
+    if (changed || this.keptValues.has(field)) event.preventDefault()
+  }
+
+  // The values of the fields of the forms with no `phem:bind`: field => value.
+  formValues() {
+    const values = new Map()
+    for (const form of this.element.querySelectorAll("form")) {
+      for (const field of form.elements) if (field.name && !field.hasAttribute("data-phem-bind")) values.set(field, fieldValue(field))
+    }
+
+    return values
   }
 
   // The bound fields of a key ("<fiber>.<property>"): a group of checkboxes or radio buttons has more than one.

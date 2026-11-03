@@ -15,6 +15,7 @@ namespace Phem\Tests\Fixtures;
 
 use Phem\Test\TestKernel as PhemTestKernel;
 use Psr\Log\NullLogger;
+use Symfony\Bundle\TwigBundle\TwigBundle;
 use Symfony\Bundle\WebProfilerBundle\WebProfilerBundle;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
@@ -57,7 +58,12 @@ final class TestKernel extends PhemTestKernel
             'rate_limiter' => ['phem_events' => ['policy' => 'fixed_window', 'limit' => 2, 'interval' => '1 minute', 'lock_factory' => null, 'storage_service' => InMemoryStorage::class]],
             // For the live validation of validation.phpm. FrameworkBundle does not enable it when symfony/validator is a dev package of the root.
             'validation' => ['enabled' => true],
+            // For the live validation of the Symfony form of form.phpm, for the same reason.
+            'form' => ['enabled' => true],
+            'property_access' => ['enabled' => true],
         ]);
+        // TwigBundle does not load the form functions (form_row()) for the same reason.
+        $container->import(\dirname((string) (new \ReflectionClass(TwigBundle::class))->getFileName()).'/Resources/config/form.php');
 
         if ('nostream' === $this->environment) {
             // The browser loads all the <Suspense> boundaries with an event.

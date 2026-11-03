@@ -37,6 +37,7 @@ use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use Symfony\Component\Form\FormTypeExtensionInterface;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\HttpKernel\Attribute\RateLimit;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
@@ -325,6 +326,10 @@ final class PhemBundle extends AbstractBundle
                     ->decorate('phem.transaction_runner')
                     ->args([service('.inner'), service('phem.profile')]);
             }
+        }
+
+        if (interface_exists(FormTypeExtensionInterface::class)) {
+            $container->import('../config/form.php');
         }
 
         if (class_exists(RateLimit::class) && interface_exists(RateLimiterFactoryInterface::class)) {

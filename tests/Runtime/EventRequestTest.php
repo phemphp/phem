@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Runtime;
 
+use Phem\Form\TouchedFields;
 use Phem\Http\EventRequest;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -43,6 +44,20 @@ final class EventRequestTest extends TestCase
         $copy = EventRequest::of(Request::create('/_phem/event', 'POST'), ['type' => 'submit', 'form' => [['tags[]', 'a'], ['tags[]', 'b'], ['role', 'x'], ['role', 'y'], ['action', 'delete']]]);
 
         self::assertSame(['tags' => ['a', 'b'], 'role' => 'y', 'action' => 'delete'], $copy->request->all(), 'as PHP parses a POST body');
+    }
+
+    public function testAnEventOfAFormHasItsTouchedFields(): void
+    {
+        $change = EventRequest::of(Request::create('/_phem/event', 'POST'), ['type' => 'input', 'form' => [['account[email]', 'ada']], 'touched' => ['account[email]']]);
+        $submit = EventRequest::of(Request::create('/_phem/event', 'POST'), ['type' => 'submit', 'form' => [['account[email]', 'ada']]]);
+        $click = EventRequest::of(Request::create('/_phem/event', 'POST'), ['type' => 'click', 'form' => null]);
+
+        $touched = $change->attributes->get(TouchedFields::REQUEST_ATTRIBUTE);
+        self::assertInstanceOf(TouchedFields::class, $touched);
+        self::assertTrue($touched->touches('account[email]'));
+        self::assertFalse($touched->touches('account[city]'));
+        self::assertTrue($submit->attributes->get(TouchedFields::REQUEST_ATTRIBUTE)?->isAll());
+        self::assertFalse($click->attributes->has(TouchedFields::REQUEST_ATTRIBUTE), 'an event with no form');
     }
 
     public function testRequestKeepsTheFilesAndTheAttributes(): void

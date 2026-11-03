@@ -15,6 +15,7 @@ namespace Phem\Test;
 
 use Dom\Element;
 use Dom\HTMLDocument;
+use Phem\Form\TouchedFields;
 use Phem\Stream\Stream;
 use Phem\Test\Internal\Driver;
 use Phem\Test\Internal\EventResult;
@@ -38,6 +39,9 @@ use PHPUnit\Framework\Assert;
  */
 final class ComponentTester
 {
+    /** The DOM events that send the fields of the form of their element. */
+    private const FORM_EVENTS = ['submit', 'change', 'input', 'click'];
+
     private const TEXT_INPUTS = ['text', 'search', 'email', 'url', 'tel', 'password', 'number', 'date', 'time', 'datetime-local', 'month', 'week', 'color', 'range'];
 
     private HTMLDocument $document;
@@ -751,6 +755,13 @@ final class ComponentTester
                 $ignored[$old->id] = $old;
             }
 
+            // As in the browser, a touched password field that the server renders with no value
+            // (a PasswordType) keeps its value.
+            $passwords = [];
+            foreach ($element->querySelectorAll('input[type="password"][name][value]') as $old) {
+                $passwords[(string) $old->getAttribute('name')] = (string) $old->getAttribute('value');
+            }
+
             // The new HTML is the element with the fiber id: it replaces the element of the page.
             $nodes = $this->nodes($html, $element->parentElement);
             $element->replaceWith(...$nodes);
@@ -758,6 +769,13 @@ final class ComponentTester
             foreach ($nodes as $node) {
                 if (!$node instanceof Element) {
                     continue;
+                }
+
+                foreach ($node->querySelectorAll('input[type="password"]['.TouchedFields::MARK.'][name]:not([value])') as $new) {
+                    $value = $passwords[(string) $new->getAttribute('name')] ?? '';
+                    if ('' !== $value) {
+                        $new->setAttribute('value', $value);
+                    }
                 }
 
                 foreach ($node->querySelectorAll('[data-phem-ignore][id]') as $new) {
@@ -793,10 +811,12 @@ final class ComponentTester
      */
     private function event(Element $target, string $type, ?Element $submitter = null): ?array
     {
+        // React's onChange gets each key of a text field, also the onChange of its form. A
+        // `phem:live` field sends its own events, and the form gets its native change.
+        $textChange = static fn (Element $e): bool => self::isTextLike($e) || ('form' === $e->localName && self::isTextLike($target) && !$target->hasAttribute('data-phem-live'));
         $element = match ($type) {
-            // React's onChange gets each key of a text field.
-            'input' => $this->handlerElement($target, 'input') ?? (null !== ($e = $this->handlerElement($target, 'change')) && self::isTextLike($e) ? $e : null),
-            'change' => null !== ($e = $this->handlerElement($target, 'change')) && !self::isTextLike($e) ? $e : null,
+            'input' => $this->handlerElement($target, 'input') ?? (null !== ($e = $this->handlerElement($target, 'change')) && $textChange($e) ? $e : null),
+            'change' => null !== ($e = $this->handlerElement($target, 'change')) && !$textChange($e) ? $e : null,
             default => $this->handlerElement($target, $type),
         };
         if (null === $element) {
@@ -805,15 +825,22 @@ final class ComponentTester
 
         $handler = (string) $element->getAttribute('data-phem-on-'.('input' === $type && !$element->hasAttribute('data-phem-on-input') ? 'change' : $type));
 
+        // A submit, a change or a click of an element in a form sends the fields of the form. The
+        // change and the click send the touched fields too, and only the submit sends the files.
+        $form = \in_array($type, self::FORM_EVENTS, true) ? self::ownerForm($element) : null;
         $event = [
             'type' => $type,
             'value' => self::valueOf($element),
             'checked' => 'input' === $element->localName ? $element->hasAttribute('checked') : null,
             'key' => null,
-            'form' => 'form' === $element->localName ? self::fields($element, $submitter) : null,
+            'form' => null !== $form ? self::fields($form, $submitter) : null,
         ];
 
-        if ('form' === $element->localName && [] !== ($files = $this->files($element))) {
+        if (null !== $form && 'submit' !== $type) {
+            $event['touched'] = self::touchedNames($form);
+        }
+
+        if (null !== $form && 'submit' === $type && [] !== ($files = $this->files($form))) {
             $event['files'] = $files;
         }
 
@@ -867,6 +894,11 @@ final class ComponentTester
     {
         $this->edit($element);
         $type = strtolower($element->getAttribute('type') ?? 'text');
+
+        // As in the browser, a field of a form that the user changes is touched.
+        if (null !== $element->getAttribute('name') && null !== self::ownerForm($element)) {
+            $element->setAttribute(TouchedFields::MARK, '');
+        }
 
         switch (true) {
             case 'input' === $element->localName && 'radio' === $type:
@@ -1048,7 +1080,38 @@ final class ComponentTester
             default => false,
         };
 
-        return $submits ? $element->closest('form') : null;
+        return $submits ? self::ownerForm($element) : null;
+    }
+
+    /**
+     * The form of an element, as the `phem` Stimulus controller finds it: the form itself, the form
+     * of its `form` attribute, or the form around it.
+     */
+    private static function ownerForm(Element $element): ?Element
+    {
+        if ('form' === $element->localName) {
+            return $element;
+        }
+
+        $id = $element->getAttribute('form');
+
+        return (null !== $id ? $element->ownerDocument?->getElementById($id) : null) ?? $element->closest('form');
+    }
+
+    /**
+     * The controls of a form that match a selector, in the order of the page, as `form.elements`
+     * has them: also the controls outside the form with its id in their `form` attribute.
+     *
+     * @return list<Element>
+     */
+    private static function controls(Element $form, string $selector): array
+    {
+        $document = $form->ownerDocument ?? throw new \LogicException('The form has no document.');
+
+        return array_values(array_filter(
+            iterator_to_array($document->querySelectorAll($selector), false),
+            static fn (Element $control): bool => self::ownerForm($control) === $form,
+        ));
     }
 
     /**
@@ -1060,7 +1123,7 @@ final class ComponentTester
     private static function fields(Element $form, ?Element $submitter): array
     {
         $fields = [];
-        foreach ($form->querySelectorAll('input, select, textarea, button') as $field) {
+        foreach (self::controls($form, 'input, select, textarea, button') as $field) {
             $name = $field->getAttribute('name');
             if (null === $name || '' === $name || $field->hasAttribute('disabled') || null !== $field->closest('fieldset[disabled]')) {
                 continue;
@@ -1097,6 +1160,23 @@ final class ComponentTester
     }
 
     /**
+     * The names of the touched fields of a form (`data-phem-touched`), as the `phem` Stimulus
+     * controller sends them: the server marks them, and a change marks its field.
+     *
+     * @return list<string>
+     */
+    private static function touchedNames(Element $form): array
+    {
+        $names = [];
+        foreach (self::controls($form, '['.TouchedFields::MARK.'][name]') as $field) {
+            $name = (string) $field->getAttribute('name');
+            $names[$name] = $name;
+        }
+
+        return array_values($names);
+    }
+
+    /**
      * The files of a form as [name, path] pairs, as `new FormData(form)` has them: the files that
      * the user selected in each file input with a name, and not disabled.
      *
@@ -1105,7 +1185,7 @@ final class ComponentTester
     private function files(Element $form): array
     {
         $files = [];
-        foreach ($form->querySelectorAll('input[type=file i]') as $input) {
+        foreach (self::controls($form, 'input[type=file i]') as $input) {
             $name = $input->getAttribute('name');
             if (null === $name || '' === $name || $input->hasAttribute('disabled') || null !== $input->closest('fieldset[disabled]')) {
                 continue;

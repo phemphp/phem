@@ -13,12 +13,16 @@ declare(strict_types=1);
 
 namespace Phem\Http;
 
+use Phem\Form\TouchedFields;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
  * The request that a handler gets (`Request $request`): a copy of the event request with the
  * form fields as its POST data, so a Symfony form reads them as a normal form submission
  * (`$form->handleRequest($request)`). The browser sends the event as JSON.
+ *
+ * An event of a form also gives the fields that the user touched (see Phem\Form\TouchedFields):
+ * all the fields for a submit, and the fields that the browser sends for another event.
  */
 final class EventRequest
 {
@@ -31,6 +35,11 @@ final class EventRequest
         // them, as it does for the body of a normal POST.
         parse_str(implode('&', array_map(static fn (array $f): string => rawurlencode($f[0]).'='.rawurlencode($f[1]), FormFields::of($event['form'] ?? null))), $post);
 
-        return $request->duplicate(request: $post);
+        $copy = $request->duplicate(request: $post);
+        if (\is_array($event['form'] ?? null)) {
+            $copy->attributes->set(TouchedFields::REQUEST_ATTRIBUTE, 'submit' === ($event['type'] ?? null) ? TouchedFields::all() : TouchedFields::of($event['touched'] ?? null));
+        }
+
+        return $copy;
     }
 }

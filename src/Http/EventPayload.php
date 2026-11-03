@@ -39,7 +39,7 @@ final class EventPayload
      * @param list<string>         $handlers the handler ids: one, none for an event of `phem:live` or a refresh, or the
      *                                       handlers of the `<Suspense>` boundaries that load together
      * @param string|null          $state    the signed JSON of the page state, or null when the event sends only the signature (see StateCache)
-     * @param array<string, mixed> $event    the DOM event (type, value, checked, key, form)
+     * @param array<string, mixed> $event    the DOM event (type, value, checked, key, form, touched)
      * @param array<string, mixed> $bound    the values of the bound inputs that changed: "<fiber>.<property>" => value (see BoundValues)
      * @param list<string>         $stale    the fibers whose element a push changed (see Phem\Rendering\Tree::markStale())
      */

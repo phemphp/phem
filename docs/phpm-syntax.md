@@ -514,15 +514,20 @@ runs the closure in `$row['onRemove']`.
 Supported events: `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`, `onKeyDown`, `onKeyUp`,
 `onFocus`, `onBlur`. phemc warns about another event (W003): the browser does not send it.
 The handler runs on the server. It can receive a `Phem\Event` object with `$e->value`,
-`$e->checked`, `$e->key`, `$e->form` (an array, for `onSubmit`), and `$e->files` (the files of
-the form, see [File uploads](#file-uploads)). See [Handler arguments](#handler-arguments).
+`$e->checked`, `$e->key`, `$e->form` (an array, for an element in a form), and `$e->files` (the
+files of the form, see [File uploads](#file-uploads)). See [Handler arguments](#handler-arguments).
 `onChange` on a text input fires on each key (as in React), but the browser waits until the user
 stops typing for 150 ms before it sends the event (see [Debounce and throttle](#debounce-and-throttle)).
-A field that only copies its value into the state needs no handler: see [Bound fields](#bound-fields).
+`onChange` on a `<form>` also gets each key of its text fields, and the changes of its other
+fields. A field that only copies its value into the state needs no handler: see
+[Bound fields](#bound-fields).
 
-`$e->form` has the fields of the form by name. A name with more than one value (a
+`$e->form` has the fields of the form by name: a submit, a change or a click of an element in a
+form sends them (also of a control with the `form` attribute). The other events, for example a
+key, do not send them. A name with more than one value (a
 `<select multiple>`, checkboxes) has the list of its values. The button that submits the form
-is a field too. The files of the form are in `$e->files`, not in `$e->form`.
+is a field too. The files of the form are in `$e->files`, not in `$e->form`, and only the
+submit sends them.
 
 The id of a handler comes from the handler (its method or closure, and the values that it
 captures, such as `fn () => $this->remove($scientist)`), not from its position. When the data
@@ -602,6 +607,9 @@ public function render(): Node
     );
 }
 ```
+
+To show the errors while the user types, see
+[Live validation of a Symfony form](#live-validation-of-a-symfony-form).
 
 ### File uploads
 
@@ -792,14 +800,16 @@ element changes this default, and `0` turns it off. The other events do not wait
 
 - `phem:debounce={{ 300 }}`: send an event when no new event of the same handler comes for
   300 ms. `0` turns off the debounce of the element.
-- `phem:debounce={{ 'blur' }}`: send the event when the element loses the focus.
+- `phem:debounce={{ 'blur' }}`: send the event when the element loses the focus. On a `<form>`, send
+  it when the user leaves one of its fields.
 - `phem:throttle={{ 500 }}`: send the first event at once, then at most one event each 500 ms.
   The last event is always sent.
 
 They apply to each handler of the element, but not to `onSubmit` and `onBlur`: these never wait.
 An event that waits has the value of the last event, so no request has an old value. A blur sends
-the waiting event of the element. Any other event (a click, a submit, a key without a wait) sends
-all the waiting events first, so the server gets all the input before the click.
+the waiting events of the element and of the elements around it (its form). Any other event (a
+click, a submit, a key without a wait) sends all the waiting events first, so the server gets all
+the input before the click.
 
 When an `onChange` or `onInput` event waits in the queue (an earlier event still runs), a new
 event of the same handler and element replaces it: the server gets one request, with the new value.
@@ -1079,9 +1089,130 @@ The state keeps the touched fields and their errors:
 
 Install `symfony/validator`. `phemc` reports E058 for `#[Validated]` in a component with no
 `Validation` property (also a `#[Validated]` method of a trait or a parent class), on a function,
-and for a second `Validation` property. A Symfony form validates only on its submit (see
-[Handler arguments](#handler-arguments)). Use bound properties for the fields that need live
-validation.
+and for a second `Validation` property. For a Symfony form, see the next section.
+
+#### Live validation of a Symfony form
+
+A Symfony form keeps its values in the page, not in the state. Each change of a field sends all
+the fields of the form, and the handler submits the form with them. Phem shows the errors of the
+fields that the user touched only:
+
+```php
+use Phem\Attribute\{Component, State};
+use Phem\Node;
+use Symfony\Component\Form\{FormFactoryInterface, FormInterface};
+use Symfony\Component\HttpFoundation\Request;
+
+#[Component]
+final class AccountForm
+{
+    #[State] public string $saved = '';
+
+    private ?FormInterface $form = null {
+        get => $this->form ??= $this->forms->create(AccountType::class, new Account());
+    }
+
+    public function __construct(private readonly FormFactoryInterface $forms)
+    {
+    }
+
+    public function validate(Request $request): void
+    {
+        $this->form->handleRequest($request);
+    }
+
+    public function save(Request $request): void
+    {
+        $this->form->handleRequest($request);
+        if (!$this->form->isSubmitted() || !$this->form->isValid()) {
+            return;
+        }
+
+        $this->saved = $this->form->getData()->email;
+        $this->form = null;
+    }
+
+    public function render(): Node
+    {
+        $view = $this->form->createView();
+
+        return (
+            <form onChange={{ validate }} onSubmit={{ save }} novalidate>
+                {{ form_row(view.email) }}
+                {{ form_row(view.password) }}
+                {{ form_row(view.city) }}
+                <button type="submit">Save</button>
+            </form>
+        );
+    }
+}
+```
+
+The user types `ada` in the email field. The form shows the error of this field only, and it
+marks the field with `data-phem-touched`:
+
+```html
+<form data-phem-on-change="phem7054991af202.2f572a3124c0" data-phem-on-submit="phem7054991af202.387573669b39" data-phem-c="phem7054991af202">
+    <div><label for="account_email" class="required">Email</label><ul><li id="account_email_error1">This value is not a valid email address.</li></ul><input type="email" id="account_email" name="account[email]" required="required" data-phem-touched="" aria-describedby="account_email_error1" aria-invalid="true" value="ada"></div>
+    <div><label for="account_password" class="required">Password</label><input type="password" id="account_password" name="account[password]" required="required"></div>
+    <div><label for="account_city" class="required">City</label><input type="text" id="account_city" name="account[city]" required="required"></div>
+    <button type="submit">Save</button>
+</form>
+```
+
+- **A change:** `onChange` on the `<form>` gets each key of its text fields (after the debounce)
+  and the changes of its other fields. A `phem:live` field sends its own events, and the form gets
+  its native `change`. The event sends all the fields, and the names of the touched fields: the
+  fields with `data-phem-touched`, and the field that changed. The view of the form shows an error
+  when the user touched the field where it comes from, also when the error bubbles to a parent.
+  The errors of the form itself (the CSRF token, the extra fields, a constraint on the class) show
+  when the user touched all the fields. The form keeps all its errors: `isValid()` checks all the
+  fields, so a request that the browser changes cannot save data with errors. Save the data in
+  the handler of the submit.
+- **A submit:** it touches all the fields. All the errors show, and each field gets the mark, so
+  the next change keeps the errors. Add `novalidate` to the `<form>`: else the browser checks the
+  `required` fields first, and it does not send the submit.
+- **A save with a click:** a handler of another event touches all the fields with
+  `TouchedFields::touchAll()`, so the errors that stop the save show:
+
+  ```php
+  use Phem\Form\TouchedFields;
+
+  public function saveByClick(Request $request): void
+  {
+      $this->save(TouchedFields::touchAll($request));
+  }
+
+  // <button type="button" onClick={{ saveByClick }}>Save</button>
+  ```
+- **A new form:** after a save, set `$this->form = null`. The new form has no mark, so the touched
+  fields start again.
+- **The values stay in the page:** the morph keeps the value that the user changed after the
+  request left. When the server marks a field as touched, the morph also keeps the value of the
+  focused text field (for example while the form trims it), and the value of a password field
+  (a `PasswordType` renders no value). After a submit, the morph sets the values of the server
+  render, so a new form is empty. A field with no mark, for example a controlled input
+  (`value={{ name }}`), gets the value of the server render.
+- **Other events of the form:** a click of a button in a form sends its fields, also a button
+  outside the form with its `form` attribute. For example, a button adds an item to a
+  `CollectionType`: change the POST data, then submit the form.
+
+  ```php
+  public function addPhone(Request $request): void
+  {
+      $data = $request->request->all('account');
+      $data['phones'][] = '';
+      $request->request->set('account', $data);
+
+      $this->form->handleRequest($request);
+  }
+
+  // <button type="button" onClick={{ addPhone }}>Add a phone</button>
+  ```
+
+Install `symfony/form`. Phem decorates the request handler of the forms
+(`form.type_extension.form.request_handler`). A request that is not an event of a form, for
+example the POST of a normal controller, shows all its errors.
 
 
 ### Rate limits

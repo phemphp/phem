@@ -7,6 +7,11 @@
          failOnWarning="true"
          displayDetailsOnTestsThatTriggerWarnings="true"
          displayDetailsOnTestsThatTriggerDeprecations="true">
+    <php>
+        <!-- The tests boot the kernel of each environment of the fixture app: more than the default 128M. -->
+        <ini name="memory_limit" value="256M"/>
+    </php>
+
     <testsuites>
         <testsuite name="phem">
             <directory>tests</directory>
