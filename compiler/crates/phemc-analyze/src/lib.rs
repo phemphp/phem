@@ -5,7 +5,7 @@ mod purity;
 mod scan;
 
 pub use purity::HELP as PURE_RENDER_HELP;
-pub use scan::{scan, Class, EnumDecl, FileInfo, Func, MarkupScope, Param, Prop, Replaces, RouteDecl};
+pub use scan::{scan, Class, EnumDecl, FileInfo, Func, MarkupScope, Param, Prop, Replaces, RouteDecl, Toks};
 
 use phemc_syntax::diag::codes;
 use phemc_syntax::php::Lexed;

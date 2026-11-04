@@ -278,49 +278,77 @@ impl Prop {
     }
 }
 
-/// Significant tokens (no whitespace or comments).
-struct Toks<'a> {
-    src: &'a str,
-    t: Vec<Token>,
+/// Significant tokens (no whitespace or comments), with the helpers of the scanners.
+pub struct Toks<'a> {
+    pub src: &'a str,
+    pub t: Vec<Token>,
 }
 
 impl<'a> Toks<'a> {
-    fn text(&self, i: usize) -> &'a str {
+    /// The significant tokens of `tokens`.
+    pub fn new(src: &'a str, tokens: impl IntoIterator<Item = Token>) -> Self {
+        Toks { src, t: tokens.into_iter().filter(|t| !t.is_trivia()).collect() }
+    }
+
+    pub fn text(&self, i: usize) -> &'a str {
         self.t.get(i).map_or("", |t| t.text(self.src))
     }
 
-    fn is_op(&self, i: usize, op: &str) -> bool {
+    pub fn is_op(&self, i: usize, op: &str) -> bool {
         self.t.get(i).is_some_and(|t| t.kind == TokKind::Op) && self.text(i) == op
     }
 
-    fn is_word(&self, i: usize, w: &str) -> bool {
+    pub fn is_word(&self, i: usize, w: &str) -> bool {
         self.t.get(i).is_some_and(|t| t.kind == TokKind::Ident) && self.text(i).eq_ignore_ascii_case(w)
     }
 
-    /// The index of the token that closes the bracket at `open`.
-    fn matching(&self, open: usize) -> usize {
+    /// The token `i` opens a bracket: `(`, `[`, `{`, or the `#[` of an attribute.
+    pub fn opens(&self, i: usize) -> bool {
+        self.t.get(i).is_some_and(|t| t.kind == TokKind::AttrOpen || (t.kind == TokKind::Op && matches!(self.text(i), "(" | "[" | "{")))
+    }
+
+    /// The token `i` closes a bracket.
+    pub fn closes(&self, i: usize) -> bool {
+        self.t.get(i).is_some_and(|t| t.kind == TokKind::Op && matches!(self.text(i), ")" | "]" | "}"))
+    }
+
+    /// The index of the token that closes the bracket at `open`, or the last token.
+    pub fn matching(&self, open: usize) -> usize {
         let mut depth = 0i32;
         for i in open..self.t.len() {
-            if self.t[i].kind == TokKind::Op || self.t[i].kind == TokKind::AttrOpen {
-                match self.text(i) {
-                    "(" | "[" | "{" | "#[" => depth += 1,
-                    ")" | "]" | "}" => {
-                        depth -= 1;
-                        if depth == 0 {
-                            return i;
-                        }
-                    }
-                    _ => {}
+            if self.opens(i) {
+                depth += 1;
+            } else if self.closes(i) {
+                depth -= 1;
+                if depth == 0 {
+                    return i;
                 }
             }
         }
 
-        self.t.len() - 1
+        self.t.len().saturating_sub(1)
+    }
+
+    /// The index of the token that opens the bracket that closes at `close`, if there is one.
+    pub fn matching_back(&self, close: usize) -> Option<usize> {
+        let mut depth = 0i32;
+        for i in (0..=close.min(self.t.len().checked_sub(1)?)).rev() {
+            if self.closes(i) {
+                depth += 1;
+            } else if self.opens(i) {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i);
+                }
+            }
+        }
+
+        None
     }
 }
 
 pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
-    let toks = Toks { src, t: lexed.tokens.iter().copied().filter(|t| !t.is_trivia()).collect() };
+    let toks = Toks::new(src, lexed.tokens.iter().copied());
     let mut info = FileInfo { rel: rel.to_string(), ..Default::default() };
     let mut attrs: Vec<(String, Span)> = Vec::new();
     let mut replaces: Option<Replaces> = None;

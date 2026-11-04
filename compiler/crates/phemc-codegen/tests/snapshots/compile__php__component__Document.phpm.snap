@@ -15,7 +15,7 @@ use Phem\{Html, Node, Root};
 function Document(?Html $title = null, ?Html $children = null): Node
 {
     return (
-        new \Phem\Element('component/Document.0.twig', ['title' => $title ?? null, 'children' => $children ?? null])
+        new \Phem\Element('component/Document.0.twig', ['title' => $title, 'children' => $children])
 
 
 

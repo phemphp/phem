@@ -14,7 +14,7 @@ use Phem\Node;
 #[Component]
 function TextField(Bound $value, string $label): Node
 {
-    return new \Phem\Element('component/Bound.0.twig', ['label' => $label ?? null, 'value' => $value ?? null]);
+    return new \Phem\Element('component/Bound.0.twig', ['label' => $label, 'value' => $value]);
 }
 
 /** A function component: it passes its Bound prop to a child. */
@@ -23,7 +23,7 @@ function NameField(Bound $value): Node
 {
     $label = 'Name';
 
-    return new \Phem\Element('component/Bound.1.twig', ['value' => $value ?? null, 'label' => $label ?? null]);
+    return new \Phem\Element('component/Bound.1.twig', ['value' => $value, 'label' => $label]);
 }
 
 /** A class component with a Bound prop. */

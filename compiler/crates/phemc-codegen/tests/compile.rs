@@ -84,7 +84,7 @@ fn passes_the_variables_of_extension_tags() {
 
     assert!(diags.iter().all(|f| f.diags.is_empty()), "unexpected diagnostics");
     let php = &out.expect("output").files[0].php;
-    assert!(php.contains("['user' => $user ?? null, 'locale' => $locale ?? null]"), "{php}");
+    assert!(php.contains("['user' => $user, 'locale' => $locale]"), "{php}");
 
     // A guessed name is still an error when an expression uses it.
     let src = "<?phpm\nfunction App() { return <p>{% trans into into %}x{% endtrans %}{{ into }}</p>; }\n";
@@ -110,6 +110,79 @@ fn a_quoted_url_with_an_expression_goes_through_phem_attr() {
     assert!(twig.contains(r#"src="/a.png""#), "a static URL keeps its text: {twig}");
 }
 
+/// The variables that the markup of `body` (a function body) gives to its template.
+fn template_vars(body: &str) -> String {
+    let src = format!("<?phpm\nfunction App(array $items, #[\\SensitiveParameter] ?string $q = null) {{\n{body}\n}}\n");
+    let (out, diags) = compile(vec![SourceInput::app("App.phpm", src)]);
+
+    let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
+    assert!(msgs.is_empty(), "unexpected diagnostics: {msgs:#?}");
+    let php = out.expect("output").files[0].php.clone();
+    let start = php.rfind("App.0.twig', [").expect("a template call") + "App.0.twig', [".len();
+
+    php[start..start + php[start..].find("])").expect("the end of the call")].to_string()
+}
+
+#[test]
+fn a_defined_variable_goes_to_the_template_without_a_fallback() {
+    // Parameters, and assignments that start a statement before the markup.
+    assert_eq!(template_vars("$n = count($items);\n    $n += 1;\n    return <p>{{ items|length }} {{ q }} {{ n }}</p>;"), "'items' => $items, 'q' => $q, 'n' => $n");
+
+    // Each branch of an `if` chain with an `else`.
+    assert_eq!(template_vars("if ($q) { $a = 1; } elseif ($items) { $a = 2; } else { $a = 3; }\n    return <p>{{ a }}</p>;"), "'a' => $a");
+
+    // Loop variables in the loop, the parameters of an arrow function, a closure with `use`.
+    assert_eq!(template_vars("foreach ($items as $k => $item) { $rows[] = <li>{{ k }} {{ item }}</li>; }\n    return null;"), "'k' => $k, 'item' => $item");
+    assert_eq!(template_vars("for ($i = 0; $i < 3; ++$i) { $rows[] = <li>{{ i }}</li>; }\n    return null;"), "'i' => $i");
+    assert_eq!(template_vars("$x = 1;\n    return array_map(fn ($p) => <li>{{ p }} {{ x }}</li>, $items);"), "'p' => $p, 'x' => $x");
+    assert_eq!(template_vars("$x = 1;\n    return array_map(function ($p) use ($x) { return <li>{{ p }} {{ x }}</li>; }, $items);"), "'p' => $p, 'x' => $x");
+
+    // Destructuring, a `try` with its `catch`, and a branch that ends with `return`.
+    assert_eq!(template_vars("[$a, 'k' => $b] = $items;\n    list($c) = $items;\n    return <p>{{ a }} {{ b }} {{ c }}</p>;"), "'a' => $a, 'b' => $b, 'c' => $c");
+    assert_eq!(template_vars("try { $a = f(); } catch (\\Exception $e) { $a = null; } finally { echo 1; }\n    return <p>{{ a }}</p>;"), "'a' => $a");
+    assert_eq!(template_vars("if ($q) { return null; } else { $a = 1; }\n    return <p>{{ a }}</p>;"), "'a' => $a");
+
+    // A closure with a DNF return type, and a method named `fn`.
+    assert_eq!(template_vars("return function ($p): (\\A&\\B)|null { return <li>{{ p }}</li>; };"), "'p' => $p");
+    assert_eq!(template_vars("$x = 1;\n    $this->fn($q);\n    return <p>{{ x }}</p>;"), "'x' => $x");
+}
+
+#[test]
+fn a_variable_that_can_be_undefined_keeps_the_fallback() {
+    // An `if` with no `else`, an assignment in an expression, and an assignment after the markup.
+    assert_eq!(template_vars("if ($q) { $a = 1; }\n    return <p>{{ a }}</p>;"), "'a' => $a ?? null");
+    assert_eq!(template_vars("if ($a = $q) {}\n    return <p>{{ a }}</p>;"), "'a' => $a ?? null");
+    assert_eq!(template_vars("$p = <p>{{ a }}</p>;\n    $a = 1;\n    return $p;"), "'a' => $a ?? null");
+
+    // The loop variable after the loop, a closure with no `use`, a `switch` case, and `unset()`.
+    assert_eq!(template_vars("foreach ($items as $item) {}\n    return <p>{{ item }}</p>;"), "'item' => $item ?? null");
+    assert_eq!(template_vars("$x = 1;\n    return array_map(function ($p) { return <li>{{ x }}</li>; }, $items);"), "'x' => $x ?? null");
+    assert_eq!(template_vars("switch ($q) { case 'a': $a = 1; break; default: return <p>{{ a }}</p>; }\n    return null;"), "'a' => $a ?? null");
+    assert_eq!(template_vars("$a = 1;\n    unset($a);\n    return <p>{{ a }}</p>;"), "'a' => $a ?? null");
+
+    // `else if` (two words) and an `else` with no braces end the check of the chain.
+    assert_eq!(template_vars("if ($q) { $a = 1; } else if ($items) { $a = 2; } else { $a = 3; }\n    return <p>{{ a }}</p>;"), "'a' => $a ?? null");
+    assert_eq!(template_vars("if ($q) { $a = 1; } else $a = 2;\n    return <p>{{ a }}</p>;"), "'a' => $a ?? null");
+
+    // The markup is the value of the assignment: the variable is set after it.
+    assert_eq!(template_vars("$a = <p>{{ a }}</p>;\n    return $a;"), "'a' => $a ?? null");
+    assert_eq!(template_vars("if ($q) { $a = 1; } else { $a = <p>{{ a }}</p>; }\n    return $a;"), "'a' => $a ?? null");
+
+    // An alternative syntax block, an `if` chain in a `switch` case, and a `goto` label.
+    assert_eq!(template_vars("if ($q): echo 1; $a = 1; endif;\n    return <p>{{ a }}</p>;"), "'a' => $a ?? null");
+    assert_eq!(template_vars("switch ($q) { case 'a': echo 1; if ($q) { $a = 1; } else { $a = 2; } break; default: return <p>{{ a }}</p>; }\n    return null;"), "'a' => $a ?? null");
+    assert_eq!(template_vars("goto end;\n    $a = 1;\n    end:\n    return <p>{{ a }}</p>;"), "'a' => $a ?? null");
+
+    // A `try` with no `catch` that defines the name, and all the branches return.
+    assert_eq!(template_vars("try { $a = f(); } catch (\\Exception $e) { echo 1; }\n    return <p>{{ a }}</p>;"), "'a' => $a ?? null");
+
+    // A closure with a DNF return type does not see the variables of the function.
+    assert_eq!(template_vars("$x = 1;\n    return function (): (\\A&\\B)|null { return <li>{{ x }}</li>; };"), "'x' => $x ?? null");
+
+    // An unbalanced bracket does not panic.
+    template_vars("$a = [1, 2;\n    }\n    return <p>{{ a }}</p>;");
+}
+
 fn codes(src: &str) -> Vec<&'static str> {
     let (_, diags) = compile(vec![SourceInput::app("App.phpm", src)]);
     diags.iter().flat_map(|f| f.diags.iter().map(|d| d.code)).collect()
@@ -122,7 +195,7 @@ fn a_set_in_an_if_branch_or_an_element_binds_after_it() {
 
     assert!(diags.iter().all(|f| f.diags.is_empty()), "unexpected diagnostics");
     let php = &out.expect("output").files[0].php;
-    assert!(php.contains("['ok' => $ok ?? null]"), "{php}");
+    assert!(php.contains("['ok' => $ok]"), "{php}");
 
     // `for` has its own scope, and so do the children of a component (its slots).
     assert_eq!(codes("<?phpm\nfunction App() { $xs = [];\n    return <p>{% for x in xs %}{% set y = x %}{% endfor %}{{ y }}</p>;\n}\n"), ["E030"]);
@@ -222,7 +295,7 @@ fn a_class_with_a_parent_outside_the_sources_is_not_checked() {
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
     assert!(msgs.is_empty(), "{msgs:?}");
     let php = &out.expect("output").files[0].php;
-    assert!(php.contains("'title' => $this->title ?? (method_exists($this, 'title') ? $this->title(...) : null)"), "{php}");
+    assert!(php.contains(r"'title' => \Phem\Rendering\Member::read($this, 'title', self::class)"), "{php}");
 }
 
 #[test]
@@ -739,6 +812,10 @@ fn a_replacement_renders_in_each_tag_of_the_original() {
 
     let manifest = out.manifest.to_json();
     assert!(manifest.contains(r#""replaces": "Acme\\Ui\\Button""#), "{manifest}");
+
+    // The original is a function: the PHP gets its name as a string, not a `::class`.
+    let php = &out.files.iter().find(|f| f.rel == "Button.phpm").unwrap().php;
+    assert!(php.contains(r"#[Component(replaces: 'Acme\\Ui\\Button')]"), "{php}");
 }
 
 #[test]

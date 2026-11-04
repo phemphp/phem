@@ -347,6 +347,77 @@ phemc check src --format json
 and `character` counts UTF-16 code units, as the Language Server Protocol does. The warnings of a
 Composer package are not in the list.
 
+### Static analysis (PHPStan)
+
+PHPStan cannot read a `.phpm` file: the markup is not PHP. Run PHPStan on the compiled PHP in
+`var/phem/php/` instead. The compiled PHP has the same line numbers as the `.phpm` file, and
+it is plain PHP: phemc writes a markup literal as `new \Phem\Element(...)`.
+
+1. Run `phemc build src` (or `phemc build src --no-warmup` in CI).
+2. Add `var/phem/php` to the paths of PHPStan. PHPStan reads only `.php` files, so it ignores
+   the `.phpm` files in `src/`.
+3. Exclude `var/phem/php/vendor`: it is the compiled code of the Composer packages, and your
+   app cannot change it.
+
+```yaml
+# phpstan.dist.neon
+parameters:
+    level: 8
+    paths:
+        - src
+        - var/phem/php
+    excludePaths:
+        - var/phem/php/vendor
+```
+
+A `.phpm` file:
+
+```php
+#[Component]
+function Tally(array $items): Node {
+    $n = count($items);
+    return <p id="count">{{ n }}</p>;
+}
+```
+
+Its compiled PHP, on the same lines:
+
+```php
+#[Component]
+function Tally(array $items): Node {
+    $n = count($items);
+    return new \Phem\Element('page/edge_cases.0.twig', ['n' => $n]);
+}
+```
+
+PHPStan reports the line of the `.phpm` file, in the path of the compiled file (here with
+`--error-format=raw`):
+
+```
+var/phem/php/page/edge_cases.php:12:Function App\Page\Tally() has parameter $items with no value type specified in iterable type array.
+```
+
+The first line of each compiled file names its source (`<?php /* compiled by phemc from
+src/page/edge_cases.phpm; do not edit */`). Fix the error in that `.phpm` file, at the same
+line.
+
+PHPStan does not see:
+
+- The expressions in markup (`{{ name == current }}`). They are Twig. `phemc check` checks
+  the variables, the components and the props in markup.
+- A variable that can be undefined at the markup. phemc writes it as `$name ?? null`, and the
+  template gets `null`.
+
+phemc writes `$name` when the variable is always defined at the markup: a parameter, a loop
+variable in its loop, or an assignment in a statement before the markup (also in each branch of
+an `if` with an `else`, or of a `try` and its `catch`). For other code, for example an
+alternative syntax block (`if (...): ... endif;`) or a `goto` label, it writes `$name ?? null`.
+If PHPStan then reports `nullCoalesce.variable` (the variable always exists), assign the
+variable in a statement before the markup.
+
+php-cs-fixer, PHP_CodeSniffer and Rector do not work on `.phpm` files, and a change in the
+compiled PHP does not go back to the source.
+
 ### The language server
 
 `phemc lsp` runs the language server on stdin and stdout. It shows the same diagnostics as

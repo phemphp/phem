@@ -31,7 +31,7 @@ final class Filters
         $options = ['name' => 'Name', 'year' => 'Year'];
 
         return (
-            new \Phem\Element('component/Filters.0.twig', ['search' => $this->search(...), 'query' => $this->query, 'year' => $this->year, 'active' => $this->active, 'tags' => $this->tags, 'sort' => $this->sort, 'options' => $options ?? null, 'fields' => $this->fields, 'notes' => $this->notes, 'range' => $this->range, 'rows' => $this->rows, 'this' => $this])
+            new \Phem\Element('component/Filters.0.twig', ['search' => $this->search(...), 'query' => $this->query, 'year' => $this->year, 'active' => $this->active, 'tags' => $this->tags, 'sort' => $this->sort, 'options' => $options, 'fields' => $this->fields, 'notes' => $this->notes, 'range' => $this->range, 'rows' => $this->rows, 'this' => $this])
 
 
 

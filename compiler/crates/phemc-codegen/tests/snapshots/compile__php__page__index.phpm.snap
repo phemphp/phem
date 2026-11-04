@@ -13,7 +13,7 @@ use function App\Component\{MyButton, Card, Badge, Tag, Document};
 
 #[Component]
 function Toolbar(string $theme = 'light'): Node {
-    return new \Phem\Element('page/index.0.twig', ['theme' => $theme ?? null]);
+    return new \Phem\Element('page/index.0.twig', ['theme' => $theme]);
 }
 
 // A plain PHP function, with no `#[Component]`: it is not a component.
@@ -24,7 +24,7 @@ function Shout(string $name): string {
 #[Component]
 function Greeting(string $name): Node {
     $upper = Shout($name);
-    return new \Phem\Element('page/index.1.twig', ['upper' => $upper ?? null]);
+    return new \Phem\Element('page/index.1.twig', ['upper' => $upper]);
 }
 
 #[Component]
@@ -46,7 +46,7 @@ final class Toggle
         }
 
         return (
-            new \Phem\Element('page/index.4.twig', ['toggle' => $this->toggle(...), 'content' => $content ?? null, 'on' => $this->on])
+            new \Phem\Element('page/index.4.twig', ['toggle' => $this->toggle(...), 'content' => $content, 'on' => $this->on])
 
 
 
@@ -83,10 +83,10 @@ final class Home
             ['title' => 'Cabbage', 'isFruit' => false, 'id' => 1],
             ['title' => 'Apple', 'isFruit' => true, 'id' => 3],
         ];
-        $listItems = array_map(fn($p) => new \Phem\Element('page/index.5.twig', ['p' => $p ?? null]), $products);
+        $listItems = array_map(fn($p) => new \Phem\Element('page/index.5.twig', ['p' => $p]), $products);
 
         return (
-            new \Phem\Element('page/index.6.twig', ['count' => $this->count, 'handleClick' => $this->handleClick(...), 'products' => $products ?? null, 'listItems' => $listItems ?? null, 'add' => $this->add(...), 'items' => $this->items])
+            new \Phem\Element('page/index.6.twig', ['count' => $this->count, 'handleClick' => $this->handleClick(...), 'products' => $products, 'listItems' => $listItems, 'add' => $this->add(...), 'items' => $this->items])
 
 
 

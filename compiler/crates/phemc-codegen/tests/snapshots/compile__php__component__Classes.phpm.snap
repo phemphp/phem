@@ -13,7 +13,7 @@ use Phem\{Html, Node};
 #[Component]
 function ClassButton(string $size = 'md', ?Html $children = null, mixed ...$rest): Node {
     return (
-        new \Phem\Element('component/Classes.0.twig', ['rest' => $rest ?? null, 'size' => $size ?? null, 'children' => $children ?? null])
+        new \Phem\Element('component/Classes.0.twig', ['rest' => $rest, 'size' => $size, 'children' => $children])
 
 
     );
@@ -22,13 +22,13 @@ function ClassButton(string $size = 'md', ?Html $children = null, mixed ...$rest
 // A wrapper keeps its classes: the props of the tag go through phem_props().
 #[Component]
 function PrimaryButton(?Html $children = null, mixed ...$rest): Node {
-    return new \Phem\Element('component/Classes.1.twig', ['rest' => $rest ?? null, 'children' => $children ?? null]);
+    return new \Phem\Element('component/Classes.1.twig', ['rest' => $rest, 'children' => $children]);
 }
 
 #[Component]
 function ToneBadge(string $tone, bool $active = false): Node {
     return (
-        new \Phem\Element('component/Classes.2.twig', ['active' => $active ?? null, 'tone' => $tone ?? null])
+        new \Phem\Element('component/Classes.2.twig', ['active' => $active, 'tone' => $tone])
 
 
 
@@ -37,5 +37,5 @@ function ToneBadge(string $tone, bool $active = false): Node {
 
 #[Component]
 function SpreadNote(mixed ...$rest): Node {
-    return new \Phem\Element('component/Classes.3.twig', ['rest' => $rest ?? null]);
+    return new \Phem\Element('component/Classes.3.twig', ['rest' => $rest]);
 }

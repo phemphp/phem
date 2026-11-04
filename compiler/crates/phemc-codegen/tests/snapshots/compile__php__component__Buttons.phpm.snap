@@ -14,7 +14,7 @@ use Phem\Node;
 #[Component]
 function MyButton(int $count, Closure $onClick): Node {
     return (
-        new \Phem\Element('component/Buttons.0.twig', ['onClick' => $onClick ?? null, 'count' => $count ?? null])
+        new \Phem\Element('component/Buttons.0.twig', ['onClick' => $onClick, 'count' => $count])
 
 
     );
@@ -23,7 +23,7 @@ function MyButton(int $count, Closure $onClick): Node {
 #[Component]
 function Card(string $title, ?Html $children = null, ?Html $footer = null): Node {
     return (
-        new \Phem\Element('component/Buttons.1.twig', ['title' => $title ?? null, 'children' => $children ?? null, 'footer' => $footer ?? null])
+        new \Phem\Element('component/Buttons.1.twig', ['title' => $title, 'children' => $children, 'footer' => $footer])
 
 
 
@@ -33,10 +33,10 @@ function Card(string $title, ?Html $children = null, ?Html $footer = null): Node
 
 #[Component]
 function Badge(string $label, string $tone = 'info'): Node {
-    return new \Phem\Element('component/Buttons.2.twig', ['tone' => $tone ?? null, 'label' => $label ?? null]);
+    return new \Phem\Element('component/Buttons.2.twig', ['tone' => $tone, 'label' => $label]);
 }
 
 #[Component]
 function Tag(?Html $children = null): Node {
-    return new \Phem\Element('component/Buttons.3.twig', ['children' => $children ?? null]);
+    return new \Phem\Element('component/Buttons.3.twig', ['children' => $children]);
 }

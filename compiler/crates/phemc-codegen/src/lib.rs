@@ -5,6 +5,7 @@
 //! literal becomes a value, `new \Phem\Element(template, vars)`, that the runtime renders.
 
 mod contexts;
+mod defined;
 mod lower;
 mod replaces;
 mod vars;
@@ -16,7 +17,7 @@ use phemc_syntax::php::{lex, Lexed, TokKind};
 use phemc_syntax::span::line_col;
 use phemc_syntax::{Diagnostic, Span};
 use serde::Serialize;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -233,6 +234,8 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
     let mut lowerer = lower::Lowerer::new(info, reg, enums, replacements);
     let mut edits: Vec<(Span, String)> = Vec::new();
     let mut templates = Vec::new();
+    // The defined variables at each markup, by scope: one walk for each function.
+    let mut defined_by_scope: HashMap<(usize, usize), HashMap<usize, HashSet<String>>> = HashMap::new();
 
     for (index, m) in lexed.markups.iter().enumerate() {
         let name = phemc_analyze::template_name(&input.rel, index);
@@ -246,11 +249,13 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
             _ => vec![],
         };
 
-        let (scope_text, class, params, owner) = match scope {
-            MarkupScope::Function(fi) => (info.functions[fi].span.text(src), None, info.functions[fi].params.as_slice(), Some(info.functions[fi].fqn.as_str())),
-            MarkupScope::Method(ci, mi) => (info.classes[ci].methods[mi].span.text(src), Some(&info.classes[ci]), &[][..], Some(info.classes[ci].fqn.as_str())),
-            MarkupScope::TopLevel => (src, None, &[][..], None),
+        let (scope_span, class, params, owner) = match scope {
+            MarkupScope::Function(fi) => (Some(info.functions[fi].span), None, info.functions[fi].params.as_slice(), Some(info.functions[fi].fqn.as_str())),
+            MarkupScope::Method(ci, mi) => (Some(info.classes[ci].methods[mi].span), Some(&info.classes[ci]), &[][..], Some(info.classes[ci].fqn.as_str())),
+            MarkupScope::TopLevel => (None, None, &[][..], None),
         };
+
+        let scope_text = scope_span.map_or(src, |s| s.text(src));
 
         lowerer.class = class;
         lowerer.owner = owner;
@@ -258,10 +263,16 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
         lowerer.scope_text = scope_text;
         let content = lowerer.lower_root(&m.root, slots);
 
-        // Resolve the free variables to PHP expressions.
+        // Resolve the free variables to PHP expressions. A variable that can be undefined at the
+        // markup gets `?? null`.
+        let defined = scope_span
+            .and_then(|s| defined_by_scope.entry((s.start, s.end)).or_insert_with(|| defined::defined_at_markups(&lexed.tokens, src, s)).get(&m.span.start).cloned())
+            .unwrap_or_default();
         let mut vars = Vec::new();
         for v in vars::free_vars(info, &m.root) {
-            let php = if has_variable(scope_text, &v.name) {
+            let php = if defined.contains(&v.name) {
+                format!("${}", v.name)
+            } else if has_variable(scope_text, &v.name) {
                 format!("${} ?? null", v.name)
             } else if let Some(c) = class {
                 if v.name == "this" {
@@ -282,7 +293,7 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
                     continue;
                 } else if c.open && v.strict {
                     // A property or a method of a parent class that the compiler does not see.
-                    format!("$this->{0} ?? (method_exists($this, {1}) ? $this->{0}(...) : null)", v.name, php_str(&v.name))
+                    format!("\\Phem\\Rendering\\Member::read($this, {}, self::class)", php_str(&v.name))
                 } else {
                     if v.strict {
                         diags.push(undefined(&v.name, v.offset, " or a property or method of the class"));
@@ -312,6 +323,16 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
     }
 
     diags.append(&mut lowerer.diags);
+
+    // `replaces: Alert::class` of a function component becomes the string: a function has no
+    // class, and PHPStan reports the `::class`. The attribute gets the same value.
+    let replaced = info.functions.iter().filter_map(|f| f.replaces.as_ref()).chain(info.classes.iter().filter_map(|c| c.replaces.as_ref()));
+    for r in replaced {
+        let is_function = reg.get(&r.fqcn).is_some_and(|d| d.kind != Kind::Class);
+        if is_function && r.span.text(src).trim_end().to_ascii_lowercase().ends_with("::class") {
+            edits.push((r.span, php_str(&r.fqcn)));
+        }
+    }
 
     // Each `<?phpm` tag becomes `<?php`. The first one gets a header comment on its line (keeps line numbers).
     for (i, open) in lexed.tokens.iter().filter(|t| t.kind == TokKind::OpenTag).enumerate() {

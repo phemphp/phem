@@ -245,7 +245,8 @@ vendor/bin/phemc check src
 ```
 
 Give each component a correct type for each prop, and the return type `Node`. The compiler,
-PHP and PHPStan then check the calls for you.
+PHP and PHPStan then check the calls for you. Run PHPStan on the compiled PHP (see
+[Static analysis](compiling.md#static-analysis-phpstan)).
 
 ## 12. Test without a browser
 

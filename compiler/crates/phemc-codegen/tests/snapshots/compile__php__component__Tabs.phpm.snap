@@ -31,7 +31,7 @@ final class Tabs
 #[Component]
 function Tab(string $name, string $label, #[Context] Tabs $tabs): Node
 {
-    return new \Phem\Element('component/Tabs.1.twig', ['tabs' => $tabs ?? null, 'name' => $name ?? null, 'label' => $label ?? null]);
+    return new \Phem\Element('component/Tabs.1.twig', ['tabs' => $tabs, 'name' => $name, 'label' => $label]);
 }
 
 // A class consumer with an optional context.
