@@ -1355,6 +1355,7 @@ export default class PhemController extends Controller {
 
     if (response.status === 409) {
       // The state is not valid any more (a new build, or a new secret): load the page again.
+      failed(409)
       this.reload()
       return
     }
@@ -1399,11 +1400,17 @@ export default class PhemController extends Controller {
       // The handler returned a RedirectResponse. Turbo sets window.location for a URL that it
       // cannot visit, so a javascript: URL would run: visit only http(s) URLs.
       const url = new URL(data.redirect, window.location.href)
-      if (url.protocol === "http:" || url.protocol === "https:") {
-        // The server got the bound values with the event.
-        this.leaving = true
-        Turbo.visit(url.href)
-      } else console.error("[phem] redirect to a URL that is not http(s) was blocked", data.redirect)
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        console.error("[phem] redirect to a URL that is not http(s) was blocked", data.redirect)
+        failed(response.status)
+        return
+      }
+
+      // The server got the bound values with the event. `phem:done` comes before the visit, so
+      // each `phem:send` gets its `phem:done`.
+      this.leaving = true
+      notify("done", { ok: true, status: response.status, redirect: url.href })
+      Turbo.visit(url.href)
       return
     }
 

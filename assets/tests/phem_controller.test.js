@@ -1,8 +1,12 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { Application } from "@hotwired/stimulus"
+import * as Turbo from "@hotwired/turbo"
 import PhemController from "../dist/phem_controller.js"
 import { createRequire } from "node:module"
 import { answer, click, mount, nextDone, respond } from "./support.js"
+
+// A redirect and a reload are Turbo visits: jsdom cannot load a page.
+vi.mock("@hotwired/turbo", async (original) => ({ ...(await original()), visit: vi.fn() }))
 
 let application
 
@@ -13,6 +17,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn())
+  Turbo.visit.mockClear()
 })
 
 afterEach(() => {
@@ -1051,6 +1056,43 @@ describe("phem:queue, phem:send, phem:receive and phem:done", () => {
     click("button")
 
     expect((await done).detail).toEqual({ handler: "c1.star", ids: [1], ok: false, status: null })
+  })
+
+  it("dispatches phem:done with the URL for a redirect, before the visit", async () => {
+    await mount(`<button data-phem-on-click="c1.add">Add</button>`)
+    const events = []
+    for (const name of ["send", "receive", "done"]) window.addEventListener(`phem:${name}`, (e) => events.push([name, e.detail, Turbo.visit.mock.calls.length]))
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ redirect: "/bag" }), { status: 200 }))
+    const done = nextDone()
+    click("button")
+    await done
+
+    expect(events).toEqual([
+      ["send", { handler: "c1.add", ids: [1] }, 0],
+      ["done", { handler: "c1.add", ids: [1], ok: true, status: 200, redirect: "http://localhost:3000/bag" }, 0],
+    ])
+    expect(Turbo.visit).toHaveBeenCalledExactlyOnceWith("http://localhost:3000/bag")
+  })
+
+  it("dispatches phem:done with ok false for a redirect that is not http(s)", async () => {
+    await mount(`<button data-phem-on-click="c1.add">Add</button>`)
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ redirect: "javascript:alert(1)" }), { status: 200 }))
+    const done = nextDone()
+    click("button")
+
+    expect((await done).detail).toEqual({ handler: "c1.add", ids: [1], ok: false, status: 200 })
+    expect(Turbo.visit).not.toHaveBeenCalled()
+  })
+
+  it("dispatches phem:done with a 409 before it loads the page again", async () => {
+    await mount(`<button data-phem-on-click="c1.star">Star</button>`)
+    fetch.mockResolvedValueOnce(new Response("", { status: 409 }))
+    const done = nextDone()
+    click("button")
+
+    expect((await done).detail).toEqual({ handler: "c1.star", ids: [1], ok: false, status: 409 })
+    expect(Turbo.visit).toHaveBeenCalledExactlyOnceWith(window.location.href, { action: "replace" })
   })
 })
 

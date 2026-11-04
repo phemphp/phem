@@ -30,7 +30,11 @@ The element that sent an event gets these events, with the `handler` id in their
 | `phem:queue` | When the event goes in the queue. |
 | `phem:send` | When the request starts. |
 | `phem:receive` | When the server took the event, before the morph. |
-| `phem:done` | When the event ends. `detail.ok` is `false` when it failed. |
+| `phem:done` | When the event ends. `detail.ok` is `false` when it failed. For a redirect, `detail.redirect` is the URL, and the event comes before the visit. |
+
+Each `phem:send` gets exactly one `phem:done`, also when the event fails, redirects, or loads the
+page again. Use the two events to know when an event runs: the loading state shows only after the
+loading delay, so a fast event does not show it.
 
 ## Optimistic UI
 
