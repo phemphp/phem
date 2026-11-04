@@ -10,6 +10,6 @@
         "  * Start the web server: <comment>symfony serve</>",
         "    It also runs <comment>vendor/bin/phemc watch src</>, which compiles the <comment>.phpm</> files when you save them",
         "  * Open the URL that it shows: the page of <comment>src/Page/Home.phpm</> is at <comment>/</>",
-        "  * Read the guide: <comment>https://github.com/phemphp/phem/blob/main/docs/getting-started.md</>"
+        "  * Read the guide: <comment>https://phem.dev/getting-started/</>"
     ]
 }
