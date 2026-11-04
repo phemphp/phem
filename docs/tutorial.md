@@ -324,7 +324,7 @@ because `add()` sets `$this->title` to `''`.
 
 > [!TIP]
 > To save the tasks, give `TaskList` a Doctrine repository in its constructor, and use it in the
-> handlers. A component is a Symfony service. See [Services and `mount()`](phpm-syntax.md#8-services-and-mount).
+> handlers. A component is a Symfony service. See [Services and `mount()`](phpm-syntax.md#services-and-mount).
 
 ## Step 6: Test the component
 
