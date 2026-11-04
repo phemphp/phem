@@ -103,7 +103,7 @@ keeps no session between two events.
 A component is a Symfony service. Get your repositories and services in the constructor. Use
 Symfony security (`#[IsGranted]`), forms, validation and Doctrine as you do in a controller.
 Read the data in `mount()`, not in `render()` (see
-[Keep `render()` pure](phpm-syntax.md#keep-render-pure)).
+[Keep `render()` pure](components.md#keep-render-pure)).
 
 ```php
 #[IsGranted('ROLE_ADMIN')]
@@ -135,16 +135,25 @@ final class Users
 
 ## From React to Phem
 
-When you know React, this table helps. The full table is in [How it works](how-it-works.md).
+When you know React, this table helps.
 
-| React | Phem |
+| React (react.dev/learn) | Phem |
 |---|---|
-| `function MyButton() { return <button/> }` | `#[Component] function MyButton(): Node` |
-| `{user.name}` | `{{ user.name }}` |
-| `onClick={handleClick}` | `onClick={{ handleClick }}`: the handler runs on the server |
-| `useState` | a `#[State]` property of a `#[Component]` class |
-| `items.map(i => <li key={i.id}>…)` | `{% for i in items %}<li key={{ i.id }}>…{% endfor %}` |
-| props and `children` | function parameters, `#[Prop]` properties, `Html $children` |
+| `function MyButton() { return <button/> }` | `#[Component] function MyButton()`: the same, in PHP (a function without `#[Component]` is a plain PHP function) |
+| `export default function MyApp()` | `#[Page('/')] function MyApp()`: a Symfony route (a class page for its own state or route values) |
+| the root layout (`<html>`, metadata) | a `Document` component of the app, with a `<Root>`: each page renders in it, and gives the title with `<Document:title>` |
+| `{user.name}`, `src={user.imageUrl}` | `{{ user.name }}`, `src={{ user.imageUrl }}` |
+| `className`, `style={{ width: 90 }}` | `className`, `style={{ {width: 90} }}` |
+| `cond ? <A/> : <B/>`, `cond && <A/>` | `{{ cond ? <A /> : <B /> }}`, `{{ cond and <A /> }}`, `{% if %}` |
+| `items.map(i => <li key={i.id}>…)` | `{% for i in items %}<li key={{ i.id }}>…{% endfor %}` or `array_map(fn($i) => <li …>, $items)` |
+| `onClick={handleClick}` | `onClick={{ handleClick }}` (the handler runs on the server) |
+| `useState` | a `#[State]` property of a `#[Component]` class; a method changes it |
+| initial state from props or data | `mount()`, called when the component has no state yet |
+| a form `onSubmit` handler | a Symfony form: `$form->handleRequest($request)` in the handler (`Request $request`), also in `onChange` for live validation |
+| `createContext` + `useContext` | `#[Provide]` on a class component (or a property), and `#[Context]` on a property or a parameter |
+| a WebSocket or a subscription | `#[Broadcast]` on a page, and `Phem\Stream\Streams` in a handler: Turbo Streams through the Mercure hub |
+| imported modules | services, injected in the constructor |
+| props, `children`, lifting state up | parameters or `#[Prop]` properties, `?Html $children`, the same pattern |
 
 ## What Phem is not
 

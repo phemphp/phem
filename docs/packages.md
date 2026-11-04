@@ -485,6 +485,39 @@ has no `data-phem-*` attributes here):
 - `render()` shows `value ?? active`. The handler changes `active` only when `value` is `null`.
 - A controlled component with no `onChange` does not change: as in React, the value is read-only.
 
+## The class merger
+
+`classes()` merges the classes of a component with the classes of the caller (see
+[Merge of classes](phpm-syntax.md#merge-of-classes)). The default merger removes only the
+duplicates. The Tailwind merger (Tailwind CSS v4) also removes the earlier classes of the same
+group: `px-2` and then `px-4` gives `px-4`. Install it, and turn it on:
+
+```sh
+composer require tales-from-a-dev/tailwind-merge-php
+```
+
+```yaml
+# config/packages/phem.yaml
+phem:
+    class_merger:
+        tailwind:
+            css: '%kernel.project_dir%/assets/styles/app.css'
+            # prefix: tw
+            # cache: app.psr16_cache
+            # theme: { text: [caption, price-lg] }
+        # Or the service of a Phem\Dom\ClassMerger of the app:
+        # service: App\Ui\MyClassMerger
+```
+
+The merger knows only the default values of the Tailwind theme. A custom value of your `@theme`
+is not in its group: for example, it puts `text-caption` with the text colors, so a later color
+removes the size. The `css` option fixes this. Phem reads the `@theme` blocks of the file and of
+its relative imports when the container builds. The `theme` option gives the names by hand, by
+theme key. In production, clear the cache after a change of the theme.
+
+Give the `prefix` of your Tailwind build (`@import "tailwindcss" prefix(tw);`) with no colon.
+`cache` is the id of a PSR-16 cache service for the merged classes.
+
 ## The CSS of a package
 
 Phem has no CSS feature for the packages. Use the Tailwind build of the app, and the Symfony UX
@@ -516,30 +549,9 @@ reads it:
 The Symfony UX `autoimport` of a CSS file (as `@phem/phem` does for `phem.css`) does not send
 the file through the Tailwind build. Use it only for plain CSS.
 
-With the Tailwind merger, give the input CSS of the app to the `css` option. Phem reads the
-`@theme` blocks of the file and of its relative imports, so it also reads the theme of the
-package. The merger then keeps a custom value of the theme (for example `text-caption`) with
-a later class of another group (`text-muted-foreground`):
-
-```yaml
-# config/packages/phem.yaml
-phem:
-    class_merger:
-        tailwind:
-            css: '%kernel.project_dir%/assets/styles/app.css'
-```
-
-See [Merge of classes](phpm-syntax.md#merge-of-classes) for the `css` and `theme` options.
-
-**The prefix.** With a Tailwind prefix (`@import "tailwindcss" prefix(tw);`), give the same
-prefix to the Tailwind merger:
-
-```yaml
-# config/packages/phem.yaml
-phem:
-    class_merger:
-        tailwind: { prefix: tw }
-```
+With the Tailwind merger, give the input CSS of the app to the `css` option (see
+[The class merger](#the-class-merger)). Phem reads the `@theme` blocks of the file and of its
+relative imports, so it also reads the theme of the package.
 
 **The Stimulus controllers.** A package gives its controllers in the Symfony UX format, as
 `phem/phem`: the `symfony-ux` keyword in its `composer.json`, and an `assets/package.json` with

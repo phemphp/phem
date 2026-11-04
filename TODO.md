@@ -67,7 +67,7 @@ A stress run on 2026-10-28 (the server time, with no network):
 
 ### [x] Validation of `#[State]` properties, with touched fields — P2
 
-See [Live validation](docs/phpm-syntax.md#live-validation).
+See [Live validation](docs/events-and-forms.md#live-validation).
 
 - **Best peer:** LC `ValidatableComponentTrait`: it validates on each change but shows the errors
   only for the fields that the user touched. LW `#[Validate]` on a property, with real-time
@@ -103,7 +103,7 @@ public function save(): void { /* runs only with no error */ }
 
 ### [x] Live validation of a Symfony form — P3
 
-Done: see [Live validation of a Symfony form](docs/phpm-syntax.md#live-validation-of-a-symfony-form).
+Done: see [Live validation of a Symfony form](docs/events-and-forms.md#live-validation-of-a-symfony-form).
 The text below keeps the design decisions.
 
 The `Validation` value works with bound properties. A Symfony form keeps its constraints in its

@@ -124,7 +124,7 @@ A page renders one `<Root>`. A page with no `<Root>` or with two is an error, an
 a Twig template outside a page is an error too.
 
 The events render only the components that can change (see
-[Keep `render()` pure](phpm-syntax.md#keep-render-pure)), and they update only the content of
+[Keep `render()` pure](components.md#keep-render-pure)), and they update only the content of
 the `<Root>` in the browser. The document around it (the title, a footer) does not change. A component after
 the root element renders, but the `phem` controller does not get its DOM events. A `<title>`
 in the markup of a page is not the title of the page: phemc reports it (W005). A `<title>` in
@@ -327,7 +327,7 @@ E011
 | W005 | a `<title>` outside `<head>` and `<svg>`: the document component prints the title, and a page gives it with `<Document:title>` |
 | W006 | `phem:debounce` or `phem:throttle` on an element with no handler |
 | W007 | `phem:live` on an element with no `phem:bind` |
-| W008 | a `render()` (or a function component) that is not pure: it reads a service of the constructor, a static property, a superglobal, the clock, or a random value (see [Keep `render()` pure](phpm-syntax.md#keep-render-pure)) |
+| W008 | a `render()` (or a function component) that is not pure: it reads a service of the constructor, a static property, a superglobal, the clock, or a random value (see [Keep `render()` pure](components.md#keep-render-pure)) |
 
 For editors and other tools, `--format json` prints the diagnostics to stdout as JSON. The exit
 code does not change:
@@ -411,7 +411,7 @@ each event:
 - the Doctrine transaction of the handler: commit or rollback, and its time;
 - the Turbo Streams that the request pushed to the Mercure hub, with their topics, and the
   stale components that an event rendered again (see
-  [Real-time updates](phpm-syntax.md#real-time-updates)).
+  [Real-time updates](server-features.md#real-time-updates)).
 
 The Performance panel shows the render passes, the handler and the transaction (`phem`
 category). With the profiler on, the browser console shows each event with a link to its Phem

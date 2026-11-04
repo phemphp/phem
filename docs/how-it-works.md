@@ -1,7 +1,7 @@
 # How it works
 
-This document shows the path of a `.phpm` file from the compiler to the browser, and how the
-ideas of React map to Phem.
+This document shows the path of a `.phpm` file from the compiler to the browser. For a map of the
+ideas of React to Phem, see [What is Phem](what-is-phem.md#from-react-to-phem).
 
 ## The pipeline
 
@@ -51,7 +51,7 @@ ideas of React map to Phem.
    cache pool, by its signature. When the pool does not have it (an expired entry, another
    machine), the browser sends the event again with the full state, compressed. The cache is only
    an optimization: the browser keeps the state (see
-   [State cache](phpm-syntax.md#state-cache)).
+   [State cache](errors-and-limits.md#state-cache)).
    The state has the shape of the last render too: the parent and a hash of the HTML of each
    component. The server renders only the components on the path to the handler, restores
    their state, and runs the PHP handler (in a Doctrine transaction, when the handler or its component
@@ -66,80 +66,40 @@ ideas of React map to Phem.
    placeholder: the browser keeps it. A run of kept components that are next to each other has
    one placeholder (`first..last`), and the browser finds the components of the run in the shape
    that it has. This needs a pure `render()`
-   (see [Keep `render()` pure](phpm-syntax.md#keep-render-pure)). Only the content of the
+   (see [Keep `render()` pure](components.md#keep-render-pure)). Only the content of the
    `<Root>` changes: the document around it (for example the title) stays the same.
    Events wait in a queue, so each event uses the newest state.
    While an event runs, the element that sent it and its component get `aria-busy="true"` and
    the `phem-loading` class, after a delay of 200 ms (`data-phem-loading-delay-value` on the
    `<Root>` element changes it). Use CSS to style them, for example
    `.phem-loading { opacity: .5 }`. `phem:loading={{ save }}` on an element shows it only
-   while a `save` event runs (see [Loading states](phpm-syntax.md#loading-states)).
+   while a `save` event runs (see [Loading states](events-and-forms.md#loading-states)).
    While a submit event runs, the form is locked: its buttons and controls are disabled, its
    text fields are read-only, and a second submit is ignored. Add `data-phem-disable={{ false }}`
    to the form to turn this off.
    While the browser is offline, the `<Root>` element has the `phem-offline` class.
    When an event fails (for example a 500), the browser shows a default error message. A
-   `phem:error` listener can show its own message (see [Failed events](phpm-syntax.md#failed-events)).
+   `phem:error` listener can show its own message (see [Failed events](errors-and-limits.md#failed-events)).
    After a network error, a 502 or a 503, the browser sends the event again with a longer wait
-   each time (see [Retries](phpm-syntax.md#retries)).
+   each time (see [Retries](errors-and-limits.md#retries)).
    Add `data-phem-transition` to an element to run the morph of its components in a view
-   transition (see [Transitions](phpm-syntax.md#transitions)).
+   transition (see [Transitions](client-side.md#transitions)).
 5. **Real-time updates.** A page with `#[Broadcast]`, or with a component with `#[Broadcast]`,
    opens one connection to the Mercure hub (the hub of FrankenPHP, or a standalone hub). A handler pushes Turbo Streams to the open pages with `Phem\Stream\Streams`:
    plain markup (`prepend`, `update`, `remove`, ...), or a `refresh()` that renders a component
    again in each browser with a normal event. A component with `#[Broadcast]` refreshes itself
    in the other browsers after its handlers. The next event of a page renders again the
-   components that a push changed (see [Real-time updates](phpm-syntax.md#real-time-updates)).
+   components that a push changed (see [Real-time updates](server-features.md#real-time-updates)).
    An `#[Async]` handler returns its slow work in a `Promise`: the event answers at once, and a
    Messenger worker runs the work and pushes its result (see
-   [Slow work after the response](phpm-syntax.md#slow-work-after-the-response)).
+   [Slow work after the response](server-features.md#slow-work-after-the-response)).
 6. **Server.** [FrankenPHP](https://frankenphp.dev) runs `public/index.php` in worker mode
    (see the Caddyfile in [Deployment](deployment.md)). Each worker boots the Symfony kernel once and keeps
    it in memory for many requests. Symfony Runtime gives each request to the kernel, which
    resets the services (`kernel.reset`) between requests. Caddy serves the static files of
    `public/`. The same `public/index.php` also runs on PHP-FPM.
 
-## From React to Phem
-
-| React (react.dev/learn) | Phem |
-|---|---|
-| `function MyButton() { return <button/> }` | `#[Component] function MyButton()`: the same, in PHP (a function without `#[Component]` is a plain PHP function) |
-| `export default function MyApp()` | `#[Page('/')] function MyApp()`: a Symfony route (a class page for its own state or route values) |
-| the root layout (`<html>`, metadata) | a `Document` component of the app, with a `<Root>`: each page renders in it, and gives the title with `<Document:title>` |
-| `{user.name}`, `src={user.imageUrl}` | `{{ user.name }}`, `src={{ user.imageUrl }}` |
-| `className`, `style={{ width: 90 }}` | `className`, `style={{ {width: 90} }}` |
-| `cond ? <A/> : <B/>`, `cond && <A/>` | `{{ cond ? <A /> : <B /> }}`, `{{ cond and <A /> }}`, `{% if %}` |
-| `items.map(i => <li key={i.id}>…)` | `{% for i in items %}<li key={{ i.id }}>…{% endfor %}` or `array_map(fn($i) => <li …>, $items)` |
-| `onClick={handleClick}` | `onClick={{ handleClick }}` (the handler runs on the server) |
-| `useState` | a `#[State]` property of a `#[Component]` class; a method changes it |
-| initial state from props or data | `mount()`, called when the component has no state yet |
-| a form `onSubmit` handler | a Symfony form: `$form->handleRequest($request)` in the handler (`Request $request`), also in `onChange` for live validation |
-| `createContext` + `useContext` | `#[Provide]` on a class component (or a property), and `#[Context]` on a property or a parameter |
-| a WebSocket or a subscription | `#[Broadcast]` on a page, and `Phem\Stream\Streams` in a handler: Turbo Streams through the Mercure hub |
-| imported modules | services, injected in the constructor |
-| props, `children`, lifting state up | parameters or `#[Prop]` properties, `?Html $children`, the same pattern |
-
 ## Limits
 
-- Each event is a round trip to the server (about 1 ms on the server, plus network time).
-  Logic that must run only in the browser goes into a normal Stimulus controller.
-- State values must be JSON values. Closures, objects and services are not state.
-- There is no `useEffect`, because the server keeps no session between events.
-- A page gets no props. A route placeholder such as `{id}` is not a prop of the page.
-- A markup literal is rendered when a component returns it or when markup prints it. Do not
-  cast it to a string in PHP.
-- A component that is not a template component has a fiber id in `data-phem-c`. When the
-  component renders one element, the id goes on this element, so a component can be a `<tr>`
-  in a `<tbody>` or an `<option>` in a `<select>`. When it renders a text, more than one element
-  (a fragment) or another component, Phem puts a `<phem-c>` element around it (CSS
-  `display: contents`). This wrapper is not valid inside `<table>`, `<tr>`, or `<select>`: there,
-  give the component one root element.
-- The server keeps no session, so an event runs the `render()` of the components on the path to
-  its handler again: they give the handler and the props of its component. A click on one row of
-  a list thus runs the `render()` of the list, and Twig goes through all its rows (the other rows
-  do not render, the browser keeps them). On a list of 5000 rows, a click on one row takes about
-  46 ms on the server, and the full page about 130 ms. Show a long list in pages.
-- The HTML of a component contains the HTML of all the components under it, and each level
-  reads it again. So the render time grows faster than the depth of the tree: 200 nested
-  components take about 5 ms, but 800 take about 45 ms. A real page has fewer than 50 levels,
-  and there the cost is less than 1 ms.
+For the limits of an event and the cost of a render, see
+[Errors and limits](errors-and-limits.md).

@@ -61,9 +61,14 @@ docs/                the docs, as plain Markdown (GitHub, the website and LLMs r
 docs/what-is-phem.md the five ideas of Phem, for newcomers
 docs/tutorial.md     the tutorial: a task list, one idea at a time
 docs/phpm-syntax.md  the .phpm syntax
+docs/components.md   components, state, services and context
+docs/events-and-forms.md events, bound fields, forms and validation
+docs/client-side.md  Stimulus and the built-in controllers
+docs/server-features.md transactions, Suspense, real-time updates, async work
+docs/errors-and-limits.md failed events, retries and limits
 docs/compiling.md    how to build, check, watch, and run .phpm files
 docs/testing.md      how to test components and pages (Phem\Test\InteractsWithPhem)
-docs/how-it-works.md the path from the compiler to the browser, and React to Phem
+docs/how-it-works.md the path from the compiler to the browser
 docs/contributing.md this document
 website/             the docs website (Astro): `make docs`, `make docs-build`
 recipe/              the Symfony Flex recipe of phem/phem (a copy of the recipe in symfony/recipes-contrib)

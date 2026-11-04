@@ -324,7 +324,7 @@ because `add()` sets `$this->title` to `''`.
 
 > [!TIP]
 > To save the tasks, give `TaskList` a Doctrine repository in its constructor, and use it in the
-> handlers. A component is a Symfony service. See [Services and `mount()`](phpm-syntax.md#services-and-mount).
+> handlers. A component is a Symfony service. See [Services and `mount()`](components.md#services-and-mount).
 
 ## Step 6: Test the component
 
@@ -396,6 +396,11 @@ OK (3 tests, 10 assertions)
 You used the main ideas of Phem. Read more about each one:
 
 - [Philosophy and conventions](philosophy.md): the rules to keep in mind when you design with Phem
-- [The `.phpm` syntax](phpm-syntax.md): props, slots, lists, forms, events, and much more
+- [The `.phpm` syntax](phpm-syntax.md): markup, props, slots, lists, directives and attributes
+- [Components and state](components.md): the anatomy of a component, state, `mount()`, context and URL state
+- [Events and forms](events-and-forms.md): handlers, bound fields, forms, validation and uploads
+- [Client-side behavior](client-side.md): Stimulus and the built-in controllers
+- [Server features](server-features.md): transactions, Suspense, real-time updates and async work
+- [Errors and limits](errors-and-limits.md): failed events, retries and the limits of an event
 - [Testing components and pages](testing.md): all the test helpers
 - [Deployment](deployment.md): the production image with FrankenPHP

@@ -252,7 +252,12 @@ conversation shows a summary, for example `Found 1 new diagnostic issues in 1 fi
 - [Tutorial: a task list](tutorial.md): build a small app, one idea at a time
 - [Deployment](deployment.md): the production image with FrankenPHP
 - [Philosophy and conventions](philosophy.md): the rules to keep in mind when you design with Phem
-- [The `.phpm` syntax](phpm-syntax.md): props, slots, lists, forms, and events
+- [The `.phpm` syntax](phpm-syntax.md): markup, props, slots, lists, directives and attributes
+- [Components and state](components.md): the anatomy of a component, state, `mount()`, context and URL state
+- [Events and forms](events-and-forms.md): handlers, bound fields, forms, validation and uploads
+- [Client-side behavior](client-side.md): Stimulus and the built-in controllers
+- [Server features](server-features.md): transactions, Suspense, real-time updates and async work
+- [Errors and limits](errors-and-limits.md): failed events, retries and the limits of an event
 - [Compiling and running `.phpm` files](compiling.md): the build output and the diagnostics
 - [Testing components and pages](testing.md)
 - [How it works](how-it-works.md), and the limits

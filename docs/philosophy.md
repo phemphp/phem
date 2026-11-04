@@ -1,7 +1,7 @@
 # Philosophy and conventions
 
 This document gives the ideas behind Phem, and the rules that come from them. Keep them in mind
-when you write a component or design a page. Each rule has an example. For the full syntax, see
+when you write a component or design a page. Each rule has an example. For the syntax, see
 [The `.phpm` syntax](phpm-syntax.md).
 
 ## 1. The server owns the UI
@@ -65,33 +65,9 @@ A function without `#[Component]` is a plain PHP function. Use it for helpers.
 
 The output of `render()` depends only on the props, the `#[State]` properties, the `#[Context]`
 properties, and the properties that `mount()` or a handler set in the same request. Phem uses
-this rule to render only the components that can change.
-
-```php
-// Not correct: render() calls a service (W008).
-public function render(): Node
-{
-    $unread = $this->messages->countUnread();
-
-    return <span>{{ unread }}</span>;
-}
-
-// Correct: mount() reads the service. render() reads the state.
-#[State] public int $unread = 0;
-
-public function mount(): void
-{
-    $this->unread = $this->messages->countUnread();
-}
-
-public function render(): Node
-{
-    return <span>{{ unread }}</span>;
-}
-```
-
-Do not read the clock, random values, the session, superglobals or static properties in
-`render()`. When a handler changes data that other components show, call `$e->refresh()`.
+this rule to render only the components that can change. Read the data in `mount()` or in a
+handler, not in `render()`. phemc reports W008 for a `render()` that is not pure. See
+[Keep `render()` pure](components.md#keep-render-pure).
 
 ## 4. State is UI state, not trusted data
 

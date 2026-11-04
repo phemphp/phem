@@ -24,6 +24,11 @@ export const navigation: NavGroup[] = [
         title: 'Guides',
         pages: [
             { slug: 'philosophy', label: 'Philosophy and conventions' },
+            { slug: 'components', label: 'Components and state' },
+            { slug: 'events-and-forms', label: 'Events and forms' },
+            { slug: 'client-side', label: 'Client-side behavior' },
+            { slug: 'server-features', label: 'Server features' },
+            { slug: 'errors-and-limits', label: 'Errors and limits' },
             { slug: 'testing', label: 'Testing' },
             { slug: 'packages', label: 'Component packages' },
         ],
