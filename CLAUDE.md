@@ -17,6 +17,14 @@ The repository root is the `phem/phem` Composer package (`src/`, `config/`, `tem
 repository, so one change can update all of them. `.gitattributes` keeps them out of the Composer
 dist.
 
+## Docs
+
+Update the docs in `docs/` in the same change when you add a feature or change a behavior. This
+includes a new option, attribute, event, syntax or command, a changed default, and a bug fix that
+changes what a user sees or can rely on. Find the doc that describes the behavior and change it,
+or add a new doc when no doc covers it. Do not report the work as done while the docs show the old
+behavior.
+
 The docs in `docs/` are plain Markdown: GitHub, the website and LLMs read the same files. Do not
 add frontmatter or MDX to them. A new doc must also go in `website/src/navigation.ts`, or the
 website build fails. Run `make docs-build` after a change in `docs/` or `website/`.
