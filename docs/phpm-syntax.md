@@ -207,6 +207,11 @@ function Card(string $title, ?Html $children = null, ?Html $footer = null): Node
 </Card>
 ```
 
+A function component does not get services. Each parameter is a prop, also a parameter with a
+service type, so the caller must give it. Get the data in a function page or in the `mount()` of a
+class component, and give it as a prop. A class component gets its services in the constructor
+(see [Services and `mount()`](components.md#services-and-mount)).
+
 The props of a class component are its public properties with `#[Prop]`. A prop with no default
 value is required.
 
