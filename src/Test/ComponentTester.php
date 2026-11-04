@@ -82,7 +82,7 @@ final class ComponentTester
     private int $seen;
 
     /**
-     * @param \Closure(string): self|null                                      $visit   opens a URL (for followRedirect())
+     * @param \Closure(string): self|null                                      $open    opens a URL in the browser of the page (for visit() and followRedirect())
      * @param \Closure(): list<array{topics: list<string>, data: string}>|null $updates the published updates (see Phem\Stream\MemoryPublisher)
      * @param \Closure(): int|null                                             $settle  runs the waiting work of the #[Async] handlers, and returns its number (see Phem\Async\MemoryBus)
      *
@@ -90,7 +90,7 @@ final class ComponentTester
      */
     public function __construct(
         private readonly Driver $driver,
-        private readonly ?\Closure $visit = null,
+        private readonly ?\Closure $open = null,
         private readonly ?\Closure $updates = null,
         private readonly ?\Closure $settle = null,
     ) {
@@ -356,6 +356,23 @@ final class ComponentTester
         return $this;
     }
 
+    /**
+     * Opens a URL in the browser of this page, as a new tab (a page only). The pages of one
+     * browser share its cookies (the session) and its server values, and each page gets its
+     * pushes apart:
+     *
+     *     $staff = $this->visit('/login')->submit('form', [...])->followRedirect();
+     *     $orders = $staff->visit('/admin/orders');
+     */
+    public function visit(string $uri): self
+    {
+        if (null === $this->open) {
+            Assert::fail('A mounted component has no browser: use InteractsWithPhem::visit() to test a page.');
+        }
+
+        return ($this->open)($uri);
+    }
+
     /** Opens the URL of the last redirect (a page only). */
     public function followRedirect(): self
     {
@@ -363,11 +380,7 @@ final class ComponentTester
             Assert::fail('The last response is not a redirect.');
         }
 
-        if (null === $this->visit) {
-            Assert::fail('A mounted component cannot follow a redirect: use visit() to test the page.');
-        }
-
-        return ($this->visit)($this->redirect);
+        return $this->visit($this->redirect);
     }
 
     // --- Values ----------------------------------------------------------------------------

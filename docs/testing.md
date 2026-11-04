@@ -46,7 +46,7 @@ a small test app (see [Test a package](packages.md#test-a-package)).
 | How events run | in the test process, as the `EventController` runs them | HTTP requests to the URL of the page, through the kernel |
 | Access rules of the page | do not apply | apply (a firewall, `access_control`, `#[IsGranted]`, `#[RateLimit]`) |
 | Signed state | signed and checked, as JSON | signed and checked, as in the browser |
-| Session | a new session for the test | the session cookie goes with each request |
+| Session | a new session for the test | the cookies of the browser (the session) go with each request, and to the pages of `->visit()` |
 | Redirect of a handler | `assertRedirect()` | `assertRedirect()`, then `followRedirect()` |
 
 Use `mount()` for a unit test of a component. Use `visit()` for a test of a page and of its
@@ -79,6 +79,7 @@ element. The answer of the server morphs the components that changed.
 | `focus($selector)`, `blur($selector)` | `onFocus`, `onBlur` | `->focus('input')` |
 | `fire($selector, $type, $event)` | any DOM event | `->fire('div', 'click', ['value' => 'x'])` |
 | `load($selector)` | the load of a `<Suspense>` boundary | `->load()`, `->load('#report')` |
+| `visit($uri)` | none: opens a page in the same browser, with its cookies | `$customer->visit('/bag')` |
 | `receive()` | the pushes of other requests (a page with `#[Broadcast]`) | `$other->receive()->assertSee('Hi')` |
 | `settle()` | none: runs the work of the `#[Async]` handlers, as a worker does | `->settle()->receive()->assertSee('Ready')` |
 
@@ -129,6 +130,27 @@ $other = $this->visit('/guestbook');
 $this->visit('/guestbook')->fill('[name=message]', 'Hi')->click('button');
 
 $other->receive()->assertSee('Hi');
+```
+
+Each `$this->visit()` is a new browser, with no cookies. To open a page in the same browser,
+with the session of a page (for example a user who logged in), call `visit()` on that page. As
+the tabs of a browser, the pages of one browser share the cookies and the server values (the
+`$server` of the first `visit()`), and each page gets its pushes apart. A cookie goes only to
+its host (or its `Domain`) and its `Path`, and a `Secure` cookie only on HTTPS and on
+`localhost`.
+
+Here the login page is a Phem page: its `onSubmit` handler logs the user in
+(`Security::login()`) and returns a redirect. A Symfony `form_login` is a normal form with no
+Phem handler, so `submit()` cannot send it.
+
+```php
+$customer = $this->visit('/login')->submit('form', ['email' => 'ada@example.com'])->followRedirect();
+$staff = $this->visit('/login')->submit('form', ['email' => 'staff@example.com'])->followRedirect();
+
+$bag = $customer->visit('/bag');
+$staff->visit('/admin/products/5')->click('#hide');
+
+$bag->receive()->assertSee('The bag changed');
 ```
 
 An `#[Async]` handler does not run its work in the event. In a page of `visit()`, its message

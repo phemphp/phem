@@ -173,6 +173,7 @@ and give Phem the subscriber key:
 
 ```caddyfile
 mercure {
+    name phem
     transport local
     issuer phem {
         subscriber {
@@ -194,6 +195,11 @@ topics only. With no key, the updates are public, and the hub needs the `anonymo
 The cookie is `Secure`, so it works on HTTPS and on `localhost`. On another plain HTTP host, set
 `cookie_name` to a name with no `__Secure-` prefix.
 
+Give the hub a `name`. Caddy makes one server for each port of the site, and each server gets a
+hub. With two ports (`SERVER_NAME=":80, https://localhost"`), two unnamed hubs stop Caddy from
+starting. The `local` transport is shared by the hub name, so an update from a request on one port
+gets to a page on the other port.
+
 ### A standalone hub
 
 With another server (PHP-FPM), or when the hub runs apart from the app, Phem publishes with the
@@ -201,6 +207,7 @@ HTTP API of the hub. Add a publisher key to the hub and to Phem:
 
 ```caddyfile
 mercure {
+    name phem
     transport local
     issuer phem {
         subscriber {

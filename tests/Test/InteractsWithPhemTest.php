@@ -15,6 +15,7 @@ namespace Phem\Tests\Test;
 
 use Phem\Html;
 use Phem\State\StateCache;
+use Phem\Test\ComponentTester;
 use Phem\Test\InteractsWithPhem;
 use Phem\Tests\Fixtures\Limits;
 use Phem\Tests\Fixtures\TestKernel;
@@ -303,6 +304,48 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->assertSelectorExists('#about');
     }
 
+    public function testVisitOpensAUrlInTheSameBrowser(): void
+    {
+        $first = $this->visit('/cookies?set=theme=dark', ['HTTP_ACCEPT_LANGUAGE' => 'es']);
+        self::assertSame('none', self::cookies($first));
+
+        // The cookie of the first page, and its server values, go to the next page of the browser.
+        $second = $first->visit('/cookies')->assertSelectorTextContains('#language', 'es');
+        self::assertSame('theme=dark', self::cookies($second));
+
+        // The two pages share the cookies: a cookie of the second page goes with the events of the first page.
+        $second->visit('/cookies?set=size=xl');
+        self::assertSame('size=xl theme=dark', self::cookies($first->click('#again')));
+
+        $first->visit('/cookies?clear=theme');
+        self::assertSame('size=xl', self::cookies($second->visit('/cookies')));
+
+        // A new browser has no cookies.
+        self::assertSame('none', self::cookies($this->visit('/cookies')));
+
+        $this->assertFails(fn () => $this->mount(self::COUNTER)->visit('/cookies'), 'A mounted component has no browser');
+    }
+
+    public function testVisitSendsACookieOnlyToItsHostAndPath(): void
+    {
+        $page = $this->visit('/cookies?set=area=admin&path=/cookies/admin');
+        self::assertSame('none', self::cookies($page->visit('/cookies')));
+        self::assertSame('area=admin', self::cookies($page->visit('/cookies/admin')));
+
+        // A cookie with no Domain goes to its host only. A cookie with a Domain goes to its subdomains too.
+        $page = $this->visit('http://shop.example/cookies?set=host=only');
+        self::assertSame('host=only', self::cookies($page->visit('http://shop.example/cookies')));
+        self::assertSame('none', self::cookies($page->visit('http://www.shop.example/cookies')));
+        $page->visit('http://shop.example/cookies?set=domain=all&domain=shop.example');
+        self::assertSame('domain=all', self::cookies($page->visit('http://www.shop.example/cookies')));
+
+        // A Secure cookie goes on HTTPS and on localhost only.
+        $page = $this->visit('http://shop.example/cookies?set=token=1&secure=1');
+        self::assertSame('none', self::cookies($page->visit('http://shop.example/cookies')));
+        self::assertSame('token=1', self::cookies($page->visit('https://shop.example/cookies')));
+        self::assertSame('token=1', self::cookies($this->visit('/cookies?set=token=1&secure=1')->visit('/cookies')));
+    }
+
     public function testVisitAssertsTheStatusOfAPage(): void
     {
         $this->visit('/private/counter')->assertStatus(403);
@@ -490,6 +533,12 @@ final class InteractsWithPhemTest extends KernelTestCase
         $this->assertFails(static fn () => $tester->upload('input[name=photo]', [$a, $b]), 'has no "multiple" attribute');
         $this->assertFails(static fn () => $tester->upload('input[name=off]', $a), 'is disabled');
         $this->assertFails(static fn () => $tester->upload('input[name=photo]', $a.'.missing'), 'does not exist');
+    }
+
+    /** The cookies that the page of the fixture got (see cookies.phpm). */
+    private static function cookies(ComponentTester $page): string
+    {
+        return trim($page->document()->querySelector('#cookies')->textContent ?? '');
     }
 
     private function assertFails(\Closure $action, string $message): void

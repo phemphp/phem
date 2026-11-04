@@ -26,6 +26,7 @@ use Phem\State\StateCodec;
 use Phem\State\UrlQuery;
 use Phem\Stream\MemoryPublisher;
 use Phem\Test\Internal\ComponentDriver;
+use Phem\Test\Internal\CookieJar;
 use Phem\Test\Internal\PageDriver;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -100,21 +101,23 @@ trait InteractsWithPhem
 
     /**
      * Loads a page with the HTTP kernel. Its events go to the URL of the page, as from the
-     * browser: the access rules of the page and the signature of the state apply. The cookies
-     * of the responses (the session) go with the next requests.
+     * browser: the access rules of the page and the signature of the state apply. Each call is a
+     * new browser, with no cookies. The cookies of the responses (the session) go with the next
+     * requests, and to the pages that ComponentTester::visit() opens in the same browser.
      *
      * @param array<string, string> $server more server values and headers for each request (`HTTP_ACCEPT_LANGUAGE`)
      */
     protected function visit(string $uri, array $server = []): ComponentTester
     {
-        return $this->visitWithCookies($uri, $server, []);
+        return $this->visitIn(new CookieJar(), $uri, $server);
     }
 
     /**
+     * Loads a page in a browser: the pages of one browser share its cookies and its server values.
+     *
      * @param array<string, string> $server
-     * @param array<string, string> $cookies
      */
-    private function visitWithCookies(string $uri, array $server, array $cookies): ComponentTester
+    private function visitIn(CookieJar $cookies, string $uri, array $server): ComponentTester
     {
         $dispatcher = static::getContainer()->get('event_dispatcher');
         \assert($dispatcher instanceof EventDispatcherInterface && null !== static::$kernel);
@@ -142,6 +145,6 @@ trait InteractsWithPhem
 
         $driver = new PageDriver(static::$kernel, $dispatcher, $uri, $server, $cookies);
 
-        return new ComponentTester($driver, fn (string $url): ComponentTester => $this->visitWithCookies($url, $server, $driver->cookies()), $updates, $settle);
+        return new ComponentTester($driver, fn (string $url): ComponentTester => $this->visitIn($cookies, $url, $server), $updates, $settle);
     }
 }

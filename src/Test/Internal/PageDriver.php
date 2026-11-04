@@ -31,7 +31,8 @@ use Symfony\Component\HttpKernel\TerminableInterface;
 /**
  * Loads a page with the HTTP kernel, and sends its events to the URL of the page, as the
  * `phem` Stimulus controller does. The access rules of the page, the signature of the state,
- * and the session (its cookie) apply as in a browser.
+ * and the session (its cookie) apply as in a browser. The pages of one browser share its
+ * cookies (see CookieJar).
  *
  * @internal
  */
@@ -49,19 +50,19 @@ final class PageDriver implements Driver
 
     /**
      * @param array<string, string> $server  more server values and headers (`HTTP_ACCEPT_LANGUAGE`) for each request
-     * @param array<string, string> $cookies the cookies of the browser
+     * @param CookieJar             $cookies the cookies of the browser
      */
     public function __construct(
         private readonly HttpKernelInterface $kernel,
         private readonly EventDispatcherInterface $dispatcher,
         private readonly string $uri,
         private readonly array $server = [],
-        private array $cookies = [],
+        private readonly CookieJar $cookies = new CookieJar(),
         private readonly KeptRuns $runs = new KeptRuns(),
     ) {
         $this->url = $this->uri;
 
-        [$request, , $content] = $this->send(Request::create($this->uri, 'GET', cookies: $this->cookies, server: $this->server));
+        [$request, , $content] = $this->send(Request::create($this->uri, 'GET', cookies: $this->cookies->for($this->uri), server: $this->server));
         $this->html = self::finishStream($content);
         $this->page = (string) $request->attributes->get('_phem_page', '');
 
@@ -161,8 +162,8 @@ final class PageDriver implements Driver
         ] + $this->server;
 
         $request = [] === $files
-            ? Request::create($this->url, 'POST', cookies: $this->cookies, server: ['CONTENT_TYPE' => 'application/json'] + $server, content: $body)
-            : Request::create($this->url, 'POST', [EventBody::PART => $body], $this->cookies, TestFiles::of($files), ['CONTENT_TYPE' => 'multipart/form-data; boundary=phem'] + $server);
+            ? Request::create($this->url, 'POST', cookies: $this->cookies->for($this->url), server: ['CONTENT_TYPE' => 'application/json'] + $server, content: $body)
+            : Request::create($this->url, 'POST', [EventBody::PART => $body], $this->cookies->for($this->url), TestFiles::of($files), ['CONTENT_TYPE' => 'multipart/form-data; boundary=phem'] + $server);
 
         return $this->send($request)[1];
     }
@@ -173,12 +174,6 @@ final class PageDriver implements Driver
         $fibers = \is_array($data) ? PageState::fromArray($data)->fibers : [];
 
         return $fibers[$fiber ?? Fiber::idOf('/'.$this->page.'#0')] ?? [];
-    }
-
-    /** @return array<string, string> the cookies of the browser, with the cookies of the responses */
-    public function cookies(): array
-    {
-        return $this->cookies;
     }
 
     public function url(): string
@@ -197,7 +192,7 @@ final class PageDriver implements Driver
     }
 
     /**
-     * Handles a request as a server does, and keeps the cookies of the response. A server error
+     * Handles a request as a server does, and keeps the cookies of the response in the browser. A server error
      * throws its exception, so the test shows it with its trace.
      *
      * @return array{0: Request, 1: Response, 2: string} the request, the response and its content (the chunks of a streamed response)
@@ -229,13 +224,7 @@ final class PageDriver implements Driver
         $this->status = $response->getStatusCode();
         $this->redirect = $response->isRedirect() ? $response->headers->get('Location') : null;
 
-        foreach ($response->headers->getCookies() as $cookie) {
-            if ($cookie->isCleared()) {
-                unset($this->cookies[$cookie->getName()]);
-            } elseif (null !== $cookie->getValue()) {
-                $this->cookies[$cookie->getName()] = $cookie->getValue();
-            }
-        }
+        $this->cookies->keep($request, $response);
 
         return [$request, $response, $content];
     }
