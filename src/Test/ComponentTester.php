@@ -17,6 +17,7 @@ use Dom\Element;
 use Dom\HTMLDocument;
 use Phem\Form\TouchedFields;
 use Phem\Stream\Stream;
+use Phem\Test\Internal\Browser;
 use Phem\Test\Internal\Driver;
 use Phem\Test\Internal\EventResult;
 use Phem\Test\Internal\StreamTopics;
@@ -83,7 +84,7 @@ final class ComponentTester
     private int $seen;
 
     /**
-     * @param \Closure(string): self|null                                      $open    opens a URL in the browser of the page (for visit() and followRedirect())
+     * @param Browser|null                                                   $browser the browser of a page (for visit(), followRedirect() and cookies())
      * @param \Closure(): list<array{topics: list<string>, data: string}>|null $updates the published updates (see Phem\Stream\MemoryPublisher)
      * @param \Closure(): int|null                                             $settle  runs the waiting work of the #[Async] handlers, and returns its number (see Phem\Async\MemoryBus)
      *
@@ -91,7 +92,7 @@ final class ComponentTester
      */
     public function __construct(
         private readonly Driver $driver,
-        private readonly ?\Closure $open = null,
+        private readonly ?Browser $browser = null,
         private readonly ?\Closure $updates = null,
         private readonly ?\Closure $settle = null,
     ) {
@@ -354,18 +355,31 @@ final class ComponentTester
     /**
      * Opens a URL in the browser of this page, as a new tab (a page only). The pages of one
      * browser share its cookies (the session) and its server values, and each page gets its
-     * pushes apart:
+     * pushes apart. A relative URL opens from the URL of this page, as a link does. The cookies
+     * that you give go to the browser first, for the host of the URL:
      *
      *     $staff = $this->visit('/login')->submit('form', [...])->followRedirect();
-     *     $orders = $staff->visit('/admin/orders');
+     *     $orders = $staff->visit('/admin/orders', cookies: ['view' => 'compact']);
+     *
+     * @param array<string, string> $cookies name => value: more cookies of the browser for the host of the URL, for all its paths
      */
-    public function visit(string $uri): self
+    public function visit(string $uri, array $cookies = []): self
     {
-        if (null === $this->open) {
-            Assert::fail('A mounted component has no browser: use InteractsWithPhem::visit() to test a page.');
-        }
+        return $this->browser()->open($this->driver->url(), $uri, $cookies);
+    }
 
-        return ($this->open)($uri);
+    /**
+     * The cookies that the browser of this page sends to its URL now (a page only): name =>
+     * value, sorted by name. They include the cookies that the responses of the other pages of
+     * the browser set.
+     *
+     *     $this->visit('/login')->submit('form', [...])->cookies(); // ['PHPSESSID' => '...']
+     *
+     * @return array<string, string>
+     */
+    public function cookies(): array
+    {
+        return $this->browser()->cookies($this->driver->url());
     }
 
     /** Opens the URL of the last redirect (a page only). */
@@ -1404,6 +1418,12 @@ final class ComponentTester
     private function dispatchedNames(): string
     {
         return [] === $this->dispatched ? '' : \sprintf(' (it dispatched "%s")', implode('", "', array_unique(array_column($this->dispatched, 'name'))));
+    }
+
+    /** The browser of a page: a mounted component has none. */
+    private function browser(): Browser
+    {
+        return $this->browser ?? Assert::fail('A mounted component has no browser: use InteractsWithPhem::visit() to test a page.');
     }
 
     private function context(): string

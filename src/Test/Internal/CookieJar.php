@@ -52,6 +52,41 @@ final class CookieJar
     }
 
     /**
+     * Keeps cookies that the test gives, as a server sets them for a URL: on the host of the URL
+     * only, for all its paths, until the end of the browser. As in a browser, a `__Secure-` or a
+     * `__Host-` cookie is `Secure`: it goes on HTTPS and on `localhost` only.
+     *
+     * @param array<array-key, mixed> $cookies name => value
+     *
+     * @throws \InvalidArgumentException for a value that is not a string, or a name that a cookie cannot have
+     */
+    public function add(string $url, array $cookies): void
+    {
+        if ([] === $cookies) {
+            return;
+        }
+
+        $host = Request::create($url)->getHost();
+
+        foreach ($cookies as $name => $value) {
+            $name = (string) $name;
+            if (!\is_string($value)) {
+                throw new \InvalidArgumentException(\sprintf('The value of the cookie "%s" is "%s": give a string.', $name, get_debug_type($value)));
+            }
+
+            $secure = str_starts_with($name, '__Secure-') || str_starts_with($name, '__Host-');
+
+            try {
+                $cookie = Cookie::create($name, $value, 0, '/', null, $secure);
+            } catch (\InvalidArgumentException $e) {
+                throw new \InvalidArgumentException(\sprintf('A cookie cannot have the name "%s": %s', $name, $e->getMessage()), 0, $e);
+            }
+
+            $this->cookies[$name.';'.$host.';/'] = ['cookie' => $cookie, 'host' => $host, 'hostOnly' => true];
+        }
+    }
+
+    /**
      * The cookies that the browser sends to a URL: name => value. With two cookies of the same
      * name, the cookie with the longer path wins, as the browser sends it first.
      *

@@ -79,7 +79,7 @@ element. The answer of the server morphs the components that changed.
 | `focus($selector)`, `blur($selector)` | `onFocus`, `onBlur` | `->focus('input')` |
 | `fire($selector, $type, $event)` | any DOM event | `->fire('div', 'click', ['value' => 'x'])` |
 | `load($selector)` | the load of a `<Suspense>` boundary | `->load()`, `->load('#report')` |
-| `visit($uri)` | none: opens a page in the same browser, with its cookies | `$customer->visit('/bag')` |
+| `visit($uri, $cookies)` | none: opens a page in the same browser, with its cookies and the cookies that you give | `$customer->visit('/bag', ['currency' => 'EUR'])` |
 | `receive()` | the pushes of other requests (a page with `#[Broadcast]`) | `$other->receive()->assertSee('Hi')` |
 | `settle()` | none: runs the work of the `#[Async]` handlers, as a worker does | `->settle()->receive()->assertSee('Ready')` |
 
@@ -132,12 +132,38 @@ $this->visit('/guestbook')->fill('[name=message]', 'Hi')->click('button');
 $other->receive()->assertSee('Hi');
 ```
 
-Each `$this->visit()` is a new browser, with no cookies. To open a page in the same browser,
+Each `$this->visit()` is a new browser, with only the cookies that you give. To open a page in the same browser,
 with the session of a page (for example a user who logged in), call `visit()` on that page. As
 the tabs of a browser, the pages of one browser share the cookies and the server values (the
 `$server` of the first `visit()`), and each page gets its pushes apart. A cookie goes only to
 its host (or its `Domain`) and its `Path`, and a `Secure` cookie only on HTTPS and on
 `localhost`.
+
+A relative URL opens from the URL of the page, as a link does: `$page->visit('/bag')` on
+`http://shop.example/login` opens `http://shop.example/bag`, and so does the relative redirect of
+`followRedirect()`.
+
+Give cookies to the browser with the `cookies` argument of `visit()`: name => value, as strings.
+A cookie that you give goes to the host of the URL, for all its paths (`Path=/`), as a session
+cookie. A `__Secure-` or a `__Host-` cookie is `Secure`, as a browser keeps it. A cookie that you
+give replaces the cookie of a response with the same name, the same host and the path `/`, and
+the next response that sets that cookie replaces it. A cookie of a response with a longer `Path`
+stays, and the browser sends it on its path. `cookies()` gives the cookies that the browser of a
+page sends to the URL of the page now, sorted by name. They include the cookies that the other
+pages of the browser got:
+
+```php
+$page = $this->visit('/shop', cookies: ['currency' => 'EUR'])->assertSee('0,00 €');
+
+$page->visit('/shop?set-currency=USD');
+self::assertSame(['currency' => 'USD'], $page->cookies());
+
+$page->visit('/bag', ['coupon' => 'SPRING'])->assertSee('Coupon SPRING');
+self::assertSame(['coupon' => 'SPRING', 'currency' => 'USD'], $page->cookies());
+```
+
+A mounted component has no browser: `cookies()` and `visit()` fail. A cookie value that is not a
+string, or a cookie with no name, throws an `InvalidArgumentException`.
 
 Here the login page is a Phem page: its `onSubmit` handler logs the user in
 (`Security::login()`) and returns a redirect. A Symfony `form_login` is a normal form with no
@@ -198,8 +224,8 @@ Each assertion returns the tester, so you can chain the actions and the assertio
 | `assertQuery($key, $value)` | a key of the query string of the URL (`#[Url]`), after the last action: a string, a list, or null for no key |
 | `assertDispatched($name)`, `assertDispatched($name, $detail)`, `assertNotDispatched($name)` | a browser event of the last action (`$e->dispatcher->dispatch()`), and its detail as JSON gives it |
 
-To read the values, use `html()`, `text()`, `state()`, `url()`, and `document()` (a
-`Dom\HTMLDocument`). `url()` gives the URL that the browser shows: the URL of the page (`/` for a
+To read the values, use `html()`, `text()`, `state()`, `url()`, `cookies()` (a page only), and
+`document()` (a `Dom\HTMLDocument`). `url()` gives the URL that the browser shows: the URL of the page (`/` for a
 component), with the query string of the `#[Url]` properties after the last action.
 
 ### The state of a child component

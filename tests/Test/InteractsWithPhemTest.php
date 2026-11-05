@@ -307,43 +307,110 @@ final class InteractsWithPhemTest extends KernelTestCase
     public function testVisitOpensAUrlInTheSameBrowser(): void
     {
         $first = $this->visit('/cookies?set=theme=dark', ['HTTP_ACCEPT_LANGUAGE' => 'es']);
-        self::assertSame('none', self::cookies($first));
+        self::assertSame('none', self::sent($first));
+        self::assertSame(['theme' => 'dark'], $first->cookies());
 
         // The cookie of the first page, and its server values, go to the next page of the browser.
         $second = $first->visit('/cookies')->assertSelectorTextContains('#language', 'es');
-        self::assertSame('theme=dark', self::cookies($second));
+        self::assertSame('theme=dark', self::sent($second));
 
         // The two pages share the cookies: a cookie of the second page goes with the events of the first page.
         $second->visit('/cookies?set=size=xl');
-        self::assertSame('size=xl theme=dark', self::cookies($first->click('#again')));
+        self::assertSame(['size' => 'xl', 'theme' => 'dark'], $first->cookies());
+        self::assertSame('size=xl theme=dark', self::sent($first->click('#again')));
 
         $first->visit('/cookies?clear=theme');
-        self::assertSame('size=xl', self::cookies($second->visit('/cookies')));
+        self::assertSame('size=xl', self::sent($second->visit('/cookies')));
+        self::assertSame(['size' => 'xl'], $second->cookies());
 
         // A new browser has no cookies.
-        self::assertSame('none', self::cookies($this->visit('/cookies')));
+        $other = $this->visit('/cookies');
+        self::assertSame('none', self::sent($other));
+        self::assertSame([], $other->cookies());
 
         $this->assertFails(fn () => $this->mount(self::COUNTER)->visit('/cookies'), 'A mounted component has no browser');
+        $this->assertFails(fn () => $this->mount(self::COUNTER)->cookies(), 'A mounted component has no browser');
+    }
+
+    public function testVisitGivesCookiesToTheBrowser(): void
+    {
+        $page = $this->visit('/cookies', cookies: ['theme' => 'dark']);
+        self::assertSame('theme=dark', self::sent($page));
+
+        // The next pages of the browser get them too, with the cookies that they add.
+        self::assertSame('size=xl theme=dark', self::sent($page->visit('/cookies/admin', ['size' => 'xl'])));
+        self::assertSame('size=xl theme=dark', self::sent($page->click('#again')));
+
+        // A given cookie replaces the cookie of a response on its host and the path "/", and a response replaces a given cookie.
+        $page->visit('/cookies?set=theme=light')->visit('/cookies', ['theme' => 'blue']);
+        self::assertSame(['size' => 'xl', 'theme' => 'blue'], $page->cookies());
+        self::assertSame(['size' => 'xl', 'theme' => 'light'], $page->visit('/cookies?set=theme=light')->cookies());
+
+        // A cookie of a response with a longer path stays, and wins on its path.
+        $page->visit('/cookies?set=size=admin&path=/cookies/admin')->visit('/cookies', ['size' => 's']);
+        self::assertSame('size=s theme=light', self::sent($page->visit('/cookies')));
+        self::assertSame('size=admin theme=light', self::sent($page->visit('/cookies/admin')));
+
+        // A given cookie goes to the host of the URL only.
+        $page = $this->visit('http://shop.example/cookies', cookies: ['host' => 'only']);
+        self::assertSame('host=only', self::sent($page));
+        self::assertSame('none', self::sent($page->visit('http://www.shop.example/cookies')));
+    }
+
+    public function testVisitChecksTheGivenCookies(): void
+    {
+        // As in a browser, a __Secure- or a __Host- cookie goes on HTTPS and on localhost only.
+        $page = $this->visit('http://shop.example/cookies', cookies: ['__Secure-token' => '1', '__Host-id' => '2']);
+        self::assertSame('none', self::sent($page));
+        self::assertSame('__Host-id=2 __Secure-token=1', self::sent($page->visit('https://shop.example/cookies')));
+        self::assertSame('__Host-id=2 __Secure-token=1', self::sent($this->visit('/cookies', cookies: ['__Secure-token' => '1', '__Host-id' => '2'])));
+
+        $this->assertThrows(fn () => $this->visit('/cookies', cookies: ['count' => 1]), 'The value of the cookie "count" is "int": give a string.'); // @phpstan-ignore argument.type
+        $this->assertThrows(fn () => $this->visit('/cookies')->visit('/cookies', ['' => 'x']), 'A cookie cannot have the name ""');
+    }
+
+    public function testVisitOpensARelativeUrlFromThePage(): void
+    {
+        $page = $this->visit('http://shop.example/cookies/admin', cookies: ['host' => 'shop']);
+
+        // As a link of the page: on its scheme and its host, and on its path.
+        self::assertSame('http://shop.example/cookies', $page->visit('/cookies')->url());
+        self::assertSame('b=1 host=shop', self::sent($page->visit('/cookies', ['b' => '1'])));
+        self::assertSame('http://shop.example/cookies/admin', $page->visit('admin')->url());
+        self::assertSame('http://shop.example/cookies/admin?set=a=1', $page->visit('?set=a=1')->url());
+        self::assertSame('https://www.shop.example/cookies', $this->visit('https://shop.example/cookies')->visit('//www.shop.example/cookies')->url());
+
+        // The relative redirect of a handler opens on the host of the page.
+        $about = $this->visit('http://shop.example/leave')->click('#leave')->assertRedirect('/about')->followRedirect();
+        $about->assertStatus(200)->assertSelectorExists('#about');
+        self::assertSame('http://shop.example/about', $about->url());
+
+        // A page with a relative URL stays on the host of Request::create().
+        self::assertSame('/cookies/admin', $this->visit('/cookies/admin')->visit('admin')->url());
     }
 
     public function testVisitSendsACookieOnlyToItsHostAndPath(): void
     {
         $page = $this->visit('/cookies?set=area=admin&path=/cookies/admin');
-        self::assertSame('none', self::cookies($page->visit('/cookies')));
-        self::assertSame('area=admin', self::cookies($page->visit('/cookies/admin')));
+        self::assertSame('none', self::sent($page->visit('/cookies')));
+        self::assertSame([], $page->visit('/cookies')->cookies());
+        self::assertSame('area=admin', self::sent($page->visit('/cookies/admin')));
+        self::assertSame(['area' => 'admin'], $page->visit('/cookies/admin')->cookies());
 
         // A cookie with no Domain goes to its host only. A cookie with a Domain goes to its subdomains too.
         $page = $this->visit('http://shop.example/cookies?set=host=only');
-        self::assertSame('host=only', self::cookies($page->visit('http://shop.example/cookies')));
-        self::assertSame('none', self::cookies($page->visit('http://www.shop.example/cookies')));
+        self::assertSame('host=only', self::sent($page->visit('http://shop.example/cookies')));
+        self::assertSame('none', self::sent($page->visit('http://www.shop.example/cookies')));
+        self::assertSame([], $page->visit('http://www.shop.example/cookies')->cookies());
         $page->visit('http://shop.example/cookies?set=domain=all&domain=shop.example');
-        self::assertSame('domain=all', self::cookies($page->visit('http://www.shop.example/cookies')));
+        self::assertSame('domain=all', self::sent($page->visit('http://www.shop.example/cookies')));
 
         // A Secure cookie goes on HTTPS and on localhost only.
         $page = $this->visit('http://shop.example/cookies?set=token=1&secure=1');
-        self::assertSame('none', self::cookies($page->visit('http://shop.example/cookies')));
-        self::assertSame('token=1', self::cookies($page->visit('https://shop.example/cookies')));
-        self::assertSame('token=1', self::cookies($this->visit('/cookies?set=token=1&secure=1')->visit('/cookies')));
+        self::assertSame('none', self::sent($page->visit('http://shop.example/cookies')));
+        self::assertSame('token=1', self::sent($page->visit('https://shop.example/cookies')));
+        self::assertSame(['token' => '1'], $page->visit('https://shop.example/cookies')->cookies());
+        self::assertSame('token=1', self::sent($this->visit('/cookies?set=token=1&secure=1')->visit('/cookies')));
     }
 
     public function testVisitAssertsTheStatusOfAPage(): void
@@ -535,10 +602,23 @@ final class InteractsWithPhemTest extends KernelTestCase
         $this->assertFails(static fn () => $tester->upload('input[name=photo]', $a.'.missing'), 'does not exist');
     }
 
-    /** The cookies that the page of the fixture got (see cookies.phem). */
-    private static function cookies(ComponentTester $page): string
+    /** The cookies that the server got for the page (see CookiesPage.phem), as the page shows them. */
+    private static function sent(ComponentTester $page): string
     {
         return trim($page->document()->querySelector('#cookies')->textContent ?? '');
+    }
+
+    private function assertThrows(\Closure $action, string $message): void
+    {
+        try {
+            $action();
+        } catch (\InvalidArgumentException $e) {
+            self::assertStringContainsString($message, $e->getMessage());
+
+            return;
+        }
+
+        self::fail(\sprintf('The action does not throw "%s".', $message));
     }
 
     private function assertFails(\Closure $action, string $message): void

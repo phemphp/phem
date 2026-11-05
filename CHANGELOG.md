@@ -6,6 +6,14 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
+## Unreleased
+
+- The `visit()` of the tests takes cookies for the browser (`cookies: ['currency' => 'EUR']`),
+  on `InteractsWithPhem` and on a page. `cookies()` gives the cookies that the browser of a page
+  sends to its URL, sorted by name.
+- Fix: in the tests, `visit()` and `followRedirect()` of a page opened a relative URL on
+  `localhost`. They now open it from the URL of the page, as a link does.
+
 ## 0.3.5 (2026-11-05)
 
 - **Breaking** The file extension of the components is now `.phem` (before: `.phpm`). The open

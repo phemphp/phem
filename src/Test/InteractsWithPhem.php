@@ -26,7 +26,7 @@ use Phem\State\StateCodec;
 use Phem\State\UrlQuery;
 use Phem\Stream\MemoryPublisher;
 use Phem\Test\Internal\ComponentDriver;
-use Phem\Test\Internal\CookieJar;
+use Phem\Test\Internal\Browser;
 use Phem\Test\Internal\PageDriver;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -102,14 +102,20 @@ trait InteractsWithPhem
     /**
      * Loads a page with the HTTP kernel. Its events go to the URL of the page, as from the
      * browser: the access rules of the page and the signature of the state apply. Each call is a
-     * new browser, with no cookies. The cookies of the responses (the session) go with the next
-     * requests, and to the pages that ComponentTester::visit() opens in the same browser.
+     * new browser, with only the cookies that you give. The cookies of the responses (the
+     * session) go with the next requests, and to the pages that ComponentTester::visit() opens in
+     * the same browser:
      *
-     * @param array<string, string> $server more server values and headers for each request (`HTTP_ACCEPT_LANGUAGE`)
+     *     $this->visit('/bag', cookies: ['currency' => 'EUR'])->assertSee('0,00 €');
+     *
+     * @param array<string, string> $server  more server values and headers for each request (`HTTP_ACCEPT_LANGUAGE`)
+     * @param array<string, string> $cookies name => value: cookies of the browser for the host of the URL, for all its paths
      */
-    protected function visit(string $uri, array $server = []): ComponentTester
+    protected function visit(string $uri, array $server = [], array $cookies = []): ComponentTester
     {
-        return $this->visitIn(new CookieJar(), $uri, $server);
+        $browser = new Browser(fn (Browser $browser, string $url): ComponentTester => $this->visitIn($browser, $url, $server));
+
+        return $browser->open('', $uri, $cookies);
     }
 
     /**
@@ -130,7 +136,7 @@ trait InteractsWithPhem
      *
      * @param array<string, string> $server
      */
-    private function visitIn(CookieJar $cookies, string $uri, array $server): ComponentTester
+    private function visitIn(Browser $browser, string $uri, array $server): ComponentTester
     {
         $dispatcher = static::getContainer()->get('event_dispatcher');
         \assert($dispatcher instanceof EventDispatcherInterface && null !== static::$kernel);
@@ -156,8 +162,8 @@ trait InteractsWithPhem
             return \count($messages);
         } : null;
 
-        $driver = new PageDriver(static::$kernel, $dispatcher, $uri, $server, $cookies);
+        $driver = new PageDriver(static::$kernel, $dispatcher, $uri, $server, $browser->jar());
 
-        return new ComponentTester($driver, fn (string $url): ComponentTester => $this->visitIn($cookies, $url, $server), $updates, $settle);
+        return new ComponentTester($driver, $browser, $updates, $settle);
     }
 }
