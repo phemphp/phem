@@ -1,0 +1,5 @@
+<?phem // expect: E033
+use Phem\Bound;
+use Phem\Attribute\Component;
+#[Component]
+function Field(Bound $value) { return <input phem:bind={{ value.name }} />; }

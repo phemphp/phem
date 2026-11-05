@@ -1,8 +1,9 @@
-//! The declarations of a PHP or `.phpm` file, for the editor: the namespace, the `use` imports,
+//! The declarations of a PHP or `.phem` file, for the editor: the namespace, the `use` imports,
 //! the functions, the classes, and the constants. For components, also the props and the slots.
 //! The parser is tolerant: the file can be incomplete, because the user types it.
 
 use crate::scanner::{code_of, is_word_char, is_word_start};
+use phemc_syntax::php::{find_open_tag, OPEN_TAG, PHP_OPEN_TAG};
 
 const MODIFIERS: &[&str] = &["public", "protected", "private", "readonly", "static", "final", "abstract", "var"];
 
@@ -292,7 +293,7 @@ pub struct Parsed {
     pub namespace_start: Option<usize>,
     /// The offset after `namespace X;`.
     pub namespace_end: Option<usize>,
-    /// The offset after `<?phpm` (or `<?php` in a PHP class).
+    /// The offset after `<?phem` (or `<?php` in a PHP class).
     pub open_tag_end: Option<usize>,
     pub uses: Vec<UseStmt>,
     pub functions: Vec<Function>,
@@ -304,10 +305,11 @@ pub struct Parsed {
 pub fn parse(text: &str) -> Parsed {
     let tokens = tokenize(&code_of(text));
     let mut p = Parser { text, tokens, k: 0, namespace: String::new(), out: Parsed::default() };
-    if let Some(i) = text.find("<?php") {
-        let m = text[i + 5..].starts_with('m') && !text.as_bytes().get(i + 6).is_some_and(|&c| is_word_char(c));
-        if m || !text.as_bytes().get(i + 5).is_some_and(|&c| is_word_char(c)) {
-            p.out.open_tag_end = Some(i + if m { 6 } else { 5 });
+    // The first `<?phem` or `<?php` tag, not followed by a word character (`<?phemx`, `<?phpm`).
+    if let Some(i) = find_open_tag(text) {
+        let end = i + if text[i..].starts_with(OPEN_TAG) { OPEN_TAG.len() } else { PHP_OPEN_TAG.len() };
+        if !text.as_bytes().get(end).is_some_and(|&c| is_word_char(c)) {
+            p.out.open_tag_end = Some(end);
         }
     }
 
@@ -1383,21 +1385,21 @@ mod tests {
 
     #[test]
     fn arrow_class_and_named_arguments_are_not_declarations() {
-        let parsed = parse("<?phpm\nfunction A($p) { return $p->class; }\nfunction B() { f(class: 1); $o->enum instanceof X; }\nfunction C() { return <p />; }\n");
+        let parsed = parse("<?phem\nfunction A($p) { return $p->class; }\nfunction B() { f(class: 1); $o->enum instanceof X; }\nfunction C() { return <p />; }\n");
         assert_eq!(parsed.functions.iter().map(|f| f.name.as_str()).collect::<Vec<_>>(), ["A", "B", "C"]);
         assert!(parsed.classes.is_empty());
     }
 
     #[test]
     fn promoted_properties_and_properties_without_prop_are_not_props() {
-        let src = "<?phpm\nnamespace App\\Ui\\Common;\n\nuse Phem\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class List1\n{\n    #[Prop] public int $limit = 3;\n    public int $page = 1;\n\n    public function __construct(private readonly ScientistRepository $repo)\n    {\n    }\n}\n";
+        let src = "<?phem\nnamespace App\\Ui\\Common;\n\nuse Phem\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class List1\n{\n    #[Prop] public int $limit = 3;\n    public int $page = 1;\n\n    public function __construct(private readonly ScientistRepository $repo)\n    {\n    }\n}\n";
         let parsed = parse(src);
         assert_eq!(parsed.components[0].props.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(), ["limit"]);
     }
 
     #[test]
     fn context_parameters_and_properties_are_not_props() {
-        let src = "<?phpm\nnamespace App\\Ui\\Common;\n\nuse Phem\\Attribute\\{Component, Context, Prop};\n\n#[Component]\nfunction Tab(string $name, #[Context] Tabs $tabs, #[Context] ?Theme $theme = null) { return <p />; }\n\n#[Component]\nfinal class Panel\n{\n    #[Prop] public string $name;\n    #[Context] public Tabs $tabs;\n}\n";
+        let src = "<?phem\nnamespace App\\Ui\\Common;\n\nuse Phem\\Attribute\\{Component, Context, Prop};\n\n#[Component]\nfunction Tab(string $name, #[Context] Tabs $tabs, #[Context] ?Theme $theme = null) { return <p />; }\n\n#[Component]\nfinal class Panel\n{\n    #[Prop] public string $name;\n    #[Context] public Tabs $tabs;\n}\n";
         let parsed = parse(src);
         for comp in &parsed.components {
             assert_eq!(comp.props.iter().map(|p| (p.name.as_str(), p.required)).collect::<Vec<_>>(), [("name", true)], "{}", comp.name);
@@ -1406,7 +1408,7 @@ mod tests {
 
     #[test]
     fn the_rest_prop_of_a_class_component_is_not_a_named_prop() {
-        let src = "<?phpm\nnamespace App\\Ui\\Common;\n\nuse Phem\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class Link\n{\n    #[Prop] public string $label = '';\n    #[Prop(rest: true)] public array $attrs = [];\n    #[Prop(rest: false)] public string $title = '';\n\n    public function render()\n    {\n        return <a {{ ...attrs }}>{{ label }}</a>;\n    }\n}\n";
+        let src = "<?phem\nnamespace App\\Ui\\Common;\n\nuse Phem\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class Link\n{\n    #[Prop] public string $label = '';\n    #[Prop(rest: true)] public array $attrs = [];\n    #[Prop(rest: false)] public string $title = '';\n\n    public function render()\n    {\n        return <a {{ ...attrs }}>{{ label }}</a>;\n    }\n}\n";
         let link = &parse(src).components[0];
         assert_eq!(link.props.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(), ["label", "title"]);
         assert!(link.rest);
@@ -1415,7 +1417,7 @@ mod tests {
 
     #[test]
     fn a_page_class_is_a_component() {
-        let src = "<?phpm\nnamespace App\\Ui;\n\n#[Page('/home')]\nfinal class Home {}\n\n#[Route('/plain')]\nfinal class Plain {}\n\n#[Page('/function')]\n#[Component]\nfunction Fn() { return <p />; }\n\n#[Page('/bare')]\nfunction Bare() { return <p />; }\n\n#[Route('/routed')]\n#[Component]\nfunction Routed() { return <p />; }\n";
+        let src = "<?phem\nnamespace App\\Ui;\n\n#[Page('/home')]\nfinal class Home {}\n\n#[Route('/plain')]\nfinal class Plain {}\n\n#[Page('/function')]\n#[Component]\nfunction Fn() { return <p />; }\n\n#[Page('/bare')]\nfunction Bare() { return <p />; }\n\n#[Route('/routed')]\n#[Component]\nfunction Routed() { return <p />; }\n";
         let parsed = parse(src);
         let find = |name: &str| parsed.components.iter().find(|c| c.name == name);
         assert!(find("Home").unwrap().page);
@@ -1427,15 +1429,24 @@ mod tests {
 
     #[test]
     fn an_abstract_class_is_not_a_component() {
-        let src = "<?phpm\nnamespace App;\n\n#[Component]\nabstract class Base {}\n\n#[Component]\nreadonly abstract class Other {}\n\nconst ABSTRACT = 1;\n\n#[Component]\nfinal class Card extends Base {}\n";
+        let src = "<?phem\nnamespace App;\n\n#[Component]\nabstract class Base {}\n\n#[Component]\nreadonly abstract class Other {}\n\nconst ABSTRACT = 1;\n\n#[Component]\nfinal class Card extends Base {}\n";
         let parsed = parse(src);
         let names: Vec<&str> = parsed.components.iter().map(|c| c.name.as_str()).collect();
         assert_eq!(names, ["Card"]);
     }
 
     #[test]
+    fn the_open_tag_end_is_after_the_first_open_tag() {
+        assert_eq!(parse("<?phem\nfunction A() {}\n").open_tag_end, Some(6));
+        assert_eq!(parse("<?php\nfinal class X {}\n").open_tag_end, Some(5));
+        assert_eq!(parse("<p><?phone</p>\n<?phem\n$a = '<?php';\n").open_tag_end, Some(21));
+        assert_eq!(parse("<?phemx\n").open_tag_end, None);
+        assert_eq!(parse("<?phpm\n").open_tag_end, None);
+    }
+
+    #[test]
     fn reads_use_statements_and_groups() {
-        let parsed = parse("<?phpm\nnamespace App;\n\nuse A\\B as C;\nuse function X\\{f, g as h};\n");
+        let parsed = parse("<?phem\nnamespace App;\n\nuse A\\B as C;\nuse function X\\{f, g as h};\n");
         assert_eq!(parsed.namespace, "App");
         let items: Vec<_> = parsed.uses.iter().flat_map(|u| &u.items).map(|i| (i.kind, i.fqn.as_str(), i.alias.as_str())).collect();
         assert_eq!(items, [(UseKind::Class, "A\\B", "C"), (UseKind::Function, "X\\f", "f"), (UseKind::Function, "X\\g", "h")]);

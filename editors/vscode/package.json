@@ -1,7 +1,7 @@
 {
     "name": "phem",
     "displayName": "Phem",
-    "description": "Syntax highlighting, and the Phem language server for .phpm files: diagnostics as you type, completion, go to definition, find references with usage counts, hover, and outline.",
+    "description": "Syntax highlighting, and the Phem language server for .phem files: diagnostics as you type, completion, go to definition, find references with usage counts, hover, and outline.",
     "version": "0.5.0",
     "publisher": "phem",
     "license": "MIT",
@@ -13,7 +13,6 @@
         "Programming Languages"
     ],
     "keywords": [
-        "phpm",
         "phem",
         "php",
         "twig",
@@ -30,28 +29,28 @@
         }
     },
     "activationEvents": [
-        "onLanguage:phpm"
+        "onLanguage:phem"
     ],
     "contributes": {
         "languages": [
             {
-                "id": "phpm",
+                "id": "phem",
                 "aliases": [
-                    "PHPM",
-                    "phpm"
+                    "Phem",
+                    "phem"
                 ],
                 "extensions": [
-                    ".phpm"
+                    ".phem"
                 ],
-                "firstLine": "^<\\?phpm\\b",
+                "firstLine": "^<\\?phem\\b",
                 "icon": {
-                    "light": "./icons/phpm.svg",
-                    "dark": "./icons/phpm.svg"
+                    "light": "./icons/phem.svg",
+                    "dark": "./icons/phem.svg"
                 },
                 "configuration": "./language-configuration.json"
             },
             {
-                "id": "phpm-markup",
+                "id": "phem-markup",
                 "aliases": [],
                 "configuration": "./markup-language-configuration.json"
             }
@@ -76,19 +75,19 @@
                     "type": "string",
                     "default": "src",
                     "scope": "resource",
-                    "markdownDescription": "The source directory of the `.phpm` files, relative to the project root (the directory with `composer.json`). The server checks the files of this directory as you type."
+                    "markdownDescription": "The source directory of the `.phem` files, relative to the project root (the directory with `composer.json`). The server checks the files of this directory as you type."
                 }
             }
         },
         "grammars": [
             {
-                "language": "phpm",
-                "scopeName": "source.phpm",
-                "path": "./syntaxes/phpm.tmLanguage.json",
+                "language": "phem",
+                "scopeName": "source.phem",
+                "path": "./syntaxes/phem.tmLanguage.json",
                 "embeddedLanguages": {
-                    "meta.markup.phpm": "phpm-markup",
-                    "source.js.embedded.phpm": "javascript",
-                    "source.css.embedded.phpm": "css"
+                    "meta.markup.phem": "phem-markup",
+                    "source.js.embedded.phem": "javascript",
+                    "source.css.embedded.phem": "css"
                 }
             }
         ]

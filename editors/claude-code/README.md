@@ -1,7 +1,7 @@
 # Phem for Claude Code
 
-A Claude Code plugin that runs the Phem language server for `.phpm` files. After each edit or
-write of a `.phpm` file, Claude Code gets the errors and warnings of `phemc` in real time. It also
+A Claude Code plugin that runs the Phem language server for `.phem` files. After each edit or
+write of a `.phem` file, Claude Code gets the errors and warnings of `phemc` in real time. It also
 gets the `LSP` tool for go to definition, find references, hover, and outline.
 
 ## Install
@@ -28,7 +28,7 @@ The plugin runs the `vendor/bin/phemc` of the project. Use it only in projects t
 
 ## Use
 
-- The server starts the first time Claude edits a `.phpm` file.
+- The server starts the first time Claude edits a `.phem` file.
 - After each edit, the conversation shows a summary, for example
   `Found 1 new diagnostic issues in 1 files`. Press `Ctrl+O` to read the diagnostics.
 - If the server does not start, open `/plugin` and read the **Errors** tab.

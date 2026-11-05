@@ -9,7 +9,7 @@ export const GET: APIRoute = async ({ site }) => {
     const lines = [
         '# Phem',
         '',
-        '> UI server components for Symfony web apps. A .phpm file is PHP with markup in it: phemc compiles it to PHP and Twig.',
+        '> UI server components for Symfony web apps. A .phem file is PHP with markup in it: phemc compiles it to PHP and Twig.',
         '',
     ];
 

@@ -25,7 +25,7 @@ use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
 use Symfony\UX\StimulusBundle\StimulusBundle;
 
 /**
- * A Symfony application to test the `.phpm` components of a Composer package.
+ * A Symfony application to test the `.phem` components of a Composer package.
  *
  * The test application is in `tests/app/src`: its pages and components use the components of
  * the package. When the kernel boots, it compiles the test application and the package with
@@ -71,7 +71,7 @@ abstract class TestKernel extends Kernel
         parent::boot();
     }
 
-    /** The `.phpm` sources of the test application, relative to the project dir. */
+    /** The `.phem` sources of the test application, relative to the project dir. */
     protected function sourceDir(): string
     {
         return 'tests/app/src';

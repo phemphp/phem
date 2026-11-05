@@ -18,7 +18,7 @@ use Symfony\Component\HttpKernel\Event\ResponseEvent;
 
 /**
  * Sets the cookie of the query of a request on its response, for the cookies of the browser of
- * the tests (see cookies.phpm): `?set=theme=dark`, with an optional `path`, `domain` and `secure`.
+ * the tests (see cookies.phem): `?set=theme=dark`, with an optional `path`, `domain` and `secure`.
  * `?clear=theme` clears the cookie.
  */
 final class CookieSetter

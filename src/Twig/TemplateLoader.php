@@ -20,7 +20,7 @@ use Twig\Loader\LoaderInterface;
 use Twig\Source;
 
 /**
- * Loads the templates that phemc compiled, as `@phpm/<file>.<n>.twig`.
+ * Loads the templates that phemc compiled, as `@phemc/<file>.<n>.twig`.
  *
  * The directory exists only after the first `phemc build`, so the loader opens it on first use.
  */

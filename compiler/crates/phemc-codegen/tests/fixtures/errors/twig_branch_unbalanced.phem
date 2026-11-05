@@ -1,0 +1,2 @@
+<?phem // expect: E003
+function App($ok) { return <div>{% if ok %}<p>{% endif %}</p></div>; }

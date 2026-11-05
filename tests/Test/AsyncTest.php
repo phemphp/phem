@@ -25,7 +25,7 @@ use PHPUnit\Framework\AssertionFailedError;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Messenger\Exception\UnrecoverableMessageHandlingException;
 
-/** The #[Async] handlers (tests/Fixtures/app/src/Ui/Async/AsyncPage.phpm). */
+/** The #[Async] handlers (tests/Fixtures/app/src/Ui/Async/AsyncPage.phem). */
 final class AsyncTest extends KernelTestCase
 {
     use InteractsWithPhem;

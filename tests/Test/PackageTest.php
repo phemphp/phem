@@ -182,13 +182,13 @@ final class PackageTest extends KernelTestCase
         /** @var Manifest $manifest */
         $manifest = self::getContainer()->get('phem.manifest');
         $projectDir = self::$kernel->getProjectDir();
-        $error = new \RuntimeException('outer', 0, new RuntimeError('Boom.', 1, new Source('', '@phpm/vendor/acme/ui/Badge.0.twig')));
+        $error = new \RuntimeException('outer', 0, new RuntimeError('Boom.', 1, new Source('', '@phemc/vendor/acme/ui/Badge.0.twig')));
 
         (new SourceMapListener(new SourceMap($manifest, $projectDir)))->map($error);
 
         $twigError = $error->getPrevious();
         self::assertInstanceOf(RuntimeError::class, $twigError);
-        self::assertSame('vendor/acme/ui/components/Badge.phpm', $twigError->getSourceContext()?->getName());
-        self::assertSame($projectDir.'/vendor/acme/ui/components/Badge.phpm', $twigError->getFile());
+        self::assertSame('vendor/acme/ui/components/Badge.phem', $twigError->getSourceContext()?->getName());
+        self::assertSame($projectDir.'/vendor/acme/ui/components/Badge.phem', $twigError->getFile());
     }
 }

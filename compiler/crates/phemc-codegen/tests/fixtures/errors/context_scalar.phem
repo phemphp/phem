@@ -1,0 +1,4 @@
+<?phem // expect: E044
+use Phem\Attribute\{Component, Context};
+#[Component]
+function Label(#[Context] string $locale) { return <b>{{ locale }}</b>; }

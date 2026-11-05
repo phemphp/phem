@@ -27,7 +27,7 @@ use Symfony\Component\HttpKernel\Attribute\RateLimit;
 
 /**
  * The events of a page go to its URL: the access rules of the page apply to them, and a
- * request from another site is not an event (tests/Fixtures/app/src/Ui/Access/PrivateCounterPage.phpm).
+ * request from another site is not an event (tests/Fixtures/app/src/Ui/Access/PrivateCounterPage.phem).
  */
 final class EventAccessTest extends TestCase
 {

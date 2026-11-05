@@ -1,4 +1,4 @@
-//! The source roots of a project: the source dir of the app, and the `.phpm` roots of the
+//! The source roots of a project: the source dir of the app, and the `.phem` roots of the
 //! Composer packages. `phemc` compiles all of them in one build.
 //!
 //! A package gives its root in its `composer.json`: `"extra": {"phem": {"source": "components"}}`.
@@ -12,7 +12,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::path::{Component, Path, PathBuf};
 
-/// A directory of `.phpm` files.
+/// A directory of `.phem` files.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceRoot {
     /// The directory on disk.
@@ -148,7 +148,7 @@ pub fn installed_roots(project: &Path) -> Result<Vec<SourceRoot>, Error> {
     Ok(roots)
 }
 
-/// The `.phpm` files of the roots, in the order of the roots. An open document (the language
+/// The `.phem` files of the roots, in the order of the roots. An open document (the language
 /// server) replaces its file on disk. The editor can open a file of a linked package at its real
 /// path (see `SourceRoot::real_dir`): this document replaces the file too.
 pub fn read(roots: &[SourceRoot], open: &HashMap<PathBuf, String>) -> Result<Vec<SourceInput>, Error> {
@@ -170,7 +170,7 @@ pub fn read_file(file: &Path) -> Result<String, Error> {
     std::fs::read_to_string(file).map_err(|e| Error(format!("cannot read {}: {e}", file.display())))
 }
 
-/// The `.phpm` files of the roots, with the text that `text_of(root, file, path in the root)`
+/// The `.phem` files of the roots, with the text that `text_of(root, file, path in the root)`
 /// gives: the language server keeps the files of the packages in memory.
 ///
 /// A root does not read the directory of another root (a test app in the root `.` of a package),
@@ -192,7 +192,7 @@ pub fn read_with(roots: &[SourceRoot], mut text_of: impl FnMut(&SourceRoot, &Pat
         for entry in walk {
             let entry = entry.map_err(|e| Error(e.to_string()))?;
             let file = entry.path();
-            if !entry.file_type().is_file() || file.extension().is_none_or(|e| e != "phpm") {
+            if !entry.file_type().is_file() || file.extension().is_none_or(|e| e != "phem") {
                 continue;
             }
 
@@ -401,20 +401,20 @@ mod tests {
     #[test]
     fn read_gives_the_key_and_the_path_of_each_file() {
         let dir = project();
-        write(&dir, "src/Ui/Home.phpm", "<?phpm home");
+        write(&dir, "src/Ui/Home.phem", "<?phem home");
         write(&dir, "src/notes.txt", "not a source");
-        write(&dir, "vendor/acme/ui/components/Badge.phpm", "<?phpm badge");
+        write(&dir, "vendor/acme/ui/components/Badge.phem", "<?phem badge");
         write(&dir, "vendor/composer/installed.json", r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}]}"#);
 
         let roots = roots(&dir, Path::new("src")).unwrap();
-        let open = HashMap::from([(dir.join("src/Ui/Home.phpm"), "<?phpm open".to_string())]);
+        let open = HashMap::from([(dir.join("src/Ui/Home.phem"), "<?phem open".to_string())]);
         let inputs: Vec<_> = read(&roots, &open).unwrap().into_iter().map(|i| (i.rel, i.path, i.package, i.text)).collect();
 
         assert_eq!(
             inputs,
             [
-                ("Ui/Home.phpm".into(), "src/Ui/Home.phpm".into(), None, "<?phpm open".into()),
-                ("vendor/acme/ui/Badge.phpm".into(), "vendor/acme/ui/components/Badge.phpm".into(), Some("acme/ui".into()), "<?phpm badge".into()),
+                ("Ui/Home.phem".into(), "src/Ui/Home.phem".into(), None, "<?phem open".into()),
+                ("vendor/acme/ui/Badge.phem".into(), "vendor/acme/ui/components/Badge.phem".into(), Some("acme/ui".into()), "<?phem badge".into()),
             ]
         );
     }
@@ -424,7 +424,7 @@ mod tests {
     fn read_finds_an_open_document_at_the_real_path_of_a_linked_package() {
         // As a Composer path repository: `vendor/acme/ui` is a link to `packages/ui`.
         let dir = project();
-        write(&dir, "packages/ui/components/Badge.phpm", "<?phpm disk");
+        write(&dir, "packages/ui/components/Badge.phem", "<?phem disk");
         write(&dir, "vendor/composer/installed.json", r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}]}"#);
         std::fs::create_dir_all(dir.join("vendor/acme")).unwrap();
         std::os::unix::fs::symlink(dir.join("packages/ui"), dir.join("vendor/acme/ui")).unwrap();
@@ -432,10 +432,10 @@ mod tests {
         let roots = roots(&dir, Path::new("src")).unwrap();
         assert_eq!(roots[1].real_dir, Some(dir.join("packages/ui/components")));
 
-        let open = HashMap::from([(dir.join("packages/ui/components/Badge.phpm"), "<?phpm open".to_string())]);
+        let open = HashMap::from([(dir.join("packages/ui/components/Badge.phem"), "<?phem open".to_string())]);
         let inputs = read(&roots, &open).unwrap();
 
-        assert_eq!((inputs[0].path.as_str(), inputs[0].text.as_str()), ("vendor/acme/ui/components/Badge.phpm", "<?phpm open"));
+        assert_eq!((inputs[0].path.as_str(), inputs[0].text.as_str()), ("vendor/acme/ui/components/Badge.phem", "<?phem open"));
     }
 
     #[test]
@@ -443,25 +443,25 @@ mod tests {
         // A package with its root `.`, and a test app in it.
         let dir = project();
         write(&dir, "composer.json", r#"{"name": "acme/ui", "extra": {"phem": {"source": "."}}}"#);
-        write(&dir, "Badge.phpm", "<?phpm badge");
-        write(&dir, "tests/app/src/Home.phpm", "<?phpm home");
-        write(&dir, "vendor/other/x/Other.phpm", "<?phpm other");
+        write(&dir, "Badge.phem", "<?phem badge");
+        write(&dir, "tests/app/src/Home.phem", "<?phem home");
+        write(&dir, "vendor/other/x/Other.phem", "<?phem other");
         write(&dir, "vendor/composer/installed.json", r#"{"packages": []}"#);
 
         let inputs: Vec<_> = read(&roots(&dir, Path::new("tests/app/src")).unwrap(), &HashMap::new()).unwrap().into_iter().map(|i| (i.rel, i.path)).collect();
-        assert_eq!(inputs, [("Home.phpm".into(), "tests/app/src/Home.phpm".into()), ("vendor/acme/ui/Badge.phpm".into(), "Badge.phpm".into())]);
+        assert_eq!(inputs, [("Home.phem".into(), "tests/app/src/Home.phem".into()), ("vendor/acme/ui/Badge.phem".into(), "Badge.phem".into())]);
     }
 
     #[test]
     fn two_files_with_the_same_key_are_an_error() {
         // An app file in `src/vendor/acme/ui/`, and a file of the package `acme/ui`.
         let dir = project();
-        write(&dir, "src/vendor/acme/ui/Badge.phpm", "<?phpm app");
-        write(&dir, "vendor/acme/ui/components/Badge.phpm", "<?phpm package");
+        write(&dir, "src/vendor/acme/ui/Badge.phem", "<?phem app");
+        write(&dir, "vendor/acme/ui/components/Badge.phem", "<?phem package");
         write(&dir, "vendor/composer/installed.json", r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}]}"#);
 
         let error = read(&roots(&dir, Path::new("src")).unwrap(), &HashMap::new()).unwrap_err().to_string();
-        assert_eq!(error, "the files `src/vendor/acme/ui/Badge.phpm` and `vendor/acme/ui/components/Badge.phpm` have the same key `vendor/acme/ui/Badge.phpm` in the build: rename or move one of them");
+        assert_eq!(error, "the files `src/vendor/acme/ui/Badge.phem` and `vendor/acme/ui/components/Badge.phem` have the same key `vendor/acme/ui/Badge.phem` in the build: rename or move one of them");
     }
 
     #[test]

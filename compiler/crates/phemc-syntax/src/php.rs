@@ -1,4 +1,4 @@
-//! PHP lexer for `.phpm` files.
+//! PHP lexer for `.phem` files.
 //!
 //! The lexer knows enough PHP to find markup literals safely: strings, heredoc/nowdoc,
 //! comments, attributes, and operators. A `<` starts a markup literal when it comes where an
@@ -75,6 +75,18 @@ fn is_ident_char(c: u8) -> bool {
     c.is_ascii_alphanumeric() || c == b'_' || c >= 0x80
 }
 
+/// The open tag of a `.phem` file.
+pub const OPEN_TAG: &str = "<?phem";
+
+/// The open tag of a plain PHP file.
+pub const PHP_OPEN_TAG: &str = "<?php";
+
+/// The offset of the first `<?phem` or `<?php` tag. The name can go on (`<?phemx`, `<?phpm`), but
+/// a text such as `<?phone` is not a tag.
+pub fn find_open_tag(text: &str) -> Option<usize> {
+    text.match_indices("<?ph").map(|(i, _)| i).find(|&i| text[i..].starts_with(OPEN_TAG) || text[i..].starts_with(PHP_OPEN_TAG))
+}
+
 pub fn lex(src: &str) -> Result<Lexed, Diagnostic> {
     Lexer { src, b: src.as_bytes(), pos: 0, out: Lexed::default() }.run()
 }
@@ -114,11 +126,12 @@ impl<'a> Lexer<'a> {
         Ok(self.out)
     }
 
-    /// The text up to the next `<?phpm` open tag. A `.phpm` file opens PHP only with `<?phpm`: any
-    /// other `<?php...` tag is an error, because the file would otherwise be copied out as HTML.
+    /// The text up to the next `<?phem` open tag. A `.phem` file opens PHP only with `<?phem`: any
+    /// other open tag (`<?php`, `<?phpm`, `<?phemx`) is an error, because the file would otherwise
+    /// be copied out as HTML.
     fn inline_html(&mut self) -> Result<(), Diagnostic> {
         let start = self.pos;
-        match self.src[self.pos..].find("<?php") {
+        match find_open_tag(&self.src[self.pos..]) {
             Some(rel) => {
                 self.pos += rel;
                 if self.pos > start {
@@ -126,14 +139,14 @@ impl<'a> Lexer<'a> {
                 }
 
                 let tag_start = self.pos;
-                let tag_end = tag_start + "<?phpm".len();
-                if !self.starts_with("<?phpm") || self.b.get(tag_end).is_some_and(|&c| is_ident_char(c)) {
-                    return Err(Diagnostic::error(
-                        codes::PLAIN_OPEN_TAG,
-                        "a .phpm file opens PHP with `<?phpm`",
-                        Span::new(tag_start, tag_start + "<?php".len()),
-                    )
-                    .with_help("write `<?phpm` instead of `<?php`"));
+                let tag_end = tag_start + OPEN_TAG.len();
+                if !self.starts_with(OPEN_TAG) || self.b.get(tag_end).is_some_and(|&c| is_ident_char(c)) {
+                    // The tag is `<?` and the name after it.
+                    let name_len = self.b[tag_start + 2..].iter().take_while(|&&c| is_ident_char(c)).count();
+                    let tag = Span::new(tag_start, tag_start + 2 + name_len);
+
+                    return Err(Diagnostic::error(codes::PLAIN_OPEN_TAG, "a .phem file opens PHP with `<?phem`", tag)
+                        .with_help(format!("write `<?phem` instead of `{}`", tag.text(self.src))));
                 }
 
                 self.pos = tag_end;
@@ -455,67 +468,74 @@ mod tests {
 
     #[test]
     fn detects_markup_after_return() {
-        let l = lex("<?phpm function A() { return <div>{{ x }}</div>; }").unwrap();
+        let l = lex("<?phem function A() { return <div>{{ x }}</div>; }").unwrap();
         assert_eq!(l.markups.len(), 1);
     }
 
     #[test]
     fn less_than_operator_is_not_markup() {
-        let l = lex("<?phpm if ($a <b) {} $x = $a < $b; $y = 1 <=> 2;").unwrap();
+        let l = lex("<?phem if ($a <b) {} $x = $a < $b; $y = 1 <=> 2;").unwrap();
         assert!(l.markups.is_empty());
     }
 
     #[test]
     fn markup_in_arrow_function_and_arrays() {
-        let l = lex("<?phpm $f = fn($p) => <li key={{ p.id }}>{{ p.t }}</li>; $a = [<A />, <B />];").unwrap();
+        let l = lex("<?phem $f = fn($p) => <li key={{ p.id }}>{{ p.t }}</li>; $a = [<A />, <B />];").unwrap();
         assert_eq!(l.markups.len(), 3);
     }
 
     #[test]
     fn strings_and_heredoc_hide_markup() {
-        let l = lex("<?phpm $s = '<div>'; $t = \"<b>\"; $h = <<<EOT\n  <div>\n  EOT;\n $n = <<<'X'\n<p>\nX;\n").unwrap();
+        let l = lex("<?phem $s = '<div>'; $t = \"<b>\"; $h = <<<EOT\n  <div>\n  EOT;\n $n = <<<'X'\n<p>\nX;\n").unwrap();
         assert!(l.markups.is_empty());
     }
 
     #[test]
     fn quotes_in_string_interpolation() {
-        let src = r#"<?phpm $s = "{$a["k"]} and ${b['x']}"; $t = `{$c["<p>"]}`; return <p>{{ x }}</p>;"#;
+        let src = r#"<?phem $s = "{$a["k"]} and ${b['x']}"; $t = `{$c["<p>"]}`; return <p>{{ x }}</p>;"#;
         let l = lex(src).unwrap();
         let strs: Vec<_> = l.tokens.iter().filter(|t| t.kind == TokKind::Str).map(|t| t.text(src)).collect();
         assert_eq!(strs, [r#""{$a["k"]} and ${b['x']}""#, r#"`{$c["<p>"]}`"#]);
         assert_eq!(l.markups.len(), 1);
 
         // `{` cannot be escaped. `{` without `$` is text, and `{$` in a single-quoted string is text.
-        let l = lex(r#"<?phpm $s = "\{$a["k"]} { a}"; $t = '{$a"'; return <b />;"#).unwrap();
+        let l = lex(r#"<?phem $s = "\{$a["k"]} { a}"; $t = '{$a"'; return <b />;"#).unwrap();
         assert_eq!(l.markups.len(), 1);
     }
 
     #[test]
     fn comments_and_attributes() {
-        let k = kinds("<?phpm #[Component] // c <div>\n /* <p> */ class A {}");
+        let k = kinds("<?phem #[Component] // c <div>\n /* <p> */ class A {}");
         assert_eq!(k[1], TokKind::AttrOpen);
     }
 
     #[test]
     fn two_roots_is_an_error() {
-        let e = lex("<?phpm return <h1>a</h1><p>b</p>;").unwrap_err();
+        let e = lex("<?phem return <h1>a</h1><p>b</p>;").unwrap_err();
         assert_eq!(e.code, codes::MULTIPLE_ROOTS);
     }
 
     #[test]
-    fn phpm_open_tag() {
-        let l = lex("<html>\n<?phpm $a = 1; ?>\n<p>\n<?phpm\n$b = 2;").unwrap();
+    fn phem_open_tag() {
+        let l = lex("<html>\n<?phem $a = 1; ?>\n<p>\n<?phem\n$b = 2;").unwrap();
         let tags: Vec<_> = l.tokens.iter().filter(|t| t.kind == TokKind::OpenTag).map(|t| t.span).collect();
         assert_eq!(tags, [Span::new(7, 13), Span::new(29, 35)]);
-        assert_eq!(kinds("<?phpm")[0], TokKind::OpenTag);
+        assert_eq!(kinds("<?phem")[0], TokKind::OpenTag);
     }
 
     #[test]
     fn other_open_tags_are_an_error() {
-        for src in ["<?php $a = 1;", "<?phpmx $a = 1;", "<?phpm $a = 1; ?> <?php $b = 2;"] {
+        for (src, tag) in [("<?php $a = 1;", "<?php"), ("<?phpm $a = 1;", "<?phpm"), ("<?phemx $a = 1;", "<?phemx"), ("<?phem $a = 1; ?> <?php $b = 2;", "<?php")] {
             let e = lex(src).unwrap_err();
             assert_eq!(e.code, codes::PLAIN_OPEN_TAG, "{src}");
-            assert_eq!(e.span.text(src), "<?php", "{src}");
+            assert_eq!(e.span.text(src), tag, "{src}");
         }
+    }
+
+    #[test]
+    fn text_that_only_looks_like_a_tag_is_html() {
+        let l = lex("<p><?phone</p>\n<?phem $a = 1; ?> <?phrase").unwrap();
+        let tags: Vec<_> = l.tokens.iter().filter(|t| t.kind == TokKind::OpenTag).map(|t| t.span).collect();
+        assert_eq!(tags, [Span::new(15, 21)]);
     }
 }

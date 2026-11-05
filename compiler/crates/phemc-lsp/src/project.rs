@@ -2,8 +2,8 @@
 //! - the classes of the Composer autoload maps (PSR-4 directories and the class map). For speed,
 //!   the index reads only the file names here;
 //! - the functions and the constants of the Composer `files` autoload entries;
-//! - the components, the functions, and the classes of the `.phpm` files: the files of the project,
-//!   and the files of the installed packages with a `.phpm` root (see `phemc_sources`).
+//! - the components, the functions, and the classes of the `.phem` files: the files of the project,
+//!   and the files of the installed packages with a `.phem` root (see `phemc_sources`).
 //!
 //! The members of the classes come from the class index ([`crate::classes`]), on demand.
 
@@ -62,18 +62,18 @@ impl std::ops::Deref for FileComponent {
 pub struct Project {
     pub root: PathBuf,
     symbols: BTreeMap<(SymbolKind, String), Symbol>,
-    pub phpm: BTreeMap<PathBuf, Rc<Parsed>>,
+    pub phem: BTreeMap<PathBuf, Rc<Parsed>>,
     pub classes: ClassCache,
     /// The PSR-4 directories of the index, with no symbolic links: a directory of a package that
     /// `vendor/` links to (a Composer path repository) is the directory of the package.
     dirs: Vec<PathBuf>,
-    /// The `.phpm` roots of the installed packages.
+    /// The `.phem` roots of the installed packages.
     packages: Vec<SourceRoot>,
 }
 
 impl Project {
     pub fn load(root: &Path) -> Self {
-        let mut p = Project { root: root.to_path_buf(), symbols: BTreeMap::new(), phpm: BTreeMap::new(), classes: ClassCache::default(), dirs: vec![], packages: vec![] };
+        let mut p = Project { root: root.to_path_buf(), symbols: BTreeMap::new(), phem: BTreeMap::new(), classes: ClassCache::default(), dirs: vec![], packages: vec![] };
         let vendor = phemc_sources::vendor_dir(root);
         if vendor.join("composer/autoload_psr4.php").exists() {
             p.load_vendor(&vendor);
@@ -81,13 +81,13 @@ impl Project {
             p.load_composer_json();
         }
 
-        p.walk_phpm(root, true);
+        p.walk_phem(root, true);
         p.load_packages();
 
         p
     }
 
-    /// Indexes the `.phpm` files of the installed packages: the files of the project use their
+    /// Indexes the `.phem` files of the installed packages: the files of the project use their
     /// components. A wrong package root (the check shows its error) gives no package files.
     fn load_packages(&mut self) {
         let Ok(packages) = phemc_sources::installed_roots(&self.root) else { return };
@@ -102,14 +102,14 @@ impl Project {
 
         if read.is_ok() {
             for (file, text) in files {
-                self.phpm.insert(file, Rc::new(parse(&text)));
+                self.phem.insert(file, Rc::new(parse(&text)));
             }
         }
 
         self.packages = packages;
     }
 
-    /// The file in the index of a `.phpm` file of an installed package: its path as the editor
+    /// The file in the index of a `.phem` file of an installed package: its path as the editor
     /// opens it (see [`editor_file`]). `None` for a file that is not in a package root.
     pub fn package_file(&self, file: &Path) -> Option<PathBuf> {
         self.packages.iter().find_map(|root| match file.strip_prefix(&root.dir) {
@@ -118,11 +118,11 @@ impl Project {
         })
     }
 
-    /// A `.phpm` file of an installed package changed: `text` is the text of an open document,
+    /// A `.phem` file of an installed package changed: `text` is the text of an open document,
     /// else the index reads the file on disk again (a deleted file goes away).
     pub fn package_changed(&mut self, file: &Path, text: Option<&str>) {
         if let Some(file) = self.package_file(file) {
-            self.update_phpm(&file, text);
+            self.update_phem(&file, text);
         }
     }
 
@@ -240,9 +240,9 @@ impl Project {
         }
     }
 
-    /// Finds the `.phpm` files of the project. A subdirectory with its own `composer.json` file is
+    /// Finds the `.phem` files of the project. A subdirectory with its own `composer.json` file is
     /// another project.
-    fn walk_phpm(&mut self, dir: &Path, top: bool) {
+    fn walk_phem(&mut self, dir: &Path, top: bool) {
         if !top && dir.join("composer.json").exists() {
             return;
         }
@@ -253,16 +253,16 @@ impl Project {
             let path = entry.path();
             if entry.file_type().is_ok_and(|t| t.is_dir()) {
                 if !SKIP_DIRS.contains(&name.as_str()) && !name.starts_with('.') {
-                    self.walk_phpm(&path, false);
+                    self.walk_phem(&path, false);
                 }
-            } else if name.ends_with(".phpm") {
-                self.update_phpm(&path, None);
+            } else if name.ends_with(".phem") {
+                self.update_phem(&path, None);
             }
         }
     }
 
-    /// Reads a `.phpm` file again. `text` is the text of an open document.
-    pub fn update_phpm(&mut self, file: &Path, text: Option<&str>) {
+    /// Reads a `.phem` file again. `text` is the text of an open document.
+    pub fn update_phem(&mut self, file: &Path, text: Option<&str>) {
         let text = match text {
             Some(t) => Some(t.to_string()),
             None => std::fs::read_to_string(file).ok(),
@@ -270,37 +270,37 @@ impl Project {
 
         match text {
             Some(t) => {
-                self.phpm.insert(file.to_path_buf(), Rc::new(parse(&t)));
+                self.phem.insert(file.to_path_buf(), Rc::new(parse(&t)));
             }
             None => {
-                self.phpm.remove(file);
+                self.phem.remove(file);
             }
         }
     }
 
-    pub fn delete_phpm(&mut self, file: &Path) {
-        self.phpm.remove(file);
+    pub fn delete_phem(&mut self, file: &Path) {
+        self.phem.remove(file);
     }
 
-    /// The parsed `.phpm` files, where `current` replaces the parsed version of its file.
-    fn phpm_with<'a>(&'a self, file: &'a Path, current: &'a Parsed) -> impl Iterator<Item = (&'a Path, &'a Parsed)> {
-        self.phpm.iter().filter(move |(f, _)| f.as_path() != file).map(|(f, p)| (f.as_path(), p.as_ref())).chain(std::iter::once((file, current)))
+    /// The parsed `.phem` files, where `current` replaces the parsed version of its file.
+    fn phem_with<'a>(&'a self, file: &'a Path, current: &'a Parsed) -> impl Iterator<Item = (&'a Path, &'a Parsed)> {
+        self.phem.iter().filter(move |(f, _)| f.as_path() != file).map(|(f, p)| (f.as_path(), p.as_ref())).chain(std::iter::once((file, current)))
     }
 
     /// All the components of the project, and the built-in components.
     pub fn components(&self, file: &Path, current: &Parsed) -> Vec<FileComponent> {
         let mut list: Vec<FileComponent> = self
-            .phpm_with(file, current)
+            .phem_with(file, current)
             .flat_map(|(f, p)| p.components.iter().map(move |c| FileComponent { component: c.clone(), file: Some(f.to_path_buf()) }))
             .collect();
         list.extend(builtin_components().into_iter().map(|c| FileComponent { component: c, file: None }));
         list
     }
 
-    /// All the symbols of a kind, with the declarations of the `.phpm` files.
+    /// All the symbols of a kind, with the declarations of the `.phem` files.
     pub fn all_symbols(&self, kind: SymbolKind, file: &Path, current: &Parsed) -> Vec<Symbol> {
         let mut map: BTreeMap<String, Symbol> = self.symbols.values().filter(|s| s.kind == kind).map(|s| (s.fqn.clone(), s.clone())).collect();
-        for (f, parsed) in self.phpm_with(file, current) {
+        for (f, parsed) in self.phem_with(file, current) {
             let fqns: Vec<&String> = match kind {
                 SymbolKind::Class => parsed.classes.iter().map(|d| &d.fqn).collect(),
                 SymbolKind::Function => parsed.functions.iter().map(|d| &d.fqn).collect(),
@@ -321,7 +321,7 @@ impl Project {
             return Some(s.file.clone());
         }
 
-        for (file, parsed) in &self.phpm {
+        for (file, parsed) in &self.phem {
             let found = match kind {
                 SymbolKind::Class => parsed.classes.iter().any(|d| d.fqn.eq_ignore_ascii_case(fqn)),
                 _ => parsed.functions.iter().any(|d| d.fqn.eq_ignore_ascii_case(fqn)),
@@ -335,9 +335,9 @@ impl Project {
         self.symbols.values().find(|s| s.kind == kind && s.fqn.eq_ignore_ascii_case(fqn)).map(|s| s.file.clone())
     }
 
-    /// The routes of the pages of the `.phpm` files.
+    /// The routes of the pages of the `.phem` files.
     pub fn routes(&self, file: &Path, current: &Parsed) -> Vec<Route> {
-        self.phpm_with(file, current).flat_map(|(f, p)| routes_of(p, f)).collect()
+        self.phem_with(file, current).flat_map(|(f, p)| routes_of(p, f)).collect()
     }
 }
 
@@ -424,7 +424,7 @@ pub fn editor_file(root: &SourceRoot, file: &Path, inner: &Path) -> PathBuf {
 
 /// The project that installs the package of a file in its Composer vendor dir (see
 /// `phemc_sources::vendor_dir`): the nearest directory with a `composer.json` whose vendor dir
-/// has the file. It compiles the `.phpm` files of the package with its own, so the diagnostics of
+/// has the file. It compiles the `.phem` files of the package with its own, so the diagnostics of
 /// the file come from its check. The class index of the file stays the one of [`find_root`].
 pub fn installer_root(file: &Path, fallback: Option<&Path>) -> Option<PathBuf> {
     for dir in file.ancestors().skip(1) {
@@ -462,7 +462,7 @@ pub fn find_root(file: &Path, fallback: Option<&Path>) -> PathBuf {
 mod tests {
     use super::*;
 
-    const SOURCE: &str = r"<?phpm
+    const SOURCE: &str = r"<?phem
 namespace App\Ui;
 
 use Phem\Attribute\{Component, Page};
@@ -497,7 +497,7 @@ function Routed() { return <p />; }
 
     #[test]
     fn a_page_is_a_class_or_a_function_with_page_or_a_class_with_route_and_component() {
-        let routes: Vec<_> = routes_of(&parse(SOURCE), Path::new("src/Ui/HomePage.phpm")).into_iter().map(|r| (r.name, r.path, r.fqn)).collect();
+        let routes: Vec<_> = routes_of(&parse(SOURCE), Path::new("src/Ui/HomePage.phem")).into_iter().map(|r| (r.name, r.path, r.fqn)).collect();
         let r = |n: &str, p: &str, f: &str| (n.to_string(), p.to_string(), f.to_string());
         assert_eq!(routes, [r("home", "/home", "App\\Ui\\HomePage"), r("app_ui_homepage_1", "/start", "App\\Ui\\HomePage"), r("app_ui_legacypage", "/legacy", "App\\Ui\\LegacyPage"), r("app_ui_aboutpage", "/about", "App\\Ui\\AboutPage")]);
     }

@@ -16,7 +16,7 @@ namespace Phem\Manifest;
 use Symfony\Component\Filesystem\Path;
 
 /**
- * Maps the lines of the compiled templates to the lines of the `.phpm` sources.
+ * Maps the lines of the compiled templates to the lines of the `.phem` sources.
  */
 final class SourceMap
 {
@@ -27,8 +27,8 @@ final class SourceMap
     }
 
     /**
-     * The `.phpm` source and line of a line in a compiled template. The file is the path from the
-     * project root (`src/Ui/HomePage.phpm`), and the path is the absolute path.
+     * The `.phem` source and line of a line in a compiled template. The file is the path from the
+     * project root (`src/Ui/HomePage.phem`), and the path is the absolute path.
      *
      * @return array{file: string, path: string, line: int}|null
      */

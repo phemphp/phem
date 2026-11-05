@@ -3,7 +3,7 @@ import type { ShikiTransformer } from 'shiki';
 import { hast } from '../icons';
 
 // Wraps each code block in the code window of the design system (CodeBlock). A `title` in the
-// fence gives the bar with the file path and the copy button: ```php title="src/Ui/HomePage.phpm"
+// fence gives the bar with the file path and the copy button: ```php title="src/Ui/HomePage.phem"
 export const codeBlock: ShikiTransformer = {
     name: 'phem-code-block',
     root(root) {

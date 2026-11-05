@@ -9,7 +9,7 @@ the application.
 ## The image
 
 The production image runs `public/index.php` in the worker mode of FrankenPHP (PHP 8.5 and
-Caddy). It installs the packages with no dev dependencies, compiles the `.phpm` files, builds the
+Caddy). It installs the packages with no dev dependencies, compiles the `.phem` files, builds the
 Symfony cache, and writes the assets to `public/assets/`. Add these files:
 
 ```

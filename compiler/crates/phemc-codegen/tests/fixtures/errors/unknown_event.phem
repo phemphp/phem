@@ -1,0 +1,2 @@
+<?phem // expect: W003
+function App() { $show = fn() => 1; return <div onMouseEnter={{ show }}>x</div>; }

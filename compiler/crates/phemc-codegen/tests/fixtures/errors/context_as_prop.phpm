@@ -1,6 +1,0 @@
-<?phpm // expect: E011
-use Phem\Attribute\{Component, Context};
-#[Component]
-function Badge(string $text, #[Context] ?Theme $theme = null) { $x = 1; return <b>{{ text }}</b>; }
-#[Component]
-function App() { return <Badge text="New" theme={{ null }} />; }

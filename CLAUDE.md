@@ -34,7 +34,7 @@ website build fails. Run `make docs-build` after a change in `docs/` or `website
 Always show usage examples when we discuss a feature: a TODO item, a design, a proposal, or a
 change that you made.
 
-- Show the `.phpm` code that an app or a package writes.
+- Show the `.phem` code that an app or a package writes.
 - Show the result: the rendered HTML, and the compiled Twig when the compiler changes.
 - Show the config (`config/packages/phem.yaml`) when the feature adds an option.
 - Use the real output of the tests or the snapshots when it exists.

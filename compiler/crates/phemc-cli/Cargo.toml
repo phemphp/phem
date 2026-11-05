@@ -1,6 +1,6 @@
 [package]
 name = "phemc-cli"
-description = "phemc: the .phpm compiler"
+description = "phemc: the .phem compiler"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

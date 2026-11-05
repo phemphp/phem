@@ -31,7 +31,7 @@ use PHPUnit\Framework\AssertionFailedError;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Twig\Error\RuntimeError;
 
-/** The pushes of Phem\Stream\Streams to the pages with #[Broadcast] (tests/Fixtures/app/src/Ui/Push/GuestbookPage.phpm). */
+/** The pushes of Phem\Stream\Streams to the pages with #[Broadcast] (tests/Fixtures/app/src/Ui/Push/GuestbookPage.phem). */
 final class StreamTest extends KernelTestCase
 {
     use InteractsWithPhem;
@@ -202,7 +202,7 @@ final class StreamTest extends KernelTestCase
 
     public function testPushedMarkupCannotHaveAHandler(): void
     {
-        // Twig gives the line of the markup in the .phpm file.
+        // Twig gives the line of the markup in the .phem file.
         $this->expectException(RuntimeError::class);
         $this->expectExceptionMessage('A pushed stream is plain markup, but it has an event handler');
 
@@ -552,7 +552,7 @@ final class StreamTest extends KernelTestCase
 
     public function testTheStreamsOfAComponentRefreshItsReplacement(): void
     {
-        // src/Ui/Common/Tally.phpm replaces the Tally of acme/ui, with no #[Broadcast] of its own.
+        // src/Ui/Common/Tally.phem replaces the Tally of acme/ui, with no #[Broadcast] of its own.
         $other = $this->visit('/replaced/tally')
             ->assertSelectorTextContains('#tally-lobby', '0 in lobby')
             ->assertSelectorTextContains('#tally-hall', '0 in hall');

@@ -4,7 +4,7 @@
     <vendor>Phem</vendor>
     <description><![CDATA[
         <p>
-            Language support for Phem <code>.phpm</code> files. A <code>.phpm</code> file is a PHP
+            Language support for Phem <code>.phem</code> files. A <code>.phem</code> file is a PHP
             file with markup literals and Twig, the same way a <code>.jsx</code> file is
             JavaScript with JSX.
         </p>
@@ -49,7 +49,7 @@
         <h3>Settings</h3>
         <p>
             Open <b>Settings | Languages &amp; Frameworks | Phem</b> to set the source directory of
-            the <code>.phpm</code> files (default: <code>src</code>), the Node.js path, and the
+            the <code>.phem</code> files (default: <code>src</code>), the Node.js path, and the
             <code>phemc</code> path.
         </p>
     ]]></description>

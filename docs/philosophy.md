@@ -2,7 +2,7 @@
 
 This document gives the ideas behind Phem, and the rules that come from them. Keep them in mind
 when you write a component or design a page. Each rule has an example. For the syntax, see
-[The `.phpm` syntax](phpm-syntax.md).
+[The `.phem` syntax](phem-syntax.md).
 
 ## 1. The server owns the UI
 

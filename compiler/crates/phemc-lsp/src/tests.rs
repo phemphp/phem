@@ -51,8 +51,8 @@ return array(
     ("vendor/phem/phem/tests/HtmlTest.php", "<?php\n"),
     ("src/Repository/TodoRepository.php", "<?php\n"),
     (
-        "src/Ui/Common/Layout.phpm",
-        r"<?phpm
+        "src/Ui/Common/Layout.phem",
+        r"<?phem
 namespace App\Ui\Common;
 
 use Phem\Attribute\Component;
@@ -78,8 +78,8 @@ function Initials(string $name): string
 ",
     ),
     (
-        "src/Ui/About/AboutPage.phpm",
-        r"<?phpm
+        "src/Ui/About/AboutPage.phem",
+        r"<?phem
 namespace App\Ui\About;
 
 use Phem\Attribute\Page;
@@ -95,8 +95,8 @@ final class AboutPage
 ",
     ),
     (
-        "src/Ui/Common/Counter.phpm",
-        r"<?phpm
+        "src/Ui/Common/Counter.phem",
+        r"<?phem
 namespace App\Ui\Common;
 
 use Phem\Attribute\{Component, Prop, State};
@@ -270,8 +270,8 @@ final class ScientistRepository
 ",
     ),
     (
-        "src/Ui/Gallery/GalleryPage.phpm",
-        r"<?phpm
+        "src/Ui/Gallery/GalleryPage.phem",
+        r"<?phem
 namespace App\Ui\Gallery;
 
 use Phem\Attribute\Page;
@@ -350,7 +350,7 @@ fn run_with(source: &str, file: &str, trigger: Option<char>) -> Run {
 }
 
 fn run(source: &str) -> Run {
-    run_with(source, "src/Ui/HomePage.phpm", None)
+    run_with(source, "src/Ui/HomePage.phem", None)
 }
 
 fn run_in(source: &str, file: &str) -> Run {
@@ -368,7 +368,7 @@ fn apply(text: &str, item: &Item) -> String {
     out
 }
 
-const PAGE: &str = "<?phpm\nnamespace App\\Ui;\n\n";
+const PAGE: &str = "<?phem\nnamespace App\\Ui;\n\n";
 
 fn snippet(item: &Item) -> &str {
     item.snippet.as_deref().unwrap()
@@ -388,7 +388,7 @@ fn a_component_tag_adds_a_use_function_import() {
 fn a_page_is_not_a_component_tag() {
     assert!(run(&format!("{PAGE}function HomePage()\n{{\n    return <Ab|\n}}\n")).find("AboutPage").is_none());
     let about = format!("{PAGE}use Phem\\Attribute\\Page;\n\n#[Page('/about')]\nfinal class AboutPage\n{{\n    public function render()\n    {{\n        return <p><Ab|</p>;\n    }}\n}}\n");
-    assert!(run_in(&about, "src/Ui/About/AboutPage.phpm").find("AboutPage").is_none(), "not in its own file either");
+    assert!(run_in(&about, "src/Ui/About/AboutPage.phem").find("AboutPage").is_none(), "not in its own file either");
 }
 
 #[test]
@@ -440,7 +440,7 @@ fn an_import_goes_into_a_group_on_one_line() {
 
 #[test]
 fn a_component_of_the_same_namespace_needs_no_import() {
-    let r = run_in("<?phpm\nnamespace App\\Ui\\Common;\n\nfunction Home()\n{\n    return <Av|\n}\n", "src/Ui/Common/Home.phpm");
+    let r = run_in("<?phem\nnamespace App\\Ui\\Common;\n\nfunction Home()\n{\n    return <Av|\n}\n", "src/Ui/Common/Home.phem");
     assert!(r.get("Avatar").edits.is_empty());
     assert!(r.get("Avatar").sort_text.starts_with('0'));
 }
@@ -560,7 +560,7 @@ fn the_value_of_phem_debounce_in_twig() {
 
 // --- Completion: members and variables --------------------------------------------------------
 
-const USES: &str = "<?phpm\nnamespace App\\Ui;\n\nuse App\\Model\\Scientist;\nuse App\\Model\\Status;\nuse App\\Repository\\ScientistRepository;\n\n";
+const USES: &str = "<?phem\nnamespace App\\Ui;\n\nuse App\\Model\\Scientist;\nuse App\\Model\\Status;\nuse App\\Repository\\ScientistRepository;\n\n";
 
 #[test]
 fn an_arrow_shows_the_public_members_of_the_type_with_inheritance() {
@@ -618,7 +618,7 @@ fn a_class_name_with_double_colon_shows_the_static_members_and_the_constants() {
 
 #[test]
 fn this_in_a_class_shows_all_its_members() {
-    let r = run_in("<?phpm\nnamespace App\\Model;\n\nclass Chemist extends Scientist\n{\n    private int $lab = 1;\n\n    public function render()\n    {\n        $this->|\n    }\n}\n", "src/Model/Chemist.phpm");
+    let r = run_in("<?phem\nnamespace App\\Model;\n\nclass Chemist extends Scientist\n{\n    private int $lab = 1;\n\n    public function render()\n    {\n        $this->|\n    }\n}\n", "src/Model/Chemist.phem");
     for label in ["lab", "name", "born", "age", "render"] {
         assert!(r.find(label).is_some(), "{label}");
     }
@@ -629,8 +629,8 @@ fn this_in_a_class_shows_all_its_members() {
 
 #[test]
 fn promoted_constructor_properties_are_members() {
-    let src = "<?phpm\nnamespace App\\Ui\\Common;\n\nuse App\\Repository\\ScientistRepository;\nuse Phem\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class List1\n{\n    #[Prop] public int $limit = 3;\n    public int $page = 1;\n\n    public function __construct(private readonly ScientistRepository $repo)\n    {\n    }\n\n    public function render()\n    {\n        $this->repo->|\n    }\n}\n";
-    assert_eq!(run_in(src, "src/Ui/Common/List1.phpm").sorted(), ["all", "find", "load"]);
+    let src = "<?phem\nnamespace App\\Ui\\Common;\n\nuse App\\Repository\\ScientistRepository;\nuse Phem\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class List1\n{\n    #[Prop] public int $limit = 3;\n    public int $page = 1;\n\n    public function __construct(private readonly ScientistRepository $repo)\n    {\n    }\n\n    public function render()\n    {\n        $this->repo->|\n    }\n}\n";
+    assert_eq!(run_in(src, "src/Ui/Common/List1.phem").sorted(), ["all", "find", "load"]);
 }
 
 #[test]
@@ -647,14 +647,14 @@ fn an_unknown_type_gives_no_members() {
 
 #[test]
 fn a_private_member_of_a_trait_is_a_member_of_the_class_that_uses_it() {
-    let r = run_in("<?phpm\nnamespace App\\Model;\n\nclass Writer\n{\n    use HasSlug;\n\n    public function render()\n    {\n        $this->|\n    }\n}\n", "src/Model/Writer.phpm");
+    let r = run_in("<?phem\nnamespace App\\Model;\n\nclass Writer\n{\n    use HasSlug;\n\n    public function render()\n    {\n        $this->|\n    }\n}\n", "src/Model/Writer.phem");
     assert!(r.find("slugBase").is_some());
     assert!(run(&format!("{USES}function HomePage(Scientist $s)\n{{\n    $s->|\n}}\n")).find("slugBase").is_none());
 }
 
 // --- Completion: Twig ----------------------------------------------------------------------------
 
-const TWIG_USES: &str = "<?phpm\nnamespace App\\Ui;\n\nuse App\\Model\\Scientist;\nuse App\\Repository\\ScientistRepository;\n\n";
+const TWIG_USES: &str = "<?phem\nnamespace App\\Ui;\n\nuse App\\Model\\Scientist;\nuse App\\Repository\\ScientistRepository;\n\n";
 
 fn twig_fn(body: &str, markup: &str) -> String {
     format!("{TWIG_USES}function HomePage(Scientist $s, ScientistRepository $repo)\n{{\n{body}    return <div>{markup}</div>;\n}}\n")
@@ -712,8 +712,8 @@ fn the_keys_of_an_array_shape() {
 
 #[test]
 fn the_properties_and_the_methods_of_a_class_component() {
-    let src = "<?phpm\nnamespace App\\Ui\\Common;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfinal class Counter2\n{\n    public int $count = 0;\n    private string $label = \"x\";\n\n    public function increment(): void\n    {\n    }\n\n    public function render()\n    {\n        $double = $this->count * 2;\n\n        return <button onClick={{ |}}>{{ count }}</button>;\n    }\n}\n";
-    let r = run_in(src, "src/Ui/Common/Counter2.phpm");
+    let src = "<?phem\nnamespace App\\Ui\\Common;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfinal class Counter2\n{\n    public int $count = 0;\n    private string $label = \"x\";\n\n    public function increment(): void\n    {\n    }\n\n    public function render()\n    {\n        $double = $this->count * 2;\n\n        return <button onClick={{ |}}>{{ count }}</button>;\n    }\n}\n";
+    let r = run_in(src, "src/Ui/Common/Counter2.phem");
     assert!(r.find("double").is_some());
     assert!(r.find("count").is_some());
     assert!(r.find("label").is_some(), "a private property works in the markup of the class");
@@ -771,7 +771,7 @@ fn path_shows_the_route_names() {
 
 #[test]
 fn an_operator_as_a_trigger_character_opens_no_list() {
-    let trig = |source: &str, c| run_with(source, "src/Ui/HomePage.phpm", Some(c));
+    let trig = |source: &str, c| run_with(source, "src/Ui/HomePage.phem", Some(c));
     assert!(trig(&twig_fn("", "{{ s.likes >|"), '>').items.is_empty());
     assert!(trig(&twig_fn("", "{{ s.likes <|"), '<').items.is_empty());
     assert!(trig(&twig_fn("", "{{ s.likes /|"), '/').items.is_empty());
@@ -841,13 +841,13 @@ fn at(source: &str, file: &str) -> Option<Symbol> {
 }
 
 fn at_page(source: &str) -> Symbol {
-    at(source, "src/Ui/HomePage.phpm").expect("no symbol")
+    at(source, "src/Ui/HomePage.phem").expect("no symbol")
 }
 
 /// The file and the line text from the location.
 fn target(s: &Symbol, current: &str) -> (String, String) {
     let loc = s.location.as_ref().expect("no location");
-    let text = if loc.file == root().join("src/Ui/HomePage.phpm") { cursor(current).0 } else { std::fs::read_to_string(&loc.file).unwrap() };
+    let text = if loc.file == root().join("src/Ui/HomePage.phem") { cursor(current).0 } else { std::fs::read_to_string(&loc.file).unwrap() };
     let line_end = text[loc.offset..].find('\n').map_or(text.len(), |i| loc.offset + i);
     (loc.file.strip_prefix(root()).unwrap().display().to_string(), text[loc.offset..line_end].to_string())
 }
@@ -861,7 +861,7 @@ fn hover(s: &Symbol) -> &str {
     s.hover.as_deref().unwrap()
 }
 
-const DEF_USES: &str = "<?phpm\nnamespace App\\Ui;\n\nuse App\\Model\\Scientist;\nuse App\\Repository\\ScientistRepository;\n\nuse function App\\Ui\\Common\\Layout;\n\n";
+const DEF_USES: &str = "<?phem\nnamespace App\\Ui;\n\nuse App\\Model\\Scientist;\nuse App\\Repository\\ScientistRepository;\n\nuse function App\\Ui\\Common\\Layout;\n\n";
 
 fn def_fn(markup: &str, body: &str) -> String {
     format!("{DEF_USES}function HomePage(Scientist $s, ScientistRepository $repo)\n{{\n{body}    return {markup};\n}}\n")
@@ -979,7 +979,7 @@ fn a_prop_or_a_slot_of_a_replaced_tag_goes_to_the_replacement() {
 fn a_component_tag_goes_to_the_component() {
     let src = def_fn("<Lay‸out title=\"x\"></Layout>", "");
     let r = at_page(&src);
-    let layout = pair("src/Ui/Common/Layout.phpm", "Layout(string $title, ?Html $children = null, ?Html $footer = null)");
+    let layout = pair("src/Ui/Common/Layout.phem", "Layout(string $title, ?Html $children = null, ?Html $footer = null)");
     assert_eq!(target(&r, &src), layout);
     assert!(hover(&r).contains("function Layout(string $title"));
 
@@ -987,7 +987,7 @@ fn a_component_tag_goes_to_the_component() {
     assert_eq!(target(&at_page(&src), &src), layout);
 
     let src = def_fn("<Layout title=\"x\"><Layout:foo‸ter>a</Layout:footer></Layout>", "");
-    assert_eq!(target(&at_page(&src), &src), pair("src/Ui/Common/Layout.phpm", "$footer = null)"));
+    assert_eq!(target(&at_page(&src), &src), pair("src/Ui/Common/Layout.phem", "$footer = null)"));
 }
 
 #[test]
@@ -1017,11 +1017,11 @@ fn the_builtin_root_tag_has_a_hover_and_no_location() {
 #[test]
 fn a_prop_goes_to_the_parameter_or_the_property() {
     let src = def_fn("<Layout ti‸tle=\"x\" />", "");
-    assert_eq!(target(&at_page(&src), &src), pair("src/Ui/Common/Layout.phpm", "$title, ?Html $children = null, ?Html $footer = null)"));
+    assert_eq!(target(&at_page(&src), &src), pair("src/Ui/Common/Layout.phem", "$title, ?Html $children = null, ?Html $footer = null)"));
 
     let src = format!("{DEF_USES}use App\\Ui\\Common\\Counter;\n\nfunction HomePage()\n{{\n    return <Counter ma‸x={{{{ 3 }}}} />;\n}}\n");
     let r = at_page(&src);
-    assert_eq!(target(&r, &src), pair("src/Ui/Common/Counter.phpm", "$max;"));
+    assert_eq!(target(&r, &src), pair("src/Ui/Common/Counter.phem", "$max;"));
     assert!(hover(&r).contains("int $max"));
     assert!(hover(&r).contains("required"));
 }
@@ -1030,7 +1030,7 @@ fn a_prop_goes_to_the_parameter_or_the_property() {
 fn a_twig_variable_goes_to_its_php_declaration() {
     let src = def_fn("<p>{{ s‸.name }}</p>", "");
     let r = at_page(&src);
-    assert_eq!(r.location.as_ref().unwrap().file, root().join("src/Ui/HomePage.phpm"));
+    assert_eq!(r.location.as_ref().unwrap().file, root().join("src/Ui/HomePage.phem"));
     assert!(hover(&r).contains("Scientist $s"));
 
     let src = def_fn("<p>{{ s.prof‸ession }}</p>", "");
@@ -1050,8 +1050,8 @@ fn a_twig_variable_goes_to_its_php_declaration() {
 
 #[test]
 fn a_handler_goes_to_the_method() {
-    let src = "<?phpm\nnamespace App\\Ui\\Common;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfinal class Counter3\n{\n    public function increment(): void\n    {\n    }\n\n    public function render()\n    {\n        return <button onClick={{ incre‸ment }}>+</button>;\n    }\n}\n";
-    let r = at(src, "src/Ui/Common/Counter3.phpm").unwrap();
+    let src = "<?phem\nnamespace App\\Ui\\Common;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfinal class Counter3\n{\n    public function increment(): void\n    {\n    }\n\n    public function render()\n    {\n        return <button onClick={{ incre‸ment }}>+</button>;\n    }\n}\n";
+    let r = at(src, "src/Ui/Common/Counter3.phem").unwrap();
     assert_eq!(line_of(&r, src), 8);
     assert!(hover(&r).contains("public function increment(): void"));
 }
@@ -1081,10 +1081,10 @@ fn php_names_classes_members_functions_and_variables() {
     let src = def_fn("<p />", "    $x = 1;\n    echo $‸x;\n");
     assert_eq!(line_of(&at_page(&src), &src), 10);
 
-    let src = "<?phpm\nnamespace App\\Ui;\n\nuse App\\Model\\Scien‸tist;\n";
+    let src = "<?phem\nnamespace App\\Ui;\n\nuse App\\Model\\Scien‸tist;\n";
     assert_eq!(target(&at_page(src), src), pair("src/Model/Scientist.php", "Scientist extends Person"));
 
-    let src = "<?phpm\nnamespace App\\Ui;\n\nuse function Acme\\slugify;\n\n$a = slug‸ify(\"x\");\n";
+    let src = "<?phem\nnamespace App\\Ui;\n\nuse function Acme\\slugify;\n\n$a = slug‸ify(\"x\");\n";
     assert_eq!(target(&at_page(src), src), pair("vendor/acme/lib/functions.php", "slugify(string $s): string { return $s; }"));
 }
 
@@ -1105,15 +1105,15 @@ fn hover_for_twig_filters_functions_tests_tags_and_html() {
 fn a_route_name_goes_to_the_page() {
     let src = def_fn("<a href={{ path('gall‸ery') }}>x</a>", "");
     let r = at_page(&src);
-    assert_eq!(target(&r, &src), pair("src/Ui/Gallery/GalleryPage.phpm", "GalleryPage"));
+    assert_eq!(target(&r, &src), pair("src/Ui/Gallery/GalleryPage.phem", "GalleryPage"));
     assert!(hover(&r).contains("/gallery"));
 }
 
 // --- The components of the installed packages ----------------------------------------------------
 
-const BADGE: &str = "<?phpm\nnamespace Acme\\Ui;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Badge(string $label)\n{\n    return <b>{{ label }}</b>;\n}\n";
+const BADGE: &str = "<?phem\nnamespace Acme\\Ui;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Badge(string $label)\n{\n    return <b>{{ label }}</b>;\n}\n";
 
-/// A project that installs the package `acme/ui` (with the `.phpm` root `components`) in its
+/// A project that installs the package `acme/ui` (with the `.phem` root `components`) in its
 /// vendor dir `vendor_dir`.
 fn package_project(vendor_dir: &str) -> PathBuf {
     let dir = temp_dir();
@@ -1121,7 +1121,7 @@ fn package_project(vendor_dir: &str) -> PathBuf {
         ("composer.json".to_string(), format!(r#"{{"config": {{"vendor-dir": "{vendor_dir}"}}}}"#)),
         (format!("{vendor_dir}/composer/installed.json"), r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}]}"#.to_string()),
         (format!("{vendor_dir}/acme/ui/composer.json"), "{}".to_string()),
-        (format!("{vendor_dir}/acme/ui/components/Badge.phpm"), BADGE.to_string()),
+        (format!("{vendor_dir}/acme/ui/components/Badge.phem"), BADGE.to_string()),
     ];
 
     for (name, content) in files {
@@ -1136,7 +1136,7 @@ fn package_project(vendor_dir: &str) -> PathBuf {
 /// The completion items at the cursor of `source`, in the page of the project.
 fn complete_in(project: &Project, source: &str) -> Vec<Item> {
     let (text, offset) = cursor(source);
-    let index = Index::new(project, Source::new(project.root.join("src/Ui/HomePage.phpm"), text));
+    let index = Index::new(project, Source::new(project.root.join("src/Ui/HomePage.phem"), text));
 
     complete(&index, offset, None)
 }
@@ -1145,13 +1145,13 @@ fn complete_in(project: &Project, source: &str) -> Vec<Item> {
 fn a_replacement_in_a_package_changes_no_tag() {
     // A package cannot replace a component (E017): the tag goes to the original.
     let dir = package_project("vendor");
-    let chip = "<?phpm\nnamespace Acme\\Ui;\n\nuse Phem\\Attribute\\Component;\n\n#[Component(replaces: Badge::class)]\nfunction Chip(string $label) { return <i />; }\n";
-    std::fs::write(dir.join("vendor/acme/ui/components/Chip.phpm"), chip).unwrap();
+    let chip = "<?phem\nnamespace Acme\\Ui;\n\nuse Phem\\Attribute\\Component;\n\n#[Component(replaces: Badge::class)]\nfunction Chip(string $label) { return <i />; }\n";
+    std::fs::write(dir.join("vendor/acme/ui/components/Chip.phem"), chip).unwrap();
     let project = Project::load(&dir);
 
     let (text, offset) = cursor(&format!("{PAGE}use function Acme\\Ui\\Badge;\n\nfunction HomePage()\n{{\n    return <Ba‸dge label=\"x\" />;\n}}\n"));
-    let symbol = symbol_at(&Index::new(&project, Source::new(dir.join("src/Ui/HomePage.phpm"), text)), offset).expect("no symbol");
-    assert_eq!(symbol.location.expect("no location").file, dir.join("vendor/acme/ui/components/Badge.phpm"));
+    let symbol = symbol_at(&Index::new(&project, Source::new(dir.join("src/Ui/HomePage.phem"), text)), offset).expect("no symbol");
+    assert_eq!(symbol.location.expect("no location").file, dir.join("vendor/acme/ui/components/Badge.phem"));
     assert!(!symbol.hover.unwrap().contains("Replace"));
 
     std::fs::remove_dir_all(dir).unwrap();
@@ -1160,7 +1160,7 @@ fn a_replacement_in_a_package_changes_no_tag() {
 #[test]
 fn a_component_of_an_installed_package_completes_and_goes_to_its_file() {
     let dir = package_project("deps");
-    let badge = dir.join("deps/acme/ui/components/Badge.phpm");
+    let badge = dir.join("deps/acme/ui/components/Badge.phem");
     let mut project = Project::load(&dir);
 
     let source = format!("{PAGE}function HomePage()\n{{\n    return <Bad|\n}}\n");
@@ -1169,7 +1169,7 @@ fn a_component_of_an_installed_package_completes_and_goes_to_its_file() {
     assert!(apply(&cursor(&source).0, item).contains("use function Acme\\Ui\\Badge;"));
 
     let (text, offset) = cursor(&format!("{PAGE}use function Acme\\Ui\\Badge;\n\nfunction HomePage()\n{{\n    return <Ba‸dge label=\"x\" />;\n}}\n"));
-    let symbol = symbol_at(&Index::new(&project, Source::new(dir.join("src/Ui/HomePage.phpm"), text)), offset).expect("no symbol");
+    let symbol = symbol_at(&Index::new(&project, Source::new(dir.join("src/Ui/HomePage.phem"), text)), offset).expect("no symbol");
     assert_eq!(symbol.location.expect("no location").file, badge);
 
     // The package file changes on disk: the index of the project reads it again.
@@ -1191,10 +1191,10 @@ fn a_component_of_a_linked_package_has_its_real_path() {
     let dir = package_project("vendor");
     std::fs::rename(dir.join("vendor/acme/ui"), dir.join("packages-ui")).unwrap();
     std::os::unix::fs::symlink(dir.join("packages-ui"), dir.join("vendor/acme/ui")).unwrap();
-    let real = dir.join("packages-ui/components/Badge.phpm");
+    let real = dir.join("packages-ui/components/Badge.phem");
     let mut project = Project::load(&dir);
 
-    assert_eq!(project.package_file(&dir.join("vendor/acme/ui/components/Badge.phpm")), Some(real.clone()));
+    assert_eq!(project.package_file(&dir.join("vendor/acme/ui/components/Badge.phem")), Some(real.clone()));
     assert_eq!(project.package_file(&real), Some(real.clone()));
 
     // The open document at the real path replaces the file.
@@ -1225,7 +1225,7 @@ fn every_offset(project: &Project, file: &Path, text: &str) {
 fn no_panic_at_any_offset() {
     let project = Project::load(root());
 
-    for (name, _) in FILES.iter().filter(|(n, _)| n.ends_with(".phpm") || n.starts_with("src/")) {
+    for (name, _) in FILES.iter().filter(|(n, _)| n.ends_with(".phem") || n.starts_with("src/")) {
         let file = root().join(name);
         let text = std::fs::read_to_string(&file).unwrap();
         every_offset(&project, &file, &text);
@@ -1235,13 +1235,13 @@ fn no_panic_at_any_offset() {
         every_offset(&project, &file, &text[..cut]);
     }
 
-    let odd = "<?phpm\n$s = \"é{$a[\"k\"]}\"; /* ♥ */ return <p a=\"😀\" {{ ...b }}>{{ x|y(\"é\") }}{% for é in ü %}</p>; <<<EOT\nx\n";
-    every_offset(&project, &root().join("src/odd.phpm"), odd);
+    let odd = "<?phem\n$s = \"é{$a[\"k\"]}\"; /* ♥ */ return <p a=\"😀\" {{ ...b }}>{{ x|y(\"é\") }}{% for é in ü %}</p>; <<<EOT\nx\n";
+    every_offset(&project, &root().join("src/odd.phem"), odd);
 }
 
 // --- References ----------------------------------------------------------------------------------
 
-const USER: &str = r"<?phpm
+const USER: &str = r"<?phem
 namespace App\Ui;
 
 use Phem\Attribute\{Component, Page, State};
@@ -1279,11 +1279,11 @@ final class TeamPage
 
 /// The project with the `USER` page, and its usages.
 fn with_usages<T>(f: impl FnOnce(&Usages, &Path) -> T) -> T {
-    let file = root().join("src/Ui/TeamPage.phpm");
+    let file = root().join("src/Ui/TeamPage.phem");
     let mut project = Project::load(root());
-    project.update_phpm(&file, Some(USER));
+    project.update_phem(&file, Some(USER));
 
-    let mut sources: Vec<_> = project.phpm.keys().filter(|f| **f != file).map(|f| Source::new(f.clone(), std::fs::read_to_string(f).unwrap())).collect();
+    let mut sources: Vec<_> = project.phem.keys().filter(|f| **f != file).map(|f| Source::new(f.clone(), std::fs::read_to_string(f).unwrap())).collect();
     sources.push(Source::new(file.clone(), USER.to_string()));
     let usages = Usages::new(&project, sources);
 
@@ -1309,25 +1309,25 @@ fn references_of(file: &str, needle: &str) -> Vec<String> {
 #[test]
 fn the_references_of_a_function_component_are_its_tags() {
     // No import, no closing tag, and no slot tag.
-    assert_eq!(references_of("src/Ui/Common/Layout.phpm", "Layout("), ["src/Ui/TeamPage.phpm:27:Layout"]);
-    assert_eq!(references_of("src/Ui/Common/Layout.phpm", "Avatar("), ["src/Ui/TeamPage.phpm:28:Avatar", "src/Ui/TeamPage.phpm:30:Avatar"]);
+    assert_eq!(references_of("src/Ui/Common/Layout.phem", "Layout("), ["src/Ui/TeamPage.phem:27:Layout"]);
+    assert_eq!(references_of("src/Ui/Common/Layout.phem", "Avatar("), ["src/Ui/TeamPage.phem:28:Avatar", "src/Ui/TeamPage.phem:30:Avatar"]);
 }
 
 #[test]
 fn the_references_of_a_tag_are_the_references_of_its_component() {
-    assert_eq!(references_of("src/Ui/TeamPage.phpm", "Avatar name=y"), ["src/Ui/TeamPage.phpm:28:Avatar", "src/Ui/TeamPage.phpm:30:Avatar"]);
+    assert_eq!(references_of("src/Ui/TeamPage.phem", "Avatar name=y"), ["src/Ui/TeamPage.phem:28:Avatar", "src/Ui/TeamPage.phem:30:Avatar"]);
 }
 
 #[test]
 fn the_references_of_a_plain_function_are_its_calls() {
-    assert_eq!(references_of("src/Ui/Common/Layout.phpm", "Initials("), ["src/Ui/TeamPage.phpm:24:Initials"]);
+    assert_eq!(references_of("src/Ui/Common/Layout.phem", "Initials("), ["src/Ui/TeamPage.phem:24:Initials"]);
 }
 
 #[test]
 fn the_references_of_a_method_are_its_calls_and_its_handlers() {
-    assert_eq!(references_of("src/Ui/TeamPage.phpm", "increment(): void"), ["src/Ui/TeamPage.phpm:19:increment", "src/Ui/TeamPage.phpm:29:increment"]);
-    assert_eq!(references_of("src/Ui/TeamPage.phpm", "increment();"), ["src/Ui/TeamPage.phpm:19:increment", "src/Ui/TeamPage.phpm:29:increment"]);
-    assert!(references_of("src/Ui/TeamPage.phpm", "reset").is_empty());
+    assert_eq!(references_of("src/Ui/TeamPage.phem", "increment(): void"), ["src/Ui/TeamPage.phem:19:increment", "src/Ui/TeamPage.phem:29:increment"]);
+    assert_eq!(references_of("src/Ui/TeamPage.phem", "increment();"), ["src/Ui/TeamPage.phem:19:increment", "src/Ui/TeamPage.phem:29:increment"]);
+    assert!(references_of("src/Ui/TeamPage.phem", "reset").is_empty());
 }
 
 #[test]
@@ -1337,7 +1337,7 @@ fn a_page_render_and_magic_methods_get_no_usage_count() {
         let names: Vec<_> = counted(&index.current.parsed, team).into_iter().map(|d| d.name).collect();
         assert_eq!(names, ["increment", "reset"]);
 
-        let counter = root().join("src/Ui/Common/Counter.phpm");
+        let counter = root().join("src/Ui/Common/Counter.phem");
         let index = usages.index(&counter).unwrap();
         let names: Vec<_> = counted(&index.current.parsed, &counter).into_iter().map(|d| d.name).collect();
         assert_eq!(names, ["Counter"]);

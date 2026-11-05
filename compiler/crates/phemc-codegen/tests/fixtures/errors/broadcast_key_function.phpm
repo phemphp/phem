@@ -1,7 +1,0 @@
-<?phpm // expect: E057
-use Phem\Attribute\{BroadcastKey, Component};
-#[Component]
-function LikeCount(#[BroadcastKey] int $post)
-{
-    return <p>{{ post }}</p>;
-}

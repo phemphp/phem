@@ -1,6 +1,0 @@
-<?phpm // expect: E053
-use Phem\Attribute\Broadcast;
-#[Broadcast]
-final class Feed
-{
-}

@@ -14,7 +14,7 @@ these properties of Phem:
 
 - the state lives in the browser, signed, with one value for all the components of the page;
 - the server keeps no session and renders the full tree two times for each event;
-- the `.phpm` markup is compiled and checked by `phemc`, and it follows React, not Blade or Twig;
+- the `.phem` markup is compiled and checked by `phemc`, and it follows React, not Blade or Twig;
 - a handler runs in a Doctrine transaction.
 
 Talk about each item before its implementation. The open questions are a start, not a full list.
@@ -187,7 +187,7 @@ diagnostics also compile only the source directory of the app.
 - **Best peer:** the Symfony UX bundles and LW Flux: `composer require` makes the components
   available, with no other step.
 - **Decisions:**
-  - **Discovery is automatic.** A package gives its `.phpm` root in its `composer.json`:
+  - **Discovery is automatic.** A package gives its `.phem` root in its `composer.json`:
     `"extra": {"phem": {"source": "components"}}`. `phemc` reads
     `vendor/composer/installed.json` and takes each package with this key. The root is relative
     to the `install-path` of the package, so a path repository also works. `phemc` already runs
@@ -202,10 +202,10 @@ diagnostics also compile only the source directory of the app.
     the package requires: Composer makes sure that the versions are compatible.
   - **The output paths.** The `rel` of a package file is `vendor/<package>/<path in the root>`,
     so its PHP file and its templates do not collide with the files of the app
-    (`php/vendor/acme/ui/Button.php`, `@phpm/vendor/acme/ui/Button.0.twig`). The app files keep
+    (`php/vendor/acme/ui/Button.php`, `@phemc/vendor/acme/ui/Button.0.twig`). The app files keep
     their `rel`.
-  - **The source path.** Each template in the manifest keeps the path of its `.phpm` file from
-    the project root (`src/Ui/HomePage.phpm`, `vendor/acme/ui/components/Button.phpm`).
+  - **The source path.** Each template in the manifest keeps the path of its `.phem` file from
+    the project root (`src/Ui/HomePage.phem`, `vendor/acme/ui/components/Button.phem`).
     `SourceMap` uses `kernel.project_dir`. Remove the `phem.source_dir` option, the
     `Manifest::sourceDir()` method and the hardcoded `'src/'` in `SourceMap`.
   - **Diagnostics.** An error in a package file stops the build, so `phemc` shows it, with the
@@ -260,7 +260,7 @@ diagnostics also compile only the source directory of the app.
 
 ### [x] Merge of classes — P1
 
-Done: see [Merge of classes](docs/phpm-syntax.md#merge-of-classes). The text below keeps the
+Done: see [Merge of classes](docs/phem-syntax.md#merge-of-classes). The text below keeps the
 design decisions. Two details of the implementation: a plain `class` array also goes through
 the merger (a plain string does not), and the quoted `className` of a component tag stays a
 string, because the prop can have the type `string`.
@@ -335,7 +335,7 @@ and add the classes of the caller.
 
 ### [x] Polymorphic element — P2
 
-Done: see [Dynamic element](docs/phpm-syntax.md#dynamic-element). The text below keeps the
+Done: see [Dynamic element](docs/phem-syntax.md#dynamic-element). The text below keeps the
 design decisions. One detail of the implementation: the children render first, in a Twig
 variable (`{% set %}`), so `phem_end_tag()` sees them and refuses children for a void element.
 Children in the markup with no content at runtime (an empty `{{ children }}`) are not an error.
@@ -513,8 +513,8 @@ so an abstract `#[Component]` class is a tag (and its instance fails at runtime)
 
 ### [x] Backed enum props — P2
 
-Done: see [Enum props](docs/phpm-syntax.md#enum-props). The text below keeps the design
-decisions. Details of the implementation: `phemc` reads the enums of the `.phpm` files only
+Done: see [Enum props](docs/phem-syntax.md#enum-props). The text below keeps the design
+decisions. Details of the implementation: `phemc` reads the enums of the `.phem` files only
 (an enum in a `.php` file is checked at runtime), and the error is E018. An enum with a case
 whose value is not a literal (a constant) has no compiler check. For an int-backed enum, the
 string is the text of the int (`"3"`, not `"03"`), in a prop and in a bound field. A
@@ -610,7 +610,7 @@ design decisions.
   - **The classes.** Tailwind v4 does not scan the files in `.gitignore`, and `vendor/` is in
     it. The input CSS of the app adds the root of each package:
     `@source "../../vendor/acme/ui/components";`. The compiled templates in `var/phem` are not
-    necessary: the `.phpm` sources have the same classes.
+    necessary: the `.phem` sources have the same classes.
   - **The theme tokens.** A shadcn theme gives its CSS variables and its `@theme` block in a
     CSS file of the package. The input CSS of the app imports it
     (`@import "../../vendor/acme/ui/assets/theme.css";`), so the Tailwind build reads it. The

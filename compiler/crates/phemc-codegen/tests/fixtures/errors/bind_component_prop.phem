@@ -1,0 +1,7 @@
+<?phem // expect: E033
+use Phem\Attribute\{Component, State};
+use Phem\Bound;
+#[Component]
+function Field(Bound $value) { return <input phem:bind={{ value }} />; }
+#[Component]
+final class F { #[State] public string $q = ''; public function render() { return <Field value={{ q }} phem:bind={{ q }} />; } }

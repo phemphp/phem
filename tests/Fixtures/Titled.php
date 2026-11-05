@@ -16,7 +16,7 @@ namespace Phem\Tests\Fixtures;
 use Phem\Attribute\Prop;
 use Phem\Attribute\State;
 
-/** The parent class of a fixture component, outside the .phpm sources: phemc does not see it. */
+/** The parent class of a fixture component, outside the .phem sources: phemc does not see it. */
 abstract class Titled
 {
     #[Prop] public string $title = 'Untitled';

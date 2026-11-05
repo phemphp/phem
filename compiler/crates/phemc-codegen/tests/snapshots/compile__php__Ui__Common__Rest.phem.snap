@@ -1,0 +1,42 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from Ui/Common/Rest.phem; do not edit */
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\{Component, Prop};
+use Phem\Node;
+
+#[Component]
+function RestButton(int $count, mixed ...$rest): Node {
+    return (
+        new \Phem\Element('Ui/Common/Rest.0.twig', ['rest' => $rest, 'count' => $count])
+
+
+    );
+}
+
+#[Component]
+function Toolbar(mixed ...$rest): Node {
+    $count = 1;
+    return new \Phem\Element('Ui/Common/Rest.1.twig', ['count' => $count, 'rest' => $rest]);
+}
+
+#[Component]
+final class RestLink
+{
+    #[Prop] public string $label = '';
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function render(): Node
+    {
+        return new \Phem\Element('Ui/Common/Rest.2.twig', ['attrs' => $this->attrs, 'label' => $this->label]);
+    }
+}
+
+#[Component]
+function Nav(): Node {
+    return new \Phem\Element('Ui/Common/Rest.3.twig', []);
+}

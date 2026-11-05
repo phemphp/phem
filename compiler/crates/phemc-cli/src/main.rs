@@ -1,7 +1,7 @@
-//! `phemc` — the `.phpm` compiler.
+//! `phemc` — the `.phem` compiler.
 //!
 //! - `phemc build <src>`: compiles to PHP + Twig, writes the manifest, and warms up the Twig cache
-//!   (`bin/console phem:warmup` of the Symfony application). It compiles the `.phpm` roots of the
+//!   (`bin/console phem:warmup` of the Symfony application). It compiles the `.phem` roots of the
 //!   Composer packages with the app (see `phemc_sources`). It runs from the project root.
 //! - `phemc check <src>`: reports diagnostics only. `--format json` prints them as JSON (for editors).
 //! - `phemc watch <src> --exec <cmd>`: rebuilds on change and restarts `<cmd>`.
@@ -19,7 +19,7 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 #[derive(Parser)]
-#[command(name = "phemc", version, about = "Compiles .phpm files (PHP + Twig markup) to PHP and Twig")]
+#[command(name = "phemc", version, about = "Compiles .phem files (PHP + Twig markup) to PHP and Twig")]
 struct Cli {
     #[command(subcommand)]
     cmd: Cmd,
@@ -133,7 +133,7 @@ fn report(files: &[FileDiagnostics]) -> (usize, usize) {
 
 struct Compiled {
     out: Option<ProjectOutput>,
-    /// The `.phpm` files, and the files in "(2 package(s))" when there are packages.
+    /// The `.phem` files, and the files in "(2 package(s))" when there are packages.
     files: String,
     errors: usize,
     warnings: usize,
@@ -173,7 +173,7 @@ fn check_json(src: &Path) -> Result<bool> {
 }
 
 /// The diagnostics as JSON:
-/// `{"files": [{"file": "src/Ui/HomePage.phpm", "diagnostics": [{"severity", "code", "message", "label",
+/// `{"files": [{"file": "src/Ui/HomePage.phem", "diagnostics": [{"severity", "code", "message", "label",
 /// "help", "start": {"line", "character"}, "end": {...}}]}]}`.
 /// The file is relative to the project root. The diagnostics are the ones that the tools show (see
 /// `FileDiagnostics::shown()`). The lines start at 0, and the characters count UTF-16 code units,
@@ -386,7 +386,7 @@ fn change_of(event: &notify::Result<notify::Event>) -> (bool, bool) {
     match event {
         Ok(e) if !e.kind.is_access() => {
             let installed = e.paths.iter().any(is_installed);
-            (installed || e.paths.iter().any(|p| p.extension().is_some_and(|x| x == "phpm")), installed)
+            (installed || e.paths.iter().any(|p| p.extension().is_some_and(|x| x == "phem")), installed)
         }
         _ => (false, false),
     }
@@ -470,7 +470,7 @@ mod tests {
         assert_eq!(position(text, offset), json!({"line": 1, "character": 4}));
         assert_eq!(position(text, 0), json!({"line": 0, "character": 0}));
         assert_eq!(position(text, text.len() + 10), json!({"line": 1, "character": 5}));
-        assert_eq!(position("\u{feff}<?phpm", 4), json!({"line": 0, "character": 1}));
+        assert_eq!(position("\u{feff}<?phem", 4), json!({"line": 0, "character": 1}));
     }
 
     #[test]
@@ -482,23 +482,23 @@ mod tests {
 
     #[test]
     fn json_lists_the_files_with_diagnostics() {
-        let text = "<?phpm\nreturn <Foo />;\n".to_string();
+        let text = "<?phem\nreturn <Foo />;\n".to_string();
         let start = text.find("Foo").unwrap();
         let files = vec![
             FileDiagnostics {
-                rel: "Ui/index.phpm".into(),
-                path: "src/Ui/index.phpm".into(),
+                rel: "Ui/index.phem".into(),
+                path: "src/Ui/index.phem".into(),
                 package: None,
                 text: text.clone(),
                 diags: vec![Diagnostic::error("E001", "Unknown component", Span::new(start, start + 3))
                     .with_label("here")
                     .with_help("Import it")],
             },
-            FileDiagnostics { rel: "Ui/ok.phpm".into(), path: "src/Ui/ok.phpm".into(), package: None, text: String::new(), diags: vec![] },
+            FileDiagnostics { rel: "Ui/ok.phem".into(), path: "src/Ui/ok.phem".into(), package: None, text: String::new(), diags: vec![] },
             // The app cannot fix a warning of a package.
             FileDiagnostics {
-                rel: "vendor/acme/ui/Badge.phpm".into(),
-                path: "vendor/acme/ui/components/Badge.phpm".into(),
+                rel: "vendor/acme/ui/Badge.phem".into(),
+                path: "vendor/acme/ui/components/Badge.phem".into(),
                 package: Some("acme/ui".into()),
                 text: text.clone(),
                 diags: vec![Diagnostic::warning("W002", "No key", Span::new(start, start + 3))],
@@ -507,7 +507,7 @@ mod tests {
 
         assert_eq!(
             diagnostics_json(&files),
-            json!({"files": [{"file": "src/Ui/index.phpm", "diagnostics": [{
+            json!({"files": [{"file": "src/Ui/index.phem", "diagnostics": [{
                 "severity": "error",
                 "code": "E001",
                 "message": "Unknown component",
@@ -554,8 +554,8 @@ mod tests {
             std::fs::write(dir.join(file), text).unwrap();
         };
 
-        write("src/Home.phpm", "");
-        write("vendor/acme/ui/components/Badge.phpm", "");
+        write("src/Home.phem", "");
+        write("vendor/acme/ui/components/Badge.phem", "");
         write("vendor/composer/installed.json", r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}]}"#);
 
         let mut watcher = FakeWatcher::default();
@@ -588,8 +588,8 @@ mod tests {
         let out = std::env::temp_dir().join(format!("phemc-cli-out-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&out);
         let args = BuildArgs { src: "src".into(), out: out.clone(), php: "php".into(), no_warmup: true };
-        let home = SourceInput::app("Home.phpm", "<?phpm\nnamespace App;\nfunction Home() { return <p />; }\n");
-        let badge = SourceInput { rel: "vendor/acme/ui/Badge.phpm".into(), path: "vendor/acme/ui/components/Badge.phpm".into(), package: Some("acme/ui".into()), text: "<?phpm\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\Component;\n#[Component]\nfunction Badge() { return <b />; }\n".into() };
+        let home = SourceInput::app("Home.phem", "<?phem\nnamespace App;\nfunction Home() { return <p />; }\n");
+        let badge = SourceInput { rel: "vendor/acme/ui/Badge.phem".into(), path: "vendor/acme/ui/components/Badge.phem".into(), package: Some("acme/ui".into()), text: "<?phem\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\Component;\n#[Component]\nfunction Badge() { return <b />; }\n".into() };
 
         let (project, _) = phemc_codegen::compile(vec![home.clone(), badge]);
         write_output(&args, &project.unwrap()).unwrap();
@@ -613,10 +613,10 @@ mod tests {
         let event = |kind: EventKind, path: &str| Ok(notify::Event::new(kind).add_path(PathBuf::from(path)));
         let modify = EventKind::Modify(ModifyKind::Any);
 
-        assert_eq!(change_of(&event(modify, "/app/src/Home.phpm")), (true, false));
+        assert_eq!(change_of(&event(modify, "/app/src/Home.phem")), (true, false));
         assert_eq!(change_of(&event(modify, "/app/vendor/composer/installed.json")), (true, true));
         assert_eq!(change_of(&event(modify, "/app/src/Kernel.php")), (false, false));
-        assert_eq!(change_of(&event(EventKind::Access(AccessKind::Any), "/app/src/Home.phpm")), (false, false));
+        assert_eq!(change_of(&event(EventKind::Access(AccessKind::Any), "/app/src/Home.phem")), (false, false));
         assert_eq!(change_of(&Err(notify::Error::generic("lost"))), (false, false));
     }
 }

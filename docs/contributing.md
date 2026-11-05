@@ -11,8 +11,8 @@ You need only Docker. Run the commands from the root of the repository.
 make test      # the JS tests, cargo test and PHPUnit
 make bench     # the benchmark of the client/server flow (bench/run.php)
 make shell     # a shell in the dev image: phemc (built from compiler/), cargo, composer, PHPUnit
-make vscode    # the VS Code extension for .phpm files (editors/vscode/phem-<version>.vsix)
-make phpstorm  # the PhpStorm plugin for .phpm files (needs Java 21 and Gradle)
+make vscode    # the VS Code extension for .phem files (editors/vscode/phem-<version>.vsix)
+make phpstorm  # the PhpStorm plugin for .phem files (needs Java 21 and Gradle)
 ```
 
 The dev image is in `docker/`: FrankenPHP (PHP 8.5), Composer and the Rust toolchain. Its
@@ -29,7 +29,7 @@ find references, hover, and outline. In an application, the Claude Code plugin r
 [editors/phpstorm/README.md](../editors/phpstorm/README.md) and
 [editors/claude-code/README.md](../editors/claude-code/README.md).
 
-`make bench` runs the pages of `tests/Fixtures/app` (and its `bench.phpm`) as the browser sends
+`make bench` runs the pages of `tests/Fixtures/app` (and its `bench.phem`) as the browser sends
 their events. It prints the median server time, the bytes of each request and response, the
 requests of each step, and the writes to the state cache. The time has no network: one request
 more is one round trip more in a browser. Run it before and after a change of the client/server
@@ -54,19 +54,19 @@ bench/               the benchmark of the client/server flow: `make bench`
 compiler/            Rust workspace: phemc-syntax, phemc-twig-scan, phemc-analyze, phemc-codegen, phemc-lsp, phemc-cli
 docker/              the dev image (Dockerfile, compose.yaml, entrypoint.sh): `make test`, `make shell`
 editors/server/      the Node launcher of the language server (phem-lsp.wasm: `make lsp`)
-editors/vscode/      VS Code extension: .phpm syntax highlighting (TextMate grammar) and the language server
+editors/vscode/      VS Code extension: .phem syntax highlighting (TextMate grammar) and the language server
 editors/phpstorm/    PhpStorm plugin: the same grammar and language server
 editors/claude-code/ Claude Code plugin: the language server, for diagnostics after each edit
 docs/                the docs, as plain Markdown (GitHub, the website and LLMs read the same files)
 docs/what-is-phem.md the five ideas of Phem, for newcomers
 docs/tutorial.md     the tutorial: a task list, one idea at a time
-docs/phpm-syntax.md  the .phpm syntax
+docs/phem-syntax.md  the .phem syntax
 docs/components.md   components, state, services and context
 docs/events-and-forms.md events, bound fields, forms and validation
 docs/client-side.md  Stimulus and the built-in controllers
 docs/server-features.md transactions, Suspense, real-time updates, async work
 docs/errors-and-limits.md failed events, retries and limits
-docs/compiling.md    how to build, check, watch, and run .phpm files
+docs/compiling.md    how to build, check, watch, and run .phem files
 docs/testing.md      how to test components and pages (Phem\Test\InteractsWithPhem)
 docs/how-it-works.md the path from the compiler to the browser
 docs/contributing.md this document

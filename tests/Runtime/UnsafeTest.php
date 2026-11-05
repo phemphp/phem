@@ -16,7 +16,7 @@ namespace Phem\Tests\Runtime;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Data in a page cannot add HTML or script (tests/Fixtures/app/src/Ui/Unsafe/UnsafePage.phpm).
+ * Data in a page cannot add HTML or script (tests/Fixtures/app/src/Ui/Unsafe/UnsafePage.phem).
  */
 final class UnsafeTest extends TestCase
 {

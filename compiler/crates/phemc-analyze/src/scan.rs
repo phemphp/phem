@@ -1255,13 +1255,13 @@ mod tests {
 
     fn scan_src(src: &str) -> FileInfo {
         let lexed = lex(src).unwrap();
-        scan("component/test.phpm", src, &lexed)
+        scan("component/test.phem", src, &lexed)
     }
 
     #[test]
     fn namespace_uses_and_functions() {
         let f = scan_src(
-            r#"<?phpm
+            r#"<?phem
 namespace App\Ui\Common;
 use function Phem\{useState, useEffect as ue};
 use App\Ui\Card, App\Ui\Button as Btn;
@@ -1304,7 +1304,7 @@ function helper() {}
     #[test]
     fn a_function_needs_component_to_be_a_component() {
         let f = scan_src(
-            r#"<?phpm
+            r#"<?phem
 namespace App;
 use Phem\Attribute\Component;
 function Format(string $s) { return <b>{{ s }}</b>; }
@@ -1322,14 +1322,14 @@ function Other() { return <p />; }
 
     #[test]
     fn a_page_class_is_a_component() {
-        let f = scan_src("<?phpm\nnamespace App;\nuse Phem\\Attribute\\Page;\n#[Page('/')]\nfinal class Home { public function render() { return <p />; } }\n");
+        let f = scan_src("<?phem\nnamespace App;\nuse Phem\\Attribute\\Page;\n#[Page('/')]\nfinal class Home { public function render() { return <p />; } }\n");
         assert!(f.classes[0].is_component, "#[Page] needs no #[Component]");
         assert_eq!((f.routes[0].attr, f.routes[0].is_component, f.routes[0].is_function), ("Page", true, false));
     }
 
     #[test]
     fn a_page_function_is_a_component() {
-        let f = scan_src("<?phpm\nnamespace App;\nuse Phem\\Attribute\\Page;\n#[Page('/a')]\n#[Page('/b', name: 'b')]\nfunction About() { return <p />; }\n#[Page('/c')]\nfunction Contact() { $to = 'me'; return <p>{{ to }}</p>; }\n");
+        let f = scan_src("<?phem\nnamespace App;\nuse Phem\\Attribute\\Page;\n#[Page('/a')]\n#[Page('/b', name: 'b')]\nfunction About() { return <p />; }\n#[Page('/c')]\nfunction Contact() { $to = 'me'; return <p>{{ to }}</p>; }\n");
         let kinds: Vec<_> = f.functions.iter().map(|x| x.component_kind).collect();
         assert_eq!(kinds, [Some(Kind::Template), Some(Kind::Function)], "#[Page] needs no #[Component]");
         let routes: Vec<_> = f.routes.iter().map(|r| (r.fqn.as_str(), r.attr, r.is_component, r.is_function)).collect();
@@ -1339,7 +1339,7 @@ function Other() { return <p />; }
     #[test]
     fn class_component() {
         let f = scan_src(
-            r#"<?phpm
+            r#"<?phem
 namespace App;
 use Phem\Attribute\{Component, Prop, State};
 #[Component]
@@ -1369,7 +1369,7 @@ final class Counter {
     #[test]
     fn property_hooks_and_closure_defaults() {
         let f = scan_src(
-            r#"<?phpm
+            r#"<?phem
 #[Component]
 final class Form {
     private Form $form {
@@ -1392,7 +1392,7 @@ final class Form {
     #[test]
     fn rest_props() {
         let f = scan_src(
-            r#"<?phpm
+            r#"<?phem
 use Phem\Attribute\{Component, Prop, State};
 #[Component]
 final class Link {

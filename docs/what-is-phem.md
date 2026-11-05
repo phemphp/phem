@@ -1,19 +1,19 @@
 # What is Phem
 
 Phem is a component layer for Symfony web apps. You write the logic and the markup of a
-component in one `.phpm` file. The server renders the HTML, runs the event handlers, and updates
+component in one `.phem` file. The server renders the HTML, runs the event handlers, and updates
 only the parts of the page that change. You write no JavaScript, no API and no client store.
 
 This page gives the five ideas of Phem, with one small example each. Then do
 [Getting started](getting-started.md) and the [tutorial](tutorial.md).
 
-## 1. A `.phpm` file is PHP with markup in it
+## 1. A `.phem` file is PHP with markup in it
 
-A `.phpm` file is a PHP file that can contain markup, as a `.jsx` file is a JavaScript file that
+A `.phem` file is a PHP file that can contain markup, as a `.jsx` file is a JavaScript file that
 contains JSX. The markup is Twig: `{{ name }}` prints a value.
 
 ```php
-<?phpm
+<?phem
 
 namespace App\Ui\Common;
 
@@ -27,9 +27,9 @@ function Greeting(string $name): Node
 }
 ```
 
-The `phemc` compiler reads the `.phpm` files at build time. It writes plain PHP and Twig
-templates, and it shows the errors with the line of the `.phpm` file. At runtime, nothing parses
-`.phpm` files. See [Compiling](compiling.md).
+The `phemc` compiler reads the `.phem` files at build time. It writes plain PHP and Twig
+templates, and it shows the errors with the line of the `.phem` file. At runtime, nothing parses
+`.phem` files. See [Compiling](compiling.md).
 
 ## 2. A page is a component with a URL
 
@@ -49,7 +49,7 @@ function HelloPage(): Node
 ```
 
 `Document` is a component of your app: the HTML document (`<html>`, `<head>`, `<body>`) of all
-the pages. The name of a page ends with `Page`, and the `.phpm` files are in `src/Ui/` (see
+the pages. The name of a page ends with `Page`, and the `.phem` files are in `src/Ui/` (see
 [Organize the UI](compiling.md#organize-the-ui)).
 
 ## 3. A component is a function or a class

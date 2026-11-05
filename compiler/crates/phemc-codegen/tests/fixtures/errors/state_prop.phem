@@ -1,0 +1,4 @@
+<?phem // expect: E042
+use Phem\Attribute\{Component, Prop, State};
+#[Component]
+final class Counter { #[Prop, State] public int $count = 0; public function render() { return <b>{{ count }}</b>; } }

@@ -1,4 +1,4 @@
-//! Emits PHP and Twig from `.phpm` files, and the project manifest.
+//! Emits PHP and Twig from `.phem` files, and the project manifest.
 //!
 //! [`compile`] runs in two passes: it scans all files to build the component registry, then
 //! it generates each file. Markup literals become Twig templates. In the PHP code, each markup
@@ -27,7 +27,7 @@ pub struct SourceInput {
     /// app, or `vendor/<package>/<path in the package root>` for a package file. The output
     /// paths and the template names come from it.
     pub rel: String,
-    /// The path of the file from the project root (`src/Ui/HomePage.phpm`), for the diagnostics
+    /// The path of the file from the project root (`src/Ui/HomePage.phem`), for the diagnostics
     /// and the source map of the runtime.
     pub path: String,
     /// The Composer package of the file, or `None` for a file of the app.
@@ -46,7 +46,7 @@ impl SourceInput {
 #[derive(Clone, Debug)]
 pub struct FileOutput {
     pub rel: String,
-    /// `php/<rel without .phpm>.php`
+    /// `php/<rel without .phem>.php`
     pub php_path: String,
     pub php: String,
     pub templates: Vec<TemplateOutput>,
@@ -58,9 +58,9 @@ pub struct TemplateOutput {
     pub name: String,
     #[serde(skip)]
     pub content: String,
-    /// The path of the `.phpm` file from the project root.
+    /// The path of the `.phem` file from the project root.
     pub source: String,
-    /// The `.phpm` line of the template's first line.
+    /// The `.phem` line of the template's first line.
     pub line: usize,
 }
 
@@ -334,7 +334,7 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
         }
     }
 
-    // Each `<?phpm` tag becomes `<?php`. The first one gets a header comment on its line (keeps line numbers).
+    // Each `<?phem` tag becomes `<?php`. The first one gets a header comment on its line (keeps line numbers).
     for (i, open) in lexed.tokens.iter().filter(|t| t.kind == TokKind::OpenTag).enumerate() {
         let tag = if i == 0 { format!("<?php /* compiled by phemc from {}; do not edit */", input.path) } else { "<?php".into() };
         edits.push((open.span, tag));
@@ -352,7 +352,7 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
 
     php.push_str(&src[last..]);
 
-    let stem = input.rel.strip_suffix(".phpm").unwrap_or(&input.rel);
+    let stem = input.rel.strip_suffix(".phem").unwrap_or(&input.rel);
     (FileOutput { rel: input.rel.clone(), php_path: format!("php/{stem}.php"), php, templates }, diags)
 }
 

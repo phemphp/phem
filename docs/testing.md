@@ -32,10 +32,10 @@ final class CounterTest extends KernelTestCase
 
 1. Install PHPUnit: `composer require --dev phpunit/phpunit`.
 2. Set `framework.test: true` for the `test` environment (the Symfony recipe does this).
-3. Run `phemc build` before the tests. The tests use the compiled `.phpm` files.
+3. Run `phemc build` before the tests. The tests use the compiled `.phem` files.
 4. Use the `InteractsWithPhem` trait in a `KernelTestCase` (or a `WebTestCase`).
 
-A Composer package with `.phpm` components has no app: test it with `Phem\Test\TestKernel` and
+A Composer package with `.phem` components has no app: test it with `Phem\Test\TestKernel` and
 a small test app (see [Test a package](packages.md#test-a-package)).
 
 ## Two ways to test

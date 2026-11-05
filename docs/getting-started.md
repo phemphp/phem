@@ -1,7 +1,7 @@
 # Getting started: a new app from scratch
 
 This guide adds Phem to a new Symfony application. At the end, you have a dev server that builds
-the `.phpm` files when you save them, and a page with an interactive component.
+the `.phem` files when you save them, and a page with an interactive component.
 
 You need the [Symfony CLI](https://symfony.com/download) (with PHP 8.4 or later, and Composer).
 
@@ -30,8 +30,8 @@ Symfony Flex and PhemBundle configure the application:
   ├── src/
   │   └── Ui/
   │       ├── Common/
-  │       │   └── Document.phpm   the HTML document of the pages
-  │       └── HomePage.phpm       the page at /
+  │       │   └── Document.phem   the HTML document of the pages
+  │       └── HomePage.phem       the page at /
   └── .symfony.local.yaml     `symfony serve` also runs `phemc watch src`
   ```
 
@@ -71,7 +71,7 @@ symfony serve
 ```
 
 The server also starts the `phemc` worker of `.symfony.local.yaml`. On the first start, the worker
-downloads `phemc`, then builds the `.phpm` files:
+downloads `phemc`, then builds the `.phem` files:
 
 ```
 [phemc] Downloading phemc v0.3.1 (phemc-mac-arm64)...
@@ -88,10 +88,10 @@ it. `<Root>` is the root element of the page: the `phem` controller gets the eve
 elements in it. `{{ importmap('app') }}` loads `assets/app.js`, which starts Stimulus with the
 `phem` controller.
 
-`src/Ui/Common/Document.phpm`:
+`src/Ui/Common/Document.phem`:
 
 ```php
-<?phpm
+<?phem
 
 namespace App\Ui\Common;
 
@@ -125,10 +125,10 @@ All the pages use the document, so it is in `src/Ui/Common/`. See
 A page is a component with the `#[Page]` attribute: a Symfony route. The name of a page ends with
 `Page`. This page has no state, so it is a function that returns the markup.
 
-`src/Ui/HomePage.phpm`:
+`src/Ui/HomePage.phem`:
 
 ```php
-<?phpm
+<?phem
 
 namespace App\Ui;
 
@@ -154,10 +154,10 @@ function HomePage(): Node
 A class component keeps its state in `#[State]` properties. The state stays in the browser
 between the events. An event handler, such as `increment()`, runs on the server.
 
-`src/Ui/Counter.phpm`:
+`src/Ui/Counter.phem`:
 
 ```php
-<?phpm
+<?phem
 
 namespace App\Ui;
 
@@ -187,7 +187,7 @@ final class Counter
 ```
 
 Only the home page uses it, so it is in the directory of the page, with the same namespace. The
-page does not import it. Use it two times in `src/Ui/HomePage.phpm`. Each `<Counter />` has its
+page does not import it. Use it two times in `src/Ui/HomePage.phem`. Each `<Counter />` has its
 own state. The page has no state of its own, so it stays a function:
 
 ```php
@@ -215,7 +215,7 @@ Save the files. The `phemc` worker builds them again:
 
 Reload the page, and click the buttons. Each button counts its own clicks.
 
-If a file has an error, the worker shows the diagnostic with the `.phpm` line, and the previous
+If a file has an error, the worker shows the diagnostic with the `.phem` line, and the previous
 build stays. Run `symfony server:log` to see the log of the worker in another terminal. Other
 tools:
 
@@ -228,7 +228,7 @@ bin/console phem:render /           # the HTML of a page, with no server
 ## Use Claude Code
 
 The Phem plugin for [Claude Code](https://claude.com/claude-code) runs the language server of
-the application (`vendor/bin/phemc lsp`). After each edit of a `.phpm` file, Claude Code gets the
+the application (`vendor/bin/phemc lsp`). After each edit of a `.phem` file, Claude Code gets the
 errors and warnings of `phemc`, so it can correct them at once. It also gets go to definition,
 find references, hover, and outline through its `LSP` tool.
 
@@ -244,7 +244,7 @@ In a running session, run `/reload-plugins` after the install.
 The plugin runs the `vendor/bin/phemc` of each project that has one, so use it only in projects
 that you trust.
 
-The server starts the first time Claude Code edits a `.phpm` file. After each edit, the
+The server starts the first time Claude Code edits a `.phem` file. After each edit, the
 conversation shows a summary, for example `Found 1 new diagnostic issues in 1 files`. Press
 `Ctrl+O` to read the diagnostics. If the server does not start, open `/plugin` and read the
 **Errors** tab.
@@ -254,12 +254,12 @@ conversation shows a summary, for example `Found 1 new diagnostic issues in 1 fi
 - [Tutorial: a task list](tutorial.md): build a small app, one idea at a time
 - [Deployment](deployment.md): the production image with FrankenPHP
 - [Philosophy and conventions](philosophy.md): the rules to keep in mind when you design with Phem
-- [The `.phpm` syntax](phpm-syntax.md): markup, props, slots, lists, directives and attributes
+- [The `.phem` syntax](phem-syntax.md): markup, props, slots, lists, directives and attributes
 - [Components and state](components.md): the anatomy of a component, state, `mount()`, context and URL state
 - [Events and forms](events-and-forms.md): handlers, bound fields, forms, validation and uploads
 - [Client-side behavior](client-side.md): Stimulus and the built-in controllers
 - [Server features](server-features.md): transactions, Suspense, real-time updates and async work
 - [Errors and limits](errors-and-limits.md): failed events, retries and the limits of an event
-- [Compiling and running `.phpm` files](compiling.md): the build output and the diagnostics
+- [Compiling and running `.phem` files](compiling.md): the build output and the diagnostics
 - [Testing components and pages](testing.md)
 - [How it works](how-it-works.md), and the limits

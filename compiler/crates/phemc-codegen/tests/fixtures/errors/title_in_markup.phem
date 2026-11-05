@@ -1,0 +1,2 @@
+<?phem // expect: W005
+function App() { return <main><svg><title>Icon</title></svg><title>Home</title></main>; }

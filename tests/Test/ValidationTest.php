@@ -17,7 +17,7 @@ use Phem\Test\InteractsWithPhem;
 use Phem\Tests\Fixtures\TestKernel;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
-/** The live validation of the #[State] properties (tests/Fixtures/app/src/Ui/Validation/ValidationPage.phpm). */
+/** The live validation of the #[State] properties (tests/Fixtures/app/src/Ui/Validation/ValidationPage.phem). */
 final class ValidationTest extends KernelTestCase
 {
     use InteractsWithPhem;

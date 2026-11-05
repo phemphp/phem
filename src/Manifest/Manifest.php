@@ -19,7 +19,7 @@ use Phem\Suspense;
 
 /**
  * The output of `phemc build`: the components, the pages, and the template line map. It has the
- * `.phpm` sources of the application and of its Composer packages. Each page has the name of its
+ * `.phem` sources of the application and of its Composer packages. Each page has the name of its
  * package (`''` for a page of the application).
  *
  * It loads the manifest and the compiled PHP files on first use, so an application without a
@@ -36,7 +36,7 @@ use Phem\Suspense;
 final class Manifest
 {
     /** The Twig namespace of the compiled templates. */
-    public const TEMPLATE_NAMESPACE = 'phpm';
+    public const TEMPLATE_NAMESPACE = 'phemc';
 
     /** @var ManifestData|null */
     private ?array $data = null;
@@ -104,7 +104,7 @@ final class Manifest
 
     /**
      * The component that replaces a component in the tags (`#[Component(replaces: ...)]`), or
-     * null. phemc already resolves the tags of the `.phpm` files: a Twig template of the app
+     * null. phemc already resolves the tags of the `.phem` files: a Twig template of the app
      * uses it.
      */
     public function replacement(string $fqcn): ?string
@@ -175,15 +175,15 @@ final class Manifest
         return $this->twigSignature = hash('xxh128', serialize($parts));
     }
 
-    /** The Twig name of a compiled template: `@phpm/Page/index.0.twig`. */
+    /** The Twig name of a compiled template: `@phemc/Page/index.0.twig`. */
     public static function templateName(string $template): string
     {
         return '@'.self::TEMPLATE_NAMESPACE.'/'.$template;
     }
 
     /**
-     * The `.phpm` source of a compiled template. The source is a path from the project root
-     * (`src/Ui/HomePage.phpm`, `vendor/acme/ui/components/Badge.phpm`).
+     * The `.phem` source of a compiled template. The source is a path from the project root
+     * (`src/Ui/HomePage.phem`, `vendor/acme/ui/components/Badge.phem`).
      *
      * @param string $template the template name, without the Twig namespace
      *

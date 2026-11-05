@@ -1,0 +1,2 @@
+<?phem // expect: E032
+function App() { $track = fn() => 1; return <input onInput={{ track }} phem:throttle={{ 'blur' }} />; }

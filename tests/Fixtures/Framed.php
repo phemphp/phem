@@ -16,7 +16,7 @@ namespace Phem\Tests\Fixtures;
 use Phem\Attribute\Prop;
 use Phem\Html;
 
-/** The parent class of a fixture component, with its slots, outside the .phpm sources. */
+/** The parent class of a fixture component, with its slots, outside the .phem sources. */
 abstract class Framed
 {
     #[Prop] public ?Html $children = null;

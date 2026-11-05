@@ -1,6 +1,6 @@
 {
     "name": "acme/ui",
-    "description": "A fixture package with .phpm components",
+    "description": "A fixture package with .phem components",
     "type": "library",
     "extra": {
         "phem": {

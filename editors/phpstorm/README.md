@@ -1,15 +1,15 @@
 # Phem for PhpStorm
 
-This plugin adds support for Phem `.phpm` files to PhpStorm. A `.phpm` file is a PHP file that
+This plugin adds support for Phem `.phem` files to PhpStorm. A `.phem` file is a PHP file that
 contains markup literals and Twig.
 
 The plugin gives:
 
 - Syntax highlighting. The plugin uses the TextMate grammar of the VS Code extension
-  (`editors/vscode/syntaxes/phpm.tmLanguage.json`).
+  (`editors/vscode/syntaxes/phem.tmLanguage.json`).
 - Comments and brace matching. They come from the language configuration of the VS Code
   extension. In markup, **Comment with Line Comment** writes a Twig comment (`{# ... #}`).
-- A file icon for `.phpm` files.
+- A file icon for `.phem` files.
 - Language features from the Phem language server:
   - diagnostics, as you type;
   - completion, with snippets and `use` imports;
@@ -29,11 +29,11 @@ method show where the project uses it:
 - a function: its calls;
 - a method: its calls (`$this->increment()`) and the Twig handlers (`onClick={{ increment }}`).
 
-Above each component, function, and method of a `.phpm` file, a usage count (`2 usages`) shows
+Above each component, function, and method of a `.phem` file, a usage count (`2 usages`) shows
 the number of usages. Click it to see the usages in a popup. Click a usage to go to its file and
 position. A page, `render()`, and the magic methods (`__construct()`) have no usage count.
 
-The server finds the usages in the `.phpm` files of the project. It does not search the `.php`
+The server finds the usages in the `.phem` files of the project. It does not search the `.php`
 files.
 
 ## Requirements
@@ -59,9 +59,9 @@ make phpstorm
 The build copies these files into the plugin:
 
 - From `editors/vscode`: `package.json`, `language-configuration.json`,
-  `markup-language-configuration.json`, and `syntaxes/phpm.tmLanguage.json`. They become the
-  TextMate bundle in `bundles/phpm`.
-- From `editors/vscode/icons/phpm.svg`: the file icon and the plugin icon.
+  `markup-language-configuration.json`, and `syntaxes/phem.tmLanguage.json`. They become the
+  TextMate bundle in `bundles/phem`.
+- From `editors/vscode/icons/phem.svg`: the file icon and the plugin icon.
 - From `editors/server`: `phem-lsp.cjs` and `phem-lsp.wasm`. They go into `server`. If the files
   are missing, the build shows a warning and continues. The plugin then needs a `phemc` path.
 
@@ -108,7 +108,7 @@ Open **Settings > Languages & Frameworks > Phem**.
 |------------------|-------------|---------|---------------------------------------------------------------------------------------------------------------------|
 | phemc path       | Application | Empty   | The path of a `phemc` binary. When you set it, the plugin runs `phemc lsp`. When it is empty, the plugin runs the bundled server. |
 | Node.js path     | Application | Empty   | The `node` executable for the bundled server. When it is empty, the plugin uses `node` from `PATH`.                 |
-| Source directory | Project     | `src`   | The directory of the `.phpm` files, relative to the project root (the nearest directory with `composer.json`).      |
+| Source directory | Project     | `src`   | The directory of the `.phem` files, relative to the project root (the nearest directory with `composer.json`).      |
 
 The plugin keeps the paths of the executables in the application settings, not in the project.
 Thus a project cannot make PhpStorm run an executable.
@@ -122,8 +122,8 @@ has this API, and it supports all the features of the Phem server: diagnostics, 
 (with snippets, `additionalTextEdits`, `completionItem/resolve`, and trigger characters), go to
 definition, references, code lenses, hover, and document symbols. Thus the plugin does not need LSP4IJ or another plugin.
 
-The plugin starts one server for each project, when you open the first `.phpm` file. The plugin
-sends the language id `phpm` and these `initializationOptions`:
+The plugin starts one server for each project, when you open the first `.phem` file. The plugin
+sends the language id `phem` and these `initializationOptions`:
 
 ```json
 { "sourceDir": "src" }
@@ -142,13 +142,13 @@ To see the messages between the IDE and the server, add `#com.intellij.platform.
 
 ## Limits
 
-- The file type of `.phpm` files is the TextMate file type. PhpStorm does not parse `.phpm`
-  files as PHP. The PHP features of PhpStorm (inspections, refactorings) do not work in `.phpm`
+- The file type of `.phem` files is the TextMate file type. PhpStorm does not parse `.phem`
+  files as PHP. The PHP features of PhpStorm (inspections, refactorings) do not work in `.phem`
   files. Find usages comes from the Phem server.
 - The grammar includes `source.php`, `source.js`, and `source.css`. They come from the TextMate
   bundles of PhpStorm (PHP, JavaScript, and CSS). If you disable these bundles in
   **Settings > Editor > TextMate Bundles**, the PHP, JavaScript, and CSS code has no highlighting.
-- If you assigned the `*.phpm` pattern to a different file type, remove it in
+- If you assigned the `*.phem` pattern to a different file type, remove it in
   **Settings > Editor > File Types**. Otherwise the TextMate grammar does not apply.
 - The IDE sends `workspace/didChangeWatchedFiles` only for the patterns that the server registers
   (`client/registerCapability`). The IDE sends events only for files in the project.

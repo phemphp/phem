@@ -36,7 +36,7 @@ export const navigation: NavGroup[] = [
     {
         title: 'Reference',
         pages: [
-            { slug: 'phpm-syntax', label: 'The .phpm syntax' },
+            { slug: 'phem-syntax', label: 'The .phem syntax' },
             { slug: 'compiling', label: 'Compiling' },
             { slug: 'how-it-works', label: 'How it works' },
         ],

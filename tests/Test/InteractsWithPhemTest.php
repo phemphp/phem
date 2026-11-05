@@ -535,7 +535,7 @@ final class InteractsWithPhemTest extends KernelTestCase
         $this->assertFails(static fn () => $tester->upload('input[name=photo]', $a.'.missing'), 'does not exist');
     }
 
-    /** The cookies that the page of the fixture got (see cookies.phpm). */
+    /** The cookies that the page of the fixture got (see cookies.phem). */
     private static function cookies(ComponentTester $page): string
     {
         return trim($page->document()->querySelector('#cookies')->textContent ?? '');

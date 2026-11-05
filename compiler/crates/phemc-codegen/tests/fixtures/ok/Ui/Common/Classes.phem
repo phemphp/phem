@@ -1,0 +1,37 @@
+<?phem
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\Component;
+use Phem\{Html, Node};
+
+// The default classes merge with the classes of the caller.
+#[Component]
+function ClassButton(string $size = 'md', ?Html $children = null, mixed ...$rest): Node {
+    return (
+        <button className={{ classes('px-4 py-2') }} {{ ...rest }} data-size="{{ size }}">
+            {{ children }}
+        </button>
+    );
+}
+
+// A wrapper keeps its classes: the props of the tag go through phem_props().
+#[Component]
+function PrimaryButton(?Html $children = null, mixed ...$rest): Node {
+    return <ClassButton className={{ classes('bg-blue-500') }} {{ ...rest }}>{{ children }}</ClassButton>;
+}
+
+#[Component]
+function ToneBadge(string $tone, bool $active = false): Node {
+    return (
+        <span className={{ ['badge', {'active': active}] }}>
+            <i className="icon icon-{{ tone }} {{ active ? 'on' }}" />
+            <b className="static">{{ tone }}</b>
+        </span>
+    );
+}
+
+#[Component]
+function SpreadNote(mixed ...$rest): Node {
+    return <p className="note note-{{ 1 }}" {{ ...rest }}>x</p>;
+}

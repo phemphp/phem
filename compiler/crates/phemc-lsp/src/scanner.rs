@@ -1,4 +1,4 @@
-//! A small, tolerant lexer for `.phpm` files, for the editor. It follows the rules of the
+//! A small, tolerant lexer for `.phem` files, for the editor. It follows the rules of the
 //! TextMate grammar: a markup literal starts where a PHP (or Twig) expression starts, and it ends
 //! when its root element closes. Unlike the compiler lexer, it accepts a file that the user types:
 //! the text can stop anywhere.
@@ -8,6 +8,8 @@
 //!   before the cursor);
 //! - the masks: the byte ranges that are not PHP code (strings, comments, and markup literals);
 //! - the delimiters: the byte ranges of the Twig delimiters in markup (`{{`, `}}`, `{%`, `%}`).
+
+use phemc_syntax::php::{OPEN_TAG, PHP_OPEN_TAG};
 
 /// Where the end of the text is.
 #[derive(Clone, Debug, PartialEq)]
@@ -229,15 +231,9 @@ impl Scanner<'_> {
                 continue;
             }
 
-            // `<?phpm` in a .phpm file, `<?php` in the PHP classes that the project reads.
-            if self.starts_with("<?php") || self.starts_with("<?=") {
-                self.i += if self.starts_with("<?=") {
-                    3
-                } else if self.starts_with("<?phpm") {
-                    6
-                } else {
-                    5
-                };
+            // `<?phem` in a .phem file, `<?php` in the PHP classes that the project reads.
+            if let Some(tag) = [OPEN_TAG, PHP_OPEN_TAG, "<?="].into_iter().find(|t| self.starts_with(t)) {
+                self.i += tag.len();
                 last = Last::None;
                 newline = true;
                 continue;
@@ -623,18 +619,18 @@ mod tests {
 
     #[test]
     fn finds_the_context_at_the_end_of_the_text() {
-        assert_eq!(ctx("<?phpm\n$a = $b < "), Context::Php { string: false, comment: false });
-        assert!(matches!(ctx("<?phpm\nreturn <"), Context::TagName { .. }));
-        assert!(matches!(ctx("<?phpm\nreturn <Lay"), Context::TagName { partial, .. } if partial == "Lay"));
-        assert!(matches!(ctx("<?phpm\nreturn <div>{{ ok ? <Ca"), Context::TagName { partial, .. } if partial == "Ca"));
-        assert!(matches!(ctx("<?phpm\nreturn <div className=\"a\">I'm <b>x</b> <Lay"), Context::TagName { .. }));
-        assert!(matches!(ctx("<?phpm\nreturn <Layout title=\"x\" "), Context::Attr { attrs, .. } if attrs == ["title"]));
-        assert!(matches!(ctx("<?phpm\nreturn <Layout style={{ {a: 1} }} "), Context::Attr { tag, .. } if tag == "Layout"));
-        assert!(matches!(ctx("<?phpm\nreturn <div><p></"), Context::CloseTag { expected: Some(e), .. } if e == "p"));
-        assert_eq!(ctx("<?phpm\n$x = <p>a</p>;\n$y = 1"), Context::Php { string: false, comment: false });
-        assert_eq!(ctx("<?phpm\n$x = \"<p>"), Context::Php { string: true, comment: false });
-        assert!(matches!(ctx("<?phpm\nreturn <ul>{% for a in b %}<li>{{ a"), Context::Twig(_)));
-        assert_eq!(ctx("<?phpm\nreturn <script>if (a < b) {"), Context::Raw);
+        assert_eq!(ctx("<?phem\n$a = $b < "), Context::Php { string: false, comment: false });
+        assert!(matches!(ctx("<?phem\nreturn <"), Context::TagName { .. }));
+        assert!(matches!(ctx("<?phem\nreturn <Lay"), Context::TagName { partial, .. } if partial == "Lay"));
+        assert!(matches!(ctx("<?phem\nreturn <div>{{ ok ? <Ca"), Context::TagName { partial, .. } if partial == "Ca"));
+        assert!(matches!(ctx("<?phem\nreturn <div className=\"a\">I'm <b>x</b> <Lay"), Context::TagName { .. }));
+        assert!(matches!(ctx("<?phem\nreturn <Layout title=\"x\" "), Context::Attr { attrs, .. } if attrs == ["title"]));
+        assert!(matches!(ctx("<?phem\nreturn <Layout style={{ {a: 1} }} "), Context::Attr { tag, .. } if tag == "Layout"));
+        assert!(matches!(ctx("<?phem\nreturn <div><p></"), Context::CloseTag { expected: Some(e), .. } if e == "p"));
+        assert_eq!(ctx("<?phem\n$x = <p>a</p>;\n$y = 1"), Context::Php { string: false, comment: false });
+        assert_eq!(ctx("<?phem\n$x = \"<p>"), Context::Php { string: true, comment: false });
+        assert!(matches!(ctx("<?phem\nreturn <ul>{% for a in b %}<li>{{ a"), Context::Twig(_)));
+        assert_eq!(ctx("<?phem\nreturn <script>if (a < b) {"), Context::Raw);
     }
 
     fn delimiters(text: &str) -> Vec<(usize, &str)> {
@@ -643,7 +639,7 @@ mod tests {
 
     #[test]
     fn records_the_twig_delimiters_in_markup() {
-        let text = "<?phpm\nfunction A($s)\n{\n    if ($s) { x(); }}\n    return <p a={{ s.a }}>{{ {b: 1}.b }}{% if x %}<B c={{ 1 }} />{% endif %}</p>;\n}\n";
+        let text = "<?phem\nfunction A($s)\n{\n    if ($s) { x(); }}\n    return <p a={{ s.a }}>{{ {b: 1}.b }}{% if x %}<B c={{ 1 }} />{% endif %}</p>;\n}\n";
         let at = |s: &str| text.find(s).unwrap();
         assert_eq!(
             delimiters(text),
@@ -664,13 +660,13 @@ mod tests {
 
     #[test]
     fn ignores_braces_in_php_code_strings_and_comments() {
-        assert!(delimiters("<?phpm\n$a = '{{ x }}'; // {{ y }}\nif ($a) { if ($b) { f(); }}\n").is_empty());
+        assert!(delimiters("<?phem\n$a = '{{ x }}'; // {{ y }}\nif ($a) { if ($b) { f(); }}\n").is_empty());
     }
 
     #[test]
     fn masks_strings_comments_heredocs_and_markup() {
-        let text = "<?phpm\n$a = 'x'; # c\n$h = <<<EOT\n  <b>\n  EOT;\nreturn <p>{{ a }}</p>;\n";
+        let text = "<?phem\n$a = 'x'; # c\n$h = <<<EOT\n  <b>\n  EOT;\nreturn <p>{{ a }}</p>;\n";
         let code = String::from_utf8(code_of(text)).unwrap();
-        assert_eq!(code, "<?phpm\n$a =    ;    \n$h =       \n     \n     ;\nreturn               ;\n");
+        assert_eq!(code, "<?phem\n$a =    ;    \n$h =       \n     \n     ;\nreturn               ;\n");
     }
 }

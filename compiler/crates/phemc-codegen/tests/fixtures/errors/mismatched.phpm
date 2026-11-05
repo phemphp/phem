@@ -1,2 +1,0 @@
-<?phpm // expect: E003
-function App() { return <div><span>x</div>; }

@@ -1,0 +1,4 @@
+<?phem // expect: E011
+#[\Phem\Attribute\Component]
+function Btn(int $count) { return <b>{{ count }}</b>; }
+function App() { return <Btn />; }

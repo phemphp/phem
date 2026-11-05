@@ -1,7 +1,0 @@
-<?phpm // expect: E044
-use Phem\Attribute\{Component, Provide};
-#[Component]
-final class Toolbar {
-    #[Provide] public \Closure $onSave;
-    public function render() { return <div />; }
-}

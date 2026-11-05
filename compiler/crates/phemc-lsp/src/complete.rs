@@ -8,6 +8,7 @@ use crate::project::{FileComponent, Symbol, SymbolKind};
 use crate::scanner::{scan, Context, TwigContext};
 use crate::scope::{chain_start, Scope};
 use crate::twig::{AttrKind, TwigEnv, VarSource};
+use phemc_syntax::php::OPEN_TAG;
 use regex::Regex;
 use std::path::Path;
 use std::sync::LazyLock;
@@ -487,7 +488,7 @@ impl<'a, 'p> Completer<'a, 'p> {
     fn php(&self) -> Vec<Item> {
         let before = &self.text[..self.offset];
         // The text of the current statement, up to the cursor.
-        let open = before.rfind("<?phpm").map_or(0, |i| i + 6);
+        let open = before.rfind(OPEN_TAG).map_or(0, |i| i + OPEN_TAG.len());
         let stmt_start = [before.rfind(';').map_or(0, |i| i + 1), before.rfind('}').map_or(0, |i| i + 1), open].into_iter().max().unwrap();
         let stmt = &before[stmt_start..];
 

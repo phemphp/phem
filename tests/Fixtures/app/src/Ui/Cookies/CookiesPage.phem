@@ -1,0 +1,41 @@
+<?phem
+
+namespace App\Ui\Cookies;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+use Symfony\Component\HttpFoundation\Request;
+
+use function App\Ui\Common\Document;
+
+// The cookies and the language that the browser sends, for the cookies of the browser of the
+// tests (see Phem\Tests\Fixtures\CookieSetter). A click sends an event with the same cookies.
+#[Page('/cookies')]
+function CookiesPage(Request $request): Node
+{
+    return CookieReport($request);
+}
+
+// A page below /cookies, for the cookies with a path.
+#[Page('/cookies/admin')]
+function AdminCookiesPage(Request $request): Node
+{
+    return CookieReport($request);
+}
+
+function CookieReport(Request $request): Node
+{
+    $cookies = $request->cookies->all();
+    ksort($cookies);
+    $sent = [] !== $cookies ? http_build_query($cookies, '', ' ') : 'none';
+    $language = $request->headers->get('Accept-Language', 'none');
+    $again = static fn (): null => null;
+
+    return (
+        <Document>
+            <p id="cookies">{{ sent }}</p>
+            <p id="language">{{ language }}</p>
+            <button id="again" onClick={{ again }}>Again</button>
+        </Document>
+    );
+}

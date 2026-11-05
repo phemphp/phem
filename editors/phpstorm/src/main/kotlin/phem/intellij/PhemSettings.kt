@@ -41,7 +41,7 @@ class PhemSettings : SimplePersistentStateComponent<PhemSettings.Options>(Option
 @State(name = "PhemProjectSettings", storages = [Storage("phem.xml")])
 class PhemProjectSettings : SimplePersistentStateComponent<PhemProjectSettings.Options>(Options()) {
     class Options : BaseState() {
-        /** The source directory of the `.phpm` files, relative to the project root. */
+        /** The source directory of the `.phem` files, relative to the project root. */
         var sourceDir by string(DEFAULT_SOURCE_DIR)
     }
 

@@ -6,8 +6,8 @@ import java.nio.file.Path
 
 /** Shared values of the plugin. */
 object PhemPlugin {
-    const val EXTENSION = "phpm"
-    const val LANGUAGE_ID = "phpm"
+    const val EXTENSION = "phem"
+    const val LANGUAGE_ID = "phem"
 
     /** The installation directory of the plugin, or null when the IDE does not know it. */
     fun path(): Path? =

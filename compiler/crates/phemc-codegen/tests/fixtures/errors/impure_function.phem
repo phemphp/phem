@@ -1,0 +1,4 @@
+<?phem // expect: W008
+use Phem\Attribute\Component;
+#[Component]
+function Clock() { $now = date('H:i'); return <time>{{ now }}</time>; }

@@ -1,0 +1,8 @@
+<?phem // expect: E058
+use Phem\Attribute\{Component, Validated};
+use Phem\Node;
+#[Component, Validated]
+function SaveButton(): Node
+{
+    return <button>Save</button>;
+}

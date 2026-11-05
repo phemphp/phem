@@ -1,6 +1,6 @@
 [package]
 name = "phemc-lsp"
-description = "Language server for .phpm files: diagnostics, completion, definition, references, hover, and outline"
+description = "Language server for .phem files: diagnostics, completion, definition, references, hover, and outline"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

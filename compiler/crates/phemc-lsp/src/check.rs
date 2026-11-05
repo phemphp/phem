@@ -1,4 +1,4 @@
-//! The compiler diagnostics of a project. The check compiles all the `.phpm` files of the source
+//! The compiler diagnostics of a project. The check compiles all the `.phem` files of the source
 //! roots of the project (see `crate::sources`): the source directory of the app and the Composer
 //! packages, because a file can use the components of the other files. The open documents replace
 //! the files on disk.

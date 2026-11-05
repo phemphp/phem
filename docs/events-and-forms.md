@@ -1,7 +1,7 @@
 # Events and forms
 
 This page explains what happens when the user clicks, types or submits a form. For the syntax
-of the `on*` attributes and the `phem:*` directives, see [The `.phpm` syntax](phpm-syntax.md).
+of the `on*` attributes and the `phem:*` directives, see [The `.phem` syntax](phem-syntax.md).
 
 ## What an event does
 

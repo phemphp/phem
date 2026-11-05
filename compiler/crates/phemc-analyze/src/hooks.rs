@@ -68,21 +68,21 @@ mod tests {
 
     fn codes(src: &str) -> Vec<&'static str> {
         let lexed = lex(src).unwrap();
-        let info = scan("a.phpm", src, &lexed);
+        let info = scan("a.phem", src, &lexed);
         super::check(&info, src, &lexed).into_iter().map(|d| d.code).collect()
     }
 
     #[test]
     fn imported_and_qualified_hooks_are_errors() {
-        assert_eq!(codes("<?phpm\nnamespace App;\nuse function Phem\\useState;\nfunction A() { [$a] = useState(0); }\n"), ["E020"]);
-        assert_eq!(codes("<?phpm\nnamespace App;\nuse function Phem\\{useId, useRef};\nfunction A() { useId(); useRef(1); }\n"), ["E020", "E020"]);
-        assert_eq!(codes("<?phpm\nnamespace App;\nfunction A() { \\Phem\\useState(0); }\n"), ["E020"]);
+        assert_eq!(codes("<?phem\nnamespace App;\nuse function Phem\\useState;\nfunction A() { [$a] = useState(0); }\n"), ["E020"]);
+        assert_eq!(codes("<?phem\nnamespace App;\nuse function Phem\\{useId, useRef};\nfunction A() { useId(); useRef(1); }\n"), ["E020", "E020"]);
+        assert_eq!(codes("<?phem\nnamespace App;\nfunction A() { \\Phem\\useState(0); }\n"), ["E020"]);
     }
 
     #[test]
     fn other_use_functions_are_fine() {
-        assert!(codes("<?phpm\nnamespace App;\nfunction useTheme() { return 'dark'; }\nfunction A() { useTheme(); }\n").is_empty());
-        assert!(codes("<?phpm\nnamespace App;\nfunction A($s) { $s->useState(1); X::useState(2); }\n").is_empty());
-        assert!(codes("<?phpm\nnamespace App;\nfunction A() { useState(0); }\n").is_empty(), "App\\useState is a user function");
+        assert!(codes("<?phem\nnamespace App;\nfunction useTheme() { return 'dark'; }\nfunction A() { useTheme(); }\n").is_empty());
+        assert!(codes("<?phem\nnamespace App;\nfunction A($s) { $s->useState(1); X::useState(2); }\n").is_empty());
+        assert!(codes("<?phem\nnamespace App;\nfunction A() { useState(0); }\n").is_empty(), "App\\useState is a user function");
     }
 }

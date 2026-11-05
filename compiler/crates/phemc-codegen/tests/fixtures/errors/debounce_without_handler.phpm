@@ -1,2 +1,0 @@
-<?phpm // expect: W006
-function App() { return <input phem:debounce={{ 300 }} />; }

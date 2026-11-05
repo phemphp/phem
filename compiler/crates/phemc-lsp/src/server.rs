@@ -199,7 +199,7 @@ impl<W: Write> Server<W> {
                 if let Ok(p) = serde_json::from_value::<lsp::DidCloseTextDocumentParams>(params) {
                     if let Some(file) = file_of(&p.text_document.uri) {
                         self.docs.remove(&file);
-                        self.phpm_changed(&file, true);
+                        self.phem_changed(&file, true);
                     }
                 }
             }
@@ -256,7 +256,7 @@ impl<W: Write> Server<W> {
             return;
         }
 
-        let watchers: Vec<_> = ["**/*.phpm", "**/*.php", "**/composer.json", "**/composer/installed.json"]
+        let watchers: Vec<_> = ["**/*.phem", "**/*.php", "**/composer.json", "**/composer/installed.json"]
             .iter()
             .map(|g| lsp::FileSystemWatcher { glob_pattern: lsp::GlobPattern::String(g.to_string()), kind: None })
             .collect();
@@ -294,9 +294,9 @@ impl<W: Write> Server<W> {
             let mut project = Project::load(&root);
 
             // The open documents replace the files on disk, also the files of the packages.
-            for (path, doc) in self.docs.iter().filter(|(p, _)| p.extension().is_some_and(|e| e == "phpm")) {
+            for (path, doc) in self.docs.iter().filter(|(p, _)| p.extension().is_some_and(|e| e == "phem")) {
                 if path.starts_with(&root) {
-                    project.update_phpm(path, Some(&doc.text));
+                    project.update_phem(path, Some(&doc.text));
                 } else {
                     project.package_changed(path, Some(&doc.text));
                 }
@@ -313,21 +313,21 @@ impl<W: Write> Server<W> {
         let Some(file) = file_of(&uri) else { return };
 
         self.docs.insert(file.clone(), Document { uri, text });
-        self.phpm_changed(&file, false);
+        self.phem_changed(&file, false);
     }
 
-    /// A `.phpm` file changed: in an open document, or on disk (`on_disk`: also a closed
+    /// A `.phem` file changed: in an open document, or on disk (`on_disk`: also a closed
     /// document, whose text is the one on disk again). The projects that install the package of
     /// the file index it again too.
-    fn phpm_changed(&mut self, file: &Path, on_disk: bool) {
-        if file.extension().is_none_or(|e| e != "phpm") {
+    fn phem_changed(&mut self, file: &Path, on_disk: bool) {
+        if file.extension().is_none_or(|e| e != "phem") {
             return;
         }
 
         let root = self.root_of(file);
         let text = self.docs.get(file).map(|d| d.text.clone());
         if let Some(project) = self.projects.get_mut(&root) {
-            project.update_phpm(file, text.as_deref());
+            project.update_phem(file, text.as_deref());
         }
 
         for project in self.projects.values_mut() {
@@ -337,7 +337,7 @@ impl<W: Write> Server<W> {
         self.check_again(file, root, on_disk);
     }
 
-    /// Marks the projects that compile a `.phpm` file as dirty (see `Sources::compiling()`): the
+    /// Marks the projects that compile a `.phem` file as dirty (see `Sources::compiling()`): the
     /// projects that install its package (in `vendor/`, or through a link), else the project of
     /// the file. The workspace and the project that installs the file in `vendor/` are known
     /// projects, also before the first check. A change on disk can change the roots (a new source
@@ -375,11 +375,11 @@ impl<W: Write> Server<W> {
             return;
         }
 
-        if name.ends_with(".phpm") {
+        if name.ends_with(".phem") {
             if typ == lsp::FileChangeType::DELETED {
                 let root = self.root_of(file);
                 if let Some(project) = self.projects.get_mut(&root) {
-                    project.delete_phpm(file);
+                    project.delete_phem(file);
                 }
 
                 for project in self.projects.values_mut() {
@@ -388,7 +388,7 @@ impl<W: Write> Server<W> {
 
                 self.check_again(file, root, true);
             } else if !self.docs.contains_key(file) {
-                self.phpm_changed(file, true);
+                self.phem_changed(file, true);
             }
 
             return;
@@ -509,7 +509,7 @@ impl<W: Write> Server<W> {
         Some(f(&index, &text))
     }
 
-    /// The `.phpm` sources of the project of a document, for a request on the document.
+    /// The `.phem` sources of the project of a document, for a request on the document.
     fn with_usages<T>(&mut self, uri: &lsp::Url, f: impl FnOnce(&Usages, &Index) -> T) -> Option<T> {
         let file = file_of(uri)?;
         let open: HashMap<PathBuf, String> = self.docs.iter().map(|(p, d)| (p.clone(), d.text.clone())).collect();
@@ -802,15 +802,15 @@ mod tests {
         let dir = crate::tests::temp_dir();
         std::fs::write(dir.join("composer.json"), "{}").unwrap();
         std::fs::create_dir_all(dir.join("src")).unwrap();
-        let file = dir.join("src/index.phpm");
-        let text = "<?phpm\nnamespace App;\n\nfunction Home()\n{\n    return <Missing />;\n}\n";
+        let file = dir.join("src/index.phem");
+        let text = "<?phem\nnamespace App;\n\nfunction Home()\n{\n    return <Missing />;\n}\n";
         std::fs::write(&file, text).unwrap();
         let uri = lsp::Url::from_file_path(&file).unwrap();
 
         let mut server = Server::new(Vec::new());
         let input = [
             json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}, "initializationOptions": {"sourceDir": "src"}}}),
-            json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": uri, "languageId": "phpm", "version": 1, "text": text}}}),
+            json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": uri, "languageId": "phem", "version": 1, "text": text}}}),
             json!({"jsonrpc": "2.0", "id": 2, "method": "textDocument/completion", "params": {"textDocument": {"uri": uri}, "position": {"line": 5, "character": 12}}}),
             json!({"jsonrpc": "2.0", "id": 3, "method": TWIG_DELIMITERS, "params": {"uri": uri}}),
         ];
@@ -843,17 +843,17 @@ mod tests {
         std::fs::write(dir.join("vendor/acme/ui/composer.json"), "{}").unwrap();
         std::fs::write(dir.join("vendor/composer/installed.json"), r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}]}"#).unwrap();
         // W002 in the package: a list item with no key.
-        let badge = dir.join("vendor/acme/ui/components/Badge.phpm");
-        std::fs::write(&badge, "<?phpm\nnamespace Acme\\Ui;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Badge()\n{\n    return <ul>{% for i in [1] %}<li>{{ i }}</li>{% endfor %}</ul>;\n}\n").unwrap();
-        let file = dir.join("src/index.phpm");
-        let text = "<?phpm\nnamespace App;\n\nuse Acme\\Ui\\Badge;\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Home()\n{\n    return <div><Badge /><Missing /></div>;\n}\n";
+        let badge = dir.join("vendor/acme/ui/components/Badge.phem");
+        std::fs::write(&badge, "<?phem\nnamespace Acme\\Ui;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Badge()\n{\n    return <ul>{% for i in [1] %}<li>{{ i }}</li>{% endfor %}</ul>;\n}\n").unwrap();
+        let file = dir.join("src/index.phem");
+        let text = "<?phem\nnamespace App;\n\nuse Acme\\Ui\\Badge;\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Home()\n{\n    return <div><Badge /><Missing /></div>;\n}\n";
         std::fs::write(&file, text).unwrap();
         let uri = lsp::Url::from_file_path(&file).unwrap();
 
         let mut server = Server::new(Vec::new());
         let input = [
             json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}}}),
-            json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": uri, "languageId": "phpm", "version": 1, "text": text}}}),
+            json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": uri, "languageId": "phem", "version": 1, "text": text}}}),
         ];
         let bytes: String = input.into_iter().map(frame).collect();
         let mut reader = BufReader::new(bytes.as_bytes());
@@ -894,7 +894,7 @@ mod tests {
         let mut input = vec![json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}, "rootUri": root}})];
         for (file, text) in docs {
             let uri = lsp::Url::from_file_path(file).unwrap();
-            input.push(json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": uri, "languageId": "phpm", "version": 1, "text": text}}}));
+            input.push(json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": uri, "languageId": "phem", "version": 1, "text": text}}}));
         }
 
         handle(&mut server, input);
@@ -915,8 +915,8 @@ mod tests {
         std::fs::create_dir_all(dir.join("src")).unwrap();
         std::fs::create_dir_all(dir.join("vendor/composer")).unwrap();
         std::fs::write(dir.join("vendor/composer/installed.json"), r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}]}"#).unwrap();
-        let file = dir.join("src/index.phpm");
-        let text = "<?phpm\nnamespace App;\n\nfunction Home()\n{\n    return <Missing />;\n}\n";
+        let file = dir.join("src/index.phem");
+        let text = "<?phem\nnamespace App;\n\nfunction Home()\n{\n    return <Missing />;\n}\n";
         std::fs::write(&file, text).unwrap();
 
         let out = open_and_check(&dir, &[(&file, text)], None);
@@ -948,10 +948,10 @@ mod tests {
         };
 
         write("composer.json", "{}");
-        write("src/index.phpm", "<?phpm\nnamespace App;\n\nfunction Home()\n{\n    return <p />;\n}\n");
-        write("vendor/acme/base/components/Base.phpm", "<?phpm\nnamespace Acme\\Base;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Base()\n{\n    return <b />;\n}\n");
+        write("src/index.phem", "<?phem\nnamespace App;\n\nfunction Home()\n{\n    return <p />;\n}\n");
+        write("vendor/acme/base/components/Base.phem", "<?phem\nnamespace Acme\\Base;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Base()\n{\n    return <b />;\n}\n");
         write("packages/ui/composer.json", r#"{"name": "acme/ui", "extra": {"phem": {"source": "components"}}}"#);
-        write("packages/ui/components/Badge.phpm", "<?phpm\n");
+        write("packages/ui/components/Badge.phem", "<?phem\n");
         write("vendor/composer/installed.json", r#"{"packages": [
             {"name": "acme/base", "install-path": "../acme/base", "extra": {"phem": {"source": "components"}}},
             {"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}
@@ -964,14 +964,14 @@ mod tests {
     fn the_app_checks_a_linked_package_at_its_real_files() {
         let dir = crate::tests::temp_dir();
         linked_app(&dir);
-        let badge = dir.join("packages/ui/components/Badge.phpm");
+        let badge = dir.join("packages/ui/components/Badge.phem");
         let uri = json!(lsp::Url::from_file_path(&badge).unwrap());
         let publishes = |out: &[Value]| out.iter().filter(|m| m["method"] == "textDocument/publishDiagnostics" && m["params"]["uri"] == uri).map(|m| m["params"]["diagnostics"].clone()).collect::<Vec<_>>();
 
         // Only the package file is open, and the app has no check yet. The editor has the text of
         // the document, not the text on disk. `<Base>` is in the app only, so the package does
         // not check itself: it would report E010.
-        let text = "<?phpm\nnamespace Acme\\Ui;\n\nuse Acme\\Base\\Base;\n\nfunction Badge()\n{\n    return <div><Base /><Missing /></div>;\n}\n";
+        let text = "<?phem\nnamespace Acme\\Ui;\n\nuse Acme\\Base\\Base;\n\nfunction Badge()\n{\n    return <div><Base /><Missing /></div>;\n}\n";
         let out = open_and_check(&dir, &[(&badge, text)], None);
         let codes: Vec<_> = publishes(&out).iter().flat_map(|d| d.as_array().unwrap().iter().map(|d| d["code"].clone()).collect::<Vec<_>>()).collect();
         assert!(!codes.is_empty() && codes.iter().all(|c| c == "E010"), "{codes:?}");
@@ -1011,9 +1011,9 @@ mod tests {
         feed(&mut server, vec![json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}, "rootUri": lsp::Url::from_file_path(&dir).unwrap()}})]);
         assert!(server.sources.of(&dir).error.is_some());
 
-        let badge = dir.join("components/Badge.phpm");
+        let badge = dir.join("components/Badge.phem");
         std::fs::create_dir_all(badge.parent().unwrap()).unwrap();
-        std::fs::write(&badge, "<?phpm\nnamespace Acme\\Ui;\n\nfunction Badge()\n{\n    return <Missing />;\n}\n").unwrap();
+        std::fs::write(&badge, "<?phem\nnamespace Acme\\Ui;\n\nfunction Badge()\n{\n    return <Missing />;\n}\n").unwrap();
         feed(&mut server, vec![file_event(&badge, 1)]);
         server.check_dirty();
 
@@ -1027,8 +1027,8 @@ mod tests {
     fn a_package_that_the_app_installs_does_not_check_itself() {
         let dir = crate::tests::temp_dir();
         linked_app(&dir);
-        let badge = dir.join("packages/ui/components/Badge.phpm");
-        std::fs::write(&badge, "<?phpm\nnamespace Acme\\Ui;\n\nuse Acme\\Base\\Base;\n\nfunction Badge()\n{\n    return <div><Base /><Missing /></div>;\n}\n").unwrap();
+        let badge = dir.join("packages/ui/components/Badge.phem");
+        std::fs::write(&badge, "<?phem\nnamespace Acme\\Ui;\n\nuse Acme\\Base\\Base;\n\nfunction Badge()\n{\n    return <div><Base /><Missing /></div>;\n}\n").unwrap();
 
         // The package checked itself before (E010 for `<Base>` and `<Missing>`), then a Composer
         // change makes the app and the package dirty.
@@ -1058,23 +1058,23 @@ mod tests {
         std::fs::create_dir_all(dir.join("vendor/acme/ui/components")).unwrap();
         std::fs::create_dir_all(dir.join("vendor/composer")).unwrap();
         std::fs::write(dir.join("vendor/composer/installed.json"), r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}]}"#).unwrap();
-        let badge = dir.join("vendor/acme/ui/components/Badge.phpm");
-        std::fs::write(&badge, "<?phpm\nnamespace Acme\\Ui;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Badge()\n{\n    return <b />;\n}\n").unwrap();
-        let home = dir.join("src/index.phpm");
-        let text = "<?phpm\nnamespace App;\n\nuse Acme\\Ui\\Badge;\n\nfunction Home()\n{\n    return <Badge />;\n}\n";
+        let badge = dir.join("vendor/acme/ui/components/Badge.phem");
+        std::fs::write(&badge, "<?phem\nnamespace Acme\\Ui;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Badge()\n{\n    return <b />;\n}\n").unwrap();
+        let home = dir.join("src/index.phem");
+        let text = "<?phem\nnamespace App;\n\nuse Acme\\Ui\\Badge;\n\nfunction Home()\n{\n    return <Badge />;\n}\n";
         std::fs::create_dir_all(home.parent().unwrap()).unwrap();
         std::fs::write(&home, text).unwrap();
 
         let mut server = Server::new(Vec::new());
         feed(&mut server, vec![
             json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}, "rootUri": lsp::Url::from_file_path(&dir).unwrap()}}),
-            json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": lsp::Url::from_file_path(&home).unwrap(), "languageId": "phpm", "version": 1, "text": text}}}),
+            json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": lsp::Url::from_file_path(&home).unwrap(), "languageId": "phem", "version": 1, "text": text}}}),
         ]);
         server.check_dirty();
         assert_eq!(last_codes(&server, &home), Vec::<Value>::new());
 
         // A change on disk with no event: the check keeps the text that it read.
-        std::fs::write(&badge, "<?phpm\nnamespace Acme\\Ui;\n").unwrap();
+        std::fs::write(&badge, "<?phem\nnamespace Acme\\Ui;\n").unwrap();
         server.dirty.insert(dir.clone());
         server.check_dirty();
         assert_eq!(last_codes(&server, &home), Vec::<Value>::new());
@@ -1092,8 +1092,8 @@ mod tests {
     fn a_linked_package_file_open_in_vendor_keeps_its_path() {
         let dir = crate::tests::temp_dir();
         linked_app(&dir);
-        let badge = dir.join("vendor/acme/ui/components/Badge.phpm");
-        let text = "<?phpm\nnamespace Acme\\Ui;\n\nfunction Badge()\n{\n    return <Missing />;\n}\n";
+        let badge = dir.join("vendor/acme/ui/components/Badge.phem");
+        let text = "<?phem\nnamespace Acme\\Ui;\n\nfunction Badge()\n{\n    return <Missing />;\n}\n";
 
         let out = open_and_check(&dir, &[(&badge, text)], None);
 
@@ -1113,17 +1113,17 @@ mod tests {
         std::fs::create_dir_all(dir.join("vendor/acme/ui/components")).unwrap();
         std::fs::create_dir_all(dir.join("src")).unwrap();
         std::fs::write(dir.join("vendor/composer/installed.json"), r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}]}"#).unwrap();
-        let badge = dir.join("vendor/acme/ui/components/Badge.phpm");
-        std::fs::write(&badge, "<?phpm\nnamespace Acme\\Ui;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Badge()\n{\n    return <b />;\n}\n").unwrap();
-        let home = dir.join("src/index.phpm");
-        std::fs::write(&home, "<?phpm\nnamespace App;\n\nuse Acme\\Ui\\Badge;\n\nfunction Home()\n{\n    return <Badge />;\n}\n").unwrap();
+        let badge = dir.join("vendor/acme/ui/components/Badge.phem");
+        std::fs::write(&badge, "<?phem\nnamespace Acme\\Ui;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Badge()\n{\n    return <b />;\n}\n").unwrap();
+        let home = dir.join("src/index.phem");
+        std::fs::write(&home, "<?phem\nnamespace App;\n\nuse Acme\\Ui\\Badge;\n\nfunction Home()\n{\n    return <Badge />;\n}\n").unwrap();
 
         (badge, home)
     }
 
     fn open(file: &Path) -> Value {
         let text = std::fs::read_to_string(file).unwrap();
-        json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": lsp::Url::from_file_path(file).unwrap(), "languageId": "phpm", "version": 1, "text": text}}})
+        json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": lsp::Url::from_file_path(file).unwrap(), "languageId": "phem", "version": 1, "text": text}}})
     }
 
     #[test]
@@ -1136,7 +1136,7 @@ mod tests {
         assert_eq!(last_codes(&server, &home), Vec::<Value>::new());
 
         // The package file changes on disk with no event, and the editor opens and closes it.
-        std::fs::write(&badge, "<?phpm\nnamespace Acme\\Ui;\n").unwrap();
+        std::fs::write(&badge, "<?phem\nnamespace Acme\\Ui;\n").unwrap();
         let uri = lsp::Url::from_file_path(&badge).unwrap();
         feed(&mut server, vec![open(&badge), json!({"jsonrpc": "2.0", "method": "textDocument/didClose", "params": {"textDocument": {"uri": uri}}})]);
         server.check_dirty();
@@ -1171,18 +1171,18 @@ mod tests {
         let dir = crate::tests::temp_dir();
         std::fs::write(dir.join("composer.json"), "{}").unwrap();
         std::fs::create_dir_all(dir.join("src")).unwrap();
-        let card = dir.join("src/Card.phpm");
-        let card_text = "<?phpm\nnamespace App;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Card()\n{\n    return <p />;\n}\n";
+        let card = dir.join("src/Card.phem");
+        let card_text = "<?phem\nnamespace App;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Card()\n{\n    return <p />;\n}\n";
         std::fs::write(&card, card_text).unwrap();
-        let page = dir.join("src/index.phpm");
-        std::fs::write(&page, "<?phpm\nnamespace App;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Home()\n{\n    return <div><Card /><Card /></div>;\n}\n").unwrap();
+        let page = dir.join("src/index.phem");
+        std::fs::write(&page, "<?phem\nnamespace App;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfunction Home()\n{\n    return <div><Card /><Card /></div>;\n}\n").unwrap();
         let card_uri = lsp::Url::from_file_path(&card).unwrap();
         let page_uri = lsp::Url::from_file_path(&page).unwrap();
 
         let mut server = Server::new(Vec::new());
         let input = [
             json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}}}),
-            json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": card_uri, "languageId": "phpm", "version": 1, "text": card_text}}}),
+            json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": card_uri, "languageId": "phem", "version": 1, "text": card_text}}}),
             json!({"jsonrpc": "2.0", "id": 2, "method": "textDocument/codeLens", "params": {"textDocument": {"uri": card_uri}}}),
             json!({"jsonrpc": "2.0", "id": 3, "method": "textDocument/references", "params": {"textDocument": {"uri": card_uri}, "position": {"line": 6, "character": 10}, "context": {"includeDeclaration": true}}}),
             json!({"jsonrpc": "2.0", "id": 4, "method": "textDocument/definition", "params": {"textDocument": {"uri": card_uri}, "position": {"line": 6, "character": 10}}}),
@@ -1238,8 +1238,8 @@ mod tests {
             "<?php\n$vendorDir = dirname(__DIR__);\n$baseDir = dirname($vendorDir);\nreturn array(\n    'Phem\\\\' => array($vendorDir . '/phem/phem/src'),\n    'App\\\\' => array($baseDir . '/src'),\n);\n",
         )
         .unwrap();
-        let page = app.join("src/index.phpm");
-        std::fs::write(&page, "<?phpm\n").unwrap();
+        let page = app.join("src/index.phem");
+        std::fs::write(&page, "<?phem\n").unwrap();
 
         let mut server = Server::new(Vec::new());
         let class = |server: &mut Server<Vec<u8>>, fqn: &str| server.project(&page).1.file_of(SymbolKind::Class, fqn);

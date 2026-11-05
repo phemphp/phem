@@ -1,0 +1,13 @@
+<?phem // expect: E057
+use Phem\Attribute\{BroadcastKey, Component, Prop};
+use Phem\Node;
+#[Component]
+final class LikeButton
+{
+    #[Prop, BroadcastKey] public int $post;
+
+    public function render(): Node
+    {
+        return <button>Like</button>;
+    }
+}

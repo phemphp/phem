@@ -5,13 +5,13 @@
         "email": "open@yceruto.dev"
     },
     "metadata": {
-        "description": "Claude Code plugins for Phem, a Symfony component framework with .phpm files."
+        "description": "Claude Code plugins for Phem, a Symfony component framework with .phem files."
     },
     "plugins": [
         {
             "name": "phem",
             "source": "./editors/claude-code",
-            "description": "The Phem language server for .phpm files: compiler diagnostics after each edit, go to definition, find references, hover, and outline."
+            "description": "The Phem language server for .phem files: compiler diagnostics after each edit, go to definition, find references, hover, and outline."
         }
     ]
 }

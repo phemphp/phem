@@ -1,4 +1,4 @@
-//! The language server of `.phpm` files. It gives the diagnostics of the compiler as the user
+//! The language server of `.phem` files. It gives the diagnostics of the compiler as the user
 //! types, and the completion, the definition, the references, the hover, and the outline of a
 //! tolerant parser that reads incomplete files.
 //!

@@ -1,6 +1,6 @@
 [package]
 name = "phemc-sources"
-description = "The source roots of a Phem project: the app and the Composer packages with .phpm files"
+description = "The source roots of a Phem project: the app and the Composer packages with .phem files"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

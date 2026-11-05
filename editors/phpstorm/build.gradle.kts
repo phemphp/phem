@@ -60,7 +60,7 @@ intellijPlatform {
 
 // The IntelliJ icons are 16x16. The VS Code icon has a 32x32 view box, so set the size.
 val generateIcons = tasks.register("generateIcons") {
-    val source = vscodeDir.file("icons/phpm.svg")
+    val source = vscodeDir.file("icons/phem.svg")
     val output = layout.buildDirectory.dir("generated/phem-resources")
     inputs.file(source)
     outputs.dir(output)
@@ -70,7 +70,7 @@ val generateIcons = tasks.register("generateIcons") {
         val dir = output.get().asFile
         dir.resolve("icons").mkdirs()
         dir.resolve("META-INF").mkdirs()
-        dir.resolve("icons/phpm.svg").writeText(sized(16))
+        dir.resolve("icons/phem.svg").writeText(sized(16))
         dir.resolve("META-INF/pluginIcon.svg").writeText(sized(40))
     }
 }
@@ -103,8 +103,8 @@ tasks {
             include("package.json")
             include("language-configuration.json")
             include("markup-language-configuration.json")
-            include("syntaxes/phpm.tmLanguage.json")
-            into(pluginDir.map { "$it/bundles/phpm" })
+            include("syntaxes/phem.tmLanguage.json")
+            into(pluginDir.map { "$it/bundles/phem" })
         }
         from(serverDir) {
             serverFiles.forEach { include(it) }

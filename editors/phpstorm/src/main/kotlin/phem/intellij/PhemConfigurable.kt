@@ -39,7 +39,7 @@ class PhemConfigurable(private val project: Project) : BoundConfigurable("Phem")
                 textField()
                     .bindText(projectSettings::sourceDir)
                     .align(AlignX.FILL)
-                    .comment("The directory of the <code>.phpm</code> files, relative to the project root (the nearest directory with <code>composer.json</code>).")
+                    .comment("The directory of the <code>.phem</code> files, relative to the project root (the nearest directory with <code>composer.json</code>).")
             }
         }
     }

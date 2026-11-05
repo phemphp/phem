@@ -1,2 +1,0 @@
-<?phpm // expect: E004
-function App() { return <p>Hello<br>World</p>; }

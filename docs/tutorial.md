@@ -4,7 +4,7 @@ In this tutorial, you build a small task list. Each step adds one idea of Phem: 
 component with props, a list, state and events, a form, and a test. It takes about 20 minutes.
 
 Do [Getting started](getting-started.md) first. You need its application, with `symfony serve`
-on. The `phemc` worker builds the `.phpm` files each time you save them.
+on. The `phemc` worker builds the `.phem` files each time you save them.
 
 At the end, you have this page at `/tasks`:
 
@@ -24,8 +24,8 @@ My tasks
 A page is a component with the `#[Page]` attribute. It is a Symfony route, so you do not add a
 controller or a routes file. This page has no state, so it is a function.
 
-```php title="src/Ui/Task/TasksPage.phpm"
-<?phpm
+```php title="src/Ui/Task/TasksPage.phem"
+<?phem
 
 namespace App\Ui\Task;
 
@@ -55,7 +55,7 @@ function TasksPage(): Node
   one line are not necessary, but they make it easier to read.
 - The name of a page ends with `Page`. The page and its components are in one directory for
   the context of the page: here `src/Ui/Task/`.
-- `Document` is the HTML document of the app (`src/Ui/Common/Document.phpm`). All the pages use
+- `Document` is the HTML document of the app (`src/Ui/Common/Document.phem`). All the pages use
   it, so it is in `src/Ui/Common/`. `<Document:title>` gives a value to its `title` slot.
 
 Save the file, and open `/tasks`. The page shows the title and the two tasks.
@@ -69,8 +69,8 @@ Save the file, and open `/tasks`. The page shows the title and the two tasks.
 Move the markup of one task to a component. Only the tasks page uses it, so put it in the
 directory of the page. A function component gets its props as parameters.
 
-```php title="src/Ui/Task/TaskItem.phpm"
-<?phpm
+```php title="src/Ui/Task/TaskItem.phem"
+<?phem
 
 namespace App\Ui\Task;
 
@@ -99,8 +99,8 @@ prop can use quotes. Another value uses `{{ }}`.
 
 Put the tasks in an array, and show one `TaskItem` for each task. Change the page:
 
-```php title="src/Ui/Task/TasksPage.phpm"
-<?phpm
+```php title="src/Ui/Task/TasksPage.phem"
+<?phem
 
 namespace App\Ui\Task;
 
@@ -151,8 +151,8 @@ The tasks must change when the user clicks a checkbox. A component with state is
 
 First, give `TaskItem` a checkbox and an `onToggle` prop. A handler is a `Closure` prop:
 
-```php title="src/Ui/Task/TaskItem.phpm"
-<?phpm
+```php title="src/Ui/Task/TaskItem.phem"
+<?phem
 
 namespace App\Ui\Task;
 
@@ -176,8 +176,8 @@ function TaskItem(string $title, bool $done, Closure $onToggle): Node
 
 Then make the `TaskList` class. It owns the tasks:
 
-```php title="src/Ui/Task/TaskList.phpm"
-<?phpm
+```php title="src/Ui/Task/TaskList.phem"
+<?phem
 
 namespace App\Ui\Task;
 
@@ -229,8 +229,8 @@ final class TaskList
 
 At last, the page shows `<TaskList />`. It has no state of its own, so it stays a function:
 
-```php title="src/Ui/Task/TasksPage.phpm"
-<?phpm
+```php title="src/Ui/Task/TasksPage.phem"
+<?phem
 
 namespace App\Ui\Task;
 
@@ -290,7 +290,7 @@ and the server sets the property before it runs the handler.
 
 Add the `title` state and the `add()` handler to `TaskList`:
 
-```php title="src/Ui/Task/TaskList.phpm"
+```php title="src/Ui/Task/TaskList.phem"
 #[State]
 public string $title = '';
 
@@ -309,7 +309,7 @@ public function add(): void
 
 Add the form at the top of the `<section>` in `render()`:
 
-```php title="src/Ui/Task/TaskList.phpm"
+```php title="src/Ui/Task/TaskList.phem"
 return (
     <section>
         <form onSubmit={{ add }}>
@@ -399,7 +399,7 @@ OK (3 tests, 10 assertions)
 You used the main ideas of Phem. Read more about each one:
 
 - [Philosophy and conventions](philosophy.md): the rules to keep in mind when you design with Phem
-- [The `.phpm` syntax](phpm-syntax.md): markup, props, slots, lists, directives and attributes
+- [The `.phem` syntax](phem-syntax.md): markup, props, slots, lists, directives and attributes
 - [Components and state](components.md): the anatomy of a component, state, `mount()`, context and URL state
 - [Events and forms](events-and-forms.md): handlers, bound fields, forms, validation and uploads
 - [Client-side behavior](client-side.md): Stimulus and the built-in controllers

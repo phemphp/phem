@@ -1,13 +1,13 @@
 # How it works
 
-This document shows the path of a `.phpm` file from the compiler to the browser. For a map of the
+This document shows the path of a `.phem` file from the compiler to the browser. For a map of the
 ideas of React to Phem, see [What is Phem](what-is-phem.md#from-react-to-phem).
 
 ## The pipeline
 
 ```
- .phpm ──► phemc (Rust) ──► php/*.php        markup replaced by new \Phem\Element('x.0.twig', [...])
-                     ├──► templates/*.twig one template for each markup literal (@phpm/x.0.twig)
+ .phem ──► phemc (Rust) ──► php/*.php        markup replaced by new \Phem\Element('x.0.twig', [...])
+                     ├──► templates/*.twig one template for each markup literal (@phemc/x.0.twig)
                      └──► manifest.php, autoload.php
                               │
      bin/console phem:warmup ──► the Twig cache (compiled at build time, not at runtime)
@@ -20,11 +20,11 @@ ideas of React to Phem, see [What is Phem](what-is-phem.md#from-react-to-phem).
    ◄── Turbo Streams (morph of the changed components) + the changed state entries
 ```
 
-1. **Compile time.** `phemc` parses each `.phpm` file. It finds the markup literals in the PHP
+1. **Compile time.** `phemc` parses each `.phem` file. It finds the markup literals in the PHP
    code, checks them (closed tags, one root, known components and props), and writes PHP +
    Twig. A markup literal becomes a value, `new \Phem\Element(template, vars)`, like a React
    element: the renderer renders it. Then `bin/console phem:warmup` compiles all templates
-   into the Twig cache. At runtime, nothing parses `.phpm` or `.twig` sources. The production
+   into the Twig cache. At runtime, nothing parses `.phem` or `.twig` sources. The production
    image also uses OPcache preload.
 2. **Symfony.** `PhemBundle` reads the phemc manifest. Its compiler pass registers each
    `#[Component]` and `#[Page]` class as an autowired service that is not shared, so each

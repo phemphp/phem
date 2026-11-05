@@ -1,0 +1,2 @@
+<?phem // expect: E032
+function App() { return <span phem:loading="save">…</span>; }

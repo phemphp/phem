@@ -40,7 +40,7 @@ fn has(root: &SourceRoot, file: &Path) -> bool {
 }
 
 pub struct Sources {
-    /// The source directory of the `.phpm` files, relative to the project root.
+    /// The source directory of the `.phem` files, relative to the project root.
     source_dir: String,
     projects: HashMap<PathBuf, Roots>,
 }
@@ -79,7 +79,7 @@ impl Sources {
         self.projects.iter().any(|(other, p)| other != project && p.roots.iter().any(|r| r.installed && (has(r, &own.dir) || own.real_dir.as_ref().is_some_and(|d| has(r, d)))))
     }
 
-    /// A `.phpm` file changed on disk. The kept text of the file goes away. The roots of a project
+    /// A `.phem` file changed on disk. The kept text of the file goes away. The roots of a project
     /// are read again when one of its root dirs no longer exists, when they had an error (the fix
     /// can be a new dir), or when no known root has the file and the project can have it (a new
     /// source dir or package root): `candidates`.

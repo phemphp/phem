@@ -1,6 +1,6 @@
-//! Lexer and markup parser for `.phpm` files.
+//! Lexer and markup parser for `.phem` files.
 //!
-//! A `.phpm` file is PHP source that can contain markup literals (like JSX in JavaScript).
+//! A `.phem` file is PHP source that can contain markup literals (like JSX in JavaScript).
 //! [`php::lex`] tokenizes the PHP code and hands each markup literal to [`markup`],
 //! which parses it into a [`markup::Node`] tree that keeps Twig regions intact.
 

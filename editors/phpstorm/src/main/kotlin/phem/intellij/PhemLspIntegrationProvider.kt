@@ -15,7 +15,7 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 
-/** Starts the Phem language server when the user opens a `.phpm` file. */
+/** Starts the Phem language server when the user opens a `.phem` file. */
 class PhemLspIntegrationProvider : LspIntegrationProvider {
     override fun fileOpened(
         project: Project,

@@ -1,0 +1,7 @@
+<?phem // expect: E033
+use Phem\Attribute\{Component, State};
+use Phem\Bound;
+#[Component]
+function Range(Bound $from, Bound $to) { return <p><input phem:bind={{ from }} /><input phem:bind={{ to }} /></p>; }
+#[Component]
+final class F { #[State] public int $min = 0; public function render() { return <Range phem:bind={{ min }} />; } }

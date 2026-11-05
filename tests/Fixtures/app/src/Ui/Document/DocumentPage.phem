@@ -1,0 +1,98 @@
+<?phem
+
+namespace App\Ui\Document;
+
+use Phem\Attribute\{Component, Page, State};
+use Phem\{Html, Node, Root};
+use Symfony\Component\Routing\Attribute\Route;
+
+use function App\Ui\Common\{Badge, Document};
+use App\Ui\Toggle;
+
+// Another document: another component, as another base template. Components can render
+// after the root element.
+#[Component]
+function SpanishDocument(?Html $title = null, ?Html $children = null): Node
+{
+    return (
+        <html lang="es">
+            <head><title>{{ title }}</title></head>
+            <body>
+                <Root tag="main" className={{ ['custom', 'page'] }} data-controller="extra">{{ children }}</Root>
+                <footer id="doc-footer"><Badge label="es" /><Toggle /></footer>
+            </body>
+        </html>
+    );
+}
+
+// A page with a dynamic title: its state is in the title. It has the Symfony #[Route] and
+// #[Component], not #[Page].
+#[Component]
+#[Route('/document')]
+final class DocumentPage
+{
+    #[State] public int $count = 0;
+
+    public function mount(): void
+    {
+        $this->count = 3;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <SpanishDocument>
+                <SpanishDocument:title>Documento {{ count }}</SpanishDocument:title>
+                <p id="document">Document</p>
+            </SpanishDocument>
+        );
+    }
+}
+
+// A title with HTML characters and the state of the page.
+#[Page('/document/escaped')]
+final class EscapedTitlePage
+{
+    #[State] public int $n = 0;
+
+    public function increment(): void
+    {
+        ++$this->n;
+    }
+
+    public function render(): Node
+    {
+        $name = 'Tom & Jerry <script>';
+
+        return (
+            <Document>
+                <Document:title>{{ name }} {{ n }}</Document:title>
+                <button id="increment" onClick={{ increment }}>{{ n }}</button>
+            </Document>
+        );
+    }
+}
+
+// A page without a document.
+#[Page('/document/none')]
+final class NoRootPage
+{
+    public function render(): Node
+    {
+        return <p>No root</p>;
+    }
+}
+
+// A page with two roots.
+#[Page('/document/two')]
+final class TwoRootsPage
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Root>Second</Root>
+            </Document>
+        );
+    }
+}

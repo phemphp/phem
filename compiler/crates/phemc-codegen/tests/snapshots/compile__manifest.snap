@@ -8,7 +8,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\About\\AboutPage": {
       "fqcn": "App\\Ui\\About\\AboutPage",
       "kind": "class",
-      "source": "Ui/About/AboutPage.phpm",
+      "source": "Ui/About/AboutPage.phem",
       "props": [],
       "slots": [],
       "required": [],
@@ -17,7 +17,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\Badge": {
       "fqcn": "App\\Ui\\Common\\Badge",
       "kind": "template",
-      "source": "Ui/Common/Buttons.phpm",
+      "source": "Ui/Common/Buttons.phem",
       "template": "Ui/Common/Buttons.2.twig",
       "props": [
         "label",
@@ -32,7 +32,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\Card": {
       "fqcn": "App\\Ui\\Common\\Card",
       "kind": "template",
-      "source": "Ui/Common/Buttons.phpm",
+      "source": "Ui/Common/Buttons.phem",
       "template": "Ui/Common/Buttons.1.twig",
       "props": [
         "title",
@@ -51,7 +51,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\ClassButton": {
       "fqcn": "App\\Ui\\Common\\ClassButton",
       "kind": "template",
-      "source": "Ui/Common/Classes.phpm",
+      "source": "Ui/Common/Classes.phem",
       "template": "Ui/Common/Classes.0.twig",
       "props": [
         "size",
@@ -66,7 +66,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\ColorPicker": {
       "fqcn": "App\\Ui\\Common\\ColorPicker",
       "kind": "class",
-      "source": "Ui/Common/Bound.phpm",
+      "source": "Ui/Common/Bound.phem",
       "props": [
         "value"
       ],
@@ -79,7 +79,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\Counter": {
       "fqcn": "App\\Ui\\Common\\Counter",
       "kind": "class",
-      "source": "Ui/Common/Counter.phpm",
+      "source": "Ui/Common/Counter.phem",
       "props": [
         "label",
         "children"
@@ -93,7 +93,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\Document": {
       "fqcn": "App\\Ui\\Common\\Document",
       "kind": "template",
-      "source": "Ui/Common/Document.phpm",
+      "source": "Ui/Common/Document.phem",
       "template": "Ui/Common/Document.0.twig",
       "props": [
         "title",
@@ -109,7 +109,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\DynamicButton": {
       "fqcn": "App\\Ui\\Common\\DynamicButton",
       "kind": "template",
-      "source": "Ui/Common/Dynamic.phpm",
+      "source": "Ui/Common/Dynamic.phem",
       "template": "Ui/Common/Dynamic.0.twig",
       "props": [
         "tag",
@@ -124,7 +124,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\DynamicHeading": {
       "fqcn": "App\\Ui\\Common\\DynamicHeading",
       "kind": "template",
-      "source": "Ui/Common/Dynamic.phpm",
+      "source": "Ui/Common/Dynamic.phem",
       "template": "Ui/Common/Dynamic.2.twig",
       "props": [
         "level",
@@ -139,7 +139,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\DynamicMedia": {
       "fqcn": "App\\Ui\\Common\\DynamicMedia",
       "kind": "template",
-      "source": "Ui/Common/Dynamic.phpm",
+      "source": "Ui/Common/Dynamic.phem",
       "template": "Ui/Common/Dynamic.1.twig",
       "props": [
         "tag",
@@ -155,7 +155,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\DynamicNested": {
       "fqcn": "App\\Ui\\Common\\DynamicNested",
       "kind": "template",
-      "source": "Ui/Common/Dynamic.phpm",
+      "source": "Ui/Common/Dynamic.phem",
       "template": "Ui/Common/Dynamic.3.twig",
       "props": [
         "outer",
@@ -174,7 +174,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\Filters": {
       "fqcn": "App\\Ui\\Common\\Filters",
       "kind": "class",
-      "source": "Ui/Common/Filters.phpm",
+      "source": "Ui/Common/Filters.phem",
       "props": [],
       "slots": [],
       "required": [],
@@ -183,7 +183,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\MyButton": {
       "fqcn": "App\\Ui\\Common\\MyButton",
       "kind": "template",
-      "source": "Ui/Common/Buttons.phpm",
+      "source": "Ui/Common/Buttons.phem",
       "template": "Ui/Common/Buttons.0.twig",
       "props": [
         "count",
@@ -199,7 +199,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\NameField": {
       "fqcn": "App\\Ui\\Common\\NameField",
       "kind": "function",
-      "source": "Ui/Common/Bound.phpm",
+      "source": "Ui/Common/Bound.phem",
       "props": [
         "value"
       ],
@@ -212,7 +212,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\Nav": {
       "fqcn": "App\\Ui\\Common\\Nav",
       "kind": "template",
-      "source": "Ui/Common/Rest.phpm",
+      "source": "Ui/Common/Rest.phem",
       "template": "Ui/Common/Rest.3.twig",
       "props": [],
       "slots": [],
@@ -222,7 +222,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\PrimaryButton": {
       "fqcn": "App\\Ui\\Common\\PrimaryButton",
       "kind": "template",
-      "source": "Ui/Common/Classes.phpm",
+      "source": "Ui/Common/Classes.phem",
       "template": "Ui/Common/Classes.1.twig",
       "props": [
         "children"
@@ -236,7 +236,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\Profile": {
       "fqcn": "App\\Ui\\Common\\Profile",
       "kind": "class",
-      "source": "Ui/Common/Bound.phpm",
+      "source": "Ui/Common/Bound.phem",
       "props": [],
       "slots": [],
       "required": [],
@@ -245,7 +245,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\RestButton": {
       "fqcn": "App\\Ui\\Common\\RestButton",
       "kind": "template",
-      "source": "Ui/Common/Rest.phpm",
+      "source": "Ui/Common/Rest.phem",
       "template": "Ui/Common/Rest.0.twig",
       "props": [
         "count"
@@ -259,7 +259,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\RestLink": {
       "fqcn": "App\\Ui\\Common\\RestLink",
       "kind": "class",
-      "source": "Ui/Common/Rest.phpm",
+      "source": "Ui/Common/Rest.phem",
       "props": [
         "label"
       ],
@@ -270,7 +270,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\Settings": {
       "fqcn": "App\\Ui\\Common\\Settings",
       "kind": "template",
-      "source": "Ui/Common/Tabs.phpm",
+      "source": "Ui/Common/Tabs.phem",
       "template": "Ui/Common/Tabs.3.twig",
       "props": [],
       "slots": [],
@@ -280,7 +280,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\SpreadNote": {
       "fqcn": "App\\Ui\\Common\\SpreadNote",
       "kind": "template",
-      "source": "Ui/Common/Classes.phpm",
+      "source": "Ui/Common/Classes.phem",
       "template": "Ui/Common/Classes.3.twig",
       "props": [],
       "slots": [],
@@ -290,7 +290,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\Tab": {
       "fqcn": "App\\Ui\\Common\\Tab",
       "kind": "function",
-      "source": "Ui/Common/Tabs.phpm",
+      "source": "Ui/Common/Tabs.phem",
       "props": [
         "name",
         "label"
@@ -305,7 +305,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\TabCount": {
       "fqcn": "App\\Ui\\Common\\TabCount",
       "kind": "class",
-      "source": "Ui/Common/Tabs.phpm",
+      "source": "Ui/Common/Tabs.phem",
       "props": [],
       "slots": [],
       "required": [],
@@ -314,7 +314,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\Tabs": {
       "fqcn": "App\\Ui\\Common\\Tabs",
       "kind": "class",
-      "source": "Ui/Common/Tabs.phpm",
+      "source": "Ui/Common/Tabs.phem",
       "props": [
         "children"
       ],
@@ -327,7 +327,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\Tag": {
       "fqcn": "App\\Ui\\Common\\Tag",
       "kind": "template",
-      "source": "Ui/Common/Buttons.phpm",
+      "source": "Ui/Common/Buttons.phem",
       "template": "Ui/Common/Buttons.3.twig",
       "props": [
         "children"
@@ -341,7 +341,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\TextField": {
       "fqcn": "App\\Ui\\Common\\TextField",
       "kind": "template",
-      "source": "Ui/Common/Bound.phpm",
+      "source": "Ui/Common/Bound.phem",
       "template": "Ui/Common/Bound.0.twig",
       "props": [
         "value",
@@ -357,7 +357,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\ToneBadge": {
       "fqcn": "App\\Ui\\Common\\ToneBadge",
       "kind": "template",
-      "source": "Ui/Common/Classes.phpm",
+      "source": "Ui/Common/Classes.phem",
       "template": "Ui/Common/Classes.2.twig",
       "props": [
         "tone",
@@ -372,7 +372,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Common\\Toolbar": {
       "fqcn": "App\\Ui\\Common\\Toolbar",
       "kind": "function",
-      "source": "Ui/Common/Rest.phpm",
+      "source": "Ui/Common/Rest.phem",
       "props": [],
       "slots": [],
       "required": [],
@@ -381,7 +381,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Greeting": {
       "fqcn": "App\\Ui\\Greeting",
       "kind": "function",
-      "source": "Ui/HomePage.phpm",
+      "source": "Ui/HomePage.phem",
       "props": [
         "name"
       ],
@@ -394,7 +394,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\HomePage": {
       "fqcn": "App\\Ui\\HomePage",
       "kind": "class",
-      "source": "Ui/HomePage.phpm",
+      "source": "Ui/HomePage.phem",
       "props": [],
       "slots": [],
       "required": [],
@@ -403,7 +403,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Toggle": {
       "fqcn": "App\\Ui\\Toggle",
       "kind": "class",
-      "source": "Ui/HomePage.phpm",
+      "source": "Ui/HomePage.phem",
       "props": [],
       "slots": [],
       "required": [],
@@ -412,7 +412,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "App\\Ui\\Toolbar": {
       "fqcn": "App\\Ui\\Toolbar",
       "kind": "template",
-      "source": "Ui/HomePage.phpm",
+      "source": "Ui/HomePage.phem",
       "template": "Ui/HomePage.0.twig",
       "props": [
         "theme"
@@ -428,143 +428,143 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
   },
   "templates": {
     "Ui/About/AboutPage.0.twig": {
-      "source": "Ui/About/AboutPage.phpm",
+      "source": "Ui/About/AboutPage.phem",
       "line": 16
     },
     "Ui/Common/Bound.0.twig": {
-      "source": "Ui/Common/Bound.phpm",
+      "source": "Ui/Common/Bound.phem",
       "line": 13
     },
     "Ui/Common/Bound.1.twig": {
-      "source": "Ui/Common/Bound.phpm",
+      "source": "Ui/Common/Bound.phem",
       "line": 22
     },
     "Ui/Common/Bound.2.twig": {
-      "source": "Ui/Common/Bound.phpm",
+      "source": "Ui/Common/Bound.phem",
       "line": 34
     },
     "Ui/Common/Bound.3.twig": {
-      "source": "Ui/Common/Bound.phpm",
+      "source": "Ui/Common/Bound.phem",
       "line": 52
     },
     "Ui/Common/Buttons.0.twig": {
-      "source": "Ui/Common/Buttons.phpm",
+      "source": "Ui/Common/Buttons.phem",
       "line": 13
     },
     "Ui/Common/Buttons.1.twig": {
-      "source": "Ui/Common/Buttons.phpm",
+      "source": "Ui/Common/Buttons.phem",
       "line": 22
     },
     "Ui/Common/Buttons.2.twig": {
-      "source": "Ui/Common/Buttons.phpm",
+      "source": "Ui/Common/Buttons.phem",
       "line": 32
     },
     "Ui/Common/Buttons.3.twig": {
-      "source": "Ui/Common/Buttons.phpm",
+      "source": "Ui/Common/Buttons.phem",
       "line": 37
     },
     "Ui/Common/Classes.0.twig": {
-      "source": "Ui/Common/Classes.phpm",
+      "source": "Ui/Common/Classes.phem",
       "line": 12
     },
     "Ui/Common/Classes.1.twig": {
-      "source": "Ui/Common/Classes.phpm",
+      "source": "Ui/Common/Classes.phem",
       "line": 21
     },
     "Ui/Common/Classes.2.twig": {
-      "source": "Ui/Common/Classes.phpm",
+      "source": "Ui/Common/Classes.phem",
       "line": 27
     },
     "Ui/Common/Classes.3.twig": {
-      "source": "Ui/Common/Classes.phpm",
+      "source": "Ui/Common/Classes.phem",
       "line": 36
     },
     "Ui/Common/Counter.0.twig": {
-      "source": "Ui/Common/Counter.phpm",
+      "source": "Ui/Common/Counter.phem",
       "line": 29
     },
     "Ui/Common/Document.0.twig": {
-      "source": "Ui/Common/Document.phpm",
+      "source": "Ui/Common/Document.phem",
       "line": 14
     },
     "Ui/Common/Dynamic.0.twig": {
-      "source": "Ui/Common/Dynamic.phpm",
+      "source": "Ui/Common/Dynamic.phem",
       "line": 12
     },
     "Ui/Common/Dynamic.1.twig": {
-      "source": "Ui/Common/Dynamic.phpm",
+      "source": "Ui/Common/Dynamic.phem",
       "line": 21
     },
     "Ui/Common/Dynamic.2.twig": {
-      "source": "Ui/Common/Dynamic.phpm",
+      "source": "Ui/Common/Dynamic.phem",
       "line": 28
     },
     "Ui/Common/Dynamic.3.twig": {
-      "source": "Ui/Common/Dynamic.phpm",
+      "source": "Ui/Common/Dynamic.phem",
       "line": 38
     },
     "Ui/Common/Filters.0.twig": {
-      "source": "Ui/Common/Filters.phpm",
+      "source": "Ui/Common/Filters.phem",
       "line": 30
     },
     "Ui/Common/Rest.0.twig": {
-      "source": "Ui/Common/Rest.phpm",
+      "source": "Ui/Common/Rest.phem",
       "line": 11
     },
     "Ui/Common/Rest.1.twig": {
-      "source": "Ui/Common/Rest.phpm",
+      "source": "Ui/Common/Rest.phem",
       "line": 20
     },
     "Ui/Common/Rest.2.twig": {
-      "source": "Ui/Common/Rest.phpm",
+      "source": "Ui/Common/Rest.phem",
       "line": 31
     },
     "Ui/Common/Rest.3.twig": {
-      "source": "Ui/Common/Rest.phpm",
+      "source": "Ui/Common/Rest.phem",
       "line": 37
     },
     "Ui/Common/Tabs.0.twig": {
-      "source": "Ui/Common/Tabs.phpm",
+      "source": "Ui/Common/Tabs.phem",
       "line": 22
     },
     "Ui/Common/Tabs.1.twig": {
-      "source": "Ui/Common/Tabs.phpm",
+      "source": "Ui/Common/Tabs.phem",
       "line": 30
     },
     "Ui/Common/Tabs.2.twig": {
-      "source": "Ui/Common/Tabs.phpm",
+      "source": "Ui/Common/Tabs.phem",
       "line": 41
     },
     "Ui/Common/Tabs.3.twig": {
-      "source": "Ui/Common/Tabs.phpm",
+      "source": "Ui/Common/Tabs.phem",
       "line": 49
     },
     "Ui/HomePage.0.twig": {
-      "source": "Ui/HomePage.phpm",
+      "source": "Ui/HomePage.phem",
       "line": 12
     },
     "Ui/HomePage.1.twig": {
-      "source": "Ui/HomePage.phpm",
+      "source": "Ui/HomePage.phem",
       "line": 23
     },
     "Ui/HomePage.2.twig": {
-      "source": "Ui/HomePage.phpm",
+      "source": "Ui/HomePage.phem",
       "line": 39
     },
     "Ui/HomePage.3.twig": {
-      "source": "Ui/HomePage.phpm",
+      "source": "Ui/HomePage.phem",
       "line": 41
     },
     "Ui/HomePage.4.twig": {
-      "source": "Ui/HomePage.phpm",
+      "source": "Ui/HomePage.phem",
       "line": 45
     },
     "Ui/HomePage.5.twig": {
-      "source": "Ui/HomePage.phpm",
+      "source": "Ui/HomePage.phem",
       "line": 82
     },
     "Ui/HomePage.6.twig": {
-      "source": "Ui/HomePage.phpm",
+      "source": "Ui/HomePage.phem",
       "line": 85
     }
   },

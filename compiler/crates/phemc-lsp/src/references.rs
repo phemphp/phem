@@ -1,5 +1,5 @@
 //! The references of a declaration: the tags of a component, the calls of a function, and the
-//! calls and the Twig handlers of a method, in the `.phpm` files of a project. Each name with the
+//! calls and the Twig handlers of a method, in the `.phem` files of a project. Each name with the
 //! name of the declaration is a candidate: it is a reference when the resolver of the definition
 //! ([`symbol_at`]) resolves it to the declaration.
 
@@ -85,7 +85,7 @@ pub fn target_at(index: &Index, offset: usize) -> Option<Declaration> {
     declarations(&source.parsed, &location.file).into_iter().find(|d| d.location == location)
 }
 
-/// The `.phpm` sources of a project, where the references are.
+/// The `.phem` sources of a project, where the references are.
 pub struct Usages<'p> {
     project: &'p Project,
     sources: Vec<Rc<Source>>,
@@ -93,10 +93,10 @@ pub struct Usages<'p> {
 }
 
 impl<'p> Usages<'p> {
-    /// The `.phpm` files of the project. The `open` texts replace the files on disk.
+    /// The `.phem` files of the project. The `open` texts replace the files on disk.
     pub fn load(project: &'p Project, open: &HashMap<PathBuf, String>) -> Self {
         let sources: Vec<Rc<Source>> = project
-            .phpm
+            .phem
             .keys()
             .filter_map(|file| {
                 let text = match open.get(file) {

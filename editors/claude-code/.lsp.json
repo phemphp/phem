@@ -3,7 +3,7 @@
         "command": "sh",
         "args": ["${CLAUDE_PLUGIN_ROOT}/bin/phem-lsp"],
         "extensionToLanguage": {
-            ".phpm": "phpm"
+            ".phem": "phem"
         },
         "initializationOptions": {
             "sourceDir": "src"

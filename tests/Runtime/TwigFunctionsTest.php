@@ -181,7 +181,7 @@ final class TwigFunctionsTest extends TestCase
 
     public function testMarkupRendersWhenATemplatePrintsIt(): void
     {
-        $twig = new Environment(new ArrayLoader(['@phpm/a.twig' => '<p>{{ on ? yes : no }}</p>', '@phpm/yes.twig' => '<b>yes</b>', '@phpm/no.twig' => '{{ fail() }}']));
+        $twig = new Environment(new ArrayLoader(['@phemc/a.twig' => '<p>{{ on ? yes : no }}</p>', '@phemc/yes.twig' => '<b>yes</b>', '@phemc/no.twig' => '{{ fail() }}']));
         $twig->addFunction(new \Twig\TwigFunction('fail', static fn () => throw new \LogicException('The hidden branch rendered.')));
         $markup = new MarkupResolver($twig);
 
@@ -190,7 +190,7 @@ final class TwigFunctionsTest extends TestCase
 
     public function testMarkupInDataResolvesAndTheOtherDataIsNotCopied(): void
     {
-        $markup = new MarkupResolver(new Environment(new ArrayLoader(['@phpm/b.twig' => '<b>{{ name }}</b>'])));
+        $markup = new MarkupResolver(new Environment(new ArrayLoader(['@phemc/b.twig' => '<b>{{ name }}</b>'])));
         $rows = [];
 
         for ($i = 0; $i < 5000; ++$i) {

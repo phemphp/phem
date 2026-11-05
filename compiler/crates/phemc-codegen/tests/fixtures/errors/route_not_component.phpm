@@ -1,4 +1,0 @@
-<?phpm // expect: E052
-use Symfony\Component\Routing\Attribute\Route;
-#[Route('/')]
-function Home() { return <p>Home</p>; }

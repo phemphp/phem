@@ -1,2 +1,0 @@
-<?phpm // expect: E031
-function App($xs) { return <div>{{ xs|merge([<b />]) }}</div>; }

@@ -1,10 +1,10 @@
 # Phem for Visual Studio Code
 
-Language support for Phem `.phpm` files. A `.phpm` file is a PHP file with markup literals, the
+Language support for Phem `.phem` files. A `.phem` file is a PHP file with markup literals, the
 same way a `.jsx` file is JavaScript with JSX.
 
 ```php
-<?phpm
+<?phem
 
 namespace App\Ui\Common;
 
@@ -40,7 +40,7 @@ of VS Code. You do not need to install `phemc`, PHP, or Rust.
 
 | Feature             | What you get                                                                      | How to use it                          |
 |---------------------|-----------------------------------------------------------------------------------|----------------------------------------|
-| Syntax highlighting | PHP, markup, Twig, and the JavaScript and CSS of `<script>` and `<style>`.         | Open a `.phpm` file.                   |
+| Syntax highlighting | PHP, markup, Twig, and the JavaScript and CSS of `<script>` and `<style>`.         | Open a `.phem` file.                   |
 | Diagnostics         | The errors and warnings of the compiler, as you type. Unsaved changes too.         | Problems view (`Cmd+Shift+M`)          |
 | Completion          | Components, props, slots, HTML, Twig, PHP members, and imports.                    | Type, or `Ctrl+Space`                  |
 | Auto import         | A `use` statement when you accept a component, a class, or a function.             | Accept a completion item.              |
@@ -71,7 +71,7 @@ A markup literal starts where a PHP expression starts: after `return`, `(`, `=`,
 
 ## Diagnostics
 
-The server shows the errors and the warnings of `phemc` as you type. It checks all the `.phpm`
+The server shows the errors and the warnings of `phemc` as you type. It checks all the `.phem`
 files of the source directory, because a file can use the components of other files. An open
 document replaces its file on disk, also when you did not save it.
 
@@ -193,7 +193,7 @@ usages. Click it to see the usages in a peek view. Then click a usage to go to i
 `render()`, and the magic methods (`__construct()`) have no usage count. To hide the counts, set
 `"editor.codeLens": false`.
 
-The server searches the `.phpm` files of the project. It does not search the `.php` files.
+The server searches the `.phem` files of the project. It does not search the `.php` files.
 
 ## Outline
 
@@ -207,10 +207,10 @@ The **Outline** view, the breadcrumbs, and **Go to Symbol in Editor** (`Cmd+Shif
 ## How the server finds your code
 
 - The project is the nearest directory with a `composer.json` file.
-- The server reads the `.phpm` files of the project and the Composer autoload maps
+- The server reads the `.phem` files of the project and the Composer autoload maps
   (`vendor/composer/autoload_*.php`). When `vendor/` is not there, it reads the `autoload`
   section of `composer.json`.
-- The index updates when you change a `.phpm` file, add or remove a `.php` file, or run
+- The index updates when you change a `.phem` file, add or remove a `.php` file, or run
   Composer.
 - The server reads a class file when it needs the members of the class. It reads the file again
   when the file changes.
@@ -219,7 +219,7 @@ The **Outline** view, the breadcrumbs, and **Go to Symbol in Editor** (`Cmd+Shif
 
 | Setting                | Default | Description                                                                                                         |
 |------------------------|---------|---------------------------------------------------------------------------------------------------------------------|
-| `phem.phemc.sourceDir` | `src`   | The source directory of the `.phpm` files, relative to the project root. The server checks only the files in it.    |
+| `phem.phemc.sourceDir` | `src`   | The source directory of the `.phem` files, relative to the project root. The server checks only the files in it.    |
 | `phem.phemc.path`      | empty   | The path of a native `phemc` binary. When you set it, the extension runs `phemc lsp` as the server. Empty: the bundled server. |
 
 ```json
@@ -244,7 +244,7 @@ ignores the `phem.phemc.path` value of the workspace settings.
 - **Server messages:** open the **Output** view and select **Phem**.
 - **Token scopes:** run **Developer: Inspect Editor Tokens and Scopes**.
 
-The PHP extensions (Intelephense, PHP Tools) do not read `.phpm` files. The Phem server gives the
+The PHP extensions (Intelephense, PHP Tools) do not read `.phem` files. The Phem server gives the
 PHP, Twig, and HTML support in these files.
 
 ## Limits

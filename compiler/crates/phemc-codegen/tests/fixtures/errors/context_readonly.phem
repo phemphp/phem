@@ -1,0 +1,7 @@
+<?phem // expect: E044
+use Phem\Attribute\{Component, Context};
+#[Component]
+final class Chart {
+    #[Context] public readonly Theme $theme;
+    public function render() { return <div />; }
+}

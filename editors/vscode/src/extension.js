@@ -1,6 +1,6 @@
 'use strict';
 
-// Starts the Phem language server for the .phpm files, and colors the Twig delimiters.
+// Starts the Phem language server for the .phem files, and colors the Twig delimiters.
 //
 // The server is the phemc-lsp crate. By default, the extension runs its WebAssembly build
 // (server/phem-lsp.wasm) with the Node of VS Code. With the `phem.phemc.path` setting, it runs
@@ -27,7 +27,7 @@ async function start(context) {
     const folder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0].uri : undefined;
     const sourceDir = vscode.workspace.getConfiguration('phem', folder).get('phemc.sourceDir', 'src');
     client = new LanguageClient('phem', 'Phem', serverOptions(context), {
-        documentSelector: [{ scheme: 'file', language: 'phpm' }],
+        documentSelector: [{ scheme: 'file', language: 'phem' }],
         initializationOptions: { sourceDir },
     });
     await client.start();
@@ -59,7 +59,7 @@ const delimiterType = vscode.window.createTextEditorDecorationType({
 
 async function decorate(editor) {
     const document = editor.document;
-    if (document.languageId !== 'phpm' || document.uri.scheme !== 'file') {
+    if (document.languageId !== 'phem' || document.uri.scheme !== 'file') {
         return;
     }
     const enabled = vscode.workspace.getConfiguration('editor.bracketPairColorization', document).get('enabled', true);
@@ -109,7 +109,7 @@ function activate(context) {
         vscode.commands.registerCommand('phem.showReferences', showReferences),
         vscode.window.onDidChangeVisibleTextEditors((editors) => editors.forEach(decorate)),
         vscode.workspace.onDidChangeTextDocument(({ document }) => {
-            if (document.languageId !== 'phpm') {
+            if (document.languageId !== 'phem') {
                 return;
             }
             clearTimeout(timers.get(document));

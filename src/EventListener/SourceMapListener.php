@@ -20,8 +20,8 @@ use Twig\Error\Error as TwigError;
 use Twig\Source;
 
 /**
- * Points errors in compiled templates to the `.phpm` source: `src/Ui/HomePage.phpm` at line 12.
- * The Symfony error page and the console then show the `.phpm` file and line.
+ * Points errors in compiled templates to the `.phem` source: `src/Ui/HomePage.phem` at line 12.
+ * The Symfony error page and the console then show the `.phem` file and line.
  */
 final class SourceMapListener
 {

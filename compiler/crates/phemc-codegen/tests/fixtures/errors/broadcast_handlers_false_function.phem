@@ -1,0 +1,8 @@
+<?phem // expect: E053
+use Phem\Attribute\{Broadcast, Component};
+use Phem\Node;
+#[Component, Broadcast(handlers: false)]
+function Bag(): Node
+{
+    return <p>Bag</p>;
+}

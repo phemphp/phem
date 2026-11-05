@@ -1,0 +1,25 @@
+<?phem
+
+namespace Acme\Ui;
+
+use Phem\Attribute\{Component, Prop, State};
+use Phem\Node;
+
+// A class component of a package with state and a handler: the app replaces it
+// (src/Ui/Common/Toggle.phem).
+#[Component]
+final class Toggle
+{
+    #[Prop] public string $label = 'Toggle';
+    #[State] public bool $on = false;
+
+    public function flip(): void
+    {
+        $this->on = !$this->on;
+    }
+
+    public function render(): Node
+    {
+        return <button id="flip" onClick={{ flip }}>{{ label }} {{ on ? 'on' : 'off' }}</button>;
+    }
+}

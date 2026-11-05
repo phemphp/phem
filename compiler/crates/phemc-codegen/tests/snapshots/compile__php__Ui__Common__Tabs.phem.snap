@@ -1,0 +1,59 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from Ui/Common/Tabs.phem; do not edit */
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\{Component, Context, Prop, Provide, State};
+use Phem\{Event, Html, Node};
+
+// A compound component: Tabs provides itself, and each Tab reads it.
+#[Component, Provide]
+final class Tabs
+{
+    #[State] public string $active = 'general';
+    #[Prop] public ?Html $children = null;
+
+    public function select(Event $e): void
+    {
+        $this->active = (string) $e->value;
+    }
+
+    public function render(): Node
+    {
+        return new \Phem\Element('Ui/Common/Tabs.0.twig', ['children' => $this->children]);
+    }
+}
+
+// A #[Context] parameter is not a prop, and the component is not a template component.
+#[Component]
+function Tab(string $name, string $label, #[Context] Tabs $tabs): Node
+{
+    return new \Phem\Element('Ui/Common/Tabs.1.twig', ['tabs' => $tabs, 'name' => $name, 'label' => $label]);
+}
+
+// A class consumer with an optional context.
+#[Component]
+final class TabCount
+{
+    #[Context] public ?Tabs $tabs = null;
+
+    public function render(): Node
+    {
+        return new \Phem\Element('Ui/Common/Tabs.2.twig', ['tabs' => $this->tabs]);
+    }
+}
+
+#[Component]
+function Settings(): Node
+{
+    return (
+        new \Phem\Element('Ui/Common/Tabs.3.twig', [])
+
+
+
+
+    );
+}

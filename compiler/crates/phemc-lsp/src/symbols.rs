@@ -1,4 +1,4 @@
-//! The outline of a `.phpm` file: the namespace, the classes and their members, and the
+//! The outline of a `.phem` file: the namespace, the classes and their members, and the
 //! functions. A component, a page, a prop, a slot, and a state property get a detail text.
 
 use crate::decl::{has_attr, is_html_type, is_prop, Parsed};
@@ -152,7 +152,7 @@ mod tests {
     use super::*;
     use crate::decl::parse;
 
-    const SOURCE: &str = r"<?phpm
+    const SOURCE: &str = r"<?phem
 namespace App\Ui;
 
 use Phem\Attribute\{Component, Prop, State};

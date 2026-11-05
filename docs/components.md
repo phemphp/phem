@@ -1,7 +1,7 @@
 # Components and state
 
 This page explains the parts of a component, how it keeps state, how it gets its data, and how
-it shares values with the components below it. For the syntax of the attributes, see [The `.phpm` syntax](phpm-syntax.md).
+it shares values with the components below it. For the syntax of the attributes, see [The `.phem` syntax](phem-syntax.md).
 
 ## Anatomy of a component
 

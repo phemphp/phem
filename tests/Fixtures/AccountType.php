@@ -23,7 +23,7 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
-/** The Symfony form of form.phpm, with its constraints on Account. */
+/** The Symfony form of form.phem, with its constraints on Account. */
 final class AccountType extends AbstractType
 {
     public function buildForm(FormBuilderInterface $builder, array $options): void

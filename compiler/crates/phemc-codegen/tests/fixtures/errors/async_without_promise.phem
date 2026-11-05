@@ -1,0 +1,11 @@
+<?phem // expect: E055
+use Phem\Attribute\{Async, Component};
+use Phem\Node;
+#[Component]
+final class Export
+{
+    #[Async]
+    public function run(): void {}
+
+    public function render(): Node { return <button onClick={{ run }}>Export</button>; }
+}

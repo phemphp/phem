@@ -1,0 +1,5 @@
+<?phem // expect: E018
+enum Variant: string { case Primary = 'primary'; case Outline = 'outline'; }
+#[\Phem\Attribute\Component]
+function Btn(Variant $variant = Variant::Primary) { return <b>{{ variant.value }}</b>; }
+function App() { return <Btn variant="big" />; }

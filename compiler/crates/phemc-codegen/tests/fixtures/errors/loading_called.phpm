@@ -1,2 +1,0 @@
-<?phpm // expect: W001
-function App() { $save = fn() => 1; return <span phem:loading={{ save() }}>…</span>; }

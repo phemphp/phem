@@ -1,6 +1,0 @@
-<?phpm // expect: E056
-use Phem\Attribute\{Component, Page};
-#[Page('/notes/{id}')]
-function Note(int $id) { return <p>{{ id }}</p>; }
-#[Component]
-function App() { return <Note id={{ 1 }} />; }

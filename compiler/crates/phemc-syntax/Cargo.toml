@@ -1,6 +1,6 @@
 [package]
 name = "phemc-syntax"
-description = "Lexer and markup parser for .phpm files"
+description = "Lexer and markup parser for .phem files"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

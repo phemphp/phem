@@ -1,3 +1,0 @@
-<?phpm // expect: E010
-function Btn() { return <b>x</b>; }
-function App() { return <Btn />; }

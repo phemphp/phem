@@ -15,7 +15,7 @@ namespace Phem\Rendering;
 
 /**
  * A member of a component class that phemc does not see: a property or a method of a parent
- * class outside the .phpm sources.
+ * class outside the .phem sources.
  *
  * phemc compiles `{{ title }}` in such a class to `Member::read($this, 'title', self::class)`:
  * the value of the property, else the method as a closure, else null. The member is read in the

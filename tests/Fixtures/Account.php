@@ -16,7 +16,7 @@ namespace Phem\Tests\Fixtures;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
-/** The data of the Symfony form of form.phpm (see AccountType). */
+/** The data of the Symfony form of form.phem (see AccountType). */
 final class Account
 {
     #[Assert\NotBlank, Assert\Email]

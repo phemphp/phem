@@ -1,0 +1,4 @@
+<?phem // expect: E033
+use Phem\Attribute\{Component, Prop, State};
+#[Component]
+final class F { #[State] public string $q = ''; public function render() { return <input phem:bind="q" />; } }

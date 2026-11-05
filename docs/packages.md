@@ -1,6 +1,6 @@
 # Component packages
 
-A Composer package can ship `.phpm` components, for example a UI kit with a theme. The app
+A Composer package can ship `.phem` components, for example a UI kit with a theme. The app
 installs the package, and its pages use the components as their own:
 
 ```sh
@@ -19,7 +19,7 @@ function HomePage(): Node
 
 ## Make a package
 
-Give the directory of the `.phpm` files in the `composer.json` of the package:
+Give the directory of the `.phem` files in the `composer.json` of the package:
 
 ```json
 {
@@ -38,24 +38,24 @@ Give the directory of the `.phpm` files in the `composer.json` of the package:
 ```
 acme-ui/
 ├── composer.json
-├── components/            the .phpm files of the package (extra.phem.source)
-│   ├── Badge.phpm
-│   └── GalleryPage.phpm
+├── components/            the .phem files of the package (extra.phem.source)
+│   ├── Badge.phem
+│   └── GalleryPage.phem
 ├── src/                   the PHP classes of the package (enums, services), with PSR-4
 └── tests/
     ├── Kernel.php         the test kernel (see "Test a package")
     └── app/src/           the test app: pages and components that use the package
 ```
 
-The `.phpm` files have no PSR-4 autoload: `phemc` compiles them. The other PHP classes of the
+The `.phem` files have no PSR-4 autoload: `phemc` compiles them. The other PHP classes of the
 package (an enum of variants, a service) use the normal Composer autoload.
 
 The components of a package mark their default classes with `classes()`, so the app can add
 classes where it uses a component: `<Button className="w-full" />` keeps the classes of
-`Button`. See [Merge of classes](phpm-syntax.md#merge-of-classes).
+`Button`. See [Merge of classes](phem-syntax.md#merge-of-classes).
 
 A component that can render as another element (a `Button` as a link) takes its tag in a prop,
-and renders `<Dynamic tag={{ tag }}>`. See [Dynamic element](phpm-syntax.md#dynamic-element).
+and renders `<Dynamic tag={{ tag }}>`. See [Dynamic element](phem-syntax.md#dynamic-element).
 
 The app can replace a component of a package in all its tags, also in the other components of
 the package. See [Replace a component of a package](#replace-a-component-of-a-package).
@@ -69,7 +69,7 @@ For the variants, the controlled state and the CSS of a package, see
 
 `phemc build`, `check` and `watch` read `installed.json` in the Composer dir of the vendor dir
 (`vendor/composer/`, or the `config.vendor-dir` of `composer.json`, or `COMPOSER_VENDOR_DIR`).
-They compile the `.phpm` files of each package with `extra.phem.source` together with the app,
+They compile the `.phem` files of each package with `extra.phem.source` together with the app,
 in one build:
 
 - One manifest has the components of the app and of all the packages. A package can use the
@@ -94,7 +94,7 @@ in one build:
   each package, for a package in development (a Composer path repository). When a package
   root is wrong, it shows the error, and it keeps the watch of the app and of `installed.json`:
   the fix of the package builds again.
-- An error of a template of a package shows the `.phpm` file of the package in `vendor/`.
+- An error of a template of a package shows the `.phem` file of the package in `vendor/`.
 
 ## Pages in a package
 
@@ -156,7 +156,7 @@ the replacement: in the app, and in the components and the pages of all the pack
 the replacement, a tag of the original stays the original, so the replacement can wrap it:
 
 ```php
-// vendor/acme/ui/components/Alert.phpm
+// vendor/acme/ui/components/Alert.phem
 namespace Acme\Ui;
 
 #[Component]
@@ -174,7 +174,7 @@ function Notice(?Html $children = null): Node
 ```
 
 ```php
-// src/Ui/Common/Alert.phpm
+// src/Ui/Common/Alert.phem
 namespace App\Ui\Common;
 
 use Acme\Ui\Alert as UiAlert;
@@ -189,7 +189,7 @@ function Alert(string $type = 'info', ?Html $children = null): Node
 ```
 
 ```php
-// src/Ui/ReplacedPage.phpm
+// src/Ui/ReplacedPage.phem
 namespace App\Ui;
 
 use Acme\Ui\Alert;
@@ -252,7 +252,7 @@ The rules:
   `#[BroadcastKey]` props of `Counter`.
 - `{% component 'Acme\\Ui\\Alert' %}` in a plain Twig template of the app also renders the
   replacement: the manifest keeps the replacements. A plain Twig template is not inside the
-  replacement, so it cannot render the original: wrap the original in the `.phpm` markup of the
+  replacement, so it cannot render the original: wrap the original in the `.phem` markup of the
   replacement.
 - The profiler shows the component that each replacement replaces. In the editor, the
   definition of a tag of the original goes to the replacement, and the hover shows both. A prop
@@ -270,7 +270,7 @@ classes with no `#[Component]` and no `render()`. Each theme extends them, adds 
 and gives `render()`:
 
 ```php
-// vendor/acme/ui-base/components/AbstractTabs.phpm
+// vendor/acme/ui-base/components/AbstractTabs.phem
 namespace Acme\UiBase;
 
 #[Provide]
@@ -287,7 +287,7 @@ abstract class AbstractTabs
 ```
 
 ```php
-// vendor/acme/ui-tailwind/components/Tabs.phpm
+// vendor/acme/ui-tailwind/components/Tabs.phem
 namespace Acme\Ui;
 
 use Acme\UiBase\AbstractTabs;
@@ -344,11 +344,11 @@ installed, `phemc` reports the duplicate components (E014).
 ## Variants of a component
 
 A variant (`primary`, `outline`) needs no special feature. Use a backed enum prop (see
-[Enum props](phpm-syntax.md#enum-props)), and give each case its classes in a method of the
+[Enum props](phem-syntax.md#enum-props)), and give each case its classes in a method of the
 enum. `classes()` merges them with the base classes and with the classes of the caller:
 
 ```php
-// vendor/acme/ui/components/Button.phpm
+// vendor/acme/ui/components/Button.phem
 namespace Acme\Ui;
 
 enum Variant: string
@@ -401,7 +401,7 @@ in React, give the component two props:
   the component calls `onChange`, and it does not change its state.
 
 ```php
-// vendor/acme/ui/components/Tabs.phpm
+// vendor/acme/ui/components/Tabs.phem
 namespace Acme\Ui;
 
 #[Component]
@@ -490,7 +490,7 @@ has no `data-phem-*` attributes here):
 ## The class merger
 
 `classes()` merges the classes of a component with the classes of the caller (see
-[Merge of classes](phpm-syntax.md#merge-of-classes)). The default merger removes only the
+[Merge of classes](phem-syntax.md#merge-of-classes)). The default merger removes only the
 duplicates. The Tailwind merger (Tailwind CSS v4) also removes the earlier classes of the same
 group: `px-2` and then `px-4` gives `px-4`. Install it, and turn it on:
 
@@ -526,7 +526,7 @@ Phem has no CSS feature for the packages. Use the Tailwind build of the app, and
 format for the Stimulus controllers.
 
 **The classes.** Tailwind CSS v4 does not read the files in `.gitignore`, and `vendor/` is in
-it. Add the `.phpm` root of each package to the input CSS of the app. The `.phpm` sources have
+it. Add the `.phem` root of each package to the input CSS of the app. The `.phem` sources have
 the classes, so Tailwind does not need the compiled templates in `var/phem`:
 
 ```css

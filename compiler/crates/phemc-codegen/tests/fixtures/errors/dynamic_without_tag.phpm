@@ -1,3 +1,0 @@
-<?phpm // expect: E011
-use Phem\Dynamic;
-function App() { return <Dynamic href="/" />; }

@@ -32,7 +32,7 @@ final class RenderCommand
         OutputInterface $output,
         #[Argument('The URL path of the page')] string $path = '/',
     ): int {
-        // Errors are not caught, so the console shows them (with the .phpm location).
+        // Errors are not caught, so the console shows them (with the .phem location).
         $response = $this->httpKernel->handle(Request::create($path), HttpKernelInterface::MAIN_REQUEST, false);
         $output->write((string) $response->getContent(), false, OutputInterface::OUTPUT_RAW);
 

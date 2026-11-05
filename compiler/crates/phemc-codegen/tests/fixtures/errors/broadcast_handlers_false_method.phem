@@ -1,0 +1,16 @@
+<?phem // expect: E053
+use Phem\Attribute\{Broadcast, Component};
+use Phem\Node;
+#[Component]
+final class Bag
+{
+    #[Broadcast(handlers: false)]
+    public function empty(): void
+    {
+    }
+
+    public function render(): Node
+    {
+        return <button onClick={{ empty }}>Empty</button>;
+    }
+}

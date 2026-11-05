@@ -6,6 +6,13 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
+## Unreleased
+
+- **Breaking** The file extension of the components is now `.phem` (before: `.phpm`). The open
+  tag is now `<?phem` (before: `<?phpm`), and the Twig namespace of the compiled templates is now
+  `@phemc` (before: `@phpm`). Rename your files, and change each `<?phpm` tag to `<?phem`: an
+  old `<?phpm` tag is now an error (E006).
+
 ## 0.3.1 (2026-11-03)
 
 - Phem needs PHP 8.4 or later (before: 8.5). A `.phpm` file can use the syntax of PHP 8.5 (the

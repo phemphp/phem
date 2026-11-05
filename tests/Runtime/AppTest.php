@@ -418,20 +418,20 @@ final class AppTest extends TestCase
         self::assertTrue(\function_exists('App\\Ui\\Shout'), 'the compiled file declares the function');
     }
 
-    public function testTwigErrorsPointToThePhpmSource(): void
+    public function testTwigErrorsPointToThePhemSource(): void
     {
         /** @var Manifest $manifest */
         $manifest = $this->fixtureKernel()->getContainer()->get('phem.manifest');
         $projectDir = $this->fixtureKernel()->getProjectDir();
-        $error = new \RuntimeException('outer', 0, new RuntimeError('Boom.', 3, new Source('', '@phpm/Ui/HomePage.6.twig')));
+        $error = new \RuntimeException('outer', 0, new RuntimeError('Boom.', 3, new Source('', '@phemc/Ui/HomePage.6.twig')));
 
         (new SourceMapListener(new SourceMap($manifest, $projectDir)))->map($error);
 
         $twigError = $error->getPrevious();
         self::assertInstanceOf(RuntimeError::class, $twigError);
         self::assertNotNull($twigError->getSourceContext());
-        self::assertSame('src/Ui/HomePage.phpm', $twigError->getSourceContext()->getName());
-        self::assertSame($projectDir.'/src/Ui/HomePage.phpm', $twigError->getFile());
+        self::assertSame('src/Ui/HomePage.phem', $twigError->getSourceContext()->getName());
+        self::assertSame($projectDir.'/src/Ui/HomePage.phem', $twigError->getFile());
         $templateLine = (require $manifest->file())['templates']['Ui/HomePage.6.twig']['line'];
         self::assertSame($templateLine + 2, $twigError->getLine(), 'line 3 of the template');
     }

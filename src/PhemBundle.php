@@ -51,7 +51,7 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_locator;
 
 /**
- * Integrates `.phpm` components in a Symfony application.
+ * Integrates `.phem` components in a Symfony application.
  *
  *     # config/packages/phem.yaml (all options are optional)
  *     phem:

@@ -1,4 +1,0 @@
-<?phpm // expect: E043
-use Phem\Attribute\{Component, Prop};
-#[Component]
-final class Link { #[Prop(rest: true)] public array $a = []; #[Prop(rest: true)] public array $b = []; public function render() { return <a {{ ...a }}></a>; } }

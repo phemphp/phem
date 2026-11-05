@@ -1,0 +1,4 @@
+<?phem // expect: E031
+#[\Phem\Attribute\Component]
+function Card(mixed $header = null) { return <div>{{ header }}</div>; }
+function App() { return <Card header={{ <b>x</b> }} />; }

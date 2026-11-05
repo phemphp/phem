@@ -27,8 +27,8 @@ final class SourceMapTest extends TestCase
         mkdir($this->dir);
         file_put_contents($this->dir.'/autoload.php', '<?php');
         file_put_contents($this->dir.'/manifest.php', '<?php return '.var_export(['templates' => [
-            'Ui/HomePage.0.twig' => ['source' => 'src/Ui/HomePage.phpm', 'line' => 10],
-            'vendor/acme/ui/Badge.0.twig' => ['source' => '/opt/packages/ui/components/Badge.phpm', 'line' => 4],
+            'Ui/HomePage.0.twig' => ['source' => 'src/Ui/HomePage.phem', 'line' => 10],
+            'vendor/acme/ui/Badge.0.twig' => ['source' => '/opt/packages/ui/components/Badge.phem', 'line' => 4],
         ]], true).';');
     }
 
@@ -40,15 +40,15 @@ final class SourceMapTest extends TestCase
 
     public function testASourceInTheProjectIsInTheProjectDir(): void
     {
-        $location = (new SourceMap(new Manifest($this->dir), '/app'))->location('@phpm/Ui/HomePage.0.twig', 3);
+        $location = (new SourceMap(new Manifest($this->dir), '/app'))->location('@phemc/Ui/HomePage.0.twig', 3);
 
-        self::assertSame(['file' => 'src/Ui/HomePage.phpm', 'path' => '/app/src/Ui/HomePage.phpm', 'line' => 12], $location);
+        self::assertSame(['file' => 'src/Ui/HomePage.phem', 'path' => '/app/src/Ui/HomePage.phem', 'line' => 12], $location);
     }
 
     public function testASourceOutsideTheProjectKeepsItsAbsolutePath(): void
     {
-        $location = (new SourceMap(new Manifest($this->dir), '/app'))->location('@phpm/vendor/acme/ui/Badge.0.twig', 1);
+        $location = (new SourceMap(new Manifest($this->dir), '/app'))->location('@phemc/vendor/acme/ui/Badge.0.twig', 1);
 
-        self::assertSame('/opt/packages/ui/components/Badge.phpm', $location['path'] ?? null);
+        self::assertSame('/opt/packages/ui/components/Badge.phem', $location['path'] ?? null);
     }
 }

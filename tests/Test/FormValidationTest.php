@@ -17,7 +17,7 @@ use Phem\Test\InteractsWithPhem;
 use Phem\Tests\Fixtures\TestKernel;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
-/** The live validation of a Symfony form (tests/Fixtures/app/src/Ui/Form/FormPage.phpm). */
+/** The live validation of a Symfony form (tests/Fixtures/app/src/Ui/Form/FormPage.phem). */
 final class FormValidationTest extends KernelTestCase
 {
     use InteractsWithPhem;

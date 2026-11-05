@@ -1,0 +1,4 @@
+<?phem // expect: E013
+#[\Phem\Attribute\Component]
+function Card(?\Phem\Html $children = null) { return <div>{{ children }}</div>; }
+function App() { return <Card><Card:footer>x</Card:footer></Card>; }

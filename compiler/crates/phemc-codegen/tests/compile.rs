@@ -11,7 +11,7 @@ fn read_dir(dir: &Path, base: &Path, out: &mut Vec<SourceInput>) {
     for p in entries {
         if p.is_dir() {
             read_dir(&p, base, out);
-        } else if p.extension().is_some_and(|e| e == "phpm") {
+        } else if p.extension().is_some_and(|e| e == "phem") {
             let rel = p.strip_prefix(base).unwrap().to_string_lossy().replace('\\', "/");
             out.push(SourceInput::app(rel, std::fs::read_to_string(&p).unwrap()));
         }
@@ -66,11 +66,11 @@ fn reports_each_diagnostic() {
 #[test]
 fn accepts_validated_with_a_validation_property() {
     // The property is in the class, or in a parent class.
-    let src = "<?phpm\nuse Phem\\Attribute\\{Component, State, Validated};\nuse Phem\\Node;\nuse Phem\\Validation;\n\
+    let src = "<?phem\nuse Phem\\Attribute\\{Component, State, Validated};\nuse Phem\\Node;\nuse Phem\\Validation;\n\
         abstract class Form { #[State] public Validation $validation; }\n\
         #[Component] final class Own { #[State] public Validation $validation;\n#[Validated] public function save(): void {}\npublic function render(): Node { return <form onSubmit={{ save }} />; } }\n\
         #[Component] final class Child extends Form {\n#[Validated(groups: ['draft'])] public function save(): void {}\npublic function render(): Node { return <form onSubmit={{ save }} />; } }\n";
-    let (out, diags) = compile(vec![SourceInput::app("Forms.phpm", src)]);
+    let (out, diags) = compile(vec![SourceInput::app("Forms.phem", src)]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
     assert!(msgs.is_empty(), "unexpected diagnostics: {msgs:#?}");
@@ -79,16 +79,16 @@ fn accepts_validated_with_a_validation_property() {
 
 #[test]
 fn passes_the_variables_of_extension_tags() {
-    let src = "<?phpm\nfunction App() { $user = []; $locale = 'fr';\n    return <p>{% trans with {'%name%': user.name} into locale %}Hi %name%{% endtrans %}</p>;\n}\n";
-    let (out, diags) = compile(vec![SourceInput::app("App.phpm", src)]);
+    let src = "<?phem\nfunction App() { $user = []; $locale = 'fr';\n    return <p>{% trans with {'%name%': user.name} into locale %}Hi %name%{% endtrans %}</p>;\n}\n";
+    let (out, diags) = compile(vec![SourceInput::app("App.phem", src)]);
 
     assert!(diags.iter().all(|f| f.diags.is_empty()), "unexpected diagnostics");
     let php = &out.expect("output").files[0].php;
     assert!(php.contains("['user' => $user, 'locale' => $locale]"), "{php}");
 
     // A guessed name is still an error when an expression uses it.
-    let src = "<?phpm\nfunction App() { return <p>{% trans into into %}x{% endtrans %}{{ into }}</p>; }\n";
-    let (_, diags) = compile(vec![SourceInput::app("App.phpm", src)]);
+    let src = "<?phem\nfunction App() { return <p>{% trans into into %}x{% endtrans %}{{ into }}</p>; }\n";
+    let (_, diags) = compile(vec![SourceInput::app("App.phem", src)]);
 
     let codes: Vec<&str> = diags.iter().flat_map(|f| f.diags.iter().map(|d| d.code)).collect();
     assert_eq!(codes, ["E030"]);
@@ -97,8 +97,8 @@ fn passes_the_variables_of_extension_tags() {
 #[test]
 fn a_quoted_url_with_an_expression_goes_through_phem_attr() {
     // phem_attr() drops a `javascript:` URL: the URL can come from data.
-    let src = "<?phpm\nfunction App() { $url = ''; $id = 1;\n    return <form action=\"{{ url }}\"><a href=\"{{ url }}\" HREF=\"/items/{{ id }}\" title=\"{{ url }}\">x</a><img src=\"/a.png\" /><button formAction=\" {{ url }}\">y</button></form>;\n}\n";
-    let (out, diags) = compile(vec![SourceInput::app("App.phpm", src)]);
+    let src = "<?phem\nfunction App() { $url = ''; $id = 1;\n    return <form action=\"{{ url }}\"><a href=\"{{ url }}\" HREF=\"/items/{{ id }}\" title=\"{{ url }}\">x</a><img src=\"/a.png\" /><button formAction=\" {{ url }}\">y</button></form>;\n}\n";
+    let (out, diags) = compile(vec![SourceInput::app("App.phem", src)]);
 
     assert!(diags.iter().all(|f| f.diags.is_empty()), "unexpected diagnostics");
     let twig = &out.expect("output").files[0].templates[0].content;
@@ -112,8 +112,8 @@ fn a_quoted_url_with_an_expression_goes_through_phem_attr() {
 
 /// The variables that the markup of `body` (a function body) gives to its template.
 fn template_vars(body: &str) -> String {
-    let src = format!("<?phpm\nfunction App(array $items, #[\\SensitiveParameter] ?string $q = null) {{\n{body}\n}}\n");
-    let (out, diags) = compile(vec![SourceInput::app("App.phpm", src)]);
+    let src = format!("<?phem\nfunction App(array $items, #[\\SensitiveParameter] ?string $q = null) {{\n{body}\n}}\n");
+    let (out, diags) = compile(vec![SourceInput::app("App.phem", src)]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
     assert!(msgs.is_empty(), "unexpected diagnostics: {msgs:#?}");
@@ -184,22 +184,22 @@ fn a_variable_that_can_be_undefined_keeps_the_fallback() {
 }
 
 fn codes(src: &str) -> Vec<&'static str> {
-    let (_, diags) = compile(vec![SourceInput::app("App.phpm", src)]);
+    let (_, diags) = compile(vec![SourceInput::app("App.phem", src)]);
     diags.iter().flat_map(|f| f.diags.iter().map(|d| d.code)).collect()
 }
 
 #[test]
 fn a_set_in_an_if_branch_or_an_element_binds_after_it() {
-    let src = "<?phpm\nfunction App() { $ok = true;\n    return <p>{% if ok %}{% set label = 'a' %}{% else %}{% set label = 'b' %}{% endif %}<b>{% set n = 1 %}</b>{{ label }} {{ n }}</p>;\n}\n";
-    let (out, diags) = compile(vec![SourceInput::app("App.phpm", src)]);
+    let src = "<?phem\nfunction App() { $ok = true;\n    return <p>{% if ok %}{% set label = 'a' %}{% else %}{% set label = 'b' %}{% endif %}<b>{% set n = 1 %}</b>{{ label }} {{ n }}</p>;\n}\n";
+    let (out, diags) = compile(vec![SourceInput::app("App.phem", src)]);
 
     assert!(diags.iter().all(|f| f.diags.is_empty()), "unexpected diagnostics");
     let php = &out.expect("output").files[0].php;
     assert!(php.contains("['ok' => $ok]"), "{php}");
 
     // `for` has its own scope, and so do the children of a component (its slots).
-    assert_eq!(codes("<?phpm\nfunction App() { $xs = [];\n    return <p>{% for x in xs %}{% set y = x %}{% endfor %}{{ y }}</p>;\n}\n"), ["E030"]);
-    let src = "<?phpm\n#[\\Phem\\Attribute\\Component]\nfunction Box(?Phem\\Html $children = null) { return <b>{{ children }}</b>; }\nfunction App() { return <p><Box>{% set z = 1 %}</Box>{{ z }}</p>; }\n";
+    assert_eq!(codes("<?phem\nfunction App() { $xs = [];\n    return <p>{% for x in xs %}{% set y = x %}{% endfor %}{{ y }}</p>;\n}\n"), ["E030"]);
+    let src = "<?phem\n#[\\Phem\\Attribute\\Component]\nfunction Box(?Phem\\Html $children = null) { return <b>{{ children }}</b>; }\nfunction App() { return <p><Box>{% set z = 1 %}</Box>{{ z }}</p>; }\n";
     assert_eq!(codes(src), ["E030"]);
 }
 
@@ -207,16 +207,16 @@ fn a_set_in_an_if_branch_or_an_element_binds_after_it() {
 fn a_set_in_only_some_branches_keeps_the_php_variable() {
     // Without `else`, or with a set in one branch only, the PHP value shows when no set runs.
     for tags in ["{% if off %}{% set variant = 'b' %}{% endif %}", "{% if off %}{% set variant = 'b' %}{% else %}x{% endif %}"] {
-        let src = format!("<?phpm\nfunction App() {{ $variant = 'a'; $off = true;\n    return <p>{tags}{{{{ variant }}}}</p>;\n}}\n");
-        let (out, diags) = compile(vec![SourceInput::app("App.phpm", src)]);
+        let src = format!("<?phem\nfunction App() {{ $variant = 'a'; $off = true;\n    return <p>{tags}{{{{ variant }}}}</p>;\n}}\n");
+        let (out, diags) = compile(vec![SourceInput::app("App.phem", src)]);
 
         assert!(diags.iter().all(|f| f.diags.is_empty()), "unexpected diagnostics");
         let php = &out.expect("output").files[0].php;
         assert!(php.contains("'variant' => $variant"), "{php}");
     }
 
-    let src = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class Btn {\n    public string $title = 'a';\n    public bool $off = false;\n    public function render() { return <b>{% if off %}{% set title = 'b' %}{% endif %}{{ title }}</b>; }\n}\n";
-    let (out, diags) = compile(vec![SourceInput::app("Btn.phpm", src)]);
+    let src = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class Btn {\n    public string $title = 'a';\n    public bool $off = false;\n    public function render() { return <b>{% if off %}{% set title = 'b' %}{% endif %}{{ title }}</b>; }\n}\n";
+    let (out, diags) = compile(vec![SourceInput::app("Btn.phem", src)]);
 
     assert!(diags.iter().all(|f| f.diags.is_empty()), "unexpected diagnostics");
     let php = &out.expect("output").files[0].php;
@@ -225,8 +225,8 @@ fn a_set_in_only_some_branches_keeps_the_php_variable() {
 
 #[test]
 fn a_class_component_reads_the_private_properties_of_its_traits() {
-    let src = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\Component;\ntrait Paginates { private int $page = 1; }\n#[Component]\nfinal class Results {\n    use Paginates;\n    public function render() { return <p>{{ page }}</p>; }\n}\n";
-    let (out, diags) = compile(vec![SourceInput::app("Results.phpm", src)]);
+    let src = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\ntrait Paginates { private int $page = 1; }\n#[Component]\nfinal class Results {\n    use Paginates;\n    public function render() { return <p>{{ page }}</p>; }\n}\n";
+    let (out, diags) = compile(vec![SourceInput::app("Results.phem", src)]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
     assert!(msgs.is_empty(), "{msgs:?}");
@@ -236,16 +236,16 @@ fn a_class_component_reads_the_private_properties_of_its_traits() {
 
 #[test]
 fn a_prop_whose_type_accepts_null_is_optional() {
-    let src = "<?phpm\n#[\\Phem\\Attribute\\Component]\nfunction Box($a, mixed $b, int|null $c) { return <b>{{ a }}{{ b }}{{ c }}</b>; }\nfunction App() { return <Box />; }\n";
+    let src = "<?phem\n#[\\Phem\\Attribute\\Component]\nfunction Box($a, mixed $b, int|null $c) { return <b>{{ a }}{{ b }}{{ c }}</b>; }\nfunction App() { return <Box />; }\n";
     assert_eq!(codes(src), Vec::<&str>::new());
-    let src = "<?phpm\n#[\\Phem\\Attribute\\Component]\nfunction Box(int|string $a) { return <b>{{ a }}</b>; }\nfunction App() { return <Box />; }\n";
+    let src = "<?phem\n#[\\Phem\\Attribute\\Component]\nfunction Box(int|string $a) { return <b>{{ a }}</b>; }\nfunction App() { return <Box />; }\n";
     assert_eq!(codes(src), ["E011"]);
 }
 
 #[test]
 fn markup_reads_the_twig_globals() {
-    let src = "<?phpm\nfunction App() { return <p>{{ app.user.name }}</p>; }\n";
-    let (out, diags) = compile(vec![SourceInput::app("App.phpm", src)]);
+    let src = "<?phem\nfunction App() { return <p>{{ app.user.name }}</p>; }\n";
+    let (out, diags) = compile(vec![SourceInput::app("App.phem", src)]);
 
     assert!(diags.iter().all(|f| f.diags.is_empty()), "unexpected diagnostics");
     assert!(out.expect("output").files[0].php.contains("new \\Phem\\Element('App.0.twig', [])"));
@@ -253,21 +253,21 @@ fn markup_reads_the_twig_globals() {
 
 #[test]
 fn a_class_component_gets_the_members_of_its_parent_and_traits() {
-    let base = "<?phpm\nnamespace App;\nabstract class Base {\n    #[\\Phem\\Attribute\\Prop] public string $title = '';\n    private int $secret = 1;\n    public function save(): void {}\n    public function render() { return <b>{{ title }}</b>; }\n}\ntrait Named { #[\\Phem\\Attribute\\Prop] public string $name = ''; }\n";
-    let card = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class Card extends Base {\n    use Named;\n    public function view() { return <i onClick={{ save }}>{{ title }} {{ name }}</i>; }\n}\nfunction Page() { return <Card title=\"a\" name=\"b\" />; }\n";
-    let inputs = vec![SourceInput::app("Base.phpm", base), SourceInput::app("Card.phpm", card)];
+    let base = "<?phem\nnamespace App;\nabstract class Base {\n    #[\\Phem\\Attribute\\Prop] public string $title = '';\n    private int $secret = 1;\n    public function save(): void {}\n    public function render() { return <b>{{ title }}</b>; }\n}\ntrait Named { #[\\Phem\\Attribute\\Prop] public string $name = ''; }\n";
+    let card = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class Card extends Base {\n    use Named;\n    public function view() { return <i onClick={{ save }}>{{ title }} {{ name }}</i>; }\n}\nfunction Page() { return <Card title=\"a\" name=\"b\" />; }\n";
+    let inputs = vec![SourceInput::app("Base.phem", base), SourceInput::app("Card.phem", card)];
     let (out, diags) = compile(inputs.clone());
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
     assert!(msgs.is_empty(), "{msgs:?}");
     let out = out.expect("output");
     assert_eq!(out.manifest.components["App\\Card"].props, ["name", "title"], "the trait, then the parent class");
-    let php = &out.files.iter().find(|f| f.rel == "Card.phpm").unwrap().php;
+    let php = &out.files.iter().find(|f| f.rel == "Card.phem").unwrap().php;
     assert!(php.contains("'save' => $this->save(...), 'title' => $this->title, 'name' => $this->name"), "{php}");
 
     // A private property of the parent is not visible.
     let card = card.replace("{{ name }}", "{{ secret }}");
-    let (_, diags) = compile(vec![inputs[0].clone(), SourceInput::app("Card.phpm", card)]);
+    let (_, diags) = compile(vec![inputs[0].clone(), SourceInput::app("Card.phem", card)]);
 
     let codes: Vec<&str> = diags.iter().flat_map(|f| f.diags.iter().map(|d| d.code)).collect();
     assert_eq!(codes, ["E030"]);
@@ -275,10 +275,10 @@ fn a_class_component_gets_the_members_of_its_parent_and_traits() {
 
 #[test]
 fn a_class_component_does_not_see_the_private_members_of_its_parent() {
-    let base = "<?phpm\nnamespace App;\nabstract class Base {\n    public function __construct(private int $secret = 1) {}\n    private function hidden(): void {}\n}\ntrait Tools { private function tool(): void {} }\n";
+    let base = "<?phem\nnamespace App;\nabstract class Base {\n    public function __construct(private int $secret = 1) {}\n    private function hidden(): void {}\n}\ntrait Tools { private function tool(): void {} }\n";
     let codes = |body: &str| -> Vec<&'static str> {
-        let card = format!("<?phpm\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class Card extends Base {{\n    use Tools;\n    public function render() {{ return <i>{body}</i>; }}\n}}\n");
-        let (_, diags) = compile(vec![SourceInput::app("Base.phpm", base), SourceInput::app("Card.phpm", card)]);
+        let card = format!("<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class Card extends Base {{\n    use Tools;\n    public function render() {{ return <i>{body}</i>; }}\n}}\n");
+        let (_, diags) = compile(vec![SourceInput::app("Base.phem", base), SourceInput::app("Card.phem", card)]);
         diags.iter().flat_map(|f| f.diags.iter().map(|d| d.code)).collect()
     };
 
@@ -289,8 +289,8 @@ fn a_class_component_does_not_see_the_private_members_of_its_parent() {
 
 #[test]
 fn a_class_with_a_parent_outside_the_sources_is_not_checked() {
-    let src = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class Box extends \\Vendor\\Base {\n    public function view() { return <b>{{ title }}</b>; }\n}\nfunction Page() { return <Box title=\"a\"><p>kid</p><Box:footer>f</Box:footer></Box>; }\n";
-    let (out, diags) = compile(vec![SourceInput::app("Box.phpm", src)]);
+    let src = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class Box extends \\Vendor\\Base {\n    public function view() { return <b>{{ title }}</b>; }\n}\nfunction Page() { return <Box title=\"a\"><p>kid</p><Box:footer>f</Box:footer></Box>; }\n";
+    let (out, diags) = compile(vec![SourceInput::app("Box.phem", src)]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
     assert!(msgs.is_empty(), "{msgs:?}");
@@ -300,9 +300,9 @@ fn a_class_with_a_parent_outside_the_sources_is_not_checked() {
 
 #[test]
 fn a_parent_class_loads_before_its_subclasses() {
-    let about = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class About extends Base {\n    public function render() { return <p>{{ name }}</p>; }\n}\n";
-    let base = "<?phpm\nnamespace App;\nabstract class Base {\n    public string $name = 'App';\n}\n";
-    let (out, diags) = compile(vec![SourceInput::app("About.phpm", about), SourceInput::app("Page/Base.phpm", base)]);
+    let about = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class About extends Base {\n    public function render() { return <p>{{ name }}</p>; }\n}\n";
+    let base = "<?phem\nnamespace App;\nabstract class Base {\n    public string $name = 'App';\n}\n";
+    let (out, diags) = compile(vec![SourceInput::app("About.phem", about), SourceInput::app("Page/Base.phem", base)]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
     assert!(msgs.is_empty(), "{msgs:?}");
@@ -312,10 +312,10 @@ fn a_parent_class_loads_before_its_subclasses() {
 #[test]
 fn root_is_a_built_in_component() {
     let src = |imports: &str| {
-        format!("<?phpm\nnamespace App;\n{imports}\n#[\\Phem\\Attribute\\Component]\nfunction Document(?Html $title = null, ?Html $children = null) {{\n    return <html><head><title>{{{{ title ?? 'App' }}}}</title></head><body><Root tag=\"main\" className=\"app\" data-controller=\"extra\">{{{{ children }}}}</Root></body></html>;\n}}\n")
+        format!("<?phem\nnamespace App;\n{imports}\n#[\\Phem\\Attribute\\Component]\nfunction Document(?Html $title = null, ?Html $children = null) {{\n    return <html><head><title>{{{{ title ?? 'App' }}}}</title></head><body><Root tag=\"main\" className=\"app\" data-controller=\"extra\">{{{{ children }}}}</Root></body></html>;\n}}\n")
     };
 
-    let (out, diags) = compile(vec![SourceInput::app("Document.phpm", src("use Phem\\{Html, Root};"))]);
+    let (out, diags) = compile(vec![SourceInput::app("Document.phem", src("use Phem\\{Html, Root};"))]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
     assert!(msgs.is_empty(), "{msgs:?}");
@@ -326,13 +326,13 @@ fn root_is_a_built_in_component() {
     );
     assert!(!out.manifest.components.contains_key("Phem\\Root"), "the runtime knows the built-in components");
 
-    let (_, diags) = compile(vec![SourceInput::app("Document.phpm", src("use Phem\\Html;"))]);
+    let (_, diags) = compile(vec![SourceInput::app("Document.phem", src("use Phem\\Html;"))]);
 
     let d = diags.iter().flat_map(|f| &f.diags).find(|d| d.code == "E010").expect("E010 without the import");
     assert_eq!(d.help.as_deref(), Some("import it: `use Phem\\Root;`"));
 
-    let duplicate = "<?phpm\nnamespace Phem;\n#[\\Phem\\Attribute\\Component]\nfunction Root() { return <p />; }\n";
-    let (_, diags) = compile(vec![SourceInput::app("Root.phpm", duplicate)]);
+    let duplicate = "<?phem\nnamespace Phem;\n#[\\Phem\\Attribute\\Component]\nfunction Root() { return <p />; }\n";
+    let (_, diags) = compile(vec![SourceInput::app("Root.phem", duplicate)]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
     assert_eq!(msgs, ["E014 component `Phem\\Root` is a built-in component of Phem"]);
@@ -340,9 +340,9 @@ fn root_is_a_built_in_component() {
 
 #[test]
 fn dynamic_is_an_element_with_a_tag_from_a_value() {
-    let src = |imports: &str, body: &str| format!("<?phpm\nnamespace App;\n{imports}\n#[\\Phem\\Attribute\\Component]\nfunction Button(string $tag = 'button', ?Html $children = null, mixed ...$rest) {{\n    return {body};\n}}\n");
+    let src = |imports: &str, body: &str| format!("<?phem\nnamespace App;\n{imports}\n#[\\Phem\\Attribute\\Component]\nfunction Button(string $tag = 'button', ?Html $children = null, mixed ...$rest) {{\n    return {body};\n}}\n");
     let body = "<Dynamic tag={{ tag }} type=\"button\" {{ ...rest }} onClick={{ rest.onPress }}>{{ children }}</Dynamic>";
-    let (out, diags) = compile(vec![SourceInput::app("Button.phpm", src("use Phem\\{Dynamic, Html};", body))]);
+    let (out, diags) = compile(vec![SourceInput::app("Button.phem", src("use Phem\\{Dynamic, Html};", body))]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
     assert!(msgs.is_empty(), "{msgs:?}");
@@ -355,22 +355,22 @@ fn dynamic_is_an_element_with_a_tag_from_a_value() {
     assert!(!out.manifest.components.contains_key("Phem\\Dynamic"), "phemc compiles the built-in element");
 
     // No children, no attributes.
-    let (out, _) = compile(vec![SourceInput::app("Button.phpm", src("use Phem\\{Dynamic, Html};", "<Dynamic tag={{ tag }} />"))]);
+    let (out, _) = compile(vec![SourceInput::app("Button.phem", src("use Phem\\{Dynamic, Html};", "<Dynamic tag={{ tag }} />"))]);
     assert_eq!(out.expect("output").files[0].templates[0].content, "{% set _phem_tag_0 = phem_tag((tag)) %}<{{ _phem_tag_0 }}>{{ phem_end_tag(_phem_tag_0) }}");
 
-    let (_, diags) = compile(vec![SourceInput::app("Button.phpm", src("use Phem\\Html;", body))]);
+    let (_, diags) = compile(vec![SourceInput::app("Button.phem", src("use Phem\\Html;", body))]);
 
     let d = diags.iter().flat_map(|f| &f.diags).find(|d| d.code == "E010").expect("E010 without the import");
     assert_eq!(d.help.as_deref(), Some("import it: `use Phem\\Dynamic;`"));
 
-    let (_, diags) = compile(vec![SourceInput::app("Button.phpm", src("use Phem\\{Dynamic, Html};", "<Dynamic tag=\"Style\" />"))]);
+    let (_, diags) = compile(vec![SourceInput::app("Button.phem", src("use Phem\\{Dynamic, Html};", "<Dynamic tag=\"Style\" />"))]);
 
     let d = diags.iter().flat_map(|f| &f.diags).find(|d| d.code == "E032").expect("E032 for a <style>");
     assert_eq!(d.message, "`<Dynamic>` cannot render a `<style>`");
     assert_eq!(d.help.as_deref(), Some("write the `<style>` as static markup"));
 
     let error = |body: &str| {
-        let (_, diags) = compile(vec![SourceInput::app("Button.phpm", src("use Phem\\{Dynamic, Html};", body))]);
+        let (_, diags) = compile(vec![SourceInput::app("Button.phem", src("use Phem\\{Dynamic, Html};", body))]);
         diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {} ({})", d.code, d.message, d.help.as_deref().unwrap_or("")))).collect::<Vec<_>>()
     };
     assert_eq!(error("<Dynamic tag=\"iframe\" />"), ["E032 `<Dynamic>` cannot render a `<iframe>` (write the `<iframe>` as static markup)"], "an iframe runs its `srcdoc`");
@@ -380,8 +380,8 @@ fn dynamic_is_an_element_with_a_tag_from_a_value() {
 
 #[test]
 fn a_set_in_a_dynamic_element_binds_in_its_parent() {
-    let src = "<?phpm\nnamespace App;\nuse Phem\\Dynamic;\n#[\\Phem\\Attribute\\Component]\nfunction Card() {\n    return <div><Dynamic tag=\"p\">{% set label = 'x' %}</Dynamic>{{ label }}</div>;\n}\n";
-    let (out, diags) = compile(vec![SourceInput::app("Card.phpm", src)]);
+    let src = "<?phem\nnamespace App;\nuse Phem\\Dynamic;\n#[\\Phem\\Attribute\\Component]\nfunction Card() {\n    return <div><Dynamic tag=\"p\">{% set label = 'x' %}</Dynamic>{{ label }}</div>;\n}\n";
+    let (out, diags) = compile(vec![SourceInput::app("Card.phem", src)]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
     assert!(msgs.is_empty(), "{msgs:?}");
@@ -393,17 +393,17 @@ fn a_set_in_a_dynamic_element_binds_in_its_parent() {
 fn a_context_consumer_in_a_dynamic_element_is_placed() {
     let src = TABS.replace("use Phem\\Html;", "use Phem\\{Dynamic, Html};")
         + "#[Page('/')]\nfinal class Home { public function render() { return <Dynamic tag=\"main\"><Tab name=\"a\" /></Dynamic>; } }\n";
-    assert_eq!(project(&[("App.phpm", &src)]), ["App.phpm E015"], "`<Dynamic>` is not a component: the page is the parent of the tag");
+    assert_eq!(project(&[("App.phem", &src)]), ["App.phem E015"], "`<Dynamic>` is not a component: the page is the parent of the tag");
 
     let src = src.replace("<Dynamic tag=\"main\"><Tab name=\"a\" /></Dynamic>", "<Tabs><Dynamic tag=\"main\"><Tab name=\"a\" /></Dynamic></Tabs>");
-    assert!(project(&[("App.phpm", &src)]).is_empty());
+    assert!(project(&[("App.phem", &src)]).is_empty());
 }
 
 #[test]
 fn suspense_is_a_built_in_component() {
-    let src = |imports: &str, body: &str| format!("<?phpm\nnamespace App;\n{imports}\n#[\\Phem\\Attribute\\Component]\nfunction Report() {{ return <p />; }}\n#[\\Phem\\Attribute\\Component]\nfunction Home() {{\n    return {body};\n}}\n");
+    let src = |imports: &str, body: &str| format!("<?phem\nnamespace App;\n{imports}\n#[\\Phem\\Attribute\\Component]\nfunction Report() {{ return <p />; }}\n#[\\Phem\\Attribute\\Component]\nfunction Home() {{\n    return {body};\n}}\n");
     let body = "<Suspense lazy><Suspense:fallback>Loading</Suspense:fallback><Suspense:error>Error</Suspense:error><Report /></Suspense>";
-    let (out, diags) = compile(vec![SourceInput::app("Home.phpm", src("use Phem\\Suspense;", body))]);
+    let (out, diags) = compile(vec![SourceInput::app("Home.phem", src("use Phem\\Suspense;", body))]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
     assert!(msgs.is_empty(), "{msgs:?}");
@@ -414,16 +414,16 @@ fn suspense_is_a_built_in_component() {
     let wrong = "<Suspense><Suspense:loading>Loading</Suspense:loading><Report /></Suspense>";
     assert_eq!(codes(&src("use Phem\\Suspense;", wrong)), ["E013"]);
 
-    let (_, diags) = compile(vec![SourceInput::app("Home.phpm", src("", body))]);
+    let (_, diags) = compile(vec![SourceInput::app("Home.phem", src("", body))]);
     let d = diags.iter().flat_map(|f| &f.diags).find(|d| d.code == "E010").expect("E010 without the import");
     assert_eq!(d.help.as_deref(), Some("import it: `use Phem\\Suspense;`"));
 }
 
 #[test]
 fn error_boundary_is_a_built_in_component() {
-    let src = |imports: &str, body: &str| format!("<?phpm\nnamespace App;\n{imports}\n#[\\Phem\\Attribute\\Component]\nfunction Quote() {{ return <p />; }}\n#[\\Phem\\Attribute\\Component]\nfunction Home() {{\n    return {body};\n}}\n");
+    let src = |imports: &str, body: &str| format!("<?phem\nnamespace App;\n{imports}\n#[\\Phem\\Attribute\\Component]\nfunction Quote() {{ return <p />; }}\n#[\\Phem\\Attribute\\Component]\nfunction Home() {{\n    return {body};\n}}\n");
     let body = "<ErrorBoundary><ErrorBoundary:fallback>No quote</ErrorBoundary:fallback><Quote /></ErrorBoundary>";
-    let (out, diags) = compile(vec![SourceInput::app("Home.phpm", src("use Phem\\ErrorBoundary;", body))]);
+    let (out, diags) = compile(vec![SourceInput::app("Home.phem", src("use Phem\\ErrorBoundary;", body))]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
     assert!(msgs.is_empty(), "{msgs:?}");
@@ -431,7 +431,7 @@ fn error_boundary_is_a_built_in_component() {
     assert!(out.files[0].templates.iter().any(|t| t.content.contains("{% component embed 'Phem\\\\ErrorBoundary' only %}")), "{:?}", out.files[0].templates);
     assert!(!out.manifest.components.contains_key("Phem\\ErrorBoundary"), "the runtime knows the built-in components");
 
-    let (_, diags) = compile(vec![SourceInput::app("Home.phpm", src("use Phem\\ErrorBoundary;", "<ErrorBoundary><Quote /></ErrorBoundary>"))]);
+    let (_, diags) = compile(vec![SourceInput::app("Home.phem", src("use Phem\\ErrorBoundary;", "<ErrorBoundary><Quote /></ErrorBoundary>"))]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| d.message.clone())).collect();
     assert_eq!(msgs, ["`<ErrorBoundary>` needs the slot `fallback`"]);
@@ -439,21 +439,21 @@ fn error_boundary_is_a_built_in_component() {
     let wrong = "<ErrorBoundary><ErrorBoundary:fallback>No</ErrorBoundary:fallback><ErrorBoundary:error>No</ErrorBoundary:error><Quote /></ErrorBoundary>";
     assert_eq!(codes(&src("use Phem\\ErrorBoundary;", wrong)), ["E013"]);
 
-    let (_, diags) = compile(vec![SourceInput::app("Home.phpm", src("", body))]);
+    let (_, diags) = compile(vec![SourceInput::app("Home.phem", src("", body))]);
     let d = diags.iter().flat_map(|f| &f.diags).find(|d| d.code == "E010").expect("E010 without the import");
     assert_eq!(d.help.as_deref(), Some("import it: `use Phem\\ErrorBoundary;`"));
 }
 
 #[test]
 fn a_page_gives_the_title_to_its_document() {
-    let document = "<?phpm\nnamespace App;\nuse Phem\\{Html, Root};\n#[\\Phem\\Attribute\\Component]\nfunction Document(?Html $title = null, ?Html $children = null) {\n    return <html><head><title>{{ title ?? 'App' }}</title></head><body><Root>{{ children }}</Root></body></html>;\n}\n";
-    let page = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\Page;\n#[Page('/')]\nfinal class Home {\n    public string $name = 'Ada';\n    public function render() { return <Document><Document:title>Hi {{ name }}</Document:title><p>Home</p></Document>; }\n}\n";
-    let (out, diags) = compile(vec![SourceInput::app("Document.phpm", document), SourceInput::app("Home.phpm", page)]);
+    let document = "<?phem\nnamespace App;\nuse Phem\\{Html, Root};\n#[\\Phem\\Attribute\\Component]\nfunction Document(?Html $title = null, ?Html $children = null) {\n    return <html><head><title>{{ title ?? 'App' }}</title></head><body><Root>{{ children }}</Root></body></html>;\n}\n";
+    let page = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Page;\n#[Page('/')]\nfinal class Home {\n    public string $name = 'Ada';\n    public function render() { return <Document><Document:title>Hi {{ name }}</Document:title><p>Home</p></Document>; }\n}\n";
+    let (out, diags) = compile(vec![SourceInput::app("Document.phem", document), SourceInput::app("Home.phem", page)]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
     assert!(msgs.is_empty(), "{msgs:?}");
     let out = out.expect("output");
-    let home = out.files.iter().find(|f| f.rel == "Home.phpm").expect("Home.phpm");
+    let home = out.files.iter().find(|f| f.rel == "Home.phem").expect("Home.phem");
     assert_eq!(
         home.templates[0].content,
         "{% component embed 'App\\\\Document' only %}{% block children %}{% with _phem_caller only %}<p>Home</p>{% endwith %}{% endblock %}{% block title %}{% with _phem_caller only %}Hi {{ name }}{% endwith %}{% endblock %}{% endcomponent %}"
@@ -463,9 +463,9 @@ fn a_page_gives_the_title_to_its_document() {
 
 #[test]
 fn a_required_slot_that_the_caller_does_not_give_is_an_error() {
-    let src = |body: &str| format!("<?phpm\nnamespace App;\nuse Phem\\Html;\n#[\\Phem\\Attribute\\Component]\nfunction Card(Html $title, Html $children) {{ return <div>{{{{ title }}}}{{{{ children }}}}</div>; }}\n#[\\Phem\\Attribute\\Component]\nfunction Home() {{ return {body}; }}\n");
+    let src = |body: &str| format!("<?phem\nnamespace App;\nuse Phem\\Html;\n#[\\Phem\\Attribute\\Component]\nfunction Card(Html $title, Html $children) {{ return <div>{{{{ title }}}}{{{{ children }}}}</div>; }}\n#[\\Phem\\Attribute\\Component]\nfunction Home() {{ return {body}; }}\n");
     let diags = |body: &str| -> Vec<(String, Option<String>)> {
-        let (_, diags) = compile(vec![SourceInput::app("Home.phpm", src(body))]);
+        let (_, diags) = compile(vec![SourceInput::app("Home.phem", src(body))]);
         diags.iter().flat_map(|f| f.diags.iter().map(|d| (format!("{} {}", d.code, d.message), d.help.clone()))).collect()
     };
 
@@ -476,7 +476,7 @@ fn a_required_slot_that_the_caller_does_not_give_is_an_error() {
 
 #[test]
 fn a_title_outside_head_and_svg_is_a_warning() {
-    let w005 = |markup: &str| codes(&format!("<?phpm\nfunction App() {{ $on = true; return {markup}; }}\n")).iter().filter(|c| **c == "W005").count();
+    let w005 = |markup: &str| codes(&format!("<?phem\nfunction App() {{ $on = true; return {markup}; }}\n")).iter().filter(|c| **c == "W005").count();
 
     assert_eq!(w005("<main><title>Home</title></main>"), 1);
     assert_eq!(w005("<html><head><title>Home</title></head><body /></html>"), 0, "the title of a document");
@@ -490,13 +490,13 @@ fn a_title_outside_head_and_svg_is_a_warning() {
 
 #[test]
 fn a_parent_class_and_a_trait_load_before_the_classes_that_use_them() {
-    let file = |rel: &str, text: &str| SourceInput::app(rel, format!("<?phpm\nnamespace App;\n{text}\n"));
+    let file = |rel: &str, text: &str| SourceInput::app(rel, format!("<?phem\nnamespace App;\n{text}\n"));
     let inputs = vec![
-        file("a/C.phpm", "final class C extends B {}"),
-        file("b/B.phpm", "abstract class B extends A { use T; }"),
-        file("c/T.phpm", "trait T {}"),
-        file("d/A.phpm", "abstract class A extends \\Exception {}"),
-        file("e/Free.phpm", "final class Free extends \\Exception {}"),
+        file("a/C.phem", "final class C extends B {}"),
+        file("b/B.phem", "abstract class B extends A { use T; }"),
+        file("c/T.phem", "trait T {}"),
+        file("d/A.phem", "abstract class A extends \\Exception {}"),
+        file("e/Free.phem", "final class Free extends \\Exception {}"),
     ];
 
     let (out, diags) = compile(inputs);
@@ -508,8 +508,8 @@ fn a_parent_class_and_a_trait_load_before_the_classes_that_use_them() {
 #[test]
 fn a_page_class_is_a_component_with_a_route() {
     let page = |attrs: &str, class: &str| {
-        let src = format!("<?phpm\nnamespace App;\nuse Phem\\Attribute\\{{Component, Page, Prop, Broadcast, BroadcastKey}};\nuse Symfony\\Component\\Routing\\Attribute\\Route;\n{attrs}\n{class}\n");
-        compile(vec![SourceInput::app("Home.phpm", src)])
+        let src = format!("<?phem\nnamespace App;\nuse Phem\\Attribute\\{{Component, Page, Prop, Broadcast, BroadcastKey}};\nuse Symfony\\Component\\Routing\\Attribute\\Route;\n{attrs}\n{class}\n");
+        compile(vec![SourceInput::app("Home.phem", src)])
     };
     let render = "final class Home { public function render() { return <p>Home</p>; } }";
 
@@ -558,8 +558,8 @@ fn a_page_class_is_a_component_with_a_route() {
 #[test]
 fn a_function_with_page_is_a_page() {
     let page = |attrs: &str, function: &str| {
-        let src = format!("<?phpm\nnamespace App;\nuse Phem\\Attribute\\{{Component, Page}};\n{attrs}\n{function}\n");
-        compile(vec![SourceInput::app("Home.phpm", src)])
+        let src = format!("<?phem\nnamespace App;\nuse Phem\\Attribute\\{{Component, Page}};\n{attrs}\n{function}\n");
+        compile(vec![SourceInput::app("Home.phem", src)])
     };
 
     for (attrs, body, kind) in [
@@ -578,8 +578,8 @@ fn a_function_with_page_is_a_page() {
 
 #[test]
 fn a_function_is_a_component_only_with_the_component_attribute() {
-    let src = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\Component;\nfunction Label(string $s) { return <b>{{ s }}</b>; }\n#[Component]\nfunction Card(string $title) { $label = Label($title); return <div>{{ label }}</div>; }\n#[Component]\nfunction Badge() { return <i>new</i>; }\nfunction App() { return <p><Card title=\"a\" /><Badge /></p>; }\n";
-    let (out, diags) = compile(vec![SourceInput::app("App.phpm", src)]);
+    let src = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\nfunction Label(string $s) { return <b>{{ s }}</b>; }\n#[Component]\nfunction Card(string $title) { $label = Label($title); return <div>{{ label }}</div>; }\n#[Component]\nfunction Badge() { return <i>new</i>; }\nfunction App() { return <p><Card title=\"a\" /><Badge /></p>; }\n";
+    let (out, diags) = compile(vec![SourceInput::app("App.phem", src)]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
     assert!(msgs.is_empty(), "{msgs:?}");
@@ -588,18 +588,18 @@ fn a_function_is_a_component_only_with_the_component_attribute() {
     assert_eq!(kinds, [("App\\Badge", phemc_analyze::Kind::Template), ("App\\Card", phemc_analyze::Kind::Function)], "`Label` and `App` are plain PHP functions");
 
     // A tag of a function without `#[Component]` is an unknown component, with a hint.
-    let src = "<?phpm\nnamespace App;\nfunction Card() { return <div />; }\nfunction App() { return <Card />; }\n";
-    let (_, diags) = compile(vec![SourceInput::app("App.phpm", src)]);
+    let src = "<?phem\nnamespace App;\nfunction Card() { return <div />; }\nfunction App() { return <Card />; }\n";
+    let (_, diags) = compile(vec![SourceInput::app("App.phem", src)]);
 
     let d = diags.iter().flat_map(|f| &f.diags).find(|d| d.code == "E010").expect("E010 without #[Component]");
     assert_eq!(d.help.as_deref(), Some("add `#[Component]` before `function Card()`, and `use Phem\\Attribute\\Component;`"));
 
     // Without the import, `#[Component]` is another attribute.
-    let src = "<?phpm\nnamespace App;\n#[Component]\nfunction Card() { return <div />; }\nfunction App() { return <Card />; }\n";
+    let src = "<?phem\nnamespace App;\n#[Component]\nfunction Card() { return <div />; }\nfunction App() { return <Card />; }\n";
     assert_eq!(codes(src), ["W004", "E010"]);
 }
 
-const TABS: &str = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\{Component, Context, Page, Prop, Provide};\nuse Phem\\Html;\n#[Component, Provide]\nfinal class Tabs { #[Prop] public ?Html $children = null; public function render() { return <div>{{ children }}</div>; } }\n#[Component]\nfunction Tab(string $name, #[Context] Tabs $tabs) { return <b>{{ name }}</b>; }\n#[Component]\nfunction Card(?Html $children = null) { return <section>{{ children }}</section>; }\n";
+const TABS: &str = "<?phem\nnamespace App;\nuse Phem\\Attribute\\{Component, Context, Page, Prop, Provide};\nuse Phem\\Html;\n#[Component, Provide]\nfinal class Tabs { #[Prop] public ?Html $children = null; public function render() { return <div>{{ children }}</div>; } }\n#[Component]\nfunction Tab(string $name, #[Context] Tabs $tabs) { return <b>{{ name }}</b>; }\n#[Component]\nfunction Card(?Html $children = null) { return <section>{{ children }}</section>; }\n";
 
 fn project(files: &[(&str, &str)]) -> Vec<String> {
     let inputs = files.iter().map(|(rel, text)| SourceInput::app(*rel, *text)).collect();
@@ -609,33 +609,33 @@ fn project(files: &[(&str, &str)]) -> Vec<String> {
 
 #[test]
 fn a_context_needs_a_provider_on_each_known_chain_from_a_page() {
-    let page = |body: &str| format!("<?phpm\nnamespace App;\nuse Phem\\Attribute\\{{Component, Page}};\n#[Page('/')]\nfinal class Home {{ public function render() {{ return {body}; }} }}\n#[Component]\nfunction Panel() {{ return <div><Tab name=\"b\" /></div>; }}\n");
+    let page = |body: &str| format!("<?phem\nnamespace App;\nuse Phem\\Attribute\\{{Component, Page}};\n#[Page('/')]\nfinal class Home {{ public function render() {{ return {body}; }} }}\n#[Component]\nfunction Panel() {{ return <div><Tab name=\"b\" /></div>; }}\n");
 
     // Inside the provider: covered, also under another component in its slot.
-    assert!(project(&[("Tabs.phpm", TABS), ("Home.phpm", &page("<Tabs><Card><Tab name=\"a\" /></Card></Tabs>"))]).is_empty());
+    assert!(project(&[("Tabs.phem", TABS), ("Home.phem", &page("<Tabs><Card><Tab name=\"a\" /></Card></Tabs>"))]).is_empty());
     // In the slot of a component that is not a provider: the compiler does not know the parent.
-    assert!(project(&[("Tabs.phpm", TABS), ("Home.phpm", &page("<Card><Tab name=\"a\" /></Card>"))]).is_empty());
+    assert!(project(&[("Tabs.phem", TABS), ("Home.phem", &page("<Card><Tab name=\"a\" /></Card>"))]).is_empty());
     // A component that the page renders, with no provider: the error is on the tag, in its file.
-    assert_eq!(project(&[("Tabs.phpm", TABS), ("Home.phpm", &page("<main><Panel /></main>"))]), ["Home.phpm E015"]);
+    assert_eq!(project(&[("Tabs.phem", TABS), ("Home.phem", &page("<main><Panel /></main>"))]), ["Home.phem E015"]);
     // The same component inside the provider: covered.
-    assert!(project(&[("Tabs.phpm", TABS), ("Home.phpm", &page("<Tabs><Panel /></Tabs>"))]).is_empty());
+    assert!(project(&[("Tabs.phem", TABS), ("Home.phem", &page("<Tabs><Panel /></Tabs>"))]).is_empty());
     // No page renders the component: no chain, no error.
-    assert!(project(&[("Tabs.phpm", TABS), ("Home.phpm", &page("<main />"))]).is_empty());
+    assert!(project(&[("Tabs.phem", TABS), ("Home.phem", &page("<main />"))]).is_empty());
 }
 
 #[test]
 fn a_provider_of_a_type_that_the_compiler_cannot_see_can_be_a_subtype() {
-    let src = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\{Component, Context, Page, Prop, Provide};\nuse Phem\\Html;\n#[Component]\nfinal class Shell { #[Provide] public Dark $theme; #[Prop] public ?Html $children = null; public function render() { return <div>{{ children }}</div>; } }\n#[Component]\nfunction Button(#[Context] Theme $theme) { $x = 1; return <b />; }\n#[Page('/')]\nfinal class Home { public function render() { return <Shell><Button /></Shell>; } }\n";
-    assert!(project(&[("App.phpm", src)]).is_empty(), "`Dark` can implement `Theme`");
+    let src = "<?phem\nnamespace App;\nuse Phem\\Attribute\\{Component, Context, Page, Prop, Provide};\nuse Phem\\Html;\n#[Component]\nfinal class Shell { #[Provide] public Dark $theme; #[Prop] public ?Html $children = null; public function render() { return <div>{{ children }}</div>; } }\n#[Component]\nfunction Button(#[Context] Theme $theme) { $x = 1; return <b />; }\n#[Page('/')]\nfinal class Home { public function render() { return <Shell><Button /></Shell>; } }\n";
+    assert!(project(&[("App.phem", src)]).is_empty(), "`Dark` can implement `Theme`");
 
     let src = src.replace("Shell><Button /></Shell", "main><Button /></main");
-    assert_eq!(project(&[("App.phpm", &src)]), ["App.phpm E015"]);
+    assert_eq!(project(&[("App.phem", &src)]), ["App.phem E015"]);
 }
 
 #[test]
 fn an_abstract_class_is_not_a_component() {
-    let base = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\{Component, State};\n#[Component]\nabstract class Base { #[State] public string $active = ''; }\nfunction Page() { return <Base />; }\n";
-    let (out, diags) = compile(vec![SourceInput::app("Base.phpm", base)]);
+    let base = "<?phem\nnamespace App;\nuse Phem\\Attribute\\{Component, State};\n#[Component]\nabstract class Base { #[State] public string $active = ''; }\nfunction Page() { return <Base />; }\n";
+    let (out, diags) = compile(vec![SourceInput::app("Base.phem", base)]);
 
     let d: Vec<_> = diags.iter().flat_map(|f| &f.diags).collect();
     assert_eq!(d.iter().map(|d| d.code).collect::<Vec<_>>(), ["E045", "E010"], "no E040: the children give `render()`");
@@ -645,7 +645,7 @@ fn an_abstract_class_is_not_a_component() {
 
     // With no `#[Component]`, the base is a plain class.
     let plain = base.replace("#[Component]\n", "").replace("function Page() { return <Base />; }\n", "");
-    assert!(project(&[("Base.phpm", &plain)]).is_empty());
+    assert!(project(&[("Base.phem", &plain)]).is_empty());
 
     // The other modifiers can come before or after `abstract`.
     for modifiers in ["readonly abstract", "abstract readonly"] {
@@ -653,12 +653,12 @@ fn an_abstract_class_is_not_a_component() {
     }
 
     // An `abstract` that is not a modifier of the class does not change it.
-    let card = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\Component;\nconst ABSTRACT = 1;\n#[Component]\nfinal class Card { public function render() { return <b />; } }\nfunction Page() { return <Card />; }\n";
+    let card = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\nconst ABSTRACT = 1;\n#[Component]\nfinal class Card { public function render() { return <b />; } }\nfunction Page() { return <Card />; }\n";
     assert!(codes(card).is_empty());
 
     // An abstract page.
-    let page = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\Page;\n#[Page('/admin')]\nabstract class AdminPage {}\n";
-    let (out, diags) = compile(vec![SourceInput::app("Admin.phpm", page)]);
+    let page = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Page;\n#[Page('/admin')]\nabstract class AdminPage {}\n";
+    let (out, diags) = compile(vec![SourceInput::app("Admin.phem", page)]);
 
     let d: Vec<_> = diags.iter().flat_map(|f| &f.diags).collect();
     assert_eq!(d.iter().map(|d| (d.code, d.message.as_str(), d.help.as_deref())).collect::<Vec<_>>(), [("E045", "page class `AdminPage` is abstract", Some("remove `#[Page]`: the children declare it"))]);
@@ -667,42 +667,42 @@ fn an_abstract_class_is_not_a_component() {
 
 #[test]
 fn an_abstract_replacement_does_not_replace_the_original() {
-    let src = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfunction Button() { return <button />; }\n#[Component(replaces: Button::class)]\nabstract class MyButton {}\nfunction Page() { return <p><Button /><Button /></p>; }\n";
+    let src = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfunction Button() { return <button />; }\n#[Component(replaces: Button::class)]\nabstract class MyButton {}\nfunction Page() { return <p><Button /><Button /></p>; }\n";
     assert_eq!(codes(src), ["E045"], "the tags of `Button` render `Button`: no E010");
 }
 
 #[test]
 fn a_component_provides_itself_with_provide_on_a_parent_class() {
-    let base = "<?phpm\nnamespace Acme\\Base;\nuse Phem\\Attribute\\Provide;\n#[Provide]\nabstract class AbstractTabs {}\n";
-    let theme = "<?phpm\nnamespace App;\nuse Acme\\Base\\AbstractTabs;\nuse Phem\\Attribute\\{Component, Context, Page};\n#[Component]\nfinal class Tabs extends AbstractTabs { public function render() { return <div><Tab /></div>; } }\n#[Component]\nfunction Tab(#[Context] AbstractTabs $tabs) { return <b />; }\n#[Page('/')]\nfinal class Home { public function render() { return <Tabs />; } }\n";
-    assert!(project(&[("Base.phpm", base), ("App.phpm", theme)]).is_empty(), "`Tabs` provides `AbstractTabs` to the `<Tab>` that it renders");
+    let base = "<?phem\nnamespace Acme\\Base;\nuse Phem\\Attribute\\Provide;\n#[Provide]\nabstract class AbstractTabs {}\n";
+    let theme = "<?phem\nnamespace App;\nuse Acme\\Base\\AbstractTabs;\nuse Phem\\Attribute\\{Component, Context, Page};\n#[Component]\nfinal class Tabs extends AbstractTabs { public function render() { return <div><Tab /></div>; } }\n#[Component]\nfunction Tab(#[Context] AbstractTabs $tabs) { return <b />; }\n#[Page('/')]\nfinal class Home { public function render() { return <Tabs />; } }\n";
+    assert!(project(&[("Base.phem", base), ("App.phem", theme)]).is_empty(), "`Tabs` provides `AbstractTabs` to the `<Tab>` that it renders");
 
     // Also through a parent of the parent.
-    let middle = "<?phpm\nnamespace App;\nabstract class Middle extends \\Acme\\Base\\AbstractTabs {}\n";
+    let middle = "<?phem\nnamespace App;\nabstract class Middle extends \\Acme\\Base\\AbstractTabs {}\n";
     let theme2 = theme.replace("extends AbstractTabs", "extends Middle");
-    assert!(project(&[("Base.phpm", base), ("Middle.phpm", middle), ("App.phpm", &theme2)]).is_empty());
+    assert!(project(&[("Base.phem", base), ("Middle.phem", middle), ("App.phem", &theme2)]).is_empty());
 
     // With no `#[Provide]` on the parent, `Tabs` provides nothing.
     let plain = base.replace("#[Provide]\n", "");
-    assert_eq!(project(&[("Base.phpm", &plain), ("App.phpm", theme)]), ["App.phpm E015"]);
+    assert_eq!(project(&[("Base.phem", &plain), ("App.phem", theme)]), ["App.phem E015"]);
 
     // A child of a component with `#[Provide]` provides itself too.
-    let tabs = "<?phpm\nnamespace App;\nuse Phem\\Attribute\\{Component, Context, Page, Provide};\n#[Component, Provide]\nclass Tabs { public function render() { return <div />; } }\n#[Component]\nfinal class MyTabs extends Tabs { public function render() { return <div><Tab /></div>; } }\n#[Component]\nfunction Tab(#[Context] Tabs $tabs) { return <b />; }\n#[Page('/')]\nfinal class Home { public function render() { return <MyTabs />; } }\n";
-    assert!(project(&[("App.phpm", tabs)]).is_empty());
+    let tabs = "<?phem\nnamespace App;\nuse Phem\\Attribute\\{Component, Context, Page, Provide};\n#[Component, Provide]\nclass Tabs { public function render() { return <div />; } }\n#[Component]\nfinal class MyTabs extends Tabs { public function render() { return <div><Tab /></div>; } }\n#[Component]\nfunction Tab(#[Context] Tabs $tabs) { return <b />; }\n#[Page('/')]\nfinal class Home { public function render() { return <MyTabs />; } }\n";
+    assert!(project(&[("App.phem", tabs)]).is_empty());
 }
 
 #[test]
 fn a_parent_outside_the_sources_can_provide_but_a_trait_cannot() {
-    let src = |body: &str| format!("<?phpm\nnamespace App;\nuse Phem\\Attribute\\{{Component, Context, Page}};\n#[Component]\nfinal class Tabs {body} {{ public function render() {{ return <div><Tab /></div>; }} }}\n#[Component]\nfunction Tab(#[Context] Tabs $tabs) {{ return <b />; }}\n#[Page('/')]\nfinal class Home {{ public function render() {{ return <Tabs />; }} }}\n");
+    let src = |body: &str| format!("<?phem\nnamespace App;\nuse Phem\\Attribute\\{{Component, Context, Page}};\n#[Component]\nfinal class Tabs {body} {{ public function render() {{ return <div><Tab /></div>; }} }}\n#[Component]\nfunction Tab(#[Context] Tabs $tabs) {{ return <b />; }}\n#[Page('/')]\nfinal class Home {{ public function render() {{ return <Tabs />; }} }}\n");
 
-    assert!(project(&[("App.phpm", &src("extends \\Vendor\\Base"))]).is_empty(), "the parent can have `#[Provide]`");
-    assert_eq!(project(&[("App.phpm", &src("").replace("{ public function render", "{ use \\Vendor\\Tools; public function render"))]), ["App.phpm E015"], "a trait does not give its attributes");
+    assert!(project(&[("App.phem", &src("extends \\Vendor\\Base"))]).is_empty(), "the parent can have `#[Provide]`");
+    assert_eq!(project(&[("App.phem", &src("").replace("{ public function render", "{ use \\Vendor\\Tools; public function render"))]), ["App.phem E015"], "a trait does not give its attributes");
 }
 
 #[test]
 fn a_member_path_in_a_handler_is_the_method() {
-    let src = "<?phpm\nfunction App() { $tabs = $form = $select = null; return <p><button onClick={{ tabs.select }} /><button onClick={{ select }} phem:loading={{ form.save }} /></p>; }\n";
-    let (out, diags) = compile(vec![SourceInput::app("App.phpm", src)]);
+    let src = "<?phem\nfunction App() { $tabs = $form = $select = null; return <p><button onClick={{ tabs.select }} /><button onClick={{ select }} phem:loading={{ form.save }} /></p>; }\n";
+    let (out, diags) = compile(vec![SourceInput::app("App.phem", src)]);
     let out = out.unwrap_or_else(|| panic!("{diags:?}"));
 
     let twig = &out.files[0].templates[0].content;
@@ -715,7 +715,7 @@ fn a_member_path_in_a_handler_is_the_method() {
 fn async_checks_only_the_attribute_and_its_return_type() {
     // A helper that returns the Promise of a handler, and an #[Async] handler of an abstract base
     // class: the runtime checks the handler that an event calls.
-    let src = "<?phpm\nuse Phem\\Async\\Promise;\nuse Phem\\Attribute\\{Async, Component};\nuse Phem\\Node;\nabstract class Base\n{\n    #[Async]\n    public function run(): Promise { return $this->work(); }\n\n    private function work(): Promise { return new Promise(static function (): void {}); }\n}\n#[Component]\nfinal class Export extends Base\n{\n    public function render(): Node { return <button onClick={{ run }}>Export</button>; }\n}\n";
+    let src = "<?phem\nuse Phem\\Async\\Promise;\nuse Phem\\Attribute\\{Async, Component};\nuse Phem\\Node;\nabstract class Base\n{\n    #[Async]\n    public function run(): Promise { return $this->work(); }\n\n    private function work(): Promise { return new Promise(static function (): void {}); }\n}\n#[Component]\nfinal class Export extends Base\n{\n    public function render(): Node { return <button onClick={{ run }}>Export</button>; }\n}\n";
     assert_eq!(codes(src), Vec::<&str>::new());
 }
 
@@ -725,33 +725,33 @@ fn package(rel: &str, path: &str, text: &str) -> SourceInput {
 
 #[test]
 fn a_package_compiles_with_the_app() {
-    let badge = "<?phpm\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\{Component, Page};\n#[Component]\nfunction Badge(string $label) { return <span>{{ label }}</span>; }\n#[Page('/gallery')]\nfunction Gallery() { return <ul><li>{{ 1 }}</li>{% for i in [1] %}<li>{{ i }}</li>{% endfor %}</ul>; }\n";
-    let home = "<?phpm\nnamespace App;\nuse Acme\\Ui\\Badge;\nuse Phem\\Attribute\\Page;\n#[Page('/')]\nfunction Home() { return <Badge label=\"New\" />; }\n";
+    let badge = "<?phem\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\{Component, Page};\n#[Component]\nfunction Badge(string $label) { return <span>{{ label }}</span>; }\n#[Page('/gallery')]\nfunction Gallery() { return <ul><li>{{ 1 }}</li>{% for i in [1] %}<li>{{ i }}</li>{% endfor %}</ul>; }\n";
+    let home = "<?phem\nnamespace App;\nuse Acme\\Ui\\Badge;\nuse Phem\\Attribute\\Page;\n#[Page('/')]\nfunction Home() { return <Badge label=\"New\" />; }\n";
     let (out, diags) = compile(vec![
-        SourceInput { rel: "Home.phpm".into(), path: "src/Home.phpm".into(), package: None, text: home.into() },
-        package("vendor/acme/ui/Badge.phpm", "vendor/acme/ui/components/Badge.phpm", badge),
+        SourceInput { rel: "Home.phem".into(), path: "src/Home.phem".into(), package: None, text: home.into() },
+        package("vendor/acme/ui/Badge.phem", "vendor/acme/ui/components/Badge.phem", badge),
     ]);
 
     // W002 (a list item with no key) in the package file: the tools do not show it.
     let package_diags = diags.iter().find(|f| f.package.is_some()).unwrap();
     assert_eq!(package_diags.diags.iter().map(|d| d.code).collect::<Vec<_>>(), ["W002"]);
     assert_eq!(package_diags.shown().count(), 0, "a package warning is not shown");
-    assert_eq!(package_diags.path, "vendor/acme/ui/components/Badge.phpm");
+    assert_eq!(package_diags.path, "vendor/acme/ui/components/Badge.phem");
 
     let out = out.expect("output");
     let paths: Vec<&str> = out.files.iter().map(|f| f.php_path.as_str()).collect();
     assert_eq!(paths, ["php/Home.php", "php/vendor/acme/ui/Badge.php"]);
-    assert!(out.files[1].php.starts_with("<?php /* compiled by phemc from vendor/acme/ui/components/Badge.phpm;"));
+    assert!(out.files[1].php.starts_with("<?php /* compiled by phemc from vendor/acme/ui/components/Badge.phem;"));
 
     let sources: Vec<(&str, &str)> = out.manifest.templates.iter().map(|(n, t)| (n.as_str(), t.source.as_str())).collect();
-    assert_eq!(sources, [("Home.0.twig", "src/Home.phpm"), ("vendor/acme/ui/Badge.0.twig", "vendor/acme/ui/components/Badge.phpm"), ("vendor/acme/ui/Badge.1.twig", "vendor/acme/ui/components/Badge.phpm")]);
+    assert_eq!(sources, [("Home.0.twig", "src/Home.phem"), ("vendor/acme/ui/Badge.0.twig", "vendor/acme/ui/components/Badge.phem"), ("vendor/acme/ui/Badge.1.twig", "vendor/acme/ui/components/Badge.phem")]);
     assert_eq!(out.manifest.pages, BTreeMap::from([("Acme\\Ui\\Gallery".to_string(), "acme/ui".to_string()), ("App\\Home".to_string(), String::new())]));
 }
 
 #[test]
 fn a_package_error_stops_the_build() {
-    let broken = "<?phpm\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\Component;\n#[Component]\nfunction Card() { return <Missing />; }\n";
-    let (out, diags) = compile(vec![package("vendor/acme/ui/Card.phpm", "vendor/acme/ui/components/Card.phpm", broken)]);
+    let broken = "<?phem\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\Component;\n#[Component]\nfunction Card() { return <Missing />; }\n";
+    let (out, diags) = compile(vec![package("vendor/acme/ui/Card.phem", "vendor/acme/ui/components/Card.phem", broken)]);
 
     assert!(out.is_none());
     assert_eq!(diags[0].shown().map(|d| d.code).collect::<Vec<_>>(), ["E010"]);
@@ -759,40 +759,40 @@ fn a_package_error_stops_the_build() {
 
 #[test]
 fn a_duplicate_component_names_the_path_of_the_other_file() {
-    let badge = "<?phpm\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\Component;\n#[Component]\nfunction Badge() { return <b />; }\n";
+    let badge = "<?phem\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\Component;\n#[Component]\nfunction Badge() { return <b />; }\n";
     let (_, diags) = compile(vec![
-        SourceInput { rel: "Badge.phpm".into(), path: "src/Badge.phpm".into(), package: None, text: badge.into() },
-        package("vendor/acme/ui/Badge.phpm", "vendor/acme/ui/components/Badge.phpm", badge),
+        SourceInput { rel: "Badge.phem".into(), path: "src/Badge.phem".into(), package: None, text: badge.into() },
+        package("vendor/acme/ui/Badge.phem", "vendor/acme/ui/components/Badge.phem", badge),
     ]);
 
     let messages: Vec<String> = diags.iter().flat_map(|f| f.shown().map(move |d| format!("{} {} {}", f.path, d.code, d.message))).collect();
-    assert_eq!(messages, ["vendor/acme/ui/components/Badge.phpm E014 component `Acme\\Ui\\Badge` is already declared in `src/Badge.phpm`"]);
+    assert_eq!(messages, ["vendor/acme/ui/components/Badge.phem E014 component `Acme\\Ui\\Badge` is already declared in `src/Badge.phem`"]);
 }
 
 #[test]
 fn a_theme_package_extends_a_base_package() {
     // The base has the props and the handlers, the theme gives render().
-    let base = "<?phpm\nnamespace Acme\\Base;\nuse Phem\\Attribute\\{Prop, State};\nabstract class AbstractTabs { #[State] public string $active = ''; #[Prop] public string $label = ''; public function select(): void {} }\n";
-    let theme = "<?phpm\nnamespace Acme\\Ui;\nuse Acme\\Base\\AbstractTabs;\nuse Phem\\Attribute\\Component;\n#[Component]\nclass Tabs extends AbstractTabs { public function render() { return <div onClick={{ select }}>{{ label }}</div>; } }\n";
-    let home = "<?phpm\nnamespace App;\nuse Acme\\Ui\\Tabs;\nuse Phem\\Attribute\\Page;\n#[Page('/')]\nfunction Home() { return <Tabs label=\"A\" />; }\nfunction Wrong() { return <Tabs lable=\"A\" />; }\n";
-    let base_input = SourceInput { rel: "vendor/acme/base/AbstractTabs.phpm".into(), path: "vendor/acme/base/src/AbstractTabs.phpm".into(), package: Some("acme/base".into()), text: base.into() };
-    let theme_input = package("vendor/acme/ui/Tabs.phpm", "vendor/acme/ui/components/Tabs.phpm", theme);
-    let (out, diags) = compile(vec![SourceInput::app("Home.phpm", home), base_input, theme_input]);
+    let base = "<?phem\nnamespace Acme\\Base;\nuse Phem\\Attribute\\{Prop, State};\nabstract class AbstractTabs { #[State] public string $active = ''; #[Prop] public string $label = ''; public function select(): void {} }\n";
+    let theme = "<?phem\nnamespace Acme\\Ui;\nuse Acme\\Base\\AbstractTabs;\nuse Phem\\Attribute\\Component;\n#[Component]\nclass Tabs extends AbstractTabs { public function render() { return <div onClick={{ select }}>{{ label }}</div>; } }\n";
+    let home = "<?phem\nnamespace App;\nuse Acme\\Ui\\Tabs;\nuse Phem\\Attribute\\Page;\n#[Page('/')]\nfunction Home() { return <Tabs label=\"A\" />; }\nfunction Wrong() { return <Tabs lable=\"A\" />; }\n";
+    let base_input = SourceInput { rel: "vendor/acme/base/AbstractTabs.phem".into(), path: "vendor/acme/base/src/AbstractTabs.phem".into(), package: Some("acme/base".into()), text: base.into() };
+    let theme_input = package("vendor/acme/ui/Tabs.phem", "vendor/acme/ui/components/Tabs.phem", theme);
+    let (out, diags) = compile(vec![SourceInput::app("Home.phem", home), base_input, theme_input]);
 
     // The props of the base package are known: an unknown prop is E011.
     let codes: Vec<String> = diags.iter().flat_map(|f| f.shown().map(move |d| format!("{} {}", f.path, d.code))).collect();
-    assert_eq!(codes, ["Home.phpm E011"]);
+    assert_eq!(codes, ["Home.phem E011"]);
     assert!(out.is_none());
 }
 
-const UI: &str = "<?phpm\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\Component;\nuse Phem\\Html;\n#[Component]\nfunction Button(string $label = '', ?Html $children = null, mixed ...$rest) { return <button {{ ...rest }}>{{ label }}{{ children }}</button>; }\n#[Component]\nfunction Dialog(?Html $children = null) { return <dialog><Button label=\"Close\" /></dialog>; }\n";
+const UI: &str = "<?phem\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\Component;\nuse Phem\\Html;\n#[Component]\nfunction Button(string $label = '', ?Html $children = null, mixed ...$rest) { return <button {{ ...rest }}>{{ label }}{{ children }}</button>; }\n#[Component]\nfunction Dialog(?Html $children = null) { return <dialog><Button label=\"Close\" /></dialog>; }\n";
 
 fn ui() -> SourceInput {
-    package("vendor/acme/ui/Ui.phpm", "vendor/acme/ui/components/Ui.phpm", UI)
+    package("vendor/acme/ui/Ui.phem", "vendor/acme/ui/components/Ui.phem", UI)
 }
 
 fn app(text: &str) -> SourceInput {
-    SourceInput { rel: "Button.phpm".into(), path: "src/Button.phpm".into(), package: None, text: format!("<?phpm\nnamespace App;\nuse Acme\\Ui\\Button as UiButton;\nuse Phem\\Attribute\\Component;\nuse Phem\\Html;\n{text}") }
+    SourceInput { rel: "Button.phem".into(), path: "src/Button.phem".into(), package: None, text: format!("<?phem\nnamespace App;\nuse Acme\\Ui\\Button as UiButton;\nuse Phem\\Attribute\\Component;\nuse Phem\\Html;\n{text}") }
 }
 
 fn shown(diags: &[phemc_codegen::FileDiagnostics]) -> Vec<String> {
@@ -817,7 +817,7 @@ fn a_replacement_renders_in_each_tag_of_the_original() {
     assert!(manifest.contains(r#""replaces": "Acme\\Ui\\Button""#), "{manifest}");
 
     // The original is a function: the PHP gets its name as a string, not a `::class`.
-    let php = &out.files.iter().find(|f| f.rel == "Button.phpm").unwrap().php;
+    let php = &out.files.iter().find(|f| f.rel == "Button.phem").unwrap().php;
     assert!(php.contains(r"#[Component(replaces: 'Acme\\Ui\\Button')]"), "{php}");
 }
 
@@ -843,13 +843,13 @@ fn a_replacement_accepts_each_prop_of_the_original() {
     assert_eq!(
         check("string $label = ''"),
         [
-            "src/Button.phpm E016 `App\\Button` does not accept the slot `children` of `Acme\\Ui\\Button`",
-            "src/Button.phpm E016 `Acme\\Ui\\Button` accepts any prop, and `App\\Button` has no rest prop",
+            "src/Button.phem E016 `App\\Button` does not accept the slot `children` of `Acme\\Ui\\Button`",
+            "src/Button.phem E016 `Acme\\Ui\\Button` accepts any prop, and `App\\Button` has no rest prop",
         ]
     );
     assert_eq!(
         check("string $size, mixed ...$rest"),
-        ["src/Button.phpm E016 `App\\Button` requires the prop `size`, and `Acme\\Ui\\Button` does not"]
+        ["src/Button.phem E016 `App\\Button` requires the prop `size`, and `Acme\\Ui\\Button` does not"]
     );
 }
 
@@ -860,37 +860,37 @@ fn a_replacement_must_be_unique_and_in_the_app() {
 
     assert_eq!(
         replaces(&format!("{ok}#[Component(replaces: UiButton::class)]\nfunction Other(?Html $children = null, mixed ...$rest) {{ return <b />; }}\n")),
-        ["src/Button.phpm E017 `App\\Button` already replaces `Acme\\Ui\\Button`"]
+        ["src/Button.phem E017 `App\\Button` already replaces `Acme\\Ui\\Button`"]
     );
     assert_eq!(
         replaces(&format!("{ok}#[Component(replaces: Button::class)]\nfunction Other(?Html $children = null, mixed ...$rest) {{ return <b />; }}\n")),
-        ["src/Button.phpm E017 `App\\Button` replaces `Acme\\Ui\\Button`, and a replacement cannot be replaced: replace `Acme\\Ui\\Button`"]
+        ["src/Button.phem E017 `App\\Button` replaces `Acme\\Ui\\Button`, and a replacement cannot be replaced: replace `Acme\\Ui\\Button`"]
     );
     assert_eq!(
         replaces("#[Component(replaces: Missing::class)]\nfunction Button() { return <b />; }\n"),
-        ["src/Button.phpm E010 `App\\Button` replaces an unknown component `App\\Missing`"]
+        ["src/Button.phem E010 `App\\Button` replaces an unknown component `App\\Missing`"]
     );
     assert_eq!(
         replaces("#[Component(replaces: \\Phem\\Root::class)]\nfunction Button(?Html $children = null, mixed ...$rest) { return <b />; }\n"),
-        ["src/Button.phpm E017 `Phem\\Root` is a built-in component of Phem, and the app cannot replace it"]
+        ["src/Button.phem E017 `Phem\\Root` is a built-in component of Phem, and the app cannot replace it"]
     );
     assert_eq!(
         replaces("#[Component(replaces: self::NAME)]\nfunction Button() { return <b />; }\n"),
-        ["src/Button.phpm E017 the compiler cannot read the value of `replaces`"]
+        ["src/Button.phem E017 the compiler cannot read the value of `replaces`"]
     );
     for name in ["self", "static", "parent"] {
         assert_eq!(
             replaces(&format!("#[Component(replaces: {name}::class)]\nfinal class Button {{ public function render() {{ return <b />; }} }}\n")),
-            ["src/Button.phpm E017 the compiler cannot read the value of `replaces`"],
+            ["src/Button.phem E017 the compiler cannot read the value of `replaces`"],
             "{name}"
         );
     }
 
     // A package cannot replace a component of another package.
-    let theme = "<?phpm\nnamespace Acme\\Theme;\nuse Acme\\Ui\\Button as UiButton;\nuse Phem\\Attribute\\Component;\n#[Component(replaces: UiButton::class)]\nfunction Button(mixed ...$rest) { return <b />; }\n";
-    let (out, diags) = compile(vec![ui(), package("vendor/acme/theme/Button.phpm", "vendor/acme/theme/components/Button.phpm", theme)]);
+    let theme = "<?phem\nnamespace Acme\\Theme;\nuse Acme\\Ui\\Button as UiButton;\nuse Phem\\Attribute\\Component;\n#[Component(replaces: UiButton::class)]\nfunction Button(mixed ...$rest) { return <b />; }\n";
+    let (out, diags) = compile(vec![ui(), package("vendor/acme/theme/Button.phem", "vendor/acme/theme/components/Button.phem", theme)]);
     assert!(out.is_none());
-    assert_eq!(shown(&diags), ["vendor/acme/theme/components/Button.phpm E017 a package cannot replace a component, and `Acme\\Theme\\Button` is in a package"]);
+    assert_eq!(shown(&diags), ["vendor/acme/theme/components/Button.phem E017 a package cannot replace a component, and `Acme\\Theme\\Button` is in a package"]);
 }
 
 #[test]
@@ -901,7 +901,7 @@ fn a_context_consumer_under_a_replacement_needs_a_provider() {
     let diags = compile(vec![replacement, ui()]).1;
     assert_eq!(
         shown(&diags),
-        ["vendor/acme/ui/components/Ui.phpm E015 `<Button>` renders `App\\Button`, the replacement of `Acme\\Ui\\Button`, and it needs a `Theme` context, but no component above it provides one"]
+        ["vendor/acme/ui/components/Ui.phem E015 `<Button>` renders `App\\Button`, the replacement of `Acme\\Ui\\Button`, and it needs a `Theme` context, but no component above it provides one"]
     );
 
     let help = diags.iter().flat_map(|f| f.shown()).find_map(|d| d.help.clone()).unwrap();
@@ -933,11 +933,11 @@ fn a_replacement_cannot_replace_itself_or_a_page() {
 
     assert_eq!(
         replaces("#[Component(replaces: Button::class)]\nfunction Button() { return <b />; }\n"),
-        ["src/Button.phpm E017 `App\\Button` cannot replace itself"]
+        ["src/Button.phem E017 `App\\Button` cannot replace itself"]
     );
     assert_eq!(
         replaces("use Phem\\Attribute\\Page;\n#[Page('/shop')]\nfunction Shop() { return <main />; }\n#[Component(replaces: Shop::class)]\nfunction Button() { return <b />; }\n"),
-        ["src/Button.phpm E017 a page is not a tag, so `App\\Button` cannot replace `App\\Shop`"]
+        ["src/Button.phem E017 a page is not a tag, so `App\\Button` cannot replace `App\\Shop`"]
     );
 }
 
@@ -954,38 +954,38 @@ fn each_second_replacement_names_the_first_one() {
     assert_eq!(
         shown(&compile(vec![app(&format!("{}{}{}", other("Button"), other("Other"), other("Third"))), ui()]).1),
         [
-            "src/Button.phpm E017 `App\\Button` already replaces `Acme\\Ui\\Button`",
-            "src/Button.phpm E017 `App\\Button` already replaces `Acme\\Ui\\Button`",
+            "src/Button.phem E017 `App\\Button` already replaces `Acme\\Ui\\Button`",
+            "src/Button.phem E017 `App\\Button` already replaces `Acme\\Ui\\Button`",
         ]
     );
 }
 
 #[test]
 fn a_replacement_keeps_the_bound_props_of_the_original() {
-    let input = package("vendor/acme/ui/Input.phpm", "vendor/acme/ui/components/Input.phpm", "<?phpm\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\Component;\nuse Phem\\Bound;\n#[Component]\nfunction Input(Bound $value) { return <input phem:bind={{ value }} />; }\n");
+    let input = package("vendor/acme/ui/Input.phem", "vendor/acme/ui/components/Input.phem", "<?phem\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\Component;\nuse Phem\\Bound;\n#[Component]\nfunction Input(Bound $value) { return <input phem:bind={{ value }} />; }\n");
     let check = |signature: &str| shown(&compile(vec![app(&format!("use Acme\\Ui\\Input as UiInput;\nuse Phem\\Bound;\n#[Component(replaces: UiInput::class)]\nfunction Input({signature}) {{ return <b />; }}\n")), input.clone()]).1);
 
     assert!(check("Bound $value").is_empty());
     assert!(check("mixed ...$rest").is_empty(), "a rest prop gives the Bound to the original");
-    assert_eq!(check("string $value"), ["src/Button.phpm E016 `App\\Input` takes the `Bound` prop `value` of `Acme\\Ui\\Input` with another type"]);
+    assert_eq!(check("string $value"), ["src/Button.phem E016 `App\\Input` takes the `Bound` prop `value` of `Acme\\Ui\\Input` with another type"]);
 }
 
 #[test]
 fn a_rejected_replacement_changes_no_tag() {
     // The replacement of a package is E017: the tags keep the original, so its context gives no E015.
-    let theme = "<?phpm\nnamespace Acme\\Theme;\nuse Acme\\Ui\\Button as UiButton;\nuse Phem\\Attribute\\{Component, Context};\n#[Component(replaces: UiButton::class)]\nfunction Button(#[Context] Theme $theme, mixed ...$rest) { return <b />; }\n";
+    let theme = "<?phem\nnamespace Acme\\Theme;\nuse Acme\\Ui\\Button as UiButton;\nuse Phem\\Attribute\\{Component, Context};\n#[Component(replaces: UiButton::class)]\nfunction Button(#[Context] Theme $theme, mixed ...$rest) { return <b />; }\n";
     let page = app("use Acme\\Ui\\Dialog;\nuse Phem\\Attribute\\Page;\n#[Page('/')]\nfunction Home() { return <main><Dialog /></main>; }\n");
-    let (_, diags) = compile(vec![page, ui(), package("vendor/acme/theme/Button.phpm", "vendor/acme/theme/components/Button.phpm", theme)]);
-    assert_eq!(shown(&diags), ["vendor/acme/theme/components/Button.phpm E017 a package cannot replace a component, and `Acme\\Theme\\Button` is in a package"]);
+    let (_, diags) = compile(vec![page, ui(), package("vendor/acme/theme/Button.phem", "vendor/acme/theme/components/Button.phem", theme)]);
+    assert_eq!(shown(&diags), ["vendor/acme/theme/components/Button.phem E017 a package cannot replace a component, and `Acme\\Theme\\Button` is in a package"]);
 }
 
 #[test]
 fn a_replacement_accepts_each_named_slot_of_the_original() {
-    let card = package("vendor/acme/ui/Card.phpm", "vendor/acme/ui/components/Card.phpm", "<?phpm\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\Component;\nuse Phem\\Html;\n#[Component]\nfunction Card(?Html $children = null, ?Html $footer = null) { return <div>{{ children }}{{ footer }}</div>; }\n");
+    let card = package("vendor/acme/ui/Card.phem", "vendor/acme/ui/components/Card.phem", "<?phem\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\Component;\nuse Phem\\Html;\n#[Component]\nfunction Card(?Html $children = null, ?Html $footer = null) { return <div>{{ children }}{{ footer }}</div>; }\n");
     let check = |signature: &str| shown(&compile(vec![app(&format!("use Acme\\Ui\\Card as UiCard;\n#[Component(replaces: UiCard::class)]\nfunction Card({signature}) {{ return <b />; }}\n")), card.clone()]).1);
 
     assert!(check("?Html $children = null, ?Html $footer = null").is_empty());
-    assert_eq!(check("?Html $children = null"), ["src/Button.phpm E016 `App\\Card` does not accept the slot `footer` of `Acme\\Ui\\Card`"]);
+    assert_eq!(check("?Html $children = null"), ["src/Button.phem E016 `App\\Card` does not accept the slot `footer` of `Acme\\Ui\\Card`"]);
 }
 
 #[test]
@@ -998,7 +998,7 @@ fn an_open_replacement_has_no_prop_check() {
 #[test]
 fn a_page_cannot_be_a_replacement() {
     let (_, diags) = compile(vec![app("use Phem\\Attribute\\Page;\n#[Page('/b'), Component(replaces: UiButton::class)]\nfunction Button() { return <main />; }\n"), ui()]);
-    assert_eq!(shown(&diags), ["src/Button.phpm E017 a page is not a tag, so `App\\Button` cannot replace `Acme\\Ui\\Button`"]);
+    assert_eq!(shown(&diags), ["src/Button.phem E017 a page is not a tag, so `App\\Button` cannot replace `Acme\\Ui\\Button`"]);
 }
 
 #[test]
@@ -1006,17 +1006,17 @@ fn a_context_consumer_under_a_class_replacement_needs_a_provider() {
     let replacement = app("use Acme\\Ui\\Dialog;\nuse Phem\\Attribute\\{Context, Page, Prop};\nuse Phem\\Node;\n#[Component(replaces: UiButton::class)]\nfinal class Button\n{\n    #[Context] public Theme $theme;\n    #[Prop(rest: true)] public array $attrs = [];\n    #[Prop] public ?Html $children = null;\n    public function render(): Node { return <b />; }\n}\n#[Page('/')]\nfunction Home() { return <main><Dialog /></main>; }\n");
     assert_eq!(
         shown(&compile(vec![replacement, ui()]).1),
-        ["vendor/acme/ui/components/Ui.phpm E015 `<Button>` renders `App\\Button`, the replacement of `Acme\\Ui\\Button`, and it needs a `Theme` context, but no component above it provides one"]
+        ["vendor/acme/ui/components/Ui.phem E015 `<Button>` renders `App\\Button`, the replacement of `Acme\\Ui\\Button`, and it needs a `Theme` context, but no component above it provides one"]
     );
 }
 
-const CARD: &str = "<?phpm\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\{Component, Prop};\nuse Phem\\{Html, Node};\n#[Component]\nclass Card\n{\n    #[Prop] public string $title = '';\n    #[Prop] public ?Html $children = null;\n    public function render(): Node { return <div>{{ title }}<Card title=\"Inner\" /></div>; }\n}\n#[Component]\nfunction Panel() { return <aside><Card title=\"Panel\" /></aside>; }\n";
+const CARD: &str = "<?phem\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\{Component, Prop};\nuse Phem\\{Html, Node};\n#[Component]\nclass Card\n{\n    #[Prop] public string $title = '';\n    #[Prop] public ?Html $children = null;\n    public function render(): Node { return <div>{{ title }}<Card title=\"Inner\" /></div>; }\n}\n#[Component]\nfunction Panel() { return <aside><Card title=\"Panel\" /></aside>; }\n";
 
 #[test]
 fn a_class_replacement_can_extend_the_original_class() {
     // The replacement takes the props of the original from the parent class: no E016.
     let replacement = app("use Acme\\Ui\\Card as UiCard;\nuse Phem\\Node;\n#[Component(replaces: UiCard::class)]\nfinal class Card extends UiCard\n{\n    public function render(): Node { return <section><UiCard title={{ title }} /></section>; }\n}\n");
-    let (out, diags) = compile(vec![replacement, package("vendor/acme/ui/Card.phpm", "vendor/acme/ui/components/Card.phpm", CARD)]);
+    let (out, diags) = compile(vec![replacement, package("vendor/acme/ui/Card.phem", "vendor/acme/ui/components/Card.phem", CARD)]);
     let out = out.unwrap_or_else(|| panic!("{:?}", shown(&diags)));
     let twig = |name: &str| out.files.iter().flat_map(|f| &f.templates).find(|t| t.name == name).unwrap().content.clone();
 
@@ -1031,9 +1031,9 @@ fn a_class_replacement_can_extend_the_original_class() {
 #[test]
 fn an_open_original_has_no_prop_check() {
     // The parent class of the original is outside the sources: the compiler does not see all its props.
-    let card = "<?phpm\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\{Component, Prop};\nuse Phem\\Node;\n#[Component]\nfinal class Card extends \\Vendor\\Base\n{\n    #[Prop] public string $title = '';\n    public function render(): Node { return <div />; }\n}\n";
+    let card = "<?phem\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\{Component, Prop};\nuse Phem\\Node;\n#[Component]\nfinal class Card extends \\Vendor\\Base\n{\n    #[Prop] public string $title = '';\n    public function render(): Node { return <div />; }\n}\n";
     let replacement = app("use Acme\\Ui\\Card as UiCard;\n#[Component(replaces: UiCard::class)]\nfunction Card() { return <b />; }\n");
-    let (_, diags) = compile(vec![replacement, package("vendor/acme/ui/Card.phpm", "vendor/acme/ui/components/Card.phpm", card)]);
+    let (_, diags) = compile(vec![replacement, package("vendor/acme/ui/Card.phem", "vendor/acme/ui/components/Card.phem", card)]);
     assert!(!shown(&diags).iter().any(|d| d.contains("E016")), "{:?}", shown(&diags));
 }
 
@@ -1052,11 +1052,11 @@ fn a_parent_class_of_a_replacement_keeps_the_original_for_the_other_components_t
 #[test]
 fn a_literal_value_of_a_backed_enum_prop_is_a_case() {
     // The enums are in a package root. A `case` of a `switch` in a method is not a case.
-    let enums = "<?phpm\nnamespace Acme\\Ui;\nenum Variant: string\n{\n    case Primary = 'primary';\n    case Outline = \"outline\";\n    public function classes(): string { switch ($this) { case self::Primary: return 'a'; default: return 'b'; } }\n}\nenum Level: int { case Low = 1; case High = 3; }\nenum Computed: string { const P = 'p'; case A = self::P; }\n";
-    let ui = "<?phpm\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\{Component, Prop};\nuse Phem\\Node;\n#[Component]\nfunction Button(Variant $variant = Variant::Primary, ?Level $level = null, Computed $computed = Computed::A, \\Vendor\\Size $size = \\Vendor\\Size::S) { return <b />; }\n#[Component]\nfinal class Badge\n{\n    #[Prop] public Variant|null $variant = null;\n    public function render(): Node { return <i />; }\n}\n";
-    let home = |body: &str| SourceInput::app("Home.phpm", format!("<?phpm\nnamespace App;\nuse Acme\\Ui\\{{Badge, Button}};\nfunction Home() {{ $v = 'big'; return <main>{body}</main>; }}\n"));
+    let enums = "<?phem\nnamespace Acme\\Ui;\nenum Variant: string\n{\n    case Primary = 'primary';\n    case Outline = \"outline\";\n    public function classes(): string { switch ($this) { case self::Primary: return 'a'; default: return 'b'; } }\n}\nenum Level: int { case Low = 1; case High = 3; }\nenum Computed: string { const P = 'p'; case A = self::P; }\n";
+    let ui = "<?phem\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\{Component, Prop};\nuse Phem\\Node;\n#[Component]\nfunction Button(Variant $variant = Variant::Primary, ?Level $level = null, Computed $computed = Computed::A, \\Vendor\\Size $size = \\Vendor\\Size::S) { return <b />; }\n#[Component]\nfinal class Badge\n{\n    #[Prop] public Variant|null $variant = null;\n    public function render(): Node { return <i />; }\n}\n";
+    let home = |body: &str| SourceInput::app("Home.phem", format!("<?phem\nnamespace App;\nuse Acme\\Ui\\{{Badge, Button}};\nfunction Home() {{ $v = 'big'; return <main>{body}</main>; }}\n"));
     let check = |body: &str| {
-        let (_, diags) = compile(vec![home(body), package("vendor/acme/ui/Variant.phpm", "vendor/acme/ui/components/Variant.phpm", enums), package("vendor/acme/ui/Button.phpm", "vendor/acme/ui/components/Button.phpm", ui)]);
+        let (_, diags) = compile(vec![home(body), package("vendor/acme/ui/Variant.phem", "vendor/acme/ui/components/Variant.phem", enums), package("vendor/acme/ui/Button.phem", "vendor/acme/ui/components/Button.phem", ui)]);
         diags.iter().flat_map(|f| f.shown().map(move |d| format!("{} {} {}", d.code, d.message, d.help.clone().unwrap_or_default()))).collect::<Vec<_>>()
     };
 
@@ -1079,27 +1079,27 @@ fn a_literal_value_of_a_backed_enum_prop_is_a_case() {
 fn an_inherited_enum_prop_keeps_the_type_of_its_file() {
     // The base declares `Variant` in its namespace. The theme has another `Variant`, with other
     // values, and its class name differs in case: PHP class names ignore the case.
-    let base = "<?phpm\nnamespace Acme\\Base;\nuse Phem\\Attribute\\Prop;\nenum Variant: string { case Primary = 'primary'; }\nabstract class AbstractButton { #[Prop] public variant $variant = Variant::Primary; }\n";
-    let theme = "<?phpm\nnamespace Acme\\Ui;\nuse Acme\\Base\\AbstractButton;\nuse Phem\\Attribute\\Component;\nuse Phem\\Node;\nenum Variant: string { case Solid = 'solid'; }\n#[Component]\nclass Button extends AbstractButton { public function render(): Node { return <button />; } }\n";
-    let home = |body: &str| SourceInput::app("Home.phpm", format!("<?phpm\nnamespace App;\nuse Acme\\Ui\\Button;\nfunction Home() {{ return {body}; }}\n"));
+    let base = "<?phem\nnamespace Acme\\Base;\nuse Phem\\Attribute\\Prop;\nenum Variant: string { case Primary = 'primary'; }\nabstract class AbstractButton { #[Prop] public variant $variant = Variant::Primary; }\n";
+    let theme = "<?phem\nnamespace Acme\\Ui;\nuse Acme\\Base\\AbstractButton;\nuse Phem\\Attribute\\Component;\nuse Phem\\Node;\nenum Variant: string { case Solid = 'solid'; }\n#[Component]\nclass Button extends AbstractButton { public function render(): Node { return <button />; } }\n";
+    let home = |body: &str| SourceInput::app("Home.phem", format!("<?phem\nnamespace App;\nuse Acme\\Ui\\Button;\nfunction Home() {{ return {body}; }}\n"));
     let check = |body: &str| {
-        let base = SourceInput { rel: "vendor/acme/base/Button.phpm".into(), path: "vendor/acme/base/src/Button.phpm".into(), package: Some("acme/base".into()), text: base.into() };
-        let (_, diags) = compile(vec![home(body), base, package("vendor/acme/ui/Button.phpm", "vendor/acme/ui/components/Button.phpm", theme)]);
+        let base = SourceInput { rel: "vendor/acme/base/Button.phem".into(), path: "vendor/acme/base/src/Button.phem".into(), package: Some("acme/base".into()), text: base.into() };
+        let (_, diags) = compile(vec![home(body), base, package("vendor/acme/ui/Button.phem", "vendor/acme/ui/components/Button.phem", theme)]);
         shown(&diags)
     };
 
     assert!(check("<Button variant=\"primary\" />").is_empty(), "{:?}", check("<Button variant=\"primary\" />"));
-    assert_eq!(check("<Button variant=\"solid\" />"), ["Home.phpm E018 `<Button>` has no variant `solid`"]);
+    assert_eq!(check("<Button variant=\"solid\" />"), ["Home.phem E018 `<Button>` has no variant `solid`"]);
 }
 
 #[test]
 fn an_enum_that_two_files_declare_is_an_error() {
-    let size = "<?phpm\nnamespace Acme\\Ui;\nenum Size: string { case S = 's'; }\n";
+    let size = "<?phem\nnamespace Acme\\Ui;\nenum Size: string { case S = 's'; }\n";
     let (out, diags) = compile(vec![
-        SourceInput { rel: "Size.phpm".into(), path: "src/Size.phpm".into(), package: None, text: size.into() },
-        package("vendor/acme/ui/Size.phpm", "vendor/acme/ui/components/Size.phpm", size),
+        SourceInput { rel: "Size.phem".into(), path: "src/Size.phem".into(), package: None, text: size.into() },
+        package("vendor/acme/ui/Size.phem", "vendor/acme/ui/components/Size.phem", size),
     ]);
 
     assert!(out.is_none());
-    assert_eq!(shown(&diags), ["vendor/acme/ui/components/Size.phpm E014 enum `Acme\\Ui\\Size` is already declared in `src/Size.phpm`"]);
+    assert_eq!(shown(&diags), ["vendor/acme/ui/components/Size.phem E014 enum `Acme\\Ui\\Size` is already declared in `src/Size.phem`"]);
 }

@@ -1,4 +1,4 @@
-//! PHP structure scan, component registry, and diagnostics for `.phpm` files.
+//! PHP structure scan, component registry, and diagnostics for `.phem` files.
 
 mod hooks;
 mod purity;
@@ -135,7 +135,7 @@ pub struct ContextNeed {
 
 /// The template name of the markup literal `index` of a source file.
 pub fn template_name(rel: &str, index: usize) -> String {
-    let stem = rel.strip_suffix(".phpm").unwrap_or(rel);
+    let stem = rel.strip_suffix(".phem").unwrap_or(rel);
     format!("{stem}.{index}.twig")
 }
 

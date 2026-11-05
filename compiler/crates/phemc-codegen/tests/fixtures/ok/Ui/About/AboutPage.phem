@@ -1,0 +1,21 @@
+<?phem
+
+namespace App\Ui\About;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+use function App\Ui\Common\Document;
+
+#[Page('/about')]
+#[Page('/about-us', name: 'about_us')]
+final class AboutPage
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <p id="about">About</p>
+            </Document>
+        );
+    }
+}

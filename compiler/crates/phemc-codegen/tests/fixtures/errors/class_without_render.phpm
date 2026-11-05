@@ -1,4 +1,0 @@
-<?phpm // expect: E040
-use Phem\Attribute\Component;
-#[Component]
-final class Counter { public int $count = 0; }

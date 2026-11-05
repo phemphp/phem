@@ -1,3 +1,0 @@
-<?phpm // expect: W004
-#[Page('/')]
-final class App { public function render() { return <div />; } }

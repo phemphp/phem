@@ -1,0 +1,11 @@
+<?phem // expect: E053
+use Phem\Attribute\{Broadcast, Page};
+use Phem\Node;
+#[Page('/bag'), Broadcast(handlers: false)]
+final class BagPage
+{
+    public function render(): Node
+    {
+        return <p>Bag</p>;
+    }
+}

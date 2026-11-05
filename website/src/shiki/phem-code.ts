@@ -31,7 +31,7 @@ export const phemCode: ThemeRegistration = {
             settings: { foreground: 'var(--syntax-string)' },
         },
         {
-            scope: ['entity.other.attribute-name', 'meta.attribute', 'support.class.component.phpm'],
+            scope: ['entity.other.attribute-name', 'meta.attribute', 'support.class.component.phem'],
             settings: { foreground: 'var(--syntax-attribute)' },
         },
         {

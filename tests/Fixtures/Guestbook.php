@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Fixtures;
 
-/** The entries of the push.phpm page, in memory: the requests of one test share them. */
+/** The entries of the push.phem page, in memory: the requests of one test share them. */
 final class Guestbook
 {
     /** @var array<string, list<array{id: int, text: string}>> room => entries, the newest first */

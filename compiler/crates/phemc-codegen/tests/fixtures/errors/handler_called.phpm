@@ -1,2 +1,0 @@
-<?phpm // expect: W001
-function App() { $go = fn() => 1; return <button onClick={{ go() }}>x</button>; }

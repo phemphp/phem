@@ -147,7 +147,7 @@ mod tests {
 
     #[test]
     fn adds_imports_in_order() {
-        let text = "<?phpm\nnamespace App\\Ui;\n\nuse Phem\\Html;\n\nuse function App\\Ui\\Common\\Layout;\n";
+        let text = "<?phem\nnamespace App\\Ui;\n\nuse Phem\\Html;\n\nuse function App\\Ui\\Common\\Layout;\n";
         let parsed = parse(text);
         let e = import_for(text, &parsed, UseKind::Class, "App\\Repository\\TodoRepository").edit.unwrap();
         assert_eq!(apply(text, &e), text.replace("use Phem", "use App\\Repository\\TodoRepository;\nuse Phem"));
@@ -160,15 +160,15 @@ mod tests {
 
     #[test]
     fn adds_a_name_to_a_group_on_one_line() {
-        let text = "<?phpm\nnamespace App;\n\nuse function App\\Ui\\Common\\{Layout};\n";
+        let text = "<?phem\nnamespace App;\n\nuse function App\\Ui\\Common\\{Layout};\n";
         let e = import_for(text, &parse(text), UseKind::Function, "App\\Ui\\Common\\Avatar").edit.unwrap();
         assert!(apply(text, &e).contains("use function App\\Ui\\Common\\{Layout, Avatar};"));
     }
 
     #[test]
     fn adds_the_first_import_after_the_namespace() {
-        let text = "<?phpm\nnamespace App\\Ui;\n\nfunction Home() {}\n";
+        let text = "<?phem\nnamespace App\\Ui;\n\nfunction Home() {}\n";
         let e = import_for(text, &parse(text), UseKind::Function, "App\\Ui\\Common\\Layout").edit.unwrap();
-        assert_eq!(apply(text, &e), "<?phpm\nnamespace App\\Ui;\n\nuse function App\\Ui\\Common\\Layout;\n\nfunction Home() {}\n");
+        assert_eq!(apply(text, &e), "<?phem\nnamespace App\\Ui;\n\nuse function App\\Ui\\Common\\Layout;\n\nfunction Home() {}\n");
     }
 }

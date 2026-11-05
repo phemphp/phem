@@ -1,0 +1,138 @@
+<?phem
+
+namespace App\Ui\Access;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+use Phem\Tests\Fixtures\Deny;
+use Symfony\Component\HttpKernel\Attribute\Cache;
+use Symfony\Component\ExpressionLanguage\Expression;
+use Symfony\Component\HttpKernel\Attribute\RateLimit;
+
+use function App\Ui\Common\Document;
+
+// A page behind a path rule (`access_control`): its events go to its URL, so the rule applies.
+#[Page('/private/counter')]
+final class PrivateCounterPage
+{
+    #[State] public int $count = 0;
+
+    public function increment(): void
+    {
+        ++$this->count;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <button onClick={{ increment }}>{{ count }}</button>
+            </Document>
+        );
+    }
+}
+
+// A controller attribute of a page (as `#[IsGranted]`) applies to the page and to its events.
+#[Deny]
+#[Page('/denied')]
+final class DeniedPage
+{
+    #[State] public int $count = 0;
+
+    public function increment(): void
+    {
+        ++$this->count;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <button onClick={{ increment }}>{{ count }}</button>
+            </Document>
+        );
+    }
+}
+
+// A Symfony controller attribute on a page without state.
+#[Cache(maxage: 60, public: true)]
+#[Page('/cached')]
+final class CachedPage
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <p id="cached">Cached</p>
+            </Document>
+        );
+    }
+}
+
+// The #[RateLimit] attribute of Symfony 8.1 limits the events of a page. With `methods: 'POST'`,
+// it counts the events only, not the GET requests of the page.
+#[RateLimit('phem_events', methods: 'POST')]
+#[Page('/limited')]
+final class LimitedPage
+{
+    #[State] public int $count = 0;
+
+    public function increment(): void
+    {
+        ++$this->count;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <button onClick={{ increment }}>{{ count }}</button>
+            </Document>
+        );
+    }
+}
+
+// The #[RateLimit] attribute on a handler method limits the events of that handler only. The
+// default key has the class and the method of the handler.
+#[Page('/limited-handler')]
+final class LimitedHandlerPage
+{
+    #[State] public int $searches = 0;
+    #[State] public int $count = 0;
+
+    #[RateLimit('phem_events')]
+    public function search(): void
+    {
+        ++$this->searches;
+    }
+
+    // A literal key: the handlers with this key share one count.
+    #[RateLimit('phem_events', key: 'shared', tokens: 2)]
+    public function heavy(): void
+    {
+    }
+
+    // An Expression key, as for a controller. A Closure key needs PHP 8.5 (see
+    // RateLimitMiddlewareTest).
+    #[RateLimit('phem_events', key: new Expression('"ip-" ~ request.getClientIp()'))]
+    public function like(): void
+    {
+    }
+
+    public function increment(): void
+    {
+        ++$this->count;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <button id="like" onClick={{ like }}>like</button>
+                <button id="search" onClick={{ search }}>{{ searches }}</button>
+                <button id="heavy" onClick={{ heavy }}>heavy</button>
+                <button id="increment" onClick={{ increment }}>{{ count }}</button>
+            </Document>
+        );
+    }
+}

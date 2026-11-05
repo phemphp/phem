@@ -1,12 +1,12 @@
-# Compiling `.phpm` files
+# Compiling `.phem` files
 
-A `.phpm` project is a Symfony application with `PhemBundle`. It needs two build steps before
+A `.phem` project is a Symfony application with `PhemBundle`. It needs two build steps before
 it can run:
 
-1. `phemc build` (Rust) compiles the `.phpm` files to PHP and Twig.
+1. `phemc build` (Rust) compiles the `.phem` files to PHP and Twig.
 2. `bin/console phem:warmup` (PHP) compiles the Twig templates into the Twig cache.
 
-`phemc build` runs step 2 for you. At runtime, nothing parses `.phpm` or `.twig` sources.
+`phemc build` runs step 2 for you. At runtime, nothing parses `.phem` or `.twig` sources.
 
 ## Project layout
 
@@ -23,18 +23,18 @@ my-app/
 │   ├── packages/asset_mapper.yaml   the assets/ directory
 │   ├── routes.yaml        { resource: routing.controllers }: the #[Route] controllers and the #[Page] pages
 │   └── services.yaml      your services (for example repositories)
-├── src/                   the .phpm sources (the "source root"), and your PHP classes
+├── src/                   the .phem sources (the "source root"), and your PHP classes
 │   ├── Kernel.php
 │   ├── Model/             optional: Doctrine entities
 │   ├── Repository/        normal PHP services, injected into components
 │   ├── DataFixtures/      optional: Doctrine fixtures, the first rows of a new database
-│   └── Ui/                the .phpm files: the pages and their components, by context
+│   └── Ui/                the .phem files: the pages and their components, by context
 │       ├── Common/        the components that more than one context uses
-│       │   └── Document.phpm   the HTML document: each page renders in it, with a <Root>
-│       ├── HomePage.phpm  #[Page('/')]
+│       │   └── Document.phem   the HTML document: each page renders in it, with a <Root>
+│       ├── HomePage.phem  #[Page('/')]
 │       └── Example/
-│           ├── CounterPage.phpm  #[Page('/examples/counter')]
-│           └── Counter.phpm      a component of the page
+│           ├── CounterPage.phem  #[Page('/examples/counter')]
+│           └── Counter.phem      a component of the page
 ├── assets/                the JavaScript and CSS of the pages (AssetMapper)
 │   ├── app.js             the `app` entry of the importmap: bootstrap.js and styles/app.css
 │   ├── bootstrap.js       starts Stimulus (StimulusBundle)
@@ -51,7 +51,7 @@ The directories are only a convention: a page is a class with the `#[Page]` attr
 
 ### Organize the UI
 
-Put the `.phpm` files in `src/Ui/`. The namespace follows the directory: `src/Ui/` is `App\Ui`,
+Put the `.phem` files in `src/Ui/`. The namespace follows the directory: `src/Ui/` is `App\Ui`,
 and `src/Ui/Scientist/` is `App\Ui\Scientist`. Do not split the files into a `Component/` and a
 `Page/` directory. Split them by context:
 
@@ -69,25 +69,25 @@ and `src/Ui/Scientist/` is `App\Ui\Scientist`. Do not split the files into a `Co
 ```
 src/Ui/                      App\Ui
 ├── Common/                  App\Ui\Common
-│   ├── Document.phpm
-│   └── Badge.phpm
-├── HomePage.phpm            #[Page('/')]
+│   ├── Document.phem
+│   └── Badge.phem
+├── HomePage.phem            #[Page('/')]
 ├── Scientist/               App\Ui\Scientist
-│   ├── ScientistsPage.phpm  the list
-│   ├── ScientistPage.phpm   one scientist
-│   ├── ScientistCard.phpm   for the 2 pages
-│   └── ScientistFilters.phpm
+│   ├── ScientistsPage.phem  the list
+│   ├── ScientistPage.phem   one scientist
+│   ├── ScientistCard.phem   for the 2 pages
+│   └── ScientistFilters.phem
 └── Admin/
     └── User/                App\Ui\Admin\User
-        ├── EditUserPage.phpm
-        └── UserForm.phpm
+        ├── EditUserPage.phem
+        └── UserForm.phem
 ```
 
 A page and its components share a namespace, so the page uses them with no `use` import. It
 imports only the common components:
 
 ```php
-<?phpm
+<?phem
 
 namespace App\Ui\Scientist;
 
@@ -118,12 +118,12 @@ When a second context starts to use a component of a page, move the component to
 
 ### The document of the pages
 
-The application owns the HTML document: a component in the .phpm sources, as the others. It
+The application owns the HTML document: a component in the .phem sources, as the others. It
 returns the `<html>` element, and it prints the content of the page in a `<Root>`. Phem adds
 the `<!DOCTYPE html>`.
 
 ```php
-<?phpm
+<?phem
 
 namespace App\Ui\Common;
 
@@ -253,7 +253,7 @@ and `@hotwired/turbo` to `importmap.php`:
 }
 ```
 
-The package also has optional controllers, which are not enabled by default (see the `.phpm`
+The package also has optional controllers, which are not enabled by default (see the `.phem`
 syntax guide):
 
 - `phem-optimistic` (`phemjs/phem_optimistic_controller.js`) changes the page before the server
@@ -315,7 +315,7 @@ phem: compiled 24 template(s) into the Twig cache in 250 ms
 The build is incremental: it writes only the files that changed, so the Twig cache and
 OPcache stay valid. If there is an error, it writes nothing and exits with code 1.
 
-The build also compiles the `.phpm` files of the Composer packages that give
+The build also compiles the `.phem` files of the Composer packages that give
 `extra.phem.source` in their `composer.json` (see [Component packages](packages.md)). The
 summary then gives their number: `compiled 42 file(s) (2 package(s)), ...`.
 
@@ -335,8 +335,8 @@ page, or route needs no `cache:clear`.
 var/phem/
 ├── php/Page/index.php          the PHP code; each markup literal becomes new \Phem\Element('Page/index.0.twig', [...])
 ├── php/vendor/acme/ui/...      the PHP code of a Composer package (its templates are in templates/vendor/acme/ui/)
-├── templates/Page/index.0.twig one Twig template for each markup literal (Twig name: @phpm/Page/index.0.twig)
-├── manifest.php / manifest.json components (kind, source, props, slots, replaces), pages, template → .phpm line map
+├── templates/Page/index.0.twig one Twig template for each markup literal (Twig name: @phemc/Page/index.0.twig)
+├── manifest.php / manifest.json components (kind, source, props, slots, replaces), pages, template → .phem line map
 └── autoload.php                 requires all compiled PHP files
 var/cache/<env>/twig/            the Twig cache (filled by the warmup)
 ```
@@ -345,9 +345,9 @@ var/cache/<env>/twig/            the Twig cache (filled by the warmup)
 `phemc build` writes it. It is the same for all environments. `cache:clear` and
 `rm -rf var/cache` do not delete it.
 
-The compiled PHP keeps the line numbers of the `.phpm` file. The manifest maps each template
-back to its `.phpm` file (from the project root) and line, so the Symfony error page and the
-console show `src/<file>.phpm` (or `vendor/<package>/...` for a package) and its line for an
+The compiled PHP keeps the line numbers of the `.phem` file. The manifest maps each template
+back to its `.phem` file (from the project root) and line, so the Symfony error page and the
+console show `src/<file>.phem` (or `vendor/<package>/...` for a package) and its line for an
 error in markup.
 
 ## 3. Check only (CI)
@@ -357,13 +357,13 @@ phemc check src
 ```
 
 It reports all diagnostics, writes nothing, and exits with code 1 if there is an error.
-Each diagnostic shows the `.phpm` line and column, a label, and a hint:
+Each diagnostic shows the `.phem` line and column, a label, and a hint:
 
 ```
 E011
 
   × `<Profile>` has no prop `persn`
-    ╭─[src/Ui/Scientist/ScientistPage.phpm:16:22]
+    ╭─[src/Ui/Scientist/ScientistPage.phem:16:22]
  15 │         <div>
  16 │             <Profile persn={{ user }} />
     ·                      ─────
@@ -378,10 +378,10 @@ E011
 
 | Code | Meaning |
 |---|---|
-| E001–E006 | Syntax: unclosed or mismatched tags, a void element that is not self-closed, more than one root, a `<?php` open tag instead of `<?phpm` |
+| E001–E006 | Syntax: unclosed or mismatched tags, a void element that is not self-closed, more than one root, an open tag other than `<?phem` (`<?php`, the old `<?phpm`, `<?phemx`) |
 | E010–E015 | Unknown component (also a function without `#[Component]`, or the component of a `replaces`), unknown or missing prop, children or slot not accepted, duplicate component (also a component with the name of a built-in component, `Phem\Root`, or an enum that two files declare), a required context with no provider above the component |
 | E016, E017 | A replacement (`#[Component(replaces: ...)]`) that does not accept a prop or a slot of the original, that requires one that the original does not require, or that declares a `Bound` prop of the original with another type; a replacement in a package, a second replacement of a component, a component that replaces itself, the replacement of a replacement, of a page or of a built-in component, a page that replaces a component, or a `replaces` value that is not `Name::class` or a string (also `self::class`) |
-| E018 | A literal value of a backed enum prop that is not the value of a case (`variant="big"`, `level="03"`, an empty value, or a bare attribute), when the enum is in a `.phpm` file |
+| E018 | A literal value of a backed enum prop that is not the value of a case (`variant="big"`, `level="03"`, an empty value, or a bare attribute), when the enum is in a `.phem` file |
 | E020 | A call to a React Hook (`Phem\useState`, ...): Phem keeps state in `#[Component]` classes |
 | E030–E033 | Undefined variable in markup, markup in an unsupported expression, invalid attribute, invalid `phem:bind` (not a `#[State]` property, not a form field, or a type that does not take the value of the field) |
 | E040–E045 | Class component without `render()`, readonly `#[State]` property, `#[Prop]` property that is not public, static, or `#[State]`, a second `#[Prop(rest: true)]` property or one whose type does not accept an array, a `#[Context]` or `#[Provide]` type that is not one class, interface or enum (or a `#[Context]` property that is static, readonly, a prop or state), `#[Component]` on an abstract class |
@@ -405,25 +405,25 @@ phemc check src --format json
 ```
 
 ```json
-{"files": [{"file": "src/Ui/Scientist/ScientistCard.phpm", "diagnostics": [{"severity": "error",
+{"files": [{"file": "src/Ui/Scientist/ScientistCard.phem", "diagnostics": [{"severity": "error",
   "code": "E010", "message": "unknown component `<Avatr>` (resolved to `App\\Ui\\Scientist\\Avatr`)",
-  "label": null, "help": "declare `#[Component] function Avatr()` in a .phpm file, or check the `use` imports",
+  "label": null, "help": "declare `#[Component] function Avatr()` in a .phem file, or check the `use` imports",
   "start": {"line": 30, "character": 13}, "end": {"line": 30, "character": 18}}]}]}
 ```
 
-`file` is relative to the project root (`src/Ui/Scientist/ScientistCard.phpm`). `line` starts at 0,
+`file` is relative to the project root (`src/Ui/Scientist/ScientistCard.phem`). `line` starts at 0,
 and `character` counts UTF-16 code units, as the Language Server Protocol does. The warnings of a
 Composer package are not in the list.
 
 ### Static analysis (PHPStan)
 
-PHPStan cannot read a `.phpm` file: the markup is not PHP. Run PHPStan on the compiled PHP in
-`var/phem/php/` instead. The compiled PHP has the same line numbers as the `.phpm` file, and
+PHPStan cannot read a `.phem` file: the markup is not PHP. Run PHPStan on the compiled PHP in
+`var/phem/php/` instead. The compiled PHP has the same line numbers as the `.phem` file, and
 it is plain PHP: phemc writes a markup literal as `new \Phem\Element(...)`.
 
 1. Run `phemc build src` (or `phemc build src --no-warmup` in CI).
 2. Add `var/phem/php` to the paths of PHPStan. PHPStan reads only `.php` files, so it ignores
-   the `.phpm` files in `src/`.
+   the `.phem` files in `src/`.
 3. Exclude `var/phem/php/vendor`: it is the compiled code of the Composer packages, and your
    app cannot change it.
 
@@ -438,7 +438,7 @@ parameters:
         - var/phem/php/vendor
 ```
 
-A `.phpm` file:
+A `.phem` file:
 
 ```php
 #[Component]
@@ -458,7 +458,7 @@ function Tally(array $items): Node {
 }
 ```
 
-PHPStan reports the line of the `.phpm` file, in the path of the compiled file (here with
+PHPStan reports the line of the `.phem` file, in the path of the compiled file (here with
 `--error-format=raw`):
 
 ```
@@ -466,7 +466,7 @@ var/phem/php/Ui/Report/Tally.php:12:Function App\Ui\Report\Tally() has parameter
 ```
 
 The first line of each compiled file names its source (`<?php /* compiled by phemc from
-src/Ui/Report/Tally.phpm; do not edit */`). Fix the error in that `.phpm` file, at the same
+src/Ui/Report/Tally.phem; do not edit */`). Fix the error in that `.phem` file, at the same
 line.
 
 PHPStan does not see:
@@ -483,20 +483,20 @@ alternative syntax block (`if (...): ... endif;`) or a `goto` label, it writes `
 If PHPStan then reports `nullCoalesce.variable` (the variable always exists), assign the
 variable in a statement before the markup.
 
-php-cs-fixer, PHP_CodeSniffer and Rector do not work on `.phpm` files, and a change in the
+php-cs-fixer, PHP_CodeSniffer and Rector do not work on `.phem` files, and a change in the
 compiled PHP does not go back to the source.
 
 ### The language server
 
 `phemc lsp` runs the language server on stdin and stdout. It shows the same diagnostics as
 `phemc check` as you type, and it gives the completion, the definition, the hover, and the
-outline of `.phpm` files. The editors bundle the same server, compiled to WebAssembly
+outline of `.phem` files. The editors bundle the same server, compiled to WebAssembly
 (`make lsp`), so they do not need a `phemc` binary. See `editors/vscode/README.md` and
 `editors/phpstorm/README.md`. The Claude Code plugin runs `vendor/bin/phemc lsp` of the
 application: see [Getting started](getting-started.md#use-claude-code) and
 `editors/claude-code/README.md`.
 
-The server also checks the `.phpm` files of the Composer packages with the app, and it gives the
+The server also checks the `.phem` files of the Composer packages with the app, and it gives the
 completion, the definition and the hover of their components in the files of the app. It shows the
 errors of a package file in the file (also at its real path, for a package of a Composer path
 repository). The app that installs a package checks its files: a linked package in the same
@@ -520,7 +520,7 @@ frankenphp run --config Caddyfile
   In development, Symfony serves the AssetMapper assets at `/assets/`.
 - `FRANKENPHP_WORKER_CONFIG` adds options to the worker. For example, `watch ./src/**/*.php`
   restarts the workers when a PHP class changes.
-- `APP_ENV=dev` (the default in `.env`) shows the Symfony error pages, with the `.phpm` location.
+- `APP_ENV=dev` (the default in `.env`) shows the Symfony error pages, with the `.phem` location.
 - The application assumes that the database exists. Make it before the first run, for example
   `bin/console doctrine:schema:create` and `bin/console doctrine:fixtures:load`. In Docker, run
   these commands in the entrypoint, only when the database does not exist yet.
@@ -575,10 +575,10 @@ workers:
         cmd: ['vendor/bin/phemc', 'watch', 'src']
 ```
 
-When a `.phpm` file changes, `phemc` rebuilds. With PHP-FPM, the next request uses the new build:
+When a `.phem` file changes, `phemc` rebuilds. With PHP-FPM, the next request uses the new build:
 no restart is necessary. Run `symfony server:log` to see the diagnostics. `phemc watch` also
 rebuilds after `composer require` or `composer update` (a change of
-`vendor/composer/installed.json`), and when a `.phpm` file of a Composer package changes.
+`vendor/composer/installed.json`), and when a `.phem` file of a Composer package changes.
 
 With FrankenPHP in worker mode, give the command of the server to `--exec`:
 
@@ -586,7 +586,7 @@ With FrankenPHP in worker mode, give the command of the server to `--exec`:
 phemc watch src --exec "frankenphp run --config Caddyfile"
 ```
 
-When a `.phpm` file changes, `phemc` rebuilds. If the build passes, it restarts FrankenPHP, so
+When a `.phem` file changes, `phemc` rebuilds. If the build passes, it restarts FrankenPHP, so
 the workers load the new components. If the build fails, it prints the diagnostics and the
 previous server keeps running. Set `FRANKENPHP_WORKER_CONFIG="watch ./src/**/*.php"` to restart
 the workers also when a PHP class changes.

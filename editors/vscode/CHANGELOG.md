@@ -2,8 +2,10 @@
 
 ## Unreleased
 
+- The files are now `.phem` files that open with `<?phem` (before: `.phpm` and `<?phpm`). The
+  language id is now `phem`.
 - Find references on a component, a function, or a method: the tags of a component, the calls
-  of a function, and the calls and the Twig handlers of a method, in the `.phpm` files of the
+  of a function, and the calls and the Twig handlers of a method, in the `.phem` files of the
   project. `Cmd`+click on a declaration also shows them.
 - A usage count (`2 usages`) above each component, function, and method. Click it to see the
   usages, then click one to go to it.

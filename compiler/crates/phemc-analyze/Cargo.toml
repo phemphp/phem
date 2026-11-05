@@ -1,6 +1,6 @@
 [package]
 name = "phemc-analyze"
-description = "PHP structure scan, component registry, and diagnostics for .phpm files"
+description = "PHP structure scan, component registry, and diagnostics for .phem files"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

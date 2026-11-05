@@ -10,11 +10,11 @@
 Phem is the place where PHP and Twig stop passing notes and start writing together. Logic and
 markup live in one file, one component, one thought. It is built for Symfony web apps.
 
-A `.phpm` file is PHP at heart, with a component layer built on top of Twig, so your markup lives
+A `.phem` file is PHP at heart, with a component layer built on top of Twig, so your markup lives
 right beside the code that gives it life:
 
 ```php
-<?phpm
+<?phem
 
 namespace App\Ui;
 

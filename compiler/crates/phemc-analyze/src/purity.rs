@@ -87,19 +87,19 @@ mod tests {
 
     fn messages(src: &str) -> Vec<String> {
         let lexed = lex(src).unwrap();
-        let info = scan("a.phpm", src, &lexed);
+        let info = scan("a.phem", src, &lexed);
         super::check(&info, src, &lexed).into_iter().map(|d| format!("{} {}", d.code, d.message)).collect()
     }
 
     #[test]
     fn a_service_in_render_is_reported() {
-        let src = "<?phpm\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class A {\n    public function __construct(private readonly Repo $repo) {}\n    public function mount(): void { $this->n = $this->repo->count(); }\n    public function render() { $n = $this->repo->count(); return <p>{{ n }}</p>; }\n}\n";
+        let src = "<?phem\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class A {\n    public function __construct(private readonly Repo $repo) {}\n    public function mount(): void { $this->n = $this->repo->count(); }\n    public function render() { $n = $this->repo->count(); return <p>{{ n }}</p>; }\n}\n";
         assert_eq!(messages(src), ["W008 `render()` reads the service `$repo`"]);
     }
 
     #[test]
     fn globals_the_clock_and_random_values_are_reported() {
-        let src = "<?phpm\nuse Phem\\Attribute\\Component;\n#[Component]\nfunction A() { $a = Rows::$all; $b = $_SESSION['x']; $c = time(); $d = new \\DateTimeImmutable(); $e = random_int(1, 6); return <p>{{ a }}</p>; }\n";
+        let src = "<?phem\nuse Phem\\Attribute\\Component;\n#[Component]\nfunction A() { $a = Rows::$all; $b = $_SESSION['x']; $c = time(); $d = new \\DateTimeImmutable(); $e = random_int(1, 6); return <p>{{ a }}</p>; }\n";
         assert_eq!(
             messages(src),
             [
@@ -114,10 +114,10 @@ mod tests {
 
     #[test]
     fn pure_code_is_fine() {
-        let src = "<?phpm\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class A {\n    public function __construct(private readonly Repo $repo) {}\n    private array $rows = [];\n    public function mount(): void { $this->rows = $this->repo->all(); }\n    public function save(): void { $this->repo->save(time()); }\n    public function render() { $rows = $this->rows; $d = new \\DateTimeImmutable('2020-01-01'); $x = Rows::count(); $y = $this->format(); return <p>{{ rows|length }}</p>; }\n}\n";
+        let src = "<?phem\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class A {\n    public function __construct(private readonly Repo $repo) {}\n    private array $rows = [];\n    public function mount(): void { $this->rows = $this->repo->all(); }\n    public function save(): void { $this->repo->save(time()); }\n    public function render() { $rows = $this->rows; $d = new \\DateTimeImmutable('2020-01-01'); $x = Rows::count(); $y = $this->format(); return <p>{{ rows|length }}</p>; }\n}\n";
         assert!(messages(src).is_empty(), "{:?}", messages(src));
 
-        let src = "<?phpm\nfunction helper() { return time(); }\n";
+        let src = "<?phem\nfunction helper() { return time(); }\n";
         assert!(messages(src).is_empty(), "a plain function is not a component");
     }
 }
