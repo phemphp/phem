@@ -137,7 +137,8 @@ with the session of a page (for example a user who logged in), call `visit()` on
 the tabs of a browser, the pages of one browser share the cookies and the server values (the
 `$server` of the first `visit()`), and each page gets its pushes apart. A cookie goes only to
 its host (or its `Domain`) and its `Path`, and a `Secure` cookie only on HTTPS and on
-`localhost`.
+`localhost`. As in a browser, an empty `Domain` is no `Domain`: the session cookie of PHP (with
+the default `session.cookie_domain`) goes to the host of the page.
 
 A relative URL opens from the URL of the page, as a link does: `$page->visit('/bag')` on
 `http://shop.example/login` opens `http://shop.example/bag`, and so does the relative redirect of

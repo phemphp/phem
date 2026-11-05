@@ -405,6 +405,13 @@ final class InteractsWithPhemTest extends KernelTestCase
         $page->visit('http://shop.example/cookies?set=domain=all&domain=shop.example');
         self::assertSame('domain=all', self::sent($page->visit('http://www.shop.example/cookies')));
 
+        // An empty Domain (the default session.cookie_domain of PHP) is no Domain.
+        $page = $this->visit('/cookies?set=session=1&domain=');
+        self::assertSame('session=1', self::sent($page->visit('/cookies')));
+        self::assertSame(['session' => '1'], $page->visit('/cookies')->cookies());
+        $page = $this->visit('http://shop.example/cookies?set=session=1&domain=');
+        self::assertSame('none', self::sent($page->visit('http://www.shop.example/cookies')));
+
         // A Secure cookie goes on HTTPS and on localhost only.
         $page = $this->visit('http://shop.example/cookies?set=token=1&secure=1');
         self::assertSame('none', self::sent($page->visit('http://shop.example/cookies')));

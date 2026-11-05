@@ -37,9 +37,11 @@ final class CookieJar
     public function keep(Request $request, Response $response): void
     {
         foreach ($response->headers->getCookies() as $cookie) {
-            // With no Domain, only the host of the request gets the cookie.
-            $domain = $cookie->getDomain();
-            $host = null !== $domain ? strtolower(ltrim($domain, '.')) : $request->getHost();
+            // With no Domain, only the host of the request gets the cookie. As a browser, it
+            // ignores an empty Domain (RFC 6265, 5.2.3), as PHP sets with session.cookie_domain.
+            $domain = strtolower(ltrim($cookie->getDomain() ?? '', '.'));
+            $hostOnly = '' === $domain;
+            $host = $hostOnly ? $request->getHost() : $domain;
             $key = $cookie->getName().';'.$host.';'.$cookie->getPath();
 
             if ($cookie->isCleared() || null === $cookie->getValue()) {
@@ -47,7 +49,7 @@ final class CookieJar
                 continue;
             }
 
-            $this->cookies[$key] = ['cookie' => $cookie, 'host' => $host, 'hostOnly' => null === $domain];
+            $this->cookies[$key] = ['cookie' => $cookie, 'host' => $host, 'hostOnly' => $hostOnly];
         }
     }
 
