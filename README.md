@@ -81,21 +81,6 @@ Read the docs on the website: https://phem.dev/. New to Phem? Start here:
 - [Getting started](docs/getting-started.md): install Phem in a new Symfony app
 - [Tutorial: a task list](docs/tutorial.md): build a small app, one idea at a time
 
-More documentation:
-
-- [How it works](docs/how-it-works.md)
-- [Philosophy and conventions](docs/philosophy.md)
-- [Compiling `.phpm` files](docs/compiling.md)
-- [The `.phpm` syntax](docs/phpm-syntax.md)
-- [Components and state](docs/components.md)
-- [Events and forms](docs/events-and-forms.md)
-- [Client-side behavior](docs/client-side.md)
-- [Server features](docs/server-features.md)
-- [Errors and limits](docs/errors-and-limits.md)
-- [Testing components and pages](docs/testing.md)
-- [Component packages](docs/packages.md)
-- [Deployment](docs/deployment.md)
-
 ## License
 
 MIT.

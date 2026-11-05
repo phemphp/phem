@@ -43,9 +43,9 @@
 
 /* ---------- CodeBlock ---------- */
 .ph-code { border-radius: var(--radius-lg); background: var(--code-surface); color: var(--code-ink); overflow: hidden; border: 1px solid var(--border); }
-.ph-code__bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-3) var(--space-2) var(--space-5); border-bottom: 1px solid rgba(148,163,184,0.18); font: 500 12px/16px var(--font-mono); font-variant-ligatures: none; color: var(--code-muted); }
+.ph-code__bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-3) var(--space-2) var(--space-5); border-bottom: 1px solid rgba(163,163,163,0.18); font: 500 12px/16px var(--font-mono); font-variant-ligatures: none; color: var(--code-muted); }
 .ph-code__copy { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--code-muted); cursor: pointer; }
-.ph-code__copy:hover { color: var(--code-ink); background: rgba(148,163,184,0.14); }
+.ph-code__copy:hover { color: var(--code-ink); background: rgba(163,163,163,0.14); }
 .ph-code__copy:focus-visible { outline: 2px solid var(--syntax-keyword); outline-offset: 1px; }
 .ph-code__copy svg { width: 16px; height: 16px; }
 .ph-code pre { margin: 0; padding: var(--space-4) var(--space-5); overflow-x: auto; font: 400 14px/24px var(--font-mono); font-variant-ligatures: none; }
@@ -86,7 +86,7 @@
 .ph-code .line--add::before, .ph-code .line--del::before { position: absolute; left: 6px; font-weight: 500; }
 .ph-code .line--add::before { content: "+"; color: var(--code-added-ink); }
 .ph-code .line--del::before { content: "-"; color: var(--code-removed-ink); }
-.ph-code__tabs { display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2) 0 var(--space-3); border-bottom: 1px solid rgba(148,163,184,0.18); }
+.ph-code__tabs { display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2) 0 var(--space-3); border-bottom: 1px solid rgba(163,163,163,0.18); }
 .ph-code__tab { position: relative; padding: var(--space-3) var(--space-2); border: 0; background: transparent; color: var(--code-muted); font: 500 12px/16px var(--font-mono); font-variant-ligatures: none; cursor: pointer; }
 .ph-code__tab:hover { color: var(--code-ink); }
 .ph-code__tab[aria-selected="true"] { color: var(--code-ink); }
@@ -357,7 +357,9 @@
 
 /* ---------- Hero ---------- */
 .ph-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: var(--space-12); max-width: var(--page-width); margin: 0 auto; padding: var(--space-16) var(--space-6); box-sizing: border-box; }
-.ph-hero__title { margin: var(--space-4) 0 0; color: var(--ink); font: 800 56px/60px var(--font-sans); letter-spacing: -0.025em; }
+.ph-hero__heading { margin: var(--space-4) 0 0; }
+.ph-hero__brand { display: block; color: var(--ink); font: 800 112px/1 var(--font-sans); letter-spacing: -0.045em; }
+.ph-hero__title { display: block; margin-top: var(--space-4); color: var(--ink); font: 700 40px/48px var(--font-sans); letter-spacing: -0.02em; }
 .ph-hero__title em { font-style: normal; color: var(--primary-text); }
 .ph-hero__lead { margin: var(--space-5) 0 0; max-width: 34em; color: var(--ink-muted); font: 400 20px/32px var(--font-sans); }
 .ph-hero__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-8); }
@@ -367,7 +369,7 @@
 .ph-install .ph-icon-btn svg { width: 16px; height: 16px; }
 .ph-install .ph-icon-btn.is-copied { color: var(--success); }
 .ph-hero .ph-code { border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); }
-@media (max-width: 960px) { .ph-hero { grid-template-columns: 1fr; padding: var(--space-12) var(--space-6); } .ph-hero__title { font-size: 40px; line-height: 44px; } }
+@media (max-width: 960px) { .ph-hero { grid-template-columns: 1fr; padding: var(--space-12) var(--space-6); } .ph-hero__brand { font-size: 72px; } .ph-hero__title { font-size: 28px; line-height: 34px; } }
 
 /* ---------- DocsPage layout ---------- */
 .ph-docs { display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--toc-width); align-items: start; max-width: var(--page-width); margin: 0 auto; }
