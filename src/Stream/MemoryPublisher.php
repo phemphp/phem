@@ -19,18 +19,19 @@ namespace Phem\Stream;
  */
 final class MemoryPublisher implements StreamPublisher
 {
-    /** @var list<array{topics: list<string>, data: string, private: bool}> */
+    /** @var list<array{topics: list<string>, data: string, private: bool, time: float}> */
     private array $updates = [];
 
     public function publish(array $topics, string $data, bool $private): void
     {
-        $this->updates[] = ['topics' => $topics, 'data' => $data, 'private' => $private];
+        $this->updates[] = ['topics' => $topics, 'data' => $data, 'private' => $private, 'time' => microtime(true)];
     }
 
     /**
-     * The updates in their order, from the first one.
+     * The updates in their order, from the first one, with the time when they were published (in
+     * seconds, see Phem\Test\BrowserHub).
      *
-     * @return list<array{topics: list<string>, data: string, private: bool}>
+     * @return list<array{topics: list<string>, data: string, private: bool, time: float}>
      */
     public function updates(): array
     {

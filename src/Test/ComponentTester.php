@@ -19,6 +19,7 @@ use Phem\Form\TouchedFields;
 use Phem\Stream\Stream;
 use Phem\Test\Internal\Driver;
 use Phem\Test\Internal\EventResult;
+use Phem\Test\Internal\StreamTopics;
 use PHPUnit\Framework\Assert;
 
 /**
@@ -308,13 +309,7 @@ final class ComponentTester
             Assert::fail(\sprintf('The page has no #[Broadcast]: it gets no pushes. %s', $this->context()));
         }
 
-        $topics = [];
-        foreach (explode('&', (string) parse_url((string) $source->getAttribute('data-phem-stream-value'), \PHP_URL_QUERY)) as $pair) {
-            [$name, $value] = explode('=', $pair, 2) + [1 => ''];
-            if ('match' === $name) {
-                $topics[] = rawurldecode($value);
-            }
-        }
+        $topics = StreamTopics::of((string) $source->getAttribute('data-phem-stream-value'));
 
         $updates = ($this->updates)();
         $refresh = false;

@@ -7,7 +7,7 @@ test: test-js ## Run cargo test, PHPUnit and the JS tests
 	$(COMPOSE) run --rm --build dev
 
 test-js: ## Run the tests of the phem Stimulus controller (Vitest, jsdom)
-	docker run --rm -e NPM_CONFIG_UPDATE_NOTIFIER=false -e NPM_CONFIG_LOGLEVEL=warn -v "$(CURDIR)/assets:/assets" -w /assets node:22-alpine sh -c ' \
+	docker run --rm -e NPM_CONFIG_UPDATE_NOTIFIER=false -e NPM_CONFIG_LOGLEVEL=warn -v "$(CURDIR)/assets:/assets" -v "$(CURDIR)/src/Test/Resources:/src/Test/Resources:ro" -w /assets node:22-alpine sh -c ' \
 		npm install --ignore-scripts --no-fund --no-audit && \
 		npm test'
 

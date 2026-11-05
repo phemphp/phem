@@ -36,6 +36,13 @@ Each `phem:send` gets exactly one `phem:done`, also when the event fails, redire
 page again. Use the two events to know when an event runs: the loading state shows only after the
 loading delay, so a fast event does not show it.
 
+A push (see [Real-time updates](server-features.md#real-time-updates)) has no element that sent
+it, so it dispatches none of these events. While the page is not done with its pushes, the root
+element has the `data-phem-push-pending` attribute: a push waits for the event that runs, Turbo
+renders it, or its refresh waits (50 ms, for all the refreshes that come together) or runs. A
+test with a real browser waits until the attribute goes away (see
+[Tests with a real browser](testing.md#tests-with-a-real-browser)).
+
 ## Optimistic UI
 
 The `phem-optimistic` controller changes the page at once, before the server answers. When the

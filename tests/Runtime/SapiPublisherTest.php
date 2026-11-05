@@ -27,7 +27,7 @@ final class SapiPublisherTest extends TestCase
 
         new SapiPublisher($frankenphp, $hub, 'frankenphp')->publish(['phem:*'], '<turbo-stream></turbo-stream>', true);
 
-        self::assertSame([['topics' => ['phem:*'], 'data' => '<turbo-stream></turbo-stream>', 'private' => true]], $frankenphp->updates());
+        self::assertSame([['topics' => ['phem:*'], 'data' => '<turbo-stream></turbo-stream>', 'private' => true]], self::withoutTime($frankenphp));
         self::assertSame([], $hub->updates());
     }
 
@@ -41,6 +41,16 @@ final class SapiPublisherTest extends TestCase
         new SapiPublisher($frankenphp, $hub, $sapi)->publish(['phem:*'], '<turbo-stream></turbo-stream>', false);
 
         self::assertSame([], $frankenphp->updates());
-        self::assertSame([['topics' => ['phem:*'], 'data' => '<turbo-stream></turbo-stream>', 'private' => false]], $hub->updates());
+        self::assertSame([['topics' => ['phem:*'], 'data' => '<turbo-stream></turbo-stream>', 'private' => false]], self::withoutTime($hub));
+    }
+
+    /**
+     * The updates with no publish time (see MemoryPublisher).
+     *
+     * @return list<array{topics: list<string>, data: string, private: bool}>
+     */
+    private static function withoutTime(MemoryPublisher $publisher): array
+    {
+        return array_map(static fn (array $update): array => ['topics' => $update['topics'], 'data' => $update['data'], 'private' => $update['private']], $publisher->updates());
     }
 }

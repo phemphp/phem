@@ -113,6 +113,19 @@ trait InteractsWithPhem
     }
 
     /**
+     * The Mercure hub of a test with a real browser (Playwright) whose requests the kernel of the
+     * test handles, for the updates that the application publishes from now (see BrowserHub).
+     */
+    protected function browserHub(): BrowserHub
+    {
+        // With `framework.test: true` (getContainer() needs it), the streams go to memory.
+        $publisher = static::getContainer()->get(TestPublisherPass::ID);
+        \assert($publisher instanceof MemoryPublisher);
+
+        return new BrowserHub($publisher);
+    }
+
+    /**
      * Loads a page in a browser: the pages of one browser share its cookies and its server values.
      *
      * @param array<string, string> $server

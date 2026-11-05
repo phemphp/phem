@@ -710,9 +710,14 @@ export default class PhemController extends Controller {
     // The number of pushes that Turbo renders now (see keepEdited).
     this.pushing = 0
     this.refreshTimer = null
+    // The refresh that waits or runs: its number, or 0 (see scheduleRefresh()).
+    this.refreshing = 0
+    this.refreshes = 0
     this.streamTimer = null
     // The connections in a row that the hub refused before it opened one (see openStream()).
     this.streamFailures = 0
+    // A page from the Turbo cache can have the mark of its last pushes: it has none now.
+    this.showPushPending()
     this.openStream()
   }
 
@@ -725,6 +730,8 @@ export default class PhemController extends Controller {
     this.source = null
     clearTimeout(this.refreshTimer)
     clearTimeout(this.streamTimer)
+    // The refresh that waited does not run: Turbo must not cache the mark with the page.
+    this.element.removeAttribute("data-phem-push-pending")
     this.element.removeEventListener("turbo:morph-element", this.keepLoading)
     this.element.removeEventListener("turbo:before-morph-attribute", this.keepEdited)
     this.element.removeEventListener("turbo:before-morph-element", this.keepValue)
@@ -771,9 +778,11 @@ export default class PhemController extends Controller {
 
       this.streamTimer = setTimeout(() => {
         this.markContentStale()
+        const refresh = this.beginRefresh()
         this.queue = this.queue
           .then(() => this.send(this.element, null, REFRESH_EVENT, () => {}))
           .catch((e) => console.error("[phem]", e))
+          .finally(() => this.endRefresh(refresh))
           .then(() => this.element.isConnected && !this.source && this.openStream())
       }, STREAM_RETRY)
     })
@@ -793,6 +802,14 @@ export default class PhemController extends Controller {
   receive(data) {
     if (this.busy) this.held.push(data)
     else this.applyPush(data)
+    this.showPushPending()
+  }
+
+  // `data-phem-push-pending` on the root element while the page is not done with its pushes: a
+  // push waits for an event, Turbo renders it, or its refresh waits or runs. A test with a real
+  // browser waits until the attribute goes away (see Phem\Test\BrowserHub).
+  showPushPending() {
+    this.element.toggleAttribute("data-phem-push-pending", this.held.length > 0 || this.pushing > 0 || this.refreshing > 0)
   }
 
   // Renders the Turbo Streams of a push. In the root element, each stream marks the component
@@ -823,10 +840,18 @@ export default class PhemController extends Controller {
     if (message.content.querySelector("turbo-stream")) {
       console.debug("[phem] push", data)
       this.pushing++
-      Turbo.renderStreamMessage(message.innerHTML)
+      try {
+        Turbo.renderStreamMessage(message.innerHTML)
+      } catch (e) {
+        // The push did not render: the page is not busy with it.
+        this.pushing--
+        this.showPushPending()
+        throw e
+      }
       afterStreams().then(() => {
         this.pushing--
         this.markDirty()
+        this.showPushPending()
       })
     }
 
@@ -879,11 +904,27 @@ export default class PhemController extends Controller {
   // of the events, so it waits for the event that runs.
   scheduleRefresh() {
     clearTimeout(this.refreshTimer)
+    const refresh = this.beginRefresh()
     this.refreshTimer = setTimeout(() => {
       this.queue = this.queue
         .then(() => (this.stale.size ? this.send(this.element, null, REFRESH_EVENT, () => {}) : null))
         .catch((e) => console.error("[phem]", e))
+        .finally(() => this.endRefresh(refresh))
     }, REFRESH_WAIT)
+  }
+
+  // A refresh starts to wait: the page shows `data-phem-push-pending` until its end. Returns its number.
+  beginRefresh() {
+    this.refreshing = ++this.refreshes
+    this.showPushPending()
+    return this.refreshing
+  }
+
+  // A refresh ended. A newer refresh started since then: the page waits for that one still.
+  endRefresh(refresh) {
+    if (this.refreshing !== refresh) return
+    this.refreshing = 0
+    this.showPushPending()
   }
 
   // Loads each `<Suspense>` boundary that shows its fallback (`data-phem-load`, the id of its load
@@ -1305,7 +1346,10 @@ export default class PhemController extends Controller {
       return await this.sendNow(el, handler, event, beforeRender, onProgress, ids)
     } finally {
       this.busy--
-      if (!this.busy) this.held.splice(0).forEach((data) => this.applyPush(data))
+      if (!this.busy && this.held.length) {
+        this.held.splice(0).forEach((data) => this.applyPush(data))
+        this.showPushPending()
+      }
     }
   }
 

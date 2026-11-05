@@ -3,6 +3,7 @@ import { Application } from "@hotwired/stimulus"
 import * as Turbo from "@hotwired/turbo"
 import PhemController from "../dist/phem_controller.js"
 import { createRequire } from "node:module"
+import { readFileSync } from "node:fs"
 import { answer, click, mount, nextDone, respond } from "./support.js"
 
 // A redirect and a reload are Turbo visits: jsdom cannot load a page.
@@ -1599,6 +1600,61 @@ describe("pushes", () => {
     })
   })
 
+  it("marks the root element while a refresh of a push waits and runs", async () => {
+    const source = await subscribe('<p id="stats">1 entry</p>')
+    const root = document.getElementById("phem-root")
+    let answer
+    fetch.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)))
+    source.push(stream("phem-refresh", "stats"))
+
+    // At once: the refresh waits REFRESH_WAIT, and a test with a real browser cannot see that.
+    expect(root.hasAttribute("data-phem-push-pending")).toBe(true)
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+    expect(root.hasAttribute("data-phem-push-pending")).toBe(true)
+
+    answer(new Response(JSON.stringify({ streams: "", changes: {}, signature: "s2" }), { status: 200, headers: { "Content-Type": "application/json" } }))
+    await vi.waitFor(() => expect(root.hasAttribute("data-phem-push-pending")).toBe(false))
+  })
+
+  it("marks the root element while a push waits for an event and Turbo renders it", async () => {
+    const source = await subscribe('<ul id="entries"></ul><button data-phem-on-click="c1.save">Save</button>')
+    const root = document.getElementById("phem-root")
+    let answer
+    fetch.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)))
+    const done = nextDone()
+    click("button")
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+
+    source.push(stream("append", "entries", '<li id="entry-1">One</li>'))
+    expect(root.hasAttribute("data-phem-push-pending")).toBe(true)
+
+    answer(new Response(JSON.stringify({ streams: "", changes: {}, signature: "s2" }), { status: 200, headers: { "Content-Type": "application/json" } }))
+    await done
+    await vi.waitFor(() => expect(root.hasAttribute("data-phem-push-pending")).toBe(false))
+    expect(document.getElementById("entry-1")).not.toBeNull()
+  })
+
+  it("keeps the mark until the last refresh when a push comes while a refresh runs", async () => {
+    const source = await subscribe('<p id="stats">1 entry</p>')
+    const root = document.getElementById("phem-root")
+    let first
+    let second
+    fetch.mockReturnValueOnce(new Promise((resolve) => (first = resolve)))
+    fetch.mockReturnValueOnce(new Promise((resolve) => (second = resolve)))
+    source.push(stream("phem-refresh", "stats"))
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+
+    // A second push while the first refresh runs: its refresh comes after it.
+    source.push(stream("phem-refresh", "stats"))
+    first(new Response(JSON.stringify({ streams: "", changes: {}, signature: "s2" }), { status: 200, headers: { "Content-Type": "application/json" } }))
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+    expect(root.hasAttribute("data-phem-push-pending")).toBe(true)
+
+    second(new Response(JSON.stringify(answer('<p id="stats">3 entries</p>')), { status: 200, headers: { "Content-Type": "application/json" } }))
+    await vi.waitFor(() => expect(root.hasAttribute("data-phem-push-pending")).toBe(false))
+    await vi.waitFor(() => expect(document.getElementById("stats").textContent).toBe("3 entries"))
+  })
+
   it("renders a push that comes while an event runs after the morph of the event", async () => {
     const source = await subscribe('<ul id="entries"><li id="entry-1">One</li></ul><button data-phem-on-click="c1.save">Save</button>')
     let answer
@@ -1630,6 +1686,47 @@ describe("pushes", () => {
 
     expect(body.stale).toEqual(["c1"])
     expect(body.handler).toBeNull()
+  })
+
+  it("marks the root element while the refresh after a lost connection waits and runs", async () => {
+    const source = await subscribe("<p>Hi</p>")
+    const root = document.getElementById("phem-root")
+    respond("<p>Hi again</p>")
+    source.emit("open")
+    source.emit("error")
+    source.emit("open")
+
+    expect(root.hasAttribute("data-phem-push-pending")).toBe(true)
+    await vi.waitFor(() => expect(root.hasAttribute("data-phem-push-pending")).toBe(false))
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("removes the mark when the page goes, so the Turbo cache does not keep it", async () => {
+    const source = await subscribe('<p id="stats">1 entry</p>')
+    const root = document.getElementById("phem-root")
+    source.push(stream("phem-refresh", "stats"))
+    expect(root.hasAttribute("data-phem-push-pending")).toBe(true)
+
+    // The page goes before its refresh: the refresh never runs.
+    root.removeAttribute("data-controller")
+    await vi.waitFor(() => expect(root.hasAttribute("data-phem-push-pending")).toBe(false))
+
+    // A page from the cache with the mark: the controller removes it.
+    root.setAttribute("data-phem-push-pending", "")
+    root.setAttribute("data-controller", "phem")
+    await vi.waitFor(() => expect(root.hasAttribute("data-phem-push-pending")).toBe(false))
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("removes the mark when the render of a push throws", async () => {
+    const source = await subscribe('<ul id="entries"></ul>')
+    const root = document.getElementById("phem-root")
+    vi.spyOn(Turbo, "renderStreamMessage").mockImplementationOnce(() => {
+      throw new Error("A broken stream")
+    })
+
+    expect(() => source.push(stream("append", "entries", "<li>One</li>"))).toThrow("A broken stream")
+    expect(root.hasAttribute("data-phem-push-pending")).toBe(false)
   })
 
   it("sends the content of the root element when more than 100 components are stale", async () => {
@@ -1715,3 +1812,74 @@ describe("pushes", () => {
   })
 })
 
+
+describe("phem_test_hub.js", () => {
+  const script = readFileSync(createRequire(import.meta.url).resolve("../../src/Test/Resources/phem_test_hub.js"), "utf8")
+  const now = () => Date.now() / 1000
+  let original
+
+  beforeEach(() => {
+    original = window.EventSource
+    window.eval(script)
+  })
+
+  afterEach(() => {
+    window.EventSource = original
+    delete window.phemTestHub
+  })
+
+  it("gives each connection the updates of its topics, one time each", async () => {
+    const lobby = new EventSource("/.well-known/mercure?match=phem%3Alobby&match=phem%3Aall", { withCredentials: true })
+    const hall = new EventSource("/.well-known/mercure?match=phem%3Ahall")
+    const opened = vi.fn()
+    lobby.addEventListener("open", opened)
+    const got = { lobby: [], hall: [] }
+    lobby.addEventListener("message", (e) => got.lobby.push(e.data))
+    hall.onmessage = (e) => got.hall.push(e.data)
+    await Promise.resolve()
+
+    const updates = [
+      { index: 4, time: now(), topics: ["phem:lobby"], data: "one" },
+      { index: 5, time: now(), topics: ["phem:all", "phem:hall"], data: "two" },
+    ]
+    window.phemTestHub.deliver(updates)
+    // The same script again, for another page: this page has the updates already.
+    window.phemTestHub.deliver([...updates, { index: 6, time: now(), topics: ["phem:hall"], data: "three" }])
+
+    expect(opened).toHaveBeenCalledOnce()
+    expect(lobby.readyState).toBe(EventSource.OPEN)
+    expect(lobby.withCredentials).toBe(true)
+    expect(got).toEqual({ lobby: ["one", "two"], hall: ["two", "three"] })
+
+    hall.close()
+    window.phemTestHub.deliver([{ index: 7, time: now(), topics: ["phem:hall"], data: "four" }])
+    expect(got.hall).toEqual(["two", "three"])
+  })
+
+  it("gives a connection only the updates published after it opened, as the hub keeps no history", () => {
+    const before = now() - 10
+    const source = new EventSource("/.well-known/mercure?match=phem%3Alobby")
+    const got = []
+    source.onmessage = (e) => got.push(e.data)
+
+    window.phemTestHub.deliver([
+      { index: 0, time: before, topics: ["phem:lobby"], data: "old" },
+      { index: 1, time: now(), topics: ["phem:lobby"], data: "new" },
+    ])
+
+    expect(got).toEqual(["new"])
+  })
+
+  it("renders a push in the page, and the page loses its mark when it is done", async () => {
+    vi.stubGlobal("fetch", vi.fn())
+    await mount('<ul id="entries"></ul>', 'data-phem-stream-value="/.well-known/mercure?match=phem%3AApp%5CGuestbook"')
+    await Promise.resolve()
+    const root = document.getElementById("phem-root")
+
+    window.phemTestHub.deliver([{ index: 0, time: now(), topics: ["phem:App\\Guestbook"], data: '<turbo-stream action="append" target="entries"><template><li id="entry-1">One</li></template></turbo-stream>' }])
+
+    expect(root.hasAttribute("data-phem-push-pending")).toBe(true)
+    await vi.waitFor(() => expect(root.hasAttribute("data-phem-push-pending")).toBe(false))
+    expect(document.getElementById("entry-1").textContent).toBe("One")
+  })
+})

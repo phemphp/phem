@@ -231,6 +231,58 @@ $counter->click('button')->click('button')->assertState('count', 1);
 
 Before each event, the services are reset (`kernel.reset`), as between two requests.
 
+## Tests with a real browser
+
+A test with a real browser (Playwright) runs the JavaScript of the page. When the kernel of the
+test process handles the requests of the browser (as playwright-symfony does), with
+`framework.test: true`, Phem publishes the streams to memory, and the browser has no Mercure hub.
+`Phem\Test\BrowserHub` is the hub for these tests. A browser with its own server process
+(Panther) does not work: the streams are in the memory of that process.
+
+1. Add `BrowserHub::initScript()` to each page, before its scripts (Playwright
+   `addInitScript()`). It replaces `EventSource` with a fake that connects at once. A page with
+   no init script tries to connect to a hub that is not there.
+2. Get the hub with `$this->browserHub()` of `InteractsWithPhem` (or `new BrowserHub($publisher)`
+   with the `phem.test.stream_publisher` service). It takes the updates from now.
+3. After each step that can publish, evaluate `$hub->deliverScript()` in each page. The same
+   script goes to each page: each connection gets each update one time, for its topics, and
+   only the updates published after it opened, as the hub does. With no update, the script does
+   nothing.
+4. Wait until the root element has no `data-phem-push-pending` attribute: the page rendered the
+   pushes and their refreshes. A refresh waits 50 ms before it goes, so do not sleep: wait for
+   the attribute.
+
+With a Playwright client for PHP (the method names depend on the client):
+
+```php
+$hub = $this->browserHub();
+$customer->addInitScript(BrowserHub::initScript());
+$staff->addInitScript(BrowserHub::initScript());
+$customer->goto('/bag');
+$staff->goto('/admin/products/5');
+
+// The staff hides a product: a listener of the application pushes a refresh of the bags.
+$staff->click('#hide');
+
+foreach ([$customer, $staff] as $page) {
+    $page->evaluate($hub->deliverScript());
+    $page->waitForSelector('[data-controller~="phem"]:not([data-phem-push-pending])');
+}
+
+$customer->assertSee('The bag changed');
+```
+
+A step that publishes out of a request (a command, a data fixture) calls `Streams::flush()`
+itself: the streams of a request go out at its end. The fake hub has two limits:
+
+- It does not check the subscriber key: a page gets the private updates of its topics also when
+  the real hub would not authorize it, as `receive()` does. Test the access to the topics with
+  a real hub.
+- It uses the time of each update to know if a connection was open: the browser and the test
+  must run on the same machine.
+
+The init script is for tests only: a page with it gets no pushes from a real hub.
+
 ## Limits
 
 - The tester runs no JavaScript. A Stimulus controller of the application does not run.
