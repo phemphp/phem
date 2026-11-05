@@ -7,6 +7,9 @@
     "authors": [
         { "name": "Yonel Ceruto", "email": "open@yceruto.dev" }
     ],
+    "funding": [
+        { "type": "github", "url": "https://github.com/sponsors/yceruto" }
+    ],
     "require": {
         "php": ">=8.4",
         "symfony/config": "^7.4|^8.0",
