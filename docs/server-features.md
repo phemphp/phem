@@ -193,6 +193,40 @@ With `#[Broadcast]` on some handler methods, only these handlers refresh the com
 `#[Broadcast]` on the class, all of them do. The props with `#[BroadcastKey]` identify an
 instance: the refresh goes only to the instances of the same post.
 
+A key does not have to come from the parent. A class component can mark any property, also a
+private one that `mount()` sets, for example from the current user. Phem reads the keys after
+the render:
+
+```php
+#[Component, Broadcast]
+final class OrderList
+{
+    #[BroadcastKey] private int $customer;
+    public array $orders = [];
+
+    public function __construct(
+        private readonly CurrentCustomer $customers,
+        private readonly OrderRepository $repository,
+    ) {
+    }
+
+    public function mount(): void
+    {
+        $this->customer = $this->customers->get()->id;
+        $this->orders = $this->repository->findByCustomer($this->customer);
+    }
+}
+```
+
+```php
+// In a Doctrine listener: only the lists of this customer render again.
+$this->streams->toComponent(OrderList::class, ['customer' => $order->customer->id])->refresh();
+```
+
+The key must have a value after each render. A component with no `#[State]` runs `mount()` in
+each render, so any property works. In a component with `#[State]`, `mount()` runs only at the
+first render: put the key on a `#[Prop]` or a `#[State]`.
+
 With `#[Broadcast(handlers: false)]` on the class, the component gets the streams of other
 requests, and no handler refreshes it. Use it for a component that shows data of one user, and
 that other requests change:

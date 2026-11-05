@@ -8,6 +8,7 @@ use Phem\Event;
 use Phem\Node;
 use Phem\Stream\Streams;
 use Phem\Tests\Fixtures\Guestbook;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 use function App\Component\Document;
@@ -400,4 +401,40 @@ final class RoomPage
             </Document>
         );
     }
+}
+
+// A key that mount() sets: the component reads its room from the request, as a list reads the
+// current user. It has no #[State], so mount() runs in each render, and the key has a value.
+#[Component, Broadcast]
+final class GuestbookMine
+{
+    #[BroadcastKey] private string $room;
+    public int $count = 0;
+
+    public function __construct(
+        private readonly Guestbook $guestbook,
+        private readonly RequestStack $requests,
+    ) {
+    }
+
+    public function mount(): void
+    {
+        $this->room = $this->requests->getCurrentRequest()?->query->getString('room', 'lobby') ?? 'lobby';
+        $this->count = \count($this->guestbook->entries($this->room));
+    }
+
+    public function render(): Node
+    {
+        return <p id="mine">{{ count }} in my room</p>;
+    }
+}
+
+#[Page('/mine')]
+function GuestbookMinePage(): Node
+{
+    return (
+        <Document>
+            <GuestbookMine />
+        </Document>
+    );
 }

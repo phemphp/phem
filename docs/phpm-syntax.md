@@ -521,5 +521,5 @@ The PHP attributes of Phem are in the `Phem\Attribute` namespace:
 | `#[Provide]`, `#[Context]` | a class, a property or a parameter | Gives a value to the components below. See [Context](components.md#context). |
 | `#[Validated]` | a handler | Validates the state before the handler. See [Live validation](events-and-forms.md#live-validation). |
 | `#[Transactional]` | a class or a handler | Runs the handler in a transaction. See [Transactions](server-features.md#transactions). |
-| `#[Broadcast]`, `#[BroadcastKey]` | a page, a component, a handler or a prop | Sends real-time updates. See [Real-time updates](server-features.md#real-time-updates). |
+| `#[Broadcast]`, `#[BroadcastKey]` | a page, a component, a handler, a prop or a property | Sends real-time updates. See [Real-time updates](server-features.md#real-time-updates). |
 | `#[Async]` | a handler | Runs slow work after the response. See [Slow work after the response](server-features.md#slow-work-after-the-response). |

@@ -547,6 +547,9 @@ fn a_page_class_is_a_component_with_a_route() {
     assert_eq!(codes("#[Page('/')]", "final class Home { #[Broadcast] public function save(): void {} public function render() { return <p />; } }"), ["E053"], "a handler of a page does not refresh it");
     assert_eq!(codes("#[Component]", "final class Home { #[Prop, BroadcastKey] public int $id; public function render() { return <p />; } }"), ["E057"], "a key needs a component that broadcasts");
     assert_eq!(codes("#[Component]\n#[Broadcast]", "final class Home { public function __construct(#[BroadcastKey] private int $id) {} public function render() { return <p />; } }"), ["E057"], "a promoted parameter is not a prop");
+    assert_eq!(codes("#[Component]\n#[Broadcast]", "final class Home { #[BroadcastKey] private int $customer; public function mount(): void { $this->customer = 1; } public function render() { return <p />; } }"), Vec::<&str>::new(), "a key on a property that mount() sets");
+    assert_eq!(codes("#[Component]\n#[Broadcast]", "final class Home { #[\\Phem\\Attribute\\State, BroadcastKey] public int $id = 0; public function render() { return <p />; } }"), Vec::<&str>::new(), "a key on a #[State]");
+    assert_eq!(codes("#[Component]\n#[Broadcast]", "final class Home { #[\\Phem\\Attribute\\State] public bool $open = false; #[BroadcastKey] private int $customer; public function render() { return <p />; } }"), ["E057"], "with #[State], mount() runs only at the first render");
     // A parent with the handler or the key: the analysis does not report the parent or the child.
     let base = "abstract class Base { #[Prop, BroadcastKey] public int $id; #[Broadcast] public function like(): void {} }";
     assert_eq!(codes("", &format!("{base}\n#[Component]\nfinal class Home extends Base {{ #[Prop, BroadcastKey] public int $other; public function render() {{ return <p />; }} }}")), Vec::<&str>::new(), "an inherited handler with #[Broadcast]");

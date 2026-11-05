@@ -25,7 +25,9 @@ use Phem\Tests\Fixtures\BroadcastingPageWithAHandler;
 use Phem\Tests\Fixtures\BroadcastingComponent;
 use Phem\Tests\Fixtures\HandlerWithHandlersFalse;
 use Phem\Tests\Fixtures\KeyedBroadcastingComponent;
+use Phem\Tests\Fixtures\KeyFromMount;
 use Phem\Tests\Fixtures\KeyedBroadcastingReplacement;
+use Phem\Tests\Fixtures\KeyOnlyInFirstMount;
 use Phem\Tests\Fixtures\KeyOnPage;
 use Phem\Tests\Fixtures\KeyOnState;
 use Phem\Tests\Fixtures\KeyWithoutBroadcast;
@@ -180,12 +182,38 @@ final class BroadcastKeysTest extends TestCase
         self::keys()->props(KeyWithoutBroadcast::class);
     }
 
-    public function testAKeyIsOnAProp(): void
+    public function testAKeyIsOnAPropOrAState(): void
+    {
+        self::assertSame(['id'], self::keys()->props(KeyOnState::class));
+    }
+
+    public function testAKeyIsOnAPropertyThatMountSetsInEachRender(): void
+    {
+        $keys = self::keys();
+        $component = new KeyFromMount();
+        $component->mount();
+        $fiber = new Fiber('phem0123456789ab', '/c', KeyFromMount::class);
+        $fiber->instance = $component;
+
+        self::assertSame(['customer'], $keys->props(KeyFromMount::class));
+        self::assertSame(['customer' => 7], $keys->valuesOf($fiber));
+        self::assertSame([$keys->ofComponent(KeyFromMount::class), $keys->ofInstance(KeyFromMount::class, ['customer' => 7])], $keys->ofFiber($fiber));
+    }
+
+    public function testAKeyHasNoValueBeforeMount(): void
+    {
+        $fiber = new Fiber('phem0123456789ab', '/c', KeyFromMount::class);
+        $fiber->instance = new KeyFromMount();
+
+        self::assertSame(['customer' => null], self::keys()->valuesOf($fiber));
+    }
+
+    public function testAKeyOfAComponentWithStateIsAPropOrAState(): void
     {
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('The property "id" of the component "'.KeyOnState::class.'" has #[Phem\Attribute\BroadcastKey], but it is not a prop');
+        $this->expectExceptionMessage('The property "customer" of the component "'.KeyOnlyInFirstMount::class.'" has #[Phem\Attribute\BroadcastKey], but the component has #[State]: its mount() runs only at the first render');
 
-        self::keys()->props(KeyOnState::class);
+        self::keys()->props(KeyOnlyInFirstMount::class);
     }
 
     public function testAPageHasNoKey(): void

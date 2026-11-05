@@ -441,6 +441,30 @@ final class StreamTest extends KernelTestCase
         $other->click('#save')->assertStatus(404);
     }
 
+    public function testAKeyThatMountSetsSendsTheRefreshOnlyToItsInstances(): void
+    {
+        $lobby = $this->visit('/mine?room=lobby')->assertSee('0 in my room');
+        $hall = $this->visit('/mine?room=hall')->assertSee('0 in my room');
+        $keys = static::getContainer()->get('phem.broadcast_keys');
+        \assert($keys instanceof BroadcastKeys);
+
+        // The element of each instance has the key of its room.
+        $hallKey = $keys->ofInstance('App\Page\GuestbookMine', ['room' => 'hall']);
+        self::assertStringContainsString($hallKey, $hall->html());
+        self::assertStringNotContainsString($hallKey, $lobby->html());
+
+        $guestbook = static::getContainer()->get(Guestbook::class);
+        $streams = static::getContainer()->get('phem.streams');
+        \assert($guestbook instanceof Guestbook && $streams instanceof Streams);
+        $guestbook->add('hall', 'Hi');
+        $guestbook->add('lobby', 'Hi');
+        $streams->toComponent('App\Page\GuestbookMine', ['room' => 'hall'])->refresh();
+        $streams->flush();
+
+        $hall->receive()->assertSee('1 in my room');
+        $lobby->receive()->assertSee('0 in my room');
+    }
+
     public function testAHandlerOfAComponentWithHandlersFalseDoesNotRefreshTheOtherTabs(): void
     {
         $this->visit('/bags')->click('#add-lobby')->assertSee('1 in the bag of lobby');
@@ -537,7 +561,7 @@ final class StreamTest extends KernelTestCase
     public function testAComponentWithNoKeyGetsNoValuesOfAKey(): void
     {
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('The component "App\Page\GuestbookInbox" has no #[BroadcastKey] prop');
+        $this->expectExceptionMessage('The component "App\Page\GuestbookInbox" has no #[BroadcastKey]: give no values');
 
         $streams = static::getContainer()->get('phem.streams');
         \assert($streams instanceof Streams);

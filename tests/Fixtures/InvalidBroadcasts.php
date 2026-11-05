@@ -29,11 +29,38 @@ final class KeyWithoutBroadcast
     #[Prop, BroadcastKey] public int $id = 0;
 }
 
-/** A key on a #[State], not on a prop. */
+/** A key on a #[State]: the browser keeps it, so it has a value in each render. */
 #[Component, Broadcast]
 final class KeyOnState
 {
     #[State, BroadcastKey] public int $id = 0;
+}
+
+/** A private key that mount() sets in each render: the component has no #[State]. */
+#[Component, Broadcast]
+final class KeyFromMount
+{
+    /** @phpstan-ignore property.onlyWritten (Phem reads the key after the render) */
+    #[BroadcastKey] private int $customer;
+
+    public function mount(): void
+    {
+        $this->customer = 7;
+    }
+}
+
+/** A private key that mount() sets, in a component with #[State]: mount() runs only at the first render. */
+#[Component, Broadcast]
+final class KeyOnlyInFirstMount
+{
+    #[State] public bool $open = false;
+    /** @phpstan-ignore property.onlyWritten (Phem reads the key after the render) */
+    #[BroadcastKey] private int $customer;
+
+    public function mount(): void
+    {
+        $this->customer = 7;
+    }
 }
 
 /** A key on a page: a page has no instances on other pages. */

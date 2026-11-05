@@ -429,13 +429,26 @@ fn check_broadcast(file: &FileInfo) -> Vec<Diagnostic> {
 
         // A parent outside the sources can have a handler with `#[Broadcast]`.
         let broadcasts = c.has_broadcast || !handlers.is_empty() || c.inherited_broadcast || c.open;
+        // With `#[State]`, `mount()` runs only at the first render: a key that only `mount()` sets
+        // has no value in the next events.
+        let has_state = c.props.iter().any(|q| q.is_state && !q.is_static);
         for p in &c.props {
             let Some(span) = p.broadcast_key else { continue };
 
-            if !p.is_prop() {
+            if p.is_static {
                 diags.push(
-                    Diagnostic::error(codes::INVALID_BROADCAST_KEY, format!("`#[BroadcastKey]` must mark a prop, and `${}` is not one", p.name), span)
-                        .with_help("put it on a public `#[Prop]` property: the parent gives the value that identifies the instance"),
+                    Diagnostic::error(codes::INVALID_BROADCAST_KEY, format!("`#[BroadcastKey]` must mark a property of the instance, and `${}` is static", p.name), span)
+                        .with_help("remove `static`: the key identifies an instance of the component"),
+                );
+            } else if p.is_promoted {
+                diags.push(
+                    Diagnostic::error(codes::INVALID_BROADCAST_KEY, format!("`#[BroadcastKey]` must mark a prop or a property, and `${}` is a parameter of the constructor", p.name), span)
+                        .with_help("the constructor gets the services: put the key on a `#[Prop]`, or on a property that `mount()` sets"),
+                );
+            } else if has_state && !p.is_prop() && !p.is_state {
+                diags.push(
+                    Diagnostic::error(codes::INVALID_BROADCAST_KEY, format!("`#[BroadcastKey]` on `${}` needs a value in each render, and `{}` has `#[State]`", p.name, c.fqn), span)
+                        .with_help("put `#[Prop]` or `#[State]` on the property: with `#[State]`, `mount()` runs only at the first render"),
                 );
             } else if c.is_page || (c.is_component && !broadcasts) {
                 diags.push(

@@ -26,8 +26,9 @@ use Phem\Rendering\Fiber;
  * PageStreams::refresh()).
  *
  * - The key of the component: all its instances.
- * - With props with #[BroadcastKey], the key of the instance: the component and the values of
- *   these props (see NameValues). An entity is its identifier, an enum is its value.
+ * - With #[BroadcastKey] on props or properties, the key of the instance: the component and the
+ *   values of these keys after the render (see NameValues). An entity is its identifier, an enum
+ *   is its value. A class component can mark any property, also a private one that mount() sets.
  *
  * A key is an HMAC with the secret of Phem, as a topic (see NameHash): the page does not show the
  * class names or the values of the props.
@@ -55,7 +56,7 @@ final class BroadcastKeys
 
     /**
      * The keys of a fiber for its `data-phem-broadcast`: the key of its component, and the key
-     * of the instance when it has #[BroadcastKey] props. A replacement also has the keys of the
+     * of the instance when it has #[BroadcastKey] props or properties. A replacement also has the keys of the
      * component that it replaces (`#[Component(replaces: ...)]`), with the same props. None when
      * the components have no #[Broadcast].
      *
@@ -80,8 +81,9 @@ final class BroadcastKeys
     }
 
     /**
-     * The values of the key props of a fiber: the props of a class component after its render,
-     * or the props that the parent gave a function component, with the default values of its
+     * The values of the keys of a fiber: the properties of a class component after its render
+     * (also a private one, null when it has no value), or the props that the parent gave a
+     * function component, with the default values of its
      * parameters. A prop with no value is null. For the keys of the component that the fiber
      * replaces, a prop that the replacement takes in its rest prop has the value that the parent
      * gave, or the default value in the original.
@@ -97,7 +99,7 @@ final class BroadcastKeys
         $values = [];
         foreach ($this->props($component) ?? [] as $name) {
             $values[$name] = match (true) {
-                null !== $fiber->instance && property_exists($fiber->instance, $name) => $fiber->instance->{$name} ?? null,
+                null !== $fiber->instance && property_exists($fiber->instance, $name) => self::read($fiber->instance, $name),
                 \array_key_exists($name, $fiber->props) => $fiber->props[$name],
                 // The parent did not give it: the default value of the prop.
                 default => $this->defaultOf($component, $name),
@@ -105,6 +107,14 @@ final class BroadcastKeys
         }
 
         return $values;
+    }
+
+    /** The value of a property after the render, also a private one, or null when it has none. */
+    private static function read(object $instance, string $name): mixed
+    {
+        $property = new \ReflectionProperty($instance, $name);
+
+        return $property->isInitialized($instance) ? $property->getValue($instance) : null;
     }
 
     /** The default value of a prop of a component: a parameter of a function, or a #[Prop] property. */
@@ -136,7 +146,7 @@ final class BroadcastKeys
     {
         $props = $this->props($component) ?? [];
         if ([] === $props) {
-            throw new \LogicException(\sprintf('The component "%s" has no #[BroadcastKey] prop: give no values to refresh all its instances, or mark the props that identify an instance with #[BroadcastKey].', $component));
+            throw new \LogicException(\sprintf('The component "%s" has no #[BroadcastKey]: give no values to refresh all its instances, or mark the props or the properties that identify an instance with #[BroadcastKey].', $component));
         }
 
         if ([] !== $unknown = array_diff_key($values, array_flip($props))) {
@@ -151,12 +161,14 @@ final class BroadcastKeys
     }
 
     /**
-     * The key props of a component with #[Broadcast] (its props with #[BroadcastKey], in their
-     * order), or null with no #[Broadcast] or for a page.
+     * The keys of a component with #[Broadcast] (its properties or parameters with
+     * #[BroadcastKey], in their order), or null with no #[Broadcast] or for a page.
      *
      * @return list<string>|null
      *
-     * @throws \LogicException when a #[BroadcastKey] is not on a prop of a component with #[Broadcast]
+     * @throws \LogicException when a #[BroadcastKey] is not on a component with #[Broadcast], on a
+     *                         parameter of a function component that is not a prop, or on a property
+     *                         that has no value in each render
      */
     public function props(string $component): ?array
     {
@@ -176,12 +188,40 @@ final class BroadcastKeys
             return $this->props[$component] = null;
         }
 
-        $props = class_exists($component) ? $this->metadata->props($component) : array_filter($this->metadata->parameters($component), static fn (Parameter $p): bool => !$p->context);
+        if (class_exists($component)) {
+            $this->checkProperties($component, $keys);
+
+            return $this->props[$component] = $keys;
+        }
+
+        $props = array_filter($this->metadata->parameters($component), static fn (Parameter $p): bool => !$p->context);
         if ([] !== $other = array_diff($keys, array_keys($props))) {
-            throw new \LogicException(\sprintf('The property "%s" of the component "%s" has #[%s], but it is not a prop: put it on a #[Prop].', reset($other), $component, BroadcastKey::class));
+            throw new \LogicException(\sprintf('The parameter "%s" of the component "%s" has #[%s], but it is not a prop: a function component gets its key from the props of its parent.', reset($other), $component, BroadcastKey::class));
         }
 
         return $this->props[$component] = $keys;
+    }
+
+    /**
+     * A key property of a class component has a value after each render: a #[Prop] or a #[State],
+     * or any property when the component has no #[State] (its mount() runs in each render).
+     *
+     * @param class-string $component
+     * @param list<string> $keys
+     *
+     * @throws \LogicException when a component with #[State] has a key property that only mount() sets
+     */
+    private function checkProperties(string $component, array $keys): void
+    {
+        $states = array_map(static fn (\ReflectionProperty $p): string => $p->getName(), $this->metadata->stateProperties($component));
+        if ([] === $states) {
+            return;
+        }
+
+        $kept = [...array_keys($this->metadata->props($component)), ...$states];
+        if ([] !== $other = array_diff($keys, $kept)) {
+            throw new \LogicException(\sprintf('The property "%s" of the component "%s" has #[%s], but the component has #[State]: its mount() runs only at the first render, so the property has no value in the next events. Put #[Prop] or #[State] on the property.', reset($other), $component, BroadcastKey::class));
+        }
     }
 
 

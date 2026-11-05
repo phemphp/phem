@@ -4,7 +4,13 @@ use Phem\Node;
 #[Component, Broadcast]
 final class LikeButton
 {
-    #[State, BroadcastKey] public int $post = 0;
+    #[State] public bool $open = false;
+    #[BroadcastKey] private int $post = 0;
+
+    public function mount(): void
+    {
+        $this->post = 1;
+    }
 
     public function render(): Node
     {
