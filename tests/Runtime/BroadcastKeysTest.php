@@ -23,11 +23,15 @@ use Phem\Tests\Fixtures\BroadcastHandlerOfAPage;
 use Phem\Tests\Fixtures\Broadcasting;
 use Phem\Tests\Fixtures\BroadcastingPageWithAHandler;
 use Phem\Tests\Fixtures\BroadcastingComponent;
+use Phem\Tests\Fixtures\HandlerWithHandlersFalse;
 use Phem\Tests\Fixtures\KeyedBroadcastingComponent;
 use Phem\Tests\Fixtures\KeyedBroadcastingReplacement;
 use Phem\Tests\Fixtures\KeyOnPage;
 use Phem\Tests\Fixtures\KeyOnState;
 use Phem\Tests\Fixtures\KeyWithoutBroadcast;
+use Phem\Tests\Fixtures\ReceivingComponentWithAHandler;
+use Phem\Tests\Fixtures\ReceivingPage;
+use Phem\Tests\Fixtures\ReceivingPlainClass;
 use Phem\Tests\Fixtures\Scientist;
 use Phem\Tests\Fixtures\Size;
 use PHPUnit\Framework\TestCase;
@@ -224,6 +228,63 @@ final class BroadcastKeysTest extends TestCase
         $this->expectExceptionMessage('The method "'.BroadcastHandlerOfAPage::class.'::save()" has #[Broadcast], but "'.BroadcastHandlerOfAPage::class.'" is not a component');
 
         new ComponentMetadata()->broadcasts(BroadcastHandlerOfAPage::class);
+    }
+
+    public function testAComponentWithHandlersFalseBroadcastsAndItsHandlersDoNotRefreshIt(): void
+    {
+        $metadata = new ComponentMetadata();
+        $receiving = new #[Component, Broadcast(handlers: false)] class {
+            public function save(): void
+            {
+            }
+        };
+        $refreshing = new #[Component, Broadcast] class {
+        };
+
+        self::assertTrue($metadata->broadcasts($receiving::class));
+        self::assertTrue($metadata->receivesOnly($receiving::class));
+        self::assertFalse($metadata->receivesOnly($refreshing::class));
+        self::assertFalse($metadata->receivesOnly(KeyWithoutBroadcast::class));
+    }
+
+    public function testAComponentWithHandlersFalseHasNoHandlerWithBroadcast(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('"'.ReceivingComponentWithAHandler::class.'" has #[Broadcast(handlers: false)], so no handler refreshes it, but its method "save()" has #[Broadcast].');
+
+        new ComponentMetadata()->receivesOnly(ReceivingComponentWithAHandler::class);
+    }
+
+    public function testAPageCannotHaveHandlersFalse(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('"'.ReceivingPage::class.'" has #[Broadcast(handlers: false)], but it is not a class component');
+
+        new ComponentMetadata()->broadcasts(ReceivingPage::class);
+    }
+
+    public function testAClassWithNoComponentCannotHaveHandlersFalse(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('"'.ReceivingPlainClass::class.'" has #[Broadcast(handlers: false)], but it is not a class component');
+
+        new ComponentMetadata()->broadcasts(ReceivingPlainClass::class);
+    }
+
+    public function testAFunctionCannotHaveHandlersFalse(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('"Phem\Tests\Fixtures\ReceivingWidget" has #[Broadcast(handlers: false)], but it is not a class component');
+
+        new ComponentMetadata()->broadcasts('Phem\Tests\Fixtures\ReceivingWidget');
+    }
+
+    public function testAHandlerMethodCannotHaveHandlersFalse(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('The method "'.HandlerWithHandlersFalse::class.'::save()" has #[Broadcast(handlers: false)]: only a class component can have the "handlers" argument.');
+
+        new ComponentMetadata()->broadcasts(HandlerWithHandlersFalse::class);
     }
 
     private static function fiber(Scientist $scientist, Size $size): Fiber

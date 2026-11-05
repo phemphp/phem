@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Phem\Tests\Test;
 
 use Phem\Attribute\Broadcast;
+use Phem\Attribute\Component;
 use Phem\DependencyInjection\TestPublisherPass;
 use Phem\Event;
 use Phem\Handler\BroadcastMiddleware;
@@ -424,6 +425,68 @@ final class StreamTest extends KernelTestCase
         $other->receive()
             ->assertSee('1 likes in lobby')
             ->assertSee('1 likes in hall');
+    }
+
+    public function testAHandlerOfAComponentWithHandlersFalseDoesNotRefreshTheOtherTabs(): void
+    {
+        $this->visit('/bags')->click('#add-lobby')->assertSee('1 in the bag of lobby');
+
+        self::assertSame([], $this->updates());
+    }
+
+    public function testAComponentWithHandlersFalseGetsTheStreamsOfItsKey(): void
+    {
+        $page = $this->visit('/bags');
+        $topics = static::getContainer()->get('phem.topics');
+        \assert($topics instanceof Topics);
+
+        // The page connects to the hub for the topic of the component.
+        $source = $page->document()->querySelector('[data-phem-stream-value]')?->getAttribute('data-phem-stream-value');
+        self::assertSame('/.well-known/mercure?match='.rawurlencode($topics->toComponent('App\Page\GuestbookBag')), $source);
+
+        $guestbook = static::getContainer()->get(Guestbook::class);
+        \assert($guestbook instanceof Guestbook);
+        $streams = static::getContainer()->get('phem.streams');
+        \assert($streams instanceof Streams);
+
+        $guestbook->add('lobby', 'Item');
+        $guestbook->add('hall', 'Item');
+        $streams->toComponent('App\Page\GuestbookBag', ['room' => 'hall'])->refresh();
+        $streams->flush();
+
+        $page->receive()
+            ->assertSee('0 in the bag of lobby')
+            ->assertSee('1 in the bag of hall');
+    }
+
+    public function testAClosureWithBroadcastNeedsAComponentWhoseHandlersRefreshIt(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('has #[Broadcast], but the class has #[Broadcast(handlers: false)], so no handler refreshes it.');
+
+        $component = new #[Component, Broadcast(handlers: false)] class {
+            public function handler(): \Closure
+            {
+                return #[Broadcast] fn () => null;
+            }
+        };
+
+        $this->broadcastMiddleware()->handle($component->handler(), new Event('click'), static fn (): mixed => null);
+    }
+
+    public function testAClosureCannotHaveHandlersFalse(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('has #[Broadcast(handlers: false)]: only a class component can have the "handlers" argument.');
+
+        $component = new #[Broadcast] class {
+            public function handler(): \Closure
+            {
+                return #[Broadcast(handlers: false)] fn () => null;
+            }
+        };
+
+        $this->broadcastMiddleware()->handle($component->handler(), new Event('click'), static fn (): mixed => null);
     }
 
     public function testTheStreamsOfAComponentRefreshItsReplacement(): void

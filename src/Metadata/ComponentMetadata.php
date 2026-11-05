@@ -43,6 +43,9 @@ final class ComponentMetadata
     /** @var array<string, list<string>> */
     private array $broadcastHandlers = [];
 
+    /** @var array<string, bool> */
+    private array $receivesOnly = [];
+
     /** @var array<string, list<string>> */
     private array $broadcastKeys = [];
 
@@ -258,6 +261,8 @@ final class ComponentMetadata
      * handler method.
      *
      * @throws \LogicException when a handler method has #[Broadcast], and its class is not a component
+     * @throws \LogicException when #[Broadcast(handlers: false)] is not on a class component, or
+     *                         a handler method has #[Broadcast] too
      */
     public function broadcasts(string $name): bool
     {
@@ -276,7 +281,34 @@ final class ComponentMetadata
             throw new \LogicException(\sprintf('The method "%s::%s()" has #[Broadcast], but "%s" is not a component: only a handler of a class component refreshes its component. Put #[Broadcast] on the page itself.', $name, $handlers[0], $name));
         }
 
-        return $this->broadcasts[$name] = [] !== $handlers || [] !== $reflection->getAttributes(Broadcast::class);
+        $attribute = $reflection->getAttributes(Broadcast::class)[0] ?? null;
+        $this->receivesOnly[$name] = null !== $attribute && !self::refreshesAfterHandlers($attribute);
+        if ($this->receivesOnly[$name]) {
+            if (!$reflection instanceof \ReflectionClass || !$this->isComponent($name)) {
+                throw new \LogicException(\sprintf('"%s" has #[Broadcast(handlers: false)], but it is not a class component: only the handlers of a class component refresh it. Use #[Broadcast].', $name));
+            }
+
+            if ([] !== $handlers) {
+                throw new \LogicException(\sprintf('"%s" has #[Broadcast(handlers: false)], so no handler refreshes it, but its method "%s()" has #[Broadcast]. Remove #[Broadcast] from the method, or use #[Broadcast] on the class with no "handlers" argument.', $name, $handlers[0]));
+            }
+        }
+
+        return $this->broadcasts[$name] = [] !== $handlers || null !== $attribute;
+    }
+
+    /**
+     * Whether a class component has #[Broadcast(handlers: false)]: it gets the streams of other
+     * requests, and its handlers do not refresh it (see Phem\Handler\BroadcastMiddleware).
+     *
+     * @throws \LogicException when #[Broadcast] is not correct (see broadcasts())
+     */
+    public function receivesOnly(string $name): bool
+    {
+        if (!$this->broadcasts($name)) {
+            return false;
+        }
+
+        return $this->receivesOnly[$name];
     }
 
     /**
@@ -324,12 +356,47 @@ final class ComponentMetadata
 
         $methods = [];
         foreach ((new \ReflectionClass($class))->getMethods() as $method) {
-            if ([] !== $method->getAttributes(Broadcast::class)) {
+            if ($this->handlerBroadcasts($method)) {
                 $methods[] = $method->getName();
             }
         }
 
         return $this->broadcastHandlers[$class] = $methods;
+    }
+
+    /**
+     * Whether a handler (a method, or a closure of render()) has #[Broadcast]: it refreshes its
+     * class component in the other browsers (see Phem\Handler\BroadcastMiddleware).
+     *
+     * @throws \LogicException when it has #[Broadcast(handlers: false)]: only a class component has this argument
+     */
+    public function handlerBroadcasts(\ReflectionFunctionAbstract $handler): bool
+    {
+        $attribute = $handler->getAttributes(Broadcast::class)[0] ?? null;
+        if (null === $attribute) {
+            return false;
+        }
+
+        if (!self::refreshesAfterHandlers($attribute)) {
+            $name = $handler instanceof \ReflectionMethod ? \sprintf('The method "%s::%s()"', $handler->class, $handler->getName()) : \sprintf('A handler closure of "%s"', $handler->getClosureScopeClass()?->getName() ?? $handler->getName());
+
+            throw new \LogicException(\sprintf('%s has #[Broadcast(handlers: false)]: only a class component can have the "handlers" argument. Remove #[Broadcast] from it, so it does not refresh the component.', $name));
+        }
+
+        return true;
+    }
+
+    /**
+     * The "handlers" argument of a #[Broadcast], with no instance of the attribute: this runs for
+     * the handler of each event.
+     *
+     * @param \ReflectionAttribute<Broadcast> $attribute
+     */
+    private static function refreshesAfterHandlers(\ReflectionAttribute $attribute): bool
+    {
+        $arguments = $attribute->getArguments();
+
+        return false !== ($arguments['handlers'] ?? $arguments[0] ?? true);
     }
 
     /**

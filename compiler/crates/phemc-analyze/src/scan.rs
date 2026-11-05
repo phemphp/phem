@@ -134,6 +134,9 @@ pub struct Func {
     pub async_attr: Option<Span>,
     /// The span of a `#[Broadcast]` attribute on the function or the method.
     pub broadcast_attr: Option<Span>,
+    /// `#[Broadcast(handlers: false)]` on the function or the method: only a class component
+    /// takes this argument (see `Phem\Attribute\Broadcast`).
+    pub receive_only: bool,
     /// The span of a `#[Validated]` attribute on the method.
     pub validated_attr: Option<Span>,
     /// `#[Component(replaces: ...)]` on a function component.
@@ -218,6 +221,9 @@ pub struct Class {
     pub inherited_provide: bool,
     /// `#[Broadcast]` on the class.
     pub has_broadcast: bool,
+    /// The span of `#[Broadcast(handlers: false)]` on the class: the component gets the streams,
+    /// and its handlers do not refresh it.
+    pub receive_only: Option<Span>,
     /// `#[Page]` on the class: a page, not a component that other pages render.
     pub is_page: bool,
     /// A parent class or a trait in the sources has a method with `#[Broadcast]` (see
@@ -351,6 +357,8 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
     let toks = Toks::new(src, lexed.tokens.iter().copied());
     let mut info = FileInfo { rel: rel.to_string(), ..Default::default() };
     let mut attrs: Vec<(String, Span)> = Vec::new();
+    // The names of the attributes with `handlers: false` (see `receive_only_attrs()`).
+    let mut receive_only: Vec<String> = Vec::new();
     let mut replaces: Option<Replaces> = None;
     let mut i = 0;
     let n = toks.t.len();
@@ -360,6 +368,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
             TokKind::AttrOpen => {
                 let end = toks.matching(i);
                 attrs.extend(attr_names(&toks, i + 1, end));
+                receive_only.extend(receive_only_attrs(&toks, i + 1, end));
                 replaces = replaces.or_else(|| replaces_arg(&toks, i + 1, end, &info));
                 i = end + 1;
                 continue;
@@ -403,6 +412,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                         }
 
                         f.broadcast_attr = broadcast_attr(&info, &attrs);
+                        f.receive_only = is_receive_only(&info, &std::mem::take(&mut receive_only));
                         if let Some(span) = f.broadcast_attr.filter(|_| f.component_kind.is_none()) {
                             info.broadcasts.push((f.fqn.clone(), span));
                         }
@@ -424,8 +434,10 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                             check_attrs(&mut info, &attrs);
                             let route = route_attr(&info, &attrs);
                             let broadcast = broadcast_attr(&info, &attrs);
+                            let receive_only = is_receive_only(&info, &std::mem::take(&mut receive_only));
                             let (mut c, end) = parse_class(&toks, i, &mut info, attrs.into_iter().map(|(a, _)| a).collect());
                             c.replaces = replaces.take();
+                            c.receive_only = broadcast.filter(|_| receive_only);
                             if let Some(span) = broadcast.filter(|_| !c.is_component && !c.abstract_component) {
                                 info.broadcasts.push((c.fqn.clone(), span));
                             }
@@ -442,6 +454,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                     }
                     "trait" if toks.t.get(i + 1).is_some_and(|x| x.kind == TokKind::Ident) => {
                         attrs.clear();
+                        receive_only.clear();
                         replaces = None;
                         let (mut c, end) = parse_class(&toks, i, &mut info, vec![]);
                         c.is_trait = true;
@@ -451,6 +464,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                     }
                     "enum" if toks.t.get(i + 1).is_some_and(|x| x.kind == TokKind::Ident) && toks.is_op(i + 2, ":") => {
                         attrs.clear();
+                        receive_only.clear();
                         replaces = None;
                         let (e, end) = parse_enum(&toks, i, &info.namespace);
                         info.enums.push(e);
@@ -465,6 +479,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                         }
 
                         attrs.clear();
+                        receive_only.clear();
                         replaces = None;
                         i = toks.matching(j) + 1;
                         continue;
@@ -648,6 +663,17 @@ fn component_replaces(toks: &Toks, from: usize, to: usize, info: &FileInfo) -> O
 
 /// The attributes of a list whose only argument is `rest: true` (or `true`): `#[Prop(rest: true)]`.
 fn rest_attrs(toks: &Toks, from: usize, to: usize) -> Vec<String> {
+    flag_attrs(toks, from, to, "rest", "true")
+}
+
+/// The attributes of a list whose only argument is `handlers: false` (or `false`):
+/// `#[Broadcast(handlers: false)]`.
+fn receive_only_attrs(toks: &Toks, from: usize, to: usize) -> Vec<String> {
+    flag_attrs(toks, from, to, "handlers", "false")
+}
+
+/// The attributes of a list whose only argument is `name: value` (or `value`).
+fn flag_attrs(toks: &Toks, from: usize, to: usize, flag: &str, value: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut i = from;
     let mut name = None;
@@ -657,7 +683,8 @@ fn rest_attrs(toks: &Toks, from: usize, to: usize) -> Vec<String> {
         } else if toks.is_op(i, "(") || toks.is_op(i, "[") {
             let end = toks.matching(i);
             let args: Vec<String> = (i + 1..end).map(|k| toks.text(k).to_ascii_lowercase()).collect();
-            if toks.is_op(i, "(") && matches!(args.iter().map(String::as_str).collect::<Vec<_>>()[..], ["true"] | ["rest", ":", "true"]) {
+            let args: Vec<&str> = args.iter().map(String::as_str).collect();
+            if toks.is_op(i, "(") && (args == [value] || args == [flag, ":", value]) {
                 out.extend(name.map(str::to_string));
             }
 
@@ -854,6 +881,7 @@ fn parse_function(toks: &Toks, at: usize, ns: &str) -> (Func, usize) {
         return_type,
         async_attr: None,
         broadcast_attr: None,
+        receive_only: false,
         validated_attr: None,
         replaces: None,
     };
@@ -949,6 +977,11 @@ fn route_attr(info: &FileInfo, attrs: &[(String, Span)]) -> Option<(&'static str
 /// The span of a `#[Broadcast]` of a declaration.
 fn broadcast_attr(info: &FileInfo, attrs: &[(String, Span)]) -> Option<Span> {
     attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_BROADCAST).map(|(_, s)| *s)
+}
+
+/// Whether the `#[Broadcast]` of a declaration has `handlers: false` (see `receive_only_attrs()`).
+fn is_receive_only(info: &FileInfo, names: &[String]) -> bool {
+    names.iter().any(|a| info.resolve_class(a) == ATTR_BROADCAST)
 }
 
 /// The span of an `#[Async]` of a function or a method.
@@ -1050,6 +1083,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
         provides_self,
         inherited_provide: false,
         has_broadcast,
+        receive_only: None,
         is_page,
         inherited_broadcast: false,
         inherited_validated: Vec::new(),
@@ -1059,6 +1093,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
     let mut i = j + 1;
     let mut member_attrs: Vec<(String, Span)> = Vec::new();
     let mut member_rest: Vec<String> = Vec::new();
+    let mut member_receive_only: Vec<String> = Vec::new();
     let mut mods: Vec<String> = Vec::new();
     let mut ty_start: Option<usize> = None;
     while i < close {
@@ -1069,6 +1104,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
             let end = toks.matching(i);
             member_attrs.extend(attr_names(toks, i + 1, end));
             member_rest.extend(rest_attrs(toks, i + 1, end));
+            member_receive_only.extend(receive_only_attrs(toks, i + 1, end));
             i = end + 1;
             continue;
         }
@@ -1098,6 +1134,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
 
             member_attrs.clear();
             member_rest.clear();
+            member_receive_only.clear();
             mods.clear();
             ty_start = None;
             i += 1;
@@ -1134,11 +1171,13 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
             check_attrs(info, &member_attrs);
             let async_attr = async_attr(info, &member_attrs);
             let broadcast_attr = broadcast_attr(info, &member_attrs);
+            let receive_only = is_receive_only(info, &member_receive_only);
             let validated_attr = validated_attr(info, &member_attrs);
-            class.methods.push(Func { fqn: format!("{}::{}", class.fqn, m.name), is_private: mods.iter().any(|x| x == "private"), async_attr, broadcast_attr, validated_attr, ..m });
+            class.methods.push(Func { fqn: format!("{}::{}", class.fqn, m.name), is_private: mods.iter().any(|x| x == "private"), async_attr, broadcast_attr, receive_only, validated_attr, ..m });
 
             member_attrs.clear();
             member_rest.clear();
+            member_receive_only.clear();
             mods.clear();
             ty_start = None;
             i = end + 1;
@@ -1192,6 +1231,7 @@ fn parse_class(toks: &Toks, at: usize, info: &mut FileInfo, attrs: Vec<String>) 
 
             member_attrs.clear();
             member_rest.clear();
+            member_receive_only.clear();
             mods.clear();
             ty_start = None;
             i += 1;

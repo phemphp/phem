@@ -85,11 +85,13 @@ ideas of React to Phem, see [What is Phem](what-is-phem.md#from-react-to-phem).
    Add `data-phem-transition` to an element to run the morph of its components in a view
    transition (see [Transitions](client-side.md#transitions)).
 5. **Real-time updates.** A page with `#[Broadcast]`, or with a component with `#[Broadcast]`,
-   opens one connection to the Mercure hub (the hub of FrankenPHP, or a standalone hub). A handler pushes Turbo Streams to the open pages with `Phem\Stream\Streams`:
-   plain markup (`prepend`, `update`, `remove`, ...), or a `refresh()` that renders a component
-   again in each browser with a normal event. A component with `#[Broadcast]` refreshes itself
-   in the other browsers after its handlers. The next event of a page renders again the
-   components that a push changed (see [Real-time updates](server-features.md#real-time-updates)).
+   opens one connection to the Mercure hub (the hub of FrankenPHP, or a standalone hub). A
+   handler pushes Turbo Streams to the open pages with `Phem\Stream\Streams`: plain markup
+   (`prepend`, `update`, `remove`, ...), or a `refresh()` that renders a component again in each
+   browser with a normal event. A component with `#[Broadcast]` (and no `handlers: false`)
+   refreshes itself in the other browsers after its handlers. The next event of a page renders
+   again the components that a push changed (see
+   [Real-time updates](server-features.md#real-time-updates)).
    An `#[Async]` handler returns its slow work in a `Promise`: the event answers at once, and a
    Messenger worker runs the work and pushes its result (see
    [Slow work after the response](server-features.md#slow-work-after-the-response)).

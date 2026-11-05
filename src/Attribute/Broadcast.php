@@ -57,6 +57,21 @@ namespace Phem\Attribute;
  * A closure of render() that calls such a handler needs its own #[Broadcast]
  * (`#[Broadcast] fn () => $this->like($id)`): Phem sees the closure, not the calls in it.
  *
+ * With `handlers: false` on the class, the component gets the streams, and its handlers do not
+ * refresh it in the other browsers: a stream of another request renders it again in each
+ * browser, and a handler renders it again only in the browser of the event (as each event
+ * does). Then no method and no closure of the class can have #[Broadcast]. Only a class
+ * component can have `handlers: false`:
+ *
+ *     #[Component, Broadcast(handlers: false)]
+ *     final class BagContents
+ *     {
+ *         public function empty(): void { ... } // the bag of this browser only
+ *     }
+ *
+ *     // in a handler of the staff
+ *     $this->streams->toComponent(BagContents::class)->refresh();
+ *
  * The refresh goes to all the instances of the component. The props with #[BroadcastKey]
  * identify an instance: the refresh goes only to the instances with the same values.
  *
@@ -67,4 +82,12 @@ namespace Phem\Attribute;
 #[\Attribute(\Attribute::TARGET_CLASS | \Attribute::TARGET_FUNCTION | \Attribute::TARGET_METHOD)]
 final class Broadcast
 {
+    /**
+     * @param bool $handlers false: the handlers of the class component do not refresh it in the
+     *                       other browsers, only the streams of other requests do
+     */
+    public function __construct(
+        public readonly bool $handlers = true,
+    ) {
+    }
 }

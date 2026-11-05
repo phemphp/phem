@@ -384,14 +384,40 @@ fn check_async(file: &FileInfo) -> Vec<Diagnostic> {
     diags
 }
 
-/// `#[Broadcast]` on a handler method and `#[BroadcastKey]`: a handler refreshes its class
-/// component, and a key is a prop of a component that broadcasts (with `#[Broadcast]` on it or
-/// on a handler).
+/// `#[Broadcast]` on a handler method, `#[Broadcast(handlers: false)]` and `#[BroadcastKey]`: a
+/// handler refreshes its class component, only a class component takes `handlers: false` (and
+/// then no handler has `#[Broadcast]`), and a key is a prop of a component that broadcasts (with
+/// `#[Broadcast]` on it or on a handler).
 fn check_broadcast(file: &FileInfo) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
     // A class that is not a component can be the parent of one: only a page is checked.
     for c in file.classes.iter().filter(|c| !c.is_trait) {
-        let handlers: Vec<_> = c.methods.iter().filter_map(|m| m.broadcast_attr.map(|span| (m, span))).collect();
+        // `handlers: false` on a method: the method does not refresh its component.
+        for m in c.methods.iter().filter(|m| m.receive_only) {
+            let Some(span) = m.broadcast_attr else { continue };
+            diags.push(
+                Diagnostic::error(codes::BROADCAST_NOT_COMPONENT, format!("`#[Broadcast(handlers: false)]` on `{}()`: only a class component takes the `handlers` argument", m.fqn), span)
+                    .with_help("remove `#[Broadcast]` from the method: with no `#[Broadcast]`, the handler does not refresh its component"),
+            );
+        }
+
+        let handlers: Vec<_> = c.methods.iter().filter(|m| !m.receive_only).filter_map(|m| m.broadcast_attr.map(|span| (m, span))).collect();
+        if let Some(span) = c.receive_only {
+            if c.is_page {
+                diags.push(
+                    Diagnostic::error(codes::BROADCAST_NOT_COMPONENT, format!("`#[Broadcast(handlers: false)]` must mark a class component, and `{}` is a page", c.fqn), span)
+                        .with_help("a page has no handlers that refresh it: use `#[Broadcast]`"),
+                );
+            } else if c.is_component {
+                for (m, span) in &handlers {
+                    diags.push(
+                        Diagnostic::error(codes::BROADCAST_NOT_COMPONENT, format!("`#[Broadcast]` on `{}()` refreshes the component, and `{}` has `#[Broadcast(handlers: false)]`", m.fqn, c.fqn), *span)
+                            .with_help("remove `#[Broadcast]` from the method, or remove `handlers: false` from the class and put `#[Broadcast]` on the handlers that refresh it"),
+                    );
+                }
+            }
+        }
+
         if c.is_page {
             for (m, span) in &handlers {
                 diags.push(
@@ -422,6 +448,13 @@ fn check_broadcast(file: &FileInfo) -> Vec<Diagnostic> {
 
     for f in &file.functions {
         let page = file.routes.iter().any(|r| r.fqn == f.fqn && r.attr == "Page");
+        if let Some(span) = f.broadcast_attr.filter(|_| f.receive_only && f.component_kind.is_some()) {
+            diags.push(
+                Diagnostic::error(codes::BROADCAST_NOT_COMPONENT, format!("`#[Broadcast(handlers: false)]` must mark a class component, and `{}` is a function", f.fqn), span)
+                    .with_help("a function component has no handlers that refresh it: use `#[Broadcast]`"),
+            );
+        }
+
         let broadcasts = f.component_kind.is_some() && !page && f.broadcast_attr.is_some();
         for p in &f.params {
             let Some((_, span)) = p.attrs.iter().find(|(a, _)| file.resolve_class(a) == ATTR_BROADCAST_KEY) else { continue };

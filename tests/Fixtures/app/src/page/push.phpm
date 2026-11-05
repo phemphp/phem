@@ -324,3 +324,46 @@ function GuestbookLikesPage(): Node
         </Document>
     );
 }
+
+// A component with #[Broadcast(handlers: false)]: it gets the streams of other requests, and its
+// handlers do not refresh it in the other browsers. Its #[BroadcastKey] prop still identifies an
+// instance for the streams.
+#[Component, Broadcast(handlers: false)]
+final class GuestbookBag
+{
+    #[Prop, BroadcastKey] public string $room;
+
+    public function __construct(private readonly Guestbook $guestbook)
+    {
+    }
+
+    // A change for this browser: the other browsers keep their bag.
+    public function add(): void
+    {
+        $this->guestbook->add($this->room, 'Item');
+    }
+
+    public function render(): Node
+    {
+        $count = \count($this->guestbook->entries($this->room));
+
+        return (
+            <p id="bag-{{ room }}">
+                {{ count }} in the bag of {{ room }}
+                <button id="add-{{ room }}" type="button" onClick={{ add }}>Add</button>
+            </p>
+        );
+    }
+}
+
+// Two instances of the bag, with two keys.
+#[Page('/bags')]
+function GuestbookBagPage(): Node
+{
+    return (
+        <Document>
+            <GuestbookBag room="lobby" />
+            <GuestbookBag room="hall" />
+        </Document>
+    );
+}

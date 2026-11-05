@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Phem\Handler;
 
 use Phem\Async\Promise;
-use Phem\Attribute\Broadcast;
 use Phem\Controller\EventController;
 use Phem\Event;
 use Phem\Metadata\ComponentMetadata;
@@ -32,6 +31,8 @@ use Symfony\Component\HttpFoundation\RequestStack;
  * - With #[Broadcast] on some handler methods of the class, only these handlers refresh it, and
  *   the class needs no #[Broadcast] (see ComponentMetadata::broadcasts()). A closure of render()
  *   that calls such a method needs #[Broadcast] too: the middleware cannot see the call.
+ * - With #[Broadcast(handlers: false)] on the class, no handler refreshes it: the component gets
+ *   the streams of other requests only (see ComponentMetadata::receivesOnly()).
  * - The component of a handler is the object of its closure, as for #[Transactional]: a handler
  *   that a parent passes as a prop refreshes the parent. A function component has no object,
  *   and a page has no instances on other pages: they do not refresh.
@@ -93,13 +94,22 @@ final class BroadcastMiddleware implements HandlerMiddleware
      * name: it needs its own #[Broadcast] (`#[Broadcast] fn () => $this->like($id)`).
      *
      * @throws \LogicException when a closure has #[Broadcast], and its component does not broadcast
+     *                         or has #[Broadcast(handlers: false)], or when it has #[Broadcast(handlers: false)]
      */
     private function broadcasts(object $component, \ReflectionFunction $handler): bool
     {
-        $closure = [] !== $handler->getAttributes(Broadcast::class);
+        $closure = $this->metadata->handlerBroadcasts($handler);
         if (!$this->metadata->broadcasts($component::class)) {
             if ($closure) {
                 throw new \LogicException(\sprintf('A handler closure of "%s" has #[Broadcast], but the component does not broadcast: add #[Broadcast] to the class or to a handler method, so its pages connect to the hub.', $component::class));
+            }
+
+            return false;
+        }
+
+        if ($this->metadata->receivesOnly($component::class)) {
+            if ($closure) {
+                throw new \LogicException(\sprintf('A handler closure of "%s" has #[Broadcast], but the class has #[Broadcast(handlers: false)], so no handler refreshes it. Remove #[Broadcast] from the closure, or use #[Broadcast] on the class with no "handlers" argument.', $component::class));
             }
 
             return false;

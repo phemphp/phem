@@ -166,6 +166,43 @@ With `#[Broadcast]` on some handler methods, only these handlers refresh the com
 `#[Broadcast]` on the class, all of them do. The props with `#[BroadcastKey]` identify an
 instance: the refresh goes only to the instances of the same post.
 
+With `#[Broadcast(handlers: false)]` on the class, the component gets the streams of other
+requests, and no handler refreshes it. Use it for a component that shows data of one user, and
+that other requests change:
+
+```php
+use Phem\Attribute\{Broadcast, BroadcastKey, Component, Prop};
+
+#[Component, Broadcast(handlers: false)]
+final class BagContents
+{
+    #[Prop, BroadcastKey] public int $bag;
+
+    public function __construct(private readonly BagRepository $bags)
+    {
+    }
+
+    // A change for this user only: the other browsers do not render their bag again.
+    public function empty(): void
+    {
+        $this->bags->empty($this->bag);
+    }
+}
+```
+
+```php
+// In a handler of the staff: each open bag renders again.
+$this->streams->toComponent(BagContents::class)->refresh();
+
+// Only the instances of one bag.
+$this->streams->toComponent(BagContents::class, ['bag' => $bag->id])->refresh();
+```
+
+The `handlers` argument is for a class component only. On a page, a function, a handler method
+or a closure, Phem throws a `LogicException`. A component with `handlers: false` cannot have
+`#[Broadcast]` on a handler method or on a closure too: use `#[Broadcast]` on these handlers
+only, and no `#[Broadcast]` on the class.
+
 ### Set up the hub
 
 Phem publishes with `mercure_publish()` of FrankenPHP. Add the hub to the site in the Caddyfile,

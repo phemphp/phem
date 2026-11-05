@@ -63,6 +63,44 @@ final class BroadcastingPageWithAHandler
     }
 }
 
+/** A page with #[Broadcast(handlers: false)]: a page has no handlers that refresh it. */
+#[Page('/received'), Broadcast(handlers: false)]
+final class ReceivingPage
+{
+}
+
+/** A class with #[Broadcast(handlers: false)] and no #[Component]: it is not a component. */
+#[Broadcast(handlers: false)]
+final class ReceivingPlainClass
+{
+}
+
+/** A function component with #[Broadcast(handlers: false)]: a function has no handlers that refresh it. */
+#[Component, Broadcast(handlers: false)]
+function ReceivingWidget(): void
+{
+}
+
+/** A component with #[Broadcast(handlers: false)], and a handler with #[Broadcast]. */
+#[Component, Broadcast(handlers: false)]
+final class ReceivingComponentWithAHandler
+{
+    #[Broadcast]
+    public function save(): void
+    {
+    }
+}
+
+/** A handler with #[Broadcast(handlers: false)]. */
+#[Component]
+final class HandlerWithHandlersFalse
+{
+    #[Broadcast(handlers: false)]
+    public function save(): void
+    {
+    }
+}
+
 /** A function component with a key parameter, and a key parameter with a default value. */
 #[Component, Broadcast]
 function KeyedWidget(#[BroadcastKey] int $id, string $label = '', #[BroadcastKey] string $locale = 'en'): void
