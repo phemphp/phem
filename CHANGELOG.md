@@ -6,7 +6,7 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
-## Unreleased
+## 0.3.5 (2026-11-05)
 
 - **Breaking** The file extension of the components is now `.phem` (before: `.phpm`). The open
   tag is now `<?phem` (before: `<?phpm`), and the Twig namespace of the compiled templates is now
