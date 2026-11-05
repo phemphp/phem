@@ -41,6 +41,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
@@ -65,7 +66,9 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
  * the event: an #[Async] handler sends it to a worker (see Phem\Async\AsyncMiddleware). The browser
  * also sends the components whose element a push changed: they render again (see EventRenderer).
  * When the handler returns a Phem\RedirectTo or a RedirectResponse, the server answers with its
- * URL, and the browser visits it.
+ * URL, and the browser visits it. When the render of a refresh (an event with no handler, after
+ * a push) throws a 401, 403, 404 or 410 HTTP exception (an entity went away), the server answers
+ * 409 with `{"reload": true}`: the browser loads the page again, and shows the error page.
  *
  * An event with the files of a form is `multipart/form-data` (see EventBody). The handler
  * gets them as UploadedFile objects (see Event::$files). PHP removes a file that the handler does
@@ -84,6 +87,9 @@ final class EventController
 {
     /** The header of an event request. */
     public const HEADER = 'X-Phem-Event';
+
+    /** The statuses of a render that load the page again after a refresh: the page cannot render for this user now. */
+    private const GONE = [401, 403, 404, 410];
 
     public function __construct(
         private readonly EventRenderer $events,
@@ -175,7 +181,18 @@ final class EventController
             $request->attributes->set(EventReplay::ATTRIBUTE, new EventReplay($page, $json, $payload->bound, $payload->handlers[0], $payload->event));
         }
 
-        $outcome = $this->events->run($tree, $payload->handlers, $payload->bound, $this->dispatcher, fn (): Event => Event::fromArray($payload->event, $this->dispatcher, $request->files->all()), $payload->stale, EventRequest::of($request, $payload->event));
+        try {
+            $outcome = $this->events->run($tree, $payload->handlers, $payload->bound, $this->dispatcher, fn (): Event => Event::fromArray($payload->event, $this->dispatcher, $request->files->all()), $payload->stale, EventRequest::of($request, $payload->event));
+        } catch (HttpExceptionInterface $e) {
+            // A refresh (an event with no handler, after a push) of a page that this user cannot
+            // see now: the browser loads the page again, and shows the error page of the server.
+            if ([] !== $payload->handlers || !\in_array($e->getStatusCode(), self::GONE, true)) {
+                throw $e;
+            }
+
+            return self::reload();
+        }
+
         if ($outcome->reload) {
             // The page changed since the browser rendered it (for example after a deploy).
             return self::reload();

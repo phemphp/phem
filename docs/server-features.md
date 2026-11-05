@@ -130,6 +130,33 @@ The actions are the Turbo Stream actions: `append`, `prepend`, `before`, `after`
 viewers, so do not push data for one user only. Use `refresh($target)` for that: each browser
 renders the component around the target again, with its own access rules.
 
+A refresh can find a page that this user cannot see now. When the render of a refresh throws
+a `401`, `403`, `404` or `410` HTTP exception, the server answers `409`, and the browser loads
+the page again: it shows the error page of the server, not the old page with an error banner.
+A `#[Path]` entity that is not found any more does the same. A page with no `#[State]` can throw
+in `mount()` when its entity is hidden:
+
+```php
+#[Page('/products/{id:product}'), Broadcast]
+final class ProductPage
+{
+    #[Path] public Product $product;
+
+    public function mount(): void
+    {
+        if ($this->product->hidden) {
+            throw new NotFoundHttpException();
+        }
+    }
+}
+```
+
+The staff hides the product, and the open pages of the product load the 404 page of the app.
+The server decides from the exception of the render: a 403 of the firewall or of a proxy shows
+the error banner, as after a handler. A refresh comes from a push, not from the user: when a
+`data-phem-guard` has changes that the user did not save, the browser does not load the page
+again. It shows the error banner, so the user can copy the changes first.
+
 The content that you push must also be in the server render (read it in `mount()`), or the next
 event removes it. Give each pushed item an `id`, so the user who made the change sees it one time.
 The streams go out after the transaction. When the handler throws, they are dropped.

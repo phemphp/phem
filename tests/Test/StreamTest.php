@@ -427,6 +427,20 @@ final class StreamTest extends KernelTestCase
             ->assertSee('1 likes in hall');
     }
 
+    public function testARefreshOfAPageThatIsNotFoundAnyMoreLoadsThePageAgain(): void
+    {
+        $page = $this->visit('/rooms/lobby')->assertSee('Room lobby');
+        $other = $this->visit('/rooms/lobby');
+
+        $this->closeRoom('lobby');
+
+        // A refresh has no handler: the browser loads the page again, and shows the 404 page.
+        $page->receive()->assertReload();
+
+        // A handler of the page shows the error, as for any failed event.
+        $other->click('#save')->assertStatus(404);
+    }
+
     public function testAHandlerOfAComponentWithHandlersFalseDoesNotRefreshTheOtherTabs(): void
     {
         $this->visit('/bags')->click('#add-lobby')->assertSee('1 in the bag of lobby');
@@ -560,6 +574,18 @@ final class StreamTest extends KernelTestCase
         \assert($publisher instanceof MemoryPublisher);
 
         return $publisher->updates();
+    }
+
+    /** Closes a room of the guestbook, and pushes a refresh to its pages (as a listener of the app). */
+    private function closeRoom(string $room): void
+    {
+        $guestbook = static::getContainer()->get(Guestbook::class);
+        $streams = static::getContainer()->get('phem.streams');
+        \assert($guestbook instanceof Guestbook && $streams instanceof Streams);
+
+        $guestbook->close($room);
+        $streams->toPage('App\Page\RoomPage', ['room' => $room])->refresh();
+        $streams->flush();
     }
 
     private function broadcastMiddleware(): BroadcastMiddleware

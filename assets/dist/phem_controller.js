@@ -1354,9 +1354,13 @@ export default class PhemController extends Controller {
     logProfile(handler, event, response)
 
     if (response.status === 409) {
-      // The state is not valid any more (a new build, or a new secret): load the page again.
+      // The state is not valid any more (a new build, or a new secret), or the page that a
+      // refresh renders is not there any more (a 404 of its render): load the page again. A
+      // refresh comes from a push, not from the user: it does not drop the changes of a
+      // `data-phem-guard`, it shows the error, and the user can copy the changes first.
       failed(409)
-      this.reload()
+      if (event.refresh && this.dirtyGuard()) this.showError(handler, 409)
+      else this.reload()
       return
     }
 

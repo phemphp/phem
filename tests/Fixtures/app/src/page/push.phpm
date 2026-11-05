@@ -8,6 +8,7 @@ use Phem\Event;
 use Phem\Node;
 use Phem\Stream\Streams;
 use Phem\Tests\Fixtures\Guestbook;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 use function App\Component\Document;
 
@@ -366,4 +367,37 @@ function GuestbookBagPage(): Node
             <GuestbookBag room="hall" />
         </Document>
     );
+}
+
+// A room with no state: mount() runs in each render, and throws when the room is closed. A
+// refresh of a closed room loads the page again (409), as the page is not found any more.
+#[Page('/rooms/{room}'), Broadcast]
+final class RoomPage
+{
+    #[Path] public string $room;
+
+    public function __construct(private readonly Guestbook $guestbook)
+    {
+    }
+
+    public function mount(): void
+    {
+        if ($this->guestbook->isClosed($this->room)) {
+            throw new NotFoundHttpException('The room is closed.');
+        }
+    }
+
+    public function save(): void
+    {
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <p id="room">Room {{ room }}</p>
+                <button id="save" onClick={{ save }}>Save</button>
+            </Document>
+        );
+    }
 }

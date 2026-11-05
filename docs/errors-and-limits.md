@@ -17,6 +17,12 @@ the `<Root>` element:
 To show your own message, call `event.preventDefault()` in a listener of `phem:error`, or use the
 [toasts](client-side.md#toasts).
 
+A `409` loads the page again, with no `phem:error`: the state is not valid any more (a new
+build), or the render of a refresh found a page that this user cannot see now (see
+[Real-time updates](server-features.md#real-time-updates)). A refresh comes from a push, not
+from the user: when a `data-phem-guard` has changes that the user did not save, the browser
+dispatches `phem:error` with the status `409` and does not load the page again.
+
 ## Retries
 
 A network error, a `502` or a `503` can be temporary. The browser sends the event again, up to 3

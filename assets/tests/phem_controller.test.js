@@ -1532,6 +1532,73 @@ describe("pushes", () => {
     expect(body.stale).toEqual(["c1"])
   })
 
+  // Listens to `phem:error` during a test, and removes the listener after it, also when it fails.
+  async function withErrors(listener, test) {
+    window.addEventListener("phem:error", listener)
+    try {
+      await test()
+    } finally {
+      window.removeEventListener("phem:error", listener)
+    }
+  }
+
+  it("loads the page again when a refresh gets a 409, with no error banner", async () => {
+    const source = await subscribe("<p>Product</p>")
+    const errors = vi.fn()
+    await withErrors(errors, async () => {
+      fetch.mockResolvedValueOnce(new Response(JSON.stringify({ reload: true }), { status: 409 }))
+      source.push('<turbo-stream action="phem-refresh"></turbo-stream>')
+
+      // A refresh has no element that sent it: no phem:done.
+      await vi.waitFor(() => expect(Turbo.visit).toHaveBeenCalledExactlyOnceWith(window.location.href, { action: "replace" }))
+      expect(JSON.parse(fetch.mock.calls[0][1].body).handler).toBeNull()
+      expect(errors).not.toHaveBeenCalled()
+    })
+  })
+
+  it("keeps the changes of a guard when a refresh gets a 409: it shows the error", async () => {
+    const source = await subscribe('<form data-phem-guard><input data-phem-bind="c1.text" value=""></form>')
+    document.querySelector("input").value = "A long text"
+    const errors = vi.fn((e) => e.preventDefault())
+    await withErrors(errors, async () => {
+      fetch.mockResolvedValueOnce(new Response(JSON.stringify({ reload: true }), { status: 409 }))
+      source.push('<turbo-stream action="phem-refresh"></turbo-stream>')
+
+      await vi.waitFor(() => expect(errors).toHaveBeenCalledOnce())
+      expect(errors.mock.calls[0][0].detail).toEqual({ handler: null, status: 409 })
+      expect(Turbo.visit).not.toHaveBeenCalled()
+      expect(document.querySelector("input").value).toBe("A long text")
+    })
+  })
+
+  it("shows the error banner when a refresh gets a 404: only the server says when the page goes", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    const source = await subscribe("<p>Product</p>")
+    const errors = vi.fn((e) => e.preventDefault())
+    await withErrors(errors, async () => {
+      fetch.mockResolvedValueOnce(new Response("Not found", { status: 404 }))
+      source.push('<turbo-stream action="phem-refresh"></turbo-stream>')
+
+      await vi.waitFor(() => expect(errors).toHaveBeenCalledOnce())
+      expect(Turbo.visit).not.toHaveBeenCalled()
+    })
+  })
+
+  it("shows the error banner when a handler gets a 404: the user made the event", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    await mount(`<button data-phem-on-click="c1.save">Save</button>`)
+    const errors = vi.fn((e) => e.preventDefault())
+    await withErrors(errors, async () => {
+      fetch.mockResolvedValueOnce(new Response("Not found", { status: 404 }))
+      const done = nextDone()
+      click("button")
+
+      expect((await done).detail).toMatchObject({ handler: "c1.save", ok: false, status: 404 })
+      expect(Turbo.visit).not.toHaveBeenCalled()
+      expect(errors).toHaveBeenCalledOnce()
+    })
+  })
+
   it("renders a push that comes while an event runs after the morph of the event", async () => {
     const source = await subscribe('<ul id="entries"><li id="entry-1">One</li></ul><button data-phem-on-click="c1.save">Save</button>')
     let answer
