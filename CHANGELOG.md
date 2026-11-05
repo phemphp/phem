@@ -6,7 +6,7 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
-## Unreleased
+## 0.3.6 (2026-11-05)
 
 - The `visit()` of the tests takes cookies for the browser (`cookies: ['currency' => 'EUR']`),
   on `InteractsWithPhem` and on a page. `cookies()` gives the cookies that the browser of a page
