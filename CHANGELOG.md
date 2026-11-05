@@ -6,6 +6,12 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
+## 0.3.7 (2026-11-05)
+
+- Fix: in the tests, the browser kept a cookie with an empty `Domain` (for example the session
+  cookie of PHP, with the default `session.cookie_domain`) on no host, so it did not send the
+  cookie. As a browser, it now ignores an empty `Domain`: the cookie goes to the host of the page.
+
 ## 0.3.6 (2026-11-05)
 
 - The `visit()` of the tests takes cookies for the browser (`cookies: ['currency' => 'EUR']`),
