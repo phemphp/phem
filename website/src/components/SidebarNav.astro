@@ -1,14 +1,18 @@
 ---
-// Design system: SidebarNav. The drawer (MobileNav) uses the same markup.
+// Design system: SidebarNav. The drawer (MobileNav) uses the same markup. With "pill", one
+// highlight slides to the link under the pointer, and back to the current page when the pointer
+// leaves the nav.
 import { navigation } from '../navigation';
 
 interface Props {
     current?: string;
+    pill?: boolean;
 }
 
-const { current } = Astro.props;
+const { current, pill = false } = Astro.props;
 ---
-<nav class="ph-nav" aria-label="Documentation">
+<nav class="ph-nav" aria-label="Documentation" data-nav-pill={pill ? '' : undefined}>
+    {pill && <span class="nav-pill" aria-hidden="true"></span>}
     {navigation.map((group) => (
         <div class="ph-nav__group">
             <p class="ph-nav__title">{group.title}</p>
@@ -18,3 +22,67 @@ const { current } = Astro.props;
         </div>
     ))}
 </nav>
+
+<script>
+    // The pill moves with a transform, so it slides from one link to the next. Without this
+    // script, each link shows its own hover and current background (bundle.css).
+    function pill(nav: HTMLElement, element: HTMLElement): void {
+        const current = nav.querySelector<HTMLElement>('.ph-nav__link[aria-current="page"]');
+        let target: HTMLElement | null = null;
+
+        const place = (link: HTMLElement | null, instant = false): void => {
+            target = link;
+
+            if (null === link) {
+                element.classList.remove('is-visible');
+
+                return;
+            }
+
+            // The first show jumps to the link: there is no previous link to slide from.
+            if (instant || !element.classList.contains('is-visible')) {
+                element.classList.add('is-instant');
+            }
+
+            element.style.transform = `translate(${link.offsetLeft}px, ${link.offsetTop}px)`;
+            element.style.width = `${link.offsetWidth}px`;
+            element.style.height = `${link.offsetHeight}px`;
+            element.classList.add('is-visible');
+
+            // Apply the jump before the transition comes back.
+            void element.offsetWidth;
+            element.classList.remove('is-instant');
+        };
+
+        const linkOf = (node: EventTarget | null): HTMLElement | null => (node instanceof Element ? node.closest<HTMLElement>('.ph-nav__link') : null);
+
+        nav.addEventListener('pointerover', (event) => {
+            const link = linkOf(event.target);
+
+            if (null !== link && link !== target) {
+                place(link);
+            }
+        });
+        nav.addEventListener('pointerleave', () => place(current));
+        nav.addEventListener('focusin', (event) => place(linkOf(event.target) ?? current));
+        nav.addEventListener('focusout', (event) => {
+            if (!(event.relatedTarget instanceof Node) || !nav.contains(event.relatedTarget)) {
+                place(current);
+            }
+        });
+
+        // A new font or width changes the size of the links.
+        new ResizeObserver(() => place(target, true)).observe(nav);
+
+        place(current, true);
+        nav.classList.add('is-pill');
+    }
+
+    for (const nav of document.querySelectorAll<HTMLElement>('[data-nav-pill]')) {
+        const element = nav.querySelector<HTMLElement>('.nav-pill');
+
+        if (null !== element) {
+            pill(nav, element);
+        }
+    }
+</script>

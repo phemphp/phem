@@ -1,6 +1,6 @@
 import type { ThemeRegistration } from 'shiki';
 
-// The code theme of the design system: dark in both page themes, with the four syntax-* tokens.
+// The code theme of the design system: light or dark with the page theme, with the four syntax-* tokens.
 // The colors are CSS variables, so tokens.css stays the one source of the values.
 export const phemCode: ThemeRegistration = {
     name: 'phem-code',

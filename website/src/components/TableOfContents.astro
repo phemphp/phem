@@ -38,3 +38,101 @@ for (const heading of headings) {
         </div>
     </nav>
 )}
+
+<script>
+    // A click on a link of "On this page" scrolls with an ease-out curve: fast at the start, and
+    // very slow at the end. The native smooth scroll has no control of the curve.
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const easeOutExpo = (t: number): number => (1 === t ? 1 : 1 - 2 ** (-10 * t));
+    let frame = 0;
+
+    function stop(): void {
+        cancelAnimationFrame(frame);
+        frame = 0;
+    }
+
+    // The user scrolls by hand: the animation stops at once.
+    for (const type of ['wheel', 'touchstart', 'keydown', 'pointerdown']) {
+        window.addEventListener(type, stop, { passive: true });
+    }
+
+    function scrollTo(top: number, done: () => void): void {
+        stop();
+
+        const start = window.scrollY;
+        const distance = top - start;
+
+        if (reduce.matches || Math.abs(distance) < 2) {
+            window.scrollTo(0, top);
+            done();
+
+            return;
+        }
+
+        // The time grows with the distance between the two sections: about 0.6 s for 200px,
+        // 1 s for 1000px, 1.7 s for 4000px, and 2 s at most.
+        const duration = Math.min(2000, Math.max(500, 300 + 22 * Math.sqrt(Math.abs(distance))));
+        const begin = performance.now();
+
+        const step = (now: number): void => {
+            const t = Math.min(1, (now - begin) / duration);
+
+            window.scrollTo(0, start + distance * easeOutExpo(t));
+
+            if (t < 1) {
+                frame = requestAnimationFrame(step);
+
+                return;
+            }
+
+            frame = 0;
+            done();
+        };
+
+        frame = requestAnimationFrame(step);
+    }
+
+    function topOf(target: HTMLElement | null): number {
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+
+        if (null === target) {
+            return 0;
+        }
+
+        const margin = parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
+
+        return Math.max(0, Math.min(max, target.getBoundingClientRect().top + window.scrollY - margin));
+    }
+
+    document.querySelector('[data-ph-toc]')?.addEventListener('click', (event) => {
+        const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('a[href^="#"]') : null;
+
+        if (null === link || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+            return;
+        }
+
+        // "#" is "Back to top".
+        const id = decodeURIComponent(link.hash.slice(1));
+        const target = '' === id ? null : document.getElementById(id);
+
+        if ('' !== id && null === target) {
+            return;
+        }
+
+        event.preventDefault();
+        history.pushState(null, '', '' === id ? location.pathname + location.search : link.hash);
+
+        scrollTo(topOf(target), () => {
+            if (null === target) {
+                return;
+            }
+
+            // Keyboard users continue from the heading.
+            if (!target.hasAttribute('tabindex')) {
+                target.setAttribute('tabindex', '-1');
+            }
+
+            target.focus({ preventScroll: true });
+        });
+    });
+</script>

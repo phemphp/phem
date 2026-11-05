@@ -63,7 +63,6 @@
 .ph-nav__link:hover { color: var(--ink); background: var(--surface-sunken); }
 .ph-nav__link:focus-visible { outline: 2px solid var(--primary); outline-offset: 0; }
 .ph-nav__link[aria-current="page"] { color: var(--primary-text); background: var(--primary-soft); font-weight: 600; }
-.ph-nav__link[aria-current="page"]::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; border-radius: var(--radius-full); background: var(--primary); }
 
 /* ---------- Input ---------- */
 .ph-field { display: flex; flex-direction: column; gap: 6px; max-width: 360px; }
@@ -121,7 +120,7 @@
 .ph-header__link:hover { color: var(--ink); background: var(--surface-sunken); }
 .ph-header__link[aria-current="page"] { color: var(--primary-text); font-weight: 600; }
 .ph-header__link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-.ph-header__end { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; }
+.ph-header__end { display: flex; align-items: center; gap: var(--space-4); margin-left: auto; }
 .ph-header__menu { display: none; }
 @media (max-width: 767px) {
   .ph-header__inner { gap: var(--space-2); padding: 0 var(--space-4); }

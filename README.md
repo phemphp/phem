@@ -1,5 +1,5 @@
 > [!WARNING]
-> This documentation is under construction. Pages can be missing or change at any time.
+> This repository is under construction. The code, the API and the docs can change at any time.
 
 <p align="center">
   <img src="cover.png" alt="Phem">

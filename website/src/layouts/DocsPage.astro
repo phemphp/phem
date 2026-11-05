@@ -19,7 +19,7 @@ const label = pages.find((page) => page.slug === doc.slug)?.label ?? doc.title;
 ---
 <Base title={`${doc.title} | Phem`} current={doc.slug}>
     <div class="ph-docs">
-        <SidebarNav current={doc.slug} />
+        <SidebarNav current={doc.slug} pill />
         <main class="ph-docs__main" id="main">
             <div class="ph-docs__content">
                 <Breadcrumbs slug={doc.slug} label={label} />
