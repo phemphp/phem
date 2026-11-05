@@ -1,0 +1,5 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+{% component embed 'App\\Ui\\Common\\ClassButton' with phem_props({'className': (classes('bg-blue-500'))}, rest) only %}{% block children %}{% with _phem_caller only %}{{ children }}{% endwith %}{% endblock %}{% endcomponent %}

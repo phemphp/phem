@@ -28,10 +28,10 @@ Symfony Flex and PhemBundle configure the application:
   ```
   my-app/
   ├── src/
-  │   ├── Component/
-  │   │   └── Document.phpm   the HTML document of the pages
-  │   └── Page/
-  │       └── Home.phpm       the page at /
+  │   └── Ui/
+  │       ├── Common/
+  │       │   └── Document.phpm   the HTML document of the pages
+  │       └── HomePage.phpm       the page at /
   └── .symfony.local.yaml     `symfony serve` also runs `phemc watch src`
   ```
 
@@ -88,12 +88,12 @@ it. `<Root>` is the root element of the page: the `phem` controller gets the eve
 elements in it. `{{ importmap('app') }}` loads `assets/app.js`, which starts Stimulus with the
 `phem` controller.
 
-`src/Component/Document.phpm`:
+`src/Ui/Common/Document.phpm`:
 
 ```php
 <?phpm
 
-namespace App\Component;
+namespace App\Ui\Common;
 
 use Phem\Attribute\Component;
 use Phem\{Html, Node, Root};
@@ -119,23 +119,26 @@ function Document(Html $title, Html $children): Node
 }
 ```
 
-A page is a component with the `#[Page]` attribute: a Symfony route. This page has no state, so
-it is a function that returns the markup.
+All the pages use the document, so it is in `src/Ui/Common/`. See
+[Organize the UI](compiling.md#organize-the-ui) for the directories of the components.
 
-`src/Page/Home.phpm`:
+A page is a component with the `#[Page]` attribute: a Symfony route. The name of a page ends with
+`Page`. This page has no state, so it is a function that returns the markup.
+
+`src/Ui/HomePage.phpm`:
 
 ```php
 <?phpm
 
-namespace App\Page;
+namespace App\Ui;
 
 use Phem\Attribute\Page;
 use Phem\Node;
 
-use function App\Component\Document;
+use function App\Ui\Common\Document;
 
 #[Page('/')]
-function Home(): Node
+function HomePage(): Node
 {
     return (
         <Document>
@@ -151,12 +154,12 @@ function Home(): Node
 A class component keeps its state in `#[State]` properties. The state stays in the browser
 between the events. An event handler, such as `increment()`, runs on the server.
 
-`src/Component/Counter.phpm`:
+`src/Ui/Counter.phpm`:
 
 ```php
 <?phpm
 
-namespace App\Component;
+namespace App\Ui;
 
 use Phem\Attribute\{Component, State};
 use Phem\Node;
@@ -183,14 +186,13 @@ final class Counter
 }
 ```
 
-Import it in `src/Page/Home.phpm`, and use it two times. Each `<Counter />` has its own state. The
-page has no state of its own, so it stays a function:
+Only the home page uses it, so it is in the directory of the page, with the same namespace. The
+page does not import it. Use it two times in `src/Ui/HomePage.phpm`. Each `<Counter />` has its
+own state. The page has no state of its own, so it stays a function:
 
 ```php
-use App\Component\Counter;
-
 #[Page('/')]
-function Home(): Node
+function HomePage(): Node
 {
     return (
         <Document>

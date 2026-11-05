@@ -1,0 +1,31 @@
+<?phpm
+
+namespace Acme\Ui;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function Acme\Ui\Layout;
+
+// A page of a package with state and a handler: its events go to its URL, with the prefix of the
+// route import of the app.
+#[Page('/clicks')]
+final class ClicksPage
+{
+    #[State]
+    public int $count = 0;
+
+    public function add(): void
+    {
+        ++$this->count;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Layout>
+                <button id="add" onClick={{ add }}>Clicks {{ count }}</button>
+            </Layout>
+        );
+    }
+}

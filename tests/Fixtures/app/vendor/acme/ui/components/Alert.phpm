@@ -5,7 +5,7 @@ namespace Acme\Ui;
 use Phem\Attribute\Component;
 use Phem\{Html, Node};
 
-// A component of a package: the app replaces it (src/component/Alert.phpm).
+// A component of a package: the app replaces it (src/Ui/Common/Alert.phpm).
 #[Component]
 function Alert(string $type = 'info', ?Html $children = null): Node
 {

@@ -1,0 +1,95 @@
+<?phpm
+
+namespace App\Ui\Form;
+
+use Phem\Attribute\{Component, Page, State};
+use Phem\Form\TouchedFields;
+use Phem\Node;
+use Phem\Tests\Fixtures\{Account, AccountType};
+use Symfony\Component\Form\{FormFactoryInterface, FormInterface};
+use Symfony\Component\HttpFoundation\Request;
+
+use function App\Ui\Common\Document;
+
+// The live validation of a Symfony form (see Phem\Form\TouchedFieldsRequestHandler).
+#[Component]
+final class AccountForm
+{
+    #[State] public string $saved = '';
+
+    private ?FormInterface $form = null {
+        get => $this->form ??= $this->forms->create(AccountType::class, new Account());
+    }
+
+    public function __construct(private readonly FormFactoryInterface $forms)
+    {
+    }
+
+    public function validate(Request $request): void
+    {
+        $this->form->handleRequest($request);
+    }
+
+    public function save(Request $request): void
+    {
+        $this->form->handleRequest($request);
+        if (!$this->form->isSubmitted() || !$this->form->isValid()) {
+            return;
+        }
+
+        $this->saved = (string) $this->form->getData()->email;
+        $this->form = null;
+    }
+
+    // A save with the click of a button: all the errors show, as with a submit.
+    public function saveByClick(Request $request): void
+    {
+        $this->save(TouchedFields::touchAll($request));
+    }
+
+    public function addPhone(Request $request): void
+    {
+        $data = $request->request->all('account');
+        $data['phones'][] = '';
+        $request->request->set('account', $data);
+
+        $this->form->handleRequest($request);
+    }
+
+    public function render(): Node
+    {
+        $view = $this->form->createView();
+
+        return (
+            <div>
+                <form id="account" onChange={{ validate }} onSubmit={{ save }} novalidate>
+                    <div id="form-errors">{{ form_errors(view) }}</div>
+                    <div id="email-row">{{ form_row(view.email) }}</div>
+                    <div id="password-row">{{ form_row(view.password) }}</div>
+                    <div id="city-row">{{ form_row(view.city) }}</div>
+                    <div id="tags-row">{{ form_row(view.tags) }}</div>
+                    <div id="phones-row">{{ form_row(view.phones) }}</div>
+                    <button type="button" id="add-phone" onClick={{ addPhone }}>Add a phone</button>
+                    <button type="button" id="save-click" onClick={{ saveByClick }}>Save with a click</button>
+                    <button type="submit">Save</button>
+                    <p id="saved">{{ saved }}</p>
+                </form>
+                <button type="button" id="outside" form="account" onClick={{ addPhone }}>Add a phone outside</button>
+            </div>
+        );
+    }
+}
+
+#[Page('/form')]
+final class FormPage
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>Form</Document:title>
+                <AccountForm />
+            </Document>
+        );
+    }
+}

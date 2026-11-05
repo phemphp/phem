@@ -25,7 +25,7 @@ use PHPUnit\Framework\AssertionFailedError;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Messenger\Exception\UnrecoverableMessageHandlingException;
 
-/** The #[Async] handlers (tests/Fixtures/app/src/page/async.phpm). */
+/** The #[Async] handlers (tests/Fixtures/app/src/Ui/Async/AsyncPage.phpm). */
 final class AsyncTest extends KernelTestCase
 {
     use InteractsWithPhem;
@@ -115,7 +115,7 @@ final class AsyncTest extends KernelTestCase
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessage('In a test, use visit() and settle(), not mount().');
 
-        $this->mount('App\Page\AsyncExport', ['room' => 'lobby'])->click('#ship-1');
+        $this->mount('App\Ui\Async\AsyncExport', ['room' => 'lobby'])->click('#ship-1');
     }
 
     /** @return list<array{topics: list<string>, data: string, private: bool}> */

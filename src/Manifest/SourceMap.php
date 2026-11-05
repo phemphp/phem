@@ -28,7 +28,7 @@ final class SourceMap
 
     /**
      * The `.phpm` source and line of a line in a compiled template. The file is the path from the
-     * project root (`src/page/index.phpm`), and the path is the absolute path.
+     * project root (`src/Ui/HomePage.phpm`), and the path is the absolute path.
      *
      * @return array{file: string, path: string, line: int}|null
      */

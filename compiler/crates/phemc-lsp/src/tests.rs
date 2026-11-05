@@ -51,9 +51,9 @@ return array(
     ("vendor/phem/phem/tests/HtmlTest.php", "<?php\n"),
     ("src/Repository/TodoRepository.php", "<?php\n"),
     (
-        "src/component/Layout.phpm",
+        "src/Ui/Common/Layout.phpm",
         r"<?phpm
-namespace App\Component;
+namespace App\Ui\Common;
 
 use Phem\Attribute\Component;
 use Phem\Html;
@@ -78,14 +78,14 @@ function Initials(string $name): string
 ",
     ),
     (
-        "src/page/about.phpm",
+        "src/Ui/About/AboutPage.phpm",
         r"<?phpm
-namespace App\Page;
+namespace App\Ui\About;
 
 use Phem\Attribute\Page;
 
 #[Page('/about')]
-final class About
+final class AboutPage
 {
     public function render()
     {
@@ -95,9 +95,9 @@ final class About
 ",
     ),
     (
-        "src/component/Counter.phpm",
+        "src/Ui/Common/Counter.phpm",
         r"<?phpm
-namespace App\Component;
+namespace App\Ui\Common;
 
 use Phem\Attribute\{Component, Prop, State};
 
@@ -270,15 +270,15 @@ final class ScientistRepository
 ",
     ),
     (
-        "src/page/gallery.phpm",
+        "src/Ui/Gallery/GalleryPage.phpm",
         r"<?phpm
-namespace App\Page;
+namespace App\Ui\Gallery;
 
 use Phem\Attribute\Page;
 
 #[Page('/gallery', name: 'gallery')]
 #[Page('/scientists/{id}')]
-final class Gallery
+final class GalleryPage
 {
     public function render()
     {
@@ -350,7 +350,7 @@ fn run_with(source: &str, file: &str, trigger: Option<char>) -> Run {
 }
 
 fn run(source: &str) -> Run {
-    run_with(source, "src/page/index.phpm", None)
+    run_with(source, "src/Ui/HomePage.phpm", None)
 }
 
 fn run_in(source: &str, file: &str) -> Run {
@@ -368,7 +368,7 @@ fn apply(text: &str, item: &Item) -> String {
     out
 }
 
-const PAGE: &str = "<?phpm\nnamespace App\\Page;\n\n";
+const PAGE: &str = "<?phpm\nnamespace App\\Ui;\n\n";
 
 fn snippet(item: &Item) -> &str {
     item.snippet.as_deref().unwrap()
@@ -378,30 +378,30 @@ fn snippet(item: &Item) -> &str {
 
 #[test]
 fn a_component_tag_adds_a_use_function_import() {
-    let r = run(&format!("{PAGE}function Home()\n{{\n    return <Lay|\n}}\n"));
+    let r = run(&format!("{PAGE}function HomePage()\n{{\n    return <Lay|\n}}\n"));
     let item = r.get("Layout");
     assert_eq!(snippet(item), "Layout title=\"${1}\">$0</Layout>");
-    assert_eq!(apply(&r.text, item), format!("{}function Home()\n{{\n    return <Lay\n}}\n", PAGE.replacen("\n\n", "\n\nuse function App\\Component\\Layout;\n\n", 1)));
+    assert_eq!(apply(&r.text, item), format!("{}function HomePage()\n{{\n    return <Lay\n}}\n", PAGE.replacen("\n\n", "\n\nuse function App\\Ui\\Common\\Layout;\n\n", 1)));
 }
 
 #[test]
 fn a_page_is_not_a_component_tag() {
-    assert!(run(&format!("{PAGE}function Home()\n{{\n    return <Ab|\n}}\n")).find("About").is_none());
-    let about = format!("{PAGE}use Phem\\Attribute\\Page;\n\n#[Page('/about')]\nfinal class About\n{{\n    public function render()\n    {{\n        return <p><Ab|</p>;\n    }}\n}}\n");
-    assert!(run_in(&about, "src/page/about.phpm").find("About").is_none(), "not in its own file either");
+    assert!(run(&format!("{PAGE}function HomePage()\n{{\n    return <Ab|\n}}\n")).find("AboutPage").is_none());
+    let about = format!("{PAGE}use Phem\\Attribute\\Page;\n\n#[Page('/about')]\nfinal class AboutPage\n{{\n    public function render()\n    {{\n        return <p><Ab|</p>;\n    }}\n}}\n");
+    assert!(run_in(&about, "src/Ui/About/AboutPage.phpm").find("AboutPage").is_none(), "not in its own file either");
 }
 
 #[test]
 fn a_function_without_component_is_not_a_component_tag() {
-    assert!(run(&format!("{PAGE}function Home()\n{{\n    return <Ini|\n}}\n")).find("Initials").is_none());
+    assert!(run(&format!("{PAGE}function HomePage()\n{{\n    return <Ini|\n}}\n")).find("Initials").is_none());
 }
 
 #[test]
 fn a_class_component_adds_a_use_import() {
-    let r = run(&format!("{PAGE}use function App\\Component\\Layout;\n\nfunction Home()\n{{\n    return <Layout title=\"x\"><Cou|</Layout>;\n}}\n"));
+    let r = run(&format!("{PAGE}use function App\\Ui\\Common\\Layout;\n\nfunction HomePage()\n{{\n    return <Layout title=\"x\"><Cou|</Layout>;\n}}\n"));
     let item = r.get("Counter");
     assert_eq!(snippet(item), "Counter max={{ ${1} }} />$0");
-    assert!(apply(&r.text, item).contains("namespace App\\Page;\n\nuse App\\Component\\Counter;\n\nuse function App\\Component\\Layout;\n"));
+    assert!(apply(&r.text, item).contains("namespace App\\Ui;\n\nuse App\\Ui\\Common\\Counter;\n\nuse function App\\Ui\\Common\\Layout;\n"));
 }
 
 #[test]
@@ -411,43 +411,43 @@ fn the_builtin_root_tag_adds_a_use_import() {
     assert_eq!(item.detail, "Phem\\Root");
     assert_eq!(snippet(item), "Root>$0</Root>");
     assert!(item.documentation.as_ref().unwrap().contains("root element of the page"));
-    assert!(apply(&r.text, item).contains("namespace App\\Page;\n\nuse Phem\\Root;\n"));
+    assert!(apply(&r.text, item).contains("namespace App\\Ui;\n\nuse Phem\\Root;\n"));
 }
 
 #[test]
 fn the_builtin_suspense_tag_has_its_slots() {
-    let r = run(&format!("{PAGE}function Home()\n{{\n    return <div><Sus|</div>;\n}}\n"));
+    let r = run(&format!("{PAGE}function HomePage()\n{{\n    return <div><Sus|</div>;\n}}\n"));
     let item = r.get("Suspense");
     assert_eq!(item.detail, "Phem\\Suspense");
     assert!(item.documentation.as_ref().unwrap().contains("loads after the page"));
-    assert!(apply(&r.text, item).contains("namespace App\\Page;\n\nuse Phem\\Suspense;\n"));
+    assert!(apply(&r.text, item).contains("namespace App\\Ui;\n\nuse Phem\\Suspense;\n"));
 }
 
 #[test]
 fn the_builtin_error_boundary_tag_has_its_slot() {
-    let r = run(&format!("{PAGE}function Home()\n{{\n    return <div><ErrorB|</div>;\n}}\n"));
+    let r = run(&format!("{PAGE}function HomePage()\n{{\n    return <div><ErrorB|</div>;\n}}\n"));
     let item = r.get("ErrorBoundary");
     assert_eq!(item.detail, "Phem\\ErrorBoundary");
     assert!(item.documentation.as_ref().unwrap().contains("render errors"));
-    assert!(apply(&r.text, item).contains("namespace App\\Page;\n\nuse Phem\\ErrorBoundary;\n"));
+    assert!(apply(&r.text, item).contains("namespace App\\Ui;\n\nuse Phem\\ErrorBoundary;\n"));
 }
 
 #[test]
 fn an_import_goes_into_a_group_on_one_line() {
-    let r = run(&format!("{PAGE}use function App\\Component\\{{Layout}};\n\nfunction Home()\n{{\n    return <Av|\n}}\n"));
-    assert!(apply(&r.text, r.get("Avatar")).contains("use function App\\Component\\{Layout, Avatar};"));
+    let r = run(&format!("{PAGE}use function App\\Ui\\Common\\{{Layout}};\n\nfunction HomePage()\n{{\n    return <Av|\n}}\n"));
+    assert!(apply(&r.text, r.get("Avatar")).contains("use function App\\Ui\\Common\\{Layout, Avatar};"));
 }
 
 #[test]
 fn a_component_of_the_same_namespace_needs_no_import() {
-    let r = run_in("<?phpm\nnamespace App\\Component;\n\nfunction Home()\n{\n    return <Av|\n}\n", "src/component/Home.phpm");
+    let r = run_in("<?phpm\nnamespace App\\Ui\\Common;\n\nfunction Home()\n{\n    return <Av|\n}\n", "src/Ui/Common/Home.phpm");
     assert!(r.get("Avatar").edits.is_empty());
     assert!(r.get("Avatar").sort_text.starts_with('0'));
 }
 
 #[test]
 fn a_tag_with_attributes_completes_only_the_name() {
-    let r = run(&format!("{PAGE}function Home()\n{{\n    return <Lay| title=\"x\" />;\n}}\n"));
+    let r = run(&format!("{PAGE}function HomePage()\n{{\n    return <Lay| title=\"x\" />;\n}}\n"));
     assert_eq!(snippet(r.get("Layout")), "Layout");
 }
 
@@ -459,7 +459,7 @@ fn a_comparison_is_not_a_tag() {
 
 #[test]
 fn props_slots_and_closing_tags() {
-    let src = format!("{PAGE}use function App\\Component\\Layout;\nuse App\\Component\\Counter;\n\nfunction Home()\n{{\n");
+    let src = format!("{PAGE}use function App\\Ui\\Common\\Layout;\nuse App\\Ui\\Common\\Counter;\n\nfunction HomePage()\n{{\n");
     let r = run(&format!("{src}    return <Layout |\n}}\n"));
     assert_eq!(r.sorted(), ["key", "title"]);
     assert_eq!(snippet(r.get("title")), "title=\"${1}\"");
@@ -490,20 +490,20 @@ fn use_statements_complete_namespaces_and_symbols() {
     let r = run(&format!("{PAGE}use function Acme\\|\n"));
     assert_eq!(r.labels(), ["slugify"]);
 
-    let r = run(&format!("{PAGE}use function App\\Component\\|\n"));
+    let r = run(&format!("{PAGE}use function App\\Ui\\Common\\|\n"));
     assert_eq!(r.sorted(), ["Avatar", "Initials", "Layout"], "the components and the plain functions");
 }
 
 #[test]
 fn a_class_name_adds_an_import() {
-    let r = run(&format!("{PAGE}use Phem\\Html;\n\nfunction Home()\n{{\n    $r = new TodoRe|\n}}\n"));
+    let r = run(&format!("{PAGE}use Phem\\Html;\n\nfunction HomePage()\n{{\n    $r = new TodoRe|\n}}\n"));
     let item = r.get("TodoRepository");
     assert_eq!(item.insert.as_deref(), Some("TodoRepository"));
-    assert!(apply(&r.text, item).contains("namespace App\\Page;\n\nuse App\\Repository\\TodoRepository;\nuse Phem\\Html;\n"));
+    assert!(apply(&r.text, item).contains("namespace App\\Ui;\n\nuse App\\Repository\\TodoRepository;\nuse Phem\\Html;\n"));
     assert!(r.find("HtmlTest").is_none());
     assert!(r.get("Html").edits.is_empty());
 
-    let r = run(&format!("{PAGE}function Home()\n{{\n    $s = slug|\n}}\n"));
+    let r = run(&format!("{PAGE}function HomePage()\n{{\n    $s = slug|\n}}\n"));
     assert!(apply(&r.text, r.get("slugify")).contains("use function Acme\\slugify;"));
 }
 
@@ -515,7 +515,7 @@ fn no_class_names_after_an_arrow_or_in_strings() {
 }
 
 fn home_fn(markup: &str) -> String {
-    format!("{PAGE}function Home()\n{{\n    $search = fn () => null;\n\n    return {markup};\n}}\n")
+    format!("{PAGE}function HomePage()\n{{\n    $search = fn () => null;\n\n    return {markup};\n}}\n")
 }
 
 #[test]
@@ -560,11 +560,11 @@ fn the_value_of_phem_debounce_in_twig() {
 
 // --- Completion: members and variables --------------------------------------------------------
 
-const USES: &str = "<?phpm\nnamespace App\\Page;\n\nuse App\\Model\\Scientist;\nuse App\\Model\\Status;\nuse App\\Repository\\ScientistRepository;\n\n";
+const USES: &str = "<?phpm\nnamespace App\\Ui;\n\nuse App\\Model\\Scientist;\nuse App\\Model\\Status;\nuse App\\Repository\\ScientistRepository;\n\n";
 
 #[test]
 fn an_arrow_shows_the_public_members_of_the_type_with_inheritance() {
-    let r = run(&format!("{USES}function Home(Scientist $s)\n{{\n    $s->|\n}}\n"));
+    let r = run(&format!("{USES}function HomePage(Scientist $s)\n{{\n    $s->|\n}}\n"));
     for label in ["id", "name", "profession", "likes", "status", "getFullName", "like", "age", "slug", "displayName"] {
         assert!(r.find(label).is_some(), "{label}");
     }
@@ -584,32 +584,32 @@ fn an_arrow_shows_the_public_members_of_the_type_with_inheritance() {
 
 #[test]
 fn the_type_of_a_local_variable_comes_from_its_value() {
-    let r = run(&format!("{USES}function Home(ScientistRepository $repo)\n{{\n    $s = $repo->find(1);\n    $s->|\n}}\n"));
+    let r = run(&format!("{USES}function HomePage(ScientistRepository $repo)\n{{\n    $s = $repo->find(1);\n    $s->|\n}}\n"));
     assert!(r.find("profession").is_some());
 
-    let r = run(&format!("{USES}function Home(ScientistRepository $repo)\n{{\n    foreach ($repo->all() as $s) {{\n        $s->|\n    }}\n}}\n"));
+    let r = run(&format!("{USES}function HomePage(ScientistRepository $repo)\n{{\n    foreach ($repo->all() as $s) {{\n        $s->|\n    }}\n}}\n"));
     assert!(r.find("profession").is_some(), "the @return list<Scientist> item");
 
-    let r = run(&format!("{USES}function Home()\n{{\n    $s = new Scientist('a', 'b');\n    $s->like()->|\n}}\n"));
+    let r = run(&format!("{USES}function HomePage()\n{{\n    $s = new Scientist('a', 'b');\n    $s->like()->|\n}}\n"));
     assert!(r.find("profession").is_some(), "the static return type");
 
-    let r = run(&format!("{USES}function Home(ScientistRepository $repo)\n{{\n    foreach ($repo->load([1]) as $s) {{\n        $s->|\n    }}\n}}\n"));
+    let r = run(&format!("{USES}function HomePage(ScientistRepository $repo)\n{{\n    foreach ($repo->load([1]) as $s) {{\n        $s->|\n    }}\n}}\n"));
     assert!(r.find("profession").is_some(), "a conditional return type");
 
-    let r = run(&format!("{USES}function Home()\n{{\n    /** @var Scientist $s */\n    $s = load();\n    $s?->|\n}}\n"));
+    let r = run(&format!("{USES}function HomePage()\n{{\n    /** @var Scientist $s */\n    $s = load();\n    $s?->|\n}}\n"));
     assert!(r.find("profession").is_some(), "the @var tag");
 
-    let r = run(&format!("{USES}function Home()\n{{\n    $s = Scientist::create('a');\n    $s->status->|\n}}\n"));
+    let r = run(&format!("{USES}function HomePage()\n{{\n    $s = Scientist::create('a');\n    $s->status->|\n}}\n"));
     assert!(r.find("name").is_some(), "the enum properties");
     assert!(r.find("value").is_some());
 }
 
 #[test]
 fn a_class_name_with_double_colon_shows_the_static_members_and_the_constants() {
-    let r = run(&format!("{USES}function Home()\n{{\n    Scientist::|\n}}\n"));
+    let r = run(&format!("{USES}function HomePage()\n{{\n    Scientist::|\n}}\n"));
     assert_eq!(r.sorted(), ["$count", "MAX_LIKES", "class", "create"]);
 
-    let r = run(&format!("{USES}function Home()\n{{\n    Status::|\n}}\n"));
+    let r = run(&format!("{USES}function HomePage()\n{{\n    Status::|\n}}\n"));
     let mut labels: Vec<_> = r.labels().into_iter().filter(|l| *l != "class").collect();
     labels.sort();
     assert_eq!(labels, ["Active", "Gone"]);
@@ -629,35 +629,35 @@ fn this_in_a_class_shows_all_its_members() {
 
 #[test]
 fn promoted_constructor_properties_are_members() {
-    let src = "<?phpm\nnamespace App\\Component;\n\nuse App\\Repository\\ScientistRepository;\nuse Phem\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class List1\n{\n    #[Prop] public int $limit = 3;\n    public int $page = 1;\n\n    public function __construct(private readonly ScientistRepository $repo)\n    {\n    }\n\n    public function render()\n    {\n        $this->repo->|\n    }\n}\n";
-    assert_eq!(run_in(src, "src/component/List1.phpm").sorted(), ["all", "find", "load"]);
+    let src = "<?phpm\nnamespace App\\Ui\\Common;\n\nuse App\\Repository\\ScientistRepository;\nuse Phem\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class List1\n{\n    #[Prop] public int $limit = 3;\n    public int $page = 1;\n\n    public function __construct(private readonly ScientistRepository $repo)\n    {\n    }\n\n    public function render()\n    {\n        $this->repo->|\n    }\n}\n";
+    assert_eq!(run_in(src, "src/Ui/Common/List1.phpm").sorted(), ["all", "find", "load"]);
 }
 
 #[test]
 fn a_dollar_shows_the_variables_of_the_scope() {
-    let r = run(&format!("{USES}function Home(Scientist $s, int $n = 1)\n{{\n    $total = 3;\n    echo $|\n}}\n"));
+    let r = run(&format!("{USES}function HomePage(Scientist $s, int $n = 1)\n{{\n    $total = 3;\n    echo $|\n}}\n"));
     assert_eq!(r.sorted(), ["$n", "$s", "$total"]);
     assert_eq!(r.get("$s").detail, "Scientist");
 }
 
 #[test]
 fn an_unknown_type_gives_no_members() {
-    assert!(run(&format!("{USES}function Home($x)\n{{\n    $x->|\n}}\n")).items.is_empty());
+    assert!(run(&format!("{USES}function HomePage($x)\n{{\n    $x->|\n}}\n")).items.is_empty());
 }
 
 #[test]
 fn a_private_member_of_a_trait_is_a_member_of_the_class_that_uses_it() {
     let r = run_in("<?phpm\nnamespace App\\Model;\n\nclass Writer\n{\n    use HasSlug;\n\n    public function render()\n    {\n        $this->|\n    }\n}\n", "src/Model/Writer.phpm");
     assert!(r.find("slugBase").is_some());
-    assert!(run(&format!("{USES}function Home(Scientist $s)\n{{\n    $s->|\n}}\n")).find("slugBase").is_none());
+    assert!(run(&format!("{USES}function HomePage(Scientist $s)\n{{\n    $s->|\n}}\n")).find("slugBase").is_none());
 }
 
 // --- Completion: Twig ----------------------------------------------------------------------------
 
-const TWIG_USES: &str = "<?phpm\nnamespace App\\Page;\n\nuse App\\Model\\Scientist;\nuse App\\Repository\\ScientistRepository;\n\n";
+const TWIG_USES: &str = "<?phpm\nnamespace App\\Ui;\n\nuse App\\Model\\Scientist;\nuse App\\Repository\\ScientistRepository;\n\n";
 
 fn twig_fn(body: &str, markup: &str) -> String {
-    format!("{TWIG_USES}function Home(Scientist $s, ScientistRepository $repo)\n{{\n{body}    return <div>{markup}</div>;\n}}\n")
+    format!("{TWIG_USES}function HomePage(Scientist $s, ScientistRepository $repo)\n{{\n{body}    return <div>{markup}</div>;\n}}\n")
 }
 
 #[test]
@@ -712,8 +712,8 @@ fn the_keys_of_an_array_shape() {
 
 #[test]
 fn the_properties_and_the_methods_of_a_class_component() {
-    let src = "<?phpm\nnamespace App\\Component;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfinal class Counter2\n{\n    public int $count = 0;\n    private string $label = \"x\";\n\n    public function increment(): void\n    {\n    }\n\n    public function render()\n    {\n        $double = $this->count * 2;\n\n        return <button onClick={{ |}}>{{ count }}</button>;\n    }\n}\n";
-    let r = run_in(src, "src/component/Counter2.phpm");
+    let src = "<?phpm\nnamespace App\\Ui\\Common;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfinal class Counter2\n{\n    public int $count = 0;\n    private string $label = \"x\";\n\n    public function increment(): void\n    {\n    }\n\n    public function render()\n    {\n        $double = $this->count * 2;\n\n        return <button onClick={{ |}}>{{ count }}</button>;\n    }\n}\n";
+    let r = run_in(src, "src/Ui/Common/Counter2.phpm");
     assert!(r.find("double").is_some());
     assert!(r.find("count").is_some());
     assert!(r.find("label").is_some(), "a private property works in the markup of the class");
@@ -764,26 +764,26 @@ fn no_names_for_a_new_variable() {
 fn path_shows_the_route_names() {
     let r = run(&twig_fn("", "<a href={{ path('|') }}>x</a>"));
     assert_eq!(r.get("gallery").detail, "/gallery");
-    assert_eq!(r.get("app_page_gallery_1").detail, "/scientists/{id}");
-    assert!(r.find("app_page_about").is_some());
+    assert_eq!(r.get("app_ui_gallery_gallerypage_1").detail, "/scientists/{id}");
+    assert!(r.find("app_ui_about_aboutpage").is_some());
     assert!(run(&twig_fn("", "{{ 'a|' }}")).items.is_empty());
 }
 
 #[test]
 fn an_operator_as_a_trigger_character_opens_no_list() {
-    let trig = |source: &str, c| run_with(source, "src/page/index.phpm", Some(c));
+    let trig = |source: &str, c| run_with(source, "src/Ui/HomePage.phpm", Some(c));
     assert!(trig(&twig_fn("", "{{ s.likes >|"), '>').items.is_empty());
     assert!(trig(&twig_fn("", "{{ s.likes <|"), '<').items.is_empty());
     assert!(trig(&twig_fn("", "{{ s.likes /|"), '/').items.is_empty());
     assert!(trig(&twig_fn("", "{{ s.likes %|"), '%').items.is_empty());
     assert!(trig(&twig_fn("", "{%|"), '%').find("for").is_some());
-    assert!(trig(&format!("{TWIG_USES}function Home(Scientist $s)\n{{\n    $s->|\n}}\n"), '>').find("name").is_some());
+    assert!(trig(&format!("{TWIG_USES}function HomePage(Scientist $s)\n{{\n    $s->|\n}}\n"), '>').find("name").is_some());
 }
 
 // --- Completion: HTML -----------------------------------------------------------------------------
 
 fn html_fn(markup: &str) -> String {
-    format!("{PAGE}function Home()\n{{\n    return {markup}\n}}\n")
+    format!("{PAGE}function HomePage()\n{{\n    return {markup}\n}}\n")
 }
 
 #[test]
@@ -841,13 +841,13 @@ fn at(source: &str, file: &str) -> Option<Symbol> {
 }
 
 fn at_page(source: &str) -> Symbol {
-    at(source, "src/page/index.phpm").expect("no symbol")
+    at(source, "src/Ui/HomePage.phpm").expect("no symbol")
 }
 
 /// The file and the line text from the location.
 fn target(s: &Symbol, current: &str) -> (String, String) {
     let loc = s.location.as_ref().expect("no location");
-    let text = if loc.file == root().join("src/page/index.phpm") { cursor(current).0 } else { std::fs::read_to_string(&loc.file).unwrap() };
+    let text = if loc.file == root().join("src/Ui/HomePage.phpm") { cursor(current).0 } else { std::fs::read_to_string(&loc.file).unwrap() };
     let line_end = text[loc.offset..].find('\n').map_or(text.len(), |i| loc.offset + i);
     (loc.file.strip_prefix(root()).unwrap().display().to_string(), text[loc.offset..line_end].to_string())
 }
@@ -861,10 +861,10 @@ fn hover(s: &Symbol) -> &str {
     s.hover.as_deref().unwrap()
 }
 
-const DEF_USES: &str = "<?phpm\nnamespace App\\Page;\n\nuse App\\Model\\Scientist;\nuse App\\Repository\\ScientistRepository;\n\nuse function App\\Component\\Layout;\n\n";
+const DEF_USES: &str = "<?phpm\nnamespace App\\Ui;\n\nuse App\\Model\\Scientist;\nuse App\\Repository\\ScientistRepository;\n\nuse function App\\Ui\\Common\\Layout;\n\n";
 
 fn def_fn(markup: &str, body: &str) -> String {
-    format!("{DEF_USES}function Home(Scientist $s, ScientistRepository $repo)\n{{\n{body}    return {markup};\n}}\n")
+    format!("{DEF_USES}function HomePage(Scientist $s, ScientistRepository $repo)\n{{\n{body}    return {markup};\n}}\n")
 }
 
 fn pair(file: &str, line: &str) -> (String, String) {
@@ -874,7 +874,7 @@ fn pair(file: &str, line: &str) -> (String, String) {
 #[test]
 fn a_tag_of_a_replaced_component_goes_to_the_replacement() {
     let src = |tag: &str, inner: &str| {
-        format!("{PAGE}use Phem\\Attribute\\Component;\nuse Phem\\Html;\n\n#[Component]\nfunction Plate(?Html $children = null) {{ return <div>{{{{ children }}}}</div>; }}\n\n#[Component(replaces: Plate::class)]\nfunction MyPlate(?Html $children = null) {{ return <{inner}>{{{{ children }}}}</Plate>; }}\n\nfunction Home() {{ return <{tag} />; }}\n")
+        format!("{PAGE}use Phem\\Attribute\\Component;\nuse Phem\\Html;\n\n#[Component]\nfunction Plate(?Html $children = null) {{ return <div>{{{{ children }}}}</div>; }}\n\n#[Component(replaces: Plate::class)]\nfunction MyPlate(?Html $children = null) {{ return <{inner}>{{{{ children }}}}</Plate>; }}\n\nfunction HomePage() {{ return <{tag} />; }}\n")
     };
 
     // A tag of the original: the replacement, and the hover shows both.
@@ -882,13 +882,13 @@ fn a_tag_of_a_replaced_component_goes_to_the_replacement() {
     let r = at_page(&page);
     assert_eq!(target(&r, &page).1, "MyPlate(?Html $children = null) { return <Plate>{{ children }}</Plate>; }");
     assert!(hover(&r).starts_with("```php\n#[Component]\nfunction MyPlate("), "{}", hover(&r));
-    assert!(hover(&r).contains("Replaces `App\\Page\\Plate`:\n\n```php\n#[Component]\nfunction Plate("), "{}", hover(&r));
+    assert!(hover(&r).contains("Replaces `App\\Ui\\Plate`:\n\n```php\n#[Component]\nfunction Plate("), "{}", hover(&r));
 
     // In the replacement: the tag stays the original.
     let page = src("Plate", "Pla‸te");
     let r = at_page(&page);
     assert_eq!(target(&r, &page).1, "Plate(?Html $children = null) { return <div>{{ children }}</div>; }");
-    assert!(hover(&r).contains("Replaced by `App\\Page\\MyPlate` in the other tags"), "{}", hover(&r));
+    assert!(hover(&r).contains("Replaced by `App\\Ui\\MyPlate` in the other tags"), "{}", hover(&r));
 
     // Two replacements are an error of the compiler: the tag goes to the original.
     let page = src("Pla‸te", "Plate") + "\n#[Component(replaces: Plate::class)]\nfunction OtherPlate(?Html $children = null) { return <b />; }\n";
@@ -899,13 +899,13 @@ fn a_tag_of_a_replaced_component_goes_to_the_replacement() {
 #[test]
 fn a_tag_in_a_parent_class_or_a_trait_of_a_replacement_stays_the_original() {
     let src = |base: &str, part: &str| {
-        format!("{PAGE}use Phem\\Attribute\\Component;\nuse Phem\\Node;\n\n#[Component]\nfunction Plate() {{ return <div />; }}\n\nabstract class Base\n{{\n    public function render(): Node {{ return <{base} />; }}\n}}\n\ntrait Parts\n{{\n    public function part(): Node {{ return <{part} />; }}\n}}\n\n#[Component(replaces: Plate::class)]\nfinal class MyPlate extends Base\n{{\n    use Parts;\n}}\n\nfunction Home() {{ return <Plate />; }}\n")
+        format!("{PAGE}use Phem\\Attribute\\Component;\nuse Phem\\Node;\n\n#[Component]\nfunction Plate() {{ return <div />; }}\n\nabstract class Base\n{{\n    public function render(): Node {{ return <{base} />; }}\n}}\n\ntrait Parts\n{{\n    public function part(): Node {{ return <{part} />; }}\n}}\n\n#[Component(replaces: Plate::class)]\nfinal class MyPlate extends Base\n{{\n    use Parts;\n}}\n\nfunction HomePage() {{ return <Plate />; }}\n")
     };
 
     for page in [src("Pla‸te", "Plate"), src("Plate", "Pla‸te")] {
         let r = at_page(&page);
         assert_eq!(target(&r, &page).1, "Plate() { return <div />; }", "{page}");
-        assert!(hover(&r).contains("Replaced by `App\\Page\\MyPlate` in the other tags"), "{}", hover(&r));
+        assert!(hover(&r).contains("Replaced by `App\\Ui\\MyPlate` in the other tags"), "{}", hover(&r));
     }
 }
 
@@ -922,7 +922,7 @@ fn a_replacement_that_the_compiler_refuses_changes_no_tag() {
     ];
 
     for (i, (decls, tag, line)) in cases.iter().enumerate() {
-        let page = format!("{PAGE}use Phem\\Attribute\\{{Component, Page}};\n\n{decls}\nfunction Home() {{ return <{tag} />; }}\n");
+        let page = format!("{PAGE}use Phem\\Attribute\\{{Component, Page}};\n\n{decls}\nfunction HomePage() {{ return <{tag} />; }}\n");
         let r = at_page(&page);
         assert_eq!(target(&r, &page).1, *line, "case {i}");
         assert!(!hover(&r).contains("Replaces"), "case {i}: {}", hover(&r));
@@ -932,8 +932,8 @@ fn a_replacement_that_the_compiler_refuses_changes_no_tag() {
 #[test]
 fn a_replacement_takes_a_string_or_a_class_name() {
     let plate = "#[Component]\nfunction Plate() { return <div />; }\n";
-    for arg in ["replaces: Plate::class", "Plate::class", "\\App\\Page\\Plate::class", "'App\\Page\\Plate'", "\"\\\\App\\\\Page\\\\Plate\""] {
-        let page = format!("{PAGE}use Phem\\Attribute\\Component;\n\n{plate}#[Component({arg})]\nfunction MyPlate() {{ return <b />; }}\n\nfunction Home() {{ return <Pla‸te />; }}\n");
+    for arg in ["replaces: Plate::class", "Plate::class", "\\App\\Ui\\Plate::class", "'App\\Ui\\Plate'", "\"\\\\App\\\\Ui\\\\Plate\""] {
+        let page = format!("{PAGE}use Phem\\Attribute\\Component;\n\n{plate}#[Component({arg})]\nfunction MyPlate() {{ return <b />; }}\n\nfunction HomePage() {{ return <Pla‸te />; }}\n");
         let r = at_page(&page);
         assert_eq!(target(&r, &page).1, "MyPlate() { return <b />; }", "{arg}");
     }
@@ -942,12 +942,12 @@ fn a_replacement_takes_a_string_or_a_class_name() {
 #[test]
 fn a_replacement_that_the_compiler_cannot_read_or_of_a_builtin_changes_no_tag() {
     // `self::class` is E017: the tag stays the original.
-    let page = format!("{PAGE}use Phem\\Attribute\\Component;\nuse Phem\\Node;\n\n#[Component]\nfinal class Plate {{ public function render(): Node {{ return <div />; }} }}\n\n#[Component(replaces: self::class)]\nfinal class MyPlate {{ public function render(): Node {{ return <b />; }} }}\n\nfunction Home() {{ return <Pla‸te />; }}\n");
+    let page = format!("{PAGE}use Phem\\Attribute\\Component;\nuse Phem\\Node;\n\n#[Component]\nfinal class Plate {{ public function render(): Node {{ return <div />; }} }}\n\n#[Component(replaces: self::class)]\nfinal class MyPlate {{ public function render(): Node {{ return <b />; }} }}\n\nfunction HomePage() {{ return <Pla‸te />; }}\n");
     let r = at_page(&page);
     assert!(!hover(&r).contains("Replaces"), "{}", hover(&r));
 
     // A built-in component cannot be replaced (E017).
-    let page = format!("{PAGE}use Phem\\Attribute\\Component;\nuse Phem\\Html;\nuse Phem\\Root;\n\n#[Component(replaces: Root::class)]\nfunction MyRoot(?Html $children = null, mixed ...$rest) {{ return <b />; }}\n\nfunction Home() {{ return <Ro‸ot />; }}\n");
+    let page = format!("{PAGE}use Phem\\Attribute\\Component;\nuse Phem\\Html;\nuse Phem\\Root;\n\n#[Component(replaces: Root::class)]\nfunction MyRoot(?Html $children = null, mixed ...$rest) {{ return <b />; }}\n\nfunction HomePage() {{ return <Ro‸ot />; }}\n");
     let r = at_page(&page);
     assert!(r.location.is_none() && !hover(&r).contains("Replaces"), "{}", hover(&r));
 }
@@ -955,31 +955,31 @@ fn a_replacement_that_the_compiler_cannot_read_or_of_a_builtin_changes_no_tag() 
 #[test]
 fn a_prop_or_a_slot_of_a_replaced_tag_goes_to_the_replacement() {
     let src = |signature: &str, tag: &str| {
-        format!("{PAGE}use Phem\\Attribute\\Component;\nuse Phem\\Html;\n\n#[Component]\nfunction Plate(string $title = '', ?Html $children = null, ?Html $footer = null) {{ return <div />; }}\n\n#[Component(replaces: Plate::class)]\nfunction MyPlate({signature}) {{ return <b />; }}\n\nfunction Home() {{ return {tag}; }}\n")
+        format!("{PAGE}use Phem\\Attribute\\Component;\nuse Phem\\Html;\n\n#[Component]\nfunction Plate(string $title = '', ?Html $children = null, ?Html $footer = null) {{ return <div />; }}\n\n#[Component(replaces: Plate::class)]\nfunction MyPlate({signature}) {{ return <b />; }}\n\nfunction HomePage() {{ return {tag}; }}\n")
     };
     let own = "string $title = '', ?Html $children = null, ?Html $footer = null";
     let page = src(own, "<Plate ti‸tle=\"x\" />");
     let r = at_page(&page);
     assert_eq!(target(&r, &page).1, "$title = '', ?Html $children = null, ?Html $footer = null) { return <b />; }");
-    assert!(hover(&r).contains("Prop of `App\\Page\\MyPlate`, the replacement of `App\\Page\\Plate`"), "{}", hover(&r));
+    assert!(hover(&r).contains("Prop of `App\\Ui\\MyPlate`, the replacement of `App\\Ui\\Plate`"), "{}", hover(&r));
 
     let page = src(own, "<Plate><Plate:foo‸ter>x</Plate:footer></Plate>");
     let r = at_page(&page);
     assert_eq!(target(&r, &page).1, "$footer = null) { return <b />; }");
-    assert!(hover(&r).contains("Slot of `App\\Page\\MyPlate`, the replacement of `App\\Page\\Plate`"), "{}", hover(&r));
+    assert!(hover(&r).contains("Slot of `App\\Ui\\MyPlate`, the replacement of `App\\Ui\\Plate`"), "{}", hover(&r));
 
     // The replacement takes the prop in its rest prop: the prop of the original.
     let page = src("?Html $children = null, ?Html $footer = null, mixed ...$rest", "<Plate ti‸tle=\"x\" />");
     let r = at_page(&page);
     assert_eq!(target(&r, &page).1, "$title = '', ?Html $children = null, ?Html $footer = null) { return <div />; }");
-    assert!(hover(&r).contains("Prop of `App\\Page\\Plate`") && !hover(&r).contains("the replacement"), "{}", hover(&r));
+    assert!(hover(&r).contains("Prop of `App\\Ui\\Plate`") && !hover(&r).contains("the replacement"), "{}", hover(&r));
 }
 
 #[test]
 fn a_component_tag_goes_to_the_component() {
     let src = def_fn("<Lay‸out title=\"x\"></Layout>", "");
     let r = at_page(&src);
-    let layout = pair("src/component/Layout.phpm", "Layout(string $title, ?Html $children = null, ?Html $footer = null)");
+    let layout = pair("src/Ui/Common/Layout.phpm", "Layout(string $title, ?Html $children = null, ?Html $footer = null)");
     assert_eq!(target(&r, &src), layout);
     assert!(hover(&r).contains("function Layout(string $title"));
 
@@ -987,7 +987,7 @@ fn a_component_tag_goes_to_the_component() {
     assert_eq!(target(&at_page(&src), &src), layout);
 
     let src = def_fn("<Layout title=\"x\"><Layout:foo‸ter>a</Layout:footer></Layout>", "");
-    assert_eq!(target(&at_page(&src), &src), pair("src/component/Layout.phpm", "$footer = null)"));
+    assert_eq!(target(&at_page(&src), &src), pair("src/Ui/Common/Layout.phpm", "$footer = null)"));
 }
 
 #[test]
@@ -996,7 +996,7 @@ fn the_builtin_dynamic_tag_needs_its_tag() {
     let item = r.get("Dynamic");
     assert_eq!(item.detail, "Phem\\Dynamic");
     assert!(item.documentation.as_ref().unwrap().contains("tag name is a value"));
-    assert!(apply(&r.text, item).contains("namespace App\\Page;\n\nuse Phem\\Dynamic;\n"));
+    assert!(apply(&r.text, item).contains("namespace App\\Ui;\n\nuse Phem\\Dynamic;\n"));
 }
 
 #[test]
@@ -1017,11 +1017,11 @@ fn the_builtin_root_tag_has_a_hover_and_no_location() {
 #[test]
 fn a_prop_goes_to_the_parameter_or_the_property() {
     let src = def_fn("<Layout ti‸tle=\"x\" />", "");
-    assert_eq!(target(&at_page(&src), &src), pair("src/component/Layout.phpm", "$title, ?Html $children = null, ?Html $footer = null)"));
+    assert_eq!(target(&at_page(&src), &src), pair("src/Ui/Common/Layout.phpm", "$title, ?Html $children = null, ?Html $footer = null)"));
 
-    let src = format!("{DEF_USES}use App\\Component\\Counter;\n\nfunction Home()\n{{\n    return <Counter ma‸x={{{{ 3 }}}} />;\n}}\n");
+    let src = format!("{DEF_USES}use App\\Ui\\Common\\Counter;\n\nfunction HomePage()\n{{\n    return <Counter ma‸x={{{{ 3 }}}} />;\n}}\n");
     let r = at_page(&src);
-    assert_eq!(target(&r, &src), pair("src/component/Counter.phpm", "$max;"));
+    assert_eq!(target(&r, &src), pair("src/Ui/Common/Counter.phpm", "$max;"));
     assert!(hover(&r).contains("int $max"));
     assert!(hover(&r).contains("required"));
 }
@@ -1030,7 +1030,7 @@ fn a_prop_goes_to_the_parameter_or_the_property() {
 fn a_twig_variable_goes_to_its_php_declaration() {
     let src = def_fn("<p>{{ s‸.name }}</p>", "");
     let r = at_page(&src);
-    assert_eq!(r.location.as_ref().unwrap().file, root().join("src/page/index.phpm"));
+    assert_eq!(r.location.as_ref().unwrap().file, root().join("src/Ui/HomePage.phpm"));
     assert!(hover(&r).contains("Scientist $s"));
 
     let src = def_fn("<p>{{ s.prof‸ession }}</p>", "");
@@ -1050,8 +1050,8 @@ fn a_twig_variable_goes_to_its_php_declaration() {
 
 #[test]
 fn a_handler_goes_to_the_method() {
-    let src = "<?phpm\nnamespace App\\Component;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfinal class Counter3\n{\n    public function increment(): void\n    {\n    }\n\n    public function render()\n    {\n        return <button onClick={{ incre‸ment }}>+</button>;\n    }\n}\n";
-    let r = at(src, "src/component/Counter3.phpm").unwrap();
+    let src = "<?phpm\nnamespace App\\Ui\\Common;\n\nuse Phem\\Attribute\\Component;\n\n#[Component]\nfinal class Counter3\n{\n    public function increment(): void\n    {\n    }\n\n    public function render()\n    {\n        return <button onClick={{ incre‸ment }}>+</button>;\n    }\n}\n";
+    let r = at(src, "src/Ui/Common/Counter3.phpm").unwrap();
     assert_eq!(line_of(&r, src), 8);
     assert!(hover(&r).contains("public function increment(): void"));
 }
@@ -1081,10 +1081,10 @@ fn php_names_classes_members_functions_and_variables() {
     let src = def_fn("<p />", "    $x = 1;\n    echo $‸x;\n");
     assert_eq!(line_of(&at_page(&src), &src), 10);
 
-    let src = "<?phpm\nnamespace App\\Page;\n\nuse App\\Model\\Scien‸tist;\n";
+    let src = "<?phpm\nnamespace App\\Ui;\n\nuse App\\Model\\Scien‸tist;\n";
     assert_eq!(target(&at_page(src), src), pair("src/Model/Scientist.php", "Scientist extends Person"));
 
-    let src = "<?phpm\nnamespace App\\Page;\n\nuse function Acme\\slugify;\n\n$a = slug‸ify(\"x\");\n";
+    let src = "<?phpm\nnamespace App\\Ui;\n\nuse function Acme\\slugify;\n\n$a = slug‸ify(\"x\");\n";
     assert_eq!(target(&at_page(src), src), pair("vendor/acme/lib/functions.php", "slugify(string $s): string { return $s; }"));
 }
 
@@ -1105,7 +1105,7 @@ fn hover_for_twig_filters_functions_tests_tags_and_html() {
 fn a_route_name_goes_to_the_page() {
     let src = def_fn("<a href={{ path('gall‸ery') }}>x</a>", "");
     let r = at_page(&src);
-    assert_eq!(target(&r, &src), pair("src/page/gallery.phpm", "Gallery"));
+    assert_eq!(target(&r, &src), pair("src/Ui/Gallery/GalleryPage.phpm", "GalleryPage"));
     assert!(hover(&r).contains("/gallery"));
 }
 
@@ -1136,7 +1136,7 @@ fn package_project(vendor_dir: &str) -> PathBuf {
 /// The completion items at the cursor of `source`, in the page of the project.
 fn complete_in(project: &Project, source: &str) -> Vec<Item> {
     let (text, offset) = cursor(source);
-    let index = Index::new(project, Source::new(project.root.join("src/page/index.phpm"), text));
+    let index = Index::new(project, Source::new(project.root.join("src/Ui/HomePage.phpm"), text));
 
     complete(&index, offset, None)
 }
@@ -1149,8 +1149,8 @@ fn a_replacement_in_a_package_changes_no_tag() {
     std::fs::write(dir.join("vendor/acme/ui/components/Chip.phpm"), chip).unwrap();
     let project = Project::load(&dir);
 
-    let (text, offset) = cursor(&format!("{PAGE}use function Acme\\Ui\\Badge;\n\nfunction Home()\n{{\n    return <Ba‸dge label=\"x\" />;\n}}\n"));
-    let symbol = symbol_at(&Index::new(&project, Source::new(dir.join("src/page/index.phpm"), text)), offset).expect("no symbol");
+    let (text, offset) = cursor(&format!("{PAGE}use function Acme\\Ui\\Badge;\n\nfunction HomePage()\n{{\n    return <Ba‸dge label=\"x\" />;\n}}\n"));
+    let symbol = symbol_at(&Index::new(&project, Source::new(dir.join("src/Ui/HomePage.phpm"), text)), offset).expect("no symbol");
     assert_eq!(symbol.location.expect("no location").file, dir.join("vendor/acme/ui/components/Badge.phpm"));
     assert!(!symbol.hover.unwrap().contains("Replace"));
 
@@ -1163,19 +1163,19 @@ fn a_component_of_an_installed_package_completes_and_goes_to_its_file() {
     let badge = dir.join("deps/acme/ui/components/Badge.phpm");
     let mut project = Project::load(&dir);
 
-    let source = format!("{PAGE}function Home()\n{{\n    return <Bad|\n}}\n");
+    let source = format!("{PAGE}function HomePage()\n{{\n    return <Bad|\n}}\n");
     let items = complete_in(&project, &source);
     let item = items.iter().find(|i| i.label == "Badge").expect("no item `Badge`");
     assert!(apply(&cursor(&source).0, item).contains("use function Acme\\Ui\\Badge;"));
 
-    let (text, offset) = cursor(&format!("{PAGE}use function Acme\\Ui\\Badge;\n\nfunction Home()\n{{\n    return <Ba‸dge label=\"x\" />;\n}}\n"));
-    let symbol = symbol_at(&Index::new(&project, Source::new(dir.join("src/page/index.phpm"), text)), offset).expect("no symbol");
+    let (text, offset) = cursor(&format!("{PAGE}use function Acme\\Ui\\Badge;\n\nfunction HomePage()\n{{\n    return <Ba‸dge label=\"x\" />;\n}}\n"));
+    let symbol = symbol_at(&Index::new(&project, Source::new(dir.join("src/Ui/HomePage.phpm"), text)), offset).expect("no symbol");
     assert_eq!(symbol.location.expect("no location").file, badge);
 
     // The package file changes on disk: the index of the project reads it again.
     std::fs::write(&badge, BADGE.replace("Badge", "Chip")).unwrap();
     project.package_changed(&badge, None);
-    let items = complete_in(&project, &format!("{PAGE}function Home()\n{{\n    return <C|\n}}\n"));
+    let items = complete_in(&project, &format!("{PAGE}function HomePage()\n{{\n    return <C|\n}}\n"));
     assert!(items.iter().any(|i| i.label == "Chip") && !items.iter().any(|i| i.label == "Badge"));
 
     // The project that installs the package comes from its vendor dir.
@@ -1199,7 +1199,7 @@ fn a_component_of_a_linked_package_has_its_real_path() {
 
     // The open document at the real path replaces the file.
     project.package_changed(&real, Some(&BADGE.replace("Badge", "Chip")));
-    let items = complete_in(&project, &format!("{PAGE}function Home()\n{{\n    return <C|\n}}\n"));
+    let items = complete_in(&project, &format!("{PAGE}function HomePage()\n{{\n    return <C|\n}}\n"));
     assert!(items.iter().any(|i| i.label == "Chip") && !items.iter().any(|i| i.label == "Badge"));
 
     std::fs::remove_dir_all(dir).unwrap();
@@ -1242,13 +1242,13 @@ fn no_panic_at_any_offset() {
 // --- References ----------------------------------------------------------------------------------
 
 const USER: &str = r"<?phpm
-namespace App\Page;
+namespace App\Ui;
 
 use Phem\Attribute\{Component, Page, State};
-use function App\Component\{Layout, Avatar, Initials};
+use function App\Ui\Common\{Layout, Avatar, Initials};
 
 #[Page('/team')]
-final class Team
+final class TeamPage
 {
     #[State] public int $count = 0;
 
@@ -1279,7 +1279,7 @@ final class Team
 
 /// The project with the `USER` page, and its usages.
 fn with_usages<T>(f: impl FnOnce(&Usages, &Path) -> T) -> T {
-    let file = root().join("src/page/team.phpm");
+    let file = root().join("src/Ui/TeamPage.phpm");
     let mut project = Project::load(root());
     project.update_phpm(&file, Some(USER));
 
@@ -1309,25 +1309,25 @@ fn references_of(file: &str, needle: &str) -> Vec<String> {
 #[test]
 fn the_references_of_a_function_component_are_its_tags() {
     // No import, no closing tag, and no slot tag.
-    assert_eq!(references_of("src/component/Layout.phpm", "Layout("), ["src/page/team.phpm:27:Layout"]);
-    assert_eq!(references_of("src/component/Layout.phpm", "Avatar("), ["src/page/team.phpm:28:Avatar", "src/page/team.phpm:30:Avatar"]);
+    assert_eq!(references_of("src/Ui/Common/Layout.phpm", "Layout("), ["src/Ui/TeamPage.phpm:27:Layout"]);
+    assert_eq!(references_of("src/Ui/Common/Layout.phpm", "Avatar("), ["src/Ui/TeamPage.phpm:28:Avatar", "src/Ui/TeamPage.phpm:30:Avatar"]);
 }
 
 #[test]
 fn the_references_of_a_tag_are_the_references_of_its_component() {
-    assert_eq!(references_of("src/page/team.phpm", "Avatar name=y"), ["src/page/team.phpm:28:Avatar", "src/page/team.phpm:30:Avatar"]);
+    assert_eq!(references_of("src/Ui/TeamPage.phpm", "Avatar name=y"), ["src/Ui/TeamPage.phpm:28:Avatar", "src/Ui/TeamPage.phpm:30:Avatar"]);
 }
 
 #[test]
 fn the_references_of_a_plain_function_are_its_calls() {
-    assert_eq!(references_of("src/component/Layout.phpm", "Initials("), ["src/page/team.phpm:24:Initials"]);
+    assert_eq!(references_of("src/Ui/Common/Layout.phpm", "Initials("), ["src/Ui/TeamPage.phpm:24:Initials"]);
 }
 
 #[test]
 fn the_references_of_a_method_are_its_calls_and_its_handlers() {
-    assert_eq!(references_of("src/page/team.phpm", "increment(): void"), ["src/page/team.phpm:19:increment", "src/page/team.phpm:29:increment"]);
-    assert_eq!(references_of("src/page/team.phpm", "increment();"), ["src/page/team.phpm:19:increment", "src/page/team.phpm:29:increment"]);
-    assert!(references_of("src/page/team.phpm", "reset").is_empty());
+    assert_eq!(references_of("src/Ui/TeamPage.phpm", "increment(): void"), ["src/Ui/TeamPage.phpm:19:increment", "src/Ui/TeamPage.phpm:29:increment"]);
+    assert_eq!(references_of("src/Ui/TeamPage.phpm", "increment();"), ["src/Ui/TeamPage.phpm:19:increment", "src/Ui/TeamPage.phpm:29:increment"]);
+    assert!(references_of("src/Ui/TeamPage.phpm", "reset").is_empty());
 }
 
 #[test]
@@ -1337,7 +1337,7 @@ fn a_page_render_and_magic_methods_get_no_usage_count() {
         let names: Vec<_> = counted(&index.current.parsed, team).into_iter().map(|d| d.name).collect();
         assert_eq!(names, ["increment", "reset"]);
 
-        let counter = root().join("src/component/Counter.phpm");
+        let counter = root().join("src/Ui/Common/Counter.phpm");
         let index = usages.index(&counter).unwrap();
         let names: Vec<_> = counted(&index.current.parsed, &counter).into_iter().map(|d| d.name).collect();
         assert_eq!(names, ["Counter"]);

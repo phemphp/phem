@@ -1390,14 +1390,14 @@ mod tests {
 
     #[test]
     fn promoted_properties_and_properties_without_prop_are_not_props() {
-        let src = "<?phpm\nnamespace App\\Component;\n\nuse Phem\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class List1\n{\n    #[Prop] public int $limit = 3;\n    public int $page = 1;\n\n    public function __construct(private readonly ScientistRepository $repo)\n    {\n    }\n}\n";
+        let src = "<?phpm\nnamespace App\\Ui\\Common;\n\nuse Phem\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class List1\n{\n    #[Prop] public int $limit = 3;\n    public int $page = 1;\n\n    public function __construct(private readonly ScientistRepository $repo)\n    {\n    }\n}\n";
         let parsed = parse(src);
         assert_eq!(parsed.components[0].props.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(), ["limit"]);
     }
 
     #[test]
     fn context_parameters_and_properties_are_not_props() {
-        let src = "<?phpm\nnamespace App\\Component;\n\nuse Phem\\Attribute\\{Component, Context, Prop};\n\n#[Component]\nfunction Tab(string $name, #[Context] Tabs $tabs, #[Context] ?Theme $theme = null) { return <p />; }\n\n#[Component]\nfinal class Panel\n{\n    #[Prop] public string $name;\n    #[Context] public Tabs $tabs;\n}\n";
+        let src = "<?phpm\nnamespace App\\Ui\\Common;\n\nuse Phem\\Attribute\\{Component, Context, Prop};\n\n#[Component]\nfunction Tab(string $name, #[Context] Tabs $tabs, #[Context] ?Theme $theme = null) { return <p />; }\n\n#[Component]\nfinal class Panel\n{\n    #[Prop] public string $name;\n    #[Context] public Tabs $tabs;\n}\n";
         let parsed = parse(src);
         for comp in &parsed.components {
             assert_eq!(comp.props.iter().map(|p| (p.name.as_str(), p.required)).collect::<Vec<_>>(), [("name", true)], "{}", comp.name);
@@ -1406,7 +1406,7 @@ mod tests {
 
     #[test]
     fn the_rest_prop_of_a_class_component_is_not_a_named_prop() {
-        let src = "<?phpm\nnamespace App\\Component;\n\nuse Phem\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class Link\n{\n    #[Prop] public string $label = '';\n    #[Prop(rest: true)] public array $attrs = [];\n    #[Prop(rest: false)] public string $title = '';\n\n    public function render()\n    {\n        return <a {{ ...attrs }}>{{ label }}</a>;\n    }\n}\n";
+        let src = "<?phpm\nnamespace App\\Ui\\Common;\n\nuse Phem\\Attribute\\{Component, Prop};\n\n#[Component]\nfinal class Link\n{\n    #[Prop] public string $label = '';\n    #[Prop(rest: true)] public array $attrs = [];\n    #[Prop(rest: false)] public string $title = '';\n\n    public function render()\n    {\n        return <a {{ ...attrs }}>{{ label }}</a>;\n    }\n}\n";
         let link = &parse(src).components[0];
         assert_eq!(link.props.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(), ["label", "title"]);
         assert!(link.rest);
@@ -1415,7 +1415,7 @@ mod tests {
 
     #[test]
     fn a_page_class_is_a_component() {
-        let src = "<?phpm\nnamespace App\\Page;\n\n#[Page('/home')]\nfinal class Home {}\n\n#[Route('/plain')]\nfinal class Plain {}\n\n#[Page('/function')]\n#[Component]\nfunction Fn() { return <p />; }\n\n#[Page('/bare')]\nfunction Bare() { return <p />; }\n\n#[Route('/routed')]\n#[Component]\nfunction Routed() { return <p />; }\n";
+        let src = "<?phpm\nnamespace App\\Ui;\n\n#[Page('/home')]\nfinal class Home {}\n\n#[Route('/plain')]\nfinal class Plain {}\n\n#[Page('/function')]\n#[Component]\nfunction Fn() { return <p />; }\n\n#[Page('/bare')]\nfunction Bare() { return <p />; }\n\n#[Route('/routed')]\n#[Component]\nfunction Routed() { return <p />; }\n";
         let parsed = parse(src);
         let find = |name: &str| parsed.components.iter().find(|c| c.name == name);
         assert!(find("Home").unwrap().page);

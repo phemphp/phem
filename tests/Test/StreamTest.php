@@ -31,7 +31,7 @@ use PHPUnit\Framework\AssertionFailedError;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Twig\Error\RuntimeError;
 
-/** The pushes of Phem\Stream\Streams to the pages with #[Broadcast] (tests/Fixtures/app/src/page/push.phpm). */
+/** The pushes of Phem\Stream\Streams to the pages with #[Broadcast] (tests/Fixtures/app/src/Ui/Push/GuestbookPage.phpm). */
 final class StreamTest extends KernelTestCase
 {
     use InteractsWithPhem;
@@ -49,7 +49,7 @@ final class StreamTest extends KernelTestCase
         $topics = static::getContainer()->get('phem.topics');
         \assert($topics instanceof Topics);
 
-        self::assertSame('/.well-known/mercure?match='.implode('&match=', array_map(rawurlencode(...), $topics->ofPage('App\Page\GuestbookPage', ['room' => 'lobby']))), $source);
+        self::assertSame('/.well-known/mercure?match='.implode('&match=', array_map(rawurlencode(...), $topics->ofPage('App\Ui\Push\GuestbookPage', ['room' => 'lobby']))), $source);
         // An HMAC of the names: no class name and no route value.
         self::assertStringNotContainsString('Guestbook', (string) $source);
         self::assertStringNotContainsString('lobby', (string) $source);
@@ -80,7 +80,7 @@ final class StreamTest extends KernelTestCase
         \assert($topics instanceof Topics);
 
         // Only the topic of the component: the page has no #[Broadcast].
-        self::assertSame('/.well-known/mercure?match='.rawurlencode($topics->toComponent('App\Page\GuestbookInbox')), $source);
+        self::assertSame('/.well-known/mercure?match='.rawurlencode($topics->toComponent('App\Ui\Push\GuestbookInbox')), $source);
     }
 
     public function testAnEventKeepsTheComponentsWithBroadcast(): void
@@ -232,7 +232,7 @@ final class StreamTest extends KernelTestCase
     public function testAPageWithNoBroadcastGetsNoStreams(): void
     {
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('The streams go to the pages with #[Broadcast], but "App\Page\NotifyPage" has no #[Phem\Attribute\Broadcast] attribute.');
+        $this->expectExceptionMessage('The streams go to the pages with #[Broadcast], but "App\Ui\Notify\NotifyPage" has no #[Phem\Attribute\Broadcast] attribute.');
 
         $this->visit('/guestbook/lobby')->click('#elsewhere');
     }
@@ -247,7 +247,7 @@ final class StreamTest extends KernelTestCase
         $topics = static::getContainer()->get('phem.topics');
         \assert($topics instanceof Topics);
 
-        self::assertSame([$topics->toPage('App\Page\GuestbookPage', ['room' => 'lobby'])], $update['topics']);
+        self::assertSame([$topics->toPage('App\Ui\Push\GuestbookPage', ['room' => 'lobby'])], $update['topics']);
         self::assertFalse($update['private']);
         // The refresh of an event has its token (see SenderToken).
         self::assertMatchesRegularExpression('#^<turbo-stream action="prepend" target="entries"><template><li id="entry-1">Hi</li></template></turbo-stream><turbo-stream action="phem-refresh" target="stats" data-phem-sender="[0-9a-f]{24}"></turbo-stream>$#', $update['data']);
@@ -260,9 +260,9 @@ final class StreamTest extends KernelTestCase
         \assert($keys instanceof BroadcastKeys);
 
         $component = $page->document()->getElementById('likes-lobby')?->closest('[data-phem-c]');
-        $all = $keys->ofComponent('App\Page\GuestbookLikes');
+        $all = $keys->ofComponent('App\Ui\Push\GuestbookLikes');
 
-        self::assertSame($all.' '.$keys->ofInstance('App\Page\GuestbookLikes', ['room' => 'lobby']), $component?->getAttribute(BroadcastKeys::ATTRIBUTE));
+        self::assertSame($all.' '.$keys->ofInstance('App\Ui\Push\GuestbookLikes', ['room' => 'lobby']), $component?->getAttribute(BroadcastKeys::ATTRIBUTE));
         // An HMAC of the names: no class name and no value.
         self::assertStringNotContainsString('lobby', $all);
     }
@@ -279,8 +279,8 @@ final class StreamTest extends KernelTestCase
         \assert($keys instanceof BroadcastKeys);
         [$update] = $this->updates();
 
-        self::assertSame([$topics->toComponent('App\Page\GuestbookLikes')], $update['topics']);
-        self::assertMatchesRegularExpression('#^<turbo-stream action="phem-refresh" targets="\[data-phem-broadcast~=&quot;'.preg_quote($keys->ofInstance('App\Page\GuestbookLikes', ['room' => 'lobby']), '#').'&quot;\]" data-phem-sender="[0-9a-f]{24}"></turbo-stream>$#', $update['data']);
+        self::assertSame([$topics->toComponent('App\Ui\Push\GuestbookLikes')], $update['topics']);
+        self::assertMatchesRegularExpression('#^<turbo-stream action="phem-refresh" targets="\[data-phem-broadcast~=&quot;'.preg_quote($keys->ofInstance('App\Ui\Push\GuestbookLikes', ['room' => 'lobby']), '#').'&quot;\]" data-phem-sender="[0-9a-f]{24}"></turbo-stream>$#', $update['data']);
 
         // Only the instance of the lobby renders again: the other keeps its state.
         $other->assertSee('0 likes in lobby')
@@ -330,8 +330,8 @@ final class StreamTest extends KernelTestCase
         \assert($keys instanceof BroadcastKeys);
         [$update] = $this->updates();
 
-        self::assertSame([$topics->toComponent('App\Page\GuestbookInbox')], $update['topics']);
-        self::assertStringContainsString('targets="[data-phem-broadcast~=&quot;'.$keys->ofComponent('App\Page\GuestbookInbox').'&quot;]"', $update['data']);
+        self::assertSame([$topics->toComponent('App\Ui\Push\GuestbookInbox')], $update['topics']);
+        self::assertStringContainsString('targets="[data-phem-broadcast~=&quot;'.$keys->ofComponent('App\Ui\Push\GuestbookInbox').'&quot;]"', $update['data']);
 
         // The other tab renders it again, with its own state.
         $other->receive()->assertSee('0 in the inbox')->assertDontSee('open');
@@ -373,7 +373,7 @@ final class StreamTest extends KernelTestCase
     {
         $streams = static::getContainer()->get('phem.streams');
         \assert($streams instanceof Streams);
-        $streams->toPage('App\Page\GuestbookPage')->remove('');
+        $streams->toPage('App\Ui\Push\GuestbookPage')->remove('');
         $streams->flush();
         [$update] = $this->updates();
 
@@ -388,7 +388,7 @@ final class StreamTest extends KernelTestCase
 
         $streams = static::getContainer()->get('phem.streams');
         \assert($streams instanceof Streams);
-        $streams->toPage('App\Page\GuestbookPage')->refresh('');
+        $streams->toPage('App\Ui\Push\GuestbookPage')->refresh('');
     }
 
     public function testTheStreamsRefreshTheInstancesOfAKey(): void
@@ -401,7 +401,7 @@ final class StreamTest extends KernelTestCase
 
         $guestbook->add('lobby', 'Like');
         $guestbook->add('hall', 'Like');
-        $streams->toComponent('App\Page\GuestbookLikes', ['room' => 'hall'])->refresh();
+        $streams->toComponent('App\Ui\Push\GuestbookLikes', ['room' => 'hall'])->refresh();
         $streams->flush();
 
         $other->receive()
@@ -419,7 +419,7 @@ final class StreamTest extends KernelTestCase
 
         $guestbook->add('lobby', 'Like');
         $guestbook->add('hall', 'Like');
-        $streams->toComponent('App\Page\GuestbookLikes')->refresh();
+        $streams->toComponent('App\Ui\Push\GuestbookLikes')->refresh();
         $streams->flush();
 
         $other->receive()
@@ -449,7 +449,7 @@ final class StreamTest extends KernelTestCase
         \assert($keys instanceof BroadcastKeys);
 
         // The element of each instance has the key of its room.
-        $hallKey = $keys->ofInstance('App\Page\GuestbookMine', ['room' => 'hall']);
+        $hallKey = $keys->ofInstance('App\Ui\Push\GuestbookMine', ['room' => 'hall']);
         self::assertStringContainsString($hallKey, $hall->html());
         self::assertStringNotContainsString($hallKey, $lobby->html());
 
@@ -458,7 +458,7 @@ final class StreamTest extends KernelTestCase
         \assert($guestbook instanceof Guestbook && $streams instanceof Streams);
         $guestbook->add('hall', 'Hi');
         $guestbook->add('lobby', 'Hi');
-        $streams->toComponent('App\Page\GuestbookMine', ['room' => 'hall'])->refresh();
+        $streams->toComponent('App\Ui\Push\GuestbookMine', ['room' => 'hall'])->refresh();
         $streams->flush();
 
         $hall->receive()->assertSee('1 in my room');
@@ -503,7 +503,7 @@ final class StreamTest extends KernelTestCase
 
         // The page connects to the hub for the topic of the component.
         $source = $page->document()->querySelector('[data-phem-stream-value]')?->getAttribute('data-phem-stream-value');
-        self::assertSame('/.well-known/mercure?match='.rawurlencode($topics->toComponent('App\Page\GuestbookBag')), $source);
+        self::assertSame('/.well-known/mercure?match='.rawurlencode($topics->toComponent('App\Ui\Push\GuestbookBag')), $source);
 
         $guestbook = static::getContainer()->get(Guestbook::class);
         \assert($guestbook instanceof Guestbook);
@@ -512,7 +512,7 @@ final class StreamTest extends KernelTestCase
 
         $guestbook->add('lobby', 'Item');
         $guestbook->add('hall', 'Item');
-        $streams->toComponent('App\Page\GuestbookBag', ['room' => 'hall'])->refresh();
+        $streams->toComponent('App\Ui\Push\GuestbookBag', ['room' => 'hall'])->refresh();
         $streams->flush();
 
         $page->receive()
@@ -552,7 +552,7 @@ final class StreamTest extends KernelTestCase
 
     public function testTheStreamsOfAComponentRefreshItsReplacement(): void
     {
-        // src/component/Tally.phpm replaces the Tally of acme/ui, with no #[Broadcast] of its own.
+        // src/Ui/Common/Tally.phpm replaces the Tally of acme/ui, with no #[Broadcast] of its own.
         $other = $this->visit('/replaced/tally')
             ->assertSelectorTextContains('#tally-lobby', '0 in lobby')
             ->assertSelectorTextContains('#tally-hall', '0 in hall');
@@ -574,21 +574,21 @@ final class StreamTest extends KernelTestCase
     public function testTheKeyOfARefreshHasTheKeyPropsOfTheComponent(): void
     {
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('The key of the component "App\Page\GuestbookLikes" has no prop "id": give the values of its key props ("room").');
+        $this->expectExceptionMessage('The key of the component "App\Ui\Push\GuestbookLikes" has no prop "id": give the values of its key props ("room").');
 
         $streams = static::getContainer()->get('phem.streams');
         \assert($streams instanceof Streams);
-        $streams->toComponent('App\Page\GuestbookLikes', ['id' => 1]);
+        $streams->toComponent('App\Ui\Push\GuestbookLikes', ['id' => 1]);
     }
 
     public function testAComponentWithNoKeyGetsNoValuesOfAKey(): void
     {
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('The component "App\Page\GuestbookInbox" has no #[BroadcastKey]: give no values');
+        $this->expectExceptionMessage('The component "App\Ui\Push\GuestbookInbox" has no #[BroadcastKey]: give no values');
 
         $streams = static::getContainer()->get('phem.streams');
         \assert($streams instanceof Streams);
-        $streams->toComponent('App\Page\GuestbookInbox', ['room' => 'lobby']);
+        $streams->toComponent('App\Ui\Push\GuestbookInbox', ['room' => 'lobby']);
     }
 
     public function testAHandlerWithBroadcastIsAHandlerOfAComponent(): void
@@ -631,7 +631,7 @@ final class StreamTest extends KernelTestCase
         \assert($guestbook instanceof Guestbook && $streams instanceof Streams);
 
         $guestbook->close($room);
-        $streams->toPage('App\Page\RoomPage', ['room' => $room])->refresh();
+        $streams->toPage('App\Ui\Push\RoomPage', ['room' => $room])->refresh();
         $streams->flush();
     }
 

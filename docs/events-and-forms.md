@@ -166,7 +166,7 @@ public function delete(): RedirectTo
 {
     $this->scientists->remove($this->scientist);
 
-    return new RedirectTo(ScientistList::class, ['page' => 2]);
+    return new RedirectTo(ScientistsPage::class, ['page' => 2]);
 }
 ```
 

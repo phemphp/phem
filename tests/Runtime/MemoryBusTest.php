@@ -45,6 +45,6 @@ final class MemoryBusTest extends TestCase
 
     private static function message(): AsyncHandlerMessage
     {
-        return new AsyncHandlerMessage('App\\Page', 'https://localhost/', [], '{}', [], 'phem0123456789ab.export', [], null);
+        return new AsyncHandlerMessage('App\\Ui\\HomePage', 'https://localhost/', [], '{}', [], 'phem0123456789ab.export', [], null);
     }
 }

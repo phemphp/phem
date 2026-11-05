@@ -23,9 +23,9 @@ use Symfony\Contracts\Service\ResetInterface;
  *
  * - `phem:<page>`: all the URLs of the page;
  * - `phem:<page>?<route values>`: the URL of the page with these route values
- *   (`phem:App\Page\ScientistPage?id=42`), for a page with route values;
+ *   (`phem:App\Ui\Scientist\ScientistPage?id=42`), for a page with route values;
  * - `phem:*`: all the pages with #[Broadcast] (see Streams::everywhere());
- * - `phem:<component>`: all the pages that render the component (`phem:App\Component\Inbox`).
+ * - `phem:<component>`: all the pages that render the component (`phem:App\Ui\Mail\Inbox`).
  *
  * The browser, the access token and the hub see only an HMAC of the name of a page topic, with
  * the secret of Phem (`phem:` and 22 base64url characters): not the class names of the
@@ -55,7 +55,7 @@ final class Topics implements ResetInterface
     ) {
     }
 
-    /** The name of a topic of this request (`phem:App\Page\Guestbook`), or the topic. */
+    /** The name of a topic of this request (`phem:App\Ui\GuestbookPage`), or the topic. */
     public function name(string $topic): string
     {
         return $this->names[$topic] ?? $topic;

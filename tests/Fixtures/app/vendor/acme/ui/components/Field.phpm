@@ -5,7 +5,7 @@ namespace Acme\Ui;
 use Phem\Attribute\Component;
 use Phem\{Bound, Node};
 
-// A field of a package with a Bound prop: the app replaces it (src/component/Field.phpm).
+// A field of a package with a Bound prop: the app replaces it (src/Ui/Common/Field.phpm).
 #[Component]
 function Field(Bound $value, string $name = 'field'): Node
 {

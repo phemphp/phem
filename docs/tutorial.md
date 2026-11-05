@@ -24,18 +24,18 @@ My tasks
 A page is a component with the `#[Page]` attribute. It is a Symfony route, so you do not add a
 controller or a routes file. This page has no state, so it is a function.
 
-```php title="src/Page/Tasks.phpm"
+```php title="src/Ui/Task/TasksPage.phpm"
 <?phpm
 
-namespace App\Page;
+namespace App\Ui\Task;
 
 use Phem\Attribute\Page;
 use Phem\Node;
 
-use function App\Component\Document;
+use function App\Ui\Common\Document;
 
 #[Page('/tasks')]
-function Tasks(): Node
+function TasksPage(): Node
 {
     return (
         <Document>
@@ -53,8 +53,10 @@ function Tasks(): Node
 - The markup is the return value of the function. The rules are the rules of JSX: close all
   tags (`<br />`), and return one root element. The parentheses around markup with more than
   one line are not necessary, but they make it easier to read.
-- `Document` is the HTML document of the app (`src/Component/Document.phpm`). `<Document:title>`
-  gives a value to its `title` slot.
+- The name of a page ends with `Page`. The page and its components are in one directory for
+  the context of the page: here `src/Ui/Task/`.
+- `Document` is the HTML document of the app (`src/Ui/Common/Document.phpm`). All the pages use
+  it, so it is in `src/Ui/Common/`. `<Document:title>` gives a value to its `title` slot.
 
 Save the file, and open `/tasks`. The page shows the title and the two tasks.
 
@@ -64,12 +66,13 @@ Save the file, and open `/tasks`. The page shows the title and the two tasks.
 
 ## Step 2: Make a component with props
 
-Move the markup of one task to a component. A function component gets its props as parameters.
+Move the markup of one task to a component. Only the tasks page uses it, so put it in the
+directory of the page. A function component gets its props as parameters.
 
-```php title="src/Component/TaskItem.phpm"
+```php title="src/Ui/Task/TaskItem.phpm"
 <?phpm
 
-namespace App\Component;
+namespace App\Ui\Task;
 
 use Phem\Attribute\Component;
 use Phem\Node;
@@ -96,18 +99,18 @@ prop can use quotes. Another value uses `{{ }}`.
 
 Put the tasks in an array, and show one `TaskItem` for each task. Change the page:
 
-```php title="src/Page/Tasks.phpm"
+```php title="src/Ui/Task/TasksPage.phpm"
 <?phpm
 
-namespace App\Page;
+namespace App\Ui\Task;
 
 use Phem\Attribute\Page;
 use Phem\Node;
 
-use function App\Component\{Document, TaskItem};
+use function App\Ui\Common\Document;
 
 #[Page('/tasks')]
-function Tasks(): Node
+function TasksPage(): Node
 {
     $tasks = [
         ['id' => 1, 'title' => 'Read the tutorial', 'done' => true],
@@ -128,7 +131,8 @@ function Tasks(): Node
 }
 ```
 
-The markup can use the local variables of the function: `tasks` is `$tasks`. Give a `key` to
+`TaskItem` is in the namespace of the page, so the page does not import it. The markup can use
+the local variables of the function: `tasks` is `$tasks`. Give a `key` to
 each item of a list. After an event, the browser uses the key to find each item again.
 
 The HTML of the list:
@@ -147,10 +151,10 @@ The tasks must change when the user clicks a checkbox. A component with state is
 
 First, give `TaskItem` a checkbox and an `onToggle` prop. A handler is a `Closure` prop:
 
-```php title="src/Component/TaskItem.phpm"
+```php title="src/Ui/Task/TaskItem.phpm"
 <?phpm
 
-namespace App\Component;
+namespace App\Ui\Task;
 
 use Closure;
 use Phem\Attribute\Component;
@@ -172,10 +176,10 @@ function TaskItem(string $title, bool $done, Closure $onToggle): Node
 
 Then make the `TaskList` class. It owns the tasks:
 
-```php title="src/Component/TaskList.phpm"
+```php title="src/Ui/Task/TaskList.phpm"
 <?phpm
 
-namespace App\Component;
+namespace App\Ui\Task;
 
 use Phem\Attribute\{Component, State};
 use Phem\Node;
@@ -225,19 +229,18 @@ final class TaskList
 
 At last, the page shows `<TaskList />`. It has no state of its own, so it stays a function:
 
-```php title="src/Page/Tasks.phpm"
+```php title="src/Ui/Task/TasksPage.phpm"
 <?phpm
 
-namespace App\Page;
+namespace App\Ui\Task;
 
-use App\Component\TaskList;
 use Phem\Attribute\Page;
 use Phem\Node;
 
-use function App\Component\Document;
+use function App\Ui\Common\Document;
 
 #[Page('/tasks')]
-function Tasks(): Node
+function TasksPage(): Node
 {
     return (
         <Document>
@@ -287,7 +290,7 @@ and the server sets the property before it runs the handler.
 
 Add the `title` state and the `add()` handler to `TaskList`:
 
-```php title="src/Component/TaskList.phpm"
+```php title="src/Ui/Task/TaskList.phpm"
 #[State]
 public string $title = '';
 
@@ -306,7 +309,7 @@ public function add(): void
 
 Add the form at the top of the `<section>` in `render()`:
 
-```php title="src/Component/TaskList.phpm"
+```php title="src/Ui/Task/TaskList.phpm"
 return (
     <section>
         <form onSubmit={{ add }}>
@@ -332,12 +335,12 @@ Phem tests a component with no browser. A test clicks, types and submits, then i
 HTML and the state. Install PHPUnit first, if your app does not have it:
 `composer require --dev phpunit/phpunit`.
 
-```php title="tests/Component/TaskListTest.php"
+```php title="tests/Ui/Task/TaskListTest.php"
 <?php
 
-namespace App\Tests\Component;
+namespace App\Tests\Ui\Task;
 
-use App\Component\TaskList;
+use App\Ui\Task\TaskList;
 use Phem\Test\InteractsWithPhem;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
@@ -384,7 +387,7 @@ The tests use the compiled files, so build them first:
 
 ```sh
 vendor/bin/phemc build src
-vendor/bin/phpunit tests/Component
+vendor/bin/phpunit tests/Ui
 ```
 
 ```

@@ -20,7 +20,7 @@ use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Pages with many components (tests/Fixtures/app/src/page/many.phpm): each component keeps its
+ * Pages with many components (tests/Fixtures/app/src/Ui/Many/ManyPage.phpm): each component keeps its
  * own HTML, its handlers and its bound fields, an event answers with only the state that changed,
  * and the render time grows linearly with the number of components.
  *

@@ -187,7 +187,7 @@ fn is_usage(source: &Source, start: usize, end: usize) -> bool {
         return false;
     }
 
-    // The start of a qualified name: `\App\Component\Card`.
+    // The start of a qualified name: `\App\Ui\Common\Card`.
     let name_start = start - t[..start].iter().rev().take_while(|&&c| c.is_ascii_alphanumeric() || c == b'_' || c == b'\\').count();
     let before = &t[..name_start];
     if before.ends_with(b"</") {

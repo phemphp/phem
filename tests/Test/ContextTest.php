@@ -113,7 +113,7 @@ final class ContextTest extends KernelTestCase
             // Twig wraps the exception of a component in a template. <Document> is a template
             // component: it has no fiber, so it is not in the path.
             self::assertInstanceOf(ContextError::class, $e->getPrevious() ?? $e);
-            self::assertStringContainsString('<TabsNav> needs a "App\Page\Tabs" context for "tabs", but no component above it provides one.', $e->getMessage());
+            self::assertStringContainsString('<TabsNav> needs a "App\Ui\Context\Tabs" context for "tabs", but no component above it provides one.', $e->getMessage());
             self::assertStringContainsString('Path: <ContextMissingPage> > <Root> > <Card> > <TabsNav>.', $e->getMessage());
         }
     }

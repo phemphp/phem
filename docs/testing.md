@@ -59,7 +59,7 @@ value:
 $this->mount(Card::class, ['title' => 'Hello', 'children' => new Html('<p>Body</p>')]);
 ```
 
-A function component works too: give the name of the function (`'App\Component\Badge'`).
+A function component works too: give the name of the function (`'App\Ui\Common\Badge'`).
 
 ## Actions
 

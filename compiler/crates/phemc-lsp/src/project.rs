@@ -411,7 +411,7 @@ fn push_routes(list: &mut Vec<Route>, attributes: &[Attribute], names: &[&str], 
     }
 }
 
-/// `App\Page\Counter` → `app_page_counter`, as in `src/Routing/PageLoader.php` of phem/phem.
+/// `App\Ui\CounterPage` → `app_ui_counterpage`, as in `src/Routing/PageLoader.php` of phem/phem.
 fn route_name(fqn: &str) -> String {
     fqn.replace('\\', "_").to_lowercase()
 }
@@ -463,21 +463,21 @@ mod tests {
     use super::*;
 
     const SOURCE: &str = r"<?phpm
-namespace App\Page;
+namespace App\Ui;
 
 use Phem\Attribute\{Component, Page};
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Page('/home', name: 'home')]
 #[Page(path: '/start')]
-final class Home
+final class HomePage
 {
     public function render() { return <p />; }
 }
 
 #[Route('/legacy')]
 #[Component]
-final class Legacy
+final class LegacyPage
 {
     public function render() { return <p />; }
 }
@@ -488,7 +488,7 @@ final class Plain
 }
 
 #[Page('/about')]
-function About() { return <p />; }
+function AboutPage() { return <p />; }
 
 #[Route('/routed')]
 #[Component]
@@ -497,9 +497,9 @@ function Routed() { return <p />; }
 
     #[test]
     fn a_page_is_a_class_or_a_function_with_page_or_a_class_with_route_and_component() {
-        let routes: Vec<_> = routes_of(&parse(SOURCE), Path::new("src/page/home.phpm")).into_iter().map(|r| (r.name, r.path, r.fqn)).collect();
+        let routes: Vec<_> = routes_of(&parse(SOURCE), Path::new("src/Ui/HomePage.phpm")).into_iter().map(|r| (r.name, r.path, r.fqn)).collect();
         let r = |n: &str, p: &str, f: &str| (n.to_string(), p.to_string(), f.to_string());
-        assert_eq!(routes, [r("home", "/home", "App\\Page\\Home"), r("app_page_home_1", "/start", "App\\Page\\Home"), r("app_page_legacy", "/legacy", "App\\Page\\Legacy"), r("app_page_about", "/about", "App\\Page\\About")]);
+        assert_eq!(routes, [r("home", "/home", "App\\Ui\\HomePage"), r("app_ui_homepage_1", "/start", "App\\Ui\\HomePage"), r("app_ui_legacypage", "/legacy", "App\\Ui\\LegacyPage"), r("app_ui_aboutpage", "/about", "App\\Ui\\AboutPage")]);
     }
 
     #[test]

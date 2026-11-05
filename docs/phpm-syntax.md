@@ -16,7 +16,7 @@ a namespace, `use` imports, functions and classes.
 
 ```php
 <?phpm
-namespace App\Component;
+namespace App\Ui\Common;
 
 use Phem\Attribute\Component;
 use Phem\Node;
@@ -222,7 +222,7 @@ compiler reports E011 when the caller does not give it. An unknown prop is an er
 component has rest props.
 
 A normal Twig template of the app can also render a component, with no state:
-`{% component 'App\\Component\\Profile' with {person: person} %}`.
+`{% component 'App\\Ui\\Common\\Profile' with {person: person} %}`.
 
 ### Rest props
 
@@ -308,16 +308,17 @@ merge the Tailwind classes of the same group (`px-2` and then `px-4` gives `px-4
 ### Pages
 
 A page is a component that has a URL. Add `#[Page]` to a class or to a function. A page needs no
-`#[Component]`.
+`#[Component]`. By convention, the name of a page ends with `Page` (see
+[Organize the UI](compiling.md#organize-the-ui)).
 
 ```php
 use Phem\Attribute\Page;
 use Phem\Node;
 
-use function App\Component\Document;
+use function App\Ui\Common\Document;
 
 #[Page('/', name: 'home')]
-final class Home
+final class HomePage
 {
     public function render(): Node
     {
@@ -331,7 +332,7 @@ final class Home
 }
 
 #[Page('/about')]
-function About(): Node
+function AboutPage(): Node
 {
     return <Document><h1>About us</h1></Document>;
 }
@@ -344,7 +345,7 @@ slot.
 `#[Page]` extends the `#[Route]` attribute of Symfony, so it has the same options: `name`,
 `methods`, `requirements`, `defaults`, `host`, and the others. Use it more than one time to give
 a page more than one URL. With no `name`, the route name comes from the class:
-`App\Page\Example\Counter` gives `app_page_example_counter`. Use `#[Page]` on a function, not
+`App\Ui\Example\CounterPage` gives `app_ui_example_counterpage`. Use `#[Page]` on a function, not
 `#[Route]` (E052).
 
 The parameters of a function page get the same arguments as a Symfony controller: the route
@@ -371,7 +372,7 @@ final class ItemPage
 }
 
 #[Page('/tags/{name}')]
-function Tag(string $name): Node
+function TagPage(string $name): Node
 {
     return <Document><h1>{{ name }}</h1></Document>;
 }

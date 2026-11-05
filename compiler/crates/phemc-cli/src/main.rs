@@ -173,7 +173,7 @@ fn check_json(src: &Path) -> Result<bool> {
 }
 
 /// The diagnostics as JSON:
-/// `{"files": [{"file": "src/Page/index.phpm", "diagnostics": [{"severity", "code", "message", "label",
+/// `{"files": [{"file": "src/Ui/HomePage.phpm", "diagnostics": [{"severity", "code", "message", "label",
 /// "help", "start": {"line", "character"}, "end": {...}}]}]}`.
 /// The file is relative to the project root. The diagnostics are the ones that the tools show (see
 /// `FileDiagnostics::shown()`). The lines start at 0, and the characters count UTF-16 code units,
@@ -486,15 +486,15 @@ mod tests {
         let start = text.find("Foo").unwrap();
         let files = vec![
             FileDiagnostics {
-                rel: "Page/index.phpm".into(),
-                path: "src/Page/index.phpm".into(),
+                rel: "Ui/index.phpm".into(),
+                path: "src/Ui/index.phpm".into(),
                 package: None,
                 text: text.clone(),
                 diags: vec![Diagnostic::error("E001", "Unknown component", Span::new(start, start + 3))
                     .with_label("here")
                     .with_help("Import it")],
             },
-            FileDiagnostics { rel: "Page/ok.phpm".into(), path: "src/Page/ok.phpm".into(), package: None, text: String::new(), diags: vec![] },
+            FileDiagnostics { rel: "Ui/ok.phpm".into(), path: "src/Ui/ok.phpm".into(), package: None, text: String::new(), diags: vec![] },
             // The app cannot fix a warning of a package.
             FileDiagnostics {
                 rel: "vendor/acme/ui/Badge.phpm".into(),
@@ -507,7 +507,7 @@ mod tests {
 
         assert_eq!(
             diagnostics_json(&files),
-            json!({"files": [{"file": "src/Page/index.phpm", "diagnostics": [{
+            json!({"files": [{"file": "src/Ui/index.phpm", "diagnostics": [{
                 "severity": "error",
                 "code": "E001",
                 "message": "Unknown component",

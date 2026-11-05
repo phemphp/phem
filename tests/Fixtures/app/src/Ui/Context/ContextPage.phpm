@@ -1,0 +1,203 @@
+<?phpm
+
+namespace App\Ui\Context;
+
+use Phem\Attribute\{Component, Context, Page, Prop, Provide, State};
+use Phem\{Event, Html, Node};
+use Phem\Tests\Fixtures\{Renders, Theme};
+
+use function App\Ui\Common\Document;
+
+// The tests of the contexts (see Phem\Rendering\ContextResolver).
+
+// A compound component: it provides itself.
+#[Component, Provide]
+final class Tabs
+{
+    #[State] public string $active = 'general';
+    #[Prop] public ?Html $children = null;
+
+    public function select(string $name): void
+    {
+        $this->active = $name;
+    }
+
+    public function next(): void
+    {
+        $this->active = 'general' === $this->active ? 'security' : 'general';
+    }
+
+    public function render(): Node
+    {
+        return <div role="tablist">{{ children }}</div>;
+    }
+}
+
+// Not a consumer: it gets the same props after a change of the tabs, so the event keeps it
+// unless a context propagates through it.
+#[Component]
+function Card(string $title, ?Html $children = null): Node
+{
+    Renders::count('Card');
+
+    return <section><h2>{{ title }}</h2>{{ children }}</section>;
+}
+
+// A class consumer: a method calls the provider, and mount() reads the context.
+#[Component]
+final class Tab
+{
+    #[Prop] public string $name;
+    #[Prop] public string $label;
+    #[Context] public Tabs $tabs;
+    #[State] public string $first = '';
+
+    public function mount(): void
+    {
+        $this->first = $this->tabs->active;
+    }
+
+    public function open(): void
+    {
+        $this->tabs->select($this->name);
+    }
+
+    public function render(): Node
+    {
+        Renders::count('Tab');
+
+        return <button id="tab-{{ name }}" role="tab" aria-selected={{ tabs.active == name ? 'true' : 'false' }} data-first={{ first }} onClick={{ open }}>{{ label }}</button>;
+    }
+}
+
+// A function consumer: a handler of the provider.
+#[Component]
+function TabsNav(#[Context] Tabs $tabs): Node
+{
+    return <button id="next" onClick={{ tabs.next }}>Next from {{ tabs.active }}</button>;
+}
+
+// An optional context: a default value when no component above provides it.
+#[Component]
+function Badge(string $text, #[Context] Theme $theme = Theme::Light): Node
+{
+    return <span class="badge-{{ theme.value }}">{{ text }}</span>;
+}
+
+// A provider of an enum, with state.
+#[Component]
+final class ThemeScope
+{
+    #[State, Provide] public Theme $theme = Theme::Light;
+    #[Prop] public ?Html $children = null;
+
+    public function toggle(): void
+    {
+        $this->theme = Theme::Light === $this->theme ? Theme::Dark : Theme::Light;
+    }
+
+    public function render(): Node
+    {
+        return <div><button id="toggle" onClick={{ toggle }}>Toggle</button>{{ children }}</div>;
+    }
+}
+
+#[Page('/context')]
+final class ContextPage
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Tabs>
+                    <Card title="Settings">
+                        <Tab name="general" label="General" />
+                        <Tab name="security" label="Security" />
+                        <TabsNav />
+                    </Card>
+                </Tabs>
+                <ThemeScope>
+                    <Card title="Themed"><Badge text="Inside" /></Card>
+                </ThemeScope>
+                <Badge text="Outside" />
+            </Document>
+        );
+    }
+}
+
+// Consumers that the page makes in render(), in the slot of a provider: after its event, the
+// provider renders alone and prints the same markup values again (one alone, and a list).
+#[Page('/context-values')]
+final class ContextValuesPage
+{
+    public function render(): Node
+    {
+        $alone = <Badge text="Alone" />;
+        $badges = [];
+        foreach (['First', 'Second'] as $text) {
+            $badges[] = <Badge key={{ text }} text={{ text }} />;
+        }
+
+        return (
+            <Document>
+                <ThemeScope>{{ alone }}{{ badges }}</ThemeScope>
+            </Document>
+        );
+    }
+}
+
+// A required context with no provider: the render throws.
+#[Page('/context-missing')]
+final class ContextMissingPage
+{
+    public function render(): Node
+    {
+        return <Document><Card title="Alone"><TabsNav /></Card></Document>;
+    }
+}
+
+// The shared behavior of the theme packages: a base class with no #[Component] has the state,
+// the handlers and #[Provide]. A theme extends it and gives render(). The consumers declare the
+// base type, so they work with each theme.
+#[Provide]
+abstract class AbstractAccordion
+{
+    #[State] public string $open = '';
+    #[Prop] public ?Html $children = null;
+
+    public function toggle(Event $e): void
+    {
+        $this->open = $e->value === $this->open ? '' : $e->value;
+    }
+}
+
+#[Component]
+final class Accordion extends AbstractAccordion
+{
+    public function render(): Node
+    {
+        return <div class="accordion">{{ children }}</div>;
+    }
+}
+
+#[Component]
+function AccordionItem(string $name, #[Context] AbstractAccordion $accordion): Node
+{
+    return <button id="item-{{ name }}" aria-expanded={{ accordion.open == name ? 'true' : 'false' }} onClick={{ accordion.toggle }} value={{ name }}>{{ name }}</button>;
+}
+
+#[Page('/context-inherited')]
+final class ContextInheritedPage
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Accordion>
+                    <AccordionItem name="one" />
+                    <AccordionItem name="two" />
+                </Accordion>
+            </Document>
+        );
+    }
+}

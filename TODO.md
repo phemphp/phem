@@ -205,7 +205,7 @@ diagnostics also compile only the source directory of the app.
     (`php/vendor/acme/ui/Button.php`, `@phpm/vendor/acme/ui/Button.0.twig`). The app files keep
     their `rel`.
   - **The source path.** Each template in the manifest keeps the path of its `.phpm` file from
-    the project root (`src/Page/index.phpm`, `vendor/acme/ui/components/Button.phpm`).
+    the project root (`src/Ui/HomePage.phpm`, `vendor/acme/ui/components/Button.phpm`).
     `SourceMap` uses `kernel.project_dir`. Remove the `phem.source_dir` option, the
     `Manifest::sourceDir()` method and the hardcoded `'src/'` in `SourceMap`.
   - **Diagnostics.** An error in a package file stops the build, so `phemc` shows it, with the

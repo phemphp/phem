@@ -90,7 +90,7 @@ use Phem\Attribute\{Broadcast, Component, Page, State, Transactional};
 use Phem\Stream\Streams;
 
 #[Page('/guestbook'), Broadcast]
-final class Guestbook
+final class GuestbookPage
 {
     // ... renders <SignForm />, <GuestbookStats id="guestbook-stats" /> and <ul id="entries">
 }
@@ -113,15 +113,15 @@ final class SignForm
         $this->repository->add($entry);
         $this->message = '';
 
-        $this->streams->toPage(Guestbook::class)
+        $this->streams->toPage(GuestbookPage::class)
             ->prepend('entries', <GuestbookEntry entry={{ entry }} />)
             ->refresh('guestbook-stats');
     }
 }
 ```
 
-`toPage(Guestbook::class)` sends to all the URLs of a page, and
-`toPage(Guestbook::class, ['id' => 42])` to one URL. `toComponent(Inbox::class)` sends to all the
+`toPage(GuestbookPage::class)` sends to all the URLs of a page, and
+`toPage(GuestbookPage::class, ['id' => 42])` to one URL. `toComponent(Inbox::class)` sends to all the
 pages that render a component with `#[Broadcast]`. `everywhere()` sends to all the pages with
 `#[Broadcast]`.
 
@@ -393,12 +393,12 @@ final class BuildReport
     {
         $ticket = $this->ticket;
         $this->ticket = bin2hex(random_bytes(4));
-        $this->streams->toPage(Reports::class)
+        $this->streams->toPage(ReportsPage::class)
             ->prepend('reports', <li id="report-{{ ticket }}">Building a report…</li>);
 
         return new Promise(function () use ($ticket): void {
             $report = $this->reports->build($ticket);   // slow
-            $this->streams->toPage(Reports::class)
+            $this->streams->toPage(ReportsPage::class)
                 ->replace('report-'.$ticket, <ReportRow report={{ report }} />);
         });
     }

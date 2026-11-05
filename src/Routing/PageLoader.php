@@ -32,8 +32,8 @@ use Symfony\Component\Routing\RouteCollection;
  * its document, with a `<Root>` (see Phem\Root). The attribute works as on a controller: path
  * (or localized paths), name, requirements, defaults, methods, host, schemes, condition,
  * priority, env and aliases. Without a name, the route name comes from the component:
- * `App\Page\Counter` → `app_page_counter`. The first route of a page also has the name of the
- * page as an alias: `$urlGenerator->generate(Counter::class)`, `path('App\\Page\\Counter')`, and
+ * `App\Ui\CounterPage` → `app_ui_counterpage`. The first route of a page also has the name of the
+ * page as an alias: `$urlGenerator->generate(CounterPage::class)`, `path('App\\Ui\\CounterPage')`, and
  * Phem\RedirectTo use it.
  *
  * The events of a page go to the URL of the page (`POST`, see EventController), so the access
@@ -111,7 +111,7 @@ final class PageLoader extends Loader
         return 'phem' === $type;
     }
 
-    /** `App\Page\Counter` → `app_page_counter` (the Symfony convention for an invokable controller). */
+    /** `App\Ui\CounterPage` → `app_ui_counterpage` (the Symfony convention for an invokable controller). */
     public static function routeName(string $page): string
     {
         return strtolower(str_replace('\\', '_', $page));

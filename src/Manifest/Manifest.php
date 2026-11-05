@@ -183,7 +183,7 @@ final class Manifest
 
     /**
      * The `.phpm` source of a compiled template. The source is a path from the project root
-     * (`src/page/index.phpm`, `vendor/acme/ui/components/Badge.phpm`).
+     * (`src/Ui/HomePage.phpm`, `vendor/acme/ui/components/Badge.phpm`).
      *
      * @param string $template the template name, without the Twig namespace
      *

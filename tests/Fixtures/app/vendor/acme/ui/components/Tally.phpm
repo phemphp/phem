@@ -6,7 +6,7 @@ use Phem\Attribute\{Broadcast, BroadcastKey, Component};
 use Phem\Node;
 
 // A component of a package with #[Broadcast] and a key: the app replaces it
-// (src/component/Tally.phpm), and the replacement gets the streams of the original.
+// (src/Ui/Common/Tally.phpm), and the replacement gets the streams of the original.
 #[Component, Broadcast]
 function Tally(#[BroadcastKey] string $room = 'lobby', int $count = 0): Node
 {

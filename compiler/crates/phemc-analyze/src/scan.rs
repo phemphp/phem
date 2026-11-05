@@ -724,7 +724,7 @@ fn parse_use(toks: &Toks, mut i: usize, info: &mut FileInfo) -> usize {
         let name = toks.text(i).to_string();
         i += 1;
 
-        // Group use: `use App\Component\{A, B as C};`
+        // Group use: `use App\Ui\Common\{A, B as C};`
         if toks.is_op(i, "\\") && toks.is_op(i + 1, "{") {
             let end = toks.matching(i + 1);
             let mut j = i + 2;
@@ -1262,7 +1262,7 @@ mod tests {
     fn namespace_uses_and_functions() {
         let f = scan_src(
             r#"<?phpm
-namespace App\Component;
+namespace App\Ui\Common;
 use function Phem\{useState, useEffect as ue};
 use App\Ui\Card, App\Ui\Button as Btn;
 use Symfony\Component\Routing\Attribute\Route;
@@ -1279,14 +1279,14 @@ function helper() {}
 "#,
         );
 
-        assert_eq!(f.namespace, "App\\Component");
+        assert_eq!(f.namespace, "App\\Ui\\Common");
         assert_eq!(f.function_uses["usestate"], "Phem\\useState");
         assert_eq!(f.function_uses["ue"], "Phem\\useEffect");
         assert_eq!(f.class_uses["btn"], "App\\Ui\\Button");
         assert_eq!(f.functions.len(), 3);
 
         let b = &f.functions[0];
-        assert_eq!(b.fqn, "App\\Component\\MyButton");
+        assert_eq!(b.fqn, "App\\Ui\\Common\\MyButton");
         assert_eq!(b.component_kind, Some(Kind::Function));
         assert_eq!(b.params[1].name, "onClick");
         assert_eq!(b.params[1].ty, "?\\Closure");
@@ -1296,7 +1296,7 @@ function helper() {}
         assert_eq!(f.functions[1].template_markup, Some(1));
         assert_eq!(f.functions[2].component_kind, None);
         assert_eq!(f.routes.len(), 1);
-        assert_eq!(f.routes[0].fqn, "App\\Component\\Card");
+        assert_eq!(f.routes[0].fqn, "App\\Ui\\Common\\Card");
         assert_eq!((f.routes[0].is_component, f.routes[0].is_function), (false, true), "the Symfony #[Route] cannot mark a function");
         assert_eq!(f.markup_scopes, vec![MarkupScope::Function(0), MarkupScope::Function(1)]);
     }

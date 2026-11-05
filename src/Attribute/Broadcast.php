@@ -28,9 +28,9 @@ namespace Phem\Attribute;
  * by its first-class callable:
  *
  *     #[Page('/guestbook'), Broadcast]
- *     function Guestbook(EntryRepository $entries) { ... }
+ *     function GuestbookPage(EntryRepository $entries) { ... }
  *
- *     $this->streams->toPage(Guestbook(...))->refresh('entries');
+ *     $this->streams->toPage(GuestbookPage(...))->refresh('entries');
  *
  * A component with #[Broadcast] gets the streams on all the pages that render it, for example a
  * part of the layout. Streams::toComponent() names it:

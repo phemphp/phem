@@ -71,9 +71,9 @@ final class PackageTest extends KernelTestCase
         /** @var Manifest $manifest */
         $manifest = self::getContainer()->get('phem.manifest');
 
-        self::assertSame(['Acme\\Ui\\Page\\Clicks', 'Acme\\Ui\\Page\\Gallery'], $manifest->pagesOf('acme/ui'));
-        self::assertNotContains('Acme\\Ui\\Page\\Gallery', $manifest->pagesOf(''));
-        self::assertContains('App\\Page\\PackagePage', $manifest->pagesOf(''));
+        self::assertSame(['Acme\\Ui\\ClicksPage', 'Acme\\Ui\\GalleryPage'], $manifest->pagesOf('acme/ui'));
+        self::assertNotContains('Acme\\Ui\\GalleryPage', $manifest->pagesOf(''));
+        self::assertContains('App\\Ui\\Package\\PackagePage', $manifest->pagesOf(''));
     }
 
     public function testATwigTemplateOfTheAppRendersAComponentOfAPackage(): void
@@ -137,7 +137,7 @@ final class PackageTest extends KernelTestCase
         // A plain Twig template of a package, in its own namespace.
         self::assertStringContainsString('<strong>Careful</strong>', $twig->createTemplate($code, '@AcmeUi/notice.html.twig')->render());
         // A template of phemc keeps its tag: phemc already resolved it.
-        self::assertStringNotContainsString('<strong>', $twig->createTemplate($code, '@'.Manifest::TEMPLATE_NAMESPACE.'/component/Alert.9.twig')->render());
+        self::assertStringNotContainsString('<strong>', $twig->createTemplate($code, '@'.Manifest::TEMPLATE_NAMESPACE.'/Ui/Common/Alert.9.twig')->render());
     }
 
     public function testPhemBindOnATagOfThePackageGoesThroughTheReplacementToTheOriginal(): void
@@ -170,8 +170,8 @@ final class PackageTest extends KernelTestCase
         /** @var Manifest $manifest */
         $manifest = self::getContainer()->get('phem.manifest');
 
-        self::assertSame('App\\Component\\Alert', $manifest->replacement('Acme\\Ui\\Alert'));
-        self::assertSame('App\\Component\\Alert', $manifest->replacement('\\Acme\\Ui\\Alert'), 'with a leading backslash');
+        self::assertSame('App\\Ui\\Common\\Alert', $manifest->replacement('Acme\\Ui\\Alert'));
+        self::assertSame('App\\Ui\\Common\\Alert', $manifest->replacement('\\Acme\\Ui\\Alert'), 'with a leading backslash');
         self::assertNull($manifest->replacement('Acme\\Ui\\Badge'));
     }
 

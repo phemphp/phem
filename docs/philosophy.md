@@ -53,7 +53,7 @@ function Badge(string $label): Node
 
 // A function page: it has no state of its own. Its components can have state.
 #[Page('/about')]
-function About(): Node
+function AboutPage(): Node
 {
     return <Document><h1>About us</h1><LikeButton /></Document>;
 }
@@ -183,7 +183,7 @@ Phem adds a component model. It does not replace Symfony. Use the Symfony tool f
 ```php
 #[IsGranted('ROLE_ADMIN')]
 #[Page('/admin/users/{id:user}')]
-final class EditUser
+final class EditUserPage
 {
     #[Path] public User $user;   // Doctrine finds the entity
 

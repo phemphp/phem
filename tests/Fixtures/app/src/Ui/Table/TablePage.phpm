@@ -1,0 +1,73 @@
+<?phpm
+
+namespace App\Ui\Table;
+
+use Phem\Attribute\{Component, Page, Prop, State};
+use Phem\Node;
+
+use function App\Ui\Common\Document;
+
+// Components in a <table> and in a <select>: the fiber id is on their root element, because a
+// <phem-c> is not valid there.
+
+#[Component]
+final class TableRow
+{
+    #[Prop] public int $index = 0;
+    #[State] public int $clicks = 0;
+
+    public function click(): void
+    {
+        ++$this->clicks;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <tr id="row-{{ index }}" class="clicks-{{ clicks }}">
+                <td>Row {{ index }}</td>
+                <td><button id="click-{{ index }}" onClick={{ click }}>{{ clicks }} clicks</button></td>
+            </tr>
+        );
+    }
+}
+
+#[Component]
+final class TableOption
+{
+    #[Prop] public int $index = 0;
+
+    public function render(): Node
+    {
+        return <option value="{{ index }}">Option {{ index }}</option>;
+    }
+}
+
+#[Page('/table')]
+final class TablePage
+{
+    #[State] public int $bumps = 0;
+
+    public function bump(): void
+    {
+        ++$this->bumps;
+    }
+
+    public function render(): Node
+    {
+        $rows = [];
+        $options = [];
+        for ($i = 0; $i < 3; ++$i) {
+            $rows[] = <TableRow key={{ i }} index={{ i }} />;
+            $options[] = <TableOption key={{ i }} index={{ i }} />;
+        }
+
+        return (
+            <Document>
+                <button id="bump" onClick={{ bump }}>Bumps {{ bumps }}</button>
+                <table id="grid"><tbody>{{ rows }}</tbody></table>
+                <select id="pick">{{ options }}</select>
+            </Document>
+        );
+    }
+}

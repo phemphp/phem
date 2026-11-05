@@ -28,12 +28,13 @@ my-app/
 │   ├── Model/             optional: Doctrine entities
 │   ├── Repository/        normal PHP services, injected into components
 │   ├── DataFixtures/      optional: Doctrine fixtures, the first rows of a new database
-│   ├── Component/        components that are not pages
-│   │   └── Document.phpm   the HTML document: each page renders in it, with a <Root>
-│   └── Page/             the pages: classes and functions with a #[Page] attribute
-│       ├── index.phpm      #[Page('/')]
+│   └── Ui/                the .phpm files: the pages and their components, by context
+│       ├── Common/        the components that more than one context uses
+│       │   └── Document.phpm   the HTML document: each page renders in it, with a <Root>
+│       ├── HomePage.phpm  #[Page('/')]
 │       └── Example/
-│           └── Counter.phpm #[Page('/examples/Counter')]
+│           ├── CounterPage.phpm  #[Page('/examples/counter')]
+│           └── Counter.phpm      a component of the page
 ├── assets/                the JavaScript and CSS of the pages (AssetMapper)
 │   ├── app.js             the `app` entry of the importmap: bootstrap.js and styles/app.css
 │   ├── bootstrap.js       starts Stimulus (StimulusBundle)
@@ -48,6 +49,73 @@ my-app/
 The directories are only a convention: a page is a class with the `#[Page]` attribute and a
 `render()` method, or a function with the `#[Page]` attribute, in any file.
 
+### Organize the UI
+
+Put the `.phpm` files in `src/Ui/`. The namespace follows the directory: `src/Ui/` is `App\Ui`,
+and `src/Ui/Scientist/` is `App\Ui\Scientist`. Do not split the files into a `Component/` and a
+`Page/` directory. Split them by context:
+
+- **A page:** the name ends with `Page` (`HomePage`, `ScientistPage`). Put it in the directory of
+  its context (`src/Ui/Scientist/`). A page that has no context, such as the home page, stays in
+  `src/Ui/`.
+- **A component of a page:** put it in the directory of the page that uses it, with the same
+  namespace. The name of a component has no suffix (`ScientistCard`, not
+  `ScientistCardComponent`).
+- **A common component:** put a component that more than one context uses in `src/Ui/Common/`
+  (the document, a button, a badge).
+- **A subcontext:** when a context gets large, add a directory in it
+  (`src/Ui/Admin/User/`).
+
+```
+src/Ui/                      App\Ui
+├── Common/                  App\Ui\Common
+│   ├── Document.phpm
+│   └── Badge.phpm
+├── HomePage.phpm            #[Page('/')]
+├── Scientist/               App\Ui\Scientist
+│   ├── ScientistsPage.phpm  the list
+│   ├── ScientistPage.phpm   one scientist
+│   ├── ScientistCard.phpm   for the 2 pages
+│   └── ScientistFilters.phpm
+└── Admin/
+    └── User/                App\Ui\Admin\User
+        ├── EditUserPage.phpm
+        └── UserForm.phpm
+```
+
+A page and its components share a namespace, so the page uses them with no `use` import. It
+imports only the common components:
+
+```php
+<?phpm
+
+namespace App\Ui\Scientist;
+
+use App\Model\Scientist;
+use Phem\Attribute\{Page, Path};
+use Phem\Node;
+
+use function App\Ui\Common\Document;
+
+#[Page('/scientists/{id:scientist}')]
+final class ScientistPage
+{
+    #[Path] public Scientist $scientist;
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>{{ scientist.name }}</Document:title>
+                <ScientistCard scientist={{ scientist }} />
+            </Document>
+        );
+    }
+}
+```
+
+When a second context starts to use a component of a page, move the component to `src/Ui/Common/`.
+
 ### The document of the pages
 
 The application owns the HTML document: a component in the .phpm sources, as the others. It
@@ -57,7 +125,7 @@ the `<!DOCTYPE html>`.
 ```php
 <?phpm
 
-namespace App\Component;
+namespace App\Ui\Common;
 
 use Phem\Attribute\Component;
 use Phem\{Html, Node, Root};
@@ -82,7 +150,7 @@ Each page renders its content in it. A page gives the title with the `title` slo
 ```php
 use Phem\Node;
 
-use function App\Component\Document;
+use function App\Ui\Common\Document;
 
 #[Page('/scientists/{id:scientist}')]
 final class ScientistPage
@@ -295,7 +363,7 @@ Each diagnostic shows the `.phpm` line and column, a label, and a hint:
 E011
 
   × `<Profile>` has no prop `persn`
-    ╭─[src/Page/App.phpm:16:22]
+    ╭─[src/Ui/Scientist/ScientistPage.phpm:16:22]
  15 │         <div>
  16 │             <Profile persn={{ user }} />
     ·                      ─────
@@ -337,13 +405,13 @@ phemc check src --format json
 ```
 
 ```json
-{"files": [{"file": "src/Component/ScientistCard.phpm", "diagnostics": [{"severity": "error",
-  "code": "E010", "message": "unknown component `<Avatr>` (resolved to `App\\Component\\Avatr`)",
+{"files": [{"file": "src/Ui/Scientist/ScientistCard.phpm", "diagnostics": [{"severity": "error",
+  "code": "E010", "message": "unknown component `<Avatr>` (resolved to `App\\Ui\\Scientist\\Avatr`)",
   "label": null, "help": "declare `#[Component] function Avatr()` in a .phpm file, or check the `use` imports",
   "start": {"line": 30, "character": 13}, "end": {"line": 30, "character": 18}}]}]}
 ```
 
-`file` is relative to the project root (`src/Component/ScientistCard.phpm`). `line` starts at 0,
+`file` is relative to the project root (`src/Ui/Scientist/ScientistCard.phpm`). `line` starts at 0,
 and `character` counts UTF-16 code units, as the Language Server Protocol does. The warnings of a
 Composer package are not in the list.
 
@@ -386,7 +454,7 @@ Its compiled PHP, on the same lines:
 #[Component]
 function Tally(array $items): Node {
     $n = count($items);
-    return new \Phem\Element('page/edge_cases.0.twig', ['n' => $n]);
+    return new \Phem\Element('Ui/Report/Tally.0.twig', ['n' => $n]);
 }
 ```
 
@@ -394,11 +462,11 @@ PHPStan reports the line of the `.phpm` file, in the path of the compiled file (
 `--error-format=raw`):
 
 ```
-var/phem/php/page/edge_cases.php:12:Function App\Page\Tally() has parameter $items with no value type specified in iterable type array.
+var/phem/php/Ui/Report/Tally.php:12:Function App\Ui\Report\Tally() has parameter $items with no value type specified in iterable type array.
 ```
 
 The first line of each compiled file names its source (`<?php /* compiled by phemc from
-src/page/edge_cases.phpm; do not edit */`). Fix the error in that `.phpm` file, at the same
+src/Ui/Report/Tally.phpm; do not edit */`). Fix the error in that `.phpm` file, at the same
 line.
 
 PHPStan does not see:
@@ -492,7 +560,7 @@ Other commands:
 
 ```sh
 php bin/console phem:warmup                          # compile the templates into the Twig cache again
-php bin/console phem:render /examples/Counter        # print the HTML of a page (no server)
+php bin/console phem:render /examples/counter        # print the HTML of a page (no server)
 php bin/console debug:router                          # the routes of the pages and their events (phem_event.*)
 ```
 

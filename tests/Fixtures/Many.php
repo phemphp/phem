@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Fixtures;
 
-/** The sizes of the pages with many components (tests/Fixtures/app/src/page/many.phpm). */
+/** The sizes of the pages with many components (tests/Fixtures/app/src/Ui/Many/ManyPage.phpm). */
 final class Many
 {
     public static int $rows = 3;

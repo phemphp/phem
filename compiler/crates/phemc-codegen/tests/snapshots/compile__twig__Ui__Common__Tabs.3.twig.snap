@@ -1,0 +1,9 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+{% component embed 'App\\Ui\\Common\\Tabs' only %}{% block children %}{% with _phem_caller only %}
+            {% component 'App\\Ui\\Common\\Tab' with {'name': 'general', 'label': 'General'} only %}
+            {% component 'App\\Ui\\Common\\Tab' with {'name': 'security', 'label': 'Security'} only %}
+            {% component 'App\\Ui\\Common\\TabCount' only %}
+        {% endwith %}{% endblock %}{% endcomponent %}

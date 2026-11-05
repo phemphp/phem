@@ -27,7 +27,7 @@ pub struct SourceInput {
     /// app, or `vendor/<package>/<path in the package root>` for a package file. The output
     /// paths and the template names come from it.
     pub rel: String,
-    /// The path of the file from the project root (`src/Page/index.phpm`), for the diagnostics
+    /// The path of the file from the project root (`src/Ui/HomePage.phpm`), for the diagnostics
     /// and the source map of the runtime.
     pub path: String,
     /// The Composer package of the file, or `None` for a file of the app.

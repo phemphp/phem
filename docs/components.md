@@ -98,7 +98,7 @@ function MyButton(int $count, Closure $onClick): Node
 }
 
 #[Page('/counters')]
-final class Counters
+final class CountersPage
 {
     #[State] public int $count = 0;
 

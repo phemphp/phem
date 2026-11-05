@@ -153,7 +153,7 @@ mod tests {
     use crate::decl::parse;
 
     const SOURCE: &str = r"<?phpm
-namespace App\Page;
+namespace App\Ui;
 
 use Phem\Attribute\{Component, Prop, State};
 use Phem\Html;
@@ -195,7 +195,7 @@ final class Counter
     fn the_outline_has_the_namespace_the_components_and_the_members() {
         let symbols = document_symbols(&parse(SOURCE), SOURCE);
         let ns = &symbols[0];
-        assert_eq!((ns.name.as_str(), ns.kind), ("App\\Page", OutlineKind::Namespace));
+        assert_eq!((ns.name.as_str(), ns.kind), ("App\\Ui", OutlineKind::Namespace));
         let (card, counter) = (&ns.children[0], &ns.children[1]);
 
         assert_eq!((card.name.as_str(), card.detail.as_str()), ("Card", "component"));

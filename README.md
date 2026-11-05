@@ -16,13 +16,13 @@ right beside the code that gives it life:
 ```php
 <?phpm
 
-namespace App\Page;
+namespace App\Ui;
 
 use Phem\Attribute\{Component, Page, State};
 use Phem\{Node, Root};
 
 #[Page('/')]
-function Home(): Node
+function HomePage(): Node
 {
     return (
         <html lang="en">

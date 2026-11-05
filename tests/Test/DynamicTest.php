@@ -50,12 +50,12 @@ final class DynamicTest extends KernelTestCase
         $this->expectException(RuntimeError::class);
         $this->expectExceptionMessage('<img> is a void element: <Dynamic tag="img"> cannot have children.');
 
-        $this->mount('App\Page\PolyMedia', ['tag' => 'img', 'children' => new Html('<b>Text</b>')]);
+        $this->mount('App\Ui\Dynamic\PolyMedia', ['tag' => 'img', 'children' => new Html('<b>Text</b>')]);
     }
 
     public function testAVoidElementTakesNoContent(): void
     {
-        $this->mount('App\Page\PolyMedia', ['tag' => 'img', 'children' => Html::empty()])
+        $this->mount('App\Ui\Dynamic\PolyMedia', ['tag' => 'img', 'children' => Html::empty()])
             ->assertSelectorExists('img[src="/a.png"]');
     }
 
@@ -64,6 +64,6 @@ final class DynamicTest extends KernelTestCase
         $this->expectException(RuntimeError::class);
         $this->expectExceptionMessage('<Dynamic> cannot render a <script>: write it as static markup.');
 
-        $this->mount('App\Page\PolyButton', ['tag' => 'script', 'children' => new Html('alert(1)')]);
+        $this->mount('App\Ui\Dynamic\PolyButton', ['tag' => 'script', 'children' => new Html('alert(1)')]);
     }
 }

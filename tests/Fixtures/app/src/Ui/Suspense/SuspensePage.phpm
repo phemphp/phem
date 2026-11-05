@@ -1,0 +1,134 @@
+<?phpm
+
+namespace App\Ui\Suspense;
+
+use Phem\Attribute\{Component, Page, State};
+use Phem\Node;
+use Phem\Suspense;
+use Phem\Tests\Fixtures\Renders;
+
+use function App\Ui\Common\Document;
+
+// The tests of <Suspense> (see Phem\Rendering\SuspenseRenderer).
+
+// The content that loads after the page: a slow mount() in a real application.
+#[Component]
+final class Report
+{
+    #[State] public int $rows = 0;
+
+    public function mount(): void
+    {
+        Renders::count('Report.mount');
+        $this->rows = 3;
+    }
+
+    public function more(): void
+    {
+        ++$this->rows;
+    }
+
+    public function render(): Node
+    {
+        return <button id="more" onClick={{ more }}>Rows {{ rows }}</button>;
+    }
+}
+
+// The content of a boundary in a boundary.
+#[Component]
+function Notes(): Node
+{
+    return <p id="notes">Notes</p>;
+}
+
+// The content of a boundary in a fallback: the fallback goes away before it loads.
+#[Component]
+final class Hint
+{
+    public function mount(): void
+    {
+        Renders::count('Hint.mount');
+    }
+
+    public function render(): Node
+    {
+        return <p id="hint">A hint</p>;
+    }
+}
+
+#[Component]
+final class Part
+{
+    #[State] public int $n = 1;
+
+    public function render(): Node
+    {
+        return <span id="part">Part {{ n }}</span>;
+    }
+}
+
+// A service that is down.
+#[Component]
+function Thrower(): Node
+{
+    throw new \RuntimeException('The chart service is down.');
+
+    return <p>Never</p>;
+}
+
+// A child with state renders first, then the render throws: the boundary drops the child.
+#[Component]
+function Broken(): Node
+{
+    return <div><Part /><Thrower /></div>;
+}
+
+#[Page('/suspense')]
+final class SuspensePage
+{
+    #[State] public int $clicks = 0;
+    #[State] public bool $broken = false;
+
+    public function click(): void
+    {
+        ++$this->clicks;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <button id="click" onClick={{ click }}>Clicks {{ clicks }}</button>
+                <section id="report">
+                    <Suspense>
+                        <Suspense:fallback>
+                            <p id="report-fallback">Loading the report…</p>
+                            <Suspense>
+                                <Suspense:fallback><p id="hint-fallback">…</p></Suspense:fallback>
+                                <Hint />
+                            </Suspense>
+                        </Suspense:fallback>
+                        <Report />
+                        <Suspense>
+                            <Suspense:fallback><p id="notes-fallback">Loading the notes…</p></Suspense:fallback>
+                            <Notes />
+                        </Suspense>
+                    </Suspense>
+                </section>
+                <section id="chart">
+                    <Suspense lazy>
+                        <Suspense:fallback><p id="chart-fallback">Loading the chart…</p></Suspense:fallback>
+                        <Suspense:error><p id="chart-error">No chart.</p></Suspense:error>
+                        <Broken />
+                    </Suspense>
+                </section>
+                <section id="fatal">
+                    <Suspense>
+                        <Suspense:fallback><p id="fatal-fallback">Loading…</p></Suspense:fallback>
+                        <Broken />
+                    </Suspense>
+                </section>
+            </Document>
+        );
+    }
+}

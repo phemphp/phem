@@ -1,0 +1,5 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+{% component 'App\\Ui\\Common\\Badge' with {'label': 'on', 'tone': 'ok'} only %}

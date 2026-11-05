@@ -1,0 +1,18 @@
+<?phpm
+
+namespace App\Ui\Common;
+
+use Acme\Ui\Alert as UiAlert;
+use Phem\Attribute\Component;
+use Phem\{Html, Node};
+
+// Replaces the Alert of the acme/ui package in all the tags, also in the package. It wraps the
+// original: in the replacement, the tag of the original stays the original.
+#[Component(replaces: UiAlert::class)]
+function Alert(string $type = 'info', ?Html $children = null): Node
+{
+    $label = 'warning' === $type ? 'Careful' : 'Note';
+
+    return <UiAlert type={{ type }}><strong>{{ label }}</strong> {{ children }}</UiAlert>;
+}
+

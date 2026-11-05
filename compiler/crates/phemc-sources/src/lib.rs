@@ -401,19 +401,19 @@ mod tests {
     #[test]
     fn read_gives_the_key_and_the_path_of_each_file() {
         let dir = project();
-        write(&dir, "src/Page/Home.phpm", "<?phpm home");
+        write(&dir, "src/Ui/Home.phpm", "<?phpm home");
         write(&dir, "src/notes.txt", "not a source");
         write(&dir, "vendor/acme/ui/components/Badge.phpm", "<?phpm badge");
         write(&dir, "vendor/composer/installed.json", r#"{"packages": [{"name": "acme/ui", "install-path": "../acme/ui", "extra": {"phem": {"source": "components"}}}]}"#);
 
         let roots = roots(&dir, Path::new("src")).unwrap();
-        let open = HashMap::from([(dir.join("src/Page/Home.phpm"), "<?phpm open".to_string())]);
+        let open = HashMap::from([(dir.join("src/Ui/Home.phpm"), "<?phpm open".to_string())]);
         let inputs: Vec<_> = read(&roots, &open).unwrap().into_iter().map(|i| (i.rel, i.path, i.package, i.text)).collect();
 
         assert_eq!(
             inputs,
             [
-                ("Page/Home.phpm".into(), "src/Page/Home.phpm".into(), None, "<?phpm open".into()),
+                ("Ui/Home.phpm".into(), "src/Ui/Home.phpm".into(), None, "<?phpm open".into()),
                 ("vendor/acme/ui/Badge.phpm".into(), "vendor/acme/ui/components/Badge.phpm".into(), Some("acme/ui".into()), "<?phpm badge".into()),
             ]
         );

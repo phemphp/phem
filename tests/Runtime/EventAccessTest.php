@@ -27,7 +27,7 @@ use Symfony\Component\HttpKernel\Attribute\RateLimit;
 
 /**
  * The events of a page go to its URL: the access rules of the page apply to them, and a
- * request from another site is not an event (tests/Fixtures/app/src/page/access.phpm).
+ * request from another site is not an event (tests/Fixtures/app/src/Ui/Access/PrivateCounterPage.phpm).
  */
 final class EventAccessTest extends TestCase
 {
@@ -36,13 +36,13 @@ final class EventAccessTest extends TestCase
     public function testPathRuleOfThePageAppliesToItsEvents(): void
     {
         self::assertSame(403, $this->request('GET', '/private/counter')->getStatusCode());
-        self::assertSame(403, $this->click('/private/counter', 'App\\Page\\PrivateCounter', 'increment')->getStatusCode(), 'a valid state for the page does not skip the rule');
+        self::assertSame(403, $this->click('/private/counter', 'App\\Ui\\Access\\PrivateCounterPage', 'increment')->getStatusCode(), 'a valid state for the page does not skip the rule');
     }
 
     public function testControllerAttributeOfThePageAppliesToThePageAndItsEvents(): void
     {
         self::assertSame(403, $this->request('GET', '/denied')->getStatusCode());
-        self::assertSame(403, $this->click('/denied', 'App\\Page\\DeniedPage', 'increment')->getStatusCode());
+        self::assertSame(403, $this->click('/denied', 'App\\Ui\\Access\\DeniedPage', 'increment')->getStatusCode());
 
         $response = $this->request('GET', '/cached');
         self::assertSame(200, $response->getStatusCode());
@@ -56,10 +56,10 @@ final class EventAccessTest extends TestCase
         }
 
         // The limit of the fixture app is 2 events in a minute.
-        self::assertSame(200, $this->click('/limited', 'App\\Page\\LimitedPage', 'increment')->getStatusCode());
-        self::assertSame(200, $this->click('/limited', 'App\\Page\\LimitedPage', 'increment')->getStatusCode());
+        self::assertSame(200, $this->click('/limited', 'App\\Ui\\Access\\LimitedPage', 'increment')->getStatusCode());
+        self::assertSame(200, $this->click('/limited', 'App\\Ui\\Access\\LimitedPage', 'increment')->getStatusCode());
 
-        $response = $this->click('/limited', 'App\\Page\\LimitedPage', 'increment');
+        $response = $this->click('/limited', 'App\\Ui\\Access\\LimitedPage', 'increment');
         self::assertSame(429, $response->getStatusCode());
         self::assertMatchesRegularExpression('/^\d+$/', (string) $response->headers->get('Retry-After'));
 
@@ -67,7 +67,7 @@ final class EventAccessTest extends TestCase
             self::assertSame(200, $this->request('GET', '/limited')->getStatusCode(), 'with `methods: \'POST\'`, the GET requests of the page have no limit');
         }
 
-        self::assertSame(200, $this->click('/leave', 'App\\Page\\LeavePage', 'leave')->getStatusCode(), 'the limit is for each page (the key has the path)');
+        self::assertSame(200, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave')->getStatusCode(), 'the limit is for each page (the key has the path)');
     }
 
     public function testRateLimitOfAHandlerAppliesToItsEventsOnly(): void
@@ -77,23 +77,23 @@ final class EventAccessTest extends TestCase
         }
 
         // The limit of the fixture app is 2 events in a minute.
-        self::assertSame(200, $this->click('/limited-handler', 'App\\Page\\LimitedHandlerPage', 'search')->getStatusCode());
-        self::assertSame(200, $this->click('/limited-handler', 'App\\Page\\LimitedHandlerPage', 'search')->getStatusCode());
+        self::assertSame(200, $this->click('/limited-handler', 'App\\Ui\\Access\\LimitedHandlerPage', 'search')->getStatusCode());
+        self::assertSame(200, $this->click('/limited-handler', 'App\\Ui\\Access\\LimitedHandlerPage', 'search')->getStatusCode());
 
-        $response = $this->click('/limited-handler', 'App\\Page\\LimitedHandlerPage', 'search');
+        $response = $this->click('/limited-handler', 'App\\Ui\\Access\\LimitedHandlerPage', 'search');
         self::assertSame(429, $response->getStatusCode(), 'the handler does not run');
         self::assertMatchesRegularExpression('/^\d+$/', (string) $response->headers->get('Retry-After'));
 
         for ($i = 0; $i < 3; ++$i) {
-            self::assertSame(200, $this->click('/limited-handler', 'App\\Page\\LimitedHandlerPage', 'increment')->getStatusCode(), 'a handler without the attribute has no limit');
+            self::assertSame(200, $this->click('/limited-handler', 'App\\Ui\\Access\\LimitedHandlerPage', 'increment')->getStatusCode(), 'a handler without the attribute has no limit');
         }
 
-        self::assertSame(200, $this->click('/limited-handler', 'App\\Page\\LimitedHandlerPage', 'heavy')->getStatusCode(), 'the key has the method: each handler has its own count');
-        self::assertSame(429, $this->click('/limited-handler', 'App\\Page\\LimitedHandlerPage', 'heavy')->getStatusCode(), 'with `tokens: 2`, one event uses all the limit');
+        self::assertSame(200, $this->click('/limited-handler', 'App\\Ui\\Access\\LimitedHandlerPage', 'heavy')->getStatusCode(), 'the key has the method: each handler has its own count');
+        self::assertSame(429, $this->click('/limited-handler', 'App\\Ui\\Access\\LimitedHandlerPage', 'heavy')->getStatusCode(), 'with `tokens: 2`, one event uses all the limit');
 
-        self::assertSame(200, $this->click('/limited-handler', 'App\\Page\\LimitedHandlerPage', 'like')->getStatusCode());
-        self::assertSame(200, $this->click('/limited-handler', 'App\\Page\\LimitedHandlerPage', 'like')->getStatusCode());
-        self::assertSame(429, $this->click('/limited-handler', 'App\\Page\\LimitedHandlerPage', 'like')->getStatusCode(), 'the Expression gives the key');
+        self::assertSame(200, $this->click('/limited-handler', 'App\\Ui\\Access\\LimitedHandlerPage', 'like')->getStatusCode());
+        self::assertSame(200, $this->click('/limited-handler', 'App\\Ui\\Access\\LimitedHandlerPage', 'like')->getStatusCode());
+        self::assertSame(429, $this->click('/limited-handler', 'App\\Ui\\Access\\LimitedHandlerPage', 'like')->getStatusCode(), 'the Expression gives the key');
     }
 
     /**
@@ -103,7 +103,7 @@ final class EventAccessTest extends TestCase
     public function testEventCanSendOnlyTheSignature(): void
     {
         $this->service(StateCache::POOL, CacheItemPoolInterface::class)->clear();
-        $payload = $this->clickPayload('App\\Page\\LeavePage', 'leave');
+        $payload = $this->clickPayload('App\\Ui\\Redirect\\LeavePage', 'leave');
         $state = $payload['state'];
         unset($payload['state']);
 
@@ -135,7 +135,7 @@ final class EventAccessTest extends TestCase
         }
 
         $this->service(StateCache::POOL, CacheItemPoolInterface::class)->clear();
-        $payload = $this->clickPayload('App\\Page\\LimitedHandlerPage', 'search');
+        $payload = $this->clickPayload('App\\Ui\\Access\\LimitedHandlerPage', 'search');
         $full = $payload;
         unset($payload['state']);
 
@@ -151,20 +151,20 @@ final class EventAccessTest extends TestCase
 
     public function testEventFromAnotherSiteIsRejected(): void
     {
-        self::assertSame(200, $this->click('/leave', 'App\\Page\\LeavePage', 'leave')->getStatusCode());
-        self::assertSame(200, $this->click('/leave', 'App\\Page\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => null, 'HTTP_ORIGIN' => 'http://localhost'])->getStatusCode(), 'Origin, without Sec-Fetch-Site');
-        self::assertSame(200, $this->click('/leave', 'App\\Page\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => null])->getStatusCode(), 'not a browser');
+        self::assertSame(200, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave')->getStatusCode());
+        self::assertSame(200, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => null, 'HTTP_ORIGIN' => 'http://localhost'])->getStatusCode(), 'Origin, without Sec-Fetch-Site');
+        self::assertSame(200, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => null])->getStatusCode(), 'not a browser');
 
-        self::assertSame(403, $this->click('/leave', 'App\\Page\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => 'cross-site'])->getStatusCode());
-        self::assertSame(403, $this->click('/leave', 'App\\Page\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => 'same-site'])->getStatusCode(), 'a sibling subdomain');
-        self::assertSame(403, $this->click('/leave', 'App\\Page\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => null, 'HTTP_ORIGIN' => 'https://evil.example'])->getStatusCode());
-        self::assertSame(403, $this->click('/leave', 'App\\Page\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => null, 'HTTP_ORIGIN' => 'null'])->getStatusCode());
+        self::assertSame(403, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => 'cross-site'])->getStatusCode());
+        self::assertSame(403, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => 'same-site'])->getStatusCode(), 'a sibling subdomain');
+        self::assertSame(403, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => null, 'HTTP_ORIGIN' => 'https://evil.example'])->getStatusCode());
+        self::assertSame(403, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => null, 'HTTP_ORIGIN' => 'null'])->getStatusCode());
     }
 
     public function testEventIsJson(): void
     {
         // A form of another site can send text/plain without a CORS preflight.
-        self::assertSame(415, $this->click('/leave', 'App\\Page\\LeavePage', 'leave', ['CONTENT_TYPE' => 'text/plain'])->getStatusCode());
+        self::assertSame(415, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', ['CONTENT_TYPE' => 'text/plain'])->getStatusCode());
     }
 
     /**
@@ -175,20 +175,20 @@ final class EventAccessTest extends TestCase
      */
     public function testNoOtherHeaderOrContentTypeSkipsTheCsrfChecks(): void
     {
-        self::assertSame(200, $this->click('/leave', 'App\\Page\\LeavePage', 'leave', ['CONTENT_TYPE' => 'application/json; charset=utf-8'])->getStatusCode());
+        self::assertSame(200, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', ['CONTENT_TYPE' => 'application/json; charset=utf-8'])->getStatusCode());
 
-        self::assertSame(415, $this->click('/leave', 'App\\Page\\LeavePage', 'leave', ['CONTENT_TYPE' => 'text/plain', 'HTTP_ACCEPT' => 'application/json'])->getStatusCode(), 'the Accept header is not the content type');
-        self::assertSame(415, $this->click('/leave', 'App\\Page\\LeavePage', 'leave', ['CONTENT_TYPE' => 'text/plain; application/json'])->getStatusCode(), 'a parameter is not the content type');
-        self::assertSame(415, $this->click('/leave', 'App\\Page\\LeavePage', 'leave', ['CONTENT_TYPE' => 'application/x-www-form-urlencoded'])->getStatusCode());
-        self::assertSame(415, $this->click('/leave', 'App\\Page\\LeavePage', 'leave', ['CONTENT_TYPE' => ''])->getStatusCode(), 'no content type');
+        self::assertSame(415, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', ['CONTENT_TYPE' => 'text/plain', 'HTTP_ACCEPT' => 'application/json'])->getStatusCode(), 'the Accept header is not the content type');
+        self::assertSame(415, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', ['CONTENT_TYPE' => 'text/plain; application/json'])->getStatusCode(), 'a parameter is not the content type');
+        self::assertSame(415, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', ['CONTENT_TYPE' => 'application/x-www-form-urlencoded'])->getStatusCode());
+        self::assertSame(415, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', ['CONTENT_TYPE' => ''])->getStatusCode(), 'no content type');
 
-        self::assertSame(403, $this->click('/leave', 'App\\Page\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => 'none'])->getStatusCode(), 'a URL that the user typed, or a bookmark');
-        self::assertSame(403, $this->click('/leave', 'App\\Page\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => 'cross-site', 'HTTP_ORIGIN' => 'http://localhost'])->getStatusCode(), 'Sec-Fetch-Site comes before Origin');
-        self::assertSame(403, $this->click('/leave', 'App\\Page\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => null, 'HTTP_ORIGIN' => 'http://localhost:8080'])->getStatusCode(), 'another port');
-        self::assertSame(403, $this->click('/leave', 'App\\Page\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => null, 'HTTP_ORIGIN' => 'http://localhost.evil.example'])->getStatusCode(), 'a host that starts with the host of the page');
+        self::assertSame(403, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => 'none'])->getStatusCode(), 'a URL that the user typed, or a bookmark');
+        self::assertSame(403, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => 'cross-site', 'HTTP_ORIGIN' => 'http://localhost'])->getStatusCode(), 'Sec-Fetch-Site comes before Origin');
+        self::assertSame(403, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => null, 'HTTP_ORIGIN' => 'http://localhost:8080'])->getStatusCode(), 'another port');
+        self::assertSame(403, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', ['HTTP_SEC_FETCH_SITE' => null, 'HTTP_ORIGIN' => 'http://localhost.evil.example'])->getStatusCode(), 'a host that starts with the host of the page');
 
         // A form of another site cannot send the X-Phem-Event header: the request is a page request.
-        $response = $this->click('/leave', 'App\\Page\\LeavePage', 'leave', ['HTTP_X_PHEM_EVENT' => null, 'HTTP_SEC_FETCH_SITE' => 'cross-site', 'CONTENT_TYPE' => 'application/x-www-form-urlencoded']);
+        $response = $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', ['HTTP_X_PHEM_EVENT' => null, 'HTTP_SEC_FETCH_SITE' => 'cross-site', 'CONTENT_TYPE' => 'application/x-www-form-urlencoded']);
         self::assertSame(200, $response->getStatusCode());
         self::assertStringNotContainsString('redirect', (string) $response->getContent(), 'the handler does not run');
     }
@@ -209,7 +209,7 @@ final class EventAccessTest extends TestCase
      */
     public function testEventBodyCanBeGzip(): void
     {
-        $json = json_encode($this->clickPayload('App\\Page\\LeavePage', 'leave'), \JSON_THROW_ON_ERROR);
+        $json = json_encode($this->clickPayload('App\\Ui\\Redirect\\LeavePage', 'leave'), \JSON_THROW_ON_ERROR);
         self::assertSame(200, $this->event('/leave', (string) gzencode($json), ['HTTP_CONTENT_ENCODING' => 'gzip'])->getStatusCode());
         self::assertSame(200, $this->event('/leave', (string) gzencode($json), ['HTTP_CONTENT_ENCODING' => ' GZIP '])->getStatusCode(), 'the encoding has no case');
         self::assertSame(200, $this->event('/leave', $json, ['HTTP_CONTENT_ENCODING' => 'identity'])->getStatusCode());
@@ -267,7 +267,7 @@ final class EventAccessTest extends TestCase
 
     public function testEventHasAMaximumJsonDepth(): void
     {
-        self::assertSame(200, $this->click('/leave', 'App\\Page\\LeavePage', 'leave', form: [['name', 'Ada']])->getStatusCode(), 'the form fields of the browser');
+        self::assertSame(200, $this->click('/leave', 'App\\Ui\\Redirect\\LeavePage', 'leave', form: [['name', 'Ada']])->getStatusCode(), 'the form fields of the browser');
 
         $value = 'deep';
         for ($i = 0; $i < EventPayload::MAX_DEPTH; ++$i) {
@@ -342,7 +342,7 @@ final class EventAccessTest extends TestCase
      */
     private function multipart(string $uri, array $files, array $server = [], ?string $json = null): Response
     {
-        $json ??= json_encode($this->clickPayload('App\\Page\\LeavePage', 'leave'), \JSON_THROW_ON_ERROR);
+        $json ??= json_encode($this->clickPayload('App\\Ui\\Redirect\\LeavePage', 'leave'), \JSON_THROW_ON_ERROR);
         $server += ['CONTENT_TYPE' => 'multipart/form-data; boundary=x', 'HTTP_X_PHEM_EVENT' => '1', 'HTTP_SEC_FETCH_SITE' => 'same-origin'];
         $request = Request::create($uri, 'POST', [EventBody::PART => $json], [], $files, array_filter($server, static fn (?string $v): bool => null !== $v));
 

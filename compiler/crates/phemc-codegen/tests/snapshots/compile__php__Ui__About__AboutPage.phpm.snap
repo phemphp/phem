@@ -1,0 +1,25 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from Ui/About/AboutPage.phpm; do not edit */
+
+namespace App\Ui\About;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+use function App\Ui\Common\Document;
+
+#[Page('/about')]
+#[Page('/about-us', name: 'about_us')]
+final class AboutPage
+{
+    public function render(): Node
+    {
+        return (
+            new \Phem\Element('Ui/About/AboutPage.0.twig', [])
+
+
+        );
+    }
+}

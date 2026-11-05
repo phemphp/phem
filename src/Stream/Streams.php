@@ -32,7 +32,7 @@ use Symfony\Contracts\Service\ResetInterface;
  *             ->refresh('stats');
  *     }
  *
- * - toPage() names a page (a class name, or `Guestbook(...)` for a function page): all its URLs,
+ * - toPage() names a page (a class name, or `GuestbookPage(...)` for a function page): all its URLs,
  *   or one URL with its route values. toComponent() names a component with #[Broadcast]: all
  *   the pages that render it. A class component with #[Broadcast] refreshes itself after its
  *   handlers (see Phem\Handler\BroadcastMiddleware). everywhere() names all the pages with
@@ -65,7 +65,7 @@ final class Streams implements ResetInterface
     /**
      * The streams to a page: to all its URLs, or with all its route values to one URL
      * (`toPage(ScientistPage::class, ['id' => 42])`). A function page is its first-class callable
-     * (`toPage(Guestbook(...))`).
+     * (`toPage(GuestbookPage(...))`).
      *
      * @param class-string|string|\Closure $page
      * @param array<string, mixed>         $values

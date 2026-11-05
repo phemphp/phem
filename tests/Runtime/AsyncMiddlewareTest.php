@@ -69,7 +69,7 @@ final class AsyncMiddlewareTest extends TestCase
         $this->handle(new AsyncHandlers()->export(...), $bus, $request);
 
         [$message] = $bus->messages;
-        self::assertSame(['App\\Page', '{"state":1}', 'phem0123456789ab.export'], [$message->page, $message->state, $message->handler]);
+        self::assertSame(['App\\Ui\\HomePage', '{"state":1}', 'phem0123456789ab.export'], [$message->page, $message->state, $message->handler]);
         self::assertSame(['room' => 'lobby', '_route' => 'async', '_route_params' => ['room' => 'lobby']], $message->route);
         self::assertTrue($message->isSignedWith('secret'));
     }
@@ -120,7 +120,7 @@ final class AsyncMiddlewareTest extends TestCase
     private static function request(): Request
     {
         $request = Request::create('https://localhost/async/lobby', 'POST');
-        $request->attributes->set(EventReplay::ATTRIBUTE, new EventReplay('App\\Page', '{"state":1}', [], 'phem0123456789ab.export', ['type' => 'click']));
+        $request->attributes->set(EventReplay::ATTRIBUTE, new EventReplay('App\\Ui\\HomePage', '{"state":1}', [], 'phem0123456789ab.export', ['type' => 'click']));
 
         return $request;
     }

@@ -11,7 +11,7 @@ composer require acme/ui
 use function Acme\Ui\Badge;
 
 #[Page('/')]
-function Home(): Node
+function HomePage(): Node
 {
     return <Document><Badge label="New" /></Document>;
 }
@@ -40,7 +40,7 @@ acme-ui/
 ├── composer.json
 ├── components/            the .phpm files of the package (extra.phem.source)
 │   ├── Badge.phpm
-│   └── Page/Gallery.phpm
+│   └── GalleryPage.phpm
 ├── src/                   the PHP classes of the package (enums, services), with PSR-4
 └── tests/
     ├── Kernel.php         the test kernel (see "Test a package")
@@ -130,7 +130,7 @@ function Layout(?Html $children = null): Node
 }
 
 #[Page('/gallery')]
-function Gallery(): Node
+function GalleryPage(): Node
 {
     return <Layout><Badge label="New" /></Layout>;
 }
@@ -174,8 +174,8 @@ function Notice(?Html $children = null): Node
 ```
 
 ```php
-// src/Component/Alert.phpm
-namespace App\Component;
+// src/Ui/Common/Alert.phpm
+namespace App\Ui\Common;
 
 use Acme\Ui\Alert as UiAlert;
 
@@ -189,7 +189,9 @@ function Alert(string $type = 'info', ?Html $children = null): Node
 ```
 
 ```php
-// src/Page/Replaced.phpm
+// src/Ui/ReplacedPage.phpm
+namespace App\Ui;
+
 use Acme\Ui\Alert;
 use function Acme\Ui\Notice;
 
@@ -217,9 +219,9 @@ and the template of the replacement renders the original:
 
 ```twig
 {# vendor/acme/ui/Alert.1.twig (Notice) #}
-<section class="notice">{% component embed 'App\\Component\\Alert' with {'type': 'warning'} only %}...{% endcomponent %}</section>
+<section class="notice">{% component embed 'App\\Ui\\Common\\Alert' with {'type': 'warning'} only %}...{% endcomponent %}</section>
 
-{# component/Alert.0.twig (the replacement) #}
+{# Ui/Common/Alert.0.twig (the replacement) #}
 {% component embed 'Acme\\Ui\\Alert' with {'type': (type)} only %}...{% endcomponent %}
 ```
 
@@ -445,7 +447,7 @@ class Tabs
 
 ```php
 #[Page('/settings')]
-final class Settings
+final class SettingsPage
 {
     #[State] public string $tab = 'general';
 

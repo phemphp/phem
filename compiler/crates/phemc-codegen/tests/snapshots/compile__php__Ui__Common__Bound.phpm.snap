@@ -1,0 +1,63 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from Ui/Common/Bound.phpm; do not edit */
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\{Component, Prop, State};
+use Phem\Bound;
+use Phem\Node;
+
+/** A template component: its field binds the property of the parent. */
+#[Component]
+function TextField(Bound $value, string $label): Node
+{
+    return new \Phem\Element('Ui/Common/Bound.0.twig', ['label' => $label, 'value' => $value]);
+}
+
+/** A function component: it passes its Bound prop to a child. */
+#[Component]
+function NameField(Bound $value): Node
+{
+    $label = 'Name';
+
+    return new \Phem\Element('Ui/Common/Bound.1.twig', ['value' => $value, 'label' => $label]);
+}
+
+/** A class component with a Bound prop. */
+#[Component]
+final class ColorPicker
+{
+    #[Prop] public Bound $value;
+
+    public function render(): Node
+    {
+        return (
+            new \Phem\Element('Ui/Common/Bound.2.twig', ['value' => $this->value, 'this' => $this])
+
+
+
+        );
+    }
+}
+
+#[Component]
+final class Profile
+{
+    #[State] public string $name = '';
+    #[State] public string $bio = '';
+    #[State] public array $prefs = ['color' => 'red'];
+
+    public function render(): Node
+    {
+        return (
+            new \Phem\Element('Ui/Common/Bound.3.twig', ['name' => $this->name, 'bio' => $this->bio, 'prefs' => $this->prefs, 'this' => $this])
+
+
+
+
+        );
+    }
+}

@@ -1,5 +1,0 @@
----
-source: crates/phemc-codegen/tests/compile.rs
-expression: t.content
----
-{% component 'App\\Component\\RestButton' with phem_props({'count': (count)}, rest) only %}

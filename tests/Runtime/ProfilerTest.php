@@ -44,7 +44,7 @@ final class ProfilerTest extends TestCase
 
         self::assertTrue($collector->isPhem());
         self::assertFalse($collector->isEvent());
-        self::assertSame('App\Page\SkipPage', $collector->getPage());
+        self::assertSame('App\Ui\Skip\SkipPage', $collector->getPage());
         self::assertSame('rendered', $collector->getOutcome());
         self::assertSame(['Render'], array_column($collector->getPasses(), 'label'));
         self::assertSame('SkipPage', $collector->getFibers()[0]['name']);
@@ -105,7 +105,7 @@ final class ProfilerTest extends TestCase
 
         self::assertSame([$entries[1]], $collector->getStale());
         [$update] = $collector->getStreams();
-        self::assertSame(['phem:App\Page\GuestbookPage?room=lobby'], $update['names'], 'the profiler shows the names of the topics');
+        self::assertSame(['phem:App\Ui\Push\GuestbookPage?room=lobby'], $update['names'], 'the profiler shows the names of the topics');
         self::assertStringNotContainsString('Guestbook', $update['topics'][0]);
         self::assertStringContainsString('<turbo-stream action="prepend" target="entries">', $update['data']);
     }
@@ -115,8 +115,8 @@ final class ProfilerTest extends TestCase
         $collector = $this->collector($this->request('GET', '/replaced'));
 
         $fibers = array_column($collector->getFibers(), 'replaces', 'fqcn');
-        self::assertSame('Acme\Ui\Alert', $fibers['App\Component\Alert'] ?? null);
-        self::assertNull($fibers['App\Page\ReplacedPage'] ?? null);
+        self::assertSame('Acme\Ui\Alert', $fibers['App\Ui\Common\Alert'] ?? null);
+        self::assertNull($fibers['App\Ui\Replaced\ReplacedPage'] ?? null);
         self::assertContains('Alert', array_column($collector->getFibers(), 'replacesName'));
     }
 

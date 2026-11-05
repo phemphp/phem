@@ -56,8 +56,8 @@ final class PackageKernelTest extends KernelTestCase
         $manifest = self::getContainer()->get('phem.manifest');
 
         // Its pages need a route import, as in an app.
-        self::assertSame(['Acme\Kit\Page\Demo'], $manifest->pagesOf('acme/kit'));
-        self::assertSame(['Acme\Kit\Tests\Page\Home', 'Acme\Kit\Tests\Page\TabsPage'], $manifest->pagesOf(''));
+        self::assertSame(['Acme\Kit\DemoPage'], $manifest->pagesOf('acme/kit'));
+        self::assertSame(['Acme\Kit\Tests\Ui\HomePage', 'Acme\Kit\Tests\Ui\TabsPage'], $manifest->pagesOf(''));
         self::assertSame('vendor/acme/kit/Button.0.twig', $manifest->component('Acme\Kit\Button')?->template);
     }
 

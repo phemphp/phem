@@ -6,7 +6,7 @@ same way a `.jsx` file is JavaScript with JSX.
 ```php
 <?phpm
 
-namespace App\Component;
+namespace App\Ui\Common;
 
 use Phem\Attribute\{Component, State};
 use Phem\Node;
@@ -108,8 +108,8 @@ return <Layout title="">
 </Layout>;
 ```
 
-If the component is not in scope, the server adds the import (`use function App\Component\Layout;`
-or `use App\Component\Counter;`). It uses the rules of `phemc`: a `use function` import, then a
+If the component is not in scope, the server adds the import (`use function App\Ui\Common\Layout;`
+or `use App\Ui\Common\Counter;`). It uses the rules of `phemc`: a `use function` import, then a
 `use` import, then the current namespace.
 
 Only a function or a class with `#[Component]` is a component. Other functions are plain PHP

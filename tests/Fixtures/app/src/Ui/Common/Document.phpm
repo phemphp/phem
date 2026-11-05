@@ -1,0 +1,21 @@
+<?phpm
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\Component;
+use Phem\{Html, Node, Root};
+
+// The document of the fixture pages: a page composes it and gives the title with a slot.
+#[Component]
+function Document(?Html $title = null, ?Html $children = null): Node
+{
+    return (
+        <html lang="en">
+            <head>
+                <meta charset="utf-8" />
+                <title>{{ title ?? 'Fixture' }}</title>
+            </head>
+            <body className="fixture"><Root>{{ children }}</Root></body>
+        </html>
+    );
+}

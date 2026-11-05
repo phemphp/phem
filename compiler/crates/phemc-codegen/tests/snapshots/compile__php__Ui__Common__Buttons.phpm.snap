@@ -1,0 +1,42 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from Ui/Common/Buttons.phpm; do not edit */
+
+namespace App\Ui\Common;
+
+use Closure;
+use Phem\Attribute\Component;
+use Phem\Html;
+use Phem\Node;
+
+#[Component]
+function MyButton(int $count, Closure $onClick): Node {
+    return (
+        new \Phem\Element('Ui/Common/Buttons.0.twig', ['onClick' => $onClick, 'count' => $count])
+
+
+    );
+}
+
+#[Component]
+function Card(string $title, ?Html $children = null, ?Html $footer = null): Node {
+    return (
+        new \Phem\Element('Ui/Common/Buttons.1.twig', ['title' => $title, 'children' => $children, 'footer' => $footer])
+
+
+
+
+    );
+}
+
+#[Component]
+function Badge(string $label, string $tone = 'info'): Node {
+    return new \Phem\Element('Ui/Common/Buttons.2.twig', ['tone' => $tone, 'label' => $label]);
+}
+
+#[Component]
+function Tag(?Html $children = null): Node {
+    return new \Phem\Element('Ui/Common/Buttons.3.twig', ['children' => $children]);
+}

@@ -6,7 +6,7 @@ use Phem\Attribute\{Component, Prop, State};
 use Phem\Node;
 
 // A class component of a package with state and a handler: the app replaces it
-// (src/component/Toggle.phpm).
+// (src/Ui/Common/Toggle.phpm).
 #[Component]
 final class Toggle
 {

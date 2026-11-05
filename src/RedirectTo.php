@@ -24,7 +24,7 @@ namespace Phem;
  *     {
  *         $this->scientists->remove($this->scientist);
  *
- *         return new RedirectTo(ScientistList::class, ['page' => 2]);
+ *         return new RedirectTo(ScientistsPage::class, ['page' => 2]);
  *     }
  *
  *     return new RedirectTo(ScientistPage(...), ['id' => $scientist->id]);
@@ -32,7 +32,7 @@ namespace Phem;
 final class RedirectTo
 {
     /**
-     * @param string|\Closure      $page   the page: `Counter::class`, or `ScientistPage(...)` for a function page
+     * @param string|\Closure      $page   the page: `CounterPage::class`, or `ScientistPage(...)` for a function page
      * @param array<string, mixed> $values the route values, and the query string
      */
     public function __construct(

@@ -1,0 +1,118 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from Ui/HomePage.phpm; do not edit */
+
+namespace App\Ui;
+
+use App\Ui\Common\Counter;
+use Phem\Attribute\{Component, Page, State};
+use Phem\Node;
+use function App\Ui\Common\{MyButton, Card, Badge, Tag, Document};
+
+#[Component]
+function Toolbar(string $theme = 'light'): Node {
+    return new \Phem\Element('Ui/HomePage.0.twig', ['theme' => $theme]);
+}
+
+// A plain PHP function, with no `#[Component]`: it is not a component.
+function Shout(string $name): string {
+    return strtoupper($name);
+}
+
+#[Component]
+function Greeting(string $name): Node {
+    $upper = Shout($name);
+    return new \Phem\Element('Ui/HomePage.1.twig', ['upper' => $upper]);
+}
+
+#[Component]
+final class Toggle
+{
+    #[State] public bool $on = false;
+
+    public function toggle(): void
+    {
+        $this->on = !$this->on;
+    }
+
+    public function render(): Node
+    {
+        if ($this->on) {
+            $content = new \Phem\Element('Ui/HomePage.2.twig', []);
+        } else {
+            $content = new \Phem\Element('Ui/HomePage.3.twig', []);
+        }
+
+        return (
+            new \Phem\Element('Ui/HomePage.4.twig', ['toggle' => $this->toggle(...), 'content' => $content, 'on' => $this->on])
+
+
+
+
+
+        );
+    }
+}
+
+#[Page('/', name: 'home', methods: ['GET', 'HEAD'])]
+final class HomePage
+{
+    #[State] public int $count = 0;
+    #[State] public array $items = [];
+
+    public function mount(): void
+    {
+        $this->items = ['item1'];
+    }
+
+    public function handleClick(): void
+    {
+        ++$this->count;
+    }
+
+    public function add(): void
+    {
+        $this->items[] = 'item'.(count($this->items) + 1);
+    }
+
+    public function render(): Node
+    {
+        $products = [
+            ['title' => 'Cabbage', 'isFruit' => false, 'id' => 1],
+            ['title' => 'Apple', 'isFruit' => true, 'id' => 3],
+        ];
+        $listItems = array_map(fn($p) => new \Phem\Element('Ui/HomePage.5.twig', ['p' => $p]), $products);
+
+        return (
+            new \Phem\Element('Ui/HomePage.6.twig', ['count' => $this->count, 'handleClick' => $this->handleClick(...), 'products' => $products, 'listItems' => $listItems, 'add' => $this->add(...), 'items' => $this->items])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        );
+    }
+}

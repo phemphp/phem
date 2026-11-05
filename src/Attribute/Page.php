@@ -39,7 +39,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * the route values by name, the Request, the services (see Phem\Argument\CallableArguments):
  *
  *     #[Page('/items/{id}')]
- *     function Item(int $id, ItemRepository $items)
+ *     function ItemPage(int $id, ItemRepository $items)
  *     {
  *         return <Document>...</Document>;
  *     }

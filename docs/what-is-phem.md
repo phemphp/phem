@@ -15,7 +15,7 @@ contains JSX. The markup is Twig: `{{ name }}` prints a value.
 ```php
 <?phpm
 
-namespace App\Component;
+namespace App\Ui\Common;
 
 use Phem\Attribute\Component;
 use Phem\Node;
@@ -37,7 +37,7 @@ templates, and it shows the errors with the line of the `.phpm` file. At runtime
 
 ```php
 #[Page('/hello')]
-function Hello(): Node
+function HelloPage(): Node
 {
     return (
         <Document>
@@ -49,7 +49,8 @@ function Hello(): Node
 ```
 
 `Document` is a component of your app: the HTML document (`<html>`, `<head>`, `<body>`) of all
-the pages.
+the pages. The name of a page ends with `Page`, and the `.phpm` files are in `src/Ui/` (see
+[Organize the UI](compiling.md#organize-the-ui)).
 
 ## 3. A component is a function or a class
 
@@ -108,7 +109,7 @@ Read the data in `mount()`, not in `render()` (see
 ```php
 #[IsGranted('ROLE_ADMIN')]
 #[Page('/admin/users')]
-final class Users
+final class UsersPage
 {
     /** @var list<User> */
     private array $users = [];
@@ -140,7 +141,7 @@ When you know React, this table helps.
 | React (react.dev/learn) | Phem |
 |---|---|
 | `function MyButton() { return <button/> }` | `#[Component] function MyButton()`: the same, in PHP (a function without `#[Component]` is a plain PHP function) |
-| `export default function MyApp()` | `#[Page('/')] function MyApp()`: a Symfony route (a class page for its own state or route values) |
+| `export default function MyApp()` | `#[Page('/')] function HomePage()`: a Symfony route (a class page for its own state or route values) |
 | the root layout (`<html>`, metadata) | a `Document` component of the app, with a `<Root>`: each page renders in it, and gives the title with `<Document:title>` |
 | `{user.name}`, `src={user.imageUrl}` | `{{ user.name }}`, `src={{ user.imageUrl }}` |
 | `className`, `style={{ width: 90 }}` | `className`, `style={{ {width: 90} }}` |
