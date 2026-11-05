@@ -4,6 +4,7 @@ import '../styles/tokens.css';
 import '../../design/bundle.css';
 import '../styles/site.css';
 import bundle from '../../design/bundle.js?url';
+import Banner from '../components/Banner.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import MobileNav from '../components/MobileNav.astro';
@@ -29,6 +30,7 @@ const { title, description, current } = Astro.props;
         <script is:inline>PhemDocs.initTheme();</script>
     </head>
     <body>
+        <Banner />
         <Header current={current} />
         <slot />
         <MobileNav current={current} />

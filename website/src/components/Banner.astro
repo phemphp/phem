@@ -1,0 +1,9 @@
+---
+// Design system: Banner, at the top of each page.
+import { repository } from '../site';
+import Icon from './Icon.astro';
+---
+<div class="ph-banner site-banner" role="note">
+    <Icon name="exclamation-triangle" />
+    <p class="site-banner__text">This documentation is under construction.<span class="site-banner__more"> Pages can be missing or change at any time.</span> <a href={repository}>Follow it on GitHub</a>.</p>
+</div>

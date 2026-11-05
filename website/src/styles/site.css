@@ -8,3 +8,5 @@
    word of the code is a span (src/markdown/tables.ts). */
 .ph-prose .ph-table code { font-size: 13px; white-space: normal; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .ph-prose .ph-table code > span { white-space: nowrap; }
+.site-banner__text { margin: 0; }
+@media (max-width: 767px) { .site-banner { padding: var(--space-2) var(--space-4); } .site-banner__more { display: none; } }

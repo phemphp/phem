@@ -1,3 +1,6 @@
+> [!WARNING]
+> This documentation is under construction. Pages can be missing or change at any time.
+
 <p align="center">
   <img src="cover.png" alt="Phem">
 </p>
