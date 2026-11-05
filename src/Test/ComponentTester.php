@@ -73,10 +73,10 @@ final class ComponentTester
      */
     private array $stale = [];
     /**
-     * The tokens of the events of this page (see Phem\Stream\SenderToken): a refresh after one of
-     * them skips the component of its handler.
+     * The events of this page with refreshes (see Phem\Stream\SenderToken): the token => the ids
+     * of the fibers that the event rendered. A refresh with the token does not render them again.
      *
-     * @var list<string>
+     * @var array<string, array<string, true>>
      */
     private array $sent = [];
     /** The number of the published updates that the page saw. */
@@ -617,7 +617,7 @@ final class ComponentTester
             $this->stale = array_diff_key($this->stale, array_flip($stale));
 
             if (null !== $result->sender) {
-                $this->sent[] = $result->sender;
+                $this->sent[$result->sender] = array_fill_keys($result->rendered, true);
             }
 
             // As in the browser, the handler took the files: their inputs are empty.
@@ -703,28 +703,50 @@ final class ComponentTester
     /**
      * Marks the components of a refresh as stale: the component around the target, the components
      * of the `targets` selector, or the content of the page for a refresh with neither. As in the
-     * browser, a refresh after an event of this page skips the component of its handler.
+     * browser, a refresh of an event of this page (`data-phem-sender`) skips a component that the
+     * event rendered with all the components in it.
      */
     private function markRefresh(Element $stream): bool
     {
+        $rendered = $this->sent[(string) $stream->getAttribute('data-phem-sender')] ?? null;
         $selector = $stream->getAttribute('targets');
         if (null === $selector) {
-            return $stream->hasAttribute('target')
-                ? $this->markStale($this->document->getElementById((string) $stream->getAttribute('target')))
-                : $this->markStale($this->document->querySelector('[data-phem-state-value] [data-phem-c]'));
-        }
+            $element = $stream->hasAttribute('target')
+                ? $this->document->getElementById((string) $stream->getAttribute('target'))
+                : $this->document->querySelector('[data-phem-state-value] [data-phem-c]');
 
-        [$token, $skip] = explode(' ', (string) $stream->getAttribute('data-phem-skip'), 2) + [1 => ''];
-        $own = '' !== $token && \in_array($token, $this->sent, true);
+            return !self::fresh($element?->closest('[data-phem-c]'), $rendered) && $this->markStale($element);
+        }
 
         $refresh = false;
         foreach ($this->document->querySelectorAll($selector) as $component) {
-            if (!$own || $component->getAttribute('data-phem-c') !== $skip) {
+            if (!self::fresh($component, $rendered)) {
                 $refresh = $this->markStale($component) || $refresh;
             }
         }
 
         return $refresh;
+    }
+
+    /**
+     * Whether the event rendered the component and all the components in it: a refresh of it
+     * renders nothing new.
+     *
+     * @param array<string, true>|null $rendered the fibers that the event of the refresh rendered
+     */
+    private static function fresh(?Element $component, ?array $rendered): bool
+    {
+        if (null === $component || null === $rendered) {
+            return false;
+        }
+
+        foreach ([$component, ...$component->querySelectorAll('[data-phem-c]')] as $fiber) {
+            if (!isset($rendered[(string) $fiber->getAttribute('data-phem-c')])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /** Marks the component around an element as stale. Returns false when the element is not in a component. */

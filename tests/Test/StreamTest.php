@@ -249,7 +249,8 @@ final class StreamTest extends KernelTestCase
 
         self::assertSame([$topics->toPage('App\Page\GuestbookPage', ['room' => 'lobby'])], $update['topics']);
         self::assertFalse($update['private']);
-        self::assertSame('<turbo-stream action="prepend" target="entries"><template><li id="entry-1">Hi</li></template></turbo-stream><turbo-stream action="phem-refresh" target="stats"></turbo-stream>', $update['data']);
+        // The refresh of an event has its token (see SenderToken).
+        self::assertMatchesRegularExpression('#^<turbo-stream action="prepend" target="entries"><template><li id="entry-1">Hi</li></template></turbo-stream><turbo-stream action="phem-refresh" target="stats" data-phem-sender="[0-9a-f]{24}"></turbo-stream>$#', $update['data']);
     }
 
     public function testAComponentWithBroadcastHasItsKeysInItsElement(): void
@@ -279,7 +280,7 @@ final class StreamTest extends KernelTestCase
         [$update] = $this->updates();
 
         self::assertSame([$topics->toComponent('App\Page\GuestbookLikes')], $update['topics']);
-        self::assertMatchesRegularExpression('#^<turbo-stream action="phem-refresh" targets="\[data-phem-broadcast~=&quot;'.preg_quote($keys->ofInstance('App\Page\GuestbookLikes', ['room' => 'lobby']), '#').'&quot;\]" data-phem-skip="[0-9a-f]{24} phem[0-9a-f]{12}"></turbo-stream>$#', $update['data']);
+        self::assertMatchesRegularExpression('#^<turbo-stream action="phem-refresh" targets="\[data-phem-broadcast~=&quot;'.preg_quote($keys->ofInstance('App\Page\GuestbookLikes', ['room' => 'lobby']), '#').'&quot;\]" data-phem-sender="[0-9a-f]{24}"></turbo-stream>$#', $update['data']);
 
         // Only the instance of the lobby renders again: the other keeps its state.
         $other->assertSee('0 likes in lobby')
@@ -339,11 +340,9 @@ final class StreamTest extends KernelTestCase
     public function testTheTabThatSentTheEventSkipsTheComponentOfTheHandler(): void
     {
         $page = $this->visit('/likes')->click('#like-lobby')->assertSee('1 likes in lobby');
-        $fiber = $page->document()->getElementById('likes-lobby')?->closest('[data-phem-c]')?->getAttribute('data-phem-c');
         [$update] = $this->updates();
 
-        self::assertNotNull($fiber);
-        self::assertMatchesRegularExpression('/data-phem-skip="[0-9a-f]{24} '.$fiber.'"/', $update['data']);
+        self::assertMatchesRegularExpression('/data-phem-sender="[0-9a-f]{24}"/', $update['data']);
 
         // The tab that sent the event does not render the component again: it does not see a
         // change after the event. Another tab does.
@@ -365,7 +364,8 @@ final class StreamTest extends KernelTestCase
         $page->settle();
         [$update] = $this->updates();
 
-        self::assertStringNotContainsString('data-phem-skip', $update['data']);
+        // A worker answers no browser: its refresh has no token.
+        self::assertStringNotContainsString('data-phem-sender', $update['data']);
         $other->receive()->assertSee('1 likes in lobby');
     }
 
@@ -463,6 +463,29 @@ final class StreamTest extends KernelTestCase
 
         $hall->receive()->assertSee('1 in my room');
         $lobby->receive()->assertSee('0 in my room');
+    }
+
+    public function testTheTabThatSentTheEventSkipsTheRefreshOfAServiceForWhatTheEventRendered(): void
+    {
+        $other = $this->visit('/rooms/lobby')->assertSee('0 entries');
+        $page = $this->visit('/rooms/lobby')->click('#post')->assertSee('1 entries');
+
+        // A change after the event, with no push: only a refresh shows it.
+        $guestbook = static::getContainer()->get(Guestbook::class);
+        \assert($guestbook instanceof Guestbook);
+        $guestbook->add('lobby', 'Later');
+
+        // The handler rendered the page: its tab does not refresh it. The other tab does.
+        $page->receive()->assertSee('1 entries');
+        $other->receive()->assertSee('2 entries');
+    }
+
+    public function testTheTabThatSentTheEventRefreshesWhatTheEventDidNotRender(): void
+    {
+        // The form signs: the stats are another component, which the event did not render.
+        $page = $this->visit('/guestbook/lobby')->fill('input[name=text]', 'Hi')->click('#sign')->assertSee('0 entries');
+
+        $page->receive()->assertSee('1 entries');
     }
 
     public function testAHandlerOfAComponentWithHandlersFalseDoesNotRefreshTheOtherTabs(): void

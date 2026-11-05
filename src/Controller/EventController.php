@@ -25,6 +25,7 @@ use Phem\Http\TurboStreams;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Path\PathResolver;
 use Phem\Rendering\EventRenderer;
+use Phem\Rendering\Fiber;
 use Phem\Rendering\Tree;
 use Phem\State\PageState;
 use Phem\State\StateAccessor;
@@ -181,6 +182,9 @@ final class EventController
             $request->attributes->set(EventReplay::ATTRIBUTE, new EventReplay($page, $json, $payload->bound, $payload->handlers[0], $payload->event));
         }
 
+        // The refreshes of the handlers get the token of the event (see SenderToken).
+        $this->sender->startEvent();
+
         try {
             $outcome = $this->events->run($tree, $payload->handlers, $payload->bound, $this->dispatcher, fn (): Event => Event::fromArray($payload->event, $this->dispatcher, $request->files->all()), $payload->stale, EventRequest::of($request, $payload->event));
         } catch (HttpExceptionInterface $e) {
@@ -191,6 +195,8 @@ final class EventController
             }
 
             return self::reload();
+        } finally {
+            $this->sender->endEvent();
         }
 
         if ($outcome->reload) {
@@ -221,9 +227,10 @@ final class EventController
         $changes = (object) StateJson::changes($json, $next);
         $data = ['streams' => $this->streams->updates($tree->changedFibers(), $tree->shape), 'changes' => $changes, 'signature' => $signature, 'query' => ['values' => (object) $query['values'], 'push' => $query['push']], 'events' => $this->dispatcher->dispatched()];
 
-        // The refreshes of this event skip the component of the handler in this browser.
+        // The refreshes of this event skip the fibers that it rendered, in this browser.
         if (null !== $token = $this->sender->issued()) {
             $data['sender'] = $token;
+            $data['rendered'] = array_map(static fn (Fiber $f): string => $f->id, $tree->rendered());
         }
 
         if ($outcome->clearFiles) {

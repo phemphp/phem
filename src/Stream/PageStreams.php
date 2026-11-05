@@ -91,7 +91,8 @@ final class PageStreams
      * its subtree: its own state and its access rules. As after Event::refresh(), a component
      * with no #[State] reads its data again in mount(), and a #[State] keeps the value of the
      * browser. The browser sends one event for all the refreshes that come together, and none for
-     * a target that the page does not show.
+     * a target that the page does not show. In an event request, the browser that sent the event
+     * does not render again what the event rendered (see SenderToken).
      *
      * With no target, it renders again the instances of the component of Streams::toComponent()
      * (all of them, or the instances of its key), or the content of the page.
@@ -105,22 +106,6 @@ final class PageStreams
         }
 
         $this->streams->add($this->topic, null !== $target ? new Stream(Stream::REFRESH, $target) : $this->own());
-
-        return $this;
-    }
-
-    /**
-     * The refresh of the component after a handler (see Phem\Handler\BroadcastMiddleware): the
-     * page that sent the event does not refresh the fiber of the handler, it rendered it already.
-     *
-     * @param string $token the token of the event (see SenderToken)
-     *
-     * @internal
-     */
-    public function refreshExcept(string $token, string $fiber): self
-    {
-        $stream = $this->own();
-        $this->streams->add($this->topic, new Stream($stream->action, $stream->target, many: $stream->many, skip: $token.' '.$fiber));
 
         return $this;
     }

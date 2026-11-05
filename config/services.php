@@ -171,7 +171,7 @@ return static function (ContainerConfigurator $container): void {
         // The last one before the handler: a middleware that stops the event refreshes nothing. A
         // commit that fails drops the refresh (see the streams middleware).
         ->set('phem.handler_middleware.broadcast', BroadcastMiddleware::class)
-            ->args([service('phem.streams'), service('phem.renderer'), service('phem.broadcast_keys'), service('phem.sender_token'), service('request_stack'), service('phem.metadata')])
+            ->args([service('phem.streams'), service('phem.renderer'), service('phem.broadcast_keys'), service('phem.metadata')])
             ->tag('phem.handler_middleware', ['priority' => -1000])
         // Inside the profiler: it sees the RedirectResponse.
         ->set('phem.handler_middleware.redirect', RedirectMiddleware::class)
@@ -243,7 +243,7 @@ return static function (ContainerConfigurator $container): void {
             ->args([service('logger')->nullOnInvalid()])
         ->alias('phem.stream_publisher', 'phem.stream_publisher.frankenphp')
         ->set('phem.streams', Streams::class)
-            ->args([service('phem.renderer'), service('phem.stream_publisher'), service('phem.topics'), false, service('phem.broadcast_keys')])
+            ->args([service('phem.renderer'), service('phem.stream_publisher'), service('phem.topics'), false, service('phem.broadcast_keys'), service('phem.sender_token')])
             ->tag('kernel.reset', ['method' => 'reset'])
         ->alias(Streams::class, 'phem.streams')
         ->set('phem.subscription', Subscription::class)

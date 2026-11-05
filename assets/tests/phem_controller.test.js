@@ -1490,25 +1490,71 @@ describe("pushes", () => {
     await vi.waitFor(() => expect(document.querySelector('[data-phem-c="c1"]').innerHTML).toBe("<p>x</p>"))
   })
 
-  it("skips the component of its own handler in a refresh after the handler", async () => {
+  it("skips the components that its own event rendered in a refresh of the event", async () => {
     const markup = '<button data-phem-on-click="b1.like" data-phem-c="b1" data-phem-broadcast="all">Like</button><p id="b2" data-phem-c="b2" data-phem-broadcast="all">2</p>'
     const source = await subscribe(markup)
-    respond(markup, {}, { sender: "t1" })
+    respond(markup, {}, { sender: "t1", rendered: ["b1"] })
     const done = nextDone()
     click("button")
     await done
 
     respond(markup)
-    source.push('<turbo-stream action="phem-refresh" targets="[data-phem-broadcast~=&quot;all&quot;]" data-phem-skip="t1 b1"></turbo-stream>')
+    source.push('<turbo-stream action="phem-refresh" targets="[data-phem-broadcast~=&quot;all&quot;]" data-phem-sender="t1"></turbo-stream>')
     await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
     expect(JSON.parse(fetch.mock.calls[1][1].body).stale).toEqual(["b2"])
 
     // The token of an event of another page: no skip.
     respond(markup.replace(">2</p>", ">3</p>"))
-    source.push('<turbo-stream action="phem-refresh" targets="[data-phem-broadcast~=&quot;all&quot;]" data-phem-skip="t2 b1"></turbo-stream>')
+    source.push('<turbo-stream action="phem-refresh" targets="[data-phem-broadcast~=&quot;all&quot;]" data-phem-sender="t2"></turbo-stream>')
     // The morph of the last refresh, before the next test.
     await vi.waitFor(() => expect(document.getElementById("b2").textContent).toBe("3"))
     expect(JSON.parse(fetch.mock.calls[2][1].body).stale).toEqual(["b1", "b2"])
+  })
+
+  it("skips the target and the content that its own event rendered, with all the components in them", async () => {
+    const markup = '<p id="stats" data-phem-c="s1">1 entry</p><div id="list" data-phem-c="l1"><span data-phem-c="i1">One</span></div><button data-phem-on-click="c1.post">Post</button>'
+    const source = await subscribe(markup)
+    const root = document.getElementById("phem-root")
+    // The event rendered the content, the stats and the list, but not the item of the list (it kept it).
+    respond(markup, {}, { sender: "t1", rendered: ["c1", "s1", "l1"] })
+    const done = nextDone()
+    click("button")
+    await done
+
+    // The stats: the event rendered them, so no refresh.
+    source.push('<turbo-stream action="phem-refresh" target="stats" data-phem-sender="t1"></turbo-stream>')
+    await vi.waitFor(() => expect(root.hasAttribute("data-phem-push-pending")).toBe(false))
+    await rendered()
+    expect(fetch).toHaveBeenCalledTimes(1)
+
+    // The list: the event did not render its item, so it renders again.
+    respond(markup)
+    source.push('<turbo-stream action="phem-refresh" target="list" data-phem-sender="t1"></turbo-stream>')
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+    expect(JSON.parse(fetch.mock.calls[1][1].body).stale).toEqual(["l1"])
+    await vi.waitFor(() => expect(root.hasAttribute("data-phem-push-pending")).toBe(false))
+
+    // The content: the item in it did not render either.
+    respond(markup)
+    source.push('<turbo-stream action="phem-refresh" data-phem-sender="t1"></turbo-stream>')
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
+    expect(JSON.parse(fetch.mock.calls[2][1].body).stale).toEqual(["c1"])
+    await vi.waitFor(() => expect(root.hasAttribute("data-phem-push-pending")).toBe(false))
+  })
+
+  it("skips the content of a refresh when its own event rendered all of it", async () => {
+    const markup = '<p id="stats" data-phem-c="s1">1 entry</p><button data-phem-on-click="c1.post">Post</button>'
+    const source = await subscribe(markup)
+    respond(markup, {}, { sender: "t1", rendered: ["c1", "s1"] })
+    const done = nextDone()
+    click("button")
+    await done
+
+    source.push('<turbo-stream action="phem-refresh" data-phem-sender="t1"></turbo-stream>')
+    await rendered()
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(document.getElementById("phem-root").hasAttribute("data-phem-push-pending")).toBe(false)
   })
 
   it("morphs the keys of a component with #[Broadcast] after an event", async () => {

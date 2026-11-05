@@ -130,6 +130,34 @@ The actions are the Turbo Stream actions: `append`, `prepend`, `before`, `after`
 viewers, so do not push data for one user only. Use `refresh($target)` for that: each browser
 renders the component around the target again, with its own access rules.
 
+The browser that sent the event does not render again what its event rendered. In an event
+request, each refresh has the token of the event, also a refresh of a service such as a Doctrine
+listener. The answer of the event gives that browser the token and the components that the event
+rendered. For each refresh with the token, the browser skips a component that the event rendered
+with all the components in it, and renders the other targets:
+
+```php
+#[Page('/orders/{id:order}'), Broadcast]
+final class OrderPage
+{
+    #[Path] public Order $order;
+
+    // The handler renders the page.
+    public function ship(): void
+    {
+        $this->order->ship();
+    }
+}
+
+// A Doctrine postFlush listener, in the same request.
+$this->streams->toPage(OrderPage::class, ['order' => $order])->refresh();
+```
+
+The other viewers of the order render the page again. The browser that clicked "Ship" sends no
+refresh when the event rendered the page with all its components. A component that the event
+did not render (a component that it kept, or a count in the layout) still renders again in that
+browser.
+
 A refresh can find a page that this user cannot see now. When the render of a refresh throws
 a `401`, `403`, `404` or `410` HTTP exception, the server answers `409`, and the browser loads
 the page again: it shows the error page of the server, not the old page with an error banner.

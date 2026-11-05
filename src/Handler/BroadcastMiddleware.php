@@ -14,14 +14,11 @@ declare(strict_types=1);
 namespace Phem\Handler;
 
 use Phem\Async\Promise;
-use Phem\Controller\EventController;
 use Phem\Event;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Rendering\Renderer;
 use Phem\Stream\BroadcastKeys;
-use Phem\Stream\SenderToken;
 use Phem\Stream\Streams;
-use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Refreshes a class component with #[Broadcast] in the other browsers after its event handler
@@ -39,9 +36,9 @@ use Symfony\Component\HttpFoundation\RequestStack;
  * - It is the last middleware before the handler: a middleware that stops the event refreshes
  *   nothing. A handler that throws refreshes nothing, and a commit that fails drops the refresh
  *   (see StreamsMiddleware). An #[Async] handler refreshes after its work, in the worker.
- * - The refresh of an event has its SenderToken: the browser that sent the event does not
- *   render the component of the handler again, the event rendered it already. Its other
- *   instances render again.
+ * - The refresh of an event has its SenderToken (see Streams): the browser that sent the event
+ *   does not render the component of the handler again, the event rendered it already. Its
+ *   other instances render again.
  */
 final class BroadcastMiddleware implements HandlerMiddleware
 {
@@ -49,8 +46,6 @@ final class BroadcastMiddleware implements HandlerMiddleware
         private readonly Streams $streams,
         private readonly Renderer $renderer,
         private readonly BroadcastKeys $keys = new BroadcastKeys(),
-        private readonly SenderToken $sender = new SenderToken(),
-        private readonly ?RequestStack $requests = null,
         private readonly ComponentMetadata $metadata = new ComponentMetadata(),
     ) {
     }
@@ -76,14 +71,7 @@ final class BroadcastMiddleware implements HandlerMiddleware
             return $result;
         }
 
-        $streams = $this->streams->toComponent($fiber->fqcn, $this->keys->valuesOf($fiber));
-
-        // The browser of an event gets the token in the answer; a worker answers no browser.
-        if (true === $this->requests?->getCurrentRequest()?->headers->has(EventController::HEADER)) {
-            $streams->refreshExcept($this->sender->token(), $fiber->id);
-        } else {
-            $streams->refresh();
-        }
+        $this->streams->toComponent($fiber->fqcn, $this->keys->valuesOf($fiber))->refresh();
 
         return $result;
     }

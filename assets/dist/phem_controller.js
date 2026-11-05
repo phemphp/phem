@@ -142,7 +142,7 @@ const STREAM_RETRY = 5000
 // it has no hub at its URL, or the hub never accepts its token.
 const STREAM_ATTEMPTS = 3
 
-// The number of tokens of the last events that a page keeps (see `sent`).
+// The number of the last events of a page whose refreshes it knows (see `sent`).
 const MAX_SENT = 20
 
 // The DOM event of a refresh: an event with no handler.
@@ -701,9 +701,10 @@ export default class PhemController extends Controller {
 
     // The ids of the stale components (see the header): the next event sends them.
     this.stale = new Set()
-    // The tokens of the last events of this page (`sender` in the answer): a refresh after one of
-    // these events does not render again the component that the event rendered.
-    this.sent = []
+    // The last events of this page with refreshes: the token (`sender` in the answer) => the ids of
+    // the fibers that the event rendered (`rendered`). A refresh with the token of one of these
+    // events does not render again what the event rendered (see markRefresh()).
+    this.sent = new Map()
     // The number of events that run now, and the pushes that wait for them.
     this.busy = 0
     this.held = []
@@ -860,17 +861,22 @@ export default class PhemController extends Controller {
 
   // Marks the components of a refresh as stale: the component around the target, the components of
   // the `targets` selector (the instances of a component with #[Broadcast]), or the content of the
-  // root element for a refresh with neither. A refresh after a handler of this page skips the
-  // component of the handler (`data-phem-skip`): the event rendered it. Returns whether one is stale.
+  // root element for a refresh with neither. A refresh of an event of this page (`data-phem-sender`)
+  // skips a component that the event rendered with all the components in it: the refresh would
+  // render nothing new. Returns whether one is stale.
   markRefresh(stream, target) {
-    const selector = stream.getAttribute("targets")
-    if (selector === null) return stream.hasAttribute("target") ? this.markStale(target) : this.markContentStale()
+    const rendered = this.sent.get(stream.getAttribute("data-phem-sender") ?? "")
+    const fresh = (el) => rendered !== undefined && el !== null && [el, ...el.querySelectorAll(`[${FIBER}]`)].every((c) => rendered.has(c.getAttribute(FIBER)))
 
-    const [token, skip] = (stream.getAttribute("data-phem-skip") ?? "").split(" ")
-    const own = token !== "" && this.sent.includes(token)
+    const selector = stream.getAttribute("targets")
+    if (selector === null) {
+      if (!stream.hasAttribute("target")) return !fresh(this.element.querySelector(`[${FIBER}]`)) && this.markContentStale()
+      return !fresh(componentOf(target)) && this.markStale(target)
+    }
+
     let refresh = false
     for (const component of this.element.querySelectorAll(selector)) {
-      if (own && component.getAttribute(FIBER) === skip) continue
+      if (fresh(component)) continue
       refresh = this.markStale(component) || refresh
     }
 
@@ -1467,7 +1473,10 @@ export default class PhemController extends Controller {
     this.stateValue = applyStateChanges(this.stateValue, data.changes ?? {})
     this.signatureValue = data.signature
     // Before the pushes that wait for this event (see receive()).
-    if (data.sender) this.sent = [data.sender, ...this.sent].slice(0, MAX_SENT)
+    if (data.sender) {
+      this.sent.set(data.sender, new Set(data.rendered ?? []))
+      if (this.sent.size > MAX_SENT) this.sent.delete(this.sent.keys().next().value)
+    }
     if (data.query) this.updateUrl(data.query, true)
     this.sentBound = Object.fromEntries(Object.entries(fields).map(([key, { value }]) => [key, value]))
     this.sentForm = { submit: event.type === "submit", values: formValues }

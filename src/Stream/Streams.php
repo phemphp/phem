@@ -58,6 +58,7 @@ final class Streams implements ResetInterface
         private readonly Topics $topics = new Topics(),
         private readonly bool $private = false,
         private readonly BroadcastKeys $keys = new BroadcastKeys(),
+        private readonly SenderToken $sender = new SenderToken(),
     ) {
     }
 
@@ -115,9 +116,17 @@ final class Streams implements ResetInterface
         }
     }
 
-    /** @internal see PageStreams */
+    /**
+     * A refresh of an event request gets the token of the event (see SenderToken).
+     *
+     * @internal see PageStreams
+     */
     public function add(string $topic, Stream $stream): void
     {
+        if (Stream::REFRESH === $stream->action && null !== $token = $this->sender->forRefresh()) {
+            $stream = $stream->withSender($token);
+        }
+
         $this->queue[] = [$topic, $stream];
     }
 

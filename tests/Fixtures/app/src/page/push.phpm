@@ -376,9 +376,12 @@ function GuestbookBagPage(): Node
 final class RoomPage
 {
     #[Path] public string $room;
+    public int $count = 0;
 
-    public function __construct(private readonly Guestbook $guestbook)
-    {
+    public function __construct(
+        private readonly Guestbook $guestbook,
+        private readonly Streams $streams,
+    ) {
     }
 
     public function mount(): void
@@ -386,18 +389,29 @@ final class RoomPage
         if ($this->guestbook->isClosed($this->room)) {
             throw new NotFoundHttpException('The room is closed.');
         }
+
+        $this->count = \count($this->guestbook->entries($this->room));
     }
 
     public function save(): void
     {
     }
 
+    // As a Doctrine listener: a service refreshes the page after the change. The handler renders
+    // the page, so the tab of the event does not refresh it again.
+    public function post(): void
+    {
+        $this->guestbook->add($this->room, 'Post');
+        $this->streams->toPage(RoomPage::class, ['room' => $this->room])->refresh();
+    }
+
     public function render(): Node
     {
         return (
             <Document>
-                <p id="room">Room {{ room }}</p>
+                <p id="room">Room {{ room }}: {{ count }} entries</p>
                 <button id="save" onClick={{ save }}>Save</button>
+                <button id="post" onClick={{ post }}>Post</button>
             </Document>
         );
     }

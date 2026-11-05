@@ -35,7 +35,7 @@ final class Stream
      * @param string|null $content the HTML of the template, or null for `remove` and REFRESH
      * @param bool        $morph   `method="morph"` (for `replace` and `update`)
      * @param bool        $many    the target is a CSS selector (`targets`)
-     * @param string|null $skip    "<token> <fiber id>": the browser of the event with this token does not refresh this fiber, it rendered it already (see SenderToken)
+     * @param string|null $sender  the token of the event of a refresh: its browser does not refresh the fibers that the event rendered (see SenderToken)
      */
     public function __construct(
         public readonly string $action,
@@ -43,8 +43,14 @@ final class Stream
         public readonly ?string $content = null,
         public readonly bool $morph = false,
         public readonly bool $many = false,
-        public readonly ?string $skip = null,
+        public readonly ?string $sender = null,
     ) {
+    }
+
+    /** The stream with the token of the event that sends it (see SenderToken). */
+    public function withSender(string $token): self
+    {
+        return new self($this->action, $this->target, $this->content, $this->morph, $this->many, $token);
     }
 
     public function toHtml(): string
@@ -54,8 +60,8 @@ final class Stream
             $attributes .= ($this->many ? ' targets="' : ' target="').Attributes::e($this->target).'"';
         }
 
-        if (null !== $this->skip) {
-            $attributes .= ' data-phem-skip="'.Attributes::e($this->skip).'"';
+        if (null !== $this->sender) {
+            $attributes .= ' data-phem-sender="'.Attributes::e($this->sender).'"';
         }
 
         return null !== $this->content
