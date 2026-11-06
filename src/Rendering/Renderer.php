@@ -43,6 +43,11 @@ final class Renderer implements ResetInterface
 {
     private ?Tree $tree = null;
     private ?RenderScope $scope = null;
+    /**
+     * The owner of the components that render now (see Fiber::$owner): the fiber that renders,
+     * or the owner of the fiber whose slot renders. Null in the template of the page.
+     */
+    private ?Fiber $owner = null;
     /** The render pass now: each render(), rerender() and detached() starts one (see Phem\Slot). */
     private int $pass = 0;
     /** The number of the passes so far: each pass has its own number. */
@@ -178,6 +183,7 @@ final class Renderer implements ResetInterface
     public function reset(): void
     {
         $this->tree = null;
+        $this->owner = null;
     }
 
     // --- Called by the compiled templates (through the Twig runtime) ---------------------
@@ -330,14 +336,15 @@ final class Renderer implements ResetInterface
      */
     private function within(Tree $tree, \Closure $callback, ?RenderScope $scope = null): mixed
     {
-        $previous = [$this->tree, $this->scope];
+        $previous = [$this->tree, $this->scope, $this->owner];
         $this->tree = $tree;
         $this->scope = $scope;
+        $this->owner = null;
 
         try {
             return $callback();
         } finally {
-            [$this->tree, $this->scope] = $previous;
+            [$this->tree, $this->scope, $this->owner] = $previous;
         }
     }
 
@@ -367,6 +374,7 @@ final class Renderer implements ResetInterface
         // What the parent gave the fiber in the pass before, if the fiber got to that pass.
         $previous = $fiber->pass > 0 && $fiber->pass === $tree->pass - 1 ? $fiber->inputs() : null;
         $fiber->parent = $parent;
+        $fiber->owner = $this->owner;
         $fiber->props = $props;
         $fiber->slots = $slots;
         $fiber->caller = $caller;
@@ -428,6 +436,8 @@ final class Renderer implements ResetInterface
         }
 
         $tree->push($fiber);
+        $owner = $this->owner;
+        $this->owner = $fiber;
         try {
             $slots = $this->slots($fiber);
             $out = null !== $renderer ? $renderer->render($fiber, $slots) : ($slots['children'] ?? null);
@@ -437,6 +447,7 @@ final class Renderer implements ResetInterface
             $this->contexts->provide($fiber);
             $html = $this->markup->html($out, $this->pass(...));
         } finally {
+            $this->owner = $owner;
             $tree->pop();
         }
 
@@ -483,6 +494,9 @@ final class Renderer implements ResetInterface
      * the slots of the manifest: the props of a parent class that phemc does not see can be
      * slots too. An unknown slot is a PropError of the props.
      *
+     * A slot renders in the context of the caller, so the components in it belong to the owner
+     * of the fiber, not to the fiber (see Fiber::$owner).
+     *
      * @return array<string, Html>
      */
     private function slots(Fiber $fiber): array
@@ -493,12 +507,28 @@ final class Renderer implements ResetInterface
         }
 
         $caller = $fiber->caller;
+        $owner = $fiber->owner;
         $out = [];
 
         foreach ($template->getBlockNames([]) as $name) {
-            $out[$name] = new Slot(static fn (): string => $template->renderBlock($name, ['_phem_caller' => $caller]), $this->pass(...));
+            $out[$name] = new Slot(fn (): string => $this->owned($owner, static fn (): string => $template->renderBlock($name, ['_phem_caller' => $caller])), $this->pass(...));
         }
 
         return $out;
+    }
+
+    /**
+     * @param \Closure(): string $render
+     */
+    private function owned(?Fiber $owner, \Closure $render): string
+    {
+        $previous = $this->owner;
+        $this->owner = $owner;
+
+        try {
+            return $render();
+        } finally {
+            $this->owner = $previous;
+        }
     }
 }

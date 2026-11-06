@@ -18,14 +18,14 @@ use Phem\LazyHtml;
 use Twig\Markup;
 
 /**
- * Compares what a parent gives a fiber in two passes, as React compares props with `Object.is`.
- * The caller context counts only for a fiber with slots: its slots render with it. The values:
+ * Compares what a parent gives a fiber in two passes, as React compares props with `Object.is`:
  * the same scalars and arrays, the same objects (identity), a closure with the same fingerprint
  * and the same `$this`, and markup with the same HTML. Lazy markup (a slot, markup that renders a
  * component) is the same only when it is the same object.
  *
  * An object that a handler changes in place (an entity) is the same object: the fibers that get
- * it as a prop do not render again.
+ * it as a prop do not render again. The slots are not props: they render again with their owner
+ * (see UpdateScope).
  *
  * @internal
  */
@@ -37,8 +37,7 @@ final class InputsComparator
 
     public function same(FiberInputs $a, FiberInputs $b): bool
     {
-        // The caller context is for the slots only.
-        return $a->slots === $b->slots && $this->equal($a->props, $b->props) && (null === $a->slots || $this->equal($a->caller, $b->caller));
+        return $a->slots === $b->slots && $this->equal($a->props, $b->props);
     }
 
     private function equal(mixed $a, mixed $b): bool

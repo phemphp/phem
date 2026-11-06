@@ -167,7 +167,35 @@ public function render(): Node
 
 Phem uses this rule to render only the components that can change. An event renders the component
 of the handler and the components whose state changed. A child that gets the same props as before
-does not render again: the browser keeps its HTML.
+does not render again: the browser keeps its HTML. An object that the handler changed in place (an
+entity) is the same prop: give the child the changed value (`days={{ s.leadDays }}`), not the
+object.
+
+The slots belong to the component that gives them (the owner), as the `children` of a React
+element. When the owner renders again, a child with slots renders again too, with its slots, also
+when its props are the same:
+
+```php
+public function setLead(Event $e): void
+{
+    // The same entity object: only its leadDays changed.
+    $this->repository->current()->setLeadDays((int) $e->value);
+}
+
+public function render(): Node
+{
+    $s = $this->settings;
+
+    // The page renders again after setLead(), so <Panel> renders again with its children.
+    return (
+        <Panel>
+            {% for days in 0..2 %}
+                <button role="radio" value={{ days }} aria-checked={{ days == s.leadDays ? 'true' : 'false' }} onClick={{ setLead }}>{{ days }}</button>
+            {% endfor %}
+        </Panel>
+    );
+}
+```
 
 When a handler changes data that other components read, call `$e->refresh()`. The full page then
 renders again, as `router.refresh()` does in Next.js.

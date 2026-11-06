@@ -6,6 +6,16 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
+## Unreleased
+
+- Fix: after an event, a kept component with slots showed old HTML when its owner rendered again
+  and the slots read an object that the handler changed in place (an entity). The slots now
+  belong to the component that gives them, as in React: a component with slots renders again each
+  time that its owner renders. A component with props only is still kept when it gets the same
+  objects. Before, only a function component with a body of one `return <markup>;` (a template
+  component) rendered its slots again: a statement in the body, for example `$x = ...;`, made the
+  page show old HTML.
+
 ## 0.3.7 (2026-11-05)
 
 - Fix: in the tests, the browser kept a cookie with an empty `Domain` (for example the session

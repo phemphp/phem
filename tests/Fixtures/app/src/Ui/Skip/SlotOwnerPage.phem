@@ -1,0 +1,56 @@
+<?phem
+
+namespace App\Ui\Skip;
+
+use Phem\Attribute\{Component, Page};
+use Phem\{Event, Html, Node};
+use Phem\Tests\Fixtures\Setting;
+
+use function App\Ui\Common\Document;
+
+// The slots belong to the component that gives them (the owner): when the owner renders again,
+// a component with slots renders again too, also when its props are the same.
+
+// A component with slots, and an optional slot that no page gives. Its body is not only a
+// `return`: it is a function component with a fiber, not a template component.
+#[Component]
+function Panel(Html $children, ?Html $extra = null): Node
+{
+    $label = 'Panel';
+
+    return <section aria-label={{ label }}>{{ children }}{{ extra }}</section>;
+}
+
+// No #[State]: mount() reads the row, and the handler changes it in place.
+#[Page('/skip/slots')]
+final class SlotOwnerPage
+{
+    private Setting $setting;
+
+    public function mount(): void
+    {
+        $this->setting = Setting::current();
+    }
+
+    public function choose(Event $e): void
+    {
+        Setting::current()->days = (int) $e->value;
+    }
+
+    public function render(): Node
+    {
+        $s = $this->setting;
+
+        return (
+            <Document>
+                <Panel>
+                    <Panel>
+                        {% for days in 0..2 %}
+                            <button role="radio" value={{ days }} aria-checked={{ days == s.days ? 'true' : 'false' }} onClick={{ choose }}>{{ days }}</button>
+                        {% endfor %}
+                    </Panel>
+                </Panel>
+            </Document>
+        );
+    }
+}

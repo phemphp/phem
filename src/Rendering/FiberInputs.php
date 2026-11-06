@@ -16,21 +16,18 @@ namespace Phem\Rendering;
 use Twig\Template;
 
 /**
- * What a parent gives a fiber when it renders: the props, the template of the slots, and the
- * Twig context of the caller (the slots render with it).
+ * What a parent gives a fiber when it renders: the props and the template of the slots. The
+ * Twig context of the caller is not in it: the slots render again each time that their owner
+ * renders (see UpdateScope).
  *
  * @internal
  */
 final class FiberInputs
 {
-    /**
-     * @param array<string, mixed> $props
-     * @param array<string, mixed> $caller
-     */
+    /** @param array<string, mixed> $props */
     public function __construct(
         public readonly array $props,
         public readonly ?Template $slots,
-        public readonly array $caller,
     ) {
     }
 }

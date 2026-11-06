@@ -56,7 +56,8 @@ ideas of React to Phem, see [What is Phem](what-is-phem.md#from-react-to-phem).
    component. The server renders only the components on the path to the handler, restores
    their state, and runs the PHP handler (in a Doctrine transaction, when the handler or its component
    has `#[Transactional]`). Then, as React does, it renders only the components that can change: the component
-   of the handler, the components whose state changed, and their children with new props. It
+   of the handler, the components whose state changed, and their children with new props or with
+   slots (see [Keep `render()` pure](components.md#keep-render-pure)). It
    compares their HTML with the hashes, and answers with a Turbo Stream `replace`
    (`method="morph"`) for each component that changed, plus the entries of the state that
    changed and the new signature: the browser sets them in its copy of the state, so a big page

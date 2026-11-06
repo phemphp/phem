@@ -28,6 +28,12 @@ use Twig\Template;
 final class Fiber
 {
     public ?Fiber $parent = null;
+    /**
+     * The fiber whose render() gave the props and the slots, as the owner of a React element: the
+     * parent, or for a fiber in a slot, the owner of the fiber of the slot (the slot renders in
+     * the context of the caller). Null for a fiber in the template of the page.
+     */
+    public ?Fiber $owner = null;
 
     /** @var array<string, mixed> */
     public array $props = [];
@@ -163,10 +169,10 @@ final class Fiber
         return '<phem-c'.$attributes.'>'.$this->html.'</phem-c>';
     }
 
-    /** What the parent gave the fiber in its last pass: its props, its slots and its caller context. */
+    /** What the parent gave the fiber in its last pass: its props and its slots. */
     public function inputs(): FiberInputs
     {
-        return new FiberInputs($this->props, $this->slots, $this->caller);
+        return new FiberInputs($this->props, $this->slots);
     }
 
     /** The HTML in the parent: wrapped(), or the HTML alone around the root of the page. */

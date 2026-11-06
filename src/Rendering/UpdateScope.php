@@ -21,9 +21,14 @@ use Phem\State\TreeShape;
  * (the owner of the handler, and the fibers whose state changed), and in their subtrees a child
  * renders only when it can change.
  *
- * A child is kept when it was in the last render, is not dirty, and gets the same props, slots
- * and caller context as in the first pass (see FiberInputs). This needs a pure render(): its
- * output depends only on the props and the state.
+ * A child is kept when it was in the last render, is not dirty, and gets the same props and
+ * slots as in the first pass (see FiberInputs). This needs a pure render(): its output depends
+ * only on the props and the state.
+ *
+ * The slots belong to their owner (see Fiber::$owner), as the `children` of a React element:
+ * they render in the context of the owner, which can read an object that the handler changed
+ * in place. So a child with slots renders when its owner renders in this pass. A prop that is
+ * the same object is still the same: a child with no slots is kept.
  *
  * A child always renders when the first pass did not get to it (its parent was not on a path),
  * when it is in the subtree of a stale fiber (see Tree::markStale()), and when it is a class component with no #[State] and a mount(): mount() runs each time that
@@ -55,11 +60,29 @@ final class UpdateScope implements RenderScope
             || !$this->before->has($fiber->id)
             || null === $previous
             || $this->metadata->mountsEachRender($fiber->fqcn)
+            || (null !== $fiber->slots && self::rendersNow($fiber->owner, $fiber))
             || !$this->inputs->same($previous, $fiber->inputs())) {
             return true;
         }
 
         return $fiber->propagated = $this->propagates($fiber);
+    }
+
+    /** Whether an ancestor of the fiber renders in this pass: it is in the fibers above it that render now. */
+    private static function rendersNow(?Fiber $ancestor, Fiber $fiber): bool
+    {
+        if (null === $ancestor) {
+            return false;
+        }
+
+        $pass = $fiber->parent->pass ?? null;
+        for ($p = $fiber->parent; null !== $p && $p->pass === $pass && !$p->kept; $p = $p->parent) {
+            if ($p === $ancestor) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Whether a provider above the fiber, in the fibers that render in this pass, changed its context. */
