@@ -6,7 +6,7 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
-## Unreleased
+## 0.3.8 (2026-11-07)
 
 - Fix: after an event, a kept component with slots showed old HTML when its owner rendered again
   and the slots read an object that the handler changed in place (an entity). The slots now
