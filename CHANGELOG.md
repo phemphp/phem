@@ -6,7 +6,7 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
-## Unreleased
+## 0.3.9 (2026-11-07)
 
 - Fix: phemc did not pass a local to the template when only a tag (`{% if missing %}`) used it
   and its name was `missing`, `ignore`, `only`, `key` or `sandboxed`. The page failed at runtime
