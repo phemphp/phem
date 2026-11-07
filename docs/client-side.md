@@ -1,53 +1,46 @@
-# Client-side behavior
+# Add client-side behavior
 
-Some changes need no server. This page shows how Stimulus controllers work with the morph of
-an event, and the controllers that Phem gives you.
+This guide shows you how to handle changes that don’t need the server, such as opening a menu, toggling a class or moving the focus. It covers Stimulus controllers that keep their changes through the morph, the event lifecycle in the browser, optimistic updates, the built-in controllers and view transitions.
 
-## Client code with Stimulus
+## Keep Stimulus changes through the morph
 
-Some changes need no server: open a menu, toggle a class, move the focus. Write them as
-[Stimulus](https://stimulus.hotwired.dev/) controllers, with `data-controller` and `data-action`.
+Write browser-only behavior as [Stimulus](https://stimulus.hotwired.dev/) controllers, with `data-controller` and `data-action`. The morph after an event resets each attribute to the value of the server render, so mark the attributes that your controller owns.
 
-The morph of an event sets the attributes of the server render again. `data-phem-client` gives a
-list of attributes to the client, and the morph does not change them:
+Add `data-phem-client` with a list of attributes that belong to the client. The morph leaves them unchanged:
 
 ```html
 <button data-action="dropdown#toggle" data-phem-client="aria-expanded" aria-expanded="false">⋯</button>
 ```
 
-`data-phem-ignore` keeps all the element: its attributes and its content. Use it for the element
-of a JS library (a chart, a map, an editor):
+Add `data-phem-ignore` to keep the whole element, with its attributes and its content. Use it for the element of a JavaScript library, such as a chart, a map or an editor:
 
 ```html
 <div data-controller="chart" data-phem-ignore></div>
 ```
 
-The element that sent an event gets these events, with the `handler` id in their detail:
+## Track an event from JavaScript
+
+The element that sent an event receives these browser events, with the `handler` ID in their detail:
 
 | Event | When |
 |---|---|
-| `phem:before-queue` | Before the event goes in the queue. Call `preventDefault()` to stop it. |
-| `phem:queue` | When the event goes in the queue. |
-| `phem:send` | When the request starts. |
-| `phem:receive` | When the server took the event, before the morph. |
-| `phem:done` | When the event ends. `detail.ok` is `false` when it failed. For a redirect, `detail.redirect` is the URL, and the event comes before the visit. |
+| `phem:before-queue` | Before the event joins the queue; call `preventDefault()` to cancel it |
+| `phem:queue` | When the event joins the queue |
+| `phem:send` | When the request starts |
+| `phem:receive` | When the server accepted the event, before the morph |
+| `phem:done` | When the event ends; `detail.ok` is `false` if it failed, and for a redirect, `detail.redirect` is the URL and the event comes before the visit |
 
-Each `phem:send` gets exactly one `phem:done`, also when the event fails, redirects, or loads the
-page again. Use the two events to know when an event runs: the loading state shows only after the
-loading delay, so a fast event does not show it.
+Each `phem:send` gets exactly one `phem:done`, even when the event fails, redirects or reloads the page. Use the pair to know when an event runs. The loading state shows only after the loading delay, so a fast event never shows it.
 
-A push (see [Real-time updates](server-features.md#real-time-updates)) has no element that sent
-it, so it dispatches none of these events. While the page is not done with its pushes, the root
-element has the `data-phem-push-pending` attribute: a push waits for the event that runs, Turbo
-renders it, or its refresh waits (50 ms, for all the refreshes that come together) or runs. A
-test with a real browser waits until the attribute goes away (see
-[Tests with a real browser](testing.md#tests-with-a-real-browser)).
+### Wait for pushes in browser tests
 
-## Optimistic UI
+A push (see [Push updates to other browsers](real-time-updates.md)) has no sending element, so it dispatches none of these events. Instead, the root element has the `data-phem-push-pending` attribute until the page finishes its pushes. A push stays pending while it waits for the running event, while Turbo renders it, or while its refresh waits 50 ms (to group the refreshes that arrive together) or runs.
 
-The `phem-optimistic` controller changes the page at once, before the server answers. When the
-answer comes, the page shows the server render: the morph confirms the change, and a failed event
-reverts it.
+A test with a real browser waits until the attribute disappears (see [Tests with a real browser](testing.md#test-with-a-real-browser)).
+
+## Update the page before the server answers
+
+The `phem-optimistic` controller changes the page right away, before the server answers. When the answer arrives, the page shows the server render: the morph confirms the change, and a failed event reverts it.
 
 ```html
 <li key={{ id }} data-controller="phem-optimistic">
@@ -56,21 +49,19 @@ reverts it.
 </li>
 ```
 
-Put the action on the element that has the event handler. The actions are:
+Put the action on the element that has the event handler. The controller has these actions:
 
 | Action | Change | Params |
 |---|---|---|
-| `hide`, `show` | the `hidden` attribute | |
-| `addClass`, `removeClass`, `toggleClass` | a class | `class` |
-| `setAttribute` | an attribute | `attribute`, `value` |
-| `removeAttribute`, `toggleAttribute` | an attribute | `attribute` |
-| `setText` | the text | `text` |
-| `increment`, `decrement` | the first integer in the text | `by` |
-| `insert` | a clone of a `<template>` | |
+| `hide`, `show` | The `hidden` attribute | |
+| `addClass`, `removeClass`, `toggleClass` | A class | `class` |
+| `setAttribute` | An attribute | `attribute`, `value` |
+| `removeAttribute`, `toggleAttribute` | An attribute | `attribute` |
+| `setText` | The text | `text` |
+| `increment`, `decrement` | The first integer in the text | `by` |
+| `insert` | A clone of a `<template>` | |
 
-A param is an attribute of the element of the action:
-`data-phem-optimistic-class-param="liked"`. With a `target` param, the action changes the
-targets with that name in place of the controller element:
+A param is an attribute on the element of the action, such as `data-phem-optimistic-class-param="liked"`. With a `target` param, the action changes the targets with that name instead of the controller element:
 
 ```html
 <button onClick={{ like }} data-controller="phem-optimistic"
@@ -80,14 +71,11 @@ targets with that name in place of the controller element:
 </button>
 ```
 
-`insert` adds a copy of a `<template>` target. An element of the copy with
-`data-phem-optimistic-field="body"` shows the value of the `body` field of the form.
+`insert` adds a copy of a `<template>` target. In the copy, an element with `data-phem-optimistic-field="body"` shows the value of the form’s `body` field.
 
-## Built-in controllers
+## Enable the built-in controllers
 
-Phem has Stimulus controllers for common jobs. Their state belongs to the client, so it stays
-after the morph of an event. They are not enabled by default. Enable each one that you use in
-`assets/controllers.json`:
+Phem ships Stimulus controllers for common UI patterns. Their state belongs to the client, so it survives the morph after an event. They’re off by default, so enable each one you use in `assets/controllers.json`:
 
 ```json
 "@phem/phem": {
@@ -102,7 +90,7 @@ after the morph of an event. They are not enabled by default. Enable each one th
 }
 ```
 
-### Show and hide
+### Show and hide a menu
 
 `phem-toggle` shows and hides a dropdown, a menu or a section:
 
@@ -116,11 +104,9 @@ after the morph of an event. They are not enabled by default. Enable each one th
 </span>
 ```
 
-The actions are `toggle`, `open` and `close`. Escape and a click outside close it. Set
-`data-phem-toggle-open-value="true"` to open it at the start, and
-`data-phem-toggle-dismiss-value="false"` to keep it open on Escape.
+The actions are `toggle`, `open` and `close`. Escape and a click outside close the content. Set `data-phem-toggle-open-value="true"` to open it on load, and `data-phem-toggle-dismiss-value="false"` to keep it open on Escape.
 
-### Dialog
+### Open a modal dialog
 
 `phem-dialog` opens a native `<dialog>` as a modal:
 
@@ -136,10 +122,9 @@ The actions are `toggle`, `open` and `close`. Escape and a click outside close i
 </div>
 ```
 
-The actions are `open` and `close`. Escape and a click on the backdrop close it. The server can
-open it with `data-phem-dialog-open-value={{ editing }}`.
+The actions are `open` and `close`. Escape and a click on the backdrop close the dialog. The server can open it with `data-phem-dialog-open-value={{ editing }}`.
 
-### Tabs
+### Switch between tabs
 
 `phem-tabs` shows the panel of the selected tab:
 
@@ -154,32 +139,27 @@ open it with `data-phem-dialog-open-value={{ editing }}`.
 </div>
 ```
 
-The tab at a position shows the panel at the same position. The arrow keys, Home and End move
-between the tabs. The controller sets the ARIA roles and attributes. Give an `id` to each tab and
-panel, so it can link them. `data-phem-tabs-index-value="1"` selects a tab at the start.
+Each tab shows the panel at the same position. The arrow keys, Home and End move between tabs. The controller sets the Accessible Rich Internet Applications (ARIA) roles and attributes, so give an `id` to each tab and panel to let it link them. Set `data-phem-tabs-index-value="1"` to select a tab on load.
 
-### Toasts
+### Show toast messages
 
-`phem-toast` shows short messages that go away after some seconds. Put one element in the layout:
+`phem-toast` shows short messages that disappear after a few seconds. Put one element in the layout:
 
 ```html
 <div data-controller="phem-toast"></div>
 ```
 
-It shows the `phem:toast` events of the handlers, the failed events (`phem:error`), and the rate
-limits (`phem:rate-limited`):
+It shows the `phem:toast` events from handlers, failed events (`phem:error`) and rate limits (`phem:rate-limited`). A handler dispatches a toast like this:
 
 ```php
 $e->dispatcher->dispatch('toast', ['message' => 'Saved', 'type' => 'success']);
 ```
 
-The types are `info`, `success`, `warning` and `error`. Change the duration and the texts with the
-values of the controller: `data-phem-toast-duration-value={{ 8000 }}`,
-`data-phem-toast-error-message-value`, `data-phem-toast-rate-limited-message-value`.
+The types are `info`, `success`, `warning` and `error`. Change the duration and the texts with the controller values: `data-phem-toast-duration-value={{ 8000 }}`, `data-phem-toast-error-message-value` and `data-phem-toast-rate-limited-message-value`.
 
-### Clipboard
+### Copy text to the clipboard
 
-`phem-clipboard` copies a text to the clipboard and shows a short feedback:
+`phem-clipboard` copies text to the clipboard and shows brief feedback:
 
 ```html
 <div data-controller="phem-clipboard" data-phem-clipboard-copied-class="copied">
@@ -189,25 +169,23 @@ values of the controller: `data-phem-toast-duration-value={{ 8000 }}`,
 </div>
 ```
 
-It copies the `text` value, or else the text of the `source` target. The `feedback` targets show
-"Copied" for two seconds. The browser lets a page copy only on HTTPS or `localhost`.
+It copies the `text` value, or the text of the `source` target when there’s no value. The `feedback` targets show “Copied” for 2s. Browsers allow a page to copy only on HTTPS or `localhost`.
 
-### Autofocus
+### Focus a field after an event
 
-`phem-autofocus` gives the focus to its element when it connects. The native `autofocus` works
-only when the page loads. This controller also works when an event adds the element:
+`phem-autofocus` focuses its element when the element connects. The native `autofocus` attribute works only on page load, but this controller also works when an event adds the element:
 
-```html
+```twig
 {% if editing %}
     <input name="title" data-controller="phem-autofocus" />
 {% endif %}
 ```
 
-It does not take the focus from a field that the user edits.
+It doesn’t steal the focus from a field the user is editing.
 
-iOS opens the keyboard only for a focus in a tap. A focus after a server round trip (a Turbo
-visit, or the morph of an event) gives the focus to the field, but no keyboard opens. Add
-`data-phem-autofocus-keyboard` to the link or to the element of the event that shows the field:
+#### Open the iOS keyboard after a round trip
+
+iOS opens the keyboard only for a focus inside a tap. After a server round trip, such as a Turbo visit or the morph of an event, the field gets the focus but no keyboard opens. Add `data-phem-autofocus-keyboard` to the link or to the event element that shows the field:
 
 ```html
 <a href="/search" data-phem-autofocus-keyboard>Search</a>
@@ -215,36 +193,30 @@ visit, or the morph of an event) gives the focus to the field, but no keyboard o
 <button onClick={{ edit }} data-phem-autofocus-keyboard>Edit</button>
 ```
 
-In the tap, a hidden field gets the focus, and the keyboard opens. The keyboard stays open when
-the field of `phem-autofocus` gets the focus. It also works in an open `<dialog>`.
+During the tap, a hidden field takes the focus and the keyboard opens. The keyboard stays open when the `phem-autofocus` field takes the focus, also inside an open `<dialog>`. These edge cases apply:
 
-- When no field gets the focus, the keyboard closes, and the element that had the focus before
-  the tap gets it again.
-- When a listener cancels the visit, or the fetch of the visit fails, the keyboard closes at
-  once. A visit that takes more than 30 seconds closes it too.
-- On a slow network, the keyboard opens before the new page shows.
-- When a field that the user edits has the focus, the attribute does nothing.
-- A link must start a Turbo Drive visit. A link that a `<turbo-frame>` loads does not open the
-  keyboard.
+- **No field takes the focus**: the keyboard closes, and the element that had the focus before the tap gets it back
+- **The visit is cancelled or fails**: when a listener cancels the visit or its fetch fails, the keyboard closes right away; a visit that takes more than 30s closes it too
+- **Slow network**: the keyboard opens before the new page shows
+- **The user is editing a field**: the attribute does nothing
+- **Turbo Frames**: the link must start a Turbo Drive visit; a link that a `<turbo-frame>` loads doesn’t open the keyboard
 
-### Confirm
+### Ask for confirmation before an event
 
-`phem-confirm` asks the user before an event goes to the server:
+`phem-confirm` asks the user to confirm before an event goes to the server:
 
 ```html
 <button onClick={{ delete }} data-controller="phem-confirm"
         data-phem-confirm-message-value="Delete this item?">Delete</button>
 ```
 
-When the user cancels, no event goes.
+When the user cancels, the browser sends no event.
 
-## Transitions
+## Animate changes with view transitions
 
-Add `data-phem-transition` to an element to animate the changes of its components with the
-[View Transitions API](https://developer.mozilla.org/docs/Web/API/View_Transition_API). On the
-`<Root>` element, all the events of the page have a transition. The default is a cross-fade.
+Add `data-phem-transition` to an element to animate the changes of its components with the [View Transitions API](https://developer.mozilla.org/docs/Web/API/View_Transition_API). On the `<Root>` element, every event on the page gets a transition. The default is a cross-fade.
 
-The value is the type of the transition. Use it in CSS:
+The attribute value is the transition type, which you target in CSS:
 
 ```html
 <ul data-phem-transition={{ 'slide' }}>
@@ -255,4 +227,4 @@ html:active-view-transition-type(slide)::view-transition-old(root) { animation: 
 html:active-view-transition-type(slide)::view-transition-new(root) { animation: slide-in .2s ease-out; }
 ```
 
-A browser with no support, or with `prefers-reduced-motion: reduce`, shows no transition.
+A browser without support, or with `prefers-reduced-motion: reduce`, shows no transition.

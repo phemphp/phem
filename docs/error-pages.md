@@ -1,28 +1,25 @@
-# Error pages
+# Show custom error pages
 
-When a request fails (a 404, a 500), Symfony renders an error page. An `#[ErrorPage]` function
-renders this page with your components, in the document of your application. This page shows
-the strategies, from one page for all the errors to static files for the web server.
+When a request fails with a 404 or a 500, Symfony renders an error page. Add `#[ErrorPage]` to a function, and Phem renders that page with your components inside your app’s document. This guide covers one page for every error, pages per status or per section, previews, tests, and static files for the web server.
+
+Pick the tool for your task:
 
 | You need | Use |
 |---|---|
-| one page for all the errors | `#[ErrorPage]` |
-| a page for one status, or for some statuses | `#[ErrorPage(404)]`, `#[ErrorPage([401, 403])]` |
-| other pages for a section of the application | `#[ErrorPage(path: '/admin')]` |
-| the status, the headers, the URL that failed | the parameters `int $status`, `FlattenException $exception`, `Request $request` |
-| to see an error page in development | the preview of Symfony: `/_error/404`, `/_error/404?path=/admin` |
-| the error page in the e2e tests | `phem.show_exceptions: false` |
-| a test of an error page | `errorPage()` in a `KernelTestCase` |
-| an error page when PHP does not answer | `bin/console error:dump` |
+| One page for every error | `#[ErrorPage]` |
+| A page for one status or a few statuses | `#[ErrorPage(404)]`, `#[ErrorPage([401, 403])]` |
+| Different pages for a section of the app | `#[ErrorPage(path: '/admin')]` |
+| The status, headers, or failed URL | The parameters `int $status`, `FlattenException $exception`, `Request $request` |
+| To see an error page in development | The Symfony preview: `/_error/404`, `/_error/404?path=/admin` |
+| Error pages in end-to-end tests | `phem.show_exceptions: false` |
+| A test for an error page | `errorPage()` in a `KernelTestCase` |
+| An error page when PHP doesn’t answer | `bin/console error:dump` |
 
-An error page is for the failed requests. For a part of the page that fails, use an
-[`<ErrorBoundary>`](server-features.md#errors-in-a-part-of-the-page). For a failed event, see
-[Failed events](errors-and-limits.md#failed-events).
+Error pages are for failed requests. When one part of a page fails, use an [`<ErrorBoundary>`](server-features.md#show-a-fallback-when-part-of-the-page-fails). For an event that fails, see [Failed events](errors-and-limits.md#an-event-fails-and-the-page-doesnt-change).
 
-## One page for all the errors
+## Add one page for every error
 
-Add `#[ErrorPage]` to a function in a `.phem` file. The function needs no `#[Component]`, as a
-function with `#[Page]`. It usually renders the document of the application:
+Add `#[ErrorPage]` to a function in a `.phem` file. Like a `#[Page]` function, it doesn’t need `#[Component]`. In most apps it renders the app’s document:
 
 ```php
 <?phem
@@ -53,7 +50,7 @@ function ErrorPage(int $status): Node
 
 Run `phemc build`. A URL with no route now gets this page, with the status of the error:
 
-```
+```text
 GET /missing
 
 HTTP/1.1 404 Not Found
@@ -73,12 +70,11 @@ Content-Type: text/html; charset=UTF-8
 </html>
 ```
 
-The root element has no `data-phem-state-value`: an error page has no state (see
-[The rules of an error page](#the-rules-of-an-error-page)).
+The root element has no `data-phem-state-value` because an error page has no state. See [What an error page can do](#what-an-error-page-can-do).
 
-## A page for each status
+## Add a page for a specific status
 
-Give the status, or a list of statuses. A page with no status is for all the other statuses:
+Pass a status or a list of statuses to the attribute. A page without a status handles every other status:
 
 ```php
 use Phem\Attribute\ErrorPage;
@@ -107,14 +103,11 @@ function ErrorPage(int $status, Request $request): Node
 }
 ```
 
-A status is from 400 to 599. The constants of Symfony work too:
-`#[ErrorPage(Response::HTTP_NOT_FOUND)]`.
+A status must be between 400 and 599. Symfony constants work too: `#[ErrorPage(Response::HTTP_NOT_FOUND)]`.
 
-## A page for each section of the application
+## Add pages for a section of the app
 
-`path` gives a section of the application its own error pages. The request path is `path`, or
-it starts with `path/`: `/admin` matches `/admin` and `/admin/users`, but not
-`/administration`. The attribute is repeatable, so one function can serve two sections:
+Give a section its own error pages with `path`. A page matches when the request path equals `path` or starts with `path/`, so `/admin` matches `/admin` and `/admin/users` but not `/administration`. The attribute is repeatable, so one function can serve two sections:
 
 ```php
 // The admin: all the statuses, with a link to the dashboard.
@@ -130,8 +123,9 @@ function AdminErrorPage(int $status): Node
 function SiteErrorPage(int $status): Node { … }
 ```
 
-Phem takes the page of the longest path that matches. Then a page with the status wins over a
-page for all the statuses. With the pages of this guide:
+### How Phem picks the page
+
+Phem takes the page with the longest matching path. Among those, a page with the status wins over a page for every status. With the pages in this guide:
 
 | Request | Status | Page |
 |---|---|---|
@@ -141,28 +135,33 @@ page for all the statuses. With the pages of this guide:
 | `GET /admin/orders/9` (a bug) | 500 | `AdminErrorPage` |
 | `GET /administration` | 404 | `NotFoundPage` (a path is a full segment) |
 
-Phem checks the attributes when the container builds: after each `phemc build` in the debug
-mode, and in `cache:warmup`. A status out of 400–599, a path with no `/` at the start, an
-unknown argument, or two pages for the same status at the same path stop the build:
+### Fix invalid error page attributes
 
-```
+Phem checks the attributes when the container builds: after each `phemc build` in debug mode, and during `cache:warmup`. The build stops on any of these:
+
+- A status outside 400–599
+- A path that doesn’t start with `/`
+- An unknown argument
+- Two pages for the same status at the same path
+
+```text
 "App\Ui\Errors\NotFoundPage" and "App\Ui\Errors\MissingPage" are both the error page of the
 status 404 at "/". Remove one #[ErrorPage], or give it another status or path.
 ```
 
-When the container did not check them, Phem skips an attribute that is not valid: the other
-error pages still show.
+If the container didn’t check them, Phem skips an invalid attribute and still shows the other error pages.
 
-## The arguments of an error page
+## Read the error in the page
 
-An error page gets the arguments of a function page: the Request, the services, `#[Autowire]`,
-`#[CurrentUser]` and the other arguments of a controller. It also gets two values by name:
+An error page accepts the same arguments as a function page: the `Request`, services, `#[Autowire]`, `#[CurrentUser]`, and the other controller arguments. It also gets these values by parameter name:
 
 | Parameter | Value |
 |---|---|
-| `int $status` | the HTTP status, after the mapping of Symfony (`framework.exceptions`, `#[WithHttpStatus]`) |
-| `FlattenException $exception` | the error: `getStatusText()`, `getHeaders()` (`Retry-After`, `Allow`), `getClass()` |
-| `\Throwable $exception` | the exception itself, for a parameter with the type of an exception (`HttpExceptionInterface`, `\Throwable`) |
+| `int $status` | The HTTP status, after Symfony maps it (`framework.exceptions`, `#[WithHttpStatus]`) |
+| `FlattenException $exception` | The error: `getStatusText()`, `getHeaders()` (`Retry-After`, `Allow`), `getClass()` |
+| `\Throwable $exception` | The exception itself, when the parameter has an exception type (`HttpExceptionInterface`, `\Throwable`) |
+
+This page reads the `Retry-After` header of a 429:
 
 ```php
 use Symfony\Component\ErrorHandler\Exception\FlattenException;
@@ -176,50 +175,43 @@ function SlowDownPage(FlattenException $exception): Node
 }
 ```
 
-The response keeps the headers of the exception: a 429 gets its `Retry-After`, a 405 its
-`Allow`. Do not show `$exception->getMessage()` to the user: it can have private data.
+The response keeps the exception’s headers, so a 429 sends its `Retry-After` and a 405 its `Allow`. Don’t show `$exception->getMessage()` to visitors, because it can contain private data.
 
-The attributes of a controller (`#[IsGranted]`, `#[Cache]`) do not apply to an error page: it
-has no route.
+Controller attributes such as `#[IsGranted]` and `#[Cache]` don’t apply to an error page, because it has no route.
 
-## The rules of an error page
+## What an error page can do
 
-- An error page is static HTML. It has no state and no handlers: its URL is the URL that
-  failed, so an event cannot work there. Its links, its HTML forms and its Stimulus controllers
-  (a toast) work. Its `<Suspense>` boundaries render in the page, with no fallback and no
-  stream. phemc reports `#[Broadcast]` on an error page (E053).
-- An error page can render the document of the application (with its `<Root>`) or a plain
-  HTML document: `<html><body><h1>Down</h1></body></html>`. A plain document does not need the
-  services of the document component, for example for a 500 when the database is down.
-- On a URL with no route, the firewall of Symfony did not run. The page has no user:
-  `app.user` is null, `is_granted()` is false, and `logout_path()` throws. On a 404 or a 403
-  from a page, the page has the user.
-- A 500 can come from the database. Do not read the database in an error page, also not in the
-  document component (for example the alerts of a signed-in user).
-- A Turbo visit to a URL that fails shows the error page: Turbo replaces the head and the body.
-- Only the application declares error pages: phemc reports `#[ErrorPage]` in a package
-  (E060). A package does not know the URL of its pages in the application. To use the error
-  page of a package, render its component in an error page of the application.
+An error page renders for a URL that failed, so some page features aren’t available. Keep these rules in mind:
 
-## When the error page does not show
+- **Static HTML only**: An error page has no state and no handlers, because its URL is the URL that failed and an event can’t work there. Links, HTML forms, and Stimulus controllers (a toast, for example) work. `<Suspense>` boundaries render inline, with no fallback and no streaming. `#[Broadcast]` on an error page is E053.
+- **Document choice**: Render the app’s document (with its `<Root>`) or a plain HTML document such as `<html><body><h1>Down</h1></body></html>`. A plain document doesn’t need the services of your document component, which helps for a 500 when the database is down.
+- **No user on unrouted URLs**: On a URL with no route, the Symfony firewall didn’t run. `app.user` is null, `is_granted()` returns false, and `logout_path()` throws. A 404 or 403 thrown from a page still has the user.
+- **No database reads**: A 500 can come from the database. Don’t read it in an error page or in its document component, for example to show the alerts of a signed-in user.
+- **Turbo visits**: A Turbo visit to a failing URL shows the error page, because Turbo replaces the head and the body.
+- **App only**: Only the app declares error pages, and `#[ErrorPage]` in a package is E060. A package doesn’t know the URLs of its pages in the app. To reuse a package’s error page, render its component inside an error page of your app.
 
-Phem gives the error to the next renderer of Symfony in these cases:
+phemc reports these errors for error pages:
 
-- No `#[ErrorPage]` matches the status and the path. The order is: the Phem error page, the
-  [Twig template](https://symfony.com/doc/current/controller/error_pages.html)
-  (`templates/bundles/TwigBundle/Exception/error404.html.twig`), the page of Symfony.
-- The request is a Phem event. The browser does not show the body of a failed event: it
-  dispatches `phem:error` (see [Failed events](errors-and-limits.md#failed-events)).
-- `phem.show_exceptions` is true: the page of the exception shows (see below).
-- The error page throws. In the debug mode, the exception goes on, so you see the bug of the
-  page. In production, Phem logs the exception and gives the page of Symfony: an error page
-  must not fail.
+| Code | Error |
+|---|---|
+| E053 | `#[Broadcast]` on an error page: an error page has no connection to the Mercure hub |
+| E056 | An error page used as a tag (`<NotFoundPage />`): an error page isn’t a component of other pages |
+| E059 | `#[ErrorPage]` on a class: an error page has no state, so it must be a function |
+| E060 | `#[ErrorPage]` in a package: only the app has error pages |
+| W004 | `#[ErrorPage]` without `use Phem\Attribute\ErrorPage;` |
 
-## The debug mode and the preview
+## Find out why your error page doesn’t show
 
-In the debug mode, Symfony shows the page of the exception, with its trace. The option
-`phem.show_exceptions` decides it for the error pages. Its default is the debug mode of the
-kernel (`%kernel.debug%`):
+Phem passes the error to the next Symfony renderer in these cases:
+
+- **No match**: No `#[ErrorPage]` matches the status and path. Symfony then tries the [Twig template](https://symfony.com/doc/current/controller/error_pages.html) (`templates/bundles/TwigBundle/Exception/error404.html.twig`), then its own page.
+- **Phem events**: The request is a Phem event. The browser doesn’t show the body of a failed event. It dispatches `phem:error` instead (see [Failed events](errors-and-limits.md#an-event-fails-and-the-page-doesnt-change)).
+- **Exceptions shown**: `phem.show_exceptions` is true, so the exception page shows. See [Preview an error page in debug mode](#preview-an-error-page-in-debug-mode).
+- **Page throws**: The error page itself throws. In debug mode, the exception propagates so you see the bug. In production, Phem logs it and falls back to the Symfony page, because an error page must not fail.
+
+## Preview an error page in debug mode
+
+In debug mode, Symfony shows the exception page with its trace instead of your error page. The `phem.show_exceptions` option controls this for error pages. It defaults to the kernel’s debug mode (`%kernel.debug%`):
 
 ```yaml
 # config/packages/phem.yaml
@@ -229,12 +221,9 @@ when@test:
         show_exceptions: false
 ```
 
-An environment variable works too: `show_exceptions: '%env(bool:SHOW_EXCEPTIONS)%'`.
+You can also read it from an environment variable: `show_exceptions: '%env(bool:SHOW_EXCEPTIONS)%'`.
 
-To see an error page in development, open the preview of Symfony: `/_error/404`, `/_error/500`.
-The preview always shows the error page, also in the debug mode. The preview has the URL of its
-own route, so give the path of a section with the `path` parameter: `/_error/404?path=/admin`
-shows the 404 page of `/admin`. The Symfony Flex recipe of FrameworkBundle adds the route:
+To see an error page in development, open the Symfony preview at `/_error/404` or `/_error/500`. The preview always shows the error page, even in debug mode. Because the preview has the URL of its own route, pass a section’s path with `path`: `/_error/404?path=/admin` shows the 404 page of `/admin`. The Symfony Flex recipe of FrameworkBundle adds the route:
 
 ```yaml
 # config/routes/framework.yaml
@@ -244,13 +233,11 @@ when@dev:
         prefix: /_error
 ```
 
-The preview has the user of the session. A real 404 on a URL with no route has no user.
+The preview has the user of your session. A real 404 on a URL with no route has no user.
 
 ## Test an error page
 
-In a `KernelTestCase`, `errorPage()` renders the error page of an error at a URL. It works as
-the preview, so the debug mode of the test does not show the exception. An `int` is the status
-of an `HttpException`:
+In a `KernelTestCase`, `errorPage()` renders the error page for an error at a URL. It works like the preview, so the test’s debug mode doesn’t show the exception. An `int` stands for an `HttpException` with that status:
 
 ```php
 use Phem\Test\InteractsWithPhem;
@@ -267,7 +254,11 @@ final class ErrorPageTest extends KernelTestCase
             ->assertStatus(404)
             ->assertSee('Back to the dashboard');
     }
+```
 
+Pass an exception to test other statuses. The page must not show the exception message:
+
+```php
     public function testAServerErrorOffersToTryAgain(): void
     {
         $this->errorPage(new \RuntimeException('Boom.'), '/cart?page=2')
@@ -285,36 +276,29 @@ final class ErrorPageTest extends KernelTestCase
 }
 ```
 
-With no error page for the status and the URL, `errorPage()` gives the page of Symfony. The
-request of `errorPage()` has a session, as the request of a browser. An error page has no
-events, so the actions of the tester (`click()`, `fill()`) do not work.
+When no error page matches the status and URL, `errorPage()` returns the Symfony page. Its request has a session, like a browser request. An error page has no events, so tester actions such as `click()` and `fill()` don’t work.
 
-With `show_exceptions: false` in the `test` environment (see
-[The debug mode and the preview](#the-debug-mode-and-the-preview)), `visit()` of a URL that fails
-also shows the error page, and so do the e2e tests through a web server or a real browser:
+### Test error pages through visit() and end-to-end tests
+
+Set `show_exceptions: false` in the `test` environment (see [Preview an error page in debug mode](#preview-an-error-page-in-debug-mode)). Then `visit()` of a failing URL shows the error page, and so do end-to-end tests through a web server or a real browser:
 
 ```php
 $this->visit('/admin/missing')->assertStatus(404)->assertSee('Back to the dashboard');
 ```
 
-## Static pages for the web server
+`visit()` runs Symfony in web mode, like `WebTestCase`. In CLI mode, Symfony would render an HTTP error with its CLI renderer.
 
-When PHP does not answer (a crash, a deploy), the web server or the proxy shows its own error.
-Symfony writes the error pages to static files with `error:dump`. The command renders the
-`#[ErrorPage]` functions. Run it with the debug mode off, or it writes the page of the
-exception:
+## Serve error pages when PHP is down
+
+When PHP doesn’t answer during a crash or a deploy, the web server or proxy shows its own error. Write your error pages to static files with `error:dump`, which renders your `#[ErrorPage]` functions. Run it with debug mode off, or it writes the exception page:
 
 ```sh
 APP_ENV=prod APP_DEBUG=0 php bin/console error:dump public/errors 502 503 504 --force
 ```
 
-The command has no request: Phem renders each page for a GET of `/`, at the scheme and the host
-of the router. Set them with `framework.router.default_uri` (for example
-`https://shop.example`), or the request has the host `localhost`. Only the pages with no `path`
-(or `path: '/'`) go in the files. The page must not need a value of a real request.
+The command has no request, so Phem renders each page for a GET of `/` at the router’s scheme and host. Set them with `framework.router.default_uri` (for example `https://shop.example`), or the host is `localhost`. Only pages with no `path` (or `path: '/'`) go into the files, and they can’t depend on values from a real request.
 
-Tell the web server or the proxy to show the files. They show only for the errors that the
-server makes itself: a 500 of the application still shows its own error page.
+Then configure the web server or proxy to serve the files. They only show for errors that the server produces itself. A 500 from your app still shows the app’s own error page. With nginx in front of PHP-FPM or an app server:
 
 ```nginx
 # nginx in front of PHP-FPM or of the application server
@@ -327,6 +311,8 @@ location /errors/ {
     internal;
 }
 ```
+
+With Caddy as a proxy in front of the app:
 
 ```caddyfile
 # Caddy as a proxy in front of the application
@@ -341,32 +327,10 @@ example.com {
 }
 ```
 
-In a Docker image, run the command after `cache:warmup` (see [Deployment](deployment.md)).
+In a Docker image, run the command after `cache:warmup`. See [Add static error pages for the web server](deployment.md#add-static-error-pages-for-the-web-server).
 
 ## How it works
 
-1. A controller, the router or the firewall throws an exception. `HttpKernel` dispatches
-   `kernel.exception`.
-2. The `ErrorListener` of Symfony maps the status (`framework.exceptions`, `#[WithHttpStatus]`)
-   and logs the exception.
-3. The `ErrorListener` sends a sub-request to the error controller. The sub-request is a GET
-   with the URL and the headers of the request. It has no route values.
-4. The error controller calls the HTML error renderer of Symfony (`error_renderer.html`).
-5. Phem decorates this renderer, outside the Twig renderer. It finds the error page
-   (`Phem\Http\ErrorPages`), renders it with no state (`Phem\Http\StatelessPageRenderer`),
-   and keeps the status and the headers of the error (`Phem\Http\ErrorPageRenderer`).
+Phem uses the standard Symfony error flow and changes only its last step. When a controller, the router, or the firewall throws, the Symfony `ErrorListener` maps the status, logs the exception, and sends a GET sub-request with the original URL and headers to the error controller. That controller calls the Symfony HTML error renderer.
 
-The preview at `/_error/{code}`, `error:dump` and `errorPage()` use the same renderer. phemc
-writes the error pages of the application in `error_pages` of `manifest.php`. Phem reads the
-statuses and the paths of their attributes once, and `Phem\Http\ErrorPagesWarmer` checks them
-when the container builds.
-
-phemc reports these errors:
-
-| Code | Error |
-|---|---|
-| E053 | `#[Broadcast]` on an error page: an error page has no connection to the Mercure hub |
-| E056 | an error page used as a tag (`<NotFoundPage />`): an error page is not a component of other pages |
-| E059 | `#[ErrorPage]` on a class: an error page has no state, so it is a function |
-| E060 | `#[ErrorPage]` in a package: only the application has error pages |
-| W004 | `#[ErrorPage]` without `use Phem\Attribute\ErrorPage;` |
+Phem decorates that renderer. It finds the matching error page (`Phem\Http\ErrorPages`), renders it without state (`Phem\Http\StatelessPageRenderer`), and keeps the error’s status and headers (`Phem\Http\ErrorPageRenderer`). Because the preview at `/_error/{code}`, `error:dump`, and `errorPage()` all go through the same renderer, they show the same page as a real failed request.

@@ -1,7 +1,6 @@
-# Testing components and pages
+# Test components and pages
 
-Phem has test helpers for PHPUnit. They test a component or a page without a browser. A test
-clicks, types and submits forms, and then it checks the HTML and the state.
+Phem ships PHPUnit helpers that test a component or a page without a browser. Your test clicks, types, and submits forms, then checks the HTML and the state. This guide covers setup, actions, assertions, real-time updates, async work, error pages, and tests with a real browser.
 
 ```php
 use Phem\Test\InteractsWithPhem;
@@ -28,85 +27,82 @@ final class CounterTest extends KernelTestCase
 }
 ```
 
-## Setup
+## Set up the test helpers
+
+Prepare your app once before you write tests:
 
 1. Install PHPUnit: `composer require --dev phpunit/phpunit`.
-2. Set `framework.test: true` for the `test` environment (the Symfony recipe does this).
-3. Run `phemc build` before the tests. The tests use the compiled `.phem` files.
-4. Use the `InteractsWithPhem` trait in a `KernelTestCase` (or a `WebTestCase`).
+2. Set `framework.test: true` for the `test` environment. The Symfony recipe does this for you.
+3. Run `phemc build` before the tests, because they use the compiled `.phem` files.
+4. Use the `InteractsWithPhem` trait in a `KernelTestCase` or a `WebTestCase`.
 
-A Composer package with `.phem` components has no app: test it with `Phem\Test\TestKernel` and
-a small test app (see [Test a package](packages.md#test-a-package)).
+A Composer package with `.phem` components has no app. Test it with `Phem\Test\TestKernel` and a small test app, as shown in [Test a package](packages.md#test-a-package).
 
-## Two ways to test
+## Choose between mount() and visit()
+
+Use `mount()` for a unit test of one component. Use `visit()` to test a page and its security. They differ in these ways:
 
 | | `mount(Component::class, $props)` | `visit('/url')` |
 |---|---|---|
-| What it renders | one component, with its props | a page, with its document |
-| How events run | in the test process, as the `EventController` runs them | HTTP requests to the URL of the page, through the kernel |
-| Access rules of the page | do not apply | apply (a firewall, `access_control`, `#[IsGranted]`, `#[RateLimit]`) |
-| Signed state | signed and checked, as JSON | signed and checked, as in the browser |
-| Session | a new session for the test | the cookies of the browser (the session) go with each request, and to the pages of `->visit()` |
-| Redirect of a handler | `assertRedirect()` | `assertRedirect()`, then `followRedirect()` |
+| What it renders | One component, with its props | A page, with its document |
+| How events run | In the test process, the way the `EventController` runs them | As HTTP requests to the page URL, through the kernel |
+| Page access rules | Don’t apply | Apply (a firewall, `access_control`, `#[IsGranted]`, `#[RateLimit]`) |
+| Signed state | Signed and checked, as JSON | Signed and checked, as in the browser |
+| Session | A new session for the test | The browser cookies (the session) go with each request and to the pages of `->visit()` |
+| Redirect from a handler | `assertRedirect()` | `assertRedirect()`, then `followRedirect()` |
 
-Use `mount()` for a unit test of a component. Use `visit()` for a test of a page and of its
-security.
+### Pass props and slots to mount()
 
-`mount()` takes the props of the component. Give a slot, such as `children`, as a `Phem\Html`
-value:
+`mount()` takes the component’s props. Pass a slot such as `children` as a `Phem\Html` value:
 
 ```php
 $this->mount(Card::class, ['title' => 'Hello', 'children' => new Html('<p>Body</p>')]);
 ```
 
-A function component works too: give the name of the function (`'App\Ui\Common\Badge'`).
+For a function component, pass the function name, for example `'App\Ui\Common\Badge'`.
 
-## Actions
+## Simulate user actions
 
-An action finds an element with a CSS selector. Then it sends the event as the `phem` Stimulus
-controller does: the handler of the element, or of its closest ancestor, with the value of the
-element. The answer of the server morphs the components that changed.
+Each action finds an element with a CSS selector and sends the event the way the `phem` Stimulus controller does. The handler of the element (or of its closest ancestor) gets the event with the element’s value. The server’s answer then morphs the components that changed.
 
 | Action | Event | Example |
 |---|---|---|
 | `click($selector)` | `onClick`. A submit button also submits its form (`onSubmit`). | `->click('button.add')` |
 | `doubleClick($selector)` | `onDoubleClick` | `->doubleClick('li')` |
 | `change($selector, $value)` | `onChange`, `onInput`, or `phem:live` | `->change('[name=q]', 'Curie')` |
-| `fill($selector, $value)` | none: the next event sends a bound field (`phem:bind`) | `->fill('[name=q]', 'Curie')->click('button')` |
+| `fill($selector, $value)` | None: the next event sends the bound field (`phem:bind`) | `->fill('[name=q]', 'Curie')->click('button')` |
 | `submit($selector, $fields)` | `onSubmit` | `->submit('form', ['name' => 'Ada'])` |
-| `upload($selector, $paths)` | none: the next submit of its form sends the files | `->upload('[name=photo]', __DIR__.'/ada.jpg')->submit()` |
+| `upload($selector, $paths)` | None: the next submit of its form sends the files | `->upload('[name=photo]', __DIR__.'/ada.jpg')->submit()` |
 | `keyDown($selector, $key)`, `keyUp($selector, $key)` | `onKeyDown`, `onKeyUp` | `->keyDown('input', 'Enter')` |
 | `focus($selector)`, `blur($selector)` | `onFocus`, `onBlur` | `->focus('input')` |
-| `fire($selector, $type, $event)` | any DOM event | `->fire('div', 'click', ['value' => 'x'])` |
-| `load($selector)` | the load of a `<Suspense>` boundary | `->load()`, `->load('#report')` |
-| `visit($uri, $cookies)` | none: opens a page in the same browser, with its cookies and the cookies that you give | `$customer->visit('/bag', ['currency' => 'EUR'])` |
-| `receive()` | the pushes of other requests (a page with `#[Broadcast]`) | `$other->receive()->assertSee('Hi')` |
-| `settle()` | none: runs the work of the `#[Async]` handlers, as a worker does | `->settle()->receive()->assertSee('Ready')` |
+| `fire($selector, $type, $event)` | Any DOM event | `->fire('div', 'click', ['value' => 'x'])` |
+| `load($selector)` | The load of a `<Suspense>` boundary | `->load()`, `->load('#report')` |
+| `visit($uri, $cookies)` | None: opens a page in the same browser, with its cookies plus the ones you pass | `$customer->visit('/bag', ['currency' => 'EUR'])` |
+| `receive()` | Pushes from other requests (a page with `#[Broadcast]`) | `$other->receive()->assertSee('Hi')` |
+| `settle()` | None: runs the work of `#[Async]` handlers, as a worker does | `->settle()->receive()->assertSee('Ready')` |
 
-The value of `change()` and `fill()`:
+### Fill fields and submit forms
 
-- a text field (`<input>`, `<textarea>`) takes a string;
-- a checkbox takes `true` or `false`;
-- a radio button takes `true`, or the value of a button of its group;
-- a `<select>` takes the value of an option, or a list of values for `<select multiple>`.
+`change()` and `fill()` take a value that matches the field type:
 
-`submit()` takes a form, or the button that submits it (the button is a field of the form). The
-fields get the values first, as `change()` does. A group of checkboxes (`tags[]`) takes a list
-of the values to check.
+- **Text field** (`<input>`, `<textarea>`): a string
+- **Checkbox**: `true` or `false`
+- **Radio button**: `true`, or the value of a button in its group
+- **`<select>`**: the value of an option, or a list of values for `<select multiple>`
 
-`upload()` takes a path, or a list of paths for `<input type="file" multiple>`. An empty list
-removes the files. The handler gets a copy of each file in the temporary directory, so it can
-move the file. As in a browser, the files stay in the input after an event, also when the morph
-renders the input again. They go away when the handler calls `$e->clearFiles()`, or when the
-page gets a new element for the input: a morph that gives the input another `id`, or a push that
-is not a morph.
+`submit()` takes a form or the button that submits it, since the button is a field of the form. It sets the field values first, the way `change()` does. For a group of checkboxes (`tags[]`), pass a list of the values to check.
 
-The first render of a page shows its `<Suspense>` boundaries as the browser has them at the end
-of the stream of the page: a boundary with no `lazy` shows its children. A `lazy` boundary shows
-its fallback, and so does a streamed boundary whose children threw with no `error` slot.
-`load()` sends the load event of each boundary that shows its fallback, in their order. A
-selector loads only the boundary of the element: the `<phem-suspense>` element, or an element in
-its fallback. The loaded children can have boundaries too: call `load()` again.
+### Upload files
+
+`upload()` takes a path, or a list of paths for `<input type="file" multiple>`. An empty list removes the files. The handler gets a copy of each file in the temporary directory, so it can move the file.
+
+As in a browser, the files stay in the input after an event, even when the morph renders the input again. They’re cleared when the handler calls `$e->clearFiles()`, or when the page gets a new element for the input: a morph that gives the input another `id`, or a push that isn’t a morph.
+
+### Load Suspense boundaries
+
+The first render of a page shows its `<Suspense>` boundaries the way the browser has them at the end of the page stream. A boundary without `lazy` shows its children. A `lazy` boundary shows its fallback, and so does a streamed boundary whose children threw with no `error` slot.
+
+`load()` sends the load event of each boundary that shows its fallback, in order. With a selector, it loads only that element’s boundary: the `<phem-suspense>` element, or an element in its fallback. Loaded children can contain boundaries too, so call `load()` again for them:
 
 ```php
 $this->visit('/dashboard')
@@ -115,15 +111,18 @@ $this->visit('/dashboard')
     ->assertSee('North: 1200 €');
 ```
 
-A page with `#[Broadcast]` (or with a component with `#[Broadcast]`) gets the pushes of
-`Phem\Stream\Streams` with `receive()`: the updates of its topics since its render, or since the
-last `receive()`. In the tests (`framework.test: true`), the streams go to memory, not to a
-Mercure hub. A stream marks the component around its target as stale, and the next event sends
-it, as in a browser. A `refresh()` sends one event with no handler. As in a browser, after a handler of
-a component with `#[Broadcast]`, the `receive()` of the same page does not render that component
-again: the event rendered it.
-As in a browser, an element with `data-phem-ignore` and an `id` (a target that only the pushes fill)
-keeps its content when an event renders it again. Open the page two times, as two tabs:
+## Test real-time updates
+
+A page with `#[Broadcast]`, or with a component that has it, gets the pushes of `Phem\Stream\Streams` through `receive()`. Each call returns the updates of its topics since the render or since the last `receive()`. With `framework.test: true`, streams go to memory instead of a Mercure hub.
+
+The tester follows browser behavior for pushes:
+
+- A stream marks the component around its target as stale, and the next event sends it.
+- A `refresh()` sends one event with no handler.
+- After a handler of a component with `#[Broadcast]`, `receive()` on the same page doesn’t render that component again, because the event already rendered it.
+- An element with `data-phem-ignore` and an `id` (a target that only pushes fill) keeps its content when an event renders it again.
+
+To see a push, open the page twice, like two tabs:
 
 ```php
 $other = $this->visit('/guestbook');
@@ -132,43 +131,17 @@ $this->visit('/guestbook')->fill('[name=message]', 'Hi')->click('button');
 $other->receive()->assertSee('Hi');
 ```
 
-Each `$this->visit()` is a new browser, with only the cookies that you give. To open a page in the same browser,
-with the session of a page (for example a user who logged in), call `visit()` on that page. As
-the tabs of a browser, the pages of one browser share the cookies and the server values (the
-`$server` of the first `visit()`), and each page gets its pushes apart. A cookie goes only to
-its host (or its `Domain`) and its `Path`, and a `Secure` cookie only on HTTPS and on
-`localhost`. As in a browser, an empty `Domain` is no `Domain`: the session cookie of PHP (with
-the default `session.cookie_domain`) goes to the host of the page.
+## Open pages in the same browser
 
-A relative URL opens from the URL of the page, as a link does: `$page->visit('/bag')` on
-`http://shop.example/login` opens `http://shop.example/bag`, and so does the relative redirect of
-`followRedirect()`.
+Each `$this->visit()` starts a new browser with only the cookies you pass. To open a page in the same browser, with that page’s session (a signed-in user, for example), call `visit()` on the page instead. Like browser tabs, pages of one browser share cookies and server values (the `$server` of the first `visit()`), and each page gets its own pushes.
 
-Give cookies to the browser with the `cookies` argument of `visit()`: name => value, as strings.
-A cookie that you give goes to the host of the URL, for all its paths (`Path=/`), as a session
-cookie. A `__Secure-` or a `__Host-` cookie is `Secure`, as a browser keeps it. A cookie that you
-give replaces the cookie of a response with the same name, the same host and the path `/`, and
-the next response that sets that cookie replaces it. A cookie of a response with a longer `Path`
-stays, and the browser sends it on its path. `cookies()` gives the cookies that the browser of a
-page sends to the URL of the page now, sorted by name. They include the cookies that the other
-pages of the browser got:
+Cookies follow browser rules. A cookie goes only to its host (or its `Domain`) and its `Path`, and a `Secure` cookie only over HTTPS and to `localhost`. An empty `Domain` counts as no `Domain`, so the PHP session cookie (with the default `session.cookie_domain`) goes to the page’s host.
 
-```php
-$page = $this->visit('/shop', cookies: ['currency' => 'EUR'])->assertSee('0,00 €');
+A relative URL resolves against the page URL, like a link. `$page->visit('/bag')` on `http://shop.example/login` opens `http://shop.example/bag`, and the relative redirect of `followRedirect()` works the same way.
 
-$page->visit('/shop?set-currency=USD');
-self::assertSame(['currency' => 'USD'], $page->cookies());
+### Sign in users and watch their pages
 
-$page->visit('/bag', ['coupon' => 'SPRING'])->assertSee('Coupon SPRING');
-self::assertSame(['coupon' => 'SPRING', 'currency' => 'USD'], $page->cookies());
-```
-
-A mounted component has no browser: `cookies()` and `visit()` fail. A cookie value that is not a
-string, or a cookie with no name, throws an `InvalidArgumentException`.
-
-Here the login page is a Phem page: its `onSubmit` handler logs the user in
-(`Security::login()`) and returns a redirect. A Symfony `form_login` is a normal form with no
-Phem handler, so `submit()` cannot send it.
+In this example the login page is a Phem page: its `onSubmit` handler signs the user in with `Security::login()` and returns a redirect. A Symfony `form_login` is a plain form with no Phem handler, so `submit()` can’t send it:
 
 ```php
 $customer = $this->visit('/login')->submit('form', ['email' => 'ada@example.com'])->followRedirect();
@@ -180,11 +153,31 @@ $staff->visit('/admin/products/5')->click('#hide');
 $bag->receive()->assertSee('The bag changed');
 ```
 
-An `#[Async]` handler does not run its work in the event. In a page of `visit()`, its message
-goes to memory, not to a Messenger transport. Other tests (a `WebTestCase`, Panther) use the
-Messenger configuration of the application. `settle()` runs the waiting work of all the pages of the
-test, in their order, as a worker does. The work pushes its result: get it with `receive()`. Test
-an `#[Async]` handler with `visit()`: a mounted component has no page for the worker.
+### Send cookies
+
+Pass cookies to the browser with the `cookies` argument of `visit()`, as name-to-value strings. Each cookie goes to the URL’s host for all paths (`Path=/`), as a session cookie. A `__Secure-` or `__Host-` cookie is `Secure`, the way a browser stores it.
+
+A cookie you pass replaces a response cookie with the same name, host, and path `/`, and the next response that sets that cookie replaces yours. A response cookie with a longer `Path` stays, and the browser sends it on its path.
+
+`cookies()` returns the cookies that the page’s browser sends to the page URL now, sorted by name. They include cookies that other pages of the same browser received:
+
+```php
+$page = $this->visit('/shop', cookies: ['currency' => 'EUR'])->assertSee('0,00 €');
+
+$page->visit('/shop?set-currency=USD');
+self::assertSame(['currency' => 'USD'], $page->cookies());
+
+$page->visit('/bag', ['coupon' => 'SPRING'])->assertSee('Coupon SPRING');
+self::assertSame(['coupon' => 'SPRING', 'currency' => 'USD'], $page->cookies());
+```
+
+A mounted component has no browser, so `cookies()` and `visit()` fail on it. A cookie value that isn’t a string, or a cookie with no name, throws an `InvalidArgumentException`.
+
+## Test async handlers
+
+An `#[Async]` handler doesn’t run its work during the event. In a page from `visit()`, its message goes to memory instead of a Messenger transport. Other tests (a `WebTestCase`, Panther) use the app’s Messenger configuration.
+
+`settle()` runs the waiting work of every page in the test, in order, as a worker does. The work pushes its result, so read it with `receive()`. Test `#[Async]` handlers with `visit()`, because a mounted component has no page for the worker:
 
 ```php
 $this->visit('/reports')
@@ -194,47 +187,43 @@ $this->visit('/reports')
     ->receive()->assertSee('4 scientists');
 ```
 
-An action fails when it cannot work in a browser:
+## Actions that fail the test
 
-- no element matches the selector;
-- the element is disabled;
-- no handler gets the event;
-- the form has no field with the name, or the select has no option with the value;
-- `load()` finds no boundary that shows its fallback;
-- `receive()` gets a page with no `#[Broadcast]` and no component with `#[Broadcast]`;
-- `settle()` finds no waiting work;
-- `upload()` gets an element that is not a file input, more than one path for an input with no
-  `multiple` attribute, or a file that does not exist.
+An action fails when it couldn’t work in a browser either. That happens when:
 
-## Assertions
+- No element matches the selector
+- The element is disabled
+- No handler gets the event
+- The form has no field with that name, or the select has no option with that value
+- `load()` finds no boundary that shows its fallback
+- `receive()` runs on a page with no `#[Broadcast]` and no component with `#[Broadcast]`
+- `settle()` finds no waiting work
+- `upload()` gets an element that isn’t a file input, more than one path for an input without `multiple`, or a file that doesn’t exist
 
-Each assertion returns the tester, so you can chain the actions and the assertions.
+## Check the HTML and state
+
+Each assertion returns the tester, so you can chain actions and assertions:
 
 | Assertion | Checks |
 |---|---|
-| `assertSee($text)`, `assertDontSee($text)` | the text of the body (white space is one space) |
-| `assertSeeHtml($html)`, `assertDontSeeHtml($html)` | the HTML |
-| `assertSelectorExists($selector)`, `assertSelectorNotExists($selector)` | an element |
-| `assertSelectorCount($count, $selector)` | the number of elements |
-| `assertSelectorTextContains($selector, $text)` | the text of the first element |
-| `assertState($name, $value)` | a `#[State]` property of the page, or of the mounted component |
-| `assertState($name, $value, in: $selector)` | a `#[State]` property of a child component (see below) |
-| `assertStatus($status)` | the HTTP status of the last response |
-| `assertRedirect($url)`, `assertNoRedirect()` | a handler that returns a `RedirectTo` or a `RedirectResponse`, or a page that redirects |
-| `assertReload()` | the last event answered 409: the browser loads the page again |
-| `assertQuery($key, $value)` | a key of the query string of the URL (`#[Url]`), after the last action: a string, a list, or null for no key |
-| `assertDispatched($name)`, `assertDispatched($name, $detail)`, `assertNotDispatched($name)` | a browser event of the last action (`$e->dispatcher->dispatch()`), and its detail as JSON gives it |
+| `assertSee($text)`, `assertDontSee($text)` | The text of the body (white space collapses to one space) |
+| `assertSeeHtml($html)`, `assertDontSeeHtml($html)` | The HTML |
+| `assertSelectorExists($selector)`, `assertSelectorNotExists($selector)` | An element |
+| `assertSelectorCount($count, $selector)` | The number of elements |
+| `assertSelectorTextContains($selector, $text)` | The text of the first element |
+| `assertState($name, $value)` | A `#[State]` property of the page or of the mounted component |
+| `assertState($name, $value, in: $selector)` | A `#[State]` property of a child component |
+| `assertStatus($status)` | The HTTP status of the last response |
+| `assertRedirect($url)`, `assertNoRedirect()` | A handler that returns a `RedirectTo` or a `RedirectResponse`, or a page that redirects |
+| `assertReload()` | The last event answered 409, so the browser loads the page again |
+| `assertQuery($key, $value)` | A query string key of the URL (`#[Url]`) after the last action: a string, a list, or null for no key |
+| `assertDispatched($name)`, `assertDispatched($name, $detail)`, `assertNotDispatched($name)` | A browser event of the last action (`$e->dispatcher->dispatch()`), with its detail as JSON gives it |
 
-To read the values, use `html()`, `text()`, `state()`, `url()`, `cookies()` (a page only), and
-`document()` (a `Dom\HTMLDocument`). `url()` gives the URL that the browser shows: the URL of the page (`/` for a
-component), with the query string of the `#[Url]` properties after the last action.
+To read values directly, use `html()`, `text()`, `state()`, `url()`, `cookies()` (pages only), and `document()` (a `Dom\HTMLDocument`). `url()` returns the URL that the browser shows: the page URL (`/` for a component), with the query string of the `#[Url]` properties after the last action.
 
-### The state of a child component
+### Check the state of a child component
 
-Give a CSS selector in `in`. The tester finds the element, and then the closest component with
-`#[State]` properties around it, as in the DOM of the browser. A component with no `#[State]`
-property (a function component, the `<Root>`) does not match. With no match, the assertion
-reads the page, or the mounted component.
+Pass a CSS selector in `in`. The tester finds the element, then the closest component around it that has `#[State]` properties, as in the browser DOM. A component without `#[State]` properties (a function component, the `<Root>`) doesn’t match. With no match, the assertion reads the page or the mounted component:
 
 ```php
 $this->visit('/')
@@ -243,33 +232,23 @@ $this->visit('/')
     ->assertState('count', 0);                 // the page
 ```
 
-`state(in: '#toggle')` gives all the properties of that component.
+`state(in: '#toggle')` returns all the properties of that component.
 
-## Error pages
+## Test an error page
 
-`errorPage()` renders the [error page](error-pages.md) of an error at a URL, as the preview at
-`/_error/{code}` does. The debug mode of the test does not show the exception. An `int` is the
-status of an `HttpException`:
+`errorPage()` renders the [error page](error-pages.md) for an error at a URL, the way the preview at `/_error/{code}` does. Pass an `int` for an `HttpException` with that status, or an exception:
 
 ```php
 $this->errorPage(404, '/admin/missing')
     ->assertStatus(404)
     ->assertSee('Back to the dashboard');
-
-$this->errorPage(new \RuntimeException('Boom.'), '/cart')
-    ->assertStatus(500)
-    ->assertDontSee('Boom.');
 ```
 
-An error page has no events. Set `phem.show_exceptions: false` in the `test` environment, so
-`visit()` and the e2e tests get the error pages and not the page of the exception. `visit()`
-runs Symfony in the web mode, as `WebTestCase`: in the CLI mode, Symfony renders an HTTP error
-with its CLI renderer.
+To get error pages from `visit()` and end-to-end tests, set `phem.show_exceptions: false` in the `test` environment. See [Test an error page](error-pages.md#test-an-error-page) for the full guide.
 
-## Services
+## Replace a service in a test
 
-The components get their services from the container of the test. Change a service in the
-test, and the next event uses it:
+Components get their services from the test container. Change a service in the test, and the next event uses it:
 
 ```php
 $counter = $this->mount(Counter::class);
@@ -277,30 +256,20 @@ self::getContainer()->get(Limits::class)->max = 1;
 $counter->click('button')->click('button')->assertState('count', 1);
 ```
 
-Before each event, the services are reset (`kernel.reset`), as between two requests.
+Before each event, the services reset (`kernel.reset`), as they do between two requests.
 
-## Tests with a real browser
+## Test with a real browser
 
-A test with a real browser (Playwright) runs the JavaScript of the page. When the kernel of the
-test process handles the requests of the browser (as playwright-symfony does), with
-`framework.test: true`, Phem publishes the streams to memory, and the browser has no Mercure hub.
-`Phem\Test\BrowserHub` is the hub for these tests. A browser with its own server process
-(Panther) does not work: the streams are in the memory of that process.
+A test with a real browser such as Playwright runs the page’s JavaScript. When the test process kernel handles the browser’s requests (as playwright-symfony does) with `framework.test: true`, Phem publishes streams to memory, and the browser has no Mercure hub. `Phem\Test\BrowserHub` acts as the hub for these tests. A browser with its own server process (Panther) doesn’t work, because the streams live in that process’s memory.
 
-1. Add `BrowserHub::initScript()` to each page, before its scripts (Playwright
-   `addInitScript()`). It replaces `EventSource` with a fake that connects at once. A page with
-   no init script tries to connect to a hub that is not there.
-2. Get the hub with `$this->browserHub()` of `InteractsWithPhem` (or `new BrowserHub($publisher)`
-   with the `phem.test.stream_publisher` service). It takes the updates from now.
-3. After each step that can publish, evaluate `$hub->deliverScript()` in each page. The same
-   script goes to each page: each connection gets each update one time, for its topics, and
-   only the updates published after it opened, as the hub does. With no update, the script does
-   nothing.
-4. Wait until the root element has no `data-phem-push-pending` attribute: the page rendered the
-   pushes and their refreshes. A refresh waits 50 ms before it goes, so do not sleep: wait for
-   the attribute.
+Wire the hub into your test with these steps:
 
-With a Playwright client for PHP (the method names depend on the client):
+1. Add `BrowserHub::initScript()` to each page before its scripts (Playwright `addInitScript()`). It replaces `EventSource` with a fake that connects at once. Without it, the page tries to connect to a hub that isn’t there.
+2. Get the hub with `$this->browserHub()` from `InteractsWithPhem`, or with `new BrowserHub($publisher)` and the `phem.test.stream_publisher` service. It collects updates from that point on.
+3. After each step that can publish, evaluate `$hub->deliverScript()` in each page. Every page gets the same script. Each connection gets each update once, for its topics, and only the updates published after it opened, as the real hub does. With no update, the script does nothing.
+4. Wait until the root element has no `data-phem-push-pending` attribute, which means the page rendered the pushes and their refreshes. A refresh waits 50 ms before it goes, so wait for the attribute instead of sleeping.
+
+With a Playwright client for PHP (method names depend on the client):
 
 ```php
 $hub = $this->browserHub();
@@ -320,21 +289,21 @@ foreach ([$customer, $staff] as $page) {
 $customer->assertSee('The bag changed');
 ```
 
-A step that publishes out of a request (a command, a data fixture) calls `Streams::flush()`
-itself: the streams of a request go out at its end. The fake hub has two limits:
+A step that publishes outside a request, such as a command or a data fixture, must call `Streams::flush()` itself, because a request’s streams only go out at its end.
 
-- It does not check the subscriber key: a page gets the private updates of its topics also when
-  the real hub would not authorize it, as `receive()` does. Test the access to the topics with
-  a real hub.
-- It uses the time of each update to know if a connection was open: the browser and the test
-  must run on the same machine.
+### Limits of the fake hub
 
-The init script is for tests only: a page with it gets no pushes from a real hub.
+The fake hub differs from a real Mercure hub in two ways:
 
-## Limits
+- **No subscriber check**: It doesn’t check the subscriber key. A page gets the private updates of its topics even when the real hub wouldn’t authorize it, the same as `receive()`. Test topic access with a real hub.
+- **Same machine**: It uses the time of each update to know whether a connection was open, so the browser and the test must run on the same machine.
 
-- The tester runs no JavaScript. A Stimulus controller of the application does not run.
+The init script is for tests only. A page that loads it gets no pushes from a real hub.
+
+## What the tester can’t do
+
+The tester simulates a browser in PHP, so keep its limits in mind:
+
+- It runs no JavaScript, so your app’s Stimulus controllers don’t run.
 - A server error in `visit()`, or in one of its events, throws its exception in the test.
-- `assertState(in: ...)` uses the DOM to find a child component. Slot content is in the DOM
-  of the component that renders the slot. A selector in a slot finds that component (when it
-  has state), not the component that gives the slot.
+- `assertState(in: ...)` uses the DOM to find a child component. Slot content sits in the DOM of the component that renders the slot, so a selector inside a slot finds that component (when it has state), not the component that passes the slot.

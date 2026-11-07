@@ -1,46 +1,39 @@
-# Events and forms
+# Handle events and forms
 
-This page explains what happens when the user clicks, types or submits a form. For the syntax
-of the `on*` attributes and the `phem:*` directives, see [The `.phem` syntax](phem-syntax.md).
+This guide shows you how to respond when the user clicks, types or submits a form. It covers handler arguments, bound fields, loading states, redirects, Symfony forms, file uploads, live validation and unsaved changes. For the syntax of the `on*` attributes and the `phem:*` directives, see [The `.phem` syntax](phem-syntax.md).
 
-## What an event does
+## Respond to a click, a key or a change
 
-When the user clicks a button with `onClick={{ save }}`, the browser sends an event to the
-server. The server runs the `save` handler, renders the components that can change, and sends
-back only the HTML that changed. The browser morphs it into the page.
+Give a handler to an `on*` attribute, and the browser sends an event to the server when the user acts. With `onClick={{ save }}`, the server runs the `save` handler, renders the components that can change and returns only the HTML that changed. The browser then morphs that HTML into the page.
 
-A handler can take a `Phem\Event` argument:
+A handler can take a `Phem\Event` argument with these properties:
 
 | Property | Value |
 |---|---|
-| `$e->value` | The value of the element. |
-| `$e->checked` | The state of a checkbox. |
-| `$e->key` | The key of a key event. |
-| `$e->form` | The fields of the form, by name. A submit, a change or a click sends them. |
-| `$e->files` | The files of the form (see [File uploads](#file-uploads)). |
+| `$e->value` | The value of the element |
+| `$e->checked` | Whether a checkbox is checked |
+| `$e->key` | The key of a key event |
+| `$e->form` | The form fields, by name; a submit, a change or a click sends them |
+| `$e->files` | The files of the form (see [Accept file uploads](#accept-file-uploads)) |
 
-`onChange` on a text field fires as the user types, as in React. The browser waits until the user
-stops typing for 150 ms before it sends the event (see
-[Debounce and throttle](#debounce-and-throttle)).
+`onChange` on a text field fires as the user types. The browser waits until the user stops typing for 150 ms before it sends the event (see [Control when typing sends an event](#control-when-typing-sends-an-event)).
 
-An event is a `POST` request to the URL of the page. Thus the access rules of the page apply to
-its events too: the firewall, `access_control`, `#[IsGranted]`. An event has the route name of
-the page (`_route`), so a rule on a route name applies too:
+### Protect events with your access rules
+
+An event is a `POST` request to the URL of its page, so the page’s access rules apply to its events too: the firewall, `access_control` and `#[IsGranted]`. An event also has the route name of the page (`_route`), so a rule on a route name covers it:
 
 ```yaml
 # config/packages/security.yaml
 security:
     access_control:
-        - { route: '^admin_', roles: ROLE_ADMIN } # the admin pages and their events
+        - { route: '^admin_', roles: ROLE_ADMIN } # admin pages and their events
 ```
 
-Phem accepts an event only from the same origin, so another site cannot send one.
+Phem accepts events only from the same origin, so another site can’t send one.
 
-## Handler arguments
+## Get services and the user in a handler
 
-A handler gets its arguments as a Symfony controller action does. The event is one of them, at
-any position, or not there. A method of a class can also get the `Request`, the services,
-`#[CurrentUser]` and the other value resolvers:
+A handler receives its arguments the way a Symfony controller action does. The event is one of them, at any position, and you can leave it out. A class method can also take the `Request`, services, `#[CurrentUser]` and any other value resolver:
 
 ```php
 public function save(Event $e, NoteRepository $notes, #[CurrentUser] User $user): void
@@ -49,13 +42,11 @@ public function save(Event $e, NoteRepository $notes, #[CurrentUser] User $user)
 }
 ```
 
-A closure in `render()` gets only the event and the `Request`. Give its parameter a type:
-`fn (Event $e) => ...`. Get the services in the constructor.
+A closure in `render()` receives only the event and the `Request`. Type its parameter, as in `fn (Event $e) => ...`, and inject services through the constructor.
 
-## Bound fields
+## Bind a field to state without a handler
 
-A field that only copies its value into the state needs no handler. `phem:bind` links a form
-field to a `#[State]` property:
+A field that only copies its value into the state doesn’t need a handler. Add `phem:bind` to link a form field to a `#[State]` property:
 
 ```php
 #[Component]
@@ -66,7 +57,7 @@ final class ScientistSearch
 
     public function search(): void
     {
-        // $this->query and $this->activeOnly have the values of the fields.
+        // $this->query and $this->activeOnly hold the field values.
     }
 
     public function render(): Node
@@ -82,16 +73,22 @@ final class ScientistSearch
 }
 ```
 
-The field shows the value of the property. A change sends no request: the next event of the page
-sends the new value, and the server sets the property before the handler runs. Add `phem:live` to
-send each change at once, with no handler:
+The field shows the property value. A change sends no request: the next event on the page sends the new value, and the server sets the property before the handler runs. Phem writes the `value`, `checked` or `selected` attribute of a bound field, so don’t write these attributes yourself.
+
+The browser can send any value in a bound field. As with all state, don’t base a security decision on a bound property.
+
+### Send each change to the server
+
+Add `phem:live` to send each change right away, with no handler:
 
 ```php
 <input phem:bind={{ name }} phem:live />
 <p>{{ name ? 'Hello, ' ~ name ~ '!' : 'Type your name.' }}</p>
 ```
 
-The type of the property must take the value of the field (E033):
+### Match the property type to the field
+
+The property type must accept the field value, or phemc reports E033:
 
 | Field | Property type |
 |---|---|
@@ -99,15 +96,15 @@ The type of the property must take the value of the field (E033):
 | `<input type="checkbox">` | `bool`, or `array` for a group of checkboxes |
 | `<select multiple>` | `array` |
 
-The server converts the text of the field to the type. A value that does not fit (`"abc"` for an
-`int`) does not change the property. Phem writes the `value` (or `checked`, or `selected`) of a
-bound field, so do not write these attributes yourself.
+The server converts the field text to the property type. A value that doesn’t fit, such as `"abc"` for an `int`, leaves the property unchanged.
 
-A path binds a key of an `array` property: `phem:bind={{ filters.status }}`, or
-`phem:bind={{ rows[i].name }}` in a loop. The key must already be in the array.
+### Bind a key of an array
 
-A child component can bind a property of its parent. Declare a prop of the type `Phem\Bound` in
-the child, bind it in the child, and put `phem:bind` on the tag of the child:
+Use a path to bind one key of an `array` property: `phem:bind={{ filters.status }}`, or `phem:bind={{ rows[i].name }}` in a loop. The key must already exist in the array.
+
+### Bind a parent property from a child component
+
+A child component can bind a property of its parent. Declare a `Phem\Bound` prop in the child, bind it inside the child, and put `phem:bind` on the child’s tag:
 
 ```php
 #[Component]
@@ -120,32 +117,24 @@ function TextField(Bound $value, string $label): Node
 <TextField phem:bind={{ query }} label="Search" />
 ```
 
-The browser can send any value in a bound field. As for all the state, make no security decision
-with a bound property.
+## Show a loading state
 
-## Loading states
+While an event runs, the element that sent it and its component get `aria-busy="true"` and the `phem-loading` class after a 200 ms delay. Style them with CSS.
 
-While an event runs, the element that sent it and its component get `aria-busy="true"` and the
-`phem-loading` class, after a delay of 200 ms. Style them with CSS.
-
-To show an element only while a handler runs, give the handler to `phem:loading`:
+To show an element only while a handler runs, pass the handler to `phem:loading`:
 
 ```html
 <button onClick={{ save }}>Save</button>
 <span phem:loading={{ save }} className="spinner">Saving…</span>
 ```
 
-The server renders the element with `hidden`. The browser shows it while a `save` event of this
-component runs. To show a component, put it in an element:
-`<span phem:loading={{ save }}><Spinner /></span>`.
+The server renders the element with `hidden`, and the browser shows it while a `save` event of this component runs. To show a component, wrap it in an element: `<span phem:loading={{ save }}><Spinner /></span>`.
 
-The `data-phem-loading-delay-value` attribute of the `<Root>` element changes the delay.
+Set the `data-phem-loading-delay-value` attribute on the `<Root>` element to change the delay.
 
-## Debounce and throttle
+## Control when typing sends an event
 
-The browser waits until the user stops typing for 150 ms before it sends the `onChange` and
-`onInput` events of a text field. The other events do not wait. Change the wait of one element
-with `phem:debounce` or `phem:throttle`:
+The browser waits until the user stops typing for 150 ms before it sends the `onChange` and `onInput` events of a text field. Other events don’t wait. Change the wait for one element with `phem:debounce` or `phem:throttle`:
 
 ```html
 <input onChange={{ search }} phem:debounce={{ 300 }} />
@@ -153,20 +142,19 @@ with `phem:debounce` or `phem:throttle`:
 <input type="range" onInput={{ preview }} phem:throttle={{ 500 }} />
 ```
 
+Each directive sends the event at a different moment:
+
 | Attribute | The browser sends the event |
 |---|---|
-| `phem:debounce={{ 300 }}` | When no new event comes for 300 ms. `0` turns the wait off. |
-| `phem:debounce={{ 'blur' }}` | When the field loses the focus. |
-| `phem:throttle={{ 500 }}` | At once, then at most one time in each 500 ms. The last event always goes. |
+| `phem:debounce={{ 300 }}` | When no new event comes for 300 ms; `0` turns the wait off |
+| `phem:debounce={{ 'blur' }}` | When the field loses focus |
+| `phem:throttle={{ 500 }}` | Right away, then at most once every 500 ms; the last event always goes |
 
-`onSubmit` and `onBlur` never wait. Another event (a click, a submit) first sends all the events
-that wait, so the server always gets the input before the click. The `data-phem-debounce-value`
-attribute of the `<Root>` element changes the default wait.
+`onSubmit` and `onBlur` never wait. Any other event, such as a click or a submit, first sends every event that’s waiting, so the server always gets the input before the click. Set the `data-phem-debounce-value` attribute on the `<Root>` element to change the default wait.
 
-## Redirects
+## Redirect after a handler
 
-A handler can return a `Phem\RedirectTo`. The page then does not render again, and the browser
-goes to the other page with Turbo:
+Return a `Phem\RedirectTo` from a handler to send the browser to another page. The current page doesn’t render again, and the browser visits the new page with Turbo:
 
 ```php
 use Phem\RedirectTo;
@@ -179,13 +167,11 @@ public function delete(): RedirectTo
 }
 ```
 
-Name a class page by its class, and a function page by its callable: `ScientistPage(...)`, with
-`use function`. The second argument has the route values. The other values go to the query
-string. For a URL that is not a page, return a Symfony `RedirectResponse`.
+Name a class page by its class, and a function page by its callable, such as `ScientistPage(...)` with `use function`. The second argument holds the route values, and any other value goes into the query string. For a URL that isn’t a page, return a Symfony `RedirectResponse`.
 
-## Browser events
+## Send events to your JavaScript
 
-A handler can send events to the JavaScript of the page:
+A handler can dispatch events to the JavaScript on the page:
 
 ```php
 public function save(Event $e): void
@@ -195,22 +181,17 @@ public function save(Event $e): void
 }
 ```
 
-After the morph, the browser dispatches a `phem:toast` event. A Stimulus controller can listen to
-it:
+After the morph, the browser dispatches a `phem:toast` event. A Stimulus controller can listen for it:
 
 ```html
 <div data-controller="toast" data-action="phem:toast@window->toast#show"></div>
 ```
 
-The event starts on the element of the component, and it bubbles up to `window`. A service can
-send events too: inject `Phem\BrowserEventDispatcher`. A handler that fails or redirects sends no
-events.
+The event starts on the component’s element and bubbles up to `window`. A service can dispatch events too: inject `Phem\BrowserEventDispatcher`. A handler that fails or redirects dispatches no events.
 
-## Symfony forms
+## Handle a Symfony form
 
-The `Request` of a handler has the form fields as its POST data, so a Symfony form reads it with
-`handleRequest()`. Keep the form in a property, so `render()` shows the errors after a failed
-submit:
+The `Request` of a handler holds the form fields as its POST data, so a Symfony form reads them with `handleRequest()`. Keep the form in a property, so `render()` shows the errors after a failed submit:
 
 ```php
 private ?FormInterface $form = null {
@@ -240,13 +221,11 @@ public function render(): Node
 }
 ```
 
-The `get` hook (a PHP 8.4 property hook) makes a new form when no handler made one.
+The `get` hook, a PHP 8.4 property hook, creates a new form when no handler created one.
 
-## File uploads
+## Accept file uploads
 
-The browser sends the files of a form with its submit event. The handler gets each file as a
-Symfony `UploadedFile`, in `$e->files` and in the `Request`. A form with a `FileType` field works
-as in a normal POST:
+The browser sends the files of a form with its submit event. The handler receives each file as a Symfony `UploadedFile`, both in `$e->files` and in the `Request`. A form with a `FileType` field works as it does in a regular POST:
 
 ```php
 public function add(Request $request): void
@@ -260,13 +239,13 @@ public function add(Request $request): void
 }
 ```
 
-PHP removes the file at the end of the request, so move it in the handler. Check its size and
-type with `#[Assert\File]`.
+PHP deletes the uploaded file at the end of the request, so move it in the handler. Check its size and type with `#[Assert\File]`.
 
-The files stay in the input after the submit, so a form with a validation error keeps them. When
-the handler stored the files, call `$e->clearFiles()`: the browser then empties the input.
+The files stay in the input after the submit, so a form with a validation error keeps them. Once the handler stores the files, call `$e->clearFiles()` to empty the input in the browser.
 
-To show the progress of the upload, give the handler to `phem:progress`:
+### Show the upload progress
+
+Pass the handler to `phem:progress` to show the progress of the upload:
 
 ```html
 <form onSubmit={{ save }}>
@@ -276,17 +255,21 @@ To show the progress of the upload, give the handler to `phem:progress`:
 </form>
 ```
 
-The element shows only while the files upload. Its `--phem-progress` CSS property goes from 0 to
-1, so any element can show it: `width: calc(var(--phem-progress) * 100%)`. For the progress of
-each file, listen to the `phem:upload-progress` event of the form.
+The element shows only while the files upload. Its `--phem-progress` CSS property goes from 0 to 1, so any element can display it: `width: calc(var(--phem-progress) * 100%)`. For the progress of each file, listen for the `phem:upload-progress` event on the form.
 
-The files of one event have a maximum total size: `phem.max_upload_size` (8 MiB by default, `0`
-for no limit). Over the limit, the server answers `413` and the handler does not run.
+### Limit the upload size
 
-## Live validation
+The `max_upload_size` option sets the maximum total size, in bytes, of the files in one event. The default is 8 MiB, and `0` turns the limit off. Over the limit, the server returns `413` and the handler doesn’t run:
 
-To show the errors of a field before the submit, put Symfony constraints on the `#[State]`
-properties, and add a `#[State]` property of the type `Phem\Validation`. Phem sets this property:
+```yaml
+# config/packages/phem.yaml
+phem:
+    max_upload_size: 20971520 # 20 MiB
+```
+
+## Validate a form while the user types
+
+To show field errors before the submit, put Symfony constraints on the `#[State]` properties and add a `#[State]` property of type `Phem\Validation`. Phem sets that property for you:
 
 ```php
 use Phem\Attribute\{Component, State, Validated};
@@ -310,7 +293,11 @@ final class SignupForm
         $this->accounts->open($this->email, $this->password);
         $this->validation = new Validation();
     }
+```
 
+The `render()` method binds each field and shows its first error:
+
+```php
     public function render(): Node
     {
         return (
@@ -326,30 +313,27 @@ final class SignupForm
 }
 ```
 
-When the user changes a field, Phem validates the component. It shows only the errors of the
-fields that the user touched, so the other fields stay clean. `#[Validated]` on the submit
-handler touches all the fields. When there are errors, the handler does not run, and the form
-shows all its errors.
+When the user changes a field, Phem validates the component. It shows errors only for the fields the user touched, so the other fields stay clean. `#[Validated]` on the submit handler touches every field: when there are errors, the handler doesn’t run and the form shows all of them.
+
+Install `symfony/validator`. phemc reports E058 for `#[Validated]` in a component with no `Validation` property.
+
+### Read the errors with `Validation`
+
+The `Validation` object has these methods:
 
 | Method | Result |
 |---|---|
-| `error($field)` | The first error of a touched field, or `null`. |
-| `errors()` | All the errors. |
-| `touched($field)` | `true` when the user touched the field. |
-| `valid()` | `true` when there is no error. |
-| `touch($field)` | A new `Validation` with this field touched. |
+| `error($field)` | The first error of a touched field, or `null` |
+| `errors()` | All the errors |
+| `touched($field)` | `true` when the user touched the field |
+| `valid()` | `true` when there’s no error |
+| `touch($field)` | A new `Validation` with this field touched |
 
-The name of a field is the path of its `phem:bind`, for example `address.city`. The error of a
-constraint on the class is `validation.error('')`. To start again (for example after a save), set
-`new Validation()`. `#[Validated(groups: ['draft'])]` validates other groups.
+A field’s name is the path of its `phem:bind`, for example `address.city`. The error of a class constraint is `validation.error('')`. To start over, for example after a save, set `new Validation()`. Use `#[Validated(groups: ['draft'])]` to validate other groups.
 
-Install `symfony/validator`. phemc reports E058 for `#[Validated]` in a component with no
-`Validation` property.
+## Validate a Symfony form while the user types
 
-## Live validation of a Symfony form
-
-A Symfony form keeps its values in the page, not in the state. Give the form an `onChange`
-handler that submits it. Phem shows only the errors of the fields that the user touched:
+A Symfony form keeps its values in the page, not in the state. Give the form an `onChange` handler that submits it, and Phem shows errors only for the fields the user touched:
 
 ```php
 public function validate(Request $request): void
@@ -368,7 +352,11 @@ public function save(Request $request): void
     $this->saved = $this->form->getData()->email;
     $this->form = null;
 }
+```
 
+The form calls `validate` on each change and `save` on submit:
+
+```php
 public function render(): Node
 {
     $view = $this->form->createView();
@@ -383,26 +371,20 @@ public function render(): Node
 }
 ```
 
-A submit touches all the fields, so all the errors show. Add `novalidate`, or the browser checks
-the `required` fields itself and does not send the submit. After a save, set `$this->form = null`
-to start with a new form. A handler of another event (a click on a "Save" button) can touch all
-the fields with `Phem\Form\TouchedFields::touchAll($request)`.
+A submit touches every field, so all the errors show. Add `novalidate`, or the browser checks the `required` fields itself and doesn’t send the submit. After a save, set `$this->form = null` to start with a new form. A handler for another event, such as a click on a “Save” button, can touch every field with `Phem\Form\TouchedFields::touchAll($request)`.
 
-`isValid()` always checks all the fields, so a changed request cannot save data with errors.
-Install `symfony/form`.
+`isValid()` always checks every field, so a tampered request can’t save data with errors. Install `symfony/form`.
 
-## Unsaved changes
+## Warn about unsaved changes
 
-A bound field that the user changed, and that the server did not get yet, has the `phem-dirty`
-class. Its component, its form and the root element get the class too. Use it in CSS:
+A bound field that the user changed, and that the server hasn’t received yet, gets the `phem-dirty` class. Its component, its form and the root element get the class too. Use it in CSS:
 
 ```css
 input.phem-dirty { border-color: orange; }
 form.phem-dirty .unsaved-hint { display: inline; }
 ```
 
-Add `data-phem-guard` to an element to ask the user before they leave the page with dirty fields
-in it. Put it on the `<Root>` element for all the page:
+Add `data-phem-guard` to an element to ask the user for confirmation before they leave the page with dirty fields inside it. Put it on the `<Root>` element to cover the whole page:
 
 ```php
 <form onSubmit={{ save }} data-phem-guard={{ 'Discard the draft?' }}>

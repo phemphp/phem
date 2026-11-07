@@ -74,15 +74,15 @@ composer require phem/phem
 symfony serve
 ```
 
-Build a new app from scratch using Phem. See [Getting started](docs/getting-started.md).
+Build a new app from scratch using Phem. See [Create your first Phem app](docs/getting-started.md).
 
 ## Documentation
 
 Read the docs on the website: https://phem.dev/. New to Phem? Start here:
 
-- [What is Phem](docs/what-is-phem.md): the five ideas of Phem
-- [Getting started](docs/getting-started.md): install Phem in a new Symfony app
-- [Tutorial: a task list](docs/tutorial.md): build a small app, one idea at a time
+- [Understand Phem](docs/what-is-phem.md): the five ideas behind Phem
+- [Create your first Phem app](docs/getting-started.md): install Phem in a new Symfony app
+- [Build a task list](docs/tutorial.md): build a small app, one idea at a time
 
 ## License
 

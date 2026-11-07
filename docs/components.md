@@ -1,11 +1,19 @@
-# Components and state
+# Build components and manage their state
 
-This page explains the parts of a component, how it keeps state, how it gets its data, and how
-it shares values with the components below it. For the syntax of the attributes, see [The `.phem` syntax](phem-syntax.md).
+This guide shows you how to write a class component, keep its state between events, load its data from services, and share values with the components below it. It also covers state in the URL and custom types for route values. For the attribute syntax, see [The `.phem` syntax](phem-syntax.md).
 
-## Anatomy of a component
+## Write a class component
 
-A class component has up to six parts. Write them in this order:
+A class component has up to six parts, and you write them in this order:
+
+- **Inputs**: `#[Prop]` and `#[Context]` properties that the parent sets
+- **State**: `#[State]` properties that the browser keeps between events
+- **Services**: constructor arguments that the container autowires; they’re never props
+- **`mount()`**: optional; it runs only when there’s no state yet, and it loads the data
+- **Handlers**: public methods that change the state
+- **`render()`**: required; it reads only the props, the state and the context
+
+The inputs, the state and the services come first:
 
 ```php
 use Phem\Attribute\{Component, Context, Prop, State};
@@ -14,31 +22,29 @@ use Phem\Node;
 #[Component]
 final class TodoList
 {
-    // 1. Inputs: the parent sets them.
     #[Prop] public int $limit = 10;
     #[Context] public Theme $theme = Theme::Light;
 
-    // 2. State: the browser keeps it between the events.
     #[State] public array $todos = [];
 
-    // 3. Services: the container gives them. They are never props.
     public function __construct(private readonly TodoRepository $repository)
     {
     }
+```
 
-    // 4. mount(): optional. It runs only when there is no state yet. It reads the data.
+The methods follow. `mount()` loads the first list, `refresh()` is a handler, and `render()` returns the markup:
+
+```php
     public function mount(): void
     {
         $this->todos = $this->repository->latest($this->limit);
     }
 
-    // 5. Handlers: public methods. They change the state.
     public function refresh(): void
     {
         $this->todos = $this->repository->latest($this->limit);
     }
 
-    // 6. render(): required. It reads only the props, the state and the context.
     public function render(): Node
     {
         return (
@@ -51,44 +57,53 @@ final class TodoList
 }
 ```
 
-Only `render()` is required. A component with no state, no services and no handlers does not need
-a class: write a function. Start with the smallest form, and move to a class when you need state
-or services (see [Use the smallest form of a component](philosophy.md#2-use-the-smallest-form-of-a-component)).
+Only `render()` is required. If a component has no state, no services and no handlers, write a function instead of a class. Start with the smallest form, and move to a class when you need state or services (see [Use the smallest form of a component](philosophy.md#use-the-smallest-form-of-a-component)).
 
-Phem makes a new object for each component in each request. The steps are not the same on the
-first render and in an event:
+### Know what runs on the first render and on an event
+
+Phem creates a new object for each component in each request, but the steps differ between the first render and an event:
 
 | Step | First render | Event |
 |---|---|---|
-| The constructor | runs | runs |
-| The props and the contexts | are set | are set |
-| The state | `mount()` sets it | Phem restores it from the browser |
-| The handler | does not run | runs |
-| `render()` | runs | runs, when the component can change |
+| Constructor | Runs | Runs |
+| Props and contexts | Set | Set |
+| State | Set by `mount()` | Restored from the browser |
+| Handler | Doesn’t run | Runs |
+| `render()` | Runs | Runs when the component can change |
 
-Thus `mount()` reads the data one time, and the state keeps it for the next events. A handler
-reads new data when it needs it, as `refresh()` does. A component with no `#[State]` has no state
-to restore, so its `mount()` runs each time that it renders.
+So `mount()` loads the data once, and the state keeps it for the next events. A handler loads fresh data when it needs it, as `refresh()` does. A component with no `#[State]` has nothing to restore, so its `mount()` runs every time it renders.
 
-## State
+## Keep state between events
 
-A `#[Prop]` property is a prop. A prop with no default value is required. A `#[State]` property
-is state: a handler changes it, and Phem calls `render()` again. Each instance of the component
-has its own state. A page class is a component too, so it can have state.
+Mark a property with `#[State]` to keep it between events. When a handler changes it, Phem calls `render()` again. Each component instance has its own state, and a page class is a component too, so a page can have state.
 
-The state lives in the browser, and the server signs it. Each event sends it back, so the state
-must be JSON values (scalars and arrays) or backed enums. The state is UI state, not trusted data:
-the browser can send back an older state that the server signed. Keep limits and security
-decisions (tries, votes, roles) in the database or the session. `phem.state_max_age` (one day by
-default) limits the age of a state, and `phem.state_bind_session: true` binds it to the session.
+A `#[Prop]` property is different: the parent sets it on every render. A prop without a default value is required.
 
-Phem has no hooks. A call to `Phem\useState` (or `useReducer`, `useRef`, `useMemo`,
-`useCallback`, `useId`) is the error E020. For `useContext`, see [Context](#context).
+### Store only JSON values in the state
 
-## Lift state up
+The browser keeps the state, and the server signs it. Every event sends the state back to the server, so it must hold JSON values (scalars and arrays) or backed enums.
 
-When two components show the same data, keep the state in their common parent, and pass it down.
-A function component can get a handler as a prop:
+### Keep security decisions out of the state
+
+State is UI state, not trusted data: the browser can send back any older state that the server signed. Keep limits and security decisions, such as tries, votes and roles, in the database or the session. Two options limit how a state can be reused:
+
+- **`state_max_age`**: the number of seconds a state stays valid; the default is `86400` (one day), and `0` turns the limit off
+- **`state_bind_session`**: set it to `true` to bind each state to the user’s session
+
+```yaml
+# config/packages/phem.yaml
+phem:
+    state_max_age: 3600
+    state_bind_session: true
+```
+
+### Don’t use hook functions
+
+Phem has no hooks. A call to `Phem\useState`, `useReducer`, `useRef`, `useMemo`, `useCallback` or `useId` is the error E020. Use `#[State]` properties instead. For `useContext`, see [Pass a value down the tree with context](#pass-a-value-down-the-tree-with-context).
+
+## Share state between two components
+
+When two components show the same data, keep the state in their common parent and pass it down. A function component can take a handler as a prop:
 
 ```php
 #[Component]
@@ -119,31 +134,22 @@ final class CountersPage
 }
 ```
 
-The two buttons show the same count. A click on one of them changes both.
+Both buttons show the same count, and a click on either one updates both.
 
-## Services and `mount()`
+## Use services in a component
 
-A class component is a Symfony service. Its constructor gets the services with autowiring, as in
-the [anatomy](#anatomy-of-a-component) example. The container makes a new object for each
-component instance.
+A class component is a Symfony service, so its constructor receives services through autowiring, as `TodoRepository` does in [the class component example](#write-a-class-component). The container creates a new object for each component instance.
 
-Use the services in `mount()` and in the handlers, not in `render()` (see
-[Keep `render()` pure](#keep-render-pure)). `mount()` sees the props, so it can use them to read
-the data: `$this->repository->latest($this->limit)`.
+Call the services in `mount()` and in the handlers, not in `render()` (see [Keep `render()` pure](#keep-render-pure)). Because `mount()` runs after Phem sets the props, it can use them to load the data: `$this->repository->latest($this->limit)`.
 
-To configure a component service (for example to bind a scalar argument), define it in
-`config/services.yaml` with its class name as the id. Phem keeps your definition, and only makes
-it not shared.
+To configure a component service, for example to bind a scalar argument, define it in `config/services.yaml` with its class name as the ID. Phem keeps your definition and only marks it as not shared.
 
 ## Keep `render()` pure
 
-As in React, the output of `render()` depends only on the props, the state, the contexts, and the
-properties that `mount()` or a handler set in the same request. `render()` does not call services,
-and it does not read the time, the session or a static property. Read the data in `mount()` or in
-a handler:
+The output of `render()` must depend only on the props, the state, the contexts and the properties that `mount()` or a handler set in the same request. Don’t call services in `render()`, and don’t read the time, the session or a static property there. Load the data in `mount()` or in a handler instead:
 
 ```php
-// Not correct: the output changes when the database changes.
+// Wrong: the output changes when the database changes.
 public function render(): Node
 {
     $unread = $this->messages->countUnread();
@@ -151,7 +157,7 @@ public function render(): Node
     return <span>{{ unread }}</span>;
 }
 
-// Correct: mount() reads the service, and render() reads the state.
+// Right: mount() calls the service, and render() reads the state.
 #[State] public int $unread = 0;
 
 public function mount(): void
@@ -165,20 +171,18 @@ public function render(): Node
 }
 ```
 
-Phem uses this rule to render only the components that can change. An event renders the component
-of the handler and the components whose state changed. A child that gets the same props as before
-does not render again: the browser keeps its HTML. An object that the handler changed in place (an
-entity) is the same prop: give the child the changed value (`days={{ s.leadDays }}`), not the
-object.
+Phem relies on this rule to render only the components that can change. An event renders the component that owns the handler and every component whose state changed. A child that receives the same props as before doesn’t render again, and the browser keeps its HTML.
 
-The slots belong to the component that gives them (the owner), as the `children` of a React
-element. When the owner renders again, a child with slots renders again too, with its slots, also
-when its props are the same:
+### Pass the changed value, not the changed object
+
+An object that a handler changes in place, such as a Doctrine entity, counts as the same prop. Pass the changed value to the child (`days={{ s.leadDays }}`), not the object, so Phem sees the change.
+
+Slots work differently. They belong to the component that passes them (the owner). When the owner renders again, a child with slots renders again with its slots, even if its props didn’t change:
 
 ```php
 public function setLead(Event $e): void
 {
-    // The same entity object: only its leadDays changed.
+    // Same entity object: only its leadDays changed.
     $this->repository->current()->setLeadDays((int) $e->value);
 }
 
@@ -186,7 +190,7 @@ public function render(): Node
 {
     $s = $this->settings;
 
-    // The page renders again after setLead(), so <Panel> renders again with its children.
+    // The page renders after setLead(), so <Panel> renders with its children.
     return (
         <Panel>
             {% for days in 0..2 %}
@@ -197,22 +201,22 @@ public function render(): Node
 }
 ```
 
-When a handler changes data that other components read, call `$e->refresh()`. The full page then
-renders again, as `router.refresh()` does in Next.js.
+### Render the full page after a shared change
 
-phemc reports W008 for a `render()` that reads a service, a static property, a superglobal, the
-clock or a random value. In debug mode, Phem also renders the full page after each event, and
-logs a warning for each component whose HTML changed with no render.
+When a handler changes data that other components read, call `$e->refresh()`. Phem then renders the full page again.
 
-## Context
+### Find impure renders
 
-A context gives a value to all the components below, with no props in between. It is
-`createContext` and `useContext` of React. Use it for a value that depends on the position in the
-tree: the theme of a section, or the `<Tabs>` around a `<Tab>`. A value that is the same for all
-the request (the current user, a repository) is a service.
+The compiler and debug mode both catch impure renders:
 
-A class with `#[Provide]` gives itself as the context. A component below reads it with
-`#[Context]`:
+- **phemc**: reports W008 for a `render()` that reads a service, a static property, a superglobal, the clock or a random value
+- **Debug mode**: Phem renders the full page after each event and logs a warning for each component whose HTML changed without a render
+
+## Pass a value down the tree with context
+
+A context passes a value to every component below it, with no props in between. Use it for a value that depends on the position in the tree, such as the theme of a section or the `<Tabs>` around a `<Tab>`. A value that’s the same for the whole request, such as the current user or a repository, belongs in a service.
+
+Add `#[Provide]` to a class to provide the component itself as the context. A component below reads it with `#[Context]`:
 
 ```php
 use Phem\Attribute\{Component, Context, Prop, Provide, State};
@@ -234,7 +238,11 @@ final class Tabs
         return <div role="tablist">{{ children }}</div>;
     }
 }
+```
 
+Each `Tab` reads the nearest `Tabs` and calls its `select` handler:
+
+```php
 #[Component]
 function Tab(string $name, string $label, #[Context] Tabs $tabs): Node
 {
@@ -251,21 +259,17 @@ function Tab(string $name, string $label, #[Context] Tabs $tabs): Node
 </Tabs>
 ```
 
-`#[Provide]` on a property gives the value of the property:
-`#[State, Provide] public Theme $theme = Theme::Light;`.
+To provide the value of a property instead of the whole component, put `#[Provide]` on the property: `#[State, Provide] public Theme $theme = Theme::Light;`.
 
-The type is the key: Phem takes the nearest component above that provides a value of this type.
-The type is a class, an interface or an enum (E044 for a scalar or an array). A context with no
-default and no `null` is required: the render fails when no component above provides it (E015 when
-the compiler can see it).
+### Choose the context type
 
-The value is live. When the provider changes, its consumers render again. A consumer can call a
-handler of the provider, as `tabs.select` above.
+The type is the key: Phem takes the nearest component above that provides a value of that type. The type must be a class, an interface or an enum; a scalar or an array is the error E044. A context with no default and no `null` is required, so the render fails when no component above provides it (E015 when the compiler can see it).
 
-## State in the URL
+The value is live. When the provider changes, its consumers render again, and a consumer can call a handler of the provider, as `tabs.select` does above.
 
-A `#[Url]` property is in the query string. Filters, search terms and page numbers then stay after
-a reload, in a shared link, and with the back button:
+## Keep state in the URL
+
+Add `#[Url]` to a state property to store it in the query string. Filters, search terms and page numbers then survive a reload, a shared link and the back button:
 
 ```php
 use Phem\Attribute\{Component, State, Url};
@@ -274,20 +278,21 @@ use Phem\Attribute\{Component, State, Url};
 final class Catalog
 {
     #[State, Url(as: 'q')] public string $query = '';    // ?q=php
-    #[State, Url(history: true)] public int $page = 1;    // ?page=2, with a history entry
+    #[State, Url(history: true)] public int $page = 1;    // ?page=2
     #[State, Url] public array $tags = [];                // ?tags[]=a&tags[]=b
 }
 ```
 
-The first render reads the query string, after `mount()`. After each event, the browser writes the
-values into the URL. A value equal to the default removes its key. `as` gives another key, and
-`history: true` adds a history entry for each change. The query string comes from the user, so do
-not trust its values.
+The first render reads the query string after `mount()`. After each event, the browser writes the values into the URL, and a value equal to the default removes its key. The attribute takes two arguments:
 
-## Other types of route values
+- **`as`**: the query string key, when it differs from the property name
+- **`history`**: set it to `true` to add a browser history entry for each change
 
-A converter gives a route value another type: a date, an enum, a value object. Make a service that
-implements `Phem\Path\PathValueConverter`:
+The query string comes from the user, so don’t trust its values.
+
+## Convert route values to your own types
+
+A converter turns a route value into another type, such as a date, an enum or a value object. Create a service that implements `Phem\Path\PathValueConverter`:
 
 ```php
 use Phem\Path\{PathProp, PathValueConverter};
@@ -307,6 +312,8 @@ final class DateConverter implements PathValueConverter
 }
 ```
 
+A `#[Path]` property of that type now receives the converted value:
+
 ```php
 #[Page('/agenda/{day}')]
 final class AgendaPage
@@ -315,5 +322,4 @@ final class AgendaPage
 }
 ```
 
-Throw an `\UnexpectedValueException` when the value does not fit: the page gives a 404. The
-converters of the app run before the built-in converters.
+Throw an `\UnexpectedValueException` when the value doesn’t fit, and the page returns a 404. Your app’s converters run before the built-in ones.

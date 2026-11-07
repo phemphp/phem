@@ -1,14 +1,14 @@
-# Tutorial: a task list
+# Build a task list with Phem
 
-In this tutorial, you build a small task list. Each step adds one idea of Phem: a page, a
-component with props, a list, state and events, a form, and a test. It takes about 20 minutes.
+In this tutorial, you build a small task list. Each step adds one Phem idea: a page, a component with props, a list, state and events, a form, and a test. It takes about 20 minutes.
 
-Do [Getting started](getting-started.md) first. You need its application, with `symfony serve`
-on. The `phemc` worker builds the `.phem` files each time you save them.
+## Before you begin
 
-At the end, you have this page at `/tasks`:
+You need the app from [Create your first Phem app](getting-started.md), with `symfony serve` running. The `phemc` watcher compiles your `.phem` files each time you save them, so you can reload the browser after each step.
 
-```
+When you’re done, you’ll have this page at `/tasks`:
+
+```text
 My tasks
 
 [ A new task          ] [Add]
@@ -19,10 +19,11 @@ My tasks
 1 left
 ```
 
-## Step 1: Make a page
+## Step 1: Create the tasks page
 
-A page is a component with the `#[Page]` attribute. It is a Symfony route, so you do not add a
-controller or a routes file. This page has no state, so it is a function.
+Start with a page that shows two fixed tasks. A page is a component with the `#[Page]` attribute, and that attribute is also its Symfony route, so you don’t add a controller or a routes file. This page has no state, so it’s a function.
+
+Create `src/Ui/Task/TasksPage.phem`:
 
 ```php title="src/Ui/Task/TasksPage.phem"
 <?phem
@@ -50,24 +51,22 @@ function TasksPage(): Node
 }
 ```
 
-- The markup is the return value of the function. The rules are the rules of JSX: close all
-  tags (`<br />`), and return one root element. The parentheses around markup with more than
-  one line are not necessary, but they make it easier to read.
-- The name of a page ends with `Page`. The page and its components are in one directory for
-  the context of the page: here `src/Ui/Task/`.
-- `Document` is the HTML document of the app (`src/Ui/Common/Document.phem`). All the pages use
-  it, so it is in `src/Ui/Common/`. `<Document:title>` gives a value to its `title` slot.
+Here’s what this code does:
 
-Save the file, and open `/tasks`. The page shows the title and the two tasks.
+- **The return value**: the function returns the markup. It follows two rules: close every tag (`<br />`) and return one root element. The parentheses around multi-line markup are optional, but they make it easier to read.
+- **The file location**: page names end with `Page`. A page and its components share one directory per feature, here `src/Ui/Task/`.
+- **`Document`**: it’s the HTML document of your app, from `src/Ui/Common/Document.phem`. `<Document:title>` fills its `title` slot.
+
+Save the file and open `/tasks`. The page shows the title and the two tasks.
 
 > [!TIP]
-> Run `bin/console phem:render /tasks` to see the HTML of a page in the terminal, with no
-> browser.
+> Run `bin/console phem:render /tasks` to print the HTML of a page in the terminal, without a browser.
 
-## Step 2: Make a component with props
+## Step 2: Create a component with props
 
-Move the markup of one task to a component. Only the tasks page uses it, so put it in the
-directory of the page. A function component gets its props as parameters.
+Move the markup of one task into its own component. Only the tasks page uses it, so put it in the page’s directory. A function component gets its props as parameters.
+
+Create `src/Ui/Task/TaskItem.phem`:
 
 ```php title="src/Ui/Task/TaskItem.phem"
 <?phem
@@ -88,27 +87,19 @@ function TaskItem(string $title, bool $done = false): Node
 }
 ```
 
-- `{{ title }}` prints the prop. The markup is Twig, so a name in `{{ }}` has no `$`.
-- `className` is the `class` attribute, as in React.
-- `done = false` makes the prop optional.
+A few details in this component:
 
-Use it in the page with a tag: `<TaskItem title="Read the tutorial" done={{ true }} />`. A string
-prop can use quotes. Another value uses `{{ }}`.
+- **`{{ title }}`**: it prints the prop. The markup is Twig, so names inside `{{ }}` have no `$`.
+- **`className`**: it sets the `class` attribute.
+- **`$done = false`**: the default value makes the prop optional.
 
-## Step 3: Show a list
+To use the component, write it as a tag: `<TaskItem title="Read the tutorial" done={{ true }} />`. A string prop can use quotes. Any other value goes inside `{{ }}`.
 
-Put the tasks in an array, and show one `TaskItem` for each task. Change the page:
+## Step 3: Show the tasks as a list
+
+Put the tasks in an array and render one `TaskItem` for each task. In `src/Ui/Task/TasksPage.phem`, replace the `TasksPage()` function:
 
 ```php title="src/Ui/Task/TasksPage.phem"
-<?phem
-
-namespace App\Ui\Task;
-
-use Phem\Attribute\Page;
-use Phem\Node;
-
-use function App\Ui\Common\Document;
-
 #[Page('/tasks')]
 function TasksPage(): Node
 {
@@ -131,11 +122,9 @@ function TasksPage(): Node
 }
 ```
 
-`TaskItem` is in the namespace of the page, so the page does not import it. The markup can use
-the local variables of the function: `tasks` is `$tasks`. Give a `key` to
-each item of a list. After an event, the browser uses the key to find each item again.
+`TaskItem` is in the same namespace as the page, so you don’t import it. The markup can read the function’s local variables: `tasks` is `$tasks`.
 
-The HTML of the list:
+Give each item in a list a `key`. After an event, the browser uses the key to match each item with its new HTML. Reload the page, and the list renders as this HTML:
 
 ```html
 <ul>
@@ -144,12 +133,13 @@ The HTML of the list:
 </ul>
 ```
 
-## Step 4: Add state and an event
+## Step 4: Toggle a task with state and an event
 
-The tasks must change when the user clicks a checkbox. A component with state is a class. Its
-`#[State]` properties keep the state, and its methods change it.
+Next, you’ll let the user check off a task. Data that changes is state, and a component with state is a class: its `#[State]` properties hold the state, and its methods change it.
 
-First, give `TaskItem` a checkbox and an `onToggle` prop. A handler is a `Closure` prop:
+### Add a checkbox to the task item
+
+First, give `TaskItem` a checkbox and an `onToggle` prop. An event handler prop has the `Closure` type. Replace `src/Ui/Task/TaskItem.phem`:
 
 ```php title="src/Ui/Task/TaskItem.phem"
 <?phem
@@ -174,7 +164,9 @@ function TaskItem(string $title, bool $done, Closure $onToggle): Node
 }
 ```
 
-Then make the `TaskList` class. It owns the tasks:
+### Create the task list component
+
+Then create the `TaskList` class, which owns the tasks. Its `toggle()` method flips the `done` flag of one task. Create `src/Ui/Task/TaskList.phem`:
 
 ```php title="src/Ui/Task/TaskList.phem"
 <?phem
@@ -201,44 +193,45 @@ final class TaskList
             }
         }
     }
-
-    public function render(): Node
-    {
-        $items = array_map(function (array $task): Node {
-            $toggle = fn () => $this->toggle($task['id']);
-
-            return <TaskItem key={{ task.id }} title={{ task.title }} done={{ task.done }} onToggle={{ toggle }} />;
-        }, $this->tasks);
-
-        $left = count(array_filter($this->tasks, fn (array $task): bool => !$task['done']));
-
-        return (
-            <section>
-                <ul>{{ items }}</ul>
-                <p>{{ left }} left</p>
-            </section>
-        );
-    }
 }
 ```
 
-- Each task gets its own closure: `fn () => $this->toggle($task['id'])`. The closure keeps the id
-  of its task. Pass the handler. Do not call it.
-- PHP computes the values (`$items`, `$left`). The markup only shows them.
-- An array of markup prints as a list: `{{ items }}`.
+Add this `render()` method to the `TaskList` class, after `toggle()`:
 
-At last, the page shows `<TaskList />`. It has no state of its own, so it stays a function:
+```php title="src/Ui/Task/TaskList.phem"
+public function render(): Node
+{
+    $items = array_map(function (array $task): Node {
+        $toggle = fn () => $this->toggle($task['id']);
+
+        return <TaskItem key={{ task.id }} title={{ task.title }} done={{ task.done }} onToggle={{ toggle }} />;
+    }, $this->tasks);
+
+    $left = count(array_filter($this->tasks, fn (array $task): bool => !$task['done']));
+
+    return (
+        <section>
+            <ul>{{ items }}</ul>
+            <p>{{ left }} left</p>
+        </section>
+    );
+}
+```
+
+Here’s how `render()` works:
+
+- **One closure per task**: `fn () => $this->toggle($task['id'])` remembers the id of its task. Pass the closure to `onToggle`, and don’t call it yourself.
+- **PHP computes, markup shows**: PHP computes `$items` and `$left`, and the markup only prints them.
+- **Arrays of markup**: `{{ items }}` prints an array of markup as a list.
+
+> [!NOTE]
+> Phem calls `render()` for you, so you never call it yourself. A class component can also have a constructor, which gets the services, and a `mount()` method, which sets the first values before the first render. `TaskList` doesn’t need them, because its tasks have default values. Don’t name a handler `mount` or `render`: Phem reserves these names. Read [Methods that Phem calls for you](what-is-phem.md#methods-that-phem-calls-for-you) for the details.
+
+### Show the task list on the page
+
+Finally, render `<TaskList />` on the page. The page still has no state of its own, so it stays a function. Replace the `TasksPage()` function:
 
 ```php title="src/Ui/Task/TasksPage.phem"
-<?phem
-
-namespace App\Ui\Task;
-
-use Phem\Attribute\Page;
-use Phem\Node;
-
-use function App\Ui\Common\Document;
-
 #[Page('/tasks')]
 function TasksPage(): Node
 {
@@ -252,11 +245,13 @@ function TasksPage(): Node
 }
 ```
 
-Reload the page, and click the second checkbox. The text changes to "0 left".
+Reload the page and click the second checkbox. The text changes to “0 left”.
 
-The click runs `toggle()` on the server. The browser sends the state of the component with the
-event. The server runs the handler, renders the component again, and sends back the HTML that
-changed. The browser morphs the page. The HTML shows how Phem links the elements to the handlers:
+### What happens when you click
+
+The click runs `toggle()` on the server. The browser sends the component’s state with the event, and the server runs the handler, renders the component again, and returns the HTML that changed. Then the browser morphs the page to match.
+
+Phem links each element to its handler with a `data-phem-on-*` attribute. You can see it in the HTML of the list:
 
 ```html
 <section data-phem-c="phem56bfbb1c3162">
@@ -279,16 +274,13 @@ changed. The browser morphs the page. The HTML shows how Phem links the elements
 ```
 
 > [!NOTE]
-> The browser keeps the state, and the server signs it. The state is UI state: keep the data
-> that you must trust in the database.
+> The browser keeps the state, and the server signs it so nobody can change it. Keep it for UI state, and store data that you must trust in your database.
 
-## Step 5: Add a form
+## Step 5: Add tasks with a form
 
-Add a field for the title of a new task. `phem:bind` links a field to a `#[State]` property. The
-field sends no request when the user types. The next event (here, the submit) sends its value,
-and the server sets the property before it runs the handler.
+Now you’ll add a field to create new tasks. `phem:bind` links a field to a `#[State]` property. Typing in the field sends no request: the next event, here the form submit, sends the field’s value, and the server sets the property before it runs the handler.
 
-Add the `title` state and the `add()` handler to `TaskList`:
+Add the `title` state and the `add()` handler to the `TaskList` class:
 
 ```php title="src/Ui/Task/TaskList.phem"
 #[State]
@@ -302,12 +294,13 @@ public function add(): void
         return;
     }
 
-    $this->tasks[] = ['id' => max(array_column($this->tasks, 'id')) + 1, 'title' => $title, 'done' => false];
+    $id = max(array_column($this->tasks, 'id')) + 1;
+    $this->tasks[] = ['id' => $id, 'title' => $title, 'done' => false];
     $this->title = '';
 }
 ```
 
-Add the form at the top of the `<section>` in `render()`:
+In `render()`, add the form at the top of the `<section>`:
 
 ```php title="src/Ui/Task/TaskList.phem"
 return (
@@ -322,18 +315,22 @@ return (
 );
 ```
 
-Type a title, and press Enter. The new task shows in the list, and the field is empty again,
-because `add()` sets `$this->title` to `''`.
+Type a title and press Enter. The new task shows up in the list, and the field is empty again, because `add()` sets `$this->title` back to `''`.
 
 > [!TIP]
-> To save the tasks, give `TaskList` a Doctrine repository in its constructor, and use it in the
-> handlers. A component is a Symfony service. See [Services and `mount()`](components.md#services-and-mount).
+> To save the tasks, inject a Doctrine repository in the `TaskList` constructor and use it in the handlers. Every component is a Symfony service. See [Use services in a component](components.md#use-services-in-a-component).
 
-## Step 6: Test the component
+## Step 6: Test the task list
 
-Phem tests a component with no browser. A test clicks, types and submits, then it checks the
-HTML and the state. Install PHPUnit first, if your app does not have it:
-`composer require --dev phpunit/phpunit`.
+Phem tests components without a browser: a test clicks, types, and submits, then checks the HTML and the state. If your app doesn’t have PHPUnit yet, install it:
+
+```sh
+composer require --dev phpunit/phpunit
+```
+
+### Test the checkbox
+
+Create `tests/Ui/Task/TaskListTest.php` with a test that checks the second task:
 
 ```php title="tests/Ui/Task/TaskListTest.php"
 <?php
@@ -359,51 +356,61 @@ final class TaskListTest extends KernelTestCase
                 ['id' => 2, 'title' => 'Build a page', 'done' => true],
             ]);
     }
-
-    public function testAdd(): void
-    {
-        $this->mount(TaskList::class)
-            ->fill('[name=title]', 'Write a test')
-            ->submit('form')
-            ->assertSee('Write a test')
-            ->assertSee('2 left')
-            ->assertState('title', '');
-    }
-
-    public function testTasksPage(): void
-    {
-        $this->visit('/tasks')
-            ->assertSee('My tasks')
-            ->assertSee('Build a page');
-    }
 }
 ```
 
-- `mount()` renders one component. `visit()` renders a page through the kernel, with its
-  security rules.
-- `change()` sends an `onChange` event. `fill()` sets a bound field, and the next event sends it.
+`mount()` renders one component, and `change()` sends an `onChange` event to the element that matches the selector.
 
-The tests use the compiled files, so build them first:
+### Test the form and the page
+
+Add two more methods to the `TaskListTest` class. The first one submits the form, and the second one renders the whole page:
+
+```php title="tests/Ui/Task/TaskListTest.php"
+public function testAdd(): void
+{
+    $this->mount(TaskList::class)
+        ->fill('[name=title]', 'Write a test')
+        ->submit('form')
+        ->assertSee('Write a test')
+        ->assertSee('2 left')
+        ->assertState('title', '');
+}
+
+public function testTasksPage(): void
+{
+    $this->visit('/tasks')
+        ->assertSee('My tasks')
+        ->assertSee('Build a page');
+}
+```
+
+`fill()` sets a bound field, and the next event sends its value. `visit()` renders a page through the Symfony kernel, with its security rules.
+
+### Run the tests
+
+The tests use the compiled files, so compile them first, then run PHPUnit:
 
 ```sh
 vendor/bin/phemc build src
 vendor/bin/phpunit tests/Ui
 ```
 
-```
+All three tests pass:
+
+```text
 OK (3 tests, 10 assertions)
 ```
 
 ## Next steps
 
-You used the main ideas of Phem. Read more about each one:
+You’ve used the main ideas of Phem. Learn more about each one:
 
 - [Philosophy and conventions](philosophy.md): the rules to keep in mind when you design with Phem
-- [The `.phem` syntax](phem-syntax.md): markup, props, slots, lists, directives and attributes
-- [Components and state](components.md): the anatomy of a component, state, `mount()`, context and URL state
-- [Events and forms](events-and-forms.md): handlers, bound fields, forms, validation and uploads
+- [The `.phem` syntax](phem-syntax.md): markup, props, slots, lists, directives, and attributes
+- [Components and state](components.md): the anatomy of a component, state, `mount()`, context, and URL state
+- [Events and forms](events-and-forms.md): handlers, bound fields, forms, validation, and uploads
 - [Client-side behavior](client-side.md): Stimulus and the built-in controllers
-- [Server features](server-features.md): transactions, Suspense, real-time updates and async work
-- [Errors and limits](errors-and-limits.md): failed events, retries and the limits of an event
+- [Server features](server-features.md): transactions, Suspense, real-time updates, and async work
+- [Errors and limits](errors-and-limits.md): failed events, retries, and the limits of an event
 - [Testing components and pages](testing.md): all the test helpers
-- [Deployment](deployment.md): the production image with FrankenPHP
+- [Deployment](deployment.md): build a production image with FrankenPHP

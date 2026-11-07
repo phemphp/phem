@@ -67,7 +67,7 @@ A stress run on 2026-10-28 (the server time, with no network):
 
 ### [x] Validation of `#[State]` properties, with touched fields — P2
 
-See [Live validation](docs/events-and-forms.md#live-validation).
+See [Live validation](docs/events-and-forms.md#validate-a-form-while-the-user-types).
 
 - **Best peer:** LC `ValidatableComponentTrait`: it validates on each change but shows the errors
   only for the fields that the user touched. LW `#[Validate]` on a property, with real-time
@@ -103,7 +103,7 @@ public function save(): void { /* runs only with no error */ }
 
 ### [x] Live validation of a Symfony form — P3
 
-Done: see [Live validation of a Symfony form](docs/events-and-forms.md#live-validation-of-a-symfony-form).
+Done: see [Live validation of a Symfony form](docs/events-and-forms.md#validate-a-symfony-form-while-the-user-types).
 The text below keeps the design decisions.
 
 The `Validation` value works with bound properties. A Symfony form keeps its constraints in its
@@ -387,7 +387,7 @@ takes a `tag` prop.
 
 ### [x] Override of a package component in the app — P2
 
-Done: see [Replace a component of a package](docs/packages.md#replace-a-component-of-a-package).
+Done: see [Replace a component of a package](docs/using-packages.md#replace-a-component-of-a-package).
 The text below keeps the design decisions. Three details of the implementation: a tag of the
 original keeps the checks of the original (its props are the props that the caller knows), an
 unknown component in `replaces` is E010, and the Twig tag uses the replacements of the manifest
@@ -446,7 +446,7 @@ a package `Dialog` renders.
 
 ### [x] Shared behavior between theme packages — P2
 
-Done: see [Share the behavior between themes](docs/packages.md#share-the-behavior-between-themes).
+Done: see [Share the behavior between themes](docs/packages.md#share-behavior-between-theme-packages).
 The text below keeps the design decisions. One detail of the implementation: a class with a
 parent outside the sources (a `.php` file, a library) can get `#[Provide]` from it, so `phemc`
 does not report E015 for its consumers.
@@ -539,7 +539,7 @@ convert a string to a backed enum with `::from()` (`StateAccessor`).
 
 ### [x] Variants of a component — P3
 
-Done: see [Variants of a component](docs/packages.md#variants-of-a-component). The text below
+Done: see [Variants of a component](docs/packages.md#add-variants-to-a-component). The text below
 keeps the design decisions. The `acme/kit` fixture package (`tests/Fixtures/Package`) has the
 pattern, and `PackagePatternsTest` checks it.
 
@@ -582,7 +582,7 @@ pattern, and `PackagePatternsTest` checks it.
 
 ### [x] Controlled and uncontrolled state — P3
 
-Done: see [Controlled and uncontrolled state](docs/packages.md#controlled-and-uncontrolled-state).
+Done: see [Controlled and uncontrolled state](docs/packages.md#support-controlled-and-uncontrolled-state).
 The text below keeps the design decisions. `PackagePatternsTest` checks the two modes with the
 `Tabs` of the `acme/kit` fixture package.
 
@@ -603,7 +603,7 @@ other apps keep the active tab in their own state.
 
 ### [x] The CSS of a package — P3
 
-Done: see [The CSS of a package](docs/packages.md#the-css-of-a-package). The text below keeps the
+Done: see [The CSS of a package](docs/packages.md#ship-css-and-stimulus-controllers). The text below keeps the
 design decisions.
 
 - **Decisions:** no core change. Document:

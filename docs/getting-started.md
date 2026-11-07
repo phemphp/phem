@@ -1,11 +1,18 @@
-# Getting started: a new app from scratch
+# Create your first Phem app
 
-This guide adds Phem to a new Symfony application. At the end, you have a dev server that builds
-the `.phem` files when you save them, and a page with an interactive component.
+In this guide, you create a new Symfony app, install Phem, and build a page with an interactive counter. It takes about 10 minutes. When you’re done, you’ll have a dev server that compiles your `.phem` files each time you save them.
 
-You need the [Symfony CLI](https://symfony.com/download) (with PHP 8.4 or later, and Composer).
+## Before you begin
 
-## Step 1: Make the application and install Phem
+You need these tools on your machine:
+
+- **[Symfony CLI](https://symfony.com/download)**: it creates the app and runs the dev server
+- **PHP 8.4 or later**: Phem doesn’t run on older versions
+- **[Composer](https://getcomposer.org)**: it installs Phem
+
+## Step 1: Create the app and install Phem
+
+Start with a new Symfony web app, then add the `phem/phem` package. Run these commands:
 
 ```sh
 symfony new my-app --webapp
@@ -13,84 +20,56 @@ cd my-app
 composer require phem/phem
 ```
 
-Run all the commands of this guide in `my-app/`.
+Symfony Flex asks before it runs the Phem recipe, because the recipe comes from the Flex “contrib” repository. Answer `y`. Run all the other commands in this guide from the `my-app/` directory.
 
-The recipe of `phem/phem` is in the "contrib" repository of Symfony Flex. Flex asks before it runs
-the recipe: answer `y`.
+The recipe sets up everything Phem needs, so you don’t create a config file or a routes file. It adds the first page of your app and the HTML document that wraps it:
 
-Symfony Flex and PhemBundle configure the application:
-
-- Flex enables `PhemBundle`, and adds the `phem` Stimulus controller and Turbo to the assets.
-  This controller is the client of Phem: it sends the events to the server and updates the page.
-- The recipe adds the document of the pages, the first page, and the `phemc` worker of the dev
-  server:
-
-  ```
-  my-app/
-  ├── src/
-  │   └── Ui/
-  │       ├── Common/
-  │       │   └── Document.phem   the HTML document of the pages
-  │       └── HomePage.phem       the page at /
-  └── .symfony.local.yaml     `symfony serve` also runs `phemc watch src`
-  ```
-
-- The `routing.controllers` resource of `config/routes.yaml` loads the routes of the pages (the
-  `#[Page]` attributes), as it does for the controllers. You do not add a routes file.
-- In production, `config/preload.php` also preloads the compiled components. You do not change it.
-- `vendor/bin/phemc` downloads the `phemc` compiler of the same version on the first run.
-
-The defaults of PhemBundle fit this layout: it reads `src/` and writes the build output to
-`var/phem/`. You do not need a `config/packages/phem.yaml` file.
-
-If Flex does not run the recipe (for example, with `composer require --no-interaction`), allow
-the contrib recipes and install the recipe again:
-
-```sh
-composer config extra.symfony.allow-contrib true
-composer recipes:install phem/phem --force
+```text
+my-app/
+├── src/
+│   └── Ui/
+│       ├── Common/
+│       │   └── Document.phem   the HTML document of every page
+│       └── HomePage.phem       the page at /
+└── .symfony.local.yaml         runs the phemc watcher with the server
 ```
 
-Flex keeps a skipped recipe as installed, so `--force` is necessary. `allow-contrib` applies to
-all the contrib recipes, and Flex does not ask again. Set it before `composer require phem/phem`
-to install with no question (for example, in CI).
-
-Without `--webapp`, install AssetMapper with `phem/phem`. `phem/phem` requires StimulusBundle, and
-Flex adds the `phem` controller to `assets/controllers.json`:
-
-```sh
-symfony new my-app
-cd my-app
-composer require symfony/asset-mapper phem/phem
-```
+> [!TIP]
+> If Composer finished without asking about the recipe, Flex skipped it. Allow the contrib recipes and install the recipe again:
+>
+> ```sh
+> composer config extra.symfony.allow-contrib true
+> composer recipes:install phem/phem --force
+> ```
 
 ## Step 2: Start the dev server
+
+The Symfony dev server serves your app and also runs `phemc`, the Phem compiler, in watch mode. Start it:
 
 ```sh
 symfony serve
 ```
 
-The server also starts the `phemc` worker of `.symfony.local.yaml`. On the first start, the worker
-downloads `phemc`, then builds the `.phem` files:
+On the first start, the watcher downloads `phemc` and compiles your `.phem` files. You’ll see output like this:
 
-```
+```text
 [phemc] Downloading phemc v0.3.1 (phemc-mac-arm64)...
 [phemc] phemc: compiled 2 file(s), 2 template(s), 1 page(s); 7 file(s) changed, 0 warning(s) in 7 ms
 [phemc] phem: compiled 2 template(s) into the Twig cache in 32 ms
 [phemc] phemc: watching 1 source dir(s) for changes
 ```
 
-Open the URL that `symfony serve` shows (by default https://127.0.0.1:8000). The page shows
-"Hello, Phem!". Keep the server on.
+Open the URL that `symfony serve` prints. By default, it’s `https://127.0.0.1:8000`. The page shows “Hello, Phem!”. Keep the server running for the rest of this guide.
 
-The application owns the HTML document. It is a component, and each page renders its content in
-it. `<Root>` is the root element of the page: the `phem` controller gets the events of the
-elements in it. `{{ importmap('app') }}` loads `assets/app.js`, which starts Stimulus with the
-`phem` controller.
+## Step 3: Look at the document and the home page
 
-`src/Ui/Common/Document.phem`:
+Your app has two components so far. Open them in your editor to see how a page is built.
 
-```php
+### The HTML document
+
+`src/Ui/Common/Document.phem` is the HTML document that every page renders into. Because all pages share it, it lives in `src/Ui/Common/`:
+
+```php title="src/Ui/Common/Document.phem"
 <?phem
 
 namespace App\Ui\Common;
@@ -119,15 +98,18 @@ function Document(Html $title, Html $children): Node
 }
 ```
 
-All the pages use the document, so it is in `src/Ui/Common/`. See
-[Organize the UI](compiling.md#organize-the-ui) for the directories of the components.
+Two lines in this file make the page interactive:
 
-A page is a component with the `#[Page]` attribute: a Symfony route. The name of a page ends with
-`Page`. This page has no state, so it is a function that returns the markup.
+- **`<Root>`**: it marks the part of the page where Phem listens for events, such as clicks
+- **`{{ importmap('app') }}`**: it loads `assets/app.js`, which starts the `phem` Stimulus controller in the browser
 
-`src/Ui/HomePage.phem`:
+A page passes its title to the `title` slot with `<Document:title>`. Everything else inside `<Document>` goes to `children`.
 
-```php
+### The home page
+
+A page is a component with the `#[Page]` attribute, and that attribute is also its Symfony route. Page names end with `Page`. This page has no state, so it’s a function that returns markup:
+
+```php title="src/Ui/HomePage.phem"
 <?phem
 
 namespace App\Ui;
@@ -149,14 +131,13 @@ function HomePage(): Node
 }
 ```
 
-## Step 3: Add an interactive component
+## Step 4: Add an interactive counter
 
-A class component keeps its state in `#[State]` properties. The state stays in the browser
-between the events. An event handler, such as `increment()`, runs on the server.
+Now you’ll add a button that counts its clicks. A component with state is a class: its `#[State]` properties hold the state, and its methods handle the events. The browser keeps the state between events, and the event handler runs on the server.
 
-`src/Ui/Counter.phem`:
+Create `src/Ui/Counter.phem`:
 
-```php
+```php title="src/Ui/Counter.phem"
 <?phem
 
 namespace App\Ui;
@@ -186,11 +167,11 @@ final class Counter
 }
 ```
 
-Only the home page uses it, so it is in the directory of the page, with the same namespace. The
-page does not import it. Use it two times in `src/Ui/HomePage.phem`. Each `<Counter />` has its
-own state. The page has no state of its own, so it stays a function:
+When you click the button, `onClick={{ increment }}` runs `increment()` on the server, and Phem updates the button with the new count.
 
-```php
+Next, use the counter twice on the home page. `Counter` is in the same namespace as `HomePage`, so you don’t need to import it. Change the `HomePage()` function in `src/Ui/HomePage.phem`:
+
+```php title="src/Ui/HomePage.phem"
 #[Page('/')]
 function HomePage(): Node
 {
@@ -205,61 +186,27 @@ function HomePage(): Node
 }
 ```
 
-Save the files. The `phemc` worker builds them again:
+Save both files. The watcher compiles them again:
 
-```
+```text
 [phemc] phemc: change detected, rebuilding
 [phemc] phemc: compiled 3 file(s), 3 template(s), 1 page(s); 7 file(s) changed, 0 warning(s) in 8 ms
 [phemc] phem: compiled 3 template(s) into the Twig cache in 15 ms
 ```
 
-Reload the page, and click the buttons. Each button counts its own clicks.
+Reload the page and click the buttons. Each button counts its own clicks, because each `<Counter />` has its own state.
 
-If a file has an error, the worker shows the diagnostic with the `.phem` line, and the previous
-build stays. Run `symfony server:log` to see the log of the worker in another terminal. Other
-tools:
-
-```sh
-vendor/bin/phemc check src          # all the diagnostics
-bin/console debug:router            # the routes of the pages and their events
-bin/console phem:render /           # the HTML of a page, with no server
-```
-
-## Use Claude Code
-
-The Phem plugin for [Claude Code](https://claude.com/claude-code) runs the language server of
-the application (`vendor/bin/phemc lsp`). After each edit of a `.phem` file, Claude Code gets the
-errors and warnings of `phemc`, so it can correct them at once. It also gets go to definition,
-find references, hover, and outline through its `LSP` tool.
-
-Install the plugin:
-
-```sh
-claude plugin marketplace add phemphp/phem
-claude plugin install phem@phem
-```
-
-In a running session, run `/reload-plugins` after the install.
-
-The plugin runs the `vendor/bin/phemc` of each project that has one, so use it only in projects
-that you trust.
-
-The server starts the first time Claude Code edits a `.phem` file. After each edit, the
-conversation shows a summary, for example `Found 1 new diagnostic issues in 1 files`. Press
-`Ctrl+O` to read the diagnostics. If the server does not start, open `/plugin` and read the
-**Errors** tab.
+If a file has an error, the watcher prints the error with its line in the `.phem` file and keeps the previous build. To follow the watcher output from another terminal, run `symfony server:log`.
 
 ## Next steps
 
-- [Tutorial: a task list](tutorial.md): build a small app, one idea at a time
-- [Deployment](deployment.md): the production image with FrankenPHP
+You now have a working Phem app. Here’s where to go from here:
+
+- [Build a task list](tutorial.md): add props, lists, forms, and tests, one step at a time
+- [Compiling and running `.phem` files](compiling.md): the `phemc` commands, diagnostics, and editor support
+- [Deployment](deployment.md): build a production image with FrankenPHP
 - [Philosophy and conventions](philosophy.md): the rules to keep in mind when you design with Phem
-- [The `.phem` syntax](phem-syntax.md): markup, props, slots, lists, directives and attributes
-- [Components and state](components.md): the anatomy of a component, state, `mount()`, context and URL state
-- [Events and forms](events-and-forms.md): handlers, bound fields, forms, validation and uploads
-- [Client-side behavior](client-side.md): Stimulus and the built-in controllers
-- [Server features](server-features.md): transactions, Suspense, real-time updates and async work
-- [Errors and limits](errors-and-limits.md): failed events, retries and the limits of an event
-- [Compiling and running `.phem` files](compiling.md): the build output and the diagnostics
-- [Testing components and pages](testing.md)
-- [How it works](how-it-works.md), and the limits
+- [The `.phem` syntax](phem-syntax.md): markup, props, slots, lists, directives, and attributes
+- [Components and state](components.md): the anatomy of a component, state, `mount()`, context, and URL state
+- [Events and forms](events-and-forms.md): handlers, bound fields, forms, validation, and uploads
+- [Testing components and pages](testing.md): test your components without a browser

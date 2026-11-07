@@ -1,13 +1,10 @@
-# Philosophy and conventions
+# Design components that fit how Phem works
 
-This document gives the ideas behind Phem, and the rules that come from them. Keep them in mind
-when you write a component or design a page. Each rule has an example. For the syntax, see
-[The `.phem` syntax](phem-syntax.md).
+Phem rests on a few ideas: the server owns the UI, state is disposable UI state, and Symfony does everything that isn’t a component. Each rule on this page follows from one of those ideas and comes with an example, so you can apply it when you write a component or design a page. The page ends with a checklist to review a component before you finish it. For the syntax itself, read [The `.phem` syntax](phem-syntax.md).
 
-## 1. The server owns the UI
+## Let the server own the UI
 
-The handlers run on the server. The browser only sends events and morphs the HTML that comes
-back. The server keeps no session between events: the browser keeps the signed state.
+In Phem, the server decides what the page shows, and the browser only displays it. Event handlers run on the server; the browser sends events and morphs the HTML that comes back. The server keeps no session between events, because the browser carries the signed state.
 
 ```php
 #[Component]
@@ -16,7 +13,6 @@ final class LikeButton
     #[State]
     public bool $liked = false;
 
-    // Runs on the server. Phem renders the component again and morphs it in the browser.
     public function toggle(): void
     {
         $this->liked = !$this->liked;
@@ -24,34 +20,37 @@ final class LikeButton
 
     public function render(): Node
     {
-        return <button onClick={{ toggle }}>{{ liked ? '♥ Liked' : '♡ Like' }}</button>;
+        return (
+            <button onClick={{ toggle }}>
+                {{ liked ? '♥ Liked' : '♡ Like' }}
+            </button>
+        );
     }
 }
 ```
 
-Thus there is no client store, no API layer and no JSON endpoint to write. Each event is a round
-trip, so design for it (see [rule 10](#10-design-for-the-round-trip)).
+When you click the button, `toggle()` runs on the server, Phem renders the component again, and the browser morphs the new button into the page. You don’t write a client store, an API layer, or a JSON endpoint. The trade-off is that every event is a round trip, so plan for it (see [Design for the round trip](#design-for-the-round-trip)).
 
-## 2. Use the smallest form of a component
+## Use the smallest form of a component
 
-Start with the simplest form. Move to the next form only when you need it.
+Each component form costs a bit more than the one before it, so start small and move up only when you need to:
 
 | You need | Use |
 |---|---|
 | markup only | a function whose body is only `return <markup>;` (a template component: plain Twig, no PHP call) |
 | props and some PHP | a `#[Component]` function |
-| state, handlers or services | a `#[Component]` class |
+| state, handlers, or services | a `#[Component]` class |
 | a URL | `#[Page]` on a function or a class |
 
+A template component is the fastest form, because Phem renders it as plain Twig without calling PHP. A function page has no state of its own, but the components inside it can:
+
 ```php
-// A template component: the fastest form.
 #[Component]
 function Badge(string $label): Node
 {
     return <span className="badge">{{ label }}</span>;
 }
 
-// A function page: it has no state of its own. Its components can have state.
 #[Page('/about')]
 function AboutPage(): Node
 {
@@ -61,85 +60,87 @@ function AboutPage(): Node
 
 A function without `#[Component]` is a plain PHP function. Use it for helpers.
 
-## 3. Keep `render()` pure
+## Keep `render()` pure
 
-The output of `render()` depends only on the props, the `#[State]` properties, the `#[Context]`
-properties, and the properties that `mount()` or a handler set in the same request. Phem uses
-this rule to render only the components that can change. Read the data in `mount()` or in a
-handler, not in `render()`. phemc reports W008 for a `render()` that is not pure. See
-[Keep `render()` pure](components.md#keep-render-pure).
+A pure `render()` gives the same markup for the same inputs, and Phem depends on that to render only the components that can change. The output of `render()` must depend only on the props, the `#[State]` properties, the `#[Context]` properties, and the properties that `mount()` or a handler set in the same request. Load data in `mount()` or in a handler, never in `render()`. The compiler reports warning W008 when `render()` isn’t pure. For the details, read [Keep `render()` pure](components.md#keep-render-pure).
 
-## 4. State is UI state, not trusted data
+## Treat state as UI state, not trusted data
 
-The state lives in the browser. The server signs it, but the browser can send back an older
-state that the server signed. State values are JSON values (scalars, arrays) or backed enums.
+State lives in the browser, so treat it like a note the user carries for you. The server signs it, which stops the user from editing it, but the browser can still send back an older state that the server signed earlier, until that signature expires. State values are JSON values (scalars, arrays) or backed enums.
+
+Here’s a poll where a vote limit in state would be a bug, because a user could replay an older state and vote again:
 
 ```php
-// Not correct: a user can send back an older state and vote again.
+// Wrong: replaying an older state restores the votes.
 #[State] public int $votesLeft = 3;
+```
 
-// Correct: the database keeps the limit. The state keeps only what the UI shows.
+Keep the limit in the database instead, and keep in state only what the UI shows. The model checks the limit when `vote()` runs:
+
+```php
 #[State] public bool $showResults = false;
 
 #[Transactional]
 public function vote(Event $e): void
 {
-    $this->poll->vote($e->value);   // the model checks the limit
+    $this->poll->vote($e->value);
 }
 ```
 
-Keep in `#[State]` only what you can lose or undo: an open panel, a tab, a search term, a draft.
-Put filters, tabs and page numbers in the URL with `#[Url]`, so a reload and a shared link keep
-them.
+As a rule, put in `#[State]` only values you can lose or undo: an open panel, a tab, a search term, a draft. Put filters, tabs, and page numbers in the URL with `#[Url]`, so they survive a reload and a shared link.
 
-## 5. Data goes down, events go up
+## Pass data down and events up
 
-Pass data to a child with props. Pass a handler to let the child change the data of its parent.
-When two components show the same data, lift the data up to their common parent.
+Data flows from parent to child through props, and changes flow back up through handlers. When two components show the same data, lift that data to their nearest common parent. In this example, the parent owns one `count` and passes it, with one handler, to two buttons, so both buttons update together:
 
 ```php
 #[Component]
 function MyButton(int $count, Closure $onClick): Node
 {
-    return <button onClick={{ onClick }}>Clicked {{ count }} times</button>;
+    return (
+        <button onClick={{ onClick }}>
+            Clicked {{ count }} times
+        </button>
+    );
 }
 
-// In the parent: one state, two buttons that update together.
+// In the parent:
 <MyButton count={{ count }} onClick={{ handleClick }} />
 <MyButton count={{ count }} onClick={{ handleClick }} />
 ```
 
-Choose the correct channel for a value:
+Props aren’t the only way to get a value into a component. Pick the channel that matches where the value comes from:
 
 | The value | Channel |
 |---|---|
 | comes from the parent | a prop |
 | depends on the position in the tree (a theme, the nearest `<Tabs>`) | `#[Provide]` and `#[Context]` |
-| is the same for the full request (the current user, a repository) | a service in the constructor |
+| is the same for the whole request (the current user, a repository) | a service in the constructor |
+
+A repository is the same everywhere in the tree, so it’s a service, not a context:
 
 ```php
-// A service, not a context: the repository is the same in all the tree.
-public function __construct(private readonly TodoRepository $repository)
-{
+public function __construct(
+    private readonly TodoRepository $repository,
+) {
 }
 ```
 
-## 6. Compute in PHP, show in Twig
+## Compute in PHP, show in Twig
 
-The markup is Twig. Prepare the values in PHP before the `return`, and keep the markup simple.
+Markup is Twig, and Twig is good at showing values but awkward at computing them. Prepare values in PHP before the `return`, and keep the markup to output:
 
 ```php
-// Not correct: logic in the markup.
+// Wrong: business logic in the markup.
 return <p>{{ (order.items|reduce((s, i) => s + i.price * i.qty, 0)) * 1.21 }}</p>;
 
-// Correct: PHP computes the value. The markup shows it.
+// Right: PHP computes the value, and the markup shows it.
 $total = $this->order->totalWithTax();
 
 return <p>{{ total }}</p>;
 ```
 
-A markup literal is a value (`Phem\Element`). Keep it in a variable, put it in an array, or
-return it. Do not cast it to a string in PHP.
+A markup literal is a value, a `Phem\Element`. You can store it in a variable, put it in an array, or return it, but don’t cast it to a string in PHP:
 
 ```php
 $content = $isLoggedIn ? <AdminPanel /> : <LoginForm />;
@@ -147,111 +148,110 @@ $content = $isLoggedIn ? <AdminPanel /> : <LoginForm />;
 return <div>{{ content }}</div>;
 ```
 
-## 7. Pass a handler, do not call it
+## Pass handlers instead of calling them
 
-`onClick={{ save }}` passes the method. The object of the handler is its owner: it renders again
-after the event. A closure captures its values, so the id of a handler stays correct when the
-data changes.
+`onClick={{ save }}` passes the `save` method; it doesn’t call it. The object that owns the handler renders again after the event. When you pass a closure, it captures its values, so each handler keeps pointing at the right data even after the list changes:
 
 ```php
-// Correct: each row gets its own handler, with its own captured value.
 $rows = array_map(function (Scientist $s): Node {
     $remove = fn () => $this->remove($s);
 
-    return <li key={{ s.id }}><button onClick={{ remove }}>Remove</button></li>;
+    return (
+        <li key={{ s.id }}>
+            <button onClick={{ remove }}>Remove</button>
+        </li>
+    );
 }, $this->scientists);
 
 return <ul>{{ rows }}</ul>;
 ```
 
-Give a `key` to each item of a list. The browser then keeps the correct element (its focus, its
-Stimulus controller) when an item before it goes away.
+Each row gets its own `remove` closure that captures its own scientist. Give a `key` to every list item, too: when an item before it goes away, the browser keeps the right element, with its focus and its Stimulus controller.
 
-## 8. Symfony does the rest
+## Use Symfony for everything else
 
-Phem adds a component model. It does not replace Symfony. Use the Symfony tool for each job:
+Phem adds a component model on top of Symfony and doesn’t replace any of it. For each job, use the Symfony tool you already know:
 
-- **Routes:** `#[Page]` extends `#[Route]`, with the same options.
-- **Security:** an event is a `POST` to the URL of the page, so `access_control`, the firewall and
-  `#[IsGranted]` apply to the events too.
-- **Services:** a class component is an autowired service. A new object is made for each
-  component instance.
-- **Forms:** use a Symfony form, and call `$form->handleRequest($request)` in the handler.
-- **Doctrine:** use `#[Transactional]`. Phem flushes and commits after the handler. Do not call
-  `flush()`.
+- **Routes**: `#[Page]` extends `#[Route]` and takes the same options
+- **Security**: an event is a `POST` to the page’s URL, so `access_control`, the firewall, and `#[IsGranted]` protect events too
+- **Services**: a class component is an autowired service, and each component instance gets a new object
+- **Forms**: use a Symfony form and call `$form->handleRequest($request)` in the handler
+- **Doctrine**: add `#[Transactional]`, and Phem flushes and commits after the handler, so don’t call `flush()` yourself
+
+This page combines several of them. Symfony security restricts it to administrators, Doctrine loads the `User` from the `{id:user}` route value, and the rename is saved when Phem commits the transaction:
 
 ```php
 #[IsGranted('ROLE_ADMIN')]
 #[Page('/admin/users/{id:user}')]
 final class EditUserPage
 {
-    #[Path] public User $user;   // Doctrine finds the entity
+    #[Path] public User $user;
 
     #[Transactional]
     public function rename(Event $e): void
     {
-        $this->user->name = $e->form['name'];   // saved at the commit
+        $this->user->name = $e->form['name'];
     }
 
     // ...
 }
 ```
 
-## 9. The browser does only browser work
+## Keep browser-only work in the browser
 
-Some changes need no server: open a menu, toggle a class, give the focus to a field. Write them as
-Stimulus controllers. Tell the morph which attributes the client owns.
+Some changes don’t need the server at all: opening a menu, toggling a class, focusing a field. Write those as Stimulus controllers, and mark the attributes the client owns with `data-phem-client` so the morph leaves them alone:
 
 ```html
 <span data-controller="dropdown">
-    <button data-action="dropdown#toggle" data-phem-client="aria-expanded" aria-expanded="false">⋯</button>
+    <button
+        data-action="dropdown#toggle"
+        data-phem-client="aria-expanded"
+        aria-expanded="false"
+    >⋯</button>
     <span data-dropdown-target="menu" data-phem-client="hidden" hidden>
         <button onClick={{ star }}>Star</button>
     </span>
 </span>
 ```
 
-Use `data-phem-ignore` for the element of a JS library (a chart, a map, an editor). Use the
-built-in controllers first (`phem-toggle`, `phem-optimistic`, `phem-confirm`, ...) before you
-write a new one.
+The dropdown opens and closes in the browser, while the **Star** button inside it still sends an event to the server. For an element that a JavaScript library controls (a chart, a map, an editor), add `data-phem-ignore` so the morph skips it. Before you write a new controller, check the built-in ones, such as `phem-toggle`, `phem-optimistic`, and `phem-confirm`.
 
-## 10. Design for the round trip
+## Design for the round trip
 
-Each event goes to the server. The cost grows with the size of the tree on the path to the
-handler. Keep the page fast:
+Every event goes to the server, and its cost grows with the size of the component tree on the path to the handler. These techniques keep pages fast:
 
-- Show a long list in pages. A click on one row runs the `render()` of the full list.
-- Put a slow part in a `<Suspense>` boundary, so the page does not wait for it.
-- Put a part that can fail in an `<ErrorBoundary>`, so one widget does not break the page.
-- Use `#[Async]` for slow work after the response.
+- **Pagination**: show long lists in pages, because a click on one row runs the `render()` of the whole list
+- **Suspense**: put a slow part in a `<Suspense>` boundary, so the page doesn’t wait for it
+- **Error boundaries**: put a part that can fail in an `<ErrorBoundary>`, so one broken widget doesn’t break the page
+- **Async handlers**: use `#[Async]` to run slow work after the response
+
+This chart loads after the page and shows a fallback message if it fails:
 
 ```php
 <Suspense lazy>
     <Suspense:fallback><p>Loading the chart…</p></Suspense:fallback>
     <ErrorBoundary>
-        <ErrorBoundary:fallback><p>The chart is not available now.</p></ErrorBoundary:fallback>
+        <ErrorBoundary:fallback>
+            <p>The chart is not available now.</p>
+        </ErrorBoundary:fallback>
         <ActivityChart />
     </ErrorBoundary>
 </Suspense>
 ```
 
-## 11. Let the compiler find the errors
+## Let the compiler find errors
 
-`phemc` checks the markup at build time: closed tags, one root, known components, props and
-slots, and impure renders. Treat a warning as a defect. Run the check in CI:
+`phemc` checks your markup at build time, so mistakes show up before a user sees them. It checks closed tags, a single root element, known components, props and slots, and impure renders. Treat every warning as a defect, and run the check in continuous integration (CI):
 
 ```sh
 vendor/bin/phemc check src
 ```
 
-Give each component a correct type for each prop, and the return type `Node`. The compiler,
-PHP and PHPStan then check the calls for you. Run PHPStan on the compiled PHP (see
-[Static analysis](compiling.md#static-analysis-phpstan)).
+Give each prop a precise type and each component the return type `Node`. The compiler, PHP, and PHPStan then check every call for you. To run PHPStan on the compiled PHP, read [Static analysis](compiling.md#static-analysis-phpstan).
 
-## 12. Test without a browser
+## Test without a browser
 
-Test a component with `mount()`, and a page (with its security) with `visit()`. The test clicks,
-types and checks the HTML and the state.
+Phem’s test helpers render components on the server, so your tests don’t need a browser. Test a component with `mount()`, and test a page, including its security rules, with `visit()`. A test can click, type, and check both the HTML and the state:
 
 ```php
 $this->mount(Counter::class, ['label' => 'Clicks'])
@@ -260,17 +260,17 @@ $this->mount(Counter::class, ['label' => 'Clicks'])
     ->assertState('count', 1);
 ```
 
-See [Testing components and pages](testing.md).
+For the full API, read [Testing components and pages](testing.md).
 
-## Checklist
+## Review a component before you finish it
 
-Before you finish a component, ask these questions:
+Each item below checks one rule from this page. Before you call a component done, confirm that:
 
-- Is this the smallest form of the component that does the job?
-- Does `render()` only read props, state and context?
-- Can a user lose or replay each `#[State]` value with no risk?
-- Do the filters, tabs and page numbers survive a reload (`#[Url]`)?
-- Is each value in the correct channel: a prop, a context or a service?
-- Does each item of a list have a `key`?
-- Does the database, not the state, keep each limit and each security decision?
-- Does `phemc check` report no diagnostics?
+- It uses the smallest form that does the job
+- `render()` reads only props, state, and context
+- A user can lose or replay every `#[State]` value without risk
+- Filters, tabs, and page numbers survive a reload, through `#[Url]`
+- Each value comes through the right channel: a prop, a context, or a service
+- Every list item has a `key`
+- The database, not the state, holds every limit and security decision
+- `phemc check` reports no diagnostics

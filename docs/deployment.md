@@ -1,18 +1,12 @@
-# Deployment: the production image
+# Deploy a Phem app with Docker
 
-This guide builds a production image of a Phem application with
-[FrankenPHP](https://frankenphp.dev). Do the [Getting started](getting-started.md) guide first.
+Build a production Docker image of your Phem app with [FrankenPHP](https://frankenphp.dev), run it, and add static error pages for the web server. You need [Docker](https://docs.docker.com/get-docker/) and an app from [Getting started](getting-started.md). Run every command from the root of your app.
 
-You need [Docker](https://docs.docker.com/get-docker/). Run all the commands in the directory of
-the application.
+## Add the production files
 
-## The image
+The image needs four files next to your app code. Add them with this layout:
 
-The production image runs `public/index.php` in the worker mode of FrankenPHP (PHP 8.5 and
-Caddy). It installs the packages with no dev dependencies, compiles the `.phem` files, builds the
-Symfony cache, and writes the assets to `public/assets/`. Add these files:
-
-```
+```text
 my-app/
 ├── docker/
 │   └── php-prod.ini        OPcache in production
@@ -21,7 +15,9 @@ my-app/
 └── Dockerfile              the production image
 ```
 
-`Dockerfile`:
+### Write the Dockerfile
+
+The `Dockerfile` starts from FrankenPHP (PHP 8.5 and Caddy). It installs the packages without dev dependencies, compiles the `.phem` files, builds the Symfony cache, and writes the assets to `public/assets/`:
 
 ```dockerfile
 # syntax=docker/dockerfile:1.7
@@ -44,12 +40,13 @@ COPY docker/php-prod.ini /usr/local/etc/php/conf.d/zz-app.ini
 CMD ["frankenphp", "run", "--config", "Caddyfile"]
 ```
 
-`APP_SECRET` signs the component state in the browser. The image puts a random value in
-`.env.local`.
+Phem signs the component state that it sends to the browser with `APP_SECRET`. The image writes a random value to `.env.local` at build time.
 
-`.dockerignore`:
+### Exclude local files from the build
 
-```
+Keep local dependencies, caches, and secrets out of the image with `.dockerignore`:
+
+```text
 .git
 vendor
 var
@@ -58,8 +55,9 @@ assets/vendor
 .env.local
 ```
 
-`docker/php-prod.ini` enables the OPcache preload. `config/preload.php` loads the Symfony
-container and the compiled components:
+### Turn on the OPcache preload
+
+`docker/php-prod.ini` turns on the OPcache preload. PHP then loads the Symfony container and the compiled components from `config/preload.php` once, at startup:
 
 ```ini
 opcache.validate_timestamps=0
@@ -67,8 +65,9 @@ opcache.preload=/app/config/preload.php
 opcache.preload_user=root
 ```
 
-`Caddyfile` runs `public/index.php` in worker mode: each worker boots the kernel once and
-handles many requests:
+### Run the app in worker mode
+
+The `Caddyfile` runs `public/index.php` in FrankenPHP worker mode. Each worker boots the kernel once and then handles many requests:
 
 ```caddyfile
 {
@@ -87,31 +86,26 @@ handles many requests:
 }
 ```
 
-Build and run the image:
+## Build and run the image
+
+Build the image and start a container on port 8080:
 
 ```sh
 docker build -t my-app .
 docker run --rm -p 8080:8080 my-app
 ```
 
-Open http://localhost:8080. In production, Symfony does not check the cache for changes: build
-the image again after each change.
+Open `http://localhost:8080`. In production, Symfony doesn’t check the cache for changes, so rebuild the image after each change.
 
-To use FrankenPHP in development too, see
-[Watch mode](compiling.md#5-watch-mode-development).
+To use FrankenPHP in development too, see [`phemc watch`](compiling.md#phemc-watch).
 
-## Static error pages
+## Add static error pages for the web server
 
-When the application does not answer, the web server or the proxy in front of it shows its own
-error. To show the [error pages](error-pages.md) of the application there too, write them to
-files in the image, after `cache:warmup`. The image has `APP_DEBUG=0`, so the files do not show
-the exception. Set `framework.router.default_uri` to the URL of the site, so the pages have its
-host:
+When your app doesn’t answer, the web server or proxy in front of it shows its own error. To show your app’s [error pages](error-pages.md) there too, write them to files in the image after `cache:warmup`:
 
 ```dockerfile
  && php bin/console cache:warmup \
  && php bin/console error:dump public/errors 502 503 504 --force \
 ```
 
-See [Static pages for the web server](error-pages.md#static-pages-for-the-web-server) for the
-config of nginx and Caddy.
+The image sets `APP_DEBUG=0`, so the files don’t show the exception. Set `framework.router.default_uri` to your site’s URL so the links in the pages use its host. To make nginx or Caddy serve the files, see [Serve error pages when PHP is down](error-pages.md#serve-error-pages-when-php-is-down).

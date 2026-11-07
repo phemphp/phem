@@ -1,16 +1,13 @@
-# What is Phem
+# Understand Phem in five ideas
 
-Phem is a component layer for Symfony web apps. You write the logic and the markup of a
-component in one `.phem` file. The server renders the HTML, runs the event handlers, and updates
-only the parts of the page that change. You write no JavaScript, no API and no client store.
+Phem is a component layer for Symfony web apps. You write a component’s logic and markup together in one `.phem` file, and the server renders the HTML, runs the event handlers, and updates only the parts of the page that change. You don’t write JavaScript, an API, or a client store. This page explains the five ideas behind Phem with one small example each, and shows where Phem stops. When you’re ready to build, follow [Getting started](getting-started.md) and then the [tutorial](tutorial.md).
 
-This page gives the five ideas of Phem, with one small example each. Then do
-[Getting started](getting-started.md) and the [tutorial](tutorial.md).
+> [!NOTE]
+> Phem takes inspiration from [React Server Components](https://react.dev/reference/rsc/server-components).
 
-## 1. A `.phem` file is PHP with markup in it
+## A `.phem` file is PHP with markup in it
 
-A `.phem` file is a PHP file that can contain markup, as a `.jsx` file is a JavaScript file that
-contains JSX. The markup is Twig: `{{ name }}` prints a value.
+A `.phem` file is ordinary PHP code that can also contain markup. The markup is Twig, so `{{ name }}` prints a value.
 
 ```php
 <?phem
@@ -27,13 +24,11 @@ function Greeting(string $name): Node
 }
 ```
 
-The `phemc` compiler reads the `.phem` files at build time. It writes plain PHP and Twig
-templates, and it shows the errors with the line of the `.phem` file. At runtime, nothing parses
-`.phem` files. See [Compiling](compiling.md).
+This file defines a `Greeting` component that takes a `name` prop and renders a paragraph. The `phemc` compiler reads your `.phem` files at build time and writes plain PHP and Twig templates. When it finds an error, it reports the line in your `.phem` file. Nothing parses `.phem` files at runtime. To learn more, read [Compiling](compiling.md).
 
-## 2. A page is a component with a URL
+## A page is a component with a URL
 
-`#[Page]` makes a component a Symfony route. You do not write a controller or a routes file.
+Add `#[Page]` to a component, and it becomes a Symfony route. You don’t write a controller or a routes file.
 
 ```php
 #[Page('/hello')]
@@ -48,21 +43,19 @@ function HelloPage(): Node
 }
 ```
 
-`Document` is a component of your app: the HTML document (`<html>`, `<head>`, `<body>`) of all
-the pages. The name of a page ends with `Page`, and the `.phem` files are in `src/Ui/` (see
-[Organize the UI](compiling.md#organize-the-ui)).
+Visiting `/hello` renders the `Greeting` component inside `Document`. `Document` is a component that your app defines once: it holds the HTML document (`<html>`, `<head>`, `<body>`) that wraps every page, and `<Document:title>` fills its title slot. By convention, a page’s name ends with `Page`, and your `.phem` files live in `src/Ui/` (see [Organize the UI](compiling.md#organize-the-ui)).
 
-## 3. A component is a function or a class
+## A component is a function or a class
 
-Use the smallest form that does the job:
+Phem gives you two forms of component, and you pick the smallest one that does the job:
 
 | You need | Use |
 |---|---|
 | markup and props | a `#[Component]` function |
-| state, event handlers or services | a `#[Component]` class |
+| state, event handlers, or services | a `#[Component]` class |
 | a URL | `#[Page]` on a function or a class |
 
-A class keeps its state in `#[State]` properties. Its `render()` method returns the markup:
+A class component keeps its state in `#[State]` properties, and its `render()` method returns the markup. This counter stores a number and increments it on each click:
 
 ```php
 #[Component]
@@ -78,33 +71,42 @@ final class Counter
 
     public function render(): Node
     {
-        return <button onClick={{ increment }}>Clicked {{ count }} times</button>;
+        return (
+            <button onClick={{ increment }}>
+                Clicked {{ count }} times
+            </button>
+        );
     }
 }
 ```
 
-## 4. The handler runs on the server
+### Methods that Phem calls for you
 
-A click on the button above does these steps:
+A class component can have three methods that Phem calls itself, in this order:
 
-1. The browser sends the event, the state and its signature to the server.
-2. The server makes the component again from the state, and runs `increment()`.
-3. The server renders the components that can change, and sends back only the HTML that changed.
-4. The browser morphs the page. The focus and the scroll position stay.
+- **`__construct()`**: gets the services. A component is a Symfony service, so Phem autowires the constructor.
+- **`mount()`** (optional): sets the first values from the props and the services. With `#[State]` properties, it runs once, before the first render. Without them, it runs before each render.
+- **`render()`** (required): returns the markup. It only reads the properties, so keep services and the database out of it.
 
-The browser keeps the state. The server signs it, so the browser cannot change it. The server
-keeps no session between two events.
+The names `mount` and `render` are reserved: don’t use them for a handler. Give a handler any other name, such as `increment()` above.
+
+## Event handlers run on the server
+
+The `increment()` method above is PHP, so it can’t run in the browser. Instead, each click is a round trip to the server:
+
+1. The browser sends the event, the component state, and the state’s signature to the server.
+2. The server rebuilds the component from that state and runs `increment()`.
+3. The server renders the components that can change and sends back only the HTML that changed.
+4. The browser morphs the page in place, so focus and scroll position stay where they were.
+
+Think of the state as a sealed envelope that the browser carries between requests. The server seals it with a signature, so the browser can’t change what’s inside, and the server doesn’t need a session to remember anything between two events.
 
 > [!NOTE]
-> The state is UI state. Keep limits and security decisions in the database or the session, not
-> in `#[State]`. See [Philosophy](philosophy.md#4-state-is-ui-state-not-trusted-data).
+> State is for the UI. Keep limits and security decisions in the database or the session, not in `#[State]`. Read [Treat state as UI state, not trusted data](philosophy.md#treat-state-as-ui-state-not-trusted-data) to see why.
 
-## 5. Symfony does the rest
+## Symfony does everything else
 
-A component is a Symfony service. Get your repositories and services in the constructor. Use
-Symfony security (`#[IsGranted]`), forms, validation and Doctrine as you do in a controller.
-Read the data in `mount()`, not in `render()` (see
-[Keep `render()` pure](components.md#keep-render-pure)).
+Phem adds components to Symfony and leaves the rest of the framework as it is. A component is a Symfony service, so you inject repositories and services through its constructor. You use Symfony security (`#[IsGranted]`), forms, validation, and Doctrine the same way you would in a controller.
 
 ```php
 #[IsGranted('ROLE_ADMIN')]
@@ -114,8 +116,9 @@ final class UsersPage
     /** @var list<User> */
     private array $users = [];
 
-    public function __construct(private readonly UserRepository $repository)
-    {
+    public function __construct(
+        private readonly UserRepository $repository,
+    ) {
     }
 
     public function mount(): void
@@ -127,44 +130,30 @@ final class UsersPage
     {
         return (
             <Document>
-                <ul>{% for user in users %}<li key={{ user.id }}>{{ user.email }}</li>{% endfor %}</ul>
+                <ul>
+                    {% for user in users %}
+                        <li key={{ user.id }}>{{ user.email }}</li>
+                    {% endfor %}
+                </ul>
             </Document>
         );
     }
 }
 ```
 
-## From React to Phem
+This page lists every user to administrators only. The constructor gets the repository, `mount()` loads the users, and `render()` only reads them. Keeping data access out of `render()` matters because Phem relies on it to skip work (see [Keep `render()` pure](components.md#keep-render-pure)).
 
-When you know React, this table helps.
+## What Phem doesn’t do
 
-| React (react.dev/learn) | Phem |
-|---|---|
-| `function MyButton() { return <button/> }` | `#[Component] function MyButton()`: the same, in PHP (a function without `#[Component]` is a plain PHP function) |
-| `export default function MyApp()` | `#[Page('/')] function HomePage()`: a Symfony route (a class page for its own state or route values) |
-| the root layout (`<html>`, metadata) | a `Document` component of the app, with a `<Root>`: each page renders in it, and gives the title with `<Document:title>` |
-| `{user.name}`, `src={user.imageUrl}` | `{{ user.name }}`, `src={{ user.imageUrl }}` |
-| `className`, `style={{ width: 90 }}` | `className`, `style={{ {width: 90} }}` |
-| `cond ? <A/> : <B/>`, `cond && <A/>` | `{{ cond ? <A /> : <B /> }}`, `{{ cond and <A /> }}`, `{% if %}` |
-| `items.map(i => <li key={i.id}>…)` | `{% for i in items %}<li key={{ i.id }}>…{% endfor %}` or `array_map(fn($i) => <li …>, $items)` |
-| `onClick={handleClick}` | `onClick={{ handleClick }}` (the handler runs on the server) |
-| `useState` | a `#[State]` property of a `#[Component]` class; a method changes it |
-| initial state from props or data | `mount()`, called when the component has no state yet |
-| a form `onSubmit` handler | a Symfony form: `$form->handleRequest($request)` in the handler (`Request $request`), also in `onChange` for live validation |
-| `createContext` + `useContext` | `#[Provide]` on a class component (or a property), and `#[Context]` on a property or a parameter |
-| a WebSocket or a subscription | `#[Broadcast]` on a page, and `Phem\Stream\Streams` in a handler: Turbo Streams through the Mercure hub |
-| imported modules | services, injected in the constructor |
-| props, `children`, lifting state up | parameters or `#[Prop]` properties, `?Html $children`, the same pattern |
+Phem is built for server-rendered Symfony apps, and that choice sets its boundaries:
 
-## What Phem is not
+- **Browser-only behavior**: each event is a round trip to the server, so code that must run in the browser without waiting (an animation, a drag) belongs in a Stimulus controller
+- **Rich objects in state**: state values are JSON values (scalars, arrays) and backed enums, so a service or a closure can’t be state
+- **Single-page apps**: Phem renders pages on the server and isn’t a single-page app framework
 
-- Each event is a round trip to the server. Code that must run only in the browser (an
-  animation, a drag) goes in a Stimulus controller.
-- State values are JSON values: scalars, arrays and backed enums. A service or a closure is not
-  state.
-- Phem is for server-rendered Symfony apps. It is not a single-page app framework.
+## Install Phem and build your first app
 
-## Next steps
+Two pages take you from here to a working app:
 
-- [Getting started](getting-started.md): install Phem in a new Symfony app
-- [Tutorial: a task list](tutorial.md): build a small app, one idea at a time
+- [Create your first Phem app](getting-started.md): install Phem in a new Symfony app
+- [Build a task list](tutorial.md): build a small app, one idea at a time
