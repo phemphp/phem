@@ -1,0 +1,14 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<div>
+            {% if not missing %}a{% endif %}
+            {% if ignore %}b{% elseif with %}c{% endif %}
+            {% include 'tag_keywords.html.twig' ignore missing with {only: only} only %}
+            {% include 'tag_keywords.html.twig' with {a: 1} ~ only %}
+            {% with {v: has} only %}e{% endwith %}
+            {% embed 'tag_keywords.html.twig' ignore missing with {v: ends} only %}{% endembed %}
+            {% if n b-and 4 %}f{% endif %}
+            {% component embed 'App\\Ui\\Common\\KeywordBox' only %}{% block children %}{% with _phem_caller only %}{% component embed 'App\\Ui\\Common\\KeywordBox' only %}{% block children %}{% with _phem_caller only %}{% if missing %}d{% endif %}{% endwith %}{% endblock %}{% endcomponent %}{% endwith %}{% endblock %}{% endcomponent %}
+        </div>

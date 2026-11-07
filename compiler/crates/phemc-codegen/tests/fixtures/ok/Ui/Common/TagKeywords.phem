@@ -1,0 +1,36 @@
+<?phem
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\Component;
+use Phem\Html;
+use Phem\Node;
+
+// A local can have the name of a keyword of another tag (`ignore missing`, `with`, `only`).
+#[Component]
+function TagKeywords(int $n): Node {
+    $missing = 1 === $n;
+    $ignore = 1 === $n;
+    $with = 2 === $n;
+    $only = 3 === $n;
+    $has = 'has';
+    $ends = 'ends';
+
+    return (
+        <div>
+            {% if not missing %}a{% endif %}
+            {% if ignore %}b{% elseif with %}c{% endif %}
+            {% include 'tag_keywords.html.twig' ignore missing with {only: only} only %}
+            {% include 'tag_keywords.html.twig' with {a: 1} ~ only %}
+            {% with {v: has} only %}e{% endwith %}
+            {% embed 'tag_keywords.html.twig' ignore missing with {v: ends} only %}{% endembed %}
+            {% if n b-and 4 %}f{% endif %}
+            <KeywordBox><KeywordBox>{% if missing %}d{% endif %}</KeywordBox></KeywordBox>
+        </div>
+    );
+}
+
+#[Component]
+function KeywordBox(?Html $children = null): Node {
+    return <section>{{ children }}</section>;
+}

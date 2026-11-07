@@ -6,6 +6,19 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
+## Unreleased
+
+- Fix: phemc did not pass a local to the template when only a tag (`{% if missing %}`) used it
+  and its name was `missing`, `ignore`, `only`, `key` or `sandboxed`. The page failed at runtime
+  with `Variable "missing" does not exist`, and `phemc check` gave no error. The words
+  `ignore missing`, `with` and `only` are now keywords only after the expression in
+  `{% include %}`, `{% embed %}` and `{% with %}`, as in Twig: `{% with a ~ only %}` reads `only`.
+- Fix: phemc did not pass a local named `with`, `if`, `starts`, `ends`, `has`, `some` or `every`.
+  These words are keywords only in the operators `starts with`, `ends with`, `has some` and
+  `has every`: `{{ with }}` reads `$with`.
+- Fix: in `{% if flags b-and 4 %}`, phemc read `b` as a variable and gave an error. It now reads
+  `b-and`, `b-or` and `b-xor` as operators.
+
 ## 0.3.8 (2026-11-07)
 
 - Fix: after an event, a kept component with slots showed old HTML when its owner rendered again

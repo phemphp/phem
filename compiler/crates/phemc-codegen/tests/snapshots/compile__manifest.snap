@@ -180,6 +180,20 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       "required": [],
       "rest": false
     },
+    "App\\Ui\\Common\\KeywordBox": {
+      "fqcn": "App\\Ui\\Common\\KeywordBox",
+      "kind": "template",
+      "source": "Ui/Common/TagKeywords.phem",
+      "template": "Ui/Common/TagKeywords.1.twig",
+      "props": [
+        "children"
+      ],
+      "slots": [
+        "children"
+      ],
+      "required": [],
+      "rest": false
+    },
     "App\\Ui\\Common\\MyButton": {
       "fqcn": "App\\Ui\\Common\\MyButton",
       "kind": "template",
@@ -336,6 +350,19 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
         "children"
       ],
       "required": [],
+      "rest": false
+    },
+    "App\\Ui\\Common\\TagKeywords": {
+      "fqcn": "App\\Ui\\Common\\TagKeywords",
+      "kind": "function",
+      "source": "Ui/Common/TagKeywords.phem",
+      "props": [
+        "n"
+      ],
+      "slots": [],
+      "required": [
+        "n"
+      ],
       "rest": false
     },
     "App\\Ui\\Common\\TextField": {
@@ -539,6 +566,14 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       "source": "Ui/Common/Tabs.phem",
       "line": 49
     },
+    "Ui/Common/TagKeywords.0.twig": {
+      "source": "Ui/Common/TagKeywords.phem",
+      "line": 20
+    },
+    "Ui/Common/TagKeywords.1.twig": {
+      "source": "Ui/Common/TagKeywords.phem",
+      "line": 35
+    },
     "Ui/HomePage.0.twig": {
       "source": "Ui/HomePage.phem",
       "line": 12
@@ -579,6 +614,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "php/Ui/Common/Filters.php",
     "php/Ui/Common/Rest.php",
     "php/Ui/Common/Tabs.php",
+    "php/Ui/Common/TagKeywords.php",
     "php/Ui/HomePage.php"
   ]
 }

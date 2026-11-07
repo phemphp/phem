@@ -1,0 +1,40 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from Ui/Common/TagKeywords.phem; do not edit */
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\Component;
+use Phem\Html;
+use Phem\Node;
+
+// A local can have the name of a keyword of another tag (`ignore missing`, `with`, `only`).
+#[Component]
+function TagKeywords(int $n): Node {
+    $missing = 1 === $n;
+    $ignore = 1 === $n;
+    $with = 2 === $n;
+    $only = 3 === $n;
+    $has = 'has';
+    $ends = 'ends';
+
+    return (
+        new \Phem\Element('Ui/Common/TagKeywords.0.twig', ['missing' => $missing, 'ignore' => $ignore, 'with' => $with, 'only' => $only, 'has' => $has, 'ends' => $ends, 'n' => $n])
+
+
+
+
+
+
+
+
+
+    );
+}
+
+#[Component]
+function KeywordBox(?Html $children = null): Node {
+    return new \Phem\Element('Ui/Common/TagKeywords.1.twig', ['children' => $children]);
+}
