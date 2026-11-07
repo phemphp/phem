@@ -6,7 +6,7 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
-## Unreleased
+## 0.3.10 (2026-11-07)
 
 - Error pages: `#[ErrorPage]` on a function of a `.phem` file renders the page of the HTTP
   errors (a 404, a 500), in the document of the application. A status (`#[ErrorPage(404)]`,
