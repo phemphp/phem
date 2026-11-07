@@ -1,5 +1,7 @@
 import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
+// Listens on each page: the keyboard of a field that gets the focus after a server round trip.
+import "./phem_keyboard.js"
 
 const TEXT_INPUTS = new Set(["text", "search", "email", "url", "tel", "password", "number", "date", "time", "datetime-local", "month", "week", "color", "range"])
 

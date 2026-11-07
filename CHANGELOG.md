@@ -13,6 +13,9 @@ that break the code of an application start with **Breaking**.
   and to a `POST` to its URL. Before, a client that the rule denied could send them.
 - Security: `$e->form` takes linear time for many fields of the same name. Before, one small
   gzip event with many fields of one name used seconds of CPU.
+- `data-phem-autofocus-keyboard` on a link or on the element of an event opens the keyboard of
+  iOS for the field that `phem-autofocus` focuses after the visit or the morph. Before, the field
+  got the focus, and no keyboard opened.
 
 ## 0.3.10 (2026-11-07)
 

@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { isStandIn } from "./phem_keyboard.js"
 
 // The `phem-autofocus` controller: gives the focus to its element, or to its first `focus` target,
 // when it connects. The native `autofocus` attribute works only when the page loads: this
@@ -20,6 +21,9 @@ import { Controller } from "@hotwired/stimulus"
 // The controller does not take the focus from a field that the user edits: a text `input`, a
 // `textarea`, a `select` or a `contenteditable` element that is not read-only or disabled. A field
 // of the form that the user submitted does not count: the user left it.
+//
+// iOS opens the keyboard only for a focus in a tap. Add `data-phem-autofocus-keyboard` to the
+// link or the element of the event that shows the field (see phem_keyboard.js).
 export default class PhemAutofocusController extends Controller {
   static targets = ["focus"]
 
@@ -90,6 +94,8 @@ function focusFirst() {
 
 // A field that the user edits keeps the focus, unless the user submitted its form.
 function keepsFocus(el) {
+  // The stand-in of phem_keyboard.js keeps the keyboard open for this field.
+  if (isStandIn(el)) return false
   if (sender instanceof HTMLFormElement && sender.contains(el)) return false
   if (el.isContentEditable) return true
   if (el.disabled || el.readOnly) return false

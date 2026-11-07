@@ -170,4 +170,86 @@ describe("phem-autofocus", () => {
 
     expect(document.activeElement.id).toBe("search")
   })
+
+  describe("with data-phem-autofocus-keyboard", () => {
+    // The hidden field of phem_keyboard.js: a child of <html>.
+    const standIn = () => document.querySelector("html > input")
+
+    afterEach(() => standIn()?.remove())
+
+    // The element that has the focus in the `phem:queue` of the tap, and its parent.
+    function focusInTap() {
+      return new Promise((resolve) => window.addEventListener("phem:queue", () => resolve({ el: document.activeElement, parent: document.activeElement.parentElement }), { once: true }))
+    }
+
+    // A tap on the link: Turbo dispatches `turbo:click`. The test stops the visit.
+    function tapLink() {
+      document.addEventListener("turbo:before-visit", (event) => event.preventDefault(), { once: true })
+      click("#link")
+    }
+
+    it("focuses a stand-in in the tap, then gives the focus to the field that the morph adds", async () => {
+      await mount(page().replace('id="edit"', 'id="edit" data-phem-autofocus-keyboard'))
+      respond(page(title))
+      const inTap = focusInTap()
+      await morphOnEdit()
+
+      expect((await inTap).parent).toBe(document.documentElement)
+      expect(document.activeElement.id).toBe("title")
+      expect(standIn()).toBeNull()
+    })
+
+    it("focuses a stand-in in the turbo:click of a link, and keeps it in the body swap", async () => {
+      await mount(page(`<a id="link" href="/search" data-phem-autofocus-keyboard>Search</a>`))
+      tapLink()
+
+      expect(document.activeElement).toBe(standIn())
+
+      document.body.replaceWith(Object.assign(document.createElement("body"), { innerHTML: `<input id="q" type="search" data-controller="phem-autofocus" />` }))
+      await settle()
+
+      expect(document.activeElement.id).toBe("q")
+      expect(standIn()).toBeNull()
+    })
+
+    it("removes the stand-in when the visit shows no autofocus field", async () => {
+      await mount(page(`<a id="link" href="/search" data-phem-autofocus-keyboard>Search</a>`))
+      tapLink()
+      document.dispatchEvent(new Event("turbo:load"))
+      await settle()
+
+      expect(standIn()).toBeNull()
+      expect(document.activeElement).toBe(document.body)
+    })
+
+    it("removes the stand-in when the event adds no autofocus field", async () => {
+      await mount(page("").replace('id="edit"', 'id="edit" data-phem-autofocus-keyboard'))
+      respond(page(""))
+      const inTap = focusInTap()
+      await morphOnEdit()
+      await settle()
+
+      expect((await inTap).parent).toBe(document.documentElement)
+      expect(standIn()).toBeNull()
+    })
+
+    it("does not focus a stand-in when a field that the user edits has the focus", async () => {
+      await mount(page("").replace('id="edit"', 'id="edit" data-phem-autofocus-keyboard'))
+      respond(page(title))
+      const inTap = focusInTap()
+      await morphOnEdit("#search")
+
+      expect((await inTap).el.id).toBe("search")
+      expect(document.activeElement.id).toBe("search")
+    })
+
+    it("does not focus a stand-in with no data-phem-autofocus-keyboard", async () => {
+      await mount(page())
+      respond(page(title))
+      const inTap = focusInTap()
+      await morphOnEdit()
+
+      expect((await inTap).el.id).toBe("edit")
+    })
+  })
 })

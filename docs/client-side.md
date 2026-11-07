@@ -205,6 +205,21 @@ only when the page loads. This controller also works when an event adds the elem
 
 It does not take the focus from a field that the user edits.
 
+iOS opens the keyboard only for a focus in a tap. A focus after a server round trip (a Turbo
+visit, or the morph of an event) gives the focus to the field, but no keyboard opens. Add
+`data-phem-autofocus-keyboard` to the link or to the element of the event that shows the field:
+
+```html
+<a href="/search" data-phem-autofocus-keyboard>Search</a>
+
+<button onClick={{ edit }} data-phem-autofocus-keyboard>Edit</button>
+```
+
+In the tap, a hidden field gets the focus, and the keyboard opens. The keyboard stays open when
+the field of `phem-autofocus` gets the focus. When no field gets the focus, the keyboard closes.
+On a slow network, the keyboard opens before the new page shows. When a field that the user
+edits has the focus, the attribute does nothing.
+
 ### Confirm
 
 `phem-confirm` asks the user before an event goes to the server:
