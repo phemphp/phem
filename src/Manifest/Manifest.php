@@ -18,9 +18,9 @@ use Phem\Root;
 use Phem\Suspense;
 
 /**
- * The output of `phemc build`: the components, the pages, and the template line map. It has the
- * `.phem` sources of the application and of its Composer packages. Each page has the name of its
- * package (`''` for a page of the application).
+ * The output of `phemc build`: the components, the pages, the error pages, and the template line
+ * map. It has the `.phem` sources of the application and of its Composer packages. Each page has
+ * the name of its package (`''` for a page of the application).
  *
  * It loads the manifest and the compiled PHP files on first use, so an application without a
  * build can still boot (for example to run `cache:clear`).
@@ -29,6 +29,7 @@ use Phem\Suspense;
  *     version?: string,
  *     components?: array<string, array<string, mixed>>,
  *     pages?: array<string, string>,
+ *     error_pages?: list<string>,
  *     templates?: array<string, array{source: string, line: int}>,
  *     files?: list<string>,
  * }
@@ -125,6 +126,17 @@ final class Manifest
     public function pages(): array
     {
         return array_keys($this->data()['pages'] ?? []);
+    }
+
+    /**
+     * The functions with an `#[ErrorPage]` attribute: the pages of the HTTP errors. Only the
+     * application has error pages (see Phem\Http\ErrorPages).
+     *
+     * @return list<string>
+     */
+    public function errorPages(): array
+    {
+        return $this->data()['error_pages'] ?? [];
     }
 
     /**

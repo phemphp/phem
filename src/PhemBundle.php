@@ -47,6 +47,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use TalesFromADev\TailwindMerge\TailwindMerge;
 
+use function Symfony\Component\DependencyInjection\Loader\Configurator\param;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_locator;
 
@@ -64,6 +65,7 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_lo
  *         max_event_size: 1048576    # bytes; 0 for no limit
  *         max_upload_size: 8388608   # bytes; 0 for no limit
  *         suspense_stream: true      # stream the <Suspense> boundaries in the response of the page
+ *         show_exceptions: ~         # the page of the exception, not the #[ErrorPage]; ~ is %kernel.debug%
  *         mercure:
  *             subscriber_key: ~      # private updates, with an access token for each page
  *             publisher_key: ~       # publish with the HTTP API of the hub: PHP-FPM, a worker
@@ -135,6 +137,10 @@ final class PhemBundle extends AbstractBundle
                 ->booleanNode('suspense_stream')
                     ->info('Stream the <Suspense> boundaries that are not lazy in the response of the page, after the page. With false, the browser loads them with an event after the page.')
                     ->defaultTrue()
+                ->end()
+                ->booleanNode('show_exceptions')
+                    ->info('Show the Symfony page of the exception for an HTTP error, not the #[ErrorPage] of the application. Null is the debug mode of the kernel. Set false in the test environment so the tests get the error pages. The preview at /_error/{code} always shows the error page.')
+                    ->defaultNull()
                 ->end()
                 ->arrayNode('class_merger')
                     ->info('Merges the classes of a ClassList (`classes()`) when the attribute renders. By default, it removes the duplicates.')
@@ -234,7 +240,7 @@ final class PhemBundle extends AbstractBundle
     }
 
     /**
-     * @param array{build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, state_cache_min_size: int, max_event_size: int, max_upload_size: int, suspense_stream: bool, class_merger: array{tailwind: array{enabled: bool, prefix: string|null, cache: string|null, css: string|null, theme: array<string, list<string>>}, service: string|null}, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string, publisher_key: string|null, publish_url: string|null}} $config
+     * @param array{build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, state_cache_min_size: int, max_event_size: int, max_upload_size: int, suspense_stream: bool, show_exceptions: bool|null, class_merger: array{tailwind: array{enabled: bool, prefix: string|null, cache: string|null, css: string|null, theme: array<string, list<string>>}, service: string|null}, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string, publisher_key: string|null, publish_url: string|null}} $config
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
@@ -256,6 +262,9 @@ final class PhemBundle extends AbstractBundle
             $container->services()->get('phem.page_renderer')->arg(8, null);
             $container->services()->remove('phem.page_stream');
         }
+
+        $container->services()->get('phem.error_page_renderer')
+            ->arg(4, $config['show_exceptions'] ?? param('kernel.debug'));
 
         $merger = $config['class_merger'];
         if ($merger['tailwind']['enabled']) {

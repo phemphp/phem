@@ -25,13 +25,18 @@ use Phem\State\StateAccessor;
 use Phem\State\StateCodec;
 use Phem\State\UrlQuery;
 use Phem\Stream\MemoryPublisher;
-use Phem\Test\Internal\ComponentDriver;
 use Phem\Test\Internal\Browser;
+use Phem\Test\Internal\ComponentDriver;
+use Phem\Test\Internal\ErrorPageDriver;
 use Phem\Test\Internal\PageDriver;
+use PHPUnit\Framework\Attributes\After;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\ErrorHandler\ErrorRenderer\ErrorRendererInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\SessionFactoryInterface;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
@@ -62,6 +67,9 @@ use Symfony\Contracts\Service\ResetInterface;
  */
 trait InteractsWithPhem
 {
+    /** Whether visit() set the web mode of the Symfony runtime (see resetPhemRuntimeMode()). */
+    private bool $phemRuntimeModeSet = false;
+
     /**
      * Renders a component with its props, in the process of the test. Its events run as in the
      * EventController, with no HTTP request: the access rules of a page do not apply. Give a
@@ -113,9 +121,61 @@ trait InteractsWithPhem
      */
     protected function visit(string $uri, array $server = [], array $cookies = []): ComponentTester
     {
+        // As WebTestCase: in the CLI mode, Symfony renders an HTTP error with CliErrorRenderer,
+        // not with the error page of the application.
+        if (!isset($_SERVER['APP_RUNTIME_MODE'])) {
+            $_SERVER['APP_RUNTIME_MODE'] = 'web=1';
+            $this->phemRuntimeModeSet = true;
+        }
+
         $browser = new Browser(fn (Browser $browser, string $url): ComponentTester => $this->visitIn($browser, $url, $server));
 
         return $browser->open('', $uri, $cookies);
+    }
+
+    /**
+     * Renders the error page of an error at a URL (see Phem\Attribute\ErrorPage), as the preview
+     * at `/_error/{code}` does: the debug mode of the test does not show the exception. An int is
+     * the status of an HttpException. With no error page for the status and the URL, the page of
+     * Symfony renders. An error page has no events:
+     *
+     *     $this->errorPage(404, '/admin/missing')->assertStatus(404)->assertSee('Back to the admin');
+     *     $this->errorPage(new \RuntimeException('Boom.'), '/cart')->assertStatus(500)->assertDontSee('Boom.');
+     */
+    protected function errorPage(int|\Throwable $error, string $uri = '/'): ComponentTester
+    {
+        $container = static::getContainer();
+        $renderer = $container->get('phem.error_page_renderer');
+        $requests = $container->get('request_stack');
+        $sessions = $container->has('session.factory') ? $container->get('session.factory') : null;
+        \assert($renderer instanceof ErrorRendererInterface && $requests instanceof RequestStack);
+
+        // As the error sub-request of Symfony: the session of the browser goes with it.
+        $request = Request::create($uri);
+        $request->attributes->set('showException', false);
+        if ($sessions instanceof SessionFactoryInterface) {
+            $request->setSession($sessions->createSession());
+        }
+
+        $requests->push($request);
+
+        try {
+            $exception = $renderer->render(\is_int($error) ? HttpException::fromStatusCode($error) : $error);
+        } finally {
+            $requests->pop();
+        }
+
+        return new ComponentTester(new ErrorPageDriver($exception->getAsString(), $exception->getStatusCode(), $uri));
+    }
+
+    /** Removes the web mode of the Symfony runtime that visit() set. */
+    #[After]
+    public function resetPhemRuntimeMode(): void
+    {
+        if ($this->phemRuntimeModeSet) {
+            unset($_SERVER['APP_RUNTIME_MODE']);
+            $this->phemRuntimeModeSet = false;
+        }
     }
 
     /**

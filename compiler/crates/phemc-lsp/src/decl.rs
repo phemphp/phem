@@ -282,6 +282,9 @@ pub struct Component {
     pub span: Option<(usize, usize)>,
     /// The component that this component replaces in the tags (`#[Component(replaces: ...)]`).
     pub replaces: Option<String>,
+    /// The arguments of each `#[ErrorPage]` of an error page (`404, path: '/admin'`, or empty
+    /// for all the statuses).
+    pub error_pages: Vec<String>,
     pub signature: String,
     pub doc: Option<&'static str>,
 }
@@ -1171,12 +1174,15 @@ fn nullable(ty: &str) -> bool {
 fn components(parsed: &Parsed) -> Vec<Component> {
     let mut list = Vec::new();
     for f in &parsed.functions {
-        // A function without `#[Component]` (or `#[Page]`) is a plain PHP function.
-        if !(has_attr(&f.attrs, "Component") || has_attr(&f.attrs, "Page")) {
+        // A function without `#[Component]` (or `#[Page]`, `#[ErrorPage]`) is a plain PHP function.
+        if !(has_attr(&f.attrs, "Component") || has_attr(&f.attrs, "Page") || has_attr(&f.attrs, "ErrorPage")) {
             continue;
         }
 
-        let page = has_attr(&f.attrs, "Page");
+        // An error page is a page with no route: it is not a tag either.
+        let error_page = has_attr(&f.attrs, "ErrorPage");
+        let page = has_attr(&f.attrs, "Page") || error_page;
+        let attr = if error_page { "ErrorPage" } else if page { "Page" } else { "Component" };
         let mut comp = Component {
             kind: ComponentKind::Function,
             name: f.name.clone(),
@@ -1189,7 +1195,8 @@ fn components(parsed: &Parsed) -> Vec<Component> {
             offset: Some(f.offset),
             span: Some((f.start, f.end)),
             replaces: replaced(parsed, &f.attributes),
-            signature: format!("#[{}]\nfunction {}({})", if page { "Page" } else { "Component" }, f.name, f.params.iter().map(param_text).collect::<Vec<_>>().join(", ")),
+            error_pages: f.attributes.iter().filter(|a| a.name.rsplit('\\').next() == Some("ErrorPage")).map(|a| a.args.trim().to_string()).collect(),
+            signature: format!("#[{attr}]\nfunction {}({})", f.name, f.params.iter().map(param_text).collect::<Vec<_>>().join(", ")),
             doc: None,
         };
 
@@ -1232,6 +1239,7 @@ fn components(parsed: &Parsed) -> Vec<Component> {
             offset: Some(c.offset),
             span: Some((c.start, c.end)),
             replaces: replaced(parsed, &c.attributes),
+            error_pages: vec![],
             signature: format!("#[Component]\nfinal class {}", c.name),
             doc: None,
         };
@@ -1332,6 +1340,7 @@ pub fn builtin_components() -> Vec<Component> {
         offset: None,
         span: None,
         replaces: None,
+        error_pages: vec![],
         signature: "final class Root\n{\n    public string $tag = 'div';\n    public ?Html $children = null;\n}".into(),
         doc: Some("The root element of the page, in the document: it keeps the state of the page and gets its events. The other attributes go to the element."),
     }, Component {
@@ -1346,6 +1355,7 @@ pub fn builtin_components() -> Vec<Component> {
         offset: None,
         span: None,
         replaces: None,
+        error_pages: vec![],
         signature: "final class Suspense\n{\n    public bool $lazy = false;\n    public ?Html $children = null;\n    public ?Html $fallback = null;\n    public ?Html $error = null;\n}".into(),
         doc: Some("Content that loads after the page: the page shows the fallback, and the response of the page streams the children after the page (or, with `lazy`, the browser loads them with an event when the fallback comes into view). When the children throw, the error slot shows."),
     }, Component {
@@ -1360,6 +1370,7 @@ pub fn builtin_components() -> Vec<Component> {
         offset: None,
         span: None,
         replaces: None,
+        error_pages: vec![],
         signature: "final class ErrorBoundary\n{\n    public ?Html $children = null;\n    public ?Html $fallback = null;\n}".into(),
         doc: Some("Catches the render errors of the children: when the render of the children throws, the fallback shows in place of them, only for this boundary. Each render tries the children again. An error in an event handler is not caught: the event fails."),
     }, Component {
@@ -1374,6 +1385,7 @@ pub fn builtin_components() -> Vec<Component> {
         offset: None,
         span: None,
         replaces: None,
+        error_pages: vec![],
         signature: "final class Dynamic\n{\n    public string $tag;\n    public ?Html $children = null;\n}".into(),
         doc: Some("An element whose tag name is a value: `<Dynamic tag={{ tag }}>`. The other attributes and the handlers go to the element. It is an element, not a component: when it is the root of a component, the id of the component goes on it. A void element has no children. The tag cannot start with `phem-`, and it cannot be `script`, `style`, or an element whose attributes load a document or a resource (`iframe`, `object`, `embed`, `base`, `link`, `meta`)."),
     }]
@@ -1425,6 +1437,16 @@ mod tests {
         assert!(find("Fn").unwrap().page, "a function page");
         assert!(find("Bare").unwrap().page, "#[Page] needs no #[Component]");
         assert!(!find("Routed").unwrap().page, "the Symfony #[Route] cannot mark a function");
+    }
+
+    #[test]
+    fn an_error_page_function_is_a_page() {
+        let src = "<?phem\nnamespace App\\Ui;\n\nuse Phem\\Attribute\\ErrorPage;\n\n#[ErrorPage(404)]\nfunction NotFound(int $status) { return <p />; }\n";
+        let parsed = parse(src);
+        let page = &parsed.components[0];
+        assert!(page.page, "an error page is not a tag");
+        assert!(page.props.is_empty(), "its parameters are the arguments of a controller");
+        assert_eq!(page.signature, "#[ErrorPage]\nfunction NotFound(int $status)");
     }
 
     #[test]

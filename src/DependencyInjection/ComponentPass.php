@@ -26,6 +26,7 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\DependencyInjection\TypedReference;
+use Symfony\Component\ErrorHandler\Exception\FlattenException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
@@ -83,7 +84,8 @@ final class ComponentPass implements CompilerPassInterface
                 $components[$fqcn] = new Reference($fqcn);
             }
 
-            foreach ($manifest->pages() as $page) {
+            // The error pages get the arguments of a function page too (see Phem\Http\ErrorPages).
+            foreach ([...$manifest->pages(), ...$manifest->errorPages()] as $page) {
                 if (!\function_exists($page)) {
                     continue;
                 }
@@ -106,7 +108,7 @@ final class ComponentPass implements CompilerPassInterface
      * The services of the parameters of a function page, as RegisterControllerArgumentLocatorsPass
      * makes them for a controller method: a parameter with a class or interface type, or with
      * `#[Autowire]` (a service, a parameter or an expression). `#[Target]` picks a named service. The other value resolvers give the
-     * Request, the session and the event.
+     * Request, the session, the event, and the exception of an error page.
      *
      * @return array<string, Reference>
      */
@@ -131,7 +133,7 @@ final class ComponentPass implements CompilerPassInterface
                 continue;
             }
 
-            if (!$type instanceof \ReflectionNamedType || $type->isBuiltin() || \in_array($type->getName(), [Request::class, SessionInterface::class, Response::class, Event::class], true) || is_subclass_of($type->getName(), \UnitEnum::class)) {
+            if (!$type instanceof \ReflectionNamedType || $type->isBuiltin() || \in_array($type->getName(), [Request::class, SessionInterface::class, Response::class, Event::class, FlattenException::class], true) || is_subclass_of($type->getName(), \UnitEnum::class) || is_a($type->getName(), \Throwable::class, true)) {
                 continue;
             }
 

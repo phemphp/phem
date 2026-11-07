@@ -99,3 +99,19 @@ the image again after each change.
 
 To use FrankenPHP in development too, see
 [Watch mode](compiling.md#5-watch-mode-development).
+
+## Static error pages
+
+When the application does not answer, the web server or the proxy in front of it shows its own
+error. To show the [error pages](error-pages.md) of the application there too, write them to
+files in the image, after `cache:warmup`. The image has `APP_DEBUG=0`, so the files do not show
+the exception. Set `framework.router.default_uri` to the URL of the site, so the pages have its
+host:
+
+```dockerfile
+ && php bin/console cache:warmup \
+ && php bin/console error:dump public/errors 502 503 504 --force \
+```
+
+See [Static pages for the web server](error-pages.md#static-pages-for-the-web-server) for the
+config of nginx and Caddy.

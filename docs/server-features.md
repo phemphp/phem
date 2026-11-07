@@ -77,7 +77,8 @@ use Phem\ErrorBoundary;
 ```
 
 The logger gets the exception. Each render tries the content again. As in React, the boundary
-catches the errors of the render and of `mount()`, but not of a handler.
+catches the errors of the render and of `mount()`, but not of a handler. When all the request
+fails (a 404, a 500), the browser gets the [error page](error-pages.md) of the application.
 
 ## Real-time updates
 

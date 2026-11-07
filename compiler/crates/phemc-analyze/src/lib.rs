@@ -25,6 +25,9 @@ pub const ATTR_PATH: &str = "Phem\\Attribute\\Path";
 /// The Phem page attribute: it exposes a class or a function as a page (it extends `Route`). The
 /// class or the function is a component, with no `#[Component]`.
 pub const ATTR_PAGE: &str = "Phem\\Attribute\\Page";
+/// The page of an HTTP error: a function that renders the document when a request fails (see
+/// `Phem\Attribute\ErrorPage`). It is a component with no `#[Component]` and no route.
+pub const ATTR_ERROR_PAGE: &str = "Phem\\Attribute\\ErrorPage";
 /// A page or a component that gets the Turbo Streams of other requests (`Phem\Stream\Streams`).
 /// On a handler method of a class component, the handler refreshes its component in the other
 /// browsers, and the class needs no `#[Broadcast]`.
@@ -112,8 +115,8 @@ pub struct ComponentDef {
     /// The types of the contexts that the class provides (`#[Provide]`), resolved.
     #[serde(skip)]
     pub provides: Vec<String>,
-    /// A page (`#[Page]`, or `#[Route]` on a class component): it is not a tag. The parameters of
-    /// a function page are the arguments of a controller, not props.
+    /// A page (`#[Page]`, `#[ErrorPage]`, or `#[Route]` on a class component): it is not a tag.
+    /// The parameters of a function page are the arguments of a controller, not props.
     #[serde(skip)]
     pub page: bool,
     /// The component that this component replaces in all the tags (`#[Component(replaces: ...)]`).
@@ -192,7 +195,7 @@ pub fn context_type(file: &FileInfo, ty: &str) -> String {
 /// The components that a scanned file declares.
 pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
     let mut out = Vec::new();
-    let is_page = |fqn: &str| file.routes.iter().any(|r| r.is_component && r.fqn == fqn);
+    let is_page = |fqn: &str| file.routes.iter().any(|r| r.is_component && r.fqn == fqn) || file.error_pages.iter().any(|e| e.is_function && e.fqn == fqn);
     for f in &file.functions {
         let Some(kind) = f.component_kind else { continue };
 
@@ -460,8 +463,14 @@ fn check_broadcast(file: &FileInfo) -> Vec<Diagnostic> {
     }
 
     for f in &file.functions {
-        let page = file.routes.iter().any(|r| r.fqn == f.fqn && r.attr == "Page");
-        if let Some(span) = f.broadcast_attr.filter(|_| f.receive_only && f.component_kind.is_some()) {
+        let error_page = file.error_pages.iter().any(|e| e.fqn == f.fqn);
+        let page = error_page || file.routes.iter().any(|r| r.fqn == f.fqn && r.attr == "Page");
+        if let Some(span) = f.broadcast_attr.filter(|_| error_page) {
+            diags.push(
+                Diagnostic::error(codes::BROADCAST_NOT_COMPONENT, format!("`#[Broadcast]` cannot mark an error page, and `{}` is one", f.fqn), span)
+                    .with_help("an error page has no state and no connection to the Mercure hub: remove `#[Broadcast]`"),
+            );
+        } else if let Some(span) = f.broadcast_attr.filter(|_| f.receive_only && f.component_kind.is_some()) {
             diags.push(
                 Diagnostic::error(codes::BROADCAST_NOT_COMPONENT, format!("`#[Broadcast(handlers: false)]` must mark a class component, and `{}` is a function", f.fqn), span)
                     .with_help("a function component has no handlers that refresh it: use `#[Broadcast]`"),
@@ -560,6 +569,13 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
         };
 
         diags.push(diag);
+    }
+
+    for e in file.error_pages.iter().filter(|e| !e.is_function) {
+        diags.push(
+            Diagnostic::error(codes::ERROR_PAGE_NOT_FUNCTION, format!("`#[ErrorPage]` must mark a function, and `{}` is a class", e.fqn), e.span)
+                .with_help("an error page has no state and no events: write it as a function, which gets the status, the Request and the services"),
+        );
     }
 
     for (fqn, span) in &file.broadcasts {

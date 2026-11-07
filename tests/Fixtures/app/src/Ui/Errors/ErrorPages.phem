@@ -1,0 +1,156 @@
+<?phem
+
+namespace App\Ui\Errors;
+
+use Phem\Attribute\{Component, ErrorPage, Page};
+use Phem\Node;
+use Phem\Suspense;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\ErrorHandler\Exception\FlattenException;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
+
+use function App\Ui\Common\Document;
+
+// The tests of the error pages (see Phem\Http\ErrorPageRenderer). They are in the /errors
+// section, so the other tests keep the error page of Symfony. The 503 page is for the whole app:
+// `error:dump` renders the pages with no request, for the path `/`.
+
+// The errors of the tests: /errors/throw/429 throws a 429.
+#[Page('/errors/throw/{status}', name: 'errors_throw')]
+#[Page('/errors/admin/throw/{status}', name: 'errors_admin_throw')]
+#[Page('/errors/broken/throw/{status}', name: 'errors_broken_throw')]
+#[Page('/errors/suspense/throw/{status}', name: 'errors_suspense_throw')]
+function ThrowPage(int $status): Node
+{
+    if (429 === $status) {
+        throw new TooManyRequestsHttpException(60);
+    }
+
+    if (500 === $status) {
+        throw new \RuntimeException('A secret message.');
+    }
+
+    throw HttpException::fromStatusCode($status);
+
+    return <Document />;
+}
+
+// All the statuses of the /errors section.
+#[ErrorPage(path: '/errors')]
+function ErrorsPage(int $status, FlattenException $exception, Request $request): Node
+{
+    $text = $exception->getStatusText();
+    $retryAfter = $exception->getHeaders()['Retry-After'] ?? null;
+    $retry = $request->getRequestUri();
+
+    return (
+        <Document>
+            <Document:title>Error {{ status }}</Document:title>
+            <h1>{{ status }} {{ text }}</h1>
+            {% if retryAfter %}<p id="retry-after">Retry after {{ retryAfter }} seconds</p>{% endif %}
+            <a id="retry" href={{ retry }}>Try again</a>
+        </Document>
+    );
+}
+
+// The 404 of the /errors section: it wins over the page of all the statuses.
+#[ErrorPage(404, path: '/errors')]
+function MissingPage(): Node
+{
+    return (
+        <Document>
+            <Document:title>Not here</Document:title>
+            <h1>Not here</h1>
+        </Document>
+    );
+}
+
+// A longer path wins over a status: all the statuses of /errors/admin.
+#[ErrorPage(path: '/errors/admin')]
+function AdminErrorPage(int $status, #[Autowire('%kernel.environment%')] string $environment): Node
+{
+    return (
+        <Document>
+            <Document:title>Admin error</Document:title>
+            <h1>Admin error {{ status }}</h1>
+            <p id="environment">{{ environment }}</p>
+        </Document>
+    );
+}
+
+// An error page that fails.
+#[ErrorPage(path: '/errors/broken')]
+function BrokenErrorPage(): Node
+{
+    throw new \RuntimeException('The error page failed.');
+
+    return <Document />;
+}
+
+#[Component]
+function Tips(): Node
+{
+    return <p id="tips">Some tips</p>;
+}
+
+// An error page with a <Suspense>: it renders in the page.
+#[ErrorPage(path: '/errors/suspense')]
+function SuspenseErrorPage(): Node
+{
+    return (
+        <Document>
+            <Suspense>
+                <Suspense:fallback><p id="loading">Loading</p></Suspense:fallback>
+                <Tips />
+            </Suspense>
+        </Document>
+    );
+}
+
+// The page of a 503 in the whole app, also with no request (`error:dump`).
+#[ErrorPage(503)]
+function UnavailablePage(Request $request): Node
+{
+    $path = $request->getPathInfo();
+    $host = $request->getSchemeAndHttpHost();
+
+    return (
+        <Document>
+            <Document:title>Back soon</Document:title>
+            <h1>Back soon</h1>
+            <p id="path">{{ path }}</p>
+            <p id="host">{{ host }}</p>
+        </Document>
+    );
+}
+
+// The exception itself, for a parameter with the type of an exception.
+#[ErrorPage(path: '/errors/throwable')]
+function ThrowableErrorPage(\Throwable $exception): Node
+{
+    $class = $exception::class;
+
+    return <Document><p id="class">{{ class }}</p></Document>;
+}
+
+// A plain document, with no <Root>: an error page has no state.
+#[ErrorPage(path: '/errors/plain')]
+function PlainErrorPage(int $status): Node
+{
+    return (
+        <html lang="en">
+            <body><h1>Plain {{ status }}</h1></body>
+        </html>
+    );
+}
+
+// The session of the browser goes with the error.
+#[ErrorPage(path: '/errors/session')]
+function SessionErrorPage(Request $request): Node
+{
+    $session = $request->hasSession() ? 'A session' : 'No session';
+
+    return <Document><p id="session">{{ session }}</p></Document>;
+}

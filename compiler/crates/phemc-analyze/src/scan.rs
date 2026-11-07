@@ -2,7 +2,7 @@
 //! function that contains each markup literal. It is not a PHP parser; it reads only the
 //! declarations that the compiler needs.
 
-use crate::{Kind, ATTR_ASYNC, ATTR_BROADCAST, ATTR_BROADCAST_KEY, ATTR_COMPONENT, ATTR_CONTEXT, ATTR_PAGE, ATTR_PATH, ATTR_PROP, ATTR_PROVIDE, ATTR_ROUTE, ATTR_STATE, ATTR_VALIDATED};
+use crate::{Kind, ATTR_ASYNC, ATTR_BROADCAST, ATTR_BROADCAST_KEY, ATTR_COMPONENT, ATTR_CONTEXT, ATTR_ERROR_PAGE, ATTR_PAGE, ATTR_PATH, ATTR_PROP, ATTR_PROVIDE, ATTR_ROUTE, ATTR_STATE, ATTR_VALIDATED};
 use phemc_syntax::php::{Lexed, TokKind, Token};
 use phemc_syntax::Span;
 use std::collections::HashMap;
@@ -24,6 +24,9 @@ pub struct FileInfo {
     pub enums: Vec<EnumDecl>,
     /// The declarations marked with `#[Page]` or `#[Route]`: the pages.
     pub routes: Vec<RouteDecl>,
+    /// The declarations marked with `#[ErrorPage]`: the pages of the HTTP errors. Only a function
+    /// is one; the compiler reports a class.
+    pub error_pages: Vec<ErrorPageDecl>,
     /// The declarations with `#[Broadcast]` that are not pages or components (the compiler
     /// reports them).
     pub broadcasts: Vec<(String, Span)>,
@@ -95,6 +98,16 @@ pub enum MarkupScope {
     Function(usize),
     /// (class index, method index)
     Method(usize, usize),
+}
+
+/// A declaration marked with `#[ErrorPage]`: the page of an HTTP error. It has no route.
+#[derive(Clone, Debug)]
+pub struct ErrorPageDecl {
+    pub fqn: String,
+    /// The attribute name.
+    pub span: Span,
+    /// False for a class: an error page has no state, so it is a function.
+    pub is_function: bool,
 }
 
 /// A declaration marked with the `#[Page]` or the Symfony `#[Route]` attribute: a page.
@@ -399,10 +412,14 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                             p.is_context = p.attrs.iter().any(|(a, _)| info.resolve_class(a) == ATTR_CONTEXT);
                         }
 
-                        // Only a function with `#[Component]` (or `#[Page]`) is a component: the
-                        // other functions of the file are plain PHP functions.
-                        if attrs.iter().any(|(a, _)| matches!(info.resolve_class(a).as_str(), ATTR_COMPONENT | ATTR_PAGE)) {
+                        // Only a function with `#[Component]` (or `#[Page]`, `#[ErrorPage]`) is a
+                        // component: the other functions of the file are plain PHP functions.
+                        if attrs.iter().any(|(a, _)| matches!(info.resolve_class(a).as_str(), ATTR_COMPONENT | ATTR_PAGE | ATTR_ERROR_PAGE)) {
                             f.component_kind = Some(Kind::Function);
+                        }
+
+                        if let Some(span) = error_page_attr(&info, &attrs) {
+                            info.error_pages.push(ErrorPageDecl { fqn: f.fqn.clone(), span, is_function: true });
                         }
 
                         // The Symfony `#[Route]` cannot mark a function: report it before `#[Page]`.
@@ -433,6 +450,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                             let attrs = std::mem::take(&mut attrs);
                             check_attrs(&mut info, &attrs);
                             let route = route_attr(&info, &attrs);
+                            let error_page = error_page_attr(&info, &attrs);
                             let broadcast = broadcast_attr(&info, &attrs);
                             let receive_only = is_receive_only(&info, &std::mem::take(&mut receive_only));
                             let (mut c, end) = parse_class(&toks, i, &mut info, attrs.into_iter().map(|(a, _)| a).collect());
@@ -445,6 +463,10 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                             // An abstract page has no route: E045 reports it.
                             if let Some((attr, span)) = route.filter(|_| !c.abstract_component) {
                                 info.routes.push(RouteDecl { fqn: c.fqn.clone(), attr, span, is_component: c.is_component, is_function: false });
+                            }
+
+                            if let Some(span) = error_page {
+                                info.error_pages.push(ErrorPageDecl { fqn: c.fqn.clone(), span, is_function: false });
                             }
 
                             info.classes.push(c);
@@ -974,6 +996,11 @@ fn route_attr(info: &FileInfo, attrs: &[(String, Span)]) -> Option<(&'static str
     })
 }
 
+/// The span of the first `#[ErrorPage]` of a declaration (it is repeatable).
+fn error_page_attr(info: &FileInfo, attrs: &[(String, Span)]) -> Option<Span> {
+    attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_ERROR_PAGE).map(|(_, s)| *s)
+}
+
 /// The span of a `#[Broadcast]` of a declaration.
 fn broadcast_attr(info: &FileInfo, attrs: &[(String, Span)]) -> Option<Span> {
     attrs.iter().find(|(a, _)| info.resolve_class(a) == ATTR_BROADCAST).map(|(_, s)| *s)
@@ -1001,6 +1028,7 @@ fn check_attrs(info: &mut FileInfo, attrs: &[(String, Span)]) {
         let short = a.rsplit('\\').next().unwrap_or(a);
         let expected = match short {
             "Page" => ATTR_PAGE,
+            "ErrorPage" => ATTR_ERROR_PAGE,
             "Route" => ATTR_ROUTE,
             "Component" => ATTR_COMPONENT,
             "State" => ATTR_STATE,
@@ -1325,6 +1353,16 @@ function Other() { return <p />; }
         let f = scan_src("<?phem\nnamespace App;\nuse Phem\\Attribute\\Page;\n#[Page('/')]\nfinal class Home { public function render() { return <p />; } }\n");
         assert!(f.classes[0].is_component, "#[Page] needs no #[Component]");
         assert_eq!((f.routes[0].attr, f.routes[0].is_component, f.routes[0].is_function), ("Page", true, false));
+    }
+
+    #[test]
+    fn an_error_page_function_is_a_component() {
+        let f = scan_src("<?phem\nnamespace App;\nuse Phem\\Attribute\\ErrorPage;\n#[ErrorPage(404)]\n#[ErrorPage(path: '/admin')]\nfunction NotFound() { return <p />; }\n#[ErrorPage]\nfinal class Broken {}\n");
+        assert_eq!(f.functions[0].component_kind, Some(Kind::Template), "#[ErrorPage] needs no #[Component]");
+        assert!(f.routes.is_empty(), "an error page has no route");
+        let pages: Vec<_> = f.error_pages.iter().map(|e| (e.fqn.as_str(), e.is_function)).collect();
+        assert_eq!(pages, [("App\\NotFound", true), ("App\\Broken", false)], "one declaration for the repeated #[ErrorPage]");
+        assert!(!f.classes[0].is_component, "a class with #[ErrorPage] is not a component (E059)");
     }
 
     #[test]

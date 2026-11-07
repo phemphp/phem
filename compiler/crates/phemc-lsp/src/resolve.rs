@@ -203,7 +203,16 @@ impl Resolver<'_, '_> {
         if comp.page {
             let routes: Vec<_> = self.index.project.routes(self.file(), &self.index.current.parsed).into_iter().filter(|r| r.fqn == comp.fqn).collect();
             let list = routes.iter().map(|r| format!("`{}` (`{}`)", r.path, r.name)).collect::<Vec<_>>().join(", ");
-            lines.extend([String::new(), if list.is_empty() { "Page".into() } else { format!("Page: {list}") }]);
+
+            // An error page has no route.
+            if !list.is_empty() || comp.error_pages.is_empty() {
+                lines.extend([String::new(), if list.is_empty() { "Page".into() } else { format!("Page: {list}") }]);
+            }
+        }
+
+        if !comp.error_pages.is_empty() {
+            let list = comp.error_pages.iter().map(|a| if a.is_empty() { "all the statuses".to_string() } else { format!("`{a}`") }).collect::<Vec<_>>().join(", ");
+            lines.extend([String::new(), format!("Error page: {list}")]);
         }
 
         if !comp.slots.is_empty() {

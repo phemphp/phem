@@ -1,7 +1,8 @@
 # Errors and limits
 
 This page explains what the browser does when an event fails, and the limits of an event and of
-a page.
+a page. For the page that the browser gets when a request fails (a 404, a 500), see
+[Error pages](error-pages.md).
 
 ## Failed events
 

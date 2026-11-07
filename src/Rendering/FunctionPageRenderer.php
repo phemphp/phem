@@ -20,8 +20,8 @@ use Phem\Manifest\Manifest;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
- * Renders a function page: a call with the arguments of a Symfony controller (see
- * CallableArguments). A page is not a tag, so it has no props: its parameters get the route
+ * Renders a function page or an error page: a call with the arguments of a Symfony controller
+ * (see CallableArguments). A page is not a tag, so it has no props: its parameters get the route
  * values (the props of its fiber, converted by Phem\Path\PathResolver), the Request, the
  * services, and the other controller arguments.
  *
@@ -42,7 +42,7 @@ final class FunctionPageRenderer implements ComponentRenderer
 
     public function supports(ComponentDefinition $definition): bool
     {
-        $this->pages ??= array_flip($this->manifest->pages());
+        $this->pages ??= array_flip([...$this->manifest->pages(), ...$this->manifest->errorPages()]);
 
         return (ComponentKind::FunctionComponent === $definition->kind || ComponentKind::TemplateComponent === $definition->kind)
             && isset($this->pages[$definition->fqcn]);

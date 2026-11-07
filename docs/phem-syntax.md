@@ -515,6 +515,7 @@ The PHP attributes of Phem are in the `Phem\Attribute` namespace:
 |---|---|---|
 | `#[Component]` | a function or a class | Makes a component. `replaces:` replaces a component of a package (see [packages.md](packages.md#replace-a-component-of-a-package)). |
 | `#[Page]` | a function or a class | Gives a component a URL. |
+| `#[ErrorPage]` | a function | Renders the page of an HTTP error. See [Error pages](error-pages.md). |
 | `#[Prop]` | a property | Makes a prop. `rest: true` makes the rest prop. |
 | `#[State]` | a property | Makes state. See [State](components.md#state). |
 | `#[Path]` | a property | Gets a route value. |

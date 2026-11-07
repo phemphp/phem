@@ -29,6 +29,7 @@ export const navigation: NavGroup[] = [
             { slug: 'client-side', label: 'Client-side behavior' },
             { slug: 'server-features', label: 'Server features' },
             { slug: 'errors-and-limits', label: 'Errors and limits' },
+            { slug: 'error-pages', label: 'Error pages' },
             { slug: 'testing', label: 'Testing' },
             { slug: 'packages', label: 'Component packages' },
         ],

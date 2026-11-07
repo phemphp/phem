@@ -577,6 +577,46 @@ fn a_function_with_page_is_a_page() {
 }
 
 #[test]
+fn a_function_with_error_page_is_an_error_page() {
+    let page = |attrs: &str, decl: &str| {
+        let src = format!("<?phem\nnamespace App;\nuse Phem\\Attribute\\{{Component, ErrorPage}};\n{attrs}\n{decl}\n");
+        compile(vec![SourceInput::app("NotFound.phem", src)])
+    };
+    let codes = |attrs: &str, decl: &str| page(attrs, decl).1.iter().flat_map(|f| f.diags.iter().map(|d| d.code)).collect::<Vec<_>>();
+    let function = "function NotFound(int $status, \\Symfony\\Component\\HttpFoundation\\Request $request) { return <p>{{ status }}</p>; }";
+
+    for attrs in ["#[ErrorPage]", "#[ErrorPage(404)]", "#[ErrorPage(404)]\n#[ErrorPage(path: '/admin')]", "#[\\Phem\\Attribute\\ErrorPage([401, 403])]"] {
+        let (out, diags) = page(attrs, function);
+
+        assert!(diags.iter().all(|f| f.diags.is_empty()), "{attrs}: {:?}", diags[0].diags);
+        let out = out.expect("output");
+        assert_eq!(out.manifest.error_pages, ["App\\NotFound"], "{attrs}");
+        assert!(out.manifest.pages.is_empty(), "{attrs}: an error page has no route");
+        assert!(out.manifest.components["App\\NotFound"].props.is_empty(), "{attrs}: its parameters are the arguments of a controller");
+    }
+
+    assert_eq!(codes("#[ErrorPage]", "final class NotFound { public function render() { return <p />; } }"), ["E059"], "an error page has no state: a function");
+    let (_, diags) = page("#[ErrorPage]", "final class NotFound { public function render() { return <p />; } }");
+    assert_eq!(diags[0].diags[0].message, "`#[ErrorPage]` must mark a function, and `App\\NotFound` is a class");
+
+    let tag = "function NotFound() { return <p />; }\n#[Component]\nfunction Card() { return <NotFound />; }";
+    assert_eq!(codes("#[ErrorPage]", tag), ["E056"], "an error page is not a tag");
+
+    let src = "<?phem\nnamespace App;\n#[ErrorPage]\nfunction NotFound() { return <p />; }\n";
+    let (out, diags) = compile(vec![SourceInput::app("NotFound.phem", src)]);
+    assert_eq!(diags[0].diags.iter().map(|d| d.code).collect::<Vec<_>>(), ["W004"], "no `use Phem\\Attribute\\ErrorPage;`");
+    assert!(out.expect("output").manifest.error_pages.is_empty());
+
+    assert_eq!(codes("#[ErrorPage]\n#[\\Phem\\Attribute\\Broadcast]", function), ["E053"], "an error page has no connection to the hub");
+
+    let src = "<?phem\nnamespace Acme\\Ui;\nuse Phem\\Attribute\\ErrorPage;\n#[ErrorPage]\nfunction NotFound() { return <p />; }\n";
+    let (out, diags) = compile(vec![package("vendor/acme/ui/NotFound.phem", "vendor/acme/ui/components/NotFound.phem", src)]);
+    assert!(out.is_none(), "only the app has error pages");
+    let d = diags[0].shown().next().expect("E060");
+    assert_eq!((d.code, d.message.as_str()), ("E060", "`#[ErrorPage]` is in the package `acme/ui`, and only the application has error pages"));
+}
+
+#[test]
 fn a_function_is_a_component_only_with_the_component_attribute() {
     let src = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\nfunction Label(string $s) { return <b>{{ s }}</b>; }\n#[Component]\nfunction Card(string $title) { $label = Label($title); return <div>{{ label }}</div>; }\n#[Component]\nfunction Badge() { return <i>new</i>; }\nfunction App() { return <p><Card title=\"a\" /><Badge /></p>; }\n";
     let (out, diags) = compile(vec![SourceInput::app("App.phem", src)]);

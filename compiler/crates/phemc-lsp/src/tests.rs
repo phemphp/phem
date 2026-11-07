@@ -1015,6 +1015,15 @@ fn the_builtin_root_tag_has_a_hover_and_no_location() {
 }
 
 #[test]
+fn the_hover_of_an_error_page_shows_its_statuses_and_no_route() {
+    let src = format!("{DEF_USES}use Phem\\Attribute\\ErrorPage;\n\n#[ErrorPage(404, path: '/admin')]\n#[ErrorPage]\nfunction NotFound(int $status) {{ return <p />; }}\n\nfunction HomePage() {{ return <NotF‸ound />; }}\n");
+    let r = at_page(&src);
+    assert!(hover(&r).contains("#[ErrorPage]\nfunction NotFound(int $status)"), "{}", hover(&r));
+    assert!(hover(&r).contains("Error page: `404, path: '/admin'`, all the statuses"), "{}", hover(&r));
+    assert!(!hover(&r).contains("\n\nPage"), "an error page has no route: {}", hover(&r));
+}
+
+#[test]
 fn a_prop_goes_to_the_parameter_or_the_property() {
     let src = def_fn("<Layout ti‸tle=\"x\" />", "");
     assert_eq!(target(&at_page(&src), &src), pair("src/Ui/Common/Layout.phem", "$title, ?Html $children = null, ?Html $footer = null)"));

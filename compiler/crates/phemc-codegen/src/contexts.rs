@@ -188,7 +188,11 @@ impl Checker<'_> {
 /// page gets to it with no provider. Returns (file, diagnostic).
 pub(crate) fn check(reg: &Registry, infos: &[&FileInfo], uses: &[Use]) -> Vec<(String, Diagnostic)> {
     let classes = infos.iter().flat_map(|i| i.classes.iter()).map(|c| (c.fqn.to_ascii_lowercase(), c)).collect();
-    let pages = infos.iter().flat_map(|i| i.routes.iter()).filter(|r| r.is_component).map(|r| r.fqn.to_ascii_lowercase()).collect();
+    let pages = infos
+        .iter()
+        .flat_map(|i| i.routes.iter().filter(|r| r.is_component).map(|r| &r.fqn).chain(i.error_pages.iter().filter(|e| e.is_function).map(|e| &e.fqn)))
+        .map(|fqn| fqn.to_ascii_lowercase())
+        .collect();
     let mut by_child: HashMap<String, Vec<&Use>> = HashMap::new();
     for u in uses {
         by_child.entry(u.child.to_ascii_lowercase()).or_default().push(u);

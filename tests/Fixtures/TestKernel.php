@@ -70,6 +70,16 @@ final class TestKernel extends PhemTestKernel
             $container->extension('phem', ['suspense_stream' => false]);
         }
 
+        if ('errors' === $this->environment) {
+            // The error pages of the app (errors.phem) in the debug mode, as in the e2e tests of an
+            // app. `error:dump` renders them at the host of the router.
+            $container->extension('phem', ['show_exceptions' => false]);
+            $container->extension('framework', [
+                'router' => ['default_uri' => 'https://shop.example'],
+                'session' => ['storage_factory_id' => 'session.storage.factory.mock_file'],
+            ]);
+        }
+
         if ('profiler' === $this->environment) {
             $container->extension('framework', ['profiler' => ['enabled' => true, 'collect' => true]]);
             $container->extension('web_profiler', ['toolbar' => false]);
@@ -101,6 +111,9 @@ final class TestKernel extends PhemTestKernel
         }
 
         parent::configureRoutes($routes);
+
+        // The preview of the error pages of Symfony: /_error/{code}.
+        $routes->import('@FrameworkBundle/Resources/config/routing/errors.php')->prefix('/_error');
 
         // The pages of the fixture package (app/vendor/acme/ui).
         $routes->import('acme/ui', 'phem')->prefix('/ui');

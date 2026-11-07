@@ -40,9 +40,13 @@ use Phem\Handler\RedirectMiddleware;
 use Phem\Handler\StreamsMiddleware;
 use Phem\Handler\TransactionalMiddleware;
 use Phem\Handler\ValidationMiddleware;
+use Phem\Http\ErrorPageRenderer;
+use Phem\Http\ErrorPages;
+use Phem\Http\ErrorPagesWarmer;
 use Phem\Http\EventBody;
 use Phem\Http\PageRenderer;
 use Phem\Http\PageStream;
+use Phem\Http\StatelessPageRenderer;
 use Phem\Http\TurboStreams;
 use Phem\Manifest\Manifest;
 use Phem\Manifest\PreloadWarmer;
@@ -315,6 +319,29 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.controller.page', PageController::class)
             ->public()
             ->args([service('phem.page_renderer')])
+        ->set('phem.stateless_page_renderer', StatelessPageRenderer::class)
+            ->args([service('phem.renderer'), service('phem.metadata'), service('phem.path_resolver')])
+        ->set('phem.error_pages', ErrorPages::class)
+            ->args([service('phem.manifest')])
+        ->set('phem.error_pages_warmer', ErrorPagesWarmer::class)
+            ->args([service('phem.error_pages'), service('phem.manifest')])
+            ->tag('kernel.cache_warmer')
+        // Outside the Twig renderer (priority 0): the error page, then the Twig template, then
+        // the page of Symfony.
+        ->set('phem.error_page_renderer', ErrorPageRenderer::class)
+            ->decorate('error_renderer.html', null, -1, ContainerInterface::IGNORE_ON_INVALID_REFERENCE)
+            ->args([
+                service('.inner'),
+                service('phem.error_pages'),
+                service('phem.stateless_page_renderer'),
+                service('request_stack'),
+                abstract_arg('show_exceptions, set by PhemBundle'),
+                param('kernel.debug'),
+                service('logger')->nullOnInvalid(),
+                param('kernel.charset'),
+                service('router.request_context')->nullOnInvalid(),
+                service('phem.metadata'),
+            ])
         ->set('phem.inputs_comparator', InputsComparator::class)
             ->args([service('phem.handler_fingerprint')])
         ->set('phem.event_renderer', EventRenderer::class)

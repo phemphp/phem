@@ -97,6 +97,11 @@ pub struct Manifest {
     /// The class components with a `#[Page]` or `#[Route]` attribute (the runtime reads the routes
     /// from them), with the Composer package of each one (`""` for a page of the app).
     pub pages: BTreeMap<String, String>,
+    /// The functions with an `#[ErrorPage]` attribute (the runtime reads the statuses and the
+    /// paths from them). Only the app has error pages (E060): a package does not know the URL of
+    /// its pages in the app.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub error_pages: Vec<String>,
     pub templates: BTreeMap<String, TemplateOutput>,
     /// Compiled PHP files, relative to the output directory.
     pub files: Vec<String>,
@@ -143,13 +148,24 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
     let (replacements, errors) = replaces::check(&registry, &files);
     dup.extend(errors);
 
+    // E060: only the app has error pages. A package does not know the URL of its pages in the app.
+    for p in &parsed {
+        let Some(package) = &p.input.package else { continue };
+
+        for e in p.info.error_pages.iter().filter(|e| e.is_function) {
+            let diag = Diagnostic::error(codes::ERROR_PAGE_IN_PACKAGE, format!("`#[ErrorPage]` is in the package `{package}`, and only the application has error pages"), e.span)
+                .with_help("remove `#[ErrorPage]`: the application renders a component of the package in its own `#[ErrorPage]` function");
+            dup.push((p.input.rel.clone(), diag));
+        }
+    }
+
     // E015: the uses of the components across the files, for the providers of the contexts.
     let uses: Vec<contexts::Use> = parsed.iter().filter_map(|p| p.lexed.as_ref().map(|l| contexts::uses(&p.info, l, &replacements))).flatten().collect();
     let infos: Vec<&FileInfo> = parsed.iter().map(|p| &p.info).collect();
     dup.extend(contexts::check(&registry, &infos, &uses));
 
     // Pass 2: generate each file.
-    let results: Vec<(Option<FileOutput>, FileDiagnostics, Vec<(String, String)>)> = parsed
+    let results: Vec<(Option<FileOutput>, FileDiagnostics, Vec<(String, String)>, Vec<String>)> = parsed
         .into_par_iter()
         .map(|p| {
             let mut diags = p.diags;
@@ -164,17 +180,20 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
             diags.sort_by_key(|d| d.span.start);
             let package = p.input.package.clone().unwrap_or_default();
             let pages = p.info.routes.iter().map(|r| (r.fqn.clone(), package.clone())).collect();
+            let error_pages = p.info.error_pages.iter().filter(|e| e.is_function).map(|e| e.fqn.clone()).collect();
             let SourceInput { rel, path, package, text } = p.input;
-            (out, FileDiagnostics { rel, path, package, text, diags }, pages)
+            (out, FileDiagnostics { rel, path, package, text, diags }, pages, error_pages)
         })
         .collect();
 
-    let has_errors = results.iter().any(|(_, d, _)| d.diags.iter().any(Diagnostic::is_error));
+    let has_errors = results.iter().any(|(_, d, _, _)| d.diags.iter().any(Diagnostic::is_error));
     let mut files = Vec::new();
     let mut all_diags = Vec::new();
     let mut pages = BTreeMap::new();
-    for (out, d, p) in results {
+    let mut error_pages = Vec::new();
+    for (out, d, p, e) in results {
         pages.extend(p);
+        error_pages.extend(e);
         if let Some(o) = out {
             files.push(o);
         }
@@ -195,11 +214,13 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
         }
     }
 
+    error_pages.sort();
     let manifest = Manifest {
         version: VERSION.into(),
         // The runtime knows the built-in components.
         components: registry.into_iter().filter(|(_, c)| !c.file.is_empty()).collect(),
         pages,
+        error_pages,
         templates,
         files: files.iter().map(|f| f.php_path.clone()).collect(),
     };

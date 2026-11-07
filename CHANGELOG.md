@@ -6,6 +6,26 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
+## Unreleased
+
+- Error pages: `#[ErrorPage]` on a function of a `.phem` file renders the page of the HTTP
+  errors (a 404, a 500), in the document of the application. A status (`#[ErrorPage(404)]`,
+  `#[ErrorPage([401, 403])]`) and a path (`#[ErrorPage(path: '/admin')]`) choose the page: the
+  longest path wins, then the status. The page gets `int $status`, the
+  `FlattenException $exception` of Symfony (or the exception itself for `\Throwable $exception`)
+  and the arguments of a function page. It has no state and no events, and it can be a plain
+  HTML document with no `<Root>`. The status and the headers of the error stay. The preview at
+  `/_error/{code}` shows it (`?path=/admin` for a section), and `error:dump` writes it to static
+  files at the host of the router. The container build checks the attributes.
+- The option `phem.show_exceptions` (the debug mode of the kernel by default) shows the page of
+  the exception in place of the error pages. Set `false` in the e2e tests.
+- `errorPage()` in the tests renders the error page of an error at a URL, with a session.
+- `visit()` in the tests runs Symfony in the web mode, as `WebTestCase`: an HTTP error renders
+  the error page of the application, not the output of the CLI error renderer.
+- phemc reports E059 for `#[ErrorPage]` on a class, E060 for `#[ErrorPage]` in a package, and
+  E053 for `#[Broadcast]` on an error page. An error page used as a tag is E056. The hover of
+  the editors shows the statuses and the paths of an error page.
+
 ## 0.3.9 (2026-11-07)
 
 - Fix: phemc did not pass a local to the template when only a tag (`{% if missing %}`) used it

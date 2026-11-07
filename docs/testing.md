@@ -245,6 +245,27 @@ $this->visit('/')
 
 `state(in: '#toggle')` gives all the properties of that component.
 
+## Error pages
+
+`errorPage()` renders the [error page](error-pages.md) of an error at a URL, as the preview at
+`/_error/{code}` does. The debug mode of the test does not show the exception. An `int` is the
+status of an `HttpException`:
+
+```php
+$this->errorPage(404, '/admin/missing')
+    ->assertStatus(404)
+    ->assertSee('Back to the dashboard');
+
+$this->errorPage(new \RuntimeException('Boom.'), '/cart')
+    ->assertStatus(500)
+    ->assertDontSee('Boom.');
+```
+
+An error page has no events. Set `phem.show_exceptions: false` in the `test` environment, so
+`visit()` and the e2e tests get the error pages and not the page of the exception. `visit()`
+runs Symfony in the web mode, as `WebTestCase`: in the CLI mode, Symfony renders an HTTP error
+with its CLI renderer.
+
 ## Services
 
 The components get their services from the container of the test. Change a service in the
