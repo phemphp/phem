@@ -216,9 +216,16 @@ visit, or the morph of an event) gives the focus to the field, but no keyboard o
 ```
 
 In the tap, a hidden field gets the focus, and the keyboard opens. The keyboard stays open when
-the field of `phem-autofocus` gets the focus. When no field gets the focus, the keyboard closes.
-On a slow network, the keyboard opens before the new page shows. When a field that the user
-edits has the focus, the attribute does nothing.
+the field of `phem-autofocus` gets the focus. It also works in an open `<dialog>`.
+
+- When no field gets the focus, the keyboard closes, and the element that had the focus before
+  the tap gets it again.
+- When a listener cancels the visit, or the fetch of the visit fails, the keyboard closes at
+  once. A visit that takes more than 30 seconds closes it too.
+- On a slow network, the keyboard opens before the new page shows.
+- When a field that the user edits has the focus, the attribute does nothing.
+- A link must start a Turbo Drive visit. A link that a `<turbo-frame>` loads does not open the
+  keyboard.
 
 ### Confirm
 

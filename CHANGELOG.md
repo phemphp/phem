@@ -15,7 +15,8 @@ that break the code of an application start with **Breaking**.
   gzip event with many fields of one name used seconds of CPU.
 - `data-phem-autofocus-keyboard` on a link or on the element of an event opens the keyboard of
   iOS for the field that `phem-autofocus` focuses after the visit or the morph. Before, the field
-  got the focus, and no keyboard opened.
+  got the focus, and no keyboard opened. It works in an open `<dialog>`, and gives the focus back
+  to the element of the tap when no field gets the focus.
 
 ## 0.3.10 (2026-11-07)
 

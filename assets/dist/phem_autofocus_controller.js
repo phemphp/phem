@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { isStandIn } from "./phem_keyboard.js"
+import { autofocusConnected, isStandIn } from "./phem_keyboard.js"
 
 // The `phem-autofocus` controller: gives the focus to its element, or to its first `focus` target,
 // when it connects. The native `autofocus` attribute works only when the page loads: this
@@ -29,6 +29,7 @@ export default class PhemAutofocusController extends Controller {
 
   // Stimulus calls focusTargetConnected() before connect(), and when the morph adds a target.
   connect() {
+    autofocusConnected(this.element)
     if (!this.hasFocusTarget) want(this.element)
   }
 

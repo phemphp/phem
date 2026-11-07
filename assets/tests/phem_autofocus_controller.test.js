@@ -3,7 +3,8 @@ import { Application } from "@hotwired/stimulus"
 import * as Turbo from "@hotwired/turbo"
 import PhemController from "../dist/phem_controller.js"
 import PhemAutofocusController from "../dist/phem_autofocus_controller.js"
-import { click, mount, nextDone, respond } from "./support.js"
+import { release } from "../dist/phem_keyboard.js"
+import { answer, click, mount, nextDone, respond } from "./support.js"
 
 let application
 
@@ -175,21 +176,40 @@ describe("phem-autofocus", () => {
     // The hidden field of phem_keyboard.js: a child of <html>.
     const standIn = () => document.querySelector("html > input")
 
-    afterEach(() => standIn()?.remove())
+    afterEach(() => {
+      release()
+      vi.useRealTimers()
+    })
+
+    const trigger = (markup) => markup.replace('id="edit"', 'id="edit" data-phem-autofocus-keyboard')
+    const link = `<a id="link" href="/search" data-phem-autofocus-keyboard>Search</a>`
 
     // The element that has the focus in the `phem:queue` of the tap, and its parent.
     function focusInTap() {
       return new Promise((resolve) => window.addEventListener("phem:queue", () => resolve({ el: document.activeElement, parent: document.activeElement.parentElement }), { once: true }))
     }
 
-    // A tap on the link: Turbo dispatches `turbo:click`. The test stops the visit.
-    function tapLink() {
-      document.addEventListener("turbo:before-visit", (event) => event.preventDefault(), { once: true })
+    // The next visit of Turbo: jsdom cannot load a page, so the test stops it. With `start`, the
+    // test dispatches its `turbo:visit`, as Turbo does when no listener cancels it.
+    function nextVisit(start = true) {
+      document.addEventListener(
+        "turbo:before-visit",
+        (event) => {
+          event.preventDefault()
+          if (start) document.dispatchEvent(new CustomEvent("turbo:visit"))
+        },
+        { once: true },
+      )
+    }
+
+    // A tap on the link: Turbo dispatches `turbo:click`, then visits the page.
+    function tapLink(start = true) {
+      nextVisit(start)
       click("#link")
     }
 
     it("focuses a stand-in in the tap, then gives the focus to the field that the morph adds", async () => {
-      await mount(page().replace('id="edit"', 'id="edit" data-phem-autofocus-keyboard'))
+      await mount(trigger(page()))
       respond(page(title))
       const inTap = focusInTap()
       await morphOnEdit()
@@ -200,7 +220,7 @@ describe("phem-autofocus", () => {
     })
 
     it("focuses a stand-in in the turbo:click of a link, and keeps it in the body swap", async () => {
-      await mount(page(`<a id="link" href="/search" data-phem-autofocus-keyboard>Search</a>`))
+      await mount(page(link))
       tapLink()
 
       expect(document.activeElement).toBe(standIn())
@@ -213,8 +233,12 @@ describe("phem-autofocus", () => {
     })
 
     it("removes the stand-in when the visit shows no autofocus field", async () => {
-      await mount(page(`<a id="link" href="/search" data-phem-autofocus-keyboard>Search</a>`))
+      await mount(page(link))
       tapLink()
+      await settle()
+
+      expect(document.activeElement).toBe(standIn())
+
       document.dispatchEvent(new Event("turbo:load"))
       await settle()
 
@@ -222,19 +246,113 @@ describe("phem-autofocus", () => {
       expect(document.activeElement).toBe(document.body)
     })
 
-    it("removes the stand-in when the event adds no autofocus field", async () => {
-      await mount(page("").replace('id="edit"', 'id="edit" data-phem-autofocus-keyboard'))
-      respond(page(""))
+    it("removes the stand-in when a listener cancels the visit", async () => {
+      await mount(page(link))
+      tapLink(false)
+      await settle()
+
+      expect(standIn()).toBeNull()
+    })
+
+    it("removes the stand-in when the fetch of the visit fails", async () => {
+      await mount(page(link))
+      tapLink()
+      document.dispatchEvent(new Event("turbo:fetch-request-error"))
+
+      expect(standIn()).toBeNull()
+    })
+
+    it("removes the stand-in when the visit takes more than 30 seconds", async () => {
+      await mount(page(link))
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+      tapLink()
+      vi.advanceTimersByTime(29999)
+
+      expect(document.activeElement).toBe(standIn())
+
+      vi.advanceTimersByTime(1)
+
+      expect(standIn()).toBeNull()
+    })
+
+    it("removes the stand-in when the event adds no autofocus field, and gives the focus back", async () => {
+      await mount(trigger(page()))
+      respond(page())
       const inTap = focusInTap()
       await morphOnEdit()
       await settle()
 
       expect((await inTap).parent).toBe(document.documentElement)
       expect(standIn()).toBeNull()
+      expect(document.activeElement.id).toBe("edit")
+    })
+
+    it("waits for a phem-autofocus element that did not connect yet", async () => {
+      await mount(trigger(page()))
+      respond(page(`<input id="lazy" data-controller="phem-autofocus" />`))
+      // Its lazy module did not load yet.
+      application.unload("phem-autofocus")
+      await morphOnEdit()
+      await settle()
+
+      expect(document.activeElement).toBe(standIn())
+
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      expect(standIn()).toBeNull()
+      application.register("phem-autofocus", PhemAutofocusController)
+    })
+
+    it("keeps the stand-in at the end of another event", async () => {
+      await mount(trigger(page()))
+      let reply
+      fetch.mockReturnValueOnce(new Promise((resolve) => (reply = resolve)))
+      document.getElementById("edit").focus()
+      click("#edit")
+      window.dispatchEvent(new CustomEvent("phem:done", { detail: { handler: "c1.other", ids: [0] } }))
+      await settle()
+
+      expect(document.activeElement).toBe(standIn())
+
+      const done = nextDone()
+      reply(new Response(JSON.stringify(answer(page(title))), { status: 200, headers: { "Content-Type": "application/json" } }))
+      await done
+      await settle()
+
+      expect(document.activeElement.id).toBe("title")
+      expect(standIn()).toBeNull()
+    })
+
+    it("keeps the stand-in in the visit of a redirect", async () => {
+      await mount(trigger(page()))
+      fetch.mockResolvedValueOnce(new Response(JSON.stringify({ redirect: "/search" }), { status: 200 }))
+      nextVisit()
+      await morphOnEdit()
+      await settle()
+
+      expect(document.activeElement).toBe(standIn())
+
+      document.dispatchEvent(new Event("turbo:load"))
+      await settle()
+
+      expect(standIn()).toBeNull()
+    })
+
+    it("focuses the stand-in in the open dialog of the tap, and the morph keeps it", async () => {
+      const dialog = (content) => `<dialog id="dialog" open><button id="edit" data-phem-on-click="c1.edit" data-phem-autofocus-keyboard>Edit</button>${content}</dialog>`
+      await mount(dialog(""))
+      respond(dialog("<p>Saved</p>"))
+      const inTap = focusInTap()
+      const afterMorph = new Promise((resolve) => window.addEventListener("phem:done", () => resolve(document.activeElement), { once: true }))
+      await morphOnEdit()
+      const { el, parent } = await inTap
+
+      expect(parent.id).toBe("dialog")
+      expect(await afterMorph).toBe(el)
     })
 
     it("does not focus a stand-in when a field that the user edits has the focus", async () => {
-      await mount(page("").replace('id="edit"', 'id="edit" data-phem-autofocus-keyboard'))
+      await mount(trigger(page()))
       respond(page(title))
       const inTap = focusInTap()
       await morphOnEdit("#search")
