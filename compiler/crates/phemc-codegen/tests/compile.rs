@@ -706,6 +706,35 @@ fn an_abstract_class_is_not_a_component() {
 }
 
 #[test]
+fn mount_and_render_are_not_handlers() {
+    let base = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class Panel {\n    public function mount(): void {}\n    public function reload(): void {}\n    public function render() { return <div><button ATTR /></div>; }\n}\n";
+    let src = |attr: &str| base.replace("ATTR", attr);
+
+    let (out, diags) = compile(vec![SourceInput::app("Panel.phem", &src("onClick={{ mount }}"))]);
+    let d: Vec<_> = diags.iter().flat_map(|f| &f.diags).collect();
+    assert_eq!(d.iter().map(|d| (d.code, d.message.as_str(), d.help.as_deref())).collect::<Vec<_>>(), [("E046", "`onClick` cannot run `mount()`: Phem calls it itself", Some("move the code into a method with another name, and pass it: `onClick={{ reload }}`"))]);
+    assert!(out.is_none());
+
+    // `render()`, the other attributes that take a handler, and any case.
+    assert_eq!(codes(&src("onChange={{ render }}")), ["E046"]);
+    assert_eq!(codes(&src("phem:loading={{ mount }}")), ["E046"]);
+    assert_eq!(codes(&src("onClick={{ Mount }}")), ["E046"]);
+
+    // Another method is a handler.
+    assert!(codes(&src("onClick={{ reload }}")).is_empty());
+
+    // A local variable or a property of the same name is a value, not the method.
+    let local = src("onClick={{ mount }}").replace("public function render() {", "public function render() { $mount = $this->reload(...);");
+    assert!(codes(&local).is_empty());
+    let property = src("onClick={{ render }}").replace("public function mount(): void {}", "public function mount(): void {}\n    public ?\\Closure $render = null;");
+    assert!(codes(&property).is_empty());
+
+    // A function component has no `mount()` or `render()`: its parameter is a value.
+    let function = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfunction Row(\\Closure $render) { return <button onClick={{ render }} />; }\n";
+    assert!(codes(function).is_empty());
+}
+
+#[test]
 fn an_abstract_replacement_does_not_replace_the_original() {
     let src = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfunction Button() { return <button />; }\n#[Component(replaces: Button::class)]\nabstract class MyButton {}\nfunction Page() { return <p><Button /><Button /></p>; }\n";
     assert_eq!(codes(src), ["E045"], "the tags of `Button` render `Button`: no E010");

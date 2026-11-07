@@ -382,6 +382,8 @@ impl<'a> Lowerer<'a> {
 
     /// Warns about `onClick={{ handle() }}`: it calls the handler during render.
     fn check_handler(&mut self, name: &str, code: &str, span: Span) {
+        self.check_reserved_handler(name, code.trim(), span);
+
         if phemc_twig_scan::is_call(code) {
             self.diags.push(
                 Diagnostic::warning(codes::HANDLER_CALLED, format!("`{name}` calls the handler during render"), span)
@@ -389,6 +391,29 @@ impl<'a> Lowerer<'a> {
                     .with_help(format!("pass the function, do not call it: `{name}={{{{ {} }}}}`", code.split('(').next().unwrap_or("").trim())),
             );
         }
+    }
+
+    /// E046: `mount()` and `render()` of a class component are not handlers: Phem calls them
+    /// itself. A local variable, a prop or a property of the same name is a value, not the method.
+    fn check_reserved_handler(&mut self, name: &str, ident: &str, span: Span) {
+        let Some(class) = self.class else {
+            return;
+        };
+
+        let Some(method) = RESERVED_METHODS.iter().find(|m| m.eq_ignore_ascii_case(ident)) else {
+            return;
+        };
+
+        let is_method = class.methods.iter().any(|m| m.name.eq_ignore_ascii_case(method)) || class.inherited_methods.iter().any(|m| m.eq_ignore_ascii_case(method));
+        let is_value = has_variable(self.scope_text, ident)
+            || self.params.iter().any(|p| p.name == ident)
+            || class.all_props().any(|p| p.name == ident);
+        if !is_method || is_value {
+            return;
+        }
+
+        self.error(codes::RESERVED_HANDLER, format!("`{name}` cannot run `{method}()`: Phem calls it itself"), span).help =
+            Some(format!("move the code into a method with another name, and pass it: `{name}={{{{ reload }}}}`"));
     }
 
     /// W003: the `phem` client listens only to some events (`DomEvents::LISTENED` of the runtime).
@@ -1159,6 +1184,9 @@ impl<'a> Lowerer<'a> {
 
 /// `phem:loading={{ save }}`: the element shows only while a `save` event runs.
 const LOADING: &str = "phem:loading";
+
+/// The methods of a class component that Phem calls itself: they are not handlers (E046).
+const RESERVED_METHODS: &[&str] = &["mount", "render"];
 
 /// `phem:progress={{ save }}`: the element shows the upload progress of a `save` event with files.
 const PROGRESS: &str = "phem:progress";

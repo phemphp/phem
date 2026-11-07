@@ -88,7 +88,7 @@ A class component can have three methods that Phem calls itself, in this order:
 - **`mount()`** (optional): sets the first values from the props and the services. With `#[State]` properties, it runs once, before the first render. Without them, it runs before each render.
 - **`render()`** (required): returns the markup. It only reads the properties, so keep services and the database out of it.
 
-The names `mount` and `render` are reserved: don’t use them for a handler. Give a handler any other name, such as `increment()` above.
+The names `mount` and `render` are reserved: `onClick={{ mount }}` is the compiler error E046. Give a handler any other name, such as `increment()` above.
 
 ## Event handlers run on the server
 

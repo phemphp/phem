@@ -225,7 +225,7 @@ Here’s how `render()` works:
 - **Arrays of markup**: `{{ items }}` prints an array of markup as a list.
 
 > [!NOTE]
-> Phem calls `render()` for you, so you never call it yourself. A class component can also have a constructor, which gets the services, and a `mount()` method, which sets the first values before the first render. `TaskList` doesn’t need them, because its tasks have default values. Don’t name a handler `mount` or `render`: Phem reserves these names. Read [Methods that Phem calls for you](what-is-phem.md#methods-that-phem-calls-for-you) for the details.
+> Phem calls `render()` for you, so you never call it yourself. A class component can also have a constructor, which gets the services, and a `mount()` method, which sets the first values before the first render. `TaskList` doesn’t need them, because its tasks have default values. Don’t name a handler `mount` or `render`: Phem reserves these names, and the compiler reports an error. Read [Methods that Phem calls for you](what-is-phem.md#methods-that-phem-calls-for-you) for the details.
 
 ### Show the task list on the page
 

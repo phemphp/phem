@@ -10,7 +10,7 @@ A class component has up to six parts, and you write them in this order:
 - **State**: `#[State]` properties that the browser keeps between events
 - **Services**: constructor arguments that the container autowires; they’re never props
 - **`mount()`**: optional; it runs only when there’s no state yet, and it loads the data
-- **Handlers**: public methods that change the state
+- **Handlers**: public methods that change the state; a handler can’t be named `mount` or `render` (error E046)
 - **`render()`**: required; it reads only the props, the state and the context
 
 The inputs, the state and the services come first:

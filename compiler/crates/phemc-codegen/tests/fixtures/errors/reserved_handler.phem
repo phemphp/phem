@@ -1,0 +1,8 @@
+<?phem // expect: E046
+use Phem\Attribute\Component;
+#[Component]
+final class Counter {
+    public int $count = 0;
+    public function mount(): void { $this->count = 1; }
+    public function render() { return <button onClick={{ mount }}>{{ count }}</button>; }
+}
