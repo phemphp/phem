@@ -40,7 +40,8 @@ use Symfony\Component\Routing\RouteCollection;
  * rules of the page (`access_control`, the firewall, the host and the condition of the route)
  * apply to them too. Each page route has an event route (`phem_event.<name>`) with the same
  * path and the `POST` method. It comes first, so a page route without methods does not take
- * the events.
+ * the events. A request that it matches has the name of the page route (`_route`), so the
+ * access rules on the route name (`access_control: [{route: ...}]`) apply to the events too.
  *
  * A route value (`{id}`, or a `defaults` key) goes to the #[Path] property with the same name,
  * or to the parameter with the same name of a function page. A route value without one is an
@@ -200,11 +201,13 @@ final class PageLoader extends Loader
                 $routeName .= '.'.$locale;
             }
 
-            // The event route first: it takes the POST requests of the page URL.
+            // The event route first: it takes the POST requests of the page URL. Its `_route` is
+            // the name of the page route, so the access rules of this name apply to it too.
             $event = (clone $route)
                 ->setMethods(['POST'])
                 ->setDefault('_controller', 'phem.controller.event')
-                ->setDefault('_phem_methods', $route->getMethods());
+                ->setDefault('_phem_methods', $route->getMethods())
+                ->setDefault('_canonical_route', $name);
             $routes->add(self::EVENT_ROUTE.'.'.$routeName, $event, $attr->priority ?? 0);
             $routes->add($routeName, $route, $attr->priority ?? 0);
         }

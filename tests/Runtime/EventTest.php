@@ -33,6 +33,16 @@ final class EventTest extends TestCase
         self::assertSame(['tags[]' => ['a', 'b'], 'role' => ['x', 'y'], 'action' => 'delete'], $event->form);
     }
 
+    public function testManyFieldsOfOneNameTakeLinearTime(): void
+    {
+        $start = hrtime(true);
+        $event = Event::fromArray(['type' => 'submit', 'form' => array_fill(0, 100_000, ['tags[]', 'a'])]);
+        $elapsed = (hrtime(true) - $start) / 1e9;
+
+        self::assertCount(100_000, $event->form['tags[]']);
+        self::assertLessThan(1.0, $elapsed, 'a copy of the list for each value takes seconds');
+    }
+
     public function testFilesAreTheFilesOfTheEvent(): void
     {
         $event = Event::fromArray(['type' => 'click'], files: ['photo' => 'x']);

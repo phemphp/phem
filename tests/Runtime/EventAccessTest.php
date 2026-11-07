@@ -39,6 +39,13 @@ final class EventAccessTest extends TestCase
         self::assertSame(403, $this->click('/private/counter', 'App\\Ui\\Access\\PrivateCounterPage', 'increment')->getStatusCode(), 'a valid state for the page does not skip the rule');
     }
 
+    public function testRouteNameRuleOfThePageAppliesToItsEvents(): void
+    {
+        self::assertSame(403, $this->request('GET', '/route-rule')->getStatusCode());
+        self::assertSame(403, $this->request('POST', '/route-rule', 'x=1', ['CONTENT_TYPE' => 'application/x-www-form-urlencoded'])->getStatusCode(), 'a POST without the event header');
+        self::assertSame(403, $this->click('/route-rule', 'App\\Ui\\Access\\RouteRulePage', 'increment')->getStatusCode(), 'an event has the name of the page route');
+    }
+
     public function testControllerAttributeOfThePageAppliesToThePageAndItsEvents(): void
     {
         self::assertSame(403, $this->request('GET', '/denied')->getStatusCode());

@@ -54,6 +54,28 @@ final class DeniedPage
     }
 }
 
+// A page behind a route name rule (`access_control: [{route: ^route_rule$}]`): its events have
+// the name of the page route, so the rule applies to them too.
+#[Page('/route-rule', name: 'route_rule')]
+final class RouteRulePage
+{
+    #[State] public int $count = 0;
+
+    public function increment(): void
+    {
+        ++$this->count;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <button onClick={{ increment }}>{{ count }}</button>
+            </Document>
+        );
+    }
+}
+
 // A Symfony controller attribute on a page without state.
 #[Cache(maxage: 60, public: true)]
 #[Page('/cached')]

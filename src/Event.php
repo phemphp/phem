@@ -91,10 +91,14 @@ final class Event
      */
     public static function fromArray(array $data, ?BrowserEventDispatcher $dispatcher = null, array $files = []): self
     {
-        $form = [];
+        // Append each value to the list of its name: a copy of the list for each value takes
+        // quadratic time for a body with many fields of the same name.
+        $values = [];
         foreach (FormFields::of($data['form'] ?? null) as [$name, $value]) {
-            $form[$name] = \array_key_exists($name, $form) ? [...(array) $form[$name], $value] : $value;
+            $values[$name][] = $value;
         }
+
+        $form = array_map(static fn (array $list): string|array => 1 === \count($list) ? $list[0] : $list, $values);
 
         return new self(
             (string) ($data['type'] ?? ''),

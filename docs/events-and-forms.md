@@ -24,8 +24,17 @@ stops typing for 150 ms before it sends the event (see
 [Debounce and throttle](#debounce-and-throttle)).
 
 An event is a `POST` request to the URL of the page. Thus the access rules of the page apply to
-its events too: the firewall, `access_control`, `#[IsGranted]`. Phem accepts an event only from
-the same origin, so another site cannot send one.
+its events too: the firewall, `access_control`, `#[IsGranted]`. An event has the route name of
+the page (`_route`), so a rule on a route name applies too:
+
+```yaml
+# config/packages/security.yaml
+security:
+    access_control:
+        - { route: '^admin_', roles: ROLE_ADMIN } # the admin pages and their events
+```
+
+Phem accepts an event only from the same origin, so another site cannot send one.
 
 ## Handler arguments
 

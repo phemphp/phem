@@ -148,6 +148,8 @@ final class PathTest extends TestCase
         self::assertSame('/paged', $routes->get('paged')?->getPath());
         self::assertSame(self::NS.'Paged', $routes->get('paged')->getDefault('_phem_page'));
         self::assertSame(['POST'], $routes->get('phem_event.paged')?->getMethods(), 'the event route of the page');
+        self::assertSame('paged', $routes->get('phem_event.paged')->getDefault('_canonical_route'), 'an event has the name of the page route');
+        self::assertSame('paged_i18n', $routes->get('phem_event.paged_i18n.en')?->getDefault('_canonical_route'));
         self::assertSame('/es/paged', $routes->get('paged_i18n.es')?->getPath(), 'a localized path');
         self::assertSame('es', $routes->get('paged_i18n.es')->getDefault('_locale'));
         self::assertSame('/en/paged', $routes->get('phem_event.paged_i18n.en')?->getPath());

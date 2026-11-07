@@ -6,6 +6,14 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
+## Unreleased
+
+- Security: an event has the route name of its page (`_route`), not `phem_event.<name>`. An
+  `access_control` rule on a route name (`route: ^admin_`) now applies to the events of the page
+  and to a `POST` to its URL. Before, a client that the rule denied could send them.
+- Security: `$e->form` takes linear time for many fields of the same name. Before, one small
+  gzip event with many fields of one name used seconds of CPU.
+
 ## 0.3.10 (2026-11-07)
 
 - Error pages: `#[ErrorPage]` on a function of a `.phem` file renders the page of the HTTP

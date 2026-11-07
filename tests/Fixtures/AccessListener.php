@@ -19,15 +19,25 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
  * The access rules of the fixture app: a path rule, as `access_control: [{path: ^/private}]`,
- * and the #[Deny] controller attribute, as `#[IsGranted]`.
+ * a route name rule, as `access_control: [{route: ^route_rule$}]`, and the #[Deny] controller
+ * attribute, as `#[IsGranted]`.
  */
 final class AccessListener
 {
     public function onKernelRequest(RequestEvent $event): void
     {
         // As the firewall: only the main request (the error page is a sub-request of the same path).
-        if ($event->isMainRequest() && str_starts_with($event->getRequest()->getPathInfo(), '/private/')) {
+        if (!$event->isMainRequest()) {
+            return;
+        }
+
+        $request = $event->getRequest();
+        if (str_starts_with($request->getPathInfo(), '/private/')) {
             throw new AccessDeniedHttpException('A private path.');
+        }
+
+        if ('route_rule' === $request->attributes->get('_route')) {
+            throw new AccessDeniedHttpException('A private route name.');
         }
     }
 
