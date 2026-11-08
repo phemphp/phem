@@ -209,6 +209,31 @@ final class ErrorPageTest extends TestCase
         self::assertSame(['error', 'The error page "{page}" failed: {message}', 'App\\Ui\\Errors\\BrokenErrorPage', 'The error page failed.'], [$level, $message, $context['page'], $context['message']]);
     }
 
+    public function testAnErrorPageThatRedirectsThrowsInTheDebugMode(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('The error page "App\\Ui\\Errors\\RedirectErrorPage" returns a RedirectTo, but an error page cannot redirect');
+
+        $this->errors()->request('GET', '/errors/redirect/throw/500');
+    }
+
+    public function testAnErrorPageThatRedirectsGivesTheErrorOfSymfonyInProduction(): void
+    {
+        $logger = new BufferingLogger();
+        $requests = new RequestStack([Request::create('/errors/redirect/nothing')]);
+        $inner = $this->service('phem.error_page_renderer.inner', ErrorRendererInterface::class);
+        $renderer = new ErrorPageRenderer($inner, $this->service('phem.error_pages', ErrorPages::class), $this->service('phem.stateless_page_renderer', StatelessPageRenderer::class), $requests, logger: $logger);
+
+        $error = $renderer->render(new NotFoundHttpException());
+
+        self::assertSame(404, $error->getStatusCode());
+        self::assertStringStartsWith('<!--  (404 Not Found) -->', $error->getAsString(), 'the page of Symfony, not a redirect');
+        [[$level, , $context]] = $logger->cleanLogs();
+        self::assertSame('error', $level);
+        self::assertSame('App\\Ui\\Errors\\RedirectErrorPage', $context['page']);
+        self::assertStringContainsString('an error page cannot redirect', $context['message']);
+    }
+
     public function testWithNoRequestTheErrorPageRendersForTheRootPath(): void
     {
         // As `error:dump` does.

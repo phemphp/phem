@@ -9,7 +9,7 @@ A class component has up to six parts, and you write them in this order:
 - **Inputs**: `#[Prop]` and `#[Context]` properties that the parent sets
 - **State**: `#[State]` properties that the browser keeps between events
 - **Services**: constructor arguments that the container autowires; they’re never props
-- **`mount()`**: optional; it loads the data when there’s no state yet, or before each render when the component has no `#[State]`
+- **`mount()`**: optional; it loads the data when there’s no state yet, or before each render when the component has no `#[State]`. The `mount()` of a page can return a `RedirectTo` (see [Redirect before a page renders](events-and-forms.md#redirect-before-a-page-renders))
 - **Handlers**: public methods that change the state; a handler can’t be named `mount` or `render` (error E046)
 - **`render()`**: required; it reads only the props, the state and the context
 

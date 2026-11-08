@@ -17,6 +17,7 @@ use Phem\Argument\CallableArguments;
 use Phem\Manifest\ComponentDefinition;
 use Phem\Manifest\ComponentKind;
 use Phem\Manifest\Manifest;
+use Phem\RedirectTo;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
@@ -26,7 +27,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
  * services, and the other controller arguments.
  *
  * In an event, the page renders again with the request of the event (`POST`, the same route
- * values).
+ * values). A page that returns a Phem\RedirectTo does not render (see PageRedirect).
  */
 final class FunctionPageRenderer implements ComponentRenderer
 {
@@ -55,6 +56,15 @@ final class FunctionPageRenderer implements ComponentRenderer
             throw new \LogicException(\sprintf('The function page "%s" is not loaded. Run `phemc build` again.', $function));
         }
 
-        return $function(...$this->arguments->of($function, $this->requests?->getCurrentRequest(), null, $fiber->props));
+        $result = $function(...$this->arguments->of($function, $this->requests?->getCurrentRequest(), null, $fiber->props));
+        if ($result instanceof RedirectTo) {
+            if (\in_array($function, $this->manifest->errorPages(), true)) {
+                throw new \LogicException(\sprintf('The error page "%s" returns a RedirectTo, but an error page cannot redirect: it renders for the URL that failed. Return its markup.', $function));
+            }
+
+            throw new PageRedirect($result, $function);
+        }
+
+        return $result;
     }
 }

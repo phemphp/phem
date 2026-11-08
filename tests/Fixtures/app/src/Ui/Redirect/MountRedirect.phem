@@ -1,0 +1,169 @@
+<?phem
+
+namespace App\Ui\Redirect;
+
+use Phem\Attribute\{Component, Page, Path, State};
+use Phem\Node;
+use Phem\RedirectTo;
+
+use function App\Ui\Common\Document;
+use App\Ui\Path\ItemPage;
+use function App\Ui\About\AboutPage;
+
+// A function page that redirects on a GET, with the headers of the redirect.
+#[Page('/verify/{token}')]
+function VerifyPage(string $token): RedirectTo|Node
+{
+    if ('void' === $token) {
+        return (
+            <Document>
+                <p id="void">This link is void.</p>
+            </Document>
+        );
+    }
+
+    return new RedirectTo(AboutPage(...), headers: ['Referrer-Policy' => 'no-referrer']);
+}
+
+// A function page that always redirects: it has no markup.
+#[Page('/away')]
+function AwayPage(): RedirectTo
+{
+    return new RedirectTo(AboutPage(...), ['from' => 'away']);
+}
+
+// A class page whose mount() redirects on a GET: the page does not render.
+#[Page('/guard/{door}')]
+final class GuardPage
+{
+    #[Path] public string $door;
+    #[State] public int $count = 0;
+
+    public function mount(): ?RedirectTo
+    {
+        if ('closed' === $this->door) {
+            return new RedirectTo(ItemPage::class, ['id' => 7]);
+        }
+
+        $this->count = 1;
+
+        return null;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <p id="count">{{ count }}</p>
+            </Document>
+        );
+    }
+}
+
+// A page with no #[State]: its mount() runs in each render, also in the second pass of an event.
+#[Page('/closing')]
+final class ClosingPage
+{
+    private bool $closed = false;
+
+    public function mount(): ?RedirectTo
+    {
+        return $this->closed ? new RedirectTo(AboutPage(...)) : null;
+    }
+
+    public function close(): void
+    {
+        $this->closed = true;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <button id="close" onClick={{ close }}>Close</button>
+            </Document>
+        );
+    }
+}
+
+// A component that is not a page cannot redirect from its mount().
+#[Component]
+final class RedirectingChild
+{
+    public function mount(): RedirectTo
+    {
+        return new RedirectTo(AboutPage(...));
+    }
+
+    public function render(): Node
+    {
+        return <p>Child</p>;
+    }
+}
+
+#[Page('/redirecting-child')]
+function RedirectingChildPage(): Node
+{
+    return (
+        <Document>
+            <RedirectingChild />
+        </Document>
+    );
+}
+
+// A function page that redirects after the handler of a child: the page is not dirty, so it does
+// not render again in the event, and the event does not redirect.
+final class RedirectSwitch
+{
+    public static bool $on = false;
+}
+
+#[Component]
+final class SwitchButton
+{
+    #[State] public int $clicks = 0;
+
+    public function turnOn(): void
+    {
+        ++$this->clicks;
+        RedirectSwitch::$on = true;
+    }
+
+    public function render(): Node
+    {
+        return <button id="switch" onClick={{ turnOn }}>Switch {{ clicks }}</button>;
+    }
+}
+
+#[Page('/switch')]
+function SwitchPage(): RedirectTo|Node
+{
+    if (RedirectSwitch::$on) {
+        return new RedirectTo(AboutPage(...));
+    }
+
+    return (
+        <Document>
+            <SwitchButton />
+        </Document>
+    );
+}
+
+// A handler that returns a RedirectTo with headers.
+#[Page('/go-with-headers')]
+final class GoWithHeadersPage
+{
+    public function leave(): RedirectTo
+    {
+        return new RedirectTo(AboutPage(...), headers: ['X-Leave' => 'yes', 'Cache-Control' => 'no-store']);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <button id="leave" onClick={{ leave }}>Leave</button>
+            </Document>
+        );
+    }
+}

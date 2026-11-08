@@ -16,6 +16,7 @@ namespace Phem\Rendering;
 use Phem\BrowserEventDispatcher;
 use Phem\Event;
 use Phem\Metadata\ComponentMetadata;
+use Phem\Routing\PageUrlGenerator;
 use Phem\State\BoundValues;
 use Phem\State\StateAccessor;
 use Phem\State\StateValidator;
@@ -47,11 +48,18 @@ use Symfony\Component\HttpFoundation\Request;
  * The render from before the handler is the shape that the browser sent (see TreeShape): the
  * tree compares the second pass with it. When the shape does not know a fiber of the paths, or
  * when the handler calls Event::refresh(), the full page renders, in the two passes.
+ *
+ * A page that mounts in each render (no #[State]), or a function page, can return a
+ * Phem\RedirectTo when it renders in an event: the browser visits the URL (see PageRedirect).
+ * The page renders in the first pass, before the handler: a redirect there stops the event, and
+ * the handler does not run. In the second pass, the page renders only when it is dirty (the
+ * handler is a method of the page) or when the full page renders.
  */
 final class EventRenderer
 {
     public function __construct(
         private readonly Renderer $renderer,
+        private readonly PageUrlGenerator $urls,
         private readonly BoundValues $bound = new BoundValues(),
         private readonly StateAccessor $state = new StateAccessor(),
         private readonly InputsComparator $inputs = new InputsComparator(),
@@ -70,6 +78,22 @@ final class EventRenderer
      * @param Request|null            $request    the request that the handlers get (see Phem\Http\EventRequest)
      */
     public function run(Tree $tree, array $handlers, array $bound, BrowserEventDispatcher $dispatcher, \Closure $event, array $stale = [], ?Request $request = null): EventOutcome
+    {
+        try {
+            return $this->runPasses($tree, $handlers, $bound, $dispatcher, $event, $stale, $request);
+        } catch (PageRedirect $e) {
+            // The mount() of the page, or the function page, returned a RedirectTo.
+            return EventOutcome::redirect($this->urls->redirect($e->redirect));
+        }
+    }
+
+    /**
+     * @param list<string>            $handlers
+     * @param array<array-key, mixed> $bound
+     * @param \Closure(): Event       $event
+     * @param list<string>            $stale
+     */
+    private function runPasses(Tree $tree, array $handlers, array $bound, BrowserEventDispatcher $dispatcher, \Closure $event, array $stale, ?Request $request): EventOutcome
     {
         $scoped = $this->firstPass($tree, $handlers, $bound, $stale);
 

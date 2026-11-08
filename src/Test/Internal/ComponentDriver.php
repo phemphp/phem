@@ -57,13 +57,13 @@ final class ComponentDriver implements Driver
         private readonly Renderer $renderer,
         private readonly StateAccessor $accessor,
         private readonly StateCodec $codec,
+        private readonly EventRenderer $events,
         private readonly string $component,
         private readonly array $props = [],
         private readonly ?RequestStack $requests = null,
         private readonly ?ResetInterface $resetter = null,
         private readonly ?SessionInterface $session = null,
         private readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
-        private readonly ?EventRenderer $events = null,
         private readonly UrlQuery $query = new UrlQuery(),
     ) {
         $this->state = new PageState();
@@ -102,8 +102,7 @@ final class ComponentDriver implements Driver
 
             // As the browser sends them: JSON values.
             $bound = json_decode(json_encode((object) $bound, \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR);
-            $events = $this->events ?? new EventRenderer($this->renderer);
-            $outcome = $events->run($tree, $handlers, $bound, $this->dispatcher, fn (): Event => Event::fromArray($event, $this->dispatcher, $request->files->all()), $stale, EventRequest::of($request, $event));
+            $outcome = $this->events->run($tree, $handlers, $bound, $this->dispatcher, fn (): Event => Event::fromArray($event, $this->dispatcher, $request->files->all()), $stale, EventRequest::of($request, $event));
             if ($outcome->reload) {
                 return EventResult::reload();
             }

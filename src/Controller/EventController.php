@@ -66,10 +66,11 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
  * browser events of the handler (see BrowserEventDispatcher). The request has the EventReplay of
  * the event: an #[Async] handler sends it to a worker (see Phem\Async\AsyncMiddleware). The browser
  * also sends the components whose element a push changed: they render again (see EventRenderer).
- * When the handler returns a Phem\RedirectTo or a RedirectResponse, the server answers with its
- * URL, and the browser visits it. When the render of a refresh (an event with no handler, after
- * a push) throws a 401, 403, 404 or 410 HTTP exception (an entity went away), the server answers
- * 409 with `{"reload": true}`: the browser loads the page again, and shows the error page.
+ * When the handler, or the `mount()` of the page, returns a Phem\RedirectTo or a
+ * RedirectResponse, the server answers with its URL, its headers and its cookies, and the browser
+ * visits the URL. When the render of a refresh (an event with no handler, after a push) throws a
+ * 401, 403, 404 or 410 HTTP exception (an entity went away), the server answers 409 with
+ * `{"reload": true}`: the browser loads the page again, and shows the error page.
  *
  * An event with the files of a form is `multipart/form-data` (see EventBody). The handler
  * gets them as UploadedFile objects (see Event::$files). PHP removes a file that the handler does
@@ -91,6 +92,13 @@ final class EventController
 
     /** The statuses of a render that load the page again after a refresh: the page cannot render for this user now. */
     private const GONE = [401, 403, 404, 410];
+
+    /**
+     * The headers of a redirect response that are not for the answer of the event. A
+     * RedirectResponse always sets its own Content-Type. Its Cache-Control goes with the answer:
+     * the default one is the same as the default of the answer.
+     */
+    private const REDIRECT_HEADERS = ['location', 'content-type', 'date'];
 
     public function __construct(
         private readonly EventRenderer $events,
@@ -207,7 +215,7 @@ final class EventController
         if (null !== $outcome->redirect) {
             // The browser visits the URL: the page does not render again, and the browser
             // events of the handler are dropped (the new page has other listeners).
-            return self::json(['redirect' => self::redirectUrl($outcome->redirect)]);
+            return self::redirect($outcome->redirect);
         }
 
         // A new access token for the hub, before the old one expires (see Subscription).
@@ -304,6 +312,26 @@ final class EventController
         $host = ($url['host'] ?? '').(isset($url['port']) ? ':'.$url['port'] : '');
 
         return '' !== $host && 0 === strcasecmp($host, $request->getHttpHost());
+    }
+
+    /**
+     * The answer of a redirect: its URL, with the headers and the cookies of the redirect response
+     * (for example the headers of a Phem\RedirectTo).
+     */
+    private static function redirect(RedirectResponse $response): JsonResponse
+    {
+        $json = self::json(['redirect' => self::redirectUrl($response)]);
+        foreach ($response->headers->allPreserveCaseWithoutCookies() as $name => $values) {
+            if (!\in_array(strtolower($name), self::REDIRECT_HEADERS, true)) {
+                $json->headers->set($name, $values);
+            }
+        }
+
+        foreach ($response->headers->getCookies() as $cookie) {
+            $json->headers->setCookie($cookie);
+        }
+
+        return $json;
     }
 
     /**

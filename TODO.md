@@ -189,25 +189,6 @@ $this->streams->toPage(StaffOrderPage::class, ['order' => ['id' => $order->id]])
   `toPage(StaffOrderPage::class, ['order' => $order])`.
 - **Open questions:** see "Entity broadcasts" in the design discussions.
 
-### [ ] Redirect from `mount()` on a GET — P2
-
-The app has a plain controller for its verification link. Its comment says: "a controller, not
-a Phem page: a page cannot redirect on GET".
-
-- **Best peer:** LV `push_navigate` in `mount`, LW `redirect()` in `mount()`.
-- **Proposal:** `mount()` of a page, or a function page, can return a `RedirectTo`. The GET
-  ends with a 302. `RedirectTo` gets a `headers` argument:
-
-  ```php
-  #[Page('/v/{token}', name: 'verify_link', requirements: ['token' => Customers::TOKEN_PATTERN])]
-  function VerifyLink(string $token, VerifyLinks $links): RedirectTo
-  {
-      return $links->verify($token)
-          ? new RedirectTo(AccountPage(...), headers: ['Referrer-Policy' => 'no-referrer'])
-          : new RedirectTo(LinkVoidPage(...));
-  }
-  ```
-
 ### [ ] Enum cases and page links in markup — P3
 
 The markup of the app compares enums as strings (`{% if status.value == 'cancelled' %}`), and it

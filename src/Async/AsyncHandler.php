@@ -18,6 +18,7 @@ use Phem\Handler\HandlerInvoker;
 use Phem\Http\EventRequest;
 use Phem\Path\PathResolver;
 use Phem\Rendering\EventRenderer;
+use Phem\Rendering\PageRedirect;
 use Phem\Rendering\Renderer;
 use Phem\Rendering\Tree;
 use Phem\State\PageState;
@@ -88,7 +89,16 @@ final class AsyncHandler
         $this->requests?->push($request);
 
         try {
-            $handler = $this->events->handlerOf($tree, $message->handler, $message->bound);
+            try {
+                $handler = $this->events->handlerOf($tree, $message->handler, $message->bound);
+            } catch (PageRedirect) {
+                // The page redirects now (for example its link is not valid any more): a retry
+                // does not help.
+                $this->logger?->warning('The page "{page}" redirects now: the async work of its handler "{handler}" does not run.', ['page' => $message->page, 'handler' => $message->handler]);
+
+                return;
+            }
+
             if (null === $handler) {
                 // The page changed since the event (a deploy): a retry does not help.
                 $this->logger?->warning('The page "{page}" has no handler "{handler}" any more: its async work does not run.', ['page' => $message->page, 'handler' => $message->handler]);

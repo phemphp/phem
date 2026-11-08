@@ -294,6 +294,14 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->assertSelectorExists('#item');
     }
 
+    public function testVisitFollowsTheRedirectOfAPageMount(): void
+    {
+        $this->visit('/guard/closed')
+            ->assertRedirect('/items/7')
+            ->followRedirect()
+            ->assertSelectorExists('#item');
+    }
+
     public function testVisitFollowsTheRedirectOfAHandler(): void
     {
         $this->visit('/leave')

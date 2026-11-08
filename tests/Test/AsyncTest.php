@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Test;
 
+use App\Ui\Async\AsyncRedirectSwitch;
 use Phem\Async\AsyncHandler;
 use Phem\Async\AsyncHandlerMessage;
 use Phem\Async\MemoryBus;
@@ -100,6 +101,22 @@ final class AsyncTest extends KernelTestCase
 
         $this->expectException(UnrecoverableMessageHandlingException::class);
         $handler($changed);
+    }
+
+    public function testTheWorkDoesNotRunWhenThePageRedirectsInTheWorker(): void
+    {
+        $page = $this->visit('/async-redirect')->click('#start')->assertSelectorTextContains('#start', 'Start 1');
+
+        // The page redirects now (for example its link is not valid any more).
+        AsyncRedirectSwitch::$on = true;
+
+        try {
+            $page->settle();
+        } finally {
+            AsyncRedirectSwitch::$on = false;
+        }
+
+        self::assertFalse(AsyncRedirectSwitch::$ran, 'the work does not run');
     }
 
     public function testSettleFailsWhenNoWorkWaits(): void

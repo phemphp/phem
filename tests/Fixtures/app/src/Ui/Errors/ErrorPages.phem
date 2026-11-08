@@ -4,6 +4,7 @@ namespace App\Ui\Errors;
 
 use Phem\Attribute\{Component, ErrorPage, Page};
 use Phem\Node;
+use Phem\RedirectTo;
 use Phem\Suspense;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\ErrorHandler\Exception\FlattenException;
@@ -11,6 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
+use function App\Ui\About\AboutPage;
 use function App\Ui\Common\Document;
 
 // The tests of the error pages (see Phem\Http\ErrorPageRenderer). They are in the /errors
@@ -22,6 +24,7 @@ use function App\Ui\Common\Document;
 #[Page('/errors/admin/throw/{status}', name: 'errors_admin_throw')]
 #[Page('/errors/broken/throw/{status}', name: 'errors_broken_throw')]
 #[Page('/errors/suspense/throw/{status}', name: 'errors_suspense_throw')]
+#[Page('/errors/redirect/throw/{status}', name: 'errors_redirect_throw')]
 function ThrowPage(int $status): Node
 {
     if (429 === $status) {
@@ -87,6 +90,13 @@ function BrokenErrorPage(): Node
     throw new \RuntimeException('The error page failed.');
 
     return <Document />;
+}
+
+// An error page that returns a RedirectTo: an error page cannot redirect.
+#[ErrorPage(path: '/errors/redirect')]
+function RedirectErrorPage(): RedirectTo
+{
+    return new RedirectTo(AboutPage(...));
 }
 
 #[Component]

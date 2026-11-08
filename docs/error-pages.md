@@ -183,7 +183,7 @@ Controller attributes such as `#[IsGranted]` and `#[Cache]` don’t apply to an 
 
 An error page renders for a URL that failed, so some page features aren’t available. Keep these rules in mind:
 
-- **Static HTML only**: An error page has no state and no handlers, because its URL is the URL that failed and an event can’t work there. Links, HTML forms, and Stimulus controllers (a toast, for example) work. `<Suspense>` boundaries render inline, with no fallback and no streaming. `#[Broadcast]` on an error page is E053.
+- **Static HTML only**: An error page has no state and no handlers, because its URL is the URL that failed and an event can’t work there. It can’t return a `RedirectTo` either: it throws a `LogicException`. Links, HTML forms, and Stimulus controllers (a toast, for example) work. `<Suspense>` boundaries render inline, with no fallback and no streaming. `#[Broadcast]` on an error page is E053.
 - **Document choice**: Render the app’s document (with its `<Root>`) or a plain HTML document such as `<html><body><h1>Down</h1></body></html>`. A plain document doesn’t need the services of your document component, which helps for a 500 when the database is down.
 - **No user on unrouted URLs**: On a URL with no route, the Symfony firewall didn’t run. `app.user` is null, `is_granted()` returns false, and `logout_path()` throws. A 404 or 403 thrown from a page still has the user.
 - **No database reads**: A 500 can come from the database. Don’t read it in an error page or in its document component, for example to show the alerts of a signed-in user.

@@ -53,6 +53,6 @@ final class PageUrlGenerator
     /** The redirect response of a RedirectTo. */
     public function redirect(RedirectTo $redirect): RedirectResponse
     {
-        return new RedirectResponse($this->generate($redirect->page, $redirect->values));
+        return new RedirectResponse($this->generate($redirect->page, $redirect->values), headers: $redirect->headers);
     }
 }

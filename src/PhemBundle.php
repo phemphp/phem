@@ -259,7 +259,7 @@ final class PhemBundle extends AbstractBundle
         }
 
         if (!$config['suspense_stream']) {
-            $container->services()->get('phem.page_renderer')->arg(8, null);
+            $container->services()->get('phem.page_renderer')->arg(9, null);
             $container->services()->remove('phem.page_stream');
         }
 
@@ -342,7 +342,7 @@ final class PhemBundle extends AbstractBundle
             $container->services()->set('phem.skipped_render_check', SkippedRenderCheck::class)
                 ->args([service('phem.renderer'), service('logger')->nullOnInvalid()]);
             $container->services()->get('phem.event_renderer')
-                ->arg(5, service('phem.skipped_render_check'));
+                ->arg(6, service('phem.skipped_render_check'));
 
             // The Phem panel of the Symfony profiler (see PhemDataCollector). The data collector
             // is used only when the profiler is enabled (framework.profiler).

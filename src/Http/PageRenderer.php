@@ -15,11 +15,13 @@ namespace Phem\Http;
 
 use Phem\Metadata\ComponentMetadata;
 use Phem\Path\PathResolver;
+use Phem\Rendering\PageRedirect;
 use Phem\Rendering\Renderer;
 use Phem\Rendering\RootElement;
 use Phem\Rendering\SuspenseLoad;
 use Phem\Rendering\Tree;
 use Phem\Root;
+use Phem\Routing\PageUrlGenerator;
 use Phem\State\StateAccessor;
 use Phem\State\StateCache;
 use Phem\State\StateCodec;
@@ -58,6 +60,7 @@ final class PageRenderer
     public function __construct(
         private readonly Renderer $renderer,
         private readonly StateCodec $codec,
+        private readonly PageUrlGenerator $urls,
         private readonly ComponentMetadata $metadata = new ComponentMetadata(),
         private readonly PathResolver $paths = new PathResolver(),
         private readonly StateAccessor $state = new StateAccessor(),
@@ -71,7 +74,8 @@ final class PageRenderer
 
     /**
      * The response of the page: its HTML with the `<!DOCTYPE html>`, streamed when it has
-     * `<Suspense>` boundaries to load (see the class).
+     * `<Suspense>` boundaries to load (see the class). A 302 when the `mount()` of the page, or
+     * the function page, returns a Phem\RedirectTo.
      *
      * @throws NotFoundHttpException when a #[Path] prop gets no value (for example no entity)
      */
@@ -86,7 +90,13 @@ final class PageRenderer
         }
 
         $tree = new Tree($page, props: $props, values: $values, query: $request->query->all(), suspense: $this->suspenseLoad($request));
-        $html = $this->renderer->render($tree);
+
+        try {
+            $html = $this->renderer->render($tree);
+        } catch (PageRedirect $e) {
+            return $this->urls->redirect($e->redirect);
+        }
+
         if (null === $tree->rootFiber) {
             throw new \LogicException(\sprintf('The page "%s" renders no <Root>: render it in a document component with `<Root>{{ children }}</Root>` (see "%s").', $page, Root::class));
         }

@@ -5,6 +5,7 @@ namespace App\Ui\Redirect;
 use Phem\Attribute\{Page, State};
 use Phem\Node;
 use Phem\RedirectTo;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 use function App\Ui\Common\Document;
@@ -21,7 +22,10 @@ final class LeavePage
     {
         ++$this->count;
 
-        return new RedirectResponse('/about');
+        $response = new RedirectResponse('/about');
+        $response->headers->setCookie(Cookie::create('left', '1'));
+
+        return $response;
     }
 
     public function render(): Node

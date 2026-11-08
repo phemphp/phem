@@ -344,7 +344,86 @@ public function delete(): RedirectTo
 }
 ```
 
-Name a class page by its class, and a function page by its callable, such as `ScientistPage(...)` with `use function`. The second argument holds the route values, and any other value goes into the query string. For a URL that isn’t a page, return a Symfony `RedirectResponse`.
+Name a class page by its class, and a function page by its callable, such as `ScientistPage(...)` with `use function`. The second argument holds the route values, and any other value goes into the query string. The `headers` argument adds headers to the response. For a URL that isn’t a page, return a Symfony `RedirectResponse`.
+
+In an event, the headers and the cookies of the redirect go with the answer of the event. The browser then visits the new page with a new request.
+
+## Redirect before a page renders
+
+A page can redirect when the browser opens it, for example after it checks a link token. Return a `RedirectTo` from a function page, or from the `mount()` of a class page. The page doesn’t render, and the response is a `302`:
+
+```php
+use Phem\Attribute\Page;
+use Phem\RedirectTo;
+
+use function App\Ui\Account\AccountPage;
+use function App\Ui\Account\LinkVoidPage;
+
+#[Page('/v/{token}', requirements: ['token' => Customers::TOKEN_PATTERN])]
+function VerifyLink(string $token, VerifyLinks $links): RedirectTo
+{
+    return $links->verify($token)
+        ? new RedirectTo(AccountPage(...), headers: ['Referrer-Policy' => 'no-referrer'])
+        : new RedirectTo(LinkVoidPage(...));
+}
+```
+
+`GET /v/abc123` with a valid token gets this response, with no HTML:
+
+```http
+HTTP/1.1 302 Found
+Location: /account
+Referrer-Policy: no-referrer
+```
+
+A function page can return a `RedirectTo` or markup. Declare the return type as `RedirectTo|Node`. In a class page, `mount()` returns `?RedirectTo`, and `null` renders the page:
+
+```php
+use App\Entity\Order;
+use Phem\Attribute\{Page, Path, State};
+use Phem\Node;
+use Phem\RedirectTo;
+
+use function App\Ui\Common\Document;
+
+#[Page('/orders/{id:order}')]
+final class OrderPage
+{
+    #[Path] public Order $order;
+    #[State] public string $note = '';
+
+    public function mount(): ?RedirectTo
+    {
+        if ($this->order->isArchived()) {
+            return new RedirectTo(ArchivedOrderPage::class, ['id' => $this->order->id]);
+        }
+
+        $this->note = $this->order->note;
+
+        return null;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <h1>Order {{ order.id }}</h1>
+                <p>{{ note }}</p>
+            </Document>
+        );
+    }
+}
+```
+
+`ArchivedOrderPage` is another class page in the same namespace.
+
+In an event, a page redirects only when it renders, and then the browser visits the URL, as for a handler that redirects:
+
+- A page with `#[State]` runs `mount()` only on the first render, so it doesn’t redirect in an event.
+- A function page, or a page with no `#[State]`, renders before the handler. If it returns a `RedirectTo` then, the handler doesn’t run.
+- After the handler, the page renders again only when the handler is a method of the page, or when the handler calls `$e->refresh()`. A handler of a child component doesn’t make the page redirect.
+
+Only a page can redirect from `mount()`. A component that isn’t a page throws a `LogicException`, so return the `RedirectTo` from a handler instead.
 
 ## Send events to your JavaScript
 

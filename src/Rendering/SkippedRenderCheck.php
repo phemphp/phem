@@ -49,7 +49,15 @@ final class SkippedRenderCheck
     public function check(Tree $tree, PageState $state): array
     {
         $full = new Tree($tree->page, $state->fibers, $tree->props, $tree->values);
-        $this->renderer->render($full);
+
+        try {
+            $this->renderer->render($full);
+        } catch (PageRedirect) {
+            // The page redirects now, but the event did not render it: the event does not
+            // redirect, as with no check. There is no HTML to compare.
+            return [];
+        }
+
         $now = TreeShape::of($full);
 
         $warnings = [];

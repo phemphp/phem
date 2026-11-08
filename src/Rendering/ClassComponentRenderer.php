@@ -13,10 +13,12 @@ declare(strict_types=1);
 
 namespace Phem\Rendering;
 
+use Phem\Attribute\Page;
 use Phem\Binding\PropBinder;
 use Phem\Manifest\ComponentDefinition;
 use Phem\Manifest\ComponentKind;
 use Phem\Metadata\ComponentMetadata;
+use Phem\RedirectTo;
 use Phem\State\StateAccessor;
 use Phem\State\UrlQuery;
 
@@ -25,8 +27,9 @@ use Phem\State\UrlQuery;
  * instance, and the props and the contexts go into it (see ContextResolver). A Validation property
  * gets a new Validation. Then the state that the browser sent back is restored;
  * without one, `mount()` initializes it, and the query string of the page request sets the
- * #[Url] properties (see Phem\Attribute\Url). Each render writes the props and the contexts again
- * and calls `render()`.
+ * #[Url] properties (see Phem\Attribute\Url). The `mount()` of a page can return a
+ * Phem\RedirectTo: the page does not render (see PageRedirect). Each render writes the props and
+ * the contexts again and calls `render()`.
  * When a readonly prop changes, a new instance replaces the old one and keeps its state. A
  * readonly slot or markup counts as a change in each render.
  */
@@ -59,10 +62,7 @@ final class ClassComponentRenderer implements ComponentRenderer
             if (null !== $fiber->restored) {
                 $this->state->restore($component, $fiber->restored);
             } else {
-                if (method_exists($component, 'mount')) {
-                    $component->mount();
-                }
-
+                $this->mount($component, $fiber);
                 $this->url->read($component, $fiber->query);
             }
         } elseif ($this->props->changesReadonly($component, $fiber->props, $slots)) {
@@ -74,8 +74,8 @@ final class ClassComponentRenderer implements ComponentRenderer
             $this->contexts->assign($component, $fiber);
             $this->state->initialize($component);
 
-            if (null === $fiber->restored && method_exists($component, 'mount')) {
-                $component->mount();
+            if (null === $fiber->restored) {
+                $this->mount($component, $fiber);
             }
 
             $this->state->restore($component, $state);
@@ -83,10 +83,10 @@ final class ClassComponentRenderer implements ComponentRenderer
             $this->props->assign($component, $fiber->props, $slots);
             $this->contexts->assign($component, $fiber);
 
-            if ($this->metadata->mountsEachRender($fiber->fqcn) && method_exists($component, 'mount')) {
+            if ($this->metadata->mountsEachRender($fiber->fqcn)) {
                 // No state in the browser: mount() reads its data again in each render (for
                 // example after a handler of the same event changed it).
-                $component->mount();
+                $this->mount($component, $fiber);
             }
         }
 
@@ -95,5 +95,29 @@ final class ClassComponentRenderer implements ComponentRenderer
         }
 
         return $component->render();
+    }
+
+    /**
+     * Calls `mount()`. The `mount()` of a page can return a RedirectTo: the render of the page
+     * stops (see PageRedirect).
+     *
+     * @throws PageRedirect when the `mount()` of the page returns a RedirectTo
+     */
+    private function mount(object $component, Fiber $fiber): void
+    {
+        if (!method_exists($component, 'mount')) {
+            return;
+        }
+
+        $result = $component->mount();
+        if (!$result instanceof RedirectTo) {
+            return;
+        }
+
+        if ([] === new \ReflectionClass($component)->getAttributes(Page::class)) {
+            throw new \LogicException(\sprintf('The mount() of "%s" returns a RedirectTo, but the component is not a page. Only the mount() of a page can redirect: return the RedirectTo from an event handler, or from the mount() of the page.', $fiber->fqcn));
+        }
+
+        throw new PageRedirect($result, $fiber->fqcn);
     }
 }

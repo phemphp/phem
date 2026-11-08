@@ -8,6 +8,15 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Redirect before a page renders: a function page, or the `mount()` of a class page, can
+  return a `RedirectTo`. The GET of the page ends with a 302, and the page does not render
+  (`function VerifyLink(string $token): RedirectTo`). A function page, or a page with no
+  `#[State]`, can also redirect in an event. The `mount()` of a component that is not a page
+  throws a `LogicException`.
+- `RedirectTo` gets a `headers` argument: the headers of the redirect response
+  (`new RedirectTo(AccountPage(...), headers: ['Referrer-Policy' => 'no-referrer'])`).
+- Fix: the answer of an event that redirects drops the headers and the cookies of the redirect
+  response no more. A handler that returns a `RedirectResponse` with a cookie now sets it.
 - Typed form data in a handler: `#[MapForm]` on a parameter maps the form fields of the event
   to an object (`addClosed(#[MapForm] ClosedDates $dates)`). The Serializer converts the
   strings to the types of the properties, and the Validator checks the object. When it is not

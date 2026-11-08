@@ -96,13 +96,13 @@ trait InteractsWithPhem
             $renderer,
             $accessor,
             $codec,
+            $events,
             ltrim($component, '\\'),
             $props,
             $requests instanceof RequestStack ? $requests : null,
             $resetter instanceof ResetInterface ? $resetter : null,
             $sessions instanceof SessionFactoryInterface ? $sessions->createSession() : null,
             $dispatcher,
-            $events,
             new UrlQuery($metadata),
         ));
     }

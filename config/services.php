@@ -331,6 +331,7 @@ return static function (ContainerConfigurator $container): void {
             ->args([
                 service('phem.renderer'),
                 service('phem.state_codec'),
+                service('phem.page_url_generator'),
                 service('phem.metadata'),
                 service('phem.path_resolver'),
                 service('phem.state_accessor'),
@@ -372,6 +373,7 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.event_renderer', EventRenderer::class)
             ->args([
                 service('phem.renderer'),
+                service('phem.page_url_generator'),
                 service('phem.bound_values'),
                 service('phem.state_accessor'),
                 service('phem.inputs_comparator'),

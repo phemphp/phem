@@ -321,7 +321,7 @@ function AboutPage(): Node
 
 `#[Page]` extends the Symfony `#[Route]` attribute, so it takes the same options: `name`, `methods`, `requirements`, `defaults`, `host` and the others. Repeat it to give a page more than one URL. With no `name`, the route name comes from the class: `App\Ui\Example\CounterPage` becomes `app_ui_example_counterpage`. On a function, use `#[Page]`, not `#[Route]` (E052).
 
-The parameters of a function page get the same arguments as a Symfony controller: route values, the `Request`, services, `#[CurrentUser]` and the other value resolvers.
+The parameters of a function page get the same arguments as a Symfony controller: route values, the `Request`, services, `#[CurrentUser]` and the other value resolvers. A function page returns its markup, or a `RedirectTo` to send the browser to another page (see [Redirect before a page renders](events-and-forms.md#redirect-before-a-page-renders)).
 
 ### The document of the pages
 
