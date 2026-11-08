@@ -17,6 +17,7 @@ final class Filters
     #[State] public string $notes = '';
     #[State] public array $range = ['min' => 0, 'max' => 100, 'unit' => ['eur']];
     #[State] public array $rows = [['name' => 'Ada'], ['name' => 'Eve']];
+    #[State] public ?FilterDraft $draft = null;
 
     public function search(): void
     {
@@ -52,6 +53,8 @@ final class Filters
                     <input key={{ i }} phem:bind={{ rows[i].name }} />
                 {% endfor %}
                 <textarea phem:bind={{ rows.0['name'] }}></textarea>
+                <input phem:bind={{ draft.name }} />
+                <input type="date" phem:bind={{ draft.period.from }} />
                 <input type="file" name="photo" />
                 <progress phem:progress={{ search }} max="100" />
             </form>

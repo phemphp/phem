@@ -683,8 +683,8 @@ impl<'a> Lowerer<'a> {
 
     /// `phem:bind={{ query }}` on an `<input>`, a `<textarea>` or a `<select>`: the name of a
     /// #[State] property of the class, with a type that takes the value of the field (E033). Or a
-    /// path in an array property: `filters.status`, `rows[key].name`. Or a `Bound` prop: the
-    /// property of a parent component.
+    /// path in an array or an object property: `filters.status`, `rows[key].name`, `draft.name`.
+    /// Or a `Bound` prop: the property of a parent component.
     fn bind(&mut self, e: &Element) -> Option<BoundField> {
         let mut found = None;
         let mut live = None;
@@ -863,9 +863,9 @@ impl<'a> Lowerer<'a> {
                     Some(format!("add `#[State]` to `${root}`: the browser keeps only the state"));
                 return None;
             }
-            Some(p) if !path.is_empty() && !FieldValue::List.accepts(&p.ty) => {
-                self.error(code, format!("a path needs an array property, but `${root}` is `{}`", p.ty.trim()), x.span).help =
-                    Some(format!("use the property itself (`{d}={{{{ {root} }}}}`), or make it an `array`"));
+            Some(p) if !path.is_empty() && !takes_path(&p.ty) => {
+                self.error(code, format!("a path needs an array or an object property, but `${root}` is `{}`", p.ty.trim()), x.span).help =
+                    Some(format!("use the property itself (`{d}={{{{ {root} }}}}`), or make it an `array` or a draft class"));
                 return None;
             }
             None if !class.open => {
@@ -1572,6 +1572,17 @@ impl FieldValue {
                 }
         })
     }
+}
+
+/// Whether a PHP property type takes a bound path: an array (`filters.status`), or an object of
+/// a class (`draft.name`, see Phem\State\StateObjects). phemc does not see the class, so the
+/// server checks the names of the path. No type and `mixed` take a path.
+fn takes_path(ty: &str) -> bool {
+    FieldValue::List.accepts(ty)
+        || ty.split('|').any(|t| {
+            let t = t.trim().trim_matches(|c| c == '(' || c == ')').trim_start_matches('?').trim();
+            !t.is_empty() && !phemc_analyze::is_builtin_type(t)
+        })
 }
 
 /// A segment of a bound path (see `bind_path()`).

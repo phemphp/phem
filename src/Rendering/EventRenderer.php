@@ -19,6 +19,7 @@ use Phem\Metadata\ComponentMetadata;
 use Phem\Routing\PageUrlGenerator;
 use Phem\State\BoundValues;
 use Phem\State\StateAccessor;
+use Phem\State\StateCopies;
 use Phem\State\StateValidator;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -29,9 +30,10 @@ use Symfony\Component\HttpFoundation\Request;
  * 1. The first pass renders only the fibers on the paths from the page to the fiber of the
  *    handler, and the subtrees of the components of the bound values (see PathScope). It gives
  *    the handler and the bound properties.
- * 2. The bound values go into their #[State] properties, and the handler runs. The components
- *    with a Validation property touch the changed fields before the handler, and validate after
- *    it (see StateValidator).
+ * 2. The bound values go into their #[State] properties, and the handler runs. A #[State]
+ *    object that changed in place becomes a copy (see StateCopies). The components with a
+ *    Validation property touch the changed fields before the handler, and validate after it
+ *    (see StateValidator).
  * 3. The second pass renders the dirty fibers and their subtrees, and keeps a child that cannot
  *    change (see UpdateScope). A dirty fiber is the owner of the handler (the `$this` of the
  *    handler closure, or the fiber that registered it), or a fiber whose state changed.
@@ -66,6 +68,7 @@ final class EventRenderer
         private readonly ComponentMetadata $metadata = new ComponentMetadata(),
         private readonly ?SkippedRenderCheck $check = null,
         private readonly StateValidator $validator = new StateValidator(),
+        private readonly StateCopies $copies = new StateCopies(),
     ) {
     }
 
@@ -109,6 +112,8 @@ final class EventRenderer
 
         $before = $this->states($tree);
 
+        $objects = $this->copies->objects($tree);
+
         // After the first pass, as the page in the browser was: the second pass shows the new
         // values as a change.
         $touched = $this->applyBound($tree, $bound);
@@ -130,6 +135,8 @@ final class EventRenderer
         }
 
         $this->settle($tree, $before, $touched);
+        // The second pass sees an object that changed in place as another object.
+        $this->copies->renew($tree, $objects, $before);
 
         if ($refresh) {
             $this->renderer->render($tree);

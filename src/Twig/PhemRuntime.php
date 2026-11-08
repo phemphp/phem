@@ -158,7 +158,7 @@ final class PhemRuntime implements RuntimeExtensionInterface
                     $out[] = 'checked';
                 }
             } else {
-                $out[] = \sprintf('value="%s"', Attributes::e(Attributes::bindValue($value)));
+                $out[] = \sprintf('value="%s"', Attributes::e(Attributes::bindValue($value, $type)));
             }
         }
 

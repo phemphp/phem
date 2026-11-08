@@ -135,17 +135,27 @@ final class Attributes
 
     /**
      * The text of a bound value in a form field (`phem:bind`): a string, a number, the value of a
-     * backed enum, or '' for null. A bool is '1' or ''.
+     * backed enum, or '' for null. A bool is '1' or ''. A date has the format of the `type` of
+     * the input, in the timezone of the date: `Y-m-d` for `date`, `Y-m-d\TH:i` for `datetime-local`,
+     * `H:i` for `time`, `Y-m` for `month`, `o-\WW` for `week`, and ATOM for another type.
      */
-    public static function bindValue(mixed $value): string
+    public static function bindValue(mixed $value, mixed $type = null): string
     {
         return match (true) {
             null === $value => '',
-            $value instanceof Bound => self::bindValue($value->value),
+            $value instanceof Bound => self::bindValue($value->value, $type),
             $value instanceof \BackedEnum => (string) $value->value,
+            $value instanceof \DateTimeInterface => $value->format(match (\is_string($type) ? strtolower($type) : null) {
+                'date' => 'Y-m-d',
+                'datetime-local' => 'Y-m-d\\TH:i',
+                'time' => 'H:i',
+                'month' => 'Y-m',
+                'week' => 'o-\\WW',
+                default => \DateTimeInterface::ATOM,
+            }),
             \is_scalar($value) => (string) $value,
             $value instanceof \Stringable => (string) $value,
-            default => throw new \InvalidArgumentException(\sprintf('A bound field (`phem:bind`) shows a string, a number or a backed enum, "%s" given.', get_debug_type($value))),
+            default => throw new \InvalidArgumentException(\sprintf('A bound field (`phem:bind`) shows a string, a number, a backed enum or a date, "%s" given.', get_debug_type($value))),
         };
     }
 

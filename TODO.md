@@ -21,8 +21,6 @@ Talk about each item before its implementation. The open questions are a start, 
 
 - [ ] **Streams** (section 1). The items of a stream are not in the state. How does a later
       event render the list, and how does the "before/after" comparison see it?
-- [ ] **Objects in `#[State]`** (section 3). How does the signed state keep an object, and which
-      classes can it hold? How does `phem:bind={{ draft.name }}` set a property of the object?
 - [ ] **Refresh after a handler** (section 3). An explicit `#[Refresh]`, or an automatic refresh
       from the Doctrine unit of work? How does Phem find the components that show a changed
       entity?
@@ -81,50 +79,6 @@ Flex does not enable the bundle and does not add the first page or the `phemc` w
 
 These items come from a review of a real app (a shop with a customer side and a staff side, about
 5,700 lines of `.phem`) on 2026-11-08. Each item removes code that the app repeats.
-
-### [ ] Objects in `#[State]` — P2
-
-The state holds only JSON values and backed enums. A form for an entity needs one flat
-property for each field: the product form of the app has 11. `mount()` copies 9 entity fields one
-by one, and `save()` gives them back in a call with 9 arguments:
-
-```php
-#[State] public string $name = '';
-#[State] public ?int $categoryId = null;
-// … 7 more
-
-public function mount(): void
-{
-    $this->name = $p->name;
-    $this->categoryId = $p->category->id;
-    // … 7 more
-}
-```
-
-- **Best peer:** LW form objects, Blazor `EditForm Model`.
-- **Proposal:** a `#[State]` property can hold an object of JSON values and backed enums (a
-  draft). The Serializer encodes it in the state. `phem:bind` and `Validation` already use paths:
-
-  ```php
-  #[State, Assert\Valid] public ProductDraft $draft;
-
-  public function mount(): void
-  {
-      $this->draft = ProductDraft::of($this->product);
-  }
-
-  #[Validated(groups: ['basics', 'details'])]
-  public function save(): void
-  {
-      $this->product->apply($this->draft);
-  }
-  ```
-
-  ```php
-  <input phem:bind={{ draft.name }} />
-  ```
-
-- **Open questions:** see "Objects in `#[State]`" in the design discussions.
 
 ### [ ] Toast messages from a handler — P3
 

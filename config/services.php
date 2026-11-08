@@ -83,8 +83,13 @@ use Phem\State\BoundValues;
 use Phem\State\StateAccessor;
 use Phem\State\StateCache;
 use Phem\State\StateCodec;
+use Phem\State\StateCopies;
+use Phem\State\StateObjects;
 use Phem\State\StateSizeLimit;
 use Phem\State\StateValidator;
+use Phem\State\Type\BackedEnumType;
+use Phem\State\Type\ObjectType;
+use Phem\State\Type\StateValueType;
 use Phem\State\UrlQuery;
 use Phem\Stream\BroadcastKeys;
 use Phem\Stream\FrankenPhpPublisher;
@@ -120,10 +125,20 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.context_metadata', ContextMetadata::class)
         ->set('phem.context_resolver', ContextResolver::class)
             ->args([service('phem.context_metadata')])
+        ->set('phem.state_objects', StateObjects::class)
+            ->args([service('serializer')->nullOnInvalid(), service('phem.object_identifier')->nullOnInvalid()])
+        // The types of the #[State] properties (see StateType): the first that supports a type keeps its values.
+        ->set('phem.state_type.state_value', StateValueType::class)
+            ->tag('phem.state_type', ['priority' => 20])
+        ->set('phem.state_type.backed_enum', BackedEnumType::class)
+            ->tag('phem.state_type', ['priority' => 10])
+        ->set('phem.state_type.object', ObjectType::class)
+            ->args([service('phem.state_objects')])
+            ->tag('phem.state_type', ['priority' => -100])
         ->set('phem.state_accessor', StateAccessor::class)
-            ->args([service('phem.metadata')])
+            ->args([service('phem.metadata'), tagged_iterator('phem.state_type')])
         ->set('phem.bound_values', BoundValues::class)
-            ->args([service('phem.metadata')])
+            ->args([service('phem.metadata'), service('phem.state_objects')])
         ->set('phem.url_query', UrlQuery::class)
             ->args([service('phem.metadata')])
         ->set('phem.state_codec', StateCodec::class)
@@ -171,7 +186,7 @@ return static function (ContainerConfigurator $container): void {
             ->args([service('phem.state_validator')])
             ->tag('phem.handler_middleware', ['priority' => -50])
         ->set('phem.state_validator', StateValidator::class)
-            ->args([service('validator')->nullOnInvalid(), service('phem.metadata')])
+            ->args([service('validator')->nullOnInvalid(), service('phem.metadata'), service('phem.state_accessor')])
         // Before the transaction: a form with errors opens no transaction.
         ->set('phem.handler_middleware.map_form', MapFormMiddleware::class)
             ->args([service('phem.form_mapper'), service('phem.state_validator')])
@@ -380,8 +395,11 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.metadata'),
                 null,
                 service('phem.state_validator'),
+                service('phem.state_copies'),
             ])
         ->alias(EventRenderer::class, 'phem.event_renderer')
+        ->set('phem.state_copies', StateCopies::class)
+            ->args([service('phem.metadata'), service('phem.state_objects')])
         ->set('phem.state_cache', StateCache::class)
             ->args([service(StateCache::POOL), 4096])
         ->set('phem.event_body', EventBody::class)

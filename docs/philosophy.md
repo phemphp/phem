@@ -66,7 +66,7 @@ A pure `render()` gives the same markup for the same inputs, and Phem depends on
 
 ## Treat state as UI state, not trusted data
 
-State lives in the browser, so treat it like a note the user carries for you. The server signs it, which stops the user from editing it, but the browser can still send back an older state that the server signed earlier, until that signature expires. State values are JSON values (scalars, arrays) or backed enums.
+State lives in the browser, so treat it like a note the user carries for you. The server signs it, which stops the user from editing it, but the browser can still send back an older state that the server signed earlier, until that signature expires. State values are JSON values (scalars, arrays), backed enums, or plain objects that the Serializer encodes as JSON.
 
 Here’s a poll where a vote limit in state would be a bug, because a user could replay an older state and vote again:
 

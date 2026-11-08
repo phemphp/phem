@@ -87,7 +87,85 @@ A `#[Prop]` property is different: the parent sets it on every render. A prop wi
 
 ### Store only JSON values in the state
 
-The browser keeps the state, and the server signs it. Every event sends the state back to the server, so it must hold JSON values (scalars and arrays) or backed enums.
+The browser keeps the state, and the server signs it. Every event sends the state back to the server, so it must hold JSON values (scalars and arrays), backed enums, or objects that the Serializer encodes as JSON (see [Keep a draft object in the state](#keep-a-draft-object-in-the-state)).
+
+### Keep a draft object in the state
+
+A form for an entity needs a value for each field. Put the fields in a plain class (a draft), and keep one object of it in a `#[State]` property:
+
+```php
+final class ProductDraft
+{
+    #[Assert\NotBlank]
+    public string $name = '';
+
+    public ?int $categoryId = null;
+
+    public ?\DateTimeImmutable $availableFrom = null;
+
+    public static function of(Product $product): self
+    {
+        $draft = new self();
+        $draft->name = $product->name;
+        $draft->categoryId = $product->category->id;
+        $draft->availableFrom = $product->availableFrom;
+
+        return $draft;
+    }
+}
+
+#[Component]
+final class ProductForm
+{
+    #[Prop] public Product $product;
+
+    #[State, Assert\Valid] public ProductDraft $draft;
+
+    #[State] public Validation $validation;
+
+    public function mount(): void
+    {
+        $this->draft = ProductDraft::of($this->product);
+    }
+
+    public function clearName(): void
+    {
+        $this->draft->name = '';
+    }
+
+    #[Validated, Transactional]
+    public function save(): void
+    {
+        $this->product->apply($this->draft);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form onSubmit={{ save }}>
+                <input phem:bind={{ draft.name }} phem:live />
+                <p phem:error={{ draft.name }} className="error" />
+                <input type="date" phem:bind={{ draft.availableFrom }} />
+                <button type="submit">Save</button>
+            </form>
+        );
+    }
+}
+```
+
+The state keeps the JSON value of the object. The Symfony Serializer makes it, and makes the object again on the next event:
+
+```json
+{"draft":{"name":"Desk","categoryId":3,"availableFrom":"2026-11-08T00:00:00+00:00"},"validation":[]}
+```
+
+The rules:
+
+- Install `symfony/serializer`. A `#[State]` property whose type is a class (not a backed enum, and not a `Phem\State\StateValue`) keeps its object with the Serializer. A date (`\DateTimeImmutable`) is an object too.
+- Use public properties with types. The state keeps only the public properties, also in the nested objects: the values of the getters (`getLabel()`, `isAdult()`) are not in it. A `phem:bind` path sets a public property that is not `readonly` (see [Bind a property of a draft object](events-and-forms.md#bind-a-property-of-a-draft-object)).
+- Don't keep a Doctrine entity in the state, also not in a property of a draft: Phem throws a `LogicException`. The state keeps a copy of the fields, so it gets old, and the browser can read all of them. Keep a draft and the id of the entity (a prop, or a `#[Path]` of the page).
+- Give the property a class type. In a property with an `array`, a union or an `object` type, an object is kept as `json_encode()` writes it, and it comes back as an array.
+- A handler can change the object in place (`$this->draft->name = ''`), also a handler of a child that gets the draft as a prop. After the handlers, a draft that changed becomes a new object, so a child that gets it renders again. A draft that didn't change stays the same object, and the child is kept.
 
 ### Keep security decisions out of the state
 

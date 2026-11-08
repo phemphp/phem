@@ -148,7 +148,7 @@ This page lists every user to administrators only. The constructor gets the repo
 Phem is built for server-rendered Symfony apps, and that choice sets its boundaries:
 
 - **Browser-only behavior**: each event is a round trip to the server, so code that must run in the browser without waiting (an animation, a drag) belongs in a Stimulus controller
-- **Rich objects in state**: state values are JSON values (scalars, arrays) and backed enums, so a service or a closure can’t be state
+- **Rich objects in state**: state values are JSON values, backed enums and plain objects that the Serializer encodes, such as a draft of a form or a date, so a service, an entity or a closure can’t be state
 - **Single-page apps**: Phem renders pages on the server and isn’t a single-page app framework
 
 ## Install Phem and build your first app

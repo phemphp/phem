@@ -16,6 +16,7 @@ namespace Phem\State;
 use Phem\Binding\EnumCase;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Rendering\Tree;
+use Symfony\Component\Serializer\Exception\ExceptionInterface;
 
 /**
  * Sets the values of the bound inputs (`<input phem:bind={{ query }} />`) on the #[State]
@@ -32,14 +33,19 @@ use Phem\Rendering\Tree;
  *
  * A path (`phem:bind={{ filters.status }}`) sets a key that the array already has. A value in an
  * array has no declared type, so the type of its current value is the type (see convertLike()).
+ * In an object (`phem:bind={{ draft.name }}`, see StateObjects), a path sets a public property
+ * that can be written, and the declared type of the property is the type. A property whose type
+ * is a class (a date) gets the value from the Serializer.
  *
  * The first render uses the old state, as the page in the browser does: the handler ids match,
  * and the second render shows the new values as a change.
  */
 final class BoundValues
 {
-    public function __construct(private readonly ComponentMetadata $metadata = new ComponentMetadata())
-    {
+    public function __construct(
+        private readonly ComponentMetadata $metadata = new ComponentMetadata(),
+        private readonly StateObjects $objects = new StateObjects(),
+    ) {
     }
 
     /**
@@ -67,14 +73,18 @@ final class BoundValues
                     continue;
                 }
 
+                $current = $property->isInitialized($instance) ? $property->getValue($instance) : null;
                 if ([] === $path) {
-                    $fits = self::convert($property->getType(), $value, $converted);
+                    $fits = $this->convertTo($property->getType(), $value, $converted, $current);
                     if ($fits) {
                         $property->setValue($instance, $converted);
                     }
                 } else {
+                    // Only a property of a class keeps objects (see StateObjects): an object in
+                    // an array is not a value of the state.
+                    $objects = null !== StateObjects::classOf($property->getType());
                     $fits = false;
-                    if ($property->isInitialized($instance) && self::set($property->getValue($instance), $path, $value, $changed)) {
+                    if ($property->isInitialized($instance) && $this->set($current, $path, $value, $objects, $changed)) {
                         $property->setValue($instance, $changed);
                         $fits = true;
                     }
@@ -188,28 +198,119 @@ final class BoundValues
     }
 
     /**
-     * Sets a value of the browser at a path in an array, only at a key that the array has.
+     * Converts a value of the browser to a declared type, as convert(). A class that the
+     * Serializer makes (a date, see StateObjects) gets the object of the value. A date is in the
+     * timezone of the current date: the field shows it in that timezone (see
+     * Phem\Dom\Attributes::bindValue()).
      *
-     * @param list<int|string> $path
+     * @param mixed $current the current value of the property
      *
-     * @param-out mixed $out the changed array
+     * @param-out mixed $out
      */
-    private static function set(mixed $array, array $path, mixed $value, mixed &$out = null): bool
+    private function convertTo(?\ReflectionType $type, mixed $value, mixed &$out = null, mixed $current = null): bool
     {
-        $key = array_shift($path);
-        if (!\is_array($array) || null === $key || !\array_key_exists($key, $array)) {
+        if (self::convert($type, $value, $out)) {
+            return true;
+        }
+
+        $class = StateObjects::classOf($type);
+        if (!\is_scalar($value) || null === $class) {
             return false;
         }
 
-        $ok = [] === $path ? self::convertLike($array[$key], $value, $converted) : self::set($array[$key], $path, $value, $converted);
+        // DateTimeNormalizer::TIMEZONE_KEY, with no error when the Serializer is not installed.
+        $context = $current instanceof \DateTimeInterface ? ['datetime_timezone' => $current->getTimezone()] : [];
+
+        try {
+            $out = $this->objects->fromState($class, $value, $context);
+        } catch (ExceptionInterface|\TypeError|\ValueError) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Sets a value of the browser at a path: at a key that an array has, or at a property of an
+     * object that can be written (see writable()).
+     *
+     * @param list<int|string> $path
+     * @param bool             $objects whether the path can go into an object
+     *
+     * @param-out mixed $out the changed array or object
+     */
+    private function set(mixed $target, array $path, mixed $value, bool $objects, mixed &$out = null): bool
+    {
+        $key = array_shift($path);
+        if (null === $key) {
+            return false;
+        }
+
+        if (\is_object($target)) {
+            return $objects && $this->setProperty($target, (string) $key, $path, $value, $out);
+        }
+
+        if (!\is_array($target) || !\array_key_exists($key, $target)) {
+            return false;
+        }
+
+        $ok = [] === $path ? self::convertLike($target[$key], $value, $converted) : $this->set($target[$key], $path, $value, $objects, $converted);
         if (!$ok) {
             return false;
         }
 
-        $array[$key] = $converted;
-        $out = $array;
+        $target[$key] = $converted;
+        $out = $target;
 
         return true;
+    }
+
+    /**
+     * Sets a value of the browser at a property of an object, or at a path in it. The object
+     * changes in place: after the handlers, a changed object becomes a copy (see StateCopies).
+     *
+     * @param list<int|string> $path
+     *
+     * @param-out mixed $out the changed object
+     */
+    private function setProperty(object $object, string $name, array $path, mixed $value, mixed &$out = null): bool
+    {
+        $property = self::writable($object, $name);
+        if (null === $property) {
+            return false;
+        }
+
+        $current = $property->isInitialized($object) ? $property->getValue($object) : null;
+        $converted = null;
+        if ([] === $path) {
+            $ok = $this->convertTo($property->getType(), $value, $converted, $current);
+        } else {
+            $ok = $property->isInitialized($object) && $this->set($current, $path, $value, true, $converted);
+        }
+
+        if (!$ok) {
+            return false;
+        }
+
+        $property->setValue($object, $converted);
+        $out = $object;
+
+        return true;
+    }
+
+    /** A property of an object that a bound value can set: public, not static, and not readonly. */
+    private static function writable(object $object, string $name): ?\ReflectionProperty
+    {
+        if (!property_exists($object, $name)) {
+            return null;
+        }
+
+        $property = new \ReflectionProperty($object, $name);
+        if (!$property->isPublic() || $property->isStatic() || $property->isReadOnly() || $property->isPrivateSet() || $property->isProtectedSet()) {
+            return null;
+        }
+
+        return $property->isVirtual() && !$property->hasHook(\PropertyHookType::Set) ? null : $property;
     }
 
     /** The type of a value in an array, for convertLike(). */

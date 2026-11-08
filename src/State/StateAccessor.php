@@ -15,18 +15,35 @@ namespace Phem\State;
 
 use Phem\Metadata\ComponentMetadata;
 use Phem\Rendering\Tree;
+use Phem\State\Type\BackedEnumType;
+use Phem\State\Type\ObjectType;
+use Phem\State\Type\StateValueType;
 
 /**
- * Reads and writes the #[State] properties of the class components.
+ * Reads and writes the #[State] properties of the class components. The type of a property
+ * selects how the state keeps its value (see StateType).
  */
 final class StateAccessor
 {
-    public function __construct(private readonly ComponentMetadata $metadata = new ComponentMetadata())
-    {
+    /** @var iterable<StateType> */
+    private readonly iterable $types;
+
+    /** @var array<string, StateType|null> "<class>::<property>" => its type, or null for a value as it is */
+    private array $typeOf = [];
+
+    /**
+     * @param iterable<StateType>|null $types null for the types of Phem: StateValue, backed enum and object
+     */
+    public function __construct(
+        private readonly ComponentMetadata $metadata = new ComponentMetadata(),
+        ?iterable $types = null,
+    ) {
+        $this->types = $types ?? [new StateValueType(), new BackedEnumType(), new ObjectType()];
     }
 
     /**
-     * The #[State] properties of a class component. A StateValue is its JSON value.
+     * The #[State] properties of a class component: their values in the JSON of the state (see
+     * StateType).
      *
      * @return array<string, mixed>
      */
@@ -34,10 +51,12 @@ final class StateAccessor
     {
         $out = [];
         foreach ($this->metadata->stateProperties($component::class) as $p) {
-            if ($p->isInitialized($component)) {
-                $value = $p->getValue($component);
-                $out[$p->getName()] = $value instanceof StateValue ? $value->toState() : $value;
+            if (!$p->isInitialized($component)) {
+                continue;
             }
+
+            $value = $p->getValue($component);
+            $out[$p->getName()] = $this->typeOf($p)?->toState($value, $component::class, $p->getName()) ?? $value;
         }
 
         return $out;
@@ -58,31 +77,44 @@ final class StateAccessor
     }
 
     /**
-     * A backed enum is its value in the JSON of the state: it becomes a case again. A
-     * StateValue becomes an object again.
+     * Sets the values of the state that the browser sent back: a StateType makes the value of
+     * its properties again (a backed enum becomes a case again).
      *
      * @param array<string, mixed> $state the state that the browser sent back
      */
     public function restore(object $component, array $state): void
     {
         foreach ($this->metadata->stateProperties($component::class) as $p) {
-            if (\array_key_exists($p->getName(), $state)) {
-                $p->setValue($component, self::fromJson($p->getType(), $state[$p->getName()]));
+            if (!\array_key_exists($p->getName(), $state)) {
+                continue;
             }
+
+            $type = $p->getType();
+            $value = $state[$p->getName()];
+            $p->setValue($component, $type instanceof \ReflectionNamedType ? $this->typeOf($p)?->fromState($type, $value) ?? $value : $value);
         }
     }
 
-    private static function fromJson(?\ReflectionType $type, mixed $value): mixed
+    /** The StateType of a property: the first that supports its type. Null for a property with no single named type. */
+    private function typeOf(\ReflectionProperty $property): ?StateType
     {
-        if ($type instanceof \ReflectionNamedType && is_subclass_of($type->getName(), StateValue::class)) {
-            return $type->getName()::fromState($value);
+        $key = $property->class.'::'.$property->getName();
+        if (\array_key_exists($key, $this->typeOf)) {
+            return $this->typeOf[$key];
         }
 
-        if (!$type instanceof \ReflectionNamedType || (!\is_int($value) && !\is_string($value)) || !is_subclass_of($type->getName(), \BackedEnum::class)) {
-            return $value;
+        $type = $property->getType();
+        $found = null;
+        if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
+            foreach ($this->types as $candidate) {
+                if ($candidate->supports($type)) {
+                    $found = $candidate;
+                    break;
+                }
+            }
         }
 
-        return $type->getName()::from($value);
+        return $this->typeOf[$key] = $found;
     }
 
     /**

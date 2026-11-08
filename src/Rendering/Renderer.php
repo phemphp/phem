@@ -24,6 +24,7 @@ use Phem\Metadata\ComponentMetadata;
 use Phem\Node;
 use Phem\Root;
 use Phem\Slot;
+use Phem\State\StateObjects;
 use Phem\Stream\BroadcastKeys;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\Service\ResetInterface;
@@ -245,8 +246,32 @@ final class Renderer implements ResetInterface
         }
 
         $keys = [];
-        $value = [] !== $path ? new \ReflectionProperty($instance, $property)->getValue($instance) : null;
+        $reflection = new \ReflectionProperty($instance, $property);
+        $value = [] !== $path ? $reflection->getValue($instance) : null;
+        // Only a property of a class keeps objects (see Phem\State\StateObjects).
+        $objects = null !== StateObjects::classOf($reflection->getType());
         foreach ($path as $segment) {
+            // A property of an object: BoundValues sets only a property that can be written.
+            if (\is_object($value)) {
+                if ($value instanceof \UnitEnum) {
+                    throw new \LogicException(\sprintf('"phem:bind" binds a path in the #[State] property "%s::$%s", but the value at "%s" is the enum %s. Bind the enum itself: `phem:bind={{ %s }}`.', $fiber->fqcn, $property, implode('.', [$property, ...$keys]), $value::class, implode('.', [$property, ...$keys])));
+                }
+
+                if (!$objects) {
+                    throw new \LogicException(\sprintf('"phem:bind" binds a path in the #[State] property "%s::$%s", but the value at "%s" is a %s object. A path goes into an object only in a property whose type is a class: keep the object in a draft class.', $fiber->fqcn, $property, implode('.', [$property, ...$keys]), $value::class));
+                }
+
+                if (!\is_string($segment) || !property_exists($value, $segment)) {
+                    throw new \LogicException(\sprintf('"phem:bind" binds a value of the #[State] property "%s::$%s", but its %s object has no property "%s".', $fiber->fqcn, $property, $value::class, \is_scalar($segment) ? $segment : get_debug_type($segment)));
+                }
+
+                $keys[] = $segment;
+                $nested = new \ReflectionProperty($value, $segment);
+                $value = $nested->isInitialized($value) ? $nested->getValue($value) : null;
+
+                continue;
+            }
+
             if (\is_string($segment) || \is_int($segment)) {
                 // As PHP keys: "3" is 3.
                 $segment = array_key_first([$segment => true]);

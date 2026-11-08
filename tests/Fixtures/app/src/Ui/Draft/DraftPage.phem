@@ -1,0 +1,135 @@
+<?phem
+
+namespace App\Ui\Draft;
+
+use Phem\Attribute\{Component, Page, Prop, State};
+use Phem\Node;
+use Phem\Tests\Fixtures\{PetDraft, Renders, Size};
+use Phem\Validation;
+use Symfony\Component\Validator\Constraints as Assert;
+
+use function App\Ui\Common\Document;
+
+// A child that gets the draft as a prop: it renders again only when the draft changes.
+#[Component]
+function PetCard(PetDraft $pet): Node
+{
+    Renders::count('PetCard');
+
+    return <p id="card">{{ pet.name }} from {{ pet.home.city }}</p>;
+}
+
+// A child that changes the draft of its parent in place: the parent state gets the change.
+#[Component]
+final class PetTag
+{
+    #[Prop] public PetDraft $pet;
+
+    public function shout(): void
+    {
+        $this->pet->name = strtoupper($this->pet->name);
+    }
+
+    public function render(): Node
+    {
+        return <button id="shout" type="button" onClick={{ shout }}>Shout</button>;
+    }
+}
+
+// A draft object in the state (see Phem\State\StateObjects).
+#[Component]
+final class PetForm
+{
+    #[State, Assert\Valid] public PetDraft $draft;
+    #[State] public Validation $validation;
+    #[State] public int $saves = 0;
+
+    public function mount(): void
+    {
+        $this->draft = new PetDraft();
+        $this->draft->born = new \DateTimeImmutable('2020-05-17T00:00:00+02:00');
+    }
+
+    public function rename(): void
+    {
+        $this->draft->name = 'Max';
+    }
+
+    public function save(): void
+    {
+        ++$this->saves;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form onSubmit={{ save }}>
+                <input name="name" phem:bind={{ draft.name }} />
+                <em phem:error={{ draft.name }} />
+                <input type="number" name="age" phem:bind={{ draft.age }} />
+                <input type="radio" name="size" value="l" phem:bind={{ draft.size }} />
+                <input type="date" name="born" phem:bind={{ draft.born }} />
+                <input name="city" phem:bind={{ draft.home.city }} />
+                <em phem:error={{ draft.home.city }} />
+                <input name="kind" phem:bind={{ draft.kind }} />
+                <button id="rename" type="button" onClick={{ rename }}>Rename</button>
+                <button id="save" type="button" onClick={{ save }}>Save {{ saves }}</button>
+                <PetCard pet={{ draft }} />
+                <PetTag pet={{ draft }} />
+            </form>
+        );
+    }
+}
+
+#[Page('/draft')]
+final class DraftPage
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>Draft</Document:title>
+                <PetForm />
+            </Document>
+        );
+    }
+}
+
+// A path in an enum: the render fails.
+#[Page('/draft-enum-path')]
+final class EnumPathPage
+{
+    #[State] public Size $size = Size::Small;
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>Enum path</Document:title>
+                <input name="size" phem:bind={{ size.value }} />
+            </Document>
+        );
+    }
+}
+
+// A path into an object in an array property: only a property of a class keeps objects.
+#[Page('/draft-array-object')]
+final class ArrayObjectPage
+{
+    #[State] public array $pets = [];
+
+    public function mount(): void
+    {
+        $this->pets = [new PetDraft()];
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>Array object</Document:title>
+                <input name="pet" phem:bind={{ pets.0.name }} />
+            </Document>
+        );
+    }
+}

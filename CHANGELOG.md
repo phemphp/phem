@@ -8,6 +8,14 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Draft objects in `#[State]`: a `#[State]` property can keep an object of a plain class (a
+  draft of a form, a date). The Serializer encodes it in the state, and `phem:bind` binds its
+  public properties with a path (`phem:bind={{ draft.name }}`). A handler can change the
+  object in place: a child that gets it renders again only when it changed. A Doctrine entity in
+  `#[State]`, also in a property of a draft, throws a `LogicException`.
+- A bound date field shows the date in the format of the `type` of the input (`Y-m-d` for
+  `<input type="date">`), in the timezone of the date. The server reads the new text in the
+  same timezone.
 - Redirect before a page renders: a function page, or the `mount()` of a class page, can
   return a `RedirectTo`. The GET of the page ends with a 302, and the page does not render
   (`function VerifyLink(string $token): RedirectTo`). A function page, or a page with no

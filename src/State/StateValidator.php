@@ -37,6 +37,7 @@ final class StateValidator
     public function __construct(
         private readonly ?ValidatorInterface $validator = null,
         private readonly ComponentMetadata $metadata = new ComponentMetadata(),
+        private readonly StateAccessor $state = new StateAccessor(),
     ) {
     }
 
@@ -135,18 +136,15 @@ final class StateValidator
     }
 
     /**
-     * The values of the #[State] properties, but the Validation: the errors are for them.
+     * The JSON values of the #[State] properties, but the Validation: the errors are for them. A
+     * JSON value shows a change in place of an object too (see StateObjects).
      *
      * @return array<string, mixed>
      */
     private function fields(object $component, \ReflectionProperty $validation): array
     {
-        $fields = [];
-        foreach ($this->metadata->stateProperties($component::class) as $p) {
-            if ($p->getName() !== $validation->getName() && $p->isInitialized($component)) {
-                $fields[$p->getName()] = $p->getValue($component);
-            }
-        }
+        $fields = $this->state->export($component);
+        unset($fields[$validation->getName()]);
 
         return $fields;
     }

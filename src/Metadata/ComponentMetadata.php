@@ -23,6 +23,7 @@ use Phem\Attribute\State;
 use Phem\Attribute\Url;
 use Phem\Binding\ComponentName;
 use Phem\Binding\PropError;
+use Phem\State\StateObjects;
 use Phem\State\StateValue;
 use Phem\State\UrlQuery;
 use Phem\Validation;
@@ -66,6 +67,9 @@ final class ComponentMetadata
 
     /** @var array<string, list<array{\ReflectionProperty, class-string<StateValue>}>> */
     private array $stateValues = [];
+
+    /** @var array<string, list<array{\ReflectionProperty, class-string}>> */
+    private array $stateObjects = [];
 
     /** @var array<string, ?\ReflectionProperty> */
     private array $validations = [];
@@ -200,6 +204,31 @@ final class ComponentMetadata
         }
 
         return $this->stateValues[$class] = $out;
+    }
+
+    /**
+     * The #[State] properties of a class component whose type is a class that the Serializer
+     * encodes (see Phem\State\StateObjects), with the class.
+     *
+     * @param class-string $class
+     *
+     * @return list<array{\ReflectionProperty, class-string}>
+     */
+    public function stateObjects(string $class): array
+    {
+        if (isset($this->stateObjects[$class])) {
+            return $this->stateObjects[$class];
+        }
+
+        $out = [];
+        foreach ($this->stateProperties($class) as $p) {
+            $object = StateObjects::classOf($p->getType());
+            if (null !== $object) {
+                $out[] = [$p, $object];
+            }
+        }
+
+        return $this->stateObjects[$class] = $out;
     }
 
     /**

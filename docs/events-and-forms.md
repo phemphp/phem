@@ -269,15 +269,42 @@ The property type must accept the field value, or phemc reports E033:
 
 | Field | Property type |
 |---|---|
-| `<input>`, `<textarea>`, `<select>`, a radio button | `string`, `int`, `float`, or a backed enum |
+| `<input>`, `<textarea>`, `<select>`, a radio button | `string`, `int`, `float`, a backed enum, or a date |
 | `<input type="checkbox">` | `bool`, or `array` for a group of checkboxes |
 | `<select multiple>` | `array` |
 
 The server converts the field text to the property type. A value that doesn’t fit, such as `"abc"` for an `int`, leaves the property unchanged.
 
+A date property (`?\DateTimeImmutable`) shows its value in the format of the `type` of the input: `Y-m-d` for `date`, `Y-m-d\TH:i` for `datetime-local`, `H:i` for `time`, `Y-m` for `month`, and `o-\WW` for `week`. The field shows the date in its own timezone, and the server reads the new text in the same timezone. The Serializer makes the date from the field text, so install `symfony/serializer`.
+
 ### Bind a key of an array
 
 Use a path to bind one key of an `array` property: `phem:bind={{ filters.status }}`, or `phem:bind={{ rows[i].name }}` in a loop. The key must already exist in the array.
+
+### Bind a property of a draft object
+
+Use a path to bind a property of an object in the state (see [Keep a draft object in the state](components.md#keep-a-draft-object-in-the-state)):
+
+```php
+#[State, Assert\Valid] public ProductDraft $draft;
+
+// In render():
+<input phem:bind={{ draft.name }} />
+<input type="date" phem:bind={{ draft.availableFrom }} />
+<input phem:bind={{ draft.address.city }} />
+```
+
+The HTML of the first field is:
+
+```html
+<input data-phem-bind="phem45a372830427.draft[&quot;name&quot;]" value="Desk">
+```
+
+The path sets a public property that is not `readonly`, with the type of the property. phemc doesn't see the class of the draft, so it checks only that the property is an object or an `array`. These paths are errors when the page renders:
+
+- a property that the object doesn't have;
+- a path in an enum (`phem:bind={{ size.value }}`): bind the enum itself;
+- a path into an object in an `array` property (`phem:bind={{ pets.0.name }}`): only a property with a class type keeps objects.
 
 ### Bind a parent property from a child component
 
@@ -585,7 +612,7 @@ The `Validation` object has these methods:
 | `valid()` | `true` when there’s no error |
 | `touch($field)` | A new `Validation` with this field touched |
 
-A field’s name is the path of its `phem:bind`, for example `address.city`. The error of a class constraint is `validation.error('')`. To start over, for example after a save, set `new Validation()`. Use `#[Validated(groups: ['draft'])]` to validate other groups.
+A field’s name is the path of its `phem:bind`, for example `address.city`. For a draft object, put `#[Assert\Valid]` on the property: the errors of its constraints have the paths of the bound fields, for example `draft.name`. The error of a class constraint is `validation.error('')`. To start over, for example after a save, set `new Validation()`. Use `#[Validated(groups: ['draft'])]` to validate other groups.
 
 ### Show the error of a bound field
 

@@ -21,6 +21,7 @@ final class Filters
     #[State] public string $notes = '';
     #[State] public array $range = ['min' => 0, 'max' => 100, 'unit' => ['eur']];
     #[State] public array $rows = [['name' => 'Ada'], ['name' => 'Eve']];
+    #[State] public ?FilterDraft $draft = null;
 
     public function search(): void
     {
@@ -31,7 +32,9 @@ final class Filters
         $options = ['name' => 'Name', 'year' => 'Year'];
 
         return (
-            new \Phem\Element('Ui/Common/Filters.0.twig', ['search' => $this->search(...), 'query' => $this->query, 'year' => $this->year, 'active' => $this->active, 'tags' => $this->tags, 'sort' => $this->sort, 'options' => $options, 'fields' => $this->fields, 'notes' => $this->notes, 'range' => $this->range, 'rows' => $this->rows, 'this' => $this])
+            new \Phem\Element('Ui/Common/Filters.0.twig', ['search' => $this->search(...), 'query' => $this->query, 'year' => $this->year, 'active' => $this->active, 'tags' => $this->tags, 'sort' => $this->sort, 'options' => $options, 'fields' => $this->fields, 'notes' => $this->notes, 'range' => $this->range, 'rows' => $this->rows, 'draft' => $this->draft, 'this' => $this])
+
+
 
 
 

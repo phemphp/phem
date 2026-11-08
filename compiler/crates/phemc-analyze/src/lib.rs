@@ -189,7 +189,7 @@ const BUILTIN_TYPES: &[&str] = &[
 ];
 
 /// Whether a type name is a scalar type or a pseudo-type of PHP, not a class.
-fn is_builtin_type(ty: &str) -> bool {
+pub fn is_builtin_type(ty: &str) -> bool {
     BUILTIN_TYPES.iter().any(|b| ty.eq_ignore_ascii_case(b))
 }
 
