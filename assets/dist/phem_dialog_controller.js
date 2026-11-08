@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { onBackdropTap } from "./phem_backdrop.js"
 
 // The `phem-dialog` controller: opens its `dialog` target, a native `<dialog>`, as a modal with
 // `showModal()`. The dialog stays open after the morph of an event.
@@ -15,11 +16,15 @@ import { Controller } from "@hotwired/stimulus"
 // change the `open` attribute of the dialog and the `open` value: they belong to the client. A
 // server render with a new `open` value sets the state.
 //
-// When the `dismiss` value is true (the default), Escape and a click on the backdrop close it. A
-// dialog that closes in another way (a `<form method="dialog">`) also sets the state.
+// When the `dismiss` value is true (the default), Escape and a tap on the backdrop (see
+// phem_backdrop.js) close it. A dialog that closes in another way (a `<form method="dialog">`)
+// also sets the state.
 export default class PhemDialogController extends Controller {
   static targets = ["dialog"]
   static values = { open: Boolean, dismiss: { type: Boolean, default: true } }
+
+  // dialog => the AbortController of its listeners.
+  #listening = new Map()
 
   connect() {
     // The last `open` value of the server render.
@@ -74,16 +79,19 @@ export default class PhemDialogController extends Controller {
 
   // A dialog that the morph adds gets the state. The `cancel` and `close` events do not bubble.
   dialogTargetConnected(el) {
-    el.addEventListener("cancel", this.onCancel)
-    el.addEventListener("close", this.onClose)
-    el.addEventListener("click", this.onClick)
+    this.#listening.get(el)?.abort()
+    const listening = new AbortController()
+    this.#listening.set(el, listening)
+    el.addEventListener("cancel", this.onCancel, { signal: listening.signal })
+    el.addEventListener("close", this.onClose, { signal: listening.signal })
+    onBackdropTap(el, () => this.dismissValue && this.close(), listening.signal)
+
     this.#render(el)
   }
 
   dialogTargetDisconnected(el) {
-    el.removeEventListener("cancel", this.onCancel)
-    el.removeEventListener("close", this.onClose)
-    el.removeEventListener("click", this.onClick)
+    this.#listening.get(el)?.abort()
+    this.#listening.delete(el)
   }
 
   // Escape.
@@ -95,16 +103,6 @@ export default class PhemDialogController extends Controller {
   // or opened by an action) keeps the state.
   onClose = (event) => {
     if (!event.target.open) this.#set(false)
-  }
-
-  // A click on the backdrop has the dialog as its target, and a point outside the box of the dialog.
-  // A click on the padding of the dialog is inside the box.
-  onClick = (event) => {
-    if (!this.dismissValue || event.target !== event.currentTarget) return
-
-    const box = event.currentTarget.getBoundingClientRect()
-    const outside = event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom
-    if (outside) this.close()
   }
 
   #set(open) {

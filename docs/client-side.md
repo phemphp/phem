@@ -122,7 +122,9 @@ The actions are `toggle`, `open` and `close`. Escape and a click outside close t
 </div>
 ```
 
-The actions are `open` and `close`. Escape and a click on the backdrop close the dialog. The server can open it with `data-phem-dialog-open-value={{ editing }}`.
+The actions are `open` and `close`. Escape and a tap on the backdrop close the dialog. The server can open it with `data-phem-dialog-open-value={{ editing }}`.
+
+A tap on the backdrop is a press and a click on the dialog itself, at a point outside the box of the dialog. A click on the padding of the dialog is inside the box, so the dialog stays open. A text selection that starts in the dialog and ends on the backdrop also keeps the dialog open. Phem does not use `closedby="any"`, because Safari does not support it.
 
 ### Switch between tabs
 
@@ -236,7 +238,9 @@ When the user clicks **Empty bag**, the controller does these steps:
 1. It holds the event: no event goes to the server yet.
 2. It puts the `message` value in the `[data-phem-confirm-message]` elements of the dialog, and the `accept` value in its `[data-phem-confirm-accept]` elements. With no `accept` value, the accept button keeps the label of the page.
 3. It opens the dialog with `showModal()`.
-4. When the dialog closes with the return value `confirm`, the held event goes, with the values of the click. Any other close, such as **Back** or Escape, sends no event.
+4. When the dialog closes with the return value `confirm`, the held event goes, with the values of the click. Any other close, such as **Back**, Escape or a tap on the backdrop, sends no event.
+
+A tap on the backdrop has the same rule as in [`phem-dialog`](#open-a-modal-dialog).
 
 When the question ends, the dialog gets the texts of the page again. So one dialog can serve all the `phem-confirm` elements of the page: put it once in the layout. Give the dialog an accessible description, such as `aria-describedby` on the message, so a screen reader reads the question.
 
@@ -245,6 +249,7 @@ These edge cases apply:
 - **A morph while the dialog asks**: the morph does not change the dialog, its texts or its `open` attribute
 - **A morph or a removal of the element of the event**: the event drops and the dialog closes. After the morph, the handler can belong to another component, so the event could run on the wrong item. The user clicks again
 - **A new question while the dialog asks**: the new question replaces the open question
+- **A Turbo visit while the dialog asks**: the event drops when Turbo caches the page (`turbo:before-cache`). The dialog closes and gets the texts of the page again, so a visit back shows no old question
 - **The dialog cannot ask**: when the selector is not valid, finds no `<dialog>`, or finds a dialog that is open with no question, the browser logs an error and `window.confirm()` asks
 
 A field with a `phem-confirm` gets the value of the server render while the dialog is open. When the user confirms, the event sends the value that the user chose, and the server render shows it.
@@ -263,7 +268,7 @@ element.addEventListener("phem:before-queue", (event) => {
 
 `resume()` sends the held event one time, with the values of the DOM event and with no new `phem:before-queue`. Phem reads the values after all the listeners of `phem:before-queue`, so a listener can change a field before the event goes.
 
-A morph or a removal of the element drops the held event, and `event.detail.signal` aborts. Then `resume()` does nothing. It also does nothing when the event was not cancelled or when the page has no events. A call of `resume()` in the listener itself undoes the cancel: the event goes at once, as if no listener cancelled it.
+A morph or a removal of the element drops the held event, and `event.detail.signal` aborts. A Turbo visit drops all the held events when Turbo caches the page (`turbo:before-cache`), before Turbo copies the page. Close your question on `abort`, so the cached page does not show it. Then `resume()` does nothing. It also does nothing when the event was not cancelled or when the page has no events. A call of `resume()` in the listener itself undoes the cancel: the event goes at once, as if no listener cancelled it.
 
 ## Animate changes with view transitions
 

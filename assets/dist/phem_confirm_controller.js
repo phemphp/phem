@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { onBackdropTap } from "./phem_backdrop.js"
 
 // The open question of each dialog (see DialogQuestion).
 const questions = new WeakMap()
@@ -14,13 +15,14 @@ class NativeQuestion {
 
 // Asks in a `<dialog>` of the page. It cancels the event, puts the message and the accept label in
 // the dialog, and opens it with `showModal()`. When the dialog closes with the return value
-// "confirm", `detail.resume()` of `phem:before-queue` sends the event. Any other close sends no
-// event.
+// "confirm", `detail.resume()` of `phem:before-queue` sends the event. Any other close (a button,
+// Escape, or a tap on the backdrop: see phem_backdrop.js) sends no event.
 //
 // While it asks, the morph does not change the dialog. When the `phem` controller drops the event
-// (`detail.signal`: a morph or a removal of the element), the dialog closes. When the question
-// ends, the texts of the dialog get their labels again, so the next question starts from the
-// labels of the page. A new question replaces the open question of the dialog.
+// (`detail.signal`: a morph or a removal of the element, or a Turbo visit that caches the page),
+// the question ends and the dialog closes. When the question ends, the texts of the dialog get
+// their labels again, so the next question starts from the labels of the page. A new question
+// replaces the open question of the dialog.
 class DialogQuestion {
   constructor(dialog) {
     this.dialog = dialog
@@ -75,10 +77,16 @@ class DialogQuestion {
       if (confirmed) resume()
     }, options)
 
+    // A tap on the backdrop closes the dialog with no return value.
+    onBackdropTap(dialog, () => dialog.close(), question.signal)
+
     // The morph does not change the dialog, its texts and its `open` attribute.
     dialog.addEventListener("turbo:before-morph-element", (e) => e.target === dialog && e.preventDefault(), options)
 
-    // The event dropped: no answer can send it.
+    // The event dropped: no answer can send it. A Turbo visit also drops it, when Turbo caches the
+    // page. The `close` event comes in a later task, so the texts of the dialog get their labels at
+    // once: the snapshot of the page has a closed dialog with its labels, and a visit back shows
+    // no question.
     signal.addEventListener("abort", () => {
       question.abort()
       dialog.close()

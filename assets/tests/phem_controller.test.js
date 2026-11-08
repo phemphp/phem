@@ -1242,6 +1242,24 @@ describe("phem:before-queue", () => {
     expect(detail.signal.aborted).toBe(true)
   })
 
+  it("drops the held events when Turbo caches the page, and aborts their signal", async () => {
+    await mount(`<button id="star" data-phem-on-click="c1.star">Star</button>`)
+    let detail
+    document.getElementById("star").addEventListener("phem:before-queue", (e) => {
+      e.preventDefault()
+      detail = e.detail
+    })
+    click("#star")
+
+    document.dispatchEvent(new Event("turbo:before-cache"))
+    expect(detail.signal.aborted).toBe(true)
+
+    detail.resume()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it("sends nothing with resume() when the element left the page", async () => {
     await mount(`<button id="star" data-phem-on-click="c1.star">Star</button>`)
     let resume

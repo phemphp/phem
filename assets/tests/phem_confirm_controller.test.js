@@ -1,5 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { Application } from "@hotwired/stimulus"
+import * as Turbo from "@hotwired/turbo"
 import PhemController from "../dist/phem_controller.js"
 import PhemConfirmController from "../dist/phem_confirm_controller.js"
 import { click, mount, nextDone, respond } from "./support.js"
@@ -49,6 +50,13 @@ function answer(answer) {
   vi.stubGlobal("confirm", confirm)
 
   return confirm
+}
+
+// A press on `from` and a click on `to`, at the points of the viewport. A browser gives the click
+// to the common ancestor when the press and the release are on different elements.
+function clickAt(from, [x1, y1], to = from, [x2, y2] = [x1, y1]) {
+  from.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, cancelable: true, clientX: x1, clientY: y1 }))
+  to.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, clientX: x2, clientY: y2 }))
 }
 
 // Lets the queue of the phem controller start a request.
@@ -369,6 +377,70 @@ describe("phem-confirm with a dialog", () => {
     await settle()
 
     expect(fetch.mock.calls.map((call) => JSON.parse(call[1].body).handler)).toEqual(["c1.archive"])
+  })
+
+  it("closes the dialog on a tap on the backdrop, and sends no event", async () => {
+    await mount(page('data-phem-confirm-accept-value="Delete item"'))
+    click("#delete")
+    vi.spyOn(dialog(), "getBoundingClientRect").mockReturnValue(new DOMRect(100, 100, 200, 200))
+
+    // A click in the dialog: on its content, or on its padding (the dialog in its box).
+    clickAt(dialog().querySelector("[data-phem-confirm-message]"), [500, 500])
+    clickAt(dialog(), [150, 150])
+    expect(dialog().open).toBe(true)
+
+    clickAt(dialog(), [500, 500])
+    await settle()
+
+    expect(dialog().open).toBe(false)
+    expect(accept().textContent).toBe("Yes")
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("keeps the dialog open when a press in the dialog ends on the backdrop", async () => {
+    await mount(page())
+    click("#delete")
+    vi.spyOn(dialog(), "getBoundingClientRect").mockReturnValue(new DOMRect(100, 100, 200, 200))
+
+    // A text selection from the message to the backdrop: the click goes to the dialog.
+    clickAt(dialog().querySelector("[data-phem-confirm-message]"), [150, 150], dialog(), [150, 50])
+    expect(dialog().open).toBe(true)
+
+    // A press on the backdrop that ends in the dialog.
+    clickAt(dialog(), [150, 50], dialog(), [150, 150])
+    expect(dialog().open).toBe(true)
+  })
+
+  it("ends the question when Turbo caches the page", async () => {
+    await mount(page('data-phem-confirm-accept-value="Delete item"'))
+    click("#delete")
+
+    // Turbo dispatches `turbo:before-cache`, and clones the page in a later task.
+    const snapshot = await Turbo.session.view.cacheSnapshot()
+    Turbo.session.clearCache()
+    const cached = snapshot.element.querySelector("#confirm")
+
+    expect(cached.hasAttribute("open")).toBe(false)
+    expect(cached.querySelector("[data-phem-confirm-message]").textContent).toBe("")
+    expect(cached.querySelector("[data-phem-confirm-accept]").textContent).toBe("Yes")
+    expect(dialog().open).toBe(false)
+
+    await settle()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("stops the listeners of the dialog when the question ends", async () => {
+    await mount(page())
+    click("#delete")
+    dialog().close("cancel")
+    await settle()
+
+    // The page opens the dialog for its own use.
+    dialog().showModal()
+    clickAt(dialog(), [500, 500])
+    document.dispatchEvent(new Event("turbo:before-cache"))
+
+    expect(dialog().open).toBe(true)
   })
 
   it("asks with window.confirm() when the selector finds no dialog", async () => {

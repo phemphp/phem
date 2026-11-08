@@ -460,7 +460,8 @@ function finishStream(root) {
 // The events that a listener of `phem:before-queue` cancelled, and that its `detail.resume()` can
 // send later (see allowed()). A morph or a removal of the element drops its event, and aborts its
 // `detail.signal`: the fiber id of a component comes from its index, so after a morph the handler
-// can belong to another component, and the event would run on the wrong one.
+// can belong to another component, and the event would run on the wrong one. A Turbo visit drops
+// all the events when Turbo caches the page (`turbo:before-cache`).
 class HeldEvents {
   #held = new Set()
 
@@ -647,6 +648,12 @@ export default class PhemController extends Controller {
     }
     document.addEventListener("turbo:before-stream-render", this.dropDetached)
 
+    // Turbo caches the page before a visit renders a new page: no answer can send a held event
+    // now. Its signal aborts before Turbo clones the page, so a question of the event (a
+    // `phem-confirm` dialog) closes, and the snapshot does not show it.
+    this.dropForCache = () => this.heldEvents.drop(() => true)
+    document.addEventListener("turbo:before-cache", this.dropForCache)
+
     // The attributes in the `data-phem-client` list of an element belong to the client (a Stimulus
     // controller): the morph does not change them.
     this.keepClient = (event) => {
@@ -789,6 +796,7 @@ export default class PhemController extends Controller {
     this.element.removeEventListener("turbo:before-morph-element", this.keepKept)
     this.element.removeEventListener("turbo:before-morph-element", this.dropMorphed)
     document.removeEventListener("turbo:before-stream-render", this.dropDetached)
+    document.removeEventListener("turbo:before-cache", this.dropForCache)
     this.heldEvents.drop(() => true)
     this.element.removeEventListener("turbo:before-morph-attribute", this.keepClient)
     document.removeEventListener("turbo:before-stream-render", this.keyMorph)

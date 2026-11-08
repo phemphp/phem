@@ -78,8 +78,11 @@ function escape() {
   if (!event.defaultPrevented) dialog().close()
 }
 
-function clickAt(el, x, y) {
-  el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, clientX: x, clientY: y }))
+// A press on `from` and a click on `to`, at the points of the viewport. A browser gives the click
+// to the common ancestor when the press and the release are on different elements.
+function clickAt(from, [x1, y1], to = from, [x2, y2] = [x1, y1]) {
+  from.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, cancelable: true, clientX: x1, clientY: y1 }))
+  to.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, clientX: x2, clientY: y2 }))
 }
 
 describe("phem-dialog", () => {
@@ -164,22 +167,35 @@ describe("phem-dialog", () => {
     expect(isModal()).toBe(true)
   })
 
-  it("closes on a click on the backdrop, not on a click in the dialog", async () => {
+  it("closes on a tap on the backdrop, not on a click in the dialog", async () => {
     await mount(edit())
     click("#open")
-    clickAt(document.getElementById("body"), 500, 500)
-    clickAt(dialog(), 0, 0)
+    clickAt(document.getElementById("body"), [500, 500])
+    clickAt(dialog(), [0, 0])
 
     expect(isModal()).toBe(true)
-    clickAt(dialog(), 500, 500)
+    clickAt(dialog(), [500, 500])
     expect(dialog().open).toBe(false)
+  })
+
+  it("stays open when a press in the dialog ends on the backdrop", async () => {
+    await mount(edit())
+    click("#open")
+    vi.spyOn(dialog(), "getBoundingClientRect").mockReturnValue(new DOMRect(100, 100, 200, 200))
+
+    // A text selection from the body to the backdrop: the click goes to the dialog.
+    clickAt(document.getElementById("body"), [150, 150], dialog(), [150, 50])
+    // A click with no press, from a script.
+    dialog().dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: 150, clientY: 50 }))
+
+    expect(isModal()).toBe(true)
   })
 
   it("does not close on Escape or a click on the backdrop with dismiss false", async () => {
     await mount(edit('data-phem-dialog-dismiss-value="false"'))
     click("#open")
     escape()
-    clickAt(dialog(), 500, 500)
+    clickAt(dialog(), [500, 500])
     await nextTask()
 
     expect(isModal()).toBe(true)
