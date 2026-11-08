@@ -6,7 +6,7 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
-## Unreleased
+## 0.3.12 (2026-11-08)
 
 - phemc: `mount` or `render` passed as a handler (`onClick={{ mount }}`, `phem:loading={{ render }}`)
   in a class component or a page is the error E046. Phem calls these methods itself: they are
