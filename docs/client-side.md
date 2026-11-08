@@ -122,7 +122,7 @@ The actions are `toggle`, `open` and `close`. Escape and a click outside close t
 </div>
 ```
 
-The actions are `open` and `close`. Escape and a tap on the backdrop close the dialog. The server can open it with `data-phem-dialog-open-value={{ editing }}`.
+The actions are `open` and `close`. Escape and a tap on the backdrop close the dialog. Set `data-phem-dialog-dismiss-value="false"` to keep it open on Escape and on a tap on the backdrop. The server can open it with `data-phem-dialog-open-value={{ editing }}`.
 
 A tap on the backdrop is a press and a click on the dialog itself, at a point outside the box of the dialog. A click on the padding of the dialog is inside the box, so the dialog stays open. A text selection that starts in the dialog and ends on the backdrop also keeps the dialog open. Phem does not use `closedby="any"`, because Safari does not support it.
 
