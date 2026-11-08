@@ -81,6 +81,7 @@ pub mod codes {
     pub const INVALID_VALIDATED: &str = "E058";
     pub const ERROR_PAGE_NOT_FUNCTION: &str = "E059";
     pub const ERROR_PAGE_IN_PACKAGE: &str = "E060";
+    pub const INVALID_ERROR: &str = "E061";
     pub const MISSING_KEY: &str = "W002";
     pub const UNKNOWN_EVENT: &str = "W003";
     pub const FOREIGN_ATTRIBUTE: &str = "W004";

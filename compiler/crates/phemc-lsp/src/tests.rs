@@ -527,6 +527,7 @@ fn the_phem_attributes_of_an_html_element() {
     assert_eq!(snippet(r.get("phem:progress")), "phem:progress={{ ${1} }}");
     assert_eq!(snippet(r.get("phem:bind")), "phem:bind={{ ${1} }}");
     assert_eq!(snippet(r.get("phem:live")), "phem:live");
+    assert_eq!(snippet(r.get("phem:error")), "phem:error={{ ${1} }}");
     assert_eq!(r.slice(r.get("phem:debounce").range), "phem:");
 
     let r = run(&home_fn("<input phem:debounce={{ 300 }} |"));
@@ -535,6 +536,10 @@ fn the_phem_attributes_of_an_html_element() {
 
     let r = run(&home_fn("<Layout title=\"x\" phem:|"));
     assert!(r.find("phem:debounce").is_none(), "not on a component");
+
+    let message = "use Phem\\Attribute\\Component;\nuse Phem\\Html;\n\n#[Component]\nfunction Message(string $id, ?Html $children = null)\n{\n    return <p id={{ id }}>{{ children }}</p>;\n}\n\n";
+    let r = run(&format!("{PAGE}{message}function HomePage()\n{{\n    return <Message phem:|\n}}\n"));
+    assert_eq!(snippet(r.get("phem:error")), "phem:error={{ ${1} }}", "on a component with an id prop");
 }
 
 #[test]

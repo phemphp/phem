@@ -476,12 +476,13 @@ A `phem:*` attribute adds a Phem behavior to an element:
 |---|---|
 | `phem:bind={{ prop }}` | Links a form field to a `#[State]` property. See [Bound fields](events-and-forms.md#bind-a-field-to-state-without-a-handler) |
 | `phem:live` | Sends each change of a bound field right away |
+| `phem:error={{ prop }}` | Renders the element only when the bound property has a validation error, with the id of the error and the message. See [Show the error of a bound field](events-and-forms.md#show-the-error-of-a-bound-field). It is not the `phem:error` event of the browser |
 | `phem:loading={{ handler }}` | Shows the element only while the handler runs. See [Loading states](events-and-forms.md#show-a-loading-state) |
 | `phem:debounce={{ ms }}` | Waits until the user pauses for `ms` milliseconds. `'blur'` waits until the field loses focus. See [Debounce and throttle](events-and-forms.md#control-when-typing-sends-an-event) |
 | `phem:throttle={{ ms }}` | Sends at most one event every `ms` milliseconds |
 | `phem:progress={{ handler }}` | Shows the progress of a file upload. See [File uploads](events-and-forms.md#accept-file-uploads) |
 
-The value of `phem:bind` is a property name or a path in an array property: `phem:bind={{ filters.status }}`, `phem:bind={{ rows[i].name }}`. Write it with no spaces and no filter. `phemc` checks directive values (E032, E033).
+The value of `phem:bind` and `phem:error` is a property name or a path in an array property: `phem:bind={{ filters.status }}`, `phem:bind={{ rows[i].name }}`. Write it with no spaces and no filter. `phemc` checks directive values (E032, E033, E061).
 
 ### Data attributes (`data-phem-*`)
 

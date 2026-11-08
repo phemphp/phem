@@ -82,39 +82,6 @@ Flex does not enable the bundle and does not add the first page or the `phemc` w
 These items come from a review of a real app (a shop with a customer side and a staff side, about
 5,700 lines of `.phem`) on 2026-11-08. Each item removes code that the app repeats.
 
-### [ ] Errors of a bound field — P2
-
-Each validated field of the app repeats the `aria-invalid` ternary, the `aria-describedby`
-ternary, the border ternary and the error element (18 `aria-invalid`, 15 `FieldError`):
-
-```php
-<input id="name" aria-describedby={{ errors.name is defined ? 'name-note' : null }}
-       aria-invalid={{ errors.name is defined ? 'true' : null }} name="name" phem:bind={{ name }}
-       className={{ [field, errors.name is defined ? 'border-danger' : 'border-line-strong'] }} />
-{% if errors.name is defined %}<FieldError id="name-note">{{ errors.name }}</FieldError>{% endif %}
-```
-
-- **Best peer:** Blazor `<ValidationMessage For="…">`, LV `<.error>` with `used_input?`.
-- **Proposal:**
-  - A bound field with an error gets `aria-invalid="true"` and
-    `aria-describedby="<id>-error"` from `phem:bind`. The CSS uses `aria-invalid:`.
-  - A new `phem:error={{ prop }}` directive on an element or a component. With no error, it
-    does not render. With an error, it gets the `id` and the error as its children:
-
-  ```php
-  <input id="name" name="name" phem:bind={{ name }}
-         className={{ [field, 'border-line-strong aria-invalid:border-danger'] }} />
-  <FieldError phem:error={{ name }} />
-  ```
-
-  ```html
-  <input id="name" name="name" value="" aria-invalid="true" aria-describedby="name-error" class="…">
-  <span id="name-error" role="alert" class="…">Escribe el nombre.</span>
-  ```
-
-- **Open question:** a field with a help text has its own `aria-describedby`. Does Phem add the
-  error id to it, or replace it?
-
 ### [ ] Typed form data in a handler — P2
 
 The forms that are not bound read `$e->form` with casts and `?? ''`:

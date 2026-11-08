@@ -8,6 +8,15 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- The errors of a bound field. A bound field with a validation error gets `aria-invalid="true"`
+  and the id of the error in `aria-describedby`, after its own ids. The new `phem:error={{ email }}`
+  directive renders an element only when the field has an error, with the id of the error and
+  the message: `<p phem:error={{ email }} className="error" />`. On a component tag, the
+  component gets the `id` and `children` props. The id is `<component id>-<field>-error`, so the
+  field needs no `id`. A `Bound` prop works too: the error is the error of the parent property.
+- phemc: an invalid `phem:error` is the error E061 (not a `#[State]` property or a `Bound` prop,
+  a component with no `Validation` property, an element with an `id` or content). An
+  `aria-invalid` on a bound field is the error E033.
 - Handler arguments in the markup: `onClick={{ pickReason(r) }}` runs `pickReason($r)` when the
   user clicks. The arguments are values of the render: the handler id has their fingerprint, so
   the browser can't change them. They go to the first parameters, and the other parameters get

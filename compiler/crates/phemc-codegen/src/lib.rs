@@ -333,8 +333,9 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
             vars.push(format!("{} => {php}", php_str(&v.name)));
         }
 
-        // A bound field or component (`phem:bind`) gives its component to the runtime.
-        if class.is_some() && (content.contains("phem_bind(") || content.contains("phem_bound(")) && !vars.iter().any(|v| v.starts_with("'this' =>")) {
+        // A bound field or component (`phem:bind`), and an error (`phem:error`), give their component
+        // to the runtime.
+        if class.is_some() && (content.contains("phem_bind(") || content.contains("phem_bound(") || content.contains("phem_error(")) && !vars.iter().any(|v| v.starts_with("'this' =>")) {
             vars.push("'this' => $this".to_string());
         }
         let newlines = m.span.text(src).matches('\n').count();

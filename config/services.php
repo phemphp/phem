@@ -62,6 +62,7 @@ use Phem\Rendering\ContainerComponentFactory;
 use Phem\Rendering\ContextResolver;
 use Phem\Rendering\ErrorBoundaryRenderer;
 use Phem\Rendering\EventRenderer;
+use Phem\Rendering\FieldErrors;
 use Phem\Rendering\FunctionComponentRenderer;
 use Phem\Rendering\FunctionPageRenderer;
 use Phem\Rendering\InputsComparator;
@@ -224,6 +225,8 @@ return static function (ContainerConfigurator $container): void {
             ->args([service('phem.class_merger')])
         ->set('phem.root_element', RootElement::class)
             ->args([service('phem.class_attribute')])
+        ->set('phem.field_errors', FieldErrors::class)
+            ->args([service('phem.metadata')])
         ->set('phem.renderer', Renderer::class)
             ->args([
                 service('phem.manifest'),
@@ -236,6 +239,7 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.context_resolver'),
                 service('phem.broadcast_keys'),
                 service('phem.root_element'),
+                service('phem.field_errors'),
             ])
             ->tag('kernel.reset', ['method' => 'reset'])
         ->alias(Renderer::class, 'phem.renderer')

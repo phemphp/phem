@@ -1,0 +1,5 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<span {{ phem_attr('id', id) }} class="error">{% block children %}{{ children }}{% endblock %}</span>

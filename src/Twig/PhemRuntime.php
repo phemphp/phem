@@ -18,6 +18,7 @@ use Phem\ClassList;
 use Phem\Dom\Attributes;
 use Phem\Dom\ClassAttribute;
 use Phem\Dom\DomEvents;
+use Phem\Rendering\FieldError;
 use Phem\Rendering\Renderer;
 use Phem\Rendering\TemplateComponentRenderer;
 use Twig\Extension\RuntimeExtensionInterface;
@@ -26,7 +27,7 @@ use Twig\Template;
 
 /**
  * The Twig runtime of the compiled templates: `{% component %}`, `phem_on()`, `phem_loading()`,
- * `phem_progress()`, `phem_class()` and `phem_attrs()`.
+ * `phem_progress()`, `phem_bind()`, `phem_error()`, `phem_class()` and `phem_attrs()`.
  * The compiled code gets it with `$this->env->getRuntime(PhemRuntime::class)`.
  */
 final class PhemRuntime implements RuntimeExtensionInterface
@@ -125,15 +126,20 @@ final class PhemRuntime implements RuntimeExtensionInterface
      *
      * In a child component, `phem:bind={{ value }}` binds a Bound prop: the property of the parent.
      *
+     * When the field has a validation error (see FieldErrors), it also gets `aria-invalid="true"`
+     * and the id of the error in `aria-describedby`, after the ids of the markup
+     * (`$describedBy`: phemc gives the `aria-describedby` of the field).
+     *
      * @param string|list<mixed>|Bound $property
      */
-    public function bind(string|array|Bound $property, mixed $value, string $tag, mixed $type = null, mixed $option = null, ?object $owner = null): Markup
+    public function bind(string|array|Bound $property, mixed $value, string $tag, mixed $type = null, mixed $option = null, ?object $owner = null, mixed $describedBy = null): Markup
     {
         if ($property instanceof Bound) {
             [$property, $value, $owner] = [$property->target, $property->value, $property->owner];
         }
 
         $key = $this->renderer->addBind($property, $owner);
+        $error = $this->renderer->fieldError($property, $owner);
         $out = null !== $key ? [\sprintf('data-phem-bind="%s"', Attributes::e($key))] : [];
         $type = \is_string($type) ? strtolower($type) : 'text';
 
@@ -156,7 +162,33 @@ final class PhemRuntime implements RuntimeExtensionInterface
             }
         }
 
+        $describedBy = \is_scalar($describedBy) && '' !== trim((string) $describedBy) ? trim((string) $describedBy) : null;
+        if (null !== $error) {
+            $out[] = 'aria-invalid="true"';
+            $describedBy = null !== $describedBy ? $describedBy.' '.$error->id : $error->id;
+        }
+
+        if (null !== $describedBy) {
+            $out[] = \sprintf('aria-describedby="%s"', Attributes::e($describedBy));
+        }
+
         return new Markup(implode(' ', $out), 'UTF-8');
+    }
+
+    /**
+     * `phem:error={{ email }}`: the validation error of a bound #[State] property of the
+     * component of the markup (`this`), or of a Bound prop. phemc renders the element only when
+     * it is not null, with its id and its message. Null when the field has no error.
+     *
+     * @param string|list<mixed>|Bound $property
+     */
+    public function error(string|array|Bound $property, ?object $owner = null): ?FieldError
+    {
+        if ($property instanceof Bound) {
+            [$property, $owner] = [$property->target, $property->owner];
+        }
+
+        return $this->renderer->fieldError($property, $owner);
     }
 
     /**
@@ -214,6 +246,7 @@ final class PhemRuntime implements RuntimeExtensionInterface
                 'phem:loading' === $name => $this->loading($value),
                 'phem:progress' === $name => $this->progress($value),
                 'phem:bind' === $name => throw new \InvalidArgumentException('"phem:bind" cannot come from a spread: write it on the element, with the name of a #[State] property.'),
+                'phem:error' === $name => throw new \InvalidArgumentException('"phem:error" cannot come from a spread: write it on the element, with the name of a #[State] property.'),
                 'phem:live' === $name => Attributes::attr('data-phem-live', true === $value ? true : null),
                 \in_array($name, ['phem:debounce', 'phem:throttle'], true) => Attributes::timing(substr($name, 5), $value),
                 1 === preg_match('/^on[A-Z]/', $name) => $this->on(strtolower(substr($name, 2)), $value),

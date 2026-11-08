@@ -1,0 +1,9 @@
+<?phem // expect: E061
+use Phem\Attribute\{Component, State};
+use Phem\Html;
+use Phem\Node;
+use Phem\Validation;
+#[Component]
+function Message(?Html $children = null): Node { return <p>{{ children }}</p>; }
+#[Component]
+final class F { #[State] public string $q = ""; #[State] public Validation $validation; public function render() { return <Message phem:error={{ q }} />; } }

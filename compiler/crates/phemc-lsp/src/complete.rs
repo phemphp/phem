@@ -99,9 +99,18 @@ const PHEM_ATTRIBUTES: &[(&str, &str, &str, &str)] = &[
     ("phem:progress", "phem:progress={{ ${1} }}", "Phem: show the upload progress of a handler", "The element shows only while the files of an event of the handler upload. Its `--phem-progress` CSS property (and the `value` of a `<progress>`) is the progress: `<progress phem:progress={{ save }} max=\"100\"></progress>`."),
     ("phem:debounce", "phem:debounce={{ ${1:300} }}", "Phem: wait before an event is sent", "Milliseconds: the browser sends an event of the element only when no new event comes for that time. `'blur'`: send on blur only. `0`: no debounce (text inputs have 150 ms by default)."),
     ("phem:bind", "phem:bind={{ ${1} }}", "Phem: bind a field to a #[State] property", "The field shows the property, and the next event sends its new value: `<input phem:bind={{ query }} />`."),
+    ERROR_ATTRIBUTE,
     ("phem:live", "phem:live", "Phem: send each change of a bound field", "With `phem:bind`: each change sends an event with no handler, with the debounce of the field."),
     ("phem:throttle", "phem:throttle={{ ${1:300} }}", "Phem: send at most one event per interval", "Milliseconds: the browser sends the first event at once, then at most one event each interval, and always the last one."),
 ];
+
+/// `phem:error`: on an HTML element, and on the tag of a component with an `id` prop.
+const ERROR_ATTRIBUTE: (&str, &str, &str, &str) = (
+    "phem:error",
+    "phem:error={{ ${1} }}",
+    "Phem: show the validation error of a bound property",
+    "The element renders only when the property has a validation error, with the id of the error and its message: `<p phem:error={{ email }} />`. On a component, it gives the `id` and the `children` props.",
+);
 
 /// Escapes text for a snippet.
 pub fn esc(s: &str) -> String {
@@ -415,7 +424,9 @@ impl<'a, 'p> Completer<'a, 'p> {
         let is_component = tag.trim_start_matches('\\').starts_with(|c: char| c.is_ascii_uppercase());
         if is_component && !tag.contains(':') {
             let components: Vec<_> = self.components().into_iter().map(|c| c.component).collect();
+            let mut has_id = false;
             if let Some(comp) = resolve_component(&self.index.current.parsed, &components, tag) {
+                has_id = comp.props.iter().any(|p| p.name == "id");
                 for prop in &comp.props {
                     let detail = format!(
                         "{}${}{}{}",
@@ -429,6 +440,12 @@ impl<'a, 'p> Completer<'a, 'p> {
             }
 
             add("key", "key={{ ${1} }}".into(), "The key of the item in a list", "2key".into(), None);
+            // `phem:error` gives the `id` of the error: a component of the message has the prop.
+            if has_id {
+                let (name, snippet, detail, doc) = ERROR_ATTRIBUTE;
+                add(name, snippet.to_string(), detail, format!("2{name}"), Some(doc));
+            }
+
             return items;
         }
 

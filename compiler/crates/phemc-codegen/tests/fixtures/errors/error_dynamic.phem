@@ -1,0 +1,6 @@
+<?phem // expect: E061
+use Phem\Attribute\{Component, State};
+use Phem\Dynamic;
+use Phem\Validation;
+#[Component]
+final class F { #[State] public string $q = ""; #[State] public Validation $validation; public function render() { return <Dynamic tag="p" phem:error={{ q }} />; } }

@@ -9,6 +9,8 @@
   project. `Cmd`+click on a declaration also shows them.
 - A usage count (`2 usages`) above each component, function, and method. Click it to see the
   usages, then click one to go to it.
+- Completion for the Phem attribute `phem:error`: on an HTML element, and on the tag of a
+  component with an `id` prop. The diagnostics show the new E061.
 
 ## 0.5.0
 

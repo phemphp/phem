@@ -1,0 +1,93 @@
+<?phem
+
+namespace App\Ui\Validation;
+
+use Phem\Attribute\{Component, Page, State, Validated};
+use Phem\Bound;
+use Phem\Html;
+use Phem\Node;
+use Phem\Validation;
+use Symfony\Component\Validator\Constraints as Assert;
+
+use function App\Ui\Common\Document;
+
+// The errors of the bound fields: `phem:bind` sets `aria-invalid` and `aria-describedby`, and
+// `phem:error` renders the message (see Phem\Rendering\FieldErrors).
+
+/** A component of the message: `phem:error` gives the `id` and the `children`. */
+#[Component]
+function ErrorMessage(string $id, ?Html $children = null): Node
+{
+    return <span id={{ id }} className="message">{{ children }}</span>;
+}
+
+/** A child field: the error is the error of the property of the parent. */
+#[Component]
+function NameField(Bound $value): Node
+{
+    return (
+        <>
+            <input name="name" phem:bind={{ value }} />
+            <em phem:error={{ value }} />
+        </>
+    );
+}
+
+#[Component]
+final class Contact
+{
+    #[State, Assert\NotBlank, Assert\Email]
+    public string $email = '';
+
+    #[State, Assert\Collection(fields: ['city' => new Assert\NotBlank(message: 'Enter a city.')], allowExtraFields: true)]
+    public array $address = ['city' => ''];
+
+    #[State, Assert\NotBlank(message: 'Enter a name.')]
+    public string $name = '';
+
+    #[State, Assert\NotBlank(message: 'Enter a phone.')]
+    public string $phone = '';
+
+    #[State] public Validation $validation;
+
+    #[Validated]
+    public function save(): void
+    {
+    }
+
+    public function render(): Node
+    {
+        // Attributes from a spread: the id of the error and its `aria-describedby` still win.
+        $help = ['aria-describedby' => 'phone-help'];
+        $note = ['id' => 'phone-note', 'className' => 'phone-error'];
+
+        return (
+            <form onSubmit={{ save }}>
+                <input name="email" phem:bind={{ email }} phem:live />
+                <ErrorMessage phem:error={{ email }} />
+                <input name="city" aria-describedby="city-help" phem:bind={{ address.city }} phem:live />
+                <small id="city-help">The city of the address.</small>
+                <p phem:error={{ address.city }} className="city-error" />
+                <NameField phem:bind={{ name }} />
+                <input name="phone" {{ ...help }} phem:bind={{ phone }} />
+                <small id="phone-help">With the country code.</small>
+                <p {{ ...note }} phem:error={{ phone }} />
+                <button type="submit">Save</button>
+            </form>
+        );
+    }
+}
+
+#[Page('/validation/errors')]
+final class FieldErrorsPage
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>Field errors</Document:title>
+                <Contact />
+            </Document>
+        );
+    }
+}

@@ -392,7 +392,7 @@ final class SignupForm
     }
 ```
 
-The `render()` method binds each field and shows its first error:
+The `render()` method binds each field and shows its first error with `phem:error` (see [Show the error of a bound field](#show-the-error-of-a-bound-field)):
 
 ```php
     public function render(): Node
@@ -400,9 +400,9 @@ The `render()` method binds each field and shows its first error:
         return (
             <form onSubmit={{ save }}>
                 <input type="email" phem:bind={{ email }} phem:live phem:debounce={{ 'blur' }} />
-                {% if validation.error('email') %}<p className="error">{{ validation.error('email') }}</p>{% endif %}
+                <p phem:error={{ email }} className="error" />
                 <input type="password" phem:bind={{ password }} phem:live phem:debounce={{ 'blur' }} />
-                {% if validation.error('password') %}<p className="error">{{ validation.error('password') }}</p>{% endif %}
+                <p phem:error={{ password }} className="error" />
                 <button type="submit">Sign up</button>
             </form>
         );
@@ -427,6 +427,58 @@ The `Validation` object has these methods:
 | `touch($field)` | A new `Validation` with this field touched |
 
 A field’s name is the path of its `phem:bind`, for example `address.city`. The error of a class constraint is `validation.error('')`. To start over, for example after a save, set `new Validation()`. Use `#[Validated(groups: ['draft'])]` to validate other groups.
+
+### Show the error of a bound field
+
+A bound field with an error gets two attributes from `phem:bind`:
+
+- `aria-invalid="true"`. Use it in the CSS, for example the `aria-invalid:` variant of Tailwind.
+- `aria-describedby` with the id of the error. A screen reader reads the error when the field gets the focus.
+
+Put `phem:error` with the same property on the element of the message. The element renders only when the field has an error. Phem gives it the id of the error and the message as its content:
+
+```php
+<input name="email" phem:bind={{ email }} phem:live
+       className="border border-line aria-invalid:border-danger" />
+<p phem:error={{ email }} className="error" />
+```
+
+When the email has an error, the HTML is:
+
+```html
+<input name="email" class="border border-line aria-invalid:border-danger" data-phem-live="" data-phem-bind="phem45a372830427.email" value="ada" aria-invalid="true" aria-describedby="phem45a372830427-email-error">
+<p class="error" id="phem45a372830427-email-error">This value is not a valid email address.</p>
+```
+
+When the field has no error, the field has no `aria-invalid` and the `<p>` is not in the page.
+
+The rules:
+
+- The id of the error is `<component id>-<field>-error`, with a `-` for each `.` of the field: `address.city` gives `…-address-city-error`. When the field has other characters than letters, digits, `_` and `.` (a key such as `rows['a-b'].name`), each run of them becomes one `-`, and the id also gets a hash of the field: `…-rows-a-b-name-<hash>-error`. The id is unique in the page, also when the page shows a component two times. The field needs no `id`.
+- A spread on the element can't change the id of the error. On a bound field, Phem adds the error id after the `aria-describedby` of a spread too.
+- The element of `phem:error` has no `id` and no content: Phem gives them. A void element (`<input>`, `<img>`) can't have it.
+- When the field has its own `aria-describedby` (for example a help text), Phem adds the id of the error after it: `aria-describedby="city-help phem45a372830427-address-city-error"`.
+- Don't write `aria-invalid` on a bound field. Phem sets it.
+- The component needs a `Validation` property. phemc reports E061 when it has none.
+
+`phem:error` also works on the tag of a component. The component gets the id in its `id` prop and the message in its `children`:
+
+```php
+#[Component]
+function FieldError(string $id, ?Html $children = null): Node
+{
+    return <span id={{ id }} className="text-sm text-danger">{{ children }}</span>;
+}
+```
+
+```php
+<input name="name" phem:bind={{ name }} />
+<FieldError phem:error={{ name }} />
+```
+
+In a child component with a `Bound` prop (see [Bind a parent property from a child component](#bind-a-parent-property-from-a-child-component)), use the prop: `<p phem:error={{ value }} />`. The error is the error of the property of the parent.
+
+`phem:error` is not the `phem:error` event of the browser (see [Errors and limits](errors-and-limits.md)).
 
 ## Validate a Symfony form while the user types
 

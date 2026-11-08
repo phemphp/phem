@@ -1,0 +1,60 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from Ui/Common/Errors.phem; do not edit */
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\{Component, State};
+use Phem\Bound;
+use Phem\Html;
+use Phem\Node;
+use Phem\Validation;
+
+/** The message of a validation error: `phem:error` gives the id and the children. */
+#[Component]
+function FieldError(string $id, ?Html $children = null): Node
+{
+    return new \Phem\Element('Ui/Common/Errors.0.twig', ['id' => $id, 'children' => $children]);
+}
+
+/** A child field: its error is the error of the property of the parent. */
+#[Component]
+function EmailField(Bound $value): Node
+{
+    return (
+        new \Phem\Element('Ui/Common/Errors.1.twig', ['value' => $value])
+
+
+
+    );
+}
+
+#[Component]
+final class SignUp
+{
+    #[State] public string $name = '';
+    #[State] public string $email = '';
+    #[State] public array $address = ['city' => ''];
+    #[State] public Validation $validation;
+
+    public function render(): Node
+    {
+        $help = ['aria-describedby' => 'email-help'];
+        $message = ['className' => 'error'];
+
+        return (
+            new \Phem\Element('Ui/Common/Errors.2.twig', ['name' => $this->name, 'address' => $this->address, 'email' => $this->email, 'help' => $help, 'message' => $message, 'this' => $this])
+
+
+
+
+
+
+
+
+
+        );
+    }
+}

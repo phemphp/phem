@@ -50,6 +50,7 @@ final class PhemExtension extends AbstractExtension
             new TwigFunction('phem_progress', [PhemRuntime::class, 'progress'], $safe),
             new TwigFunction('phem_bind', [PhemRuntime::class, 'bind'], $safe),
             new TwigFunction('phem_bound', [PhemRuntime::class, 'bound']),
+            new TwigFunction('phem_error', [PhemRuntime::class, 'error']),
             new TwigFunction('phem_bind_value', Attributes::bindValue(...)),
             new TwigFunction('phem_selected', Attributes::selected(...), $safe),
             new TwigFunction('phem_key', Attributes::key(...), $safe),

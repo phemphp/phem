@@ -67,6 +67,7 @@ final class Renderer implements ResetInterface
         private readonly ContextResolver $contexts = new ContextResolver(),
         private readonly BroadcastKeys $broadcasts = new BroadcastKeys(),
         private readonly RootElement $rootElement = new RootElement(),
+        private readonly FieldErrors $fieldErrors = new FieldErrors(),
     ) {
     }
 
@@ -230,13 +231,7 @@ final class Renderer implements ResetInterface
     {
         $this->notDetached('a "phem:bind"');
 
-        $path = \is_array($target) ? $target : [$target];
-        $property = array_shift($path);
-
-        if (!\is_string($property)) {
-            throw new \LogicException('"phem:bind" binds a #[State] property: a path starts with its name.');
-        }
-
+        [$property, $path] = self::split($target, 'phem:bind');
         $tree = $this->tree;
         $fiber = null !== $owner ? $tree?->fiberOf($owner) : $tree?->top();
 
@@ -266,6 +261,27 @@ final class Renderer implements ResetInterface
         }
 
         return $tree->addBind($property, $fiber, $keys);
+    }
+
+    /**
+     * The validation error of a bound #[State] property of a component, or of a path in it
+     * (`phem:error={{ email }}`, and the `aria-*` attributes of `phem:bind`). Null when the
+     * field has no error, or when the component has no Validation property (see FieldErrors).
+     *
+     * @param string|list<mixed> $target the property, or the property and the keys of a path
+     */
+    public function fieldError(string|array $target, ?object $owner = null): ?FieldError
+    {
+        $this->notDetached('a "phem:error"');
+
+        if (null === $owner) {
+            return null;
+        }
+
+        [$property, $path] = self::split($target, 'phem:error');
+        $fiber = $this->tree?->fiberOf($owner);
+
+        return $this->fieldErrors->of($owner, $fiber->id ?? 'x', $property, $path);
     }
 
     /**
@@ -319,6 +335,25 @@ final class Renderer implements ResetInterface
     }
 
     // -------------------------------------------------------------------------------------
+
+    /**
+     * The property and the keys of a bound target: `'email'` or `['address', 'city']`.
+     *
+     * @param string|list<mixed> $target
+     *
+     * @return array{string, list<mixed>}
+     */
+    private static function split(string|array $target, string $directive): array
+    {
+        $path = \is_array($target) ? $target : [$target];
+        $property = array_shift($path);
+
+        if (!\is_string($property)) {
+            throw new \LogicException(\sprintf('"%s" binds a #[State] property: a path starts with its name.', $directive));
+        }
+
+        return [$property, $path];
+    }
 
     private function notDetached(string $what, bool $always = false): void
     {

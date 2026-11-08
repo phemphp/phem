@@ -38,13 +38,17 @@ pub struct Lowerer<'a> {
     bound_select: Option<String>,
     /// The number of `<Dynamic>` elements with children: each one captures them in its own variable.
     dynamics: usize,
+    /// The number of elements with `phem:error`: each one keeps its error in its own variable.
+    errors: usize,
+    /// While the attributes of a bound field lower: phem_bind() writes its `aria-describedby`.
+    skip_described_by: bool,
     /// The variables that the Twig tags around the current node bind (`{% for x in %}`, `{% set x %}`).
     twig_bound: Vec<String>,
 }
 
 impl<'a> Lowerer<'a> {
     pub fn new(info: &'a FileInfo, reg: &'a Registry, enums: &'a Enums, replacements: &'a Replacements) -> Self {
-        Self { info, reg, enums, replacements, owner: None, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, dynamics: 0, twig_bound: vec![] }
+        Self { info, reg, enums, replacements, owner: None, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, dynamics: 0, errors: 0, skip_described_by: false, twig_bound: vec![] }
     }
 
     pub fn lower_root(&mut self, node: &Node, slots: Vec<String>) -> String {
@@ -160,20 +164,48 @@ impl<'a> Lowerer<'a> {
         }
 
         self.check_timing(e);
+        let error = self.error_of(e, &name);
         let bind = self.bind(e);
 
+        if let Some(err) = &error {
+            out.push_str(&err.open);
+        }
+
+        // phem_bind() writes the `aria-describedby` of a bound field, with the id of its error.
+        // With a spread, the value comes from the merged attributes, and the last group of
+        // phem_attrs() removes it and gives the id of the error: a later value replaces an earlier one.
+        let mut described_by = bind.as_ref().and_then(|b| b.described_by.clone());
         out.push('<');
         out.push_str(&e.name);
         if e.attrs.iter().any(|a| matches!(a.kind, AttrKind::Spread(_))) {
-            self.merged_attrs(&e.attrs, out);
+            let mut last = Vec::new();
+            if bind.is_some() {
+                last.push(format!("{}: null", php_str(DESCRIBED_BY)));
+            }
+
+            if let Some(err) = &error {
+                last.push(format!("'id': {}.id", err.var));
+            }
+
+            let groups = self.merged_attrs(&e.attrs, &last, out);
+            if bind.is_some() {
+                described_by = Some(format!("(phem_props({})[{}] ?? null)", groups.join(", "), php_str(DESCRIBED_BY)));
+            }
         } else {
+            self.skip_described_by = bind.is_some();
             for a in &e.attrs {
                 self.dom_attr(a, out);
+            }
+
+            self.skip_described_by = false;
+            if let Some(err) = &error {
+                out.push_str(&format!(" id=\"{{{{ {}.id }}}}\"", err.var));
             }
         }
 
         if let Some(b) = &bind {
-            out.push_str(&b.attrs);
+            let extra = described_by.map_or(String::new(), |d| format!(", {d}"));
+            out.push_str(&format!(" {{{{ {}{extra}) }}}}", b.call));
         }
 
         if name == "option" {
@@ -202,7 +234,11 @@ impl<'a> Lowerer<'a> {
 
         let scope = usize::from(name == "head" || name == "svg");
         self.title_scopes += scope;
-        self.nodes(&e.children, out);
+        match &error {
+            Some(err) => out.push_str(&format!("{{{{ {}.message }}}}", err.var)),
+            None => self.nodes(&e.children, out),
+        }
+
         self.title_scopes -= scope;
         if bind.as_ref().is_some_and(|b| b.select.is_some()) {
             self.bound_select = outer_select;
@@ -211,6 +247,77 @@ impl<'a> Lowerer<'a> {
         out.push_str("</");
         out.push_str(&e.name);
         out.push('>');
+
+        if error.is_some() {
+            out.push_str("{% endif %}");
+        }
+    }
+
+    /// `phem:error={{ email }}` on an element (`tag`) or on the tag of a component: the error of
+    /// a bound #[State] property, or of a `Bound` prop (E061). The element renders only when the
+    /// field has an error: `{% set _phem_error_0 = phem_error('email', this) %}{% if _phem_error_0 %}`.
+    /// It gets the id of the error and the message, so it has no `id` and no content of its own.
+    fn error_of(&mut self, e: &Element, tag: &str) -> Option<ErrorElement> {
+        let (span, value) = e.attrs.iter().find_map(|a| match &a.kind {
+            AttrKind::Plain { name, name_span, value } if name == ERROR => Some((*name_span, value)),
+            _ => None,
+        })?;
+
+        let component = e.is_component();
+        let what = if component { format!("`<{}>`", e.name) } else { "the element".to_string() };
+        let mut valid = true;
+
+        if !component && phemc_syntax::markup::VOID_ELEMENTS.contains(&tag) {
+            self.error(codes::INVALID_ERROR, format!("`phem:error` needs an element with content, not a `<{}>`", e.name), span).help =
+                Some("put it on the element of the message: `<p phem:error={{ email }} />`".into());
+            valid = false;
+        }
+
+        for a in &e.attrs {
+            if let AttrKind::Plain { name, name_span, .. } = &a.kind {
+                if name == "id" {
+                    self.error(codes::INVALID_ERROR, format!("`id` and `phem:error` cannot be on the same element: `phem:error` gives {what} the id of the error"), *name_span).help =
+                        Some("remove the `id`: `phem:bind` writes the same id in the `aria-describedby` of the field".into());
+                    valid = false;
+                } else if name == BIND {
+                    self.error(codes::INVALID_ERROR, "`phem:bind` and `phem:error` cannot be on the same element", *name_span).help =
+                        Some("put `phem:error` on the element of the message, next to the field".into());
+                    valid = false;
+                }
+            }
+        }
+
+        if e.children.iter().any(|n| !n.is_blank() && !matches!(n, Node::TwigComment(_))) {
+            self.error(codes::INVALID_ERROR, format!("{what} has `phem:error`, so its content is the message of the error"), e.name_span).help =
+                Some("remove the content: `<p phem:error={{ email }} />`".into());
+            valid = false;
+        }
+
+        let target = self.bind_target(value, span, ERROR, codes::INVALID_ERROR)?;
+        let (target, owner) = match target {
+            BindTarget::State { target, code, .. } => {
+                if let Some(class) = self.class {
+                    if !class.open && !class.all_props().any(phemc_analyze::is_validation_prop) {
+                        self.error(codes::INVALID_ERROR, format!("`phem:error` shows a validation error, but `{}` has no `Validation` property", class.name), span).help =
+                            Some(format!("declare `#[State] public Validation $validation;`: it validates `${}` while the user types", code.split(['.', '[']).next().unwrap_or(&code)));
+                        valid = false;
+                    }
+                }
+
+                (target, "this")
+            }
+            BindTarget::Bound(name) => (name, "null"),
+        };
+
+        if !valid {
+            return None;
+        }
+
+        let var = format!("_phem_error_{}", self.errors);
+        self.errors += 1;
+        let open = format!("{{% set {var} = phem_error({target}, {owner}) %}}{{% if {var} %}}");
+
+        Some(ErrorElement { var, open })
     }
 
     fn expr_code(&mut self, x: &TwigExpr) -> String {
@@ -324,7 +431,9 @@ impl<'a> Lowerer<'a> {
 
     /// The attributes of an element with a spread, in one call: `<a x="1" {{ ...rest }} y={{ v }}>`
     /// → `phem_attrs({'x': '1'}, rest, {'y': (v)})`. A later value replaces an earlier one, as in React.
-    fn merged_attrs(&mut self, attrs: &[Attr], out: &mut String) {
+    /// `last`: the entries of a last group, after the attributes of the markup. Returns the
+    /// groups of the markup.
+    fn merged_attrs(&mut self, attrs: &[Attr], last: &[String], out: &mut String) -> Vec<String> {
         let mut args: Vec<String> = Vec::new();
         let mut hash: Vec<String> = Vec::new();
         for a in attrs {
@@ -340,8 +449,8 @@ impl<'a> Lowerer<'a> {
                 // An inline script (`onclick="..."`) of the markup: the runtime does not render
                 // `on*` names from phem_attrs(), because a spread can contain data.
                 AttrKind::Plain { name, .. } if is_inline_script(name) => self.dom_attr(a, out),
-                // See bind().
-                AttrKind::Plain { name, .. } if name == BIND => {}
+                // See bind() and error_of().
+                AttrKind::Plain { name, .. } if name == BIND || name == ERROR => {}
                 AttrKind::Plain { name, name_span, value } => {
                     if TIMINGS.contains(&name.as_str()) {
                         match value {
@@ -391,8 +500,15 @@ impl<'a> Lowerer<'a> {
             args.push(format!("{{{}}}", hash.join(", ")));
         }
 
+        let mut all = args.clone();
+        if !last.is_empty() {
+            all.push(format!("{{{}}}", last.join(", ")));
+        }
+
         let ws = attrs.first().map_or(" ", |a| if a.ws_before.is_empty() { " " } else { a.ws_before.as_str() });
-        out.push_str(&format!("{ws}{{{{ phem_attrs({}) }}}}", args.join(", ")));
+        out.push_str(&format!("{ws}{{{{ phem_attrs({}) }}}}", all.join(", ")));
+
+        args
     }
 
     /// The checks of a handler: a function, or a call with arguments (`onClick={{ remove(item) }}`).
@@ -600,7 +716,7 @@ impl<'a> Lowerer<'a> {
             return None;
         }
 
-        let target = self.bind_target(value, span)?;
+        let target = self.bind_target(value, span, BIND, codes::INVALID_BIND)?;
         let value_span = if let AttrValue::Expr(x) = value { x.span } else { span };
 
         // The attributes that phem:bind sets.
@@ -643,6 +759,11 @@ impl<'a> Lowerer<'a> {
                 Some("`phem:bind` sets it from the property: remove it".into());
         }
 
+        if let Some((s, _)) = attr(INVALID) {
+            self.error(codes::INVALID_BIND, "`aria-invalid` and `phem:bind` cannot be on the same element", s).help =
+                Some("`phem:bind` sets it when the field has a validation error: remove it".into());
+        }
+
         if tag == "textarea" && e.children.iter().any(|n| !n.is_blank()) {
             self.error(codes::INVALID_BIND, "a bound `<textarea>` has no text: `phem:bind` sets it", e.name_span).help = Some("remove the text of the `<textarea>`".into());
         }
@@ -673,6 +794,13 @@ impl<'a> Lowerer<'a> {
             _ => "null".to_string(),
         };
 
+        // The ids of the markup: the runtime adds the id of the validation error after them.
+        let described_by = match attr(DESCRIBED_BY) {
+            Some((_, AttrValue::Expr(v))) => Some(format!("({})", self.expr_code(v))),
+            Some((_, AttrValue::Quoted { parts, .. })) => Some(self.quoted_expr(parts, span)),
+            _ => None,
+        };
+
         // `this`: the component of the property. The markup can render in the slot of another
         // component (`<Document>`), so the current component is not always the owner. A Bound
         // prop has its owner.
@@ -682,32 +810,34 @@ impl<'a> Lowerer<'a> {
         };
 
         Some(BoundField {
-            attrs: format!(" {{{{ phem_bind({target}, {code}, {}, {ty}, {option}, {owner}) }}}}", php_str(&tag)),
+            call: format!("phem_bind({target}, {code}, {}, {ty}, {option}, {owner}", php_str(&tag)),
+            described_by,
             text: (tag == "textarea").then(|| format!("{{{{ phem_bind_value({code}) }}}}")),
             select: (tag == "select").then(|| code.clone()),
         })
     }
 
-    /// The value of `phem:bind`, on a form field or on the tag of a component: a #[State] property
-    /// of the class, a path in an array property, or a `Bound` prop of the component.
-    fn bind_target(&mut self, value: &AttrValue, span: Span) -> Option<BindTarget> {
-        let help = "write the name of a #[State] property: `phem:bind={{ query }}`";
+    /// The value of `phem:bind` or `phem:error` (`d`), on an element or on the tag of a
+    /// component: a #[State] property of the class, a path in an array property, or a `Bound`
+    /// prop of the component. The errors have the code of the directive.
+    fn bind_target(&mut self, value: &AttrValue, span: Span, d: &str, code: &'static str) -> Option<BindTarget> {
+        let help = format!("write the name of a #[State] property: `{d}={{{{ query }}}}`");
         let AttrValue::Expr(x) = value else {
-            self.error(codes::INVALID_BIND, "`phem:bind` takes the name of a #[State] property", span).help = Some(help.into());
+            self.error(code, format!("`{d}` takes the name of a #[State] property"), span).help = Some(help);
             return None;
         };
 
-        let code = self.expr_code(x);
-        let Some((root, path)) = bind_path(&code) else {
-            self.error(codes::INVALID_BIND, "`phem:bind` takes the name of a #[State] property, or a path in it, not an expression", x.span).help =
-                Some(format!("{help}, or a path in an array property: `phem:bind={{{{ filters.status }}}}`, `phem:bind={{{{ rows[key].name }}}}`"));
+        let value_code = self.expr_code(x);
+        let Some((root, path)) = bind_path(&value_code) else {
+            self.error(code, format!("`{d}` takes the name of a #[State] property, or a path in it, not an expression"), x.span).help =
+                Some(format!("{help}, or a path in an array property: `{d}={{{{ filters.status }}}}`, `{d}={{{{ rows[key].name }}}}`"));
             return None;
         };
 
         if self.is_bound_prop(&root) {
             if !path.is_empty() {
-                self.error(codes::INVALID_BIND, format!("`{root}` is a Bound prop: a path in it is not supported"), x.span).help =
-                    Some(format!("bind the prop itself: `phem:bind={{{{ {root} }}}}`, and give the path in the parent"));
+                self.error(code, format!("`{root}` is a Bound prop: a path in it is not supported"), x.span).help =
+                    Some(format!("use the prop itself: `{d}={{{{ {root} }}}}`, and give the path in the parent"));
                 return None;
             }
 
@@ -715,13 +845,13 @@ impl<'a> Lowerer<'a> {
         }
 
         let Some(class) = self.class else {
-            self.error(codes::INVALID_BIND, "`phem:bind` needs a class component: a function component has no state", span).help =
-                Some(format!("bind a #[State] property of a class component, or declare a `Bound ${root}` prop and bind it in the parent: `phem:bind={{{{ query }}}}`"));
+            self.error(code, format!("`{d}` needs a class component: a function component has no state"), span).help =
+                Some(format!("use a #[State] property of a class component, or declare a `Bound ${root}` prop and bind it in the parent: `phem:bind={{{{ query }}}}`"));
             return None;
         };
 
         if has_variable(self.scope_text, &root) {
-            self.error(codes::INVALID_BIND, format!("`{root}` is a local variable, not a #[State] property"), x.span).help =
+            self.error(code, format!("`{root}` is a local variable, not a #[State] property"), x.span).help =
                 Some(format!("rename the variable `${root}`: in markup it hides the property"));
             return None;
         }
@@ -729,18 +859,18 @@ impl<'a> Lowerer<'a> {
         let prop = class.all_props().find(|p| p.name == root && !p.is_static);
         match prop {
             Some(p) if !p.is_state => {
-                self.error(codes::INVALID_BIND, format!("`{root}` is not a #[State] property"), x.span).help =
+                self.error(code, format!("`{root}` is not a #[State] property"), x.span).help =
                     Some(format!("add `#[State]` to `${root}`: the browser keeps only the state"));
                 return None;
             }
             Some(p) if !path.is_empty() && !FieldValue::List.accepts(&p.ty) => {
-                self.error(codes::INVALID_BIND, format!("a path needs an array property, but `${root}` is `{}`", p.ty.trim()), x.span).help =
-                    Some(format!("bind the property itself (`phem:bind={{{{ {root} }}}}`), or make it an `array`"));
+                self.error(code, format!("a path needs an array property, but `${root}` is `{}`", p.ty.trim()), x.span).help =
+                    Some(format!("use the property itself (`{d}={{{{ {root} }}}}`), or make it an `array`"));
                 return None;
             }
             None if !class.open => {
                 let decl = if path.is_empty() { format!("#[State] public string ${root} = '';") } else { format!("#[State] public array ${root} = [];") };
-                self.error(codes::INVALID_BIND, format!("`{}` has no property `{root}`", class.name), x.span).help = Some(format!("declare `{decl}`"));
+                self.error(code, format!("`{}` has no property `{root}`", class.name), x.span).help = Some(format!("declare `{decl}`"));
                 return None;
             }
             _ => {}
@@ -759,7 +889,7 @@ impl<'a> Lowerer<'a> {
             format!("[{}]", items.join(", "))
         };
 
-        Some(BindTarget::State { target, code, prop: prop.cloned(), path: !path.is_empty() })
+        Some(BindTarget::State { target, code: value_code, prop: prop.cloned(), path: !path.is_empty() })
     }
 
     /// Whether a name is a prop of type `Bound` of the component of the markup.
@@ -822,8 +952,8 @@ impl<'a> Lowerer<'a> {
                     return;
                 }
 
-                if name == BIND {
-                    // See bind().
+                if name == BIND || name == ERROR || (self.skip_described_by && name.eq_ignore_ascii_case(DESCRIBED_BY)) {
+                    // See bind() and error_of().
                     return;
                 }
 
@@ -941,6 +1071,8 @@ impl<'a> Lowerer<'a> {
             return;
         }
 
+        let error = self.error_of(e, "");
+
         // With a spread, the groups of props go to phem_props(): `{'a': 1}, rest, {'b': 2}`.
         let mut groups: Vec<String> = Vec::new();
         let mut props = Vec::new();
@@ -953,8 +1085,10 @@ impl<'a> Lowerer<'a> {
             match &a.kind {
                 AttrKind::Plain { name, name_span, value } if name == BIND => {
                     has_bind = true;
-                    bind = self.bind_target(value, *name_span).map(|t| (t, *name_span));
+                    bind = self.bind_target(value, *name_span, BIND, codes::INVALID_BIND).map(|t| (t, *name_span));
                 }
+                // See error_of().
+                AttrKind::Plain { name, .. } if name == ERROR => {}
                 AttrKind::Spread(x) => {
                     has_spread = true;
                     if !props.is_empty() {
@@ -1035,6 +1169,29 @@ impl<'a> Lowerer<'a> {
             given.extend(def.bound.iter().cloned());
         }
 
+        // `phem:error={{ email }}`: the child gets the id of the error and its message. An invalid
+        // `phem:error` has its own error: no "needs the prop" for them.
+        if e.attrs.iter().any(|a| matches!(&a.kind, AttrKind::Plain { name, .. } if name == ERROR)) {
+            given.insert("id".to_string());
+            given.insert("children".to_string());
+        }
+
+        if let Some(err) = &error {
+            let span = e.name_span;
+            if !def.rest && !def.open && !def.props.iter().any(|p| p == "id") {
+                self.error(codes::INVALID_ERROR, format!("`<{}>` has no prop `id` for `phem:error`", e.name), span).help =
+                    Some(format!("add a `string $id` parameter to `{}`, and put it on the element of the message", def.fqcn));
+            }
+
+            if !def.open && !def.slots.iter().any(|s| s == "children") {
+                self.error(codes::INVALID_ERROR, format!("`<{}>` has no `children` for the message of `phem:error`", e.name), span).help =
+                    Some(format!("add a `?Html $children = null` parameter to `{}`", def.fqcn));
+            }
+
+            props.push(format!("'id': {}.id", err.var));
+            props.push(format!("'children': {}.html", err.var));
+        }
+
         // Children and named slots (`<Card:footer>`).
         self.components += 1;
         let slot_prefix = format!("{}:", e.name);
@@ -1110,6 +1267,10 @@ impl<'a> Lowerer<'a> {
 
         head.push_str(" only");
 
+        if let Some(err) = &error {
+            out.push_str(&err.open);
+        }
+
         // Keep the line count of the source tag, so Twig error lines stay close.
         let newlines = e.attrs.iter().map(|a| a.newlines_before).sum::<usize>();
         let pad = "\n".repeat(newlines);
@@ -1123,6 +1284,10 @@ impl<'a> Lowerer<'a> {
             }
 
             out.push_str("{% endcomponent %}");
+        }
+
+        if error.is_some() {
+            out.push_str("{% endif %}");
         }
     }
 
@@ -1149,6 +1314,10 @@ impl<'a> Lowerer<'a> {
                 AttrKind::Plain { name, name_span, .. } if name == BIND => {
                     self.error(codes::INVALID_BIND, "`phem:bind` is for a form field, not a `<Dynamic>`", *name_span).help =
                         Some("write the field as a static element: `<input phem:bind={{ query }} />`".into());
+                }
+                AttrKind::Plain { name, name_span, .. } if name == ERROR => {
+                    self.error(codes::INVALID_ERROR, "`phem:error` is not supported on a `<Dynamic>`", *name_span).help =
+                        Some("write the message as a static element: `<p phem:error={{ email }} />`".into());
                 }
                 _ => attrs.push(a.clone()),
             }
@@ -1181,7 +1350,7 @@ impl<'a> Lowerer<'a> {
 
         out.push_str(&format!("<{{{{ {var} }}}}"));
         if !attrs.is_empty() {
-            self.merged_attrs(&attrs, out);
+            self.merged_attrs(&attrs, &[], out);
         }
 
         out.push('>');
@@ -1326,6 +1495,13 @@ fn has_expr(parts: &[StrPart]) -> bool {
 const BIND: &str = "phem:bind";
 const LIVE: &str = "phem:live";
 
+/// `phem:error={{ email }}`: the element renders only when the bound property has a validation
+/// error, with the id of the error and its message. `phem:bind` sets `aria-invalid` and adds the
+/// id to `aria-describedby`.
+const ERROR: &str = "phem:error";
+const INVALID: &str = "aria-invalid";
+const DESCRIBED_BY: &str = "aria-describedby";
+
 /// What `phem:bind` binds (see `Lowerer::bind_target()`).
 enum BindTarget {
     /// A #[State] property of the class, or a path in it: the PHP target (`'query'`,
@@ -1336,10 +1512,20 @@ enum BindTarget {
     Bound(String),
 }
 
+/// The lowered parts of an element with `phem:error` (see `Lowerer::error_of()`).
+struct ErrorElement {
+    /// The Twig variable of the error: `_phem_error_0`.
+    var: String,
+    /// The Twig code before the element: the error, and the `{% if %}`.
+    open: String,
+}
+
 /// The lowered parts of a bound field (see `Lowerer::bind()`).
 struct BoundField {
-    /// The attributes: ` {{ phem_bind(...) }}`.
-    attrs: String,
+    /// The call with no `aria-describedby` and no `)`: `phem_bind('query', query, 'input', null, null, this`.
+    call: String,
+    /// The `aria-describedby` of the markup, for `phem_bind()`.
+    described_by: Option<String>,
     /// The text of a `<textarea>`.
     text: Option<String>,
     /// The bound value of a `<select>`, for the `selected` of its options.

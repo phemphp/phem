@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Runtime;
 
+use Phem\Attribute\State;
 use Phem\Bound;
 use Phem\Dom\Attributes;
 use Phem\Manifest\Manifest;
@@ -22,6 +23,7 @@ use Phem\State\BoundValues;
 use Phem\State\StateJson;
 use Phem\Tests\Fixtures\Size;
 use Phem\Twig\PhemRuntime;
+use Phem\Validation;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Twig\Environment;
@@ -168,6 +170,75 @@ final class BindTest extends TestCase
         self::assertSame('Ada', Attributes::bindValue(new Bound('bio', 'Ada')), 'the text of a <textarea>');
     }
 
+    public function testABoundFieldWithAnErrorGetsTheAriaAttributes(): void
+    {
+        $runtime = new PhemRuntime(new Renderer(new Manifest('/nonexistent'), new MarkupResolver(new Environment(new ArrayLoader())), []));
+        $form = new class {
+            #[State] public string $email = 'ada';
+            /** @var array{city: string} */
+            #[State] public array $address = ['city' => ''];
+            #[State] public Validation $validation;
+        };
+        $form->validation = new Validation(['email', 'address.city'], null, ['email' => 'Not <valid>.', 'address.city' => 'Enter a city.']);
+
+        // Outside a page, the fiber of the id is `x`.
+        self::assertSame('value="ada" aria-invalid="true" aria-describedby="x-email-error"', (string) $runtime->bind('email', 'ada', 'input', null, null, $form));
+        self::assertSame('value="" aria-invalid="true" aria-describedby="email-help x-address-city-error"', (string) $runtime->bind(['address', 'city'], '', 'input', null, null, $form, 'email-help'));
+        self::assertSame('value="ada" aria-invalid="true" aria-describedby="x-email-error"', (string) $runtime->bind(new Bound('email', 'ada', $form), null, 'input'), 'a Bound prop has the owner');
+
+        $error = $runtime->error('email', $form);
+        self::assertSame('x-email-error', $error?->id);
+        self::assertSame('Not <valid>.', $error->message);
+        self::assertSame('Not &lt;valid&gt;.', (string) $error->html(), 'the children of a component');
+        self::assertSame('x-address-city-error', $runtime->error(new Bound(['address', 'city'], '', $form))?->id);
+
+        // No error.
+        $form->validation = new Validation(['email']);
+        self::assertSame('value="ada"', (string) $runtime->bind('email', 'ada', 'input', null, null, $form));
+        self::assertSame('value="ada" aria-describedby="email-help"', (string) $runtime->bind('email', 'ada', 'input', null, null, $form, 'email-help'));
+        self::assertNull($runtime->error('email', $form));
+    }
+
+    public function testTwoFieldsNeverGetTheSameErrorId(): void
+    {
+        $runtime = new PhemRuntime(new Renderer(new Manifest('/nonexistent'), new MarkupResolver(new Environment(new ArrayLoader())), []));
+        $form = new class {
+            /** @var array<string, array<string, mixed>> */
+            #[State] public array $rows = ['a-b' => ['name' => ''], 'a' => ['b' => ['name' => '']]];
+            #[State] public Validation $validation;
+        };
+        $form->validation = new Validation(['rows'], null, ['rows.a-b.name' => 'One.', 'rows.a.b.name' => 'Two.']);
+
+        $dash = $runtime->error(['rows', 'a-b', 'name'], $form)?->id;
+        self::assertSame('x-rows-a-b-name-'.hash('xxh32', 'rows.a-b.name').'-error', $dash);
+        self::assertSame('x-rows-a-b-name-error', $runtime->error(['rows', 'a', 'b', 'name'], $form)?->id);
+    }
+
+    public function testAComponentWithTwoValidationsStillRenders(): void
+    {
+        $runtime = new PhemRuntime(new Renderer(new Manifest('/nonexistent'), new MarkupResolver(new Environment(new ArrayLoader())), []));
+        $form = new class {
+            #[State] public string $email = 'ada';
+            #[State] public Validation $billing;
+            #[State] public Validation $shipping;
+        };
+
+        self::assertSame('value="ada"', (string) $runtime->bind('email', 'ada', 'input', null, null, $form));
+        self::assertNull($runtime->error('email', $form));
+    }
+
+    public function testAComponentWithNoValidationHasNoErrors(): void
+    {
+        $runtime = new PhemRuntime(new Renderer(new Manifest('/nonexistent'), new MarkupResolver(new Environment(new ArrayLoader())), []));
+        $form = new class {
+            #[State] public string $email = 'ada';
+        };
+
+        self::assertSame('value="ada"', (string) $runtime->bind('email', 'ada', 'input', null, null, $form));
+        self::assertNull($runtime->error('email', $form));
+        self::assertNull($runtime->error('email'), 'no component');
+    }
+
     public function testABindCannotComeFromASpread(): void
     {
         $runtime = new PhemRuntime(new Renderer(new Manifest('/nonexistent'), new MarkupResolver(new Environment(new ArrayLoader())), []));
@@ -177,6 +248,14 @@ final class BindTest extends TestCase
 
         $this->expectException(\InvalidArgumentException::class);
         $runtime->attrs(['phem:bind' => 'name']);
+    }
+
+    public function testAnErrorCannotComeFromASpread(): void
+    {
+        $runtime = new PhemRuntime(new Renderer(new Manifest('/nonexistent'), new MarkupResolver(new Environment(new ArrayLoader())), []));
+
+        $this->expectException(\InvalidArgumentException::class);
+        $runtime->attrs(['phem:error' => 'name']);
     }
 
     public function testAnEventSetsTheBoundValuesBeforeTheHandler(): void

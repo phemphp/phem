@@ -1,0 +1,14 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<form>
+                <input name="name" class="border aria-invalid:border-danger" {{ phem_bind('name', name, 'input', null, null, this) }}>
+                {% set _phem_error_1 = phem_error('name', this) %}{% if _phem_error_1 %}{% component 'App\\Ui\\Common\\FieldError' with {'id': _phem_error_1.id, 'children': _phem_error_1.html} only %}{% endif %}
+                <input name="city" {{ phem_bind(['address', 'city'], address.city, 'input', null, null, this, 'city-help') }}>
+                <small id="city-help">The city of the address.</small>
+                {% set _phem_error_2 = phem_error(['address', 'city'], this) %}{% if _phem_error_2 %}<p class="error" id="{{ _phem_error_2.id }}">{{ _phem_error_2.message }}</p>{% endif %}
+                {% component 'App\\Ui\\Common\\EmailField' with {'value': phem_bound('email', email, this)} only %}
+                <input {{ phem_attrs({'name': 'email-copy'}, help, {'aria-describedby': null}) }} {{ phem_bind('email', email, 'input', null, null, this, (phem_props({'name': 'email-copy'}, help)['aria-describedby'] ?? null)) }}>
+                {% set _phem_error_3 = phem_error('email', this) %}{% if _phem_error_3 %}<p {{ phem_attrs(message, {'id': _phem_error_3.id}) }}>{{ _phem_error_3.message }}</p>{% endif %}
+            </form>

@@ -171,6 +171,37 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       ],
       "rest": false
     },
+    "App\\Ui\\Common\\EmailField": {
+      "fqcn": "App\\Ui\\Common\\EmailField",
+      "kind": "template",
+      "source": "Ui/Common/Errors.phem",
+      "template": "Ui/Common/Errors.1.twig",
+      "props": [
+        "value"
+      ],
+      "slots": [],
+      "required": [
+        "value"
+      ],
+      "rest": false
+    },
+    "App\\Ui\\Common\\FieldError": {
+      "fqcn": "App\\Ui\\Common\\FieldError",
+      "kind": "template",
+      "source": "Ui/Common/Errors.phem",
+      "template": "Ui/Common/Errors.0.twig",
+      "props": [
+        "id",
+        "children"
+      ],
+      "slots": [
+        "children"
+      ],
+      "required": [
+        "id"
+      ],
+      "rest": false
+    },
     "App\\Ui\\Common\\Filters": {
       "fqcn": "App\\Ui\\Common\\Filters",
       "kind": "class",
@@ -286,6 +317,15 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       "kind": "template",
       "source": "Ui/Common/Tabs.phem",
       "template": "Ui/Common/Tabs.3.twig",
+      "props": [],
+      "slots": [],
+      "required": [],
+      "rest": false
+    },
+    "App\\Ui\\Common\\SignUp": {
+      "fqcn": "App\\Ui\\Common\\SignUp",
+      "kind": "class",
+      "source": "Ui/Common/Errors.phem",
       "props": [],
       "slots": [],
       "required": [],
@@ -530,6 +570,18 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       "source": "Ui/Common/Dynamic.phem",
       "line": 38
     },
+    "Ui/Common/Errors.0.twig": {
+      "source": "Ui/Common/Errors.phem",
+      "line": 15
+    },
+    "Ui/Common/Errors.1.twig": {
+      "source": "Ui/Common/Errors.phem",
+      "line": 23
+    },
+    "Ui/Common/Errors.2.twig": {
+      "source": "Ui/Common/Errors.phem",
+      "line": 44
+    },
     "Ui/Common/Filters.0.twig": {
       "source": "Ui/Common/Filters.phem",
       "line": 30
@@ -611,6 +663,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "php/Ui/Common/Counter.php",
     "php/Ui/Common/Document.php",
     "php/Ui/Common/Dynamic.php",
+    "php/Ui/Common/Errors.php",
     "php/Ui/Common/Filters.php",
     "php/Ui/Common/Rest.php",
     "php/Ui/Common/Tabs.php",

@@ -1,0 +1,56 @@
+<?phem
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\{Component, State};
+use Phem\Bound;
+use Phem\Html;
+use Phem\Node;
+use Phem\Validation;
+
+/** The message of a validation error: `phem:error` gives the id and the children. */
+#[Component]
+function FieldError(string $id, ?Html $children = null): Node
+{
+    return <span id={{ id }} className="error">{{ children }}</span>;
+}
+
+/** A child field: its error is the error of the property of the parent. */
+#[Component]
+function EmailField(Bound $value): Node
+{
+    return (
+        <>
+            <input type="email" phem:bind={{ value }} />
+            <p phem:error={{ value }} />
+        </>
+    );
+}
+
+#[Component]
+final class SignUp
+{
+    #[State] public string $name = '';
+    #[State] public string $email = '';
+    #[State] public array $address = ['city' => ''];
+    #[State] public Validation $validation;
+
+    public function render(): Node
+    {
+        $help = ['aria-describedby' => 'email-help'];
+        $message = ['className' => 'error'];
+
+        return (
+            <form>
+                <input name="name" phem:bind={{ name }} className="border aria-invalid:border-danger" />
+                <FieldError phem:error={{ name }} />
+                <input name="city" aria-describedby="city-help" phem:bind={{ address.city }} />
+                <small id="city-help">The city of the address.</small>
+                <p phem:error={{ address.city }} className="error" />
+                <EmailField phem:bind={{ email }} />
+                <input name="email-copy" {{ ...help }} phem:bind={{ email }} />
+                <p {{ ...message }} phem:error={{ email }} />
+            </form>
+        );
+    }
+}

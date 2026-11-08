@@ -137,6 +137,12 @@ pub struct ContextNeed {
 }
 
 /// The template name of the markup literal `index` of a source file.
+/// Whether a property is the `#[State]` property of the type `Phem\Validation` of a class: it
+/// turns on the live validation.
+pub fn is_validation_prop(p: &Prop) -> bool {
+    p.is_state && !p.is_static && p.class_ty.as_deref() == Some(VALIDATION)
+}
+
 pub fn template_name(rel: &str, index: usize) -> String {
     let stem = rel.strip_suffix(".phem").unwrap_or(rel);
     format!("{stem}.{index}.twig")
@@ -509,7 +515,7 @@ fn check_validated(file: &FileInfo) -> Vec<Diagnostic> {
     }
 
     for c in file.classes.iter().filter(|c| !c.is_trait && !c.open && (c.is_component || c.is_page)) {
-        let is_validation = |p: &&Prop| p.is_state && !p.is_static && p.class_ty.as_deref() == Some(VALIDATION);
+        let is_validation = |p: &&Prop| is_validation_prop(p);
         let validations: Vec<_> = c.props.iter().chain(&c.inherited_props).filter(is_validation).collect();
         if validations.len() > 1 {
             // On a property of this class when it has one: the span is in this file.

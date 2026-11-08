@@ -1,0 +1,7 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+
+            <input type="email" {{ phem_bind(value, value, 'input', 'email', null, null) }}>
+            {% set _phem_error_0 = phem_error(value, null) %}{% if _phem_error_0 %}<p id="{{ _phem_error_0.id }}">{{ _phem_error_0.message }}</p>{% endif %}

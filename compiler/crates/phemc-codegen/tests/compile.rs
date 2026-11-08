@@ -183,6 +183,15 @@ fn a_variable_that_can_be_undefined_keeps_the_fallback() {
     template_vars("$a = [1, 2;\n    }\n    return <p>{{ a }}</p>;");
 }
 
+#[test]
+fn an_invalid_phem_error_on_a_component_gives_no_missing_prop_error() {
+    let src = "<?phem\nuse Phem\\Attribute\\{Component, State};\nuse Phem\\Html;\nuse Phem\\Node;\nuse Phem\\Validation;\n\
+        #[Component] function FieldError(string $id, ?Html $children = null): Node { return <p id={{ id }}>{{ children }}</p>; }\n\
+        #[Component] final class F { #[State] public string $q = '';\n#[State] public Validation $validation;\npublic function render(): Node { return <FieldError phem:error={{ q ~ 'x' }} />; } }\n";
+
+    assert_eq!(codes(src), ["E061"]);
+}
+
 fn codes(src: &str) -> Vec<&'static str> {
     let (_, diags) = compile(vec![SourceInput::app("App.phem", src)]);
     diags.iter().flat_map(|f| f.diags.iter().map(|d| d.code)).collect()
