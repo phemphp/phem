@@ -1113,7 +1113,7 @@ describe("phem:before-queue", () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
 
     // The default action of the click does not run: the box stays unchecked.
-    expect(before).toEqual([{ handler: "c1.star", type: "click" }])
+    expect(before).toEqual([{ handler: "c1.star", type: "click", resume: expect.any(Function), signal: expect.any(AbortSignal) }])
     expect(box.checked).toBe(false)
     expect(queued).not.toHaveBeenCalled()
     expect(fetch).not.toHaveBeenCalled()
@@ -1130,6 +1130,131 @@ describe("phem:before-queue", () => {
     expect(document.getElementById("small").checked).toBe(true)
     expect(document.getElementById("large").checked).toBe(false)
     expect(document.getElementById("large").classList.contains("phem-dirty")).toBe(false)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("sends the cancelled event later with resume(), with the values of the DOM event", async () => {
+    await mount(`<input id="star" type="checkbox" data-phem-on-click="c1.star">`)
+    let resume
+    const before = vi.fn((e) => {
+      e.preventDefault()
+      resume = e.detail.resume
+    })
+    document.getElementById("star").addEventListener("phem:before-queue", before)
+    click("#star")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(fetch).not.toHaveBeenCalled()
+
+    respond(`<input id="star" type="checkbox" data-phem-on-click="c1.star" checked>`)
+    const done = nextDone()
+    resume()
+    resume()
+    await done
+
+    expect(before).toHaveBeenCalledTimes(1)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({ handler: "c1.star", event: { type: "click", checked: true } })
+  })
+
+  it("sends nothing with resume() when the event was not cancelled", async () => {
+    await mount(`<button id="star" data-phem-on-click="c1.star">Star</button>`)
+    let resume
+    document.getElementById("star").addEventListener("phem:before-queue", (e) => (resume = e.detail.resume))
+    respond(`<button id="star" data-phem-on-click="c1.star">Star</button>`)
+    const done = nextDone()
+    click("#star")
+    await done
+
+    resume()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("undoes the cancel with resume() in the dispatch", async () => {
+    await mount(`<input id="star" type="checkbox" data-phem-on-click="c1.star">`)
+    document.getElementById("star").addEventListener("phem:before-queue", (e) => {
+      e.preventDefault()
+      e.detail.resume()
+    })
+    respond(`<input id="star" type="checkbox" data-phem-on-click="c1.star" checked>`)
+    const done = nextDone()
+    click("#star")
+
+    // The default action of the click runs: the box stays checked.
+    expect(document.getElementById("star").checked).toBe(true)
+    await done
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({ event: { checked: true } })
+  })
+
+  it("sends the fields that a listener of phem:before-queue changed", async () => {
+    const form = `<form data-phem-on-submit="c1.save"><input type="hidden" name="at" value=""><button id="save">Save</button></form>`
+    await mount(form)
+    document.getElementById("phem-root").addEventListener("phem:before-queue", () => (document.querySelector('[name="at"]').value = "now"))
+    respond(form)
+    const done = nextDone()
+    click("#save")
+    await done
+
+    expect(JSON.parse(fetch.mock.calls[0][1].body).event.form).toEqual([["at", "now"]])
+  })
+
+  it("drops a held event when a morph changes its element, and aborts its signal", async () => {
+    const markup = `<button id="star" data-phem-on-click="c1.star">Star</button><button id="other" data-phem-on-click="c1.other">Other</button>`
+    await mount(markup)
+    let detail
+    document.getElementById("star").addEventListener("phem:before-queue", (e) => {
+      e.preventDefault()
+      detail = e.detail
+    })
+    click("#star")
+    expect(detail.signal.aborted).toBe(false)
+
+    // Another event renders the component again: its fiber id can belong to another component now.
+    respond(markup)
+    const done = nextDone()
+    click("#other")
+    await done
+    detail.resume()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(detail.signal.aborted).toBe(true)
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("drops a held event when a stream removes its element", async () => {
+    await mount(`<button id="star" data-phem-on-click="c1.star">Star</button><button id="other" data-phem-on-click="c1.other">Other</button>`)
+    let detail
+    document.getElementById("star").addEventListener("phem:before-queue", (e) => {
+      e.preventDefault()
+      detail = e.detail
+    })
+    click("#star")
+
+    respond("", {}, { streams: `<turbo-stream action="remove" target="star"></turbo-stream>` })
+    const done = nextDone()
+    click("#other")
+    await done
+    await new Promise((resolve) => requestAnimationFrame(resolve))
+
+    expect(document.getElementById("star")).toBeNull()
+    expect(detail.signal.aborted).toBe(true)
+  })
+
+  it("sends nothing with resume() when the element left the page", async () => {
+    await mount(`<button id="star" data-phem-on-click="c1.star">Star</button>`)
+    let resume
+    document.getElementById("star").addEventListener("phem:before-queue", (e) => {
+      e.preventDefault()
+      resume = e.detail.resume
+    })
+    click("#star")
+    document.getElementById("star").remove()
+
+    resume()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
     expect(fetch).not.toHaveBeenCalled()
   })
 })

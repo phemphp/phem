@@ -457,6 +457,32 @@ function finishStream(root) {
   return !failed
 }
 
+// The events that a listener of `phem:before-queue` cancelled, and that its `detail.resume()` can
+// send later (see allowed()). A morph or a removal of the element drops its event, and aborts its
+// `detail.signal`: the fiber id of a component comes from its index, so after a morph the handler
+// can belong to another component, and the event would run on the wrong one.
+class HeldEvents {
+  #held = new Set()
+
+  // Holds the event of `el`: `hold` aborts when it drops. Returns the function that releases it.
+  add(el, hold) {
+    const entry = { el, hold }
+    this.#held.add(entry)
+
+    return () => this.#held.delete(entry)
+  }
+
+  // Drops the events whose element passes `test`.
+  drop(test) {
+    for (const entry of this.#held) {
+      if (!test(entry.el)) continue
+
+      this.#held.delete(entry)
+      entry.hold.abort()
+    }
+  }
+}
+
 export default class PhemController extends Controller {
   static values = {
     state: String,
@@ -599,6 +625,28 @@ export default class PhemController extends Controller {
     }
     this.element.addEventListener("turbo:before-morph-element", this.keepKept)
 
+    // A morph or a removal of the element of a held event drops it (see HeldEvents). A stream that
+    // does not morph (a push that removes or replaces an element) drops the events of the
+    // elements that left the page.
+    this.heldEvents = new HeldEvents()
+    this.dropMorphed = (event) => {
+      const target = event.target
+      const removed = !event.detail.newElement
+      this.heldEvents.drop((el) => el === target || (removed && target.contains(el)))
+    }
+    this.element.addEventListener("turbo:before-morph-element", this.dropMorphed)
+    this.dropDetached = (event) => {
+      const render = event.detail.render
+      event.detail.render = async (element) => {
+        try {
+          await render(element)
+        } finally {
+          this.heldEvents.drop((el) => !el.isConnected)
+        }
+      }
+    }
+    document.addEventListener("turbo:before-stream-render", this.dropDetached)
+
     // The attributes in the `data-phem-client` list of an element belong to the client (a Stimulus
     // controller): the morph does not change them.
     this.keepClient = (event) => {
@@ -739,6 +787,9 @@ export default class PhemController extends Controller {
     this.element.removeEventListener("turbo:before-morph-attribute", this.keepEdited)
     this.element.removeEventListener("turbo:before-morph-element", this.keepValue)
     this.element.removeEventListener("turbo:before-morph-element", this.keepKept)
+    this.element.removeEventListener("turbo:before-morph-element", this.dropMorphed)
+    document.removeEventListener("turbo:before-stream-render", this.dropDetached)
+    this.heldEvents.drop(() => true)
     this.element.removeEventListener("turbo:before-morph-attribute", this.keepClient)
     document.removeEventListener("turbo:before-stream-render", this.keyMorph)
     this.element.removeEventListener("focusout", this.flushOnBlur)
@@ -1007,14 +1058,25 @@ export default class PhemController extends Controller {
       if (this.locked.has(el)) return
     }
 
+    // The payload of the DOM event: after the listeners of `phem:before-queue`, which can change
+    // the fields, and before a cancel resets them (see allowed()).
     const attr = el._phemAttr
     const handler = el.getAttribute(attr)
-    if (!this.allowed(el, handler, event)) {
+    let payload = null
+    const read = () => (payload ??= this.payload(el, event))
+    const send = () => this.schedule(el, attr, handler, event.type, read())
+
+    if (!this.allowed(el, handler, event, read, send)) {
       // The field has its value again: the user did not touch it.
       if (this.clientMarks.delete(changed)) changed.removeAttribute(TOUCHED)
       return
     }
 
+    send()
+  }
+
+  // The payload of the DOM event of a handler element.
+  payload(el, event) {
     // A submit, a change or a click of an element in a form sends the fields of the form, so its
     // handler can submit a Symfony form with them. The change and the click send the touched
     // fields too. The files go with the submit only.
@@ -1038,15 +1100,43 @@ export default class PhemController extends Controller {
       payload.fileInputs = sentFileInputs(form)
     }
 
-    this.schedule(el, attr, handler, event.type, payload)
+    return payload
   }
 
   // Dispatches the cancelable `phem:before-queue` on the element of a handler, before its event goes.
   // A listener that cancels it (as `phem-confirm` does) stops the event: the DOM event does not do
   // its default action, and a field that changed gets the value of the server render again.
-  allowed(el, handler, event) {
-    const before = new CustomEvent("phem:before-queue", { detail: { handler, type: event.type }, bubbles: true, cancelable: true })
-    if (el.dispatchEvent(before)) return true
+  //
+  //
+  // `detail.resume()` sends the event that the listener cancelled, later (for example after the
+  // user confirms in a `<dialog>`): with the payload of the DOM event, and with no new
+  // `phem:before-queue`. It sends the event one time only. It does nothing when the event was not
+  // cancelled, when it dropped, or when the page has no events. In the dispatch, it undoes the
+  // cancel: the event goes as if no listener cancelled it. `detail.signal` aborts when the event
+  // drops (see HeldEvents): then resume() does nothing.
+  allowed(el, handler, event, read, send) {
+    const hold = new AbortController()
+    let dispatching = true
+    let resumed = false
+    let release = () => {}
+    const resume = () => {
+      if (resumed || !before.defaultPrevented || hold.signal.aborted || this.inactive || !el.isConnected) return
+      // The first submit of this form still runs.
+      if (event.type === "submit" && this.locked.has(el)) return
+
+      resumed = true
+      release()
+      if (!dispatching) send()
+    }
+
+    const before = new CustomEvent("phem:before-queue", { detail: { handler, type: event.type, resume, signal: hold.signal }, bubbles: true, cancelable: true })
+    const allowed = el.dispatchEvent(before) || resumed
+    dispatching = false
+    if (allowed) return true
+
+    // resume() sends the values of the DOM event, from before the reset of the field.
+    read()
+    release = this.heldEvents.add(el, hold)
 
     event.preventDefault()
     if (event.type === "input" || event.type === "change") {
@@ -1063,7 +1153,8 @@ export default class PhemController extends Controller {
 
   // Sends an event after its wait (debounce or throttle), or at once. The DOM event gets an id:
   // `phem:queue` gives it in the dispatch of the DOM event, so a Stimulus action of the element
-  // knows its event. The event that carries it gives it in `ids` (more than one when the DOM event
+  // knows its event. A held event gets it later, when `detail.resume()` of `phem:before-queue`
+  // sends it (see allowed()). The event that carries it gives it in `ids` (more than one when the DOM event
   // replaced or joined an event that waits).
   schedule(el, attr, handler, type, payload) {
     const id = ++this.lastId

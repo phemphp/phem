@@ -24,7 +24,7 @@ The element that sent an event receives these browser events, with the `handler`
 
 | Event | When |
 |---|---|
-| `phem:before-queue` | Before the event joins the queue; call `preventDefault()` to cancel it |
+| `phem:before-queue` | Before the event joins the queue; call `preventDefault()` to cancel it, and `detail.resume()` to send the cancelled event later (see [Hold an event](#hold-an-event-and-send-it-later)) |
 | `phem:queue` | When the event joins the queue |
 | `phem:send` | When the request starts |
 | `phem:receive` | When the server accepted the event, before the morph |
@@ -211,6 +211,59 @@ During the tap, a hidden field takes the focus and the keyboard opens. The keybo
 ```
 
 When the user cancels, the browser sends no event.
+
+#### Ask in a dialog of the page
+
+By default, `window.confirm()` asks the question. To ask it in a `<dialog>` of your page, give the selector of the dialog in the `dialog` value:
+
+```html
+<button onClick={{ clear }} data-controller="phem-confirm"
+        data-phem-confirm-message-value="Empty the bag?"
+        data-phem-confirm-accept-value="Empty bag"
+        data-phem-confirm-dialog-value="#confirm">Empty bag</button>
+
+<dialog id="confirm" aria-describedby="confirm-message">
+    <form method="dialog">
+        <p id="confirm-message" data-phem-confirm-message></p>
+        <button value="cancel">Back</button>
+        <button value="confirm" data-phem-confirm-accept>Yes</button>
+    </form>
+</dialog>
+```
+
+When the user clicks **Empty bag**, the controller does these steps:
+
+1. It holds the event: no event goes to the server yet.
+2. It puts the `message` value in the `[data-phem-confirm-message]` elements of the dialog, and the `accept` value in its `[data-phem-confirm-accept]` elements. With no `accept` value, the accept button keeps the label of the page.
+3. It opens the dialog with `showModal()`.
+4. When the dialog closes with the return value `confirm`, the held event goes, with the values of the click. Any other close, such as **Back** or Escape, sends no event.
+
+When the question ends, the dialog gets the texts of the page again. So one dialog can serve all the `phem-confirm` elements of the page: put it once in the layout. Give the dialog an accessible description, such as `aria-describedby` on the message, so a screen reader reads the question.
+
+These edge cases apply:
+
+- **A morph while the dialog asks**: the morph does not change the dialog, its texts or its `open` attribute
+- **A morph or a removal of the element of the event**: the event drops and the dialog closes. After the morph, the handler can belong to another component, so the event could run on the wrong item. The user clicks again
+- **A new question while the dialog asks**: the new question replaces the open question
+- **The dialog cannot ask**: when the selector is not valid, finds no `<dialog>`, or finds a dialog that is open with no question, the browser logs an error and `window.confirm()` asks
+
+A field with a `phem-confirm` gets the value of the server render while the dialog is open. When the user confirms, the event sends the value that the user chose, and the server render shows it.
+
+### Hold an event and send it later
+
+To build your own confirmation, listen to `phem:before-queue`, call `preventDefault()`, and call `event.detail.resume()` after the user agrees:
+
+```js
+element.addEventListener("phem:before-queue", (event) => {
+    event.preventDefault()
+    askTheUser().then((yes) => yes && event.detail.resume())
+    event.detail.signal.addEventListener("abort", closeTheQuestion)
+})
+```
+
+`resume()` sends the held event one time, with the values of the DOM event and with no new `phem:before-queue`. Phem reads the values after all the listeners of `phem:before-queue`, so a listener can change a field before the event goes.
+
+A morph or a removal of the element drops the held event, and `event.detail.signal` aborts. Then `resume()` does nothing. It also does nothing when the event was not cancelled or when the page has no events. A call of `resume()` in the listener itself undoes the cancel: the event goes at once, as if no listener cancelled it.
 
 ## Animate changes with view transitions
 
