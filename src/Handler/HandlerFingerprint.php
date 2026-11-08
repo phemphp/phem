@@ -14,8 +14,9 @@ declare(strict_types=1);
 namespace Phem\Handler;
 
 /**
- * The fingerprint of an event handler: its function (class, method or closure, with its line)
- * and the values that it captures (`fn () => $this->remove($id)`).
+ * The fingerprint of an event handler: its function (class, method or closure, with its line),
+ * the values that it captures (`fn () => $this->remove($id)`), and the arguments of a handler
+ * call in the markup (`onClick={{ remove(id) }}`, see HandlerCall).
  *
  * A handler id contains it, so the id comes from what the handler does, not from its position
  * in the render. When the data changes between the render and the click (another user removes
@@ -32,13 +33,19 @@ final class HandlerFingerprint
 
     public function of(\Closure $handler): string
     {
-        $function = new \ReflectionFunction($handler);
-
-        return substr(hash('xxh128', serialize([
+        [$target, $arguments] = HandlerCall::unwrap($handler);
+        $function = new \ReflectionFunction($target);
+        $data = [
             $function->getClosureScopeClass()?->getName(),
             $function->getName(),
             $this->normalize($function->getClosureUsedVariables(), 0),
-        ])), 0, 12);
+        ];
+
+        if ([] !== $arguments) {
+            $data[] = $this->normalize($arguments, 0);
+        }
+
+        return substr(hash('xxh128', serialize($data)), 0, 12);
     }
 
     /** A value with only scalars and arrays: an object becomes its class and its identity. */

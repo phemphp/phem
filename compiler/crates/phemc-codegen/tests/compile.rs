@@ -706,6 +706,55 @@ fn an_abstract_class_is_not_a_component() {
 }
 
 #[test]
+fn a_handler_call_gets_its_arguments_with_no_call_during_render() {
+    let src = "<?phem\nnamespace App;\nuse Phem\\Attribute\\{Component, Prop};\nuse Phem\\Event;\n#[Component]\nfinal class Reasons {\n    #[Prop] public ?\\Closure $onPick = null;\n    public array $reasons = [];\n    public function pick(string $reason, Event $e): void {}\n    public function remove(int $index): void {}\n    public function render() { return <ul>{% for r in reasons %}<li key={{ r }}><button onClick={{ pick(r) }} phem:loading={{ remove(loop.index0) }}>{{ r }}</button><Reasons onPick={{ pick(r) }} /></li>{% endfor %}<button onClick={{ onPick('none') }} /><button onClick={{ remove( 2 ) }} /></ul>; }\n}\n";
+    let (out, diags) = compile(vec![SourceInput::app("Reasons.phem", src)]);
+
+    let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
+    assert!(msgs.is_empty(), "unexpected diagnostics: {msgs:#?}");
+    let file = &out.expect("output").files[0];
+    let twig = &file.templates[0].content;
+    for expected in [
+        "{{ phem_on('click', phem_call(pick, [r])) }}",
+        "{{ phem_loading(phem_call(remove, [loop.index0])) }}",
+        "'onPick': (phem_call(pick, [r]))",
+        "{{ phem_on('click', phem_call(onPick, ['none'])) }}",
+        "{{ phem_on('click', phem_call(remove, [2])) }}",
+    ] {
+        assert!(twig.contains(expected), "{expected} in {twig}");
+    }
+
+    // The methods go to the template as closures.
+    assert!(file.php.contains("'pick' => $this->pick(...)"), "{}", file.php);
+    assert!(file.php.contains("'remove' => $this->remove(...)"), "{}", file.php);
+}
+
+#[test]
+fn a_handler_call_has_the_arguments_of_the_method() {
+    let base = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\nuse Phem\\Event;\n#[Component]\nfinal class Slots {\n    public array $slots = [];\n    public function remove(int $index, Event $e): void {}\n    public function pick(?string $name, float $weight, bool $flag, \\App\\Size $size, mixed ...$rest): void {}\n    public function render() { return <div><button ATTR /></div>; }\n}\n";
+    let src = |attr: &str| base.replace("ATTR", attr);
+
+    // Too many arguments, an argument for the Event, a literal of another type, a named argument.
+    let (_, diags) = compile(vec![SourceInput::app("Slots.phem", &src("onClick={{ remove(1, 2) }}"))]);
+    let d: Vec<_> = diags.iter().flat_map(|f| &f.diags).collect();
+    assert_eq!(d.iter().map(|d| (d.code, d.message.as_str())).collect::<Vec<_>>(), [("E047", "`onClick` gives the argument `2` to the `Event` parameter `$e` of `remove()`")]);
+    assert_eq!(codes(&src("onClick={{ remove('first') }}")), ["E047"]);
+    assert_eq!(codes(&src("onClick={{ remove(index: 1) }}")), ["E047"]);
+    assert_eq!(codes(&src("onClick={{ pick(null, 1, true, 'small') }}")), ["E047"], "a literal is not an object");
+    assert_eq!(codes(&src("onClick={{ pick(1) }}")), ["E047"]);
+
+    // The right arguments, a variadic parameter, and the values that phemc does not know.
+    assert!(codes(&src("onClick={{ remove(1) }}")).is_empty());
+    assert!(codes(&src("onClick={{ pick(null, 1, false, slots|first, 'a', 2) }}")).is_empty());
+    assert!(codes(&src("onClick={{ remove(slots|length) }}")).is_empty());
+    assert!(codes(&src("onClick={{ remove() }}")).is_empty(), "the event of the browser does not give the index: the runtime reports it");
+
+    // A variable of the same name can be any function.
+    let local = src("onClick={{ remove(1, 2) }}").replace("public function render() {", "public function render() { $remove = fn () => null;");
+    assert!(codes(&local).is_empty());
+}
+
+#[test]
 fn mount_and_render_are_not_handlers() {
     let base = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class Panel {\n    public function mount(): void {}\n    public function reload(): void {}\n    public function render() { return <div><button ATTR /></div>; }\n}\n";
     let src = |attr: &str| base.replace("ATTR", attr);

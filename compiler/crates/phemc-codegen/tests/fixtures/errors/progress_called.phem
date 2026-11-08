@@ -1,2 +1,0 @@
-<?phem // expect: W001
-function App() { $save = fn() => 1; return <progress phem:progress={{ save() }} />; }

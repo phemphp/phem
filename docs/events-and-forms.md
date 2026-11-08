@@ -1,6 +1,6 @@
 # Handle events and forms
 
-This guide shows you how to respond when the user clicks, types or submits a form. It covers handler arguments, bound fields, loading states, redirects, Symfony forms, file uploads, live validation and unsaved changes. For the syntax of the `on*` attributes and the `phem:*` directives, see [The `.phem` syntax](phem-syntax.md).
+This guide shows you how to respond when the user clicks, types or submits a form. It covers handler arguments, arguments in the markup, bound fields, loading states, redirects, Symfony forms, file uploads, live validation and unsaved changes. For the syntax of the `on*` attributes and the `phem:*` directives, see [The `.phem` syntax](phem-syntax.md).
 
 ## Respond to a click, a key or a change
 
@@ -30,6 +30,64 @@ security:
 ```
 
 Phem accepts events only from the same origin, so another site can’t send one.
+
+## Pass arguments to a handler
+
+Call the handler in the `on*` attribute to give it values of the render. The call doesn’t run during the render: Phem keeps the handler and its arguments, and runs them when the user clicks:
+
+```php
+#[Component]
+final class CancelOrder
+{
+    #[State] public ?CancelReason $reason = null;
+
+    public function pickReason(CancelReason $reason): void
+    {
+        $this->reason = $reason;
+    }
+
+    public function removeSlot(int $index, Event $e): void
+    {
+        // ...
+    }
+
+    public function render(): Node
+    {
+        $reasons = CancelReason::forStaff();
+
+        return (
+            <ul>
+                {% for r in reasons %}
+                    <li key={{ r.value }}><button onClick={{ pickReason(r) }}>{{ r.label }}</button></li>
+                {% endfor %}
+                <li><button onClick={{ removeSlot(2) }}>Remove</button></li>
+            </ul>
+        );
+    }
+}
+```
+
+The arguments go to the first parameters of the handler, in order. The other parameters get the event, the services and the user, as before. An argument keeps its PHP value: an enum case stays an enum case, and an entity stays an entity.
+
+The browser can’t change an argument. The browser sends only the handler id, and the id contains a fingerprint of the arguments. The server renders the component again and finds the handler with the same id. A handler that read `$e->value` from a `value` attribute had to check the value again. A handler with arguments doesn’t.
+
+A call also works for a closure prop. The child adds its arguments after the arguments of the parent:
+
+```php
+<SizePicker onPick={{ pickSize('menu') }} />
+
+#[Component]
+function SizePicker(Closure $onPick): Node
+{
+    $sizes = Size::cases();
+
+    return <div>{% for size in sizes %}<button key={{ size.value }} onClick={{ onPick(size) }}>{{ size.name }}</button>{% endfor %}</div>;
+}
+```
+
+A click on “Large” runs `pickSize('menu', Size::Large)`.
+
+`phemc` checks a call of a method of the class component (error E047): the number of arguments, an argument for an `Event` parameter, a named argument, and a literal of another type (`removeSlot('first')`).
 
 ## Get services and the user in a handler
 
@@ -128,7 +186,7 @@ To show an element only while a handler runs, pass the handler to `phem:loading`
 <span phem:loading={{ save }} className="spinner">Saving…</span>
 ```
 
-The server renders the element with `hidden`, and the browser shows it while a `save` event of this component runs. To show a component, wrap it in an element: `<span phem:loading={{ save }}><Spinner /></span>`.
+The server renders the element with `hidden`, and the browser shows it while a `save` event of this component runs. With a call, the element shows only for the handler with these arguments: `<span phem:loading={{ remove(row.id) }}>` shows in the row that the user clicked. To show a component, wrap it in an element: `<span phem:loading={{ save }}><Spinner /></span>`.
 
 Set the `data-phem-loading-delay-value` attribute on the `<Root>` element to change the delay.
 

@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
 use Phem\Argument\CallableArguments;
+use Phem\Argument\CallValueResolver;
 use Phem\Argument\EventValueResolver;
 use Phem\Argument\PathValueResolver;
 use Phem\Argument\ServiceValueResolver;
@@ -136,6 +137,9 @@ return static function (ContainerConfigurator $container): void {
         // Arguments: the function pages and the event handlers get them as a Symfony controller
         ->set('phem.callable_arguments', CallableArguments::class)
             ->args([service('argument_resolver')])
+        // Before all the other resolvers: the arguments of a handler call in the markup.
+        ->set('phem.argument_resolver.call', CallValueResolver::class)
+            ->tag('controller.argument_value_resolver', ['priority' => 200, 'name' => CallValueResolver::class])
         ->set('phem.argument_resolver.event', EventValueResolver::class)
             ->tag('controller.argument_value_resolver', ['priority' => 150, 'name' => EventValueResolver::class])
         // Before the EntityValueResolver of Doctrine (110): the entity is already in the value.

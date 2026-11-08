@@ -82,54 +82,6 @@ Flex does not enable the bundle and does not add the first page or the `phemc` w
 These items come from a review of a real app (a shop with a customer side and a staff side, about
 5,700 lines of `.phem`) on 2026-11-08. Each item removes code that the app repeats.
 
-### [ ] Handler arguments in markup — P2
-
-17 handlers of the app read `$e->value`, cast it and check it again. The value goes in a
-`value=""` attribute, and the browser can change it:
-
-```php
-<button value={{ r.value }} onClick={{ pickReason }}>{{ r.label }}</button>
-
-public function pickReason(Event $e): void
-{
-    $reason = CancelReason::tryFrom($e->value);
-    $this->reason = \in_array($reason, CancelReason::forStaff(), true) ? $reason : $this->reason;
-}
-```
-
-- **Best peer:** LW `wire:click="remove({{ $id }})"`, LV `phx-value-*`, LC
-  `data-live-id-param`.
-- **Proposal:** a handler call with arguments in an `on*` attribute. The arguments are Twig
-  values of the render:
-
-  ```php
-  <button onClick={{ pickReason(r) }}>{{ r.label }}</button>
-  <button onClick={{ removeSlot(slot.index) }} aria-label="Quitar horario">…</button>
-
-  public function pickReason(CancelReason $reason): void
-  {
-      $this->reason = $reason;
-  }
-
-  public function removeSlot(int $index): void
-  {
-      $this->repository->current()->removeSlot($index);
-  }
-  ```
-
-  ```html
-  <button data-phem-on-click="phem1a2b3c4d5e6f.pickReason" data-phem-args="[&quot;no_stock&quot;]" data-phem-args-sig="…">Sin existencia</button>
-  ```
-
-  - The server signs the arguments with the state key: the handler can trust that the render
-    made them, and the `in_array` guard goes away.
-  - A backed enum and an entity (by id) convert as a `#[Path]` value does.
-  - The other arguments (the `Event`, services, `#[CurrentUser]`) still resolve as today.
-  - `phemc` checks the number and the types of the arguments against the parameters (a new
-    E-code).
-- **Open question:** a closure prop (`onPick={{ pickDay(d.key) }}` in a child) is a call with
-  bound arguments. Does it compile to a new closure, or to a value that the child calls?
-
 ### [ ] Errors of a bound field — P2
 
 Each validated field of the app repeats the `aria-invalid` ternary, the `aria-describedby`
@@ -353,3 +305,4 @@ links with 64 `path('route_name')` strings. `phemc` checks none of them.
 - **Variants:** the app keeps its button classes in constants (`PRIMARY`, `DANGER`). The
   [variants pattern](docs/packages.md#add-variants-to-a-component) covers it, but the docs show it
   only for packages. Link to it from `docs/components.md`.
+  

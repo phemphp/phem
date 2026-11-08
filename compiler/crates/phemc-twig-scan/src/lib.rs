@@ -2,7 +2,7 @@
 //!
 //! It does not parse Twig fully (Twig itself does that at warmup). It finds the free variable
 //! names of an expression (the names that must come from PHP), the names that `for` and `set`
-//! bind, and whether an expression is a call (`handle()`), for the "pass the function" lint.
+//! bind, and the parts of a call (`remove(item)`), for the handler calls with arguments.
 
 /// A variable name and its byte offset in the scanned text.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -397,43 +397,75 @@ fn find_word(s: &str, word: &str) -> Option<usize> {
     None
 }
 
-/// True when the whole expression is a call, like `handleClick()` or `a.b(1)`.
-pub fn is_call(expr: &str) -> bool {
+/// A call that is the whole expression: `remove(item.id)`, `tabs.select('general')`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Call {
+    /// The function: a name or a member path (`tabs.select`).
+    pub callee: String,
+    /// The text of each argument, trimmed, with its byte offset in the expression.
+    pub args: Vec<(String, usize)>,
+}
+
+/// The parts of the expression when it is one call, like `handleClick()` or `a.b(1, c(2))`.
+pub fn split_call(expr: &str) -> Option<Call> {
     let toks = tokenize(expr);
     if toks.len() < 3 || toks.last().map(|t| &t.0) != Some(&Tok::Punct(")")) {
-        return false;
+        return None;
     }
 
     // name (. name)* ( ... ) with balanced parentheses that close at the end.
     let mut i = 0;
     loop {
         if !matches!(toks.get(i).map(|t| &t.0), Some(Tok::Name(_))) {
-            return false;
+            return None;
         }
 
         i += 1;
         match toks.get(i).map(|t| &t.0) {
             Some(Tok::Punct(".")) => i += 1,
             Some(Tok::Punct("(")) => break,
-            _ => return false,
+            _ => return None,
         }
     }
 
+    let callee = expr[toks[0].1..toks[i].1].trim().to_string();
+    let mut args = Vec::new();
+    let mut from = toks[i].1 + 1;
     let mut depth = 0;
-    for (j, (t, _)) in toks.iter().enumerate().skip(i) {
+    for (j, (t, off)) in toks.iter().enumerate().skip(i) {
         match t {
-            Tok::Punct("(") => depth += 1,
-            Tok::Punct(")") => {
+            Tok::Punct("(" | "[" | "{") => depth += 1,
+            Tok::Punct(")" | "]" | "}") => {
                 depth -= 1;
                 if depth == 0 {
-                    return j == toks.len() - 1;
+                    if j != toks.len() - 1 {
+                        return None;
+                    }
+
+                    push_arg(expr, from, *off, &mut args);
+                    return Some(Call { callee, args });
                 }
+            }
+            Tok::Punct(",") if depth == 1 => {
+                push_arg(expr, from, *off, &mut args);
+                from = off + 1;
             }
             _ => {}
         }
     }
 
-    false
+    None
+}
+
+/// An argument of a call, from `start` to `end`: none for the empty list of `f()`.
+fn push_arg(expr: &str, start: usize, end: usize, args: &mut Vec<(String, usize)>) {
+    let text = &expr[start..end];
+    let trimmed = text.trim();
+    if trimmed.is_empty() && args.is_empty() {
+        return;
+    }
+
+    args.push((trimmed.to_string(), start + (text.len() - text.trim_start().len())));
 }
 
 #[cfg(test)]
@@ -560,9 +592,14 @@ mod tests {
 
     #[test]
     fn calls() {
-        assert!(is_call("handleClick()"));
-        assert!(is_call("a.b(1, c(2))"));
-        assert!(!is_call("handleClick"));
-        assert!(!is_call("f() ~ g()"));
+        let args = |expr: &str| split_call(expr).map(|c| (c.callee, c.args.into_iter().map(|(a, _)| a).collect::<Vec<_>>()));
+
+        assert_eq!(args("handleClick()"), Some(("handleClick".into(), vec![])));
+        assert_eq!(args("a.b(1, c(2))"), Some(("a.b".into(), vec!["1".into(), "c(2)".into()])));
+        assert_eq!(args("pick(r, [1, 2], {a: 'x,y'})"), Some(("pick".into(), vec!["r".into(), "[1, 2]".into(), "{a: 'x,y'}".into()])));
+        assert_eq!(split_call("remove( item.id )").unwrap().args, vec![("item.id".to_string(), 8)]);
+        assert_eq!(args("handleClick"), None);
+        assert_eq!(args("f() ~ g()"), None);
+        assert_eq!(args("(f)(1)"), None);
     }
 }

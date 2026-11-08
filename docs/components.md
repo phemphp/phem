@@ -180,10 +180,10 @@ An object that a handler changes in place, such as a Doctrine entity, counts as 
 Slots work differently. They belong to the component that passes them (the owner). When the owner renders again, a child with slots renders again with its slots, even if its props didn’t change:
 
 ```php
-public function setLead(Event $e): void
+public function setLead(int $days): void
 {
     // Same entity object: only its leadDays changed.
-    $this->repository->current()->setLeadDays((int) $e->value);
+    $this->repository->current()->setLeadDays($days);
 }
 
 public function render(): Node
@@ -194,7 +194,7 @@ public function render(): Node
     return (
         <Panel>
             {% for days in 0..2 %}
-                <button role="radio" value={{ days }} aria-checked={{ days == s.leadDays ? 'true' : 'false' }} onClick={{ setLead }}>{{ days }}</button>
+                <button role="radio" aria-checked={{ days == s.leadDays ? 'true' : 'false' }} onClick={{ setLead(days) }}>{{ days }}</button>
             {% endfor %}
         </Panel>
     );
@@ -220,7 +220,7 @@ Add `#[Provide]` to a class to provide the component itself as the context. A co
 
 ```php
 use Phem\Attribute\{Component, Context, Prop, Provide, State};
-use Phem\{Event, Html, Node};
+use Phem\{Html, Node};
 
 #[Component, Provide]
 final class Tabs
@@ -228,9 +228,9 @@ final class Tabs
     #[State] public string $active = 'general';
     #[Prop] public ?Html $children = null;
 
-    public function select(Event $e): void
+    public function select(string $name): void
     {
-        $this->active = $e->value;
+        $this->active = $name;
     }
 
     public function render(): Node
@@ -240,14 +240,14 @@ final class Tabs
 }
 ```
 
-Each `Tab` reads the nearest `Tabs` and calls its `select` handler:
+Each `Tab` reads the nearest `Tabs` and calls its `select` handler with its name:
 
 ```php
 #[Component]
 function Tab(string $name, string $label, #[Context] Tabs $tabs): Node
 {
     return (
-        <button role="tab" aria-selected={{ tabs.active == name }} onClick={{ tabs.select }} value={{ name }}>
+        <button role="tab" aria-selected={{ tabs.active == name }} onClick={{ tabs.select(name) }}>
             {{ label }}
         </button>
     );

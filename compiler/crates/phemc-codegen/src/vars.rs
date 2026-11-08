@@ -2,7 +2,7 @@
 
 use phemc_analyze::FileInfo;
 use phemc_syntax::markup::{AttrKind, AttrValue, ExprPart, Node, StrPart, TwigExpr};
-use phemc_twig_scan::{expr_free_vars, tag_vars};
+use phemc_twig_scan::{expr_free_vars, split_call, tag_vars};
 
 /// A free variable and its absolute byte offset in the source.
 #[derive(Clone, Debug)]
@@ -75,6 +75,25 @@ fn expr(info: &FileInfo, x: &TwigExpr, scope: &mut Scope, out: &mut Vec<FreeVar>
     }
 }
 
+/// The function of a handler call (`onClick={{ remove(item) }}`): Twig reads `remove(` as a
+/// Twig function, but the call compiles to `phem_call(remove, [item])` (see lower.rs).
+fn handler_callee(attr: &str, x: &TwigExpr, scope: &Scope, out: &mut Vec<FreeVar>) {
+    let is_handler = attr.strip_prefix("on").is_some_and(|r| r.starts_with(|c: char| c.is_ascii_uppercase())) || attr == "phem:loading" || attr == "phem:progress";
+    if !is_handler || x.has_markup() {
+        return;
+    }
+
+    let code = x.code();
+    let Some(call) = split_call(&code) else { return };
+    if call.callee.contains('.') {
+        // `tabs.select(…)`: `tabs` is a free variable of the expression.
+        return;
+    }
+
+    let offset = code.len() - code.trim_start().len();
+    push(out, scope, call.callee, x.span.start + offset, true);
+}
+
 /// The Twig tags with their own scope: a `{% set %}` in their body does not bind after them.
 /// Other tags (`if`, `apply`, `autoescape`) and HTML elements share the scope of their parent.
 const SCOPED_TAGS: &[&str] = &["for", "with", "block", "embed", "macro"];
@@ -98,7 +117,10 @@ fn node(info: &FileInfo, n: &Node, scope: &mut Scope, out: &mut Vec<FreeVar>) {
             for a in &e.attrs {
                 match &a.kind {
                     AttrKind::Spread(x) => expr(info, x, scope, out),
-                    AttrKind::Plain { value: AttrValue::Expr(x), .. } => expr(info, x, scope, out),
+                    AttrKind::Plain { name, value: AttrValue::Expr(x), .. } => {
+                        handler_callee(name, x, scope, out);
+                        expr(info, x, scope, out);
+                    }
                     AttrKind::Plain { value: AttrValue::Quoted { parts, .. }, .. } => {
                         for p in parts {
                             if let StrPart::Expr(x) = p {

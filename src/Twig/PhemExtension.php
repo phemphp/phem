@@ -17,6 +17,7 @@ use Phem\Binding\SpreadProps;
 use Phem\ClassList;
 use Phem\Dom\Attributes;
 use Phem\Dom\DynamicTag;
+use Phem\Handler\HandlerCall;
 use Phem\Handler\MemberHandler;
 use Phem\Manifest\Manifest;
 use Twig\Extension\AbstractExtension;
@@ -62,6 +63,7 @@ final class PhemExtension extends AbstractExtension
             new TwigFunction('phem_props', SpreadProps::merge(...)),
             new TwigFunction('classes', ClassList::of(...)),
             new TwigFunction('phem_method', MemberHandler::of(...)),
+            new TwigFunction('phem_call', HandlerCall::bind(...)),
         ];
     }
 }

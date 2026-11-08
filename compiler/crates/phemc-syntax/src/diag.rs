@@ -70,6 +70,7 @@ pub mod codes {
     pub const INVALID_CONTEXT: &str = "E044";
     pub const ABSTRACT_COMPONENT: &str = "E045";
     pub const RESERVED_HANDLER: &str = "E046";
+    pub const INVALID_HANDLER_CALL: &str = "E047";
     pub const EXPORT_DEFAULT: &str = "E050";
     pub const ROUTE_NOT_COMPONENT: &str = "E052";
     pub const BROADCAST_NOT_COMPONENT: &str = "E053";
@@ -80,7 +81,6 @@ pub mod codes {
     pub const INVALID_VALIDATED: &str = "E058";
     pub const ERROR_PAGE_NOT_FUNCTION: &str = "E059";
     pub const ERROR_PAGE_IN_PACKAGE: &str = "E060";
-    pub const HANDLER_CALLED: &str = "W001";
     pub const MISSING_KEY: &str = "W002";
     pub const UNKNOWN_EVENT: &str = "W003";
     pub const FOREIGN_ATTRIBUTE: &str = "W004";

@@ -433,7 +433,7 @@ Event attributes (`on*`), directives (`phem:*`) and `data-phem-*` attributes con
 
 ### Event handlers
 
-Pass a handler to an `on*` attribute. Pass the function, don’t call it:
+Pass a handler to an `on*` attribute:
 
 ```php
 #[Component]
@@ -451,6 +451,7 @@ A handler can take these forms:
 - **Method name** in a class: `onClick={{ increment }}`
 - **Member path**: `onClick={{ tabs.select }}` runs `$tabs->select()`
 - **Prop of type `Closure`**
+- **Call with arguments**: `onClick={{ remove(item) }}` runs `remove($item)` when the user clicks, not during the render. See [Pass arguments to a handler](events-and-forms.md#pass-arguments-to-a-handler)
 
 The supported events are `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`, `onKeyDown`, `onKeyUp`, `onFocus` and `onBlur`. `phemc` warns about other events (W003). For what a handler receives and returns, see [Events and forms](events-and-forms.md).
 

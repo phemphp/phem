@@ -98,7 +98,7 @@ final class AsyncHandler
 
             $event = Event::fromArray($message->event);
 
-            $this->renderer->inside($tree, fn (): mixed => $this->handlers->invoke($handler, $event, EventRequest::of($request, $message->event), function (array $arguments) use ($handler, $message): void {
+            $this->renderer->inside($tree, fn (): mixed => $this->handlers->invoke($handler, $event, EventRequest::of($request, $message->event), function (\Closure $handler, array $arguments) use ($message): void {
                 $mark = $this->streams->mark();
                 $promise = $handler(...$arguments);
                 $this->streams->rollback($mark);

@@ -1,0 +1,60 @@
+<?phem
+
+namespace App\Ui\Calls;
+
+use Phem\Attribute\{Component, Page, Prop, State};
+use Phem\Event;
+use Phem\Node;
+use Phem\Tests\Fixtures\{Rows, Scientist, Size};
+
+use function App\Ui\Common\Document;
+
+// Handler calls with arguments: `onClick={{ remove(scientist) }}` (tests/Runtime/HandlerCallTest.php).
+#[Page('/calls')]
+final class CallsPage
+{
+    #[State] public string $picked = '';
+
+    public function remove(Scientist $scientist, Event $e): void
+    {
+        Rows::remove($scientist->id);
+        $this->picked = $e->type.' '.$scientist->name;
+    }
+
+    public function pickSize(string $source, Size $size): void
+    {
+        $this->picked = $source.' '.$size->name;
+    }
+
+    public function render(): Node
+    {
+        $rows = Rows::$scientists;
+
+        return (
+            <Document>
+                <p id="picked">{{ picked }}</p>
+                <ul id="rows">
+                    {% for scientist in rows %}
+                        <li key={{ scientist.id }}>{{ scientist.name }} <button onClick={{ remove(scientist) }}>Remove</button></li>
+                    {% endfor %}
+                </ul>
+                <SizePicker onPick={{ pickSize('picker') }} />
+            </Document>
+        );
+    }
+}
+
+// A closure prop with a call: the child adds its argument after the arguments of the parent.
+#[Component]
+function SizePicker(\Closure $onPick): Node
+{
+    $sizes = Size::cases();
+
+    return (
+        <div id="sizes">
+            {% for size in sizes %}
+                <button key={{ size.value }} onClick={{ onPick(size) }}>{{ size.name }}</button>
+            {% endfor %}
+        </div>
+    );
+}

@@ -395,36 +395,98 @@ impl<'a> Lowerer<'a> {
         out.push_str(&format!("{ws}{{{{ phem_attrs({}) }}}}", args.join(", ")));
     }
 
-    /// Warns about `onClick={{ handle() }}`: it calls the handler during render.
+    /// The checks of a handler: a function, or a call with arguments (`onClick={{ remove(item) }}`).
     fn check_handler(&mut self, name: &str, code: &str, span: Span) {
-        self.check_reserved_handler(name, code.trim(), span);
-
-        if phemc_twig_scan::is_call(code) {
-            self.diags.push(
-                Diagnostic::warning(codes::HANDLER_CALLED, format!("`{name}` calls the handler during render"), span)
-                    .with_label("this is a call")
-                    .with_help(format!("pass the function, do not call it: `{name}={{{{ {} }}}}`", code.split('(').next().unwrap_or("").trim())),
-            );
+        match phemc_twig_scan::split_call(code) {
+            Some(call) => {
+                self.check_reserved_handler(name, &call.callee, span);
+                self.check_handler_call(name, &call, span);
+            }
+            None => self.check_reserved_handler(name, code.trim(), span),
         }
+    }
+
+    /// E047: the arguments of a handler call go to the first parameters of the method. A call
+    /// with named arguments, with more arguments than the method has parameters, with an
+    /// argument for an `Event` parameter, or with a literal of another type never runs. Only a
+    /// method of the class in the sources: a variable or a prop can be any function.
+    fn check_handler_call(&mut self, name: &str, call: &phemc_twig_scan::Call, span: Span) {
+        if let Some((arg, _)) = call.args.iter().find(|(a, _)| named_argument(a).is_some()) {
+            let param = named_argument(arg).unwrap_or_default();
+            self.error(codes::INVALID_HANDLER_CALL, format!("`{name}` gives the named argument `{param}`"), span).help =
+                Some("give the arguments in the order of the parameters of the handler".into());
+            return;
+        }
+
+        let Some(method) = self.handler_method(&call.callee) else {
+            return;
+        };
+
+        let method = method.clone();
+        let params: Vec<_> = method.params.iter().filter(|p| !p.variadic).collect();
+        let variadic = method.params.iter().any(|p| p.variadic);
+        if call.args.len() > params.len() && !variadic {
+            let has = match params.len() {
+                1 => "1 parameter".to_string(),
+                n => format!("{n} parameters"),
+            };
+
+            self.error(codes::INVALID_HANDLER_CALL, format!("`{}()` has {has}, but `{name}` gives it {} arguments", method.name, call.args.len()), span).help =
+                Some(format!("remove the extra arguments, or add parameters to `{}()`", method.name));
+            return;
+        }
+
+        for ((arg, _), param) in call.args.iter().zip(&params) {
+            let class_ty = self.info.class_type(&param.ty);
+            if class_ty.as_deref().is_some_and(|c| c.trim_start_matches('\\') == "Phem\\Event") {
+                self.error(codes::INVALID_HANDLER_CALL, format!("`{name}` gives the argument `{arg}` to the `Event` parameter `${}` of `{}()`", param.name, method.name), span).help =
+                    Some(format!("put the parameters of the arguments first: `{}(…, Event ${})`", method.name, param.name));
+                return;
+            }
+
+            if let Some(kind) = literal_kind(arg) {
+                if !literal_fits(kind, &param.ty, class_ty.is_some()) {
+                    self.error(codes::INVALID_HANDLER_CALL, format!("`{name}` gives {kind} `{arg}` to the parameter `{} ${}` of `{}()`", param.ty, param.name, method.name), span).help =
+                        Some(format!("give a value of the type `{}`", param.ty));
+                    return;
+                }
+            }
+        }
+    }
+
+    /// The method of the class component that a handler name runs: not a variable, a prop or a
+    /// property of the same name.
+    fn handler_method(&self, ident: &str) -> Option<&phemc_analyze::Func> {
+        let class = self.class?;
+        if self.is_value(ident) {
+            return None;
+        }
+
+        class.methods.iter().find(|m| m.name.eq_ignore_ascii_case(ident))
+    }
+
+    /// Whether a name in the markup is a value: a PHP or Twig variable, a parameter, or a prop
+    /// or property of the class.
+    fn is_value(&self, ident: &str) -> bool {
+        has_variable(self.scope_text, ident)
+            || self.twig_bound.iter().any(|v| v == ident)
+            || self.params.iter().any(|p| p.name == ident)
+            || self.class.is_some_and(|c| c.all_props().any(|p| p.name == ident))
     }
 
     /// E046: `mount()` and `render()` of a class component are not handlers: Phem calls them
     /// itself. The names are reserved, so the method can also come from a parent outside the
     /// sources. A PHP or Twig variable, a prop or a property of the same name is a value.
     fn check_reserved_handler(&mut self, name: &str, ident: &str, span: Span) {
-        let Some(class) = self.class.filter(|c| c.is_component || c.abstract_component) else {
+        if !self.class.is_some_and(|c| c.is_component || c.abstract_component) {
             return;
-        };
+        }
 
         let Some(method) = RESERVED_METHODS.iter().find(|m| m.eq_ignore_ascii_case(ident)) else {
             return;
         };
 
-        let is_value = has_variable(self.scope_text, ident)
-            || self.twig_bound.iter().any(|v| v == ident)
-            || self.params.iter().any(|p| p.name == ident)
-            || class.all_props().any(|p| p.name == ident);
-        if is_value {
+        if self.is_value(ident) {
             return;
         }
 
@@ -905,7 +967,17 @@ impl<'a> Lowerer<'a> {
                 AttrKind::Plain { name, name_span, value } => {
                     let v = match value {
                         AttrValue::None => "true".to_string(),
-                        AttrValue::Expr(x) => format!("({})", self.expr_code(x)),
+                        AttrValue::Expr(x) => {
+                            let c = self.expr_code(x);
+                            // A handler prop with a call (`onPick={{ pickDay(d.key) }}`) gets the
+                            // handler with its arguments, as an `on*` attribute of an element.
+                            if event_name(name).is_some() && phemc_twig_scan::split_call(&c).is_some() {
+                                self.check_handler(name, &c, x.span);
+                                format!("({})", handler_code(&c))
+                            } else {
+                                format!("({c})")
+                            }
+                        }
                         AttrValue::Quoted { parts, .. } => self.quoted_expr(parts, a.span),
                     };
 
@@ -1409,10 +1481,22 @@ const TIMINGS: &[&str] = &[DEBOUNCE, "phem:throttle"];
 /// and `blur` the `focusin` and `focusout` events.
 const LISTENED_EVENTS: &[&str] = &["click", "dblclick", "input", "change", "submit", "keydown", "keyup", "focus", "blur", "focusin", "focusout"];
 
-/// `onClick` → `click`, `onDoubleClick` → `dblclick`.
 /// The Twig code of a handler. A member path (`tabs.select`) is the method of the object as a
-/// closure (`phem_method(tabs, 'select')`): in Twig, `tabs.select` calls the method.
+/// closure (`phem_method(tabs, 'select')`): in Twig, `tabs.select` calls the method. A call
+/// (`remove(item)`) is the handler with its arguments (`phem_call(remove, [item])`): it does not
+/// run during the render.
 fn handler_code(code: &str) -> String {
+    match phemc_twig_scan::split_call(code) {
+        Some(call) => {
+            let args: Vec<&str> = call.args.iter().map(|(a, _)| a.as_str()).collect();
+            format!("phem_call({}, [{}])", member_code(&call.callee), args.join(", "))
+        }
+        None => member_code(code),
+    }
+}
+
+/// A member path as a closure (`phem_method(tabs, 'select')`), or the code as it is.
+fn member_code(code: &str) -> String {
     let ident = |s: &str| s.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_') && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_');
     match code.rsplit_once('.') {
         Some((object, member)) if ident(member) && object.split('.').all(ident) => format!("phem_method({object}, {})", php_str(member)),
@@ -1420,6 +1504,61 @@ fn handler_code(code: &str) -> String {
     }
 }
 
+/// The name of a named argument (`reason: r`, `reason = r`).
+fn named_argument(arg: &str) -> Option<&str> {
+    let end = arg.find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))?;
+    let rest = arg[end..].trim_start();
+    let named = end > 0 && arg.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_') && ((rest.starts_with(':') && !rest.starts_with("::")) || (rest.starts_with('=') && !rest.starts_with("==") && !rest.starts_with("=>")));
+
+    named.then(|| &arg[..end])
+}
+
+/// The kind of a literal argument (`'no_stock'`, `3`, `true`, `null`), or none for another value.
+fn literal_kind(arg: &str) -> Option<&'static str> {
+    let arg = arg.trim();
+    match arg {
+        "true" | "false" | "TRUE" | "FALSE" => Some("the bool"),
+        "null" | "none" | "NULL" | "NONE" => Some("null"),
+        _ if (arg.starts_with('\'') && arg.ends_with('\'') || arg.starts_with('"') && arg.ends_with('"')) && arg.len() >= 2 && !arg.contains("#{") => Some("the string"),
+        _ if arg.parse::<i64>().is_ok() => Some("the int"),
+        _ if arg.parse::<f64>().is_ok() && arg.contains('.') => Some("the float"),
+        _ => None,
+    }
+}
+
+/// Whether a literal fits a parameter type, with `declare(strict_types=1)`. Only a single type is
+/// checked: a union, `mixed` or no type accepts any literal.
+fn literal_fits(kind: &str, ty: &str, is_class: bool) -> bool {
+    let ty = ty.trim();
+    if ty.is_empty() || ty.contains('|') || ty.contains('&') {
+        return true;
+    }
+
+    let nullable = ty.starts_with('?');
+    let base = ty.trim_start_matches('?').to_ascii_lowercase();
+    if base == "mixed" {
+        return true;
+    }
+
+    if kind == "null" {
+        return nullable || base == "null";
+    }
+
+    if is_class {
+        return false;
+    }
+
+    match base.as_str() {
+        "int" => kind == "the int",
+        "float" => kind == "the int" || kind == "the float",
+        "string" => kind == "the string",
+        "bool" => kind == "the bool",
+        "true" | "false" => kind == "the bool",
+        _ => true,
+    }
+}
+
+/// `onClick` → `click`, `onDoubleClick` → `dblclick`.
 fn event_name(attr: &str) -> Option<String> {
     let rest = attr.strip_prefix("on")?;
     if !rest.starts_with(|c: char| c.is_ascii_uppercase()) {

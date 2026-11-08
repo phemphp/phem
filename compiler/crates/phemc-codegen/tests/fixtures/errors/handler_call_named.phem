@@ -1,0 +1,2 @@
+<?phem // expect: E047
+function App() { $go = fn(int $id) => 1; return <button onClick={{ go(id: 1) }}>x</button>; }

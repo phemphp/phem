@@ -6,6 +6,18 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
+## Unreleased
+
+- Handler arguments in the markup: `onClick={{ pickReason(r) }}` runs `pickReason($r)` when the
+  user clicks. The arguments are values of the render: the handler id has their fingerprint, so
+  the browser can't change them. They go to the first parameters, and the other parameters get
+  the event and the services as before. A closure prop works too: `onPick={{ pick('menu') }}`,
+  and the child adds its arguments (`onClick={{ onPick(size) }}`). `phem:loading` and
+  `phem:progress` accept a call.
+- phemc: a handler call whose arguments don't fit the method of the class component is the
+  error E047. **Breaking**: the warning W001 ("calls the handler during render") is gone, because
+  a call in an `on*` attribute is now a handler call.
+
 ## 0.3.12 (2026-11-08)
 
 - phemc: `mount` or `render` passed as a handler (`onClick={{ mount }}`, `phem:loading={{ render }}`)
