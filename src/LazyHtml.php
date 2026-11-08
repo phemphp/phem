@@ -48,14 +48,4 @@ class LazyHtml extends Html
 
         return $this->rendered;
     }
-
-    public function count(): int
-    {
-        return mb_strlen((string) $this);
-    }
-
-    public function jsonSerialize(): mixed
-    {
-        return (string) $this;
-    }
 }

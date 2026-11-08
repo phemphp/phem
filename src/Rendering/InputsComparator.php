@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Phem\Rendering;
 
 use Phem\Handler\HandlerFingerprint;
+use Phem\Html;
 use Phem\LazyHtml;
 use Twig\Markup;
 
@@ -65,10 +66,15 @@ final class InputsComparator
                 && $this->fingerprints->of($a) === $this->fingerprints->of($b);
         }
 
-        if ($a instanceof Markup && $b instanceof Markup && !$a instanceof LazyHtml && !$b instanceof LazyHtml) {
+        if (self::isMarkup($a) && self::isMarkup($b) && !$a instanceof LazyHtml && !$b instanceof LazyHtml) {
             return $a::class === $b::class && (string) $a === (string) $b;
         }
 
         return false;
+    }
+
+    private static function isMarkup(mixed $value): bool
+    {
+        return $value instanceof Html || $value instanceof Markup;
     }
 }

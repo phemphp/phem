@@ -186,7 +186,7 @@ final class AppTest extends TestCase
         self::assertStringContainsString('<svg id="icon"><title>Icon</title></svg>', $html);
         self::assertStringContainsString('<p id="body">Body</p>', $html, 'a required slot of a template component');
         self::assertStringContainsString('<footer>Foot 0</footer>', $html, 'the template tests a given slot');
-        self::assertSame(1, substr_count($html, '<footer>'), 'no footer without the slot');
+        self::assertSame(1, substr_count($html, '<footer>'), 'no footer without the slot, and no footer for an empty slot');
         self::assertStringContainsString('<ul id="odd"><li data-phem-key="1">1</li><li data-phem-key="3">3</li></ul>', $html, 'a list of markup with null items');
         self::assertMatchesRegularExpression('#<span id="label" data-phem-c="phem[0-9a-f]{12}">n=0</span>#', $html);
         self::assertMatchesRegularExpression('#<h3 id="heading" data-phem-on-click="[^"]+" data-phem-c="phem[0-9a-f]{12}">Edge 0</h3>#', $html, 'the members of a parent class outside the sources');

@@ -19,6 +19,7 @@ use Phem\Html;
 use Phem\HtmlList;
 use Phem\LazyHtml;
 use Phem\Manifest\Manifest;
+use Phem\Twig\EnvironmentConfigurator;
 use Symfony\Contracts\Service\ResetInterface;
 use Twig\Environment;
 use Twig\Markup;
@@ -46,6 +47,7 @@ final class MarkupResolver implements ResetInterface
 
     public function __construct(private readonly Environment $twig)
     {
+        EnvironmentConfigurator::safeHtml($twig);
     }
 
     /** @param (\Closure(): int)|null $pass the render pass now, or null to render one time only */
@@ -121,7 +123,7 @@ final class MarkupResolver implements ResetInterface
     private static function stringify(mixed $value): string
     {
         return match (true) {
-            $value instanceof Markup => (string) $value,
+            $value instanceof Html, $value instanceof Markup => (string) $value,
             null === $value => '',
             \is_array($value) => implode('', array_map(self::stringify(...), $value)),
             default => Attributes::e((string) $value),

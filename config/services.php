@@ -89,6 +89,7 @@ use Phem\Stream\Streams;
 use Phem\Stream\Subscription;
 use Phem\Stream\Topics;
 use Phem\Twig\CacheKeyLoader;
+use Phem\Twig\EnvironmentConfigurator;
 use Phem\Twig\PhemExtension;
 use Phem\Twig\PhemRuntime;
 use Phem\Twig\TemplateLoader;
@@ -275,6 +276,9 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.twig.cache_key_loader', CacheKeyLoader::class)
             ->decorate('twig.loader')
             ->args([service('.inner'), service('phem.manifest')])
+        ->set('phem.twig.environment_configurator', EnvironmentConfigurator::class)
+            ->decorate('twig.configurator.environment')
+            ->args([service('.inner')])
         ->set('phem.twig.template_warmer', TemplateWarmer::class)
             ->args([service('twig'), service('phem.manifest')])
             ->tag('kernel.cache_warmer')

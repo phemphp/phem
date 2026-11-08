@@ -207,6 +207,14 @@ Props take values in these forms:
 
 An unknown prop is an error, unless the component has rest props.
 
+A slot that the caller leaves out is `null`. A slot that the caller passes is a `Phem\Html` object, and an object is always true in a Twig condition, also when its markup is empty. To show a wrapper only when the slot has markup, use the `empty` test:
+
+```php
+{% if footer is not empty %}<footer>{{ footer }}</footer>{% endif %}
+```
+
+`<Card title="Hello" />` and `<Card title="Hello"><Card:footer></Card:footer></Card>` render no `<footer>`. Twig prints a `Phem\Html` value without escaping. A filter that returns a string, such as `|trim`, gives text, and Twig escapes it. The `in` operator does not read the markup of a slot: `'x' in footer` is always false. Use `'x' in (footer ~ '')` to search the markup.
+
 A regular Twig template of the application can also render a component, with no state: `{% component 'App\\Ui\\Common\\Profile' with {person: person} %}`.
 
 ### Rest props
