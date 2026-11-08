@@ -13,11 +13,17 @@ A class component has up to six parts, and you write them in this order:
 - **Handlers**: public methods that change the state; a handler can’t be named `mount` or `render` (error E046)
 - **`render()`**: required; it reads only the props, the state and the context
 
-The inputs, the state and the services come first:
+The inputs, the state and the services come first. `Theme` is a backed enum that a component above provides (see [Pass a value down the tree with context](#pass-a-value-down-the-tree-with-context)):
 
 ```php
 use Phem\Attribute\{Component, Context, Prop, State};
 use Phem\Node;
+
+enum Theme: string
+{
+    case Light = 'light';
+    case Dark = 'dark';
+}
 
 #[Component]
 final class TodoList
@@ -175,29 +181,50 @@ Phem relies on this rule to render only the components that can change. An event
 
 ### Pass the changed value, not the changed object
 
-An object that a handler changes in place, such as a Doctrine entity, counts as the same prop. Pass the changed value to the child (`days={{ s.leadDays }}`), not the object, so Phem sees the change.
+An object that a handler changes in place, such as a Doctrine entity, counts as the same prop. Pass the changed value to the child (`<LeadTime days={{ s.leadDays }} />`), not the object (`settings={{ s }}`), so Phem sees the change.
 
-Slots work differently. They belong to the component that passes them (the owner). When the owner renders again, a child with slots renders again with its slots, even if its props didn’t change:
+Slots work differently. They belong to the component that passes them (the owner). When the owner renders again, a child with slots renders again with its slots, even if its props didn’t change. Here, `Panel` gets the same `title` after the event, but it renders again because `LeadTimeSettings` owns its children:
 
 ```php
-public function setLead(int $days): void
+#[Component]
+function Panel(string $title, ?Html $children = null): Node
 {
-    // Same entity object: only its leadDays changed.
-    $this->repository->current()->setLeadDays($days);
+    return <fieldset><legend>{{ title }}</legend>{{ children }}</fieldset>;
 }
 
-public function render(): Node
+#[Component]
+final class LeadTimeSettings
 {
-    $s = $this->settings;
+    private Settings $settings; // a Doctrine entity
 
-    // The page renders after setLead(), so <Panel> renders with its children.
-    return (
-        <Panel>
-            {% for days in 0..2 %}
-                <button role="radio" aria-checked={{ days == s.leadDays ? 'true' : 'false' }} onClick={{ setLead(days) }}>{{ days }}</button>
-            {% endfor %}
-        </Panel>
-    );
+    public function __construct(private readonly SettingsRepository $repository)
+    {
+    }
+
+    public function mount(): void
+    {
+        $this->settings = $this->repository->current();
+    }
+
+    public function setLead(int $days): void
+    {
+        // The same entity object: only its leadDays changed.
+        $this->settings->setLeadDays($days);
+    }
+
+    public function render(): Node
+    {
+        $s = $this->settings;
+
+        // The component renders after setLead(), so <Panel> renders with its children.
+        return (
+            <Panel title="Lead time">
+                {% for days in 0..2 %}
+                    <button key={{ days }} role="radio" aria-checked={{ days == s.leadDays ? 'true' : 'false' }} onClick={{ setLead(days) }}>{{ days }}</button>
+                {% endfor %}
+            </Panel>
+        );
+    }
 }
 ```
 

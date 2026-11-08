@@ -75,17 +75,37 @@ Here’s a poll where a vote limit in state would be a bug, because a user could
 #[State] public int $votesLeft = 3;
 ```
 
-Keep the limit in the database instead, and keep in state only what the UI shows. The model checks the limit when `vote()` runs:
+Keep the limit in the database instead, and keep in state only what the UI shows. Here `Poll` and `PollOption` are Doctrine entities, and `Poll::vote()` counts the votes of the user in the database before it adds one:
 
 ```php
-#[State] public bool $showResults = false;
-
-#[Transactional]
-public function vote(Event $e): void
+#[Component]
+final class PollVote
 {
-    $this->poll->vote($e->value);
+    #[Prop] public Poll $poll;
+    #[State] public bool $voted = false;
+
+    #[Transactional]
+    public function vote(PollOption $option, #[CurrentUser] User $user): void
+    {
+        $this->poll->vote($option, $user);
+        $this->voted = true;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div>
+                {% for option in poll.options %}
+                    <button key={{ option.id }} onClick={{ vote(option) }}>{{ option.label }}</button>
+                {% endfor %}
+                {% if voted %}<p>Thank you for your vote.</p>{% endif %}
+            </div>
+        );
+    }
 }
 ```
+
+A replay of an older state only shows the buttons again with `voted` false. The next vote still goes through `Poll::vote()`, which stops it.
 
 As a rule, put in `#[State]` only values you can lose or undo: an open panel, a tab, a search term, a draft. Put filters, tabs, and page numbers in the URL with `#[Url]`, so they survive a reload and a shared link.
 
@@ -150,23 +170,24 @@ return <div>{{ content }}</div>;
 
 ## Pass handlers instead of calling them
 
-`onClick={{ save }}` passes the `save` method; it doesn’t call it. The object that owns the handler renders again after the event. When you pass a closure, it captures its values, so each handler keeps pointing at the right data even after the list changes:
+`onClick={{ save }}` passes the `save` method; it doesn’t call it. To give the handler a value of the render, write a call: `onClick={{ remove(s) }}` doesn’t run `remove()` during the render either. Phem keeps the handler with its arguments, and runs it when the user clicks. The object that owns the handler renders again after the event:
 
 ```php
-$rows = array_map(function (Scientist $s): Node {
-    $remove = fn () => $this->remove($s);
-
+public function render(): Node
+{
     return (
-        <li key={{ s.id }}>
-            <button onClick={{ remove }}>Remove</button>
-        </li>
+        <ul>
+            {% for s in scientists %}
+                <li key={{ s.id }}>
+                    <button onClick={{ remove(s) }}>Remove</button>
+                </li>
+            {% endfor %}
+        </ul>
     );
-}, $this->scientists);
-
-return <ul>{{ rows }}</ul>;
+}
 ```
 
-Each row gets its own `remove` closure that captures its own scientist. Give a `key` to every list item, too: when an item before it goes away, the browser keeps the right element, with its focus and its Stimulus controller.
+Each row gets its own handler with its own scientist, so a click removes the right row even after the list changes. A closure that captures the value in PHP does the same: `$remove = fn () => $this->remove($s)`. Give a `key` to every list item, too: when an item before it goes away, the browser keeps the right element, with its focus and its Stimulus controller.
 
 ## Use Symfony for everything else
 

@@ -248,7 +248,26 @@ To get error pages from `visit()` and end-to-end tests, set `phem.show_exception
 
 ## Replace a service in a test
 
-Components get their services from the test container. Change a service in the test, and the next event uses it:
+Components get their services from the test container. Change a service in the test, and the next event uses it. Here, the `Counter` gets a `Limits` service of the app, and its handler stops at the maximum of the service:
+
+```php
+final class Limits
+{
+    public int $max = 10;
+}
+
+// In Counter:
+public function __construct(private readonly Limits $limits)
+{
+}
+
+public function increment(): void
+{
+    $this->count = min($this->count + 1, $this->limits->max);
+}
+```
+
+The test sets the maximum to 1, so the second click doesn’t change the count:
 
 ```php
 $counter = $this->mount(Counter::class);

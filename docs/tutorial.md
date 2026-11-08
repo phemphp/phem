@@ -201,17 +201,15 @@ Add this `render()` method to the `TaskList` class, after `toggle()`:
 ```php title="src/Ui/Task/TaskList.phem"
 public function render(): Node
 {
-    $items = array_map(function (array $task): Node {
-        $toggle = fn () => $this->toggle($task['id']);
-
-        return <TaskItem key={{ task.id }} title={{ task.title }} done={{ task.done }} onToggle={{ toggle }} />;
-    }, $this->tasks);
-
     $left = count(array_filter($this->tasks, fn (array $task): bool => !$task['done']));
 
     return (
         <section>
-            <ul>{{ items }}</ul>
+            <ul>
+                {% for task in tasks %}
+                    <TaskItem key={{ task.id }} title={{ task.title }} done={{ task.done }} onToggle={{ toggle(task.id) }} />
+                {% endfor %}
+            </ul>
             <p>{{ left }} left</p>
         </section>
     );
@@ -220,9 +218,9 @@ public function render(): Node
 
 Here’s how `render()` works:
 
-- **One closure per task**: `fn () => $this->toggle($task['id'])` remembers the id of its task. Pass the closure to `onToggle`, and don’t call it yourself.
-- **PHP computes, markup shows**: PHP computes `$items` and `$left`, and the markup only prints them.
-- **Arrays of markup**: `{{ items }}` prints an array of markup as a list.
+- **A handler call per task**: `toggle(task.id)` doesn’t run during the render. It gives `onToggle` the `toggle()` handler with the id of its task, and the click runs `toggle(2)`.
+- **State in the markup**: the markup reads the `#[State]` properties by name, so `{% for task in tasks %}` loops over `$this->tasks`.
+- **PHP computes, markup shows**: PHP computes `$left`, and the markup only prints it.
 
 > [!NOTE]
 > Phem calls `render()` for you, so you never call it yourself. A class component can also have a constructor, which gets the services, and a `mount()` method, which sets the first values before the first render. `TaskList` doesn’t need them, because its tasks have default values. Don’t name a handler `mount` or `render`: Phem reserves these names, and the compiler reports an error. Read [Methods that Phem calls for you](what-is-phem.md#methods-that-phem-calls-for-you) for the details.
@@ -309,7 +307,11 @@ return (
             <input name="title" phem:bind={{ title }} placeholder="A new task" />
             <button type="submit">Add</button>
         </form>
-        <ul>{{ items }}</ul>
+        <ul>
+            {% for task in tasks %}
+                <TaskItem key={{ task.id }} title={{ task.title }} done={{ task.done }} onToggle={{ toggle(task.id) }} />
+            {% endfor %}
+        </ul>
         <p>{{ left }} left</p>
     </section>
 );

@@ -87,11 +87,19 @@ A slow handler, such as an export, a payment or an API call, blocks the event. A
 ```php
 use Phem\Async\Promise;
 use Phem\Attribute\{Async, Component, State, Transactional};
+use Phem\Stream\Streams;
 
 #[Component]
 final class BuildReport
 {
+    // The id of the next report.
     #[State] public string $ticket = '';
+
+    public function __construct(
+        private readonly Streams $streams,
+        private readonly ReportBuilder $reports,
+    ) {
+    }
 
     public function mount(): void
     {
@@ -101,6 +109,7 @@ final class BuildReport
     #[Async, Transactional]
     public function build(): Promise
     {
+        // This report takes the ticket, and the next click gets a new one.
         $ticket = $this->ticket;
         $this->ticket = bin2hex(random_bytes(4));
         $this->streams->toPage(ReportsPage::class)
@@ -115,7 +124,9 @@ final class BuildReport
 }
 ```
 
-In the request, the method runs as a regular handler and the event renders. The worker then rebuilds the page from the event’s state, calls the method again and runs the closure of the `Promise`. **The method body runs twice**, so keep it fast and free of side effects. Pass the values the work needs to the closure, as `use ($ticket)` does.
+`ReportsPage` is a page with `#[Broadcast]` that lists the reports in a `<ul id="reports">`, and `ReportRow` renders one finished report. `ReportBuilder` is a service of your app.
+
+In the request, the method runs as a regular handler and the event renders. The worker then rebuilds the page from the event’s state, calls the method again and runs the closure of the `Promise`. **The method body runs twice**, so keep it fast. The worker drops the pushes of the method body, because they went out with the request, but another side effect, such as a database write or an email, happens twice. Put it in the closure. Pass the values the work needs to the closure, as `use ($ticket)` does: the worker gets the ticket of the event, not the new one.
 
 The worker has no response, so the closure shows its result with `Streams` (see [Push updates to other browsers](real-time-updates.md)). The worker has the user of the request, but no session, no cookies and no files. Messenger can retry the closure, so make it safe to run again.
 
@@ -141,7 +152,7 @@ The worker can’t use `mercure_publish()`, so give Phem the publisher key, as f
 
 ## Rate limit events
 
-Use the Symfony `#[RateLimit]` attribute to limit the events of a page. Install `symfony/rate-limiter` and configure a limiter:
+Use the Symfony `#[RateLimit]` attribute to limit the events of a page. Install `symfony/rate-limiter` and configure the limiters, one for the page and one for its search handler:
 
 ```yaml
 # config/packages/rate_limiter.yaml
@@ -151,6 +162,10 @@ framework:
             policy: sliding_window
             limit: 30
             interval: '1 minute'
+        phem_search:
+            policy: sliding_window
+            limit: 10
+            interval: '10 seconds'
 ```
 
 Then add the attribute to the page or to one handler:

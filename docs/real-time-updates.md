@@ -84,8 +84,19 @@ final class OrderPage
     }
 }
 
-// A Doctrine postFlush listener, in the same request.
-$this->streams->toPage(OrderPage::class, ['order' => $order])->refresh();
+// A Doctrine entity listener of Order, in the same request.
+#[AsEntityListener(event: Events::postUpdate, entity: Order::class)]
+final class OrderChanged
+{
+    public function __construct(private readonly Streams $streams)
+    {
+    }
+
+    public function __invoke(Order $order): void
+    {
+        $this->streams->toPage(OrderPage::class, ['order' => $order])->refresh();
+    }
+}
 ```
 
 The other viewers of the order render the page again. The browser that clicked “Ship” skips the refresh when the event rendered the page with all its components. A component that the event didn’t render, such as a component it kept or a count in the layout, still renders again in that browser.

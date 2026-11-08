@@ -36,45 +36,62 @@ Phem accepts events only from the same origin, so another site can’t send one.
 Call the handler in the `on*` attribute to give it values of the render. The call doesn’t run during the render: Phem keeps the handler and its arguments, and runs them when the user clicks:
 
 ```php
+enum CancelReason: string
+{
+    case OutOfStock = 'out_of_stock';
+    case CustomerAsked = 'customer_asked';
+    case Duplicate = 'duplicate';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::OutOfStock => 'Out of stock',
+            self::CustomerAsked => 'The customer asked',
+            self::Duplicate => 'Duplicate order',
+        };
+    }
+}
+
 #[Component]
 final class CancelOrder
 {
     #[State] public ?CancelReason $reason = null;
 
-    public function pickReason(CancelReason $reason): void
+    public function pickReason(?CancelReason $reason): void
     {
         $this->reason = $reason;
     }
 
-    public function removeSlot(int $index, Event $e): void
-    {
-        // ...
-    }
-
     public function render(): Node
     {
-        $reasons = CancelReason::forStaff();
+        $reasons = CancelReason::cases();
 
         return (
-            <ul>
+            <div>
                 {% for r in reasons %}
-                    <li key={{ r.value }}><button onClick={{ pickReason(r) }}>{{ r.label }}</button></li>
+                    <button key={{ r.value }} aria-pressed={{ r == reason ? 'true' : 'false' }} onClick={{ pickReason(r) }}>{{ r.label }}</button>
                 {% endfor %}
-                <li><button onClick={{ removeSlot(2) }}>Remove</button></li>
-            </ul>
+                <button onClick={{ pickReason(null) }}>Clear</button>
+            </div>
         );
     }
 }
 ```
 
-The arguments go to the first parameters of the handler, in order. The other parameters get the event, the services and the user, as before. An argument keeps its PHP value: an enum case stays an enum case, and an entity stays an entity.
+A click on “Out of stock” runs `pickReason(CancelReason::OutOfStock)`, and a click on “Clear” runs `pickReason(null)`. The handler gets the enum case, not the string `'out_of_stock'`.
+
+The arguments go to the first parameters of the handler, in order. The other parameters get the event, the services and the user, as before: `pickReason(?CancelReason $reason, Event $e)` also gets the event. An argument keeps its PHP value: an enum case stays an enum case, and an entity stays an entity.
 
 The browser can’t change an argument. The browser sends only the handler id, and the id contains a fingerprint of the arguments. The server renders the component again and finds the handler with the same id. A handler that read `$e->value` from a `value` attribute had to check the value again. A handler with arguments doesn’t.
 
-A call also works for a closure prop. The child adds its arguments after the arguments of the parent:
+A call also works for a closure prop. The child adds its arguments after the arguments of the parent. Here, a shirt has a print on the front and on the back, and each print gets its own size picker:
 
 ```php
-<SizePicker onPick={{ pickSize('menu') }} />
+enum Size: string
+{
+    case Small = 's';
+    case Large = 'l';
+}
 
 #[Component]
 function SizePicker(Closure $onPick): Node
@@ -83,11 +100,33 @@ function SizePicker(Closure $onPick): Node
 
     return <div>{% for size in sizes %}<button key={{ size.value }} onClick={{ onPick(size) }}>{{ size.name }}</button>{% endfor %}</div>;
 }
+
+#[Component]
+final class ShirtOrder
+{
+    /** @var array<string, string> the size of each print */
+    #[State] public array $sizes = [];
+
+    public function pickSize(string $print, Size $size): void
+    {
+        $this->sizes[$print] = $size->value;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div>
+                <SizePicker onPick={{ pickSize('front') }} />
+                <SizePicker onPick={{ pickSize('back') }} />
+            </div>
+        );
+    }
+}
 ```
 
-A click on “Large” runs `pickSize('menu', Size::Large)`.
+A click on “Large” in the second picker runs `pickSize('back', Size::Large)`. The state keeps the value of the case (`'l'`): a property typed as one enum gets its case back after an event, but the items of an array stay strings.
 
-`phemc` checks a call of a method of the class component (error E047): the number of arguments, an argument for an `Event` parameter, a named argument, and a literal of another type (`removeSlot('first')`).
+`phemc` checks a call of a method of the class component (error E047): the number of arguments, an argument for an `Event` parameter, a named argument, and a literal of another type (`pickReason('out_of_stock')` gives a string to a `?CancelReason` parameter).
 
 ## Get services and the user in a handler
 
@@ -391,7 +430,7 @@ A field’s name is the path of its `phem:bind`, for example `address.city`. The
 
 ## Validate a Symfony form while the user types
 
-A Symfony form keeps its values in the page, not in the state. Give the form an `onChange` handler that submits it, and Phem shows errors only for the fields the user touched:
+A Symfony form keeps its values in the page, not in the state. Give the form an `onChange` handler that submits it, and Phem shows errors only for the fields the user touched. The `$form` property creates the form when it’s `null`, as in [Handle a Symfony form](#handle-a-symfony-form):
 
 ```php
 public function validate(Request $request): void
@@ -407,8 +446,8 @@ public function save(Request $request): void
         return;
     }
 
-    $this->saved = $this->form->getData()->email;
-    $this->form = null;
+    // $this->form->getData()
+    $this->form = null; // the next render creates a new, empty form
 }
 ```
 

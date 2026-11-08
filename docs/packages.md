@@ -137,14 +137,14 @@ class Tabs
 The handler changes `active` only when `value` is `null`, and it always calls `onChange`. `render()` shows `value ?? active`:
 
 ```php
-    public function select(Event $e): void
+    public function select(string $name): void
     {
         if (null === $this->value) {
-            $this->active = $e->value;
+            $this->active = $name;
         }
 
         if (null !== $this->onChange) {
-            ($this->onChange)($e->value);
+            ($this->onChange)($name);
         }
     }
 
@@ -155,7 +155,7 @@ The handler changes `active` only when `value` is `null`, and it always calls `o
         return (
             <div role="tablist">
                 {% for name in names %}
-                    <button role="tab" aria-selected={{ name == current }} onClick={{ select }} value={{ name }}>{{ name }}</button>
+                    <button key={{ name }} role="tab" aria-selected={{ name == current }} onClick={{ select(name) }}>{{ name }}</button>
                 {% endfor %}
             </div>
         );
@@ -189,12 +189,12 @@ final class SettingsPage
 }
 ```
 
-A click on “security” in the second `Tabs` runs `select()`, which calls `show()`. The page renders again with its new state, and the second `Tabs` gets the new `value`. The result, without the `data-phem-*` attributes:
+A click on “security” in the second `Tabs` runs `select('security')`, which calls `show('security')`. The page renders again with its new state, and the second `Tabs` gets the new `value`. The result, without the `data-phem-*` attributes:
 
 ```html
 <div role="tablist">
-    <button role="tab" aria-selected="false" value="general">general</button>
-    <button role="tab" aria-selected="true" value="security">security</button>
+    <button role="tab" aria-selected="false">general</button>
+    <button role="tab" aria-selected="true">security</button>
 </div>
 <p>security</p>
 ```
@@ -242,9 +242,9 @@ abstract class AbstractTabs
     #[State] public string $active = '';
     #[Prop] public ?Html $children = null;
 
-    public function select(Event $e): void
+    public function select(string $name): void
     {
-        $this->active = $e->value;
+        $this->active = $name;
     }
 }
 ```
@@ -270,7 +270,7 @@ class Tabs extends AbstractTabs
 function Tab(string $name, #[Context] AbstractTabs $tabs, ?Html $children = null): Node
 {
     return (
-        <button role="tab" aria-selected={{ tabs.active == name }} onClick={{ tabs.select }} value={{ name }}>
+        <button role="tab" aria-selected={{ tabs.active == name }} onClick={{ tabs.select(name) }}>
             {{ children }}
         </button>
     );
