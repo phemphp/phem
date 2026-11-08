@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Async;
 
+use Phem\BrowserEventDispatcher;
 use Phem\Event;
 use Phem\Handler\HandlerInvoker;
 use Phem\Http\EventRequest;
@@ -37,8 +38,9 @@ use Symfony\Component\Messenger\Exception\UnrecoverableMessageHandlingException;
  *    handler gets its props, its context, its state and the values of its closure again.
  * 3. It calls the handler again, with the data of the event and a request of the page URL with
  *    the route attributes of the event. The request has no session, no cookies and no files. It
- *    drops the pushes of this call: they went with the request.
- * 4. It runs the work of the Promise, and publishes its pushes (see Streams::flush()).
+ *    drops the pushes and the browser events of this call: they went with the request.
+ * 4. It runs the work of the Promise, and publishes its pushes (see Streams::flush()). The work
+ *    has no response: a browser event of the work (a toast) logs a warning.
  *
  * The handler and its work run through the middleware of the handlers, with no rate limit and no
  * AsyncMiddleware (see `phem.async.handler_invoker`): a #[Transactional] handler runs its work in
@@ -60,6 +62,7 @@ final class AsyncHandler
         private readonly AsyncUser $user = new AsyncUser(),
         private readonly ?RequestStack $requests = null,
         private readonly ?LoggerInterface $logger = null,
+        private readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
     ) {
     }
 
@@ -106,12 +109,13 @@ final class AsyncHandler
                 return;
             }
 
-            $event = Event::fromArray($message->event);
+            $event = Event::fromArray($message->event, $this->dispatcher);
 
             $this->renderer->inside($tree, fn (): mixed => $this->handlers->invoke($handler, $event, EventRequest::of($request, $message->event), function (\Closure $handler, array $arguments) use ($message): void {
                 $mark = $this->streams->mark();
                 $promise = $handler(...$arguments);
                 $this->streams->rollback($mark);
+                $this->dispatcher->reset();
 
                 if (!$promise instanceof Promise) {
                     // A retry runs the method body again, and it returns the same thing.
@@ -125,5 +129,25 @@ final class AsyncHandler
         }
 
         $this->streams->flush();
+        $this->dropBrowserEvents($message, $handler);
+    }
+
+    /**
+     * The worker has no response: the browser events of the work (a toast) do not go to the
+     * browser. The events of the method body went with the request.
+     */
+    private function dropBrowserEvents(AsyncHandlerMessage $message, \Closure $handler): void
+    {
+        $names = array_unique(array_column($this->dispatcher->dispatched(), 'name'));
+        $this->dispatcher->reset();
+
+        if ([] === $names) {
+            return;
+        }
+
+        $function = new \ReflectionFunction($handler);
+        $name = ($function->getClosureScopeClass()?->getName() ?? '').'::'.$function->getName().'()';
+
+        $this->logger?->warning('The async work of "{handler}" of the page "{page}" sent the browser events "{events}": the worker has no response, so the browser does not get them. Show the result of the work with Streams.', ['handler' => $name, 'page' => $message->page, 'events' => implode('", "', $names)]);
     }
 }

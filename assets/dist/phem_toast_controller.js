@@ -20,8 +20,8 @@ let count = 0
 //
 // It listens on `window`:
 //
-// - `phem:toast`, from `$e->dispatcher->dispatch('toast', ['message' => 'Saved'])`. The detail is
-//   the message, or an object with `message`, and an optional `type` and `duration`;
+// - `phem:toast`, from `$e->toast('Saved')` or `Phem\Toasts`. The detail is the message, or an
+//   object with `message`, and an optional `type` and `duration`;
 // - `phem:error`: it shows the error message in place of the default message of Phem. The message
 //   is the `errorMessage` value, or else the `data-phem-error-message-value` of the root element;
 // - `phem:rate-limited`: it shows the `rateLimitedMessage` value.

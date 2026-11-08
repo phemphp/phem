@@ -257,6 +257,26 @@ final class MapFormTest extends TestCase
         self::assertSame([['name' => 'toast', 'detail' => ['message' => 'Choose the first day.', 'type' => 'error']]], $event->dispatcher->dispatched());
     }
 
+    public function testTheToastTakesTheFirstErrorWithAMessage(): void
+    {
+        $event = new Event('submit', form: ['code' => '', 'name' => '']);
+
+        self::invoker()->invoke(static function (#[MapForm] SilentForm $form): void {}, $event);
+
+        self::assertSame([['name' => 'toast', 'detail' => ['message' => 'Give a name.', 'type' => 'error']]], $event->dispatcher->dispatched());
+    }
+
+    public function testErrorsWithNoMessageShowNoToast(): void
+    {
+        $event = new Event('submit', form: ['code' => '']);
+        $called = false;
+
+        self::invoker()->invoke(static function (#[MapForm] SilentForm $form) use (&$called): void { $called = true; }, $event);
+
+        self::assertFalse($called);
+        self::assertSame([], $event->dispatcher->dispatched());
+    }
+
     private static function mapper(): FormMapper
     {
         $types = new PropertyInfoExtractor([], [new ReflectionExtractor()]);
@@ -324,4 +344,14 @@ final class CountingTransactions implements TransactionRunner
 
         return $callback();
     }
+}
+
+/** A form whose first constraint has no message. */
+final class SilentForm
+{
+    #[Assert\NotBlank(message: ' ')]
+    public string $code = '';
+
+    #[Assert\NotBlank(message: 'Give a name.')]
+    public string $name = 'x';
 }

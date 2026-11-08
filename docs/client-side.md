@@ -151,13 +151,42 @@ Each tab shows the panel at the same position. The arrow keys, Home and End move
 <div data-controller="phem-toast"></div>
 ```
 
-It shows the `phem:toast` events from handlers, failed events (`phem:error`) and rate limits (`phem:rate-limited`). A handler dispatches a toast like this:
+It shows the toasts from handlers, failed events (`phem:error`) and rate limits (`phem:rate-limited`). A handler shows a toast with `$e->toast()`:
 
 ```php
-$e->dispatcher->dispatch('toast', ['message' => 'Saved', 'type' => 'success']);
+use Phem\ToastType;
+
+public function save(Event $e): void
+{
+    $this->orders->save($this->order);
+    $e->toast('Saved', ToastType::Success);
+}
 ```
 
-The types are `info`, `success`, `warning` and `error`. Change the duration and the texts with the controller values: `data-phem-toast-duration-value={{ 8000 }}`, `data-phem-toast-error-message-value` and `data-phem-toast-rate-limited-message-value`.
+The types are `ToastType::Info` (the default), `Success`, `Warning` and `Error`. A third argument sets the duration of this toast in milliseconds. `0` keeps the toast until the user closes it:
+
+```php
+$e->toast('The order has no stock.', ToastType::Error, 0);
+```
+
+A component or a service that the handler calls injects `Phem\Toasts`. It has a method for each type:
+
+```php
+use Phem\Toasts;
+
+public function __construct(private readonly Toasts $toasts) {}
+
+$this->toasts->error('The schedule starts before it ends.');
+$this->toasts->success('Saved', 8000);
+```
+
+An empty message throws an `InvalidArgumentException`. So does a duration below 0 or above `Toasts::MAX_DURATION` (2147483647 ms, the longest timer of a browser).
+
+A toast shows only with the response of an event. A handler that fails or redirects shows no toast. A toast of a page load doesn't show. The work of an [`#[Async]` handler](server-features.md#run-slow-work-after-the-response) has no response either: a toast there logs a warning, so show the result with `Streams`.
+
+A toast is a `phem:toast` [browser event](events-and-forms.md#send-events-to-your-javascript) with the detail `{"message": "Saved", "type": "success"}`.
+
+Change the default duration and the texts with the controller values: `data-phem-toast-duration-value={{ 8000 }}`, `data-phem-toast-error-message-value` and `data-phem-toast-rate-limited-message-value`.
 
 ### Copy text to the clipboard
 

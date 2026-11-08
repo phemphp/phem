@@ -21,6 +21,7 @@ use Phem\DependencyInjection\TestAsyncPass;
 use Phem\DependencyInjection\TestPublisherPass;
 use Phem\Stream\MemoryPublisher;
 use Phem\Test\InteractsWithPhem;
+use Phem\Tests\Fixtures\RecordingLogger;
 use Phem\Tests\Fixtures\TestKernel;
 use PHPUnit\Framework\AssertionFailedError;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -117,6 +118,19 @@ final class AsyncTest extends KernelTestCase
         }
 
         self::assertFalse(AsyncRedirectSwitch::$ran, 'the work does not run');
+    }
+
+    public function testAToastOfTheWorkLogsAWarning(): void
+    {
+        $logger = static::getContainer()->get('logger');
+        \assert($logger instanceof RecordingLogger);
+
+        // The events of the method body go with the request. The worker drops them with no warning.
+        $page = $this->visit('/async/lobby')->click('#notify')->assertToast('Started')->assertDispatched('started');
+        $page->settle();
+
+        $warnings = array_values(array_filter($logger->logs, static fn (string $log): bool => str_starts_with($log, 'warning: ')));
+        self::assertSame(['warning: The async work of "App\Ui\Async\AsyncExport::notify()" of the page "App\Ui\Async\AsyncPage" sent the browser events "toast": the worker has no response, so the browser does not get them. Show the result of the work with Streams.'], $warnings);
     }
 
     public function testSettleFailsWhenNoWorkWaits(): void

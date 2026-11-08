@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Phem\Tests\Fixtures;
 
 use Phem\Test\TestKernel as PhemTestKernel;
-use Psr\Log\NullLogger;
 use Symfony\Bundle\TwigBundle\TwigBundle;
 use Symfony\Bundle\WebProfilerBundle\WebProfilerBundle;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
@@ -105,7 +104,8 @@ final class TestKernel extends PhemTestKernel
             ->set(ScientistFinder::class)
             // The #[Path] entity props of the fixture pages get their entities from ScientistFinder.
             ->alias('phem.entity_finder', ScientistFinder::class)
-            ->set('logger', NullLogger::class);
+            ->set('logger', RecordingLogger::class)
+                ->public();
     }
 
     protected function configureRoutes(RoutingConfigurator $routes): void

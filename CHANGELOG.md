@@ -8,6 +8,15 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Toast messages from a handler: `$e->toast('Saved')`, or `$e->toast('No stock',
+  ToastType::Error, 0)` with a type and a duration in ms. A component or a service injects
+  `Phem\Toasts` (`$this->toasts->error('…')`), with a method for each type. An empty message,
+  or a duration below 0 or above `Toasts::MAX_DURATION` (2147483647 ms), throws an
+  `InvalidArgumentException`. `ComponentTester::assertToast()` checks a toast of the last action,
+  as the `phem-toast` controller shows it. The error toast of a `#[MapForm]` without a
+  `Validation` property uses it too, with the first error that has a message.
+- The worker of an `#[Async]` handler logs a warning when its work dispatches a browser event (a
+  toast): the worker has no response, so the browser does not get it.
 - The error of a handler on a field: `Validation::withError()` adds an error that no constraint
   finds, for example a name that the database has already
   (`$this->validation = $this->validation->withError('name', 'This name is taken.')`). The field

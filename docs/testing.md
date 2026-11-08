@@ -218,6 +218,7 @@ Each assertion returns the tester, so you can chain actions and assertions:
 | `assertReload()` | The last event answered 409, so the browser loads the page again |
 | `assertQuery($key, $value)` | A query string key of the URL (`#[Url]`) after the last action: a string, a list, or null for no key |
 | `assertDispatched($name)`, `assertDispatched($name, $detail)`, `assertNotDispatched($name)` | A browser event of the last action (`$e->dispatcher->dispatch()`), with its detail as JSON gives it |
+| `assertToast($message)`, `assertToast($message, ToastType::Error)` | A toast of the last action (`$e->toast()` or `Phem\Toasts`), with its type, as the `phem-toast` controller shows it |
 
 To read values directly, use `html()`, `text()`, `state()`, `url()`, `cookies()` (pages only), and `document()` (a `Dom\HTMLDocument`). `url()` returns the URL that the browser shows: the page URL (`/` for a component), with the query string of the `#[Url]` properties after the last action.
 

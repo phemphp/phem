@@ -36,6 +36,7 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.async.user'),
                 service('request_stack')->nullOnInvalid(),
                 service('logger')->nullOnInvalid(),
+                service('phem.browser_event_dispatcher'),
             ])
             ->tag('messenger.message_handler', ['handles' => AsyncHandlerMessage::class])
     ;

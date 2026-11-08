@@ -17,15 +17,17 @@ namespace Phem;
  * Sends browser events with the response of an event: after the morph, the browser dispatches
  * a `CustomEvent` named `phem:<name>`, with the detail. It starts on the root of the component
  * of the handler (the element with its fiber id, or the root element of the page) and bubbles up to `window`.
- * Stimulus controllers and plain JS listen to it on an ancestor (`data-action="phem:toast->toast#show"`)
- * or on `window` (`data-action="phem:toast@window->toast#show"`).
+ * Stimulus controllers and plain JS listen to it on an ancestor (`data-action="phem:saved->chart#reload"`)
+ * or on `window` (`data-action="phem:saved@window->chart#reload"`).
  *
  * A handler gets it from its event:
  *
  *     public function save(Event $e): void
  *     {
- *         $e->dispatcher->dispatch('toast', ['message' => 'Saved']);
+ *         $e->dispatcher->dispatch('saved', ['id' => $this->order->id]);
  *     }
+ *
+ * For a toast message, use `$e->toast()` or Phem\Toasts: they dispatch a `toast` event.
  *
  * It is also a service (`phem.browser_event_dispatcher`), so a component or a service that the
  * handler calls can get it with autowiring. `$e->dispatcher` is the same object.

@@ -18,12 +18,13 @@ use Phem\Event;
 use Phem\Form\FormMapper;
 use Phem\Form\InvalidForm;
 use Phem\State\StateValidator;
+use Phem\ToastType;
 
 /**
  * Maps the form of the event for each #[MapForm] parameter of a handler, before the handler and
  * its transaction (see Phem\Attribute\MapForm). When an object is not valid, the handler does not
- * run: the errors go to the Validation property of the component, or the first error goes to an
- * error toast when the component has none. A valid form removes the errors of the last map.
+ * run: the errors go to the Validation property of the component, or the first error with a
+ * message goes to an error toast when the component has none. A valid form removes the errors of the last map.
  */
 final class MapFormMiddleware implements HandlerMiddleware
 {
@@ -48,8 +49,11 @@ final class MapFormMiddleware implements HandlerMiddleware
                 $this->forms->map($event, $name, $type, $attribute);
             }
         } catch (InvalidForm $e) {
-            if (!$this->validator->mapped($component, $e->errors)) {
-                $event->dispatcher->dispatch('toast', ['message' => $e->errors[array_key_first($e->errors)], 'type' => 'error']);
+            // The first error with a message: a constraint can have an empty message.
+            $message = array_find($e->errors, static fn (string $error): bool => '' !== trim($error));
+
+            if (!$this->validator->mapped($component, $e->errors) && null !== $message) {
+                $event->toast($message, ToastType::Error);
             }
 
             return null;

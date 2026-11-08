@@ -35,7 +35,8 @@ final class Event
      *                                           A #[MapForm] parameter gets them as a typed object
      *                                           (see Phem\Attribute\MapForm)
      * @param BrowserEventDispatcher $dispatcher sends browser events with the response
-     *                                           (`$e->dispatcher->dispatch('toast', [...])`)
+     *                                           (`$e->dispatcher->dispatch('saved', [...])`).
+     *                                           For a toast, call toast()
      * @param array<string, mixed>   $files      the files of the form, for `submit`: name => an
      *                                           UploadedFile, in the shape of `$request->files->all()`
      *                                           (`photos[]` gives a list). PHP removes a file that
@@ -67,6 +68,23 @@ final class Event
     public function refreshes(): bool
     {
         return $this->refresh;
+    }
+
+    /**
+     * Shows a toast message after the morph (see Phem\Toasts):
+     *
+     *     $e->toast('Saved');
+     *     $e->toast('No stock', ToastType::Error);
+     *
+     * @param int|null $duration the time on the screen in ms (up to Toasts::MAX_DURATION), `0` to
+     *                           keep the toast until its close button, or null for the
+     *                           `duration` value of the controller
+     *
+     * @throws \InvalidArgumentException for an empty message or a duration out of range
+     */
+    public function toast(string $message, ToastType $type = ToastType::Info, ?int $duration = null): void
+    {
+        new Toasts($this->dispatcher)->show($message, $type, $duration);
     }
 
     /**

@@ -19,6 +19,7 @@ use Phem\Test\ComponentTester;
 use Phem\Test\InteractsWithPhem;
 use Phem\Tests\Fixtures\Limits;
 use Phem\Tests\Fixtures\TestKernel;
+use Phem\ToastType;
 use PHPUnit\Framework\AssertionFailedError;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -466,6 +467,49 @@ final class InteractsWithPhemTest extends KernelTestCase
         // Each action starts with no browser events.
         $tester->click('#quiet')->assertNotDispatched('toast');
         $this->assertFails(static fn () => $tester->assertDispatched('toast'), 'The last action did not dispatch the browser event "toast".');
+    }
+
+    public function testAssertToastChecksTheToastsOfTheLastAction(): void
+    {
+        $tester = $this->mount(self::NOTIFIER)
+            ->click('#toast')
+            ->assertToast('Saved')
+            ->assertToast('Saved', ToastType::Success);
+
+        $this->assertFails(static fn () => $tester->assertToast('Saved', ToastType::Error), 'The last action did not show the toast error "Saved" (it showed success "Saved").');
+        $this->assertFails(static fn () => $tester->assertToast('Gone'), 'The last action did not show the toast "Gone" (it showed success "Saved").');
+
+        // A toast of the dispatcher is an info toast.
+        $tester->click('#save')->assertToast('Saved 1', ToastType::Info);
+
+        $tester->click('#quiet');
+        $this->assertFails(static fn () => $tester->assertToast('Saved 1'), 'The last action did not show the toast "Saved 1".');
+    }
+
+    public function testAssertToastReadsTheDetailAsTheController(): void
+    {
+        $tester = $this->mount(self::NOTIFIER)
+            ->click('#raw')
+            // A string detail is the message.
+            ->assertToast('Plain', ToastType::Info)
+            // The controller shows a type that it does not know as info.
+            ->assertToast('Odd', ToastType::Info)
+            ->assertToast('["a","b"]');
+
+        // A toast with no message does not show.
+        $this->assertFails(static fn () => $tester->assertToast(''), 'The last action did not show the toast "" (it showed info "Plain", info "Odd", info "["a","b"]").');
+    }
+
+    public function testAHandlerShowsAToastWithTheInjectedService(): void
+    {
+        $this->mount(self::NOTIFIER)
+            ->click('#remind')
+            ->assertToast('Check the stock', ToastType::Warning)
+            ->assertDispatched('toast', ['message' => 'Check the stock', 'type' => 'warning', 'duration' => 0]);
+
+        $this->visit('/notify')
+            ->click('#remind')
+            ->assertToast('Check the stock', ToastType::Warning);
     }
 
     public function testAssertDispatchedSeesTheEventsOfEachHandlerOfAnAction(): void

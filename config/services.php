@@ -97,6 +97,7 @@ use Phem\Stream\SenderToken;
 use Phem\Stream\Streams;
 use Phem\Stream\Subscription;
 use Phem\Stream\Topics;
+use Phem\Toasts;
 use Phem\Twig\CacheKeyLoader;
 use Phem\Twig\EnvironmentConfigurator;
 use Phem\Twig\PhemExtension;
@@ -218,6 +219,9 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.browser_event_dispatcher', BrowserEventDispatcher::class)
             ->tag('kernel.reset', ['method' => 'reset'])
         ->alias(BrowserEventDispatcher::class, 'phem.browser_event_dispatcher')
+        ->set('phem.toasts', Toasts::class)
+            ->args([service('phem.browser_event_dispatcher')])
+        ->alias(Toasts::class, 'phem.toasts')
 
         // Rendering
         ->set('phem.component_factory', ContainerComponentFactory::class)

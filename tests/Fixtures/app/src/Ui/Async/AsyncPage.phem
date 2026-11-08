@@ -8,6 +8,7 @@ use Phem\Event;
 use Phem\Node;
 use Phem\Stream\Streams;
 use Phem\Tests\Fixtures\Guestbook;
+use Phem\Toasts;
 use Symfony\Component\HttpFoundation\Request;
 
 use function App\Ui\Common\Document;
@@ -23,6 +24,7 @@ final class AsyncExport
 
     public function __construct(
         private readonly Streams $streams,
+        private readonly Toasts $toasts,
     ) {
     }
 
@@ -63,6 +65,18 @@ final class AsyncExport
         });
     }
 
+    // The toast of the method body goes with the request. The toast of the work has no response.
+    #[Async]
+    public function notify(Event $e): Promise
+    {
+        $e->toast('Started');
+        $e->dispatcher->dispatch('started');
+
+        return new Promise(function (): void {
+            $this->toasts->success('Exported');
+        });
+    }
+
     public function render(): Node
     {
         $ships = [];
@@ -79,6 +93,7 @@ final class AsyncExport
                 <button id="export" type="submit">Export</button>
                 {{ ships }}
                 <button id="crash" type="button" onClick={{ crash }}>Crash</button>
+                <button id="notify" type="button" onClick={{ notify }}>Notify</button>
             </form>
         );
     }

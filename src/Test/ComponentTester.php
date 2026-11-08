@@ -21,6 +21,8 @@ use Phem\Test\Internal\Browser;
 use Phem\Test\Internal\Driver;
 use Phem\Test\Internal\EventResult;
 use Phem\Test\Internal\StreamTopics;
+use Phem\Toast;
+use Phem\ToastType;
 use PHPUnit\Framework\Assert;
 
 /**
@@ -579,12 +581,31 @@ final class ComponentTester
      */
     public function assertDispatched(string $name, mixed $detail = null): self
     {
-        $details = array_column(array_filter($this->dispatched, static fn (array $e): bool => $name === $e['name']), 'detail');
+        $details = $this->detailsOf($name);
         Assert::assertNotEmpty($details, \sprintf('The last action did not dispatch the browser event "%s"%s.', $name, $this->dispatchedNames()));
 
         if (\func_num_args() > 1) {
             Assert::assertContains($detail, $details, \sprintf('The detail of the browser event "%s".', $name));
         }
+
+        return $this;
+    }
+
+    /**
+     * Asserts that the last action showed a toast with this message (see Phem\Toasts). With
+     * `$type`, the toast has this type too.
+     *
+     *     ->assertToast('Saved')
+     *     ->assertToast('No stock', ToastType::Error)
+     */
+    public function assertToast(string $message, ?ToastType $type = null): self
+    {
+        // The toasts that the `phem-toast` controller shows.
+        $toasts = array_values(array_filter(array_map(Toast::fromDetail(...), $this->detailsOf('toast'))));
+        $found = array_filter($toasts, static fn (Toast $toast): bool => $message === $toast->message && (null === $type || $type === $toast->type));
+        $showed = implode(', ', array_map(strval(...), $toasts));
+
+        Assert::assertNotEmpty($found, \sprintf('The last action did not show the toast %s"%s"%s.', null === $type ? '' : $type->value.' ', $message, '' === $showed ? '' : \sprintf(' (it showed %s)', $showed)));
 
         return $this;
     }
@@ -1414,7 +1435,17 @@ final class ComponentTester
         return trim((string) preg_replace('/\s+/u', ' ', $text));
     }
 
-    /** The status of the last response, for the message of a failed assertion. */
+    /**
+     * The details of the browser events of the last action with this name, in their order.
+     *
+     * @return list<mixed>
+     */
+    private function detailsOf(string $name): array
+    {
+        return array_column(array_filter($this->dispatched, static fn (array $e): bool => $name === $e['name']), 'detail');
+    }
+
+    /** The names of the browser events of the last action, for the message of a failed assertion. */
     private function dispatchedNames(): string
     {
         return [] === $this->dispatched ? '' : \sprintf(' (it dispatched "%s")', implode('", "', array_unique(array_column($this->dispatched, 'name'))));

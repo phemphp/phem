@@ -460,17 +460,19 @@ A handler can dispatch events to the JavaScript on the page:
 public function save(Event $e): void
 {
     $this->scientists->save($this->scientist);
-    $e->dispatcher->dispatch('toast', ['message' => 'Saved']);
+    $e->dispatcher->dispatch('saved', ['id' => $this->scientist->id]);
 }
 ```
 
-After the morph, the browser dispatches a `phem:toast` event. A Stimulus controller can listen for it:
+After the morph, the browser dispatches a `phem:saved` event. A Stimulus controller can listen for it:
 
 ```html
-<div data-controller="toast" data-action="phem:toast@window->toast#show"></div>
+<div data-controller="chart" data-action="phem:saved@window->chart#reload"></div>
 ```
 
 The event starts on the component’s element and bubbles up to `window`. A service can dispatch events too: inject `Phem\BrowserEventDispatcher`. A handler that fails or redirects dispatches no events.
+
+To show a message to the user, call `$e->toast('Saved')`. See [Show toast messages](client-side.md#show-toast-messages).
 
 ## Handle a Symfony form
 

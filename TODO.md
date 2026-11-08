@@ -80,23 +80,6 @@ Flex does not enable the bundle and does not add the first page or the `phemc` w
 These items come from a review of a real app (a shop with a customer side and a staff side, about
 5,700 lines of `.phem`) on 2026-11-08. Each item removes code that the app repeats.
 
-### [ ] Toast messages from a handler — P3
-
-13 handlers of the app repeat
-`$e->dispatcher->dispatch('toast', ['message' => …, 'type' => 'error'])`. A wrong `type` fails
-with no error.
-
-- **Best peer:** LV `put_flash`, the Flux toast of LW.
-- **Proposal:** a method on the event, and a service for code outside a handler:
-
-  ```php
-  $e->toast('Guardado');
-  $e->toast(NO_STOCK, ToastType::Error);
-
-  public function __construct(private readonly Toasts $toasts) {}
-  $this->toasts->error('El horario empieza antes de terminar.');
-  ```
-
 ### [ ] Refresh after a handler without `$e->refresh()` — P2
 
 15 handlers of the app start with `$e->refresh()`. A comment tells why: "each
