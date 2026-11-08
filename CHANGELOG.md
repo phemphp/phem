@@ -9,8 +9,8 @@ that break the code of an application start with **Breaking**.
 ## Unreleased
 
 - phemc: `mount` or `render` passed as a handler (`onClick={{ mount }}`, `phem:loading={{ render }}`)
-  is the error E046. Phem calls these methods itself: they are not handlers. A local variable,
-  a prop or a property of the same name is still a value.
+  in a class component or a page is the error E046. Phem calls these methods itself: they are
+  not handlers. A PHP or Twig variable, a prop or a property of the same name is still a value.
 
 ## 0.3.11 (2026-11-08)
 

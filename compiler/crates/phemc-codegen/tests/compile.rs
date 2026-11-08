@@ -729,6 +729,20 @@ fn mount_and_render_are_not_handlers() {
     let property = src("onClick={{ render }}").replace("public function mount(): void {}", "public function mount(): void {}\n    public ?\\Closure $render = null;");
     assert!(codes(&property).is_empty());
 
+    // A Twig variable of the same name is a value too, in its scope only.
+    let each = |markup: &str| base.replace("<div><button ATTR /></div>", markup).replace("public function mount(): void {}", "public function mount(): void {}\n    public array $actions = [];");
+    assert_eq!(codes(&each("<ul>{% for mount in actions %}<li key={{ loop.index }}><button onClick={{ mount }} /></li>{% endfor %}</ul>")), Vec::<&str>::new());
+    assert_eq!(codes(&each("<div>{% set render = actions|first %}<button onClick={{ render }} /></div>")), Vec::<&str>::new());
+    assert_eq!(codes(&each("<div>{% for mount in actions %}{% endfor %}<button onClick={{ mount }} /></div>")), ["E046"]);
+
+    // The names are reserved: the method can come from a parent outside the sources.
+    let open = base.replace("final class Panel {", "final class Panel extends \\Vendor\\Base {").replace("public function mount(): void {}", "");
+    assert_eq!(codes(&open.replace("ATTR", "onClick={{ mount }}")), ["E046"]);
+
+    // A class that isn't a component calls no `render()`: its methods are handlers.
+    let plain = "<?phem\nnamespace App;\nfinal class Builder {\n    public function render(): void {}\n    public function button() { return <button onClick={{ render }} />; }\n}\n";
+    assert!(codes(plain).is_empty());
+
     // A function component has no `mount()` or `render()`: its parameter is a value.
     let function = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfunction Row(\\Closure $render) { return <button onClick={{ render }} />; }\n";
     assert!(codes(function).is_empty());

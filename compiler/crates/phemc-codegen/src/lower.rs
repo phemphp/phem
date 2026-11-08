@@ -38,16 +38,19 @@ pub struct Lowerer<'a> {
     bound_select: Option<String>,
     /// The number of `<Dynamic>` elements with children: each one captures them in its own variable.
     dynamics: usize,
+    /// The variables that the Twig tags around the current node bind (`{% for x in %}`, `{% set x %}`).
+    twig_bound: Vec<String>,
 }
 
 impl<'a> Lowerer<'a> {
     pub fn new(info: &'a FileInfo, reg: &'a Registry, enums: &'a Enums, replacements: &'a Replacements) -> Self {
-        Self { info, reg, enums, replacements, owner: None, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, dynamics: 0 }
+        Self { info, reg, enums, replacements, owner: None, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, dynamics: 0, twig_bound: vec![] }
     }
 
     pub fn lower_root(&mut self, node: &Node, slots: Vec<String>) -> String {
         self.slots = slots;
         self.slots_defined.clear();
+        self.twig_bound.clear();
         let mut out = String::new();
         self.node(node, &mut out);
         out
@@ -68,16 +71,28 @@ impl<'a> Lowerer<'a> {
         match node {
             Node::Text(t) | Node::HtmlComment(t) | Node::Verbatim(t) => out.push_str(&t.text),
             Node::TwigComment(_) => {}
-            Node::Tag(t) => out.push_str(&t.raw),
+            Node::Tag(t) => {
+                // `{% set x = 1 %}` binds `x` until the end of the markup.
+                self.twig_bound.extend(phemc_twig_scan::tag_vars(&t.name, &t.head).bound);
+                out.push_str(&t.raw);
+            }
             Node::Fragment(f) => self.nodes(&f.children, out),
             Node::Block(b) => {
                 if b.name() == "for" {
                     self.check_keys(&b.branches[0].children);
                 }
 
+                // The variables of a `{% for %}` exist only in its body. A `{% set x %}` block
+                // binds `x` after it.
+                let bound = self.twig_bound.len();
                 for br in &b.branches {
                     out.push_str(&br.tag.raw);
+                    self.twig_bound.extend(phemc_twig_scan::tag_vars(&br.tag.name, &br.tag.head).bound);
                     self.nodes(&br.children, out);
+                }
+
+                if b.name() == "for" {
+                    self.twig_bound.truncate(bound);
                 }
 
                 out.push_str(&b.close.raw);
@@ -394,9 +409,10 @@ impl<'a> Lowerer<'a> {
     }
 
     /// E046: `mount()` and `render()` of a class component are not handlers: Phem calls them
-    /// itself. A local variable, a prop or a property of the same name is a value, not the method.
+    /// itself. The names are reserved, so the method can also come from a parent outside the
+    /// sources. A PHP or Twig variable, a prop or a property of the same name is a value.
     fn check_reserved_handler(&mut self, name: &str, ident: &str, span: Span) {
-        let Some(class) = self.class else {
+        let Some(class) = self.class.filter(|c| c.is_component || c.abstract_component) else {
             return;
         };
 
@@ -404,11 +420,11 @@ impl<'a> Lowerer<'a> {
             return;
         };
 
-        let is_method = class.methods.iter().any(|m| m.name.eq_ignore_ascii_case(method)) || class.inherited_methods.iter().any(|m| m.eq_ignore_ascii_case(method));
         let is_value = has_variable(self.scope_text, ident)
+            || self.twig_bound.iter().any(|v| v == ident)
             || self.params.iter().any(|p| p.name == ident)
             || class.all_props().any(|p| p.name == ident);
-        if !is_method || is_value {
+        if is_value {
             return;
         }
 
@@ -1182,11 +1198,11 @@ impl<'a> Lowerer<'a> {
     }
 }
 
-/// `phem:loading={{ save }}`: the element shows only while a `save` event runs.
-const LOADING: &str = "phem:loading";
-
 /// The methods of a class component that Phem calls itself: they are not handlers (E046).
 const RESERVED_METHODS: &[&str] = &["mount", "render"];
+
+/// `phem:loading={{ save }}`: the element shows only while a `save` event runs.
+const LOADING: &str = "phem:loading";
 
 /// `phem:progress={{ save }}`: the element shows the upload progress of a `save` event with files.
 const PROGRESS: &str = "phem:progress";
