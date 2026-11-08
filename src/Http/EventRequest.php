@@ -31,11 +31,7 @@ final class EventRequest
      */
     public static function of(Request $request, array $event): Request
     {
-        // FormData gives flat keys ("scientist[name]", "tags[]"). PHP makes nested arrays of
-        // them, as it does for the body of a normal POST.
-        parse_str(implode('&', array_map(static fn (array $f): string => rawurlencode($f[0]).'='.rawurlencode($f[1]), FormFields::of($event['form'] ?? null))), $post);
-
-        $copy = $request->duplicate(request: $post);
+        $copy = $request->duplicate(request: FormFields::nested(FormFields::of($event['form'] ?? null)));
         if (\is_array($event['form'] ?? null)) {
             $copy->attributes->set(TouchedFields::REQUEST_ATTRIBUTE, 'submit' === ($event['type'] ?? null) ? TouchedFields::all() : TouchedFields::of($event['touched'] ?? null));
         }

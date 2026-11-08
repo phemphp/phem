@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Phem\Handler;
 
+use Phem\Attribute\MapForm;
+
 /**
  * A handler call with arguments in the markup: `onClick={{ pickReason(r) }}`
  * (`phem_call(pickReason, [r])`). The call does not run during the render: it gives a closure
@@ -48,6 +50,8 @@ final class HandlerCall
 
         [$target, $bound] = self::unwrap($handler);
         $arguments = [...$bound, ...$arguments];
+        self::checkMapForm($target, \count($arguments));
+
         $call = function (mixed ...$rest) use ($target, $arguments): mixed {
             return $target(...$arguments, ...$rest);
         };
@@ -72,5 +76,23 @@ final class HandlerCall
         $used = $function->getClosureUsedVariables();
 
         return [$used['target'], $used['arguments']];
+    }
+
+    /**
+     * A #[MapForm] parameter gets the form of the event (see Phem\Attribute\MapForm): an argument
+     * of the call can't give it. The error shows at the render, not at the first valid submit.
+     */
+    private static function checkMapForm(\Closure $target, int $count): void
+    {
+        $function = new \ReflectionFunction($target);
+        foreach ($function->getParameters() as $i => $parameter) {
+            if ($i >= $count) {
+                return;
+            }
+
+            if ([] !== $parameter->getAttributes(MapForm::class)) {
+                throw new \LogicException(\sprintf('The parameter $%s of the handler "%s()" has #[MapForm]: the form gives its value, so the call in the markup can\'t give it an argument.', $parameter->getName(), $function->getName()));
+            }
+        }
     }
 }

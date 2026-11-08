@@ -8,6 +8,15 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Typed form data in a handler: `#[MapForm]` on a parameter maps the form fields of the event
+  to an object (`addClosed(#[MapForm] ClosedDates $dates)`). The Serializer converts the
+  strings to the types of the properties, and the Validator checks the object. When it is not
+  valid, the handler does not run: the errors go to the `Validation` property of the component,
+  or the first error goes to an error toast. The map runs before the transaction of a
+  `#[Transactional]` handler. Each submit replaces the errors of the last one, and a valid
+  submit removes them. Options: `name` (a prefix of the fields), `validationGroups` and
+  `serializationContext`. A call in the markup can't give a value to a `#[MapForm]` parameter.
+  It needs `symfony/serializer`.
 - The errors of a bound field. A bound field with a validation error gets `aria-invalid="true"`
   and the id of the error in `aria-describedby`, after its own ids. The new `phem:error={{ email }}`
   directive renders an element only when the field has an error, with the id of the error and

@@ -61,6 +61,10 @@ final class TestKernel extends PhemTestKernel
             // For the live validation of the Symfony form of form.phem, for the same reason.
             'form' => ['enabled' => true],
             'property_access' => ['enabled' => true],
+            // For the #[MapForm] handlers of map_form.phem, for the same reason. PropertyInfo gives the
+            // types of the properties to the Serializer.
+            'serializer' => ['enabled' => true],
+            'property_info' => ['enabled' => true],
         ]);
         // TwigBundle does not load the form functions (form_row()) for the same reason.
         $container->import(\dirname((string) (new \ReflectionClass(TwigBundle::class))->getFileName()).'/Resources/config/form.php');

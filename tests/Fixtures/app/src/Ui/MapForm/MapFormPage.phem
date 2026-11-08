@@ -1,0 +1,105 @@
+<?phem
+
+namespace App\Ui\MapForm;
+
+use Phem\Attribute\{Component, MapForm, Page, State};
+use Phem\Event;
+use Phem\Node;
+use Phem\Tests\Fixtures\ClosedDates;
+use Phem\Validation;
+
+use function App\Ui\Common\Document;
+
+// A #[MapForm] handler: its errors go to the Validation property (see Phem\Attribute\MapForm).
+#[Component]
+final class ClosedDays
+{
+    #[State] public Validation $validation;
+
+    #[State] public string $saved = '';
+
+    public function addClosed(#[MapForm] ClosedDates $dates): void
+    {
+        $to = $dates->to ?? $dates->from;
+        $this->saved = \sprintf('%s to %s, %s, %d guests%s', $dates->from?->format('Y-m-d'), $to?->format('Y-m-d'), $dates->size?->name ?? 'no size', $dates->guests, $dates->notify ? ', notify' : '');
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form id="closed" onSubmit={{ addClosed }}>
+                <input type="date" name="from" />
+                {% if validation.error('from') %}<p id="from-error">{{ validation.error('from') }}</p>{% endif %}
+                <input type="date" name="to" />
+                {% if validation.error('to') %}<p id="to-error">{{ validation.error('to') }}</p>{% endif %}
+                <input name="size" />
+                <input name="guests" />
+                {% if validation.error('guests') %}<p id="guests-error">{{ validation.error('guests') }}</p>{% endif %}
+                <input type="checkbox" name="notify" value="1" />
+                <button type="submit">Add</button>
+                <p id="saved">{{ saved }}</p>
+            </form>
+        );
+    }
+}
+
+// No Validation property: the first error goes to an error toast. The fields have a prefix.
+#[Component]
+final class QuickClose
+{
+    #[State] public string $saved = '';
+
+    public function close(#[MapForm(name: 'dates')] ClosedDates $dates): void
+    {
+        $this->saved = (string) $dates->from?->format('Y-m-d');
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form id="quick" onSubmit={{ close }}>
+                <input type="date" name="dates[from]" />
+                <button type="submit">Close</button>
+                <p id="quick-saved">{{ saved }}</p>
+            </form>
+        );
+    }
+}
+
+// A closure of render() with #[MapForm]. Its handler changes no #[State]: it sends a browser
+// event, as a handler that only writes to the database.
+#[Component]
+final class Holidays
+{
+    #[State] public Validation $validation;
+
+    public function render(): Node
+    {
+        $add = fn (#[MapForm(name: 'holiday')] ClosedDates $dates, Event $e) => $e->dispatcher->dispatch('holiday', $dates->from?->format('Y-m-d'));
+
+        return (
+            <form id="holidays" onSubmit={{ add }}>
+                <input type="date" name="holiday[from]" />
+                <input name="holiday[guests]" value="1" />
+                {% if validation.error('holiday.from') %}<p id="holiday-error">{{ validation.error('holiday.from') }}</p>{% endif %}
+                <button type="submit">Add</button>
+            </form>
+        );
+    }
+}
+
+#[Page('/map-form')]
+final class MapFormPage
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>Map a form</Document:title>
+                <ClosedDays />
+                <QuickClose />
+                <Holidays />
+            </Document>
+        );
+    }
+}

@@ -16,6 +16,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 use Phem\Argument\CallableArguments;
 use Phem\Argument\CallValueResolver;
 use Phem\Argument\EventValueResolver;
+use Phem\Argument\MapFormValueResolver;
 use Phem\Argument\PathValueResolver;
 use Phem\Argument\ServiceValueResolver;
 use Phem\Async\AsyncDispatcher;
@@ -34,9 +35,11 @@ use Phem\EventListener\PageAttributesListener;
 use Phem\EventListener\PageStreamListener;
 use Phem\EventListener\SourceMapListener;
 use Phem\EventListener\StreamListener;
+use Phem\Form\FormMapper;
 use Phem\Handler\BroadcastMiddleware;
 use Phem\Handler\HandlerFingerprint;
 use Phem\Handler\HandlerInvoker;
+use Phem\Handler\MapFormMiddleware;
 use Phem\Handler\RedirectMiddleware;
 use Phem\Handler\StreamsMiddleware;
 use Phem\Handler\TransactionalMiddleware;
@@ -144,6 +147,12 @@ return static function (ContainerConfigurator $container): void {
             ->tag('controller.argument_value_resolver', ['priority' => 200, 'name' => CallValueResolver::class])
         ->set('phem.argument_resolver.event', EventValueResolver::class)
             ->tag('controller.argument_value_resolver', ['priority' => 150, 'name' => EventValueResolver::class])
+        // The object of the form that the map_form middleware mapped and validated.
+        ->set('phem.argument_resolver.map_form', MapFormValueResolver::class)
+            ->args([service('phem.form_mapper')])
+            ->tag('controller.argument_value_resolver', ['priority' => 150, 'name' => MapFormValueResolver::class])
+        ->set('phem.form_mapper', FormMapper::class)
+            ->args([service('serializer')->nullOnInvalid(), service('validator')->nullOnInvalid()])
         // Before the EntityValueResolver of Doctrine (110): the entity is already in the value.
         ->set('phem.argument_resolver.path', PathValueResolver::class)
             ->tag('controller.argument_value_resolver', ['priority' => 150, 'name' => PathValueResolver::class])
@@ -163,6 +172,10 @@ return static function (ContainerConfigurator $container): void {
             ->tag('phem.handler_middleware', ['priority' => -50])
         ->set('phem.state_validator', StateValidator::class)
             ->args([service('validator')->nullOnInvalid(), service('phem.metadata')])
+        // Before the transaction: a form with errors opens no transaction.
+        ->set('phem.handler_middleware.map_form', MapFormMiddleware::class)
+            ->args([service('phem.form_mapper'), service('phem.state_validator')])
+            ->tag('phem.handler_middleware', ['priority' => -60])
         ->set('phem.handler_middleware.transactional', TransactionalMiddleware::class)
             ->args([service('phem.transaction_runner')->nullOnInvalid()])
             ->tag('phem.handler_middleware', ['priority' => -100])

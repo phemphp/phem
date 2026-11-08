@@ -37,6 +37,7 @@
         "symfony/messenger": "^7.4|^8.0",
         "symfony/rate-limiter": "^7.4|^8.0",
         "symfony/security-core": "^7.4|^8.0",
+        "symfony/serializer": "^7.4|^8.0",
         "symfony/validator": "^7.4|^8.0",
         "symfony/web-profiler-bundle": "^7.4|^8.0",
         "tales-from-a-dev/tailwind-merge-php": "^0.5"
@@ -49,6 +50,7 @@
         "symfony/http-client": "To publish the streams from a Messenger worker or a command, with the HTTP API of the Mercure hub (phem.mercure.publisher_key)",
         "symfony/messenger": "To run the work of the #[Async] event handlers in a worker, after the response",
         "symfony/rate-limiter": "To limit the events of a page or of one handler with the #[RateLimit] attribute of Symfony 8.1",
+        "symfony/serializer": "To map the form of an event to the object of a #[MapForm] handler parameter",
         "symfony/validator": "To validate the #[State] properties of a component with a Validation property while the user types, and before a #[Validated] handler",
         "tales-from-a-dev/tailwind-merge-php": "To merge the conflicting Tailwind CSS classes of a ClassList (phem.class_merger.tailwind)"
     },

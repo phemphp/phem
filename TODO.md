@@ -82,41 +82,6 @@ Flex does not enable the bundle and does not add the first page or the `phemc` w
 These items come from a review of a real app (a shop with a customer side and a staff side, about
 5,700 lines of `.phem`) on 2026-11-08. Each item removes code that the app repeats.
 
-### [ ] Typed form data in a handler — P2
-
-The forms that are not bound read `$e->form` with casts and `?? ''`:
-
-```php
-$from = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) ($e->form['from'] ?? ''));
-$to = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) (($e->form['to'] ?? '') ?: ($e->form['from'] ?? '')));
-if (false === $from || false === $to) {
-    $e->dispatcher->dispatch('toast', ['message' => 'Elige la fecha del cierre.', 'type' => 'error']);
-
-    return;
-}
-```
-
-- **Best peer:** Symfony `#[MapRequestPayload]`, LW form objects.
-- **Proposal:** a `#[MapForm]` attribute on a handler parameter. The Serializer maps the form
-  fields to the object, and the Validator checks it:
-
-  ```php
-  final class ClosedDates
-  {
-      #[Assert\NotNull(message: 'Elige la fecha del cierre.')]
-      public ?\DateTimeImmutable $from = null;
-      public ?\DateTimeImmutable $to = null;
-  }
-
-  public function addClosed(#[MapForm] ClosedDates $dates): void
-  {
-      $this->repository->current()->addClosedDates($dates->from, $dates->to ?? $dates->from);
-  }
-  ```
-
-  When the object is not valid, the handler does not run. The errors go to the `Validation`
-  property of the component, or to an error toast when it has none.
-
 ### [ ] Objects in `#[State]` — P2
 
 The state holds only JSON values and backed enums. A form for an entity needs one flat

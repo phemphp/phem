@@ -16,7 +16,6 @@ namespace Phem\State;
 use Phem\Binding\ComponentName;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Validation;
-use Symfony\Component\Validator\Constraints\NotNull;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
@@ -35,8 +34,6 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  */
 final class StateValidator
 {
-    private const REJECTED = 'This value is not valid.';
-
     public function __construct(
         private readonly ?ValidatorInterface $validator = null,
         private readonly ComponentMetadata $metadata = new ComponentMetadata(),
@@ -90,7 +87,28 @@ final class StateValidator
     {
         $property = $this->metadata->validationProperty($component::class) ?? throw new \LogicException(\sprintf('A #[Validated] handler needs a #[State] property of the type Phem\Validation in <%s>.', ComponentName::short($component::class)));
 
-        return $this->validate($component, $property, self::of($property, $component)->touchAll($groups))->valid();
+        // The errors of a form do not stop the handler: its map runs after (see MapFormMiddleware).
+        return $this->validate($component, $property, self::of($property, $component)->touchAll($groups))->fieldsValid();
+    }
+
+    /**
+     * Keeps the errors of a map of the form in the Validation of the component (see
+     * Phem\Attribute\MapForm). They replace the errors of the last map: no error removes them.
+     *
+     * @param array<string, string> $errors the first error of each field
+     *
+     * @return bool whether the component has a Validation property that keeps them
+     */
+    public function mapped(?object $component, array $errors): bool
+    {
+        $property = null !== $component ? $this->metadata->validationProperty($component::class) : null;
+        if (null === $property) {
+            return false;
+        }
+
+        $property->setValue($component, self::of($property, $component)->mapped($errors));
+
+        return true;
     }
 
     private function validate(object $component, \ReflectionProperty $property, Validation $validation): Validation
@@ -99,12 +117,12 @@ final class StateValidator
 
         $errors = [];
         foreach ($validator->validate($component, null, $validation->groups()) as $violation) {
-            $errors[self::field($violation->getPropertyPath())] ??= (string) $violation->getMessage();
+            $errors[Violations::field($violation->getPropertyPath())] ??= (string) $violation->getMessage();
         }
 
         // The translated message, as the other errors.
         if ([] !== $validation->rejected()) {
-            $message = (string) $validator->validate(null, new NotNull(message: self::REJECTED))->get(0)->getMessage();
+            $message = Violations::rejected($validator);
             foreach ($validation->rejected() as $field) {
                 $errors[$field] = $message;
             }
@@ -138,11 +156,5 @@ final class StateValidator
         $validation = $property->isInitialized($component) ? $property->getValue($component) : null;
 
         return $validation instanceof Validation ? $validation : new Validation();
-    }
-
-    /** The field of a property path of the Symfony Validator: `items[0][name]` → `items.0.name`. */
-    private static function field(string $path): string
-    {
-        return ltrim((string) preg_replace('/\[([^\]]*)\]/', '.$1', $path), '.');
     }
 }

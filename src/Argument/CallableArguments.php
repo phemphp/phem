@@ -24,7 +24,7 @@ use Symfony\Component\HttpKernel\Controller\ArgumentResolverInterface;
  * `#[MapQueryParameter]` and the other controller arguments.
  *
  * Phem gives the arguments of a handler call in the markup (see CallValueResolver), the event of
- * a handler (see EventValueResolver), the route values of a function page (see
+ * a handler (see EventValueResolver), the object of a #[MapForm] form (see MapFormValueResolver), the route values of a function page (see
  * PathValueResolver), and the services of a function page (see ServiceValueResolver).
  * The services of a method come from the Symfony locator of its class component (see
  * Phem\DependencyInjection\ComponentPass). The values go in the attributes of a copy of the
@@ -52,7 +52,7 @@ final class CallableArguments
      */
     public function __construct(?ArgumentResolverInterface $resolver = null)
     {
-        $this->resolver = $resolver ?? new ArgumentResolver(null, [new CallValueResolver(), new PathValueResolver(), new EventValueResolver(), ...ArgumentResolver::getDefaultArgumentValueResolvers()]);
+        $this->resolver = $resolver ?? new ArgumentResolver(null, [new CallValueResolver(), new MapFormValueResolver(), new PathValueResolver(), new EventValueResolver(), ...ArgumentResolver::getDefaultArgumentValueResolvers()]);
     }
 
     /**

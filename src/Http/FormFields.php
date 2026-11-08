@@ -38,4 +38,19 @@ final class FormFields
 
         return $fields;
     }
+
+    /**
+     * The fields in nested arrays, as PHP makes them from the body of a normal POST: FormData
+     * gives flat names (`scientist[name]`, `tags[]`).
+     *
+     * @param list<array{string, string}> $fields
+     *
+     * @return array<array-key, mixed>
+     */
+    public static function nested(array $fields): array
+    {
+        parse_str(implode('&', array_map(static fn (array $f): string => rawurlencode($f[0]).'='.rawurlencode($f[1]), $fields)), $nested);
+
+        return $nested;
+    }
 }

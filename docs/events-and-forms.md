@@ -1,6 +1,6 @@
 # Handle events and forms
 
-This guide shows you how to respond when the user clicks, types or submits a form. It covers handler arguments, arguments in the markup, bound fields, loading states, redirects, Symfony forms, file uploads, live validation and unsaved changes. For the syntax of the `on*` attributes and the `phem:*` directives, see [The `.phem` syntax](phem-syntax.md).
+This guide shows you how to respond when the user clicks, types or submits a form. It covers handler arguments, arguments in the markup, typed form data, bound fields, loading states, redirects, Symfony forms, file uploads, live validation and unsaved changes. For the syntax of the `on*` attributes and the `phem:*` directives, see [The `.phem` syntax](phem-syntax.md).
 
 ## Respond to a click, a key or a change
 
@@ -13,7 +13,7 @@ A handler can take a `Phem\Event` argument with these properties:
 | `$e->value` | The value of the element |
 | `$e->checked` | Whether a checkbox is checked |
 | `$e->key` | The key of a key event |
-| `$e->form` | The form fields, by name; a submit, a change or a click sends them |
+| `$e->form` | The form fields, by name; a submit, a change or a click sends them (see [Map a form to an object](#map-a-form-to-an-object)) |
 | `$e->files` | The files of the form (see [Accept file uploads](#accept-file-uploads)) |
 
 `onChange` on a text field fires as the user types. The browser waits until the user stops typing for 150 ms before it sends the event (see [Control when typing sends an event](#control-when-typing-sends-an-event)).
@@ -140,6 +140,86 @@ public function save(Event $e, NoteRepository $notes, #[CurrentUser] User $user)
 ```
 
 A closure in `render()` receives only the event and the `Request`. Type its parameter, as in `fn (Event $e) => ...`, and inject services through the constructor.
+
+## Map a form to an object
+
+A form that is not bound to state sends its fields as strings in `$e->form`. Add `#[MapForm]` to a parameter of the handler to get them as an object. The Serializer sets the properties from the fields, with the types of the properties. The Validator then checks the `#[Assert]` constraints of the object:
+
+```php
+final class ClosedDates
+{
+    #[Assert\NotNull(message: 'Choose the first day.')]
+    public ?\DateTimeImmutable $from = null;
+
+    public ?\DateTimeImmutable $to = null;
+
+    #[Assert\Positive]
+    public int $guests = 1;
+}
+```
+
+```php
+use Phem\Attribute\{Component, MapForm, State};
+use Phem\Validation;
+
+#[Component]
+final class ClosedDays
+{
+    #[State] public Validation $validation;
+
+    public function __construct(private readonly Calendar $calendar)
+    {
+    }
+
+    public function addClosed(#[MapForm] ClosedDates $dates): void
+    {
+        $this->calendar->close($dates->from, $dates->to ?? $dates->from, $dates->guests);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form onSubmit={{ addClosed }}>
+                <input type="date" name="from" />
+                {% if validation.error('from') %}<p id="from-error">{{ validation.error('from') }}</p>{% endif %}
+                <input type="date" name="to" />
+                <input name="guests" />
+                {% if validation.error('guests') %}<p id="guests-error">{{ validation.error('guests') }}</p>{% endif %}
+                <button type="submit">Add</button>
+            </form>
+        );
+    }
+}
+```
+
+When the object is not valid, the handler doesn’t run. A submit with no first day and `0` guests renders the errors:
+
+```html
+<input type="date" name="from">
+<p id="from-error">Choose the first day.</p>
+<input type="date" name="to">
+<input name="guests">
+<p id="guests-error">This value should be positive.</p>
+```
+
+The rules:
+
+- The errors go to the `Validation` property of the component (see [Read the errors with `Validation`](#read-the-errors-with-validation)). The field of an error is its property path: `from`, or `line.qty` for a nested object. Each submit replaces the errors of the last submit, and a valid submit removes them, also when the handler changes no state. They aren’t errors of the `#[State]` properties, so they don’t stop a `#[Validated]` handler.
+- When the component has no `Validation` property, the first error goes to an error toast: `{"message": "Choose the first day.", "type": "error"}` (see [Show toast messages](client-side.md#show-toast-messages)).
+- A field whose value doesn’t fit the type of its property gets the error “This value is not valid.”, as a bound field does. With `allow_extra_attributes: false` in the context, a field that the object has no property for gets it too. An empty field gives `null` to a nullable property, so type a property that can be empty as nullable.
+- The Serializer reads the fields as the form path of `#[MapRequestPayload]` does: it converts the strings to `int`, `float`, `bool`, a date, or a backed enum case. It ignores the fields that the object has no property for.
+- Map to a class for the form (a DTO), not to an entity. The Serializer sets each writable property of the object from the event, not only the properties that the form shows. The browser can send any field: with `#[MapForm] Product $product`, an event with `price=0` sets the price, also when the form has no price field. Copy the values of the DTO to the entity in the handler.
+- The map and the validation run before the transaction of a `#[Transactional]` handler. A form with errors opens no transaction.
+- The handler can also take the event, services and the other arguments. A closure in `render()` can take a `#[MapForm]` parameter too: `fn (#[MapForm] ClosedDates $dates, Event $e) => ...`.
+- A call in the markup can’t give a value to a `#[MapForm]` parameter. `onSubmit={{ addClosed(preset) }}` fails at the render. Give the call arguments to the parameters before it: `addClosedFor(string $side, #[MapForm] ClosedDates $dates)` with `onSubmit={{ addClosedFor('front') }}`.
+
+Map only the fields with a prefix with `name`. The form `<input name="dates[from]" />` maps to `#[MapForm(name: 'dates')] ClosedDates $dates`, and the field of its error is `dates.from`. Give the validation groups with `validationGroups`, and the context of the Serializer with `serializationContext`:
+
+```php
+public function addClosed(#[MapForm(name: 'dates', validationGroups: ['closed'])] ClosedDates $dates): void
+```
+
+`#[MapForm]` needs `symfony/serializer` (with PropertyInfo, which gives the types of the properties) and, for the constraints, `symfony/validator`. Don’t use `#[MapRequestPayload]` in a handler: the body of an event is the event, not the form, and an error gives an HTTP 422 response, not the errors of the form.
 
 ## Bind a field to state without a handler
 
