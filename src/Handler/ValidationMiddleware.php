@@ -20,7 +20,9 @@ use Phem\State\StateValidator;
 /**
  * Validates the component of a #[Validated] handler (a method, or a closure of `render()`), and
  * stops the event when the component has errors: the handler does not run (see
- * Phem\Attribute\Validated). The other handlers run with no validation.
+ * Phem\Attribute\Validated). The other handlers run with no validation. A submit of another
+ * handler removes the errors that the handlers added (see Phem\Validation::withError()): the
+ * handler finds them again.
  */
 final class ValidationMiddleware implements HandlerMiddleware
 {
@@ -34,6 +36,11 @@ final class ValidationMiddleware implements HandlerMiddleware
     {
         $validated = $this->attributes->of($handler, Validated::class)[0] ?? null;
         if (null === $validated) {
+            $component = 'submit' === $event->type ? new \ReflectionFunction($handler)->getClosureThis() : null;
+            if (null !== $component) {
+                $this->validator->submitted($component);
+            }
+
             return $next();
         }
 

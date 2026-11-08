@@ -8,6 +8,23 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- The error of a handler on a field: `Validation::withError()` adds an error that no constraint
+  finds, for example a name that the database has already
+  (`$this->validation = $this->validation->withError('name', 'This name is taken.')`). The field
+  shows it as the error of a constraint: `phem:bind`, `phem:error`, `error()`, `errors()` and
+  `valid()` see it, and it goes before the error of a constraint on the same field. The state
+  keeps it for the next events. It goes when the user changes the field, on the next submit of a
+  handler, or with `new Validation()`. The error of the whole component (`''`) goes only on a
+  submit or with `new Validation()`. A path (`draft.name`) and a `Bound` prop work too.
+- `data-phem-guard` asks in a `<dialog>` of the page: `data-phem-guard-dialog="#confirm"` gives
+  the selector of the dialog, and `data-phem-guard-accept` the label of its accept button. The
+  dialog is the same as for `phem-confirm`. The guard cancels the click of a Turbo link, and
+  after a confirm it visits the link with its `data-turbo-action` and no second question. Escape,
+  a tap on the backdrop and `turbo:before-cache` close the dialog. A visit of a script or of a
+  Turbo form, no dialog, or a dialog that cannot ask, asks with `window.confirm()`. The question
+  of `beforeunload` stays the question of the browser.
+- Fix: a guard whose confirmed visit another `turbo:before-visit` listener cancels asks again.
+  Before, the guard and `beforeunload` asked no more on that page.
 - Draft objects in `#[State]`: a `#[State]` property can keep an object of a plain class (a
   draft of a form, a date). The Serializer encodes it in the state, and `phem:bind` binds its
   public properties with a path (`phem:bind={{ draft.name }}`). A handler can change the
@@ -41,8 +58,11 @@ that break the code of an application start with **Breaking**.
   component gets the `id` and `children` props. The id is `<component id>-<field>-error`, so the
   field needs no `id`. A `Bound` prop works too: the error is the error of the parent property.
 - phemc: an invalid `phem:error` is the error E061 (not a `#[State]` property or a `Bound` prop,
-  a component with no `Validation` property, an element with an `id` or content). An
-  `aria-invalid` on a bound field is the error E033.
+  a component with no `Validation` property, an element with an `id` or content).
+- **Breaking**: phemc: an `aria-invalid` on a bound field is the error E033, so the build of an
+  app with one fails. `phem:bind` sets `aria-invalid` from the `Validation` property: remove the
+  attribute, and show the error with `phem:error`. For an error that no constraint finds, use
+  `Validation::withError()`.
 - Handler arguments in the markup: `onClick={{ pickReason(r) }}` runs `pickReason($r)` when the
   user clicks. The arguments are values of the render: the handler id has their fingerprint, so
   the browser can't change them. They go to the first parameters, and the other parameters get

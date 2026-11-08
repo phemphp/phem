@@ -150,6 +150,100 @@ final class StateValidatorTest extends TestCase
         self::assertSame(2, $form->validations);
     }
 
+    public function testAnErrorOfAHandlerIsAnErrorOfTheField(): void
+    {
+        $validation = new Validation()->withError('email', 'This email is taken.');
+
+        self::assertNotSame($validation, $validation->withError('email', 'x'));
+        self::assertSame('This email is taken.', $validation->error('email'));
+        self::assertSame(['email' => 'This email is taken.'], $validation->errors());
+        self::assertFalse($validation->valid());
+        self::assertFalse($validation->fieldsValid());
+        self::assertFalse($validation->touched('email'), 'it touches no field');
+
+        // It goes before the error of a constraint, and a new one replaces it.
+        $validation = new Validation(['email'], null, ['email' => 'Too short.'])->withError('email', 'Taken.')->withError('email', 'Banned.');
+        self::assertSame('Banned.', $validation->error('email'));
+        self::assertSame(['email' => 'Banned.'], $validation->errors());
+    }
+
+    public function testTheStateKeepsTheErrorsOfTheHandlers(): void
+    {
+        $validation = new Validation()->withError('draft.name', 'Taken.');
+        self::assertSame(['added' => ['draft.name' => 'Taken.']], $validation->toState());
+        self::assertSame('Taken.', Validation::fromState($validation->toState())->error('draft.name'));
+        self::assertSame([], Validation::fromState(['added' => ['email' => 3]])->toState());
+    }
+
+    public function testAValidationKeepsTheErrorOfAHandler(): void
+    {
+        $form = new ValidatedForm();
+        $validator = $this->validator();
+        $validator->touch($form, ['email' => true]);
+        $form->validation = $form->validation->withError('rows.0.name', 'Taken.');
+
+        // A handler changed a value: the validation runs again.
+        $form->email = 'ada@example.com';
+        $validator->settle($form);
+        self::assertSame(['rows.0.name' => 'Taken.'], $form->validation->errors());
+
+        // A change of another field keeps it too.
+        $validator->touch($form, ['email' => true]);
+        $validator->settle($form);
+        self::assertSame('Taken.', $form->validation->error('rows.0.name'));
+    }
+
+    public function testAChangeOfTheFieldRemovesTheErrorOfAHandler(): void
+    {
+        $form = new ValidatedForm();
+        $form->email = 'ada@example.com';
+        $validator = $this->validator();
+        $form->validation = new Validation()->withError('email', 'Taken.')->withError('rows.0.name', 'Taken.')->withError('', 'Taken.');
+
+        $validator->touch($form, ['email' => true]);
+        self::assertNull($form->validation->error('email'));
+
+        // A parent of the path is the field too.
+        $validator->touch($form, ['rows' => true]);
+        self::assertSame(['' => 'Taken.'], $form->validation->errors(), 'a change of a field keeps the error of the class');
+    }
+
+    public function testARejectedChangeOfTheFieldRemovesTheErrorOfAHandler(): void
+    {
+        $form = new ValidatedForm();
+        $form->validation = new Validation()->withError('email', 'Taken.');
+        $this->validator()->touch($form, ['email' => false]);
+
+        self::assertNull($form->validation->error('email'));
+    }
+
+    public function testASubmitOfAHandlerWithNoValidatedRemovesTheErrorsOfTheHandlers(): void
+    {
+        $form = new ValidatedForm();
+        $form->validation = new Validation()->withError('email', 'Taken.')->withError('', 'Taken.');
+        $invoker = new HandlerInvoker([new ValidationMiddleware($this->validator())]);
+
+        // Another event keeps them.
+        $invoker->invoke($form->check(...), new Event('click'));
+        self::assertSame(['' => 'Taken.', 'email' => 'Taken.'], $form->checked);
+
+        // The handler runs with no old error, and finds them again.
+        $invoker->invoke($form->check(...), new Event('submit'));
+        self::assertSame([], $form->checked);
+        self::assertTrue($form->validation->valid());
+    }
+
+    public function testASubmitRemovesTheErrorsOfTheHandlers(): void
+    {
+        $form = new ValidatedForm();
+        $form->email = 'ada@example.com';
+        $form->rows = [['name' => 'Ada'], ['name' => 'Bob']];
+        $form->validation = new Validation()->withError('email', 'Taken.');
+
+        self::assertTrue($this->validator()->submit($form, []), 'the handler runs and finds the error again');
+        self::assertTrue($form->validation->valid());
+    }
+
     public function testAComponentWithNoTouchedFieldIsNotValidated(): void
     {
         $form = new ValidatedForm();
@@ -236,6 +330,9 @@ final class ValidatedForm
     #[State] public Validation $validation;
     public bool $saved = false;
 
+    /** @var array<string, string> the errors that check() saw */
+    public array $checked = [];
+
     public int $validations = 0;
 
     public static function rows(self $form, ExecutionContextInterface $context): void
@@ -250,6 +347,11 @@ final class ValidatedForm
     public function save(): void
     {
         $this->saved = true;
+    }
+
+    public function check(): void
+    {
+        $this->checked = $this->validation->errors();
     }
 
     public function quickSave(): \Closure

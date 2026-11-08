@@ -3,27 +3,12 @@ import { Application } from "@hotwired/stimulus"
 import * as Turbo from "@hotwired/turbo"
 import PhemController from "../dist/phem_controller.js"
 import PhemConfirmController from "../dist/phem_confirm_controller.js"
-import { click, mount, nextDone, respond } from "./support.js"
+import { DIALOG, click, clickAt, mount, nextDone, respond, settle, stubConfirm, stubDialogs } from "./support.js"
 
 let application
 
-// jsdom has no showModal(): it opens the dialog. close() sets the return value, and the `close`
-// event comes in a later task, as in a browser.
 beforeAll(() => {
-  const proto = HTMLDialogElement.prototype
-  proto.showModal = function () {
-    if (this.open) throw new DOMException("The dialog is open", "InvalidStateError")
-
-    this.setAttribute("open", "")
-  }
-  proto.close = function (returnValue) {
-    if (!this.open) return
-
-    if (undefined !== returnValue) this.returnValue = returnValue
-    this.removeAttribute("open")
-    setTimeout(() => this.dispatchEvent(new Event("close")), 0)
-  }
-
+  stubDialogs()
   application = Application.start()
   application.register("phem", PhemController)
   application.register("phem-confirm", PhemConfirmController)
@@ -44,30 +29,10 @@ function button(attributes = "") {
   return `<button id="delete" data-phem-on-click="c1.delete" data-controller="phem-confirm" ${attributes}>Delete</button>`
 }
 
-// The user answers `answer` to the question.
-function answer(answer) {
-  const confirm = vi.fn(() => answer)
-  vi.stubGlobal("confirm", confirm)
-
-  return confirm
-}
-
-// A press on `from` and a click on `to`, at the points of the viewport. A browser gives the click
-// to the common ancestor when the press and the release are on different elements.
-function clickAt(from, [x1, y1], to = from, [x2, y2] = [x1, y1]) {
-  from.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, cancelable: true, clientX: x1, clientY: y1 }))
-  to.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, clientX: x2, clientY: y2 }))
-}
-
-// Lets the queue of the phem controller start a request.
-function settle() {
-  return new Promise((resolve) => setTimeout(resolve, 0))
-}
-
 describe("phem-confirm", () => {
   it("sends no event when the user cancels", async () => {
     await mount(button())
-    answer(false)
+    stubConfirm(false)
     const queued = vi.fn()
     window.addEventListener("phem:queue", queued)
 
@@ -82,7 +47,7 @@ describe("phem-confirm", () => {
   it("sends the event when the user confirms", async () => {
     await mount(button())
     respond(button())
-    const confirm = answer(true)
+    const confirm = stubConfirm(true)
 
     const done = nextDone()
     click("#delete")
@@ -94,7 +59,7 @@ describe("phem-confirm", () => {
 
   it("asks the message value", async () => {
     await mount(button('data-phem-confirm-message-value="Delete this item?"'))
-    const confirm = answer(false)
+    const confirm = stubConfirm(false)
     click("#delete")
 
     expect(confirm).toHaveBeenCalledWith("Delete this item?")
@@ -102,7 +67,7 @@ describe("phem-confirm", () => {
 
   it("does not stop the DOM event for the page", async () => {
     await mount(button())
-    answer(false)
+    stubConfirm(false)
     const clicked = vi.fn()
     document.addEventListener("click", clicked)
 
@@ -116,7 +81,7 @@ describe("phem-confirm", () => {
     await mount(`<form id="form" data-phem-on-submit="c1.save" data-controller="phem-confirm">
         <button id="save">Save</button>
       </form>`)
-    answer(false)
+    stubConfirm(false)
 
     let submit
     document.addEventListener("submit", (e) => (submit = e), { once: true })
@@ -133,7 +98,7 @@ describe("phem-confirm", () => {
       </form>`
     await mount(form)
     respond(form)
-    const confirm = answer(true)
+    const confirm = stubConfirm(true)
 
     const done = nextDone()
     click("#save")
@@ -146,7 +111,7 @@ describe("phem-confirm", () => {
 
   it("sends no change of a checkbox and unchecks it when the user cancels", async () => {
     await mount(`<input id="archive" type="checkbox" data-phem-on-change="c1.archive" data-controller="phem-confirm">`)
-    answer(false)
+    stubConfirm(false)
     click("#archive")
     await settle()
 
@@ -159,7 +124,7 @@ describe("phem-confirm", () => {
         <option value="user" selected>User</option>
         <option value="admin">Admin</option>
       </select>`)
-    answer(false)
+    stubConfirm(false)
 
     const select = document.getElementById("role")
     select.value = "admin"
@@ -175,7 +140,7 @@ describe("phem-confirm", () => {
         <button id="delete" data-phem-on-click="c1.delete">Delete</button>
         <button id="help" type="button">Help</button>
       </div>`)
-    const confirm = answer(false)
+    const confirm = stubConfirm(false)
 
     let help
     document.addEventListener("click", (e) => (help = e), { once: true })
@@ -191,7 +156,7 @@ describe("phem-confirm", () => {
 
   it("asks only once with a controller around another controller", async () => {
     await mount(`<div data-controller="phem-confirm">${button()}</div>`)
-    const confirm = answer(true)
+    const confirm = stubConfirm(true)
     respond(button())
 
     const done = nextDone()
@@ -203,15 +168,6 @@ describe("phem-confirm", () => {
 })
 
 describe("phem-confirm with a dialog", () => {
-  // The `#confirm` dialog.
-  const DIALOG = `<dialog id="confirm" aria-describedby="confirm-message">
-      <form method="dialog">
-        <p id="confirm-message" data-phem-confirm-message></p>
-        <button value="cancel">Back</button>
-        <button value="confirm" data-phem-confirm-accept>Yes</button>
-      </form>
-    </dialog>`
-
   // A "Delete" button that asks in the `#confirm` dialog, and the dialog.
   function page(attributes = "") {
     return `<button id="delete" data-phem-on-click="c1.delete" data-controller="phem-confirm"
@@ -225,7 +181,7 @@ describe("phem-confirm with a dialog", () => {
 
   it("opens the dialog with the message, and sends no event before the answer", async () => {
     await mount(page('data-phem-confirm-accept-value="Delete item"'))
-    const confirm = answer(true)
+    const confirm = stubConfirm(true)
     click("#delete")
     await settle()
 
@@ -446,7 +402,7 @@ describe("phem-confirm with a dialog", () => {
   it("asks with window.confirm() when the selector finds no dialog", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {})
     await mount(button('data-phem-confirm-dialog-value="#missing"'))
-    const confirm = answer(false)
+    const confirm = stubConfirm(false)
     click("#delete")
     await settle()
 
@@ -458,7 +414,7 @@ describe("phem-confirm with a dialog", () => {
   it("asks with window.confirm() when the selector is not valid", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {})
     await mount(button('data-phem-confirm-dialog-value="#42"'))
-    const confirm = answer(false)
+    const confirm = stubConfirm(false)
     click("#delete")
     await settle()
 
@@ -469,7 +425,7 @@ describe("phem-confirm with a dialog", () => {
   it("asks with window.confirm() when the dialog is open with no question", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {})
     await mount(page().replace('<dialog id="confirm"', '<dialog id="confirm" open'))
-    const confirm = answer(false)
+    const confirm = stubConfirm(false)
     click("#delete")
     await settle()
 

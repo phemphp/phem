@@ -242,7 +242,7 @@ When the user clicks **Empty bag**, the controller does these steps:
 
 A tap on the backdrop has the same rule as in [`phem-dialog`](#open-a-modal-dialog).
 
-When the question ends, the dialog gets the texts of the page again. So one dialog can serve all the `phem-confirm` elements of the page: put it once in the layout. Give the dialog an accessible description, such as `aria-describedby` on the message, so a screen reader reads the question.
+When the question ends, the dialog gets the texts of the page again. So one dialog can serve all the `phem-confirm` elements of the page, and the `data-phem-guard` elements too (see [Unsaved changes](events-and-forms.md#warn-about-unsaved-changes)): put it once in the layout. Give the dialog an accessible description, such as `aria-describedby` on the message, so a screen reader reads the question.
 
 These edge cases apply:
 

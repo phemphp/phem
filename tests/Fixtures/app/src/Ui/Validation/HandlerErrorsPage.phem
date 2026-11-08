@@ -1,0 +1,108 @@
+<?phem
+
+namespace App\Ui\Validation;
+
+use Phem\Attribute\{Component, Page, State, Validated};
+use Phem\Bound;
+use Phem\Node;
+use Phem\Tests\Fixtures\PetDraft;
+use Phem\Validation;
+use Symfony\Component\Validator\Constraints as Assert;
+
+use function App\Ui\Common\Document;
+
+// The errors that a handler adds to a field (Validation::withError()): errors that no constraint
+// finds, such as a name that another category has.
+
+/** A child field: the error is the error of the property of the parent. */
+#[Component]
+function SlugField(Bound $value): Node
+{
+    return (
+        <>
+            <input name="slug" phem:bind={{ value }} phem:live />
+            <em phem:error={{ value }} />
+        </>
+    );
+}
+
+#[Component]
+final class CategoryForm
+{
+    #[State, Assert\NotBlank(message: 'Enter a name.')]
+    public string $name = '';
+
+    #[State, Assert\Valid]
+    public PetDraft $draft;
+
+    #[State] public string $slug = '';
+
+    #[State] public Validation $validation;
+
+    #[State] public string $saved = '';
+
+    #[State] public int $count = 0;
+
+    public function mount(): void
+    {
+        $this->draft = new PetDraft();
+    }
+
+    #[Validated]
+    public function add(): void
+    {
+        // The categories of the database.
+        if ('Shoes' === trim($this->name)) {
+            $this->validation = $this->validation->withError('name', 'This name is taken.');
+        }
+
+        if ('Max' === $this->draft->name) {
+            $this->validation = $this->validation->withError('draft.name', 'This pet is taken.');
+        }
+
+        if ('shoes' === $this->slug) {
+            $this->validation = $this->validation->withError('slug', 'This slug is taken.');
+        }
+
+        if (!$this->validation->valid()) {
+            return;
+        }
+
+        $this->saved = $this->name;
+    }
+
+    public function bump(): void
+    {
+        ++$this->count;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form onSubmit={{ add }}>
+                <input name="name" phem:bind={{ name }} phem:live />
+                <p phem:error={{ name }} className="name-error" />
+                <input name="pet" phem:bind={{ draft.name }} phem:live />
+                <p phem:error={{ draft.name }} className="pet-error" />
+                <SlugField phem:bind={{ slug }} />
+                <button type="submit">Add</button>
+                <button type="button" id="count" onClick={{ bump }}>Count {{ count }}</button>
+                <p id="saved">{{ saved }}</p>
+            </form>
+        );
+    }
+}
+
+#[Page('/validation/handler-errors')]
+final class HandlerErrorsPage
+{
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <Document:title>Handler errors</Document:title>
+                <CategoryForm />
+            </Document>
+        );
+    }
+}

@@ -493,6 +493,8 @@ These `data-phem-*` attributes change how the browser treats an element:
 | `data-phem-client="hidden"` | The morph leaves the listed attributes unchanged. See [Client code with Stimulus](client-side.md#keep-stimulus-changes-through-the-morph) |
 | `data-phem-ignore` | The morph leaves the element and its content unchanged |
 | `data-phem-guard` | Asks the user to confirm before they leave the page with unsaved changes. See [Unsaved changes](events-and-forms.md#warn-about-unsaved-changes) |
+| `data-phem-guard-dialog` | The selector of a `<dialog>` that asks the question of `data-phem-guard` in place of `window.confirm()`. See [Unsaved changes](events-and-forms.md#warn-about-unsaved-changes) |
+| `data-phem-guard-accept` | The label of the accept button of the `data-phem-guard-dialog` dialog |
 | `data-phem-transition` | Animates the changes with the View Transitions API. See [Transitions](client-side.md#animate-changes-with-view-transitions) |
 
 ## Built-in components

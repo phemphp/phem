@@ -25,7 +25,9 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  * An event touches the bound fields (touch()), then its handlers run, then the components whose
  * state changed validate (settle()): the errors are for the values after the handlers. A
  * #[Validated] handler validates before it runs (submit()). A validation runs only when its
- * errors are not for the current values: a submit with errors does not validate two times.
+ * errors are not for the current values: a submit with errors does not validate two times. The
+ * errors that a handler added (Validation::withError()) stay until the user changes the field or
+ * the next submit (submit() and submitted()).
  *
  * It validates all the component, not only the changed field: a constraint on two fields (a
  * #[Assert\Callback] that compares two passwords) updates the error of the other field too. The
@@ -42,8 +44,9 @@ final class StateValidator
     }
 
     /**
-     * Touches the bound fields that the user changed. A component with no Validation property
-     * does nothing.
+     * Touches the bound fields that the user changed, and removes the errors that a handler added
+     * to them (see Validation::withError()). A component with no Validation property does
+     * nothing.
      *
      * @param array<string, bool> $fields field => whether its value fit the type: a property, or a path (`address.city`)
      */
@@ -56,7 +59,7 @@ final class StateValidator
 
         $accepted = array_keys(array_filter($fields));
         $rejected = array_keys(array_filter($fields, static fn (bool $fits): bool => !$fits));
-        $property->setValue($component, self::of($property, $component)->touch(...$accepted)->reject(...$rejected));
+        $property->setValue($component, self::of($property, $component)->touch(...$accepted)->reject(...$rejected)->changed(...array_keys($fields)));
     }
 
     /**
@@ -90,6 +93,21 @@ final class StateValidator
 
         // The errors of a form do not stop the handler: its map runs after (see MapFormMiddleware).
         return $this->validate($component, $property, self::of($property, $component)->touchAll($groups))->fieldsValid();
+    }
+
+    /**
+     * Removes the errors that the handlers added before a submit of a handler with no
+     * #[Validated]: the handler finds them again. A component with no Validation property does
+     * nothing.
+     */
+    public function submitted(object $component): void
+    {
+        $property = $this->metadata->validationProperty($component::class);
+        if (null === $property) {
+            return;
+        }
+
+        $property->setValue($component, self::of($property, $component)->submitted());
     }
 
     /**

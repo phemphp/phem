@@ -2,6 +2,7 @@ import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
 // Listens on each page: the keyboard of a field that gets the focus after a server round trip.
 import "./phem_keyboard.js"
+import { DialogQuestion } from "./phem_dialog_question.js"
 
 const TEXT_INPUTS = new Set(["text", "search", "email", "url", "tel", "password", "number", "date", "time", "datetime-local", "month", "week", "color", "range"])
 
@@ -651,7 +652,10 @@ export default class PhemController extends Controller {
     // Turbo caches the page before a visit renders a new page: no answer can send a held event
     // now. Its signal aborts before Turbo clones the page, so a question of the event (a
     // `phem-confirm` dialog) closes, and the snapshot does not show it.
-    this.dropForCache = () => this.heldEvents.drop(() => true)
+    this.dropForCache = () => {
+      this.heldEvents.drop(() => true)
+      this.guardQuestion?.abort()
+    }
     document.addEventListener("turbo:before-cache", this.dropForCache)
 
     // The attributes in the `data-phem-client` list of an element belong to the client (a Stimulus
@@ -725,22 +729,56 @@ export default class PhemController extends Controller {
 
     // True when the controller itself leaves the page (a redirect or a reload): no question.
     this.leaving = false
+    // The browser asks before it unloads the page: a page cannot show its own question.
     this.guardUnload = (event) => {
       if (this.leaving || !this.dirtyGuard()) return
 
       event.preventDefault()
       event.returnValue = ""
     }
+    // The question of a guard in a `<dialog>`, while it asks (see askGuardDialog()).
+    this.guardQuestion = null
+    // A click on a Turbo link asks in the dialog of the guard: the options of its visit are known,
+    // so the visit can start again after a confirm.
+    this.guardClick = (event) => {
+      if (this.leaving) return
+
+      const guard = this.dirtyGuard()
+      if (guard && this.askGuardDialog(guard, event.target, event.detail.url)) {
+        // Turbo follows no link, and the browser neither.
+        event.preventDefault()
+        event.detail.originalEvent?.preventDefault()
+      }
+    }
+    // The URL of the link visit that the user confirmed in the dialog: it asks nothing.
+    this.passed = null
+    // The URL of the visit that the user confirmed: when Turbo starts it, the page leaves. A visit
+    // that another listener cancels does not start, so the guard asks again.
+    this.confirmed = null
+    // Any other visit (a script, a Turbo form) asks with `window.confirm()`: its options are not
+    // known, so the guard cannot start it again.
     this.guardVisit = (event) => {
       if (this.leaving) return
+
+      const { url } = event.detail
+      const passed = this.passed === url
+      this.passed = null
+      this.confirmed = passed ? url : null
+      if (passed) return
+
       const guard = this.dirtyGuard()
       if (!guard) return
 
-      if (window.confirm(guard.getAttribute("data-phem-guard") || this.guardMessageValue)) this.leaving = true
+      if (window.confirm(guard.getAttribute("data-phem-guard") || this.guardMessageValue)) this.confirmed = url
       else event.preventDefault()
     }
+    this.guardStart = (event) => {
+      if (null !== this.confirmed && event.detail?.url === this.confirmed) this.leaving = true
+    }
     window.addEventListener("beforeunload", this.guardUnload)
+    document.addEventListener("turbo:click", this.guardClick)
     document.addEventListener("turbo:before-visit", this.guardVisit)
+    document.addEventListener("turbo:visit", this.guardStart)
 
     // The handlers of the `<Suspense>` boundaries that loaded, or that load now: one load each.
     this.loads = new Set()
@@ -808,7 +846,10 @@ export default class PhemController extends Controller {
     this.element.removeEventListener("input", this.showDirty)
     this.element.removeEventListener("change", this.showDirty)
     window.removeEventListener("beforeunload", this.guardUnload)
+    document.removeEventListener("turbo:click", this.guardClick)
     document.removeEventListener("turbo:before-visit", this.guardVisit)
+    document.removeEventListener("turbo:visit", this.guardStart)
+    this.guardQuestion?.abort()
     this.boundaryObserver?.disconnect()
     this.hideError()
   }
@@ -1845,6 +1886,36 @@ export default class PhemController extends Controller {
     for (const el of [this.element, ...this.element.querySelectorAll(`[${FIBER}], form, [data-phem-guard]`)]) {
       el.classList.toggle("phem-dirty", dirty.some((field) => el.contains(field)))
     }
+  }
+
+  // Asks the question of a guard in the `<dialog>` of its `data-phem-guard-dialog` selector (see
+  // phem_dialog_question.js), with the label `data-phem-guard-accept`, for a click on `link`. When
+  // the user confirms, the link loads with the options that Turbo gives it (see Turbo's
+  // followedLinkToLocation()), and no second question. False when the guard has no dialog, or
+  // when the dialog cannot ask: `window.confirm()` asks on `turbo:before-visit`.
+  askGuardDialog(guard, link, url) {
+    const question = DialogQuestion.find(guard.getAttribute("data-phem-guard-dialog"), "data-phem-guard")
+    if (!question) return false
+
+    const action = ["advance", "replace", "restore"].find((a) => a === link.getAttribute("data-turbo-action")) ?? "advance"
+    const acceptsStreamResponse = link.hasAttribute("data-turbo-stream")
+    const asking = new AbortController()
+    const confirm = () => {
+      this.passed = url
+      Turbo.visit(url, { action, acceptsStreamResponse })
+    }
+
+    const message = guard.getAttribute("data-phem-guard") || this.guardMessageValue
+    if (!question.ask(message, guard.getAttribute("data-phem-guard-accept"), { confirm, signal: asking.signal })) return false
+
+    // A new question replaces the open question. The question ends when the dialog closes.
+    this.guardQuestion?.abort()
+    this.guardQuestion = asking
+    question.dialog.addEventListener("close", () => {
+      if (this.guardQuestion === asking) this.guardQuestion = null
+    }, { once: true })
+
+    return true
   }
 
   // The closest `data-phem-guard` element of a dirty bound field or file input, or null.

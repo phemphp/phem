@@ -1,8 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { onBackdropTap } from "./phem_backdrop.js"
-
-// The open question of each dialog (see DialogQuestion).
-const questions = new WeakMap()
+import { DialogQuestion } from "./phem_dialog_question.js"
 
 // Asks with `window.confirm()`, in the dispatch of `phem:before-queue`.
 class NativeQuestion {
@@ -11,97 +8,6 @@ class NativeQuestion {
 
     return true
   }
-}
-
-// Asks in a `<dialog>` of the page. It cancels the event, puts the message and the accept label in
-// the dialog, and opens it with `showModal()`. When the dialog closes with the return value
-// "confirm", `detail.resume()` of `phem:before-queue` sends the event. Any other close (a button,
-// Escape, or a tap on the backdrop: see phem_backdrop.js) sends no event.
-//
-// While it asks, the morph does not change the dialog. When the `phem` controller drops the event
-// (`detail.signal`: a morph or a removal of the element, or a Turbo visit that caches the page),
-// the question ends and the dialog closes. When the question ends, the texts of the dialog get
-// their labels again, so the next question starts from the labels of the page. A new question
-// replaces the open question of the dialog.
-class DialogQuestion {
-  constructor(dialog) {
-    this.dialog = dialog
-  }
-
-  // False when it cannot ask: the dialog is open with no question (a server render or `show()`),
-  // or `showModal()` fails. Then the event is not cancelled.
-  ask(event, message, accept) {
-    const dialog = this.dialog
-    const open = questions.get(dialog)
-    if (dialog.open && !open) {
-      console.error("[phem] phem-confirm: the dialog is open with no question")
-      return false
-    }
-
-    open?.abort()
-    const texts = [...fill(dialog, "[data-phem-confirm-message]", message), ...(accept ? fill(dialog, "[data-phem-confirm-accept]", accept) : [])]
-    const restore = () => texts.forEach(([el, text]) => (el.textContent = text))
-
-    // The return value of the last close stays on the dialog.
-    dialog.returnValue = ""
-    if (!dialog.open) {
-      try {
-        dialog.showModal()
-      } catch (error) {
-        console.error("[phem] phem-confirm: the dialog does not open", error)
-        restore()
-        return false
-      }
-    }
-
-    event.preventDefault()
-    this.#wait(event.detail, restore)
-
-    return true
-  }
-
-  // Sends the event when the dialog closes with "confirm".
-  #wait({ resume, signal }, restore) {
-    const dialog = this.dialog
-    const question = new AbortController()
-    const options = { signal: question.signal }
-    questions.set(dialog, question)
-
-    question.signal.addEventListener("abort", () => {
-      restore()
-      if (questions.get(dialog) === question) questions.delete(dialog)
-    })
-    dialog.addEventListener("close", () => {
-      const confirmed = "confirm" === dialog.returnValue
-      question.abort()
-      if (confirmed) resume()
-    }, options)
-
-    // A tap on the backdrop closes the dialog with no return value.
-    onBackdropTap(dialog, () => dialog.close(), question.signal)
-
-    // The morph does not change the dialog, its texts and its `open` attribute.
-    dialog.addEventListener("turbo:before-morph-element", (e) => e.target === dialog && e.preventDefault(), options)
-
-    // The event dropped: no answer can send it. A Turbo visit also drops it, when Turbo caches the
-    // page. The `close` event comes in a later task, so the texts of the dialog get their labels at
-    // once: the snapshot of the page has a closed dialog with its labels, and a visit back shows
-    // no question.
-    signal.addEventListener("abort", () => {
-      question.abort()
-      dialog.close()
-    }, options)
-  }
-}
-
-// Puts `text` in the `selector` elements of the dialog. Returns their texts before.
-function fill(dialog, selector, text) {
-  return [...dialog.querySelectorAll(selector)].map((el) => {
-    const before = el.textContent
-    el.textContent = text
-
-    return [el, before]
-  })
 }
 
 // The `phem-confirm` controller: asks the user to confirm before an event of a handler goes to the
@@ -119,7 +25,10 @@ function fill(dialog, selector, text) {
 // The `message` value is the text of the question. `window.confirm()` asks it.
 //
 // The `dialog` value is the selector of a `<dialog>` of the page: the dialog asks the question in
-// place of `window.confirm()` (see DialogQuestion). The `accept` value is the label of its
+// place of `window.confirm()` (see phem_dialog_question.js). It cancels the event, and
+// `detail.resume()` of `phem:before-queue` sends it when the user confirms. When the `phem`
+// controller drops the event (`detail.signal`: a morph or a removal of the element, or a Turbo
+// visit that caches the page), the dialog closes. The `accept` value is the label of its
 // `[data-phem-confirm-accept]` elements. When the dialog cannot ask (no `<dialog>` for the
 // selector, an invalid selector, or a dialog that is open with no question), the controller logs
 // an error and `window.confirm()` asks, so the user still confirms.
@@ -147,31 +56,15 @@ export default class PhemConfirmController extends Controller {
     this.ask = (event) => {
       event.stopPropagation()
 
-      const asked = this.#dialogQuestion()?.ask(event, this.messageValue, this.acceptValue)
-      if (!asked) new NativeQuestion().ask(event, this.messageValue)
+      const { resume, signal } = event.detail
+      const asked = DialogQuestion.find(this.dialogValue, "phem-confirm")?.ask(this.messageValue, this.acceptValue, { confirm: resume, signal })
+      if (asked) event.preventDefault()
+      else new NativeQuestion().ask(event, this.messageValue)
     }
     this.element.addEventListener("phem:before-queue", this.ask)
   }
 
   disconnect() {
     this.element.removeEventListener("phem:before-queue", this.ask)
-  }
-
-  // The question in the `<dialog>` of the `dialog` value, or null with no value or with no dialog.
-  #dialogQuestion() {
-    if (!this.dialogValue) return null
-
-    let dialog = null
-    try {
-      dialog = document.querySelector(this.dialogValue)
-    } catch {
-      // An invalid selector: no dialog.
-    }
-
-    if (dialog instanceof HTMLDialogElement) return new DialogQuestion(dialog)
-
-    console.error(`[phem] phem-confirm: "${this.dialogValue}" is not a <dialog> of the page`)
-
-    return null
   }
 }

@@ -606,13 +606,61 @@ The `Validation` object has these methods:
 
 | Method | Result |
 |---|---|
-| `error($field)` | The first error of a touched field, or `null` |
+| `error($field)` | The error of a handler, or the first error of a touched field, or `null` |
 | `errors()` | All the errors |
 | `touched($field)` | `true` when the user touched the field |
 | `valid()` | `true` when there’s no error |
 | `touch($field)` | A new `Validation` with this field touched |
+| `withError($field, $message)` | A new `Validation` with an error of a handler on this field (see [Add an error from a handler](#add-an-error-from-a-handler)) |
 
 A field’s name is the path of its `phem:bind`, for example `address.city`. For a draft object, put `#[Assert\Valid]` on the property: the errors of its constraints have the paths of the bound fields, for example `draft.name`. The error of a class constraint is `validation.error('')`. To start over, for example after a save, set `new Validation()`. Use `#[Validated(groups: ['draft'])]` to validate other groups.
+
+### Add an error from a handler
+
+Some errors come from a check that no constraint does, for example a name that is already in the database. A handler adds such an error with `withError()`. The value is immutable, so set the new `Validation`:
+
+```php
+#[Validated]
+public function add(): void
+{
+    if (null !== $this->categories->findByName(trim($this->name))) {
+        $this->validation = $this->validation->withError('name', 'This name is taken.');
+
+        return;
+    }
+
+    $this->categories->add(new Category(trim($this->name)));
+    $this->name = '';
+    $this->validation = new Validation();
+}
+
+public function render(): Node
+{
+    return (
+        <form onSubmit={{ add }}>
+            <input name="name" phem:bind={{ name }} phem:live />
+            <p phem:error={{ name }} className="error" />
+            <button type="submit">Add</button>
+        </form>
+    );
+}
+```
+
+The field shows the error as the error of a constraint. `phem:bind`, `phem:error`, `error()`, `errors()` and `valid()` all see it:
+
+```html
+<input name="name" data-phem-live="" data-phem-bind="phem70709d286391.name" value="Shoes" aria-invalid="true" aria-describedby="phem70709d286391-name-error">
+<p class="error" id="phem70709d286391-name-error">This name is taken.</p>
+```
+
+The rules:
+
+- The field is the path of its `phem:bind`, as for the other errors: `name`, `draft.name` for a draft object, or `''` for the error of the whole component. In a child with a `Bound` prop, the error of the parent property shows (see [Show the error of a bound field](#show-the-error-of-a-bound-field)).
+- The error of the handler goes before the error of a constraint on the same field. A second `withError()` on the field replaces the first.
+- The error stays in the state, also for the next events: a click on another button, or a change of another field, keeps it.
+- The error goes when the user changes the field (or a parent or a child of its path), on the next submit of a handler (with or without `#[Validated]`), or with `new Validation()`. A submit runs the handler again, so the handler finds the error again.
+- The error of the whole component (`''`) belongs to no field: a change of a field keeps it. It goes on the next submit, or with `new Validation()`.
+- `withError()` touches no field.
 
 ### Show the error of a bound field
 
@@ -729,3 +777,38 @@ Add `data-phem-guard` to an element to ask the user for confirmation before they
 ```
 
 Only bound fields and file inputs can be dirty.
+
+By default, `window.confirm()` asks the question. To ask it in a `<dialog>` of your page, give the selector of the dialog in `data-phem-guard-dialog`, and the label of the accept button in `data-phem-guard-accept`. The dialog is the same as for [`phem-confirm`](client-side.md#ask-in-a-dialog-of-the-page), so one dialog in the layout can serve the two:
+
+```php
+<form onSubmit={{ save }} data-phem-guard={{ 'Discard the draft?' }}
+      data-phem-guard-dialog="#confirm" data-phem-guard-accept="Discard">
+    <input phem:bind={{ title }} />
+    <button type="submit">Save</button>
+</form>
+
+<dialog id="confirm" aria-describedby="confirm-message">
+    <form method="dialog">
+        <p id="confirm-message" data-phem-confirm-message></p>
+        <button value="cancel">Back</button>
+        <button value="confirm" data-phem-confirm-accept>Yes</button>
+    </form>
+</dialog>
+```
+
+When the user clicks a Turbo link with a dirty field in the form, the browser does these steps:
+
+1. It cancels the click: Turbo doesn’t follow the link.
+2. It puts the message of `data-phem-guard` in the `[data-phem-confirm-message]` elements of the dialog, and `data-phem-guard-accept` in its `[data-phem-confirm-accept]` elements. With no `data-phem-guard-accept`, the accept button keeps the label of the page.
+3. It opens the dialog with `showModal()`.
+4. When the dialog closes with the return value `confirm`, it visits the link with `Turbo.visit()`, with the `data-turbo-action` and the `data-turbo-stream` of the link, and doesn’t ask again. Any other close, such as **Back**, Escape or a tap on the backdrop, keeps the user on the page.
+
+These edge cases apply:
+
+- **A visit that is not a click on a link**: a visit that a script starts (`Turbo.visit()`), or that a Turbo form submit starts, asks with `window.confirm()`. Phem can’t start this visit again with the same options
+- **A listener cancels the visit after the confirm**: the user stays on the page, and the guard asks again on the next visit and before the page unloads
+- **A Turbo visit while the dialog asks** (the back button of the browser): the question ends when Turbo caches the page (`turbo:before-cache`). The dialog closes and gets the texts of the page again
+- **A second click while the dialog asks**: the new question replaces the open question
+- **The dialog cannot ask**: when the selector is not valid, finds no `<dialog>`, or finds a dialog that is open with no question, the browser logs an error and `window.confirm()` asks
+
+A reload, a closed tab, or a link that leaves the app (a page with no Turbo) don’t show the dialog. The browser shows its own question on `beforeunload`, with its own text: a page can’t change it or show its own dialog.
