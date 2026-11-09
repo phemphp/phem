@@ -30,6 +30,19 @@ that break the code of an application start with **Breaking**.
   `Validation` property uses it too, with the first error that has a message.
 - The worker of an `#[Async]` handler logs a warning when its work dispatches a browser event (a
   toast): the worker has no response, so the browser does not get it.
+- Entity broadcasts: `#[Broadcast(on: [Order::class, OrderLine::class])]` on a page or a
+  component names the Doctrine entities that it shows. After each flush that inserts, updates
+  or deletes one of them, Phem refreshes the page or the component in every browser. A `#[Path]`
+  entity selects the URL of a page, and a `#[BroadcastKey]` entity selects the instances of a
+  component. A related entity follows its to-one association. With no such prop, all the URLs or
+  all the instances refresh. A field list (`[Order::class => ['status']]`) limits the refresh
+  after an update. `toPage()` takes the entity of a `#[Path]`. The streams go out at the end of a
+  console command and of a Messenger message too.
+- Hint H001: a variable that only copies a property for the markup (`$rows = $this->lines;`).
+  The markup reads the properties of the class, also the private ones. The editors fade the copy,
+  and the quick fix removes it and uses the name of the property in the markup. A copy that can
+  keep an older value of the property isn't a hint. `phemc build` and `phemc check` don't print
+  hints.
 
 ## 0.3.15 (2026-11-08)
 
