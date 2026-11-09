@@ -22,8 +22,7 @@ namespace Phem\Attribute;
  *     function ErrorPage(int $status)
  *     {
  *         return (
- *             <Document>
- *                 <Document:title>Error {{ status }}</Document:title>
+ *             <Document title="Error {{ status }}">
  *                 ...
  *             </Document>
  *         );

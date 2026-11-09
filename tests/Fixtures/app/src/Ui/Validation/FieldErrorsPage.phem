@@ -84,8 +84,7 @@ final class FieldErrorsPage
     public function render(): Node
     {
         return (
-            <Document>
-                <Document:title>Field errors</Document:title>
+            <Document title="Field errors">
                 <Contact />
             </Document>
         );

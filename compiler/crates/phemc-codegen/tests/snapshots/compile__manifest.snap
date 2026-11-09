@@ -100,7 +100,6 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
         "children"
       ],
       "slots": [
-        "title",
         "children"
       ],
       "required": [],

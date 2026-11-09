@@ -39,7 +39,7 @@ final class DocumentTest extends TestCase
     {
         $html = (string) $this->request('GET', '/document/escaped')->getContent();
 
-        self::assertStringContainsString('<title>Tom &amp; Jerry &lt;script&gt; 0</title>', $html, 'the title slot, with the state of the page');
+        self::assertStringContainsString('<title>Tom &amp; Jerry &lt;script&gt; 0</title>', $html, 'the title prop, with the state of the page');
         self::assertStringNotContainsString('<script>', $html);
     }
 

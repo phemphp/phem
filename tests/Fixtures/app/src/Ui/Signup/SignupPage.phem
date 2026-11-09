@@ -93,8 +93,7 @@ final class SignupPage
     public function render(): Node
     {
         return (
-            <Document>
-                <Document:title>Signup</Document:title>
+            <Document title="Signup">
                 <Signup title="Join" />
             </Document>
         );

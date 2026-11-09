@@ -12,7 +12,7 @@ use App\Ui\Toggle;
 // Another document: another component, as another base template. Components can render
 // after the root element.
 #[Component]
-function SpanishDocument(?Html $title = null, ?Html $children = null): Node
+function SpanishDocument(?string $title = null, ?Html $children = null): Node
 {
     return (
         <html lang="es">
@@ -41,8 +41,7 @@ final class DocumentPage
     public function render(): Node
     {
         return (
-            <SpanishDocument>
-                <SpanishDocument:title>Documento {{ count }}</SpanishDocument:title>
+            <SpanishDocument title="Documento {{ count }}">
                 <p id="document">Document</p>
             </SpanishDocument>
         );
@@ -65,8 +64,7 @@ final class EscapedTitlePage
         $name = 'Tom & Jerry <script>';
 
         return (
-            <Document>
-                <Document:title>{{ name }} {{ n }}</Document:title>
+            <Document title="{{ name }} {{ n }}">
                 <button id="increment" onClick={{ increment }}>{{ n }}</button>
             </Document>
         );

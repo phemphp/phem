@@ -76,8 +76,7 @@ final class BindPage
     public function render(): Node
     {
         return (
-            <Document>
-                <Document:title>Bind</Document:title>
+            <Document title="Bind">
                 <Profile />
             </Document>
         );
@@ -94,8 +93,7 @@ final class BoundPage
     public function render(): Node
     {
         return (
-            <Document>
-                <Document:title>Bound page</Document:title>
+            <Document title="Bound page">
                 <input name="name" phem:bind={{ name }} phem:live />
                 <p id="hello">Hello {{ name }}</p>
             </Document>
@@ -112,8 +110,7 @@ final class MissingKeyPage
     public function render(): Node
     {
         return (
-            <Document>
-                <Document:title>Missing key</Document:title>
+            <Document title="Missing key">
                 <input name="status" phem:bind={{ filters.status }} />
             </Document>
         );

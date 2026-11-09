@@ -99,8 +99,7 @@ final class HandlerErrorsPage
     public function render(): Node
     {
         return (
-            <Document>
-                <Document:title>Handler errors</Document:title>
+            <Document title="Handler errors">
                 <CategoryForm />
             </Document>
         );

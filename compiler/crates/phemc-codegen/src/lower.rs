@@ -159,7 +159,7 @@ impl<'a> Lowerer<'a> {
         if name == "title" && self.title_scopes == 0 {
             self.diags.push(
                 Diagnostic::warning(codes::TITLE_IN_MARKUP, "a `<title>` outside `<head>` is not the title of the page", e.name_span)
-                    .with_help("put the `<title>` in the `<head>` of the document component, and give the title through a slot, for example `<Document:title>Home</Document:title>`"),
+                    .with_help("put the `<title>` in the `<head>` of the document component, and give the title through a prop, for example `<Document title=\"Home\">`"),
             );
         }
 

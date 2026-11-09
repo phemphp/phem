@@ -5,9 +5,9 @@ namespace App\Ui\Common;
 use Phem\Attribute\Component;
 use Phem\{Html, Node, Root};
 
-// The HTML document of the pages. A page gives its title with <Document:title>.
+// The HTML document of the pages. A page gives its title with <Document title="...">.
 #[Component]
-function Document(Html $title, Html $children): Node
+function Document(string $title, Html $children): Node
 {
     return (
         <html lang="en">

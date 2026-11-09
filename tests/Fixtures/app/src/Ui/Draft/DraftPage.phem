@@ -87,8 +87,7 @@ final class DraftPage
     public function render(): Node
     {
         return (
-            <Document>
-                <Document:title>Draft</Document:title>
+            <Document title="Draft">
                 <PetForm />
             </Document>
         );
@@ -104,8 +103,7 @@ final class EnumPathPage
     public function render(): Node
     {
         return (
-            <Document>
-                <Document:title>Enum path</Document:title>
+            <Document title="Enum path">
                 <input name="size" phem:bind={{ size.value }} />
             </Document>
         );
@@ -126,8 +124,7 @@ final class ArrayObjectPage
     public function render(): Node
     {
         return (
-            <Document>
-                <Document:title>Array object</Document:title>
+            <Document title="Array object">
                 <input name="pet" phem:bind={{ pets.0.name }} />
             </Document>
         );

@@ -49,8 +49,7 @@ function ErrorsPage(int $status, FlattenException $exception, Request $request):
     $retry = $request->getRequestUri();
 
     return (
-        <Document>
-            <Document:title>Error {{ status }}</Document:title>
+        <Document title="Error {{ status }}">
             <h1>{{ status }} {{ text }}</h1>
             {% if retryAfter %}<p id="retry-after">Retry after {{ retryAfter }} seconds</p>{% endif %}
             <a id="retry" href={{ retry }}>Try again</a>
@@ -63,8 +62,7 @@ function ErrorsPage(int $status, FlattenException $exception, Request $request):
 function MissingPage(): Node
 {
     return (
-        <Document>
-            <Document:title>Not here</Document:title>
+        <Document title="Not here">
             <h1>Not here</h1>
         </Document>
     );
@@ -75,8 +73,7 @@ function MissingPage(): Node
 function AdminErrorPage(int $status, #[Autowire('%kernel.environment%')] string $environment): Node
 {
     return (
-        <Document>
-            <Document:title>Admin error</Document:title>
+        <Document title="Admin error">
             <h1>Admin error {{ status }}</h1>
             <p id="environment">{{ environment }}</p>
         </Document>
@@ -127,8 +124,7 @@ function UnavailablePage(Request $request): Node
     $host = $request->getSchemeAndHttpHost();
 
     return (
-        <Document>
-            <Document:title>Back soon</Document:title>
+        <Document title="Back soon">
             <h1>Back soon</h1>
             <p id="path">{{ path }}</p>
             <p id="host">{{ host }}</p>

@@ -110,8 +110,7 @@ final class ValidationPage
     public function render(): Node
     {
         return (
-            <Document>
-                <Document:title>Validation</Document:title>
+            <Document title="Validation">
                 <Registration />
             </Document>
         );

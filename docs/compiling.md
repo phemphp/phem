@@ -259,7 +259,7 @@ Errors start with `E` and stop the build; warnings start with `W` and don’t. `
 | E061 | An invalid `phem:error`: not a `#[State]` property or a `Bound` prop, a component with no `Validation` property, an element with an `id`, content or `phem:bind`, a void element, or a component tag whose component has no `id` prop or no `children` |
 | W002–W003 | A list item without `key`, or an event that the browser doesn’t send (`onMouseEnter`) |
 | W004 | `#[Page]`, `#[ErrorPage]`, `#[Route]`, `#[Component]`, `#[State]`, `#[Prop]`, `#[Path]`, `#[Context]`, `#[Provide]`, `#[Broadcast]`, `#[BroadcastKey]`, `#[Async]` or `#[Validated]` without its `use` import (`Phem\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
-| W005 | A `<title>` outside `<head>` and `<svg>`. The document component prints the title, and a page sets it with `<Document:title>` |
+| W005 | A `<title>` outside `<head>` and `<svg>`. The document component prints the title, and a page sets it with the `title` prop of the document (`<Document title="Home">`) |
 | W006 | `phem:debounce` or `phem:throttle` on an element with no handler |
 | W007 | `phem:live` on an element with no `phem:bind` |
 | W008 | A `render()` or a function component that isn’t pure: it reads a constructor service, a static property, a superglobal, the clock or a random value (see [Keep `render()` pure](components.md#keep-render-pure)) |
@@ -428,8 +428,7 @@ final class ScientistPage
     public function render(): Node
     {
         return (
-            <Document>
-                <Document:title>{{ scientist.name }}</Document:title>
+            <Document title={{ scientist.name }}>
                 <ScientistCard scientist={{ scientist }} />
             </Document>
         );

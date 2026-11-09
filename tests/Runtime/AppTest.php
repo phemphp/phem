@@ -373,7 +373,7 @@ final class AppTest extends TestCase
         $html = html_entity_decode((string) $this->request('GET', '/document')->getContent());
 
         self::assertStringContainsString('<html lang="es">', $html, 'another document component');
-        self::assertStringContainsString('<title>Documento 3</title>', $html, 'the title slot of the page, with its state');
+        self::assertStringContainsString('<title>Documento 3</title>', $html, 'the title prop of the page, with its state');
         self::assertMatchesRegularExpression('#<body>\s*<main id="phem-root" data-controller="phem extra" data-action="click->phem\#dispatch [^"]*" data-phem-state-value="\{\n"_tree":"[^"]*",(?:\n"phem[0-9a-f]+":\{[^}]*\},?){2}\n\}" data-phem-signature-value="[^"]*" data-phem-state-inline-value="4096" class="custom page"><p id="document" data-phem-c="phem[0-9a-f]+">Document</p></main>\s*<footer id="doc-footer">#', $html);
         // The ids of the states come from the names of the components, so their order can change.
         self::assertMatchesRegularExpression('#\n"phem[0-9a-f]+":\{"count":3\}#', $html);

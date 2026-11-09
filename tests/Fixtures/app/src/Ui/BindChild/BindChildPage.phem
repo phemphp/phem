@@ -79,8 +79,7 @@ final class BindChildPage
     public function render(): Node
     {
         return (
-            <Document>
-                <Document:title>Bind child</Document:title>
+            <Document title="Bind child">
                 <Account />
             </Document>
         );

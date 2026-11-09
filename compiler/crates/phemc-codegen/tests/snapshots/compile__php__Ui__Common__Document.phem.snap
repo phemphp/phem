@@ -10,9 +10,9 @@ use Phem\Attribute\Component;
 use Phem\{Html, Node, Root};
 
 // The document of the fixture pages: a page renders its markup in it, and gives the title
-// with `<Document:title>`.
+// with its `title` prop: `<Document title="Home">`.
 #[Component]
-function Document(?Html $title = null, ?Html $children = null): Node
+function Document(?string $title = null, ?Html $children = null): Node
 {
     return (
         new \Phem\Element('Ui/Common/Document.0.twig', ['title' => $title, 'children' => $children])

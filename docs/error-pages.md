@@ -37,8 +37,7 @@ function ErrorPage(int $status): Node
     $title = 404 === $status ? 'Page not found' : 'Something went wrong';
 
     return (
-        <Document>
-            <Document:title>{{ title }}</Document:title>
+        <Document title={{ title }}>
             <main>
                 <h1>{{ title }}</h1>
                 <a href={{ path('home') }}>Back to the home page</a>

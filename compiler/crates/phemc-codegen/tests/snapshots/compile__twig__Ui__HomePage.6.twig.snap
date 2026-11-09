@@ -2,8 +2,7 @@
 source: crates/phemc-codegen/tests/compile.rs
 expression: t.content
 ---
-{% component embed 'App\\Ui\\Common\\Document' only %}{% block children %}{% with _phem_caller only %}
-                
+{% component embed 'App\\Ui\\Common\\Document' with {'title': 'Fixture Home'} only %}{% block children %}{% with _phem_caller only %}
                 <main>
                     <h1>Counters that update together</h1>
                     {% component 'App\\Ui\\Common\\MyButton' with {'count': (count), 'onClick': (handleClick)} only %}
@@ -28,4 +27,4 @@ expression: t.content
                     {% component 'App\\Ui\\Common\\Tag' only %}
                     {% component embed 'App\\Ui\\Common\\Tag' only %}{% block children %}{% with _phem_caller only %}urgent{% endwith %}{% endblock %}{% endcomponent %}
                 </main>
-            {% endwith %}{% endblock %}{% block title %}{% with _phem_caller only %}Fixture Home{% endwith %}{% endblock %}{% endcomponent %}
+            {% endwith %}{% endblock %}{% endcomponent %}

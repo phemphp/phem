@@ -86,8 +86,7 @@ final class FormPage
     public function render(): Node
     {
         return (
-            <Document>
-                <Document:title>Form</Document:title>
+            <Document title="Form">
                 <AccountForm />
             </Document>
         );

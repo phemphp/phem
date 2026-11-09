@@ -39,8 +39,7 @@ use function App\Ui\Common\Document;
 function TasksPage(): Node
 {
     return (
-        <Document>
-            <Document:title>Tasks</Document:title>
+        <Document title="Tasks">
             <h1>My tasks</h1>
             <ul>
                 <li>Read the tutorial</li>
@@ -55,7 +54,7 @@ Here’s what this code does:
 
 - **The return value**: the function returns the markup. It follows two rules: close every tag (`<br />`) and return one root element. The parentheses around multi-line markup are optional, but they make it easier to read.
 - **The file location**: page names end with `Page`. A page and its components share one directory per feature, here `src/Ui/Task/`.
-- **`Document`**: it’s the HTML document of your app, from `src/Ui/Common/Document.phem`. `<Document:title>` fills its `title` slot.
+- **`Document`**: it’s the HTML document of your app, from `src/Ui/Common/Document.phem`. Its `title` prop (`<Document title="Tasks">`) sets the title of the page.
 
 Save the file and open `/tasks`. The page shows the title and the two tasks.
 
@@ -109,8 +108,7 @@ function TasksPage(): Node
     ];
 
     return (
-        <Document>
-            <Document:title>Tasks</Document:title>
+        <Document title="Tasks">
             <h1>My tasks</h1>
             <ul>
                 {% for task in tasks %}
@@ -234,8 +232,7 @@ Finally, render `<TaskList />` on the page. The page still has no state of its o
 function TasksPage(): Node
 {
     return (
-        <Document>
-            <Document:title>Tasks</Document:title>
+        <Document title="Tasks">
             <h1>My tasks</h1>
             <TaskList />
         </Document>

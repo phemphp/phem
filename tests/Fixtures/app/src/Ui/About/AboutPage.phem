@@ -27,8 +27,7 @@ function WelcomePage(): Node
     $name = ucfirst('ada');
 
     return (
-        <Document>
-            <Document:title>Welcome</Document:title>
+        <Document title="Welcome">
             <p id="welcome">Welcome, {{ name }}!</p>
             <Counter label="Visits" />
         </Document>

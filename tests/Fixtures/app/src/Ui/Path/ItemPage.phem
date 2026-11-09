@@ -66,8 +66,7 @@ final class ScientistPage
     public function render(): Node
     {
         return (
-            <Document>
-                <Document:title>{{ scientist.name }}</Document:title>
+            <Document title={{ scientist.name }}>
                 <button id="scientist" onClick={{ like }}>{{ scientist.name }}: {{ likes }}</button>
             </Document>
         );

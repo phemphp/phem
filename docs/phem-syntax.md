@@ -304,8 +304,7 @@ final class HomePage
     public function render(): Node
     {
         return (
-            <Document>
-                <Document:title>Home</Document:title>
+            <Document title="Home">
                 <h1>Welcome to my app</h1>
             </Document>
         );
@@ -336,7 +335,7 @@ use Phem\Attribute\Component;
 use Phem\{Html, Node, Root};
 
 #[Component]
-function Document(?Html $title = null, ?Html $children = null): Node
+function Document(?string $title = null, ?Html $children = null): Node
 {
     return (
         <html lang="en">
@@ -350,7 +349,7 @@ function Document(?Html $title = null, ?Html $children = null): Node
 }
 ```
 
-Each page renders its content inside the document and sets its title with the `title` slot (`<Document:title>`), as `HomePage` does above. The document can have more slots, for example a `?Html $head` slot for the `<meta>` tags of a page. For another layout, such as an admin area, write another document component and use it in the pages of that area.
+Each page renders its content inside the document and sets its title with the `title` prop (`<Document title="Home">`), as `HomePage` does above. The title is a string, so it can hold the values of the page: `<Document title="Error {{ status }}">`. The document can have more props and slots, for example a `?Html $head` slot for the `<meta>` tags of a page. For another layout, such as an admin area, write another document component and use it in the pages of that area.
 
 A `<title>` in the markup of a page isn’t the page title, and `phemc` reports it (W005). A `<title>` inside `<head>` or an `<svg>` is valid.
 

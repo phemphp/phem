@@ -455,8 +455,8 @@ fn error_boundary_is_a_built_in_component() {
 
 #[test]
 fn a_page_gives_the_title_to_its_document() {
-    let document = "<?phem\nnamespace App;\nuse Phem\\{Html, Root};\n#[\\Phem\\Attribute\\Component]\nfunction Document(?Html $title = null, ?Html $children = null) {\n    return <html><head><title>{{ title ?? 'App' }}</title></head><body><Root>{{ children }}</Root></body></html>;\n}\n";
-    let page = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Page;\n#[Page('/')]\nfinal class Home {\n    public string $name = 'Ada';\n    public function render() { return <Document><Document:title>Hi {{ name }}</Document:title><p>Home</p></Document>; }\n}\n";
+    let document = "<?phem\nnamespace App;\nuse Phem\\{Html, Root};\n#[\\Phem\\Attribute\\Component]\nfunction Document(?string $title = null, ?Html $children = null) {\n    return <html><head><title>{{ title ?? 'App' }}</title></head><body><Root>{{ children }}</Root></body></html>;\n}\n";
+    let page = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Page;\n#[Page('/')]\nfinal class Home {\n    public string $name = 'Ada';\n    public function render() { return <Document title=\"Hi {{ name }}\"><p>Home</p></Document>; }\n}\n";
     let (out, diags) = compile(vec![SourceInput::app("Document.phem", document), SourceInput::app("Home.phem", page)]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
@@ -465,9 +465,9 @@ fn a_page_gives_the_title_to_its_document() {
     let home = out.files.iter().find(|f| f.rel == "Home.phem").expect("Home.phem");
     assert_eq!(
         home.templates[0].content,
-        "{% component embed 'App\\\\Document' only %}{% block children %}{% with _phem_caller only %}<p>Home</p>{% endwith %}{% endblock %}{% block title %}{% with _phem_caller only %}Hi {{ name }}{% endwith %}{% endblock %}{% endcomponent %}"
+        "{% component embed 'App\\\\Document' with {'title': 'Hi ' ~ (name)} only %}{% block children %}{% with _phem_caller only %}<p>Home</p>{% endwith %}{% endblock %}{% endcomponent %}"
     );
-    assert_eq!(out.manifest.components["App\\Document"].slots, ["title", "children"]);
+    assert_eq!(out.manifest.components["App\\Document"].slots, ["children"]);
 }
 
 #[test]

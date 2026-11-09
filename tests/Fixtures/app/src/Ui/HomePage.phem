@@ -82,8 +82,7 @@ final class HomePage
         $listItems = array_map(fn($p) => <li key={{ p.id }}>{{ p.title }}</li>, $products);
 
         return (
-            <Document>
-                <Document:title>Fixture Home</Document:title>
+            <Document title="Fixture Home">
                 <main>
                     <h1>Counters that update together</h1>
                     <MyButton count={{ count }} onClick={{ handleClick }} />

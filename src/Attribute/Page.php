@@ -27,8 +27,7 @@ use Symfony\Component\Routing\Attribute\Route;
  *         public function render()
  *         {
  *             return (
- *                 <Document>
- *                     <Document:title>{{ scientist.name }}</Document:title>
+ *                 <Document title={{ scientist.name }}>
  *                     ...
  *                 </Document>
  *             );

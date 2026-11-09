@@ -94,8 +94,7 @@ final class MapFormPage
     public function render(): Node
     {
         return (
-            <Document>
-                <Document:title>Map a form</Document:title>
+            <Document title="Map a form">
                 <ClosedDays />
                 <QuickClose />
                 <Holidays />

@@ -5,9 +5,9 @@ namespace App\Ui\Common;
 use Phem\Attribute\Component;
 use Phem\{Html, Node, Root};
 
-// The document of the fixture pages: a page composes it and gives the title with a slot.
+// The document of the fixture pages: a page composes it and gives the title with its `title` prop.
 #[Component]
-function Document(?Html $title = null, ?Html $children = null): Node
+function Document(?string $title = null, ?Html $children = null): Node
 {
     return (
         <html lang="en">

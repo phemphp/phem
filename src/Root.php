@@ -19,7 +19,7 @@ namespace Phem;
  *
  *     use Phem\{Html, Root};
  *
- *     function Document(?Html $title = null, ?Html $children = null)
+ *     function Document(?string $title = null, ?Html $children = null)
  *     {
  *         return (
  *             <html lang="en">
@@ -29,10 +29,9 @@ namespace Phem;
  *         );
  *     }
  *
- * A page composes the document in its markup, and gives the title with a slot:
+ * A page composes the document in its markup, and gives the title with the `title` prop:
  *
- *     <Document>
- *         <Document:title>Home</Document:title>
+ *     <Document title="Home">
  *         <h1>Home</h1>
  *     </Document>
  *
