@@ -6,8 +6,10 @@
 
 mod classes;
 mod contexts;
+mod copies;
 mod defined;
 mod lower;
+mod names;
 mod replaces;
 mod vars;
 
@@ -16,6 +18,7 @@ use phemc_analyze::{Enums, FileInfo, Kind, MarkupScope, Registry};
 use phemc_syntax::diag::codes;
 use phemc_syntax::php::{lex, Lexed, TokKind};
 use phemc_syntax::span::line_col;
+use names::Source;
 use phemc_syntax::{Diagnostic, Span};
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -82,6 +85,12 @@ impl FileDiagnostics {
     /// a package.
     pub fn shown(&self) -> impl Iterator<Item = &Diagnostic> {
         self.diags.iter().filter(|d| self.package.is_none() || d.is_error())
+    }
+
+    /// The diagnostics that `phemc build` and `phemc check` print: the shown ones without the
+    /// hints. A hint shows only in the editors, with its quick fix.
+    pub fn printed(&self) -> impl Iterator<Item = &Diagnostic> {
+        self.shown().filter(|d| !d.is_hint())
     }
 }
 
@@ -229,27 +238,6 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
     (Some(ProjectOutput { files, manifest }), all_diags)
 }
 
-/// The global variables of Twig in a Symfony application. Markup can read them without a PHP
-/// variable.
-const TWIG_GLOBALS: &[&str] = &["app"];
-
-pub(crate) fn has_variable(text: &str, name: &str) -> bool {
-    let needle = format!("${name}");
-    let b = text.as_bytes();
-    let mut from = 0;
-
-    while let Some(rel) = text[from..].find(&needle) {
-        let end = from + rel + needle.len();
-        if b.get(end).is_none_or(|c| !(c.is_ascii_alphanumeric() || *c == b'_' || *c >= 0x80)) {
-            return true;
-        }
-
-        from = end;
-    }
-
-    false
-}
-
 fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry, enums: &Enums, replacements: &replaces::Replacements) -> (FileOutput, Vec<Diagnostic>) {
     let src = input.text.as_str();
     let mut diags = Vec::new();
@@ -293,19 +281,13 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
             .unwrap_or_default();
         let mut vars = Vec::new();
         for v in vars::free_vars(info, &m.root) {
-            // A class that the file imports: the lowerer wrote its name in the template.
-            if class_names.is_class(&v.name) {
-                continue;
-            }
-
-            let php = if defined.contains(&v.name) {
-                format!("${}", v.name)
-            } else if has_variable(scope_text, &v.name) {
-                format!("${} ?? null", v.name)
-            } else if let Some(c) = class {
-                if v.name == "this" {
-                    "$this".to_string()
-                } else if let Some(p) = c.all_props().find(|p| p.name == v.name && !p.is_static) {
+            let php = match names::source(&v.name, v.strict, &defined, scope_text, class, &class_names) {
+                // The lowerer wrote the name of a class in the template.
+                Source::Class | Source::TwigGlobal => continue,
+                Source::Variable => format!("${}", v.name),
+                Source::MaybeVariable => format!("${} ?? null", v.name),
+                Source::This => "$this".to_string(),
+                Source::Property(p) => {
                     if p.is_promoted && in_render(info, scope) {
                         diags.push(
                             Diagnostic::warning(codes::IMPURE_RENDER, format!("`render()` reads the service `${}`", v.name), Span::new(v.offset, v.offset + v.name.len()))
@@ -315,26 +297,17 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
                     }
 
                     format!("$this->{}", v.name)
-                } else if c.has_method(&v.name) {
-                    format!("$this->{}(...)", v.name)
-                } else if TWIG_GLOBALS.contains(&v.name.as_str()) {
-                    continue;
-                } else if c.open && v.strict {
-                    // A property or a method of a parent class that the compiler does not see.
-                    format!("\\Phem\\Rendering\\Member::read($this, {}, self::class)", php_str(&v.name))
-                } else {
+                }
+                Source::Method => format!("$this->{}(...)", v.name),
+                Source::ParentMember => format!("\\Phem\\Rendering\\Member::read($this, {}, self::class)", php_str(&v.name)),
+                Source::Undefined => {
                     if v.strict {
-                        diags.push(undefined(&v.name, v.offset, " or a property or method of the class", &class_names));
+                        let extra = if class.is_some() { " or a property or method of the class" } else { "" };
+                        diags.push(undefined(&v.name, v.offset, extra, &class_names));
                     }
 
                     continue;
                 }
-            } else {
-                if v.strict && !TWIG_GLOBALS.contains(&v.name.as_str()) {
-                    diags.push(undefined(&v.name, v.offset, "", &class_names));
-                }
-
-                continue;
             };
 
             vars.push(format!("{} => {php}", php_str(&v.name)));
@@ -352,6 +325,11 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
     }
 
     diags.append(&mut lowerer.diags);
+
+    // Hints help the app only: the tools do not show the hints of a package.
+    if input.package.is_none() {
+        diags.extend(copies::check(info, src, lexed, &class_names));
+    }
 
     // `replaces: Alert::class` of a function component becomes the string: a function has no
     // class, and PHPStan reports the `::class`. The attribute gets the same value.

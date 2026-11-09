@@ -95,17 +95,3 @@ call, the page shows old data, with no error.
 - **Proposal B (automatic):** with `#[Transactional]`, Phem reads the Doctrine unit of work at
   the flush, and renders again each component with a changed entity in a prop or a `#[Path]`.
 - **Open questions:** see "Refresh after a handler" in the design discussions.
-
-### [ ] A lint for copied properties, and docs for UI-only state — P3
-
-- **Copied properties:** the app has 33 lines such as `$lines = $this->lines;` in `render()`.
-  The markup already finds the properties, also the private ones. Add a `phemc` hint with a
-  quick fix: "This variable copies `$this->lines`: use `lines` in the markup".
-- **UI-only state:** a page of the app keeps `askingCancel` in `#[State]`, with an
-  `openCancel()` and a `closeCancel()` handler: two requests to open a panel. The `phem-dialog`
-  controller does it in the browser. Add a section "Keep UI-only state in the browser" to
-  `docs/components.md`.
-- **Variants:** the app keeps its button classes in constants (`PRIMARY`, `DANGER`). The
-  [variants pattern](docs/packages.md#add-variants-to-a-component) covers it, but the docs show it
-  only for packages. Link to it from `docs/components.md`.
-  

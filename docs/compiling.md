@@ -124,7 +124,7 @@ The JSON fields follow the Language Server Protocol (LSP) conventions:
 - **`label`**, **`help`**: the label of the span and the hint, or `null`
 - **`start`**, **`end`**: `line` starts at 0, and `character` counts UTF-16 code units
 
-Both formats leave out the warnings of a Composer package, because the application can’t fix them. The errors of a package stay in the list.
+Both formats leave out the warnings of a Composer package, because the application can’t fix them. The errors of a package stay in the list. Both formats also leave out the hints (see [Diagnostic codes](#diagnostic-codes)).
 
 ### `phemc watch`
 
@@ -172,7 +172,7 @@ The server also checks the `.phem` files of the Composer packages together with 
 
 ### Use Claude Code
 
-The Phem plugin for [Claude Code](https://claude.com/claude-code) runs the language server of the application (`vendor/bin/phemc lsp`). After each edit of a `.phem` file, Claude Code gets the `phemc` errors and warnings and can correct them right away. Its `LSP` tool also gets go to definition, find references, hover and the outline. Install the plugin:
+The Phem plugin for [Claude Code](https://claude.com/claude-code) runs the language server of the application (`vendor/bin/phemc lsp`). After each edit of a `.phem` file, Claude Code gets the `phemc` errors, warnings and hints and can correct them right away. Its `LSP` tool also gets go to definition, find references, hover and the outline. Install the plugin:
 
 ```sh
 claude plugin marketplace add phemphp/phem
@@ -185,7 +185,7 @@ The server starts the first time Claude Code edits a `.phem` file. After each ed
 
 ## Diagnostic codes
 
-Errors start with `E` and stop the build; warnings start with `W` and don’t. `phemc` reports these codes:
+Errors start with `E` and stop the build; warnings start with `W` and don’t. Hints start with `H`: only the editors show them, often with a quick fix, and `phemc build` and `phemc check` leave them out. `phemc` reports these codes:
 
 | Code | Meaning |
 |---|---|
@@ -212,6 +212,7 @@ Errors start with `E` and stop the build; warnings start with `W` and don’t. `
 | W006 | `phem:debounce` or `phem:throttle` on an element with no handler |
 | W007 | `phem:live` on an element with no `phem:bind` |
 | W008 | A `render()` or a function component that isn’t pure: it reads a constructor service, a static property, a superglobal, the clock or a random value (see [Keep `render()` pure](components.md#keep-render-pure)) |
+| H001 | A variable that only copies a property for the markup (`$rows = $this->lines;`). The markup reads the property. The quick fix removes the copy and uses the name of the property in the markup. A copy that keeps an older value of the property isn't a hint (see [Read the properties in the markup](components.md#read-the-properties-in-the-markup)) |
 
 ## Static analysis (PHPStan)
 

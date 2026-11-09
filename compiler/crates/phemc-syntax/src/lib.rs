@@ -9,5 +9,5 @@ pub mod markup;
 pub mod php;
 pub mod span;
 
-pub use diag::{Diagnostic, Severity};
+pub use diag::{Diagnostic, Fix, Severity};
 pub use span::Span;

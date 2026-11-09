@@ -12,6 +12,7 @@ use crate::scanner::scan;
 use crate::sources::Sources;
 use crate::symbols::{document_symbols, Outline, OutlineKind};
 use lsp_types as lsp;
+use phemc_syntax::Severity;
 use serde_json::{json, Value};
 use std::collections::{BTreeSet, HashMap};
 use std::io::{BufRead, BufReader, Write};
@@ -77,6 +78,13 @@ struct Document {
     text: String,
 }
 
+/// The quick fix of a published diagnostic.
+struct QuickFix {
+    title: String,
+    diagnostic: lsp::Diagnostic,
+    edits: Vec<lsp::TextEdit>,
+}
+
 struct Server<W: Write> {
     out: W,
     /// The source roots of the projects.
@@ -90,6 +98,8 @@ struct Server<W: Write> {
     dirty: BTreeSet<PathBuf>,
     /// The files with diagnostics, for each project.
     published: HashMap<PathBuf, BTreeSet<PathBuf>>,
+    /// The quick fixes of the published diagnostics, for each file.
+    fixes: HashMap<PathBuf, Vec<QuickFix>>,
     /// The last error of the source roots that the user saw, for each project.
     root_errors: HashMap<PathBuf, String>,
     link_support: bool,
@@ -109,6 +119,7 @@ impl<W: Write> Server<W> {
             roots: HashMap::new(),
             dirty: BTreeSet::new(),
             published: HashMap::new(),
+            fixes: HashMap::new(),
             root_errors: HashMap::new(),
             link_support: false,
             watch_registration: false,
@@ -172,6 +183,7 @@ impl<W: Write> Server<W> {
             "textDocument/references" => self.references(parse(params)?),
             "textDocument/codeLens" => self.code_lens(parse(params)?),
             "textDocument/documentSymbol" => self.document_symbol(parse(params)?),
+            "textDocument/codeAction" => self.code_action(parse(params)?),
             TWIG_DELIMITERS => self.twig_delimiters(parse(params)?),
             _ => return Err((-32601, format!("unknown method `{method}`"))),
         };
@@ -241,6 +253,7 @@ impl<W: Write> Server<W> {
             references_provider: Some(lsp::OneOf::Left(true)),
             code_lens_provider: Some(lsp::CodeLensOptions { resolve_provider: Some(false) }),
             document_symbol_provider: Some(lsp::OneOf::Left(true)),
+            code_action_provider: Some(lsp::CodeActionProviderCapability::Simple(true)),
             ..Default::default()
         };
 
@@ -320,6 +333,9 @@ impl<W: Write> Server<W> {
     /// document, whose text is the one on disk again). The projects that install the package of
     /// the file index it again too.
     fn phem_changed(&mut self, file: &Path, on_disk: bool) {
+        // The quick fixes have the offsets of the old text, until the next check.
+        self.fixes.remove(file);
+
         if file.extension().is_none_or(|e| e != "phem") {
             return;
         }
@@ -446,19 +462,31 @@ impl<W: Write> Server<W> {
                 }
 
                 now.insert(f.file.clone());
-                let diagnostics: Vec<lsp::Diagnostic> = f
-                    .diags
-                    .iter()
-                    .map(|d| lsp::Diagnostic {
+                let mut fixes = Vec::new();
+                let mut diagnostics = Vec::new();
+                for d in &f.diags {
+                    let diagnostic = lsp::Diagnostic {
                         range: range(&f.text, d.span.start, check::end_of(&f.text, d.span.start, d.span.end)),
-                        severity: Some(if d.is_error() { lsp::DiagnosticSeverity::ERROR } else { lsp::DiagnosticSeverity::WARNING }),
+                        severity: Some(severity(d.severity)),
                         code: Some(lsp::NumberOrString::String(d.code.to_string())),
                         source: Some("phemc".into()),
                         message: check::message(d),
+                        tags: d.unnecessary.then(|| vec![lsp::DiagnosticTag::UNNECESSARY]),
                         ..Default::default()
-                    })
-                    .collect();
+                    };
+
+                    if let Some(fix) = &d.fix {
+                        let edits = fix.edits.iter().map(|(span, new_text)| lsp::TextEdit { range: range(&f.text, span.start, span.end), new_text: new_text.clone() }).collect();
+                        fixes.push(QuickFix { title: fix.title.clone(), diagnostic: diagnostic.clone(), edits });
+                    }
+
+                    diagnostics.push(diagnostic);
+                }
+
                 self.publish(&f.file, diagnostics);
+                if !fixes.is_empty() {
+                    self.fixes.insert(f.file.clone(), fixes);
+                }
             }
 
             let before = self.published.insert(root.clone(), now.clone()).unwrap_or_default();
@@ -485,6 +513,8 @@ impl<W: Write> Server<W> {
     }
 
     fn publish(&mut self, file: &Path, diagnostics: Vec<lsp::Diagnostic>) {
+        self.fixes.remove(file);
+
         let uri = match self.docs.get(file) {
             Some(d) => d.uri.clone(),
             None => match lsp::Url::from_file_path(file) {
@@ -494,6 +524,31 @@ impl<W: Write> Server<W> {
         };
 
         self.notify("textDocument/publishDiagnostics", lsp::PublishDiagnosticsParams { uri, diagnostics, version: None });
+    }
+
+    /// The quick fixes of the diagnostics in the range of the request.
+    fn code_action(&mut self, p: lsp::CodeActionParams) -> Value {
+        let Some(file) = file_of(&p.text_document.uri) else { return Value::Null };
+
+        let actions: Vec<lsp::CodeActionOrCommand> = self
+            .fixes
+            .get(&file)
+            .into_iter()
+            .flatten()
+            .filter(|f| f.diagnostic.range.start <= p.range.end && p.range.start <= f.diagnostic.range.end)
+            .map(|f| {
+                lsp::CodeActionOrCommand::CodeAction(lsp::CodeAction {
+                    title: f.title.clone(),
+                    kind: Some(lsp::CodeActionKind::QUICKFIX),
+                    diagnostics: Some(vec![f.diagnostic.clone()]),
+                    edit: Some(lsp::WorkspaceEdit { changes: Some(HashMap::from([(p.text_document.uri.clone(), f.edits.clone())])), ..Default::default() }),
+                    is_preferred: Some(true),
+                    ..Default::default()
+                })
+            })
+            .collect();
+
+        json!(actions)
     }
 
     /// The index of a request on a document, and the document text.
@@ -693,6 +748,14 @@ pub fn position(text: &str, offset: usize) -> lsp::Position {
     lsp::Position { line: before.matches('\n').count() as u32, character: before[line_start..].encode_utf16().count() as u32 }
 }
 
+fn severity(severity: Severity) -> lsp::DiagnosticSeverity {
+    match severity {
+        Severity::Error => lsp::DiagnosticSeverity::ERROR,
+        Severity::Warning => lsp::DiagnosticSeverity::WARNING,
+        Severity::Hint => lsp::DiagnosticSeverity::HINT,
+    }
+}
+
 pub fn range(text: &str, start: usize, end: usize) -> lsp::Range {
     lsp::Range { start: position(text, start), end: position(text, end) }
 }
@@ -829,6 +892,63 @@ mod tests {
         let diagnostics = out.iter().find(|m| m["method"] == "textDocument/publishDiagnostics").unwrap();
         assert_eq!(diagnostics["params"]["diagnostics"][0]["code"], "E010");
         assert_eq!(diagnostics["params"]["diagnostics"][0]["range"]["start"], json!({"line": 5, "character": 12}));
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn publishes_a_hint_with_its_quick_fix() {
+        let dir = crate::tests::temp_dir();
+        std::fs::write(dir.join("composer.json"), "{}").unwrap();
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        let file = dir.join("src/Invoice.phem");
+        let text = "<?phem\nnamespace App;\n\nuse Phem\\Attribute\\{Component, State};\n\n#[Component]\nfinal class Invoice\n{\n    #[State] private array $lines = [];\n\n    public function render()\n    {\n        $rows = $this->lines;\n\n        return <p>{{ rows|length }}</p>;\n    }\n}\n";
+        std::fs::write(&file, text).unwrap();
+        let uri = lsp::Url::from_file_path(&file).unwrap();
+
+        let mut server = Server::new(Vec::new());
+        let input = [
+            json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"capabilities": {}}}),
+            json!({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": uri, "languageId": "phem", "version": 1, "text": text}}}),
+        ];
+        let bytes: String = input.into_iter().map(frame).collect();
+        let mut reader = BufReader::new(bytes.as_bytes());
+        while let Some(m) = read_message(&mut reader).unwrap() {
+            server.handle(m);
+        }
+        server.check_dirty();
+
+        // The action of a range on the line of the copy.
+        server.handle(json!({"jsonrpc": "2.0", "id": 2, "method": "textDocument/codeAction", "params": {"textDocument": {"uri": uri}, "range": {"start": {"line": 12, "character": 10}, "end": {"line": 12, "character": 10}}, "context": {"diagnostics": []}}}));
+        // No action on another line.
+        server.handle(json!({"jsonrpc": "2.0", "id": 3, "method": "textDocument/codeAction", "params": {"textDocument": {"uri": uri}, "range": {"start": {"line": 3, "character": 0}, "end": {"line": 3, "character": 0}}, "context": {"diagnostics": []}}}));
+        // A change before the next check: the fix has the offsets of the old text.
+        let changed = format!("\n{text}");
+        server.handle(json!({"jsonrpc": "2.0", "method": "textDocument/didChange", "params": {"textDocument": {"uri": uri, "version": 2}, "contentChanges": [{"text": changed}]}}));
+        server.handle(json!({"jsonrpc": "2.0", "id": 4, "method": "textDocument/codeAction", "params": {"textDocument": {"uri": uri}, "range": {"start": {"line": 12, "character": 10}, "end": {"line": 12, "character": 10}}, "context": {"diagnostics": []}}}));
+
+        let out = responses(&server.out);
+        assert_eq!(out[0]["result"]["capabilities"]["codeActionProvider"], true);
+        let published = out.iter().find(|m| m["method"] == "textDocument/publishDiagnostics").unwrap();
+        let hint = &published["params"]["diagnostics"][0];
+        assert_eq!(hint["code"], "H001");
+        assert_eq!(hint["severity"], 4);
+        assert_eq!(hint["tags"], json!([1]));
+        assert_eq!(hint["range"], json!({"start": {"line": 12, "character": 8}, "end": {"line": 12, "character": 29}}));
+
+        let actions = &out.iter().find(|m| m["id"] == 2).unwrap()["result"];
+        assert_eq!(actions[0]["title"], "Read `lines` in the markup");
+        assert_eq!(actions[0]["kind"], "quickfix");
+        assert_eq!(actions[0]["diagnostics"][0]["code"], "H001");
+        assert_eq!(
+            actions[0]["edit"]["changes"][uri.as_str()],
+            json!([
+                {"range": {"start": {"line": 12, "character": 0}, "end": {"line": 14, "character": 0}}, "newText": ""},
+                {"range": {"start": {"line": 14, "character": 21}, "end": {"line": 14, "character": 25}}, "newText": "lines"},
+            ])
+        );
+        assert_eq!(out.iter().find(|m| m["id"] == 3).unwrap()["result"], json!([]));
+        assert_eq!(out.iter().find(|m| m["id"] == 4).unwrap()["result"], json!([]));
 
         std::fs::remove_dir_all(dir).unwrap();
     }

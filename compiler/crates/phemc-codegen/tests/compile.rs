@@ -1314,3 +1314,109 @@ fn class_names_in_slot_defaults_error_pages_and_enum_constants() {
     let src = "<?phem\nnamespace App;\nuse Phem\\Attribute\\{Component, State};\nuse Phem\\Node;\nenum Size: string { case S = 's'; }\n#[Component]\nfinal class F { #[State] public string $size = 's';\npublic function render(): Node { return <input type=\"radio\" phem:bind={{ size }} value={{ Size.Huge.value }} />; } }\n";
     assert_eq!(compiled(src).1, ["E062 `Size` has no case `Huge`"]);
 }
+
+/// The H001 hints of a class component with `body` as its `render()`, and the source after the
+/// quick fix of each hint (or `None` when the hint has no fix).
+fn copies(body: &str) -> Vec<(String, Option<String>)> {
+    let input = app(&format!(
+        "use Phem\\Attribute\\State;\n#[Component]\nfinal class Invoice\n{{\n    #[State] private array $lines = [];\n\n    public function render(): Html\n    {{\n{body}\n    }}\n}}\n"
+    ));
+    let text = input.text.clone();
+    let (out, diags) = compile(vec![input]);
+    assert!(out.is_some(), "{:?}", shown(&diags));
+
+    let render_start = text.find("    public function render").unwrap();
+    diags
+        .iter()
+        .flat_map(|f| &f.diags)
+        .filter(|d| d.code == "H001")
+        .map(|d| {
+            let fixed = d.fix.as_ref().map(|fix| {
+                let mut out = text.clone();
+                for (span, new) in fix.edits.iter().rev() {
+                    out.replace_range(span.start..span.end, new);
+                }
+
+                out[render_start..].trim_end().to_string()
+            });
+
+            (d.message.clone(), fixed)
+        })
+        .collect()
+}
+
+#[test]
+fn a_copied_property_is_a_hint_with_a_fix() {
+    let hints = copies("        $lines = $this->lines;\n\n        return <ul>{% for line in lines %}<li key={{ line }}>{{ line }}</li>{% endfor %}</ul>;");
+    assert_eq!(
+        hints,
+        [(
+            "`$lines` copies `$this->lines`: use `lines` in the markup".to_string(),
+            Some("    public function render(): Html\n    {\n        return <ul>{% for line in lines %}<li key={{ line }}>{{ line }}</li>{% endfor %}</ul>;\n    }\n}".to_string())
+        )]
+    );
+}
+
+#[test]
+fn the_fix_of_a_renamed_copy_renames_the_markup_uses() {
+    let hints = copies("        $rows = $this->lines;\n\n        return <ul data-count={{ rows|length }}>{% for line in rows %}<li key={{ line }}>{{ line }}</li>{% endfor %}</ul>;");
+    assert_eq!(
+        hints,
+        [(
+            "`$rows` copies `$this->lines`: use `lines` in the markup".to_string(),
+            Some("    public function render(): Html\n    {\n        return <ul data-count={{ lines|length }}>{% for line in lines %}<li key={{ line }}>{{ line }}</li>{% endfor %}</ul>;\n    }\n}".to_string())
+        )]
+    );
+}
+
+#[test]
+fn the_fix_renames_each_use_in_each_place_of_the_markup() {
+    let hints = copies(
+        "        $rows = $this->lines;\n\n        return <ul class=\"list-{{ rows|length }}\" {{ ...rows }} title={{ \"#{rows|length} lines\" }}>{{ rows ~ rows }}</ul>;",
+    );
+    assert_eq!(
+        hints,
+        [(
+            "`$rows` copies `$this->lines`: use `lines` in the markup".to_string(),
+            Some("    public function render(): Html\n    {\n        return <ul class=\"list-{{ lines|length }}\" {{ ...lines }} title={{ \"#{lines|length} lines\" }}>{{ lines ~ lines }}</ul>;\n    }\n}".to_string())
+        )]
+    );
+}
+
+#[test]
+fn a_renamed_copy_has_no_fix_when_the_property_name_reads_another_value() {
+    // `lines` is a loop variable of the markup.
+    let hints = copies("        $rows = $this->lines;\n\n        return <ul>{% for lines in rows %}<li key={{ lines }}>{{ lines }}</li>{% endfor %}</ul>;");
+    assert_eq!(hints, [("`$rows` copies `$this->lines`: use `lines` in the markup".to_string(), None)]);
+
+    // A use in an expression with markup has no exact offset.
+    let hints = copies("        $rows = $this->lines;\n\n        return <ul>{{ rows ? <li>{{ rows|length }}</li> : '' }}</ul>;");
+    assert_eq!(hints, [("`$rows` copies `$this->lines`: use `lines` in the markup".to_string(), None)]);
+
+    // `{ rows }` is `{ rows: rows }`: a rename changes the key.
+    let hints = copies("        $rows = $this->lines;\n\n        return <ul>{% include 'list.twig' with { rows } %}</ul>;");
+    assert_eq!(hints, [("`$rows` copies `$this->lines`: use `lines` in the markup".to_string(), None)]);
+}
+
+#[test]
+fn a_copy_that_keeps_an_old_value_is_not_a_hint() {
+    // A handler that streams the old ticket: the property changes after the copy.
+    let input = app("use Phem\\Attribute\\State;\n#[Component]\nfinal class Reports\n{\n    #[State] private string $ticket = '';\n\n    public function build(): Html\n    {\n        $ticket = $this->ticket;\n        $this->ticket = bin2hex(random_bytes(4));\n\n        return <li id=\"report-{{ ticket }}\">Building</li>;\n    }\n\n    public function render(): Html\n    {\n        return <ul>{{ ticket }}</ul>;\n    }\n}\n");
+    let (out, diags) = compile(vec![input]);
+    assert!(out.is_some(), "{:?}", shown(&diags));
+    assert!(!shown(&diags).iter().any(|d| d.contains("H001")), "{:?}", shown(&diags));
+}
+
+#[test]
+fn a_variable_that_the_code_uses_is_not_a_copy() {
+    assert!(copies("        $lines = $this->lines;\n        $total = count($lines);\n\n        return <p>{{ total }} {{ lines|length }}</p>;").is_empty());
+    assert!(copies("        $markup = <p>{{ lines|length }}</p>;\n        $lines = $this->lines;\n\n        return $markup;").is_empty(), "the markup comes before the copy");
+}
+
+#[test]
+fn the_command_line_does_not_print_a_hint() {
+    let input = app("use Phem\\Attribute\\State;\n#[Component]\nfinal class Invoice\n{\n    #[State] private array $lines = [];\n\n    public function render(): Html\n    {\n        $lines = $this->lines;\n\n        return <p>{{ lines|length }}</p>;\n    }\n}\n");
+    let (_, diags) = compile(vec![input]);
+    assert_eq!(shown(&diags), ["src/Button.phem H001 `$lines` copies `$this->lines`: use `lines` in the markup"]);
+    assert_eq!(diags.iter().flat_map(|f| f.printed()).count(), 0);
+}

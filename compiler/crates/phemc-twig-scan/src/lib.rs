@@ -9,6 +9,8 @@
 pub struct Name {
     pub name: String,
     pub offset: usize,
+    /// A key of a hash with no value (`{ rows }` is `{ rows: rows }`): the name is the key too.
+    pub shorthand: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -130,16 +132,13 @@ fn tokenize(src: &str) -> Vec<(Tok, usize)> {
     out
 }
 
-/// Free variables of a Twig expression, in order, without duplicates.
+/// The free variables of a Twig expression: each use, in order. A name can be in the list more
+/// than once, so a quick fix can rename each use.
 pub fn expr_free_vars(expr: &str) -> Vec<Name> {
     let mut out = Vec::new();
     collect(expr, 0, &[], &mut out);
-    dedup(out)
-}
 
-fn dedup(names: Vec<Name>) -> Vec<Name> {
-    let mut seen = std::collections::HashSet::new();
-    names.into_iter().filter(|n| seen.insert(n.name.clone())).collect()
+    out
 }
 
 fn collect(src: &str, base: usize, extra_keywords: &[&str], out: &mut Vec<Name>) {
@@ -211,7 +210,8 @@ fn collect_toks(toks: &[(Tok, usize)], base: usize, extra_keywords: &[&str], out
                     continue;
                 }
 
-                out.push(Name { name: name.clone(), offset: base + off });
+                let shorthand = brackets.last() == Some(&"{") && matches!(prev, Some(Tok::Punct("{" | ","))) && matches!(next, Some(Tok::Punct("}" | ",")));
+                out.push(Name { name: name.clone(), offset: base + off, shorthand });
             }
             _ => after_is = 0,
         }
@@ -278,20 +278,20 @@ pub fn tag_vars(tag: &str, head: &str) -> TagVars {
             let mut used = Vec::new();
             // `for p in products if p.ok`: the `if` of Twig 2.
             collect(&head[in_pos + 2..], in_pos + 2, &["if"], &mut used);
-            TagVars { bound, used: dedup(used), ..Default::default() }
+            TagVars { bound, used, ..Default::default() }
         }
         "set" => match head.find('=') {
             Some(eq) => {
                 let bound = head[..eq].split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
                 let mut used = Vec::new();
                 collect(&head[eq + 1..], eq + 1, &[], &mut used);
-                TagVars { bound, used: dedup(used), ..Default::default() }
+                TagVars { bound, used, ..Default::default() }
             }
             None => TagVars { bound: vec![head.trim().to_string()], ..Default::default() },
         },
         "if" | "elseif" | "do" | "cache" => TagVars { used: expr_free_vars(head), ..Default::default() },
-        "with" => TagVars { used: dedup(with_vars(head)), ..Default::default() },
-        "include" | "embed" => TagVars { used: dedup(include_vars(head)), ..Default::default() },
+        "with" => TagVars { used: with_vars(head), ..Default::default() },
+        "include" | "embed" => TagVars { used: include_vars(head), ..Default::default() },
         // Core tags whose heads do not read variables: filter, block, macro, and template names.
         "else" | "apply" | "filter" | "block" | "macro" | "autoescape" | "sandbox" | "guard" | "spaceless" | "verbatim"
         | "flush" | "deprecated" | "extends" | "use" | "import" | "from" | "types" => TagVars::default(),
@@ -300,7 +300,7 @@ pub fn tag_vars(tag: &str, head: &str) -> TagVars {
         _ => {
             let mut used = Vec::new();
             collect(head, 0, &[], &mut used);
-            TagVars { bound: vec![], used: dedup(used), guessed: true }
+            TagVars { bound: vec![], used, guessed: true }
         }
     }
 }
@@ -579,11 +579,17 @@ mod tests {
 
     #[test]
     fn hashes_ternaries_and_named_args() {
-        assert_eq!(names("{width: size, height: size}"), ["size"]);
+        assert_eq!(names("{width: size, height: size}"), ["size", "size"], "each use");
         assert_eq!(names("{color: p.isFruit ? 'magenta' : other}"), ["p", "other"]);
         assert_eq!(names("ok ? yes : no"), ["ok", "yes", "no"]);
         assert_eq!(names("d|date(format: fmt)"), ["d", "fmt"]);
         assert_eq!(names("{...rest, a: 1}"), ["rest"]);
+
+        // `{ rows }` is `{ rows: rows }`: the name is the key too.
+        let shorthand = |expr: &str| expr_free_vars(expr).into_iter().map(|n| (n.name, n.shorthand)).collect::<Vec<_>>();
+        assert_eq!(shorthand("{ rows, size: n }"), [("rows".into(), true), ("n".into(), false)]);
+        assert_eq!(shorthand("f(rows, n)"), [("rows".into(), false), ("n".into(), false)]);
+        assert_eq!(shorthand("[rows]"), [("rows".into(), false)]);
     }
 
     #[test]
@@ -662,7 +668,7 @@ mod tests {
         }
 
         let t = tag_vars("include", "'x.twig' ignore missing with {a: missing} only");
-        assert_eq!(t.used, [Name { name: "missing".into(), offset: 33 }]);
+        assert_eq!(t.used, [Name { name: "missing".into(), offset: 33, shorthand: false }]);
     }
 
     #[test]

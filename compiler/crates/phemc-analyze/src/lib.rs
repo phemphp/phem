@@ -1,9 +1,11 @@
 //! PHP structure scan, component registry, and diagnostics for `.phem` files.
 
+mod copies;
 mod hooks;
 mod purity;
 mod scan;
 
+pub use copies::{copies, Copy};
 pub use purity::HELP as PURE_RENDER_HELP;
 pub use scan::{scan, Class, EnumDecl, FileInfo, Func, MarkupScope, Param, Prop, Replaces, RouteDecl, Toks};
 
@@ -12,6 +14,25 @@ use phemc_syntax::php::Lexed;
 use phemc_syntax::{Diagnostic, Span};
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
+
+/// Whether the PHP code has the variable `$name` (not `$names`). Identifier bytes are ASCII
+/// letters, digits, `_` and the bytes from 0x80.
+pub fn has_variable(text: &str, name: &str) -> bool {
+    let needle = format!("${name}");
+    let b = text.as_bytes();
+    let mut from = 0;
+
+    while let Some(rel) = text[from..].find(&needle) {
+        let end = from + rel + needle.len();
+        if b.get(end).is_none_or(|c| !(c.is_ascii_alphanumeric() || *c == b'_' || *c >= 0x80)) {
+            return true;
+        }
+
+        from = end;
+    }
+
+    false
+}
 
 pub const ATTR_COMPONENT: &str = "Phem\\Attribute\\Component";
 pub const ATTR_STATE: &str = "Phem\\Attribute\\State";

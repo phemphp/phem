@@ -8,7 +8,8 @@ use std::collections::HashSet;
 
 use crate::classes::ClassNames;
 use crate::replaces::Replacements;
-use crate::{has_variable, php_str};
+use crate::php_str;
+use phemc_analyze::has_variable;
 
 pub struct Lowerer<'a> {
     pub info: &'a FileInfo,

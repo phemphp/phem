@@ -98,12 +98,12 @@ fn read_sources(roots: &[SourceRoot]) -> Result<Vec<SourceInput>> {
     Ok(phemc_sources::read(roots, &HashMap::new())?)
 }
 
-/// Prints the diagnostics that the tools show (see `FileDiagnostics::shown()`). Returns (errors,
+/// Prints the diagnostics of the command line (see `FileDiagnostics::printed()`). Returns (errors,
 /// warnings).
 fn report(files: &[FileDiagnostics]) -> (usize, usize) {
     let (mut errors, mut warnings) = (0, 0);
     for f in files {
-        for d in f.shown() {
+        for d in f.printed() {
             let severity = match d.severity {
                 Severity::Error => {
                     errors += 1;
@@ -113,6 +113,7 @@ fn report(files: &[FileDiagnostics]) -> (usize, usize) {
                     warnings += 1;
                     miette::Severity::Warning
                 }
+                Severity::Hint => continue,
             };
 
             let mut md = miette::MietteDiagnostic::new(d.message.clone())
@@ -175,16 +176,16 @@ fn check_json(src: &Path) -> Result<bool> {
 /// The diagnostics as JSON:
 /// `{"files": [{"file": "src/Ui/HomePage.phem", "diagnostics": [{"severity", "code", "message", "label",
 /// "help", "start": {"line", "character"}, "end": {...}}]}]}`.
-/// The file is relative to the project root. The diagnostics are the ones that the tools show (see
-/// `FileDiagnostics::shown()`). The lines start at 0, and the characters count UTF-16 code units,
+/// The file is relative to the project root. The diagnostics are the ones of the command line (see
+/// `FileDiagnostics::printed()`). The lines start at 0, and the characters count UTF-16 code units,
 /// as the Language Server Protocol and VS Code do.
 fn diagnostics_json(files: &[FileDiagnostics]) -> serde_json::Value {
     let files: Vec<_> = files
         .iter()
-        .filter(|f| f.shown().next().is_some())
+        .filter(|f| f.printed().next().is_some())
         .map(|f| {
             let diags: Vec<_> = f
-                .shown()
+                .printed()
                 .map(|d| {
                     serde_json::json!({
                         "severity": if d.is_error() { "error" } else { "warning" },

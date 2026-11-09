@@ -4,6 +4,17 @@ use crate::Span;
 pub enum Severity {
     Error,
     Warning,
+    /// A suggestion that only the editors show (the language server). `phemc build` and
+    /// `phemc check` leave it out.
+    Hint,
+}
+
+/// A change of the source that solves a diagnostic: the quick fix of an editor.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Fix {
+    pub title: String,
+    /// The text that replaces each span, in source order.
+    pub edits: Vec<(Span, String)>,
 }
 
 /// A compiler message attached to a source span.
@@ -15,15 +26,22 @@ pub struct Diagnostic {
     pub span: Span,
     pub label: Option<String>,
     pub help: Option<String>,
+    pub fix: Option<Fix>,
+    /// The span is code that does nothing: the editors fade it.
+    pub unnecessary: bool,
 }
 
 impl Diagnostic {
     pub fn error(code: &'static str, message: impl Into<String>, span: Span) -> Self {
-        Self { severity: Severity::Error, code, message: message.into(), span, label: None, help: None }
+        Self { severity: Severity::Error, code, message: message.into(), span, label: None, help: None, fix: None, unnecessary: false }
     }
 
     pub fn warning(code: &'static str, message: impl Into<String>, span: Span) -> Self {
-        Self { severity: Severity::Warning, code, message: message.into(), span, label: None, help: None }
+        Self { severity: Severity::Warning, code, message: message.into(), span, label: None, help: None, fix: None, unnecessary: false }
+    }
+
+    pub fn hint(code: &'static str, message: impl Into<String>, span: Span) -> Self {
+        Self { severity: Severity::Hint, code, message: message.into(), span, label: None, help: None, fix: None, unnecessary: false }
     }
 
     pub fn with_label(mut self, label: impl Into<String>) -> Self {
@@ -36,8 +54,22 @@ impl Diagnostic {
         self
     }
 
+    pub fn with_fix(mut self, fix: Fix) -> Self {
+        self.fix = Some(fix);
+        self
+    }
+
+    pub fn unnecessary(mut self) -> Self {
+        self.unnecessary = true;
+        self
+    }
+
     pub fn is_error(&self) -> bool {
         self.severity == Severity::Error
+    }
+
+    pub fn is_hint(&self) -> bool {
+        self.severity == Severity::Hint
     }
 }
 
@@ -92,4 +124,5 @@ pub mod codes {
     pub const TIMING_WITHOUT_HANDLER: &str = "W006";
     pub const LIVE_WITHOUT_BIND: &str = "W007";
     pub const IMPURE_RENDER: &str = "W008";
+    pub const COPIED_PROPERTY: &str = "H001";
 }

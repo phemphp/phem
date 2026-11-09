@@ -65,6 +65,74 @@ The methods follow. `mount()` loads the first list, `refresh()` is a handler, an
 
 Only `render()` is required. If a component has no state, no services and no handlers, write a function instead of a class. Start with the smallest form, and move to a class when you need state or services (see [Use the smallest form of a component](philosophy.md#use-the-smallest-form-of-a-component)).
 
+### Read the properties in the markup
+
+The markup of a method reads the properties of its class, also the private ones. So don't copy a property into a variable for the markup:
+
+```php
+#[Component]
+final class Invoice
+{
+    #[State] private array $lines = [];
+
+    public function render(): Node
+    {
+        $rows = $this->lines; // hint H001
+
+        return <ul>{% for line in rows %}<li key={{ line.id }}>{{ line.name }}</li>{% endfor %}</ul>;
+    }
+}
+```
+
+Use the name of the property in the markup:
+
+```php
+    public function render(): Node
+    {
+        return <ul>{% for line in lines %}<li key={{ line.id }}>{{ line.name }}</li>{% endfor %}</ul>;
+    }
+```
+
+The compiled template gets the same value, `'lines' => $this->lines`, so the HTML doesn't change. The editors show the hint H001 on the copy. Its quick fix removes the copy, and changes `rows` to `lines` in the markup. The editor shows no quick fix when `lines` reads another value in the markup, for example a `{% for lines in ... %}` variable.
+
+A copy that keeps an older value isn't a hint. The method reads or changes the property after the copy, or calls a method of the class. For example, a handler keeps the old ticket, gives the property a new one, and streams the old one:
+
+```php
+$ticket = $this->ticket;
+$this->ticket = bin2hex(random_bytes(4));
+// <li id="report-{{ ticket }}"> shows the old ticket
+```
+
+A copy that the PHP code also uses, such as `count($rows)`, isn't a hint either.
+
+### Give a component variants
+
+Don't keep the classes of a style in class constants (`PRIMARY`, `DANGER`). Use a backed enum prop, and give each case its classes in an enum method:
+
+```php
+enum Variant: string
+{
+    case Primary = 'primary';
+    case Danger = 'danger';
+
+    public function classes(): string
+    {
+        return match ($this) {
+            self::Primary => 'bg-blue-500 text-white',
+            self::Danger => 'bg-red-600 text-white',
+        };
+    }
+}
+
+#[Component]
+function Button(string $label, Variant $variant = Variant::Primary): Node
+{
+    return <button className={{ classes('px-4 py-2', variant.classes()) }}>{{ label }}</button>;
+}
+```
+
+A caller then writes `<Button label="Delete" variant="danger" />`, and `phemc` checks the value (`variant="big"` is E018). For the full pattern, see [Add variants to a component](packages.md#add-variants-to-a-component).
+
 ### Know what runs on the first render and on an event
 
 Phem creates a new object for each component in each request, but the steps differ between the first render and an event:
@@ -169,6 +237,39 @@ The rules:
 - Give the property a class type. In a property with an `array`, a union or an `object` type, an object is kept as `json_encode()` writes it, and it comes back as an array.
 - A handler can change the object in place (`$this->draft->name = ''`), also a handler of a child that gets the draft as a prop. After the handlers, a draft that changed becomes a new object, so a child that gets it renders again. A draft that didn't change stays the same object, and the child is kept.
 
+### Keep UI-only state in the browser
+
+Don't keep a value in `#[State]` when only the browser needs it, such as an open panel. This page opens a dialog with two handlers, so each open and each close is a request:
+
+```php
+#[State] public bool $askingCancel = false;
+
+public function openCancel(): void
+{
+    $this->askingCancel = true;
+}
+
+public function closeCancel(): void
+{
+    $this->askingCancel = false;
+}
+```
+
+The `phem-dialog` controller opens and closes the dialog in the browser, with no request. Only the action that changes data goes to the server:
+
+```html
+<div data-controller="phem-dialog">
+    <button data-action="phem-dialog#open">Cancel the order</button>
+    <dialog data-phem-dialog-target="dialog" aria-labelledby="cancel-title">
+        <h2 id="cancel-title">Cancel the order?</h2>
+        <button onClick={{ cancel }} data-action="phem-dialog#close">Yes, cancel it</button>
+        <button data-action="phem-dialog#close">No</button>
+    </dialog>
+</div>
+```
+
+Keep the value in the state only when the server decides it. For example, a handler opens the dialog after it finds a problem. Then set `data-phem-dialog-open-value={{ askingCancel }}`. See [Open a modal dialog](client-side.md#open-a-modal-dialog). For the same reason, use [`phem-tabs`](client-side.md#switch-between-tabs) for tabs and [`phem-confirm`](client-side.md#ask-for-confirmation-before-an-event) for a confirmation.
+
 ### Don’t use hook functions
 
 Phem has no hooks. A call to `Phem\useState`, `useReducer`, `useRef`, `useMemo`, `useCallback` or `useId` is the error E020. Use `#[State]` properties instead. For `useContext`, see [Pass a value down the tree with context](#pass-a-value-down-the-tree-with-context).
@@ -247,7 +348,7 @@ Phem relies on this rule to render only the components that can change. An event
 
 ### Pass the changed value, not the changed object
 
-An object that a handler changes in place, such as a Doctrine entity, counts as the same prop. Pass the changed value to the child (`<LeadTime days={{ s.leadDays }} />`), not the object (`settings={{ s }}`), so Phem sees the change.
+An object that a handler changes in place, such as a Doctrine entity, counts as the same prop. Pass the changed value to the child (`<LeadTime days={{ settings.leadDays }} />`), not the object (`settings={{ settings }}`), so Phem sees the change.
 
 Slots work differently. They belong to the component that passes them (the owner). When the owner renders again, a child with slots renders again with its slots, even if its props didn’t change. Here, `Panel` gets the same `title` after the event, but it renders again because `LeadTimeSettings` owns its children:
 
@@ -280,13 +381,11 @@ final class LeadTimeSettings
 
     public function render(): Node
     {
-        $s = $this->settings;
-
         // The component renders after setLead(), so <Panel> renders with its children.
         return (
             <Panel title="Lead time">
                 {% for days in 0..2 %}
-                    <button key={{ days }} role="radio" aria-checked={{ days == s.leadDays ? 'true' : 'false' }} onClick={{ setLead(days) }}>{{ days }}</button>
+                    <button key={{ days }} role="radio" aria-checked={{ days == settings.leadDays ? 'true' : 'false' }} onClick={{ setLead(days) }}>{{ days }}</button>
                 {% endfor %}
             </Panel>
         );

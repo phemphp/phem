@@ -3,6 +3,7 @@
 use phemc_analyze::FileInfo;
 use phemc_syntax::markup::{AttrKind, AttrValue, ExprPart, Node, StrPart, TwigExpr};
 use phemc_twig_scan::{expr_free_vars, split_call, tag_vars};
+use std::collections::HashSet;
 
 /// A free variable and its absolute byte offset in the source.
 #[derive(Clone, Debug)]
@@ -13,6 +14,10 @@ pub struct FreeVar {
     /// of the tag, so it is not an error when PHP does not define it. Also false for a name
     /// that a `{% set %}` can bind (see `Scope::maybe`).
     pub strict: bool,
+    /// True when the text at `offset` is the name alone, so a quick fix can rename it. False in
+    /// an expression with markup in it (the offset is the start of the expression), and for a
+    /// key of a Twig hash with no value (`{ rows }`), where the name is the key too.
+    pub renamable: bool,
 }
 
 /// The names that Twig binds at a point of the markup.
@@ -37,13 +42,11 @@ impl Scope {
 }
 
 pub fn free_vars(info: &FileInfo, root: &Node) -> Vec<FreeVar> {
-    let mut out = Vec::new();
-    let mut scope = Scope::default();
-    node(info, root, &mut scope, &mut out);
+    let mut out = uses(info, root);
 
     // Keep the first use of each name. It is strict when one of its uses is strict.
-    let strict: std::collections::HashSet<String> = out.iter().filter(|v| v.strict).map(|v| v.name.clone()).collect();
-    let mut seen = std::collections::HashSet::new();
+    let strict: HashSet<String> = out.iter().filter(|v| v.strict).map(|v| v.name.clone()).collect();
+    let mut seen = HashSet::new();
     out.retain(|v| seen.insert(v.name.clone()));
     for v in &mut out {
         v.strict = strict.contains(&v.name);
@@ -52,10 +55,68 @@ pub fn free_vars(info: &FileInfo, root: &Node) -> Vec<FreeVar> {
     out
 }
 
-fn push(out: &mut Vec<FreeVar>, scope: &Scope, name: String, offset: usize, strict: bool) {
+/// Each use of a free variable of the markup, in source order. A name can be in the list more
+/// than once.
+pub fn uses(info: &FileInfo, root: &Node) -> Vec<FreeVar> {
+    let mut out = Vec::new();
+    let mut scope = Scope::default();
+    node(info, root, &mut scope, &mut out);
+
+    out
+}
+
+/// The names that a Twig tag of the markup binds (`for`, `set`, `with`, `macro`), at any point.
+pub fn bound_names(root: &Node) -> HashSet<String> {
+    let mut out = HashSet::new();
+    bound_in(root, &mut out);
+
+    out
+}
+
+fn bound_in(n: &Node, out: &mut HashSet<String>) {
+    let in_expr = |x: &TwigExpr, out: &mut HashSet<String>| {
+        for p in &x.parts {
+            if let ExprPart::Markup(m) = p {
+                bound_in(m, out);
+            }
+        }
+    };
+
+    match n {
+        Node::Element(e) => {
+            for a in &e.attrs {
+                match &a.kind {
+                    AttrKind::Spread(x) | AttrKind::Plain { value: AttrValue::Expr(x), .. } => in_expr(x, out),
+                    AttrKind::Plain { value: AttrValue::Quoted { parts, .. }, .. } => {
+                        for p in parts {
+                            if let StrPart::Expr(x) = p {
+                                in_expr(x, out);
+                            }
+                        }
+                    }
+                    AttrKind::Plain { value: AttrValue::None, .. } => {}
+                }
+            }
+
+            e.children.iter().for_each(|c| bound_in(c, out));
+        }
+        Node::Fragment(f) => f.children.iter().for_each(|c| bound_in(c, out)),
+        Node::Output(o) => in_expr(&o.expr, out),
+        Node::Tag(t) => out.extend(tag_vars(&t.name, &t.head).bound),
+        Node::Block(b) => {
+            for br in &b.branches {
+                out.extend(tag_vars(&br.tag.name, &br.tag.head).bound);
+                br.children.iter().for_each(|c| bound_in(c, out));
+            }
+        }
+        Node::Text(_) | Node::HtmlComment(_) | Node::Verbatim(_) | Node::TwigComment(_) => {}
+    }
+}
+
+fn push(out: &mut Vec<FreeVar>, scope: &Scope, name: String, offset: usize, strict: bool, renamable: bool) {
     if !scope.bound.contains(&name) {
         let strict = strict && !scope.maybe.contains(&name);
-        out.push(FreeVar { name, offset, strict });
+        out.push(FreeVar { name, offset, strict, renamable });
     }
 }
 
@@ -67,7 +128,7 @@ fn expr(info: &FileInfo, x: &TwigExpr, scope: &mut Scope, out: &mut Vec<FreeVar>
             ExprPart::Code(c) => {
                 for n in expr_free_vars(c) {
                     let off = if exact { x.span.start + n.offset } else { x.span.start };
-                    push(out, scope, n.name, off, true);
+                    push(out, scope, n.name, off, true, exact && !n.shorthand);
                 }
             }
             ExprPart::Markup(m) => node(info, m, scope, out),
@@ -91,7 +152,7 @@ fn handler_callee(attr: &str, x: &TwigExpr, scope: &Scope, out: &mut Vec<FreeVar
     }
 
     let offset = code.len() - code.trim_start().len();
-    push(out, scope, call.callee, x.span.start + offset, true);
+    push(out, scope, call.callee, x.span.start + offset, true, true);
 }
 
 /// The Twig tags with their own scope: a `{% set %}` in their body does not bind after them.
@@ -145,7 +206,7 @@ fn node(info: &FileInfo, n: &Node, scope: &mut Scope, out: &mut Vec<FreeVar>) {
         Node::Tag(t) => {
             let tv = tag_vars(&t.name, &t.head);
             for u in tv.used {
-                push(out, scope, u.name, t.head_span.start + u.offset, !tv.guessed);
+                push(out, scope, u.name, t.head_span.start + u.offset, !tv.guessed, !u.shorthand);
             }
 
             if t.name == "set" {
@@ -163,7 +224,7 @@ fn node(info: &FileInfo, n: &Node, scope: &mut Scope, out: &mut Vec<FreeVar>) {
             for (i, br) in b.branches.iter().enumerate() {
                 let tv = tag_vars(&br.tag.name, &br.tag.head);
                 for u in tv.used {
-                    push(out, scope, u.name, br.tag.head_span.start + u.offset, !tv.guessed);
+                    push(out, scope, u.name, br.tag.head_span.start + u.offset, !tv.guessed, !u.shorthand);
                 }
 
                 let mark = scope.mark();
