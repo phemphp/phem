@@ -152,18 +152,19 @@ final class Streams implements ResetInterface
     }
 
     /**
-     * The key and the signed item of an item of a feed (see FeedPush).
+     * The key and the signed item of an item of a feed (see FeedPush): the token is valid only for
+     * the instances with the broadcast key of the push.
      *
      * @internal see FeedPush
      *
      * @return array{0: string, 1: string}
      */
-    public function feedItem(string $component, string $feed, object $item): array
+    public function feedItem(string $key, string $component, string $feed, object $item): array
     {
         $tokens = $this->feedTokens ?? throw new \LogicException('A push to a feed needs the phem.feed_item_token service.');
         [$class, $identifier] = $this->feedIdentity->of($feed, $item);
 
-        return [$this->feedIdentity->key($feed, $item), $tokens->sign($component, $feed, $class, $identifier)];
+        return [$this->feedIdentity->key($feed, $item), $tokens->sign(FeedItemToken::pushScope($key), $component, $feed, $class, $identifier)];
     }
 
     /** @internal see PageStreams */

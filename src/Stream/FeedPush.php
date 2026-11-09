@@ -78,7 +78,7 @@ final class FeedPush
 
     private function add(string $operation, object $item): self
     {
-        [$key, $token] = $this->streams->feedItem($this->component, $this->name, $item);
+        [$key, $token] = $this->streams->feedItem($this->key, $this->component, $this->name, $item);
         $data = ['phem-feed' => $this->name, 'phem-feed-op' => $operation, 'phem-feed-key' => $key] + ('delete' !== $operation ? ['phem-item' => $token] : []);
 
         $this->streams->add($this->topic, new TurboStream(TurboStream::FEED, '['.BroadcastKeys::ATTRIBUTE.'~="'.$this->key.'"]', many: true, data: $data));

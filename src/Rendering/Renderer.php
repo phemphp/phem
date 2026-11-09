@@ -374,7 +374,7 @@ final class Renderer implements ResetInterface
             throw new \LogicException(\sprintf('"phem:feed" shows a feed property of the component, but "%s" has no feed "%s" with this value.', $fiber->fqcn, $feed->name));
         }
 
-        $content = new FeedContent($fiber->id.'-'.$feed->name, $feed, $fiber->fqcn);
+        $content = new FeedContent($fiber->id.'-'.$feed->name, $feed, $fiber->fqcn, $fiber->feedScope);
 
         return $fiber->feeds[$content->id] = $content;
     }

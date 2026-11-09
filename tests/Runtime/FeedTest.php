@@ -64,26 +64,43 @@ final class FeedTest extends TestCase
         self::assertSame([], $feed->operations());
     }
 
-    public function testATokenIsValidForItsComponentAndItsFeedOnly(): void
+    public function testATokenIsValidForItsScopeItsComponentAndItsFeedOnly(): void
     {
         $tokens = new FeedItemToken('secret');
-        $token = $tokens->sign('App\ChatRoom', 'messages', ChatMessage::class, ['id' => 41]);
+        $scope = FeedItemToken::eventScope('App\ChatPage', ['room' => 'a'], 'phem0123456789ab');
+        $token = $tokens->sign($scope, 'App\ChatRoom', 'messages', ChatMessage::class, ['id' => 41]);
 
-        self::assertSame([ChatMessage::class, ['id' => 41]], $tokens->verify($token, 'App\ChatRoom', 'messages'));
-        self::assertNull($tokens->verify($token, 'App\Other', 'messages'));
-        self::assertNull($tokens->verify($token, 'App\ChatRoom', 'drafts'));
-        self::assertNull(new FeedItemToken('other')->verify($token, 'App\ChatRoom', 'messages'));
-        self::assertNull($tokens->verify($token.'x', 'App\ChatRoom', 'messages'));
-        self::assertNull($tokens->verify('not a token', 'App\ChatRoom', 'messages'));
+        self::assertSame([ChatMessage::class, ['id' => 41]], $tokens->verify($token, $scope, 'App\ChatRoom', 'messages'));
+        self::assertNull($tokens->verify($token, $scope, 'App\Other', 'messages'));
+        self::assertNull($tokens->verify($token, $scope, 'App\ChatRoom', 'drafts'));
+        self::assertNull(new FeedItemToken('other')->verify($token, $scope, 'App\ChatRoom', 'messages'));
+        self::assertNull($tokens->verify($token.'x', $scope, 'App\ChatRoom', 'messages'));
+        self::assertNull($tokens->verify('not a token', $scope, 'App\ChatRoom', 'messages'));
+    }
+
+    public function testATokenOfAnotherInstanceIsNotValid(): void
+    {
+        $tokens = new FeedItemToken('secret');
+        $token = $tokens->sign(FeedItemToken::eventScope('App\ChatPage', ['room' => 'a'], 'phem0123456789ab'), 'App\ChatRoom', 'messages', ChatMessage::class, ['id' => 41]);
+
+        // Another URL of the page, another fiber, or a push.
+        self::assertNull($tokens->verify($token, FeedItemToken::eventScope('App\ChatPage', ['room' => 'b'], 'phem0123456789ab'), 'App\ChatRoom', 'messages'));
+        self::assertNull($tokens->verify($token, FeedItemToken::eventScope('App\ChatPage', ['room' => 'a'], 'phem0123456789ac'), 'App\ChatRoom', 'messages'));
+        self::assertNull($tokens->verify($token, FeedItemToken::pushScope('key'), 'App\ChatRoom', 'messages'));
+
+        $push = $tokens->sign(FeedItemToken::pushScope('room-a'), 'App\ChatRoom', 'messages', ChatMessage::class, ['id' => 41]);
+        self::assertNotNull($tokens->verify($push, FeedItemToken::pushScope('room-a'), 'App\ChatRoom', 'messages'));
+        self::assertNull($tokens->verify($push, FeedItemToken::pushScope('room-b'), 'App\ChatRoom', 'messages'));
     }
 
     public function testATokenWithAnotherItemIsNotValid(): void
     {
         $tokens = new FeedItemToken('secret');
-        [, $mac] = explode('.', $tokens->sign('App\ChatRoom', 'messages', ChatMessage::class, ['id' => 41]));
-        [$other] = explode('.', $tokens->sign('App\ChatRoom', 'messages', ChatMessage::class, ['id' => 42]));
+        $scope = FeedItemToken::pushScope('key');
+        [, $mac] = explode('.', $tokens->sign($scope, 'App\ChatRoom', 'messages', ChatMessage::class, ['id' => 41]));
+        [$other] = explode('.', $tokens->sign($scope, 'App\ChatRoom', 'messages', ChatMessage::class, ['id' => 42]));
 
-        self::assertNull($tokens->verify($other.'.'.$mac, 'App\ChatRoom', 'messages'));
+        self::assertNull($tokens->verify($other.'.'.$mac, $scope, 'App\ChatRoom', 'messages'));
     }
 
     public function testTheIdOfAnItemHasTheIdentifierValues(): void

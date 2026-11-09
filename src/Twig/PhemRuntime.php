@@ -135,7 +135,7 @@ final class PhemRuntime implements RuntimeExtensionInterface, ResetInterface
             throw new \LogicException(\sprintf('An item of the feed "%s" has its own `id`: Phem gives the element of an item the id of the item. Remove the `id`.', $feed->name));
         }
         [$class, $identifier] = $this->identity->of($feed->name, $item);
-        $attributes = ' id="'.$this->identity->elementId($content->id, $feed->name, $item).'" data-phem-item="'.$tokens->sign($content->component, $feed->name, $class, $identifier).'"';
+        $attributes = ' id="'.$this->identity->elementId($content->id, $feed->name, $item).'" data-phem-item="'.$tokens->sign($content->scope, $content->component, $feed->name, $class, $identifier).'"';
         $content->add($item, substr_replace($element, $attributes, $end, 0));
 
         return '';

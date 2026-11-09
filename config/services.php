@@ -239,7 +239,7 @@ return static function (ContainerConfigurator $container): void {
         ->set('phem.feed_item_token', FeedItemToken::class)
             ->args([abstract_arg('secret, set by PhemBundle')])
         ->set('phem.feed_binder', FeedBinder::class)
-            ->args([service('phem.metadata'), service('phem.feed_item_token'), service('phem.entity_finder')->nullOnInvalid()])
+            ->args([service('phem.metadata'), service('phem.feed_item_token'), service('phem.entity_finder')->nullOnInvalid(), service('phem.broadcast_keys')])
         ->set('phem.feed_streams', FeedStreams::class)
             ->args([service('phem.feed_identity')])
         ->set('phem.component_renderer.class', ClassComponentRenderer::class)

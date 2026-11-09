@@ -13,6 +13,10 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Runtime;
 
+use Phem\Rendering\FeedItemToken;
+use Phem\Stream\BroadcastKeys;
+use Phem\Tests\Fixtures\Chat;
+use Phem\Tests\Fixtures\ChatMessage;
 use PHPUnit\Framework\TestCase;
 
 /** The answer of an event to a page with a feed (tests/Fixtures/app/src/Ui/Feed/ChatPage.phem), as the browser gets it. */
@@ -68,6 +72,26 @@ final class FeedEventTest extends TestCase
         self::assertStringContainsString('<ul id="'.$feed[1].'" data-phem-feed></ul>', $streams);
         self::assertStringNotContainsString('id="older"', $streams);
         self::assertMatchesRegularExpression('#</turbo-stream><turbo-stream action="update" target="'.$feed[1].'"><template><li id="'.$feed[1].'-5" data-phem-item="[^"]+"><span>Five</span>.*</li></template></turbo-stream>\z#', $streams);
+    }
+
+    public function testARefreshTakesAPushedItemForTheKeyOfTheInstanceOnly(): void
+    {
+        [$state, $signature, $html] = $this->page('/chat/push-b');
+        self::assertSame(1, preg_match('/<ul id="((phem[0-9a-f]{12})-messages)" data-phem-feed>/', $html, $feed));
+        $message = $this->service(Chat::class, Chat::class)->add('push-a', 'From A');
+        $keys = $this->service('phem.broadcast_keys', BroadcastKeys::class);
+        $tokens = $this->service('phem.feed_item_token', FeedItemToken::class);
+
+        $refresh = fn (string $room): string => $this->streams('/chat/push-b', ['state' => $state, 'signature' => $signature, 'handler' => null, 'event' => ['type' => 'refresh'], 'bound' => [], 'stale' => [$feed[2]], 'feeds' => [[
+            'feed' => $feed[1],
+            'token' => $tokens->sign(FeedItemToken::pushScope($keys->ofInstance('App\Ui\Feed\ChatRoom', ['room' => $room])), 'App\Ui\Feed\ChatRoom', 'messages', ChatMessage::class, ['id' => $message->id]),
+            'op' => 'append',
+        ]]]);
+
+        // A push to room A: room B does not take its item.
+        self::assertStringNotContainsString('From A', $refresh('push-a'));
+        // The same item with the key of room B (the server pushed it to room B).
+        self::assertStringContainsString('<turbo-stream action="append" target="'.$feed[1].'">', $refresh('push-b'));
     }
 
     /** @return array{string, string, string} the state, the signature and the HTML of a page */

@@ -38,11 +38,13 @@ final class FeedContent
      * @param string $id        the id of the feed element
      * @param Feed   $feed      the feed of the component
      * @param string $component the class of the component (see FeedItemToken)
+     * @param string $scope     the scope of the items: the instance of the component (see FeedItemToken::eventScope())
      */
     public function __construct(
         public readonly string $id,
         public readonly Feed $feed,
         public readonly string $component,
+        public readonly string $scope = '',
     ) {
     }
 

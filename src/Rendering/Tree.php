@@ -177,6 +177,7 @@ final class Tree
         }
 
         $fiber = $create($this->state[$id] ?? null);
+        $fiber->feedScope = FeedItemToken::eventScope($this->page, $this->values, $id);
         $fiber->feedItems = array_values(array_filter($this->feedItems, static fn (FeedItem $item): bool => $item->fiber === $id));
 
         return $this->fibers[$id] = $fiber;

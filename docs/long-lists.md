@@ -113,9 +113,9 @@ public function remove(Message $message): void
 
 After the handler, the item of the event renders again and goes to the browser as a `replace`, also when the handler doesn’t call `update()`.
 
-The signature covers the class of the component, the name of the feed and the item. The browser can’t ask for an item that it didn’t get, or for an item of another feed. When the item isn’t in the database any more, or the signature isn’t valid, the handler doesn’t run and the page loads again (409), as for a row that another user removed.
+The signature covers the item, the class of the component, the name of the feed and the instance of the component: the page, its route values and the fiber id. The browser can’t ask for an item that it didn’t get, or move an item to another feed or another instance. For example, a message of `/chat/a` isn’t valid in the feed of `/chat/b`. When the room comes from the state, not from the URL, give the component a key (`key={{ room }}`, see [Start a new feed](#start-a-new-feed)): each room then has its own fiber id. When the item isn’t in the database any more, or the signature isn’t valid, the handler doesn’t run and the page loads again (409), as for a row that another user removed.
 
-The token doesn’t limit the item to one user. A user can send back an item that they saw before, so check access in the handler, as for any value of the browser (see [Keep security decisions out of the state](security.md#keep-security-decisions-out-of-the-state)).
+The token doesn’t limit the item to one user. A user can send back an item that they saw before in the same instance, so check access in the handler, as for any value of the browser (see [Keep security decisions out of the state](security.md#keep-security-decisions-out-of-the-state)).
 
 ## Load older items
 
@@ -175,7 +175,7 @@ final class ChatRoom
 <turbo-stream action="phem-feed" targets="[data-phem-broadcast~=&quot;…&quot;]" data-phem-feed="messages" data-phem-feed-op="append" data-phem-feed-key="6" data-phem-item="…" data-phem-sender="…"></turbo-stream>
 ```
 
-Each browser that shows the feed sends the item back with a refresh, and its server renders the item in the feed. Thus the pushed item has its handlers. Phem doesn’t check if each user may see the item: push an item only to the instances whose users may see it (the `#[BroadcastKey]`), or check access in the markup of the item. A `delete()` removes the element of the item in the browser, with no request. The browser that sent the event skips the push, because its handler changed its feed already.
+Each browser that shows the feed sends the item back with a refresh, and its server renders the item in the feed. Thus the pushed item has its handlers. The signature of a pushed item covers the broadcast key of the push: the server takes it only for an instance with this key, so a push to room A never goes into the feed of room B. Phem doesn’t check if each user may see the item: push an item only to the instances whose users may see it (the `#[BroadcastKey]`), or check access in the markup of the item. A `delete()` removes the element of the item in the browser, with no request. The browser that sent the event skips the push, because its handler changed its feed already.
 
 `feed()` works only on `Streams::toComponent()`: `toPage()` and `everywhere()` throw a `LogicException`.
 

@@ -58,7 +58,7 @@ final class ClassComponentRenderer implements ComponentRenderer
             $component = $fiber->instance = $this->factory->create($fiber->fqcn);
             $this->props->assign($component, $fiber->props, $slots);
             $this->contexts->assign($component, $fiber);
-            $this->feeds->bind($component, $fiber);
+            $this->feeds->bind($component);
             $this->state->initialize($component);
 
             if (null !== $fiber->restored) {
@@ -67,6 +67,8 @@ final class ClassComponentRenderer implements ComponentRenderer
                 $this->mount($component, $fiber);
                 $this->url->read($component, $fiber->query);
             }
+
+            $this->feeds->load($component, $fiber);
         } elseif ($this->props->changesReadonly($component, $fiber->props, $slots)) {
             // A readonly prop cannot change: a new instance gets the props, and the state of the
             // old one. As in the first render, mount() runs when the browser sent no state.
@@ -74,7 +76,7 @@ final class ClassComponentRenderer implements ComponentRenderer
             $component = $fiber->instance = $this->factory->create($fiber->fqcn);
             $this->props->assign($component, $fiber->props, $slots);
             $this->contexts->assign($component, $fiber);
-            $this->feeds->bind($component, $fiber);
+            $this->feeds->bind($component);
             $this->state->initialize($component);
 
             if (null === $fiber->restored) {
@@ -82,6 +84,7 @@ final class ClassComponentRenderer implements ComponentRenderer
             }
 
             $this->state->restore($component, $state);
+            $this->feeds->load($component, $fiber);
         } else {
             $this->props->assign($component, $fiber->props, $slots);
             $this->contexts->assign($component, $fiber);

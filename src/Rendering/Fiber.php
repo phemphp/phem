@@ -112,6 +112,8 @@ final class Fiber
      * @var list<FeedItem>
      */
     public array $feedItems = [];
+    /** The scope of the items of its feed elements: the page, its route values and the fiber id (see FeedItemToken). */
+    public string $feedScope = '';
 
     /**
      * @param array<string, mixed>|null $restored the state that the browser sent back, or null for a new fiber

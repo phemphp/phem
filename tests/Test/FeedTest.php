@@ -133,6 +133,19 @@ final class FeedTest extends KernelTestCase
         $page->click('[data-phem-feed] > li:nth-child(1) .delete')->assertReload();
     }
 
+    public function testTheItemOfAnotherRoomDoesNotRunTheHandler(): void
+    {
+        $roomA = $this->visit('/chat/room-x');
+        $roomB = $this->visit('/chat/room-y');
+
+        // The item of room A, in the feed of room B: its handler would act on a message of room A.
+        $token = (string) $roomA->document()->querySelector('[data-phem-feed] > li')?->getAttribute('data-phem-item');
+        $roomB->document()->querySelector('[data-phem-feed] > li')?->setAttribute('data-phem-item', $token);
+
+        $roomB->click('[data-phem-feed] > li:nth-child(1) .delete')->assertReload();
+        self::assertSame(['Three', 'Four', 'Five'], self::texts($this->visit('/chat/room-x')));
+    }
+
     public function testAPushRendersTheNewItemInTheOtherTabs(): void
     {
         $other = $this->visit('/chat/push');

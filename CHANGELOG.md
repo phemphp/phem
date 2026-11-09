@@ -12,7 +12,8 @@ that break the code of an application start with **Breaking**.
   `phem:feed={{ messages }}`, keeps its items in the browser. The items are not in the state, and
   an event does not load them again. A handler calls `append()`, `prepend()`, `update()`,
   `delete()` or `reset()`, and the response has a Turbo Stream for each change, after the morph of
-  the component. A handler in an item gets the item again: the browser sends its signed item, and
+  the component. A handler in an item gets the item again: the browser sends its signed item, bound
+  to the instance of the component (the page, its route values and the fiber id), and
   the server loads it with `EntityFinder`. A component with a feed runs `mount()` on its first
   render only. `Streams::toComponent(...)->feed('messages')->append($item)` pushes a change to the
   other browsers, and each one renders the item itself, so its handlers work. A feed element
