@@ -6,7 +6,7 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
-## Unreleased
+## 0.3.16 (2026-11-09)
 
 - Class names in markup: a capitalized name that the file imports with `use` (or a component or
   an enum of the namespace) is the class, not a variable. `OrderStatus.Cancelled` reads a case or
