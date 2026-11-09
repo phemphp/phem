@@ -1,0 +1,3 @@
+<?phem // expect: E062
+enum OrderStatus { case Pending; case Cancelled; }
+function App(OrderStatus $status) { return <p>{{ status == OrderStatus.Canceled ? 'x' : 'y' }}</p>; }

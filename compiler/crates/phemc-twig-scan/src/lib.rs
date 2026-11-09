@@ -468,6 +468,93 @@ fn push_arg(expr: &str, start: usize, end: usize, args: &mut Vec<(String, usize)
     args.push((trimmed.to_string(), start + (text.len() - text.trim_start().len())));
 }
 
+/// A free name that starts with an uppercase letter: it can be a class that the file imports
+/// (`OrderStatus.Cancelled`, `path(ProductPage)`). `start..end` is the text that a class
+/// reference replaces: the name and its member, or the callee and the name.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ClassName {
+    pub name: String,
+    /// The byte offset of the name.
+    pub offset: usize,
+    pub start: usize,
+    pub end: usize,
+    pub kind: ClassUse,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ClassUse {
+    /// `Class.NAME`, or `Class.NAME()` with no arguments (`call`). A call with arguments is
+    /// `Other`.
+    Member { member: String, offset: usize, call: bool },
+    /// The first argument of `path(` or `url(`.
+    PageArg { callee: String },
+    /// Any other place.
+    Other,
+}
+
+/// The free names of a Twig text that start with an uppercase letter, with their use. The text
+/// can be a full `{{ ... }}` or `{% ... %}`: the names of a tag are lowercase.
+pub fn class_names(src: &str) -> Vec<ClassName> {
+    let mut out = Vec::new();
+    class_names_in(src, 0, &mut out);
+    out.sort_by_key(|c| c.start);
+
+    out
+}
+
+fn class_names_in(src: &str, base: usize, out: &mut Vec<ClassName>) {
+    let toks = tokenize(src);
+    let mut free = Vec::new();
+    collect_toks(&toks, base, &[], &mut free);
+
+    for (i, (tok, off)) in toks.iter().enumerate() {
+        match tok {
+            Tok::Str(interps) => {
+                for (inner, inner_off) in interps {
+                    class_names_in(inner, base + inner_off, out);
+                }
+            }
+            Tok::Name(name) if name.starts_with(|c: char| c.is_ascii_uppercase()) && free.iter().any(|n| n.offset == base + off) => {
+                out.push(class_name(&toks, i, name, base + off));
+            }
+            _ => {}
+        }
+    }
+}
+
+fn class_name(toks: &[(Tok, usize)], i: usize, name: &str, offset: usize) -> ClassName {
+    let base = offset - toks[i].1;
+    let tok = |j: usize| toks.get(j).map(|t| &t.0);
+    let end = offset + name.len();
+
+    // `Class.NAME` and `Class.NAME()`.
+    if let (Some(Tok::Punct(".")), Some(Tok::Name(member))) = (tok(i + 1), tok(i + 2)) {
+        let member_offset = base + toks[i + 2].1;
+        let call = matches!((tok(i + 3), tok(i + 4)), (Some(Tok::Punct("(")), Some(Tok::Punct(")"))));
+        let end = if call { base + toks[i + 4].1 + 1 } else { member_offset + member.len() };
+
+        // A call with arguments (`Class.from('a')`) is not a member that markup reads.
+        if !call && matches!(tok(i + 3), Some(Tok::Punct("("))) {
+            return ClassName { name: name.to_string(), offset, start: offset, end: offset + name.len(), kind: ClassUse::Other };
+        }
+
+        return ClassName { name: name.to_string(), offset, start: offset, end, kind: ClassUse::Member { member: member.clone(), offset: member_offset, call } };
+    }
+
+    // `path(Page` and `url(Page`: a function, not a method or a filter.
+    let first_arg = matches!(tok(i + 1), Some(Tok::Punct(")" | ","))) && matches!(i.checked_sub(1).and_then(tok), Some(Tok::Punct("(")));
+    let callee = match i.checked_sub(2).and_then(tok) {
+        Some(Tok::Name(c)) if c == "path" || c == "url" => Some(c),
+        _ => None,
+    };
+    let function = !matches!(i.checked_sub(3).and_then(tok), Some(Tok::Punct("." | "|" | "?.")));
+    if let (true, Some(callee), true) = (first_arg, callee, function) {
+        return ClassName { name: name.to_string(), offset, start: base + toks[i - 2].1, end, kind: ClassUse::PageArg { callee: callee.clone() } };
+    }
+
+    ClassName { name: name.to_string(), offset, start: offset, end, kind: ClassUse::Other }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -601,5 +688,26 @@ mod tests {
         assert_eq!(args("handleClick"), None);
         assert_eq!(args("f() ~ g()"), None);
         assert_eq!(args("(f)(1)"), None);
+    }
+
+    #[test]
+    fn class_names_and_their_use() {
+        let uses = |src: &str| class_names(src).into_iter().map(|c| (c.name, src[c.start..c.end].to_string(), c.kind)).collect::<Vec<_>>();
+        let member = |m: &str, offset: usize, call: bool| ClassUse::Member { member: m.into(), offset, call };
+        let page = |c: &str| ClassUse::PageArg { callee: c.into() };
+
+        assert_eq!(uses("status == OrderStatus.Cancelled"), [("OrderStatus".into(), "OrderStatus.Cancelled".into(), member("Cancelled", 22, false))]);
+        assert_eq!(uses("{% for s in OrderStatus.cases() %}"), [("OrderStatus".into(), "OrderStatus.cases()".into(), member("cases", 24, true))]);
+        assert_eq!(uses("{{ path(StaffOrdersPage) }}"), [("StaffOrdersPage".into(), "path(StaffOrdersPage".into(), page("path"))]);
+        assert_eq!(uses("url(ProductPage, {product: p})"), [("ProductPage".into(), "url(ProductPage".into(), page("url"))]);
+        assert_eq!(uses("{{ OrderStatus }}"), [("OrderStatus".into(), "OrderStatus".into(), ClassUse::Other)]);
+        assert_eq!(uses("x.path(Page)"), [("Page".into(), "Page".into(), ClassUse::Other)]);
+        assert_eq!(uses("path(a, Page)"), [("Page".into(), "Page".into(), ClassUse::Other)]);
+        assert_eq!(uses("OrderStatus.from('a')"), [("OrderStatus".into(), "OrderStatus".into(), ClassUse::Other)]);
+        assert_eq!(uses("\"#{Limits.MAX} items\""), [("Limits".into(), "Limits.MAX".into(), member("MAX", 10, false))]);
+
+        // Not free: an attribute, a filter, a callee, a hash key, a constant.
+        assert!(uses("a.Foo ~ b|Bar ~ Baz() ~ {Key: 1} ~ TRUE ~ c?.Qux").is_empty());
+        assert!(uses("status == 'Cancelled'").is_empty());
     }
 }

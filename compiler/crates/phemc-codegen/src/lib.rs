@@ -4,6 +4,7 @@
 //! it generates each file. Markup literals become Twig templates. In the PHP code, each markup
 //! literal becomes a value, `new \Phem\Element(template, vars)`, that the runtime renders.
 
+mod classes;
 mod contexts;
 mod defined;
 mod lower;
@@ -253,6 +254,7 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
     let src = input.text.as_str();
     let mut diags = Vec::new();
     let mut lowerer = lower::Lowerer::new(info, reg, enums, replacements);
+    let class_names = classes::ClassNames::new(info, reg, enums);
     let mut edits: Vec<(Span, String)> = Vec::new();
     let mut templates = Vec::new();
     // The defined variables at each markup, by scope: one walk for each function.
@@ -291,6 +293,11 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
             .unwrap_or_default();
         let mut vars = Vec::new();
         for v in vars::free_vars(info, &m.root) {
+            // A class that the file imports: the lowerer wrote its name in the template.
+            if class_names.is_class(&v.name) {
+                continue;
+            }
+
             let php = if defined.contains(&v.name) {
                 format!("${}", v.name)
             } else if has_variable(scope_text, &v.name) {
@@ -317,14 +324,14 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
                     format!("\\Phem\\Rendering\\Member::read($this, {}, self::class)", php_str(&v.name))
                 } else {
                     if v.strict {
-                        diags.push(undefined(&v.name, v.offset, " or a property or method of the class"));
+                        diags.push(undefined(&v.name, v.offset, " or a property or method of the class", &class_names));
                     }
 
                     continue;
                 }
             } else {
                 if v.strict && !TWIG_GLOBALS.contains(&v.name.as_str()) {
-                    diags.push(undefined(&v.name, v.offset, ""));
+                    diags.push(undefined(&v.name, v.offset, "", &class_names));
                 }
 
                 continue;
@@ -383,10 +390,10 @@ fn in_render(info: &FileInfo, scope: MarkupScope) -> bool {
     matches!(scope, MarkupScope::Method(ci, mi) if info.classes[ci].methods[mi].name.eq_ignore_ascii_case("render"))
 }
 
-fn undefined(name: &str, offset: usize, extra: &str) -> Diagnostic {
-    Diagnostic::error(codes::UNDEFINED_VARIABLE, format!("undefined variable `{name}` in markup"), Span::new(offset, offset + name.len()))
-        .with_label("not defined")
-        .with_help(format!("markup reads the PHP variables of the enclosing function{extra}: define `${name}` before the markup"))
+fn undefined(name: &str, offset: usize, extra: &str, classes: &classes::ClassNames) -> Diagnostic {
+    let help = classes.import_help(name).unwrap_or_else(|| format!("markup reads the PHP variables of the enclosing function{extra}: define `${name}` before the markup"));
+
+    Diagnostic::error(codes::UNDEFINED_VARIABLE, format!("undefined variable `{name}` in markup"), Span::new(offset, offset + name.len())).with_label("not defined").with_help(help)
 }
 
 /// For each file, the other files that declare the parent classes and the traits of its classes.

@@ -1,0 +1,36 @@
+<?phem
+
+namespace App\Ui\Links;
+
+use App\Ui\Path\ScientistPage;
+use Phem\Attribute\Page;
+use Phem\Node;
+use Phem\Tests\Fixtures\Scientist;
+use Phem\Tests\Fixtures\Size;
+
+use function App\Ui\About\AboutPage;
+use function App\Ui\Common\Document;
+
+// The class names in markup: the cases of an enum (a plain PHP class), and links to pages.
+#[Page('/links')]
+final class LinksPage
+{
+    public Size $size = Size::Large;
+
+    public function render(): Node
+    {
+        $marie = new Scientist(2, 'Marie');
+
+        return (
+            <Document>
+                {% if size == Size.Large %}<p id="size">large</p>{% else %}<p id="size">small</p>{% endif %}
+                <ul>
+                    {% for s in Size.cases() %}<li key={{ s.value }}>{{ s.name }}</li>{% endfor %}
+                </ul>
+                <a id="about" href={{ path(AboutPage) }}>About</a>
+                <a id="marie" href={{ path(ScientistPage, {scientist: marie, tab: Size.Small}) }}>Marie</a>
+                <a id="self" href={{ url(LinksPage, {size: Size.Small}) }}>Small</a>
+            </Document>
+        );
+    }
+}

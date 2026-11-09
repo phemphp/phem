@@ -11,6 +11,7 @@ mod complete;
 mod data;
 mod decl;
 mod imports;
+mod markup_classes;
 mod project;
 mod references;
 mod resolve;

@@ -1357,3 +1357,73 @@ fn a_page_render_and_magic_methods_get_no_usage_count() {
         assert_eq!(names, ["Counter"]);
     });
 }
+
+// --- Class names in markup -----------------------------------------------------------------------
+
+const CLASS_USES: &str = "<?phem\nnamespace App\\Ui;\n\nuse App\\Model\\Status;\n\n";
+
+#[test]
+fn a_dot_after_a_class_shows_its_cases_and_cases_of_an_enum() {
+    let r = run(&format!("{CLASS_USES}function HomePage()\n{{\n    return <p>{{{{ Status.| }}}}</p>;\n}}\n"));
+    assert_eq!(r.get("Active").kind, ItemKind::EnumMember);
+    assert!(r.find("Gone").is_some());
+    assert_eq!(snippet(r.get("cases")), "cases()$0");
+    assert!(r.find("value").is_none(), "not the attributes of a case");
+}
+
+#[test]
+fn path_shows_the_pages_with_their_import() {
+    let src = format!("{CLASS_USES}function HomePage()\n{{\n    return <a href={{{{ path(Gal| }}}} />;\n}}\n");
+    let r = run(&src);
+    let item = r.get("GalleryPage");
+    assert_eq!(item.kind, ItemKind::Class);
+    assert!(apply(&r.text, item).contains("use App\\Ui\\Gallery\\GalleryPage;"));
+    assert!(r.find("Layout").is_none(), "a component that is not a page");
+
+    // A route name in a variable.
+    let r = run(&format!("{CLASS_USES}function HomePage(string $route)\n{{\n    return <a href={{{{ path(| }}}} />;\n}}\n"));
+    assert!(r.find("GalleryPage").is_some());
+    assert!(r.find("route").is_some(), "the variables too");
+}
+
+#[test]
+fn path_shows_no_error_page_and_a_plain_function_is_not_a_page() {
+    let src = "<?phem\nnamespace App\\Ui;\n\nuse Phem\\Attribute\\{ErrorPage, Page};\n\n#[ErrorPage]\nfunction NotFoundPage(int $status) { return <p />; }\n\n#[Page('/team')]\nfunction TeamPage() { return <p />; }\n\nfunction Shout(string $s): string { return $s; }\n\nfunction HomePage()\n{\n    return <a href={{ path(|) }} />;\n}\n";
+    let r = run(src);
+    assert!(r.find("TeamPage").is_some());
+    assert!(r.find("NotFoundPage").is_none(), "an error page has no route");
+
+    // A plain PHP function is not a component: phemc reads `Shout` as a variable.
+    let src = src.replace("path(|)", "path(Sh\u{2038}out)");
+    assert!(at(&src, "src/Ui/HomePage.phem").and_then(|s| s.location).is_none());
+    let team = src.replace("Sh\u{2038}out", "Te\u{2038}amPage");
+    assert!(at(&team, "src/Ui/HomePage.phem").and_then(|s| s.location).is_some(), "a function page");
+}
+
+#[test]
+fn a_twig_variable_or_a_plain_class_is_not_a_class_name() {
+    // A loop variable with the name of an imported class.
+    let r = run(&format!("{CLASS_USES}function HomePage()\n{{\n    return <p>{{% for Status in [1] %}}{{{{ Status.| }}}}{{% endfor %}}</p>;\n}}\n"));
+    assert!(r.find("Active").is_none());
+
+    // A class of the namespace that is not a component or an enum: phemc does not know it.
+    let src = "<?phem\nnamespace App\\Ui;\n\nfinal class Limits { const MAX = 3; }\n\nfunction HomePage()\n{\n    return <p>{{ Limits.| }}</p>;\n}\n";
+    assert!(run(src).find("MAX").is_none());
+}
+
+#[test]
+fn a_class_name_in_markup_goes_to_the_class_and_its_case() {
+    let def = |markup: &str| format!("{CLASS_USES}use App\\Ui\\Gallery\\GalleryPage;\n\nfunction HomePage()\n{{\n    return {markup};\n}}\n");
+
+    let src = def("<p>{{ Status.Act‸ive }}</p>");
+    assert_eq!(target(&at_page(&src), &src), pair("src/Model/Status.php", "Active = 'active';"));
+
+    let src = def("<p>{{ Sta‸tus.Active }}</p>");
+    assert_eq!(target(&at_page(&src), &src), pair("src/Model/Status.php", "Status: string"));
+
+    let src = def("<a href={{ path(Galle‸ryPage) }} />");
+    let r = at_page(&src);
+    assert_eq!(target(&r, &src), pair("src/Ui/Gallery/GalleryPage.phem", "GalleryPage"));
+
+    assert!(hover(&at_page(&def("<p>{% for s in Status.ca‸ses() %}{% endfor %}</p>"))).contains("The cases of `App\\Model\\Status`"));
+}

@@ -5,6 +5,7 @@ use crate::complete::rel;
 use crate::data;
 use crate::decl::{param_text, ComponentKind, UseKind};
 use crate::imports::resolve_component;
+use crate::markup_classes::{markup_class, MarkupClass};
 use crate::project::{FileComponent, SymbolKind};
 use crate::scanner::{scan, Context, TwigContext};
 use crate::scope::{chain_start, ends_with_word, trim_end, Scope};
@@ -332,6 +333,16 @@ impl Resolver<'_, '_> {
 
         let env = TwigEnv::new(self.index, ctx.literal, ctx.start - 2);
         if let Some(m) = CHAIN_HEAD.captures(head).filter(|_| !RANGE_HEAD.is_match(head)) {
+            // `OrderStatus.Cancelled` and `OrderStatus.cases()`.
+            if let Some(MarkupClass::Class(fqn, found)) = markup_class(self.index, &env, &m[1]) {
+                if word == "cases" && found.class().kind == "enum" {
+                    let hover = format!("{}\n\nThe cases of `{fqn}`, in order.", code("php", &format!("{fqn}::cases(): array")));
+                    return Some(Symbol { range, location: None, hover: Some(hover) });
+                }
+
+                return Some(self.member_result(&self.index.member(&fqn, word, Some(MemberKind::Constant))?, range));
+            }
+
             let ty = env.type_of(&m[1])?;
             let attr = env.attribute(&ty, word)?;
             if attr.kind == AttrKind::Key {
@@ -345,6 +356,14 @@ impl Resolver<'_, '_> {
 
         let call = t[end..].trim_start().starts_with('(');
         let v = env.variable(word);
+
+        // A class name: `OrderStatus.Cancelled`, `path(ProductPage)`.
+        if let (false, Some(class)) = (call, markup_class(self.index, &env, word)) {
+            return match class {
+                MarkupClass::Class(fqn, _) => self.class_result(&fqn, range),
+                MarkupClass::Function(found) => Some(self.function_result(&found, range)),
+            };
+        }
         if call && v.is_none() {
             if let Some(f) = data::function(word) {
                 return Some(Symbol { range, location: None, hover: Some(format!("{}\n\n{}", code("twig", f.1), f.2)) });

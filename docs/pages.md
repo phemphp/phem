@@ -217,11 +217,13 @@ With the route `/scientists/{id:scientist}` of `ScientistPage`, the links render
 
 The values are by prop or by route value:
 
-- **A prop with a route value** gives its route value: `{scientist: scientist}` gives `id`. An entity gives the value of the mapped field (`id` of `{id:scientist}`, `slug` of `{slug:post}`): its identifier, or a public property or a getter of the field. `{id: 5}` works too.
+- **A prop with a route value** gives its route value: `{scientist: scientist}` gives `id`. An entity gives the value of the mapped field (`id` of `{id:scientist}`, `slug` of `{slug:post}`): its identifier, or a public property or a getter of the field. A prop with two route values (`/blog/{year:post.year}/{slug:post}`) gives the two. `{id: 5}` works too.
 - **A backed enum** gives its value.
 - **The other values** go to the query string (`tab=papers`).
 
-`phemc` checks that the class is a page (E063). The same values work in PHP, in `RedirectTo` and in `PageUrlGenerator::generate()`: `new RedirectTo(ScientistPage::class, ['scientist' => $scientist])`. Markup also reads the cases of an enum with its class name (see [Classes in markup](phem-syntax.md#classes-in-markup)).
+The third argument works as in Twig: `path(ScientistPage, {...}, true)` gives a relative path, and `url(ScientistPage, {...}, true)` gives a URL with no scheme (`//example.com/...`).
+
+`phemc` checks that the class is a page with a route (E063). A page of a package has a route only when your app imports the pages of the package (see [Import the pages of a package](using-packages.md#import-the-pages-of-a-package)). The same values work in PHP, in `RedirectTo` and in `PageUrlGenerator::generate()`: `new RedirectTo(ScientistPage::class, ['scientist' => $scientist])`. Markup also reads the cases of an enum with its class name (see [Classes in markup](phem-syntax.md#classes-in-markup)).
 
 ## Redirect before a page renders
 

@@ -20,7 +20,8 @@ pub struct FileInfo {
     pub function_uses: HashMap<String, String>,
     pub functions: Vec<Func>,
     pub classes: Vec<Class>,
-    /// The backed enums: a prop of their type takes the value of a case.
+    /// The enums: a prop of a backed enum type takes the value of a case, and the markup reads
+    /// the cases (`OrderStatus.Cancelled`).
     pub enums: Vec<EnumDecl>,
     /// The declarations marked with `#[Page]` or `#[Route]`: the pages.
     pub routes: Vec<RouteDecl>,
@@ -167,13 +168,21 @@ pub struct Replaces {
     pub span: Span,
 }
 
-/// A backed enum: `enum Variant: string { case Outline = 'outline'; }`.
+/// An enum: `enum Variant: string { case Outline = 'outline'; }`, or a pure enum.
 #[derive(Clone, Debug)]
 pub struct EnumDecl {
     pub fqn: String,
     pub name_span: Span,
-    /// The values of the cases, as strings (`'outline'`, `3`). None when the value of a case is
-    /// not a literal (a constant expression): the compiler cannot check the values.
+    /// The names of the cases (`Outline`).
+    pub cases: Vec<String>,
+    /// The names of the constants (`const DEFAULT = self::Outline;`).
+    pub constants: Vec<String>,
+    /// The enum implements an interface or uses a trait: it can have constants that the
+    /// compiler does not see.
+    pub open: bool,
+    /// The values of the cases of a backed enum, as strings (`'outline'`, `3`). None for a pure
+    /// enum, and when the value of a case is not a literal (a constant expression): the compiler
+    /// cannot check the values.
     pub values: Option<Vec<String>>,
 }
 
@@ -484,7 +493,7 @@ pub fn scan(rel: &str, src: &str, lexed: &Lexed) -> FileInfo {
                         i = end + 1;
                         continue;
                     }
-                    "enum" if toks.t.get(i + 1).is_some_and(|x| x.kind == TokKind::Ident) && toks.is_op(i + 2, ":") => {
+                    "enum" if toks.t.get(i + 1).is_some_and(|x| x.kind == TokKind::Ident) => {
                         attrs.clear();
                         receive_only.clear();
                         replaces = None;
@@ -805,23 +814,54 @@ fn qualify(ns: &str, name: &str) -> String {
     }
 }
 
-/// Parses `enum Name: string { case A = 'a'; ... }` starting at the `enum` token. The `case`
-/// statements of the methods (`switch`) are in nested braces, so they are not cases.
+/// Parses `enum Name: string { case A = 'a'; ... }` or `enum Name { case A; ... }` starting at
+/// the `enum` token. The `case` statements of the methods (`switch`) are in nested braces, so
+/// they are not cases.
 fn parse_enum(toks: &Toks, at: usize, ns: &str) -> (EnumDecl, usize) {
     let fqn = qualify(ns, toks.text(at + 1));
     let name_span = toks.t[at + 1].span;
+    let backed = toks.is_op(at + 2, ":");
     let mut open = at + 2;
+    let mut implements = false;
     while open < toks.t.len() && !toks.is_op(open, "{") {
+        implements |= toks.is_word(open, "implements");
         open += 1;
     }
 
     let close = toks.matching(open);
-    let mut values = Some(Vec::new());
+    let mut cases = Vec::new();
+    let mut constants = Vec::new();
+    let mut uses_trait = false;
+    let mut values = if backed { Some(Vec::new()) } else { None };
     let mut i = open + 1;
     while i < close {
         if toks.is_op(i, "{") || toks.is_op(i, "(") || toks.is_op(i, "[") || toks.t[i].kind == TokKind::AttrOpen {
             i = toks.matching(i) + 1;
             continue;
+        }
+
+        if toks.is_word(i, "case") && toks.t.get(i + 1).is_some_and(|x| x.kind == TokKind::Ident) && (toks.is_op(i + 2, "=") || toks.is_op(i + 2, ";")) {
+            cases.push(toks.text(i + 1).to_string());
+        }
+
+        uses_trait |= toks.is_word(i, "use");
+
+        // `const A = 1, B = 2;`, with a type or not (`const ?string LABEL = null;`): each name
+        // is the word before a `=` of the statement.
+        if toks.is_word(i, "const") {
+            let mut j = i + 1;
+            while j < close && !toks.is_op(j, ";") {
+                if toks.is_op(j, "(") || toks.is_op(j, "[") || toks.is_op(j, "{") {
+                    j = toks.matching(j) + 1;
+                    continue;
+                }
+
+                if toks.is_op(j + 1, "=") && toks.t[j].kind == TokKind::Ident {
+                    constants.push(toks.text(j).to_string());
+                }
+
+                j += 1;
+            }
         }
 
         if toks.is_word(i, "case") && toks.is_op(i + 2, "=") {
@@ -835,7 +875,7 @@ fn parse_enum(toks: &Toks, at: usize, ns: &str) -> (EnumDecl, usize) {
         i += 1;
     }
 
-    (EnumDecl { fqn, name_span, values }, close)
+    (EnumDecl { fqn, name_span, cases, constants, open: implements || uses_trait, values }, close)
 }
 
 /// The value of a case as a string, when it is a literal: `'a'`, `"a"`, `3`, `-1`.

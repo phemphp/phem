@@ -322,6 +322,17 @@ final class AppTest extends TestCase
         self::assertSame(404, $this->request('GET', '/nope')->getStatusCode());
     }
 
+    public function testClassNamesInMarkupReadCasesAndLinkToPages(): void
+    {
+        $html = (string) $this->request('GET', '/links')->getContent();
+
+        self::assertStringContainsString('<p id="size">large</p>', $html, 'a case of an enum');
+        self::assertStringContainsString('<li data-phem-key="s">Small</li><li data-phem-key="l">Large</li>', $html, 'the cases of an enum');
+        self::assertStringContainsString('<a id="about" href="/about">', $html, 'a function page');
+        self::assertStringContainsString('<a id="marie" href="/scientists/2?tab=s">', $html, 'an entity prop gives its id');
+        self::assertStringContainsString('<a id="self" href="http://localhost/links?size=s">', $html, 'an absolute URL');
+    }
+
     public function testRouteAttributesExposeThePages(): void
     {
         $router = $this->service('router', RouterInterface::class);

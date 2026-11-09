@@ -204,7 +204,7 @@ Errors start with `E` and stop the build; warnings start with `W` and don’t. `
 | E059, E060 | `#[ErrorPage]` on a class (an error page is a function), or in a package (only the application has error pages). See [Error pages](error-pages.md) |
 | E061 | An invalid `phem:error`: not a `#[State]` property or a `Bound` prop, a component with no `Validation` property, an element with an `id`, content or `phem:bind`, a void element, or a component tag whose component has no `id` prop or no `children` |
 | E062 | A class name in markup with a case or a constant that the enum doesn’t have (`OrderStatus.Canceled`), or `cases()` of a component, when the enum is in a `.phem` file. See [Classes in markup](phem-syntax.md#classes-in-markup) |
-| E063 | `path()` or `url()` of a class or a function that isn’t a page (`path(Card)`) |
+| E063 | `path()` or `url()` of a class or a function that isn’t a page with a route (`path(Card)`, or an error page) |
 | E064 | A class name in markup in another place than `Class.NAME`, `Class.cases()` or `path(Page)`, for example `{{ OrderStatus }}` or `OrderStatus.from('paid')` |
 | W002–W003 | A list item without `key`, or an event that the browser doesn’t send (`onMouseEnter`) |
 | W004 | `#[Page]`, `#[ErrorPage]`, `#[Route]`, `#[Component]`, `#[State]`, `#[Prop]`, `#[Path]`, `#[Context]`, `#[Provide]`, `#[Broadcast]`, `#[BroadcastKey]`, `#[Async]` or `#[Validated]` without its `use` import (`Phem\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |

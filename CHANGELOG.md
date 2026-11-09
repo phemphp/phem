@@ -8,6 +8,19 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Class names in markup: a capitalized name that the file imports with `use` (or a component or
+  an enum of the namespace) is the class, not a variable. `OrderStatus.Cancelled` reads a case or
+  a constant, `OrderStatus.cases()` the cases of an enum, and `path(ProductPage, {product:
+  product})` or `url(...)` links to a page. `phemc` checks the names: E062 (no such case of an
+  enum of the sources), E063 (not a page with a route) and E064 (a class name in another
+  place). Twig checks the cases of the other classes when it compiles the template
+  (`phem:warmup`). The editors complete the cases after `OrderStatus.` and the pages in
+  `path(`, with their import.
+- `PageUrlGenerator` and `RedirectTo` take the values by prop: a prop gives its route value, an
+  entity the value of its mapped field (`['product' => $product]` for `/products/{id:product}`),
+  and a backed enum its value. `PageUrlGenerator::url()` gives an absolute URL. The route
+  values of each page are in a cache file (`cache:warmup` writes it), so a link doesn't load the
+  routes.
 - Toast messages from a handler: `$e->toast('Saved')`, or `$e->toast('No stock',
   ToastType::Error, 0)` with a type and a duration in ms. A component or a service injects
   `Phem\Toasts` (`$this->toasts->error('…')`), with a method for each type. An empty message,

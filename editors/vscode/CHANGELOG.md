@@ -11,6 +11,10 @@
   usages, then click one to go to it.
 - Completion for the Phem attribute `phem:error`: on an HTML element, and on the tag of a
   component with an `id` prop. The diagnostics show the new E061.
+- Class names in markup: completion of the cases and the constants after `OrderStatus.` (and
+  `cases()` of an enum), and of the pages in `path(` and `url(`, with their import. Go to
+  definition and hover on the class and on the case. The diagnostics show the new E062, E063 and
+  E064.
 
 ## 0.5.0
 

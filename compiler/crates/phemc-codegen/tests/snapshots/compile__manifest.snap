@@ -466,6 +466,19 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       "required": [],
       "rest": false
     },
+    "App\\Ui\\Shop\\OrderPage": {
+      "fqcn": "App\\Ui\\Shop\\OrderPage",
+      "kind": "class",
+      "source": "Ui/Shop/OrderPage.phem",
+      "props": [
+        "id"
+      ],
+      "slots": [],
+      "required": [
+        "id"
+      ],
+      "rest": false
+    },
     "App\\Ui\\Toggle": {
       "fqcn": "App\\Ui\\Toggle",
       "kind": "class",
@@ -490,7 +503,8 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
   },
   "pages": {
     "App\\Ui\\About\\AboutPage": "",
-    "App\\Ui\\HomePage": ""
+    "App\\Ui\\HomePage": "",
+    "App\\Ui\\Shop\\OrderPage": ""
   },
   "templates": {
     "Ui/About/AboutPage.0.twig": {
@@ -652,6 +666,10 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "Ui/HomePage.6.twig": {
       "source": "Ui/HomePage.phem",
       "line": 85
+    },
+    "Ui/Shop/OrderPage.0.twig": {
+      "source": "Ui/Shop/OrderPage.phem",
+      "line": 29
     }
   },
   "files": [
@@ -667,6 +685,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "php/Ui/Common/Rest.php",
     "php/Ui/Common/Tabs.php",
     "php/Ui/Common/TagKeywords.php",
-    "php/Ui/HomePage.php"
+    "php/Ui/HomePage.php",
+    "php/Ui/Shop/OrderPage.php"
   ]
 }

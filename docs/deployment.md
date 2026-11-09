@@ -35,7 +35,7 @@ php bin/console asset-map:compile
 Each step has one job:
 
 - **`phemc build src --no-warmup`**: compiles the sources. `cache:warmup` runs the Twig warmup later, so the build skips it
-- **`cache:warmup`**: builds the container (with the component services), the routes, the Twig cache of the `phemc` templates, and the OPcache preload file of the components
+- **`cache:warmup`**: builds the container (with the component services), the routes, the Twig cache of the `phemc` templates, the route values of the page links (`path(ProductPage, {product: product})`), and the OPcache preload file of the components
 - **`asset-map:compile`**: writes the assets to `public/assets/`
 
 Set a random `APP_SECRET`, for example in `.env.local`. It signs the component state in the browser (the `phem.secret` option defaults to `%kernel.secret%`).

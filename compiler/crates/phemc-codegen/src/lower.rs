@@ -6,15 +6,18 @@ use phemc_syntax::markup::{Attr, AttrKind, AttrValue, Element, ExprPart, Node, S
 use phemc_syntax::{Diagnostic, Span};
 use std::collections::HashSet;
 
+use crate::classes::ClassNames;
 use crate::replaces::Replacements;
 use crate::{has_variable, php_str};
 
 pub struct Lowerer<'a> {
     pub info: &'a FileInfo,
     pub reg: &'a Registry,
-    /// The backed enums of the project: a literal value of an enum prop is one of its cases.
+    /// The enums of the project: a literal value of an enum prop is one of its cases.
     enums: &'a Enums,
     replacements: &'a Replacements,
+    /// The class names of the markup (`OrderStatus.Cancelled`, `path(ProductPage)`).
+    classes: ClassNames<'a>,
     /// The component of the function or the class of the markup, if any: a tag of the component
     /// that it replaces stays the original.
     pub owner: Option<&'a str>,
@@ -48,7 +51,7 @@ pub struct Lowerer<'a> {
 
 impl<'a> Lowerer<'a> {
     pub fn new(info: &'a FileInfo, reg: &'a Registry, enums: &'a Enums, replacements: &'a Replacements) -> Self {
-        Self { info, reg, enums, replacements, owner: None, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, dynamics: 0, errors: 0, skip_described_by: false, twig_bound: vec![] }
+        Self { info, reg, enums, replacements, classes: ClassNames::new(info, reg, enums), owner: None, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, dynamics: 0, errors: 0, skip_described_by: false, twig_bound: vec![] }
     }
 
     pub fn lower_root(&mut self, node: &Node, slots: Vec<String>) -> String {
@@ -65,6 +68,23 @@ impl<'a> Lowerer<'a> {
         self.diags.last_mut().unwrap()
     }
 
+    /// Twig code with its class names replaced (see `classes`). `base` is its offset in the
+    /// source, and `bound` the names that it binds.
+    /// An attribute can lower more than once (the value of a bound field): its diagnostics show once.
+    fn twig(&mut self, code: &str, base: usize, bound: &[String]) -> String {
+        let bound = [self.twig_bound.as_slice(), bound].concat();
+        let mut diags = Vec::new();
+        let code = self.classes.rewrite(code, base, &bound, &mut diags);
+
+        for d in diags {
+            if !self.diags.iter().any(|e| e.code == d.code && e.span == d.span) {
+                self.diags.push(d);
+            }
+        }
+
+        code
+    }
+
     fn nodes(&mut self, nodes: &[Node], out: &mut String) {
         for n in nodes {
             self.node(n, out);
@@ -77,8 +97,10 @@ impl<'a> Lowerer<'a> {
             Node::TwigComment(_) => {}
             Node::Tag(t) => {
                 // `{% set x = 1 %}` binds `x` until the end of the markup.
-                self.twig_bound.extend(phemc_twig_scan::tag_vars(&t.name, &t.head).bound);
-                out.push_str(&t.raw);
+                let bound = phemc_twig_scan::tag_vars(&t.name, &t.head).bound;
+                let raw = self.twig(&t.raw, t.span.start, &bound);
+                self.twig_bound.extend(bound);
+                out.push_str(&raw);
             }
             Node::Fragment(f) => self.nodes(&f.children, out),
             Node::Block(b) => {
@@ -90,8 +112,10 @@ impl<'a> Lowerer<'a> {
                 // binds `x` after it.
                 let bound = self.twig_bound.len();
                 for br in &b.branches {
-                    out.push_str(&br.tag.raw);
-                    self.twig_bound.extend(phemc_twig_scan::tag_vars(&br.tag.name, &br.tag.head).bound);
+                    let tag_bound = phemc_twig_scan::tag_vars(&br.tag.name, &br.tag.head).bound;
+                    let raw = self.twig(&br.tag.raw, br.tag.span.start, &tag_bound);
+                    out.push_str(&raw);
+                    self.twig_bound.extend(tag_bound);
                     self.nodes(&br.children, out);
                 }
 
@@ -119,6 +143,9 @@ impl<'a> Lowerer<'a> {
                 let name = code.split_once("??").map_or(code, |(slot, _)| slot.trim());
                 if self.components == 0 && self.slots.iter().any(|s| s == name) {
                     if self.slots_defined.insert(name.to_string()) {
+                        // The default can read a class: `{{ children ?? path(HomePage) }}`.
+                        let start = o.expr.span.start + o.expr.code().find(code).unwrap_or(0);
+                        let code = self.twig(code, start, &[]);
                         out.push_str(&format!("{{% block {name} %}}{{{{ {code} }}}}{{% endblock %}}"));
                     } else {
                         out.push_str(&format!("{{{{ block('{name}') }}}}"));
@@ -126,7 +153,8 @@ impl<'a> Lowerer<'a> {
                     return;
                 }
 
-                out.push_str(&o.raw);
+                let raw = self.twig(&o.raw, o.span.start, &[]);
+                out.push_str(&raw);
             }
             Node::Element(e) if e.is_component() => self.component(e, out),
             Node::Element(e) => self.element(e, out),
@@ -327,14 +355,15 @@ impl<'a> Lowerer<'a> {
             return "null".into();
         }
 
-        x.code().trim().to_string()
+        let code = x.code();
+        self.twig(&code, x.span.start, &[]).trim().to_string()
     }
 
     /// E018: a literal value of a backed enum prop (`variant="outline"`) is the value of a case.
     /// The runtime converts it to the case. An enum outside the sources is checked only there.
     /// A bare attribute gives `true`, which is not a case either.
     fn check_enum_value(&mut self, def: &ComponentDef, tag: &str, prop: &str, value: &AttrValue, span: Span) {
-        let Some(values) = def.types.get(prop).and_then(|t| self.enums.get(&t.to_ascii_lowercase())) else { return };
+        let Some(values) = def.types.get(prop).and_then(|t| self.enums.get(&t.to_ascii_lowercase())).and_then(|e| e.values.as_ref()) else { return };
         let value = match value {
             AttrValue::None => "true",
             AttrValue::Quoted { parts, .. } => match parts.as_slice() {
@@ -1386,12 +1415,18 @@ impl<'a> Lowerer<'a> {
     fn markup_expr(&mut self, x: &TwigExpr) -> Result<String, Diagnostic> {
         let mut code = String::new();
         let mut marks: Vec<&Node> = Vec::new();
+        let mut offset = x.span.start;
         for p in &x.parts {
             match p {
-                ExprPart::Code(c) => code.push_str(c),
+                ExprPart::Code(c) => {
+                    let lowered = self.twig(c, offset, &[]);
+                    code.push_str(&lowered);
+                    offset += c.len();
+                }
                 ExprPart::Markup(n) => {
                     code.push_str(&format!("\u{1}{}\u{2}", marks.len()));
                     marks.push(n);
+                    offset = n.span().end;
                 }
             }
         }

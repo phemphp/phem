@@ -1,0 +1,17 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<section>
+                {% if status == phem_constant('App\\Ui\\Shop\\OrderStatus::Cancelled') %}<p class="cancelled">Cancelled</p>{% endif %}
+                <select name="status">
+                    {% for s in enum_cases('App\\Ui\\Shop\\OrderStatus') %}
+                        <option {{ phem_key(s.value) }} {{ phem_attr('value', s.value) }} {{ phem_attr('selected', s == phem_constant('App\\Ui\\Shop\\OrderStatus::DEFAULT')) }}>{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+                <p>{{ "Paid in #{phem_constant('App\\Entity\\Currency::Euro').value}" }}</p>
+                {% if status == phem_constant('App\\Ui\\Shop\\OrderStatus::Pending') %}<em>Waiting</em>{% else %}<strong>Done</strong>{% endif %}
+                <a {{ phem_attr('href', phem_path('App\\Ui\\HomePage')) }}>Home</a>
+                <a {{ phem_attr('href', phem_url('App\\Ui\\About\\AboutPage', {tab: 'team'})) }}>About</a>
+                <a {{ phem_attr('href', (phem_path('App\\Ui\\Shop\\OrderPage', {id: id})) ~ '#top') }}>This order</a>
+            </section>

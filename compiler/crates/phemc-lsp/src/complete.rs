@@ -4,6 +4,7 @@ use crate::classes::{Index, Member, MemberKind};
 use crate::data;
 use crate::decl::{short_name, ComponentKind, Prop, UseKind};
 use crate::imports::{import_for, resolve_component, Insert};
+use crate::markup_classes::{markup_class, MarkupClass};
 use crate::project::{FileComponent, Symbol, SymbolKind};
 use crate::scanner::{scan, Context, TwigContext};
 use crate::scope::{chain_start, Scope};
@@ -206,6 +207,8 @@ re!(TWIG_NEW_VAR, r"^[-~]?\s*(for\s+(\w+\s*,\s*)?|set\s+)\w*$");
 re!(TWIG_AFTER_VALUE, r"[^\w\s(\[{,:?~+\-*/%<>=!|]\s*\w*$");
 re!(TWIG_CLOSE, r"^[ \t]*([-~]?)%\}|^\}");
 re!(ROUTE_CALL, r"\b(path|url)\s*\(\s*$");
+re!(PAGE_ARG, r"(?:^|[^\w.])(?:path|url)\s*\(\s*\w*$");
+re!(CLASS_NAME_WORD, r"^[A-Z]\w*$");
 
 pub struct Completer<'a, 'p> {
     index: &'a Index<'p>,
@@ -703,6 +706,11 @@ impl<'a, 'p> Completer<'a, 'p> {
 
         let env = TwigEnv::new(self.index, ctx.literal, tag_start);
         if let Some(m) = TWIG_DOT.captures(expr).filter(|_| !TWIG_RANGE.is_match(expr)) {
+            // `OrderStatus.`: the cases and the constants of a class.
+            if let Some(MarkupClass::Class(fqn, found)) = Some(&m[1]).filter(|n| CLASS_NAME_WORD.is_match(n)).and_then(|n| markup_class(self.index, &env, n)) {
+                return self.class_member_items(&fqn, found.class().kind == "enum", range);
+            }
+
             let Some(ty) = env.type_of(&m[1]) else { return vec![] };
             return env
                 .attributes(&ty)
@@ -731,13 +739,16 @@ impl<'a, 'p> Completer<'a, 'p> {
             return vec![];
         }
 
+        // `path(` and `url(`: the pages, and the variables (a route name in a variable).
+        let pages = if PAGE_ARG.is_match(expr) { self.page_items(range) } else { vec![] };
+
         let trimmed = expr.trim_start();
         let trimmed = trimmed.strip_prefix(['-', '~']).unwrap_or(trimmed);
         if TWIG_AFTER_VALUE.is_match(&format!(" {trimmed}")) {
             return vec![];
         }
 
-        let mut items = Vec::new();
+        let mut items = pages;
         for v in env.variables() {
             let kind = match v.kind {
                 VarSource::Method => ItemKind::Method,
@@ -815,6 +826,62 @@ impl<'a, 'p> Completer<'a, 'p> {
             };
 
             add(name, detail, Some(doc), format!("{snippet} %}}"), format!("2{name}"));
+        }
+
+        items
+    }
+
+    /// `OrderStatus.`: the cases and the constants of a class, and `cases()` of an enum.
+    fn class_member_items(&self, fqn: &str, is_enum: bool, range: (usize, usize)) -> Vec<Item> {
+        let mut items: Vec<Item> = self
+            .index
+            .members(fqn)
+            .iter()
+            .filter(|m| m.kind == MemberKind::Constant && m.visibility != "private" && m.visibility != "protected")
+            .map(|m| {
+                let kind = if m.enum_case { ItemKind::EnumMember } else { ItemKind::Constant };
+                let sort = format!("{}{}", if m.enum_case { '0' } else { '1' }, m.name);
+                Item::new(&m.name, kind, range, sort).detail(m.signature.trim()).doc(Some(member_doc(m, self.root()))).insert(&m.name)
+            })
+            .collect();
+
+        if is_enum {
+            items.push(Item::new("cases", ItemKind::Method, range, "2cases").detail("(): array").doc(Some("The cases of the enum, in order.".into())).snippet("cases()$0"));
+        }
+
+        items
+    }
+
+    /// `path(` and `url(`: the page classes, with their import.
+    fn page_items(&self, range: (usize, usize)) -> Vec<Item> {
+        let components = self.components();
+        let parsed = &self.index.current.parsed;
+        let plain: Vec<_> = components.iter().map(|c| c.component.clone()).collect();
+
+        let mut items = Vec::new();
+        let mut seen: Vec<&str> = Vec::new();
+        // An error page has no route.
+        for comp in components.iter().filter(|c| c.page && c.error_pages.is_empty()) {
+            if seen.contains(&comp.fqn.as_str()) {
+                continue;
+            }
+
+            seen.push(&comp.fqn);
+
+            let mut name = comp.name.clone();
+            let mut edits = vec![];
+            if resolve_component(parsed, &plain, &comp.name).is_none_or(|r| r.fqn != comp.fqn) {
+                let kind = if comp.kind == ComponentKind::Class { UseKind::Class } else { UseKind::Function };
+                let imp = import_for(self.text, parsed, kind, &comp.fqn);
+                name = imp.name;
+                edits = imp.edit.into_iter().collect();
+            }
+
+            let kind = if comp.kind == ComponentKind::Class { ItemKind::Class } else { ItemKind::Function };
+            let sort = format!("{}{name}", self.rank(!edits.is_empty(), comp.file.as_deref()));
+            let mut item = Item::new(&name, kind, range, sort).detail(comp.fqn.clone()).doc(Some(component_doc(comp, self.root()))).insert(&name);
+            item.edits = edits;
+            items.push(item);
         }
 
         items

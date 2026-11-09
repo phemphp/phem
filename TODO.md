@@ -96,23 +96,6 @@ call, the page shows old data, with no error.
   the flush, and renders again each component with a changed entity in a prop or a `#[Path]`.
 - **Open questions:** see "Refresh after a handler" in the design discussions.
 
-### [ ] Enum cases and page links in markup — P3
-
-The markup of the app compares enums as strings (`{% if status.value == 'cancelled' %}`), and it
-links with 64 `path('route_name')` strings. `phemc` checks none of them.
-
-- **Best peer:** the Twig `enum()` function, typed routes of Blazor.
-- **Proposal:** the markup can use the classes that the file imports with `use`, and `phemc`
-  checks the names:
-
-  ```php
-  {% if status == OrderStatus.Cancelled %}
-  <a href={{ path(StaffOrdersPage) }}>Volver a pedidos</a>
-  <a href={{ path(ProductPage, {product: product}) }}>Ver en la tienda</a>
-  ```
-
-  Most `name:` arguments of `#[Page]` are then not necessary.
-
 ### [ ] A lint for copied properties, and docs for UI-only state — P3
 
 - **Copied properties:** the app has 33 lines such as `$lines = $this->lines;` in `render()`.

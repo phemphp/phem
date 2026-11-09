@@ -1,0 +1,44 @@
+<?phem
+
+namespace App\Ui\Shop;
+
+use App\Entity\Currency;
+use App\Ui\About\AboutPage;
+use App\Ui\HomePage;
+use Phem\Attribute\{Page, Path};
+use Phem\Node;
+
+enum OrderStatus: string
+{
+    case Pending = 'pending';
+    case Cancelled = 'cancelled';
+
+    const DEFAULT = self::Pending;
+}
+
+#[Page('/orders/{id}')]
+final class OrderPage
+{
+    #[Path] public int $id;
+
+    public OrderStatus $status = OrderStatus::Pending;
+
+    public function render(): Node
+    {
+        return (
+            <section>
+                {% if status == OrderStatus.Cancelled %}<p className="cancelled">Cancelled</p>{% endif %}
+                <select name="status">
+                    {% for s in OrderStatus.cases() %}
+                        <option key={{ s.value }} value={{ s.value }} selected={{ s == OrderStatus.DEFAULT }}>{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+                <p>{{ "Paid in #{Currency.Euro.value}" }}</p>
+                {{ status == OrderStatus.Pending ? <em>Waiting</em> : <strong>Done</strong> }}
+                <a href={{ path(HomePage) }}>Home</a>
+                <a href={{ url(AboutPage, {tab: 'team'}) }}>About</a>
+                <a href="{{ path(OrderPage, {id: id}) }}#top">This order</a>
+            </section>
+        );
+    }
+}

@@ -1,0 +1,48 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from Ui/Shop/OrderPage.phem; do not edit */
+
+namespace App\Ui\Shop;
+
+use App\Entity\Currency;
+use App\Ui\About\AboutPage;
+use App\Ui\HomePage;
+use Phem\Attribute\{Page, Path};
+use Phem\Node;
+
+enum OrderStatus: string
+{
+    case Pending = 'pending';
+    case Cancelled = 'cancelled';
+
+    const DEFAULT = self::Pending;
+}
+
+#[Page('/orders/{id}')]
+final class OrderPage
+{
+    #[Path] public int $id;
+
+    public OrderStatus $status = OrderStatus::Pending;
+
+    public function render(): Node
+    {
+        return (
+            new \Phem\Element('Ui/Shop/OrderPage.0.twig', ['status' => $this->status, 'id' => $this->id])
+
+
+
+
+
+
+
+
+
+
+
+
+        );
+    }
+}

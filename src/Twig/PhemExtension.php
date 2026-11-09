@@ -20,6 +20,7 @@ use Phem\Dom\DynamicTag;
 use Phem\Handler\HandlerCall;
 use Phem\Handler\MemberHandler;
 use Phem\Manifest\Manifest;
+use Phem\Routing\PageUrlGenerator;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
@@ -28,6 +29,7 @@ use Twig\TwigFunction;
  *
  * The functions that need the current render tree or a service (`phem_on`, `phem_loading`, `phem_progress`, `phem_bind`, `phem_class`, `phem_attrs`) are in PhemRuntime.
  * The attribute functions render with Phem\Dom\Attributes, and the tag of `<Dynamic>` with Phem\Dom\DynamicTag. `classes()` gives a mergeable class list (Phem\ClassList).
+ * phemc compiles the class names of the markup to `phem_constant()` (a case or a constant, see ConstantFunction), and to `phem_path()` and `phem_url()` (a page link, see PageUrlGenerator).
  */
 final class PhemExtension extends AbstractExtension
 {
@@ -65,6 +67,9 @@ final class PhemExtension extends AbstractExtension
             new TwigFunction('classes', ClassList::of(...)),
             new TwigFunction('phem_method', MemberHandler::of(...)),
             new TwigFunction('phem_call', HandlerCall::bind(...)),
+            new TwigFunction('phem_constant', 'constant', ['node_class' => ConstantFunction::class]),
+            new TwigFunction('phem_path', [PageUrlGenerator::class, 'path']),
+            new TwigFunction('phem_url', [PageUrlGenerator::class, 'url']),
         ];
     }
 }

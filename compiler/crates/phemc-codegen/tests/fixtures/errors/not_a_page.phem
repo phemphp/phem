@@ -1,0 +1,4 @@
+<?phem // expect: E063
+#[\Phem\Attribute\Component]
+function Card() { return <div />; }
+function App() { return <a href={{ path(Card) }}>Card</a>; }

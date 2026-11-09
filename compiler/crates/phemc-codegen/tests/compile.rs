@@ -1244,3 +1244,73 @@ fn an_enum_that_two_files_declare_is_an_error() {
     assert!(out.is_none());
     assert_eq!(shown(&diags), ["vendor/acme/ui/components/Size.phem E014 enum `Acme\\Ui\\Size` is already declared in `src/Size.phem`"]);
 }
+
+#[test]
+fn class_names_in_markup() {
+    let enums = "<?phem\nnamespace App\\Entity;\nenum OrderStatus: string { case Pending = 'pending'; case Cancelled = 'cancelled'; const DEFAULT = self::Pending; }\n";
+    let pages = "<?phem\nnamespace App\\Ui;\nuse Phem\\Attribute\\{Component, Page};\nuse Phem\\Node;\n#[Page('/')]\nfinal class HomePage { public function render(): Node { return <p />; } }\n#[Page('/team')]\nfunction TeamPage(): Node { return <p />; }\n#[Component]\nfunction Card(): Node { return <div />; }\n";
+    let app = |imports: &str, body: &str| SourceInput::app("App.phem", format!("<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\nuse Phem\\Node;\n{imports}\n#[Component]\nfinal class Box extends \\Vendor\\Base {{ public function render(): Node {{ return <div>{body}</div>; }} }}\n"));
+    let compiled = |imports: &str, body: &str| {
+        let (out, diags) = compile(vec![app(imports, body), SourceInput::app("Entity/OrderStatus.phem", enums), SourceInput::app("Ui/Pages.phem", pages)]);
+        let diags: Vec<String> = diags.iter().flat_map(|f| f.shown().map(move |d| format!("{} {} {}", d.code, d.message, d.help.clone().unwrap_or_default()))).collect();
+        let out = out.map(|o| o.files.into_iter().find(|f| f.rel == "App.phem").unwrap());
+        (out.as_ref().map(|f| f.templates[0].content.clone()).unwrap_or_default(), out.map(|f| f.php).unwrap_or_default(), diags)
+    };
+    let imports = "use App\\Entity\\OrderStatus;\nuse App\\Ui\\{Card, HomePage};\nuse function App\\Ui\\TeamPage;";
+
+    // A class name is not a variable, also in a class with a parent outside the sources.
+    let (twig, php, diags) = compiled(imports, "{{ OrderStatus.DEFAULT.value }} {{ path(HomePage) }} {{ url(TeamPage, {a: 1}) }}");
+    assert!(diags.is_empty(), "{diags:?}");
+    assert!(twig.contains("{{ phem_constant('App\\\\Entity\\\\OrderStatus::DEFAULT').value }} {{ phem_path('App\\\\Ui\\\\HomePage') }} {{ phem_url('App\\\\Ui\\\\TeamPage', {a: 1}) }}"), "{twig}");
+    assert!(php.contains("new \\Phem\\Element('App.0.twig', [])"), "{php}");
+
+    // A loop variable with the name of a class stays the variable.
+    let (twig, _, diags) = compiled(imports, "{% for OrderStatus in [1] %}{{ OrderStatus }}{% endfor %}");
+    assert!(diags.is_empty(), "{diags:?}");
+    assert!(twig.contains("{{ OrderStatus }}"), "{twig}");
+
+    let errors = |body: &str| compiled(imports, body).2;
+    assert_eq!(errors("{{ OrderStatus.Canceled }}"), ["E062 `OrderStatus` has no case `Canceled` its cases are: Pending, Cancelled"]);
+    assert_eq!(errors("{% for c in Card.cases() %}{% endfor %}"), ["E062 `Card` is not an enum, so it has no `cases()` "]);
+    assert_eq!(errors("{{ path(Card) }}"), ["E063 `Card` is not a page add `#[Page]` to the component, or link to a route name: `path('name')`"]);
+    assert_eq!(errors("{{ path(OrderStatus) }}"), ["E063 `OrderStatus` is not a page import a page of the sources, or link to a route name: `path('name')`"]);
+    assert_eq!(errors("{{ OrderStatus }}")[0].split_once(' ').unwrap().0, "E064");
+    assert_eq!(errors("{{ OrderStatus.from('a') }}")[0].split_once(' ').unwrap().0, "E064");
+    assert_eq!(errors("{{ TeamPage.X }}")[0].split_once(' ').unwrap().0, "E064");
+
+    // A class that the file does not import: the help gives the `use`.
+    let home = SourceInput::app("Home.phem", "<?phem\nnamespace App;\nfunction Home() { return <a href={{ path(HomePage) }} />; }\n");
+    let (_, diags) = compile(vec![home, SourceInput::app("Ui/Pages.phem", pages)]);
+    let diags: Vec<String> = diags.iter().flat_map(|f| f.shown().map(|d| format!("{} {}", d.code, d.help.clone().unwrap_or_default()))).collect();
+    assert_eq!(diags, ["E030 import the class to use it in markup: `use App\\Ui\\HomePage;`"]);
+}
+
+#[test]
+fn class_names_in_slot_defaults_error_pages_and_enum_constants() {
+    let compiled = |src: &str| {
+        let (out, diags) = compile(vec![SourceInput::app("App.phem", src)]);
+        let diags: Vec<String> = diags.iter().flat_map(|f| f.shown().map(|d| format!("{} {}", d.code, d.message))).collect();
+        (out.map(|o| o.files.into_iter().flat_map(|f| f.templates).map(|t| t.content).collect::<Vec<_>>().join("\n")).unwrap_or_default(), diags)
+    };
+    let head = "<?phem\nnamespace App;\nuse Phem\\Attribute\\{Component, ErrorPage, Page};\nuse Phem\\Html;\nuse Phem\\Node;\n#[Page('/')]\nfunction HomePage(): Node { return <p />; }\n#[ErrorPage]\nfunction NotFoundPage(int $status): Node { return <p />; }\n";
+
+    // The default of a slot reads the class too.
+    let (twig, diags) = compiled(&format!("{head}#[Component]\nfunction Card(?Html $children = null): Node {{ return <div>{{{{ children ?? path(HomePage) }}}}</div>; }}\n"));
+    assert!(diags.is_empty(), "{diags:?}");
+    assert!(twig.contains("{% block children %}{{ children ?? phem_path('App\\\\HomePage') }}{% endblock %}"), "{twig}");
+
+    // An error page has no route.
+    let (_, diags) = compiled(&format!("{head}function App() {{ return <a href={{{{ path(NotFoundPage) }}}} />; }}\n"));
+    assert_eq!(diags, ["E063 `NotFoundPage` is not a page"]);
+
+    // The constants of a `const` statement, with a type or not, and of an interface or a trait.
+    let enums = "interface HasDefault { const FALLBACK = 'x'; }\nenum Level: int { const LOW = 1, HIGH = 9; const ?string LABEL = null; const int|string MAX = 9; case A = 1; }\nenum Tone: string implements HasDefault { case Soft = 's'; }\n";
+    let (_, diags) = compiled(&format!("{head}{enums}function App() {{ return <p>{{{{ Level.LOW ~ Level.HIGH ~ Level.LABEL ~ Level.MAX ~ Tone.FALLBACK }}}}</p>; }}\n"));
+    assert!(diags.is_empty(), "{diags:?}");
+    let (_, diags) = compiled(&format!("{head}{enums}function App() {{ return <p>{{{{ Level.B }}}}</p>; }}\n"));
+    assert_eq!(diags, ["E062 `Level` has no case `B`"]);
+
+    // An attribute that lowers two times gives its error once.
+    let src = "<?phem\nnamespace App;\nuse Phem\\Attribute\\{Component, State};\nuse Phem\\Node;\nenum Size: string { case S = 's'; }\n#[Component]\nfinal class F { #[State] public string $size = 's';\npublic function render(): Node { return <input type=\"radio\" phem:bind={{ size }} value={{ Size.Huge.value }} />; } }\n";
+    assert_eq!(compiled(src).1, ["E062 `Size` has no case `Huge`"]);
+}

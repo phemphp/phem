@@ -119,6 +119,10 @@ pub struct ComponentDef {
     /// The parameters of a function page are the arguments of a controller, not props.
     #[serde(skip)]
     pub page: bool,
+    /// A page with a route (`#[Page]`, or `#[Route]` on a class component): `path()` links to
+    /// it. An error page has no route.
+    #[serde(skip)]
+    pub routed: bool,
     /// The component that this component replaces in all the tags (`#[Component(replaces: ...)]`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub replaces: Option<String>,
@@ -201,7 +205,8 @@ pub fn context_type(file: &FileInfo, ty: &str) -> String {
 /// The components that a scanned file declares.
 pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
     let mut out = Vec::new();
-    let is_page = |fqn: &str| file.routes.iter().any(|r| r.is_component && r.fqn == fqn) || file.error_pages.iter().any(|e| e.is_function && e.fqn == fqn);
+    let is_routed = |fqn: &str| file.routes.iter().any(|r| r.is_component && r.fqn == fqn);
+    let is_page = |fqn: &str| is_routed(fqn) || file.error_pages.iter().any(|e| e.is_function && e.fqn == fqn);
     for f in &file.functions {
         let Some(kind) = f.component_kind else { continue };
 
@@ -234,6 +239,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
                 .collect(),
             provides: vec![],
             page,
+            routed: is_routed(&f.fqn),
             replaces: replaced(f.replaces.as_ref()),
         });
     }
@@ -266,6 +272,7 @@ pub fn components(file: &FileInfo) -> Vec<ComponentDef> {
                 .collect(),
             provides,
             page: is_page(&c.fqn),
+            routed: is_routed(&c.fqn),
             replaces: replaced(c.replaces.as_ref()),
         });
     }
@@ -696,12 +703,26 @@ fn context_declarations(file: &FileInfo) -> Vec<(&'static str, &str, &str, Span)
 /// All components of a project, by FQCN.
 pub type Registry = BTreeMap<String, ComponentDef>;
 
-/// The values of the backed enums of a project, by lowercase FQCN (PHP class names ignore the
-/// case). An enum with a case that is not a literal is not in it: the compiler cannot check its
-/// values.
-pub type Enums = BTreeMap<String, Vec<String>>;
+/// The enums of a project, by lowercase FQCN (PHP class names ignore the case).
+pub type Enums = BTreeMap<String, EnumInfo>;
 
-/// The backed enums of the files, and E014 for an enum that two files declare.
+/// The cases of an enum of the sources.
+#[derive(Clone, Debug)]
+pub struct EnumInfo {
+    /// The FQCN, as the file declares it.
+    pub fqn: String,
+    /// The names of the cases.
+    pub cases: Vec<String>,
+    /// The names of the constants.
+    pub constants: Vec<String>,
+    /// The enum implements an interface or uses a trait: it can have more constants.
+    pub open: bool,
+    /// The values of the cases of a backed enum. None for a pure enum, or when a case has a value
+    /// that is not a literal: the compiler cannot check the values.
+    pub values: Option<Vec<String>>,
+}
+
+/// The enums of the files, and E014 for an enum that two files declare.
 pub fn enums<'a>(files: impl IntoIterator<Item = &'a FileInfo>) -> (Enums, Vec<(String, Diagnostic)>) {
     let mut enums = Enums::new();
     let mut paths: HashMap<String, &str> = HashMap::new();
@@ -716,9 +737,7 @@ pub fn enums<'a>(files: impl IntoIterator<Item = &'a FileInfo>) -> (Enums, Vec<(
             }
 
             paths.insert(key.clone(), path);
-            if let Some(values) = &e.values {
-                enums.insert(key, values.clone());
-            }
+            enums.insert(key, EnumInfo { fqn: e.fqn.clone(), cases: e.cases.clone(), constants: e.constants.clone(), open: e.open, values: e.values.clone() });
         }
     }
 
@@ -744,6 +763,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         contexts: Vec::new(),
         provides: Vec::new(),
         page: false,
+        routed: false,
         replaces: None,
     }, ComponentDef {
         fqcn: SUSPENSE.into(),
@@ -761,6 +781,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         contexts: Vec::new(),
         provides: Vec::new(),
         page: false,
+        routed: false,
         replaces: None,
     }, ComponentDef {
         fqcn: ERROR_BOUNDARY.into(),
@@ -778,6 +799,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         contexts: Vec::new(),
         provides: Vec::new(),
         page: false,
+        routed: false,
         replaces: None,
     }, ComponentDef {
         fqcn: DYNAMIC.into(),
@@ -795,6 +817,7 @@ pub fn builtins() -> Vec<ComponentDef> {
         contexts: Vec::new(),
         provides: Vec::new(),
         page: false,
+        routed: false,
         replaces: None,
     }]
 }

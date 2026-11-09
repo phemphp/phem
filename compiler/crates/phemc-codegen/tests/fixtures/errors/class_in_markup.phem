@@ -1,0 +1,3 @@
+<?phem // expect: E064
+use App\Entity\OrderStatus;
+function App() { return <p>{{ OrderStatus }}</p>; }

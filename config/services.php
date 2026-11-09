@@ -79,6 +79,8 @@ use Phem\Routing\ControllersLoader;
 use Phem\Routing\PageLoader;
 use Phem\Routing\PageRouteValues;
 use Phem\Routing\PageUrlGenerator;
+use Phem\Routing\PageUrlKeys;
+use Phem\Routing\PageUrlValues;
 use Phem\State\BoundValues;
 use Phem\State\StateAccessor;
 use Phem\State\StateCache;
@@ -334,8 +336,15 @@ return static function (ContainerConfigurator $container): void {
             ->args([service('.inner'), service('phem.route_loader')])
         ->set('phem.page_route_values', PageRouteValues::class)
             ->args([service('router')])
+        ->set('phem.page_url_keys', PageUrlKeys::class)
+            ->args([service('router'), '%kernel.cache_dir%', '%kernel.debug%'])
+            ->tag('kernel.cache_warmer')
+        ->set('phem.page_url_values', PageUrlValues::class)
+            ->args([service('phem.page_url_keys'), service('phem.object_identifier')->nullOnInvalid()])
         ->set('phem.page_url_generator', PageUrlGenerator::class)
-            ->args([service('router')])
+            ->args([service('router'), service('phem.page_url_values')])
+            // phem_path() and phem_url() in the compiled templates.
+            ->tag('twig.runtime')
         ->alias(PageUrlGenerator::class, 'phem.page_url_generator')
         ->set('phem.turbo_streams', TurboStreams::class)
         ->set('phem.suspense_stream', SuspenseStream::class)
