@@ -33,8 +33,9 @@ final class TodoList
 
     #[State] public array $todos = [];
 
-    public function __construct(private readonly TodoRepository $repository)
-    {
+    public function __construct(
+        private readonly TodoRepository $repository,
+    ) {
     }
 ```
 
@@ -364,8 +365,9 @@ final class LeadTimeSettings
 {
     private Settings $settings; // a Doctrine entity
 
-    public function __construct(private readonly SettingsRepository $repository)
-    {
+    public function __construct(
+        private readonly SettingsRepository $repository,
+    ) {
     }
 
     public function mount(): void

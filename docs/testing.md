@@ -299,8 +299,9 @@ final class Limits
 }
 
 // In Counter:
-public function __construct(private readonly Limits $limits)
-{
+public function __construct(
+    private readonly Limits $limits,
+) {
 }
 
 public function increment(): void

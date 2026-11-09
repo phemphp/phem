@@ -28,8 +28,9 @@ final class ClosedDays
 {
     #[State] public Validation $validation;
 
-    public function __construct(private readonly Calendar $calendar)
-    {
+    public function __construct(
+        private readonly Calendar $calendar,
+    ) {
     }
 
     public function addClosed(#[MapForm] ClosedDates $dates): void

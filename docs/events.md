@@ -211,8 +211,9 @@ A handler middleware runs code around each handler, such as a security check, a 
 ```php
 final class LoginRequired implements HandlerMiddleware
 {
-    public function __construct(private readonly Security $security)
-    {
+    public function __construct(
+        private readonly Security $security,
+    ) {
     }
 
     public function handle(\Closure $handler, Event $event, \Closure $next): mixed

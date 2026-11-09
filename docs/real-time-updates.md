@@ -274,8 +274,9 @@ final class BagContents
 {
     #[Prop, BroadcastKey] public int $bag;
 
-    public function __construct(private readonly BagRepository $bags)
-    {
+    public function __construct(
+        private readonly BagRepository $bags,
+    ) {
     }
 
     // A change for this user only: other browsers keep their bag.

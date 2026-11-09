@@ -170,7 +170,10 @@ A component or a service that the handler calls injects `Phem\Toasts`. It has a 
 ```php
 use Phem\Toasts;
 
-public function __construct(private readonly Toasts $toasts) {}
+public function __construct(
+    private readonly Toasts $toasts,
+) {
+}
 
 $this->toasts->error('The schedule starts before it ends.');
 $this->toasts->success('Saved', 8000);
