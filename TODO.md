@@ -95,3 +95,145 @@ call, the page shows old data, with no error.
 - **Proposal B (automatic):** with `#[Transactional]`, Phem reads the Doctrine unit of work at
   the flush, and renders again each component with a changed entity in a prop or a `#[Path]`.
 - **Open questions:** see "Refresh after a handler" in the design discussions.
+
+## 4. Client side
+
+These items come from a review of the client side on 2026-11-09, with a complex app as the
+model: a project tool with a kanban board, a command palette, inline edits and a live feed.
+
+### [ ] Call a handler from JavaScript — P1
+
+The `phem` controller exports only its Stimulus class. A JS library cannot send an event with its
+own data to a handler: SortableJS ("card 12 moved to column 3 at position 0"), a rich text
+editor, a map. The work-around is a hidden input with a fake `change` event.
+
+- **Best peer:** LV `pushEvent` in a JS hook, LW `$wire.call()`.
+- **Proposal:** a `phem:handler` directive and a `phem:call` browser event. The handler reads
+  the data in `$e->detail`:
+
+  ```html
+  <ul data-controller="sortable" phem:handler={{ move }}>
+  ```
+
+  ```js
+  this.element.dispatchEvent(new CustomEvent("phem:call", { detail: { card: 12, column: 3, index: 0 } }))
+  ```
+
+  ```php
+  public function move(Event $e): void { /* $e->detail['card'] … */ }
+  ```
+
+- **Open question:** the browser makes the detail, so the handler must check it, as it checks
+  `$e->value`.
+
+### [ ] More DOM events — P2
+
+`phemc` accepts only 9 events (`onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`,
+`onKeyDown`, `onKeyUp`, `onFocus`, `onBlur`). These events are missing:
+
+- `onDrop`, `onDragStart`, `onDragOver`: drag and drop, an upload drop zone;
+- `onPaste`: paste an image into a comment;
+- `onContextMenu`: a right-click menu;
+- `onPointerDown`, `onPointerUp`, `onScroll`.
+
+- **Best peer:** React (all DOM events), LW `wire:<any event>`.
+- **Open question:** what `Event` gets for each one (the files of a drop, the files of a paste).
+
+### [ ] Key filters and event modifiers — P2
+
+`onKeyDown` sends each key press to the server, and the handler tests `$e->key`. A click in a
+card row bubbles to the row, with no way to stop it in markup.
+
+- **Best peer:** LW `wire:keydown.enter`, `.prevent`, `.stop`; LV `phx-key`.
+- **Proposal:**
+
+  ```html
+  <input onKeyDown={{ save }} phem:key="Enter" />
+  <button onClick={{ star }} phem:stop>★</button>
+  ```
+
+### [ ] Global keyboard shortcuts — P3
+
+A command palette (`Cmd+K`), list moves (`j` / `k`) and `Esc` need a listener on the window, not
+on a focused element.
+
+- **Best peer:** LV `phx-window-keydown`, LW `@keydown.window`.
+- **Proposal:** `phem:shortcut="mod+k"` on the element of the handler, or a built-in
+  `phem-shortcut` controller for browser-only actions.
+
+### [ ] Load more on view, and polling — P2
+
+`<Suspense lazy>` loads one time. An infinite scroll needs a trigger that can run more than one
+time. A status or a "last seen" value needs polling when the app has no Mercure hub.
+
+- **Best peer:** LW `wire:intersect` and `wire:poll`, LV `phx-viewport-bottom`.
+- **Proposal:**
+
+  ```html
+  <li onVisible={{ loadMore }}>Loading…</li>
+  <span phem:poll={{ 30000 }} onPoll={{ refreshStatus }}>{{ status }}</span>
+  ```
+
+  Polling stops while the tab is hidden (`visibilitychange`). Goes with "Streams for long lists".
+
+### [ ] Built-in controllers for complex input — P2
+
+The built-in controllers cover simple patterns only. These are missing:
+
+- **Combobox / autocomplete:** an ARIA list, keyboard moves, results from a handler;
+- **Popover and tooltip:** with a position (CSS anchor positioning, a fallback for old browsers);
+  `phem-toggle` does not set a position;
+- **Sortable list:** drag and drop that calls a handler (needs "Call a handler from JavaScript");
+- **Menu:** keyboard support and roving focus, as `phem-tabs` has.
+
+- **Best peer:** Blazor component libraries, LC with Symfony UX Autocomplete.
+
+### [ ] Client-side reactive state — P3
+
+A small computed value needs a custom Stimulus controller or a round trip: a character counter, a
+"show password" toggle, a "select all" checkbox that counts the selected rows.
+`phem-optimistic` changes the page only before the server answers.
+
+- **Best peer:** LW with Alpine (`x-data`, `$wire.entangle`).
+- **Open question:** a small built-in controller (`phem-count`, `phem-reveal`), or a guide for
+  Alpine with `data-phem-client`.
+
+### [ ] Focus, scroll and screen-reader support after a morph — P2
+
+- Scroll to a new item after an event (a new comment).
+- Keep the scroll position of a list that a push changes.
+- Announce a change that is not a toast in an `aria-live` region.
+
+`phem-autofocus` covers only the focus when an element connects.
+
+- **Best peer:** LV `JS.focus()`, `phx-mounted`; LW `wire:scroll`.
+- **Proposal:** `phem:scroll-into-view` on an element that an event adds, and
+  `$e->announce('3 results')`.
+
+### [ ] Offline queue — P3
+
+The `phem-offline` class shows the state, and events wait for `online`. A reload loses the
+queue, and the app has no service worker or PWA shell.
+
+- **Best peer:** none of the peers does it well.
+- **Open question:** a queue in IndexedDB must keep the signed state of each event. The signature
+  gets old after `phem.state_max_age`.
+
+### [ ] Sync between tabs — P3
+
+Two tabs of the same page keep different signed state, unless the page has `#[Broadcast]` and a
+Mercure hub.
+
+- **Proposal:** a `BroadcastChannel` that sends a `refresh()` to the other tabs of the same user
+  after an event.
+
+### [ ] Upload work in the browser — P3
+
+`phem:progress` shows the progress of one request. These are missing:
+
+- an image preview before the upload;
+- chunked uploads that can resume, and direct uploads to S3 for large files;
+- an image resize in the browser.
+
+- **Best peer:** LW `WithFileUploads` (temporary uploads, S3 direct upload), LV `allow_upload`
+  (chunks, previews, external uploads).
