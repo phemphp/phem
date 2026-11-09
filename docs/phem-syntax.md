@@ -2,7 +2,7 @@
 
 A `.phem` file is a PHP file with markup literals in it. The `phemc` compiler turns each markup literal into a Twig template and keeps the PHP code as it is, so all parsing happens at build time. This page lists each syntax element: the file, components, markup, props, pages and routes, events and directives, built-in components, markup values and the PHP attributes.
 
-For what the features do at runtime, read the topic pages: [Components and state](components.md), [Events and forms](events-and-forms.md), [Client-side behavior](client-side.md), [Server features](server-features.md) and [Errors and limits](errors-and-limits.md).
+For what the features do at runtime, read the topic pages: [Components and state](components.md), [Pages and routes](pages.md), [Events](events.md), [Forms](forms.md), [Client-side behavior](client-side.md), [Styling](styling.md), [Server features](server-features.md) and [Errors and limits](errors-and-limits.md).
 
 ## File structure and open tag
 
@@ -109,6 +109,60 @@ Each form of value renders this way:
 All Twig filters, tests and tags work. Don’t write PHP in markup: compute values in PHP before the `return`.
 
 Phem doesn’t render a `javascript:` URL that comes from an expression in a URL attribute (`href`, `src`, `action`). A spread never renders an inline script, such as `onclick` with a string.
+
+### Classes in markup
+
+Markup can read the cases and the constants of a class, and link to a page, with the class name. Import the class with `use`, as in PHP:
+
+```php
+use App\Entity\Order;
+use App\Entity\OrderStatus;
+use App\Ui\Shop\ProductPage;
+use Phem\Attribute\{Page, Path};
+use Phem\Node;
+
+use function App\Ui\Common\Document;
+
+#[Page('/staff/orders/{id:order}')]
+final class StaffOrderPage
+{
+    #[Path] public Order $order;
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                {% if order.status == OrderStatus.Cancelled %}<p>Cancelled</p>{% endif %}
+                <select name="status">
+                    {% for s in OrderStatus.cases() %}<option key={{ s.value }} value={{ s.value }}>{{ s.name }}</option>{% endfor %}
+                </select>
+                <a href={{ path(StaffOrdersPage) }}>Back to the orders</a>
+                <a href={{ path(ProductPage, {product: order.product}) }}>View in the shop</a>
+            </Document>
+        );
+    }
+}
+```
+
+`StaffOrdersPage` is a page in the same namespace, so it needs no import. The links render with the URLs of the routes:
+
+```html
+<a href="/staff/orders">Back to the orders</a>
+<a href="/products/42">View in the shop</a>
+```
+
+A name that starts with an uppercase letter is a class when the file imports it with `use` (or `use function` for a function page), or when a component or an enum of the `.phem` files has this name in the namespace of the file. It isn’t a template variable. Each form compiles this way:
+
+| You write | You get |
+|---|---|
+| `OrderStatus.Cancelled` | The case or the constant (`OrderStatus::Cancelled`) |
+| `OrderStatus.cases()` | The list of the cases of the enum |
+| `path(ProductPage)`, `path(ProductPage, {...})` | The path of the page (`/products/42`) |
+| `url(ProductPage, {...})` | The absolute URL of the page (`https://example.com/products/42`) |
+
+The values of `path()` and `url()` are by prop or by route value. For the route `/products/{id:product}`, `{product: product}` gives the route value `id` from the identifier of the entity, and `{id: 42}` works too. A backed enum gives its value, and the other values go to the query string. A page needs a `name:` in `#[Page]` only when you link to it with a string: `path('home')`.
+
+`phemc` checks the names (E062, E063, E064). It knows the enums of the `.phem` files only. For a class in a `.php` file, Twig checks the case or the constant when it compiles the template: `phemc build` compiles the templates (`phem:warmup`), so it reports the error too. A static method call (`OrderStatus.from('paid')`) isn’t allowed: call it in PHP before the `return`.
 
 ### Conditional markup
 
@@ -263,54 +317,13 @@ A value that isn’t a case is an error that lists the valid values. `phemc` che
 
 ### Merge of classes
 
-With a spread, a caller’s `className` replaces the classes of the component. Mark the default classes with `classes()` to merge the caller’s classes into them instead:
+`classes()` marks the default classes of a component, so a caller’s `className` merges into them and doesn’t replace them. It takes the same inputs as clsx: strings, lists and condition maps. See [Merge the classes of the caller](styling.md#merge-the-classes-of-the-caller).
+
+## Pages
+
+Add `#[Page]` to a class or a function to give it a URL. A page needs no `#[Component]`:
 
 ```php
-#[Component]
-function Button(?Html $children = null, mixed ...$rest): Node
-{
-    return (
-        <button className={{ classes('px-4 py-2 bg-blue-500') }} {{ ...rest }}>
-            {{ children }}
-        </button>
-    );
-}
-
-<Button className="bg-red-500">Delete</Button>
-// class="px-4 py-2 bg-red-500" with the Tailwind merger
-```
-
-Position decides who wins. `classes()` before the spread sets defaults that the caller can change, and `classes()` after the spread sets classes that the caller can’t remove. `classes()` takes the same inputs as clsx: strings, lists and condition maps (`{'active': isActive}`). A `class` attribute takes a list too: `className={{ ['btn', {'active': isActive}] }}`. In PHP code, call `Phem\classes()`.
-
-`style` doesn’t merge: the last value wins. The default merger removes only duplicates. To merge Tailwind classes of the same group (`px-2` then `px-4` gives `px-4`), see [The class merger](using-packages.md#turn-on-the-tailwind-class-merger).
-
-## Pages and routes
-
-A page is a component with a URL. It renders inside the document component of the application, and the bundle loads its routes from the Symfony routing config.
-
-### Page declarations
-
-Add `#[Page]` to a class or a function to make it a page. A page needs no `#[Component]`, and by convention its name ends with `Page` (see [Organize the UI](compiling.md#organize-the-ui)):
-
-```php
-use Phem\Attribute\Page;
-use Phem\Node;
-
-use function App\Ui\Common\Document;
-
-#[Page('/', name: 'home')]
-final class HomePage
-{
-    public function render(): Node
-    {
-        return (
-            <Document title="Home">
-                <h1>Welcome to my app</h1>
-            </Document>
-        );
-    }
-}
-
 #[Page('/about')]
 function AboutPage(): Node
 {
@@ -318,121 +331,7 @@ function AboutPage(): Node
 }
 ```
 
-`#[Page]` extends the Symfony `#[Route]` attribute, so it takes the same options: `name`, `methods`, `requirements`, `defaults`, `host` and the others. Repeat it to give a page more than one URL. With no `name`, the route name comes from the class: `App\Ui\Example\CounterPage` becomes `app_ui_example_counterpage`. On a function, use `#[Page]`, not `#[Route]` (E052).
-
-The parameters of a function page get the same arguments as a Symfony controller: route values, the `Request`, services, `#[CurrentUser]` and the other value resolvers. A function page returns its markup, or a `RedirectTo` to send the browser to another page (see [Redirect before a page renders](events-and-forms.md#redirect-before-a-page-renders)).
-
-### The document of the pages
-
-The application owns the HTML document. It’s a component in the `.phem` sources like any other: it returns the `<html>` element and prints the page content in a `<Root>`. Phem adds the `<!DOCTYPE html>`:
-
-```php
-<?phem
-
-namespace App\Ui\Common;
-
-use Phem\Attribute\Component;
-use Phem\{Html, Node, Root};
-
-#[Component]
-function Document(?string $title = null, ?Html $children = null): Node
-{
-    return (
-        <html lang="en">
-            <head>
-                <title>{{ title ?? 'My app' }}</title>
-                {{ importmap('app') }}
-            </head>
-            <body><Root>{{ children }}</Root></body>
-        </html>
-    );
-}
-```
-
-Each page renders its content inside the document and sets its title with the `title` prop (`<Document title="Home">`), as `HomePage` does above. The title is a string, so it can hold the values of the page: `<Document title="Error {{ status }}">`. The document can have more props and slots, for example a `?Html $head` slot for the `<meta>` tags of a page. For another layout, such as an admin area, write another document component and use it in the pages of that area.
-
-A `<title>` in the markup of a page isn’t the page title, and `phemc` reports it (W005). A `<title>` inside `<head>` or an `<svg>` is valid.
-
-### The `<Root>` element
-
-`<Root>` (`Phem\Root`) is the built-in component that renders the root element of a page. Import it with `use Phem\Root;`:
-
-| In the document | Renders |
-|---|---|
-| `<Root>{{ children }}</Root>` | `<div id="phem-root" data-controller="phem" …>` with the page |
-| `<Root tag="main" className="app">{{ children }}</Root>` | The same, with another tag and more attributes |
-
-The root element carries the attributes of the `phem` Stimulus controller, which pass the component state to the controller. Its props work this way:
-
-- **`tag`**: the tag name, `div` by default
-- **Other props**: attributes, as on an element (`className`, a class list, `style`, `data-*`)
-- **`id`**: `phem-root` by default. `id={{ null }}` removes it
-- **`data-controller`, `data-action`**: your values come after the Phem values
-- **State attributes**: you can’t change them, and the root element can’t have an event handler
-
-A page renders exactly one `<Root>`. A page with no `<Root>` or with two is an error, and so is a `<Root>` in a Twig template outside a page.
-
-Events render only the components that can change (see [Keep `render()` pure](components.md#keep-render-pure)), and the browser updates only the content of the `<Root>`. The document around it, such as the title or a footer, doesn’t change. A component after the root element renders, but the `phem` controller doesn’t receive its DOM events. The browser sends the events of a page to the page URL, and only a page route runs them.
-
-### Route loading
-
-A Symfony application (7.4 and later) imports the `routing.controllers` resource in `config/routes.yaml`, which holds the routes of the `#[Route]` controllers. `PhemBundle` adds the routes of the `#[Page]` pages to that resource, so the pages need no routes file:
-
-```yaml
-controllers:
-    resource: routing.controllers
-```
-
-An application without this resource, created before Symfony 7.4, imports the pages with the `phem` type:
-
-```yaml
-# config/routes/phem.yaml
-phem:
-    resource: .
-    type: phem
-```
-
-Use only one of the two. With both, each page gets its routes twice, and the last import replaces the routes of the first.
-
-### Route values
-
-A class page receives a route value in a public `#[Path]` property whose name is the name of the route value. A function page receives it in the parameter with that name:
-
-```php
-use Phem\Attribute\{Page, Path};
-
-#[Page('/items/{id}', requirements: ['id' => '\d+'])]
-final class ItemPage
-{
-    #[Path]
-    public int $id;
-
-    public function render(): Node
-    {
-        return <Document><h1>Item {{ id }}</h1></Document>;
-    }
-}
-
-#[Page('/tags/{name}')]
-function TagPage(string $name): Node
-{
-    return <Document><h1>{{ name }}</h1></Document>;
-}
-```
-
-Each route value needs a `#[Path]` property or a parameter. Phem converts the value to the declared type, so `/items/3` sets `$id = 3`. A value that doesn’t fit the type returns a 404 response.
-
-A Doctrine entity type receives the entity. `{scientist}` finds it by its identifier, and `{id:scientist}` maps the route value `id` to the property `scientist`:
-
-```php
-#[Page('/scientists/{id:scientist}')]
-final class ScientistPage
-{
-    #[Path] public Scientist $scientist;
-}
-```
-
-For other types, such as a date or a value object, see [Other types of route values](components.md#convert-route-values-to-your-own-types).
+`#[Page]` extends the Symfony `#[Route]` attribute and takes the same options. A class page receives a route value in a `#[Path]` property, and a function page in the parameter with that name. Markup links to a page with its name: `<a href={{ path(AboutPage) }}>About</a>` (see [Classes in markup](#classes-in-markup)). For the document, the `<Root>` element, the routes and the route values, see [Build pages and routes](pages.md).
 
 ## Events and directives
 
@@ -458,9 +357,9 @@ A handler can take these forms:
 - **Method name** in a class: `onClick={{ increment }}`
 - **Member path**: `onClick={{ tabs.select }}` runs `$tabs->select()`
 - **Prop of type `Closure`**
-- **Call with arguments**: `onClick={{ remove(item) }}` runs `remove($item)` when the user clicks, not during the render. See [Pass arguments to a handler](events-and-forms.md#pass-arguments-to-a-handler)
+- **Call with arguments**: `onClick={{ remove(item) }}` runs `remove($item)` when the user clicks, not during the render. See [Pass arguments to a handler](events.md#pass-arguments-to-a-handler)
 
-The supported events are `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`, `onKeyDown`, `onKeyUp`, `onFocus` and `onBlur`. `phemc` warns about other events (W003). For what a handler receives and returns, see [Events and forms](events-and-forms.md).
+The supported events are `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`, `onKeyDown`, `onKeyUp`, `onFocus` and `onBlur`. `phemc` warns about other events (W003). For what a handler receives and returns, see [Handle events](events.md).
 
 ### Directives (`phem:*`)
 
@@ -473,13 +372,13 @@ A `phem:*` attribute adds a Phem behavior to an element:
 
 | Directive | Effect |
 |---|---|
-| `phem:bind={{ prop }}` | Links a form field to a `#[State]` property. See [Bound fields](events-and-forms.md#bind-a-field-to-state-without-a-handler) |
+| `phem:bind={{ prop }}` | Links a form field to a `#[State]` property. See [Bound fields](forms.md#bind-a-field-to-state-without-a-handler) |
 | `phem:live` | Sends each change of a bound field right away |
-| `phem:error={{ prop }}` | Renders the element only when the bound property has a validation error, with the id of the error and the message. See [Show the error of a bound field](events-and-forms.md#show-the-error-of-a-bound-field). It is not the `phem:error` event of the browser |
-| `phem:loading={{ handler }}` | Shows the element only while the handler runs. See [Loading states](events-and-forms.md#show-a-loading-state) |
-| `phem:debounce={{ ms }}` | Waits until the user pauses for `ms` milliseconds. `'blur'` waits until the field loses focus. See [Debounce and throttle](events-and-forms.md#control-when-typing-sends-an-event) |
+| `phem:error={{ prop }}` | Renders the element only when the bound property has a validation error, with the id of the error and the message. See [Show the error of a bound field](forms.md#show-the-error-of-a-bound-field). It is not the `phem:error` event of the browser |
+| `phem:loading={{ handler }}` | Shows the element only while the handler runs. See [Loading states](events.md#show-a-loading-state) |
+| `phem:debounce={{ ms }}` | Waits until the user pauses for `ms` milliseconds. `'blur'` waits until the field loses focus. See [Debounce and throttle](events.md#control-when-typing-sends-an-event) |
 | `phem:throttle={{ ms }}` | Sends at most one event every `ms` milliseconds |
-| `phem:progress={{ handler }}` | Shows the progress of a file upload. See [File uploads](events-and-forms.md#accept-file-uploads) |
+| `phem:progress={{ handler }}` | Shows the progress of a file upload. See [File uploads](forms.md#accept-file-uploads) |
 
 The value of `phem:bind` and `phem:error` is a property name or a path in an array property: `phem:bind={{ filters.status }}`, `phem:bind={{ rows[i].name }}`. Write it with no spaces and no filter. `phemc` checks directive values (E032, E033, E061).
 
@@ -491,8 +390,8 @@ These `data-phem-*` attributes change how the browser treats an element:
 |---|---|
 | `data-phem-client="hidden"` | The morph leaves the listed attributes unchanged. See [Client code with Stimulus](client-side.md#keep-stimulus-changes-through-the-morph) |
 | `data-phem-ignore` | The morph leaves the element and its content unchanged |
-| `data-phem-guard` | Asks the user to confirm before they leave the page with unsaved changes. See [Unsaved changes](events-and-forms.md#warn-about-unsaved-changes) |
-| `data-phem-guard-dialog` | The selector of a `<dialog>` that asks the question of `data-phem-guard` in place of `window.confirm()`. See [Unsaved changes](events-and-forms.md#warn-about-unsaved-changes) |
+| `data-phem-guard` | Asks the user to confirm before they leave the page with unsaved changes. See [Unsaved changes](forms.md#warn-about-unsaved-changes) |
+| `data-phem-guard-dialog` | The selector of a `<dialog>` that asks the question of `data-phem-guard` in place of `window.confirm()`. See [Unsaved changes](forms.md#warn-about-unsaved-changes) |
 | `data-phem-guard-accept` | The label of the accept button of the `data-phem-guard-dialog` dialog |
 | `data-phem-transition` | Animates the changes with the View Transitions API. See [Transitions](client-side.md#animate-changes-with-view-transitions) |
 
@@ -527,7 +426,7 @@ The other three built-in components handle the page root, deferred content and e
 
 | Component | Use |
 |---|---|
-| `<Root>` (`Phem\Root`) | The root element of a page, in the document of the application. See [The `<Root>` element](#the-root-element) |
+| `<Root>` (`Phem\Root`) | The root element of a page, in the document of the application. See [The `<Root>` element](pages.md#render-the-root-element) |
 | `<Suspense>` (`Phem\Suspense`) | Loads its content after the page. Slots: `fallback`, `error`. See [Content that loads after the page](server-features.md#load-slow-content-after-the-page) |
 | `<ErrorBoundary>` (`Phem\ErrorBoundary`) | Shows its `fallback` slot when its content throws. See [Errors in a part of the page](server-features.md#show-a-fallback-when-part-of-the-page-fails) |
 
@@ -557,7 +456,7 @@ The Phem PHP attributes live in the `Phem\Attribute` namespace:
 | `#[Path]` | a property | Receives a route value |
 | `#[Url]` | a `#[State]` property | Keeps the value in the query string. See [State in the URL](components.md#keep-state-in-the-url) |
 | `#[Provide]`, `#[Context]` | a class, a property or a parameter | Passes a value to the components below. See [Context](components.md#pass-a-value-down-the-tree-with-context) |
-| `#[Validated]` | a handler | Validates the state before the handler runs. See [Live validation](events-and-forms.md#validate-a-form-while-the-user-types) |
+| `#[Validated]` | a handler | Validates the state before the handler runs. See [Live validation](forms.md#validate-a-form-while-the-user-types) |
 | `#[Transactional]` | a class or a handler | Runs the handler in a transaction. See [Transactions](server-features.md#save-handler-changes-in-a-transaction) |
 | `#[Broadcast]`, `#[BroadcastKey]` | a page, a component, a handler, a prop or a property | Sends real-time updates. `on:` refreshes after a change of an entity. See [Real-time updates](real-time-updates.md) |
 | `#[Async]` | a handler | Runs slow work after the response. See [Slow work after the response](server-features.md#run-slow-work-after-the-response) |

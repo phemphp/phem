@@ -1,6 +1,6 @@
 # Compiler reference: `phemc` commands, options and output
 
-`phemc` is the Rust compiler that turns `.phem` files into PHP and Twig. This page lists what installing Phem sets up, the `phemc` commands (`build`, `check`, `watch`, `lsp`) with their options and defaults, the files the build writes, the diagnostic codes, the related Symfony console commands, the project layout that the compiler expects, and the production build sequence.
+`phemc` is the Rust compiler that turns `.phem` files into PHP and Twig. This page lists the `phemc` commands (`build`, `check`, `watch`, `lsp`) with their options and defaults, the files the build writes, the diagnostic codes, static analysis of the compiled code, and the related Symfony console commands. To install Phem, see [Install and configure Phem](installation.md). For the production build, see [Deploy a Phem app](deployment.md#build-for-production).
 
 ## Build pipeline
 
@@ -10,60 +10,6 @@ A Phem application is a Symfony application with `PhemBundle`, and it needs two 
 2. `bin/console phem:warmup` compiles the generated Twig templates into the Twig cache.
 
 `phemc build` runs step 2 for you. At runtime, nothing parses a `.phem` or a `.twig` source.
-
-## Installation and setup
-
-`composer require phem/phem` installs the bundle, the client assets and the `vendor/bin/phemc` launcher, and the Symfony Flex recipe configures the application so that no Phem config file is needed.
-
-### What Flex and `PhemBundle` configure
-
-Flex and the bundle set up these parts of the application:
-
-- **Bundle**: Flex enables `PhemBundle` in `config/bundles.php`
-- **Client**: Flex adds the `phem` Stimulus controller and Turbo to the assets. The controller is the client of Phem: it sends the events to the server and updates the page (see [Client assets](#client-assets))
-- **Starter files**: the recipe copies `src/Ui/Common/Document.phem` (the HTML document of the pages), `src/Ui/HomePage.phem` (the page at `/`) and `.symfony.local.yaml` (the `phemc watch src` worker of `symfony serve`)
-- **Routes**: the `routing.controllers` resource of `config/routes.yaml` loads the routes of the `#[Page]` attributes, as it does for controllers, so the pages need no routes file (see [Route loading](phem-syntax.md#route-loading))
-- **Preload**: in production, `config/preload.php` also preloads the compiled components without a change (see [OPcache preload](#opcache-preload))
-- **Compiler**: `vendor/bin/phemc` downloads the `phemc` binary of the same version on its first run (see [The `phemc` binary](#the-phemc-binary))
-
-The bundle defaults match this layout: `phemc` reads `src/` and writes to `var/phem/`, which is the `build_dir` default. You don’t need a `config/packages/phem.yaml` file.
-
-### Flex recipe options
-
-The recipe of `phem/phem` is in the contrib repository of Symfony Flex, so Flex asks before it runs it. When Flex skips the recipe (for example with `composer require --no-interaction`), allow the contrib recipes and install the recipe again:
-
-```sh
-composer config extra.symfony.allow-contrib true
-composer recipes:install phem/phem --force
-```
-
-Flex records a skipped recipe as installed, so `--force` is required. `allow-contrib` applies to all contrib recipes, and Flex doesn’t ask again. Set it before `composer require phem/phem` to install with no prompt, for example in CI.
-
-### Install without the `--webapp` skeleton
-
-The `symfony new --webapp` skeleton already has AssetMapper. Without it, install AssetMapper together with `phem/phem`. `phem/phem` requires StimulusBundle, and Flex adds the `phem` controller to `assets/controllers.json`:
-
-```sh
-symfony new my-app
-cd my-app
-composer require symfony/asset-mapper phem/phem
-```
-
-### The `phemc` binary
-
-`phemc` ships as a prebuilt binary for each release, and you get it through Composer or a standalone installer:
-
-- **Composer**: `composer require phem/phem` installs `vendor/bin/phemc`. On its first run, this PHP script downloads the `phemc` binary of the installed `phem/phem` version from the GitHub release, checks its SHA-256 against `phemc-checksums.txt`, and stores it next to the script. `composer update` removes the old binary with the old version, so the compiler and the runtime always share a version
-- **Standalone on Linux or macOS**: `install.sh` downloads the binary of the latest release to `$BIN_DIR` (the current directory by default)
-- **Standalone on Windows**: `install.ps1` downloads the binary of the latest release to `$env:PHEMC_INSTALL` (`~\.phem` by default)
-
-The prebuilt binaries cover Linux (`x86_64`, `aarch64`), macOS (`arm64`, `x86_64`) and Windows (`x86_64`). On another platform, or for a development version of `phem/phem` that has no release, build the binary from the sources:
-
-```sh
-cargo build --release --manifest-path compiler/Cargo.toml -p phemc-cli
-```
-
-`vendor/bin/phemc` reads the `PHEMC_DOWNLOAD_URL` environment variable as the base URL of the release assets (`https://github.com/phemphp/phem/releases/download` by default). The application also needs PHP 8.4 or later.
 
 ## `phemc` commands
 
@@ -257,6 +203,9 @@ Errors start with `E` and stop the build; warnings start with `W` and don’t. `
 | E058 | `#[Validated]` on a function, or on a handler of a component with no non-static `#[State]` property of type `Phem\Validation` (a property of a trait or a parent class counts), or a component with more than one `Validation` property |
 | E059, E060 | `#[ErrorPage]` on a class (an error page is a function), or in a package (only the application has error pages). See [Error pages](error-pages.md) |
 | E061 | An invalid `phem:error`: not a `#[State]` property or a `Bound` prop, a component with no `Validation` property, an element with an `id`, content or `phem:bind`, a void element, or a component tag whose component has no `id` prop or no `children` |
+| E062 | A class name in markup with a case or a constant that the enum doesn’t have (`OrderStatus.Canceled`), or `cases()` of a component, when the enum is in a `.phem` file. See [Classes in markup](phem-syntax.md#classes-in-markup) |
+| E063 | `path()` or `url()` of a class or a function that isn’t a page (`path(Card)`) |
+| E064 | A class name in markup in another place than `Class.NAME`, `Class.cases()` or `path(Page)`, for example `{{ OrderStatus }}` or `OrderStatus.from('paid')` |
 | W002–W003 | A list item without `key`, or an event that the browser doesn’t send (`onMouseEnter`) |
 | W004 | `#[Page]`, `#[ErrorPage]`, `#[Route]`, `#[Component]`, `#[State]`, `#[Prop]`, `#[Path]`, `#[Context]`, `#[Provide]`, `#[Broadcast]`, `#[BroadcastKey]`, `#[Async]` or `#[Validated]` without its `use` import (`Phem\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
 | W005 | A `<title>` outside `<head>` and `<svg>`. The document component prints the title, and a page sets it with the `title` prop of the document (`<Document title="Home">`) |
@@ -336,191 +285,3 @@ phem:
 ```
 
 `build_dir` defaults to `%kernel.project_dir%/var/phem`, the same directory as the `--out` default. Set both when you move the output.
-
-## Project layout
-
-A Phem project is a Symfony application. The compiler only needs a source root (`src/` here), and the bundle only needs the output directory and the routes:
-
-```text
-my-app/
-├── composer.json        phem/phem, symfony/asset-mapper, symfony/runtime, …
-├── .symfony.local.yaml  the phemc worker of `symfony serve`
-├── .env                 APP_ENV, APP_SECRET (signs the component state)
-├── Caddyfile            FrankenPHP: public/index.php in worker mode
-├── bin/console
-├── config/
-│   ├── bundles.php      FrameworkBundle, TwigBundle, StimulusBundle, PhemBundle
-│   ├── packages/        phem.yaml (optional), asset_mapper.yaml
-│   ├── routes.yaml      { resource: routing.controllers }
-│   └── services.yaml
-├── src/                 the source root: .phem files and PHP classes
-├── assets/              app.js, bootstrap.js, controllers.json
-├── importmap.php        app, @hotwired/stimulus, @hotwired/turbo
-├── public/              index.php (Symfony Runtime) and static files
-└── var/
-    ├── phem/            the phemc output (don't commit)
-    └── cache/           the Symfony cache (don't commit)
-```
-
-Add DoctrineBundle to `config/bundles.php` for transactions and `#[Path]` entities. The source root holds your PHP classes next to the `.phem` files:
-
-```text
-src/
-├── Kernel.php
-├── Model/               optional: Doctrine entities
-├── Repository/          services that components get injected
-├── DataFixtures/        optional: Doctrine fixtures
-└── Ui/                  the pages and their components, by context
-    ├── Common/
-    │   └── Document.phem      the HTML document, with a <Root>
-    ├── HomePage.phem          #[Page('/')]
-    └── Example/
-        ├── CounterPage.phem   #[Page('/examples/counter')]
-        └── Counter.phem       a component of the page
-```
-
-These directories are a convention. A page is any class with the `#[Page]` attribute and a `render()` method, or any function with the `#[Page]` attribute, in any `.phem` file under the source root. For the document component and its `<Root>`, see [The document of the pages](phem-syntax.md#the-document-of-the-pages). For the routes file, see [Route loading](phem-syntax.md#route-loading).
-
-### Organize the UI
-
-Put the `.phem` files in `src/Ui/`, and split them by context, not into `Component/` and `Page/` directories. The namespace follows the directory: `src/Ui/` is `App\Ui`, and `src/Ui/Scientist/` is `App\Ui\Scientist`. The convention has four rules:
-
-- **Page**: the name ends with `Page` (`HomePage`, `ScientistPage`). It goes in the directory of its context (`src/Ui/Scientist/`). A page with no context, such as the home page, stays in `src/Ui/`
-- **Component of a page**: it goes in the directory of the page that uses it, in the same namespace. Its name has no suffix (`ScientistCard`, not `ScientistCardComponent`)
-- **Common component**: a component that more than one context uses goes in `src/Ui/Common/` (the document, a button, a badge)
-- **Subcontext**: when a context grows, add a directory inside it (`src/Ui/Admin/User/`)
-
-```text
-src/Ui/                      App\Ui
-├── Common/                  App\Ui\Common
-│   ├── Document.phem
-│   └── Badge.phem
-├── HomePage.phem            #[Page('/')]
-├── Scientist/               App\Ui\Scientist
-│   ├── ScientistsPage.phem  the list
-│   ├── ScientistPage.phem   one scientist
-│   ├── ScientistCard.phem   used by both pages
-│   └── ScientistFilters.phem
-└── Admin/
-    └── User/                App\Ui\Admin\User
-        ├── EditUserPage.phem
-        └── UserForm.phem
-```
-
-Because a page and its components share a namespace, the page uses them with no `use` import. It imports only the common components. Here `ScientistCard` resolves to `App\Ui\Scientist\ScientistCard`, and `Document` comes from `App\Ui\Common`:
-
-```php
-<?phem
-
-namespace App\Ui\Scientist;
-
-use App\Model\Scientist;
-use Phem\Attribute\{Page, Path};
-use Phem\Node;
-
-use function App\Ui\Common\Document;
-
-#[Page('/scientists/{id:scientist}')]
-final class ScientistPage
-{
-    #[Path] public Scientist $scientist;
-
-    public function render(): Node
-    {
-        return (
-            <Document title={{ scientist.name }}>
-                <ScientistCard scientist={{ scientist }} />
-            </Document>
-        );
-    }
-}
-```
-
-When a second context starts to use a component of a page, move the component to `src/Ui/Common/`.
-
-### Client assets
-
-The client of Phem is the `phem` Stimulus controller and the `phem-c{display:contents}` CSS rule, which styles the `<phem-c>` element around a component that doesn’t render one element. The bundle ships them as a Symfony UX package (`assets/package.json`), and AssetMapper exposes them in the `phemjs` namespace. The controller imports `@hotwired/stimulus` and `@hotwired/turbo` from the importmap of the application, so the page loads one Turbo and one Stimulus.
-
-`phem/phem` requires StimulusBundle and AssetMapper (see [Install without the `--webapp` skeleton](#install-without-the---webapp-skeleton)). Symfony Flex adds `@hotwired/stimulus` and `@hotwired/turbo` to `importmap.php`, and enables the controller in `assets/controllers.json`:
-
-```json
-{
-    "controllers": {
-        "@phem/phem": {
-            "phem": { "enabled": true, "fetch": "eager", "autoimport": { "@phem/phem/dist/phem.css": true } }
-        }
-    },
-    "entrypoints": []
-}
-```
-
-The package also has optional controllers (`phem-optimistic`, `phem-toggle`, `phem-dialog`, `phem-tabs`, `phem-toast`, `phem-clipboard`, `phem-autofocus` and `phem-confirm`), which are off by default. Enable one with its key in the `@phem/phem` entry, for example `"toggle": { "enabled": true, "fetch": "lazy" }`. See [Built-in controllers](client-side.md#enable-the-built-in-controllers).
-
-## Serve the compiled application
-
-The compiled application runs as any Symfony application, with FrankenPHP in worker mode or with PHP-FPM. With FrankenPHP, run this in the project directory:
-
-```sh
-frankenphp run --config Caddyfile
-```
-
-The server setup has these parts:
-
-- **Front controller**: `public/index.php` uses Symfony Runtime. In a FrankenPHP worker, Symfony Runtime boots the kernel once and passes it many requests, and the kernel resets its services (`kernel.reset`) between requests. With PHP-FPM, use `public/index.php` as the front controller
-- **Static files**: Caddy serves the files of `public/` at `/`, and a directory serves its `index.html`. In development, Symfony serves the AssetMapper assets at `/assets/`
-- **Worker options**: `FRANKENPHP_WORKER_CONFIG` adds options to the worker. For example, `watch ./src/**/*.php` restarts the workers when a PHP class changes
-- **Environment**: `APP_ENV=dev`, the default in `.env`, shows the Symfony error pages with the `.phem` location
-- **Database**: the application expects the database to exist. Create it before the first run, for example with `bin/console doctrine:schema:create` and `bin/console doctrine:fixtures:load`. In Docker, run these commands in the entrypoint, only when the database doesn’t exist yet
-
-For a watch loop that rebuilds and restarts the server, see [`phemc watch`](#phemc-watch).
-
-### Symfony profiler panel
-
-In debug mode, Phem adds a panel to the Symfony profiler. Install the profiler in development:
-
-```sh
-composer require --dev symfony/web-profiler-bundle symfony/stopwatch
-```
-
-The Phem panel shows each page request and each event:
-
-- **Request**: the page, the handler and its source, and the outcome (rendered, redirect, reload or rate limit)
-- **Component tree**: the state of each component, its render time without its children, and the contexts that it provides and reads, with the provider
-- **Event passes**: the components that rendered before the handler, the ones that rendered after it, the ones that rendered only because a context above them changed (propagated), and the ones that changed, which the browser morphs
-- **State**: the size of the signed state, and whether it came from the state cache
-- **Inputs and outputs**: the bound values, the browser events of the handler, and the warnings of the dev-mode check
-- **Transaction**: the Doctrine transaction of the handler, its commit or rollback, and its time
-- **Real-time updates**: the Turbo Streams that the request pushed to the Mercure hub with their topics, and the stale components that an event rendered again (see [Real-time updates](real-time-updates.md))
-
-The Performance panel shows the render passes, the handler and the transaction in the `phem` category. With the profiler on, the browser console logs each event with a link to its Phem panel (`console.debug`). Without debug mode, Phem doesn’t measure the renders.
-
-## Production build
-
-In production, Symfony doesn’t check its cache for changes, so rebuild the cache after each `phemc build`. Run this sequence:
-
-```sh
-export APP_ENV=prod APP_DEBUG=0
-composer install --no-dev --optimize-autoloader
-phemc build src --no-warmup
-rm -rf var/cache/prod && php bin/console cache:warmup
-php bin/console asset-map:compile
-```
-
-Each step has one job:
-
-- **`phemc build src --no-warmup`**: compiles the sources. `cache:warmup` runs the Twig warmup later, so the build skips it
-- **`cache:warmup`**: builds the container (with the component services), the routes, the Twig cache of the `phemc` templates, and the OPcache preload file of the components
-- **`asset-map:compile`**: writes the assets to `public/assets/`
-
-Set a random `APP_SECRET`, for example in `.env.local`. It signs the component state in the browser (the `phem.secret` option defaults to `%kernel.secret%`).
-
-### OPcache preload
-
-`config/preload.php` loads the preload file of the Symfony container. `cache:warmup` writes `phem-preload.php` in the kernel build directory (`var/cache/prod/` by default), and Symfony adds it to that file, so `config/preload.php` needs no change. Enable the preload in `php.ini`:
-
-```ini
-opcache.validate_timestamps=0
-opcache.preload=/app/config/preload.php
-opcache.preload_user=root
-```

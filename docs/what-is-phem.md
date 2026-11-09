@@ -42,7 +42,7 @@ function HelloPage(): Node
 }
 ```
 
-Visiting `/hello` renders the `Greeting` component inside `Document`. `Document` is a component that your app defines once: it holds the HTML document (`<html>`, `<head>`, `<body>`) that wraps every page, and its `title` prop (`<Document title="Hello">`) sets the title of the page. By convention, a page’s name ends with `Page`, and your `.phem` files live in `src/Ui/` (see [Organize the UI](compiling.md#organize-the-ui)).
+Visiting `/hello` renders the `Greeting` component inside `Document`. `Document` is a component that your app defines once: it holds the HTML document (`<html>`, `<head>`, `<body>`) that wraps every page, and its `title` prop (`<Document title="Hello">`) sets the title of the page. By convention, a page’s name ends with `Page`, and your `.phem` files live in `src/Ui/` (see [Organize the UI](project-structure.md#organize-the-ui)).
 
 ## A component is a function or a class
 

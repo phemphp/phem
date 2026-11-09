@@ -103,7 +103,7 @@ Keep these points in mind for variants:
 
 - **Full class names**: Write full class names in the source (`'bg-blue-500'`, not `'bg-'.$color`). Tailwind scans the source files, so it can’t find a class that the code builds at runtime.
 - **Checked values**: `phemc` checks a literal prop value, so `variant="big"` is E018.
-- **Conflicting classes**: With the [Tailwind class merger](using-packages.md#turn-on-the-tailwind-class-merger), a caller’s class replaces a variant class of the same group. `<Button variant="outline" className="border-red-500" />` gives `px-4 py-2 border text-blue-500 border-red-500`.
+- **Conflicting classes**: With the [Tailwind class merger](styling.md#merge-tailwind-classes), a caller’s class replaces a variant class of the same group. `<Button variant="outline" className="border-red-500" />` gives `px-4 py-2 border text-blue-500 border-red-500`.
 
 ## Support controlled and uncontrolled state
 

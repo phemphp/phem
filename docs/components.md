@@ -1,6 +1,6 @@
 # Build components and manage their state
 
-This guide shows you how to write a class component, keep its state between events, load its data from services, and share values with the components below it. It also covers state in the URL and custom types for route values. For the attribute syntax, see [The `.phem` syntax](phem-syntax.md).
+This guide shows you how to write a class component, keep its state between events, load its data from services, and share values with the components below it. It also covers state in the URL. To keep security decisions out of the state, see [Secure events and state](security.md). For the attribute syntax, see [The `.phem` syntax](phem-syntax.md).
 
 ## Write a class component
 
@@ -9,7 +9,7 @@ A class component has up to six parts, and you write them in this order:
 - **Inputs**: `#[Prop]` and `#[Context]` properties that the parent sets
 - **State**: `#[State]` properties that the browser keeps between events
 - **Services**: constructor arguments that the container autowires; they’re never props
-- **`mount()`**: optional; it loads the data when there’s no state yet, or before each render when the component has no `#[State]`. The `mount()` of a page can return a `RedirectTo` (see [Redirect before a page renders](events-and-forms.md#redirect-before-a-page-renders))
+- **`mount()`**: optional; it loads the data when there’s no state yet, or before each render when the component has no `#[State]`. The `mount()` of a page can return a `RedirectTo` (see [Redirect before a page renders](pages.md#redirect-before-a-page-renders))
 - **Handlers**: public methods that change the state; a handler can’t be named `mount` or `render` (error E046)
 - **`render()`**: required; it reads only the props, the state and the context
 
@@ -89,6 +89,8 @@ A `#[Prop]` property is different: the parent sets it on every render. A prop wi
 
 The browser keeps the state, and the server signs it. Every event sends the state back to the server, so it must hold JSON values (scalars and arrays), backed enums, or objects that the Serializer encodes as JSON (see [Keep a draft object in the state](#keep-a-draft-object-in-the-state)).
 
+The browser can send back an older state that the server signed, so keep limits and security decisions out of the state (see [Keep security decisions out of the state](security.md#keep-security-decisions-out-of-the-state)).
+
 ### Keep a draft object in the state
 
 A form for an entity needs a value for each field. Put the fields in a plain class (a draft), and keep one object of it in a `#[State]` property:
@@ -162,24 +164,10 @@ The state keeps the JSON value of the object. The Symfony Serializer makes it, a
 The rules:
 
 - Install `symfony/serializer`. A `#[State]` property whose type is a class (not a backed enum, and not a `Phem\State\StateValue`) keeps its object with the Serializer. A date (`\DateTimeImmutable`) is an object too.
-- Use public properties with types. The state keeps only the public properties, also in the nested objects: the values of the getters (`getLabel()`, `isAdult()`) are not in it. A `phem:bind` path sets a public property that is not `readonly` (see [Bind a property of a draft object](events-and-forms.md#bind-a-property-of-a-draft-object)).
+- Use public properties with types. The state keeps only the public properties, also in the nested objects: the values of the getters (`getLabel()`, `isAdult()`) are not in it. A `phem:bind` path sets a public property that is not `readonly` (see [Bind a property of a draft object](forms.md#bind-a-property-of-a-draft-object)).
 - Don't keep a Doctrine entity in the state, also not in a property of a draft: Phem throws a `LogicException`. The state keeps a copy of the fields, so it gets old, and the browser can read all of them. Keep a draft and the id of the entity (a prop, or a `#[Path]` of the page).
 - Give the property a class type. In a property with an `array`, a union or an `object` type, an object is kept as `json_encode()` writes it, and it comes back as an array.
 - A handler can change the object in place (`$this->draft->name = ''`), also a handler of a child that gets the draft as a prop. After the handlers, a draft that changed becomes a new object, so a child that gets it renders again. A draft that didn't change stays the same object, and the child is kept.
-
-### Keep security decisions out of the state
-
-State is UI state, not trusted data: the browser can send back any older state that the server signed. Keep limits and security decisions, such as tries, votes and roles, in the database or the session. Two options limit how a state can be reused:
-
-- **`state_max_age`**: the number of seconds a state stays valid; the default is `86400` (one day), and `0` turns the limit off
-- **`state_bind_session`**: set it to `true` to bind each state to the user’s session
-
-```yaml
-# config/packages/phem.yaml
-phem:
-    state_max_age: 3600
-    state_bind_session: true
-```
 
 ### Don’t use hook functions
 
@@ -394,37 +382,3 @@ The first render reads the query string after `mount()`. After each event, the b
 - **`history`**: set it to `true` to add a browser history entry for each change
 
 The query string comes from the user, so don’t trust its values.
-
-## Convert route values to your own types
-
-A converter turns a route value into another type, such as a date, an enum or a value object. Create a service that implements `Phem\Path\PathValueConverter`:
-
-```php
-use Phem\Path\{PathProp, PathValueConverter};
-
-final class DateConverter implements PathValueConverter
-{
-    public function supports(PathProp $prop): bool
-    {
-        return \DateTimeImmutable::class === $prop->type->getName();
-    }
-
-    public function convert(PathProp $prop, mixed $value): ?\DateTimeImmutable
-    {
-        return \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $value)
-            ?: throw new \UnexpectedValueException(\sprintf('"%s" is not a date.', $value));
-    }
-}
-```
-
-A `#[Path]` property of that type now receives the converted value:
-
-```php
-#[Page('/agenda/{day}')]
-final class AgendaPage
-{
-    #[Path] public \DateTimeImmutable $day;
-}
-```
-
-Throw an `\UnexpectedValueException` when the value doesn’t fit, and the page returns a 404. Your app’s converters run before the built-in ones.

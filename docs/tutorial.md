@@ -407,9 +407,12 @@ You’ve used the main ideas of Phem. Learn more about each one:
 - [Philosophy and conventions](philosophy.md): the rules to keep in mind when you design with Phem
 - [The `.phem` syntax](phem-syntax.md): markup, props, slots, lists, directives, and attributes
 - [Components and state](components.md): the anatomy of a component, state, `mount()`, context, and URL state
-- [Events and forms](events-and-forms.md): handlers, bound fields, forms, validation, and uploads
+- [Pages and routes](pages.md): the document, the routes, route values, and redirects
+- [Handle events](events.md): handlers, loading states, and redirects
+- [Handle forms](forms.md): bound fields, forms, validation, and uploads
 - [Client-side behavior](client-side.md): Stimulus and the built-in controllers
-- [Server features](server-features.md): transactions, Suspense, real-time updates, and async work
+- [Server features](server-features.md): transactions, Suspense, and async work
+- [Security](security.md): access rules, state reuse, and rate limits
 - [Errors and limits](errors-and-limits.md): failed events, retries, and the limits of an event
 - [Testing components and pages](testing.md): all the test helpers
-- [Deployment](deployment.md): build a production image with FrankenPHP
+- [Deployment](deployment.md): serve the app, build it for production, and build a Docker image

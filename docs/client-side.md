@@ -32,11 +32,7 @@ The element that sent an event receives these browser events, with the `handler`
 
 Each `phem:send` gets exactly one `phem:done`, even when the event fails, redirects or reloads the page. Use the pair to know when an event runs. The loading state shows only after the loading delay, so a fast event never shows it.
 
-### Wait for pushes in browser tests
-
-A push (see [Push updates to other browsers](real-time-updates.md)) has no sending element, so it dispatches none of these events. Instead, the root element has the `data-phem-push-pending` attribute until the page finishes its pushes. A push stays pending while it waits for the running event, while Turbo renders it, or while its refresh waits 50 ms (to group the refreshes that arrive together) or runs.
-
-A test with a real browser waits until the attribute disappears (see [Tests with a real browser](testing.md#test-with-a-real-browser)).
+A push (see [Push updates to other browsers](real-time-updates.md)) has no sending element, so it dispatches none of these events. Instead, the root element has the `data-phem-push-pending` attribute until the page finishes its pushes. A browser test waits for it (see [Test with a real browser](testing.md#test-with-a-real-browser)).
 
 ## Update the page before the server answers
 
@@ -184,7 +180,7 @@ An empty message throws an `InvalidArgumentException`. So does a duration below 
 
 A toast shows only with the response of an event. A handler that fails or redirects shows no toast. A toast of a page load doesn't show. The work of an [`#[Async]` handler](server-features.md#run-slow-work-after-the-response) has no response either: a toast there logs a warning, so show the result with `Streams`.
 
-A toast is a `phem:toast` [browser event](events-and-forms.md#send-events-to-your-javascript) with the detail `{"message": "Saved", "type": "success"}`.
+A toast is a `phem:toast` [browser event](events.md#send-events-to-your-javascript) with the detail `{"message": "Saved", "type": "success"}`.
 
 Change the default duration and the texts with the controller values: `data-phem-toast-duration-value={{ 8000 }}`, `data-phem-toast-error-message-value` and `data-phem-toast-rate-limited-message-value`.
 
@@ -271,7 +267,7 @@ When the user clicks **Empty bag**, the controller does these steps:
 
 A tap on the backdrop has the same rule as in [`phem-dialog`](#open-a-modal-dialog).
 
-When the question ends, the dialog gets the texts of the page again. So one dialog can serve all the `phem-confirm` elements of the page, and the `data-phem-guard` elements too (see [Unsaved changes](events-and-forms.md#warn-about-unsaved-changes)): put it once in the layout. Give the dialog an accessible description, such as `aria-describedby` on the message, so a screen reader reads the question.
+When the question ends, the dialog gets the texts of the page again. So one dialog can serve all the `phem-confirm` elements of the page, and the `data-phem-guard` elements too (see [Unsaved changes](forms.md#warn-about-unsaved-changes)): put it once in the layout. Give the dialog an accessible description, such as `aria-describedby` on the message, so a screen reader reads the question.
 
 These edge cases apply:
 

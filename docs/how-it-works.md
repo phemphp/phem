@@ -40,7 +40,7 @@ After the build, `bin/console phem:warmup` compiles every template into the Twig
 
 The bundle’s route loader reads the `#[Page]` attribute of each page class and function. `#[Page]` is a Symfony `#[Route]`, so the loader works the same way the attribute loader works for controllers. A page renders inside its document: a component of your app that contains a `<Root>` (`Phem\Root`), the element around the part of the page that events update.
 
-The compiled templates use your app’s Twig environment, so Twig extensions such as `path()` work in markup. In debug mode, Symfony rebuilds the container and the routes after each `phemc build`.
+The compiled templates use your app’s Twig environment, so Twig extensions such as `path()` work in markup. A class name in markup (`OrderStatus.Cancelled`, `path(ProductPage)`) compiles to the class name as a string, in a call to `phem_constant()`, `enum_cases()`, `phem_path()` or `phem_url()`. In debug mode, Symfony rebuilds the container and the routes after each `phemc build`.
 
 ## Component tags become Twig tags
 
@@ -90,7 +90,7 @@ All of this depends on a pure `render()`, because Phem assumes that a component 
 The round trip takes time, so the `phem` controller tells the user what’s going on. While an event runs, it does the following:
 
 - **Loading state**: after a delay of 200 ms, the element that sent the event and its component get `aria-busy="true"` and the `phem-loading` class, which you can style with CSS such as `.phem-loading { opacity: .5 }`; set `data-phem-loading-delay-value` on the `<Root>` element to change the delay
-- **Targeted indicators**: an element with `phem:loading={{ save }}` shows only while a `save` event runs (see [Loading states](events-and-forms.md#show-a-loading-state))
+- **Targeted indicators**: an element with `phem:loading={{ save }}` shows only while a `save` event runs (see [Loading states](events.md#show-a-loading-state))
 - **Form lock**: during a submit event, the form’s buttons and controls are disabled, its text fields are read-only, and a second submit is ignored; add `data-phem-disable={{ false }}` to the form to turn this off
 - **Offline state**: while the browser is offline, the `<Root>` element has the `phem-offline` class
 

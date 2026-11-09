@@ -148,34 +148,6 @@ Set `replaces` to `Name::class` or a string with the class name (`self::class` i
 - **Plain Twig templates**: `{% component 'Acme\\Ui\\Alert' %}` in a plain Twig template of your app also renders the replacement, because the manifest keeps the replacements. A plain Twig template isn’t inside the replacement, so it can’t render the original. Wrap the original in the replacement’s `.phem` markup instead.
 - **Tooling**: The profiler shows which component each replacement replaces. In the editor, go to definition on a tag of the original opens the replacement, and hover shows both. A prop or slot of the tag goes to the replacement’s prop or slot, or to the original when the replacement takes it in its rest prop. The editor follows the `phemc` rules: with no valid replacement, the tag goes to the original.
 
-## Turn on the Tailwind class merger
-
-`classes()` merges a component’s classes with the caller’s (see [Merge of classes](phem-syntax.md#merge-of-classes)). The default merger only removes duplicates. The Tailwind merger (Tailwind CSS v4) also removes earlier classes of the same group, so `px-2` then `px-4` gives `px-4`. Install it:
-
-```sh
-composer require tales-from-a-dev/tailwind-merge-php
-```
-
-Then turn it on and point it to your input CSS:
-
-```yaml
-# config/packages/phem.yaml
-phem:
-    class_merger:
-        tailwind:
-            css: '%kernel.project_dir%/assets/styles/app.css'
-```
-
-The merger only knows the default values of the Tailwind theme. A custom value from your `@theme` isn’t in its group. For example, it puts `text-caption` with the text colors, so a later color removes the size. The `css` option fixes this: Phem reads the `@theme` blocks of the file and its relative imports when the container builds. In production, clear the cache after you change the theme.
-
-The merger accepts these other options:
-
-- **`prefix`**: the prefix of your Tailwind build (`@import "tailwindcss" prefix(tw);`), without the colon, for example `tw`
-- **`cache`**: the id of a PSR-16 cache service for the merged classes, for example `app.psr16_cache`
-- **`theme`**: theme names by hand, by theme key, for example `{ text: [caption, price-lg] }`
-
-To use your own merger, set `class_merger.service` to the id of a `Phem\Dom\ClassMerger` service instead of `tailwind`, for example `App\Ui\MyClassMerger`.
-
 ## Add a package to your Tailwind build
 
 Tailwind CSS v4 skips the files in `.gitignore`, and `vendor/` is in it. Add each package’s `.phem` root to your input CSS with `@source`. The `.phem` sources contain the classes, so Tailwind doesn’t need the compiled templates in `var/phem`:
@@ -197,7 +169,7 @@ When a theme package (shadcn, for example) ships its CSS variables and `@theme` 
 @source "../../vendor/acme/ui/components";
 ```
 
-With the Tailwind merger, pass your input CSS to the `css` option (see [Turn on the Tailwind class merger](#turn-on-the-tailwind-class-merger)). Phem reads the `@theme` blocks of relative imports too, so it also reads the package’s theme.
+With the Tailwind merger, pass your input CSS to the `css` option (see [Turn on the Tailwind class merger](styling.md#merge-tailwind-classes)). Phem reads the `@theme` blocks of relative imports too, so it also reads the package’s theme.
 
 Packages ship their Stimulus controllers in the Symfony UX format, so Flex adds them to `assets/controllers.json` when you install the package. You don’t need to register them by hand.
 

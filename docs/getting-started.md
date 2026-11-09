@@ -201,10 +201,11 @@ If a file has an error, the watcher prints the error with its line in the `.phem
 You now have a working Phem app. Here’s where to go from here:
 
 - [Build a task list](tutorial.md): add props, lists, forms, and tests, one step at a time
-- [Compiling and running `.phem` files](compiling.md): the `phemc` commands, diagnostics, and editor support
-- [Deployment](deployment.md): build a production image with FrankenPHP
+- [Compiler](compiling.md): the `phemc` commands, diagnostics, and editor support
+- [Deployment](deployment.md): serve the app, build it for production, and build a Docker image
 - [Philosophy and conventions](philosophy.md): the rules to keep in mind when you design with Phem
 - [The `.phem` syntax](phem-syntax.md): markup, props, slots, lists, directives, and attributes
 - [Components and state](components.md): the anatomy of a component, state, `mount()`, context, and URL state
-- [Events and forms](events-and-forms.md): handlers, bound fields, forms, validation, and uploads
+- [Handle events](events.md): handlers, loading states, and redirects
+- [Handle forms](forms.md): bound fields, forms, validation, and uploads
 - [Testing components and pages](testing.md): test your components without a browser

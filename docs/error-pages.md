@@ -26,6 +26,7 @@ Add `#[ErrorPage]` to a function in a `.phem` file. Like a `#[Page]` function, i
 
 namespace App\Ui\Errors;
 
+use App\Ui\HomePage;
 use Phem\Attribute\ErrorPage;
 use Phem\Node;
 
@@ -40,7 +41,7 @@ function ErrorPage(int $status): Node
         <Document title={{ title }}>
             <main>
                 <h1>{{ title }}</h1>
-                <a href={{ path('home') }}>Back to the home page</a>
+                <a href={{ path(HomePage) }}>Back to the home page</a>
             </main>
         </Document>
     );
@@ -113,7 +114,7 @@ Give a section its own error pages with `path`. A page matches when the request 
 #[ErrorPage(path: '/admin')]
 function AdminErrorPage(int $status): Node
 {
-    return <AdminLayout>…<a href={{ path('admin_dashboard') }}>Back to the dashboard</a>…</AdminLayout>;
+    return <AdminLayout>…<a href={{ path(DashboardPage) }}>Back to the dashboard</a>…</AdminLayout>;
 }
 
 // The same page for the shop and for the blog.
@@ -236,56 +237,7 @@ The preview has the user of your session. A real 404 on a URL with no route has 
 
 ## Test an error page
 
-In a `KernelTestCase`, `errorPage()` renders the error page for an error at a URL. It works like the preview, so the test’s debug mode doesn’t show the exception. An `int` stands for an `HttpException` with that status:
-
-```php
-use Phem\Test\InteractsWithPhem;
-use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
-
-final class ErrorPageTest extends KernelTestCase
-{
-    use InteractsWithPhem;
-
-    public function testAPageOfTheAdminThatIsNotThereLinksToTheDashboard(): void
-    {
-        $this->errorPage(404, '/admin/missing')
-            ->assertStatus(404)
-            ->assertSee('Back to the dashboard');
-    }
-```
-
-Pass an exception to test other statuses. The page must not show the exception message:
-
-```php
-    public function testAServerErrorOffersToTryAgain(): void
-    {
-        $this->errorPage(new \RuntimeException('Boom.'), '/cart?page=2')
-            ->assertStatus(500)
-            ->assertSelectorExists('a[href="/cart?page=2"]')
-            ->assertDontSee('Boom.');
-    }
-
-    public function testATooManyRequestsErrorShowsTheWait(): void
-    {
-        $this->errorPage(new TooManyRequestsHttpException(60), '/verify')
-            ->assertStatus(429)
-            ->assertSee('Try again in 60 seconds.');
-    }
-}
-```
-
-When no error page matches the status and URL, `errorPage()` returns the Symfony page. Its request has a session, like a browser request. An error page has no events, so tester actions such as `click()` and `fill()` don’t work.
-
-### Test error pages through visit() and end-to-end tests
-
-Set `show_exceptions: false` in the `test` environment (see [Preview an error page in debug mode](#preview-an-error-page-in-debug-mode)). Then `visit()` of a failing URL shows the error page, and so do end-to-end tests through a web server or a real browser:
-
-```php
-$this->visit('/admin/missing')->assertStatus(404)->assertSee('Back to the dashboard');
-```
-
-`visit()` runs Symfony in web mode, like `WebTestCase`. In CLI mode, Symfony would render an HTTP error with its CLI renderer.
+`errorPage()` of the test helpers renders the error page for an error at a URL, the way the preview does. See [Test an error page](testing.md#test-an-error-page).
 
 ## Serve error pages when PHP is down
 

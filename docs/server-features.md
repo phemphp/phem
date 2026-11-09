@@ -1,6 +1,6 @@
 # Handle slow and failing work on the server
 
-This guide shows you how to control what happens on the server around your handlers and your slow components. You’ll save handler changes in a database transaction, stream slow content after the page, show a fallback when part of the page fails, move slow work after the response, rate limit events and run your own code around every handler. To push changes to other browsers, see [Push updates to other browsers](real-time-updates.md).
+This guide shows you how to control what happens on the server around your handlers and your slow components. You’ll save handler changes in a database transaction, stream slow content after the page, show a fallback when part of the page fails, and move slow work after the response. To push changes to other browsers, see [Push updates to other browsers](real-time-updates.md).
 
 ## Save handler changes in a transaction
 
@@ -149,80 +149,3 @@ php bin/console messenger:consume async
 ```
 
 The worker can’t use `mercure_publish()`, so give Phem the publisher key, as for [a standalone hub](real-time-updates.md#use-a-standalone-mercure-hub). Tests run the work with `settle()` (see [Testing](testing.md#simulate-user-actions)). phemc reports E054 for `#[Async]` on a function, and E055 for an `#[Async]` method that doesn’t return `Promise`.
-
-## Rate limit events
-
-Use the Symfony `#[RateLimit]` attribute to limit the events of a page. Install `symfony/rate-limiter` and configure the limiters, one for the page and one for its search handler:
-
-```yaml
-# config/packages/rate_limiter.yaml
-framework:
-    rate_limiter:
-        phem_events:
-            policy: sliding_window
-            limit: 30
-            interval: '1 minute'
-        phem_search:
-            policy: sliding_window
-            limit: 10
-            interval: '10 seconds'
-```
-
-Then add the attribute to the page or to one handler:
-
-```php
-use Symfony\Component\HttpKernel\Attribute\RateLimit;
-
-#[RateLimit('phem_events', methods: 'POST')]
-#[Page('/search')]
-final class SearchPage
-{
-    #[RateLimit('phem_search')]
-    public function search(Event $e): void
-    {
-        // ...
-    }
-}
-```
-
-An event is a `POST` request, so `methods: 'POST'` counts the events and not the page views. On a method, the limit applies to that handler only. Over the limit, the server returns `429` and the browser dispatches `phem:rate-limited` with `retryAfter` in its detail.
-
-## Run code around every handler
-
-A handler middleware runs code around each handler, such as a security check, a log entry or a metric. Create a service that implements `Phem\Handler\HandlerMiddleware`:
-
-```php
-final class LoginRequired implements HandlerMiddleware
-{
-    public function __construct(private readonly Security $security)
-    {
-    }
-
-    public function handle(\Closure $handler, Event $event, \Closure $next): mixed
-    {
-        if (null === $this->security->getUser()) {
-            return new RedirectTo(LoginPage::class);
-        }
-
-        return $next();
-    }
-}
-```
-
-`$next()` runs the next middleware and then the handler. Return without calling `$next()` to stop the event. The middleware runs for every handler, so check `$handler` or `$event` to apply it to some handlers only.
-
-### Order your middleware with priorities
-
-The tag priority sets the order, and a higher priority runs first, around the others. The built-in middleware uses these priorities:
-
-| Priority | Built-in middleware |
-|---|---|
-| 100 | `#[RateLimit]` |
-| 50 | The Symfony profiler (debug only) |
-| 10 | `RedirectTo` |
-| 0 | The pushes of `Streams` |
-| -50 | `#[Validated]` |
-| -100 | `#[Transactional]` |
-| -200 | `#[Async]` |
-
-The default priority is 0, outside the transaction. To run inside the transaction, set a priority between -100 and -200 with `#[AsTaggedItem(priority: -150)]`.

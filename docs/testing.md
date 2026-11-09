@@ -237,15 +237,56 @@ $this->visit('/')
 
 ## Test an error page
 
-`errorPage()` renders the [error page](error-pages.md) for an error at a URL, the way the preview at `/_error/{code}` does. Pass an `int` for an `HttpException` with that status, or an exception:
+In a `KernelTestCase`, `errorPage()` renders the [error page](error-pages.md) for an error at a URL. It works like the preview at `/_error/{code}`, so the test’s debug mode doesn’t show the exception. An `int` stands for an `HttpException` with that status:
 
 ```php
-$this->errorPage(404, '/admin/missing')
-    ->assertStatus(404)
-    ->assertSee('Back to the dashboard');
+use Phem\Test\InteractsWithPhem;
+use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
+
+final class ErrorPageTest extends KernelTestCase
+{
+    use InteractsWithPhem;
+
+    public function testAPageOfTheAdminThatIsNotThereLinksToTheDashboard(): void
+    {
+        $this->errorPage(404, '/admin/missing')
+            ->assertStatus(404)
+            ->assertSee('Back to the dashboard');
+    }
 ```
 
-To get error pages from `visit()` and end-to-end tests, set `phem.show_exceptions: false` in the `test` environment. See [Test an error page](error-pages.md#test-an-error-page) for the full guide.
+Pass an exception to test other statuses. The page must not show the exception message:
+
+```php
+    public function testAServerErrorOffersToTryAgain(): void
+    {
+        $this->errorPage(new \RuntimeException('Boom.'), '/cart?page=2')
+            ->assertStatus(500)
+            ->assertSelectorExists('a[href="/cart?page=2"]')
+            ->assertDontSee('Boom.');
+    }
+
+    public function testATooManyRequestsErrorShowsTheWait(): void
+    {
+        $this->errorPage(new TooManyRequestsHttpException(60), '/verify')
+            ->assertStatus(429)
+            ->assertSee('Try again in 60 seconds.');
+    }
+}
+```
+
+When no error page matches the status and URL, `errorPage()` returns the Symfony page. Its request has a session, like a browser request. An error page has no events, so tester actions such as `click()` and `fill()` don’t work.
+
+### Test error pages through visit() and end-to-end tests
+
+Set `show_exceptions: false` in the `test` environment (see [Preview an error page in debug mode](error-pages.md#preview-an-error-page-in-debug-mode)). Then `visit()` of a failing URL shows the error page, and so do end-to-end tests through a web server or a real browser:
+
+```php
+$this->visit('/admin/missing')->assertStatus(404)->assertSee('Back to the dashboard');
+```
+
+`visit()` runs Symfony in web mode, like `WebTestCase`. In CLI mode, Symfony would render an HTTP error with its CLI renderer.
 
 ## Replace a service in a test
 
@@ -287,7 +328,7 @@ Wire the hub into your test with these steps:
 1. Add `BrowserHub::initScript()` to each page before its scripts (Playwright `addInitScript()`). It replaces `EventSource` with a fake that connects at once. Without it, the page tries to connect to a hub that isn’t there.
 2. Get the hub with `$this->browserHub()` from `InteractsWithPhem`, or with `new BrowserHub($publisher)` and the `phem.test.stream_publisher` service. It collects updates from that point on.
 3. After each step that can publish, evaluate `$hub->deliverScript()` in each page. Every page gets the same script. Each connection gets each update once, for its topics, and only the updates published after it opened, as the real hub does. With no update, the script does nothing.
-4. Wait until the root element has no `data-phem-push-pending` attribute, which means the page rendered the pushes and their refreshes. A refresh waits 50 ms before it goes, so wait for the attribute instead of sleeping.
+4. Wait until the root element has no `data-phem-push-pending` attribute, which means the page rendered the pushes and their refreshes. A push stays pending while it waits for the running event, while Turbo renders it, or while its refresh waits 50 ms (to group the refreshes that arrive together) or runs. Wait for the attribute instead of sleeping.
 
 With a Playwright client for PHP (method names depend on the client):
 

@@ -24,16 +24,22 @@ export const navigation: NavGroup[] = [
     {
         title: 'Guides',
         pages: [
+            { slug: 'installation', label: 'Install and Configure Phem' },
+            { slug: 'project-structure', label: 'Organize Your Project' },
             { slug: 'components', label: 'Build Components' },
-            { slug: 'events-and-forms', label: 'Handle Events and Forms' },
+            { slug: 'pages', label: 'Build Pages and Routes' },
+            { slug: 'events', label: 'Handle Events' },
+            { slug: 'forms', label: 'Handle Forms' },
             { slug: 'client-side', label: 'Add Client-Side Behavior' },
+            { slug: 'styling', label: 'Style Components' },
             { slug: 'server-features', label: 'Handle Slow and Failing Work' },
+            { slug: 'security', label: 'Secure Events and State' },
             { slug: 'real-time-updates', label: 'Push Real-Time Updates' },
             { slug: 'error-pages', label: 'Show Custom Error Pages' },
             { slug: 'testing', label: 'Test Components and Pages' },
             { slug: 'packages', label: 'Make a Component Package' },
             { slug: 'using-packages', label: 'Use Component Packages' },
-            { slug: 'deployment', label: 'Deploy with Docker' },
+            { slug: 'deployment', label: 'Deploy a Phem App' },
         ],
     },
     {
@@ -45,11 +51,17 @@ export const navigation: NavGroup[] = [
     },
     {
         title: 'Troubleshooting',
-        pages: [{ slug: 'errors-and-limits', label: 'Failed Events and Limits' }],
+        pages: [
+            { slug: 'errors-and-limits', label: 'Failed Events and Limits' },
+            { slug: 'debugging', label: 'Debug a Phem App' },
+        ],
     },
     {
         title: 'Project',
-        pages: [{ slug: 'contributing', label: 'Contribute to Phem' }],
+        pages: [
+            { slug: 'contributing', label: 'Contribute to Phem' },
+            { slug: 'releasing', label: 'Release a Version' },
+        ],
     },
 ];
 

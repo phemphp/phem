@@ -92,7 +92,7 @@ phem:
 
 ### The files of an event are too large
 
-The files of one event have their own limit: `phem.max_upload_size`, 8 MB (`8388608` bytes) by default. The `post_max_size` and `upload_max_filesize` options of PHP also apply. See [File uploads](events-and-forms.md#accept-file-uploads).
+The files of one event have their own limit: `phem.max_upload_size`, 8 MB (`8388608` bytes) by default. The `post_max_size` and `upload_max_filesize` options of PHP also apply. See [File uploads](forms.md#accept-file-uploads).
 
 ## An event makes two requests
 
@@ -114,7 +114,7 @@ To turn the cache off and send the full state with each event, set `phem.state_c
 
 ## An event is dropped with a 429
 
-A `#[RateLimit]` on the page dropped the event: the handler didn’t run and the page doesn’t change. The browser doesn’t retry, and dispatches `phem:rate-limited` with `retryAfter` (in seconds) in its detail, not `phem:error`. See [Rate limits](server-features.md#rate-limit-events) to change the limit.
+A `#[RateLimit]` on the page dropped the event: the handler didn’t run and the page doesn’t change. The browser doesn’t retry, and dispatches `phem:rate-limited` with `retryAfter` (in seconds) in its detail, not `phem:error`. See [Rate limits](security.md#rate-limit-events) to change the limit.
 
 ## Events feel slow
 
