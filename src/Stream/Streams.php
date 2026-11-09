@@ -33,10 +33,11 @@ use Symfony\Contracts\Service\ResetInterface;
  *     }
  *
  * - toPage() names a page (a class name, or `GuestbookPage(...)` for a function page): all its URLs,
- *   or one URL with its route values. toComponent() names a component with #[Broadcast]: all
- *   the pages that render it. A class component with #[Broadcast] refreshes itself after its
- *   handlers (see Phem\Handler\BroadcastMiddleware). everywhere() names all the pages with
- *   #[Broadcast] (for a part of the layout).
+ *   or one URL with its route values. A page or a component with #[Broadcast(on: ...)] needs
+ *   no stream for the changes of its entities (see EntityRefreshes). toComponent() names a
+ *   component with #[Broadcast]: all the pages that render it. A class component with
+ *   #[Broadcast] refreshes itself after its handlers (see Phem\Handler\BroadcastMiddleware).
+ *   everywhere() names all the pages with #[Broadcast] (for a part of the layout).
  * - The markup renders at once, outside the page, so it shows the data of now. It is plain
  *   markup: a component in it renders with no fiber id, and an event handler or a `phem:bind`
  *   throws. For interactive content, use refresh(): each browser renders the component of the
@@ -64,8 +65,10 @@ final class Streams implements ResetInterface
 
     /**
      * The streams to a page: to all its URLs, or with all its route values to one URL
-     * (`toPage(ScientistPage::class, ['id' => 42])`). A function page is its first-class callable
-     * (`toPage(GuestbookPage(...))`).
+     * (`toPage(ScientistPage::class, ['id' => 42])`). An entity prop takes the entity, also a
+     * Doctrine reference (`toPage(OrderPage::class, ['order' => $order])`): all the routes of the
+     * page give the same URL topic (see PathTopicValues). A function page is its first-class
+     * callable (`toPage(GuestbookPage(...))`).
      *
      * @param class-string|string|\Closure $page
      * @param array<string, mixed>         $values
@@ -99,14 +102,28 @@ final class Streams implements ResetInterface
     }
 
     /**
-     * Publishes the streams that wait, one update for each topic, in their order. Phem calls it
-     * at the end of the request: call it in a long process (a command, a worker).
+     * Publishes the streams that wait, one update for each topic, in their order, with no
+     * refresh two times in a topic. Phem calls it at the end of a request, of a command, and of a
+     * message of a Messenger worker (see Phem\EventListener\StreamListener): call it in another
+     * long process.
      */
     public function flush(): void
     {
         $updates = [];
+        $refreshes = [];
         foreach ($this->queue as [$topic, $stream]) {
-            $updates[$topic] = ($updates[$topic] ?? '').$stream->toHtml();
+            $html = $stream->toHtml();
+
+            // The same refresh of a handler and of an entity change goes out once.
+            if (Stream::REFRESH === $stream->action) {
+                if (isset($refreshes[$topic][$html])) {
+                    continue;
+                }
+
+                $refreshes[$topic][$html] = true;
+            }
+
+            $updates[$topic] = ($updates[$topic] ?? '').$html;
         }
 
         $this->queue = [];

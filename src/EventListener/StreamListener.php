@@ -24,6 +24,10 @@ use Symfony\Component\HttpKernel\Event\TerminateEvent;
  * handler and its transaction ended before the response, so a refresh reads the new data. The
  * `<Suspense>` boundaries of a streamed page render after the response event (see
  * Phem\Http\PageRenderer): their streams go after the response.
+ *
+ * A command and a Messenger worker have no request: the streams of a command go at its end, and
+ * the streams of a message after its handler (for example the refreshes of a flush, see
+ * Phem\Doctrine\EntityBroadcastListener), before the worker resets the services.
  */
 final class StreamListener
 {
@@ -47,6 +51,12 @@ final class StreamListener
     }
 
     public function onKernelTerminate(TerminateEvent $event): void
+    {
+        $this->streams->flush();
+    }
+
+    /** The end of a command (`console.terminate`), or of a message of a Messenger worker. */
+    public function onProcessEnd(): void
     {
         $this->streams->flush();
     }

@@ -191,7 +191,7 @@ final class EventController
         }
 
         // The refreshes of the handlers get the token of the event (see SenderToken).
-        $this->sender->startEvent();
+        $this->sender->startEvent([] === $payload->handlers);
 
         try {
             $outcome = $this->events->run($tree, $payload->handlers, $payload->bound, $this->dispatcher, fn (): Event => Event::fromArray($payload->event, $this->dispatcher, $request->files->all()), $payload->stale, EventRequest::of($request, $payload->event));
@@ -220,7 +220,7 @@ final class EventController
 
         // A new access token for the hub, before the old one expires (see Subscription).
         if (null !== $this->subscription) {
-            $this->subscription->renew($page, $state->values, $request, $this->subscription->rendered($tree, $state->subscribed));
+            $this->subscription->renew($page, $state->values, $request, $this->subscription->rendered($tree, $state->subscribed), $props);
         }
 
         [$next, $signature] = $this->codec->encode($this->state->snapshot($tree, $state->subscribed)->toArray(), $page, $request);

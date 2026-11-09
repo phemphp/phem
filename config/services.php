@@ -93,6 +93,7 @@ use Phem\State\Type\StateValueType;
 use Phem\State\UrlQuery;
 use Phem\Stream\BroadcastKeys;
 use Phem\Stream\FrankenPhpPublisher;
+use Phem\Stream\PathTopicValues;
 use Phem\Stream\SenderToken;
 use Phem\Stream\Streams;
 use Phem\Stream\Subscription;
@@ -277,8 +278,10 @@ return static function (ContainerConfigurator $container): void {
         ->alias(Renderer::class, 'phem.renderer')
 
         // Streams: the push to the pages with #[Broadcast], through the Mercure hub
+        ->set('phem.path_topic_values', PathTopicValues::class)
+            ->args([service('phem.metadata'), service('phem.object_identifier')->nullOnInvalid(), service('phem.entity_finder')->nullOnInvalid()])
         ->set('phem.topics', Topics::class)
-            ->args([service('phem.metadata'), abstract_arg('secret, set by PhemBundle'), service('phem.page_route_values')])
+            ->args([service('phem.metadata'), abstract_arg('secret, set by PhemBundle'), service('phem.page_route_values'), service('phem.path_topic_values')])
             ->tag('kernel.reset', ['method' => 'reset'])
         ->set('phem.sender_token', SenderToken::class)
             ->tag('kernel.reset', ['method' => 'reset'])
@@ -298,6 +301,8 @@ return static function (ContainerConfigurator $container): void {
             // Before the profiler collects the data of the request (-100).
             ->tag('kernel.event_listener', ['event' => 'kernel.response', 'method' => 'onKernelResponse', 'priority' => -50])
             ->tag('kernel.event_listener', ['event' => 'kernel.terminate', 'method' => 'onKernelTerminate'])
+            ->tag('kernel.event_listener', ['event' => 'console.terminate', 'method' => 'onProcessEnd'])
+            ->tag('kernel.event_listener', ['event' => 'Symfony\\Component\\Messenger\\Event\\WorkerMessageHandledEvent', 'method' => 'onProcessEnd'])
 
         // Twig
         ->set('phem.twig.extension', PhemExtension::class)

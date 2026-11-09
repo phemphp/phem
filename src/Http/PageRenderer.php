@@ -106,7 +106,7 @@ final class PageRenderer
         }
 
         // The cookie of the hub goes with the headers, before the boundaries render.
-        $this->subscription?->renew($page, $values, $request, $this->subscription->components($tree));
+        $this->subscription?->renew($page, $values, $request, $this->subscription->components($tree), $props);
 
         return $this->stream->response($tree, $request, "<!DOCTYPE html>\n".str_replace($tree->rootToken(), 'data-phem-streaming', $html), fn (): string => $this->stateAttributes($tree, $request));
     }
@@ -119,7 +119,7 @@ final class PageRenderer
         $this->limit->check($state, $tree);
         $this->cache->save($signature, $state);
 
-        $stream = $this->subscription?->attribute($tree->page, $tree->values, $request, $subscribed) ?? '';
+        $stream = $this->subscription?->attribute($tree->page, $tree->values, $request, $subscribed, $tree->props) ?? '';
 
         return RootElement::state($state, $signature, $this->url->of($tree), $this->cache->inlineSize()).('' !== $stream ? ' '.$stream : '');
     }

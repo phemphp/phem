@@ -13,8 +13,17 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Runtime;
 
+use Phem\Handler\ObjectIdentifier;
+use Phem\Metadata\ComponentMetadata;
+use Phem\Path\EntityFinder;
 use Phem\Routing\PageRouteValues;
+use Phem\Stream\PathTopicValues;
 use Phem\Stream\Topics;
+use Phem\Tests\Fixtures\Shop\ShopOrder;
+use Phem\Tests\Fixtures\Shop\ShopOrderLine;
+use Phem\Tests\Fixtures\ShopLinePage;
+use Phem\Tests\Fixtures\ShopOrderPage;
+use Phem\Tests\Fixtures\ShopTwoPathPage;
 use Phem\Tests\Fixtures\Scientist;
 use Phem\Tests\Fixtures\Size;
 use Phem\Tests\Fixtures\Broadcasting;
@@ -28,6 +37,7 @@ use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Routing\Router;
 
 require_once \dirname(__DIR__).'/Fixtures/BroadcastingPages.php';
+require_once \dirname(__DIR__).'/Fixtures/EntityBroadcasting.php';
 
 final class TopicsTest extends TestCase
 {
@@ -180,12 +190,126 @@ final class TopicsTest extends TestCase
         new Topics()->toComponent(Scientist::class);
     }
 
-    public function testARouteValueIsNotAnObject(): void
+    public function testARouteValueIsNotAnObjectWithNoIdentifier(): void
     {
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('The route value "id" of a topic is a "stdClass"');
+        $this->expectExceptionMessage('The route value "id" of a topic is a "stdClass": give an entity, or the value of the URL.');
 
         new Topics()->toPage(Broadcasting::class, ['id' => new \stdClass(), 'size' => 'l']);
+    }
+
+    public function testAnEntityPropIsTheIdentifierOfItsEntityInAllTheRoutes(): void
+    {
+        $topics = self::withEntities();
+        $order = self::order(42);
+
+        $url = 'phem:'.ShopOrderPage::class.'?order%5Bid%5D=42';
+        // `{order}`, `{id:order}` and `{slug:order}`.
+        foreach (['42', ['id' => '42'], ['slug' => 'a1b2']] as $value) {
+            self::assertSame($url, $topics->name($topics->ofPage(ShopOrderPage::class, ['order' => $value], props: ['order' => $order])[1]));
+        }
+
+        self::assertSame($url, $topics->name($topics->toPage(ShopOrderPage::class, ['order' => $order])));
+    }
+
+    public function testThePublisherGivesTheEntityOfAnEntityProp(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('The #[Path] prop "order" of "'.ShopOrderPage::class.'" is an entity: give the ShopOrder (or a reference: $entityManager->getReference(ShopOrder::class, …)), not int.');
+
+        self::withEntities()->toPage(ShopOrderPage::class, ['order' => 42]);
+    }
+
+    public function testAnObjectWithNoIdentifierKeepsItsRouteValue(): void
+    {
+        $topics = self::withEntities();
+
+        self::assertSame('phem:'.ShopOrderPage::class.'?order=42', $topics->name($topics->ofPage(ShopOrderPage::class, ['order' => '42'], props: ['order' => new \stdClass()])[1]));
+    }
+
+    public function testAPageWithEntitiesAndMoreRouteValuesSubscribesToEachEntity(): void
+    {
+        $topics = self::withEntities();
+        $order = self::order(42);
+
+        $page = array_map($topics->name(...), $topics->ofPage(ShopTwoPathPage::class, ['shop' => '1', 'order' => '42'], props: ['shop' => 1, 'order' => $order]));
+
+        self::assertSame([
+            'phem:'.ShopTwoPathPage::class,
+            'phem:'.ShopTwoPathPage::class.'?order%5Bid%5D=42&shop=1',
+            'phem:'.ShopTwoPathPage::class.'?order%5Bid%5D=42',
+            'phem:*',
+        ], $page);
+        self::assertSame($page[2], $topics->name($topics->toPageProp(ShopTwoPathPage::class, 'order', $order)));
+    }
+
+    public function testAPageWithOneEntityPropHasNoOtherTopic(): void
+    {
+        $topics = self::withEntities();
+
+        self::assertCount(3, $topics->ofPage(ShopOrderPage::class, ['order' => '42'], props: ['order' => self::order(42)]));
+        self::assertSame($topics->toPage(ShopOrderPage::class, ['order' => self::order(42)]), $topics->toPageProp(ShopOrderPage::class, 'order', self::order(42)));
+    }
+
+    public function testAnEntityInAnIdentifierIsItsIdentifier(): void
+    {
+        $identifier = new class implements ObjectIdentifier {
+            public function identify(object $value): ?array
+            {
+                return match (true) {
+                    $value instanceof ShopOrder => ['id' => $value->id],
+                    // A derived identity: the order and a number.
+                    $value instanceof ShopOrderLine => ['order' => $value->order, 'n' => $value->quantity],
+                    default => null,
+                };
+            }
+        };
+        $topics = new Topics(values: new PathTopicValues(new ComponentMetadata(), $identifier));
+        $line = new ShopOrderLine(self::order(42), 3);
+
+        $url = 'phem:'.ShopLinePage::class.'?line%5Bn%5D=3&line%5Border%5D%5Bid%5D=42';
+        self::assertSame($url, $topics->name($topics->ofPage(ShopLinePage::class, ['line' => '42-3'], props: ['line' => $line])[1]));
+        self::assertSame($url, $topics->name($topics->toPage(ShopLinePage::class, ['line' => $line])));
+    }
+
+    public function testThePublisherGivesAnEntityWithAnIdentifier(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('The #[Path] prop "order" of "'.ShopOrderPage::class.'" gets a ShopOrder with no identifier yet: refresh its page after the flush.');
+
+        self::withEntities()->toPage(ShopOrderPage::class, ['order' => new ShopOrder()]);
+    }
+
+    private static function withEntities(): Topics
+    {
+        $identifier = new class implements ObjectIdentifier {
+            public function identify(object $value): ?array
+            {
+                // As Doctrine: no values for an entity with no identifier yet.
+                return $value instanceof ShopOrder ? array_filter(['id' => $value->id], static fn (?int $id): bool => null !== $id) : null;
+            }
+        };
+        $finder = new class implements EntityFinder {
+            public function supports(string $class): bool
+            {
+                return is_a($class, ShopOrder::class, true);
+            }
+
+            public function find(string $class, mixed $id): ?object
+            {
+                return null;
+            }
+        };
+
+        return new Topics(values: new PathTopicValues(new ComponentMetadata(), $identifier, $finder));
+    }
+
+    private static function order(int $id): ShopOrder
+    {
+        $order = new ShopOrder();
+        $order->id = $id;
+
+        return $order;
     }
 
     private static function routed(): Topics

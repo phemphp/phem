@@ -1,6 +1,6 @@
 # Push updates to other browsers
 
-This guide shows you how to show one user’s change to every other user who has the page open, without waiting for their next event. You’ll push changes from a handler, refresh a component after its own handlers, target one instance with a key and set up the Mercure hub that delivers the updates.
+This guide shows you how to show one user’s change to every other user who has the page open, without waiting for their next event. You’ll push changes from a handler, refresh the pages that show a changed entity, refresh a component after its own handlers, target one instance with a key and set up the Mercure hub that delivers the updates.
 
 ## Push changes from a handler
 
@@ -52,8 +52,15 @@ final class SignForm
 
 - **`toPage(GuestbookPage::class)`**: every URL of a page
 - **`toPage(GuestbookPage::class, ['id' => 42])`**: one URL of a page
+- **`toPage(OrderPage::class, ['order' => $order])`**: the URL of a page with a `#[Path]` entity
 - **`toComponent(Inbox::class)`**: every page that renders a component with `#[Broadcast]`
 - **`everywhere()`**: every page with `#[Broadcast]`
+
+To select one URL, give a value for each `#[Path]` property. Give a `#[Path]` entity as the entity, not as its id. All the routes of the page then get the update: `/orders/{order}`, `/orders/{id:order}` and `/o/{slug:order}` select the same order. When you have only the id, give a Doctrine reference:
+
+```php
+$this->streams->toPage(OrderPage::class, ['order' => $entityManager->getReference(Order::class, 42)])->refresh();
+```
 
 ### Change the page with stream actions
 
@@ -65,36 +72,101 @@ The markup goes to every viewer, so don’t push data meant for one user only. U
 
 Pushed content must also be in the server render, so load it in `mount()`, or the next event removes it. Give each pushed item an `id`, so the user who made the change sees it only once. The streams go out after the transaction commits, and Phem drops them when the handler throws.
 
+## Refresh the pages that show an entity
+
+Add `on:` to `#[Broadcast]` to name the Doctrine entities that a page or a component shows. After each flush that inserts, updates or deletes one of these entities, Phem refreshes the page or the component in every browser. You don’t need a Doctrine listener or a stream:
+
+```php
+use Phem\Attribute\{Broadcast, BroadcastKey, Component, Page, Path, Prop};
+
+// The URL of the order, also when one of its lines changes.
+#[Page('/staff/orders/{id:order}'), Broadcast(on: [Order::class, OrderLine::class])]
+final class StaffOrderPage
+{
+    #[Path] public Order $order;
+}
+
+// Every instance, for a new or a deleted Order, a change of its status, or any change of an OrderLine.
+#[Component, Broadcast(on: [Order::class => ['status'], OrderLine::class])]
+final class StaffAlerts
+{
+}
+
+// Only the instances that show the changed line.
+#[Component, Broadcast(on: OrderLine::class)]
+final class StaffOrderLine
+{
+    #[Prop, BroadcastKey] public OrderLine $line;
+}
+```
+
+A handler of `StaffOrderPage` ships the order:
+
+```php
+#[Transactional]
+public function ship(): void
+{
+    $this->order->status = OrderStatus::Shipped;
+}
+```
+
+After the commit, the hub gets one refresh for each target. In the event request, each refresh has the token of the event (see [Skip the refresh in the browser that sent the event](#skip-the-refresh-in-the-browser-that-sent-the-event)):
+
+```html
+<!-- to the URL /staff/orders/42 -->
+<turbo-stream action="refresh" data-phem-sender="…"></turbo-stream>
+<!-- to the instances of <StaffAlerts> -->
+<turbo-stream action="refresh" targets="[data-phem-broadcast~=&quot;…&quot;]" data-phem-sender="…"></turbo-stream>
+```
+
+### Choose the URLs and the instances
+
+The entity selects what refreshes:
+
+- **A page** refreshes the URLs where a `#[Path]` property has the entity. A change of `Order` 42 refreshes `/staff/orders/42` only.
+- **A component** refreshes the instances where a `#[BroadcastKey]` prop has the entity.
+- **A related entity** follows its to-one association. `OrderLine` has a `ManyToOne` to `Order`, the type of the `order` property, so a change of a line refreshes the page of its order. When a line moves to another order, the pages of the two orders refresh.
+- **With no such property**, every URL of the page or every instance of the component refreshes.
+
+A page with more than one `#[Path]` property, such as `/shops/{shop}/orders/{order}`, also refreshes by the entity alone: a change of the order refreshes its URL in every shop.
+
+### Refresh only for some fields
+
+Give a list of fields to refresh only after an update of these fields. A field can also be an association or a collection of the owning side. An insert and a delete always refresh:
+
+```php
+#[Component, Broadcast(on: [Order::class => ['status', 'customer']])]
+```
+
+A flush doesn’t write the inverse side of an association (`mappedBy`), such as `Order::$lines`. To refresh when the lines change, add `OrderLine::class` to `on:`.
+
+Phem checks the classes and the fields at the first flush. A class that isn’t a Doctrine entity, a field that the entity doesn’t have, or the inverse side of an association throws a `LogicException`.
+
+### Know the limits
+
+- Only a flush of the Doctrine ORM refreshes. A DQL `UPDATE` or `DELETE`, or plain SQL, doesn’t go through the unit of work. Push the refresh with `Streams` for them.
+- A flush in a command or in a Messenger handler publishes its refreshes at the end of the command or of the message. In another long process, call `Streams::flush()`.
+- A flush in the render of a push refresh doesn’t refresh other browsers. For example, a `mount()` that saves a “last seen” date would make two browsers refresh each other with no end. Save such data in a handler, or leave its entity out of `on:`.
+- A class component with `on:` still refreshes after its own handlers (see [Refresh a component after its own handlers](#refresh-a-component-after-its-own-handlers)). When a handler and a flush refresh the same instances, the browser renders them once. Use `handlers: false` when only the entity changes need a refresh.
+- `on:` goes on a page or a component, not on a handler method or a closure.
+
 ## Skip the refresh in the browser that sent the event
 
-The browser that sent an event doesn’t render again what its event already rendered. In an event request, each refresh has the event’s token, even a refresh from a service such as a Doctrine listener. The event response gives that browser the token and the list of components the event rendered.
+The browser that sent an event doesn’t render again what its event already rendered. In an event request, each refresh has the event’s token, also a refresh of an entity change or of a service such as a Doctrine listener. The event response gives that browser the token and the list of components the event rendered.
 
 For each refresh with that token, the browser skips a component that the event rendered with all its children, and renders the other targets:
 
 ```php
-#[Page('/orders/{id:order}'), Broadcast]
+#[Page('/orders/{id:order}'), Broadcast(on: Order::class)]
 final class OrderPage
 {
     #[Path] public Order $order;
 
-    // The handler renders the page.
+    // The handler renders the page, and its flush refreshes the page in every browser.
+    #[Transactional]
     public function ship(): void
     {
         $this->order->ship();
-    }
-}
-
-// A Doctrine entity listener of Order, in the same request.
-#[AsEntityListener(event: Events::postUpdate, entity: Order::class)]
-final class OrderChanged
-{
-    public function __construct(private readonly Streams $streams)
-    {
-    }
-
-    public function __invoke(Order $order): void
-    {
-        $this->streams->toPage(OrderPage::class, ['order' => $order])->refresh();
     }
 }
 ```

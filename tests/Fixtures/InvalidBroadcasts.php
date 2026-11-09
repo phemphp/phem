@@ -133,3 +133,25 @@ final class HandlerWithHandlersFalse
 function KeyedWidget(#[BroadcastKey] int $id, string $label = '', #[BroadcastKey] string $locale = 'en'): void
 {
 }
+
+/** A handler with entities: only a page or a component has `on`. */
+#[Component]
+final class EntitiesOnAHandler
+{
+    #[Broadcast(on: \stdClass::class)]
+    public function save(): void
+    {
+    }
+}
+
+/** A class of `on` that does not exist. */
+#[Component, Broadcast(on: 'App\NoSuchEntity')]
+final class UnknownBroadcastEntity
+{
+}
+
+/** A field that is not a list. */
+#[Component, Broadcast(on: [\stdClass::class => 'status'])]
+final class BroadcastFieldsNotAList
+{
+}

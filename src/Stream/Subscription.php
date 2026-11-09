@@ -109,10 +109,11 @@ final class Subscription
      *
      * @param array<string, mixed> $values     the #[Path] route values of the page
      * @param list<string>         $components the components with #[Broadcast] of the page (see components())
+     * @param array<string, mixed> $props      the resolved #[Path] props of the page (see Topics::ofPage())
      */
-    public function attribute(string $page, array $values, Request $request, array $components = []): string
+    public function attribute(string $page, array $values, Request $request, array $components = [], array $props = []): string
     {
-        $topics = $this->renew($page, $values, $request, $components);
+        $topics = $this->renew($page, $values, $request, $components, $props);
         if ([] === $topics) {
             return '';
         }
@@ -132,12 +133,13 @@ final class Subscription
      *
      * @param array<string, mixed> $values
      * @param list<string>         $components the components with #[Broadcast] of the page
+     * @param array<string, mixed> $props      the resolved #[Path] props of the page
      *
      * @return list<string>
      */
-    public function renew(string $page, array $values, Request $request, array $components = []): array
+    public function renew(string $page, array $values, Request $request, array $components = [], array $props = []): array
     {
-        $topics = $this->topics->ofPage($page, $values, $components);
+        $topics = $this->topics->ofPage($page, $values, $components, $props);
         if ([] !== $topics) {
             $request->attributes->set(self::ATTRIBUTE, $topics);
         }

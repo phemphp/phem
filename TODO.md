@@ -24,8 +24,6 @@ Talk about each item before its implementation. The open questions are a start, 
 - [ ] **Refresh after a handler** (section 3). An explicit `#[Refresh]`, or an automatic refresh
       from the Doctrine unit of work? How does Phem find the components that show a changed
       entity?
-- [ ] **Entity broadcasts** (section 3). Which pages and components get a refresh for a changed
-      entity, and how does a `#[Path]` entity select one URL of a page?
 
 ## 1. Rendering and performance
 
@@ -97,34 +95,6 @@ call, the page shows old data, with no error.
 - **Proposal B (automatic):** with `#[Transactional]`, Phem reads the Doctrine unit of work at
   the flush, and renders again each component with a changed entity in a prop or a `#[Path]`.
 - **Open questions:** see "Refresh after a handler" in the design discussions.
-
-### [ ] Entity broadcasts — P2
-
-The app has a Doctrine listener of 220 lines (`App\Shop\LiveUpdates`). It maps each entity
-change to the `toPage()` and `toComponent()` calls by hand, and a new live component must go in
-it too. It also has this form:
-
-```php
-$this->streams->toPage(StaffOrderPage::class, ['order' => ['id' => $order->id]])->refresh();
-```
-
-- **Best peer:** Symfony UX Turbo `#[Broadcast]` on a Doctrine entity.
-- **Proposal:** a component tells which entities it shows, and a Phem Doctrine listener sends
-  the refresh after the commit:
-
-  ```php
-  // A refresh for the Order of the #[Path] only.
-  #[Page('/gestion/pedidos/{id:order}'), Broadcast(on: Order::class)]
-  final class StaffOrderPage
-
-  // A refresh for a new Order, a change of its status, or any change of an OrderLine.
-  #[Component, Broadcast(on: [Order::class => ['status'], OrderLine::class => '*'])]
-  final class StaffAlerts
-  ```
-
-- **First step:** `toPage()` accepts the entity of a mapped route value:
-  `toPage(StaffOrderPage::class, ['order' => $order])`.
-- **Open questions:** see "Entity broadcasts" in the design discussions.
 
 ### [ ] Enum cases and page links in markup — P3
 

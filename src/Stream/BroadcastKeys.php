@@ -29,6 +29,9 @@ use Phem\Rendering\Fiber;
  * - With #[BroadcastKey] on props or properties, the key of the instance: the component and the
  *   values of these keys after the render (see NameValues). An entity is its identifier, an enum
  *   is its value. A class component can mark any property, also a private one that mount() sets.
+ * - With #[Broadcast(on: ...)] and more than one key prop, the key of each entity key prop alone:
+ *   a change of one entity selects these instances (see EntityRefreshes). With one key prop,
+ *   this is the key of the instance.
  *
  * A key is an HMAC with the secret of Phem, as a topic (see NameHash): the page does not show the
  * class names or the values of the props.
@@ -48,7 +51,7 @@ final class BroadcastKeys
      */
     public function __construct(
         private readonly string $secret = '',
-        ?ObjectIdentifier $objects = null,
+        private readonly ?ObjectIdentifier $objects = null,
         private readonly ComponentMetadata $metadata = new ComponentMetadata(),
     ) {
         $this->values = new NameValues($objects);
@@ -71,13 +74,36 @@ final class BroadcastKeys
             }
 
             $keys[] = $this->ofComponent($component);
-            if ([] !== $props) {
-                // The values of the component itself: no check of their names.
-                $keys[] = $this->instance($component, $this->valuesOf($fiber, $component));
+            if ([] === $props) {
+                continue;
+            }
+
+            // The values of the component itself: no check of their names.
+            $values = $this->valuesOf($fiber, $component);
+            $keys[] = $this->instance($component, $values);
+
+            // One entity selects the instances of a component with more key props (see EntityRefreshes).
+            if (\count($values) > 1 && [] !== $this->metadata->entityBroadcasts($component)) {
+                foreach ($values as $name => $value) {
+                    if (\is_object($value) && null !== $this->objects?->identify($value)) {
+                        $keys[] = $this->instance($component, [$name => $value]);
+                    }
+                }
             }
         }
 
         return $keys;
+    }
+
+    /**
+     * The key of the instances with an entity in one key prop: the key of the instance of a
+     * component with one key prop, else the key of this prop alone (see ofFiber()).
+     *
+     * @internal see EntityRefreshes
+     */
+    public function ofProp(string $component, string $prop, object $entity): string
+    {
+        return $this->instance($component, [$prop => $entity]);
     }
 
     /**

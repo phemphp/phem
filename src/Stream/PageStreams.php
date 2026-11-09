@@ -35,7 +35,7 @@ final class PageStreams
     public function __construct(
         private readonly Streams $streams,
         public readonly string $topic,
-        private readonly ?string $key = null,
+        public readonly ?string $key = null,
     ) {
     }
 

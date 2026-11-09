@@ -29,18 +29,34 @@ use Symfony\Contracts\Service\ResetInterface;
 final class SenderToken implements ResetInterface
 {
     private bool $event = false;
+    private bool $refresh = false;
     private ?string $token = null;
 
-    /** The handlers of an event of a browser run: their refreshes get the token (see EventController). */
-    public function startEvent(): void
+    /**
+     * The handlers of an event of a browser run: their refreshes get the token (see EventController).
+     *
+     * @param bool $refresh the event has no handler: the browser renders again after a push
+     */
+    public function startEvent(bool $refresh = false): void
     {
         $this->event = true;
+        $this->refresh = $refresh;
     }
 
     /** The handlers of the event ended: issued() keeps the token for the answer of the event. */
     public function endEvent(): void
     {
         $this->event = false;
+        $this->refresh = false;
+    }
+
+    /**
+     * Whether an event with no handler runs: the render of a push refresh. A write in it must not
+     * refresh the other browsers (see Phem\Doctrine\EntityBroadcastListener).
+     */
+    public function isRefresh(): bool
+    {
+        return $this->event && $this->refresh;
     }
 
     /** The token for a refresh: in an event, a new one at the first call. Else null. */
@@ -58,6 +74,7 @@ final class SenderToken implements ResetInterface
     public function reset(): void
     {
         $this->event = false;
+        $this->refresh = false;
         $this->token = null;
     }
 }

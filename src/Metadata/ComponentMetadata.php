@@ -47,8 +47,11 @@ final class ComponentMetadata
     /** @var array<string, bool> */
     private array $receivesOnly = [];
 
-    /** @var array<string, list<string>> */
+    /** @var array<string, array<string, ?\ReflectionType>> name => key prop => type */
     private array $broadcastKeys = [];
+
+    /** @var array<string, array<class-string, list<string>>> */
+    private array $entityBroadcasts = [];
 
     /** @var array<string, bool> */
     private array $components = [];
@@ -311,7 +314,7 @@ final class ComponentMetadata
         }
 
         $attribute = $reflection->getAttributes(Broadcast::class)[0] ?? null;
-        $this->receivesOnly[$name] = null !== $attribute && !self::refreshesAfterHandlers($attribute);
+        $this->receivesOnly[$name] = null !== $attribute && !self::refreshesAfterHandlers($attribute->getArguments());
         if ($this->receivesOnly[$name]) {
             if (!$reflection instanceof \ReflectionClass || !$this->isComponent($name)) {
                 throw new \LogicException(\sprintf('"%s" has #[Broadcast(handlers: false)], but it is not a class component: only the handlers of a class component refresh it. Use #[Broadcast].', $name));
@@ -348,6 +351,16 @@ final class ComponentMetadata
      */
     public function broadcastKeys(string $name): array
     {
+        return array_keys($this->broadcastKeyTypes($name));
+    }
+
+    /**
+     * The props of a component with #[BroadcastKey], with their types (see broadcastKeys()).
+     *
+     * @return array<string, ?\ReflectionType>
+     */
+    public function broadcastKeyTypes(string $name): array
+    {
         if (isset($this->broadcastKeys[$name])) {
             return $this->broadcastKeys[$name];
         }
@@ -362,11 +375,39 @@ final class ComponentMetadata
         $keys = [];
         foreach ($members as $member) {
             if ([] !== $member->getAttributes(BroadcastKey::class)) {
-                $keys[] = $member->getName();
+                $keys[$member->getName()] = $member->getType();
             }
         }
 
         return $this->broadcastKeys[$name] = $keys;
+    }
+
+    /**
+     * The entities of #[Broadcast(on: ...)] of a page or a component, with the fields that
+     * refresh it after an update (see Phem\Attribute\Broadcast::entities()). None with no `on`.
+     *
+     * @return array<class-string, list<string>>
+     *
+     * @throws \LogicException when a class of `on` does not exist
+     */
+    public function entityBroadcasts(string $name): array
+    {
+        if (isset($this->entityBroadcasts[$name])) {
+            return $this->entityBroadcasts[$name];
+        }
+
+        $attribute = self::reflect($name)?->getAttributes(Broadcast::class)[0] ?? null;
+
+        $entities = [];
+        foreach ($attribute?->newInstance()->entities() ?? [] as $class => $fields) {
+            if (!class_exists($class) && !interface_exists($class)) {
+                throw new \LogicException(\sprintf('"%s" has #[Broadcast(on: ...)] with the class "%s", which does not exist.', $name, $class));
+            }
+
+            $entities[$class] = $fields;
+        }
+
+        return $this->entityBroadcasts[$name] = $entities;
     }
 
     /**
@@ -398,6 +439,7 @@ final class ComponentMetadata
      * class component in the other browsers (see Phem\Handler\BroadcastMiddleware).
      *
      * @throws \LogicException when it has #[Broadcast(handlers: false)]: only a class component has this argument
+     * @throws \LogicException when it has #[Broadcast(on: ...)]: only a page or a component has this argument
      */
     public function handlerBroadcasts(\ReflectionFunctionAbstract $handler): bool
     {
@@ -406,26 +448,33 @@ final class ComponentMetadata
             return false;
         }
 
-        if (!self::refreshesAfterHandlers($attribute)) {
-            $name = $handler instanceof \ReflectionMethod ? \sprintf('The method "%s::%s()"', $handler->class, $handler->getName()) : \sprintf('A handler closure of "%s"', $handler->getClosureScopeClass()?->getName() ?? $handler->getName());
+        $arguments = $attribute->getArguments();
+        if (\array_key_exists('on', $arguments) || \array_key_exists(0, $arguments)) {
+            throw new \LogicException(\sprintf('%s has #[Broadcast(on: ...)]: only a page or a component can have the "on" argument. Put it on the class.', self::handlerName($handler)));
+        }
 
-            throw new \LogicException(\sprintf('%s has #[Broadcast(handlers: false)]: only a class component can have the "handlers" argument. Remove #[Broadcast] from it, so it does not refresh the component.', $name));
+        if (!self::refreshesAfterHandlers($arguments)) {
+            throw new \LogicException(\sprintf('%s has #[Broadcast(handlers: false)]: only a class component can have the "handlers" argument. Remove #[Broadcast] from it, so it does not refresh the component.', self::handlerName($handler)));
         }
 
         return true;
     }
 
-    /**
-     * The "handlers" argument of a #[Broadcast], with no instance of the attribute: this runs for
-     * the handler of each event.
-     *
-     * @param \ReflectionAttribute<Broadcast> $attribute
-     */
-    private static function refreshesAfterHandlers(\ReflectionAttribute $attribute): bool
+    /** The name of a handler for an error: a method, or a closure of render(). */
+    private static function handlerName(\ReflectionFunctionAbstract $handler): string
     {
-        $arguments = $attribute->getArguments();
+        return $handler instanceof \ReflectionMethod ? \sprintf('The method "%s::%s()"', $handler->class, $handler->getName()) : \sprintf('A handler closure of "%s"', $handler->getClosureScopeClass()?->getName() ?? $handler->getName());
+    }
 
-        return false !== ($arguments['handlers'] ?? $arguments[0] ?? true);
+    /**
+     * The "handlers" argument of a #[Broadcast], from the arguments of the attribute, with no
+     * instance of it: this runs for the handler of each event.
+     *
+     * @param array<array-key, mixed> $arguments
+     */
+    private static function refreshesAfterHandlers(array $arguments): bool
+    {
+        return false !== ($arguments['handlers'] ?? $arguments[1] ?? true);
     }
 
     /**

@@ -15,6 +15,7 @@ namespace Phem;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Phem\DependencyInjection\ComponentPass;
+use Phem\DependencyInjection\EntityBroadcastPass;
 use Phem\DependencyInjection\TailwindTheme;
 use Phem\DependencyInjection\TestAsyncPass;
 use Phem\DependencyInjection\TestPublisherPass;
@@ -416,6 +417,7 @@ final class PhemBundle extends AbstractBundle
 
         // Before the autoconfiguration passes, so the component services are autoconfigured.
         $container->addCompilerPass(new ComponentPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 200);
+        $container->addCompilerPass(new EntityBroadcastPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 199);
         $container->addCompilerPass(new TestPublisherPass());
         $container->addCompilerPass(new TestAsyncPass());
     }
