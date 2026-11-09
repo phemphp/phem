@@ -30,6 +30,7 @@ export const navigation: NavGroup[] = [
             { slug: 'pages', label: 'Build Pages and Routes' },
             { slug: 'events', label: 'Handle Events' },
             { slug: 'forms', label: 'Handle Forms' },
+            { slug: 'long-lists', label: 'Show Long Lists' },
             { slug: 'client-side', label: 'Add Client-Side Behavior' },
             { slug: 'styling', label: 'Style Components' },
             { slug: 'server-features', label: 'Handle Slow and Failing Work' },

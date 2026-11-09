@@ -50,14 +50,15 @@ final class Tree
     private array $deferredIds = [];
 
     /**
-     * @param string                              $page     the page component, or '' for a tree without a page
-     * @param array<string, array<string, mixed>> $state    fiber id => state that the browser sent back
-     * @param array<string, mixed>                $props    the props of the page: its #[Path] route values (an entity for an entity prop)
-     * @param array<string, mixed>                $values   the route values of the #[Path] props, as the route gives them (an identifier or criteria for an entity prop)
-     * @param array<array-key, mixed>             $query    the query string of the page request, for the #[Url] properties of a new fiber (see Phem\State\UrlQuery)
-     * @param TreeShape                           $shape    the shape of the last render, in the browser
-     * @param bool                                $detached a tree outside a page, for the markup of a push (see Renderer::detached())
-     * @param SuspenseLoad                        $suspense how the `<Suspense>` boundaries that show their fallback load
+     * @param string                              $page      the page component, or '' for a tree without a page
+     * @param array<string, array<string, mixed>> $state     fiber id => state that the browser sent back
+     * @param array<string, mixed>                $props     the props of the page: its #[Path] route values (an entity for an entity prop)
+     * @param array<string, mixed>                $values    the route values of the #[Path] props, as the route gives them (an identifier or criteria for an entity prop)
+     * @param array<array-key, mixed>             $query     the query string of the page request, for the #[Url] properties of a new fiber (see Phem\State\UrlQuery)
+     * @param TreeShape                           $shape     the shape of the last render, in the browser
+     * @param bool                                $detached  a tree outside a page, for the markup of a push (see Renderer::detached())
+     * @param SuspenseLoad                        $suspense  how the `<Suspense>` boundaries that show their fallback load
+     * @param list<FeedItem>                      $feedItems the items of the feeds that the browser sent (see FeedBinder)
      */
     public function __construct(
         public readonly string $page = '',
@@ -68,6 +69,7 @@ final class Tree
         public readonly TreeShape $shape = new TreeShape(),
         public readonly bool $detached = false,
         public readonly SuspenseLoad $suspense = SuspenseLoad::Event,
+        private readonly array $feedItems = [],
     ) {
     }
 
@@ -163,13 +165,21 @@ final class Tree
     }
 
     /**
-     * The fiber with this id. A new fiber starts from the state that the browser sent back.
+     * The fiber with this id. A new fiber starts from the state and the feed items that the browser
+     * sent back.
      *
      * @param \Closure(?array<string, mixed>): Fiber $create makes the fiber from its restored state
      */
     public function fiber(string $id, \Closure $create): Fiber
     {
-        return $this->fibers[$id] ??= $create($this->state[$id] ?? null);
+        if (isset($this->fibers[$id])) {
+            return $this->fibers[$id];
+        }
+
+        $fiber = $create($this->state[$id] ?? null);
+        $fiber->feedItems = array_values(array_filter($this->feedItems, static fn (FeedItem $item): bool => $item->fiber === $id));
+
+        return $this->fibers[$id] = $fiber;
     }
 
     /** The index of the next component at the root of the tree. */

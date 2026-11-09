@@ -137,6 +137,8 @@ const REFRESH_WAIT = 50
 // The maximum number of stale components of an event (EventPayload::MAX_STALE on the server).
 // With more, the controller marks the content of the root element: one id renders all of them.
 const MAX_STALE = 100
+// The items of feeds that one event sends at most (see markFeed()): the server takes no more (EventPayload::MAX_FEEDS).
+const MAX_FEEDS = 100
 
 // The wait before a new connection to the hub after it refused one (an expired token).
 const STREAM_RETRY = 5000
@@ -627,6 +629,18 @@ export default class PhemController extends Controller {
     }
     this.element.addEventListener("turbo:before-morph-element", this.keepKept)
 
+    // The children of a feed element are the items that the browser keeps (see Phem\Feed): the
+    // server renders the element with no items, and gives the changes of the items in their own
+    // streams. The morph of the same feed element keeps its children. A feed element with another
+    // id is a new feed (a component with another key): the morph replaces its children.
+    this.keepFeed = (event) => {
+      const t = event.target
+      const next = event.detail.newElement
+      if (next?.hasAttribute?.("data-phem-feed")) t._phemSameFeed = t.id === next.id
+      else if (!next && t.parentElement?.hasAttribute?.("data-phem-feed") && t.parentElement._phemSameFeed) event.preventDefault()
+    }
+    this.element.addEventListener("turbo:before-morph-element", this.keepFeed)
+
     // A morph or a removal of the element of a held event drops it (see HeldEvents). A stream that
     // does not morph (a push that removes or replaces an element) drops the events of the
     // elements that left the page.
@@ -634,6 +648,8 @@ export default class PhemController extends Controller {
     this.dropMorphed = (event) => {
       const target = event.target
       const removed = !event.detail.newElement
+      // An item that the feed keeps (see keepFeed) stays in the page.
+      if (removed && event.defaultPrevented) return
       this.heldEvents.drop((el) => el === target || (removed && target.contains(el)))
     }
     this.element.addEventListener("turbo:before-morph-element", this.dropMorphed)
@@ -796,6 +812,8 @@ export default class PhemController extends Controller {
 
     // The ids of the stale components (see the header): the next event sends them.
     this.stale = new Set()
+    // The items that pushes gave to the feeds of the page (see markFeed()): the next event sends them.
+    this.feedItems = []
     // The last events of this page with refreshes: the token (`sender` in the answer) => the ids of
     // the fibers that the event rendered (`rendered`). A refresh with the token of one of these
     // events does not render again what the event rendered (see markRefresh()).
@@ -832,6 +850,7 @@ export default class PhemController extends Controller {
     this.element.removeEventListener("turbo:before-morph-attribute", this.keepEdited)
     this.element.removeEventListener("turbo:before-morph-element", this.keepValue)
     this.element.removeEventListener("turbo:before-morph-element", this.keepKept)
+    this.element.removeEventListener("turbo:before-morph-element", this.keepFeed)
     this.element.removeEventListener("turbo:before-morph-element", this.dropMorphed)
     document.removeEventListener("turbo:before-stream-render", this.dropDetached)
     document.removeEventListener("turbo:before-cache", this.dropForCache)
@@ -934,6 +953,12 @@ export default class PhemController extends Controller {
         continue
       }
 
+      if (action === "phem-feed") {
+        stream.remove()
+        refresh = this.markFeed(stream) || refresh
+        continue
+      }
+
       if (!inRoot) continue
 
       this.markStale(["remove", "replace", "before", "after"].includes(action) ? target.parentElement : target)
@@ -979,6 +1004,34 @@ export default class PhemController extends Controller {
     let refresh = false
     for (const component of this.element.querySelectorAll(selector)) {
       if (fresh(component)) continue
+      refresh = this.markStale(component) || refresh
+    }
+
+    return refresh
+  }
+
+  // A change of a feed in another request (see Phem\Stream\FeedPush), for the instances of the
+  // `targets` selector that show the feed. A deleted item leaves the page at once. A new or a
+  // changed item goes back to the server with the refresh: the server renders it in the feed with
+  // the access rules of this user. A push of an event of this page skips a component that the
+  // event rendered: its handler changed the feed. Returns whether one is stale.
+  markFeed(stream) {
+    const rendered = this.sent.get(stream.getAttribute("data-phem-sender") ?? "")
+    const name = stream.getAttribute("data-phem-feed")
+    const operation = stream.getAttribute("data-phem-feed-op")
+    let refresh = false
+
+    for (const component of this.element.querySelectorAll(stream.getAttribute("targets") ?? ":not(*)")) {
+      const fiber = component.getAttribute(FIBER)
+      const feed = document.getElementById(`${fiber}-${name}`)
+      if (rendered?.has(fiber) || !feed || !component.contains(feed)) continue
+
+      if (operation === "delete") {
+        document.getElementById(`${feed.id}-${stream.getAttribute("data-phem-feed-key")}`)?.remove()
+        continue
+      }
+
+      this.feedItems.push({ feed: feed.id, token: stream.getAttribute("data-phem-item"), op: operation })
       refresh = this.markStale(component) || refresh
     }
 
@@ -1141,6 +1194,14 @@ export default class PhemController extends Controller {
     }
 
     if (fields && !submit) payload.touched = touchedNames(form)
+
+    // An element in an item of a feed: the server loads the item again, so its handler is in the
+    // render (see Phem\Rendering\FeedBinder). Not in the event data: fetchWithRetry() sends it.
+    const item = el.closest("[data-phem-item]")
+    const feed = item?.parentElement
+    if (item && feed?.hasAttribute("data-phem-feed") && this.element.contains(feed)) {
+      payload.item = { feed: feed.id, token: item.getAttribute("data-phem-item") }
+    }
 
     // Not in the JSON: fetchWithRetry() sends the files as parts of a multipart body. The handler
     // can take them: then the controller empties their inputs (see clearFiles()).
@@ -1527,6 +1588,8 @@ export default class PhemController extends Controller {
     // The stale components when the event starts: the server renders them again.
     const stale = [...this.stale]
     if (stale.length) event = { ...event, stale }
+    const feeds = this.feedItems.slice(0, MAX_FEEDS)
+    if (feeds.length) event = { ...event, feeds }
     notify("send")
 
     // The end of an event that the server did not take: no morph.
@@ -1611,6 +1674,12 @@ export default class PhemController extends Controller {
     }
 
     for (const id of stale) this.stale.delete(id)
+    this.feedItems.splice(0, feeds.length)
+    // More pushed items than one event takes: the next refresh sends the others.
+    if (this.feedItems.length) {
+      for (const { feed } of this.feedItems) this.stale.add(feed.slice(0, feed.indexOf("-")))
+      this.scheduleRefresh()
+    }
     const stateBefore = this.stateValue
     this.stateValue = applyStateChanges(this.stateValue, data.changes ?? {})
     this.signatureValue = data.signature
@@ -1782,13 +1851,13 @@ export default class PhemController extends Controller {
   // files goes with XHR when `onProgress` wants the progress of the upload.
   async fetchWithRetry(handler, event, bound, onProgress, withState) {
     // The file inputs stay in the page (see clearFiles()).
-    const { files = [], fileInputs, stale = [], loads = null, ...data } = event
+    const { files = [], fileInputs, stale = [], loads = null, item = null, feeds = [], ...data } = event
 
     // A `phem:live` event has no handler: the server only sets the bound values. A refresh has
     // no handler either: the server renders the stale components. A load of many boundaries has
     // the list of their handlers.
     const state = withState ? { state: this.stateValue } : {}
-    const json = JSON.stringify({ ...state, signature: this.signatureValue, handler: data.live ? null : (loads ?? handler), event: data, bound, ...(stale.length ? { stale } : {}) })
+    const json = JSON.stringify({ ...state, signature: this.signatureValue, handler: data.live ? null : (loads ?? handler), event: data, bound, ...(stale.length ? { stale } : {}), ...(item ? { item } : {}), ...(feeds.length ? { feeds } : {}) })
 
     // An event with files is not compressed: the files are most of the body.
     const plain = files.length ? null : await jsonBody(json)

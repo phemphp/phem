@@ -48,6 +48,7 @@ use Phem\Http\ErrorPageRenderer;
 use Phem\Http\ErrorPages;
 use Phem\Http\ErrorPagesWarmer;
 use Phem\Http\EventBody;
+use Phem\Http\FeedStreams;
 use Phem\Http\PageRenderer;
 use Phem\Http\PageStream;
 use Phem\Http\StatelessPageRenderer;
@@ -65,6 +66,9 @@ use Phem\Rendering\ContainerComponentFactory;
 use Phem\Rendering\ContextResolver;
 use Phem\Rendering\ErrorBoundaryRenderer;
 use Phem\Rendering\EventRenderer;
+use Phem\Rendering\FeedBinder;
+use Phem\Rendering\FeedIdentity;
+use Phem\Rendering\FeedItemToken;
 use Phem\Rendering\FieldErrors;
 use Phem\Rendering\FunctionComponentRenderer;
 use Phem\Rendering\FunctionPageRenderer;
@@ -229,8 +233,17 @@ return static function (ContainerConfigurator $container): void {
         // Rendering
         ->set('phem.component_factory', ContainerComponentFactory::class)
             ->args([abstract_arg('class components, set by ComponentPass')])
+        // Feeds: the lists whose items the browser keeps (see Phem\Feed)
+        ->set('phem.feed_identity', FeedIdentity::class)
+            ->args([service('phem.object_identifier')->nullOnInvalid()])
+        ->set('phem.feed_item_token', FeedItemToken::class)
+            ->args([abstract_arg('secret, set by PhemBundle')])
+        ->set('phem.feed_binder', FeedBinder::class)
+            ->args([service('phem.metadata'), service('phem.feed_item_token'), service('phem.entity_finder')->nullOnInvalid()])
+        ->set('phem.feed_streams', FeedStreams::class)
+            ->args([service('phem.feed_identity')])
         ->set('phem.component_renderer.class', ClassComponentRenderer::class)
-            ->args([service('phem.component_factory'), service('phem.prop_binder'), service('phem.state_accessor'), service('phem.url_query'), service('phem.metadata'), service('phem.context_resolver')])
+            ->args([service('phem.component_factory'), service('phem.prop_binder'), service('phem.state_accessor'), service('phem.url_query'), service('phem.metadata'), service('phem.context_resolver'), service('phem.feed_binder')])
             ->tag('phem.component_renderer')
         // Before the class renderer: <Suspense> is a built-in class component.
         ->set('phem.component_renderer.suspense', SuspenseRenderer::class)
@@ -293,7 +306,7 @@ return static function (ContainerConfigurator $container): void {
             ->args([service('logger')->nullOnInvalid()])
         ->alias('phem.stream_publisher', 'phem.stream_publisher.frankenphp')
         ->set('phem.streams', Streams::class)
-            ->args([service('phem.renderer'), service('phem.stream_publisher'), service('phem.topics'), false, service('phem.broadcast_keys'), service('phem.sender_token')])
+            ->args([service('phem.renderer'), service('phem.stream_publisher'), service('phem.topics'), false, service('phem.broadcast_keys'), service('phem.sender_token'), service('phem.feed_item_token'), service('phem.feed_identity')])
             ->tag('kernel.reset', ['method' => 'reset'])
         ->alias(Streams::class, 'phem.streams')
         ->set('phem.subscription', Subscription::class)
@@ -311,8 +324,9 @@ return static function (ContainerConfigurator $container): void {
             ->args([service('phem.manifest')])
             ->tag('twig.extension')
         ->set('phem.twig.runtime', PhemRuntime::class)
-            ->args([service('phem.renderer'), service('phem.template_renderer'), service('phem.class_attribute')])
+            ->args([service('phem.renderer'), service('phem.template_renderer'), service('phem.class_attribute'), service('phem.feed_identity'), service('phem.feed_item_token')])
             ->tag('twig.runtime')
+            ->tag('kernel.reset', ['method' => 'reset'])
         ->set('phem.twig.loader', TemplateLoader::class)
             ->args(['%phem.build_dir%/templates'])
             ->tag('twig.loader')
@@ -442,6 +456,7 @@ return static function (ContainerConfigurator $container): void {
                 service('phem.subscription'),
                 service('phem.sender_token'),
                 service('phem.state_size_limit'),
+                service('phem.feed_streams'),
             ])
         ->set('phem.listener.page_attributes', PageAttributesListener::class)
             ->tag('kernel.event_listener', ['event' => 'kernel.controller', 'method' => 'onKernelController'])

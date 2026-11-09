@@ -1,0 +1,38 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from Ui/Feed/ChatRoom.phem; do not edit */
+
+namespace App\Ui\Feed;
+
+use App\Chat\Message;
+use Phem\Attribute\{Component, State};
+use Phem\Feed;
+use Phem\Node;
+
+#[Component]
+final class ChatRoom
+{
+    #[State] public string $draft = '';
+    public Feed $messages;
+
+    public function remove(Message $m): void
+    {
+        $this->messages->delete($m);
+    }
+
+    public function render(): Node
+    {
+        return (
+            new \Phem\Element('Ui/Feed/ChatRoom.0.twig', ['messages' => $this->messages, 'remove' => $this->remove(...), 'draft' => $this->draft, 'this' => $this])
+
+
+
+
+
+
+
+        );
+    }
+}

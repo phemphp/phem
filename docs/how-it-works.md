@@ -82,6 +82,7 @@ The response stays small in three more ways:
 - **JSON patches**: an entry that changed only a bit gets a patch of its JSON text, the shape gets only the hashes that changed, and a large `#[State]` list where one item changed gets only that item
 - **Kept components**: a component that didn’t render again comes back as a `<template data-phem-keep>` placeholder, and the browser keeps its current HTML
 - **Kept runs**: adjacent kept components share one placeholder (`first..last`), and the browser finds the components of the run in the shape it already has
+- **Feeds**: the items of a `Phem\Feed` aren’t in the state or in the hash of their component. An event renders only the items that it changes, in their own streams after the morph, and the browser keeps the other items (see [Feeds](long-lists.md))
 
 All of this depends on a pure `render()`, because Phem assumes that a component with the same inputs gives the same HTML (see [Keep `render()` pure](components.md#keep-render-pure)). Only the content of the `<Root>` changes; the document around it, for example the title, stays the same. Events wait in a queue, so each event starts from the newest state.
 

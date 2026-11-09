@@ -1,0 +1,6 @@
+<?phem // expect: E065
+use Phem\Attribute\{Component, State};
+use Phem\Feed;
+use Phem\Dynamic;
+#[Component]
+final class F { public Feed $messages; public function render() { return <Dynamic tag="ul" phem:feed={{ messages }}>{% for m in messages %}<li>{{ m }}</li>{% endfor %}</Dynamic>; } }

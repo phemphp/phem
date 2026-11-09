@@ -379,8 +379,9 @@ A `phem:*` attribute adds a Phem behavior to an element:
 | `phem:debounce={{ ms }}` | Waits until the user pauses for `ms` milliseconds. `'blur'` waits until the field loses focus. See [Debounce and throttle](events.md#control-when-typing-sends-an-event) |
 | `phem:throttle={{ ms }}` | Sends at most one event every `ms` milliseconds |
 | `phem:progress={{ handler }}` | Shows the progress of a file upload. See [File uploads](forms.md#accept-file-uploads) |
+| `phem:feed={{ prop }}` | Shows a `Feed` property: the element holds one `{% for %}` loop on the feed, with one element for each item. The browser keeps the items. See [Feeds](long-lists.md) |
 
-The value of `phem:bind` and `phem:error` is a property name or a path in an array property: `phem:bind={{ filters.status }}`, `phem:bind={{ rows[i].name }}`. Write it with no spaces and no filter. `phemc` checks directive values (E032, E033, E061).
+The value of `phem:bind` and `phem:error` is a property name or a path in an array property: `phem:bind={{ filters.status }}`, `phem:bind={{ rows[i].name }}`. Write it with no spaces and no filter. `phemc` checks directive values (E032, E033, E061, E065, E066).
 
 ### Data attributes (`data-phem-*`)
 

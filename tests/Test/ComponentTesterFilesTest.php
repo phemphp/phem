@@ -115,7 +115,7 @@ final class ComponentTesterFilesTest extends TestCase
                 return false;
             }
 
-            public function dispatch(array $handlers, array $event, array $bound = [], array $stale = []): EventResult
+            public function dispatch(array $handlers, array $event, array $bound = [], array $stale = [], ?array $item = null, array $feeds = []): EventResult
             {
                 $this->files[] = $event['files'] ?? [];
 

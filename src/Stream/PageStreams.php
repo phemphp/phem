@@ -28,7 +28,8 @@ use Phem\Node;
 final class PageStreams
 {
     /**
-     * @param string|null $key the key of the instances of Streams::toComponent() (see BroadcastKeys)
+     * @param string|null $key       the key of the instances of Streams::toComponent() (see BroadcastKeys)
+     * @param string|null $component the component of Streams::toComponent()
      *
      * @internal use Streams::toPage(), Streams::toComponent() or Streams::everywhere()
      */
@@ -36,7 +37,23 @@ final class PageStreams
         private readonly Streams $streams,
         public readonly string $topic,
         public readonly ?string $key = null,
+        public readonly ?string $component = null,
     ) {
+    }
+
+    /**
+     * The changes of a feed of the component of Streams::toComponent() (see Phem\Feed): each
+     * browser renders the new items itself, with its own access rules, and their handlers work.
+     *
+     * @throws \LogicException when the streams are not for a component
+     */
+    public function feed(string $name): FeedPush
+    {
+        if (null === $this->component || null === $this->key) {
+            throw new \LogicException(\sprintf('A push to the feed "%s" goes to the instances of a component: use Streams::toComponent(), not toPage() or everywhere().', $name));
+        }
+
+        return new FeedPush($this->streams, $this->topic, $this->key, $this->component, $name);
     }
 
     /** Adds the markup at the end of the target. */
@@ -81,7 +98,7 @@ final class PageStreams
     /** Removes the target. */
     public function remove(string $target): self
     {
-        $this->streams->add($this->topic, new Stream('remove', $target));
+        $this->streams->add($this->topic, new TurboStream('remove', $target));
 
         return $this;
     }
@@ -105,24 +122,24 @@ final class PageStreams
             throw new \InvalidArgumentException('The target of a refresh is the id of an element, and an empty id has no element. Give no target to refresh the component of Streams::toComponent() or the page.');
         }
 
-        $this->streams->add($this->topic, null !== $target ? new Stream(Stream::REFRESH, $target) : $this->own());
+        $this->streams->add($this->topic, null !== $target ? new TurboStream(TurboStream::REFRESH, $target) : $this->own());
 
         return $this;
     }
 
     /** The refresh with no target: the instances of the component, or the content of the page. */
-    private function own(): Stream
+    private function own(): TurboStream
     {
         if (null === $this->key) {
-            return new Stream(Stream::REFRESH, null);
+            return new TurboStream(TurboStream::REFRESH, null);
         }
 
-        return new Stream(Stream::REFRESH, '['.BroadcastKeys::ATTRIBUTE.'~="'.$this->key.'"]', many: true);
+        return new TurboStream(TurboStream::REFRESH, '['.BroadcastKeys::ATTRIBUTE.'~="'.$this->key.'"]', many: true);
     }
 
     private function add(string $action, string $target, Node $markup, bool $morph = false): self
     {
-        $this->streams->add($this->topic, new Stream($action, $target, $this->streams->render($markup), $morph));
+        $this->streams->add($this->topic, new TurboStream($action, $target, $this->streams->render($markup), $morph));
 
         return $this;
     }

@@ -1,0 +1,15 @@
+#!/usr/bin/env php
+<?php
+
+// The console of the e2e app, for `bin/console importmap:install` and `bin/console debug:router`.
+
+use App\Kernel;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Symfony\Component\Console\Input\ArgvInput;
+
+require dirname(__DIR__).'/vendor/autoload.php';
+
+$input = new ArgvInput();
+$env = $input->getParameterOption(['--env', '-e'], 'test');
+
+(new Application(new Kernel($env, true)))->run($input);

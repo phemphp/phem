@@ -16,7 +16,8 @@ namespace Phem\Stream;
 use Phem\Dom\Attributes;
 
 /**
- * One Turbo Stream of a push (see PageStreams): an action on the element with the `target` id,
+ * One Turbo Stream of a push (see PageStreams), or of the feeds of an event (see
+ * Phem\Http\FeedStreams): an action on the element with the `target` id,
  * or on the elements of the `targets` CSS selector.
  *
  * `refresh` is the action of Phem (`phem-refresh`): it has no content. The browser renders the
@@ -25,17 +26,20 @@ use Phem\Dom\Attributes;
  *
  * @internal
  */
-final class Stream
+final class TurboStream
 {
     public const REFRESH = 'phem-refresh';
+    /** The action of Phem for an item of a feed (see FeedPush): it has no content. */
+    public const FEED = 'phem-feed';
 
     /**
-     * @param string      $action  a Turbo Stream action, or REFRESH
-     * @param string|null $target  the id of the target, a CSS selector with `$many`, or null for a refresh of the content of the root element
-     * @param string|null $content the HTML of the template, or null for `remove` and REFRESH
-     * @param bool        $morph   `method="morph"` (for `replace` and `update`)
-     * @param bool        $many    the target is a CSS selector (`targets`)
-     * @param string|null $sender  the token of the event of a refresh: its browser does not refresh the fibers that the event rendered (see SenderToken)
+     * @param string                $action  a Turbo Stream action, or REFRESH
+     * @param string|null           $target  the id of the target, a CSS selector with `$many`, or null for a refresh of the content of the root element
+     * @param string|null           $content the HTML of the template, or null for `remove` and REFRESH
+     * @param bool                  $morph   `method="morph"` (for `replace` and `update`)
+     * @param bool                  $many    the target is a CSS selector (`targets`)
+     * @param string|null           $sender  the token of the event of a refresh: its browser does not refresh the fibers that the event rendered (see SenderToken)
+     * @param array<string, string> $data    the `data-*` attributes, with no prefix (for FEED)
      */
     public function __construct(
         public readonly string $action,
@@ -44,13 +48,14 @@ final class Stream
         public readonly bool $morph = false,
         public readonly bool $many = false,
         public readonly ?string $sender = null,
+        public readonly array $data = [],
     ) {
     }
 
     /** The stream with the token of the event that sends it (see SenderToken). */
     public function withSender(string $token): self
     {
-        return new self($this->action, $this->target, $this->content, $this->morph, $this->many, $token);
+        return new self($this->action, $this->target, $this->content, $this->morph, $this->many, $token, $this->data);
     }
 
     public function toHtml(): string
@@ -58,6 +63,10 @@ final class Stream
         $attributes = 'action="'.Attributes::e($this->action).'"'.($this->morph ? ' method="morph"' : '');
         if (null !== $this->target) {
             $attributes .= ($this->many ? ' targets="' : ' target="').Attributes::e($this->target).'"';
+        }
+
+        foreach ($this->data as $name => $value) {
+            $attributes .= ' data-'.$name.'="'.Attributes::e($value).'"';
         }
 
         if (null !== $this->sender) {

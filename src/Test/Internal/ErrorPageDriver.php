@@ -38,7 +38,7 @@ final class ErrorPageDriver implements Driver
         return true;
     }
 
-    public function dispatch(array $handlers, array $event, array $bound = [], array $stale = []): EventResult
+    public function dispatch(array $handlers, array $event, array $bound = [], array $stale = [], ?array $item = null, array $feeds = []): EventResult
     {
         throw new \LogicException(\sprintf('The error page of "%s" (status %d) has no events: its URL is the URL that failed.', $this->url, $this->status));
     }

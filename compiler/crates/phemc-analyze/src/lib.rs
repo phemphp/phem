@@ -82,6 +82,8 @@ pub const ERROR_BOUNDARY: &str = "Phem\\ErrorBoundary";
 pub const DYNAMIC: &str = "Phem\\Dynamic";
 /// The type of a prop that takes a #[State] property of the parent: `<TextField phem:bind={{ query }} />`.
 pub const BOUND: &str = "Phem\\Bound";
+/// The type of a property whose items live only in the browser: `<ul phem:feed={{ messages }}>`.
+pub const FEED: &str = "Phem\\Feed";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]

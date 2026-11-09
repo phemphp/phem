@@ -15,6 +15,7 @@ namespace Phem\Rendering;
 
 use Phem\Binding\PropError;
 use Phem\Event;
+use Phem\Feed;
 use Phem\Handler\HandlerFingerprint;
 use Phem\Handler\HandlerInvoker;
 use Phem\Html;
@@ -53,6 +54,8 @@ final class Renderer implements ResetInterface
     private int $pass = 0;
     /** The number of the passes so far: each pass has its own number. */
     private int $passes = 0;
+    /** The depth of the feed items that render now (see enterFeedItem()). */
+    private int $feedItems = 0;
 
     /**
      * @param iterable<ComponentRenderer> $renderers
@@ -169,7 +172,7 @@ final class Renderer implements ResetInterface
 
         // Markup that rendered in the page before (a slot) has the fibers and the handlers of
         // this page.
-        if (1 === preg_match('/\sdata-phem-(?:c|on-[\w-]+|bind|load|loading|progress)=/', $html)) {
+        if (1 === preg_match('/\sdata-phem-(?:c|on-[\w-]+|bind|load|loading|progress|feed|item)[\s=>\/]/', $html)) {
             $this->notDetached('a component or a handler of this page (markup that rendered in the page before, such as a slot)', true);
         }
 
@@ -186,6 +189,7 @@ final class Renderer implements ResetInterface
     {
         $this->tree = null;
         $this->owner = null;
+        $this->feedItems = 0;
     }
 
     // --- Called by the compiled templates (through the Twig runtime) ---------------------
@@ -351,6 +355,44 @@ final class Renderer implements ResetInterface
         return $this->tree?->fiberOf($instance);
     }
 
+    /**
+     * Starts the render of a feed element of a component (`phem:feed={{ messages }}`, see
+     * Phem\Feed): its id is the fiber id and the name of the feed.
+     *
+     * @throws \LogicException when the feed is not a feed property of the component, or when it renders outside a page
+     */
+    public function openFeed(Feed $feed, object $owner): FeedContent
+    {
+        $this->notDetached('a "phem:feed"');
+
+        $fiber = $this->tree?->fiberOf($owner);
+        if (null === $fiber) {
+            throw new \LogicException(\sprintf('The feed "%s" renders outside a page: a feed element is in the markup of a component of a page.', $feed->name));
+        }
+
+        if (!property_exists($owner, $feed->name) || $feed !== new \ReflectionProperty($owner, $feed->name)->getValue($owner)) {
+            throw new \LogicException(\sprintf('"phem:feed" shows a feed property of the component, but "%s" has no feed "%s" with this value.', $fiber->fqcn, $feed->name));
+        }
+
+        $content = new FeedContent($fiber->id.'-'.$feed->name, $feed, $fiber->fqcn);
+
+        return $fiber->feeds[$content->id] = $content;
+    }
+
+    /**
+     * An item of a feed renders now, until leaveFeedItem(): a component in it throws. The items are
+     * not in the shape of the page, so a fiber in an item does not get its events and its state.
+     */
+    public function enterFeedItem(): void
+    {
+        ++$this->feedItems;
+    }
+
+    public function leaveFeedItem(): void
+    {
+        $this->feedItems = max(0, $this->feedItems - 1);
+    }
+
     /** The scope of a handler for `phem:loading` (see Tree::handlerScope()). */
     public function handlerScope(\Closure $handler): ?string
     {
@@ -416,6 +458,10 @@ final class Renderer implements ResetInterface
     {
         $def = $this->manifest->component($fqcn) ?? throw new PropError(\sprintf('Unknown component "%s".', $fqcn));
         $root = Root::class === $def->fqcn;
+
+        if ($this->feedItems > 0) {
+            throw new \LogicException(\sprintf('An item of a feed renders the component "%s". The items of a feed are not in the state of the page, so a component in an item cannot keep its state or get its events: use a template component (a function that only returns markup), or move the component out of the item.', $fqcn));
+        }
 
         if ($root && '' === $tree->page) {
             throw new \LogicException('A <Root> is the root element of a page: render it in the document of a page, not in a Twig template.');
@@ -524,9 +570,37 @@ final class Renderer implements ResetInterface
         $own = strtr($html, $placeholders);
         $fiber->ownHtml[$tree->pass] = $own;
 
+        if (null !== $fiber->instance) {
+            $this->checkFeeds($fiber, $fiber->instance);
+        }
+
+        // The items of a feed are not in the own HTML: its hash does not change with them. The
+        // browser gets them in the HTML only when it has no feed element yet (see FeedContent).
+        foreach ($fiber->feeds as $content) {
+            $content->inline = !$tree->shape->has($fiber->id);
+            $html = $content->fill($html);
+        }
+
         // The root element is in the own HTML: the scan does not read the HTML of the children
         // again for each ancestor, so a deep tree takes a linear time.
         $fiber->rendered($html, $own);
+    }
+
+    /**
+     * Each feed of a component renders its element in each render (see Phem\Feed). The browser
+     * keeps the items, and mount() adds the first items one time only: a feed element that the
+     * browser does not have yet would show no items.
+     *
+     * @throws \LogicException when a feed of the component has no element in this render
+     */
+    private function checkFeeds(Fiber $fiber, object $component): void
+    {
+        $rendered = array_map(static fn (FeedContent $c): string => $c->feed->name, $fiber->feeds);
+        foreach ($this->metadata->feedProperties($component::class) as $property) {
+            if (!\in_array($property->getName(), $rendered, true)) {
+                throw new \LogicException(\sprintf('The component "%s" renders no element for its feed "%s". A feed element renders in each render of its component: the browser keeps the items, so a feed element that shows later has no items. Hide it with CSS or the `hidden` attribute, not with `{%% if %%}`.', $fiber->fqcn, $property->getName()));
+            }
+        }
     }
 
     /** The page and the document around the root element have no fiber id. */

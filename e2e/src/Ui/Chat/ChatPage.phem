@@ -1,0 +1,130 @@
+<?phem
+
+namespace App\Ui\Chat;
+
+use App\Chat;
+use App\ChatMessage;
+use Phem\Attribute\{Broadcast, BroadcastKey, Component, Page, Path, Prop, State};
+use Phem\Feed;
+use Phem\Node;
+use Phem\Stream\FeedPush;
+use Phem\Stream\Streams;
+
+use function App\Ui\Common\Document;
+
+// A chat room: the messages are a feed (see Phem\Feed). The browser keeps them, and each change
+// goes to the other browsers of the room.
+#[Component, Broadcast(handlers: false)]
+final class ChatRoom
+{
+    #[Prop, BroadcastKey] public string $room;
+    #[State] public string $draft = '';
+    /** The id of the oldest message in the browser: older() loads the messages before it. */
+    #[State] public ?int $oldest = null;
+    public Feed $messages;
+
+    public function __construct(
+        private readonly Chat $chat,
+        private readonly Streams $streams,
+    ) {
+    }
+
+    public function mount(): void
+    {
+        $latest = $this->chat->latest($this->room, 3);
+        $this->messages->append(...$latest);
+        $this->oldest = $latest[0]->id ?? null;
+    }
+
+    public function send(): void
+    {
+        $message = $this->chat->add($this->room, $this->draft);
+        $this->messages->append($message);
+        $this->draft = '';
+        $this->push()->append($message);
+    }
+
+    public function edit(ChatMessage $message): void
+    {
+        $message->text .= '!';
+        $this->chat->save($message);
+        $this->messages->update($message);
+        $this->push()->update($message);
+    }
+
+    public function remove(ChatMessage $message): void
+    {
+        $this->chat->remove($message);
+        $this->messages->delete($message);
+        $this->push()->delete($message);
+    }
+
+    public function older(): void
+    {
+        $older = null !== $this->oldest ? $this->chat->before($this->room, $this->oldest, 2) : [];
+        $this->messages->prepend(...$older);
+        $this->oldest = $older[0]->id ?? null;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <section>
+                <h2>Room {{ room }}</h2>
+                <ul phem:feed={{ messages }}>
+                    {% for message in messages %}
+                        <li><span>{{ message.text }}</span> <button type="button" className="edit" onClick={{ edit(message) }}>Edit</button> <button type="button" className="delete" onClick={{ remove(message) }}>Delete</button></li>
+                    {% endfor %}
+                </ul>
+                {% if oldest %}<button id="older" type="button" onClick={{ older }}>Older</button>{% endif %}
+                <form onSubmit={{ send }}>
+                    <input name="draft" aria-label="Message" phem:bind={{ draft }} phem:live />
+                    <button id="send" type="submit">Send</button>
+                </form>
+                <p id="draft">Draft: {{ draft }}</p>
+            </section>
+        );
+    }
+
+    private function push(): FeedPush
+    {
+        return $this->streams->toComponent(self::class, ['room' => $this->room])->feed('messages');
+    }
+}
+
+#[Page('/chat/{room}')]
+final class ChatPage
+{
+    #[Path] public string $room;
+
+    public function render(): Node
+    {
+        return <Document title="Chat {{ room }}"><ChatRoom key={{ room }} room={{ room }} /></Document>;
+    }
+}
+
+// Two rooms on one page: a switch gives the room a new key, so its feed starts again.
+#[Page('/chat-switch/{prefix}')]
+final class ChatSwitchPage
+{
+    #[Path] public string $prefix;
+    #[State] public string $current = 'a';
+
+    public function show(string $room): void
+    {
+        $this->current = $room;
+    }
+
+    public function render(): Node
+    {
+        $room = $this->prefix.'-'.$this->current;
+
+        return (
+            <Document title="Chat switch">
+                <button id="room-a" type="button" onClick={{ show('a') }}>Room A</button>
+                <button id="room-b" type="button" onClick={{ show('b') }}>Room B</button>
+                <ChatRoom key={{ room }} room={{ room }} />
+            </Document>
+        );
+    }
+}

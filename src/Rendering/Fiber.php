@@ -100,6 +100,18 @@ final class Fiber
      * @var array<int, string>
      */
     public array $ownHtml = [];
+    /**
+     * The feed elements of the last render, by id (see Phem\Feed and FeedContent).
+     *
+     * @var array<string, FeedContent>
+     */
+    public array $feeds = [];
+    /**
+     * The items of a feed that the browser sent for this fiber (see FeedBinder).
+     *
+     * @var list<FeedItem>
+     */
+    public array $feedItems = [];
 
     /**
      * @param array<string, mixed>|null $restored the state that the browser sent back, or null for a new fiber
@@ -129,6 +141,7 @@ final class Fiber
         $this->changesContext = false;
         $this->children = [];
         $this->childIndexes = [];
+        $this->feeds = [];
     }
 
     public function nextIndex(string $fqcn): int

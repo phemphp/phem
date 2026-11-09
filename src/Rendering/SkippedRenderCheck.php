@@ -18,6 +18,7 @@ use Phem\Attribute\Path;
 use Phem\Attribute\Prop;
 use Phem\Attribute\State;
 use Phem\Binding\ComponentName;
+use Phem\Feed;
 use Phem\State\PageState;
 use Phem\State\TreeShape;
 use Psr\Log\LoggerInterface;
@@ -86,6 +87,11 @@ final class SkippedRenderCheck
         }
 
         foreach (new \ReflectionClass($fqcn)->getProperties() as $p) {
+            // A feed renders its own changes (see Phem\Feed).
+            if ($p->getType() instanceof \ReflectionNamedType && Feed::class === $p->getType()->getName()) {
+                continue;
+            }
+
             if (!$p->isStatic() && !$p->isReadOnly() && [] === $p->getAttributes(Prop::class) && [] === $p->getAttributes(Path::class) && [] === $p->getAttributes(State::class) && [] === $p->getAttributes(Context::class)) {
                 return false;
             }

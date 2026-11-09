@@ -1,0 +1,12 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<section>
+                <ul{{ phem_feed(messages) }}>{% for message in phem_feed_items(messages) %}{% apply phem_feed_item(messages, message)
+
+ %}<li>{{ message.text }} <button {{ phem_on('click', phem_call(remove, [message])) }}>Delete</button></li>{% endapply
+
+ %}{% endfor %}{{ phem_feed_end(messages) }}</ul>
+                <input {{ phem_bind('draft', draft, 'input', null, null, this) }}>
+            </section>

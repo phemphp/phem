@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Http;
 
+use Phem\Rendering\FeedItem;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 /**
@@ -35,6 +36,12 @@ final class EventPayload
     /** The maximum number of handlers of a load event (the `<Suspense>` boundaries that load together). */
     public const MAX_LOADS = 100;
 
+    /** The maximum length of the signed item of a feed (see Phem\Rendering\FeedItemToken). */
+    public const MAX_ITEM = 1024;
+
+    /** The maximum number of items that pushes gave to the feeds of a page (see Phem\Stream\FeedPush). */
+    public const MAX_FEEDS = 100;
+
     /**
      * @param list<string>         $handlers the handler ids: one, none for an event of `phem:live` or a refresh, or the
      *                                       handlers of the `<Suspense>` boundaries that load together
@@ -42,6 +49,8 @@ final class EventPayload
      * @param array<string, mixed> $event    the DOM event (type, value, checked, key, form, touched)
      * @param array<string, mixed> $bound    the values of the bound inputs that changed: "<fiber>.<property>" => value (see BoundValues)
      * @param list<string>         $stale    the fibers whose element a push changed (see Phem\Rendering\Tree::markStale())
+     * @param FeedItem|null        $item     the item of a feed around the element of the event (see Phem\Feed)
+     * @param list<FeedItem>       $feeds    the items that pushes gave to the feeds of the page (see Phem\Stream\FeedPush)
      */
     public function __construct(
         public readonly array $handlers,
@@ -50,6 +59,8 @@ final class EventPayload
         public readonly array $event,
         public readonly array $bound = [],
         public readonly array $stale = [],
+        public readonly ?FeedItem $item = null,
+        public readonly array $feeds = [],
     ) {
     }
 
@@ -72,7 +83,61 @@ final class EventPayload
             $event,
             \is_array($data['bound'] ?? null) ? $data['bound'] : [],
             self::stale($data['stale'] ?? null),
+            self::item($data['item'] ?? null),
+            self::feeds($data['feeds'] ?? null),
         );
+    }
+
+    /**
+     * The items of the event and of the pushes, for the tree (see Phem\Rendering\Tree).
+     *
+     * @return list<FeedItem>
+     */
+    public function feedItems(): array
+    {
+        return null !== $this->item ? [$this->item, ...$this->feeds] : $this->feeds;
+    }
+
+    /**
+     * The item of a feed of the `item` value: the id of the feed element and the signed item (see
+     * Phem\Rendering\FeedItemToken), or null.
+     *
+     * @throws BadRequestHttpException when the value does not come from the browser
+     */
+    private static function item(mixed $item, bool $push = false): ?FeedItem
+    {
+        if (null === $item && !$push) {
+            return null;
+        }
+
+        $feed = \is_array($item) ? ($item['feed'] ?? null) : null;
+        $token = \is_array($item) ? ($item['token'] ?? null) : null;
+        $operation = $push && \is_array($item) ? ($item['op'] ?? null) : null;
+        if (!\is_string($feed) || !\is_string($token) || \strlen($token) > self::MAX_ITEM || ($push && !\in_array($operation, ['append', 'prepend', 'update'], true))) {
+            throw new BadRequestHttpException('An item of a feed has the id of its feed and its signed item, and an item of a push has its change.');
+        }
+
+        /* @var 'append'|'prepend'|'update'|null $operation */
+        return FeedItem::of($feed, $token, $operation) ?? throw new BadRequestHttpException('An item of a feed has the id of its feed and its signed item.');
+    }
+
+    /**
+     * The items of the `feeds` list, at most MAX_FEEDS: the items that pushes gave to the feeds of
+     * the page, with their change.
+     *
+     * @return list<FeedItem>
+     */
+    private static function feeds(mixed $feeds): array
+    {
+        if (null === $feeds) {
+            return [];
+        }
+
+        if (!\is_array($feeds) || !array_is_list($feeds) || \count($feeds) > self::MAX_FEEDS) {
+            throw new BadRequestHttpException(\sprintf('An event has a list of %d items of feeds at most.', self::MAX_FEEDS));
+        }
+
+        return array_map(static fn (mixed $item): FeedItem => self::item($item, true) ?? throw new BadRequestHttpException('An item of a feed is not valid.'), $feeds);
     }
 
     /**

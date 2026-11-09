@@ -24,8 +24,8 @@ use Phem\State\UrlQuery;
 
 /**
  * Renders a class component. The first time a fiber renders in a request, the factory makes its
- * instance, and the props and the contexts go into it (see ContextResolver). A Validation property
- * gets a new Validation. Then the state that the browser sent back is restored;
+ * instance, and the props, the contexts and the feeds go into it (see ContextResolver and
+ * FeedBinder). A Validation property gets a new Validation. Then the state that the browser sent back is restored;
  * without one, `mount()` initializes it, and the query string of the page request sets the
  * #[Url] properties (see Phem\Attribute\Url). The `mount()` of a page can return a
  * Phem\RedirectTo: the page does not render (see PageRedirect). Each render writes the props and
@@ -42,6 +42,7 @@ final class ClassComponentRenderer implements ComponentRenderer
         private readonly UrlQuery $url = new UrlQuery(),
         private readonly ComponentMetadata $metadata = new ComponentMetadata(),
         private readonly ContextResolver $contexts = new ContextResolver(),
+        private readonly FeedBinder $feeds = new FeedBinder(),
     ) {
     }
 
@@ -57,6 +58,7 @@ final class ClassComponentRenderer implements ComponentRenderer
             $component = $fiber->instance = $this->factory->create($fiber->fqcn);
             $this->props->assign($component, $fiber->props, $slots);
             $this->contexts->assign($component, $fiber);
+            $this->feeds->bind($component, $fiber);
             $this->state->initialize($component);
 
             if (null !== $fiber->restored) {
@@ -72,6 +74,7 @@ final class ClassComponentRenderer implements ComponentRenderer
             $component = $fiber->instance = $this->factory->create($fiber->fqcn);
             $this->props->assign($component, $fiber->props, $slots);
             $this->contexts->assign($component, $fiber);
+            $this->feeds->bind($component, $fiber);
             $this->state->initialize($component);
 
             if (null === $fiber->restored) {

@@ -102,6 +102,7 @@ const PHEM_ATTRIBUTES: &[(&str, &str, &str, &str)] = &[
     ("phem:bind", "phem:bind={{ ${1} }}", "Phem: bind a field to a #[State] property", "The field shows the property, and the next event sends its new value: `<input phem:bind={{ query }} />`."),
     ERROR_ATTRIBUTE,
     ("phem:live", "phem:live", "Phem: send each change of a bound field", "With `phem:bind`: each change sends an event with no handler, with the debounce of the field."),
+    ("phem:feed", "phem:feed={{ ${1} }}", "Phem: the container of a Feed property", "The items of the list live only in the browser, and the server renders only the new items. The content is one `{% for %}` loop on the feed, with one element for each item: `<ul phem:feed={{ messages }}>{% for message in messages %}<li>…</li>{% endfor %}</ul>`."),
     ("phem:throttle", "phem:throttle={{ ${1:300} }}", "Phem: send at most one event per interval", "Milliseconds: the browser sends the first event at once, then at most one event each interval, and always the last one."),
 ];
 

@@ -1,0 +1,180 @@
+<?phem
+
+namespace App\Ui\Feed;
+
+use Phem\Async\Promise;
+use Phem\Attribute\{Async, Broadcast, BroadcastKey, Component, Page, Path, Prop, State};
+use Phem\Feed;
+use Phem\Node;
+use Phem\Stream\Streams;
+use Phem\Tests\Fixtures\Chat;
+use Phem\Tests\Fixtures\ChatMessage;
+
+use function App\Ui\Common\Document;
+
+// The feeds of Phem\Feed: the messages of a room live in the browser, not in the state.
+
+#[Page('/chat/{room}')]
+final class ChatPage
+{
+    #[Path] public string $room;
+
+    public function render(): Node
+    {
+        return <Document title="Chat"><ChatRoom key={{ room }} room={{ room }} /></Document>;
+    }
+}
+
+// The room: the three newest messages, older messages on demand, and a push of each change to
+// the other tabs of the room.
+#[Component, Broadcast(handlers: false)]
+final class ChatRoom
+{
+    #[Prop, BroadcastKey] public string $room;
+    #[State] public string $draft = '';
+    /** The id of the oldest message in the browser: older() loads the messages before it. */
+    #[State] public ?int $oldest = null;
+    public Feed $messages;
+
+    public function __construct(
+        private readonly Chat $chat,
+        private readonly Streams $streams,
+    ) {
+    }
+
+    public function mount(): void
+    {
+        $latest = $this->chat->latest($this->room, 3);
+        $this->messages->append(...$latest);
+        $this->oldest = $latest[0]->id ?? null;
+    }
+
+    public function send(): void
+    {
+        $message = $this->chat->add($this->room, $this->draft);
+        $this->messages->append($message);
+        $this->draft = '';
+        $this->push()->append($message);
+    }
+
+    public function edit(ChatMessage $message): void
+    {
+        $message->text .= '!';
+        $this->messages->update($message);
+        $this->push()->update($message);
+    }
+
+    public function remove(ChatMessage $message): void
+    {
+        $this->chat->remove($message);
+        $this->messages->delete($message);
+        $this->push()->delete($message);
+    }
+
+    // The work runs in a worker: the worker gets the item of the event again.
+    #[Async]
+    public function shout(ChatMessage $message): Promise
+    {
+        return new Promise(function () use ($message): void {
+            $message->text = strtoupper($message->text);
+            $this->push()->update($message);
+        });
+    }
+
+    public function older(): void
+    {
+        $older = null !== $this->oldest ? $this->chat->before($this->room, $this->oldest, 2) : [];
+        $this->messages->prepend(...$older);
+        $this->oldest = $older[0]->id ?? null;
+    }
+
+    public function clear(): void
+    {
+        $this->messages->reset(...$this->chat->latest($this->room, 1));
+        $this->oldest = null;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <section>
+                <ul phem:feed={{ messages }}>
+                    {% for message in messages %}
+                        <li><span>{{ message.text }}</span> <button className="edit" onClick={{ edit(message) }}>Edit</button> <button className="shout" onClick={{ shout(message) }}>Shout</button> <button className="delete" onClick={{ remove(message) }}>Delete</button></li>
+                    {% endfor %}
+                </ul>
+                {% if oldest %}<button id="older" onClick={{ older }}>Older</button>{% endif %}
+                <button id="clear" onClick={{ clear }}>Clear</button>
+                <form onSubmit={{ send }}>
+                    <input name="draft" phem:bind={{ draft }} />
+                    <button id="send" type="submit">Send</button>
+                </form>
+                <p id="draft">Draft: {{ draft }}</p>
+            </section>
+        );
+    }
+
+    private function push(): \Phem\Stream\FeedPush
+    {
+        return $this->streams->toComponent(self::class, ['room' => $this->room])->feed('messages');
+    }
+}
+
+// A feed element in an `{% if %}`: it throws, because the element would show later with no items.
+#[Page('/chat-hidden')]
+final class ChatHiddenPage
+{
+    #[State] public bool $open = false;
+    public Feed $messages;
+
+    public function render(): Node
+    {
+        return <Document title="Chat">{% if open %}<ul phem:feed={{ messages }}>{% for message in messages %}<li>{{ message.text }}</li>{% endfor %}</ul>{% endif %}</Document>;
+    }
+}
+
+// A class component in an item of a feed, through a template component: it throws, because its
+// fiber is not in the state. phemc reports a class component tag in an item (E066), but it does
+// not read the markup of a template component.
+#[Page('/chat-bad')]
+final class ChatBadPage
+{
+    public Feed $messages;
+
+    public function __construct(private readonly Chat $chat)
+    {
+    }
+
+    public function mount(): void
+    {
+        $this->messages->append(...$this->chat->latest('bad', 1));
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Chat">
+                <ul phem:feed={{ messages }}>
+                    {% for message in messages %}<li><ChatCell text={{ message.text }} /></li>{% endfor %}
+                </ul>
+            </Document>
+        );
+    }
+}
+
+#[Component]
+function ChatCell(string $text): Node
+{
+    return <i><ChatText text={{ text }} /></i>;
+}
+
+#[Component]
+final class ChatText
+{
+    #[Prop] public string $text;
+
+    public function render(): Node
+    {
+        return <b>{{ text }}</b>;
+    }
+}

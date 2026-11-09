@@ -25,14 +25,15 @@ namespace Phem\Async;
 final class AsyncHandlerMessage
 {
     /**
-     * @param string                  $page    the page class
-     * @param string                  $url     the URL of the page, for the request of the Event
-     * @param array<string, mixed>    $route   the route attributes of the request (`_route`, `_route_params` and the route values)
-     * @param string                  $state   the state JSON of the event, before the handler
-     * @param array<array-key, mixed> $bound   the bound values of the event (see Phem\State\BoundValues)
-     * @param string                  $handler the handler id
-     * @param array<string, mixed>    $event   the data of the event (see Phem\Event::fromArray())
-     * @param string|null             $token   the security token of the user, serialized (see AsyncUser)
+     * @param string                                  $page    the page class
+     * @param string                                  $url     the URL of the page, for the request of the Event
+     * @param array<string, mixed>                    $route   the route attributes of the request (`_route`, `_route_params` and the route values)
+     * @param string                                  $state   the state JSON of the event, before the handler
+     * @param array<array-key, mixed>                 $bound   the bound values of the event (see Phem\State\BoundValues)
+     * @param string                                  $handler the handler id
+     * @param array<string, mixed>                    $event   the data of the event (see Phem\Event::fromArray())
+     * @param string|null                             $token   the security token of the user, serialized (see AsyncUser)
+     * @param array{feed: string, token: string}|null $item    the item of a feed around the element of the event (see Phem\Feed)
      */
     public function __construct(
         public readonly string $page,
@@ -44,13 +45,14 @@ final class AsyncHandlerMessage
         public readonly array $event,
         public readonly ?string $token,
         public readonly string $signature = '',
+        public readonly ?array $item = null,
     ) {
     }
 
     /** The same message, signed with a secret. */
     public function signed(string $secret): self
     {
-        return new self($this->page, $this->url, $this->route, $this->state, $this->bound, $this->handler, $this->event, $this->token, $this->hash($secret));
+        return new self($this->page, $this->url, $this->route, $this->state, $this->bound, $this->handler, $this->event, $this->token, $this->hash($secret), $this->item);
     }
 
     public function isSignedWith(string $secret): bool
@@ -60,6 +62,6 @@ final class AsyncHandlerMessage
 
     private function hash(string $secret): string
     {
-        return hash_hmac('sha256', json_encode([$this->page, $this->url, $this->route, $this->state, $this->bound, $this->handler, $this->event, $this->token], \JSON_THROW_ON_ERROR), $secret);
+        return hash_hmac('sha256', json_encode([$this->page, $this->url, $this->route, $this->state, $this->bound, $this->handler, $this->event, $this->token, $this->item], \JSON_THROW_ON_ERROR), $secret);
     }
 }

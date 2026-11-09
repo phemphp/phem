@@ -16,6 +16,7 @@ namespace Phem\Metadata;
 use Phem\Attribute\Broadcast;
 use Phem\Attribute\BroadcastKey;
 use Phem\Attribute\Component;
+use Phem\Attribute\Context;
 use Phem\Attribute\Page;
 use Phem\Attribute\Path;
 use Phem\Attribute\Prop;
@@ -23,6 +24,7 @@ use Phem\Attribute\State;
 use Phem\Attribute\Url;
 use Phem\Binding\ComponentName;
 use Phem\Binding\PropError;
+use Phem\Feed;
 use Phem\State\StateObjects;
 use Phem\State\StateValue;
 use Phem\State\UrlQuery;
@@ -70,6 +72,9 @@ final class ComponentMetadata
 
     /** @var array<string, list<array{\ReflectionProperty, class-string<StateValue>}>> */
     private array $stateValues = [];
+
+    /** @var array<string, list<\ReflectionProperty>> */
+    private array $feeds = [];
 
     /** @var array<string, list<array{\ReflectionProperty, class-string}>> */
     private array $stateObjects = [];
@@ -480,11 +485,48 @@ final class ComponentMetadata
     /**
      * Whether mount() of a class component runs each time that the component renders: the class
      * has a mount() and no #[State] property. The browser keeps no state for it, so mount() reads
-     * its data again (for example from a repository).
+     * its data again (for example from a repository). A class with a feed (see Phem\Feed) mounts
+     * one time: the browser keeps its items.
      */
     public function mountsEachRender(string $class): bool
     {
-        return class_exists($class) && method_exists($class, 'mount') && [] === $this->stateProperties($class);
+        return class_exists($class) && method_exists($class, 'mount') && [] === $this->stateProperties($class) && [] === $this->feedProperties($class);
+    }
+
+    /**
+     * The feed properties of a class component (see Phem\Feed): the public properties whose type
+     * is Feed. Phem sets them, so they have no attribute and are not readonly.
+     *
+     * @return list<\ReflectionProperty>
+     *
+     * @throws \LogicException when a Feed property is not public, is static, readonly or promoted, or has a Phem attribute
+     */
+    public function feedProperties(string $class): array
+    {
+        if (isset($this->feeds[$class])) {
+            return $this->feeds[$class];
+        }
+
+        if (!class_exists($class)) {
+            return $this->feeds[$class] = [];
+        }
+
+        $feeds = [];
+        foreach (new \ReflectionClass($class)->getProperties() as $property) {
+            $type = $property->getType();
+            if (!$type instanceof \ReflectionNamedType || Feed::class !== $type->getName()) {
+                continue;
+            }
+
+            $attributes = array_filter([State::class, Prop::class, Path::class, Context::class], static fn (string $a): bool => [] !== $property->getAttributes($a));
+            if (!$property->isPublic() || $property->isStatic() || $property->isReadOnly() || $property->isPromoted() || $type->allowsNull() || [] !== $attributes) {
+                throw new \LogicException(\sprintf('The feed "%s::$%s" must be a public property with the type Feed, not static, readonly, promoted or nullable, and with no #[State], #[Prop], #[Path] or #[Context]: Phem sets it on each new instance.', $class, $property->getName()));
+            }
+
+            $feeds[] = $property;
+        }
+
+        return $this->feeds[$class] = $feeds;
     }
 
     /**

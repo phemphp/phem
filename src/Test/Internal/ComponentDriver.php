@@ -16,7 +16,9 @@ namespace Phem\Test\Internal;
 use Phem\BrowserEventDispatcher;
 use Phem\Event;
 use Phem\Http\EventRequest;
+use Phem\Http\FeedStreams;
 use Phem\Rendering\EventRenderer;
+use Phem\Rendering\FeedItem;
 use Phem\Rendering\Fiber;
 use Phem\Rendering\Renderer;
 use Phem\Rendering\RootElement;
@@ -65,6 +67,7 @@ final class ComponentDriver implements Driver
         private readonly ?SessionInterface $session = null,
         private readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
         private readonly UrlQuery $query = new UrlQuery(),
+        private readonly FeedStreams $feeds = new FeedStreams(),
     ) {
         $this->state = new PageState();
         // As the end of the stream of a page: the `<Suspense>` boundaries that are not lazy show their children.
@@ -88,7 +91,7 @@ final class ComponentDriver implements Driver
         return false;
     }
 
-    public function dispatch(array $handlers, array $event, array $bound = [], array $stale = []): EventResult
+    public function dispatch(array $handlers, array $event, array $bound = [], array $stale = [], ?array $item = null, array $feeds = []): EventResult
     {
         $this->resetter?->reset();
         $this->redirect = null;
@@ -97,8 +100,14 @@ final class ComponentDriver implements Driver
         $request->files->replace(TestFiles::of($event['files'] ?? []));
         unset($event['files']);
 
-        return $this->within($request, function (Request $request) use ($handlers, $event, $bound, $stale): EventResult {
-            $tree = new Tree($this->component, $this->state->fibers, $this->props, shape: $this->state->shape);
+        // As the server reads them (see Phem\Http\EventPayload).
+        $items = array_values(array_filter([
+            null !== $item ? FeedItem::of($item['feed'], $item['token']) : null,
+            ...array_map(static fn (array $f): ?FeedItem => FeedItem::of($f['feed'], $f['token'], \in_array($f['op'], ['append', 'prepend', 'update'], true) ? $f['op'] : null), $feeds),
+        ]));
+
+        return $this->within($request, function (Request $request) use ($handlers, $event, $bound, $stale, $items): EventResult {
+            $tree = new Tree($this->component, $this->state->fibers, $this->props, shape: $this->state->shape, feedItems: $items);
 
             // As the browser sends them: JSON values.
             $bound = json_decode(json_encode((object) $bound, \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR);
@@ -121,7 +130,7 @@ final class ComponentDriver implements Driver
             }
 
             // As the browser gets them: JSON values.
-            return EventResult::updates($updates, json_decode(json_encode($this->dispatcher->dispatched(), \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR), clearFiles: $outcome->clearFiles);
+            return EventResult::updates($updates, json_decode(json_encode($this->dispatcher->dispatched(), \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR), clearFiles: $outcome->clearFiles, streams: $this->feeds->of($tree));
         });
     }
 

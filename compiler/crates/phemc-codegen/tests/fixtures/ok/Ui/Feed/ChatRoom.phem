@@ -1,0 +1,34 @@
+<?phem
+
+namespace App\Ui\Feed;
+
+use App\Chat\Message;
+use Phem\Attribute\{Component, State};
+use Phem\Feed;
+use Phem\Node;
+
+#[Component]
+final class ChatRoom
+{
+    #[State] public string $draft = '';
+    public Feed $messages;
+
+    public function remove(Message $m): void
+    {
+        $this->messages->delete($m);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <section>
+                <ul phem:feed={{ messages }}>
+                    {% for message in messages %}
+                        <li>{{ message.text }} <button onClick={{ remove(message) }}>Delete</button></li>
+                    {% endfor %}
+                </ul>
+                <input phem:bind={{ draft }} />
+            </section>
+        );
+    }
+}

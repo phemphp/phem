@@ -1,0 +1,87 @@
+<?phem
+
+namespace App\Ui\Guestbook;
+
+use App\Guestbook;
+use Phem\Attribute\{Broadcast, Component, Page, Path, Prop, State};
+use Phem\Node;
+use Phem\Stream\Streams;
+
+use function App\Ui\Common\Document;
+
+// The entries: data with no state, so each render reads them again. The server render has the
+// pushed entries too, so the next event keeps them.
+#[Component]
+final class GuestbookEntries
+{
+    #[Prop] public string $room;
+    public array $entries = [];
+
+    public function __construct(private readonly Guestbook $guestbook)
+    {
+    }
+
+    public function mount(): void
+    {
+        $this->entries = $this->guestbook->entries($this->room);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <ul id="entries">
+                {% for entry in entries %}<li key={{ entry.id }} id="entry-{{ entry.id }}">{{ entry.text }}</li>{% endfor %}
+            </ul>
+        );
+    }
+}
+
+// The form signs the guestbook, and pushes the new entry to the other browsers of the room.
+#[Component]
+final class GuestbookForm
+{
+    #[Prop] public string $room;
+    #[State] public string $text = '';
+
+    public function __construct(
+        private readonly Guestbook $guestbook,
+        private readonly Streams $streams,
+    ) {
+    }
+
+    public function sign(): void
+    {
+        $entry = $this->guestbook->add($this->room, $this->text);
+        $this->text = '';
+
+        $this->streams->toPage(GuestbookPage::class, ['room' => $this->room])
+            ->prepend('entries', <li id="entry-{{ entry.id }}">{{ entry.text }}</li>);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form onSubmit={{ sign }}>
+                <input name="text" aria-label="Message" phem:bind={{ text }} />
+                <button id="sign" type="submit">Sign</button>
+            </form>
+        );
+    }
+}
+
+#[Page('/guestbook/{room}'), Broadcast]
+final class GuestbookPage
+{
+    #[Path] public string $room;
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Guestbook {{ room }}">
+                <h1>Guestbook {{ room }}</h1>
+                <GuestbookForm room={{ room }} />
+                <GuestbookEntries room={{ room }} />
+            </Document>
+        );
+    }
+}

@@ -1,0 +1,5 @@
+<?phem // expect: E065
+use Phem\Attribute\{Component, State};
+use Phem\Feed;
+#[Component]
+final class F { public Feed $messages; public Feed $replies; public function render() { return <ul phem:feed={{ messages }}>{% for m in messages %}<li><ol phem:feed={{ replies }}>{% for r in replies %}<li>{{ r.text }}</li>{% endfor %}</ol></li>{% endfor %}</ul>; } }

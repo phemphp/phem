@@ -129,7 +129,10 @@ final class StateAccessor
         $fibers = [];
         foreach ($tree->page() as $id => [, $fiber]) {
             $state = null !== $fiber ? (null !== $fiber->instance ? $this->export($fiber->instance) : []) : ($tree->restored($id) ?? []);
-            if ([] !== $state) {
+            // A component with a feed has an entry also with no state: the next event restores
+            // it, so mount() does not add the first items again (see Phem\Feed).
+            $keep = null !== $fiber ? null !== $fiber->instance && [] !== $this->metadata->feedProperties($fiber->instance::class) : null !== $tree->restored($id);
+            if ([] !== $state || $keep) {
                 $fibers[$id] = $state;
             }
         }

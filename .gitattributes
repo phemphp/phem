@@ -17,6 +17,7 @@
 /cover.png export-ignore
 /docker export-ignore
 /docs export-ignore
+/e2e export-ignore
 /editors export-ignore
 /install.ps1 export-ignore
 /install.sh export-ignore

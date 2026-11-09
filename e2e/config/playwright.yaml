@@ -1,0 +1,5 @@
+# The browser sends the requests of the app (port 8000) to the kernel. The requests to the Mercure
+# hub (port 3000) go to the network. PLAYWRIGHT_HEADLESS=false shows the browser.
+playwright:
+    base_url: 'http://localhost:8000'
+    intercepted_hosts: ['localhost:8000']

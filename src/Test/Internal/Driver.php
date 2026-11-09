@@ -29,13 +29,15 @@ interface Driver
     /**
      * Runs the event handlers of one event, as the `phem` Stimulus controller sends it.
      *
-     * @param list<string>         $handlers the handler ids: none for a `phem:live` event or a refresh, more than one for a load of many boundaries
-     * @param array<string, mixed> $event    the DOM event (type, value, checked, key, form), and the
-     *                                       files of the form (`files`: [field name, path] pairs)
-     * @param array<string, mixed> $bound    the bound fields that changed: "<fiber>.<property>" => value
-     * @param list<string>         $stale    the components whose element a push changed (see Phem\Rendering\Tree::markStale())
+     * @param list<string>                                         $handlers the handler ids: none for a `phem:live` event or a refresh, more than one for a load of many boundaries
+     * @param array<string, mixed>                                 $event    the DOM event (type, value, checked, key, form), and the
+     *                                                                       files of the form (`files`: [field name, path] pairs)
+     * @param array<string, mixed>                                 $bound    the bound fields that changed: "<fiber>.<property>" => value
+     * @param list<string>                                         $stale    the components whose element a push changed (see Phem\Rendering\Tree::markStale())
+     * @param array{feed: string, token: string}|null              $item     the item of a feed around the element of the event (see Phem\Feed)
+     * @param list<array{feed: string, token: string, op: string}> $feeds    the items that pushes gave to the feeds of the page (see Phem\Stream\FeedPush)
      */
-    public function dispatch(array $handlers, array $event, array $bound = [], array $stale = []): EventResult;
+    public function dispatch(array $handlers, array $event, array $bound = [], array $stale = [], ?array $item = null, array $feeds = []): EventResult;
 
     /**
      * The #[State] properties of a component, as the browser keeps them: the root component

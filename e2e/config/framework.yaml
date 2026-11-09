@@ -1,0 +1,6 @@
+framework:
+    # importmap('app') of Document.phem: assets/app.js, Stimulus, Turbo and the phem controller.
+    asset_mapper:
+        paths: ['assets/']
+    # Phem publishes the streams with the HTTP API of the hub (see phem.yaml).
+    http_client: ~

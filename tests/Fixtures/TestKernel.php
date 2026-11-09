@@ -102,8 +102,12 @@ final class TestKernel extends PhemTestKernel
                 ->tag('kernel.event_listener', ['event' => 'kernel.request', 'method' => 'onKernelRequest', 'priority' => 8])
                 ->tag('kernel.event_listener', ['event' => 'kernel.controller_arguments', 'method' => 'onKernelControllerArguments'])
             ->set(ScientistFinder::class)
-            // The #[Path] entity props of the fixture pages get their entities from ScientistFinder.
-            ->alias('phem.entity_finder', ScientistFinder::class)
+            ->set(Chat::class)
+            ->set(FixtureFinder::class)->autowire()
+            // The #[Path] entity props of the fixture pages get their entities from ScientistFinder,
+            // and the feeds of chat.phem get their messages from Chat.
+            ->alias('phem.entity_finder', FixtureFinder::class)
+            ->alias('phem.object_identifier', Chat::class)
             ->set('logger', RecordingLogger::class)
                 ->public();
     }

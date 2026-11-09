@@ -51,7 +51,7 @@ final class AsyncDispatcher
     public function dispatch(?Request $request): void
     {
         [$bus, $replay, $request] = $this->replay($request);
-        $bus->dispatch(new AsyncHandlerMessage($replay->page, $request->getUri(), self::routeOf($request), $replay->state, $replay->bound, $replay->handler, $replay->event, $this->user->capture())->signed($this->secret));
+        $bus->dispatch(new AsyncHandlerMessage($replay->page, $request->getUri(), self::routeOf($request), $replay->state, $replay->bound, $replay->handler, $replay->event, $this->user->capture(), item: null !== $replay->item ? ['feed' => $replay->item->fiber.'-'.$replay->item->feed, 'token' => $replay->item->token] : null)->signed($this->secret));
     }
 
     /** @return array{MessageBusInterface, EventReplay, Request} */

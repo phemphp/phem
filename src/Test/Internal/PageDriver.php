@@ -90,7 +90,7 @@ final class PageDriver implements Driver
         return true;
     }
 
-    public function dispatch(array $handlers, array $event, array $bound = [], array $stale = []): EventResult
+    public function dispatch(array $handlers, array $event, array $bound = [], array $stale = [], ?array $item = null, array $feeds = []): EventResult
     {
         if ('' === $this->signature) {
             throw new \LogicException(\sprintf('The response of "%s" is not a page with a state (status %d): it has no events.', $this->uri, $this->status));
@@ -102,9 +102,11 @@ final class PageDriver implements Driver
 
         // As the browser: only the signature of a large state, and the state again when the server
         // does not have it. A small state and an event with files always go with the event.
-        $response = $this->post($handlers, $event, $bound, $files, [] !== $files || \strlen($this->state) < $this->inline, $stale);
+        // As the browser: the items of the feeds go next to the event.
+        $extra = (null !== $item ? ['item' => $item] : []) + ([] !== $feeds ? ['feeds' => $feeds] : []);
+        $response = $this->post($handlers, $event, $bound, $files, [] !== $files || \strlen($this->state) < $this->inline, $stale, $extra);
         if ([] === $files && 409 === $response->getStatusCode() && '{"state":"required"}' === $response->getContent()) {
-            $response = $this->post($handlers, $event, $bound, $files, true, $stale);
+            $response = $this->post($handlers, $event, $bound, $files, true, $stale, $extra);
         }
 
         if (409 === $response->getStatusCode()) {
@@ -126,14 +128,15 @@ final class PageDriver implements Driver
 
         // As the browser: the runs of kept fibers are in the shape before the event, and the
         // response has only the entries of the state that changed.
-        $updates = $this->updates((string) $data['streams']);
+        [$morphs, $feedStreams] = self::split((string) $data['streams']);
+        $updates = $this->updates($morphs);
         $this->state = StateJson::apply($this->state, \is_array($data['changes'] ?? null) ? $data['changes'] : []);
         $this->signature = (string) $data['signature'];
         $this->query($data['query'] ?? null);
 
         $rendered = \is_array($data['rendered'] ?? null) ? array_values(array_filter($data['rendered'], \is_string(...))) : [];
 
-        return EventResult::updates($updates, self::events($data['events'] ?? []), \is_string($data['sender'] ?? null) ? $data['sender'] : null, true === ($data['clearFiles'] ?? false), $rendered);
+        return EventResult::updates($updates, self::events($data['events'] ?? []), \is_string($data['sender'] ?? null) ? $data['sender'] : null, true === ($data['clearFiles'] ?? false), $rendered, $feedStreams);
     }
 
     /**
@@ -145,8 +148,9 @@ final class PageDriver implements Driver
      * @param array<string, mixed>              $bound
      * @param list<array{0: string, 1: string}> $files    [field name, path] pairs
      * @param list<string>                      $stale
+     * @param array<string, mixed>              $extra    the items of the feeds (see dispatch())
      */
-    private function post(array $handlers, array $event, array $bound, array $files, bool $withState, array $stale = []): Response
+    private function post(array $handlers, array $event, array $bound, array $files, bool $withState, array $stale = [], array $extra = []): Response
     {
         $state = $withState ? ['state' => $this->state] : [];
         // As the browser: one id, null for no handler, or a list for a load of many boundaries.
@@ -155,7 +159,7 @@ final class PageDriver implements Driver
             1 => $handlers[0],
             default => $handlers,
         };
-        $body = json_encode($state + ['signature' => $this->signature, 'handler' => $handler, 'event' => $event, 'bound' => (object) $bound] + ([] !== $stale ? ['stale' => $stale] : []), \JSON_THROW_ON_ERROR);
+        $body = json_encode($state + ['signature' => $this->signature, 'handler' => $handler, 'event' => $event, 'bound' => (object) $bound] + ([] !== $stale ? ['stale' => $stale] : []) + $extra, \JSON_THROW_ON_ERROR);
 
         $server = [
             'HTTP_ACCEPT' => 'application/json',
@@ -324,6 +328,31 @@ final class PageDriver implements Driver
         }
 
         return $updates;
+    }
+
+    /**
+     * The Turbo Streams of an event in two parts: the morphs of the fibers (see TurboStreams), and
+     * the changes of the feeds after them (see Phem\Http\FeedStreams).
+     *
+     * @return array{0: string, 1: string}
+     */
+    private static function split(string $streams): array
+    {
+        $close = '</template></turbo-stream>';
+        $last = strrpos($streams, '<turbo-stream action="replace" method="morph" targets="[data-phem-c=');
+        if (false === $last) {
+            return ['', $streams];
+        }
+
+        // A template of a morph has no `</template></turbo-stream>`: its kept components are empty templates.
+        $end = strpos($streams, $close, $last);
+        if (false === $end) {
+            return [$streams, ''];
+        }
+
+        $end += \strlen($close);
+
+        return [substr($streams, 0, $end), substr($streams, $end)];
     }
 
     /**

@@ -18,9 +18,15 @@ use Phem\ClassList;
 use Phem\Dom\Attributes;
 use Phem\Dom\ClassAttribute;
 use Phem\Dom\DomEvents;
+use Phem\Feed;
+use Phem\Rendering\FeedContent;
+use Phem\Rendering\FeedIdentity;
+use Phem\Rendering\FeedItemToken;
 use Phem\Rendering\FieldError;
 use Phem\Rendering\Renderer;
+use Phem\Rendering\RootTag;
 use Phem\Rendering\TemplateComponentRenderer;
+use Symfony\Contracts\Service\ResetInterface;
 use Twig\Extension\RuntimeExtensionInterface;
 use Twig\Markup;
 use Twig\Template;
@@ -30,13 +36,24 @@ use Twig\Template;
  * `phem_progress()`, `phem_bind()`, `phem_error()`, `phem_class()` and `phem_attrs()`.
  * The compiled code gets it with `$this->env->getRuntime(PhemRuntime::class)`.
  */
-final class PhemRuntime implements RuntimeExtensionInterface
+final class PhemRuntime implements RuntimeExtensionInterface, ResetInterface
 {
+    /** @var array<int, FeedContent> the feed elements that render now, by object id of the feed */
+    private array $feeds = [];
+
     public function __construct(
         private readonly Renderer $renderer,
         private readonly TemplateComponentRenderer $templates = new TemplateComponentRenderer(),
         private readonly ClassAttribute $classes = new ClassAttribute(),
+        private readonly FeedIdentity $identity = new FeedIdentity(),
+        private readonly ?FeedItemToken $tokens = null,
     ) {
+    }
+
+    /** A render that threw before the end of a feed element leaves it here: the next request starts with none. */
+    public function reset(): void
+    {
+        $this->feeds = [];
     }
 
     /**
@@ -56,6 +73,81 @@ final class PhemRuntime implements RuntimeExtensionInterface
     public function template(Template $template, string $fqcn, array $props, mixed $key, array $caller, array $slots = []): string
     {
         return $this->templates->render($template, $fqcn, $props, $key, $caller, $slots, $this->renderer->pass(...));
+    }
+
+    /**
+     * `phem:feed={{ messages }}` → `id="<fiber>-messages" data-phem-feed` (see Phem\Feed). phemc
+     * compiles the loop of the element to feedItems() and feedItem(), and its end to feedEnd().
+     *
+     * @param array<string, mixed> $context the Twig context: `this` is the component of the markup
+     */
+    public function feed(array $context, mixed $feed): Markup
+    {
+        if (!$feed instanceof Feed) {
+            throw new \InvalidArgumentException(\sprintf('"phem:feed" needs a Feed property of the class component, "%s" given.', get_debug_type($feed)));
+        }
+
+        $owner = $context['this'] ?? null;
+        if (!\is_object($owner)) {
+            throw new \LogicException(\sprintf('"phem:feed" shows the feed "%s" of a class component: the markup has no component. Run `phemc build` again.', $feed->name));
+        }
+
+        $content = $this->feeds[spl_object_id($feed)] = $this->renderer->openFeed($feed, $owner);
+
+        return new Markup(' id="'.$content->id.'" data-phem-feed', 'UTF-8');
+    }
+
+    /**
+     * The items of a feed element that render now: each item of the request one time (see
+     * Phem\Feed::items()). A component in an item throws (see Renderer::enterFeedItem()).
+     *
+     * @return \Generator<int, object>
+     */
+    public function feedItems(Feed $feed): \Generator
+    {
+        foreach ($feed->items() as $item) {
+            $this->renderer->enterFeedItem();
+
+            try {
+                yield $item;
+            } finally {
+                $this->renderer->leaveFeedItem();
+            }
+        }
+    }
+
+    /**
+     * The HTML of an item (the `{% apply %}` around the body of the loop): its element gets the id of
+     * the item and the signed item (see FeedItemToken). The feed element keeps it, and the loop
+     * gives no HTML: the items go in place of the marker of feedEnd(), or in their own streams.
+     */
+    public function feedItem(string $html, Feed $feed, object $item): string
+    {
+        $content = $this->feeds[spl_object_id($feed)] ?? throw new \LogicException(\sprintf('An item of the feed "%s" renders outside its "phem:feed" element. Run `phemc build` again.', $feed->name));
+        $tokens = $this->tokens ?? throw new \LogicException('A feed needs the phem.feed_item_token service.');
+        $root = RootTag::find($html);
+        if (null === $root) {
+            throw new \LogicException(\sprintf('An item of the feed "%s" renders "%s": an item is one element.', $feed->name, mb_strimwidth(trim($html), 0, 80, '…')));
+        }
+
+        [$element, $end] = $root;
+        if (1 === preg_match('/\sid\s*=/i', substr($element, 0, $end))) {
+            throw new \LogicException(\sprintf('An item of the feed "%s" has its own `id`: Phem gives the element of an item the id of the item. Remove the `id`.', $feed->name));
+        }
+        [$class, $identifier] = $this->identity->of($feed->name, $item);
+        $attributes = ' id="'.$this->identity->elementId($content->id, $feed->name, $item).'" data-phem-item="'.$tokens->sign($content->component, $feed->name, $class, $identifier).'"';
+        $content->add($item, substr_replace($element, $attributes, $end, 0));
+
+        return '';
+    }
+
+    /** The end of a feed element: the marker of its items (see FeedContent). */
+    public function feedEnd(Feed $feed): Markup
+    {
+        $content = $this->feeds[spl_object_id($feed)] ?? null;
+        unset($this->feeds[spl_object_id($feed)]);
+
+        return new Markup($content?->marker() ?? '', 'UTF-8');
     }
 
     /** `onClick={{ f }}` → `data-phem-on-click="<handler id>"`. */
@@ -247,6 +339,7 @@ final class PhemRuntime implements RuntimeExtensionInterface
                 'phem:progress' === $name => $this->progress($value),
                 'phem:bind' === $name => throw new \InvalidArgumentException('"phem:bind" cannot come from a spread: write it on the element, with the name of a #[State] property.'),
                 'phem:error' === $name => throw new \InvalidArgumentException('"phem:error" cannot come from a spread: write it on the element, with the name of a #[State] property.'),
+                'phem:feed' === $name => throw new \InvalidArgumentException('"phem:feed" cannot come from a spread: write it on the element, with the name of a Feed property.'),
                 'phem:live' === $name => Attributes::attr('data-phem-live', true === $value ? true : null),
                 \in_array($name, ['phem:debounce', 'phem:throttle'], true) => Attributes::timing(substr($name, 5), $value),
                 1 === preg_match('/^on[A-Z]/', $name) => $this->on(strtolower(substr($name, 2)), $value),

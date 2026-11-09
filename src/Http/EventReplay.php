@@ -13,11 +13,13 @@ declare(strict_types=1);
 
 namespace Phem\Http;
 
+use Phem\Rendering\FeedItem;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
  * What a process needs to run the handler of an event again, as the EventController ran it: the
- * page, the state JSON before the handler, the bound values, the handler id and the DOM event.
+ * page, the state JSON before the handler, the bound values, the handler id, the DOM event and
+ * the item of a feed around the element of the event (see Phem\Feed).
  * The EventController sets it on the request before the handler runs. An #[Async] handler sends
  * it to a worker (see Phem\Async\AsyncDispatcher).
  */
@@ -32,6 +34,7 @@ final class EventReplay
      * @param array<array-key, mixed> $bound   the bound values of the event (see Phem\State\BoundValues)
      * @param string                  $handler the handler id
      * @param array<string, mixed>    $event   the data of the event (see Phem\Event::fromArray())
+     * @param FeedItem|null           $item    the item of a feed around the element of the event
      */
     public function __construct(
         public readonly string $page,
@@ -39,6 +42,7 @@ final class EventReplay
         public readonly array $bound,
         public readonly string $handler,
         public readonly array $event,
+        public readonly ?FeedItem $item = null,
     ) {
     }
 

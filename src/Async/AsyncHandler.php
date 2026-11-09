@@ -19,6 +19,7 @@ use Phem\Handler\HandlerInvoker;
 use Phem\Http\EventRequest;
 use Phem\Path\PathResolver;
 use Phem\Rendering\EventRenderer;
+use Phem\Rendering\FeedItem;
 use Phem\Rendering\PageRedirect;
 use Phem\Rendering\Renderer;
 use Phem\Rendering\Tree;
@@ -86,7 +87,9 @@ final class AsyncHandler
             throw new UnrecoverableMessageHandlingException(\sprintf('An entity of the page "%s" is not there any more.', $message->page), 0, $e);
         }
 
-        $tree = new Tree($message->page, $state->fibers, $props, $state->values, shape: $state->shape);
+        // The item of a feed renders again, so the handler of the item is found (see Phem\Rendering\FeedBinder).
+        $item = null !== $message->item ? FeedItem::of($message->item['feed'], $message->item['token']) : null;
+        $tree = new Tree($message->page, $state->fibers, $props, $state->values, shape: $state->shape, feedItems: null !== $item ? [$item] : []);
         $request = Request::create($message->url, 'POST');
         $request->attributes->add($message->route);
         $this->requests?->push($request);

@@ -20,10 +20,10 @@ use Phem\Http\PageStream;
 use Phem\Rendering\SuspenseStream;
 use Phem\Rendering\Tree;
 use Phem\Stream\MemoryPublisher;
-use Phem\Stream\Stream;
 use Phem\Stream\Streams;
 use Phem\Stream\Subscription;
 use Phem\Stream\Topics;
+use Phem\Stream\TurboStream;
 use Phem\Test\Internal\StreamedContent;
 use Phem\Tests\Fixtures\TestKernel;
 use Psr\Log\AbstractLogger;
@@ -150,7 +150,7 @@ final class PageStreamTest extends KernelTestCase
         $before = \count($publisher->updates());
 
         // A mount() in a streamed boundary, after the response event.
-        $streams->add('topic', new Stream('refresh', null));
+        $streams->add('topic', new TurboStream('refresh', null));
         new StreamListener($streams, new Subscription(new Topics()))->onKernelTerminate(new TerminateEvent($kernel, Request::create('/page'), new Response()));
 
         self::assertCount($before + 1, $publisher->updates());

@@ -6,6 +6,22 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
+## Unreleased
+
+- Feeds for long lists: a public `Phem\Feed` property of a class component, shown with
+  `phem:feed={{ messages }}`, keeps its items in the browser. The items are not in the state, and
+  an event does not load them again. A handler calls `append()`, `prepend()`, `update()`,
+  `delete()` or `reset()`, and the response has a Turbo Stream for each change, after the morph of
+  the component. A handler in an item gets the item again: the browser sends its signed item, and
+  the server loads it with `EntityFinder`. A component with a feed runs `mount()` on its first
+  render only. `Streams::toComponent(...)->feed('messages')->append($item)` pushes a change to the
+  other browsers, and each one renders the item itself, so its handlers work. A feed element
+  renders in each render of its component. `phemc` checks the
+  feed element: E065 (not a `Feed` property, or another place) and E066 (other content than one
+  loop on the feed with one element for each item). `ComponentTester` applies the streams of the
+  feeds and the pushes of a feed.
+- The internal `Phem\Stream\Stream` class is now `Phem\Stream\TurboStream`.
+
 ## 0.3.16 (2026-11-09)
 
 - Class names in markup: a capitalized name that the file imports with `use` (or a component or

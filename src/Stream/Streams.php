@@ -14,6 +14,8 @@ declare(strict_types=1);
 namespace Phem\Stream;
 
 use Phem\Node;
+use Phem\Rendering\FeedIdentity;
+use Phem\Rendering\FeedItemToken;
 use Phem\Rendering\Renderer;
 use Phem\Routing\PageName;
 use Symfony\Contracts\Service\ResetInterface;
@@ -50,7 +52,7 @@ use Symfony\Contracts\Service\ResetInterface;
  */
 final class Streams implements ResetInterface
 {
-    /** @var list<array{0: string, 1: Stream}> [topic, stream] */
+    /** @var list<array{0: string, 1: TurboStream}> [topic, stream] */
     private array $queue = [];
 
     public function __construct(
@@ -60,6 +62,8 @@ final class Streams implements ResetInterface
         private readonly bool $private = false,
         private readonly BroadcastKeys $keys = new BroadcastKeys(),
         private readonly SenderToken $sender = new SenderToken(),
+        private readonly ?FeedItemToken $feedTokens = null,
+        private readonly FeedIdentity $feedIdentity = new FeedIdentity(),
     ) {
     }
 
@@ -92,7 +96,7 @@ final class Streams implements ResetInterface
     {
         $name = ltrim(PageName::of($component), '\\');
 
-        return new PageStreams($this, $this->topics->toComponent($name), [] !== $key ? $this->keys->ofInstance($name, $key) : $this->keys->ofComponent($name));
+        return new PageStreams($this, $this->topics->toComponent($name), [] !== $key ? $this->keys->ofInstance($name, $key) : $this->keys->ofComponent($name), $name);
     }
 
     /** The streams to all the pages with #[Broadcast]. */
@@ -115,7 +119,7 @@ final class Streams implements ResetInterface
             $html = $stream->toHtml();
 
             // The same refresh of a handler and of an entity change goes out once.
-            if (Stream::REFRESH === $stream->action) {
+            if (TurboStream::REFRESH === $stream->action) {
                 if (isset($refreshes[$topic][$html])) {
                     continue;
                 }
@@ -134,17 +138,32 @@ final class Streams implements ResetInterface
     }
 
     /**
-     * A refresh of an event request gets the token of the event (see SenderToken).
+     * A refresh and an item of a feed of an event request get the token of the event (see SenderToken).
      *
      * @internal see PageStreams
      */
-    public function add(string $topic, Stream $stream): void
+    public function add(string $topic, TurboStream $stream): void
     {
-        if (Stream::REFRESH === $stream->action && null !== $token = $this->sender->forRefresh()) {
+        if (\in_array($stream->action, [TurboStream::REFRESH, TurboStream::FEED], true) && null !== $token = $this->sender->forRefresh()) {
             $stream = $stream->withSender($token);
         }
 
         $this->queue[] = [$topic, $stream];
+    }
+
+    /**
+     * The key and the signed item of an item of a feed (see FeedPush).
+     *
+     * @internal see FeedPush
+     *
+     * @return array{0: string, 1: string}
+     */
+    public function feedItem(string $component, string $feed, object $item): array
+    {
+        $tokens = $this->feedTokens ?? throw new \LogicException('A push to a feed needs the phem.feed_item_token service.');
+        [$class, $identifier] = $this->feedIdentity->of($feed, $item);
+
+        return [$this->feedIdentity->key($feed, $item), $tokens->sign($component, $feed, $class, $identifier)];
     }
 
     /** @internal see PageStreams */

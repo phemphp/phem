@@ -146,7 +146,7 @@ Phem creates a new object for each component in each request, but the steps diff
 | Handler | Doesn’t run | Runs |
 | `render()` | Runs | Runs when the component can change |
 
-So `mount()` loads the data once, and the state keeps it for the next events. A handler loads fresh data when it needs it, as `refresh()` does. A component with no `#[State]` has nothing to restore, so its `mount()` runs every time it renders.
+So `mount()` loads the data once, and the state keeps it for the next events. A handler loads fresh data when it needs it, as `refresh()` does. A component with no `#[State]` has nothing to restore, so its `mount()` runs every time it renders. A component with a `Feed` property is the exception: its `mount()` runs on the first render only, because the browser keeps its items (see [Show long lists with feeds](long-lists.md)).
 
 ## Keep state between events
 

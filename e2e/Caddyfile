@@ -1,0 +1,27 @@
+# The Mercure hub of the e2e tests. The app has no web server: Playwright PHP sends its requests
+# to the kernel in the PHPUnit process (see config/playwright.yaml). An EventSource needs a long
+# response, so the hub is a real server, on another port of the same host.
+{
+	auto_https off
+	admin off
+}
+
+http://localhost:3000 {
+	mercure {
+		name phem
+		transport local
+		# The page (port 8000) opens the EventSource with the cookie of the hub.
+		cors_origins http://localhost:8000
+		issuer phem {
+			subscriber {
+				jwt {$MERCURE_SUBSCRIBER_JWT_KEY}
+			}
+			publisher {
+				jwt {$MERCURE_PUBLISHER_JWT_KEY}
+			}
+		}
+	}
+
+	respond /healthz 200
+	respond 404
+}

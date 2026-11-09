@@ -380,6 +380,26 @@ fn is_word(toks: &[(Tok, usize)], i: usize, word: &str) -> bool {
     matches!(toks.get(i), Some((Tok::Name(n), _)) if n == word)
 }
 
+/// Whether a Twig expression reads the `loop` variable of a `{% for %}`: `loop.index`, not
+/// `item.loop` or `'loop'`.
+pub fn reads_loop(expr: &str) -> bool {
+    let toks = tokenize(expr);
+
+    toks.iter().enumerate().any(|(i, (tok, _))| match tok {
+        Tok::Name(n) => n == "loop" && !matches!(i.checked_sub(1).map(|j| &toks[j].0), Some(Tok::Punct("." | "|" | "?."))) && !matches!(toks.get(i + 1), Some((Tok::Punct("(" | ":"), _))),
+        Tok::Str(interps) => interps.iter().any(|(inner, _)| reads_loop(inner)),
+        _ => false,
+    })
+}
+
+/// The two parts of the head of a `{% for %}` tag: the names and the sequence.
+/// `key, product in products` → `("key, product", "products")`.
+pub fn split_for(head: &str) -> Option<(&str, &str)> {
+    let in_pos = find_word(head, "in")?;
+
+    Some((head[..in_pos].trim(), head[in_pos + 2..].trim()))
+}
+
 fn find_word(s: &str, word: &str) -> Option<usize> {
     let b = s.as_bytes();
     let mut from = 0;

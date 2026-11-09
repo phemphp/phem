@@ -18,8 +18,10 @@ use Phem\Async\MemoryBus;
 use Phem\BrowserEventDispatcher;
 use Phem\DependencyInjection\TestAsyncPass;
 use Phem\DependencyInjection\TestPublisherPass;
+use Phem\Http\FeedStreams;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Rendering\EventRenderer;
+use Phem\Rendering\FeedIdentity;
 use Phem\Rendering\Renderer;
 use Phem\State\StateAccessor;
 use Phem\State\StateCodec;
@@ -90,7 +92,8 @@ trait InteractsWithPhem
         $dispatcher = $container->get('phem.browser_event_dispatcher');
         $metadata = $container->get('phem.metadata');
         $events = $container->get('phem.event_renderer');
-        \assert($renderer instanceof Renderer && $accessor instanceof StateAccessor && $codec instanceof StateCodec && $dispatcher instanceof BrowserEventDispatcher && $metadata instanceof ComponentMetadata && $events instanceof EventRenderer);
+        $identity = $container->get('phem.feed_identity');
+        \assert($renderer instanceof Renderer && $accessor instanceof StateAccessor && $codec instanceof StateCodec && $dispatcher instanceof BrowserEventDispatcher && $metadata instanceof ComponentMetadata && $events instanceof EventRenderer && $identity instanceof FeedIdentity);
 
         return new ComponentTester(new ComponentDriver(
             $renderer,
@@ -104,6 +107,7 @@ trait InteractsWithPhem
             $sessions instanceof SessionFactoryInterface ? $sessions->createSession() : null,
             $dispatcher,
             new UrlQuery($metadata),
+            new FeedStreams($identity),
         ));
     }
 

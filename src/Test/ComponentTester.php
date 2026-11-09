@@ -16,7 +16,8 @@ namespace Phem\Test;
 use Dom\Element;
 use Dom\HTMLDocument;
 use Phem\Form\TouchedFields;
-use Phem\Stream\Stream;
+use Phem\Http\EventPayload;
+use Phem\Stream\TurboStream;
 use Phem\Test\Internal\Browser;
 use Phem\Test\Internal\Driver;
 use Phem\Test\Internal\EventResult;
@@ -76,6 +77,13 @@ final class ComponentTester
      */
     private array $stale = [];
     /**
+     * The items that pushes gave to the feeds of the page: the next event sends them (see
+     * Phem\Stream\FeedPush).
+     *
+     * @var list<array{feed: string, token: string, op: string}>
+     */
+    private array $feedItems = [];
+    /**
      * The events of this page with refreshes (see Phem\Stream\SenderToken): the token => the ids
      * of the fibers that the event rendered. A refresh with the token does not render them again.
      *
@@ -86,7 +94,7 @@ final class ComponentTester
     private int $seen;
 
     /**
-     * @param Browser|null                                                   $browser the browser of a page (for visit(), followRedirect() and cookies())
+     * @param Browser|null                                                     $browser the browser of a page (for visit(), followRedirect() and cookies())
      * @param \Closure(): list<array{topics: list<string>, data: string}>|null $updates the published updates (see Phem\Stream\MemoryPublisher)
      * @param \Closure(): int|null                                             $settle  runs the waiting work of the #[Async] handlers, and returns its number (see Phem\Async\MemoryBus)
      *
@@ -325,8 +333,20 @@ final class ComponentTester
         $this->seen = \count($updates);
         $this->dispatched = [];
 
-        if ($refresh && [] !== $this->stale) {
-            return $this->send([null, ['type' => 'refresh', 'value' => null, 'checked' => null, 'key' => null, 'form' => null, 'refresh' => true]]);
+        if (!$refresh || [] === $this->stale) {
+            return $this;
+        }
+
+        $refreshEvent = [null, ['type' => 'refresh', 'value' => null, 'checked' => null, 'key' => null, 'form' => null, 'refresh' => true]];
+        $this->send($refreshEvent);
+
+        // As the browser: the pushed items that one event did not take go with the next refresh.
+        while ([] !== $this->feedItems && 200 === $this->status && null === $this->redirect) {
+            foreach ($this->feedItems as $item) {
+                $this->stale[substr($item['feed'], 0, (int) strpos($item['feed'], '-'))] = true;
+            }
+
+            $this->send($refreshEvent);
         }
 
         return $this;
@@ -637,7 +657,12 @@ final class ComponentTester
             [$handler, $event] = $data;
             $bound = array_map(self::boundValue(...), array_map(static fn (array $fields): array => array_column($fields, 0), $this->edited));
             $stale = array_keys($this->stale);
-            $result = $this->driver->dispatch(null === $handler ? [] : (array) $handler, $event, $bound, $stale);
+            // As the browser: at most EventPayload::MAX_FEEDS items, and the next refresh sends the others.
+            $feeds = \array_slice($this->feedItems, 0, EventPayload::MAX_FEEDS);
+            // As the browser: the item of a feed goes next to the event, not in it.
+            $item = $event['item'] ?? null;
+            unset($event['item']);
+            $result = $this->driver->dispatch(null === $handler ? [] : (array) $handler, $event, $bound, $stale, $item, $feeds);
             $this->status = $result->status;
             $this->redirect = $result->redirect;
             $this->reload = $result->reload;
@@ -650,6 +675,7 @@ final class ComponentTester
             }
 
             $this->stale = array_diff_key($this->stale, array_flip($stale));
+            $this->feedItems = \array_slice($this->feedItems, \count($feeds));
 
             if (null !== $result->sender) {
                 $this->sent[$result->sender] = array_fill_keys($result->rendered, true);
@@ -663,6 +689,8 @@ final class ComponentTester
             }
 
             $this->morph($result);
+            // As the browser, after the morph: the changes of the feeds (see Phem\Http\FeedStreams).
+            $this->streams($result->streams, false);
 
             foreach ($this->edited as $fields) {
                 foreach ($fields as [$field, $restore]) {
@@ -685,12 +713,31 @@ final class ComponentTester
      */
     private function push(string $data): bool
     {
+        return $this->streams($data, true);
+    }
+
+    /**
+     * Renders Turbo Streams: of a push, or of the feeds of an event (see Phem\Http\FeedStreams).
+     * A push marks the component around each target as stale. Returns whether a stream is a refresh
+     * of a component of the page.
+     */
+    private function streams(string $data, bool $push): bool
+    {
+        if ('' === $data) {
+            return false;
+        }
+
         $message = HTMLDocument::createFromString('<!DOCTYPE html><html><head></head><body>'.$data.'</body></html>', \LIBXML_NOERROR, 'UTF-8');
         $refresh = false;
         foreach ($message->querySelectorAll('turbo-stream') as $stream) {
             $action = (string) $stream->getAttribute('action');
-            if (Stream::REFRESH === $action) {
+            if (TurboStream::REFRESH === $action) {
                 $refresh = $this->markRefresh($stream) || $refresh;
+                continue;
+            }
+
+            if (TurboStream::FEED === $action) {
+                $refresh = $this->markFeed($stream) || $refresh;
                 continue;
             }
 
@@ -703,7 +750,9 @@ final class ComponentTester
             $outside = \in_array($action, ['remove', 'replace', 'before', 'after'], true);
             $nodes = null !== $template ? $this->nodes($template->innerHTML, $outside ? $target->parentElement : $target) : [];
 
-            $this->markStale($outside ? $target->parentElement : $target);
+            if ($push) {
+                $this->markStale($outside ? $target->parentElement : $target);
+            }
 
             // A morph moves the files of the inputs that it keeps. The other actions put new
             // elements in the page: their inputs have no files.
@@ -730,6 +779,38 @@ final class ComponentTester
             };
 
             $this->moveFiles($inputs, 'morph' === $stream->getAttribute('method') ? $nodes : []);
+        }
+
+        return $refresh;
+    }
+
+    /**
+     * A change of a feed in another request (see Phem\Stream\FeedPush), as in the browser: a
+     * deleted item leaves the page, and a new or a changed item goes back with the refresh of the
+     * components that show the feed. A push of an event of this page skips a component that the
+     * event rendered.
+     */
+    private function markFeed(Element $stream): bool
+    {
+        $rendered = $this->sent[(string) $stream->getAttribute('data-phem-sender')] ?? null;
+        $name = (string) $stream->getAttribute('data-phem-feed');
+        $operation = (string) $stream->getAttribute('data-phem-feed-op');
+        $refresh = false;
+
+        foreach ($this->document->querySelectorAll((string) $stream->getAttribute('targets')) as $component) {
+            $fiber = (string) $component->getAttribute('data-phem-c');
+            $feed = $this->document->getElementById($fiber.'-'.$name);
+            if (isset($rendered[$fiber]) || null === $feed || !$component->contains($feed)) {
+                continue;
+            }
+
+            if ('delete' === $operation) {
+                $this->document->getElementById($feed->id.'-'.$stream->getAttribute('data-phem-feed-key'))?->remove();
+                continue;
+            }
+
+            $this->feedItems[] = ['feed' => $feed->id, 'token' => (string) $stream->getAttribute('data-phem-item'), 'op' => $operation];
+            $refresh = $this->markStale($component) || $refresh;
         }
 
         return $refresh;
@@ -836,6 +917,17 @@ final class ComponentTester
                 $ignored[$old->id] = $old;
             }
 
+            // As in the browser, the morph of a feed element with the same id keeps its items
+            // (see Phem\Feed).
+            $feeds = [];
+            foreach ($element->querySelectorAll('[data-phem-feed][id]') as $old) {
+                $feeds[$old->id] = $old;
+            }
+
+            if ($element->hasAttribute('data-phem-feed') && '' !== $element->id) {
+                $feeds[$element->id] = $element;
+            }
+
             // As in the browser, a touched password field that the server renders with no value
             // (a PasswordType) keeps its value.
             $passwords = [];
@@ -865,6 +957,12 @@ final class ComponentTester
                 foreach ($node->querySelectorAll('[data-phem-ignore][id]') as $new) {
                     if (null !== $old = $ignored[$new->id] ?? null) {
                         $new->replaceWith($old);
+                    }
+                }
+
+                foreach ([...($node->hasAttribute('data-phem-feed') ? [$node] : []), ...$node->querySelectorAll('[data-phem-feed][id]')] as $new) {
+                    if (null !== $old = $feeds[$new->id] ?? null) {
+                        $new->replaceChildren(...iterator_to_array($old->childNodes));
                     }
                 }
 
@@ -929,6 +1027,13 @@ final class ComponentTester
         $inputs = null !== $form && 'submit' === $type ? $this->fileInputs($form) : [];
         if ([] !== $inputs) {
             $event['files'] = $this->files($inputs);
+        }
+
+        // As the browser: an element in an item of a feed sends the item (see Phem\Feed).
+        $item = $element->closest('[data-phem-item]');
+        $feed = $item?->parentElement;
+        if (null !== $item && null !== $feed && $feed->hasAttribute('data-phem-feed')) {
+            $event['item'] = ['feed' => $feed->id, 'token' => (string) $item->getAttribute('data-phem-item')];
         }
 
         return [$handler, $event, $inputs];
@@ -1321,7 +1426,7 @@ final class ComponentTester
      * replaced inputs go away.
      *
      * @param list<array{0: Element, 1: int}> $old   the file inputs before the morph, with their position (see positions())
-     * @param list<\Dom\Node>                $nodes the new HTML, in the page
+     * @param list<\Dom\Node>                 $nodes the new HTML, in the page
      */
     private function moveFiles(array $old, array $nodes): void
     {

@@ -1,0 +1,7 @@
+<?phem // expect: E065
+use Phem\Attribute\{Component, State};
+use Phem\Feed;
+#[Component]
+final class F { public Feed $messages; public function render() { return <Item phem:feed={{ messages }} />; } }
+#[Component]
+function Item(): \Phem\Node { return <li />; }

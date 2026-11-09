@@ -6,10 +6,26 @@ services:
   dev:
     build: { context: .., dockerfile: docker/Dockerfile }
     command: test
-    volumes:
+    volumes: &volumes
       - ..:/app
       - cargo-target:/cargo-target
       - cargo-registry:/usr/local/cargo/registry
+
+  # The e2e tests (`make test-e2e`): the dev image with Node.js and Chromium. Playwright PHP sends
+  # the requests of the browser to the kernel of e2e/, so the app needs no web server. Only the
+  # Mercure hub (e2e/Caddyfile) runs as a server, in the same container.
+  e2e:
+    build:
+      context: ..
+      dockerfile: e2e/Dockerfile
+      additional_contexts: { dev: "service:dev" }
+    command: /app/e2e/bin/test
+    # PHPUnit is the last process of bin/test: as PID 1, it would not stop on Ctrl-C.
+    init: true
+    environment:
+      MERCURE_SUBSCRIBER_JWT_KEY: e2e-subscriber-key-of-at-least-32-bytes
+      MERCURE_PUBLISHER_JWT_KEY: e2e-publisher-key-of-at-least-32-bytes
+    volumes: *volumes
 
 volumes:
   cargo-target:

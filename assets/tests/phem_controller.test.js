@@ -200,6 +200,73 @@ describe("data-phem-ignore", () => {
   })
 })
 
+describe("data-phem-feed", () => {
+  const item = (id, text) => `<li id="f1-messages-${id}" data-phem-item="t${id}.mac"><span>${text}</span><button data-phem-on-click="c1.remove~${id}">Delete</button></li>`
+  const feed = (items, attrs = "") => `<ul id="f1-messages" data-phem-feed ${attrs}>${items}</ul>`
+
+  it("keeps the items in the morph of the same feed, and changes its attributes", async () => {
+    await mount(`${feed(item(1, "Hi") + item(2, "Yo"))}<button id="send" data-phem-on-click="c1.send">Send</button>`)
+    const first = document.getElementById("f1-messages-1")
+    respond(`${feed("", 'class="busy"')}<button id="send" data-phem-on-click="c1.send">Send</button><p id="sent">Sent</p>`)
+    const done = nextDone()
+    click("#send")
+    await done
+
+    expect(document.getElementById("f1-messages-1")).toBe(first)
+    expect([...document.querySelectorAll("#f1-messages > li")].map((li) => li.id)).toEqual(["f1-messages-1", "f1-messages-2"])
+    expect(document.getElementById("f1-messages").className).toBe("busy")
+    expect(document.getElementById("sent")).not.toBeNull()
+  })
+
+  it("replaces the items of a feed with another id", async () => {
+    await mount(`${feed(item(1, "Hi"))}<button id="switch" data-phem-on-click="c1.switch">Switch</button>`)
+    respond(`<ul id="f2-messages" data-phem-feed><li id="f2-messages-7" data-phem-item="t7.mac">New</li></ul><button id="switch" data-phem-on-click="c1.switch">Switch</button>`)
+    const done = nextDone()
+    click("#switch")
+    await done
+
+    expect(document.getElementById("f1-messages-1")).toBeNull()
+    expect(document.getElementById("f2-messages-7")).not.toBeNull()
+  })
+
+  it("sends the item of the element of the event", async () => {
+    await mount(feed(item(1, "Hi") + item(2, "Yo")))
+    respond(feed(""), {}, { streams: '<turbo-stream action="remove" target="f1-messages-2"></turbo-stream>' })
+    const done = nextDone()
+    click("#f1-messages-2 button")
+    await done
+
+    const body = JSON.parse(fetch.mock.calls[0][1].body)
+    expect(body.item).toEqual({ feed: "f1-messages", token: "t2.mac" })
+    expect(body.event).not.toHaveProperty("item")
+    expect(document.getElementById("f1-messages-2")).toBeNull()
+    expect(document.getElementById("f1-messages-1")).not.toBeNull()
+  })
+
+  it("sends no item for an element outside a feed", async () => {
+    await mount(`${feed(item(1, "Hi"))}<button id="send" data-phem-on-click="c1.send">Send</button>`)
+    respond(feed(""))
+    const done = nextDone()
+    click("#send")
+    await done
+
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).not.toHaveProperty("item")
+  })
+
+  it("applies the feed streams after the morph: a prepend of many items keeps their order", async () => {
+    await mount(`${feed(item(3, "C"))}<button id="older" data-phem-on-click="c1.older">Older</button>`)
+    const streams = answer(`${feed("")}<button id="older" data-phem-on-click="c1.older">Older</button>`).streams
+      + `<turbo-stream action="prepend" target="f1-messages"><template>${item(1, "A")}${item(2, "B")}</template></turbo-stream>`
+      + `<turbo-stream action="replace" method="morph" target="f1-messages-3"><template>${item(3, "C!")}</template></turbo-stream>`
+    respond("", {}, { streams })
+    const done = nextDone()
+    click("#older")
+    await done
+
+    expect([...document.querySelectorAll("#f1-messages > li span")].map((s) => s.textContent)).toEqual(["A", "B", "C!"])
+  })
+})
+
 describe("the components with the fiber id on their root element", () => {
   const row = (id, text, cls = "") => `<tr data-phem-c="${id}" class="${cls}"><td>${text}</td></tr>`
   const table = (rows) => `<table><tbody>${rows}</tbody></table><button data-phem-on-click="c1.change">Change</button>`
@@ -1530,6 +1597,58 @@ describe("pushes", () => {
     await mount("<p>Hi</p>")
 
     expect(FakeEventSource.last).toBeNull()
+  })
+
+  describe("of a feed", () => {
+    const room = (items) => `<div data-phem-c="phem00000000000a" data-phem-broadcast="k1"><ul id="phem00000000000a-messages" data-phem-feed>${items}</ul></div>`
+    const item = (id) => `<li id="phem00000000000a-messages-${id}" data-phem-item="t${id}.mac">${id}</li>`
+    const feedStream = (op, key, sender = "") =>
+      `<turbo-stream action="phem-feed" targets="[data-phem-broadcast~=&quot;k1&quot;]" data-phem-feed="messages" data-phem-feed-op="${op}" data-phem-feed-key="${key}"${op !== "delete" ? ` data-phem-item="t${key}.mac"` : ""}${sender ? ` data-phem-sender="${sender}"` : ""}></turbo-stream>`
+
+    it("sends the new items with the refresh of the components that show the feed", async () => {
+      const source = await subscribe(room(item(1)))
+      respond(room(""))
+      source.push(feedStream("append", 2) + feedStream("prepend", 0))
+
+      const body = await nextBody()
+      expect(body.handler).toBeNull()
+      expect(body.stale).toEqual(["phem00000000000a"])
+      expect(body.feeds).toEqual([
+        { feed: "phem00000000000a-messages", token: "t2.mac", op: "append" },
+        { feed: "phem00000000000a-messages", token: "t0.mac", op: "prepend" },
+      ])
+    })
+
+    it("removes a deleted item at once, with no request", async () => {
+      const source = await subscribe(room(item(1) + item(2)))
+      source.push(feedStream("delete", 2))
+      await rendered()
+
+      expect(document.getElementById("phem00000000000a-messages-2")).toBeNull()
+      expect(document.getElementById("phem00000000000a-messages-1")).not.toBeNull()
+      expect(fetch).not.toHaveBeenCalled()
+    })
+
+    it("skips a component that the event of the push rendered", async () => {
+      const source = await subscribe(`${room(item(1))}<button id="send" data-phem-on-click="c1.send">Send</button>`)
+      respond(room(""), {}, { sender: "tok", rendered: ["c1", "phem00000000000a"] })
+      const done = nextDone()
+      click("#send")
+      await done
+
+      source.push(feedStream("append", 2, "tok"))
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
+      expect(fetch).toHaveBeenCalledTimes(1)
+    })
+
+    it("ignores a feed that the page does not show", async () => {
+      const source = await subscribe('<div data-phem-c="phem00000000000a" data-phem-broadcast="k1"><p>No feed</p></div>')
+      source.push(feedStream("append", 2))
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
+      expect(fetch).not.toHaveBeenCalled()
+    })
   })
 
   it("renders a stream outside the root element as plain Turbo", async () => {

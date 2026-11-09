@@ -303,6 +303,8 @@ final class PhemBundle extends AbstractBundle
             ->arg(1, $config['secret']);
         $container->services()->get('phem.broadcast_keys')
             ->arg(0, $config['secret']);
+        $container->services()->get('phem.feed_item_token')
+            ->arg(0, $config['secret']);
 
         $mercure = $config['mercure'];
         if (null !== $mercure['subscriber_key']) {

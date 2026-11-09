@@ -192,6 +192,82 @@ fn an_invalid_phem_error_on_a_component_gives_no_missing_prop_error() {
     assert_eq!(codes(src), ["E061"]);
 }
 
+#[test]
+fn a_feed_renders_its_items_with_no_whitespace_between_them() {
+    let src = "<?phem\nuse Phem\\Attribute\\Component;\nuse Phem\\Feed;\nuse Phem\\Node;\n\
+        #[Component] final class Chat { public Feed $messages;\npublic function render(): Node { return <ol class=\"chat\" phem:feed={{ messages }}>\n\
+        {# newest last #}\n    {% for message in messages %}\n        <!-- one message -->\n        <li>{{ message.text }}</li>\n    {% endfor %}\n</ol>; } }\n";
+    let (out, diags) = compile(vec![SourceInput::app("Chat.phem", src)]);
+
+    // phem_feed_item() gives each item its identity: no W002 for a missing `key`. The newlines go
+    // in the tags, so the `<li>` and the `</ol>` stay on their lines.
+    let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
+    assert!(msgs.is_empty(), "unexpected diagnostics: {msgs:#?}");
+
+    let out = out.expect("output");
+    assert_eq!(
+        out.files[0].templates[0].content,
+        "<ol class=\"chat\"{{ phem_feed(messages) }}>{% for message in phem_feed_items(messages) %}{% apply phem_feed_item(messages, message)\n\n\n\n %}<li>{{ message.text }}</li>{% endapply\n\n %}{% endfor %}{{ phem_feed_end(messages) }}</ol>"
+    );
+    assert!(out.files[0].php.contains("['messages' => $this->messages, 'this' => $this]"), "{}", out.files[0].php);
+}
+
+#[test]
+fn a_feed_is_checked() {
+    let class = |prop: &str, markup: &str| format!("<?phem\nuse Phem\\Attribute\\{{Component, State}};\nuse Phem\\Feed;\n#[Component]\nfinal class F {{ {prop} public function render() {{ return {markup}; }} }}\n");
+    let list = "<ul phem:feed={{ messages }}>{% for m in messages %}<li>{{ m }}</li>{% endfor %}</ul>";
+
+    assert_eq!(codes(&class("public Feed $messages;", list)), Vec::<&str>::new());
+    // The type of a property of a parent outside the sources is not known.
+    assert_eq!(codes(&class("", list).replace("final class F", "final class F extends \\Vendor\\Base")), Vec::<&str>::new());
+    assert_eq!(codes(&class("#[State] public array $messages = [];", list)), ["E065"]);
+    assert_eq!(codes(&class("", list)), ["E065", "E030"]);
+    assert_eq!(codes(&class("public Feed $messages;", &list.replace("<ul ", "<ul id=\"chat\" "))), ["E065"]);
+    // A component tag has no prop `phem:feed`: only E065, no E011.
+    let tag = class("public Feed $messages;", "<Item phem:feed={{ messages }} />") + "#[Component]\nfunction Item(): \\Phem\\Node { return <li />; }\n";
+    assert_eq!(codes(&tag), ["E065"]);
+
+    // The content: one loop on the feed, with no `else`, and one element for each item.
+    assert_eq!(codes(&class("public Feed $messages;", "<ul phem:feed={{ messages }}>{# items #}<!-- items --></ul>")), ["E066"]);
+    assert_eq!(codes(&class("public Feed $messages;", &list.replace("</ul>", "<li>Last</li></ul>"))), ["E066"]);
+    assert_eq!(codes(&class("public Feed $messages;", &list.replace("}}>{% for", "}}><li>First</li>{% for"))), ["E066"]);
+    assert_eq!(codes(&class("public Feed $messages; public array $all = [];", &list.replace("in messages", "in all"))), ["E066"]);
+    assert_eq!(codes(&class("public Feed $messages;", &list.replace("{% endfor %}", "{% else %}<li>None</li>{% endfor %}"))), ["E066"]);
+    assert_eq!(codes(&class("public Feed $messages;", &list.replace("<li>{{ m }}</li>", "<li>{{ m }}</li><li>x</li>"))), ["E066"]);
+    assert_eq!(codes(&class("public Feed $messages;", &list.replace("<li>{{ m }}</li>", "{{ m }}"))), ["E066"]);
+    assert_eq!(codes(&class("public Feed $messages;", &list.replace("<li>{{ m }}</li>", "{% if m %}<li>{{ m }}</li>{% endif %}"))), ["E066"]);
+
+    // The property: Phem sets a new feed on each new instance.
+    for prop in ["public ?Feed $messages;", "public Feed|null $messages;", "private Feed $messages;", "public readonly Feed $messages;", "#[State] public Feed $messages;", "#[\\Phem\\Attribute\\Prop] public Feed $messages;"] {
+        assert_eq!(codes(&class(prop, list)), ["E065"], "{prop}");
+    }
+    // The markup does not read a static property.
+    assert_eq!(codes(&class("public static Feed $messages;", list)), ["E065", "E030"]);
+
+    // One element for each feed: not in a loop, not in an item, not two times.
+    assert_eq!(codes(&class("public Feed $messages; public array $rooms = [];", &format!("<div>{{% for r in rooms %}}{list}{{% endfor %}}</div>"))), ["W002", "E065"]);
+    assert_eq!(codes(&class("public Feed $messages; public Feed $replies;", &list.replace("<li>{{ m }}</li>", "<li><ul phem:feed={{ replies }}>{% for r in replies %}<li>{{ r }}</li>{% endfor %}</ul></li>"))), ["E065"]);
+    assert_eq!(codes(&class("public Feed $messages;", &format!("<div>{list}{list}</div>"))), ["E065"]);
+
+    // The loop: one name, the item. A head with no name or no feed leaves `m` undefined (E030).
+    assert_eq!(codes(&class("public Feed $messages;", &list.replace("for m in", "for k, m in"))), ["E066"]);
+    assert_eq!(codes(&class("public Feed $messages;", &list.replace("for m in messages", "for in messages"))), ["E066", "E030"]);
+    assert_eq!(codes(&class("public Feed $messages;", &list.replace("for m in messages", "for m"))), ["E066", "E030"]);
+
+    // An item reads no `loop` of the feed loop. An inner loop has its own `loop`.
+    assert_eq!(codes(&class("public Feed $messages;", &list.replace("{{ m }}", "{{ loop.index }}"))), ["E066"]);
+    assert_eq!(codes(&class("public Feed $messages;", &list.replace("<li>{{ m }}</li>", "<li class=\"{{ loop.first ? 'top' }}\">{{ m }}</li>"))), ["E066"]);
+    assert_eq!(codes(&class("public Feed $messages;", &list.replace("{{ m }}", "{% for t in m.tags %}<b key={{ t }}>{{ loop.index }}</b>{% endfor %}"))), Vec::<&str>::new());
+    assert_eq!(codes(&class("public Feed $messages;", &list.replace("{{ m }}", "{{ m.loop }} {{ 'loop' }}"))), Vec::<&str>::new());
+
+    // An item renders template components only: a class or a function component keeps its state
+    // and its props in the page.
+    let item = |component: &str| class("public Feed $messages;", &list.replace("<li>{{ m }}</li>", "<li><Row m={{ m }} /></li>")) + "#[Component]\n" + component + "\n";
+    assert_eq!(codes(&item("function Row($m) { return <b>{{ m }}</b>; }")), Vec::<&str>::new());
+    assert_eq!(codes(&item("function Row($m) { $x = 1; return <b>{{ m }} {{ x }}</b>; }")), ["E066"]);
+    assert_eq!(codes(&item("final class Row { #[\\Phem\\Attribute\\Prop] public $m; public function render() { return <b>{{ m }}</b>; } }")), ["E066"]);
+}
+
 fn codes(src: &str) -> Vec<&'static str> {
     let (_, diags) = compile(vec![SourceInput::app("App.phem", src)]);
     diags.iter().flat_map(|f| f.diags.iter().map(|d| d.code)).collect()

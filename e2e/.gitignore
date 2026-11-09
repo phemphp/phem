@@ -1,0 +1,5 @@
+# The packages of importmap:install. vendor/ and var/ are in the root .gitignore, and the root
+# .gitignore keeps composer.lock: it pins the versions of the e2e tests.
+/assets/vendor/
+# Symfony writes it at each build of the container.
+/config/reference.php

@@ -1,0 +1,52 @@
+<?phem
+
+namespace App\Ui\Counter;
+
+use Phem\Attribute\{Component, Page, State};
+use Phem\Node;
+
+use function App\Ui\Common\Document;
+
+// A child with its own state: its event renders only this component.
+#[Component]
+final class Tally
+{
+    #[State] public int $hits = 0;
+
+    public function hit(): void
+    {
+        ++$this->hits;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <p id="tally">
+                <button id="hit" type="button" onClick={{ hit }}>Hit</button>
+                <output id="hits">{{ hits }}</output>
+            </p>
+        );
+    }
+}
+
+#[Page('/counter')]
+final class CounterPage
+{
+    #[State] public int $count = 0;
+
+    public function increment(): void
+    {
+        ++$this->count;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Counter">
+                <button id="increment" type="button" onClick={{ increment }}>Increment</button>
+                <output id="count">{{ count }}</output>
+                <Tally />
+            </Document>
+        );
+    }
+}

@@ -1,0 +1,4 @@
+<?phem // expect: E065
+use Phem\Attribute\Component;
+#[Component]
+function F(array $messages) { return <ul phem:feed={{ messages }}>{% for m in messages %}<li>{{ m }}</li>{% endfor %}</ul>; }

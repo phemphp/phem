@@ -1,0 +1,23 @@
+#!/bin/sh
+# Runs the e2e tests in the e2e image (`make test-e2e`): the Mercure hub in the background, then
+# PHPUnit. The arguments go to PHPUnit, for example `--filter Guestbook`.
+set -e
+cd /app/e2e
+
+composer install --quiet --no-interaction
+
+# importmap:install boots the kernel (phemc and the container): only when the importmap changed.
+if [ ! -d assets/vendor ] || [ importmap.php -nt assets/vendor ]; then
+    bin/console importmap:install --quiet
+    touch assets/vendor
+fi
+
+# Each run starts with no data and no failures: a changed schema applies, and var/failures/ has
+# the failures of this run only.
+mkdir -p var
+rm -rf var/e2e.sqlite var/failures
+
+frankenphp run --config Caddyfile > var/hub.log 2>&1 &
+php -r '$end = time() + 10; while (false === @file_get_contents("http://localhost:3000/healthz")) { if (time() > $end) { fwrite(STDERR, file_get_contents("var/hub.log")); exit(1); } usleep(100000); }'
+
+exec vendor/bin/phpunit "$@"

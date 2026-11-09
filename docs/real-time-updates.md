@@ -70,7 +70,7 @@ The markup goes to every viewer, so don’t push data meant for one user only. U
 
 ### Keep pushed content in the server render
 
-Pushed content must also be in the server render, so load it in `mount()`, or the next event removes it. Give each pushed item an `id`, so the user who made the change sees it only once. The streams go out after the transaction commits, and Phem drops them when the handler throws.
+Pushed content must also be in the server render, so load it in `mount()`, or the next event removes it. For a long list, use a feed instead: the browser keeps its items, and `->feed('messages')->append($entry)` pushes a new item that each browser renders itself, with its handlers (see [Show long lists with feeds](long-lists.md#push-changes-to-other-browsers)). Give each pushed item an `id`, so the user who made the change sees it only once. The streams go out after the transaction commits, and Phem drops them when the handler throws.
 
 ## Refresh the pages that show an entity
 

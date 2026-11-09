@@ -1,8 +1,8 @@
 //! Lowers a markup tree to Twig source.
 
-use phemc_analyze::{is_bound_type, Class, ComponentDef, Enums, FileInfo, Param, Prop, Registry};
+use phemc_analyze::{is_bound_type, Class, ComponentDef, Enums, FileInfo, Kind, Param, Prop, Registry};
 use phemc_syntax::diag::codes;
-use phemc_syntax::markup::{Attr, AttrKind, AttrValue, Element, ExprPart, Node, StrPart, TwigExpr};
+use phemc_syntax::markup::{Attr, AttrKind, AttrValue, Block, Element, ExprPart, Node, StrPart, TwigExpr};
 use phemc_syntax::{Diagnostic, Span};
 use std::collections::HashSet;
 
@@ -48,17 +48,24 @@ pub struct Lowerer<'a> {
     skip_described_by: bool,
     /// The variables that the Twig tags around the current node bind (`{% for x in %}`, `{% set x %}`).
     twig_bound: Vec<String>,
+    /// The number of open `{% for %}` bodies.
+    loops: usize,
+    /// While an item of a feed lowers: a feed element in it has the same id in each item.
+    in_feed_item: bool,
+    /// The feeds of the markup that have an element: a second element has the same id.
+    feeds: HashSet<String>,
 }
 
 impl<'a> Lowerer<'a> {
     pub fn new(info: &'a FileInfo, reg: &'a Registry, enums: &'a Enums, replacements: &'a Replacements) -> Self {
-        Self { info, reg, enums, replacements, classes: ClassNames::new(info, reg, enums), owner: None, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, dynamics: 0, errors: 0, skip_described_by: false, twig_bound: vec![] }
+        Self { info, reg, enums, replacements, classes: ClassNames::new(info, reg, enums), owner: None, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, dynamics: 0, errors: 0, skip_described_by: false, twig_bound: vec![], loops: 0, in_feed_item: false, feeds: HashSet::new() }
     }
 
     pub fn lower_root(&mut self, node: &Node, slots: Vec<String>) -> String {
         self.slots = slots;
         self.slots_defined.clear();
         self.twig_bound.clear();
+        self.feeds.clear();
         let mut out = String::new();
         self.node(node, &mut out);
         out
@@ -104,28 +111,7 @@ impl<'a> Lowerer<'a> {
                 out.push_str(&raw);
             }
             Node::Fragment(f) => self.nodes(&f.children, out),
-            Node::Block(b) => {
-                if b.name() == "for" {
-                    self.check_keys(&b.branches[0].children);
-                }
-
-                // The variables of a `{% for %}` exist only in its body. A `{% set x %}` block
-                // binds `x` after it.
-                let bound = self.twig_bound.len();
-                for br in &b.branches {
-                    let tag_bound = phemc_twig_scan::tag_vars(&br.tag.name, &br.tag.head).bound;
-                    let raw = self.twig(&br.tag.raw, br.tag.span.start, &tag_bound);
-                    out.push_str(&raw);
-                    self.twig_bound.extend(tag_bound);
-                    self.nodes(&br.children, out);
-                }
-
-                if b.name() == "for" {
-                    self.twig_bound.truncate(bound);
-                }
-
-                out.push_str(&b.close.raw);
-            }
+            Node::Block(b) => self.block(b, true, out),
             Node::Output(o) => {
                 if o.expr.has_markup() {
                     match self.markup_expr(&o.expr) {
@@ -162,6 +148,52 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// A Twig block: `{% if %}`, `{% for %}`. `keys`: W002 for the elements of a `{% for %}`.
+    fn block(&mut self, b: &Block, keys: bool, out: &mut String) {
+        let is_for = b.name() == "for";
+        if is_for && keys {
+            self.check_keys(&b.branches[0].children);
+        }
+
+        // The variables of a `{% for %}` exist only in its body. A `{% set x %}` block
+        // binds `x` after it.
+        let bound = self.twig_bound.len();
+        for (i, br) in b.branches.iter().enumerate() {
+            let tag_bound = phemc_twig_scan::tag_vars(&br.tag.name, &br.tag.head).bound;
+            let raw = self.twig(&br.tag.raw, br.tag.span.start, &tag_bound);
+            out.push_str(&raw);
+            self.twig_bound.extend(tag_bound);
+
+            // The body of a loop renders more than once: a feed element in it has the same id each time.
+            let body = usize::from(is_for && i == 0);
+            self.loops += body;
+            self.nodes(&br.children, out);
+            self.loops -= body;
+        }
+
+        if is_for {
+            self.twig_bound.truncate(bound);
+        }
+
+        out.push_str(&b.close.raw);
+    }
+
+    /// The children of an element. The loop of an invalid `phem:feed` has its own error, so it
+    /// gets no W002: phem_feed_item() gives the identity of an item.
+    fn children(&mut self, e: &Element, out: &mut String) {
+        if plain_attr(e, FEED).is_none() {
+            self.nodes(&e.children, out);
+            return;
+        }
+
+        for n in &e.children {
+            match n {
+                Node::Block(b) => self.block(b, false, out),
+                n => self.node(n, out),
+            }
+        }
+    }
+
     /// W002: elements rendered in a `{% for %}` should have a `key`.
     fn check_keys(&mut self, body: &[Node]) {
         for n in body {
@@ -195,6 +227,7 @@ impl<'a> Lowerer<'a> {
         self.check_timing(e);
         let error = self.error_of(e, &name);
         let bind = self.bind(e);
+        let feed = self.feed(e);
 
         if let Some(err) = &error {
             out.push_str(&err.open);
@@ -232,6 +265,10 @@ impl<'a> Lowerer<'a> {
             }
         }
 
+        if let Some(f) = &feed {
+            out.push_str(&format!("{{{{ phem_feed({}) }}}}", f.name));
+        }
+
         if let Some(b) = &bind {
             let extra = described_by.map_or(String::new(), |d| format!(", {d}"));
             out.push_str(&format!(" {{{{ {}{extra}) }}}}", b.call));
@@ -263,9 +300,10 @@ impl<'a> Lowerer<'a> {
 
         let scope = usize::from(name == "head" || name == "svg");
         self.title_scopes += scope;
-        match &error {
-            Some(err) => out.push_str(&format!("{{{{ {}.message }}}}", err.var)),
-            None => self.nodes(&e.children, out),
+        match (&error, &feed) {
+            (Some(err), _) => out.push_str(&format!("{{{{ {}.message }}}}", err.var)),
+            (None, Some(f)) => self.feed_items(f, out),
+            (None, None) => self.children(e, out),
         }
 
         self.title_scopes -= scope;
@@ -287,10 +325,7 @@ impl<'a> Lowerer<'a> {
     /// field has an error: `{% set _phem_error_0 = phem_error('email', this) %}{% if _phem_error_0 %}`.
     /// It gets the id of the error and the message, so it has no `id` and no content of its own.
     fn error_of(&mut self, e: &Element, tag: &str) -> Option<ErrorElement> {
-        let (span, value) = e.attrs.iter().find_map(|a| match &a.kind {
-            AttrKind::Plain { name, name_span, value } if name == ERROR => Some((*name_span, value)),
-            _ => None,
-        })?;
+        let (span, value) = plain_attr(e, ERROR)?;
 
         let component = e.is_component();
         let what = if component { format!("`<{}>`", e.name) } else { "the element".to_string() };
@@ -347,6 +382,307 @@ impl<'a> Lowerer<'a> {
         let open = format!("{{% set {var} = phem_error({target}, {owner}) %}}{{% if {var} %}}");
 
         Some(ErrorElement { var, open })
+    }
+
+    /// `phem:feed={{ messages }}` on the container of a list: a `Feed` property of the class
+    /// component (E065). Its content is one `{% for %}` loop on the feed, and each item is one
+    /// element (E066). phem_feed() gives the container the id of the feed, so it has no `id` and
+    /// no spread, and it renders one time.
+    fn feed<'e>(&mut self, e: &'e Element) -> Option<FeedList<'e>> {
+        let (span, value) = plain_attr(e, FEED)?;
+
+        let mut valid = true;
+        for a in &e.attrs {
+            match &a.kind {
+                AttrKind::Spread(_) => {
+                    self.error(codes::INVALID_FEED, "a spread and `phem:feed` cannot be on the same element", a.span).help =
+                        Some("write the attributes of the feed element one by one: `phem:feed` sets the id of the element".into());
+                    valid = false;
+                }
+                AttrKind::Plain { name, name_span, .. } if name == "id" => {
+                    self.error(codes::INVALID_FEED, "`id` and `phem:feed` cannot be on the same element: `phem:feed` gives the element the id of the feed", *name_span).help =
+                        Some("remove the `id`".into());
+                    valid = false;
+                }
+                AttrKind::Plain { name, name_span, .. } if name == ERROR || name == BIND => {
+                    self.error(codes::INVALID_FEED, format!("`{name}` and `phem:feed` cannot be on the same element"), *name_span).help =
+                        Some("put the feed in its own element: the browser keeps its content".into());
+                    valid = false;
+                }
+                _ => {}
+            }
+        }
+
+        // The id of a feed element is the fiber id and the name of the feed: the element renders one time.
+        if self.in_feed_item || self.loops > 0 {
+            let place = if self.in_feed_item { "an item of a feed" } else { "a `{% for %}` loop" };
+            self.error(codes::INVALID_FEED, format!("a `phem:feed` element in {place} renders more than one time, with the same id"), span).help =
+                Some("put the feed element outside the loop: a component renders one element for each feed".into());
+            valid = false;
+        }
+
+        let name = self.feed_name(value, span);
+        if let Some(name) = &name {
+            if !self.feeds.insert(name.clone()) {
+                self.error(codes::INVALID_FEED, format!("the feed `{name}` has a second element, with the same id"), span).help =
+                    Some("render one element for the feed: hide it with CSS or the `hidden` attribute when it must not show".into());
+                valid = false;
+            }
+        }
+
+        let body = self.feed_loop(e, name.as_deref());
+        if !valid {
+            return None;
+        }
+
+        Some(FeedList { name: name?, body: body? })
+    }
+
+    /// The value of `phem:feed`: the name of a `Feed` property of the class component. Phem sets
+    /// a new feed on each new instance, so the property is public, not static, not readonly, not
+    /// promoted and not nullable, and has no attribute (see `ComponentMetadata::feedProperties()`).
+    fn feed_name(&mut self, value: &AttrValue, span: Span) -> Option<String> {
+        let help = "write the name of a `Feed` property: `phem:feed={{ messages }}`";
+        let AttrValue::Expr(x) = value else {
+            self.error(codes::INVALID_FEED, "`phem:feed` takes the name of a `Feed` property", span).help = Some(help.into());
+            return None;
+        };
+
+        let code = self.expr_code(x);
+        let name = match bind_path(&code) {
+            Some((root, path)) if path.is_empty() => root,
+            _ => {
+                self.error(codes::INVALID_FEED, "`phem:feed` takes the name of a `Feed` property, not an expression", x.span).help = Some(help.into());
+                return None;
+            }
+        };
+
+        let Some(class) = self.class else {
+            self.error(codes::INVALID_FEED, "`phem:feed` needs a class component: a function component has no `Feed` property", span).help =
+                Some(format!("move the markup to a class component, and declare `public Feed ${name};`"));
+            return None;
+        };
+
+        if has_variable(self.scope_text, &name) || self.twig_bound.contains(&name) {
+            self.error(codes::INVALID_FEED, format!("`{name}` is a local variable, not a `Feed` property"), x.span).help =
+                Some(format!("rename the variable `{name}`: in markup it hides the property"));
+            return None;
+        }
+
+        match class.all_props().find(|p| p.name == name) {
+            Some(p) if p.class_ty.as_deref() != Some(phemc_analyze::FEED) => {
+                self.error(codes::INVALID_FEED, format!("`phem:feed` needs a `Feed` property, but `${name}` is `{}`", p.ty.trim()), x.span).help =
+                    Some(format!("declare `public Feed ${name};`: the items of a feed stay in the browser"));
+                None
+            }
+            Some(p) => match feed_property_problem(p) {
+                Some(problem) => {
+                    self.error(codes::INVALID_FEED, format!("the feed `${name}` {problem}: Phem sets a new feed on each new instance"), x.span).help =
+                        Some(format!("declare `public Feed ${name};`, with no attribute"));
+                    None
+                }
+                None => Some(name),
+            },
+            None if !class.open => {
+                self.error(codes::INVALID_FEED, format!("`{}` has no property `{name}`", class.name), x.span).help = Some(format!("declare `public Feed ${name};`"));
+                None
+            }
+            None => Some(name),
+        }
+    }
+
+    /// The content of a `phem:feed` element: one `{% for item in feed %}` loop on the feed (`name`,
+    /// when it is valid), with no `{% else %}`, and one element in its body (see `check_item()`).
+    fn feed_loop<'e>(&mut self, e: &'e Element, name: Option<&str>) -> Option<FeedLoop<'e>> {
+        let feed = name.unwrap_or("messages");
+        let example = format!("`<{0} phem:feed={{{{ {feed} }}}}>{{% for item in {feed} %}}<li>…</li>{{% endfor %}}</{0}>`", e.name);
+        let skipped = |n: &Node| n.is_blank() || matches!(n, Node::TwigComment(_) | Node::HtmlComment(_));
+
+        let mut found = None;
+        for n in e.children.iter().filter(|n| !skipped(n)) {
+            match n {
+                Node::Block(b) if b.name() == "for" && found.is_none() => found = Some(b),
+                _ => {
+                    self.error(codes::FEED_CONTENT, "the content of a `phem:feed` element is only one `{% for %}` loop", n.span()).help =
+                        Some(format!("move the other content out of the `<{}>`: {example}", e.name));
+                    return None;
+                }
+            }
+        }
+
+        let Some(block) = found else {
+            self.error(codes::FEED_CONTENT, format!("`<{}>` has `phem:feed`, but no `{{% for %}}` loop on the feed", e.name), e.name_span).help =
+                Some(format!("render the items in a loop: {example}"));
+            return None;
+        };
+
+        let tag = &block.branches[0].tag;
+        let mut valid = true;
+        if let Some(other) = block.branches.get(1) {
+            self.error(codes::FEED_CONTENT, "the loop of a feed has no `{% else %}`", other.tag.span).help =
+                Some(format!("the browser keeps the items of a feed: show the empty state outside the `<{}>`", e.name));
+            valid = false;
+        }
+
+        // One name: a request renders only the new and the changed items, so a key or a position
+        // in the loop is not the place of the item in the list.
+        let names = phemc_twig_scan::tag_vars("for", &tag.head).bound;
+        match (phemc_twig_scan::split_for(&tag.head), names.as_slice()) {
+            (Some((_, seq)), [_]) => {
+                if let Some(name) = name.filter(|n| *n != seq) {
+                    self.error(codes::FEED_CONTENT, format!("the loop of a feed reads the feed `{name}`, not `{seq}`"), tag.head_span).help =
+                        Some(format!("write `{{% for item in {name} %}}`: the server renders the new items of the feed with the same loop"));
+                    valid = false;
+                }
+            }
+            (Some(_), [_, _, ..]) => {
+                self.error(codes::FEED_CONTENT, "the loop of a feed has one name: the item", tag.head_span).help =
+                    Some(format!("write `{{% for item in {feed} %}}`: a request renders only the new and the changed items, so a key in the loop is not the place of the item in the list"));
+                valid = false;
+            }
+            _ => {
+                self.error(codes::FEED_CONTENT, format!("the loop of a feed is `{{% for item in {feed} %}}`"), tag.span).help =
+                    Some("write the name of the item and the feed".into());
+                valid = false;
+            }
+        }
+
+        let body = &block.branches[0].children;
+        let mut roots = body.iter().filter(|n| !skipped(n));
+        let root = match (roots.next(), roots.next()) {
+            (Some(n @ Node::Element(item)), None) => {
+                if let Some((id, _)) = plain_attr(item, "id") {
+                    self.error(codes::FEED_CONTENT, "the element of an item of a feed has no `id`: Phem gives it the id of the item", id).help =
+                        Some("remove the `id`: the streams of the feed find the item by its own id".into());
+                    valid = false;
+                }
+
+                valid &= self.check_item(n);
+
+                Some(n)
+            }
+            (first, second) => {
+                let span = second.or(first).map_or(tag.span, Node::span);
+                self.error(codes::FEED_CONTENT, "each item of a feed is one element", span).help =
+                    Some("put the content of an item in one element: `{% for message in messages %}<li>…</li>{% endfor %}`".into());
+                None
+            }
+        };
+
+        if !valid {
+            return None;
+        }
+
+        // The newlines that the lowering drops: before the element of an item, and after it.
+        let root = root?;
+        let at = body.iter().position(|n| std::ptr::eq(n, root)).unwrap_or(0);
+        let outer = e.children.iter().position(|n| matches!(n, Node::Block(b) if std::ptr::eq(b, block))).unwrap_or(0);
+        let before = e.children[..outer].iter().chain(&body[..at]).map(newlines).sum::<usize>() + tag.raw.matches('\n').count();
+        let after = body[at + 1..].iter().chain(&e.children[outer + 1..]).map(newlines).sum::<usize>() + block.close.raw.matches('\n').count();
+
+        Some(FeedLoop { item: names[0].clone(), root, lines: (before, after) })
+    }
+
+    /// E066: a request renders only the new and the changed items of a feed, outside the shape of
+    /// the page. So an item does not read the `loop` of the feed loop, and it renders no class or
+    /// function component (they keep their state and their props in the page), only template
+    /// components.
+    fn check_item(&mut self, item: &Node) -> bool {
+        let mut loops = Vec::new();
+        let mut components = Vec::new();
+        self.item_uses(item, true, &mut loops, &mut components);
+
+        if let Some(span) = loops.first() {
+            self.error(codes::FEED_CONTENT, "an item of a feed reads `loop`: a request renders only the new and the changed items, so `loop` is not the place of the item in the list", *span).help =
+                Some("read the value from the item (`{{ message.createdAt }}`), or use CSS (`:nth-child()`, `counter()`)".into());
+        }
+
+        for (tag, kind, span) in &components {
+            self.error(codes::FEED_CONTENT, format!("an item of a feed renders the {kind} component `<{tag}>`: it keeps its state and its props in the page, and an item is not in the page"), *span).help =
+                Some("write its markup in the item, or use a template component (a function that only returns markup)".into());
+        }
+
+        loops.is_empty() && components.is_empty()
+    }
+
+    /// The uses of `loop` (when `loop` is the loop of the feed), and the class and function
+    /// components, in the markup of an item.
+    fn item_uses(&self, n: &Node, feed_loop: bool, loops: &mut Vec<Span>, components: &mut Vec<(String, &'static str, Span)>) {
+        let read = |code: &str, span: Span, loops: &mut Vec<Span>| {
+            if feed_loop && phemc_twig_scan::reads_loop(code) {
+                loops.push(span);
+            }
+        };
+
+        match n {
+            Node::Element(e) => {
+                for a in &e.attrs {
+                    match &a.kind {
+                        AttrKind::Spread(x) | AttrKind::Plain { value: AttrValue::Expr(x), .. } => read(&x.code(), x.span, loops),
+                        AttrKind::Plain { value: AttrValue::Quoted { parts, .. }, .. } => {
+                            for p in parts {
+                                if let StrPart::Expr(x) = p {
+                                    read(&x.code(), x.span, loops);
+                                }
+                            }
+                        }
+                        AttrKind::Plain { value: AttrValue::None, .. } => {}
+                    }
+                }
+
+                // `<Dynamic>` is an element of the item, and an unknown component has its own error.
+                let fqcn = self.info.resolve_component(&e.name);
+                if let Some(def) = self.reg.get(&fqcn).filter(|_| e.is_component() && fqcn != phemc_analyze::DYNAMIC) {
+                    match def.kind {
+                        Kind::Class => components.push((e.name.clone(), "class", e.name_span)),
+                        Kind::Function => components.push((e.name.clone(), "function", e.name_span)),
+                        Kind::Template => {}
+                    }
+                }
+
+                for c in &e.children {
+                    self.item_uses(c, feed_loop, loops, components);
+                }
+            }
+            Node::Fragment(f) => {
+                for c in &f.children {
+                    self.item_uses(c, feed_loop, loops, components);
+                }
+            }
+            Node::Output(o) => read(&o.expr.code(), o.expr.span, loops),
+            Node::Tag(t) => read(&t.head, t.head_span, loops),
+            Node::Block(b) => {
+                for (i, br) in b.branches.iter().enumerate() {
+                    read(&br.tag.head, br.tag.head_span, loops);
+
+                    // The body of an inner loop has its own `loop`.
+                    let own = b.name() == "for" && i == 0;
+                    for c in &br.children {
+                        self.item_uses(c, feed_loop && !own, loops, components);
+                    }
+                }
+            }
+            Node::Text(_) | Node::HtmlComment(_) | Node::Verbatim(_) | Node::TwigComment(_) => {}
+        }
+    }
+
+    /// The items of a feed: `{% for message in phem_feed_items(messages) %}{% apply
+    /// phem_feed_item(messages, message) %}<li>…</li>{% endapply %}{% endfor %}{{ phem_feed_end(messages) }}`.
+    /// No whitespace between the items: the browser adds and removes them. The newlines of the
+    /// source go in the tags, so Twig error lines stay close.
+    fn feed_items(&mut self, f: &FeedList, out: &mut String) {
+        let (name, item) = (&f.name, &f.body.item);
+        let (before, after) = f.body.lines;
+        out.push_str(&format!("{{% for {item} in phem_feed_items({name}) %}}{{% apply phem_feed_item({name}, {item}){} %}}", "\n".repeat(before)));
+
+        let bound = self.twig_bound.len();
+        self.twig_bound.push(item.clone());
+        let in_item = std::mem::replace(&mut self.in_feed_item, true);
+        self.node(f.body.root, out);
+        self.in_feed_item = in_item;
+        self.twig_bound.truncate(bound);
+
+        out.push_str(&format!("{{% endapply{} %}}{{% endfor %}}{{{{ phem_feed_end({name}) }}}}", "\n".repeat(after)));
     }
 
     fn expr_code(&mut self, x: &TwigExpr) -> String {
@@ -479,8 +815,8 @@ impl<'a> Lowerer<'a> {
                 // An inline script (`onclick="..."`) of the markup: the runtime does not render
                 // `on*` names from phem_attrs(), because a spread can contain data.
                 AttrKind::Plain { name, .. } if is_inline_script(name) => self.dom_attr(a, out),
-                // See bind() and error_of().
-                AttrKind::Plain { name, .. } if name == BIND || name == ERROR => {}
+                // See bind(), error_of() and feed().
+                AttrKind::Plain { name, .. } if name == BIND || name == ERROR || name == FEED => {}
                 AttrKind::Plain { name, name_span, value } => {
                     if TIMINGS.contains(&name.as_str()) {
                         match value {
@@ -982,8 +1318,8 @@ impl<'a> Lowerer<'a> {
                     return;
                 }
 
-                if name == BIND || name == ERROR || (self.skip_described_by && name.eq_ignore_ascii_case(DESCRIBED_BY)) {
-                    // See bind() and error_of().
+                if name == BIND || name == ERROR || name == FEED || (self.skip_described_by && name.eq_ignore_ascii_case(DESCRIBED_BY)) {
+                    // See bind(), error_of() and feed().
                     return;
                 }
 
@@ -1119,6 +1455,10 @@ impl<'a> Lowerer<'a> {
                 }
                 // See error_of().
                 AttrKind::Plain { name, .. } if name == ERROR => {}
+                AttrKind::Plain { name, name_span, .. } if name == FEED => {
+                    self.error(codes::INVALID_FEED, format!("`phem:feed` is for an element, not the tag of a component `<{}>`", e.name), *name_span).help =
+                        Some(format!("put it on the element of the list in `{}`: `<ul phem:feed={{{{ messages }}}}>`", def.fqcn));
+                }
                 AttrKind::Spread(x) => {
                     has_spread = true;
                     if !props.is_empty() {
@@ -1349,6 +1689,10 @@ impl<'a> Lowerer<'a> {
                     self.error(codes::INVALID_ERROR, "`phem:error` is not supported on a `<Dynamic>`", *name_span).help =
                         Some("write the message as a static element: `<p phem:error={{ email }} />`".into());
                 }
+                AttrKind::Plain { name, name_span, .. } if name == FEED => {
+                    self.error(codes::INVALID_FEED, "`phem:feed` is not supported on a `<Dynamic>`", *name_span).help =
+                        Some("write the list as a static element: `<ul phem:feed={{ messages }}>`".into());
+                }
                 _ => attrs.push(a.clone()),
             }
         }
@@ -1373,7 +1717,7 @@ impl<'a> Lowerer<'a> {
         if e.children.iter().any(|c| !c.is_blank() && !matches!(c, Node::TwigComment(_))) {
             let content_var = format!("_phem_content_{n}");
             out.push_str(&format!("{{% set {content_var} %}}"));
-            self.nodes(&e.children, out);
+            self.children(e, out);
             out.push_str("{% endset %}");
             content = Some(content_var);
         }
@@ -1538,6 +1882,10 @@ const ERROR: &str = "phem:error";
 const INVALID: &str = "aria-invalid";
 const DESCRIBED_BY: &str = "aria-describedby";
 
+/// `phem:feed={{ messages }}`: the element is the container of a `Feed`, a list whose items live
+/// only in the browser. The server renders only the new items.
+const FEED: &str = "phem:feed";
+
 /// What `phem:bind` binds (see `Lowerer::bind_target()`).
 enum BindTarget {
     /// A #[State] property of the class, or a path in it: the PHP target (`'query'`,
@@ -1554,6 +1902,56 @@ struct ErrorElement {
     var: String,
     /// The Twig code before the element: the error, and the `{% if %}`.
     open: String,
+}
+
+/// A valid `phem:feed` element (see `Lowerer::feed()`).
+struct FeedList<'e> {
+    /// The name of the `Feed` property.
+    name: String,
+    body: FeedLoop<'e>,
+}
+
+/// The loop of a valid `phem:feed` element (see `Lowerer::feed_loop()`).
+struct FeedLoop<'e> {
+    /// The name of the item: `message`.
+    item: String,
+    /// The element of an item.
+    root: &'e Node,
+    /// The newlines of the source before the element of an item, and after it.
+    lines: (usize, usize),
+}
+
+/// The newlines of a node that the lowering of a feed drops: its text, or its tag.
+fn newlines(n: &Node) -> usize {
+    match n {
+        Node::Text(t) | Node::HtmlComment(t) | Node::Verbatim(t) => t.text.matches('\n').count(),
+        Node::Tag(t) => t.raw.matches('\n').count(),
+        _ => 0,
+    }
+}
+
+/// Why a `Feed` property cannot be a feed (see `ComponentMetadata::feedProperties()`), or None.
+fn feed_property_problem(p: &Prop) -> Option<String> {
+    let nullable = p.ty.trim().starts_with('?') || p.ty.split('|').any(|t| t.trim().eq_ignore_ascii_case("null"));
+    let problem = if !p.is_public {
+        "is not public"
+    } else if p.is_static {
+        "is static"
+    } else if p.is_readonly {
+        "is readonly"
+    } else if p.is_promoted {
+        "is a promoted constructor parameter"
+    } else if nullable {
+        "is nullable"
+    } else if p.is_state {
+        "has `#[State]`"
+    } else if p.is_context {
+        "has `#[Context]`"
+    } else {
+        return p.prop_attr.map(|a| format!("has `#[{a}]`"));
+    };
+
+    Some(problem.to_string())
 }
 
 /// The lowered parts of a bound field (see `Lowerer::bind()`).
@@ -1631,6 +2029,14 @@ enum PathSegment {
 
 /// The property and the segments of a bound path: `query`, `filters.status`, `rows[key].name`.
 /// None for another expression.
+/// The attribute of an element with this name, and its value: `phem:feed={{ messages }}`.
+fn plain_attr<'e>(e: &'e Element, name: &str) -> Option<(Span, &'e AttrValue)> {
+    e.attrs.iter().find_map(|a| match &a.kind {
+        AttrKind::Plain { name: n, name_span, value } if n == name => Some((*name_span, value)),
+        _ => None,
+    })
+}
+
 fn bind_path(code: &str) -> Option<(String, Vec<PathSegment>)> {
     let is_word = |c: char| c.is_ascii_alphanumeric() || c == '_';
     let s = code.trim();

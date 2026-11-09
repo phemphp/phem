@@ -107,11 +107,15 @@ public function detached(Node $markup): string
 Run the tests after each change in the core library (`src/`, `config/`, `templates/`, `assets/`),
 before you report the work as done:
 
-- Run `make test` from the root of the repository. It runs the JS tests (Vitest), cargo test and
-  PHPUnit.
+- Run `make test` from the root of the repository. It runs the JS tests (Vitest), the e2e tests
+  (Playwright PHP in Chromium), cargo test and PHPUnit.
 - For a fast check while you work, run PHPUnit in the dev image:
   `docker compose -f docker/compose.yaml run --rm dev vendor/bin/phpunit`. Run `make test` at the end.
-- Report the result. If a test fails, show the output.
+- Run `make test-e2e` alone after a change that a real browser must check: the client
+  (`assets/`), the morph, the events or the Mercure pushes. Add `ARGS="--filter Guestbook"` for one
+  test. The specs are in `e2e/tests/`, and their app is in `e2e/src/` (see `docs/contributing.md`).
+- Report the result. If a test fails, show the output. A failed e2e test saves a screenshot and the
+  HTML of each page in `e2e/var/failures/`.
 
 ## Editor plugins
 

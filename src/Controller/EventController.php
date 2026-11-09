@@ -20,6 +20,7 @@ use Phem\Http\EventBody;
 use Phem\Http\EventPayload;
 use Phem\Http\EventReplay;
 use Phem\Http\EventRequest;
+use Phem\Http\FeedStreams;
 use Phem\Http\RouteValues;
 use Phem\Http\TurboStreams;
 use Phem\Metadata\ComponentMetadata;
@@ -42,9 +43,9 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
 
@@ -116,6 +117,7 @@ final class EventController
         private readonly ?Subscription $subscription = null,
         private readonly SenderToken $sender = new SenderToken(),
         private readonly StateSizeLimit $limit = new StateSizeLimit(),
+        private readonly FeedStreams $feeds = new FeedStreams(),
     ) {
     }
 
@@ -184,10 +186,10 @@ final class EventController
             return self::reload();
         }
 
-        $tree = new Tree($page, $state->fibers, $props, $state->values, shape: $state->shape);
+        $tree = new Tree($page, $state->fibers, $props, $state->values, shape: $state->shape, feedItems: $payload->feedItems());
         if (1 === \count($payload->handlers)) {
             // Only an event with one handler: a load event of many boundaries is not #[Async].
-            $request->attributes->set(EventReplay::ATTRIBUTE, new EventReplay($page, $json, $payload->bound, $payload->handlers[0], $payload->event));
+            $request->attributes->set(EventReplay::ATTRIBUTE, new EventReplay($page, $json, $payload->bound, $payload->handlers[0], $payload->event, $payload->item));
         }
 
         // The refreshes of the handlers get the token of the event (see SenderToken).
@@ -233,7 +235,8 @@ final class EventController
         // Only the entries of the state that changed, or a patch of them: the browser has the state
         // of this event.
         $changes = (object) StateJson::changes($json, $next);
-        $data = ['streams' => $this->streams->updates($tree->changedFibers(), $tree->shape), 'changes' => $changes, 'signature' => $signature, 'query' => ['values' => (object) $query['values'], 'push' => $query['push']], 'events' => $this->dispatcher->dispatched()];
+        // The morphs go first: a feed stream can change an element of a morph (see FeedStreams).
+        $data = ['streams' => $this->streams->updates($tree->changedFibers(), $tree->shape).$this->feeds->of($tree), 'changes' => $changes, 'signature' => $signature, 'query' => ['values' => (object) $query['values'], 'push' => $query['push']], 'events' => $this->dispatcher->dispatched()];
 
         // The refreshes of this event skip the fibers that it rendered, in this browser.
         if (null !== $token = $this->sender->issued()) {

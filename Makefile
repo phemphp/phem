@@ -1,15 +1,18 @@
-.PHONY: test test-js bench shell lsp vscode vscode-install phpstorm phpstorm-install docs docs-build
+.PHONY: test test-js test-e2e bench shell lsp vscode vscode-install phpstorm phpstorm-install docs docs-build
 
 # The build context of the dev image is the repository.
 COMPOSE = docker compose -f docker/compose.yaml
 
-test: test-js ## Run cargo test, PHPUnit and the JS tests
+test: test-js test-e2e ## Run cargo test, PHPUnit, the JS tests and the e2e tests
 	$(COMPOSE) run --rm --build dev
 
 test-js: ## Run the tests of the phem Stimulus controller (Vitest, jsdom)
 	docker run --rm -e NPM_CONFIG_UPDATE_NOTIFIER=false -e NPM_CONFIG_LOGLEVEL=warn -v "$(CURDIR)/assets:/assets" -v "$(CURDIR)/src/Test/Resources:/src/Test/Resources:ro" -w /assets node:22-alpine sh -c ' \
 		npm install --ignore-scripts --no-fund --no-audit && \
 		npm test'
+
+test-e2e: ## Run the e2e tests in Chromium (e2e/, Playwright PHP). Pass PHPUnit options with ARGS="--filter Smoke"
+	$(COMPOSE) run --rm --build e2e /app/e2e/bin/test $(ARGS)
 
 bench:  ## Run the benchmark of the client/server flow (bench/run.php): server time, bytes, requests
 	$(COMPOSE) run --rm --build dev php bench/run.php

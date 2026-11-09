@@ -19,8 +19,6 @@ these properties of Phem:
 
 Talk about each item before its implementation. The open questions are a start, not a full list.
 
-- [ ] **Streams** (section 1). The items of a stream are not in the state. How does a later
-      event render the list, and how does the "before/after" comparison see it?
 - [ ] **Refresh after a handler** (section 3). An explicit `#[Refresh]`, or an automatic refresh
       from the Doctrine unit of work? How does Phem find the components that show a changed
       entity?
@@ -46,14 +44,6 @@ A stress run on 2026-10-28 (the server time, with no network):
 - **Open question for lists:** the JSON props of each fiber in the signed state, so a row renders
   with no render of its parent. The state gets larger, and a prop that is not a JSON value (a
   closure, markup, an entity) still needs the render of the path.
-
-### [ ] Streams for long lists — P3
-
-- **Best peer:** LV streams: insert, update and delete items in a list without the list in
-  server memory or in the state.
-- **Proposal:** a `Stream` value. A handler calls `$this->messages->insert($m)` or
-  `->delete($m)`, and the response has a Turbo Stream `append` / `remove` for the item. The
-  list is not part of `#[State]`. Good for chats, feeds and infinite scroll.
 
 ## 2. Installation
 
@@ -174,7 +164,9 @@ time. A status or a "last seen" value needs polling when the app has no Mercure 
   <span phem:poll={{ 30000 }} onPoll={{ refreshStatus }}>{{ status }}</span>
   ```
 
-  Polling stops while the tab is hidden (`visibilitychange`). Goes with "Streams for long lists".
+  Polling stops while the tab is hidden (`visibilitychange`). With a feed (docs/long-lists.md),
+  `onVisible={{ older }}` prepends the next items: the infinite scroll of the feed guide needs no
+  button.
 
 ### [ ] Built-in controllers for complex input — P2
 

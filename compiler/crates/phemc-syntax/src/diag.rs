@@ -117,6 +117,8 @@ pub mod codes {
     pub const UNKNOWN_CLASS_MEMBER: &str = "E062";
     pub const NOT_A_PAGE: &str = "E063";
     pub const CLASS_IN_MARKUP: &str = "E064";
+    pub const INVALID_FEED: &str = "E065";
+    pub const FEED_CONTENT: &str = "E066";
     pub const MISSING_KEY: &str = "W002";
     pub const UNKNOWN_EVENT: &str = "W003";
     pub const FOREIGN_ATTRIBUTE: &str = "W004";

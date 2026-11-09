@@ -22,12 +22,13 @@ use Phem\Handler\MemberHandler;
 use Phem\Manifest\Manifest;
 use Phem\Routing\PageUrlGenerator;
 use Twig\Extension\AbstractExtension;
+use Twig\TwigFilter;
 use Twig\TwigFunction;
 
 /**
  * The `{% component %}` tag and the `phem_*` functions that compiled templates use.
  *
- * The functions that need the current render tree or a service (`phem_on`, `phem_loading`, `phem_progress`, `phem_bind`, `phem_class`, `phem_attrs`) are in PhemRuntime.
+ * The functions that need the current render tree or a service (`phem_on`, `phem_loading`, `phem_progress`, `phem_bind`, `phem_feed`, `phem_class`, `phem_attrs`) are in PhemRuntime.
  * The attribute functions render with Phem\Dom\Attributes, and the tag of `<Dynamic>` with Phem\Dom\DynamicTag. `classes()` gives a mergeable class list (Phem\ClassList).
  * phemc compiles the class names of the markup to `phem_constant()` (a case or a constant, see ConstantFunction), and to `phem_path()` and `phem_url()` (a page link, see PageUrlGenerator).
  */
@@ -35,6 +36,14 @@ final class PhemExtension extends AbstractExtension
 {
     public function __construct(private readonly Manifest $manifest)
     {
+    }
+
+    public function getFilters(): array
+    {
+        return [
+            // `{% apply phem_feed_item(feed, item) %}` around the body of the loop of `phem:feed`.
+            new TwigFilter('phem_feed_item', [PhemRuntime::class, 'feedItem'], ['is_safe' => ['html']]),
+        ];
     }
 
     public function getTokenParsers(): array
@@ -53,6 +62,9 @@ final class PhemExtension extends AbstractExtension
             new TwigFunction('phem_bind', [PhemRuntime::class, 'bind'], $safe),
             new TwigFunction('phem_bound', [PhemRuntime::class, 'bound']),
             new TwigFunction('phem_error', [PhemRuntime::class, 'error']),
+            new TwigFunction('phem_feed', [PhemRuntime::class, 'feed'], $safe + ['needs_context' => true]),
+            new TwigFunction('phem_feed_items', [PhemRuntime::class, 'feedItems']),
+            new TwigFunction('phem_feed_end', [PhemRuntime::class, 'feedEnd'], $safe),
             new TwigFunction('phem_bind_value', Attributes::bindValue(...)),
             new TwigFunction('phem_selected', Attributes::selected(...), $safe),
             new TwigFunction('phem_key', Attributes::key(...), $safe),

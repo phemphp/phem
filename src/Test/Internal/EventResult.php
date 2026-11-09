@@ -14,8 +14,8 @@ declare(strict_types=1);
 namespace Phem\Test\Internal;
 
 /**
- * The answer to an event: the components to morph and the browser events, a redirect, or a
- * reload (409).
+ * The answer to an event: the components to morph, the changes of the feeds and the browser
+ * events, a redirect, or a reload (409).
  *
  * @internal
  */
@@ -27,6 +27,7 @@ final class EventResult
      * @param string|null                              $sender     the token of the refreshes of the event (see Phem\Stream\SenderToken)
      * @param bool                                     $clearFiles whether the handler took the files of the form (see Phem\Event::clearFiles())
      * @param list<string>                             $rendered   the ids of the fibers that the event rendered, with a sender
+     * @param string                                   $streams    the Turbo Streams of the feeds, after the morphs (see Phem\Http\FeedStreams)
      */
     private function __construct(
         public readonly array $updates = [],
@@ -37,6 +38,7 @@ final class EventResult
         public readonly int $status = 200,
         public readonly bool $clearFiles = false,
         public readonly array $rendered = [],
+        public readonly string $streams = '',
     ) {
     }
 
@@ -45,9 +47,9 @@ final class EventResult
      * @param list<array{name: string, detail: mixed}> $dispatched
      * @param list<string>                             $rendered
      */
-    public static function updates(array $updates, array $dispatched = [], ?string $sender = null, bool $clearFiles = false, array $rendered = []): self
+    public static function updates(array $updates, array $dispatched = [], ?string $sender = null, bool $clearFiles = false, array $rendered = [], string $streams = ''): self
     {
-        return new self($updates, $dispatched, $sender, clearFiles: $clearFiles, rendered: $rendered);
+        return new self($updates, $dispatched, $sender, clearFiles: $clearFiles, rendered: $rendered, streams: $streams);
     }
 
     public static function redirect(string $url): self

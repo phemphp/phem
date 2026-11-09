@@ -1,0 +1,5 @@
+<?phem // expect: E065
+use Phem\Attribute\{Component, State};
+use Phem\Feed;
+#[Component]
+final class F { public Feed $messages; public array $rooms = []; public function render() { return <div>{% for r in rooms %}<section key={{ r }}><ul phem:feed={{ messages }}>{% for m in messages %}<li>{{ m.text }}</li>{% endfor %}</ul></section>{% endfor %}</div>; } }

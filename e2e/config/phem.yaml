@@ -1,0 +1,8 @@
+# The Mercure hub of e2e/Caddyfile, on another port of the same host. The browser sends the cookie
+# of the hub to it (a cookie does not depend on the port), and the app publishes with its HTTP API.
+phem:
+    mercure:
+        hub_url: 'http://localhost:3000/.well-known/mercure'
+        subscriber_key: '%env(MERCURE_SUBSCRIBER_JWT_KEY)%'
+        publisher_key: '%env(MERCURE_PUBLISHER_JWT_KEY)%'
+        publish_url: 'http://localhost:3000/.well-known/mercure'

@@ -121,6 +121,7 @@ The tester follows browser behavior for pushes:
 - A `refresh()` sends one event with no handler.
 - After a handler of a component with `#[Broadcast]`, `receive()` on the same page doesn’t render that component again, because the event already rendered it.
 - An element with `data-phem-ignore` and an `id` (a target that only pushes fill) keeps its content when an event renders it again.
+- A feed element keeps its items in a morph, and the streams of the feeds apply after the morph (see [Show long lists with feeds](long-lists.md#test-a-feed)). A push of a feed removes a deleted item, or sends the new item with the refresh.
 
 To see a push, open the page twice, like two tabs:
 
