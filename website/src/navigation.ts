@@ -1,5 +1,5 @@
 // The order of the docs. The sidebar, the drawer, the breadcrumbs, the pager and the search read
-// it. Each file of docs/ must be in it once (the build fails on a missing or an unknown file).
+// it. Each file of docs/ and CHANGELOG.md must be in it once (the build fails on a missing or an unknown file).
 export interface NavPage {
     slug: string;
     label: string;
@@ -61,6 +61,7 @@ export const navigation: NavGroup[] = [
         pages: [
             { slug: 'contributing', label: 'Contribute to Phem' },
             { slug: 'releasing', label: 'Release a Version' },
+            { slug: 'changelog', label: 'Changelog' },
         ],
     },
 ];

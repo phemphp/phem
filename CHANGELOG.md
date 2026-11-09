@@ -17,6 +17,9 @@ that break the code of an application start with **Breaking**.
   `Validation` property uses it too, with the first error that has a message.
 - The worker of an `#[Async]` handler logs a warning when its work dispatches a browser event (a
   toast): the worker has no response, so the browser does not get it.
+
+## 0.3.15 (2026-11-08)
+
 - The error of a handler on a field: `Validation::withError()` adds an error that no constraint
   finds, for example a name that the database has already
   (`$this->validation = $this->validation->withError('name', 'This name is taken.')`). The field
@@ -34,6 +37,18 @@ that break the code of an application start with **Breaking**.
   of `beforeunload` stays the question of the browser.
 - Fix: a guard whose confirmed visit another `turbo:before-visit` listener cancels asks again.
   Before, the guard and `beforeunload` asked no more on that page.
+- **Breaking**: phemc: an `aria-invalid` on a bound field is the error E033, so the build of an
+  app with one fails. `phem:bind` sets `aria-invalid` from the `Validation` property: remove the
+  attribute, and show the error with `phem:error`. For an error that no constraint finds, use
+  `Validation::withError()`.
+
+## 0.3.14 (2026-11-08)
+
+- Fix: the `phem-confirm` dialog closes on a tap on the backdrop, with no event (`phem-dialog`
+  too), and on `turbo:before-cache`: a visit back shows no old question.
+
+## 0.3.13 (2026-11-08)
+
 - Draft objects in `#[State]`: a `#[State]` property can keep an object of a plain class (a
   draft of a form, a date). The Serializer encodes it in the state, and `phem:bind` binds its
   public properties with a path (`phem:bind={{ draft.name }}`). A handler can change the
@@ -68,10 +83,6 @@ that break the code of an application start with **Breaking**.
   field needs no `id`. A `Bound` prop works too: the error is the error of the parent property.
 - phemc: an invalid `phem:error` is the error E061 (not a `#[State]` property or a `Bound` prop,
   a component with no `Validation` property, an element with an `id` or content).
-- **Breaking**: phemc: an `aria-invalid` on a bound field is the error E033, so the build of an
-  app with one fails. `phem:bind` sets `aria-invalid` from the `Validation` property: remove the
-  attribute, and show the error with `phem:error`. For an error that no constraint finds, use
-  `Validation::withError()`.
 - Handler arguments in the markup: `onClick={{ pickReason(r) }}` runs `pickReason($r)` when the
   user clicks. The arguments are values of the render: the handler id has their fingerprint, so
   the browser can't change them. They go to the first parameters, and the other parameters get

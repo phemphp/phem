@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { relative, resolve } from 'node:path';
 import { type CollectionEntry, getCollection, render } from 'astro:content';
 import type { MarkdownHeading } from 'astro';
 import { pages } from './navigation';
@@ -15,7 +16,8 @@ export interface Doc {
 
 let loaded: Promise<Doc[]> | undefined;
 
-// The docs in the order of the navigation. Each file of docs/ must be in the navigation once.
+// The docs in the order of the navigation. Each file of docs/ and CHANGELOG.md must be in the
+// navigation once.
 export function docs(): Promise<Doc[]> {
     loaded ??= load();
 
@@ -29,14 +31,14 @@ async function load(): Promise<Doc[]> {
     const unknown = pages.filter((page) => !slugs.has(page.slug)).map((page) => page.slug);
 
     if (missing.length || unknown.length) {
-        throw new Error(`src/navigation.ts does not match docs/: missing [${missing.join(', ')}], unknown [${unknown.join(', ')}].`);
+        throw new Error(`src/navigation.ts does not match docs/ and CHANGELOG.md: missing [${missing.join(', ')}], unknown [${unknown.join(', ')}].`);
     }
 
     return Promise.all(
         pages.map(async ({ slug }) => {
             const entry = entries.find((candidate) => candidate.id === slug)!;
             const headings = (await render(entry)).headings.map((heading) => ({ ...heading, text: heading.text.trim() }));
-            const file = `docs/${slug}.md`;
+            const file = relative(resolve('..'), resolve(entry.filePath!));
 
             return {
                 slug,

@@ -1,6 +1,6 @@
 ---
 // Design system: Header, with the search trigger and the ThemeToggle.
-import { repository } from '../site';
+import { repository, version } from '../site';
 import Icon from './Icon.astro';
 
 interface Props {
@@ -15,6 +15,7 @@ const section = 'tutorial' === current ? 'tutorial' : current ? 'docs' : undefin
     <div class="ph-header__inner">
         <button class="ph-icon-btn ph-header__menu" type="button" aria-label="Open navigation" data-ph-drawer-open="docs-drawer"><Icon name="bars-3" /></button>
         <a class="ph-header__brand" href="/">Phem</a>
+        <a class="ph-badge header-version" href="/changelog/" aria-current={'changelog' === current ? 'page' : undefined} title="Latest release: see the changelog" hidden={!version} data-latest-release>{version}</a>
         <nav class="ph-header__nav" aria-label="Main">
             <a class="ph-header__link" href="/what-is-phem/" aria-current={'docs' === section ? 'page' : undefined}>Docs</a>
             <a class="ph-header__link" href="/tutorial/" aria-current={'tutorial' === section ? 'page' : undefined}>Tutorial</a>
@@ -32,3 +33,61 @@ const section = 'tutorial' === current ? 'tutorial' : current ? 'docs' : undefin
         </div>
     </div>
 </header>
+
+<script>
+    // The badge shows the latest release of GitHub, so a release shows on the site with no new
+    // build. The tag of the build stays when GitHub doesn't answer. The answer stays for an hour
+    // in the browser: GitHub accepts 60 requests an hour from one address.
+    const api = 'https://api.github.com/repos/phemphp/phem/releases/latest';
+    const key = 'phem-latest-release';
+    const maxAge = 3600_000;
+
+    function show(tag: string): void {
+        for (const badge of document.querySelectorAll<HTMLElement>('[data-latest-release]')) {
+            badge.textContent = tag;
+            badge.hidden = false;
+        }
+    }
+
+    function cached(): string | undefined {
+        try {
+            const { tag, at } = JSON.parse(localStorage.getItem(key) ?? 'null') ?? {};
+
+            return 'string' === typeof tag && Date.now() - at < maxAge ? tag : undefined;
+        } catch {
+            return undefined;
+        }
+    }
+
+    async function fetchLatest(): Promise<string | undefined> {
+        try {
+            const response = await fetch(api, { headers: { Accept: 'application/vnd.github+json' } });
+
+            if (!response.ok) {
+                return undefined;
+            }
+
+            const { tag_name: tag } = await response.json();
+
+            if ('string' !== typeof tag) {
+                return undefined;
+            }
+
+            try {
+                localStorage.setItem(key, JSON.stringify({ tag, at: Date.now() }));
+            } catch {
+                // No storage (a private window): ask GitHub again on the next page.
+            }
+
+            return tag;
+        } catch {
+            return undefined;
+        }
+    }
+
+    const tag = cached() ?? (await fetchLatest());
+
+    if (tag) {
+        show(tag);
+    }
+</script>

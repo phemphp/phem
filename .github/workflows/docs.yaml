@@ -5,12 +5,14 @@ on:
   push:
     branches: [main]
     paths:
+      - "CHANGELOG.md"
       - "docs/**"
       - "website/**"
       - "editors/vscode/syntaxes/**"
       - ".github/workflows/docs.yaml"
   pull_request:
     paths:
+      - "CHANGELOG.md"
       - "docs/**"
       - "website/**"
       - "editors/vscode/syntaxes/**"

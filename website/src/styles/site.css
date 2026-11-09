@@ -2,6 +2,10 @@
 .home-section { max-width: var(--page-width); margin: 0 auto; padding: 0 var(--space-6) var(--space-16); box-sizing: border-box; }
 .home-section__title { margin: 0 0 var(--space-6); color: var(--ink); font: 700 24px/32px var(--font-sans); letter-spacing: -0.01em; }
 @media (max-width: 767px) { .header-github { display: none; } }
+.header-version { flex: none; text-decoration: none; font-family: var(--font-mono); }
+.header-version[hidden] { display: none; }
+.header-version:hover { color: var(--ink); }
+.header-version:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .ph-hero .ph-code { margin: 0; min-width: 0; }
 /* The tables of the docs hold long code: it wraps at its spaces, so the table fits the page. Each
    word of the code is a span (src/markdown/tables.ts). */
