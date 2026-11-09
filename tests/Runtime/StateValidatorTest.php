@@ -156,6 +156,8 @@ final class StateValidatorTest extends TestCase
 
         self::assertNotSame($validation, $validation->withError('email', 'x'));
         self::assertSame('This email is taken.', $validation->error('email'));
+        self::assertTrue($validation->hasError('email'));
+        self::assertFalse($validation->hasError('password'));
         self::assertSame(['email' => 'This email is taken.'], $validation->errors());
         self::assertFalse($validation->valid());
         self::assertFalse($validation->fieldsValid());

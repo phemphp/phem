@@ -22,6 +22,8 @@ that break the code of an application start with **Breaking**.
   loop on the feed with one element for each item). `ComponentTester` applies the streams of the
   feeds and the pushes of a feed.
 - The internal `Phem\Stream\Stream` class is now `Phem\Stream\TurboStream`.
+- `Validation::hasError($field)`: `true` when the field has an error. A template checks it before
+  it shows the error: `{% if validation.hasError('email') %}`.
 
 ## 0.3.16 (2026-11-09)
 

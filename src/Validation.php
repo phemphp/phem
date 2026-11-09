@@ -74,6 +74,17 @@ final readonly class Validation implements StateValue
     }
 
     /**
+     * Whether the field has an error (see error()). A template checks it before it shows the
+     * error:
+     *
+     *     {% if validation.hasError('email') %}<p>{{ validation.error('email') }}</p>{% endif %}
+     */
+    public function hasError(string $field): bool
+    {
+        return null !== $this->error($field);
+    }
+
+    /**
      * The error of each field: the errors that the handlers added, the first error of each
      * touched field, and of each field of the form.
      *
@@ -106,7 +117,7 @@ final readonly class Validation implements StateValue
     /**
      * Adds the error of a handler to a field: an error that no constraint finds, for example a
      * name that the database has already. The field shows it as the error of a constraint
-     * (`phem:bind`, `phem:error`, error(), errors() and valid()). It goes before the error of the
+     * (`phem:bind`, `phem:error`, error(), hasError(), errors() and valid()). It goes before the error of the
      * constraints of the field:
      *
      *     $this->validation = $this->validation->withError('name', 'This name is taken.');

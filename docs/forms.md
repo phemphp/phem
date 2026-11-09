@@ -43,10 +43,10 @@ final class ClosedDays
         return (
             <form onSubmit={{ addClosed }}>
                 <input type="date" name="from" />
-                {% if validation.error('from') %}<p id="from-error">{{ validation.error('from') }}</p>{% endif %}
+                {% if validation.hasError('from') %}<p id="from-error">{{ validation.error('from') }}</p>{% endif %}
                 <input type="date" name="to" />
                 <input name="guests" />
-                {% if validation.error('guests') %}<p id="guests-error">{{ validation.error('guests') }}</p>{% endif %}
+                {% if validation.hasError('guests') %}<p id="guests-error">{{ validation.error('guests') }}</p>{% endif %}
                 <button type="submit">Add</button>
             </form>
         );
@@ -318,6 +318,7 @@ The `Validation` object has these methods:
 | Method | Result |
 |---|---|
 | `error($field)` | The error of a handler, or the first error of a touched field, or `null` |
+| `hasError($field)` | `true` when the field has an error |
 | `errors()` | All the errors |
 | `touched($field)` | `true` when the user touched the field |
 | `valid()` | `true` when there’s no error |
@@ -357,7 +358,7 @@ public function render(): Node
 }
 ```
 
-The field shows the error as the error of a constraint. `phem:bind`, `phem:error`, `error()`, `errors()` and `valid()` all see it:
+The field shows the error as the error of a constraint. `phem:bind`, `phem:error`, `error()`, `hasError()`, `errors()` and `valid()` all see it:
 
 ```html
 <input name="name" data-phem-live="" data-phem-bind="phem70709d286391.name" value="Shoes" aria-invalid="true" aria-describedby="phem70709d286391-name-error">

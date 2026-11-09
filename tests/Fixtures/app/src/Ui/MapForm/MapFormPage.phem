@@ -29,12 +29,12 @@ final class ClosedDays
         return (
             <form id="closed" onSubmit={{ addClosed }}>
                 <input type="date" name="from" />
-                {% if validation.error('from') %}<p id="from-error">{{ validation.error('from') }}</p>{% endif %}
+                {% if validation.hasError('from') %}<p id="from-error">{{ validation.error('from') }}</p>{% endif %}
                 <input type="date" name="to" />
-                {% if validation.error('to') %}<p id="to-error">{{ validation.error('to') }}</p>{% endif %}
+                {% if validation.hasError('to') %}<p id="to-error">{{ validation.error('to') }}</p>{% endif %}
                 <input name="size" />
                 <input name="guests" />
-                {% if validation.error('guests') %}<p id="guests-error">{{ validation.error('guests') }}</p>{% endif %}
+                {% if validation.hasError('guests') %}<p id="guests-error">{{ validation.error('guests') }}</p>{% endif %}
                 <input type="checkbox" name="notify" value="1" />
                 <button type="submit">Add</button>
                 <p id="saved">{{ saved }}</p>
@@ -81,7 +81,7 @@ final class Holidays
             <form id="holidays" onSubmit={{ add }}>
                 <input type="date" name="holiday[from]" />
                 <input name="holiday[guests]" value="1" />
-                {% if validation.error('holiday.from') %}<p id="holiday-error">{{ validation.error('holiday.from') }}</p>{% endif %}
+                {% if validation.hasError('holiday.from') %}<p id="holiday-error">{{ validation.error('holiday.from') }}</p>{% endif %}
                 <button type="submit">Add</button>
             </form>
         );

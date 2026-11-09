@@ -74,18 +74,18 @@ final class Registration
         return (
             <form id="registration" onSubmit={{ save }}>
                 <input name="email" phem:bind={{ email }} phem:live />
-                {% if validation.error('email') %}<p id="email-error">{{ validation.error('email') }}</p>{% endif %}
+                {% if validation.hasError('email') %}<p id="email-error">{{ validation.error('email') }}</p>{% endif %}
                 <FieldError validation={{ validation }} field="email" />
                 <input name="password" phem:bind={{ password }} phem:live />
-                {% if validation.error('password') %}<p id="password-error">{{ validation.error('password') }}</p>{% endif %}
+                {% if validation.hasError('password') %}<p id="password-error">{{ validation.error('password') }}</p>{% endif %}
                 <input name="confirm" phem:bind={{ confirm }} phem:live />
-                {% if validation.error('confirm') %}<p id="confirm-error">{{ validation.error('confirm') }}</p>{% endif %}
+                {% if validation.hasError('confirm') %}<p id="confirm-error">{{ validation.error('confirm') }}</p>{% endif %}
                 <input name="city" phem:bind={{ address.city }} phem:live onBlur={{ touchCity }} />
-                {% if validation.error('address.city') %}<p id="city-error">{{ validation.error('address.city') }}</p>{% endif %}
+                {% if validation.hasError('address.city') %}<p id="city-error">{{ validation.error('address.city') }}</p>{% endif %}
                 <input name="nickname" phem:bind={{ nickname }} phem:live />
-                {% if validation.error('nickname') %}<p id="nickname-error">{{ validation.error('nickname') }}</p>{% endif %}
+                {% if validation.hasError('nickname') %}<p id="nickname-error">{{ validation.error('nickname') }}</p>{% endif %}
                 <input name="age" phem:bind={{ age }} phem:live />
-                {% if validation.error('age') %}<p id="age-error">{{ validation.error('age') }}</p>{% endif %}
+                {% if validation.hasError('age') %}<p id="age-error">{{ validation.error('age') }}</p>{% endif %}
                 <button type="submit">Save</button>
                 <button type="button" id="draft" onClick={{ draft }}>Draft</button>
                 <button type="button" id="rename" onClick={{ rename }}>Rename</button>
