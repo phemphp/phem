@@ -19,7 +19,13 @@ namespace Phem\Dom;
 final class DomEvents
 {
     /** The DOM events that the `phem` Stimulus controller listens to. */
-    public const LISTENED = ['click', 'dblclick', 'input', 'change', 'submit', 'keydown', 'keyup', 'focusin', 'focusout'];
+    public const LISTENED = [
+        'click', 'dblclick', 'input', 'change', 'submit', 'keydown', 'keyup', 'focusin', 'focusout',
+        'dragstart', 'dragover', 'drop', 'paste', 'contextmenu', 'pointerdown', 'pointerup', 'scroll',
+    ];
+
+    /** The DOM events that do not bubble: the controller listens to them in the capture phase. */
+    private const CAPTURED = ['scroll'];
 
     /** React event names → DOM event names. */
     private const ALIASES = ['doubleclick' => 'dblclick', 'focus' => 'focusin', 'blur' => 'focusout'];
@@ -30,9 +36,9 @@ final class DomEvents
         return self::ALIASES[$event] ?? $event;
     }
 
-    /** The `data-action` value of the page root: `click->phem#dispatch dblclick->phem#dispatch …`. */
+    /** The `data-action` value of the page root: `click->phem#dispatch … scroll->phem#dispatch:capture`. */
     public static function stimulusActions(): string
     {
-        return implode(' ', array_map(static fn (string $a): string => $a.'->phem#dispatch', self::LISTENED));
+        return implode(' ', array_map(static fn (string $a): string => $a.'->phem#dispatch'.(\in_array($a, self::CAPTURED, true) ? ':capture' : ''), self::LISTENED));
     }
 }

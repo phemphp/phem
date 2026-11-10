@@ -25,6 +25,10 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// The event attributes that the `phem` client listens to (`DomEvents::LISTENED` of the runtime).
+/// The runtime makes `onFocus` and `onBlur` the `focusin` and `focusout` events.
+pub const EVENTS: &[&str] = &["onClick", "onDoubleClick", "onChange", "onInput", "onSubmit", "onKeyDown", "onKeyUp", "onFocus", "onBlur", "onFocusIn", "onFocusOut", "onDragStart", "onDragOver", "onDrop", "onPaste", "onContextMenu", "onPointerDown", "onPointerUp", "onScroll"];
+
 #[derive(Clone, Debug)]
 pub struct SourceInput {
     /// The key of the file in the build, with `/` separators: the path in the source root of the

@@ -978,10 +978,10 @@ impl<'a> Lowerer<'a> {
 
     /// W003: the `phem` client listens only to some events (`DomEvents::LISTENED` of the runtime).
     fn check_event(&mut self, name: &str, event: &str, span: Span) {
-        if !LISTENED_EVENTS.contains(&event) {
+        if !crate::EVENTS.iter().any(|e| event_name(e).as_deref() == Some(event)) {
             self.diags.push(
                 Diagnostic::warning(codes::UNKNOWN_EVENT, format!("`{name}` never runs: the browser does not send `{event}` events"), span)
-                    .with_help("use one of: onClick, onDoubleClick, onChange, onInput, onSubmit, onKeyDown, onKeyUp, onFocus, onBlur"),
+                    .with_help(format!("use one of: {}", crate::EVENTS.join(", "))),
             );
         }
     }
@@ -2116,10 +2116,6 @@ fn closing_bracket(s: &str) -> Option<usize> {
 const DEBOUNCE: &str = "phem:debounce";
 const TIMINGS: &[&str] = &[DEBOUNCE, "phem:throttle"];
 
-/// The events of `event_name()` that the `phem` client listens to. The runtime makes `focus`
-/// and `blur` the `focusin` and `focusout` events.
-const LISTENED_EVENTS: &[&str] = &["click", "dblclick", "input", "change", "submit", "keydown", "keyup", "focus", "blur", "focusin", "focusout"];
-
 /// The Twig code of a handler. A member path (`tabs.select`) is the method of the object as a
 /// closure (`phem_method(tabs, 'select')`): in Twig, `tabs.select` calls the method. A call
 /// (`remove(item)`) is the handler with its arguments (`phem_call(remove, [item])`): it does not
@@ -2343,6 +2339,8 @@ mod tests {
     fn events() {
         assert_eq!(event_name("onClick").as_deref(), Some("click"));
         assert_eq!(event_name("onDoubleClick").as_deref(), Some("dblclick"));
+        assert_eq!(event_name("onContextMenu").as_deref(), Some("contextmenu"));
+        assert_eq!(event_name("onPointerDown").as_deref(), Some("pointerdown"));
         assert_eq!(event_name("one"), None);
     }
 }

@@ -237,6 +237,17 @@ PHP deletes the uploaded file at the end of the request, so move it in the handl
 
 The files stay in the input after the submit, so a form with a validation error keeps them. Once the handler stores the files, call `$e->clearFiles()` to empty the input in the browser.
 
+### Accept dropped and pasted files
+
+A drop zone and a paste don't need a form. Give the handler to `onDrop` or `onPaste`, and it gets the files as a list in `$e->files`:
+
+```html
+<div onDrop={{ add }}>Drop the photos here</div>
+<textarea onPaste={{ add }}></textarea>
+```
+
+See [Respond to a drop, a paste or a right-click](events.md#respond-to-a-drop-a-paste-or-a-right-click).
+
 ### Show the upload progress
 
 Pass the handler to `phem:progress` to show the progress of the upload:

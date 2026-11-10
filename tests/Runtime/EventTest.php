@@ -51,6 +51,27 @@ final class EventTest extends TestCase
         self::assertSame(['photo' => 'x'], $event->files);
     }
 
+    public function testFilesOfADropOrAPasteAreAList(): void
+    {
+        foreach (['drop', 'paste'] as $type) {
+            self::assertSame(['a', 'b'], Event::fromArray(['type' => $type], files: [Event::FILES => ['a', 'b']])->files, $type);
+            self::assertSame([], Event::fromArray(['type' => $type], files: ['photo' => 'x'])->files, $type.': only the files of the drop');
+        }
+    }
+
+    public function testTextIsTheTextOfADropOrAPaste(): void
+    {
+        self::assertSame('https://example.com', Event::fromArray(['type' => 'paste', 'text' => 'https://example.com'])->text);
+        self::assertNull(Event::fromArray(['type' => 'click'])->text);
+    }
+
+    public function testClientSendsTheFilesOfADropAsTheFilesOfTheEvent(): void
+    {
+        $client = (string) file_get_contents(\dirname(__DIR__, 2).'/assets/dist/phem_controller.js');
+
+        self::assertStringContainsString('const TRANSFERRED_FILES = "'.Event::FILES.'[]"', $client, 'the client and the server use the same part name');
+    }
+
     public function testClearFilesTellsThatTheHandlerTookTheFiles(): void
     {
         $event = Event::fromArray(['type' => 'submit'], files: ['photo' => 'x']);

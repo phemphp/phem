@@ -36,6 +36,7 @@ final class InteractsWithPhemTest extends KernelTestCase
     private const PROFILE = 'App\Ui\Bind\Profile';
     private const CATALOG = 'App\Ui\Url\Catalog';
     private const UPLOADER = 'App\Ui\Upload\Uploader';
+    private const DROP_ZONE = 'App\Ui\Upload\DropZone';
 
     protected static function getKernelClass(): string
     {
@@ -607,6 +608,19 @@ final class InteractsWithPhemTest extends KernelTestCase
             $tester()->upload('input[name=photo]', $a)->upload('input[name=photo]', [])->submit()->assertState('uploaded', [], in: 'form');
             $tester()->upload('input[name=photo]', $a)->click('button[value=move]')->assertSelectorTextContains('#request', 'moved');
             self::assertFileExists($a, $how.': the handler moves a copy of the file');
+        }
+    }
+
+    public function testDropAndPasteSendTheirFilesAsAList(): void
+    {
+        [$a, $b] = self::files(['a.png' => 'alpha', 'b.png' => 'beta']);
+        $open = ['mount' => fn () => $this->mount(self::DROP_ZONE), 'visit' => fn () => $this->visit('/upload')];
+
+        foreach ($open as $tester) {
+            $tester()->drop('#zone', [$a, $b])->assertState('received', ['drop a.png alpha', 'drop b.png beta'], in: '#zone');
+            $tester()->paste('textarea', $b)->assertState('received', ['paste b.png beta'], in: '#zone');
+            $tester()->drop('#zone')->assertState('received', [], in: '#zone');
+            $tester()->paste('textarea', text: 'https://example.com')->assertState('received', ['paste text https://example.com'], in: '#zone');
         }
     }
 

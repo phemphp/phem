@@ -359,7 +359,7 @@ A handler can take these forms:
 - **Prop of type `Closure`**
 - **Call with arguments**: `onClick={{ remove(item) }}` runs `remove($item)` when the user clicks, not during the render. See [Pass arguments to a handler](events.md#pass-arguments-to-a-handler)
 
-The supported events are `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`, `onKeyDown`, `onKeyUp`, `onFocus`, `onBlur`, `onFocusIn` and `onFocusOut`. `phemc` warns about other events (W003). For what a handler receives and returns, see [Handle events](events.md).
+The supported events are `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`, `onKeyDown`, `onKeyUp`, `onFocus`, `onBlur`, `onFocusIn`, `onFocusOut`, `onDragStart`, `onDragOver`, `onDrop`, `onPaste`, `onContextMenu`, `onPointerDown`, `onPointerUp` and `onScroll`. `phemc` warns about other events (W003). For what a handler receives and returns, see [Handle events](events.md).
 
 ### Directives (`phem:*`)
 

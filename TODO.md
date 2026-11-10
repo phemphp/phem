@@ -116,19 +116,6 @@ editor, a map. The work-around is a hidden input with a fake `change` event.
 - **Open question:** the browser makes the detail, so the handler must check it, as it checks
   `$e->value`.
 
-### [ ] More DOM events — P2
-
-`phemc` accepts only 9 events (`onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`,
-`onKeyDown`, `onKeyUp`, `onFocus`, `onBlur`). These events are missing:
-
-- `onDrop`, `onDragStart`, `onDragOver`: drag and drop, an upload drop zone;
-- `onPaste`: paste an image into a comment;
-- `onContextMenu`: a right-click menu;
-- `onPointerDown`, `onPointerUp`, `onScroll`.
-
-- **Best peer:** React (all DOM events), LW `wire:<any event>`.
-- **Open question:** what `Event` gets for each one (the files of a drop, the files of a paste).
-
 ### [ ] Key filters and event modifiers — P2
 
 `onKeyDown` sends each key press to the server, and the handler tests `$e->key`. A click in a

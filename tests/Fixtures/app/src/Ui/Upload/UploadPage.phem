@@ -76,6 +76,33 @@ final class Uploader
     }
 }
 
+// The files of a drop and of a paste: a list in Phem\Event::$files.
+#[Component]
+final class DropZone
+{
+    #[State] public array $received = [];
+
+    public function receive(Event $e): void
+    {
+        $this->received = array_map(static fn (UploadedFile $file): string => $e->type.' '.$file->getClientOriginalName().' '.trim((string) file_get_contents($file->getPathname())), $e->files);
+
+        if ('' !== (string) $e->text) {
+            $this->received[] = $e->type.' text '.$e->text;
+        }
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div>
+                <div id="zone" onDrop={{ receive }}>Drop the photos here</div>
+                <textarea onPaste={{ receive }}></textarea>
+                <pre id="received">{{ received|json_encode }}</pre>
+            </div>
+        );
+    }
+}
+
 #[Page('/upload')]
 final class UploadPage
 {
@@ -84,6 +111,7 @@ final class UploadPage
         return (
             <Document>
                 <Uploader />
+                <DropZone />
             </Document>
         );
     }

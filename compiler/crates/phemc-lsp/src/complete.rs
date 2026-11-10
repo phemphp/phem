@@ -92,7 +92,6 @@ impl Item {
     }
 }
 
-const EVENTS: &[&str] = &["onClick", "onDoubleClick", "onChange", "onInput", "onSubmit", "onKeyDown", "onKeyUp", "onFocus", "onBlur", "onFocusIn", "onFocusOut"];
 
 /// The Phem attributes of an HTML element: name, snippet, detail, documentation.
 const PHEM_ATTRIBUTES: &[(&str, &str, &str, &str)] = &[
@@ -457,7 +456,7 @@ impl<'a, 'p> Completer<'a, 'p> {
             return items;
         }
 
-        for event in EVENTS {
+        for event in phemc_codegen::EVENTS {
             add(event, format!("{event}={{{{ ${{1}} }}}}"), "Phem event: the handler runs on the server", format!("1{event}"), None);
         }
 

@@ -52,6 +52,35 @@ function touchedNames(form) {
 // The DOM events that send the fields of the form of their element (see dispatch()).
 const FORM_EVENTS = new Set(["submit", "change", "input", "click"])
 
+// The DOM events whose default action a handler replaces: the browser does not open the dropped
+// file, and does not show its own context menu.
+const CANCELLED_EVENTS = new Set(["drop", "contextmenu"])
+
+// The DOM events that fire many times each second: a new event takes the payload of the event of
+// the same handler that waits in the queue (see enqueue()).
+const COALESCED_EVENTS = new Set(["input", "change", "dragover", "scroll"])
+
+// The name of the multipart parts of the files of a drop or a paste (Phem\Event::FILES).
+const TRANSFERRED_FILES = "_phem_files[]"
+
+// The data of a drop or a paste, or null for another event.
+function transferOf(event) {
+  return event.type === "drop" ? (event.dataTransfer ?? null) : event.type === "paste" ? (event.clipboardData ?? null) : null
+}
+
+// The files of a drop or a paste, as multipart parts (see fetchWithRetry()). The server gives
+// them to the handler as a list. A copy: the browser empties the FileList after the event.
+function transferredFiles(event) {
+  return [...(transferOf(event)?.files ?? [])].map((file) => [TRANSFERRED_FILES, file])
+}
+
+// Whether the browser keeps the default action of a cancelled event: a drop of text with no
+// files in a text field or an editable element inserts the text.
+function keepsDefault(event) {
+  const t = event.target
+  return event.type === "drop" && !event.dataTransfer?.files?.length && (isTextLike(t) || t.isContentEditable === true)
+}
+
 // The form of an element: the form itself, the form of a control (also with a `form` attribute),
 // or the form around it.
 function formOf(el) {
@@ -1144,6 +1173,12 @@ export default class PhemController extends Controller {
   dispatch(event) {
     if (this.inactive) return
 
+    // An element is a drop target only when its dragover is cancelled.
+    if (event.type === "dragover") {
+      const zone = event.target.closest?.("[data-phem-on-drop]")
+      if (zone && this.element.contains(zone)) event.preventDefault()
+    }
+
     // A field of a form that the user changes is touched, also while its event waits.
     const changed = event.target
     if ((event.type === "input" || event.type === "change") && changed.name && changed.form && this.element.contains(changed.form) && !changed.hasAttribute(TOUCHED)) {
@@ -1164,6 +1199,8 @@ export default class PhemController extends Controller {
       // The first submit of this form still runs.
       if (this.locked.has(el)) return
     }
+
+    if (CANCELLED_EVENTS.has(event.type) && !keepsDefault(event)) event.preventDefault()
 
     // The payload of the DOM event: after the listeners of `phem:before-queue`, which can change
     // the fields, and before a cancel resets them (see allowed()).
@@ -1214,6 +1251,13 @@ export default class PhemController extends Controller {
       payload.files = files
       payload.fileInputs = sentFileInputs(form)
     }
+
+    // The text of a drop or a paste: the paste fires before the browser inserts it in the field.
+    const transfer = transferOf(event)
+    if (transfer) payload.text = transfer.getData?.("text/plain") ?? ""
+
+    const transferred = transferredFiles(event)
+    if (transferred.length) payload.files = transferred
 
     return payload
   }
@@ -1286,10 +1330,10 @@ export default class PhemController extends Controller {
     }
   }
 
-  // Puts an event in the queue. An input or change event that waits in the queue for the same
-  // handler and element takes the new value, and the new event does not go in the queue.
+  // Puts an event in the queue. An event of COALESCED_EVENTS that waits in the queue for the same
+  // handler and element takes the new payload, and the new event does not go in the queue.
   enqueue(el, attr, handler, payload, ids = new Set()) {
-    const coalesce = payload.type === "input" || payload.type === "change"
+    const coalesce = COALESCED_EVENTS.has(payload.type)
     const waiting = coalesce ? (this.waiting.get(el) ?? new Map()) : null
     const old = waiting?.get(attr)
     if (old && old.handler === handler) {
@@ -1545,6 +1589,9 @@ export default class PhemController extends Controller {
         const el = find("change")
         return el && !isTextLike(el) && !formTakesKeys(el, event.target) ? el : null
       }
+      // A scroll does not bubble: only the element that scrolls gets it.
+      case "scroll":
+        return event.target.hasAttribute?.("data-phem-on-scroll") ? find("scroll") : null
       default:
         return find(event.type)
     }

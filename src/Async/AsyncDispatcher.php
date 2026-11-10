@@ -65,7 +65,7 @@ final class AsyncDispatcher
         }
 
         if ([] !== $request->files->all()) {
-            throw new \LogicException('An #[Async] handler cannot get the files of a form: PHP removes them at the end of the request. Move the files in a normal handler.');
+            throw new \LogicException('An #[Async] handler cannot get the files of a form, a drop or a paste: PHP removes them at the end of the request. Move the files in a normal handler.');
         }
 
         return [$bus, $replay, $request];

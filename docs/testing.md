@@ -73,9 +73,11 @@ Each action finds an element with a CSS selector and sends the event the way the
 | `fill($selector, $value)` | None: the next event sends the bound field (`phem:bind`) | `->fill('[name=q]', 'Curie')->click('button')` |
 | `submit($selector, $fields)` | `onSubmit` | `->submit('form', ['name' => 'Ada'])` |
 | `upload($selector, $paths)` | None: the next submit of its form sends the files | `->upload('[name=photo]', __DIR__.'/ada.jpg')->submit()` |
+| `drop($selector, $paths)` | `onDrop`, with the files | `->drop('.dropzone', [__DIR__.'/ada.jpg'])` |
+| `paste($selector, $paths)` | `onPaste`, with the files | `->paste('textarea', __DIR__.'/shot.png')` |
 | `keyDown($selector, $key)`, `keyUp($selector, $key)` | `onKeyDown`, `onKeyUp` | `->keyDown('input', 'Enter')` |
 | `focus($selector)`, `blur($selector)` | `onFocus`, `onBlur` | `->focus('input')` |
-| `fire($selector, $type, $event)` | Any DOM event | `->fire('div', 'click', ['value' => 'x'])` |
+| `fire($selector, $type, $event)` | Any DOM event, such as `contextmenu` or `scroll` | `->fire('div', 'contextmenu')` |
 | `load($selector)` | The load of a `<Suspense>` boundary | `->load()`, `->load('#report')` |
 | `visit($uri, $cookies)` | None: opens a page in the same browser, with its cookies plus the ones you pass | `$customer->visit('/bag', ['currency' => 'EUR'])` |
 | `receive()` | Pushes from other requests (a page with `#[Broadcast]`) | `$other->receive()->assertSee('Hi')` |
@@ -96,7 +98,9 @@ Each action finds an element with a CSS selector and sends the event the way the
 
 `upload()` takes a path, or a list of paths for `<input type="file" multiple>`. An empty list removes the files. The handler gets a copy of each file in the temporary directory, so it can move the file.
 
-As in a browser, the files stay in the input after an event, even when the morph renders the input again. They’re cleared when the handler calls `$e->clearFiles()`, or when the page gets a new element for the input: a morph that gives the input another `id`, or a push that isn’t a morph.
+`drop()` and `paste()` send their files with the event at once. The handler gets them as a list in `$e->files`. With no paths, they send the event with no files. The `text` argument gives the dropped or pasted text to `$e->text`: `->paste('input', text: 'https://example.com')`.
+
+As in a browser, the files of an input stay in the input after an event, even when the morph renders the input again. They’re cleared when the handler calls `$e->clearFiles()`, or when the page gets a new element for the input: a morph that gives the input another `id`, or a push that isn’t a morph.
 
 ### Load Suspense boundaries
 

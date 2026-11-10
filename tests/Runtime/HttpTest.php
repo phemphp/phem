@@ -55,7 +55,7 @@ final class HttpTest extends TestCase
     public function testRootElementHasTheStateOfThePage(): void
     {
         $state = RootElement::state('{"a":"<b>"}', 'sig');
-        $actions = 'click->phem#dispatch dblclick->phem#dispatch input->phem#dispatch change->phem#dispatch submit->phem#dispatch keydown->phem#dispatch keyup->phem#dispatch focusin->phem#dispatch focusout->phem#dispatch';
+        $actions = 'click->phem#dispatch dblclick->phem#dispatch input->phem#dispatch change->phem#dispatch submit->phem#dispatch keydown->phem#dispatch keyup->phem#dispatch focusin->phem#dispatch focusout->phem#dispatch dragstart->phem#dispatch dragover->phem#dispatch drop->phem#dispatch paste->phem#dispatch contextmenu->phem#dispatch pointerdown->phem#dispatch pointerup->phem#dispatch scroll->phem#dispatch:capture';
         $actions = htmlspecialchars($actions);
 
         self::assertSame('<div id="phem-root" data-controller="phem" data-action="'.$actions.'" data-phem-state-value="{&quot;a&quot;:&quot;&lt;b&gt;&quot;}" data-phem-signature-value="sig"><p>x</p></div>', (new RootElement())->render([], $state, '<p>x</p>'));

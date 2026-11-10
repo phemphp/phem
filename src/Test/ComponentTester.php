@@ -15,6 +15,7 @@ namespace Phem\Test;
 
 use Dom\Element;
 use Dom\HTMLDocument;
+use Phem\Event;
 use Phem\Form\TouchedFields;
 use Phem\Http\EventPayload;
 use Phem\Stream\TurboStream;
@@ -240,6 +241,34 @@ final class ComponentTester
         $event = $this->event($form, 'submit', $submitter) ?? Assert::fail(\sprintf('The form "%s" has no onSubmit handler.', $selector));
 
         return $this->send($event);
+    }
+
+    /**
+     * Drops files on an element (`onDrop`), as a user does. The handler gets them in `$e->files`:
+     *
+     *     ->drop('.dropzone', [__DIR__.'/ada.jpg', __DIR__.'/bob.jpg'])->assertSee('2 photos')
+     *
+     * The handler gets a copy of each file, so it can move it, and the dropped text in `$e->text`.
+     *
+     * @param string|list<string> $paths
+     */
+    public function drop(string $selector, string|array $paths = [], string $text = ''): self
+    {
+        return $this->transfer($selector, 'drop', (array) $paths, $text);
+    }
+
+    /**
+     * Pastes files in an element (`onPaste`), as a user does. The handler gets them in `$e->files`:
+     *
+     *     ->paste('textarea', __DIR__.'/screenshot.png')->assertSee('screenshot.png')
+     *
+     * The handler gets the pasted text in `$e->text`: `->paste('input', text: 'https://…')`.
+     *
+     * @param string|list<string> $paths
+     */
+    public function paste(string $selector, string|array $paths = [], string $text = ''): self
+    {
+        return $this->transfer($selector, 'paste', (array) $paths, $text);
     }
 
     public function keyDown(string $selector, string $key): self
@@ -640,6 +669,29 @@ final class ComponentTester
     // --- The browser -----------------------------------------------------------------------
 
     /**
+     * Sends a drop or a paste with its text and its files: they go as the parts of Event::FILES.
+     *
+     * @param list<string> $paths
+     */
+    private function transfer(string $selector, string $type, array $paths, string $text): self
+    {
+        foreach ($paths as $path) {
+            if (!is_file($path)) {
+                Assert::fail(\sprintf('The file "%s" does not exist.', $path));
+            }
+        }
+
+        $data = $this->event($this->enabled($selector), $type) ?? Assert::fail(\sprintf('The element "%s" has no handler for the "%s" event.', $selector, $type));
+        $data[1]['text'] = $text;
+
+        if ([] !== $paths) {
+            $data[1]['files'] = array_map(static fn (string $path): array => [Event::FILES.'[]', $path], $paths);
+        }
+
+        return $this->send($data);
+    }
+
+    /**
      * Sends events in their order, as the queue of the `phem` Stimulus controller does, and
      * morphs the components that changed.
      *
@@ -1001,6 +1053,8 @@ final class ComponentTester
         $element = match ($type) {
             'input' => $this->handlerElement($target, 'input') ?? (null !== ($e = $this->handlerElement($target, 'change')) && $textChange($e) ? $e : null),
             'change' => null !== ($e = $this->handlerElement($target, 'change')) && !$textChange($e) ? $e : null,
+            // A scroll does not bubble: only the element that scrolls gets it.
+            'scroll' => $target->hasAttribute('data-phem-on-scroll') ? $this->handlerElement($target, 'scroll') : null,
             default => $this->handlerElement($target, $type),
         };
         if (null === $element) {

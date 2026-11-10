@@ -25,22 +25,36 @@ use Phem\Http\FormFields;
  */
 final class Event
 {
+    /**
+     * The name of the multipart parts of the files of a `drop` or a `paste` (`_phem_files[]`).
+     * The handler gets them as a list in `$files`.
+     */
+    public const FILES = '_phem_files';
+
+    /** The events whose files are a list in `$files` (see FILES). */
+    private const DATA_TRANSFERS = ['drop', 'paste'];
+
     private bool $refresh = false;
     private bool $clearFiles = false;
 
     /**
-     * @param array<string, mixed>   $form       the fields of the form of the element (a submit, a change
-     *                                           or a click of an element in a form): name => value,
-     *                                           or the list of values of a name with more than one value.
-     *                                           A #[MapForm] parameter gets them as a typed object
-     *                                           (see Phem\Attribute\MapForm)
-     * @param BrowserEventDispatcher $dispatcher sends browser events with the response
-     *                                           (`$e->dispatcher->dispatch('saved', [...])`).
-     *                                           For a toast, call toast()
-     * @param array<string, mixed>   $files      the files of the form, for `submit`: name => an
-     *                                           UploadedFile, in the shape of `$request->files->all()`
-     *                                           (`photos[]` gives a list). PHP removes a file that
-     *                                           the handler does not move at the end of the request.
+     * @param array<string, mixed>    $form       the fields of the form of the element (a submit, a change
+     *                                            or a click of an element in a form): name => value,
+     *                                            or the list of values of a name with more than one value.
+     *                                            A #[MapForm] parameter gets them as a typed object
+     *                                            (see Phem\Attribute\MapForm)
+     * @param BrowserEventDispatcher  $dispatcher sends browser events with the response
+     *                                            (`$e->dispatcher->dispatch('saved', [...])`).
+     *                                            For a toast, call toast()
+     * @param array<array-key, mixed> $files      the files of the form, for `submit`: name => an
+     *                                            UploadedFile, in the shape of `$request->files->all()`
+     *                                            (`photos[]` gives a list). For `drop` and `paste`:
+     *                                            the list of the dropped or pasted files. PHP removes
+     *                                            a file that the handler does not move at the end
+     *                                            of the request.
+     * @param string|null             $text       the text of a `drop` or a `paste` (`text/plain`), or
+     *                                            an empty string. A paste fires before the browser
+     *                                            puts the text in the field: `$value` is the old value
      */
     public function __construct(
         public readonly string $type,
@@ -50,6 +64,7 @@ final class Event
         public readonly array $form = [],
         public readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
         public readonly array $files = [],
+        public readonly ?string $text = null,
     ) {
     }
 
@@ -119,15 +134,22 @@ final class Event
         }
 
         $form = array_map(static fn (array $list): string|array => 1 === \count($list) ? $list[0] : $list, $values);
+        $type = (string) ($data['type'] ?? '');
+
+        // The files of a drop or a paste have no form field: they are a list.
+        if (\in_array($type, self::DATA_TRANSFERS, true)) {
+            $files = \is_array($files[self::FILES] ?? null) ? array_values($files[self::FILES]) : [];
+        }
 
         return new self(
-            (string) ($data['type'] ?? ''),
+            $type,
             $data['value'] ?? null,
             isset($data['checked']) ? (bool) $data['checked'] : null,
             isset($data['key']) ? (string) $data['key'] : null,
             $form,
             $dispatcher ?? new BrowserEventDispatcher(),
             $files,
+            isset($data['text']) ? (string) $data['text'] : null,
         );
     }
 }

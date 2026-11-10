@@ -16,6 +16,7 @@ namespace Phem\Tests\Test;
 use Phem\Test\ComponentTester;
 use Phem\Test\Internal\Driver;
 use Phem\Test\Internal\EventResult;
+use PHPUnit\Framework\AssertionFailedError;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -42,6 +43,41 @@ final class ComponentTesterFilesTest extends TestCase
         $tester->upload('#second input', __FILE__)->submit('#f')->submit('#f');
 
         self::assertSame([[['photo', __FILE__]], [['photo', __FILE__]]], $driver->files);
+    }
+
+    public function testDropAndPasteSendTheirFilesAsTheFilesOfTheEvent(): void
+    {
+        $page = <<<'HTML'
+            <div data-phem-state-value="{}">
+                <div data-phem-c="c1"><div id="zone" data-phem-on-drop="c1.add"><textarea data-phem-on-paste="c1.add"></textarea></div></div>
+            </div>
+            HTML;
+
+        $driver = self::driver([], $page);
+        new ComponentTester($driver)->drop('#zone', [__FILE__, __FILE__])->paste('textarea', __FILE__)->drop('textarea');
+
+        self::assertSame([[['_phem_files[]', __FILE__], ['_phem_files[]', __FILE__]], [['_phem_files[]', __FILE__]], []], $driver->files);
+    }
+
+    public function testScrollGoesOnlyToTheElementThatScrolls(): void
+    {
+        $page = <<<'HTML'
+            <div data-phem-state-value="{}">
+                <div data-phem-c="c1"><div id="list" data-phem-on-scroll="c1.more"><pre id="inner">x</pre></div></div>
+            </div>
+            HTML;
+
+        $driver = self::driver([], $page);
+        $tester = new ComponentTester($driver);
+        $tester->fire('#list', 'scroll');
+        self::assertCount(1, $driver->files);
+
+        try {
+            $tester->fire('#inner', 'scroll');
+            self::fail('A scroll of the inner element does not go to the handler of the list.');
+        } catch (AssertionFailedError $e) {
+            self::assertStringContainsString('has no handler for the "scroll" event', $e->getMessage());
+        }
     }
 
     public function testPushThatIsNotAMorphDropsTheFiles(): void

@@ -1,0 +1,45 @@
+<?phem
+
+namespace App\Ui\Drop;
+
+use Phem\Attribute\{Page, State};
+use Phem\Event;
+use Phem\Node;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+
+use function App\Ui\Common\Document;
+
+// The events of a drop zone, a paste, a context menu and a scroll.
+#[Page('/drop')]
+final class DropPage
+{
+    #[State] public array $files = [];
+    #[State] public string $last = '';
+
+    public function receive(Event $e): void
+    {
+        $this->files = array_map(static fn (UploadedFile $file): string => $file->getClientOriginalName().' '.trim((string) file_get_contents($file->getPathname())), $e->files);
+        $this->last = $e->type;
+    }
+
+    public function record(Event $e): void
+    {
+        $this->last = $e->type;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Drop">
+                <div id="zone" onDrop={{ receive }} style="padding: 2rem; border: 1px dashed">Drop the photos here</div>
+                <textarea id="comment" onPaste={{ receive }}></textarea>
+                <ul id="menu" onContextMenu={{ record }}><li>Row</li></ul>
+                <div id="list" onScroll={{ record }} phem:throttle={{ 200 }} style="height: 50px; overflow: auto">
+                    <div style="height: 500px">Items</div>
+                </div>
+                <output id="files">{{ files|join(', ') }}</output>
+                <output id="last">{{ last }}</output>
+            </Document>
+        );
+    }
+}

@@ -751,6 +751,149 @@ describe("the file inputs", () => {
   })
 })
 
+describe("the drop, paste, context menu and scroll events", () => {
+  const zone = `<div id="zone" data-phem-on-drop="c1.add"><p id="inside">Drop here</p></div>
+    <textarea data-phem-on-paste="c1.add"></textarea>
+    <ul id="menu" data-phem-on-contextmenu="c1.menu"><li>Row</li></ul>
+    <div id="list" data-phem-on-scroll="c1.more"><pre id="inner">Item</pre></div>
+    <textarea id="field" data-phem-on-drop="c1.add"></textarea>
+    <p id="outside">Outside</p>`
+
+  // The page root listens to the events as DomEvents::stimulusActions() renders them.
+  async function mountZone() {
+    await mount(zone)
+    const root = document.getElementById("phem-root")
+    root.setAttribute("data-action", `${root.getAttribute("data-action")} dragover->phem#dispatch drop->phem#dispatch paste->phem#dispatch contextmenu->phem#dispatch scroll->phem#dispatch:capture`)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  }
+
+  // jsdom has no DragEvent and no ClipboardEvent: a plain event with their data.
+  function fire(el, type, data = {}) {
+    const event = Object.assign(new Event(type, { bubbles: type !== "scroll", cancelable: true }), data)
+    el.dispatchEvent(event)
+    return event
+  }
+
+  // An event with files goes with XHR (see post()). Returns the bodies of the requests.
+  function stubXhr() {
+    const bodies = []
+    vi.stubGlobal(
+      "XMLHttpRequest",
+      class extends EventTarget {
+        upload = new EventTarget()
+        open() {}
+        setRequestHeader() {}
+        getAllResponseHeaders() {
+          return "content-type: application/json"
+        }
+        send(body) {
+          bodies.push(body)
+          Object.assign(this, { status: 200, statusText: "OK", response: JSON.stringify(answer(zone)) })
+          setTimeout(() => this.dispatchEvent(new Event("load")), 0)
+        }
+      },
+    )
+
+    return bodies
+  }
+
+  it("sends the files of a drop as parts, and cancels the default action of the browser", async () => {
+    await mountZone()
+    const bodies = stubXhr()
+    const done = nextDone()
+    const event = fire(document.getElementById("inside"), "drop", { dataTransfer: { files: [new File(["a"], "a.png"), new File(["b"], "b.png")] } })
+    await done
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(bodies[0].getAll("_phem_files[]").map((f) => f.name)).toEqual(["a.png", "b.png"])
+    expect(JSON.parse(bodies[0].get("_phem"))).toMatchObject({ handler: "c1.add", event: { type: "drop" } })
+    expect(JSON.parse(bodies[0].get("_phem")).event).not.toHaveProperty("files")
+  })
+
+  it("sends the files of a paste, and keeps the default action of the browser", async () => {
+    await mountZone()
+    const bodies = stubXhr()
+    const done = nextDone()
+    const event = fire(document.querySelector("textarea"), "paste", { clipboardData: { files: [new File(["s"], "screenshot.png")], getData: () => "" } })
+    await done
+
+    expect(event.defaultPrevented).toBe(false)
+    expect(bodies[0].getAll("_phem_files[]").map((f) => f.name)).toEqual(["screenshot.png"])
+  })
+
+  it("sends a drop or a paste with no files as JSON, with its text", async () => {
+    await mountZone()
+    respond(zone)
+    const done = nextDone()
+    fire(document.querySelector("textarea"), "paste", { clipboardData: { files: [], getData: (type) => (type === "text/plain" ? "https://example.com" : "") } })
+    await done
+
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({ handler: "c1.add", event: { type: "paste", text: "https://example.com" } })
+  })
+
+  it("keeps the default action of a drop of text in a text field", async () => {
+    await mountZone()
+    respond(zone)
+    respond(zone)
+    const text = fire(document.getElementById("field"), "drop", { dataTransfer: { files: [], getData: () => "Hi" } })
+    await nextDone()
+
+    expect(text.defaultPrevented).toBe(false)
+    expect(fire(document.getElementById("inside"), "drop", { dataTransfer: { files: [], getData: () => "Hi" } }).defaultPrevented).toBe(true)
+  })
+
+  it("cancels the dragover in a drop zone only, so the browser drops there", async () => {
+    await mountZone()
+
+    expect(fire(document.getElementById("inside"), "dragover").defaultPrevented).toBe(true)
+    expect(fire(document.getElementById("outside"), "dragover").defaultPrevented).toBe(false)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("sends a context menu, and the browser does not show its menu", async () => {
+    await mountZone()
+    respond(zone)
+    const done = nextDone()
+    const event = fire(document.querySelector("#menu li"), "contextmenu")
+    await done
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({ handler: "c1.menu", event: { type: "contextmenu" } })
+    expect(fire(document.getElementById("outside"), "contextmenu").defaultPrevented).toBe(false)
+  })
+
+  it("sends the scroll of an element, which does not bubble", async () => {
+    await mountZone()
+    respond(zone)
+    const done = nextDone()
+    fire(document.getElementById("inner"), "scroll")
+    fire(document.getElementById("list"), "scroll")
+    await done
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({ handler: "c1.more", event: { type: "scroll" } })
+  })
+
+  it("sends the last of the scroll events that wait in the queue", async () => {
+    await mountZone()
+    let release
+    fetch.mockImplementationOnce(() => new Promise((resolve) => (release = () => resolve(new Response(JSON.stringify(answer(zone)), { status: 200, headers: { "Content-Type": "application/json" } })))))
+    respond(zone)
+    fire(document.querySelector("#menu li"), "contextmenu")
+    for (let i = 0; i < 5; i++) fire(document.getElementById("list"), "scroll")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const done = new Promise((resolve) => {
+      let count = 0
+      window.addEventListener("phem:done", () => ++count === 2 && resolve())
+    })
+    release()
+    await done
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toMatchObject({ handler: "c1.more", event: { type: "scroll" } })
+  })
+})
+
 describe("the fields of a form with no phem:bind", () => {
   // The markup of a Symfony form. A PasswordType renders no value. `touched` lists the fields
   // that the server marks.

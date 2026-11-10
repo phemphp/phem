@@ -1,6 +1,6 @@
 # Handle events
 
-This guide shows you how to respond when the user clicks, types or changes a field. It covers handler arguments, services in handlers, loading states, the wait before an event, redirects, browser events for your JavaScript, and code that runs around every handler. For forms, see [Handle forms](forms.md). For the syntax of the `on*` attributes and the `phem:*` directives, see [The `.phem` syntax](phem-syntax.md).
+This guide shows you how to respond when the user clicks, types or changes a field. It covers drops and pastes, handler arguments, services in handlers, loading states, the wait before an event, redirects, browser events for your JavaScript, and code that runs around every handler. For forms, see [Handle forms](forms.md). For the syntax of the `on*` attributes and the `phem:*` directives, see [The `.phem` syntax](phem-syntax.md).
 
 ## Respond to a click, a key or a change
 
@@ -15,11 +15,66 @@ A handler can take a `Phem\Event` argument with these properties:
 | `$e->checked` | Whether a checkbox is checked |
 | `$e->key` | The key of a key event |
 | `$e->form` | The form fields, by name; a submit, a change or a click sends them (see [Map a form to an object](forms.md#map-a-form-to-an-object)) |
-| `$e->files` | The files of the form (see [Accept file uploads](forms.md#accept-file-uploads)) |
+| `$e->files` | The files of the form, or the list of the files of a drop or a paste (see [Accept file uploads](forms.md#accept-file-uploads)) |
+| `$e->text` | The text of a drop or a paste, or `null` for other events |
 
 By default, only the component of the handler, the components whose state changed and their children with new props render again. Call `$e->refresh()` in a handler to render the full page after it, for example when a form adds a row to a list in another component.
 
 `onChange` on a text field fires as the user types. The browser waits until the user stops typing for 150 ms before it sends the event (see [Control when typing sends an event](#control-when-typing-sends-an-event)).
+
+## Respond to a drop, a paste or a right-click
+
+These events also go to the server: `onDragStart`, `onDragOver`, `onDrop`, `onPaste`, `onContextMenu`, `onPointerDown`, `onPointerUp` and `onScroll`. For the full list, see [The `.phem` syntax](phem-syntax.md#event-handlers).
+
+A drop and a paste send their files. The handler gets them in `$e->files`, as a list of Symfony `UploadedFile` objects:
+
+```php
+#[Component]
+final class PhotoDrop
+{
+    #[State] public array $names = [];
+
+    public function __construct(
+        #[Autowire('%kernel.project_dir%/var/photos')] private readonly string $photoDir,
+    ) {
+    }
+
+    public function add(Event $e): void
+    {
+        foreach ($e->files as $file) {
+            $file->move($this->photoDir, $file->getClientOriginalName());
+            $this->names[] = $file->getClientOriginalName();
+        }
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div>
+                <div class="dropzone" onDrop={{ add }}>Drop the photos here</div>
+                <textarea onPaste={{ add }}></textarea>
+                <p>{{ names|join(', ') }}</p>
+            </div>
+        );
+    }
+}
+```
+
+The browser sends the drop as `multipart/form-data`, as a submit with files. The same limits apply (see [Limit the upload size](forms.md#limit-the-upload-size)). A drop or a paste with no files, such as a paste of text, sends an event with an empty `$e->files`. The handler gets the text in `$e->text`. A paste fires before the browser puts the text in the field, so `$e->value` is the old value of the field.
+
+The browser cancels the default action of some events for you:
+
+| Event | Default action |
+|---|---|
+| `onDrop` | Cancelled: the browser does not open the dropped file. The user can drop in the element and in its children. A drop of text with no files in a text field or an editable element keeps its default action: the text goes in the field. |
+| `onContextMenu` | Cancelled: the browser does not show its own menu, so the server can render a menu. |
+| `onPaste` | Kept: the pasted text goes in the field. |
+
+`onDragOver` and `onScroll` fire many times each second. Only the element that scrolls gets its `onScroll`: a scroll does not bubble. While an event of the same handler waits in the queue, a new event takes its place, so the server gets the last event only. Add `phem:throttle` to send at most one event in a period (see [Control when typing sends an event](#control-when-typing-sends-an-event)):
+
+```html
+<div onScroll={{ track }} phem:throttle={{ 200 }}>…</div>
+```
 
 ## Pass arguments to a handler
 

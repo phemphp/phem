@@ -84,7 +84,7 @@ final class AsyncMiddlewareTest extends TestCase
             $this->handle($component->export(...), request: $request);
             self::fail('The handler ran.');
         } catch (\LogicException $e) {
-            self::assertStringContainsString('cannot get the files of a form', $e->getMessage());
+            self::assertStringContainsString('cannot get the files of a form, a drop or a paste', $e->getMessage());
         }
 
         self::assertSame(0, $component->calls, 'the check runs before the handler');
