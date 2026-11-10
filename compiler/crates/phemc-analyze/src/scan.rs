@@ -905,8 +905,13 @@ fn parse_function(toks: &Toks, at: usize, ns: &str) -> (Func, usize) {
         i += 1;
     }
 
+    // The source can stop anywhere while the user types: a missing token is an empty span at
+    // the end of the source.
+    let eof = Span::new(toks.src.len(), toks.src.len());
+    let span = |k: usize| toks.t.get(k).map_or(eof, |t| t.span);
+
     let name = toks.text(i).to_string();
-    let name_span = toks.t[i].span;
+    let name_span = span(i);
     i += 1;
 
     let params_end = toks.matching(i);
@@ -925,16 +930,16 @@ fn parse_function(toks: &Toks, at: usize, ns: &str) -> (Func, usize) {
 
     let (body, end) = if toks.is_op(j, "{") {
         let close = toks.matching(j);
-        (Span::new(toks.t[j].span.end, toks.t[close].span.start), close)
+        (Span::new(span(j).end, span(close).start), close)
     } else {
-        (Span::new(toks.t[j].span.start, toks.t[j].span.start), j)
+        (Span::new(span(j).start, span(j).start), j)
     };
 
     let f = Func {
         fqn: qualify(ns, &name),
         name,
         name_span,
-        span: Span::new(toks.t[at].span.start, toks.t[end].span.end),
+        span: Span::new(span(at).start, span(end).end),
         body,
         params,
         component_kind: None,
@@ -1367,6 +1372,23 @@ function helper() {}
         assert_eq!(f.routes[0].fqn, "App\\Ui\\Common\\Card");
         assert_eq!((f.routes[0].is_component, f.routes[0].is_function), (false, true), "the Symfony #[Route] cannot mark a function");
         assert_eq!(f.markup_scopes, vec![MarkupScope::Function(0), MarkupScope::Function(1)]);
+    }
+
+    #[test]
+    fn an_unfinished_function_does_not_panic() {
+        // The editor scans the file while the user types: the source can stop anywhere.
+        for src in [
+            "<?phem\nfunction Card()",
+            "<?phem\nfunction Card(): string",
+            "<?phem\nfunction Card",
+            "<?phem\nfunction &",
+            "<?phem\nfunction Card(int $a",
+            "<?phem\nfinal class Card { function",
+            "<?phem\nfinal class Card { public function render()",
+            "<?phem\nfinal class Card { public function render(): string",
+        ] {
+            scan_src(src);
+        }
     }
 
     #[test]
