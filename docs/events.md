@@ -1,6 +1,6 @@
 # Handle events
 
-This guide shows you how to respond when the user clicks, types or changes a field. It covers drops and pastes, handler arguments, services in handlers, loading states, the wait before an event, redirects, browser events for your JavaScript, and code that runs around every handler. For forms, see [Handle forms](forms.md). For the syntax of the `on*` attributes and the `phem:*` directives, see [The `.phem` syntax](phem-syntax.md).
+This guide shows you how to respond when the user clicks, types or changes a field. It covers drops and pastes, handler arguments, services in handlers, loading states, key filters and event modifiers, the wait before an event, redirects, browser events for your JavaScript, and code that runs around every handler. For forms, see [Handle forms](forms.md). For the syntax of the `on*` attributes and the `phem:*` directives, see [The `.phem` syntax](phem-syntax.md).
 
 ## Respond to a click, a key or a change
 
@@ -200,6 +200,62 @@ To show an element only while a handler runs, pass the handler to `phem:loading`
 The server renders the element with `hidden`, and the browser shows it while a `save` event of this component runs. With a call, the element shows only for the handler with these arguments: `<span phem:loading={{ remove(row.id) }}>` shows in the row that the user clicked. To show a component, wrap it in an element: `<span phem:loading={{ save }}><Spinner /></span>`.
 
 Set the `data-phem-loading-delay-value` attribute on the `<Root>` element to change the delay.
+
+## Filter keys and stop events
+
+`onKeyDown` and `onKeyUp` send each key to the server. Add `phem:key` to send only some keys. The other keys send no event, and they keep their default action, so the user can still type in the field:
+
+```php
+#[Component]
+final class Composer
+{
+    #[State] public array $sent = [];
+
+    public function send(Event $e): void
+    {
+        $this->sent[] = $e->key;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form>
+                <textarea name="body" onKeyDown={{ send }} phem:key="ctrl+Enter meta+Enter"></textarea>
+                <input onKeyDown={{ send }} phem:key="Escape" />
+            </form>
+        );
+    }
+}
+```
+
+The server renders the keys in a data attribute:
+
+```html
+<textarea name="body" data-phem-on-keydown="…" data-phem-key-filter="ctrl+Enter meta+Enter"></textarea>
+<input data-phem-on-keydown="…" data-phem-key-filter="Escape">
+```
+
+Separate the keys with spaces. A key is the `key` of the browser event: one character such as `s` or `?`, or a name such as `Enter`, `Escape`, `Tab`, `ArrowUp` or `Space`. Put the modifiers before it: `ctrl+`, `shift+`, `alt+` and `meta+` (the Command key on a Mac). The names have no case. The modifiers must match: `Enter` doesn’t match Shift+Enter, so a user can still add a new line in the textarea. Shift is free for a character that isn’t a letter, such as `?`, which needs Shift on some keyboards. A value from an expression works too: `phem:key={{ shortcut }}`.
+
+A click goes to the closest element with an `onClick`, and to no other one. A click on an element with no handler inside a row with `onClick` runs the handler of the row. Add `phem:stop` to an element to keep its events, and the events of its content, from the handlers around it:
+
+```html
+<tr onClick={{ open(order) }}>
+    <td>{{ order.number }}</td>
+    <td><button onClick={{ star(order) }} phem:stop>★</button></td>
+    <td phem:stop><a href="{{ order.invoiceUrl }}">Invoice</a></td>
+</tr>
+```
+
+A click on the star runs `star`, and a click on the invoice link opens the link: neither runs `open`. A click on the number runs `open`.
+
+Add `phem:prevent` to cancel the default action of the event of a handler. The link runs `add` and doesn’t open its page, but it still works with no JavaScript:
+
+```html
+<a href="/cart/add/{{ product.id }}" onClick={{ add(product) }} phem:prevent>Add to cart</a>
+```
+
+A submit and a drop always cancel their default action. `phem:stop` and `phem:prevent` take a bool too: `phem:stop={{ inRow }}`. `phemc` checks the keys of `phem:key` (E032), and warns about `phem:key` with no `onKeyDown` or `onKeyUp`, and `phem:prevent` with no handler (W006).
 
 ## Control when typing sends an event
 

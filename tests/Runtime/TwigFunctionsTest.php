@@ -166,6 +166,38 @@ final class TwigFunctionsTest extends TestCase
         yield 'another kind' => ['delay', 300];
     }
 
+    public function testKeyFilter(): void
+    {
+        self::assertSame('data-phem-key-filter="Enter"', (string) Attributes::keyFilter('Enter'));
+        self::assertSame('data-phem-key-filter="ctrl+s Escape"', (string) Attributes::keyFilter('ctrl+s Escape'));
+        self::assertSame('', (string) Attributes::keyFilter(null));
+        self::assertSame('', (string) Attributes::keyFilter(false));
+        self::assertSame('id="a" data-phem-key-filter="Enter"', (string) $this->runtime()->attrs(['id' => 'a', 'phem:key' => 'Enter']), 'in a spread');
+    }
+
+    #[DataProvider('invalidKeyFilters')]
+    public function testKeyFilterTakesTheKeys(mixed $value): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        Attributes::keyFilter($value);
+    }
+
+    /** @return iterable<string, array{mixed}> */
+    public static function invalidKeyFilters(): iterable
+    {
+        yield 'an empty string' => [''];
+        yield 'a list' => [['Enter']];
+        yield 'an unknown modifier' => ['cmd+s'];
+        yield 'no key' => ['ctrl+'];
+        yield 'a name with other characters' => ['Enter" onfocus="x'];
+    }
+
+    public function testStopAndPreventInASpread(): void
+    {
+        self::assertSame('data-phem-stop data-phem-prevent', (string) $this->runtime()->attrs(['phem:stop' => true, 'phem:prevent' => true]));
+        self::assertSame('', (string) $this->runtime()->attrs(['phem:stop' => false, 'phem:prevent' => 'yes']));
+    }
+
     public function testStringOutputOfAComponentIsText(): void
     {
         $markup = new MarkupResolver(new Environment(new ArrayLoader()));

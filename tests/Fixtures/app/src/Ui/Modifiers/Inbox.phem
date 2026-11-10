@@ -1,0 +1,50 @@
+<?phem
+
+namespace App\Ui\Modifiers;
+
+use Phem\Attribute\{Component, State};
+use Phem\Event;
+use Phem\Node;
+
+// The key filters and the event modifiers: phem:key, phem:stop and phem:prevent.
+#[Component]
+final class Inbox
+{
+    #[State] public array $log = [];
+
+    public function send(Event $e): void
+    {
+        $this->log[] = 'send '.$e->key;
+    }
+
+    public function close(Event $e): void
+    {
+        $this->log[] = 'close '.$e->key;
+    }
+
+    public function open(): void
+    {
+        $this->log[] = 'open';
+    }
+
+    public function star(): void
+    {
+        $this->log[] = 'star';
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div>
+                <textarea id="draft" onKeyDown={{ send }} phem:key="ctrl+Enter meta+Enter"></textarea>
+                <input id="search" onKeyUp={{ close }} phem:key={{ 'Escape' }} />
+                <a id="row" href="/messages/1" onClick={{ open }} phem:prevent>
+                    <span id="subject">Hello</span>
+                    <button id="star" onClick={{ star }} phem:stop>★</button>
+                    <span id="tags" phem:stop>Tags</span>
+                </a>
+                <output id="log">{{ log|join(', ') }}</output>
+            </div>
+        );
+    }
+}

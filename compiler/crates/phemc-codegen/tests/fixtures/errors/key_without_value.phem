@@ -1,0 +1,2 @@
+<?phem // expect: E032
+function App() { $save = fn() => 1; return <input onKeyDown={{ save }} phem:key />; }

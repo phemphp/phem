@@ -224,7 +224,7 @@ impl<'a> Lowerer<'a> {
             );
         }
 
-        self.check_timing(e);
+        self.check_modifiers(e);
         let error = self.error_of(e, &name);
         let bind = self.bind(e);
         let feed = self.feed(e);
@@ -831,6 +831,24 @@ impl<'a> Lowerer<'a> {
                         continue;
                     }
 
+                    if name == KEY {
+                        match self.key_filter_value(*name_span, value, a.span) {
+                            Some(KeyFilterValue::Text { text, .. }) => hash.push(format!("{}: {}", php_str(name), php_str(&text))),
+                            Some(KeyFilterValue::Expr(c)) => hash.push(format!("{}: {c}", php_str(name))),
+                            None => {}
+                        }
+
+                        continue;
+                    }
+
+                    if name == STOP || name == PREVENT {
+                        if let Some(v) = self.flag_value(name, *name_span, value) {
+                            hash.push(format!("{}: {}", php_str(name), v.map_or("true".into(), |c| format!("({c})"))));
+                        }
+
+                        continue;
+                    }
+
                     let event = event_name(name);
                     // A handler, `phem:loading` or `phem:progress`: all take a function.
                     let takes_fn = event.is_some() || name == LOADING || name == PROGRESS;
@@ -986,39 +1004,110 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// `phem:debounce` and `phem:throttle`: not both on one element, and only on an element with a
-    /// handler (or a spread, which can give one).
-    fn check_timing(&mut self, e: &Element) {
-        let mut found: Option<&str> = None;
+    /// The event modifiers of an element: `phem:debounce` and `phem:throttle` not both, and
+    /// `phem:debounce`, `phem:throttle`, `phem:prevent` and `phem:key` only on an element with a
+    /// handler (or a spread, which can give one). `phem:key` needs `onKeyDown` or `onKeyUp`.
+    /// `phem:stop` needs no handler: it keeps the events of its content from the handlers around it.
+    fn check_modifiers(&mut self, e: &Element) {
+        let mut timing: Option<&str> = None;
+        let mut has_spread = false;
         let mut has_handler = false;
+        let mut has_key_handler = false;
+        let mut modifiers: Vec<(&str, Span)> = Vec::new();
         for a in &e.attrs {
             match &a.kind {
-                AttrKind::Spread(_) => has_handler = true,
+                AttrKind::Spread(_) => has_spread = true,
                 AttrKind::Plain { name, name_span, .. } => {
-                    if event_name(name).is_some() || name == LIVE {
+                    if let Some(event) = event_name(name) {
+                        has_handler = true;
+                        has_key_handler |= event == "keydown" || event == "keyup";
+                    } else if name == LIVE {
                         has_handler = true;
                     } else if TIMINGS.contains(&name.as_str()) {
-                        if let Some(other) = found {
+                        if let Some(other) = timing {
                             self.error(codes::BAD_ATTRIBUTE, format!("`{name}` and `{other}` cannot be on the same element"), *name_span).help =
                                 Some("keep one of them".into());
                         }
 
-                        found = Some(name);
+                        timing = Some(name);
+                        modifiers.push((name, *name_span));
+                    } else if name == KEY || name == PREVENT {
+                        modifiers.push((name, *name_span));
                     }
                 }
             }
         }
 
-        if let (Some(name), false) = (found, has_handler) {
-            let span = e.attrs.iter().find_map(|a| match &a.kind {
-                AttrKind::Plain { name: n, name_span, .. } if n == name => Some(*name_span),
-                _ => None,
-            });
+        if has_spread {
+            return;
+        }
 
-            self.diags.push(
-                Diagnostic::warning(codes::TIMING_WITHOUT_HANDLER, format!("`{name}` does nothing: the element has no handler"), span.unwrap_or(e.name_span))
-                    .with_help("put it on the element with the handler, for example `<input onChange={{ search }} phem:debounce={{ 300 }} />`"),
-            );
+        for (name, span) in modifiers {
+            if name == KEY && has_handler && !has_key_handler {
+                self.diags.push(
+                    Diagnostic::warning(codes::MODIFIER_WITHOUT_HANDLER, "`phem:key` does nothing: the element has no `onKeyDown` or `onKeyUp`", span)
+                        .with_help("put it on the element with the key handler, for example `<input onKeyDown={{ save }} phem:key=\"Enter\" />`"),
+                );
+            } else if !has_handler {
+                let example = match name {
+                    KEY => "<input onKeyDown={{ save }} phem:key=\"Enter\" />",
+                    PREVENT => "<a href=\"/cart\" onClick={{ add }} phem:prevent>",
+                    _ => "<input onChange={{ search }} phem:debounce={{ 300 }} />",
+                };
+
+                self.diags.push(
+                    Diagnostic::warning(codes::MODIFIER_WITHOUT_HANDLER, format!("`{name}` does nothing: the element has no handler"), span)
+                        .with_help(format!("put it on the element with the handler, for example `{example}`")),
+                );
+            }
+        }
+    }
+
+    /// The value of `phem:stop` and `phem:prevent`: none, or a bool expression. True renders the
+    /// attribute. Returns the Twig code of an expression, or None.
+    fn flag_value(&mut self, name: &str, name_span: Span, value: &AttrValue) -> Option<Option<String>> {
+        match value {
+            AttrValue::None => Some(None),
+            AttrValue::Expr(x) => Some(Some(self.expr_code(x))),
+            AttrValue::Quoted { .. } => {
+                self.error(codes::BAD_ATTRIBUTE, format!("`{name}` takes no text"), name_span).help =
+                    Some(format!("write `{name}`, or `{name}={{{{ on }}}}` with a bool"));
+                None
+            }
+        }
+    }
+
+    /// The value of `phem:key`: a text with the keys (`phem:key="Enter"`), or an expression. Only
+    /// a literal can be checked here. The runtime checks the other values.
+    fn key_filter_value(&mut self, name_span: Span, value: &AttrValue, span: Span) -> Option<KeyFilterValue> {
+        match value {
+            AttrValue::Quoted { parts, raw, quote } if !has_expr(parts) => {
+                let text: String = parts.iter().map(|p| if let StrPart::Lit(s) = p { s.as_str() } else { "" }).collect();
+                self.check_key_filter(&text, span);
+                Some(KeyFilterValue::Text { html: format!("{quote}{raw}{quote}"), text })
+            }
+            AttrValue::Quoted { parts, .. } => Some(KeyFilterValue::Expr(self.quoted_expr(parts, span))),
+            AttrValue::Expr(x) => {
+                let c = self.expr_code(x);
+                if let Some(text) = string_literal(&c) {
+                    self.check_key_filter(&text, x.span);
+                }
+
+                Some(KeyFilterValue::Expr(format!("({c})")))
+            }
+            AttrValue::None => {
+                self.error(codes::BAD_ATTRIBUTE, "`phem:key` takes the keys", name_span).help =
+                    Some("write the keys, for example `phem:key=\"Enter\"` or `phem:key=\"ctrl+s Escape\"`".into());
+                None
+            }
+        }
+    }
+
+    /// The keys of `phem:key`: names separated by spaces, each with its modifiers (`ctrl+s`).
+    fn check_key_filter(&mut self, text: &str, span: Span) {
+        if let Err(reason) = key_filter_error(text) {
+            self.error(codes::BAD_ATTRIBUTE, format!("`phem:key` {reason}"), span).help =
+                Some("write the `key` of the browser event, with `ctrl+`, `shift+`, `alt+` or `meta+` before it, for example `phem:key=\"Enter\"` or `phem:key=\"ctrl+s Escape\"`".into());
         }
     }
 
@@ -1365,6 +1454,27 @@ impl<'a> Lowerer<'a> {
                     return;
                 }
 
+                if name == KEY {
+                    match self.key_filter_value(*name_span, value, a.span) {
+                        Some(KeyFilterValue::Text { html, .. }) => out.push_str(&format!("{ws}data-phem-key-filter={html}")),
+                        Some(KeyFilterValue::Expr(c)) => out.push_str(&format!("{ws}{{{{ phem_key_filter({c}) }}}}")),
+                        None => {}
+                    }
+
+                    return;
+                }
+
+                if name == STOP || name == PREVENT {
+                    let html = format!("data-{}", name.replace(':', "-"));
+                    match self.flag_value(name, *name_span, value) {
+                        Some(None) => out.push_str(&format!("{ws}{html}")),
+                        Some(Some(c)) => out.push_str(&format!("{ws}{{{{ phem_attr('{html}', ({c}) is same as(true)) }}}}")),
+                        None => {}
+                    }
+
+                    return;
+                }
+
                 if let Some(event) = event_name(name) {
                     self.check_event(name, &event, *name_span);
                     match value {
@@ -1704,7 +1814,7 @@ impl<'a> Lowerer<'a> {
 
         let Some(tag) = tag else { return };
 
-        self.check_timing(e);
+        self.check_modifiers(e);
 
         // The tag, before the children: a tag that is not valid renders no children.
         let n = self.dynamics;
@@ -2115,6 +2225,72 @@ fn closing_bracket(s: &str) -> Option<usize> {
 /// events of the element. `phem:debounce={{ 'blur' }}` sends on blur only.
 const DEBOUNCE: &str = "phem:debounce";
 const TIMINGS: &[&str] = &[DEBOUNCE, "phem:throttle"];
+
+/// `phem:key="Enter"`: only these keys send the `onKeyDown` or `onKeyUp` event of the element.
+const KEY: &str = "phem:key";
+
+/// `phem:stop`: the events of the element and its content do not go to the handlers around it.
+const STOP: &str = "phem:stop";
+
+/// `phem:prevent`: the event of a handler of the element does not do its default action.
+const PREVENT: &str = "phem:prevent";
+
+/// The modifiers of a key in `phem:key` (`ctrl+s`), as in the client.
+const KEY_MODIFIERS: &[&str] = &["ctrl", "shift", "alt", "meta"];
+
+/// The value of `phem:key`: a static text (as it is in the markup, with its quotes, and as a
+/// text), or a Twig expression.
+enum KeyFilterValue {
+    Text { html: String, text: String },
+    Expr(String),
+}
+
+/// Why the keys of `phem:key` are not valid (the check of `Attributes::keyFilter()` of the runtime).
+fn key_filter_error(text: &str) -> Result<(), String> {
+    if text.trim().is_empty() {
+        return Err("needs at least one key".into());
+    }
+
+    for combo in text.split_whitespace() {
+        let (mods, key) = match combo.strip_suffix("++") {
+            Some(mods) => (mods, "+"),
+            None if combo == "+" => ("", "+"),
+            None => combo.rsplit_once('+').unwrap_or(("", combo)),
+        };
+
+        if key.is_empty() {
+            return Err(format!("has no key in `{combo}`"));
+        }
+
+        if key.chars().count() > 1 && !key.chars().all(|c| c.is_ascii_alphanumeric()) {
+            return Err(format!("has the unknown key `{key}`"));
+        }
+
+        if mods.is_empty() {
+            continue;
+        }
+
+        for m in mods.split('+') {
+            if !KEY_MODIFIERS.contains(&m.to_ascii_lowercase().as_str()) {
+                return Err(format!("has the unknown modifier `{m}` in `{combo}`"));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// The text of a string literal (`'Enter'`), or None for another expression.
+fn string_literal(code: &str) -> Option<String> {
+    let c = code.trim();
+    let quote = c.chars().next().filter(|q| *q == '\'' || *q == '"')?;
+    let inner = c.strip_prefix(quote)?.strip_suffix(quote)?;
+    if inner.contains(quote) || inner.contains('\\') || inner.contains("#{") {
+        return None;
+    }
+
+    Some(inner.to_string())
+}
 
 /// The Twig code of a handler. A member path (`tabs.select`) is the method of the object as a
 /// closure (`phem_method(tabs, 'select')`): in Twig, `tabs.select` calls the method. A call

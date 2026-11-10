@@ -6,6 +6,16 @@ editor extensions have their own changelogs (for example `editors/vscode/CHANGEL
 The project has no stable release yet: a minor version can break the public API. The entries
 that break the code of an application start with **Breaking**.
 
+## Unreleased
+
+- Key filters and event modifiers. `phem:key="ctrl+Enter Escape"` sends the `onKeyDown` or
+  `onKeyUp` event only for these keys, and the other keys keep their default action.
+  `phem:stop` keeps the events of an element and its content from the handlers around it.
+  `phem:prevent` cancels the default action of the event of a handler, such as the visit of a
+  link. `phemc` checks the keys (E032), and W006 now also warns about `phem:key` with no key
+  handler and `phem:prevent` with no handler. `ComponentTester::keyDown()` and `keyUp()` take the
+  modifiers, and send no event for a key that `phem:key` does not list.
+
 ## 0.3.17 (2026-11-10)
 
 - Feeds for long lists: a public `Phem\Feed` property of a class component, shown with

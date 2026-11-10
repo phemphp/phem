@@ -1,0 +1,2 @@
+<?phem // expect: W006
+function App() { $save = fn() => 1; return <input onClick={{ save }} phem:key="Enter" />; }

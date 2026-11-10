@@ -123,7 +123,7 @@ pub mod codes {
     pub const UNKNOWN_EVENT: &str = "W003";
     pub const FOREIGN_ATTRIBUTE: &str = "W004";
     pub const TITLE_IN_MARKUP: &str = "W005";
-    pub const TIMING_WITHOUT_HANDLER: &str = "W006";
+    pub const MODIFIER_WITHOUT_HANDLER: &str = "W006";
     pub const LIVE_WITHOUT_BIND: &str = "W007";
     pub const IMPURE_RENDER: &str = "W008";
     pub const COPIED_PROPERTY: &str = "H001";

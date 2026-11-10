@@ -1,0 +1,55 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from Ui/Common/Modifiers.phem; do not edit */
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\{Component, State};
+use Phem\Node;
+
+#[Component]
+final class Modifiers
+{
+    #[State] public string $draft = '';
+    #[State] public bool $starred = false;
+    #[State] public bool $guard = true;
+
+    public function save(): void
+    {
+    }
+
+    public function cancel(): void
+    {
+    }
+
+    public function open(): void
+    {
+    }
+
+    public function star(): void
+    {
+        $this->starred = !$this->starred;
+    }
+
+    public function render(): Node
+    {
+        $keys = 'ctrl+Enter meta+Enter';
+        $rest = ['phem:stop' => true];
+
+        return (
+            new \Phem\Element('Ui/Common/Modifiers.0.twig', ['save' => $this->save(...), 'cancel' => $this->cancel(...), 'keys' => $keys, 'open' => $this->open(...), 'star' => $this->star(...), 'guard' => $this->guard, 'rest' => $rest])
+
+
+
+
+
+
+
+
+
+
+        );
+    }
+}

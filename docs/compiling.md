@@ -211,7 +211,7 @@ Errors start with `E` and stop the build; warnings start with `W` and don’t. H
 | W002–W003 | A list item without `key`, or an event that the browser doesn’t send (`onMouseEnter`) |
 | W004 | `#[Page]`, `#[ErrorPage]`, `#[Route]`, `#[Component]`, `#[State]`, `#[Prop]`, `#[Path]`, `#[Context]`, `#[Provide]`, `#[Broadcast]`, `#[BroadcastKey]`, `#[Async]` or `#[Validated]` without its `use` import (`Phem\Attribute\...`, `Symfony\Component\Routing\Attribute\Route`) |
 | W005 | A `<title>` outside `<head>` and `<svg>`. The document component prints the title, and a page sets it with the `title` prop of the document (`<Document title="Home">`) |
-| W006 | `phem:debounce` or `phem:throttle` on an element with no handler |
+| W006 | `phem:debounce`, `phem:throttle` or `phem:prevent` on an element with no handler, or `phem:key` on an element with no `onKeyDown` or `onKeyUp` |
 | W007 | `phem:live` on an element with no `phem:bind` |
 | W008 | A `render()` or a function component that isn’t pure: it reads a constructor service, a static property, a superglobal, the clock or a random value (see [Keep `render()` pure](components.md#keep-render-pure)) |
 | H001 | A variable that only copies a property for the markup (`$rows = $this->lines;`). The markup reads the property. The quick fix removes the copy and uses the name of the property in the markup. A copy that keeps an older value of the property isn't a hint (see [Read the properties in the markup](components.md#read-the-properties-in-the-markup)) |

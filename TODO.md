@@ -116,19 +116,6 @@ editor, a map. The work-around is a hidden input with a fake `change` event.
 - **Open question:** the browser makes the detail, so the handler must check it, as it checks
   `$e->value`.
 
-### [ ] Key filters and event modifiers — P2
-
-`onKeyDown` sends each key press to the server, and the handler tests `$e->key`. A click in a
-card row bubbles to the row, with no way to stop it in markup.
-
-- **Best peer:** LW `wire:keydown.enter`, `.prevent`, `.stop`; LV `phx-key`.
-- **Proposal:**
-
-  ```html
-  <input onKeyDown={{ save }} phem:key="Enter" />
-  <button onClick={{ star }} phem:stop>★</button>
-  ```
-
 ### [ ] Global keyboard shortcuts — P3
 
 A command palette (`Cmd+K`), list moves (`j` / `k`) and `Esc` need a listener on the window, not

@@ -103,6 +103,9 @@ const PHEM_ATTRIBUTES: &[(&str, &str, &str, &str)] = &[
     ("phem:live", "phem:live", "Phem: send each change of a bound field", "With `phem:bind`: each change sends an event with no handler, with the debounce of the field."),
     ("phem:feed", "phem:feed={{ ${1} }}", "Phem: the container of a Feed property", "The items of the list live only in the browser, and the server renders only the new items. The content is one `{% for %}` loop on the feed, with one element for each item: `<ul phem:feed={{ messages }}>{% for message in messages %}<li>…</li>{% endfor %}</ul>`."),
     ("phem:throttle", "phem:throttle={{ ${1:300} }}", "Phem: send at most one event per interval", "Milliseconds: the browser sends the first event at once, then at most one event each interval, and always the last one."),
+    ("phem:key", "phem:key=\"${1:Enter}\"", "Phem: send only these keys", "With `onKeyDown` or `onKeyUp`: only these keys send the event, the other keys keep their default action. Keys separated by spaces, each with its modifiers: `phem:key=\"Enter\"`, `phem:key=\"ctrl+s Escape\"`."),
+    ("phem:stop", "phem:stop", "Phem: keep the events from the handlers around", "The events of the element and its content do not go to the handlers of the elements around it: `<button onClick={{ star }} phem:stop>★</button>` in a row with `onClick`."),
+    ("phem:prevent", "phem:prevent", "Phem: cancel the default action", "The event of a handler of the element does not do its default action: `<a href=\"/cart\" onClick={{ add }} phem:prevent>` does not open the link."),
 ];
 
 /// `phem:error`: on an HTML element, and on the tag of a component with an `id` prop.

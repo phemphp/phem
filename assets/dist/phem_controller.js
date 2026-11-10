@@ -81,6 +81,34 @@ function keepsDefault(event) {
   return event.type === "drop" && !event.dataTransfer?.files?.length && (isTextLike(t) || t.isContentEditable === true)
 }
 
+// The modifier keys of a key filter (`phem:key="ctrl+Enter"`).
+const KEY_MODIFIERS = ["ctrl", "shift", "alt", "meta"]
+
+// Whether a key event matches a key filter (`phem:key`): a list of keys separated by spaces, each
+// with its modifiers (`Enter`, `ctrl+s`, `shift+Enter`, `Space`). The names have no case. The
+// modifiers must match: `Enter` does not match Shift+Enter. Shift is free for a character that is
+// not a letter, such as `?`, which needs Shift on some keyboards.
+function matchesKey(filter, event) {
+  const pressed = (event.key ?? "").toLowerCase()
+
+  return filter.trim().split(/\s+/).some((combo) => {
+    const parts = combo.toLowerCase().split("+")
+    let key = parts.pop()
+    // `+` or `ctrl++`: the key is `+`.
+    if (key === "" && parts.at(-1) === "") {
+      parts.pop()
+      key = "+"
+    }
+
+    if (key === "space") key = " "
+    if (key !== pressed) return false
+
+    const freeShift = key.length === 1 && key.toLowerCase() === key.toUpperCase()
+
+    return KEY_MODIFIERS.every((m) => (m === "shift" && freeShift && !parts.includes(m)) || event[`${m}Key`] === parts.includes(m))
+  })
+}
+
 // The form of an element: the form itself, the form of a control (also with a `form` attribute),
 // or the form around it.
 function formOf(el) {
@@ -1173,11 +1201,9 @@ export default class PhemController extends Controller {
   dispatch(event) {
     if (this.inactive) return
 
-    // An element is a drop target only when its dragover is cancelled.
-    if (event.type === "dragover") {
-      const zone = event.target.closest?.("[data-phem-on-drop]")
-      if (zone && this.element.contains(zone)) event.preventDefault()
-    }
+    // An element is a drop target only when its dragover is cancelled: the drop must find its
+    // handler, also through a `phem:stop` element (see handlerElement()).
+    if (event.type === "dragover" && this.handlerElement({ type: "drop", target: event.target })) event.preventDefault()
 
     // A field of a form that the user changes is touched, also while its event waits.
     const changed = event.target
@@ -1194,13 +1220,17 @@ export default class PhemController extends Controller {
       return
     }
 
+    // `phem:key="Enter"`: the other keys do not send the event, and keep their default action.
+    const filter = el.getAttribute("data-phem-key-filter")
+    if (filter !== null && (event.type === "keydown" || event.type === "keyup") && !matchesKey(filter, event)) return
+
     if (event.type === "submit") {
       event.preventDefault()
       // The first submit of this form still runs.
       if (this.locked.has(el)) return
     }
 
-    if (CANCELLED_EVENTS.has(event.type) && !keepsDefault(event)) event.preventDefault()
+    if ((CANCELLED_EVENTS.has(event.type) && !keepsDefault(event)) || el.hasAttribute("data-phem-prevent")) event.preventDefault()
 
     // The payload of the DOM event: after the listeners of `phem:before-queue`, which can change
     // the fields, and before a cancel resets them (see allowed()).
@@ -1564,10 +1594,13 @@ export default class PhemController extends Controller {
     return el
   }
 
+  // The closest element with a handler for the event. `phem:stop` keeps the events of an element
+  // from the handlers around it: the event goes to the element and its content only.
   handlerElement(event) {
+    const stop = event.target.closest?.("[data-phem-stop]")
     const find = (name) => {
       const el = event.target.closest?.(`[data-phem-on-${name}]`)
-      if (el && this.element.contains(el)) {
+      if (el && this.element.contains(el) && !(stop && stop !== el && el.contains(stop))) {
         el._phemAttr = `data-phem-on-${name}`
         return el
       }

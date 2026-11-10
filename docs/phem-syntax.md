@@ -378,6 +378,9 @@ A `phem:*` attribute adds a Phem behavior to an element:
 | `phem:loading={{ handler }}` | Shows the element only while the handler runs. See [Loading states](events.md#show-a-loading-state) |
 | `phem:debounce={{ ms }}` | Waits until the user pauses for `ms` milliseconds. `'blur'` waits until the field loses focus. See [Debounce and throttle](events.md#control-when-typing-sends-an-event) |
 | `phem:throttle={{ ms }}` | Sends at most one event every `ms` milliseconds |
+| `phem:key="keys"` | Sends the `onKeyDown` or `onKeyUp` event only for these keys, such as `"Enter"` or `"ctrl+s Escape"`. See [Filter keys and stop events](events.md#filter-keys-and-stop-events) |
+| `phem:stop` | Keeps the events of the element and its content from the handlers around it |
+| `phem:prevent` | Cancels the default action of the event of a handler of the element, such as the visit of a link |
 | `phem:progress={{ handler }}` | Shows the progress of a file upload. See [File uploads](forms.md#accept-file-uploads) |
 | `phem:feed={{ prop }}` | Shows a `Feed` property: the element holds one `{% for %}` loop on the feed, with one element for each item. The browser keeps the items. See [Feeds](long-lists.md) |
 

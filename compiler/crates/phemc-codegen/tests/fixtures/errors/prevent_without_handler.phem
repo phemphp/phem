@@ -1,0 +1,2 @@
+<?phem // expect: W006
+function App() { return <a href="/cart" phem:prevent>Cart</a>; }

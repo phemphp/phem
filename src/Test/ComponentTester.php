@@ -15,6 +15,7 @@ namespace Phem\Test;
 
 use Dom\Element;
 use Dom\HTMLDocument;
+use Phem\Dom\KeyFilter;
 use Phem\Event;
 use Phem\Form\TouchedFields;
 use Phem\Http\EventPayload;
@@ -271,14 +272,29 @@ final class ComponentTester
         return $this->transfer($selector, 'paste', (array) $paths, $text);
     }
 
-    public function keyDown(string $selector, string $key): self
+    /**
+     * Presses a key in an element (`onKeyDown`): the `key` of the browser event (`Enter`, `s`),
+     * with the modifiers that the user holds (`ctrl`, `shift`, `alt`, `meta`):
+     *
+     *     ->keyDown('textarea', 'Enter', ['ctrl'])
+     *
+     * As in the browser, a key that the `phem:key` of the element does not list sends no event.
+     *
+     * @param list<string> $modifiers
+     */
+    public function keyDown(string $selector, string $key, array $modifiers = []): self
     {
-        return $this->fire($selector, 'keydown', ['key' => $key]);
+        return $this->key($selector, 'keydown', $key, $modifiers);
     }
 
-    public function keyUp(string $selector, string $key): self
+    /**
+     * Releases a key in an element (`onKeyUp`), as keyDown() does.
+     *
+     * @param list<string> $modifiers
+     */
+    public function keyUp(string $selector, string $key, array $modifiers = []): self
     {
-        return $this->fire($selector, 'keyup', ['key' => $key]);
+        return $this->key($selector, 'keyup', $key, $modifiers);
     }
 
     public function focus(string $selector): self
@@ -1093,13 +1109,38 @@ final class ComponentTester
         return [$handler, $event, $inputs];
     }
 
-    /** The closest element with a handler for the event, in the root element of the page. */
+    /**
+     * The closest element with a handler for the event, in the root element of the page. As in
+     * the browser, `phem:stop` keeps the events of an element from the handlers around it.
+     */
     private function handlerElement(Element $target, string $type): ?Element
     {
         $element = $target->closest('[data-phem-on-'.$type.']');
         $root = $this->document->querySelector('[data-phem-state-value]') ?? $this->document->body;
+        if (null === $element || null === $root || !$root->contains($element)) {
+            return null;
+        }
 
-        return null !== $element && null !== $root && $root->contains($element) ? $element : null;
+        $stop = $target->closest('[data-phem-stop]');
+
+        return null !== $stop && $stop !== $element && $element->contains($stop) ? null : $element;
+    }
+
+    /**
+     * Sends a key event, or nothing when the `phem:key` of the element of the handler does not
+     * list the key (see KeyFilter).
+     *
+     * @param list<string> $modifiers
+     */
+    private function key(string $selector, string $type, string $key, array $modifiers): self
+    {
+        $element = $this->handlerElement($this->enabled($selector), $type);
+        $filter = $element?->getAttribute('data-phem-key-filter');
+        if (null !== $filter && !KeyFilter::parse($filter)->matches($key, $modifiers)) {
+            return $this;
+        }
+
+        return $this->fire($selector, $type, ['key' => $key]);
     }
 
     /**

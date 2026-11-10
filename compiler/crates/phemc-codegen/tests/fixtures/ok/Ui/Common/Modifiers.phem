@@ -1,0 +1,51 @@
+<?phem
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\{Component, State};
+use Phem\Node;
+
+#[Component]
+final class Modifiers
+{
+    #[State] public string $draft = '';
+    #[State] public bool $starred = false;
+    #[State] public bool $guard = true;
+
+    public function save(): void
+    {
+    }
+
+    public function cancel(): void
+    {
+    }
+
+    public function open(): void
+    {
+    }
+
+    public function star(): void
+    {
+        $this->starred = !$this->starred;
+    }
+
+    public function render(): Node
+    {
+        $keys = 'ctrl+Enter meta+Enter';
+        $rest = ['phem:stop' => true];
+
+        return (
+            <div>
+                <textarea onKeyDown={{ save }} phem:key="ctrl+Enter meta+Enter Escape"></textarea>
+                <input onKeyUp={{ cancel }} phem:key={{ keys }} />
+                <a href="/rows/1" onClick={{ open }} phem:prevent>
+                    Row
+                    <button onClick={{ star }} phem:stop>★</button>
+                    <span phem:stop={{ guard }}>Info</span>
+                </a>
+                <button type="button" {{ ...rest }} onClick={{ star }} phem:prevent phem:key="Enter">Star</button>
+                <input {{ ...rest }} onKeyDown={{ save }} phem:key="\ ctrl+n" />
+            </div>
+        );
+    }
+}

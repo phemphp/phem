@@ -342,6 +342,8 @@ final class PhemRuntime implements RuntimeExtensionInterface, ResetInterface
                 'phem:feed' === $name => throw new \InvalidArgumentException('"phem:feed" cannot come from a spread: write it on the element, with the name of a Feed property.'),
                 'phem:live' === $name => Attributes::attr('data-phem-live', true === $value ? true : null),
                 \in_array($name, ['phem:debounce', 'phem:throttle'], true) => Attributes::timing(substr($name, 5), $value),
+                'phem:key' === $name => Attributes::keyFilter($value),
+                \in_array($name, ['phem:stop', 'phem:prevent'], true) => true === $value ? 'data-phem-'.substr($name, 5) : '',
                 1 === preg_match('/^on[A-Z]/', $name) => $this->on(strtolower(substr($name, 2)), $value),
                 0 === stripos($name, 'on') => '',
                 default => Attributes::attr($name, $value),

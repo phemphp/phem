@@ -529,6 +529,9 @@ fn the_phem_attributes_of_an_html_element() {
     assert_eq!(snippet(r.get("phem:live")), "phem:live");
     assert_eq!(snippet(r.get("phem:error")), "phem:error={{ ${1} }}");
     assert_eq!(snippet(r.get("phem:feed")), "phem:feed={{ ${1} }}");
+    assert_eq!(snippet(r.get("phem:key")), "phem:key=\"${1:Enter}\"");
+    assert_eq!(snippet(r.get("phem:stop")), "phem:stop");
+    assert_eq!(snippet(r.get("phem:prevent")), "phem:prevent");
     assert_eq!(r.slice(r.get("phem:debounce").range), "phem:");
 
     let r = run(&home_fn("<input phem:debounce={{ 300 }} |"));

@@ -134,6 +134,23 @@ final class Attributes
     }
 
     /**
+     * `phem:key="Enter"` → `data-phem-key-filter="Enter"`: only these keys send the `onKeyDown` or
+     * `onKeyUp` event of the element (see KeyFilter). Null or false renders nothing.
+     */
+    public static function keyFilter(mixed $keys): Markup
+    {
+        if (null === $keys || false === $keys) {
+            return new Markup('', 'UTF-8');
+        }
+
+        if (!\is_string($keys)) {
+            throw new \InvalidArgumentException(\sprintf('"phem:key" takes the keys, for example "Enter" or "ctrl+s Escape", "%s" given.', get_debug_type($keys)));
+        }
+
+        return new Markup(\sprintf('data-phem-key-filter="%s"', self::e(KeyFilter::parse($keys)->keys)), 'UTF-8');
+    }
+
+    /**
      * The text of a bound value in a form field (`phem:bind`): a string, a number, the value of a
      * backed enum, or '' for null. A bool is '1' or ''. A date has the format of the `type` of
      * the input, in the timezone of the date: `Y-m-d` for `date`, `Y-m-d\TH:i` for `datetime-local`,

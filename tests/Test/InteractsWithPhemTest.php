@@ -188,6 +188,29 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->assertSee('key Enter, focused');
     }
 
+    public function testKeyFiltersAndEventModifiers(): void
+    {
+        $this->mount('App\Ui\Modifiers\Inbox')
+            // phem:key: the other keys send no event.
+            ->keyDown('#draft', 'Enter')
+            ->keyDown('#draft', 'Enter', ['ctrl'])
+            ->keyUp('#search', 'a')
+            ->keyUp('#search', 'Escape')
+            // phem:stop: a click on the star does not open the row, and a click on the tags runs no handler.
+            ->click('#star')
+            ->click('#subject')
+            ->assertSelectorTextContains('#log', 'send Enter, close Escape, star, open')
+            ->assertSelectorExists('#row[data-phem-prevent]');
+    }
+
+    public function testClickInAStoppedElementWithNoHandlerFails(): void
+    {
+        $this->expectException(AssertionFailedError::class);
+        $this->expectExceptionMessage('has no onClick handler');
+
+        $this->mount('App\Ui\Modifiers\Inbox')->click('#tags');
+    }
+
     public function testSubmitSendsTheFieldsOfTheForm(): void
     {
         $tester = $this->mount(self::SIGNUP, ['title' => 'Join'])

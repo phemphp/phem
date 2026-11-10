@@ -1,0 +1,46 @@
+<?phem
+
+namespace App\Ui\Modifiers;
+
+use Phem\Attribute\{Page, State};
+use Phem\Event;
+use Phem\Node;
+
+use function App\Ui\Common\Document;
+
+// The key filters and the event modifiers: phem:key, phem:stop and phem:prevent.
+#[Page('/modifiers')]
+final class ModifiersPage
+{
+    #[State] public array $log = [];
+
+    public function send(Event $e): void
+    {
+        $this->log[] = 'send '.$e->key;
+    }
+
+    public function open(): void
+    {
+        $this->log[] = 'open';
+    }
+
+    public function star(): void
+    {
+        $this->log[] = 'star';
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Modifiers">
+                <textarea id="draft" onKeyDown={{ send }} phem:key="ctrl+Enter Escape"></textarea>
+                <div id="row" onClick={{ open }}>
+                    <span id="subject">Hello</span>
+                    <button id="star" type="button" onClick={{ star }} phem:stop>★</button>
+                </div>
+                <a id="link" href="/counter" onClick={{ open }} phem:prevent>Open</a>
+                <output id="log">{{ log|join(', ') }}</output>
+            </Document>
+        );
+    }
+}

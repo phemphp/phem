@@ -1,0 +1,15 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<div>
+                <textarea {{ phem_on('keydown', save) }} data-phem-key-filter="ctrl+Enter meta+Enter Escape"></textarea>
+                <input {{ phem_on('keyup', cancel) }} {{ phem_key_filter((keys)) }}>
+                <a href="/rows/1" {{ phem_on('click', open) }} data-phem-prevent>
+                    Row
+                    <button {{ phem_on('click', star) }} data-phem-stop>★</button>
+                    <span {{ phem_attr('data-phem-stop', (guard) is same as(true)) }}>Info</span>
+                </a>
+                <button {{ phem_attrs({'type': 'button'}, rest, {'onClick': (star), 'phem:prevent': true, 'phem:key': 'Enter'}) }}>Star</button>
+                <input {{ phem_attrs(rest, {'onKeyDown': (save), 'phem:key': '\\ ctrl+n'}) }}>
+            </div>

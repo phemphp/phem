@@ -850,6 +850,16 @@ describe("the drop, paste, context menu and scroll events", () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
+  it("does not cancel the dragover in a phem:stop element of a drop zone: the drop has no handler there", async () => {
+    await mountZone()
+    const aside = document.createElement("aside")
+    aside.setAttribute("data-phem-stop", "")
+    document.getElementById("zone").append(aside)
+
+    expect(fire(aside, "dragover").defaultPrevented).toBe(false)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it("sends a context menu, and the browser does not show its menu", async () => {
     await mountZone()
     respond(zone)
@@ -891,6 +901,85 @@ describe("the drop, paste, context menu and scroll events", () => {
 
     expect(fetch).toHaveBeenCalledTimes(2)
     expect(JSON.parse(fetch.mock.calls[1][1].body)).toMatchObject({ handler: "c1.more", event: { type: "scroll" } })
+  })
+})
+
+describe("the key filters and the event modifiers", () => {
+  const markup = `<textarea id="draft" data-phem-on-keydown="c1.send" data-phem-key-filter="ctrl+Enter Escape ?"></textarea>
+    <div id="row" data-phem-on-click="c1.open">
+      <span id="subject">Hello</span>
+      <button id="star" type="button" data-phem-on-click="c1.star" data-phem-stop><i id="icon">★</i></button>
+      <span id="tags" data-phem-stop>Tags</span>
+    </div>
+    <a id="link" href="#link" data-phem-on-click="c1.open" data-phem-prevent><span id="label">Open</span></a>`
+
+  async function mountKeys() {
+    await mount(markup)
+    const root = document.getElementById("phem-root")
+    root.setAttribute("data-action", `${root.getAttribute("data-action")} keydown->phem#dispatch`)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  }
+
+  function press(key, init = {}) {
+    const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...init })
+    document.getElementById("draft").dispatchEvent(event)
+    return event
+  }
+
+  const handlers = () => fetch.mock.calls.map(([, init]) => JSON.parse(init.body)).map((b) => `${b.handler} ${b.event.key ?? ""}`.trim())
+
+  it("sends only the keys of phem:key, with their modifiers", async () => {
+    await mountKeys()
+    respond(markup)
+    respond(markup)
+    respond(markup)
+
+    const enter = press("Enter")
+    press("Enter", { shiftKey: true, ctrlKey: true })
+    press("a", { ctrlKey: true })
+    let done = nextDone()
+    press("Enter", { ctrlKey: true })
+    await done
+    done = nextDone()
+    press("Escape")
+    await done
+    // Shift is free for a character that is not a letter.
+    done = nextDone()
+    press("?", { shiftKey: true })
+    await done
+
+    expect(enter.defaultPrevented).toBe(false)
+    expect(handlers()).toEqual(["c1.send Enter", "c1.send Escape", "c1.send ?"])
+  })
+
+  it("keeps the click of a phem:stop element from the handlers around it", async () => {
+    await mountKeys()
+    respond(markup)
+    respond(markup)
+
+    let done = nextDone()
+    click("#icon")
+    await done
+    // No handler in the stopped element: no event.
+    click("#tags")
+    done = nextDone()
+    click("#subject")
+    await done
+
+    expect(handlers()).toEqual(["c1.star", "c1.open"])
+  })
+
+  it("cancels the default action of the event of a phem:prevent element", async () => {
+    await mountKeys()
+    respond(markup)
+
+    const done = nextDone()
+    const event = new MouseEvent("click", { bubbles: true, cancelable: true })
+    document.getElementById("label").dispatchEvent(event)
+    await done
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(handlers()).toEqual(["c1.open"])
   })
 })
 
