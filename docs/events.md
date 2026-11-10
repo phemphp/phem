@@ -24,7 +24,7 @@ By default, only the component of the handler, the components whose state change
 
 ## Respond to a drop, a paste or a right-click
 
-These events also go to the server: `onDragStart`, `onDragOver`, `onDrop`, `onPaste`, `onContextMenu`, `onPointerDown`, `onPointerUp` and `onScroll`. For the full list, see [The `.phem` syntax](phem-syntax.md#event-handlers).
+These events also go to the server: `onDragStart`, `onDragOver`, `onDrop`, `onPaste`, `onContextMenu`, `onPointerDown`, `onPointerUp` and `onScroll`. For the data of a JavaScript library, see [Call a handler from your JavaScript](#call-a-handler-from-your-javascript). For the full list, see [The `.phem` syntax](phem-syntax.md#event-handlers).
 
 A drop and a paste send their files. The handler gets them in `$e->files`, as a list of Symfony `UploadedFile` objects:
 
@@ -316,9 +316,68 @@ After the morph, the browser dispatches a `phem:saved` event. A Stimulus control
 
 The event starts on the component’s element and bubbles up to `window`. A service can dispatch events too: inject `Phem\BrowserEventDispatcher`. A handler that fails or redirects dispatches no events.
 
-The name has only letters, digits and `_ - . :`. The browser uses these names itself, so you can’t use them: `before-queue`, `queue`, `send`, `receive`, `done`, `error`, `rate-limited` and `upload-progress`. The detail must be a value that JSON can encode. `dispatch()` throws an `InvalidArgumentException` for a name or a detail that breaks these rules.
+The name has only letters, digits and `_ - . :`. The browser uses these names itself, so you can’t use them: `call`, `before-queue`, `queue`, `send`, `receive`, `done`, `error`, `rate-limited` and `upload-progress`. The detail must be a value that JSON can encode. `dispatch()` throws an `InvalidArgumentException` for a name or a detail that breaks these rules.
 
 To show a message to the user, call `$e->toast('Saved')`. See [Show toast messages](client-side.md#show-toast-messages).
+
+## Call a handler from your JavaScript
+
+A JavaScript library can call a handler with its own data, for example a sortable list ("card 12 moved to column 3 at position 0"), a rich text editor or a map. Put an `onCall` handler on an element, and dispatch a `phem:call` event on the element or on an element in it. The handler gets the detail of the event in `$e->detail`:
+
+```php
+#[Component]
+final class Board
+{
+    #[State] public array $cards = ['a', 'b', 'c'];
+
+    public function move(Event $e): void
+    {
+        // The browser makes the detail: check it.
+        $card = $e->detail['card'] ?? null;
+        $index = $e->detail['index'] ?? null;
+        if (!\is_string($card) || !\is_int($index) || !\in_array($card, $this->cards, true)) {
+            return;
+        }
+
+        $cards = array_values(array_diff($this->cards, [$card]));
+        array_splice($cards, max(0, min($index, \count($cards))), 0, [$card]);
+        $this->cards = $cards;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <ul data-controller="sortable" onCall={{ move }}>
+                {% for card in cards %}
+                    <li key={{ card }}>{{ card }}</li>
+                {% endfor %}
+            </ul>
+        );
+    }
+}
+```
+
+The Stimulus controller of the library dispatches the event when the user drops a card:
+
+```js
+this.element.dispatchEvent(new CustomEvent("phem:call", { detail: { card: "c", index: 0 } }))
+```
+
+The list renders with a `data-phem-on-call` attribute. The request of the event has the detail as JSON:
+
+```html
+<ul data-controller="sortable" data-phem-on-call="…">…</ul>
+```
+
+```json
+{"type": "call", "value": null, "checked": null, "key": null, "form": null, "detail": {"card": "c", "index": 0}}
+```
+
+The event needs no `bubbles: true`: the page root listens to `phem:call` in the capture phase. The closest element with an `onCall` handler gets it, as for the other events, and `phem:stop` keeps it from the handlers around an element. The detail must be a value that JSON can encode. The browser takes a copy of it at the time of the call, so a later change of the object does not change the event. A detail that JSON can’t encode, such as an object with a cycle, sends no event, and the browser shows an error in the console. With no detail, `$e->detail` is `null`. A `phem:call` with no `onCall` handler on the element or around it sends no event, and the browser shows a warning in the console. The warning also tells when a `phem:stop` element keeps the event from the handler, or when the page has no state yet.
+
+The browser makes the detail, so a user can change it. Check it in the handler, as you check `$e->value`. The event goes in the queue as the other events: `phem:debounce`, `phem:throttle`, `phem:loading` and `phem:before-queue` work the same. Its type is `call`.
+
+A handler can’t dispatch a `phem:call` browser event: `$e->dispatcher->dispatch('call')` throws an `InvalidArgumentException`. In a test, `call()` sends the event also to a disabled element, as the browser does.
 
 ## Run code around every handler
 

@@ -1,0 +1,44 @@
+<?phem
+
+namespace App\Ui\Call;
+
+use Phem\Attribute\{Page, State};
+use Phem\Event;
+use Phem\Node;
+
+use function App\Ui\Common\Document;
+
+// A handler that JS code calls with a `phem:call` event (onCall), as a sortable list does.
+#[Page('/call')]
+final class CallPage
+{
+    #[State] public array $cards = ['a', 'b', 'c'];
+
+    public function move(Event $e): void
+    {
+        // The browser makes the detail: check it.
+        $card = $e->detail['card'] ?? null;
+        $index = $e->detail['index'] ?? null;
+        if (!\is_string($card) || !\is_int($index) || !\in_array($card, $this->cards, true)) {
+            return;
+        }
+
+        $cards = array_values(array_diff($this->cards, [$card]));
+        array_splice($cards, max(0, min($index, \count($cards))), 0, [$card]);
+        $this->cards = $cards;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Call">
+                <ul id="cards" onCall={{ move }}>
+                    {% for card in cards %}
+                        <li key={{ card }} id={{ 'card-' ~ card }}>{{ card }}</li>
+                    {% endfor %}
+                </ul>
+                <output id="order">{{ cards|join(',') }}</output>
+            </Document>
+        );
+    }
+}

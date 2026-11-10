@@ -91,31 +91,6 @@ call, the page shows old data, with no error.
 These items come from a review of the client side on 2026-11-09, with a complex app as the
 model: a project tool with a kanban board, a command palette, inline edits and a live feed.
 
-### [ ] Call a handler from JavaScript — P1
-
-The `phem` controller exports only its Stimulus class. A JS library cannot send an event with its
-own data to a handler: SortableJS ("card 12 moved to column 3 at position 0"), a rich text
-editor, a map. The work-around is a hidden input with a fake `change` event.
-
-- **Best peer:** LV `pushEvent` in a JS hook, LW `$wire.call()`.
-- **Proposal:** a `phem:handler` directive and a `phem:call` browser event. The handler reads
-  the data in `$e->detail`:
-
-  ```html
-  <ul data-controller="sortable" phem:handler={{ move }}>
-  ```
-
-  ```js
-  this.element.dispatchEvent(new CustomEvent("phem:call", { detail: { card: 12, column: 3, index: 0 } }))
-  ```
-
-  ```php
-  public function move(Event $e): void { /* $e->detail['card'] … */ }
-  ```
-
-- **Open question:** the browser makes the detail, so the handler must check it, as it checks
-  `$e->value`.
-
 ### [ ] Global keyboard shortcuts — P3
 
 A command palette (`Cmd+K`), list moves (`j` / `k`) and `Esc` need a listener on the window, not
@@ -149,7 +124,7 @@ The built-in controllers cover simple patterns only. These are missing:
 - **Combobox / autocomplete:** an ARIA list, keyboard moves, results from a handler;
 - **Popover and tooltip:** with a position (CSS anchor positioning, a fallback for old browsers);
   `phem-toggle` does not set a position;
-- **Sortable list:** drag and drop that calls a handler (needs "Call a handler from JavaScript");
+- **Sortable list:** drag and drop that calls a handler (`onCall`);
 - **Menu:** keyboard support and roving focus, as `phem-tabs` has.
 
 - **Best peer:** Blazor component libraries, LC with Symfony UX Autocomplete.

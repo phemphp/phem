@@ -8,6 +8,12 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Call a handler from JavaScript. `onCall={{ move }}` runs the handler when JS code dispatches
+  a `phem:call` event on the element or in it, with its own data:
+  `el.dispatchEvent(new CustomEvent("phem:call", { detail: { card: 12, index: 0 } }))`. The
+  handler gets the detail in `$e->detail`, and must check it. The event needs no `bubbles`.
+  `ComponentTester::call()` sends it in a test, and `BrowserEventDispatcher` rejects the name
+  `call`.
 - Key filters and event modifiers. `phem:key="ctrl+Enter Escape"` sends the `onKeyDown` or
   `onKeyUp` event only for these keys, and the other keys keep their default action.
   `phem:stop` keeps the events of an element and its content from the handlers around it.

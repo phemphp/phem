@@ -55,6 +55,9 @@ final class Event
      * @param string|null             $text       the text of a `drop` or a `paste` (`text/plain`), or
      *                                            an empty string. A paste fires before the browser
      *                                            puts the text in the field: `$value` is the old value
+     * @param mixed                   $detail     the detail of a `call` (`onCall`): the JSON value that
+     *                                            the JS code puts in the `phem:call` event. The browser
+     *                                            makes it, so the handler must check it, as `$value`
      */
     public function __construct(
         public readonly string $type,
@@ -65,6 +68,7 @@ final class Event
         public readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
         public readonly array $files = [],
         public readonly ?string $text = null,
+        public readonly mixed $detail = null,
     ) {
     }
 
@@ -150,6 +154,7 @@ final class Event
             $dispatcher ?? new BrowserEventDispatcher(),
             $files,
             isset($data['text']) ? (string) $data['text'] : null,
+            $data['detail'] ?? null,
         );
     }
 }

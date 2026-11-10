@@ -60,9 +60,17 @@ final class BrowserEventDispatcherTest extends TestCase
     public function testDispatchRejectsANameOfTheBrowser(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('The browser dispatches the "phem:done" event itself: give the browser event another name.');
+        $this->expectExceptionMessage('The browser uses the "phem:done" event itself: give the browser event another name.');
 
         (new BrowserEventDispatcher())->dispatch('done');
+    }
+
+    public function testDispatchRejectsTheCallEventOfTheJavaScript(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('"phem:call"');
+
+        (new BrowserEventDispatcher())->dispatch('call');
     }
 
     public function testDispatchRejectsADetailThatJsonCannotEncode(): void

@@ -18,14 +18,21 @@ namespace Phem\Dom;
  */
 final class DomEvents
 {
-    /** The DOM events that the `phem` Stimulus controller listens to. */
+    /**
+     * The DOM events that the `phem` Stimulus controller listens to. `phem:call` is the event that
+     * the JS code dispatches to call an `onCall` handler (`data-phem-on-call`).
+     */
     public const LISTENED = [
         'click', 'dblclick', 'input', 'change', 'submit', 'keydown', 'keyup', 'focusin', 'focusout',
         'dragstart', 'dragover', 'drop', 'paste', 'contextmenu', 'pointerdown', 'pointerup', 'scroll',
+        'phem:call',
     ];
 
-    /** The DOM events that do not bubble: the controller listens to them in the capture phase. */
-    private const CAPTURED = ['scroll'];
+    /**
+     * The DOM events that the controller listens to in the capture phase: a scroll does not
+     * bubble, and a `phem:call` of the JS code can have no `bubbles: true`.
+     */
+    private const CAPTURED = ['scroll', 'phem:call'];
 
     /** React event names → DOM event names. */
     private const ALIASES = ['doubleclick' => 'dblclick', 'focus' => 'focusin', 'blur' => 'focusout'];

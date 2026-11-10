@@ -60,6 +60,15 @@ const CANCELLED_EVENTS = new Set(["drop", "contextmenu"])
 // the same handler that waits in the queue (see enqueue()).
 const COALESCED_EVENTS = new Set(["input", "change", "dragover", "scroll"])
 
+// The event that JS code dispatches to call the `onCall` handler of its element (or of an
+// ancestor), with its detail: the handler gets it in `$e->detail`. The handler event is `call`.
+const CALL_EVENT = "phem:call"
+
+// The type of the handler event of a DOM event: `call` for `phem:call`.
+function eventType(event) {
+  return event.type === CALL_EVENT ? "call" : event.type
+}
+
 // The name of the multipart parts of the files of a drop or a paste (Phem\Event::FILES).
 const TRANSFERRED_FILES = "_phem_files[]"
 
@@ -1199,7 +1208,12 @@ export default class PhemController extends Controller {
 
   // data-action="click->phem#dispatch input->phem#dispatch ..." on the root element.
   dispatch(event) {
-    if (this.inactive) return
+    if (this.inactive) {
+      if (event.type === CALL_EVENT) console.warn("[phem] a phem:call event came before the page has its state, or on a page with no events: the handler does not run", event.target)
+      return
+    }
+
+    const type = eventType(event)
 
     // An element is a drop target only when its dragover is cancelled: the drop must find its
     // handler, also through a `phem:stop` element (see handlerElement()).
@@ -1213,6 +1227,17 @@ export default class PhemController extends Controller {
     }
 
     const el = this.handlerElement(event)
+    if (!el && event.type === CALL_EVENT) {
+      const stopped = event.target.closest?.("[data-phem-on-call]")
+      console.warn(
+        stopped && this.element.contains(stopped)
+          ? "[phem] a phem:stop element keeps this phem:call event from the onCall handler around it"
+          : "[phem] a phem:call event has no onCall handler: dispatch it on the element of the handler, or on an element in it",
+        event.target,
+      )
+      return
+    }
+
     if (!el) {
       const live = this.liveElement(event)
       // Its "handler" is the key of the field: the server gets null (see fetchWithRetry()).
@@ -1232,15 +1257,26 @@ export default class PhemController extends Controller {
 
     if ((CANCELLED_EVENTS.has(event.type) && !keepsDefault(event)) || el.hasAttribute("data-phem-prevent")) event.preventDefault()
 
+    // The detail of a call as it is at the time of the call, as the request sends it: JSON.
+    let detail = null
+    if (event.type === CALL_EVENT) {
+      try {
+        detail = JSON.parse(JSON.stringify(event.detail ?? null) ?? "null")
+      } catch (e) {
+        console.error("[phem] the detail of a phem:call event cannot be JSON: the handler does not run", e, event.target)
+        return
+      }
+    }
+
     // The payload of the DOM event: after the listeners of `phem:before-queue`, which can change
     // the fields, and before a cancel resets them (see allowed()).
     const attr = el._phemAttr
     const handler = el.getAttribute(attr)
     let payload = null
-    const read = () => (payload ??= this.payload(el, event))
-    const send = () => this.schedule(el, attr, handler, event.type, read())
+    const read = () => (payload ??= this.payload(el, event, type, detail))
+    const send = () => this.schedule(el, attr, handler, type, read())
 
-    if (!this.allowed(el, handler, event, read, send)) {
+    if (!this.allowed(el, handler, event, type, read, send)) {
       // The field has its value again: the user did not touch it.
       if (this.clientMarks.delete(changed)) changed.removeAttribute(TOUCHED)
       return
@@ -1250,7 +1286,8 @@ export default class PhemController extends Controller {
   }
 
   // The payload of the DOM event of a handler element.
-  payload(el, event) {
+  // `type` is the type of the handler event (see eventType()), and `detail` the detail of a call.
+  payload(el, event, type, detail) {
     // A submit, a change or a click of an element in a form sends the fields of the form, so its
     // handler can submit a Symfony form with them. The change and the click send the touched
     // fields too. The files go with the submit only.
@@ -1258,7 +1295,7 @@ export default class PhemController extends Controller {
     const form = FORM_EVENTS.has(event.type) ? formOf(el) : null
     const { fields, files } = form && this.element.contains(form) ? formFields(form, submit ? event.submitter : null) : { fields: null, files: [] }
     const payload = {
-      type: event.type,
+      type,
       value: "value" in el ? el.value : null,
       checked: "checked" in el ? el.checked : null,
       key: event.key ?? null,
@@ -1289,6 +1326,9 @@ export default class PhemController extends Controller {
     const transferred = transferredFiles(event)
     if (transferred.length) payload.files = transferred
 
+    // The data of the JS code that calls the handler: it goes as JSON.
+    if (type === "call") payload.detail = detail
+
     return payload
   }
 
@@ -1303,7 +1343,7 @@ export default class PhemController extends Controller {
   // cancelled, when it dropped, or when the page has no events. In the dispatch, it undoes the
   // cancel: the event goes as if no listener cancelled it. `detail.signal` aborts when the event
   // drops (see HeldEvents): then resume() does nothing.
-  allowed(el, handler, event, read, send) {
+  allowed(el, handler, event, type, read, send) {
     const hold = new AbortController()
     let dispatching = true
     let resumed = false
@@ -1318,7 +1358,7 @@ export default class PhemController extends Controller {
       if (!dispatching) send()
     }
 
-    const before = new CustomEvent("phem:before-queue", { detail: { handler, type: event.type, resume, signal: hold.signal }, bubbles: true, cancelable: true })
+    const before = new CustomEvent("phem:before-queue", { detail: { handler, type, resume, signal: hold.signal }, bubbles: true, cancelable: true })
     const allowed = el.dispatchEvent(before) || resumed
     dispatching = false
     if (allowed) return true
@@ -1625,6 +1665,8 @@ export default class PhemController extends Controller {
       // A scroll does not bubble: only the element that scrolls gets it.
       case "scroll":
         return event.target.hasAttribute?.("data-phem-on-scroll") ? find("scroll") : null
+      case CALL_EVENT:
+        return find("call")
       default:
         return find(event.type)
     }

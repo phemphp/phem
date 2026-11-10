@@ -297,6 +297,29 @@ final class ComponentTester
         return $this->key($selector, 'keyup', $key, $modifiers);
     }
 
+    /**
+     * Calls the `onCall` handler of an element, as JS code does with a `phem:call` event. The
+     * handler gets the detail in `$e->detail`:
+     *
+     *     ->call('ul.board', ['card' => 12, 'column' => 3, 'index' => 0])->assertSee('Card 12 in Done')
+     *
+     * @param mixed $detail a value that JSON can encode, as the detail of a `CustomEvent`
+     */
+    public function call(string $selector, mixed $detail = null): self
+    {
+        try {
+            // As the browser: the detail goes as JSON.
+            $detail = json_decode(json_encode($detail, \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            Assert::fail(\sprintf('The detail of the call of "%s" cannot be JSON: %s.', $selector, $e->getMessage()));
+        }
+
+        // A disabled element gets the `phem:call` of the JS code too.
+        $element = $this->document->querySelector($selector) ?? Assert::fail(\sprintf('No element matches "%s". %s', $selector, $this->context()));
+
+        return $this->fireOn($element, $selector, 'call', ['detail' => $detail]);
+    }
+
     public function focus(string $selector): self
     {
         return $this->fire($selector, 'focusin');
@@ -314,7 +337,13 @@ final class ComponentTester
      */
     public function fire(string $selector, string $type, array $event = []): self
     {
-        $data = $this->event($this->enabled($selector), $type) ?? Assert::fail(\sprintf('The element "%s" has no handler for the "%s" event.', $selector, $type));
+        return $this->fireOn($this->enabled($selector), $selector, $type, $event);
+    }
+
+    /** @param array<string, mixed> $event values that replace the values of the element */
+    private function fireOn(Element $element, string $selector, string $type, array $event): self
+    {
+        $data = $this->event($element, $type) ?? Assert::fail(\sprintf('The element "%s" has no handler for the "%s" event.', $selector, $type));
         $data[1] = $event + $data[1];
 
         return $this->send($data);

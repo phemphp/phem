@@ -188,6 +188,27 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->assertSee('key Enter, focused');
     }
 
+    public function testCallSendsTheDetailToTheOnCallHandler(): void
+    {
+        $this->mount('App\Ui\Call\Board')
+            ->call('#cards', ['card' => 'c', 'index' => 0])
+            ->assertSelectorTextContains('#order', 'c,a,b')
+            // An element in the list calls the handler of the list.
+            ->call('#card-a', ['card' => 'a', 'index' => 2])
+            ->assertSelectorTextContains('#order', 'c,b,a')
+            // The handler checks the detail.
+            ->call('#cards', 'not a move')
+            ->assertSelectorTextContains('#order', 'c,b,a');
+    }
+
+    public function testCallOfAnElementWithNoOnCallHandlerFails(): void
+    {
+        $this->expectException(AssertionFailedError::class);
+        $this->expectExceptionMessage('has no handler for the "call" event');
+
+        $this->mount('App\Ui\Call\Board')->call('#order', []);
+    }
+
     public function testKeyFiltersAndEventModifiers(): void
     {
         $this->mount('App\Ui\Modifiers\Inbox')

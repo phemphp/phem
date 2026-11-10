@@ -37,8 +37,11 @@ namespace Phem;
  */
 final class BrowserEventDispatcher
 {
-    /** The names of the events that the browser dispatches itself (`phem:done`, ...). */
-    private const RESERVED = ['before-queue', 'queue', 'send', 'receive', 'done', 'error', 'rate-limited', 'upload-progress'];
+    /**
+     * The names of the events that the browser uses itself: it dispatches `phem:done`, ..., and
+     * a `phem:call` of the JS code calls an `onCall` handler.
+     */
+    private const RESERVED = ['call', 'before-queue', 'queue', 'send', 'receive', 'done', 'error', 'rate-limited', 'upload-progress'];
 
     /** @var list<array{name: string, detail: mixed}> */
     private array $dispatched = [];
@@ -56,7 +59,7 @@ final class BrowserEventDispatcher
         }
 
         if (\in_array($name, self::RESERVED, true)) {
-            throw new \InvalidArgumentException(\sprintf('The browser dispatches the "phem:%s" event itself: give the browser event another name.', $name));
+            throw new \InvalidArgumentException(\sprintf('The browser uses the "phem:%s" event itself: give the browser event another name.', $name));
         }
 
         try {

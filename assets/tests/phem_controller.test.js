@@ -904,6 +904,88 @@ describe("the drop, paste, context menu and scroll events", () => {
   })
 })
 
+describe("the phem:call event of the JavaScript", () => {
+  const board = `<ul id="cards" data-phem-on-call="c1.move"><li id="card">Card</li><li id="editor" data-phem-stop><p id="text">Text</p></li></ul>
+    <p id="outside">Outside</p>`
+
+  // The page root listens to the event as DomEvents::stimulusActions() renders it.
+  async function mountBoard() {
+    await mount(board)
+    const root = document.getElementById("phem-root")
+    root.setAttribute("data-action", `${root.getAttribute("data-action")} phem:call->phem#dispatch:capture`)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  }
+
+  it("calls the onCall handler with the detail, also with no bubbles", async () => {
+    await mountBoard()
+    respond(board)
+    const done = nextDone()
+    document.getElementById("cards").dispatchEvent(new CustomEvent("phem:call", { detail: { card: 12, column: 3, index: 0 } }))
+    await done
+
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({ handler: "c1.move", event: { type: "call", detail: { card: 12, column: 3, index: 0 } } })
+  })
+
+  it("calls the handler of an ancestor, and gives the type call to phem:before-queue", async () => {
+    await mountBoard()
+    respond(board)
+    const types = []
+    document.addEventListener("phem:before-queue", (e) => types.push(e.detail.type), { once: true })
+    const done = nextDone()
+    document.getElementById("card").dispatchEvent(new CustomEvent("phem:call", { bubbles: true }))
+    await done
+
+    expect(types).toEqual(["call"])
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({ handler: "c1.move", event: { type: "call", detail: null } })
+  })
+
+  it("warns about a phem:call with no onCall handler", async () => {
+    await mountBoard()
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    document.getElementById("outside").dispatchEvent(new CustomEvent("phem:call", { detail: 1 }))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(fetch).not.toHaveBeenCalled()
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("no onCall handler"), document.getElementById("outside"))
+    warn.mockRestore()
+  })
+
+  it("names the phem:stop element that keeps a phem:call from the handler", async () => {
+    await mountBoard()
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    document.getElementById("text").dispatchEvent(new CustomEvent("phem:call"))
+
+    expect(fetch).not.toHaveBeenCalled()
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("phem:stop"), document.getElementById("text"))
+    warn.mockRestore()
+  })
+
+  it("sends the detail as it is at the time of the call", async () => {
+    await mountBoard()
+    respond(board)
+    const done = nextDone()
+    const detail = { card: 12, index: 0 }
+    document.getElementById("cards").dispatchEvent(new CustomEvent("phem:call", { detail }))
+    detail.index = 5
+    await done
+
+    expect(JSON.parse(fetch.mock.calls[0][1].body).event.detail).toEqual({ card: 12, index: 0 })
+  })
+
+  it("does not send a detail that JSON cannot encode", async () => {
+    await mountBoard()
+    const error = vi.spyOn(console, "error").mockImplementation(() => {})
+    const detail = {}
+    detail.self = detail
+    document.getElementById("cards").dispatchEvent(new CustomEvent("phem:call", { detail }))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(fetch).not.toHaveBeenCalled()
+    expect(error).toHaveBeenCalledWith(expect.stringContaining("cannot be JSON"), expect.any(TypeError), document.getElementById("cards"))
+    error.mockRestore()
+  })
+})
+
 describe("the key filters and the event modifiers", () => {
   const markup = `<textarea id="draft" data-phem-on-keydown="c1.send" data-phem-key-filter="ctrl+Enter Escape ?"></textarea>
     <div id="row" data-phem-on-click="c1.open">

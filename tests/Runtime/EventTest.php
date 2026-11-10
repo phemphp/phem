@@ -65,6 +65,13 @@ final class EventTest extends TestCase
         self::assertNull(Event::fromArray(['type' => 'click'])->text);
     }
 
+    public function testDetailIsTheDetailOfACall(): void
+    {
+        self::assertSame(['card' => 12, 'index' => 0], Event::fromArray(['type' => 'call', 'detail' => ['card' => 12, 'index' => 0]])->detail);
+        self::assertSame('a', Event::fromArray(['type' => 'call', 'detail' => 'a'])->detail);
+        self::assertNull(Event::fromArray(['type' => 'click'])->detail);
+    }
+
     public function testClientSendsTheFilesOfADropAsTheFilesOfTheEvent(): void
     {
         $client = (string) file_get_contents(\dirname(__DIR__, 2).'/assets/dist/phem_controller.js');
