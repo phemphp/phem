@@ -39,6 +39,7 @@ use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\Config\Resource\FileResource;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\Form\FormTypeExtensionInterface;
 use Symfony\Component\HttpKernel\Attribute\RateLimit;
@@ -285,14 +286,10 @@ final class PhemBundle extends AbstractBundle
 
     public function boot(): void
     {
-        // A container built before the bundle was registered has no Phem services. This occurs
-        // when cache:clear boots with a stale container, just after Flex adds the bundle.
-        if (!$this->container?->has('phem.manifest')) {
-            return;
-        }
+        // Function components cannot be autoloaded: load the compiled code once per boot. A stale
+        // container (cache:clear just after Flex adds the bundle) has no Phem services.
+        $manifest = $this->container?->get('phem.manifest', ContainerInterface::NULL_ON_INVALID_REFERENCE);
 
-        // Function components cannot be autoloaded: load the compiled code once per boot.
-        $manifest = $this->container->get('phem.manifest');
         if ($manifest instanceof Manifest && $manifest->exists()) {
             $manifest->load();
         }
