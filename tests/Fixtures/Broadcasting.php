@@ -13,8 +13,8 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Fixtures;
 
-use Phem\Attribute\Path;
 use Phem\Attribute\Broadcast;
+use Phem\Attribute\Path;
 
 /** A page with #[Broadcast] and two #[Path] props, for the topics (see Phem\Stream\Topics). */
 #[Broadcast]

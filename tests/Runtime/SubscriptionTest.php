@@ -18,9 +18,9 @@ use Phem\Rendering\Tree;
 use Phem\Stream\SubscriberToken;
 use Phem\Stream\Subscription;
 use Phem\Stream\Topics;
-use Phem\Tests\Fixtures\Scientist;
 use Phem\Tests\Fixtures\Broadcasting;
 use Phem\Tests\Fixtures\BroadcastingComponent;
+use Phem\Tests\Fixtures\Scientist;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use Symfony\Component\HttpFoundation\Cookie;
@@ -224,7 +224,8 @@ final class SubscriptionTest extends TestCase
         $render(Broadcasting::class, true, 'frankenphp');
         $render(Broadcasting::class, false, 'fpm-fcgi');
         $render(Scientist::class, true, 'fpm-fcgi');
-        self::assertSame([], $logger->messages, 'FrankenPHP, a publisher key, or a page with no #[Broadcast]');
+        // Not assertSame([]): PHPStan then thinks that the property stays empty after $render().
+        self::assertCount(0, $logger->messages, 'FrankenPHP, a publisher key, or a page with no #[Broadcast]');
 
         $render(Broadcasting::class, true, 'fpm-fcgi');
         self::assertCount(1, $logger->messages);

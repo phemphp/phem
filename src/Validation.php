@@ -313,7 +313,7 @@ final readonly class Validation implements StateValue
      * Whether a field is one of the fields, a parent of the path of one (`address` for
      * `address.city`), or a field in one (`tags.0` for `tags`).
      *
-     * @param list<string> $fields
+     * @param array<string> $fields
      */
     private static function related(string $field, array $fields): bool
     {

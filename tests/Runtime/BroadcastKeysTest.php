@@ -21,12 +21,12 @@ use Phem\Rendering\Fiber;
 use Phem\Stream\BroadcastKeys;
 use Phem\Tests\Fixtures\BroadcastHandlerOfAPage;
 use Phem\Tests\Fixtures\Broadcasting;
-use Phem\Tests\Fixtures\BroadcastingPageWithAHandler;
 use Phem\Tests\Fixtures\BroadcastingComponent;
+use Phem\Tests\Fixtures\BroadcastingPageWithAHandler;
 use Phem\Tests\Fixtures\HandlerWithHandlersFalse;
 use Phem\Tests\Fixtures\KeyedBroadcastingComponent;
-use Phem\Tests\Fixtures\KeyFromMount;
 use Phem\Tests\Fixtures\KeyedBroadcastingReplacement;
+use Phem\Tests\Fixtures\KeyFromMount;
 use Phem\Tests\Fixtures\KeyOnlyInFirstMount;
 use Phem\Tests\Fixtures\KeyOnPage;
 use Phem\Tests\Fixtures\KeyOnState;
@@ -261,12 +261,12 @@ final class BroadcastKeysTest extends TestCase
     public function testAComponentWithHandlersFalseBroadcastsAndItsHandlersDoNotRefreshIt(): void
     {
         $metadata = new ComponentMetadata();
-        $receiving = new #[Component, Broadcast(handlers: false)] class {
+        $receiving = new #[Component(), Broadcast(handlers: false)] class {
             public function save(): void
             {
             }
         };
-        $refreshing = new #[Component, Broadcast] class {
+        $refreshing = new #[Component(), Broadcast] class {
         };
 
         self::assertTrue($metadata->broadcasts($receiving::class));

@@ -113,7 +113,7 @@ final class FeedTest extends TestCase
     public function testACompositeOrAnUnsafeIdentifierGivesAHashedKey(): void
     {
         $identity = new FeedIdentity(new class implements \Phem\Handler\ObjectIdentifier {
-            public function identify(object $value): ?array
+            public function identify(object $value): array
             {
                 return (array) $value;
             }
@@ -130,7 +130,7 @@ final class FeedTest extends TestCase
     public function testAnIdentifierWithAnObjectThrows(): void
     {
         $identity = new FeedIdentity(new class implements \Phem\Handler\ObjectIdentifier {
-            public function identify(object $value): ?array
+            public function identify(object $value): array
             {
                 return ['order' => new \stdClass()];
             }

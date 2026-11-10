@@ -359,7 +359,8 @@ final class StreamTest extends KernelTestCase
         $page = $this->visit('/likes')->click('#later-lobby');
 
         // The request queues no refresh: the work did not run.
-        self::assertSame([], $this->updates());
+        $updates = $this->updates();
+        self::assertSame([], $updates);
 
         $page->settle();
         [$update] = $this->updates();
@@ -525,7 +526,7 @@ final class StreamTest extends KernelTestCase
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessage('has #[Broadcast], but the class has #[Broadcast(handlers: false)], so no handler refreshes it.');
 
-        $component = new #[Component, Broadcast(handlers: false)] class {
+        $component = new #[Component(), Broadcast(handlers: false)] class {
             public function handler(): \Closure
             {
                 return #[Broadcast] fn () => null;

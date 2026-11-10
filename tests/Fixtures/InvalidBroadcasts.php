@@ -42,7 +42,6 @@ final class KeyFromMount
 {
     /** @phpstan-ignore property.onlyWritten (Phem reads the key after the render) */
     #[BroadcastKey] private int $customer;
-
     public function mount(): void
     {
         $this->customer = 7;
@@ -56,7 +55,6 @@ final class KeyOnlyInFirstMount
     #[State] public bool $open = false;
     /** @phpstan-ignore property.onlyWritten (Phem reads the key after the render) */
     #[BroadcastKey] private int $customer;
-
     public function mount(): void
     {
         $this->customer = 7;

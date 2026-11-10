@@ -29,7 +29,7 @@ final class PageState
     private const SUBSCRIBED_KEY = '_subscribed';
 
     /**
-     * @param array<string, array<string, mixed>> $fibers fiber id => state
+     * @param array<string, array<string, mixed>> $fibers     fiber id => state
      * @param array<string, mixed>                $values     the route values of the #[Path] props
      * @param list<string>                        $subscribed the components with #[Broadcast] of the first render
      */

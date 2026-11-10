@@ -30,7 +30,7 @@ final class NameValues
     }
 
     /**
-     * @param array<array-key, mixed>              $values
+     * @param array<array-key, mixed>             $values
      * @param \Closure(string, mixed): \Throwable $invalid the exception for a value with no string: its key and the value
      *
      * @return array<array-key, mixed>

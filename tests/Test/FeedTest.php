@@ -34,9 +34,11 @@ final class FeedTest extends KernelTestCase
 
         self::assertSame(['Three', 'Four', 'Five'], self::texts($page));
         $feed = $page->document()->querySelector('[data-phem-feed]');
+        $first = $feed?->firstElementChild;
+        self::assertNotNull($first);
         self::assertMatchesRegularExpression('/\Aphem[0-9a-f]{12}-messages\z/', (string) $feed?->id);
-        self::assertSame($feed?->id.'-3', $feed?->firstElementChild->id ?? null);
-        self::assertMatchesRegularExpression('/\A[\w-]+\.[\w-]{22}\z/', (string) $feed?->firstElementChild?->getAttribute('data-phem-item'));
+        self::assertSame($feed?->id.'-3', $first->id);
+        self::assertMatchesRegularExpression('/\A[\w-]+\.[\w-]{22}\z/', (string) $first->getAttribute('data-phem-item'));
         self::assertStringNotContainsString('phem-feed:', $page->html());
     }
 

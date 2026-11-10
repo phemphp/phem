@@ -13,9 +13,9 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Fixtures;
 
+use Phem\Attribute\Broadcast;
 use Phem\Attribute\Component;
 use Phem\Attribute\Prop;
-use Phem\Attribute\Broadcast;
 
 /** A component with #[Broadcast], for the topics (see Phem\Stream\Topics). */
 #[Component, Broadcast]

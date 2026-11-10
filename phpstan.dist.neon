@@ -8,9 +8,11 @@ parameters:
         - src
         - config
         - tests
-    # mercure_publish() of the FrankenPHP SAPI (see Phem\Stream\FrankenPhpPublisher).
+    # mercure_publish() of the FrankenPHP SAPI (see Phem\Stream\FrankenPhpPublisher), and the
+    # classes of the .phem fixtures that the tests use.
     scanFiles:
         - stubs/frankenphp.php
+        - stubs/fixtures.php
     # The PHP that phemc, Twig and Symfony generate in the var/ of the test apps.
     excludePaths:
         - tests/Fixtures/app/var
@@ -23,3 +25,5 @@ parameters:
         -
             identifier: class.extendsFinalByPhpDoc
             path: src/Html.php
+            # Only the Twig versions that mark the class @final give the error.
+            reportUnmatched: false

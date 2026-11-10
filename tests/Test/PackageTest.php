@@ -177,11 +177,11 @@ final class PackageTest extends KernelTestCase
 
     public function testATwigErrorOfAPackagePointsToItsSource(): void
     {
-        self::bootKernel();
+        $kernel = self::bootKernel();
 
         /** @var Manifest $manifest */
         $manifest = self::getContainer()->get('phem.manifest');
-        $projectDir = self::$kernel->getProjectDir();
+        $projectDir = $kernel->getProjectDir();
         $error = new \RuntimeException('outer', 0, new RuntimeError('Boom.', 1, new Source('', '@phemc/vendor/acme/ui/Badge.0.twig')));
 
         (new SourceMapListener(new SourceMap($manifest, $projectDir)))->map($error);

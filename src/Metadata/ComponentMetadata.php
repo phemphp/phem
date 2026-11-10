@@ -313,7 +313,7 @@ final class ComponentMetadata
         }
 
         // Before the attribute of the class: a page with #[Broadcast] has no handler that refreshes it.
-        $handlers = $reflection instanceof \ReflectionClass ? $this->broadcastHandlers($name) : [];
+        $handlers = $reflection instanceof \ReflectionClass ? $this->broadcastHandlers($reflection->getName()) : [];
         if ([] !== $handlers && !$this->isComponent($name)) {
             throw new \LogicException(\sprintf('The method "%s::%s()" has #[Broadcast], but "%s" is not a component: only a handler of a class component refreshes its component. Put #[Broadcast] on the page itself.', $name, $handlers[0], $name));
         }
@@ -634,7 +634,11 @@ final class ComponentMetadata
         };
     }
 
-    /** The reflection of a class or a function by its name, or null for another name (a template). */
+    /**
+     * The reflection of a class or a function by its name, or null for another name (a template).
+     *
+     * @return \ReflectionClass<object>|\ReflectionFunction|null
+     */
     private static function reflect(string $name): \ReflectionClass|\ReflectionFunction|null
     {
         return match (true) {

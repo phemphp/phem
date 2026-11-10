@@ -13,8 +13,8 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Fixtures;
 
-use Phem\Attribute\Component;
 use Phem\Attribute\Broadcast;
+use Phem\Attribute\Component;
 use Symfony\Component\HttpFoundation\Request;
 
 // A function page with #[Broadcast], for the topics (see Phem\Stream\Topics). Its parameters

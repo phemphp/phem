@@ -153,6 +153,8 @@ final class ContextMetadata
      * Whether #[Provide] is on the class or on a parent class. PHP does not inherit the attributes
      * of a class, but a base class gives its children the behavior of a provider, as it gives its
      * props, its state and its handlers.
+     *
+     * @param \ReflectionClass<object> $class
      */
     private static function providesItself(\ReflectionClass $class): bool
     {
