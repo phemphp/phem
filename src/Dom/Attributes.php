@@ -156,9 +156,37 @@ final class Attributes
             'phem:throttle' => static fn (mixed $ms): Markup => self::timing('throttle', $ms),
             'phem:key' => self::keyFilter(...),
             'phem:poll' => self::poll(...),
-            'phem:stop' => static fn (mixed $on): Markup => new Markup(true === $on ? 'data-phem-stop' : '', 'UTF-8'),
-            'phem:prevent' => static fn (mixed $on): Markup => new Markup(true === $on ? 'data-phem-prevent' : '', 'UTF-8'),
+            'phem:stop' => self::flag('data-phem-stop'),
+            'phem:prevent' => self::flag('data-phem-prevent'),
+            'phem:scroll-into-view' => self::flag('data-phem-scroll-into-view'),
+            'phem:keep-scroll' => self::keepScroll(...),
         ];
+    }
+
+    /**
+     * A directive with no value or a bool (`phem:stop`, `phem:stop={{ on }}`): true renders the
+     * attribute with no value, another value renders nothing.
+     *
+     * @return \Closure(mixed): Markup
+     */
+    private static function flag(string $attribute): \Closure
+    {
+        return static fn (mixed $on): Markup => new Markup(true === $on ? $attribute : '', 'UTF-8');
+    }
+
+    /**
+     * `phem:keep-scroll` → `data-phem-keep-scroll`: the item in view of the scroll element stays at
+     * its place in each render. `'end'` → `data-phem-keep-scroll="end"`: the element also stays at
+     * its end. Null or false renders nothing.
+     */
+    public static function keepScroll(mixed $mode): Markup
+    {
+        return match ($mode) {
+            null, false => new Markup('', 'UTF-8'),
+            true => new Markup('data-phem-keep-scroll', 'UTF-8'),
+            'end' => new Markup('data-phem-keep-scroll="end"', 'UTF-8'),
+            default => throw new \InvalidArgumentException(\sprintf('"phem:keep-scroll" takes true, \'end\', false or null, %s given.', \is_string($mode) ? '"'.$mode.'"' : '"'.get_debug_type($mode).'"')),
+        };
     }
 
     /**

@@ -16,14 +16,14 @@ namespace Phem\Tests\Fixtures;
 use Phem\BrowserEventDispatcher;
 
 /** A service that a handler calls: it sends a browser event with the injected dispatcher. */
-final class Announcer
+final class Greeter
 {
     public function __construct(private readonly BrowserEventDispatcher $dispatcher)
     {
     }
 
-    public function announce(string $message): void
+    public function greet(string $message): void
     {
-        $this->dispatcher->dispatch('announced', $message);
+        $this->dispatcher->dispatch('greeted', $message);
     }
 }

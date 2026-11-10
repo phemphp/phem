@@ -61,10 +61,10 @@ final class RedirectTest extends TestCase
 
     public function testResponseHasTheBrowserEventsOfTheInjectedDispatcher(): void
     {
-        $data = json_decode((string) $this->click('/notify', '#announce')->getContent(), true);
+        $data = json_decode((string) $this->click('/notify', '#greet')->getContent(), true);
 
         self::assertIsArray($data);
-        self::assertSame([['name' => 'toast', 'detail' => ['message' => 'Announced 1']], ['name' => 'announced', 'detail' => 'Hello']], $data['events']);
+        self::assertSame([['name' => 'toast', 'detail' => ['message' => 'Greeted 1']], ['name' => 'greeted', 'detail' => 'Hello']], $data['events']);
     }
 
     public function testFunctionPageThatReturnsARedirectAnswersTheGetWithA302(): void

@@ -382,6 +382,8 @@ A `phem:*` attribute adds a Phem behavior to an element:
 | `phem:stop` | Keeps the events of the element and its content from the handlers around it |
 | `phem:prevent` | Cancels the default action of the event of a handler of the element, such as the visit of a link |
 | `phem:poll={{ ms }}` | Sends the `onPoll` event of the element every `ms` milliseconds while the tab is visible. `null` stops the poll. See [Poll the server](events.md#poll-the-server) |
+| `phem:scroll-into-view` | After the morph of an event of the user, the browser scrolls to the element when the element is new. `phem:scroll-into-view={{ expr }}` turns it on only when the value is `true`. See [Scroll to a new item](events.md#scroll-to-a-new-item-after-an-event) |
+| `phem:keep-scroll` | On an element that scrolls: the element in view stays at its place in each render. `phem:keep-scroll="end"` also keeps the element at its end when it is at its end (a chat). See [Keep the scroll position](long-lists.md#keep-the-scroll-position-of-a-list) |
 | `phem:progress={{ handler }}` | Shows the progress of a file upload. See [File uploads](forms.md#accept-file-uploads) |
 | `phem:feed={{ prop }}` | Shows a `Feed` property: the element holds one `{% for %}` loop on the feed, with one element for each item. The browser keeps the items. See [Feeds](long-lists.md) |
 

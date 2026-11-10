@@ -73,6 +73,7 @@ final class PhemExtension extends AbstractExtension
             new TwigFunction('phem_timing', Attributes::timing(...), $safe),
             new TwigFunction('phem_key_filter', Attributes::keyFilter(...), $safe),
             new TwigFunction('phem_poll', Attributes::poll(...), $safe),
+            new TwigFunction('phem_keep_scroll', Attributes::keepScroll(...), $safe),
             new TwigFunction('phem_tag', DynamicTag::of(...)),
             new TwigFunction('phem_end_tag', DynamicTag::close(...), $safe),
             new TwigFunction('phem_class', [PhemRuntime::class, 'class'], $safe),

@@ -533,6 +533,8 @@ fn the_phem_attributes_of_an_html_element() {
     assert_eq!(snippet(r.get("phem:stop")), "phem:stop");
     assert_eq!(snippet(r.get("phem:prevent")), "phem:prevent");
     assert_eq!(snippet(r.get("phem:poll")), "phem:poll={{ ${1:30000} }}");
+    assert_eq!(snippet(r.get("phem:scroll-into-view")), "phem:scroll-into-view");
+    assert_eq!(snippet(r.get("phem:keep-scroll")), "phem:keep-scroll");
     assert_eq!(snippet(r.get("onVisible")), "onVisible={{ ${1} }}");
     assert_eq!(snippet(r.get("onPoll")), "onPoll={{ ${1} }}");
     assert_eq!(r.slice(r.get("phem:debounce").range), "phem:");

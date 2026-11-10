@@ -1,0 +1,2 @@
+<?phem // expect: E032
+function App() { return <li phem:scroll-into-view="yes">x</li>; }

@@ -154,6 +154,50 @@ The older items go after the element, so the update does not move it. The browse
 
 `prepend()` gives one stream for all its items, so they keep their order.
 
+## Keep the scroll position of a list
+
+Add `phem:keep-scroll` to an element that scrolls:
+
+```php
+<div className="feed" phem:keep-scroll>
+    <ul phem:feed={{ posts }}>
+        {% for post in posts %}<li>{{ post.text }}</li>{% endfor %}
+    </ul>
+</div>
+```
+
+```html
+<div class="feed" data-phem-keep-scroll>…</div>
+```
+
+In each render of the browser (the answer of an event, a push, a refresh), the element in view at the top of the scroll element stays at its place. The user reads the same post when new posts come before it. This is also true when the scroll element is at its top, or does not overflow yet: a list with the newest item first does not jump.
+
+For a chat, write `phem:keep-scroll="end"`. When the element is at its end before the render, it stays at its end, so the new messages show. An element that does not overflow yet is at its end. When the user scrolled up, the message in view stays at its place:
+
+```php
+<div className="messages" phem:keep-scroll="end">
+    <ul phem:feed={{ messages }}>…</ul>
+</div>
+```
+
+```html
+<div class="messages" data-phem-keep-scroll="end">…</div>
+```
+
+`phem:keep-scroll={{ expr }}` takes `true`, `'end'`, or `false` and `null` for no attribute.
+
+The browser finds the element in view again after the render:
+
+- An element with a key (`key={{ … }}`) or an `id`, such as the item of a feed, is found by its key, also when the render replaces its element. A key is unique in its list, so a reply in a comment is found in the replies of its comment.
+- An element with no key and no `id` is found when the render keeps its element. A morph can give the element of one item to another item, so give a key to the items.
+- When the render replaces the scroll element, the browser finds it again by its `id`.
+
+The browser measures only the scroll elements that a stream changes, and it writes the scroll position only when the element in view moved.
+
+A scroll element with `flex-direction: column-reverse` starts at its end in the browser, and its scroll position is negative. `phem:keep-scroll="end"` does not know this end: use `phem:keep-scroll`, and let the browser keep the end.
+
+Most browsers also have scroll anchoring, which keeps the view when content comes before it. `phem:keep-scroll` works with no scroll anchoring too, also when the morph replaces the element in view. To scroll to a new item after an event, see [Scroll to a new item after an event](events.md#scroll-to-a-new-item-after-an-event).
+
 ## Push changes to other browsers
 
 Add `#[Broadcast]` and a `#[BroadcastKey]` to the component, and push the changes with `feed()` on `Streams::toComponent()`:

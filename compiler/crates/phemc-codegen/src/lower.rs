@@ -854,7 +854,18 @@ impl<'a> Lowerer<'a> {
                         continue;
                     }
 
-                    if name == STOP || name == PREVENT {
+                    if name == KEEP_SCROLL {
+                        match self.keep_scroll_value(*name_span, value) {
+                            Some(KeepScroll::On) => hash.push(format!("{}: true", php_str(name))),
+                            Some(KeepScroll::End) => hash.push(format!("{}: 'end'", php_str(name))),
+                            Some(KeepScroll::Expr(c)) => hash.push(format!("{}: ({c})", php_str(name))),
+                            None => {}
+                        }
+
+                        continue;
+                    }
+
+                    if FLAGS.contains(&name.as_str()) {
                         if let Some(v) = self.flag_value(name, *name_span, value) {
                             hash.push(format!("{}: {}", php_str(name), v.map_or("true".into(), |c| format!("({c})"))));
                         }
@@ -1095,8 +1106,8 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// The value of `phem:stop` and `phem:prevent`: none, or a bool expression. True renders the
-    /// attribute. Returns the Twig code of an expression, or None.
+    /// The value of a flag (see FLAGS): none, or a bool expression. True renders the attribute.
+    /// Returns the Twig code of an expression, or None.
     fn flag_value(&mut self, name: &str, name_span: Span, value: &AttrValue) -> Option<Option<String>> {
         match value {
             AttrValue::None => Some(None),
@@ -1104,6 +1115,21 @@ impl<'a> Lowerer<'a> {
             AttrValue::Quoted { .. } => {
                 self.error(codes::BAD_ATTRIBUTE, format!("`{name}` takes no text"), name_span).help =
                     Some(format!("write `{name}`, or `{name}={{{{ on }}}}` with a bool"));
+                None
+            }
+        }
+    }
+
+    /// The value of `phem:keep-scroll`: none, the text `"end"`, or an expression (true, `'end'`,
+    /// or false and null for no attribute, checked by the runtime).
+    fn keep_scroll_value(&mut self, name_span: Span, value: &AttrValue) -> Option<KeepScroll> {
+        match value {
+            AttrValue::None => Some(KeepScroll::On),
+            AttrValue::Expr(x) => Some(KeepScroll::Expr(self.expr_code(x))),
+            AttrValue::Quoted { parts, .. } if matches!(parts.as_slice(), [StrPart::Lit(s)] if s == "end") => Some(KeepScroll::End),
+            AttrValue::Quoted { .. } => {
+                self.error(codes::BAD_ATTRIBUTE, format!("`{KEEP_SCROLL}` takes no text, or the text \"end\""), name_span).help =
+                    Some(format!("write `{KEEP_SCROLL}`, or `{KEEP_SCROLL}=\"end\"` to stay at the end"));
                 None
             }
         }
@@ -1506,7 +1532,18 @@ impl<'a> Lowerer<'a> {
                     return;
                 }
 
-                if name == STOP || name == PREVENT {
+                if name == KEEP_SCROLL {
+                    match self.keep_scroll_value(*name_span, value) {
+                        Some(KeepScroll::On) => out.push_str(&format!("{ws}data-phem-keep-scroll")),
+                        Some(KeepScroll::End) => out.push_str(&format!("{ws}data-phem-keep-scroll=\"end\"")),
+                        Some(KeepScroll::Expr(c)) => out.push_str(&format!("{ws}{{{{ phem_keep_scroll({c}) }}}}")),
+                        None => {}
+                    }
+
+                    return;
+                }
+
+                if FLAGS.contains(&name.as_str()) {
                     let html = format!("data-{}", name.replace(':', "-"));
                     match self.flag_value(name, *name_span, value) {
                         Some(None) => out.push_str(&format!("{ws}{html}")),
@@ -2279,6 +2316,22 @@ const STOP: &str = "phem:stop";
 
 /// `phem:prevent`: the event of a handler of the element does not do its default action.
 const PREVENT: &str = "phem:prevent";
+
+/// The directives with no value or a bool: true renders `data-phem-…` with no value.
+/// `phem:scroll-into-view`: after the morph of an event of the user, the browser scrolls to the
+/// element when it is new.
+const FLAGS: &[&str] = &[STOP, PREVENT, "phem:scroll-into-view"];
+
+/// `phem:keep-scroll`: the item in view of the scroll element stays at its place in each render.
+/// `phem:keep-scroll="end"`: the element also stays at its end when it is at its end.
+const KEEP_SCROLL: &str = "phem:keep-scroll";
+
+/// The value of `phem:keep-scroll`.
+enum KeepScroll {
+    On,
+    End,
+    Expr(String),
+}
 
 /// The modifiers of a key in `phem:key` (`ctrl+s`), as in the client.
 const KEY_MODIFIERS: &[&str] = &["ctrl", "shift", "alt", "meta"];

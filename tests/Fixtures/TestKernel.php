@@ -94,7 +94,7 @@ final class TestKernel extends PhemTestKernel
             // The Expression key of a #[RateLimit] in access.phem needs it.
             ->set('controller.expression_language', ExpressionLanguage::class)
             ->set(Limits::class)->autowire()
-            ->set(Announcer::class)->autowire()
+            ->set(Greeter::class)->autowire()
             ->set(Guestbook::class)
             ->set(CookieSetter::class)
                 ->tag('kernel.event_listener', ['event' => 'kernel.response', 'method' => 'onKernelResponse'])

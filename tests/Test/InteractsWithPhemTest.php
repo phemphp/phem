@@ -581,6 +581,27 @@ final class InteractsWithPhemTest extends KernelTestCase
         $this->assertFails(static fn () => $tester->assertToast(''), 'The last action did not show the toast "" (it showed info "Plain", info "Odd", info "["a","b"]").');
     }
 
+    public function testAssertAnnouncedChecksTheAnnouncementsOfTheLastAction(): void
+    {
+        $tester = $this->mount(self::NOTIFIER)
+            ->click('#announce')
+            ->assertAnnounced('3 results')
+            ->assertAnnounced('Saved')
+            ->assertDispatched('announce', ['message' => '3 results'])
+            ->assertNotDispatched('toast');
+
+        $this->assertFails(static fn () => $tester->assertAnnounced('Gone'), 'The last action did not announce "Gone" (it announced "3 results", "Saved").');
+        // The browser does not announce an empty message.
+        $this->assertFails(static fn () => $tester->assertAnnounced(' '), 'The last action did not announce " "');
+
+        $this->visit('/notify')
+            ->click('#announce')
+            ->assertAnnounced('3 results');
+
+        $tester->click('#quiet');
+        $this->assertFails(static fn () => $tester->assertAnnounced('3 results'), 'The last action did not announce "3 results".');
+    }
+
     public function testAHandlerShowsAToastWithTheInjectedService(): void
     {
         $this->mount(self::NOTIFIER)
@@ -622,19 +643,19 @@ final class InteractsWithPhemTest extends KernelTestCase
     public function testAHandlerDispatchesWithTheInjectedDispatcher(): void
     {
         $this->mount(self::NOTIFIER)
-            ->click('#announce')
-            ->assertDispatched('toast', ['message' => 'Announced 1'])
-            ->assertDispatched('announced', 'Hello')
+            ->click('#greet')
+            ->assertDispatched('toast', ['message' => 'Greeted 1'])
+            ->assertDispatched('greeted', 'Hello')
             ->click('#quiet')
             ->assertNotDispatched('toast')
-            ->assertNotDispatched('announced');
+            ->assertNotDispatched('greeted');
 
         $this->visit('/notify')
-            ->click('#announce')
-            ->assertDispatched('toast', ['message' => 'Announced 1'])
-            ->assertDispatched('announced', 'Hello')
+            ->click('#greet')
+            ->assertDispatched('toast', ['message' => 'Greeted 1'])
+            ->assertDispatched('greeted', 'Hello')
             ->click('#quiet')
-            ->assertNotDispatched('announced');
+            ->assertNotDispatched('greeted');
     }
 
     public function testVisitWritesTheUrlPropertiesIntoTheUrl(): void

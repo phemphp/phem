@@ -2,6 +2,11 @@ import * as Turbo from "@hotwired/turbo"
 import { Controller } from "@hotwired/stimulus"
 // Listens on each page: the keyboard of a field that gets the focus after a server round trip.
 import "./phem_keyboard.js"
+// Listens on each page: the messages of `$e->announce()` for screen readers.
+import "./phem_announcer.js"
+// Keeps the scroll position of `phem:keep-scroll` in each render, and scrolls to a new
+// `phem:scroll-into-view` element after the morph of an event.
+import { scrollTargets, scrollToNew } from "./phem_scroll.js"
 import { DialogQuestion } from "./phem_dialog_question.js"
 
 const TEXT_INPUTS = new Set(["text", "search", "email", "url", "tel", "password", "number", "date", "time", "datetime-local", "month", "week", "color", "range"])
@@ -386,6 +391,9 @@ function resetField(field) {
 // The start of the id that an element with a `key` or a fiber id gets while a morph runs (see
 // keyIds() and componentIds()).
 const KEY_ID = "phem-key:"
+
+// The events that the browser sends with no action of the user (see scrollToNew()).
+const BROWSER_EVENTS = new Set(["load", "poll", "visible"])
 
 // The attribute of the fiber id of a component: on its root element, or on its `<phem-c>` when
 // the component renders a text, more than one element or another component.
@@ -2076,6 +2084,9 @@ export default class PhemController extends Controller {
     notify("receive")
     // Turbo dispatches `turbo:before-stream-render` while renderStreams() runs (see keyMorph).
     this.stateBefore = stateBefore
+    // Only an event of the user scrolls: not a refresh (the changes of another browser), and not
+    // the events of the browser (a boundary that loads, a poll, an element that comes into view).
+    const scrolls = event.refresh || BROWSER_EVENTS.has(event.type) ? null : scrollTargets(this.element)
     let rendered
     try {
       rendered = data.streams ? this.renderStreams(data.streams, handler) : afterStreams()
@@ -2096,6 +2107,7 @@ export default class PhemController extends Controller {
       this.resetRejected(bound)
       if (data.clearFiles) this.clearFiles(event)
       this.markDirty()
+      if (scrolls) scrollToNew(this.element, scrolls)
 
       // After the morph, so a listener sees the new page.
       const target = this.componentRoot(handler)

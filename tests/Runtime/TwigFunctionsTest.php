@@ -219,10 +219,25 @@ final class TwigFunctionsTest extends TestCase
         yield 'true' => [true];
     }
 
-    public function testStopAndPreventInASpread(): void
+    public function testFlagsInASpread(): void
     {
         self::assertSame('data-phem-stop data-phem-prevent', (string) $this->runtime()->attrs(['phem:stop' => true, 'phem:prevent' => true]));
         self::assertSame('', (string) $this->runtime()->attrs(['phem:stop' => false, 'phem:prevent' => 'yes']));
+        self::assertSame('data-phem-scroll-into-view data-phem-keep-scroll', (string) $this->runtime()->attrs(['phem:scroll-into-view' => true, 'phem:keep-scroll' => true]));
+        self::assertSame('data-phem-keep-scroll="end"', (string) $this->runtime()->attrs(['phem:keep-scroll' => 'end']));
+        self::assertSame('', (string) $this->runtime()->attrs(['phem:scroll-into-view' => false, 'phem:keep-scroll' => null]));
+    }
+
+    public function testKeepScrollTakesTrueOrEnd(): void
+    {
+        self::assertSame('data-phem-keep-scroll', (string) Attributes::keepScroll(true));
+        self::assertSame('data-phem-keep-scroll="end"', (string) Attributes::keepScroll('end'));
+        self::assertSame('', (string) Attributes::keepScroll(false));
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('"phem:keep-scroll" takes true, \'end\', false or null, "top" given.');
+
+        Attributes::keepScroll('top');
     }
 
     public function testStringOutputOfAComponentIsText(): void

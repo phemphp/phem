@@ -1,0 +1,17 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<section>
+                <div class="thread" data-phem-keep-scroll>
+                    <ul>
+                        {% for comment in comments %}
+                            <li {{ phem_key(comment) }} {{ phem_attr('data-phem-scroll-into-view', (comment is same as(added)) is same as(true)) }}>Comment {{ comment }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div class="chat" data-phem-keep-scroll="end">Chat</div>
+                <div {{ phem_keep_scroll(chat ? 'end' : true) }}>Either</div>
+                <div {{ phem_attrs(rest, {'phem:scroll-into-view': true, 'phem:keep-scroll': true}) }}>Last</div>
+                <button type="button" {{ phem_on('click', add) }}>Add</button>
+            </section>

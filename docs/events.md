@@ -318,7 +318,72 @@ The event starts on the component’s element and bubbles up to `window`. A serv
 
 The name has only letters, digits and `_ - . :`. The browser uses these names itself, so you can’t use them: `call`, `before-queue`, `queue`, `send`, `receive`, `done`, `error`, `rate-limited` and `upload-progress`. The detail must be a value that JSON can encode. `dispatch()` throws an `InvalidArgumentException` for a name or a detail that breaks these rules.
 
-To show a message to the user, call `$e->toast('Saved')`. See [Show toast messages](ui-controllers.md#show-toast-messages).
+To show a message to the user, call `$e->toast('Saved')`. See [Show toast messages](ui-controllers.md#show-toast-messages). To tell only a screen reader, call `$e->announce()`. See [Announce a change to screen readers](#announce-a-change-to-screen-readers).
+
+## Scroll to a new item after an event
+
+Add `phem:scroll-into-view` to an element that an event adds, such as a new comment. After the morph of the event, the browser scrolls to the element:
+
+```php
+#[State] public ?int $added = null;
+
+public function add(): void
+{
+    $this->added = $this->repository->add($this->draft)->id;
+}
+```
+
+```php
+<ul>
+    {% for comment in comments %}
+        <li key={{ comment.id }} phem:scroll-into-view={{ comment.id is same as(added) }}>{{ comment.text }}</li>
+    {% endfor %}
+</ul>
+```
+
+After `add`, the new item has the attribute:
+
+```html
+<li data-phem-key="7" data-phem-scroll-into-view>Hello</li>
+```
+
+The browser scrolls to the first element in the page that has the attribute now and did not have it before the morph. An element that keeps the attribute in the next events does not scroll again. Give a `key` to the items of a list: with no key, the morph can give the element of one item to another item, and the browser can scroll to an item again. The browser scrolls only as much as necessary (`block: "nearest"`), and the CSS `scroll-behavior` of the page sets the animation.
+
+Only an event of the user scrolls. The browser does not scroll on page load, for a `<Suspense>` boundary that loads, for `onPoll` and `onVisible`, in a push, or in the refresh after a push: a change that the user did not start does not move the view. The focus does not move. To move the focus, see [Focus a field after an event](ui-controllers.md#focus-a-field-after-an-event).
+
+`phem:scroll-into-view` with no value always adds the attribute. `phem:scroll-into-view={{ expr }}` adds it only when the value is `true`.
+
+## Announce a change to screen readers
+
+A screen reader does not see all the changes of a morph, for example the new number of results of a search. Call `$e->announce()` to tell the user with no toast on the screen:
+
+```php
+public function search(Event $e): void
+{
+    $this->results = $this->products->search($this->query);
+    $e->announce(\sprintf('%d results', \count($this->results)));
+}
+```
+
+After the morph, the browser puts the message in a hidden live region. The region is in the `<body>` from the page load, out of the morph, because many screen readers do not read a live region that a page just added:
+
+```html
+<div data-phem-announcer role="status" aria-live="polite" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); …">
+    <p>3 results</p>
+</div>
+```
+
+The browser removes the old text first, so a screen reader also reads the same message again. The messages of one event show together. The region is polite: the screen reader waits until the user stops.
+
+A component or a service that the handler calls injects `Phem\Announcements`:
+
+```php
+public function __construct(private readonly Announcements $announcements) {}
+
+$this->announcements->announce('3 results');
+```
+
+`announce()` sends the `announce` browser event with `{"message": "3 results"}`. An empty message throws an `InvalidArgumentException`. A handler that fails or redirects announces nothing. In a test, check the message with `assertAnnounced('3 results')`.
 
 ## Call a handler from your JavaScript
 

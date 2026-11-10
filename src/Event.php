@@ -45,7 +45,8 @@ final class Event
      *                                            (see Phem\Attribute\MapForm)
      * @param BrowserEventDispatcher  $dispatcher sends browser events with the response
      *                                            (`$e->dispatcher->dispatch('saved', [...])`).
-     *                                            For a toast, call toast()
+     *                                            For a toast, call toast(). For a screen
+     *                                            reader, call announce()
      * @param array<array-key, mixed> $files      the files of the form, for `submit`: name => an
      *                                            UploadedFile, in the shape of `$request->files->all()`
      *                                            (`photos[]` gives a list). For `drop` and `paste`:
@@ -104,6 +105,22 @@ final class Event
     public function toast(string $message, ToastType $type = ToastType::Info, ?int $duration = null): void
     {
         new Toasts($this->dispatcher)->show($message, $type, $duration);
+    }
+
+    /**
+     * Announces the message to screen readers after the morph, with no toast on the screen: the
+     * browser puts it in a hidden live region (`aria-live="polite"`). Use it for a change that a
+     * screen reader does not see, as the new number of results of a search.
+     *
+     *     $e->announce('3 results');
+     *
+     * A service uses Phem\Announcements. A redirect does not announce.
+     *
+     * @throws \InvalidArgumentException for an empty message
+     */
+    public function announce(string $message): void
+    {
+        new Announcements($this->dispatcher)->announce($message);
     }
 
     /**

@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Runtime;
 
+use Phem\Announcements;
 use Phem\Event;
 use PHPUnit\Framework\TestCase;
 
@@ -86,5 +87,30 @@ final class EventTest extends TestCase
 
         $event->clearFiles();
         self::assertTrue($event->clearsFiles());
+    }
+
+    public function testAnnounceDispatchesTheMessageForScreenReaders(): void
+    {
+        $event = new Event('click');
+        $event->announce('3 results');
+
+        self::assertSame([['name' => 'announce', 'detail' => ['message' => '3 results']]], $event->dispatcher->dispatched());
+    }
+
+    public function testAnnounceRejectsAnEmptyMessage(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The message of an announcement cannot be empty.');
+
+        new Event('click')->announce(' ');
+    }
+
+    public function testTheMessageOfAnAnnouncementIsReadAsTheBrowserReadsIt(): void
+    {
+        self::assertSame('3 results', Announcements::messageOf(['message' => '3 results']));
+        self::assertSame('Saved', Announcements::messageOf('Saved'));
+        self::assertNull(Announcements::messageOf(['message' => ' ']));
+        self::assertNull(Announcements::messageOf(['message' => ['a']]));
+        self::assertNull(Announcements::messageOf(null));
     }
 }

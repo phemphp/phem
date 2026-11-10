@@ -1,0 +1,44 @@
+<?phem
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\{Component, State};
+use Phem\Event;
+use Phem\Node;
+
+#[Component]
+final class Scroll
+{
+    /** @var list<int> */
+    #[State] public array $comments = [1, 2, 3];
+    #[State] public ?int $added = null;
+    #[State] public bool $chat = true;
+
+    public function add(Event $e): void
+    {
+        $this->added = \count($this->comments) + 1;
+        $this->comments[] = $this->added;
+        $e->announce('Comment added');
+    }
+
+    public function render(): Node
+    {
+        $rest = ['phem:keep-scroll' => 'end'];
+
+        return (
+            <section>
+                <div className="thread" phem:keep-scroll>
+                    <ul>
+                        {% for comment in comments %}
+                            <li key={{ comment }} phem:scroll-into-view={{ comment is same as(added) }}>Comment {{ comment }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div className="chat" phem:keep-scroll="end">Chat</div>
+                <div phem:keep-scroll={{ chat ? 'end' : true }}>Either</div>
+                <div {{ ...rest }} phem:scroll-into-view phem:keep-scroll>Last</div>
+                <button type="button" onClick={{ add }}>Add</button>
+            </section>
+        );
+    }
+}

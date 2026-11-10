@@ -533,6 +533,8 @@ To focus a child, put the controller on a parent and add `data-phem-autofocus-ta
 
 The element gets the focus on page load and in the morph of an event that the user started. A push or a refresh of the server doesn’t move the focus. It doesn’t steal the focus from a field the user is editing.
 
+To scroll to a new element with no focus, see [Scroll to a new item after an event](events.md#scroll-to-a-new-item-after-an-event).
+
 ### Open the iOS keyboard after a round trip
 
 iOS opens the keyboard only for a focus inside a tap. After a server round trip, such as a Turbo visit or the morph of an event, the field gets the focus but no keyboard opens. Add `data-phem-autofocus-keyboard` to the link or to the event element that shows the field:

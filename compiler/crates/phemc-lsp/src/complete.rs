@@ -107,6 +107,8 @@ const PHEM_ATTRIBUTES: &[(&str, &str, &str, &str)] = &[
     ("phem:stop", "phem:stop", "Phem: keep the events from the handlers around", "The events of the element and its content do not go to the handlers of the elements around it: `<button onClick={{ star }} phem:stop>★</button>` in a row with `onClick`."),
     ("phem:prevent", "phem:prevent", "Phem: cancel the default action", "The event of a handler of the element does not do its default action: `<a href=\"/cart\" onClick={{ add }} phem:prevent>` does not open the link."),
     ("phem:poll", "phem:poll={{ ${1:30000} }}", "Phem: send onPoll at an interval", "Milliseconds: the browser sends the `onPoll` event of the element at this interval, while the tab is visible: `<span onPoll={{ refresh }} phem:poll={{ 30000 }}>`. `null` stops the poll."),
+    ("phem:scroll-into-view", "phem:scroll-into-view", "Phem: scroll to the element when an event adds it", "After the morph of an event of the user, the browser scrolls to the element when it is new, or when it did not have the attribute before: `<li key={{ comment.id }} phem:scroll-into-view={{ comment.id is same as(added) }}>`. A push, a refresh, a poll and `onVisible` do not scroll."),
+    ("phem:keep-scroll", "phem:keep-scroll", "Phem: keep the scroll position through the morph", "On an element that scrolls: the item in view stays at its place when an event or a push changes the list: `<div className=\"feed\" phem:keep-scroll>`. With `\"end\"`, the element also stays at its end when it is at its end, as a chat: `<div className=\"messages\" phem:keep-scroll=\"end\">`."),
 ];
 
 /// `phem:error`: on an HTML element, and on the tag of a component with an `id` prop.

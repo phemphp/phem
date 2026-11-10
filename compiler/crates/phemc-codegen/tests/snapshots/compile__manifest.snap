@@ -320,6 +320,15 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       "required": [],
       "rest": true
     },
+    "App\\Ui\\Common\\Scroll": {
+      "fqcn": "App\\Ui\\Common\\Scroll",
+      "kind": "class",
+      "source": "Ui/Common/Scroll.phem",
+      "props": [],
+      "slots": [],
+      "required": [],
+      "rest": false
+    },
     "App\\Ui\\Common\\Settings": {
       "fqcn": "App\\Ui\\Common\\Settings",
       "kind": "template",
@@ -646,6 +655,10 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       "source": "Ui/Common/Rest.phem",
       "line": 37
     },
+    "Ui/Common/Scroll.0.twig": {
+      "source": "Ui/Common/Scroll.phem",
+      "line": 29
+    },
     "Ui/Common/Tabs.0.twig": {
       "source": "Ui/Common/Tabs.phem",
       "line": 22
@@ -723,6 +736,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "php/Ui/Common/Filters.php",
     "php/Ui/Common/Modifiers.php",
     "php/Ui/Common/Rest.php",
+    "php/Ui/Common/Scroll.php",
     "php/Ui/Common/Tabs.php",
     "php/Ui/Common/TagKeywords.php",
     "php/Ui/Common/Triggers.php",

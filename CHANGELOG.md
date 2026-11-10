@@ -8,6 +8,15 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Scroll and screen-reader support after a morph. `phem:scroll-into-view` on an element that an
+  event adds (a new comment) scrolls the browser to it after the morph of an event of the user,
+  but not on page load, for a boundary that loads, a poll, `onVisible`, a push or a refresh.
+  `phem:keep-scroll` on an element that scrolls keeps the element in view at its place in each
+  render, also in a push and when the render replaces the element. `phem:keep-scroll="end"` also
+  keeps a chat at its end. `$e->announce('3 results')` and the `Phem\Announcements` service put
+  a message in a hidden live region for screen readers, with no toast.
+  `ComponentTester::assertAnnounced()` checks it in a test. `phemc` gives E032 for a text value of
+  `phem:scroll-into-view`, and for a text other than `"end"` of `phem:keep-scroll`.
 - Built-in controllers for complex input, with the design of Base UI: no CSS, named parts, and the
   state in data attributes and CSS variables. `phem-popover` shows a popup next to its trigger,
   `phem-tooltip` a short text on hover and on the focus of the keyboard, `phem-menu` a list of

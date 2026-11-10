@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
+use Phem\Announcements;
 use Phem\Argument\CallableArguments;
 use Phem\Argument\CallValueResolver;
 use Phem\Argument\EventValueResolver;
@@ -302,7 +303,7 @@ return static function (ContainerConfigurator $container): void {
         ]);
 
     /*
-     * Browser events and toasts
+     * Browser events, toasts and announcements
      */
 
     $services->set('phem.browser_event_dispatcher', BrowserEventDispatcher::class)
@@ -312,6 +313,10 @@ return static function (ContainerConfigurator $container): void {
     $services->set('phem.toasts', Toasts::class)
         ->args([service('phem.browser_event_dispatcher')]);
     $services->alias(Toasts::class, 'phem.toasts');
+
+    $services->set('phem.announcements', Announcements::class)
+        ->args([service('phem.browser_event_dispatcher')]);
+    $services->alias(Announcements::class, 'phem.announcements');
 
     /*
      * Rendering

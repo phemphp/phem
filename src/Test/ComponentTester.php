@@ -15,6 +15,7 @@ namespace Phem\Test;
 
 use Dom\Element;
 use Dom\HTMLDocument;
+use Phem\Announcements;
 use Phem\Dom\KeyFilter;
 use Phem\Event;
 use Phem\Form\TouchedFields;
@@ -733,6 +734,23 @@ final class ComponentTester
         $showed = implode(', ', array_map(strval(...), $toasts));
 
         Assert::assertNotEmpty($found, \sprintf('The last action did not show the toast %s"%s"%s.', null === $type ? '' : $type->value.' ', $message, '' === $showed ? '' : \sprintf(' (it showed %s)', $showed)));
+
+        return $this;
+    }
+
+    /**
+     * Asserts that the last action announced this message to screen readers (see
+     * Phem\Announcements), as the browser reads it: an empty message does not count.
+     *
+     *     ->assertAnnounced('3 results')
+     */
+    public function assertAnnounced(string $message): self
+    {
+        // The messages that the browser puts in its live region.
+        $messages = array_values(array_filter(array_map(Announcements::messageOf(...), $this->detailsOf(Announcements::EVENT))));
+        $announced = [] === $messages ? '' : \sprintf(' (it announced "%s")', implode('", "', $messages));
+
+        Assert::assertContains($message, $messages, \sprintf('The last action did not announce "%s"%s.', $message, $announced));
 
         return $this;
     }

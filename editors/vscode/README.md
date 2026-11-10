@@ -121,8 +121,8 @@ In an HTML tag, completion also gives:
 
 - the Phem events: `onClick`, `onSubmit`, ...;
 - the Phem attributes: `phem:loading`, `phem:progress`, `phem:debounce`, `phem:throttle`,
-  `phem:key`, `phem:stop`, `phem:prevent`, `phem:poll`, `phem:bind`, `phem:error`,
-  `phem:feed`, and `phem:live`;
+  `phem:key`, `phem:stop`, `phem:prevent`, `phem:poll`, `phem:scroll-into-view`,
+  `phem:keep-scroll`, `phem:bind`, `phem:error`, `phem:feed`, and `phem:live`;
 - `className` and `key`.
 
 In a component tag, completion gives the props and `key`, and `phem:error` when the component

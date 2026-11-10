@@ -1,0 +1,48 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from Ui/Common/Scroll.phem; do not edit */
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\{Component, State};
+use Phem\Event;
+use Phem\Node;
+
+#[Component]
+final class Scroll
+{
+    /** @var list<int> */
+    #[State] public array $comments = [1, 2, 3];
+    #[State] public ?int $added = null;
+    #[State] public bool $chat = true;
+
+    public function add(Event $e): void
+    {
+        $this->added = \count($this->comments) + 1;
+        $this->comments[] = $this->added;
+        $e->announce('Comment added');
+    }
+
+    public function render(): Node
+    {
+        $rest = ['phem:keep-scroll' => 'end'];
+
+        return (
+            new \Phem\Element('Ui/Common/Scroll.0.twig', ['comments' => $this->comments, 'added' => $this->added, 'chat' => $this->chat, 'rest' => $rest, 'add' => $this->add(...)])
+
+
+
+
+
+
+
+
+
+
+
+
+        );
+    }
+}

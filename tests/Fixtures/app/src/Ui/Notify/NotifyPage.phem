@@ -2,13 +2,14 @@
 
 namespace App\Ui\Notify;
 
+use Phem\Announcements;
 use Phem\Attribute\{Component, Page, State};
 use Phem\BrowserEventDispatcher;
 use Phem\Event;
 use Phem\Node;
 use Phem\Toasts;
 use Phem\ToastType;
-use Phem\Tests\Fixtures\Announcer;
+use Phem\Tests\Fixtures\Greeter;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 use function App\Ui\Common\Document;
@@ -21,8 +22,9 @@ final class Notifier
 
     public function __construct(
         private readonly BrowserEventDispatcher $dispatcher,
-        private readonly Announcer $announcer,
+        private readonly Greeter $greeter,
         private readonly Toasts $toasts,
+        private readonly Announcements $announcements,
     ) {
     }
 
@@ -34,11 +36,20 @@ final class Notifier
     }
 
     // No Event parameter: the injected dispatcher, and a service that has it too.
-    public function announce(): void
+    public function greet(): void
     {
         ++$this->count;
-        $this->dispatcher->dispatch('toast', ['message' => 'Announced '.$this->count]);
-        $this->announcer->announce('Hello');
+        $this->dispatcher->dispatch('toast', ['message' => 'Greeted '.$this->count]);
+        $this->greeter->greet('Hello');
+    }
+
+    // Messages for screen readers, with no toast: of the event and of the injected service. The
+    // browser does not announce an empty message.
+    public function announce(Event $e): void
+    {
+        $e->announce('3 results');
+        $this->announcements->announce('Saved');
+        $e->dispatcher->dispatch('announce', ['message' => ' ']);
     }
 
     public function toast(Event $e): void
@@ -88,6 +99,7 @@ final class Notifier
         return (
             <div>
                 <button id="save" onClick={{ save }}>Save {{ count }}</button>
+                <button id="greet" onClick={{ greet }}>Greet</button>
                 <button id="announce" onClick={{ announce }}>Announce</button>
                 <button id="toast" onClick={{ toast }}>Toast</button>
                 <button id="remind" onClick={{ remind }}>Remind</button>

@@ -110,18 +110,6 @@ A small computed value needs a custom Stimulus controller or a round trip: a cha
 - **Open question:** a small built-in controller (`phem-count`, `phem-reveal`), or a guide for
   Alpine with `data-phem-client`.
 
-### [ ] Focus, scroll and screen-reader support after a morph — P2
-
-- Scroll to a new item after an event (a new comment).
-- Keep the scroll position of a list that a push changes.
-- Announce a change that is not a toast in an `aria-live` region.
-
-`phem-autofocus` covers only the focus when an element connects.
-
-- **Best peer:** LV `JS.focus()`, `phx-mounted`; LW `wire:scroll`.
-- **Proposal:** `phem:scroll-into-view` on an element that an event adds, and
-  `$e->announce('3 results')`.
-
 ### [ ] Offline queue — P3
 
 The `phem-offline` class shows the state, and events wait for `online`. A reload loses the

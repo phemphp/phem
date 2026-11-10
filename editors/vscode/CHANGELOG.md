@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Completion for the Phem attributes `phem:scroll-into-view` and `phem:keep-scroll`.
 - Completion for the Phem attributes `phem:key`, `phem:stop`, `phem:prevent` and `phem:poll`,
   and for the events `onVisible` and `onPoll`.
 - The files are now `.phem` files that open with `<?phem` (before: `.phpm` and `<?phpm`). The

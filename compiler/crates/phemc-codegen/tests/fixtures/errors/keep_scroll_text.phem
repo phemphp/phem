@@ -1,0 +1,2 @@
+<?phem // expect: E032
+function App() { return <div phem:keep-scroll="top">x</div>; }

@@ -1,0 +1,181 @@
+<?phem
+
+namespace App\Ui\Scroll;
+
+use App\Chat;
+use App\ChatMessage;
+use App\Guestbook;
+use Phem\Attribute\{Broadcast, BroadcastKey, Component, Page, Path, Prop, State};
+use Phem\Event;
+use Phem\Feed;
+use Phem\Node;
+use Phem\Stream\Streams;
+
+use function App\Ui\Common\Document;
+
+// A thread that scrolls, with the newest entry first. phem:keep-scroll keeps the entry in view
+// at its place when a push adds an entry before it, and phem:scroll-into-view shows the entry
+// that the user adds. With `end`, the thread also stays at its end. `overflow-anchor: none`
+// turns off the scroll anchoring of the browser: the position comes from phem:keep-scroll only.
+#[Component]
+final class ScrollEntries
+{
+    #[Prop] public string $room;
+    /** The id of the entry that this browser added. */
+    #[Prop] public ?int $added = null;
+    /** `phem:keep-scroll="end"`: the thread stays at its end. */
+    #[Prop] public bool $end = false;
+    /** Data with no state: each render reads it again, also the render of a push. */
+    public array $entries = [];
+
+    public function __construct(private readonly Guestbook $guestbook)
+    {
+    }
+
+    public function mount(): void
+    {
+        $this->entries = $this->guestbook->entries($this->room);
+    }
+
+    public function render(): Node
+    {
+        $old = range(1, 10);
+
+        return (
+            <div id="thread" phem:keep-scroll={{ end ? 'end' : true }} style="height: 200px; overflow-y: auto; overflow-anchor: none">
+                <ul style="margin: 0; padding: 0; list-style: none">
+                    {% for entry in entries %}
+                        <li key={{ entry.id }} id="entry-{{ entry.id }}" phem:scroll-into-view={{ entry.id is same as(added) }} style="height: 50px; margin: 0">{{ entry.text }}</li>
+                    {% endfor %}
+                    {% for i in old %}
+                        <li key={{ 'old-' ~ i }} id="old-{{ i }}" style="height: 50px; margin: 0">Old {{ i }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        );
+    }
+}
+
+// A sign renders the thread again in the other browsers of the room (#[Broadcast]), and
+// announces the new entry to screen readers.
+#[Component, Broadcast]
+final class ScrollThread
+{
+    #[Prop, BroadcastKey] public string $room;
+    #[Prop] public bool $end = false;
+    #[State] public string $text = '';
+    #[State] public ?int $added = null;
+
+    public function __construct(private readonly Guestbook $guestbook)
+    {
+    }
+
+    public function sign(Event $e): void
+    {
+        $this->added = $this->guestbook->add($this->room, $this->text)['id'];
+        $this->text = '';
+        $e->announce('Message added');
+    }
+
+    public function render(): Node
+    {
+        return (
+            <section>
+                <form onSubmit={{ sign }}>
+                    <input name="text" aria-label="Message" phem:bind={{ text }} />
+                    <button id="sign" type="submit">Sign</button>
+                </form>
+                <ScrollEntries room={{ room }} added={{ added }} end={{ end }} />
+            </section>
+        );
+    }
+}
+
+#[Page('/scroll/{mode}/{room}')]
+final class ScrollPage
+{
+    /** `keep` or `end` (see ScrollEntries). */
+    #[Path] public string $mode;
+    #[Path] public string $room;
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Scroll {{ room }}">
+                <ScrollThread room={{ room }} end={{ mode is same as('end') }} />
+                <a id="away" href="/counter">Counter</a>
+            </Document>
+        );
+    }
+}
+
+// A chat with a feed (see Phem\Feed) in a box that stays at its end: a push appends a message at
+// the end, and older() prepends the older messages in this browser. The feed and its items have
+// ids, and the items have no key.
+#[Component, Broadcast(handlers: false)]
+final class ScrollChat
+{
+    #[Prop, BroadcastKey] public string $room;
+    #[State] public string $draft = '';
+    #[State] public ?int $oldest = null;
+    public Feed $messages;
+
+    public function __construct(
+        private readonly Chat $chat,
+        private readonly Streams $streams,
+    ) {
+    }
+
+    public function mount(): void
+    {
+        $latest = $this->chat->latest($this->room, 4);
+        $this->messages->append(...$latest);
+        $this->oldest = $latest[0]->id ?? null;
+    }
+
+    public function send(): void
+    {
+        $message = $this->chat->add($this->room, $this->draft);
+        $this->messages->append($message);
+        $this->draft = '';
+        $this->streams->toComponent(self::class, ['room' => $this->room])->feed('messages')->append($message);
+    }
+
+    public function older(): void
+    {
+        $older = null !== $this->oldest ? $this->chat->before($this->room, $this->oldest, 2) : [];
+        $this->messages->prepend(...$older);
+        $this->oldest = $older[0]->id ?? null;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <section>
+                <div id="messages" phem:keep-scroll="end" style="height: 100px; overflow-y: auto; overflow-anchor: none">
+                    <ul phem:feed={{ messages }} style="margin: 0; padding: 0; list-style: none">
+                        {% for message in messages %}
+                            <li style="height: 50px; margin: 0">{{ message.text }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% if oldest %}<button id="older" type="button" onClick={{ older }}>Older</button>{% endif %}
+                <form onSubmit={{ send }}>
+                    <input name="draft" aria-label="Message" phem:bind={{ draft }} />
+                    <button id="send" type="submit">Send</button>
+                </form>
+            </section>
+        );
+    }
+}
+
+#[Page('/scroll-chat/{room}')]
+final class ScrollChatPage
+{
+    #[Path] public string $room;
+
+    public function render(): Node
+    {
+        return <Document title="Scroll chat {{ room }}"><ScrollChat room={{ room }} /></Document>;
+    }
+}
