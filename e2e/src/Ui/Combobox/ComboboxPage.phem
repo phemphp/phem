@@ -1,0 +1,50 @@
+<?phem
+
+namespace App\Ui\Combobox;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Common\Document;
+
+// A city field: the server gives the cities that start with the text.
+#[Page('/combobox')]
+final class ComboboxPage
+{
+    private const array CITIES = ['Lyon', 'Paris', 'Parma', 'Porto'];
+
+    #[State] public string $query = '';
+    #[State] public string $city = '';
+
+    public function choose(string $city): void
+    {
+        $this->city = $city;
+        $this->query = $city;
+    }
+
+    public function render(): Node
+    {
+        $text = strtolower(trim($this->query));
+        $results = '' === $text || $text === strtolower($this->city) ? [] : array_values(array_filter(
+            self::CITIES,
+            static fn (string $name): bool => str_starts_with(strtolower($name), $text),
+        ));
+
+        return (
+            <Document title="Combobox">
+                <div id="combobox" data-controller="phem-combobox">
+                    <input id="input" data-phem-combobox-target="input" phem:bind={{ query }} phem:live aria-label="City" />
+                    <div id="popup" data-phem-combobox-target="popup" hidden>
+                        <ul id="list" data-phem-combobox-target="list">
+                            {% for name in results %}
+                                <li key={{ name }} id={{ 'city-' ~ name }} data-phem-combobox-target="item" onClick={{ choose(name) }}>{{ name }}</li>
+                            {% endfor %}
+                        </ul>
+                        <p id="empty" data-phem-combobox-target="empty">No city.</p>
+                    </div>
+                </div>
+                <output id="city">{{ city }}</output>
+            </Document>
+        );
+    }
+}

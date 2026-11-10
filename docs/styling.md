@@ -58,8 +58,10 @@ To use your own merger, set `class_merger.service` to the id of a `Phem\Dom\Clas
 The `phem.css` file of the client gives a default look to the error message of a failed event and to the toasts (see [Client assets](installation.md#client-assets)). The toast rules are in `:where()`, so a rule of your CSS overrides them with no extra specificity:
 
 ```css
-.phem-toast { background: var(--color-ink); border-radius: 0; }
-.phem-toast-success { background: var(--color-brand); }
+[data-phem-toast] { background: var(--color-ink); border-radius: 0; }
+[data-phem-toast][data-type="success"] { background: var(--color-brand); }
 ```
+
+The other built-in controllers ship no CSS. Style them with their data attributes and CSS variables, such as `[data-open]`, `[data-side]` and `var(--anchor-width)` (see [Learn the conventions](ui-controllers.md#learn-the-conventions)).
 
 To change the `.phem-error` message, load your CSS after `phem.css`, or use a selector with a higher specificity.

@@ -235,7 +235,7 @@ Some changes don’t need the server at all: opening a menu, toggling a class, f
 </span>
 ```
 
-The dropdown opens and closes in the browser, while the **Star** button inside it still sends an event to the server. For an element that a JavaScript library controls (a chart, a map, an editor), add `data-phem-ignore` so the morph skips it. Before you write a new controller, check the built-in ones, such as `phem-toggle`, `phem-optimistic`, and `phem-confirm`.
+The dropdown opens and closes in the browser, while the **Star** button inside it still sends an event to the server. For an element that a JavaScript library controls (a chart, a map, an editor), add `data-phem-ignore` so the morph skips it. Before you write a new controller, check the [built-in ones](ui-controllers.md), such as `phem-popover`, `phem-menu`, `phem-optimistic`, and `phem-confirm`.
 
 ## Design for the round trip
 

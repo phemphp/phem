@@ -4,7 +4,7 @@ import { Controller } from "@hotwired/stimulus"
 // `navigator.clipboard.writeText()`, and shows a short feedback. The feedback stays correct after
 // the morph of an event.
 //
-//     <div data-controller="phem-clipboard" data-phem-clipboard-copied-class="copied">
+//     <div data-controller="phem-clipboard">
 //         <code data-phem-clipboard-target="source">{{ token }}</code>
 //         <button data-action="phem-clipboard#copy">Copy</button>
 //         <span data-phem-clipboard-target="feedback"></span>
@@ -15,18 +15,17 @@ import { Controller } from "@hotwired/stimulus"
 // whitespace at the start and at the end.
 //
 // For the `duration` value (in milliseconds, 2000 by default), the `feedback` targets contain the
-// `label` value ("Copied" by default), and the controller element has the `copied` class. Else the
+// `label` value ("Copied" by default), and the controller element has `data-copied`. Else the
 // feedback targets are empty. A feedback target gets `role="status"` when it has no role: it is a
 // live region that stays in the page, so a screen reader reads the label when it comes.
 //
 // The feedback belongs to the client: before the morph of an event, the controller puts the state
-// (the label, the role and the class) in the server render, so the morph does not change it.
+// (the label, the role and `data-copied`) in the server render, so the morph does not change it.
 //
 // The controller dispatches `phem-clipboard:copied` (with the `text` in the detail), or
 // `phem-clipboard:error` (with the `error` in the detail) when the browser does not copy the text.
 export default class PhemClipboardController extends Controller {
   static targets = ["source", "feedback"]
-  static classes = ["copied"]
   static values = { text: String, label: { type: String, default: "Copied" }, duration: { type: Number, default: 2000 } }
 
   connect() {
@@ -100,7 +99,7 @@ export default class PhemClipboardController extends Controller {
 
   // The state on the controller element, in the page or in the server render of the morph.
   #renderElement(el) {
-    if (this.hasCopiedClass) el.classList.toggle(this.copiedClass, !!this.copied)
+    el.toggleAttribute("data-copied", !!this.copied)
   }
 
   // The state on a feedback target, in the page or in the server render of the morph. The same text

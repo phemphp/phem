@@ -1,0 +1,53 @@
+<?phem
+
+namespace App\Ui\Sortable;
+
+use Phem\Attribute\{Page, State};
+use Phem\Event;
+use Phem\Node;
+
+use function App\Ui\Common\Document;
+
+// A board with two columns: a drop moves a card in a column or to the other column.
+#[Page('/sortable')]
+final class SortablePage
+{
+    #[State] public array $columns = ['todo' => ['a', 'b', 'c'], 'done' => ['d']];
+
+    public function move(Event $e): void
+    {
+        // The browser makes the detail: check it.
+        $card = $e->detail['id'] ?? null;
+        $index = $e->detail['index'] ?? null;
+        $to = $e->detail['list'] ?? null;
+        if (!\is_string($card) || !\is_int($index) || !\is_string($to) || !isset($this->columns[$to])) {
+            return;
+        }
+
+        foreach ($this->columns as $name => $cards) {
+            $this->columns[$name] = array_values(array_diff($cards, [$card]));
+        }
+
+        array_splice($this->columns[$to], max(0, min($index, \count($this->columns[$to]))), 0, [$card]);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Sortable">
+                <div style="display: flex; gap: 40px">
+                    {% for name, cards in columns %}
+                        <ul key={{ name }} id={{ name }} data-controller="phem-sortable" data-phem-sortable-group-value="board"
+                            data-phem-sortable-list-value={{ name }} onCall={{ move }} style="width: 120px; min-height: 160px; padding: 0">
+                            {% for card in cards %}
+                                <li key={{ card }} id={{ 'card-' ~ card }} data-phem-sortable-target="item" data-phem-sortable-id={{ card }}
+                                    style="height: 40px; list-style: none; border: 1px solid">{{ card }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endfor %}
+                </div>
+                <output id="order">{{ columns.todo|join(',') }}|{{ columns.done|join(',') }}</output>
+            </Document>
+        );
+    }
+}

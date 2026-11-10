@@ -29,7 +29,7 @@ document.addEventListener('phem:error', (event) => {
 })
 ```
 
-The built-in [toasts](client-side.md#show-toast-messages) also listen to `phem:error`, and show the error as a toast in place of the default message.
+The built-in [toasts](ui-controllers.md#show-toast-messages) also listen to `phem:error`, and show the error as a toast in place of the default message.
 
 ## An event fails on an unstable network
 

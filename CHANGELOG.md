@@ -8,6 +8,28 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Built-in controllers for complex input, with the design of Base UI: no CSS, named parts, and the
+  state in data attributes and CSS variables. `phem-popover` shows a popup next to its trigger,
+  `phem-tooltip` a short text on hover and on the focus of the keyboard, `phem-menu` a list of
+  actions with the keyboard of a menu (roving focus, typeahead), and `phem-combobox` a list of
+  suggestions that the server gives, with the keyboard in the input. `phem-sortable` moves items
+  with the pointer and with the keyboard, also to another list of the same `group`, and calls the
+  `onCall` handler of the list with `{ id, index, list }`. The popups go next to their anchor with
+  `side`, `align`, the offsets and `collision-padding`, flip and shift in the viewport, and get
+  `data-side`, `data-align`, `--anchor-width`, `--available-height` and `--transform-origin`.
+  A popup with `popover="manual"` shows in the top layer. See docs/ui-controllers.md.
+- **Breaking:** the built-in controllers use the conventions of Base UI. `phem-toggle` is now
+  `phem-collapsible`, with the `trigger` and `panel` targets, and no Escape or click outside (use
+  `phem-popover` or `phem-menu` for a dropdown). The `dialog` target of `phem-dialog` is now
+  `popup`, and its `trigger` and `close` targets need no `data-action`. `phem-tabs` moves the focus
+  with the arrow keys and selects with Enter or Space (`activate-on-focus` gives the old
+  behavior), and takes the orientation from its `orientation` value in place of
+  `aria-orientation`. The toasts have the `data-phem-toast`, `data-type`,
+  `data-phem-toast-description` and `data-phem-toast-close` attributes in place of the
+  `phem-toast-*` classes, a `template` target for the markup of the app, and a `limit` value.
+  `phem-clipboard` sets `data-copied` in place of the `copied` class. The parts get `data-open`,
+  `data-closed`, `data-starting-style` and `data-ending-style`, and a close waits for the end of
+  its animations.
 - Load more on view, and polling. `onVisible={{ more }}` runs the handler when the element comes
   into view, and again each time it comes back into view: the trigger of an infinite scroll. An
   element that is still in view after the update of its event sends it again, but only when the

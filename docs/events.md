@@ -318,7 +318,7 @@ The event starts on the component’s element and bubbles up to `window`. A serv
 
 The name has only letters, digits and `_ - . :`. The browser uses these names itself, so you can’t use them: `call`, `before-queue`, `queue`, `send`, `receive`, `done`, `error`, `rate-limited` and `upload-progress`. The detail must be a value that JSON can encode. `dispatch()` throws an `InvalidArgumentException` for a name or a detail that breaks these rules.
 
-To show a message to the user, call `$e->toast('Saved')`. See [Show toast messages](client-side.md#show-toast-messages).
+To show a message to the user, call `$e->toast('Saved')`. See [Show toast messages](ui-controllers.md#show-toast-messages).
 
 ## Call a handler from your JavaScript
 
@@ -374,6 +374,8 @@ The list renders with a `data-phem-on-call` attribute. The request of the event 
 ```
 
 The event needs no `bubbles: true`: the page root listens to `phem:call` in the capture phase. The closest element with an `onCall` handler gets it, as for the other events, and `phem:stop` keeps it from the handlers around an element. The detail must be a value that JSON can encode. The browser takes a copy of it at the time of the call, so a later change of the object does not change the event. A detail that JSON can’t encode, such as an object with a cycle, sends no event, and the browser shows an error in the console. With no detail, `$e->detail` is `null`. A `phem:call` with no `onCall` handler on the element or around it sends no event, and the browser shows a warning in the console. The warning also tells when a `phem:stop` element keeps the event from the handler, or when the page has no state yet.
+
+For a sortable list, the built-in `phem-sortable` controller dispatches this event on a drop (see [Sort a list with drag and drop](ui-controllers.md#sort-a-list-with-drag-and-drop)).
 
 The browser makes the detail, so a user can change it. Check it in the handler, as you check `$e->value`. The event goes in the queue as the other events: `phem:debounce`, `phem:throttle`, `phem:loading` and `phem:before-queue` work the same. Its type is `call`.
 

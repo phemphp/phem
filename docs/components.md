@@ -264,16 +264,16 @@ The `phem-dialog` controller opens and closes the dialog in the browser, with no
 
 ```html
 <div data-controller="phem-dialog">
-    <button data-action="phem-dialog#open">Cancel the order</button>
-    <dialog data-phem-dialog-target="dialog" aria-labelledby="cancel-title">
-        <h2 id="cancel-title">Cancel the order?</h2>
-        <button onClick={{ cancel }} data-action="phem-dialog#close">Yes, cancel it</button>
-        <button data-action="phem-dialog#close">No</button>
+    <button data-phem-dialog-target="trigger">Cancel the order</button>
+    <dialog data-phem-dialog-target="popup">
+        <h2 id="cancel-title" data-phem-dialog-target="title">Cancel the order?</h2>
+        <button onClick={{ cancel }} data-phem-dialog-target="close">Yes, cancel it</button>
+        <button data-phem-dialog-target="close">No</button>
     </dialog>
 </div>
 ```
 
-Keep the value in the state only when the server decides it. For example, a handler opens the dialog after it finds a problem. Then set `data-phem-dialog-open-value={{ askingCancel }}`. See [Open a modal dialog](client-side.md#open-a-modal-dialog). For the same reason, use [`phem-tabs`](client-side.md#switch-between-tabs) for tabs and [`phem-confirm`](client-side.md#ask-for-confirmation-before-an-event) for a confirmation.
+Keep the value in the state only when the server decides it. For example, a handler opens the dialog after it finds a problem. Then set `data-phem-dialog-open-value={{ askingCancel }}`. See [Open a modal dialog](ui-controllers.md#open-a-modal-dialog). For the same reason, use [`phem-tabs`](ui-controllers.md#switch-between-tabs) for tabs and [`phem-confirm`](ui-controllers.md#ask-for-confirmation-before-an-event) for a confirmation.
 
 ### Don’t use hook functions
 

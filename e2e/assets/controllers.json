@@ -7,6 +7,26 @@
                 "autoimport": {
                     "@phem/phem/dist/phem.css": true
                 }
+            },
+            "popover": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "tooltip": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "menu": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "combobox": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "sortable": {
+                "enabled": true,
+                "fetch": "eager"
             }
         }
     },

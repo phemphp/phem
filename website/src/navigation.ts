@@ -32,6 +32,7 @@ export const navigation: NavGroup[] = [
             { slug: 'forms', label: 'Handle Forms' },
             { slug: 'long-lists', label: 'Show Long Lists' },
             { slug: 'client-side', label: 'Add Client-Side Behavior' },
+            { slug: 'ui-controllers', label: 'Build UI with the Built-In Controllers' },
             { slug: 'styling', label: 'Style Components' },
             { slug: 'server-features', label: 'Handle Slow and Failing Work' },
             { slug: 'security', label: 'Secure Events and State' },

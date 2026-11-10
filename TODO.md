@@ -100,18 +100,6 @@ on a focused element.
 - **Proposal:** `phem:shortcut="mod+k"` on the element of the handler, or a built-in
   `phem-shortcut` controller for browser-only actions.
 
-### [ ] Built-in controllers for complex input — P2
-
-The built-in controllers cover simple patterns only. These are missing:
-
-- **Combobox / autocomplete:** an ARIA list, keyboard moves, results from a handler;
-- **Popover and tooltip:** with a position (CSS anchor positioning, a fallback for old browsers);
-  `phem-toggle` does not set a position;
-- **Sortable list:** drag and drop that calls a handler (`onCall`);
-- **Menu:** keyboard support and roving focus, as `phem-tabs` has.
-
-- **Best peer:** Blazor component libraries, LC with Symfony UX Autocomplete.
-
 ### [ ] Client-side reactive state — P3
 
 A small computed value needs a custom Stimulus controller or a round trip: a character counter, a
@@ -161,3 +149,14 @@ Mercure hub.
 
 - **Best peer:** LW `WithFileUploads` (temporary uploads, S3 direct upload), LV `allow_upload`
   (chunks, previews, external uploads).
+
+### [ ] More parts for the built-in controllers — P3
+
+The built-in controllers of 2026-11-10 follow Base UI, with less parts. These are missing:
+
+- **Menu:** submenus (`SubmenuTrigger`), a modal menu, and `phem-context-menu`;
+- **Combobox:** a choice of more than one value, with chips;
+- **Toast:** a swipe to close, and the toasts of a stack that show on hover;
+- **Sortable:** an `aria-live` text for the moves of the keyboard.
+
+- **Best peer:** Base UI.

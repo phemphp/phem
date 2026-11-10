@@ -1,0 +1,42 @@
+<?phem
+
+namespace App\Ui\Menu;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Common\Document;
+
+// A menu of actions: each item runs a handler.
+#[Page('/menu')]
+final class MenuPage
+{
+    #[State] public array $log = [];
+
+    public function rename(): void
+    {
+        $this->log[] = 'rename';
+    }
+
+    public function delete(): void
+    {
+        $this->log[] = 'delete';
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Menu">
+                <div id="menu" data-controller="phem-menu">
+                    <button id="trigger" data-phem-menu-target="trigger">Actions</button>
+                    <div id="popup" data-phem-menu-target="popup" hidden>
+                        <button id="rename" data-phem-menu-target="item" onClick={{ rename }}>Rename</button>
+                        <button id="copy" data-phem-menu-target="item" disabled>Copy</button>
+                        <button id="delete" data-phem-menu-target="item" onClick={{ delete }}>Delete</button>
+                    </div>
+                </div>
+                <output id="log">{{ log|join(', ') }}</output>
+            </Document>
+        );
+    }
+}

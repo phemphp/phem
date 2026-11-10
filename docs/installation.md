@@ -62,7 +62,8 @@ The CSS file has these rules:
 - `phem-suspense{display:block}`: the fallback of a `<Suspense>` is a box, so a lazy boundary can come into view
 - `.phem-error`: the default message of a failed event (see [Failed events and limits](errors-and-limits.md))
 - `[data-phem-loading][hidden]` and `[data-phem-progress][hidden]`: a `phem:loading` or `phem:progress` element stays hidden while no handler runs, also with a `display` of its own. The rule is `!important`, so you can’t override it
-- `.phem-toast`, `.phem-toast-<type>`, `.phem-toast-message`, `.phem-toast-close` and the `phem-toast` container: the default look of the toasts
+- `[data-phem-toast]`, `[data-type]`, `[data-limited]`, `[data-phem-toast-description]`, `[data-phem-toast-close]` and the `phem-toast` container: the default look of the toasts
+- `touch-action: none` on the handles of `phem-sortable` (or on its items with no handle), and no text selection during a drag (`[data-phem-sorting]`)
 
 The toast rules are in `:where()`, so any rule of the application overrides them. To change the `phem-c`, `phem-suspense` and `.phem-error` rules, write a rule with a higher specificity, or load your CSS after `phem.css`.
 
@@ -79,4 +80,4 @@ The toast rules are in `:where()`, so any rule of the application overrides them
 }
 ```
 
-The package also has optional controllers (`phem-optimistic`, `phem-toggle`, `phem-dialog`, `phem-tabs`, `phem-toast`, `phem-clipboard`, `phem-autofocus` and `phem-confirm`), which are off by default. Enable one with its key in the `@phem/phem` entry, for example `"toggle": { "enabled": true, "fetch": "lazy" }`. See [Built-in controllers](client-side.md#enable-the-built-in-controllers).
+The package also has optional controllers (`phem-optimistic`, `phem-collapsible`, `phem-dialog`, `phem-popover`, `phem-tooltip`, `phem-menu`, `phem-combobox`, `phem-tabs`, `phem-toast`, `phem-clipboard`, `phem-autofocus`, `phem-confirm` and `phem-sortable`), which are off by default. Enable one with its key in the `@phem/phem` entry, for example `"popover": { "enabled": true, "fetch": "lazy" }`. See [Built-in controllers](ui-controllers.md#enable-the-controllers).

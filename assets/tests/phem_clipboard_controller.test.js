@@ -30,7 +30,7 @@ afterEach(() => {
 // A source with the text "s3cret", a "Copy" button, a feedback, a "Save" button that sends an
 // event, and the `attributes` of the controller element. The server render has no feedback state.
 function token(attributes = "", source = `<code id="source" data-phem-clipboard-target="source">s3cret</code>`) {
-  return `<div id="clip" data-controller="phem-clipboard" data-phem-clipboard-copied-class="copied" ${attributes}>
+  return `<div id="clip" data-controller="phem-clipboard" ${attributes}>
       ${source}
       <button id="copy" data-action="phem-clipboard#copy">Copy</button>
       <span id="feedback" data-phem-clipboard-target="feedback"></span>
@@ -47,11 +47,11 @@ function feedback() {
 }
 
 function isCopied() {
-  return feedback().textContent === "Copied" && clip().classList.contains("copied")
+  return feedback().textContent === "Copied" && clip().hasAttribute("data-copied")
 }
 
 function isIdle() {
-  return feedback().textContent === "" && !clip().classList.contains("copied")
+  return feedback().textContent === "" && !clip().hasAttribute("data-copied")
 }
 
 // Resolves with the `phem-clipboard:copied` or `phem-clipboard:error` event of the next copy.

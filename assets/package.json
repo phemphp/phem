@@ -24,15 +24,39 @@
                 "fetch": "lazy",
                 "enabled": false
             },
-            "toggle": {
-                "name": "phem-toggle",
-                "main": "dist/phem_toggle_controller.js",
+            "collapsible": {
+                "name": "phem-collapsible",
+                "main": "dist/phem_collapsible_controller.js",
                 "fetch": "lazy",
                 "enabled": false
             },
             "dialog": {
                 "name": "phem-dialog",
                 "main": "dist/phem_dialog_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "popover": {
+                "name": "phem-popover",
+                "main": "dist/phem_popover_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "tooltip": {
+                "name": "phem-tooltip",
+                "main": "dist/phem_tooltip_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "menu": {
+                "name": "phem-menu",
+                "main": "dist/phem_menu_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "combobox": {
+                "name": "phem-combobox",
+                "main": "dist/phem_combobox_controller.js",
                 "fetch": "lazy",
                 "enabled": false
             },
@@ -63,6 +87,12 @@
             "confirm": {
                 "name": "phem-confirm",
                 "main": "dist/phem_confirm_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "sortable": {
+                "name": "phem-sortable",
+                "main": "dist/phem_sortable_controller.js",
                 "fetch": "lazy",
                 "enabled": false
             }

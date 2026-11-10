@@ -48,11 +48,12 @@ afterEach(() => {
 // controller element. The server render always gives a closed dialog.
 function edit(attributes = "", content = "") {
   return `<div id="edit" data-controller="phem-dialog" ${attributes}>
-      <button id="open" data-action="phem-dialog#open">Edit</button>
-      <dialog id="dialog" data-phem-dialog-target="dialog">
-        <p id="body">Body</p>
+      <button id="open" data-phem-dialog-target="trigger">Edit</button>
+      <dialog id="dialog" data-phem-dialog-target="popup">
+        <h2 id="title" data-phem-dialog-target="title">Edit</h2>
+        <p id="body" data-phem-dialog-target="description">Body</p>
         <button id="save" data-phem-on-click="c1.save">Save</button>
-        <button id="close" data-action="phem-dialog#close">Close</button>
+        <button id="close" data-phem-dialog-target="close">Close</button>
         ${content}
       </dialog>
     </div>`
@@ -94,6 +95,73 @@ describe("phem-dialog", () => {
     expect(isModal()).toBe(true)
     click("#close")
     expect(dialog().open).toBe(false)
+  })
+
+  it("sets the data attributes and the ARIA attributes of the parts", async () => {
+    await mount(edit())
+    const trigger = document.getElementById("open")
+
+    expect(dialog().hasAttribute("data-closed")).toBe(true)
+    expect(dialog().getAttribute("aria-labelledby")).toBe("title")
+    expect(dialog().getAttribute("aria-describedby")).toBe("body")
+    expect(trigger.getAttribute("aria-haspopup")).toBe("dialog")
+    expect(trigger.getAttribute("aria-expanded")).toBe("false")
+
+    click("#open")
+    expect(dialog().hasAttribute("data-open")).toBe(true)
+    expect(dialog().hasAttribute("data-closed")).toBe(false)
+    expect(trigger.hasAttribute("data-popup-open")).toBe(true)
+    expect(trigger.getAttribute("aria-expanded")).toBe("true")
+  })
+
+  it("opens and closes with the open and close actions", async () => {
+    await mount(`<div data-controller="phem-dialog">
+        <button id="open" data-action="phem-dialog#open">Edit</button>
+        <dialog id="dialog" data-phem-dialog-target="popup"><button id="close" data-action="phem-dialog#close">Close</button></dialog>
+      </div>`)
+    click("#open")
+    expect(isModal()).toBe(true)
+    click("#close")
+    expect(dialog().open).toBe(false)
+  })
+
+  it("closes after the animation of data-ending-style", async () => {
+    await mount(edit())
+    click("#open")
+    let finish
+    dialog().getAnimations = () => [{ finished: new Promise((resolve) => (finish = resolve)) }]
+    click("#close")
+
+    expect(dialog().open).toBe(true)
+    expect(dialog().hasAttribute("data-ending-style")).toBe(true)
+    finish()
+    await nextTask()
+    expect(dialog().open).toBe(false)
+    expect(dialog().hasAttribute("data-ending-style")).toBe(false)
+    expect(dialog().hidden).toBe(false)
+  })
+
+  it("marks a dialog in a dialog", async () => {
+    await mount(`<div data-controller="phem-dialog">
+        <dialog id="outer" data-phem-dialog-target="popup">
+          <div data-controller="phem-dialog">
+            <button id="inner-open" data-phem-dialog-target="trigger">More</button>
+            <dialog id="inner" data-phem-dialog-target="popup"><button id="inner-close" data-phem-dialog-target="close">Close</button></dialog>
+          </div>
+        </dialog>
+      </div>`)
+    document.getElementById("outer").showModal()
+    click("#inner-open")
+
+    const outer = document.getElementById("outer")
+    expect(document.getElementById("inner").hasAttribute("data-nested")).toBe(true)
+    expect(outer.hasAttribute("data-nested-dialog-open")).toBe(true)
+    expect(outer.style.getPropertyValue("--nested-dialogs")).toBe("1")
+
+    click("#inner-close")
+    await nextTask()
+    expect(outer.hasAttribute("data-nested-dialog-open")).toBe(false)
+    expect(outer.style.getPropertyValue("--nested-dialogs")).toBe("0")
   })
 
   it("stays open after the morph of an event", async () => {

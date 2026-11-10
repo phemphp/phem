@@ -31,11 +31,11 @@ function page(attributes = "") {
 }
 
 function toasts() {
-  return [...document.querySelectorAll("#toasts > .phem-toast")]
+  return [...document.querySelectorAll("#toasts > [data-phem-toast]")]
 }
 
 function messages() {
-  return toasts().map((el) => el.querySelector(".phem-toast-message").textContent)
+  return toasts().map((el) => el.querySelector("[data-phem-toast-description]").textContent)
 }
 
 function toast(detail) {
@@ -56,7 +56,7 @@ describe("phem-toast", () => {
     await save()
 
     expect(messages()).toEqual(["Saved"])
-    expect(toasts()[0].classList.contains("phem-toast-success")).toBe(true)
+    expect(toasts()[0].getAttribute("data-type")).toBe("success")
   })
 
   it("keeps the toasts and the live region after the morph of an event", async () => {
@@ -82,7 +82,7 @@ describe("phem-toast", () => {
     toast("Hello")
 
     expect(messages()).toEqual(["Hello"])
-    expect(toasts()[0].classList.contains("phem-toast-info")).toBe(true)
+    expect(toasts()[0].getAttribute("data-type")).toBe("info")
   })
 
   it("shows the message as text, not HTML", async () => {
@@ -108,7 +108,7 @@ describe("phem-toast", () => {
     await save()
 
     expect(messages()).toEqual(["Not saved."])
-    expect(toasts()[0].classList.contains("phem-toast-error")).toBe(true)
+    expect(toasts()[0].getAttribute("data-type")).toBe("error")
     expect(document.querySelector(".phem-error")).toBeNull()
   })
 
@@ -129,7 +129,7 @@ describe("phem-toast", () => {
     await save()
 
     expect(messages()).toEqual(["Slow down."])
-    expect(toasts()[0].classList.contains("phem-toast-warning")).toBe(true)
+    expect(toasts()[0].getAttribute("data-type")).toBe("warning")
   })
 
   it("shows the detail of another event with the show action", async () => {
@@ -155,7 +155,7 @@ describe("phem-toast", () => {
     vi.advanceTimersByTime(60000)
     expect(messages()).toEqual(["Third"])
 
-    const close = toasts()[0].querySelector(".phem-toast-close")
+    const close = toasts()[0].querySelector("[data-phem-toast-close]")
     expect(close.getAttribute("aria-label")).toBe("Close")
     close.click()
     expect(toasts()).toEqual([])
@@ -166,7 +166,7 @@ describe("phem-toast", () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
     toast("Hello")
     const el = toasts()[0]
-    const close = el.querySelector(".phem-toast-close")
+    const close = el.querySelector("[data-phem-toast-close]")
 
     el.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }))
     vi.advanceTimersByTime(5000)
@@ -216,7 +216,7 @@ describe("phem-toast", () => {
     await vi.advanceTimersByTimeAsync(1000)
     expect(messages()).toEqual(["First"])
 
-    toasts()[0].querySelector(".phem-toast-close").click()
+    toasts()[0].querySelector("[data-phem-toast-close]").click()
     expect(toasts()).toEqual([])
   })
 
@@ -225,7 +225,7 @@ describe("phem-toast", () => {
       <div id="other" data-controller="phem-toast"></div>`)
     toast("Hello")
 
-    expect(document.querySelectorAll(".phem-toast")).toHaveLength(1)
+    expect(document.querySelectorAll("[data-phem-toast]")).toHaveLength(1)
   })
 
   it("shows a toast again only when the same toast is not on the screen", async () => {
@@ -248,7 +248,7 @@ describe("phem-toast", () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
     toast({ message: "Hello", type: "info phem-error", duration: "long" })
 
-    expect(toasts()[0].className).toBe("phem-toast phem-toast-info")
+    expect(toasts()[0].getAttribute("data-type")).toBe("info")
     vi.advanceTimersByTime(999)
     expect(toasts()).toHaveLength(1)
     vi.advanceTimersByTime(1)
@@ -264,6 +264,69 @@ describe("phem-toast", () => {
 
     expect(document.getElementById("title")).not.toBeNull()
     expect(messages()).toEqual(["Hello"])
+  })
+
+  it("makes the toasts from the template of the app", async () => {
+    await mount(`<div id="toasts" data-controller="phem-toast">
+        <template data-phem-toast-target="template">
+          <div class="card"><strong>Note</strong><p data-phem-toast-description></p><button data-phem-toast-close>Close</button></div>
+        </template>
+      </div>`)
+    toast({ message: "Saved", type: "success" })
+
+    const el = toasts()[0]
+    expect(el.className).toBe("card")
+    expect(el.getAttribute("data-type")).toBe("success")
+    expect(el.querySelector("strong").textContent).toBe("Note")
+    expect(messages()).toEqual(["Saved"])
+    el.querySelector("[data-phem-toast-close]").click()
+    expect(toasts()).toEqual([])
+  })
+
+  it("gives the position in the stack, and marks the toasts over the limit", async () => {
+    await mount(page(`data-phem-toast-limit-value="2"`))
+    toast("First")
+    toast("Second")
+    toast("Third")
+
+    const [first, second, third] = toasts()
+    expect(third.style.getPropertyValue("--toast-index")).toBe("0")
+    expect(second.style.getPropertyValue("--toast-index")).toBe("1")
+    expect(first.style.getPropertyValue("--toast-index")).toBe("2")
+    expect(first.hasAttribute("data-limited")).toBe(true)
+    expect(second.hasAttribute("data-limited")).toBe(false)
+
+    third.querySelector("[data-phem-toast-close]").click()
+    expect(first.hasAttribute("data-limited")).toBe(false)
+    expect(first.style.getPropertyValue("--toast-index")).toBe("1")
+  })
+
+  it("shows a new toast for the same message while the old one goes away", async () => {
+    await mount(page())
+    toast("Saved")
+    const old = toasts()[0]
+    old.getAnimations = () => [{ finished: new Promise(() => {}) }]
+    old.querySelector("[data-phem-toast-close]").click()
+    toast("Saved")
+
+    expect(toasts()).toHaveLength(2)
+    expect(toasts()[1]).not.toBe(old)
+    expect(toasts()[1].hasAttribute("data-ending-style")).toBe(false)
+  })
+
+  it("removes a toast after the animation of data-ending-style", async () => {
+    await mount(page())
+    toast("Hello")
+    const el = toasts()[0]
+    let finish
+    el.getAnimations = () => [{ finished: new Promise((resolve) => (finish = resolve)) }]
+    el.querySelector("[data-phem-toast-close]").click()
+
+    expect(el.isConnected).toBe(true)
+    expect(el.hasAttribute("data-ending-style")).toBe(true)
+    finish()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(el.isConnected).toBe(false)
   })
 
   it("shows the error message of the root element when the element has no error message", async () => {

@@ -400,7 +400,7 @@ These `data-phem-*` attributes change how the browser treats an element:
 | `data-phem-guard-accept` | The label of the accept button of the `data-phem-guard-dialog` dialog |
 | `data-phem-guard-message-value` | On the `<Root>` element: the question of a `data-phem-guard` with no value. The default is "You have unsaved changes. Leave the page?" |
 | `data-phem-disable={{ false }}` | On a form: does not lock the controls of the form while its submit event runs. See [The browser shows feedback while an event runs](how-it-works.md#the-browser-shows-feedback-while-an-event-runs) |
-| `data-phem-autofocus-keyboard` | On a link or an event element: opens the iOS keyboard for the `phem-autofocus` field that shows after the round trip. See [Open the iOS keyboard](client-side.md#open-the-ios-keyboard-after-a-round-trip) |
+| `data-phem-autofocus-keyboard` | On a link or an event element: opens the iOS keyboard for the `phem-autofocus` field that shows after the round trip. See [Open the iOS keyboard](ui-controllers.md#open-the-ios-keyboard-after-a-round-trip) |
 | `data-phem-transition` | Animates the changes with the View Transitions API. See [Transitions](client-side.md#animate-changes-with-view-transitions) |
 
 ## Built-in components

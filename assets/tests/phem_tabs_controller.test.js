@@ -79,8 +79,94 @@ describe("phem-tabs", () => {
     expect(document.getElementById("tabs").getAttribute("data-phem-tabs-index-value")).toBe("1")
   })
 
-  it("moves the selection and the focus with the arrow keys, Home and End", async () => {
+  it("sets the data attributes of the parts", async () => {
     await mount(tabs())
+
+    const root = document.getElementById("tabs")
+    expect(root.getAttribute("data-orientation")).toBe("horizontal")
+    expect(root.getAttribute("data-activation-direction")).toBe("none")
+    expect(document.getElementById("tab-a").hasAttribute("data-active")).toBe(true)
+    expect(document.getElementById("tab-b").hasAttribute("data-active")).toBe(false)
+    expect(document.getElementById("panel-b").getAttribute("data-index")).toBe("1")
+    expect(document.getElementById("panel-b").hasAttribute("data-hidden")).toBe(true)
+    expect(document.getElementById("panel-a").hasAttribute("data-hidden")).toBe(false)
+    expect(document.getElementById("panel-a").hasAttribute("data-open")).toBe(true)
+  })
+
+  it("moves the focus with the arrow keys, and selects with Enter", async () => {
+    await mount(tabs())
+    document.getElementById("tab-a").focus()
+
+    press("ArrowRight")
+    expect(document.activeElement.id).toBe("tab-b")
+    expect(selected()).toBe("a")
+    document.activeElement.click()
+    expect(selected()).toBe("b")
+  })
+
+  it("sets the direction of the change", async () => {
+    await mount(tabs())
+    const box = (left) => () => ({ left, top: 0, width: 10, height: 10, right: left + 10, bottom: 10 })
+    document.getElementById("tab-a").getBoundingClientRect = box(0)
+    document.getElementById("tab-b").getBoundingClientRect = box(20)
+    click("#tab-b")
+
+    expect(document.getElementById("tabs").getAttribute("data-activation-direction")).toBe("right")
+    expect(document.getElementById("panel-b").getAttribute("data-activation-direction")).toBe("right")
+    click("#tab-a")
+    expect(document.getElementById("tab-a").getAttribute("data-activation-direction")).toBe("left")
+  })
+
+  it("gives the box of the selected tab to the indicator", async () => {
+    await mount(tabs().replace("</div>\n      <div id=\"panel-a\"", '<span id="indicator" data-phem-tabs-target="indicator"></span></div>\n      <div id="panel-a"'))
+    const indicator = document.getElementById("indicator")
+    document.getElementById("list").getBoundingClientRect = () => ({ left: 100, top: 50, width: 300, height: 40 })
+    document.getElementById("tab-b").getBoundingClientRect = () => ({ left: 160, top: 55, width: 80, height: 30 })
+    click("#tab-b")
+
+    expect(indicator.style.getPropertyValue("--active-tab-left")).toBe("60px")
+    expect(indicator.style.getPropertyValue("--active-tab-top")).toBe("5px")
+    expect(indicator.style.getPropertyValue("--active-tab-width")).toBe("80px")
+    expect(indicator.style.getPropertyValue("--active-tab-height")).toBe("30px")
+    expect(indicator.getAttribute("data-orientation")).toBe("horizontal")
+  })
+
+  it("selects a tab that is not a button with Enter and Space", async () => {
+    await mount(tabs().replaceAll("<button id=\"tab-", "<div tabindex=\"0\" id=\"tab-").replaceAll("</button><", "</div><").replace(/<\/button><\/div>/, "</div></div>"))
+    document.getElementById("tab-a").focus()
+    press("ArrowRight")
+
+    expect(press("Enter").defaultPrevented).toBe(true)
+    expect(selected()).toBe("b")
+    press("ArrowRight")
+    press(" ")
+    expect(selected()).toBe("c")
+  })
+
+  it("observes the size of the first list and tabs", async () => {
+    const observed = []
+    vi.stubGlobal("ResizeObserver", class {
+      observe(el) {
+        observed.push(el.id)
+      }
+
+      disconnect() {}
+    })
+    await mount(tabs())
+
+    expect(observed).toEqual(expect.arrayContaining(["list", "tab-a", "tab-b", "tab-c"]))
+  })
+
+  it("does not go from the last tab to the first one with loopFocus false", async () => {
+    await mount(tabs('data-phem-tabs-loop-focus-value="false"'))
+    document.getElementById("tab-c").focus()
+    press("ArrowRight")
+
+    expect(document.activeElement.id).toBe("tab-c")
+  })
+
+  it("moves the selection and the focus with the arrow keys, Home and End, with activateOnFocus", async () => {
+    await mount(tabs('data-phem-tabs-activate-on-focus-value="true"'))
     document.getElementById("tab-a").focus()
 
     press("ArrowRight")
@@ -103,12 +189,16 @@ describe("phem-tabs", () => {
     document.getElementById("tab-a").focus()
     press("ArrowRight")
 
-    expect(selected()).toBe("c")
+    expect(document.activeElement.id).toBe("tab-c")
+    expect(document.getElementById("tab-b").hasAttribute("data-disabled")).toBe(true)
   })
 
-  it("uses the up and down arrow keys in a vertical list", async () => {
-    await mount(tabs("", 'aria-orientation="vertical"'))
+  it("uses the up and down arrow keys with the vertical orientation", async () => {
+    await mount(tabs('data-phem-tabs-orientation-value="vertical" data-phem-tabs-activate-on-focus-value="true"'))
     document.getElementById("tab-a").focus()
+
+    expect(document.getElementById("list").getAttribute("aria-orientation")).toBe("vertical")
+    expect(document.getElementById("tab-a").getAttribute("data-orientation")).toBe("vertical")
 
     expect(press("ArrowRight").defaultPrevented).toBe(false)
     expect(selected()).toBe("a")
@@ -220,6 +310,7 @@ describe("phem-tabs", () => {
     expect(document.getElementById("panel-a").hidden).toBe(false)
     document.getElementById("inner-y").focus()
     press("ArrowRight")
+    document.activeElement.click()
     expect(document.getElementById("inner-panel-x").hidden).toBe(false)
     expect(document.getElementById("panel-a").hidden).toBe(false)
   })

@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { hide, show } from "./phem_transition.js"
 
 // The types of a toast. Another type is `info`.
 const TYPES = ["info", "success", "warning", "error"]
@@ -34,11 +35,21 @@ let count = 0
 // `0` keeps it until the close button. The time stops while the pointer or the focus is on the
 // toast. The element is a live region (`aria-live="polite"`), so a screen reader reads each toast.
 //
+// Each toast has these parts, as Base UI: the root (`data-phem-toast`), the description
+// (`[data-phem-toast-description]`, the message) and the close button (`[data-phem-toast-close]`).
+// A `<template data-phem-toast-target="template">` in the element gives the markup of the app,
+// with these parts; else the controller makes them. The root gets `data-type` (the type),
+// `--toast-index` (0 for the last toast), and `data-limited` when more than the `limit` value of
+// newer toasts are on the screen. See phem_transition.js for the animations: a toast that goes
+// stays until the end of its `[data-ending-style]` transition.
+//
 // The toasts and their durations are in the DOM, so a toast that the controller gets again (after a
 // move of the element, or in a page from the Turbo cache) has its time and its close button.
 export default class PhemToastController extends Controller {
+  static targets = ["template"]
   static values = {
     duration: { type: Number, default: 5000 },
+    limit: { type: Number, default: 3 },
     errorMessage: String,
     rateLimitedMessage: { type: String, default: "Too many changes. Please wait and try again." },
     closeLabel: { type: String, default: "Close" },
@@ -125,9 +136,9 @@ export default class PhemToastController extends Controller {
   }
 
   onClick = (event) => {
-    const close = event.target.closest?.(".phem-toast-close")
-    const el = close?.parentElement
-    if (this.#isToast(el)) this.#remove(el)
+    const close = event.target.closest?.("[data-phem-toast-close]")
+    const el = close ? this.#toastOf(close) : null
+    if (el) this.#remove(el)
   }
 
   // The time stops while the pointer or the focus is on the toast.
@@ -164,7 +175,8 @@ export default class PhemToastController extends Controller {
 
   // The message is text, not HTML.
   #add(message, type, duration) {
-    const same = this.#toasts().find((el) => el.dataset.phemToastType === type && el.firstChild.textContent === message)
+    // A toast that goes away does not count: it is removed at the end of its animation.
+    const same = this.#toasts().find((el) => !el.hasAttribute("data-ending-style") && el.getAttribute("data-type") === type && this.#message(el) === message)
     if (same) {
       same.dataset.phemToastDuration = String(duration)
       this.#start(same)
@@ -172,25 +184,54 @@ export default class PhemToastController extends Controller {
       return
     }
 
-    const el = document.createElement("div")
+    const el = this.#make()
     el.id = `phem-toast-${++count}`
-    el.className = `phem-toast phem-toast-${type}`
-    el.dataset.phemToastType = type
+    el.setAttribute("data-phem-toast", "")
+    el.setAttribute("data-type", type)
     el.dataset.phemToastDuration = String(duration)
+    el.hidden = true
+
+    const description = el.querySelector("[data-phem-toast-description]") ?? el
+    description.textContent = message
+
+    this.element.append(el)
+    show(el)
+    this.#stack()
+    this.#start(el)
+  }
+
+  // A copy of the root of the template, or the default parts.
+  #make() {
+    const root = this.hasTemplateTarget ? this.templateTarget.content.firstElementChild : null
+    if (root) return root.cloneNode(true)
+
+    const el = document.createElement("div")
 
     const text = document.createElement("span")
-    text.className = "phem-toast-message"
-    text.textContent = message
+    text.setAttribute("data-phem-toast-description", "")
 
     const close = document.createElement("button")
     close.type = "button"
-    close.className = "phem-toast-close"
+    close.setAttribute("data-phem-toast-close", "")
     close.setAttribute("aria-label", this.closeLabelValue)
     close.textContent = "×"
 
     el.append(text, close)
-    this.element.append(el)
-    this.#start(el)
+
+    return el
+  }
+
+  #message(el) {
+    return (el.querySelector("[data-phem-toast-description]") ?? el).textContent
+  }
+
+  // The position of each toast in the stack: 0 for the last toast.
+  #stack() {
+    const toasts = this.#toasts().filter((el) => !el.hasAttribute("data-ending-style"))
+    toasts.reverse().forEach((el, i) => {
+      el.style.setProperty("--toast-index", String(i))
+      el.toggleAttribute("data-limited", i >= this.limitValue)
+    })
   }
 
   #start(el) {
@@ -205,7 +246,10 @@ export default class PhemToastController extends Controller {
   #remove(el) {
     clearTimeout(this.timers.get(el))
     this.timers.delete(el)
-    el.remove()
+    if (el.hasAttribute("data-ending-style")) return
+
+    hide(el, { onEnd: () => el.remove() })
+    this.#stack()
   }
 
   #toasts() {
@@ -213,12 +257,12 @@ export default class PhemToastController extends Controller {
   }
 
   #toastOf(node) {
-    const el = node instanceof Element ? node.closest(".phem-toast") : null
+    const el = node instanceof Element ? node.closest("[data-phem-toast]") : null
 
     return this.#isToast(el) ? el : null
   }
 
   #isToast(el) {
-    return el?.parentElement === this.element && el.hasAttribute("data-phem-toast-type")
+    return el?.parentElement === this.element && el.hasAttribute("data-phem-toast")
   }
 }

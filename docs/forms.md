@@ -67,7 +67,7 @@ When the object is not valid, the handler doesn’t run. A submit with no first 
 The rules:
 
 - The errors go to the `Validation` property of the component (see [Read the errors with `Validation`](#read-the-errors-with-validation)). The field of an error is its property path: `from`, or `line.qty` for a nested object. Each submit replaces the errors of the last submit, and a valid submit removes them, also when the handler changes no state. They aren’t errors of the `#[State]` properties, so they don’t stop a `#[Validated]` handler.
-- When the component has no `Validation` property, the first error goes to an error toast: `{"message": "Choose the first day.", "type": "error"}` (see [Show toast messages](client-side.md#show-toast-messages)).
+- When the component has no `Validation` property, the first error goes to an error toast: `{"message": "Choose the first day.", "type": "error"}` (see [Show toast messages](ui-controllers.md#show-toast-messages)).
 - A field whose value doesn’t fit the type of its property gets the error “This value is not valid.”, as a bound field does. With `allow_extra_attributes: false` in the context, a field that the object has no property for gets it too. An empty field gives `null` to a nullable property, so type a property that can be empty as nullable.
 - The Serializer reads the fields as the form path of `#[MapRequestPayload]` does: it converts the strings to `int`, `float`, `bool`, a date, or a backed enum case. It ignores the fields that the object has no property for.
 - Map to a class for the form (a DTO), not to an entity. The Serializer sets each writable property of the object from the event, not only the properties that the form shows. The browser can send any field: with `#[MapForm] Product $product`, an event with `price=0` sets the price, also when the form has no price field. Copy the values of the DTO to the entity in the handler.
@@ -503,7 +503,7 @@ Add `data-phem-guard` to an element to ask the user for confirmation before they
 
 Only bound fields and file inputs can be dirty.
 
-By default, `window.confirm()` asks the question. To ask it in a `<dialog>` of your page, give the selector of the dialog in `data-phem-guard-dialog`, and the label of the accept button in `data-phem-guard-accept`. The dialog is the same as for [`phem-confirm`](client-side.md#ask-in-a-dialog-of-the-page), so one dialog in the layout can serve the two:
+By default, `window.confirm()` asks the question. To ask it in a `<dialog>` of your page, give the selector of the dialog in `data-phem-guard-dialog`, and the label of the accept button in `data-phem-guard-accept`. The dialog is the same as for [`phem-confirm`](ui-controllers.md#ask-in-a-dialog-of-the-page), so one dialog in the layout can serve the two:
 
 ```php
 <form onSubmit={{ save }} data-phem-guard={{ 'Discard the draft?' }}

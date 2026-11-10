@@ -1,0 +1,46 @@
+<?phem
+
+namespace App\Ui\Popover;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Common\Document;
+
+// A popover next to its trigger, a popover near the bottom edge of the viewport (it flips to the
+// top), and a tooltip.
+#[Page('/popover')]
+final class PopoverPage
+{
+    #[State] public int $likes = 0;
+
+    public function like(): void
+    {
+        ++$this->likes;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Popover">
+                <div id="share" data-controller="phem-popover" style="margin: 40px 200px">
+                    <button id="trigger" data-phem-popover-target="trigger">Share</button>
+                    <div id="popup" data-phem-popover-target="popup" popover="manual" hidden style="margin: 0; width: 160px; padding: 8px; border: 1px solid">
+                        <h2 id="title" data-phem-popover-target="title">Share</h2>
+                        <button id="like" onClick={{ like }}>Like</button>
+                        <button id="close" data-phem-popover-target="close">Close</button>
+                    </div>
+                </div>
+                <output id="likes">{{ likes }}</output>
+                <div id="low" data-controller="phem-popover" style="position: fixed; bottom: 8px; left: 8px">
+                    <button id="low-trigger" data-phem-popover-target="trigger">Low</button>
+                    <div id="low-popup" data-phem-popover-target="popup" hidden style="height: 120px; width: 120px; border: 1px solid">Low</div>
+                </div>
+                <button id="archive" data-controller="phem-tooltip" aria-label="Archive" style="margin: 80px 40px"
+                        data-phem-tooltip-delay-value={{ 100 }}>
+                    A<span id="tip" data-phem-tooltip-target="popup" hidden>Archive</span>
+                </button>
+            </Document>
+        );
+    }
+}
