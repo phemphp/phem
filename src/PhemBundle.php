@@ -426,8 +426,14 @@ final class PhemBundle extends AbstractBundle
 
     public function boot(): void
     {
+        // A container built before the bundle was registered has no Phem services. This occurs
+        // when cache:clear boots with a stale container, just after Flex adds the bundle.
+        if (!$this->container?->has('phem.manifest')) {
+            return;
+        }
+
         // Function components cannot be autoloaded: load the compiled code once per boot.
-        $manifest = $this->container?->get('phem.manifest');
+        $manifest = $this->container->get('phem.manifest');
         if ($manifest instanceof Manifest && $manifest->exists()) {
             $manifest->load();
         }
