@@ -106,6 +106,7 @@ const PHEM_ATTRIBUTES: &[(&str, &str, &str, &str)] = &[
     ("phem:key", "phem:key=\"${1:Enter}\"", "Phem: send only these keys", "With `onKeyDown` or `onKeyUp`: only these keys send the event, the other keys keep their default action. Keys separated by spaces, each with its modifiers: `phem:key=\"Enter\"`, `phem:key=\"ctrl+s Escape\"`."),
     ("phem:stop", "phem:stop", "Phem: keep the events from the handlers around", "The events of the element and its content do not go to the handlers of the elements around it: `<button onClick={{ star }} phem:stop>★</button>` in a row with `onClick`."),
     ("phem:prevent", "phem:prevent", "Phem: cancel the default action", "The event of a handler of the element does not do its default action: `<a href=\"/cart\" onClick={{ add }} phem:prevent>` does not open the link."),
+    ("phem:poll", "phem:poll={{ ${1:30000} }}", "Phem: send onPoll at an interval", "Milliseconds: the browser sends the `onPoll` event of the element at this interval, while the tab is visible: `<span onPoll={{ refresh }} phem:poll={{ 30000 }}>`. `null` stops the poll."),
 ];
 
 /// `phem:error`: on an HTML element, and on the tag of a component with an `id` prop.

@@ -134,6 +134,52 @@ final class Attributes
     }
 
     /**
+     * The modifier directives that render the same on an element and in a spread
+     * (`{{ ...rest }}`): `phem:debounce` → `data-phem-debounce="300"`, and the others. Returns
+     * null for another name. A new modifier needs only its entry in modifiers().
+     */
+    public static function modifier(string $name, mixed $value): ?Markup
+    {
+        $render = self::modifiers()[$name] ?? null;
+
+        return null === $render ? null : $render($value);
+    }
+
+    /** @return array<string, \Closure(mixed): Markup> */
+    private static function modifiers(): array
+    {
+        static $modifiers = null;
+
+        return $modifiers ??= [
+            'phem:live' => static fn (mixed $on): Markup => self::attr('data-phem-live', true === $on ? true : null),
+            'phem:debounce' => static fn (mixed $ms): Markup => self::timing('debounce', $ms),
+            'phem:throttle' => static fn (mixed $ms): Markup => self::timing('throttle', $ms),
+            'phem:key' => self::keyFilter(...),
+            'phem:poll' => self::poll(...),
+            'phem:stop' => static fn (mixed $on): Markup => new Markup(true === $on ? 'data-phem-stop' : '', 'UTF-8'),
+            'phem:prevent' => static fn (mixed $on): Markup => new Markup(true === $on ? 'data-phem-prevent' : '', 'UTF-8'),
+        ];
+    }
+
+    /**
+     * `phem:poll={{ 30000 }}` → `data-phem-poll="30000"`: the browser sends the `onPoll` event of
+     * the element at this interval, in milliseconds, while the tab is visible. Null or false
+     * renders nothing: the element does not poll.
+     */
+    public static function poll(mixed $interval): Markup
+    {
+        if (null === $interval || false === $interval) {
+            return new Markup('', 'UTF-8');
+        }
+
+        if (!\is_int($interval) || $interval < 1) {
+            throw new \InvalidArgumentException(\sprintf('"phem:poll" takes a number of milliseconds (1 or more), "%s" given.', \is_int($interval) ? $interval : get_debug_type($interval)));
+        }
+
+        return new Markup(\sprintf('data-phem-poll="%d"', $interval), 'UTF-8');
+    }
+
+    /**
      * `phem:key="Enter"` → `data-phem-key-filter="Enter"`: only these keys send the `onKeyDown` or
      * `onKeyUp` event of the element (see KeyFilter). Null or false renders nothing.
      */

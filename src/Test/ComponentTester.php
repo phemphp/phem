@@ -49,6 +49,12 @@ final class ComponentTester
     /** The DOM events that send the fields of the form of their element. */
     private const FORM_EVENTS = ['submit', 'change', 'input', 'click'];
 
+    /**
+     * The events that only the element with the handler gets, not an element in it: a scroll does
+     * not bubble, and the browser makes `visible` and `poll` for the element itself.
+     */
+    private const OWN_EVENTS = ['scroll', 'visible', 'poll'];
+
     private const TEXT_INPUTS = ['text', 'search', 'email', 'url', 'tel', 'password', 'number', 'date', 'time', 'datetime-local', 'month', 'week', 'color', 'range'];
 
     private HTMLDocument $document;
@@ -315,9 +321,36 @@ final class ComponentTester
         }
 
         // A disabled element gets the `phem:call` of the JS code too.
-        $element = $this->document->querySelector($selector) ?? Assert::fail(\sprintf('No element matches "%s". %s', $selector, $this->context()));
+        $element = $this->element($selector);
 
         return $this->fireOn($element, $selector, 'call', ['detail' => $detail]);
+    }
+
+    /**
+     * Sends the `onVisible` event of an element, as the browser does when the element comes into
+     * view: the trigger of an infinite scroll. The browser sends it also to a disabled element.
+     *
+     *     ->visible('#more')->assertSee('Item 40')
+     */
+    public function visible(string $selector): self
+    {
+        return $this->fireOn($this->element($selector), $selector, 'visible', []);
+    }
+
+    /**
+     * Sends the `onPoll` event of an element, as the browser does at the interval of its
+     * `phem:poll`. The test does not wait: each call is one poll.
+     *
+     *     ->poll('#status')->assertSee('Done')
+     */
+    public function poll(string $selector): self
+    {
+        $element = $this->element($selector);
+        if (!$element->hasAttribute('data-phem-poll')) {
+            Assert::fail(\sprintf('The element "%s" has no "phem:poll" interval: the browser does not poll it.', $selector));
+        }
+
+        return $this->fireOn($element, $selector, 'poll', []);
     }
 
     public function focus(string $selector): self
@@ -361,7 +394,7 @@ final class ComponentTester
     public function load(?string $selector = null): self
     {
         if (null !== $selector) {
-            $element = $this->document->querySelector($selector) ?? Assert::fail(\sprintf('No element matches "%s". %s', $selector, $this->context()));
+            $element = $this->element($selector);
             $boundaries = [$element->closest('[data-phem-load]') ?? Assert::fail(\sprintf('The element "%s" is not in a <Suspense> that shows its fallback.', $selector))];
         } else {
             $boundaries = iterator_to_array($this->document->querySelectorAll('[data-phem-load]'), false);
@@ -584,7 +617,7 @@ final class ComponentTester
 
     public function assertSelectorTextContains(string $selector, string $text): self
     {
-        $element = $this->document->querySelector($selector) ?? Assert::fail(\sprintf('No element matches "%s". %s', $selector, $this->context()));
+        $element = $this->element($selector);
         Assert::assertStringContainsString(self::normalize($text), self::normalize($element->textContent ?? ''), \sprintf('The text of "%s".', $selector));
 
         return $this;
@@ -1098,9 +1131,7 @@ final class ComponentTester
         $element = match ($type) {
             'input' => $this->handlerElement($target, 'input') ?? (null !== ($e = $this->handlerElement($target, 'change')) && $textChange($e) ? $e : null),
             'change' => null !== ($e = $this->handlerElement($target, 'change')) && !$textChange($e) ? $e : null,
-            // A scroll does not bubble: only the element that scrolls gets it.
-            'scroll' => $target->hasAttribute('data-phem-on-scroll') ? $this->handlerElement($target, 'scroll') : null,
-            default => $this->handlerElement($target, $type),
+            default => \in_array($type, self::OWN_EVENTS, true) && !$target->hasAttribute('data-phem-on-'.$type) ? null : $this->handlerElement($target, $type),
         };
         if (null === $element) {
             return null;
@@ -1179,7 +1210,7 @@ final class ComponentTester
      */
     private function fiberOf(string $selector): ?string
     {
-        $element = $this->document->querySelector($selector) ?? Assert::fail(\sprintf('No element matches "%s". %s', $selector, $this->context()));
+        $element = $this->element($selector);
 
         for ($c = $element->closest('[data-phem-c]'); null !== $c; $c = $c->parentElement?->closest('[data-phem-c]')) {
             $id = (string) $c->getAttribute('data-phem-c');
@@ -1191,9 +1222,15 @@ final class ComponentTester
         return null;
     }
 
+    /** The element of a selector: the test fails when no element matches. */
+    private function element(string $selector): Element
+    {
+        return $this->document->querySelector($selector) ?? Assert::fail(\sprintf('No element matches "%s". %s', $selector, $this->context()));
+    }
+
     private function enabled(string $selector): Element
     {
-        $element = $this->document->querySelector($selector) ?? Assert::fail(\sprintf('No element matches "%s". %s', $selector, $this->context()));
+        $element = $this->element($selector);
         if ($element->hasAttribute('disabled') || null !== $element->closest('fieldset[disabled]')) {
             Assert::fail(\sprintf('The element "%s" is disabled: a browser sends no event.', $selector));
         }

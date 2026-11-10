@@ -8,6 +8,13 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Load more on view, and polling. `onVisible={{ more }}` runs the handler when the element comes
+  into view, and again each time it comes back into view: the trigger of an infinite scroll. An
+  element that is still in view after the update of its event sends it again, but only when the
+  update moved it (new items before it). `phem:poll={{ 30000 }} onPoll={{ refresh }}` runs
+  the handler every 30 seconds while the tab is visible, and `phem:poll={{ null }}` stops it.
+  `ComponentTester::visible()` and `poll()` send the events in a test. `phemc` checks the interval
+  (E032), and warns about `phem:poll` with no `onPoll` and `onPoll` with no `phem:poll` (W006).
 - Call a handler from JavaScript. `onCall={{ move }}` runs the handler when JS code dispatches
   a `phem:call` event on the element or in it, with its own data:
   `el.dispatchEvent(new CustomEvent("phem:call", { detail: { card: 12, index: 0 } }))`. The

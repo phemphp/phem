@@ -73,6 +73,8 @@ Each action finds an element with a CSS selector and sends the event the way the
 | `fill($selector, $value)` | None: the next event sends the bound field (`phem:bind`) | `->fill('[name=q]', 'Curie')->click('button')` |
 | `submit($selector, $fields)` | `onSubmit` | `->submit('form', ['name' => 'Ada'])` |
 | `upload($selector, $paths)` | None: the next submit of its form sends the files | `->upload('[name=photo]', __DIR__.'/ada.jpg')->submit()` |
+| `visible($selector)` | `onVisible`, as when the element comes into view | `->visible('#more')->assertSee('Item 40')` |
+| `poll($selector)` | `onPoll`, as one poll at the interval of `phem:poll`. It fails when the element has no interval | `->poll('#status')->assertSee('Done')` |
 | `call($selector, $detail)` | `onCall`, as a `phem:call` event of the JavaScript, with the detail in `$e->detail` | `->call('ul.board', ['card' => 'c', 'index' => 0])` |
 | `drop($selector, $paths)` | `onDrop`, with the files | `->drop('.dropzone', [__DIR__.'/ada.jpg'])` |
 | `paste($selector, $paths)` | `onPaste`, with the files | `->paste('textarea', __DIR__.'/shot.png')` |

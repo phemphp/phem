@@ -1,0 +1,2 @@
+<?phem // expect: W006
+function App() { $refresh = fn() => 1; return <span onClick={{ refresh }} phem:poll={{ 1000 }}>x</span>; }

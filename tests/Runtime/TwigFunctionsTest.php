@@ -192,6 +192,33 @@ final class TwigFunctionsTest extends TestCase
         yield 'a name with other characters' => ['Enter" onfocus="x'];
     }
 
+    public function testPoll(): void
+    {
+        self::assertSame('data-phem-poll="30000"', (string) Attributes::poll(30000));
+        self::assertSame('data-phem-poll="1"', (string) Attributes::poll(1));
+        self::assertSame('', (string) Attributes::poll(null));
+        self::assertSame('', (string) Attributes::poll(false));
+        self::assertSame('id="a" data-phem-poll="5000"', (string) $this->runtime()->attrs(['id' => 'a', 'phem:poll' => 5000]), 'in a spread');
+    }
+
+    #[DataProvider('invalidPolls')]
+    public function testPollTakesMilliseconds(mixed $value): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('"phem:poll" takes a number of milliseconds (1 or more)');
+        Attributes::poll($value);
+    }
+
+    /** @return iterable<string, array{mixed}> */
+    public static function invalidPolls(): iterable
+    {
+        yield 'zero' => [0];
+        yield 'a negative number' => [-1000];
+        yield 'a string number' => ['30000'];
+        yield 'a float' => [1.5];
+        yield 'true' => [true];
+    }
+
     public function testStopAndPreventInASpread(): void
     {
         self::assertSame('data-phem-stop data-phem-prevent', (string) $this->runtime()->attrs(['phem:stop' => true, 'phem:prevent' => true]));

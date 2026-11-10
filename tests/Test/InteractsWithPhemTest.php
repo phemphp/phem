@@ -209,6 +209,42 @@ final class InteractsWithPhemTest extends KernelTestCase
         $this->mount('App\Ui\Call\Board')->call('#order', []);
     }
 
+    public function testVisibleSendsTheOnVisibleEvent(): void
+    {
+        $this->mount('App\Ui\Triggers\Timeline')
+            ->assertSee('Item 2')
+            ->assertDontSee('Item 3')
+            ->visible('#more')
+            ->assertSee('Item 4')
+            ->visible('#more')
+            ->assertSee('Item 6')
+            // No more items: the trigger is gone.
+            ->assertSelectorNotExists('#more');
+    }
+
+    public function testVisibleOfAnElementInTheTriggerFails(): void
+    {
+        $this->expectException(AssertionFailedError::class);
+        $this->expectExceptionMessage('has no handler for the "visible" event');
+
+        // The browser sends the event of the element itself, not of an element in it.
+        $this->mount('App\Ui\Triggers\Timeline')->visible('#items');
+    }
+
+    public function testPollSendsTheOnPollEventUntilTheIntervalIsGone(): void
+    {
+        $tester = $this->mount('App\Ui\Triggers\Timeline')
+            ->poll('#status')
+            ->assertSee('Polls: 1')
+            ->poll('#status')
+            ->assertSee('Polls: 2');
+
+        // The render gives no interval now: the browser does not poll.
+        $this->expectException(AssertionFailedError::class);
+        $this->expectExceptionMessage('The element "#status" has no "phem:poll" interval: the browser does not poll it.');
+        $tester->poll('#status');
+    }
+
     public function testKeyFiltersAndEventModifiers(): void
     {
         $this->mount('App\Ui\Modifiers\Inbox')

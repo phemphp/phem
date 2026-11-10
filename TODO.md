@@ -100,23 +100,6 @@ on a focused element.
 - **Proposal:** `phem:shortcut="mod+k"` on the element of the handler, or a built-in
   `phem-shortcut` controller for browser-only actions.
 
-### [ ] Load more on view, and polling — P2
-
-`<Suspense lazy>` loads one time. An infinite scroll needs a trigger that can run more than one
-time. A status or a "last seen" value needs polling when the app has no Mercure hub.
-
-- **Best peer:** LW `wire:intersect` and `wire:poll`, LV `phx-viewport-bottom`.
-- **Proposal:**
-
-  ```html
-  <li onVisible={{ loadMore }}>Loading…</li>
-  <span phem:poll={{ 30000 }} onPoll={{ refreshStatus }}>{{ status }}</span>
-  ```
-
-  Polling stops while the tab is hidden (`visibilitychange`). With a feed (docs/long-lists.md),
-  `onVisible={{ older }}` prepends the next items: the infinite scroll of the feed guide needs no
-  button.
-
 ### [ ] Built-in controllers for complex input — P2
 
 The built-in controllers cover simple patterns only. These are missing:

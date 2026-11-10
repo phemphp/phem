@@ -841,6 +841,19 @@ impl<'a> Lowerer<'a> {
                         continue;
                     }
 
+                    if name == POLL {
+                        match value {
+                            AttrValue::Expr(x) => {
+                                let c = self.expr_code(x);
+                                self.check_poll_value(&c, x.span);
+                                hash.push(format!("{}: ({c})", php_str(name)));
+                            }
+                            _ => self.timing_not_expr(name, *name_span),
+                        }
+
+                        continue;
+                    }
+
                     if name == STOP || name == PREVENT {
                         if let Some(v) = self.flag_value(name, *name_span, value) {
                             hash.push(format!("{}: {}", php_str(name), v.map_or("true".into(), |c| format!("({c})"))));
@@ -1013,6 +1026,7 @@ impl<'a> Lowerer<'a> {
         let mut has_spread = false;
         let mut has_handler = false;
         let mut has_key_handler = false;
+        let mut poll_handler: Option<Span> = None;
         let mut modifiers: Vec<(&str, Span)> = Vec::new();
         for a in &e.attrs {
             match &a.kind {
@@ -1021,6 +1035,9 @@ impl<'a> Lowerer<'a> {
                     if let Some(event) = event_name(name) {
                         has_handler = true;
                         has_key_handler |= event == "keydown" || event == "keyup";
+                        if event == "poll" {
+                            poll_handler = Some(*name_span);
+                        }
                     } else if name == LIVE {
                         has_handler = true;
                     } else if TIMINGS.contains(&name.as_str()) {
@@ -1031,7 +1048,7 @@ impl<'a> Lowerer<'a> {
 
                         timing = Some(name);
                         modifiers.push((name, *name_span));
-                    } else if name == KEY || name == PREVENT {
+                    } else if name == KEY || name == PREVENT || name == POLL {
                         modifiers.push((name, *name_span));
                     }
                 }
@@ -1042,8 +1059,23 @@ impl<'a> Lowerer<'a> {
             return;
         }
 
+        let has_poll = modifiers.iter().any(|(name, _)| *name == POLL);
+        if let (Some(span), false) = (poll_handler, has_poll) {
+            self.diags.push(
+                Diagnostic::warning(codes::MODIFIER_WITHOUT_HANDLER, "`onPoll` never runs: the element has no `phem:poll`", span)
+                    .with_help("give the interval in milliseconds, for example `<span onPoll={{ refresh }} phem:poll={{ 30000 }}>`"),
+            );
+        }
+
         for (name, span) in modifiers {
-            if name == KEY && has_handler && !has_key_handler {
+            if name == POLL {
+                if poll_handler.is_none() {
+                    self.diags.push(
+                        Diagnostic::warning(codes::MODIFIER_WITHOUT_HANDLER, "`phem:poll` does nothing: the element has no `onPoll`", span)
+                            .with_help("put it on the element with the poll handler, for example `<span onPoll={{ refresh }} phem:poll={{ 30000 }}>`"),
+                    );
+                }
+            } else if name == KEY && has_handler && !has_key_handler {
                 self.diags.push(
                     Diagnostic::warning(codes::MODIFIER_WITHOUT_HANDLER, "`phem:key` does nothing: the element has no `onKeyDown` or `onKeyUp`", span)
                         .with_help("put it on the element with the key handler, for example `<input onKeyDown={{ save }} phem:key=\"Enter\" />`"),
@@ -1114,21 +1146,18 @@ impl<'a> Lowerer<'a> {
     /// The value of `phem:debounce` and `phem:throttle`: milliseconds, or `'blur'` for `phem:debounce`.
     /// Only a literal can be checked here. The runtime checks the other values.
     fn check_timing_value(&mut self, name: &str, code: &str, span: Span) {
-        let c = code.trim();
         let blur = name == DEBOUNCE;
-        let ok = if c.starts_with('-') {
-            !c[1..].trim().starts_with(|ch: char| ch.is_ascii_digit())
-        } else if c.starts_with(|ch: char| ch.is_ascii_digit()) {
-            c.chars().all(|ch| ch.is_ascii_digit())
-        } else if c.starts_with('\'') || c.starts_with('"') {
-            blur && (c == "'blur'" || c == "\"blur\"")
-        } else {
-            true
-        };
-
-        if !ok {
+        if !millis_literal_ok(code, 0, blur) {
             let help = if blur { "write a number of milliseconds (`{{ 300 }}`), or `{{ 'blur' }}`" } else { "write a number of milliseconds: `{{ 300 }}`" };
             self.error(codes::BAD_ATTRIBUTE, format!("`{name}` takes a number of milliseconds{}", if blur { " or 'blur'" } else { "" }), span).help = Some(help.into());
+        }
+    }
+
+    /// The value of `phem:poll`: milliseconds, 1 or more. Only a literal can be checked here. The
+    /// runtime checks the other values (`Attributes::poll()`).
+    fn check_poll_value(&mut self, code: &str, span: Span) {
+        if !millis_literal_ok(code, 1, false) {
+            self.error(codes::BAD_ATTRIBUTE, "`phem:poll` takes a number of milliseconds, 1 or more", span).help = Some("write the interval of the poll: `{{ 30000 }}`".into());
         }
     }
 
@@ -1459,6 +1488,19 @@ impl<'a> Lowerer<'a> {
                         Some(KeyFilterValue::Text { html, .. }) => out.push_str(&format!("{ws}data-phem-key-filter={html}")),
                         Some(KeyFilterValue::Expr(c)) => out.push_str(&format!("{ws}{{{{ phem_key_filter({c}) }}}}")),
                         None => {}
+                    }
+
+                    return;
+                }
+
+                if name == POLL {
+                    match value {
+                        AttrValue::Expr(x) => {
+                            let c = self.expr_code(x);
+                            self.check_poll_value(&c, x.span);
+                            out.push_str(&format!("{ws}{{{{ phem_poll({c}) }}}}"));
+                        }
+                        _ => self.timing_not_expr(name, *name_span),
                     }
 
                     return;
@@ -2229,6 +2271,9 @@ const TIMINGS: &[&str] = &[DEBOUNCE, "phem:throttle"];
 /// `phem:key="Enter"`: only these keys send the `onKeyDown` or `onKeyUp` event of the element.
 const KEY: &str = "phem:key";
 
+/// `phem:poll={{ 30000 }}`: the browser sends the `onPoll` event of the element at this interval.
+const POLL: &str = "phem:poll";
+
 /// `phem:stop`: the events of the element and its content do not go to the handlers around it.
 const STOP: &str = "phem:stop";
 
@@ -2278,6 +2323,26 @@ fn key_filter_error(text: &str) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+/// Whether the Twig code of a value in milliseconds can be valid: a number literal of `min` or
+/// more, `'blur'` when `blur` is true, or another expression (the runtime checks it).
+fn millis_literal_ok(code: &str, min: u64, blur: bool) -> bool {
+    let c = code.trim();
+    if let Some(rest) = c.strip_prefix('-') {
+        return !rest.trim().starts_with(|ch: char| ch.is_ascii_digit());
+    }
+
+    if c.starts_with(|ch: char| ch.is_ascii_digit()) {
+        // A number too large for u64 is large enough.
+        return c.chars().all(|ch| ch.is_ascii_digit()) && c.parse::<u64>().map_or(true, |ms| ms >= min);
+    }
+
+    if c.starts_with('\'') || c.starts_with('"') {
+        return blur && (c == "'blur'" || c == "\"blur\"");
+    }
+
+    true
 }
 
 /// The text of a string literal (`'Enter'`), or None for another expression.

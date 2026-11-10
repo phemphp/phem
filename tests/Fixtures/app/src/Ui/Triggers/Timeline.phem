@@ -1,0 +1,42 @@
+<?phem
+
+namespace App\Ui\Triggers;
+
+use Phem\Attribute\{Component, State};
+use Phem\Node;
+
+// An infinite scroll (onVisible) and a status that polls (onPoll with phem:poll).
+#[Component]
+final class Timeline
+{
+    #[State] public int $loaded = 2;
+    #[State] public int $polls = 0;
+
+    public function more(): void
+    {
+        $this->loaded = min($this->loaded + 2, 6);
+    }
+
+    public function refresh(): void
+    {
+        ++$this->polls;
+    }
+
+    public function render(): Node
+    {
+        $items = range(1, $this->loaded);
+        $interval = $this->polls < 2 ? 1000 : null;
+
+        return (
+            <div>
+                <ul id="items">
+                    {% for item in items %}
+                        <li key={{ item }}>Item {{ item }}</li>
+                    {% endfor %}
+                    {% if loaded < 6 %}<li id="more" onVisible={{ more }}>Loading…</li>{% endif %}
+                </ul>
+                <p id="status" onPoll={{ refresh }} phem:poll={{ interval }}>Polls: {{ polls }}</p>
+            </div>
+        );
+    }
+}

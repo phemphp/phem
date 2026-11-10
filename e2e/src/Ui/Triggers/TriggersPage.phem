@@ -1,0 +1,47 @@
+<?phem
+
+namespace App\Ui\Triggers;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Common\Document;
+
+// An infinite scroll (onVisible) and a status that polls (onPoll with phem:poll).
+#[Page('/triggers')]
+final class TriggersPage
+{
+    #[State] public int $loaded = 5;
+    #[State] public int $loads = 0;
+    #[State] public int $polls = 0;
+
+    public function more(): void
+    {
+        $this->loaded = min($this->loaded + 5, 40);
+        ++$this->loads;
+    }
+
+    public function refresh(): void
+    {
+        ++$this->polls;
+    }
+
+    public function render(): Node
+    {
+        $items = range(1, $this->loaded);
+        $interval = $this->polls < 3 ? 100 : null;
+
+        return (
+            <Document title="Triggers">
+                <p id="status" onPoll={{ refresh }} phem:poll={{ interval }}>Polls: {{ polls }}</p>
+                <output id="loads">{{ loads }}</output>
+                <ul id="items">
+                    {% for item in items %}
+                        <li key={{ item }} id={{ 'item-' ~ item }} style="height: 100px">Item {{ item }}</li>
+                    {% endfor %}
+                    {% if loaded < 40 %}<li id="more" onVisible={{ more }}>Loading…</li>{% endif %}
+                </ul>
+            </Document>
+        );
+    }
+}

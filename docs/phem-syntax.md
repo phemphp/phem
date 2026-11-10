@@ -359,7 +359,7 @@ A handler can take these forms:
 - **Prop of type `Closure`**
 - **Call with arguments**: `onClick={{ remove(item) }}` runs `remove($item)` when the user clicks, not during the render. See [Pass arguments to a handler](events.md#pass-arguments-to-a-handler)
 
-The supported events are `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`, `onKeyDown`, `onKeyUp`, `onFocus`, `onBlur`, `onFocusIn`, `onFocusOut`, `onDragStart`, `onDragOver`, `onDrop`, `onPaste`, `onContextMenu`, `onPointerDown`, `onPointerUp`, `onScroll` and `onCall`. `phemc` warns about other events (W003). `onCall` runs when JavaScript code dispatches a `phem:call` event (see [Call a handler from your JavaScript](events.md#call-a-handler-from-your-javascript)). For what a handler receives and returns, see [Handle events](events.md).
+The supported events are `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`, `onKeyDown`, `onKeyUp`, `onFocus`, `onBlur`, `onFocusIn`, `onFocusOut`, `onDragStart`, `onDragOver`, `onDrop`, `onPaste`, `onContextMenu`, `onPointerDown`, `onPointerUp`, `onScroll`, `onCall`, `onVisible` and `onPoll`. `phemc` warns about other events (W003). `onCall` runs when JavaScript code dispatches a `phem:call` event (see [Call a handler from your JavaScript](events.md#call-a-handler-from-your-javascript)). The browser sends `onVisible` when the element comes into view (see [Load more when an element comes into view](events.md#load-more-when-an-element-comes-into-view)), and `onPoll` at the interval of `phem:poll` (see [Poll the server](events.md#poll-the-server)). For what a handler receives and returns, see [Handle events](events.md).
 
 ### Directives (`phem:*`)
 
@@ -381,6 +381,7 @@ A `phem:*` attribute adds a Phem behavior to an element:
 | `phem:key="keys"` | Sends the `onKeyDown` or `onKeyUp` event only for these keys, such as `"Enter"` or `"ctrl+s Escape"`. See [Filter keys and stop events](events.md#filter-keys-and-stop-events) |
 | `phem:stop` | Keeps the events of the element and its content from the handlers around it |
 | `phem:prevent` | Cancels the default action of the event of a handler of the element, such as the visit of a link |
+| `phem:poll={{ ms }}` | Sends the `onPoll` event of the element every `ms` milliseconds while the tab is visible. `null` stops the poll. See [Poll the server](events.md#poll-the-server) |
 | `phem:progress={{ handler }}` | Shows the progress of a file upload. See [File uploads](forms.md#accept-file-uploads) |
 | `phem:feed={{ prop }}` | Shows a `Feed` property: the element holds one `{% for %}` loop on the feed, with one element for each item. The browser keeps the items. See [Feeds](long-lists.md) |
 

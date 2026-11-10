@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Completion for the Phem attributes `phem:key`, `phem:stop` and `phem:prevent`.
+- Completion for the Phem attributes `phem:key`, `phem:stop`, `phem:prevent` and `phem:poll`,
+  and for the events `onVisible` and `onPoll`.
 - The files are now `.phem` files that open with `<?phem` (before: `.phpm` and `<?phpm`). The
   language id is now `phem`.
 - Find references on a component, a function, or a method: the tags of a component, the calls

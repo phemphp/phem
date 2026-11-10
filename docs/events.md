@@ -1,6 +1,6 @@
 # Handle events
 
-This guide shows you how to respond when the user clicks, types or changes a field. It covers drops and pastes, handler arguments, services in handlers, loading states, key filters and event modifiers, the wait before an event, redirects, browser events for your JavaScript, and code that runs around every handler. For forms, see [Handle forms](forms.md). For the syntax of the `on*` attributes and the `phem:*` directives, see [The `.phem` syntax](phem-syntax.md).
+This guide shows you how to respond when the user clicks, types or changes a field. It covers drops and pastes, loads on view and polls, handler arguments, services in handlers, loading states, key filters and event modifiers, the wait before an event, redirects, browser events for your JavaScript, and code that runs around every handler. For forms, see [Handle forms](forms.md). For the syntax of the `on*` attributes and the `phem:*` directives, see [The `.phem` syntax](phem-syntax.md).
 
 ## Respond to a click, a key or a change
 
@@ -10,7 +10,7 @@ A handler can take a `Phem\Event` argument with these properties:
 
 | Property | Value |
 |---|---|
-| `$e->type` | The type of the DOM event, such as `click`, `change` or `submit` |
+| `$e->type` | The type of the DOM event, such as `click`, `change` or `submit`, or `visible`, `poll` or `call` for the events that the browser makes itself |
 | `$e->value` | The value of the element |
 | `$e->checked` | Whether a checkbox is checked |
 | `$e->key` | The key of a key event |
@@ -378,6 +378,98 @@ The event needs no `bubbles: true`: the page root listens to `phem:call` in the 
 The browser makes the detail, so a user can change it. Check it in the handler, as you check `$e->value`. The event goes in the queue as the other events: `phem:debounce`, `phem:throttle`, `phem:loading` and `phem:before-queue` work the same. Its type is `call`.
 
 A handler can’t dispatch a `phem:call` browser event: `$e->dispatcher->dispatch('call')` throws an `InvalidArgumentException`. In a test, `call()` sends the event also to a disabled element, as the browser does.
+
+## Load more when an element comes into view
+
+Put an `onVisible` handler on an element, and the browser sends the event when the element comes into view. Use it as the trigger of an infinite scroll: put the element after the last item, and remove it when the server has no more items.
+
+```php
+#[Component]
+final class Timeline
+{
+    /** @var array<int, string> the titles of the posts, by id */
+    #[State] public array $posts = [];
+    #[State] public bool $hasMore = true;
+
+    public function __construct(private readonly PostRepository $repository)
+    {
+    }
+
+    public function more(): void
+    {
+        $next = $this->repository->titles(offset: \count($this->posts), limit: 20);
+        $this->posts += $next;
+        $this->hasMore = 20 === \count($next);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <ul>
+                {% for id, title in posts %}
+                    <li key={{ id }}>{{ title }}</li>
+                {% endfor %}
+                {% if hasMore %}<li onVisible={{ more }}>Loading…</li>{% endif %}
+            </ul>
+        );
+    }
+}
+```
+
+The trigger renders with a `data-phem-on-visible` attribute, and the event has the type `visible`:
+
+```html
+<li data-phem-on-visible="…">Loading…</li>
+```
+
+```json
+{"type": "visible", "value": null, "checked": null, "key": null, "form": null}
+```
+
+The browser sends the event each time the element comes into view, and one time only while it stays in view. After the update of the event, an element that is still in view sends the event again, but only when the update moved it, for example with new items before it. So the list loads until the items fill the view, and an update with no new items stops the loads. A failed event does not load again. An update that adds items after the element, such as older messages below a trigger at the top of a chat, does not move it: the element sends the event again only when it leaves the view and comes back. For a long list whose items stay in the browser, use a feed: see [Load older items](long-lists.md#load-older-items).
+
+The browser sends the event of the element itself: an element in it does not send it, and `phem:stop` does not change it. A morph or a push can show a new `onVisible` element, and the browser watches it too.
+
+## Poll the server
+
+Put an `onPoll` handler and a `phem:poll` interval in milliseconds on an element, and the browser sends the event at this interval. Use it for a status or a "last seen" value when the application has no Mercure hub (see [Real-time updates](real-time-updates.md)):
+
+```php
+#[Component]
+final class ExportStatus
+{
+    #[Prop] public int $export;
+    #[State] public string $status = 'running';
+
+    public function __construct(private readonly ExportRepository $exports)
+    {
+    }
+
+    public function refresh(): void
+    {
+        $this->status = $this->exports->status($this->export);
+    }
+
+    public function render(): Node
+    {
+        $interval = 'done' === $this->status ? null : 2000;
+
+        return (
+            <p onPoll={{ refresh }} phem:poll={{ interval }}>Export: {{ status }}</p>
+        );
+    }
+}
+```
+
+```html
+<p data-phem-on-poll="…" data-phem-poll="2000">Export: running</p>
+```
+
+The interval starts at the end of the last poll, so the polls of a slow server do not wait in the queue. The polls stop while the tab is hidden (`visibilitychange`) and while the browser is offline. When the tab is visible again, a poll whose interval passed goes at once. With `null` or `false`, the element renders no interval and does not poll: above, the polls stop when the export is done. A morph that changes the interval starts the poll again with the new interval.
+
+The interval is a whole number of milliseconds, 1 or more. `phemc` checks a literal value (E032), and the runtime throws an `InvalidArgumentException` for another value. `phemc` warns about `phem:poll` with no `onPoll`, and `onPoll` with no `phem:poll` (W006).
+
+`onVisible` and `onPoll` events go in the queue as the other events: `phem:debounce`, `phem:throttle`, `phem:loading` and `phem:before-queue` work the same. `phem:debounce={{ 'blur' }}` does not apply: the event goes at once. An event of the same element that waits in the queue does not go two times. A listener of `phem:before-queue` that cancels one of these events drops it: `detail.resume()` does not send it, and the next view or the next poll sends a new event. In a test, `visible()` and `poll()` send the events (see [Simulate user actions](testing.md#simulate-user-actions)).
 
 ## Run code around every handler
 

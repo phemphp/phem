@@ -27,8 +27,10 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// The event attributes that the `phem` client listens to (`DomEvents::LISTENED` of the runtime).
 /// The runtime makes `onFocus` and `onBlur` the `focusin` and `focusout` events, and `onCall` the
-/// `phem:call` event of the JS code (its attribute is `data-phem-on-call`).
-pub const EVENTS: &[&str] = &["onClick", "onDoubleClick", "onChange", "onInput", "onSubmit", "onKeyDown", "onKeyUp", "onFocus", "onBlur", "onFocusIn", "onFocusOut", "onDragStart", "onDragOver", "onDrop", "onPaste", "onContextMenu", "onPointerDown", "onPointerUp", "onScroll", "onCall"];
+/// `phem:call` event of the JS code (its attribute is `data-phem-on-call`). The client sends
+/// `onVisible` when the element comes into view, and `onPoll` at the interval of `phem:poll`: no
+/// DOM event.
+pub const EVENTS: &[&str] = &["onClick", "onDoubleClick", "onChange", "onInput", "onSubmit", "onKeyDown", "onKeyUp", "onFocus", "onBlur", "onFocusIn", "onFocusOut", "onDragStart", "onDragOver", "onDrop", "onPaste", "onContextMenu", "onPointerDown", "onPointerUp", "onScroll", "onCall", "onVisible", "onPoll"];
 
 #[derive(Clone, Debug)]
 pub struct SourceInput {

@@ -1,0 +1,42 @@
+<?phem
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\{Component, State};
+use Phem\Node;
+
+#[Component]
+final class Triggers
+{
+    #[State] public array $items = [];
+    #[State] public bool $more = true;
+    #[State] public string $status = 'running';
+
+    public function load(): void
+    {
+    }
+
+    public function refresh(): void
+    {
+    }
+
+    public function render(): Node
+    {
+        $interval = 'done' === $this->status ? null : 2000;
+        $rest = ['phem:poll' => 5000];
+
+        return (
+            <div>
+                <ul>
+                    {% for item in items %}
+                        <li key={{ item }}>{{ item }}</li>
+                    {% endfor %}
+                    {% if more %}<li onVisible={{ load }}>Loading…</li>{% endif %}
+                </ul>
+                <span onPoll={{ refresh }} phem:poll={{ 30000 }}>{{ status }}</span>
+                <span onPoll={{ refresh }} phem:poll={{ interval }}>{{ status }}</span>
+                <span {{ ...rest }} onPoll={{ refresh }}>{{ status }}</span>
+            </div>
+        );
+    }
+}

@@ -57,8 +57,9 @@ const FORM_EVENTS = new Set(["submit", "change", "input", "click"])
 const CANCELLED_EVENTS = new Set(["drop", "contextmenu"])
 
 // The DOM events that fire many times each second: a new event takes the payload of the event of
-// the same handler that waits in the queue (see enqueue()).
-const COALESCED_EVENTS = new Set(["input", "change", "dragover", "scroll"])
+// the same handler that waits in the queue (see enqueue()). A poll or a `visible` event that waits
+// does not go in the queue two times.
+const COALESCED_EVENTS = new Set(["input", "change", "dragover", "scroll", "visible", "poll"])
 
 // The event that JS code dispatches to call the `onCall` handler of its element (or of an
 // ancestor), with its detail: the handler gets it in `$e->detail`. The handler event is `call`.
@@ -135,6 +136,199 @@ function fieldValue(field) {
   if (field instanceof HTMLInputElement && (field.type === "checkbox" || field.type === "radio")) return field.checked
   if (field instanceof HTMLSelectElement) return [...field.selectedOptions].map((o) => o.value)
   return field.value
+}
+
+// The elements with an `onVisible` handler (`data-phem-on-visible`): each one sends its event
+// when it comes into view, and again each time it comes into view after it left the view. An
+// element that is still in view after the update of its event sends it again, but only when the
+// update moved it (new items before it): an infinite scroll loads until the items fill the view,
+// and stops when the server has no more items. `send(el, end)` sends the event, and returns false
+// when it did not go. `end(ok)` runs after the update of the event.
+class VisibleTriggers {
+  #root
+  #send
+  #observer = null
+  #stopped = false
+  // The elements that the observer watches.
+  #watched = new Set()
+  // The elements in view.
+  #inView = new WeakSet()
+  // The elements whose view the observer gives again after the update of their event (see #end()).
+  #recheck = new WeakSet()
+  // The elements whose event runs.
+  #running = new WeakSet()
+
+  constructor(root, send) {
+    this.#root = root
+    this.#send = send
+  }
+
+  // Watches the new `onVisible` elements (in `elements`, the trigger elements of the page), and
+  // stops for the elements that left the page or lost their handler. After the first render, a
+  // morph or a push. The observer starts with the first element.
+  scan(elements) {
+    if (this.#stopped) return
+
+    const found = elements.filter((el) => el.hasAttribute("data-phem-on-visible"))
+    if (!this.#observer) {
+      if (typeof IntersectionObserver !== "function" || !found.length) return
+
+      this.#observer = new IntersectionObserver((entries) => entries.forEach((entry) => this.#change(entry)))
+    }
+
+    for (const el of this.#watched) {
+      if (el.isConnected && this.#root.contains(el) && el.hasAttribute("data-phem-on-visible")) continue
+
+      this.#observer.unobserve(el)
+      this.#watched.delete(el)
+      this.#inView.delete(el)
+    }
+
+    for (const el of found) {
+      if (this.#watched.has(el)) continue
+
+      this.#watched.add(el)
+      this.#observer.observe(el)
+    }
+  }
+
+  disconnect() {
+    this.#stopped = true
+    this.#observer?.disconnect()
+    this.#watched.clear()
+  }
+
+  #change(entry) {
+    const el = entry.target
+    const recheck = this.#recheck.delete(el)
+    if (!entry.isIntersecting) {
+      this.#inView.delete(el)
+      return
+    }
+
+    if (this.#inView.has(el) && !recheck) return
+
+    this.#inView.add(el)
+    if (!this.#stopped && el.isConnected && !this.#running.has(el)) this.#fire(el)
+  }
+
+  // Sends the event of the element. Its place before the event shows if the update moved it.
+  #fire(el) {
+    const before = el.getBoundingClientRect()
+    this.#running.add(el)
+    const sent = this.#send(el, (ok) => {
+      this.#running.delete(el)
+      const after = el.getBoundingClientRect()
+      if (ok && (after.top !== before.top || after.left !== before.left)) this.#end(el)
+    })
+    if (!sent) this.#running.delete(el)
+  }
+
+  // The update of the event moved the element: the observer gives its view again, and the element
+  // sends its event again when it is still in view.
+  #end(el) {
+    if (this.#stopped || !el.isConnected || !this.#watched.has(el)) return
+
+    this.#recheck.add(el)
+    this.#observer.unobserve(el)
+    this.#observer.observe(el)
+  }
+}
+
+// The elements with an `onPoll` handler and a `phem:poll` interval (`data-phem-poll`, in
+// milliseconds): each one sends its event at its interval. The interval starts at the end of the
+// last poll, so the polls of a slow server do not wait in the queue. The polls stop while the tab
+// is hidden and while the browser is offline. When the tab is visible again, an element whose
+// interval passed sends its event at once. `send(el, end)` sends the event, and returns false
+// when it did not go. `end()` runs at the end of the event.
+class Polls {
+  #root
+  #send
+  #stopped = false
+  // element => {interval, last, timer, running}
+  #polls = new Map()
+  #onVisibility = () => (document.hidden ? this.#pause() : this.#start())
+
+  constructor(root, send) {
+    this.#root = root
+    this.#send = send
+    document.addEventListener("visibilitychange", this.#onVisibility)
+  }
+
+  // Starts the polls of the new elements (in `elements`, the trigger elements of the page), and
+  // stops the polls of the elements that left the page, or whose interval changed. After the
+  // first render, a morph or a push.
+  scan(elements) {
+    if (this.#stopped) return
+
+    for (const [el, poll] of this.#polls) {
+      if (el.isConnected && this.#root.contains(el) && el.hasAttribute("data-phem-on-poll") && this.#interval(el) === poll.interval) continue
+
+      clearTimeout(poll.timer)
+      this.#polls.delete(el)
+    }
+
+    for (const el of elements) {
+      const interval = el.hasAttribute("data-phem-on-poll") ? this.#interval(el) : 0
+      if (this.#polls.has(el) || !interval) continue
+
+      const poll = { interval, last: performance.now(), timer: null, running: false }
+      this.#polls.set(el, poll)
+      if (!document.hidden) this.#wait(el, poll, interval)
+    }
+  }
+
+  disconnect() {
+    this.#stopped = true
+    document.removeEventListener("visibilitychange", this.#onVisibility)
+    this.#pause()
+    this.#polls.clear()
+  }
+
+  #interval(el) {
+    const ms = Number(el.getAttribute("data-phem-poll"))
+    return Number.isInteger(ms) && ms > 0 ? ms : 0
+  }
+
+  #wait(el, poll, ms) {
+    clearTimeout(poll.timer)
+    poll.timer = setTimeout(() => this.#tick(el, poll), ms)
+  }
+
+  #tick(el, poll) {
+    poll.timer = null
+    if (!el.isConnected || this.#polls.get(el) !== poll) {
+      if (this.#polls.get(el) === poll) this.#polls.delete(el)
+      return
+    }
+
+    poll.last = performance.now()
+    // The next interval starts at the end of this poll.
+    poll.running = navigator.onLine !== false && this.#send(el, () => {
+      poll.running = false
+      poll.last = performance.now()
+      if (!this.#stopped && this.#polls.get(el) === poll && !document.hidden) this.#wait(el, poll, poll.interval)
+    })
+    if (!poll.running) this.#wait(el, poll, poll.interval)
+  }
+
+  #pause() {
+    for (const poll of this.#polls.values()) {
+      clearTimeout(poll.timer)
+      poll.timer = null
+    }
+  }
+
+  // The tab is visible again: a poll whose interval passed goes at once.
+  #start() {
+    for (const [el, poll] of this.#polls) {
+      if (poll.timer !== null || poll.running) continue
+
+      const left = poll.last + poll.interval - performance.now()
+      if (left <= 0) this.#tick(el, poll)
+      else this.#wait(el, poll, left)
+    }
+  }
 }
 
 // Resolves after Turbo renders the streams of renderStreamMessage(): a <turbo-stream> waits for
@@ -878,6 +1072,11 @@ export default class PhemController extends Controller {
         : null
     this.loadBoundaries()
 
+    // The `onVisible` and `onPoll` events: the browser sends them itself (see sendOwn()).
+    this.visibleTriggers = new VisibleTriggers(this.element, (el, end) => this.sendOwn(el, "visible", end))
+    this.polls = new Polls(this.element, (el, end) => this.sendOwn(el, "poll", end))
+    this.watchTriggers()
+
     // The ids of the stale components (see the header): the next event sends them.
     this.stale = new Set()
     // The items that pushes gave to the feeds of the page (see markFeed()): the next event sends them.
@@ -938,7 +1137,11 @@ export default class PhemController extends Controller {
     document.removeEventListener("turbo:visit", this.guardStart)
     this.guardQuestion?.abort()
     this.boundaryObserver?.disconnect()
+    this.visibleTriggers.disconnect()
+    this.polls.disconnect()
     this.hideError()
+    // An event that still runs does not start the triggers or the polls again (see watchTriggers()).
+    this.inactive = true
   }
 
   // Opens the EventSource of a page with #[Broadcast] (see the header).
@@ -1048,6 +1251,8 @@ export default class PhemController extends Controller {
         this.pushing--
         this.markDirty()
         this.showPushPending()
+        // The push can show or remove an `onVisible` or an `onPoll` element.
+        if (!this.inactive && this.element.isConnected) this.watchTriggers()
       })
     }
 
@@ -1204,6 +1409,41 @@ export default class PhemController extends Controller {
       // error): load each one alone, so the others show their children.
       if (ok === false) for (const { el, handler } of batch) if (el.isConnected) this.enqueue(el, "data-phem-load", handler, load)
     })
+  }
+
+  // Watches the `onVisible` and the `onPoll` elements of the page (see VisibleTriggers and Polls),
+  // with one query of the page.
+  watchTriggers() {
+    if (this.inactive) return
+
+    const elements = [...this.element.querySelectorAll("[data-phem-on-visible], [data-phem-on-poll][data-phem-poll]")]
+    this.visibleTriggers.scan(elements)
+    this.polls.scan(elements)
+  }
+
+  // Sends an event that the browser makes itself, with no DOM event: `visible` (onVisible) or
+  // `poll` (onPoll). It goes as the other events: `phem:before-queue`, a debounce or a throttle,
+  // and the queue. `end(ok)` runs one time, at the end of the event (after its update). Returns
+  // false when it did not go: then `end` does not run. A listener of `phem:before-queue` that
+  // cancels it drops it: `detail.resume()` does not send it, and the next view or poll sends a
+  // new event.
+  sendOwn(el, type, end) {
+    const attr = `data-phem-on-${type}`
+    const handler = el.getAttribute(attr)
+    if (this.inactive || !handler || !el.isConnected || !this.element.contains(el)) return false
+
+    const event = { type, target: el, preventDefault() {} }
+    let payload = null
+    let dropped = false
+    const read = () => (payload ??= this.payload(el, event, type, null))
+    const send = () => !dropped && this.schedule(el, attr, handler, type, read(), end)
+    if (!this.allowed(el, handler, event, type, read, send)) {
+      dropped = true
+      return false
+    }
+
+    send()
+    return true
   }
 
   // data-action="click->phem#dispatch input->phem#dispatch ..." on the root element.
@@ -1385,9 +1625,10 @@ export default class PhemController extends Controller {
   // knows its event. A held event gets it later, when `detail.resume()` of `phem:before-queue`
   // sends it (see allowed()). The event that carries it gives it in `ids` (more than one when the DOM event
   // replaced or joined an event that waits).
-  schedule(el, attr, handler, type, payload) {
+  // `end(ok)` runs at the end of the event (see enqueue()).
+  schedule(el, attr, handler, type, payload, end = null) {
     const id = ++this.lastId
-    const send = (ids) => this.enqueue(el, attr, handler, payload, ids)
+    const send = (ids) => this.enqueue(el, attr, handler, payload, ids, end)
     const wait = this.timing(el, type)
     this.notify(el, handler, "queue", { id })
 
@@ -1402,17 +1643,20 @@ export default class PhemController extends Controller {
 
   // Puts an event in the queue. An event of COALESCED_EVENTS that waits in the queue for the same
   // handler and element takes the new payload, and the new event does not go in the queue.
-  enqueue(el, attr, handler, payload, ids = new Set()) {
+  // `end(ok)` runs at the end of the event, after its update, also when it failed (ok is false).
+  enqueue(el, attr, handler, payload, ids = new Set(), end = null) {
     const coalesce = COALESCED_EVENTS.has(payload.type)
     const waiting = coalesce ? (this.waiting.get(el) ?? new Map()) : null
     const old = waiting?.get(attr)
     if (old && old.handler === handler) {
       old.payload = payload
       for (const id of ids) old.ids.add(id)
+      if (end) old.ends.push(end)
       return
     }
 
-    const job = { handler, payload, ids }
+    const job = { handler, payload, ids, ends: end ? [end] : [] }
+    let ok = false
     if (coalesce) {
       waiting.set(attr, job)
       this.waiting.set(el, waiting)
@@ -1431,12 +1675,16 @@ export default class PhemController extends Controller {
           if (!waiting.size) this.waiting.delete(el)
         }
 
-        return this.send(el, job.handler, job.payload, unlock, onProgress, job.ids)
+        return this.send(el, job.handler, job.payload, unlock, onProgress, job.ids, (result) => (ok = result))
       })
-      .catch((e) => console.error("[phem]", e))
+      .catch((e) => {
+        ok = false
+        console.error("[phem]", e)
+      })
       .finally(() => {
         unlock()
         done()
+        for (const end of job.ends) end(ok)
       })
   }
 
@@ -1450,7 +1698,8 @@ export default class PhemController extends Controller {
       return ms > 0 ? { throttle: ms } : null
     }
 
-    if (debounce === "blur") return { debounce }
+    // An event that the browser makes itself has no blur: it goes at once.
+    if (debounce === "blur") return type === "visible" || type === "poll" ? null : { debounce }
     if (debounce !== undefined) {
       const ms = Number(debounce)
       return ms > 0 ? { debounce: ms } : null
@@ -1676,10 +1925,10 @@ export default class PhemController extends Controller {
   // before the page changes. `onProgress` gets the progress of an upload. The pushes that come
   // while it runs wait for its end (see receive()). `ids` are the ids of the DOM events that it
   // carries (see schedule()). Resolves with false after a server error.
-  async send(el, handler, event, beforeRender, onProgress = null, ids = new Set()) {
+  async send(el, handler, event, beforeRender, onProgress = null, ids = new Set(), onDone = null) {
     this.busy++
     try {
-      return await this.sendNow(el, handler, event, beforeRender, onProgress, ids)
+      return await this.sendNow(el, handler, event, beforeRender, onProgress, ids, onDone)
     } finally {
       this.busy--
       if (!this.busy && this.held.length) {
@@ -1689,8 +1938,12 @@ export default class PhemController extends Controller {
     }
   }
 
-  async sendNow(el, handler, event, beforeRender, onProgress, ids) {
-    const notify = (name, detail = {}) => this.notify(el, handler, name, { ids: [...ids], ...detail })
+  // `onDone(ok)` gets the result of the `phem:done` of the event.
+  async sendNow(el, handler, event, beforeRender, onProgress, ids, onDone) {
+    const notify = (name, detail = {}) => {
+      if (name === "done") onDone?.(detail.ok === true)
+      this.notify(el, handler, name, { ids: [...ids], ...detail })
+    }
 
     // The bound fields when the event starts: the newest values. The request sends the fields
     // that changed.
@@ -1849,8 +2102,10 @@ export default class PhemController extends Controller {
       for (const { name, detail } of data.events ?? []) target.dispatchEvent(new CustomEvent(`phem:${name}`, { detail, bubbles: true }))
       notify("done", { ok: true, status: response.status })
 
-      // The morph can show a new boundary (also in the children of a boundary that loaded).
+      // The morph can show a new boundary (also in the children of a boundary that loaded), and
+      // new `onVisible` and `onPoll` elements.
       this.loadBoundaries()
+      this.watchTriggers()
     }, renderFailed)
   }
 

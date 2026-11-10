@@ -986,6 +986,286 @@ describe("the phem:call event of the JavaScript", () => {
   })
 })
 
+describe("the onVisible event", () => {
+  const sent = (call = 0) => JSON.parse(fetch.mock.calls[call][1].body)
+  // A fake IntersectionObserver: `view(el, true)` puts the element in view. It gives the view of
+  // an element again when the controller observes it again, as a browser does.
+  let observer
+  let observers
+  const inView = new Map()
+  const view = (el, on) => {
+    inView.set(el, on)
+    observer.callback([{ isIntersecting: on, target: el }])
+  }
+
+  // jsdom has no layout: an element is lower when more elements come before it in its parent.
+  const rect = Element.prototype.getBoundingClientRect
+  afterEach(() => {
+    Element.prototype.getBoundingClientRect = rect
+  })
+
+  beforeEach(() => {
+    Element.prototype.getBoundingClientRect = function () {
+      const top = this.parentElement ? [...this.parentElement.children].indexOf(this) * 10 : 0
+      return { top, left: 0, bottom: top + 10, right: 100, width: 100, height: 10 }
+    }
+    observer = null
+    observers = 0
+    inView.clear()
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        constructor(callback) {
+          this.callback = callback
+          this.observed = new Set()
+          observer = this
+          observers++
+        }
+        observe(el) {
+          this.observed.add(el)
+          if (inView.has(el)) queueMicrotask(() => this.callback([{ isIntersecting: inView.get(el), target: el }]))
+        }
+        unobserve(el) {
+          this.observed.delete(el)
+        }
+        disconnect() {
+          this.observed.clear()
+        }
+      },
+    )
+  })
+
+  const list = (items, more = true) => `<ul id="list">${items.map((i) => `<li>${i}</li>`).join("")}${more ? `<li id="more" data-phem-on-visible="c1.more">Loading…</li>` : ""}</ul>`
+
+  it("sends the event when the element comes into view, one time while it stays in view", async () => {
+    await mount(list(["a"]))
+    const more = document.getElementById("more")
+    expect(observer.observed.has(more)).toBe(true)
+
+    respond(list(["a", "b"]))
+    const done = nextDone()
+    view(more, true)
+    view(more, true)
+    await done
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(sent(0)).toMatchObject({ handler: "c1.more", event: { type: "visible", key: null, form: null } })
+    expect(document.querySelectorAll("#list li")).toHaveLength(3)
+  })
+
+  it("sends the event again when the element leaves the view and comes back", async () => {
+    await mount(list(["a"]))
+    const more = document.getElementById("more")
+    inView.set(more, false)
+
+    respond(list(["a", "b"]))
+    let done = nextDone()
+    view(more, true)
+    await done
+    view(more, false)
+
+    respond(list(["a", "b", "c"]))
+    done = nextDone()
+    view(more, true)
+    await done
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(document.querySelectorAll("#list li")).toHaveLength(4)
+  })
+
+  it("loads until the update does not move the element while it stays in view", async () => {
+    await mount(list(["a"]))
+    const more = document.getElementById("more")
+
+    respond(list(["a", "b"]))
+    respond(list(["a", "b", "c"]))
+    respond(list(["a", "b", "c"]))
+    const third = new Promise((resolve) => {
+      let n = 0
+      window.addEventListener("phem:done", function count(e) {
+        if (++n < 3) return
+        window.removeEventListener("phem:done", count)
+        resolve(e)
+      })
+    })
+    view(more, true)
+    await third
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    // The third update changed nothing: no fourth event.
+    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(document.getElementById("more")).toBe(more)
+    expect(document.querySelectorAll("#list li")).toHaveLength(4)
+  })
+
+  it("does not send the event again after a failed update", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    window.addEventListener("phem:error", (e) => e.preventDefault(), { once: true })
+    await mount(list(["a"]))
+    fetch.mockResolvedValueOnce(new Response("Error", { status: 500 }))
+    const done = nextDone()
+    view(document.getElementById("more"), true)
+    expect((await done).detail.ok).toBe(false)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("watches an element that a morph shows, and stops for an element that it removes", async () => {
+    // The observer of the `<Suspense>` boundaries only.
+    await mount(`<button data-phem-on-click="c1.open">Open</button>`)
+    expect(observers).toBe(1)
+
+    respond(`<button data-phem-on-click="c1.open">Open</button>${list(["a"])}`)
+    let done = nextDone()
+    click("button")
+    await done
+    const more = document.getElementById("more")
+    expect(observer.observed.has(more)).toBe(true)
+
+    respond(`<button data-phem-on-click="c1.open">Open</button>${list(["a"], false)}`)
+    done = nextDone()
+    click("button")
+    await done
+
+    expect(observer.observed.size).toBe(0)
+  })
+
+  it("does not load again when the update adds items after the element", async () => {
+    // A trigger above the items: the older items go after it, so it does not move.
+    const chat = (items) => `<div id="chat"><p id="older" data-phem-on-visible="c1.older">Loading…</p><ul>${items.map((i) => `<li>${i}</li>`).join("")}</ul></div>`
+    await mount(chat(["c"]))
+    respond(chat(["b", "c"]))
+    const done = nextDone()
+    view(document.getElementById("older"), true)
+    await done
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("lets a listener of phem:before-queue drop the event: resume() does not send it", async () => {
+    await mount(list(["a"]))
+    const types = []
+    let resume
+    const cancel = (e) => {
+      types.push(e.detail.type)
+      resume = e.detail.resume
+      e.preventDefault()
+    }
+    document.addEventListener("phem:before-queue", cancel)
+    view(document.getElementById("more"), true)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    document.removeEventListener("phem:before-queue", cancel)
+    resume()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(types).toEqual(["visible"])
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("does not watch the elements again after the controller disconnects", async () => {
+    await mount(`<button data-phem-on-click="c1.open">Open</button>`)
+    let reply
+    fetch.mockImplementationOnce(() => new Promise((resolve) => (reply = resolve)))
+    click("button")
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    const root = document.getElementById("phem-root")
+    root.removeAttribute("data-controller")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    reply(new Response(JSON.stringify(answer(list(["a"]))), { status: 200, headers: { "Content-Type": "application/json" } }))
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    // The response renders nothing: the controller is gone, and no observer starts.
+    expect(observers).toBe(1)
+  })
+})
+
+describe("the onPoll event", () => {
+  const sent = (call = 0) => JSON.parse(fetch.mock.calls[call][1].body)
+  const status = (text, interval = 20) => `<span id="status" data-phem-on-poll="c1.refresh"${interval ? ` data-phem-poll="${interval}"` : ""}>${text}</span>`
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+  const hide = (hidden) => {
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => hidden })
+    document.dispatchEvent(new Event("visibilitychange"))
+  }
+
+  afterEach(() => {
+    delete document.hidden
+  })
+
+  it("sends the event at the interval of phem:poll", async () => {
+    respond(status("Running"))
+    respond(status("Done"))
+    await mount(status("Waiting"))
+    await vi.waitFor(() => expect(document.getElementById("status").textContent).toBe("Done"))
+
+    expect(sent(0)).toMatchObject({ handler: "c1.refresh", event: { type: "poll" } })
+    expect(sent(1).event.type).toBe("poll")
+  })
+
+  it("stops while the tab is hidden, and polls at once when it is visible again", async () => {
+    await mount(status("Waiting", 50))
+    hide(true)
+    await wait(80)
+    expect(fetch).not.toHaveBeenCalled()
+
+    respond(status("Done", 50))
+    const done = nextDone()
+    hide(false)
+    await done
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(document.getElementById("status").textContent).toBe("Done")
+  })
+
+  it("starts the next interval at the end of the last poll", async () => {
+    let reply
+    fetch.mockImplementationOnce(() => new Promise((resolve) => (reply = resolve)))
+    await mount(status("Waiting", 10))
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    // The server is slow: no other poll waits in the queue.
+    await wait(50)
+    expect(fetch).toHaveBeenCalledTimes(1)
+
+    respond(status("Done", 0))
+    reply(new Response(JSON.stringify(answer(status("Running", 10))), { status: 200, headers: { "Content-Type": "application/json" } }))
+    await vi.waitFor(() => expect(document.getElementById("status").textContent).toBe("Done"))
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("polls again after a failed poll", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    const quiet = (e) => e.preventDefault()
+    window.addEventListener("phem:error", quiet)
+    fetch.mockResolvedValueOnce(new Response("Error", { status: 500 }))
+    respond(status("Done", 0))
+    await mount(status("Waiting", 10))
+    await vi.waitFor(() => expect(document.getElementById("status").textContent).toBe("Done"))
+    window.removeEventListener("phem:error", quiet)
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("stops when the morph removes the interval", async () => {
+    respond(status("Done", 0))
+    await mount(status("Running"))
+    await vi.waitFor(() => expect(document.getElementById("status").textContent).toBe("Done"))
+    await wait(60)
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not poll an element with no interval", async () => {
+    await mount(status("Waiting", 0))
+    await wait(40)
+
+    expect(fetch).not.toHaveBeenCalled()
+  })
+})
+
 describe("the key filters and the event modifiers", () => {
   const markup = `<textarea id="draft" data-phem-on-keydown="c1.send" data-phem-key-filter="ctrl+Enter Escape ?"></textarea>
     <div id="row" data-phem-on-click="c1.open">

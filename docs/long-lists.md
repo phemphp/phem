@@ -143,6 +143,15 @@ public function older(): void
 {% if oldest %}<button onClick={{ older }}>Older</button>{% endif %}
 ```
 
+For an infinite scroll with no button, give the handler to `onVisible`. The browser loads the older items when the element comes into view:
+
+```php
+{% if oldest %}<p onVisible={{ older }}>Loading older messages…</p>{% endif %}
+<ul phem:feed={{ messages }}>…</ul>
+```
+
+The older items go after the element, so the update does not move it. The browser keeps the view on the messages that the user reads (scroll anchoring), so the element leaves the view, and it sends the event again when the user scrolls up to it. A trigger after the items, as at the end of a list, loads again while it stays in view and the update moves it down. See [Load more when an element comes into view](events.md#load-more-when-an-element-comes-into-view).
+
 `prepend()` gives one stream for all its items, so they keep their order.
 
 ## Push changes to other browsers

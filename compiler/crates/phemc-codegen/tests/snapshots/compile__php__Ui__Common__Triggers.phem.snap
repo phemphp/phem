@@ -1,0 +1,46 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from Ui/Common/Triggers.phem; do not edit */
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\{Component, State};
+use Phem\Node;
+
+#[Component]
+final class Triggers
+{
+    #[State] public array $items = [];
+    #[State] public bool $more = true;
+    #[State] public string $status = 'running';
+
+    public function load(): void
+    {
+    }
+
+    public function refresh(): void
+    {
+    }
+
+    public function render(): Node
+    {
+        $interval = 'done' === $this->status ? null : 2000;
+        $rest = ['phem:poll' => 5000];
+
+        return (
+            new \Phem\Element('Ui/Common/Triggers.0.twig', ['items' => $this->items, 'more' => $this->more, 'load' => $this->load(...), 'refresh' => $this->refresh(...), 'status' => $this->status, 'interval' => $interval, 'rest' => $rest])
+
+
+
+
+
+
+
+
+
+
+        );
+    }
+}

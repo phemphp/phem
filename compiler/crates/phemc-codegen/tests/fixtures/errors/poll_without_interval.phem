@@ -1,0 +1,2 @@
+<?phem // expect: W006
+function App() { $refresh = fn() => 1; return <span onPoll={{ refresh }}>x</span>; }

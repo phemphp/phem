@@ -1,0 +1,15 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<div>
+                <ul>
+                    {% for item in items %}
+                        <li {{ phem_key(item) }}>{{ item }}</li>
+                    {% endfor %}
+                    {% if more %}<li {{ phem_on('visible', load) }}>Loading…</li>{% endif %}
+                </ul>
+                <span {{ phem_on('poll', refresh) }} {{ phem_poll(30000) }}>{{ status }}</span>
+                <span {{ phem_on('poll', refresh) }} {{ phem_poll(interval) }}>{{ status }}</span>
+                <span {{ phem_attrs(rest, {'onPoll': (refresh)}) }}>{{ status }}</span>
+            </div>

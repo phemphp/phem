@@ -532,6 +532,9 @@ fn the_phem_attributes_of_an_html_element() {
     assert_eq!(snippet(r.get("phem:key")), "phem:key=\"${1:Enter}\"");
     assert_eq!(snippet(r.get("phem:stop")), "phem:stop");
     assert_eq!(snippet(r.get("phem:prevent")), "phem:prevent");
+    assert_eq!(snippet(r.get("phem:poll")), "phem:poll={{ ${1:30000} }}");
+    assert_eq!(snippet(r.get("onVisible")), "onVisible={{ ${1} }}");
+    assert_eq!(snippet(r.get("onPoll")), "onPoll={{ ${1} }}");
     assert_eq!(r.slice(r.get("phem:debounce").range), "phem:");
 
     let r = run(&home_fn("<input phem:debounce={{ 300 }} |"));
