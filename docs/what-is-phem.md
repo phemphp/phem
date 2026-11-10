@@ -128,7 +128,7 @@ final class UsersPage
     public function render(): Node
     {
         return (
-            <Document>
+            <Document title="Users">
                 <ul>
                     {% for user in users %}
                         <li key={{ user.id }}>{{ user.email }}</li>

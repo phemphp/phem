@@ -11,16 +11,14 @@ parameters:
     # mercure_publish() of the FrankenPHP SAPI (see Phem\Stream\FrankenPhpPublisher).
     scanFiles:
         - stubs/frankenphp.php
+    # The PHP that phemc, Twig and Symfony generate in the var/ of the test apps.
     excludePaths:
         - tests/Fixtures/app/var
+        - tests/Fixtures/Package/var
     # The runtime supports Symfony 7.4 and later: do not read the version of the installed one.
     dynamicConstantNames:
         - Symfony\Component\HttpKernel\Kernel::VERSION_ID
     ignoreErrors:
-        # A helper trait for the class components of the applications.
-        -
-            identifier: trait.unused
-            path: src/Component.php
         # Twig prints a Markup without escaping. Twig\Markup is @final since Twig 3.28.
         -
             identifier: class.extendsFinalByPhpDoc

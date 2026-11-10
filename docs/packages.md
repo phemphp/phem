@@ -44,7 +44,7 @@ use function Acme\Ui\Badge;
 #[Page('/')]
 function HomePage(): Node
 {
-    return <Document><Badge label="New" /></Document>;
+    return <Document title="Home"><Badge label="New" /></Document>;
 }
 ```
 
@@ -179,7 +179,7 @@ final class SettingsPage
     public function render(): Node
     {
         return (
-            <Document>
+            <Document title="Settings">
                 <Tabs names={{ ['general', 'security'] }} defaultValue="security" />
                 <Tabs names={{ ['general', 'security'] }} value={{ tab }} onChange={{ show }} />
                 <p>{{ tab }}</p>

@@ -54,7 +54,7 @@ function Badge(string $label): Node
 #[Page('/about')]
 function AboutPage(): Node
 {
-    return <Document><h1>About us</h1><LikeButton /></Document>;
+    return <Document title="About us"><h1>About us</h1><LikeButton /></Document>;
 }
 ```
 

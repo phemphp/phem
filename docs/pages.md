@@ -28,11 +28,11 @@ final class HomePage
 #[Page('/about')]
 function AboutPage(): Node
 {
-    return <Document><h1>About us</h1></Document>;
+    return <Document title="About us"><h1>About us</h1></Document>;
 }
 ```
 
-`#[Page]` extends the Symfony `#[Route]` attribute, so it takes the same options: `name`, `methods`, `requirements`, `defaults`, `host` and the others. Repeat it to give a page more than one URL. With no `name`, the route name comes from the class: `App\Ui\Example\CounterPage` becomes `app_ui_example_counterpage`. Markup links to a page with its class, so most pages need no `name` (see [Link to a page](#link-to-a-page)). On a function, use `#[Page]`, not `#[Route]` (E052).
+`#[Page]` extends the Symfony `#[Route]` attribute, so it takes the same options: `name`, `methods`, `requirements`, `defaults`, `host` and the others. Repeat it to give a page more than one URL. With no `name`, the route name comes from the class: `App\Ui\Example\CounterPage` becomes `app_ui_example_counterpage`, and the next routes of the page get `app_ui_example_counterpage_1`, `_2` and so on. A link with the class of the page (`path(CounterPage)`, `RedirectTo`) goes to its first route. Markup links to a page with its class, so most pages need no `name` (see [Link to a page](#link-to-a-page)). On a function, use `#[Page]`, not `#[Route]` (E052).
 
 The parameters of a function page get the same arguments as a Symfony controller: route values, the `Request`, services, `#[CurrentUser]` and the other value resolvers. A function page returns its markup, or a `RedirectTo` to send the browser to another page (see [Redirect before a page renders](#redirect-before-a-page-renders)).
 
@@ -49,12 +49,12 @@ use Phem\Attribute\Component;
 use Phem\{Html, Node, Root};
 
 #[Component]
-function Document(?string $title = null, ?Html $children = null): Node
+function Document(string $title, Html $children): Node
 {
     return (
         <html lang="en">
             <head>
-                <title>{{ title ?? 'My app' }}</title>
+                <title>{{ title }}</title>
                 {{ importmap('app') }}
             </head>
             <body><Root>{{ children }}</Root></body>
@@ -123,20 +123,20 @@ final class ItemPage
 
     public function render(): Node
     {
-        return <Document><h1>Item {{ id }}</h1></Document>;
+        return <Document title="Item {{ id }}"><h1>Item {{ id }}</h1></Document>;
     }
 }
 
 #[Page('/tags/{name}')]
 function TagPage(string $name): Node
 {
-    return <Document><h1>{{ name }}</h1></Document>;
+    return <Document title="Tag {{ name }}"><h1>{{ name }}</h1></Document>;
 }
 ```
 
-Each route value needs a `#[Path]` property or a parameter. Phem converts the value to the declared type, so `/items/3` sets `$id = 3`. A value that doesn’t fit the type returns a 404 response.
+Each route value needs a `#[Path]` property or a parameter. Phem converts the value to the declared type, so `/items/3` sets `$id = 3`. A value that doesn’t fit the type returns a 404 response. A type with no converter, such as a backed enum, is an error of the page: add a converter for it (see [Convert route values to your own types](#convert-route-values-to-your-own-types)).
 
-A Doctrine entity type receives the entity. `{scientist}` finds it by its identifier, and `{id:scientist}` maps the route value `id` to the property `scientist`:
+A Doctrine entity type receives the entity. `{scientist}` finds it by its identifier, and `{id:scientist}` maps the route value `id` to the property `scientist`. When no entity matches, the page returns a 404, but a nullable property (`?Scientist`) gets `null`:
 
 ```php
 #[Page('/scientists/{id:scientist}')]
@@ -182,6 +182,8 @@ final class AgendaPage
 
 Throw an `\UnexpectedValueException` when the value doesn’t fit, and the page returns a 404. Your app’s converters run before the built-in ones.
 
+A link doesn’t convert the value back. Give the route value itself: `path(AgendaPage, {day: '2026-11-10'})`, or `['day' => $day->format('Y-m-d')]` in PHP.
+
 ## Link to a page
 
 Link to a page with its class or its function in `path()`, or in `url()` for an absolute URL. Import the page with `use` (or `use function`), as for a component tag:
@@ -219,6 +221,7 @@ The values are by prop or by route value:
 
 - **A prop with a route value** gives its route value: `{scientist: scientist}` gives `id`. An entity gives the value of the mapped field (`id` of `{id:scientist}`, `slug` of `{slug:post}`): its identifier, or a public property or a getter of the field. A prop with two route values (`/blog/{year:post.year}/{slug:post}`) gives the two. `{id: 5}` works too.
 - **A backed enum** gives its value.
+- **`_fragment`** sets the fragment of the URL: `{_fragment: 'comments'}` gives `#comments`.
 - **The other values** go to the query string (`tab=papers`).
 
 The third argument works as in Twig: `path(ScientistPage, {...}, true)` gives a relative path, and `url(ScientistPage, {...}, true)` gives a URL with no scheme (`//example.com/...`).
@@ -283,7 +286,7 @@ final class OrderPage
     public function render(): Node
     {
         return (
-            <Document>
+            <Document title="Order {{ order.id }}">
                 <h1>Order {{ order.id }}</h1>
                 <p>{{ note }}</p>
             </Document>

@@ -92,7 +92,7 @@ impl Item {
     }
 }
 
-const EVENTS: &[&str] = &["onClick", "onDoubleClick", "onChange", "onInput", "onSubmit", "onKeyDown", "onKeyUp", "onFocus", "onBlur"];
+const EVENTS: &[&str] = &["onClick", "onDoubleClick", "onChange", "onInput", "onSubmit", "onKeyDown", "onKeyUp", "onFocus", "onBlur", "onFocusIn", "onFocusOut"];
 
 /// The Phem attributes of an HTML element: name, snippet, detail, documentation.
 const PHEM_ATTRIBUTES: &[(&str, &str, &str, &str)] = &[

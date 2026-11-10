@@ -50,12 +50,12 @@ Put the action on the element that has the event handler. The controller has the
 | Action | Change | Params |
 |---|---|---|
 | `hide`, `show` | The `hidden` attribute | |
-| `addClass`, `removeClass`, `toggleClass` | A class | `class` |
+| `addClass`, `removeClass`, `toggleClass` | A class | `class`, or the `class` value of the controller (`data-phem-optimistic-class-value`) |
 | `setAttribute` | An attribute | `attribute`, `value` |
 | `removeAttribute`, `toggleAttribute` | An attribute | `attribute` |
 | `setText` | The text | `text` |
 | `increment`, `decrement` | The first integer in the text | `by` |
-| `insert` | A clone of a `<template>` | |
+| `insert` | A clone of a `<template>` | `target` (required) |
 
 A param is an attribute on the element of the action, such as `data-phem-optimistic-class-param="liked"`. With a `target` param, the action changes the targets with that name instead of the controller element:
 
@@ -67,7 +67,7 @@ A param is an attribute on the element of the action, such as `data-phem-optimis
 </button>
 ```
 
-`insert` adds a copy of a `<template>` target. In the copy, an element with `data-phem-optimistic-field="body"` shows the value of the form’s `body` field.
+`insert` adds a copy of a `<template>` target, directly before the template. It needs a `target` param that names the template. In the copy, an element with `data-phem-optimistic-field="body"` shows the value of the form’s `body` field, or its values joined with ", ".
 
 ## Enable the built-in controllers
 
@@ -100,7 +100,7 @@ Phem ships Stimulus controllers for common UI patterns. Their state belongs to t
 </span>
 ```
 
-The actions are `toggle`, `open` and `close`. Escape and a click outside close the content. Set `data-phem-toggle-open-value="true"` to open it on load, and `data-phem-toggle-dismiss-value="false"` to keep it open on Escape.
+The actions are `toggle`, `open` and `close`. Escape and a click outside close the content. Set `data-phem-toggle-open-value="true"` to open it on load, and `data-phem-toggle-dismiss-value="false"` to keep it open on Escape and on a click outside.
 
 ### Open a modal dialog
 
@@ -137,7 +137,7 @@ A tap on the backdrop is a press and a click on the dialog itself, at a point ou
 </div>
 ```
 
-Each tab shows the panel at the same position. The arrow keys, Home and End move between tabs. The controller sets the Accessible Rich Internet Applications (ARIA) roles and attributes, so give an `id` to each tab and panel to let it link them. Set `data-phem-tabs-index-value="1"` to select a tab on load.
+Each tab shows the panel at the same position. The arrow keys, Home and End move between tabs, and the arrow keys skip a disabled tab. With `aria-orientation="vertical"` on the list, the Up and Down keys move between tabs in place of Left and Right. The controller sets the Accessible Rich Internet Applications (ARIA) roles and attributes, so give an `id` to each tab and panel to let it link them. Set `data-phem-tabs-index-value="1"` to select a tab on load.
 
 ### Show toast messages
 
@@ -185,7 +185,11 @@ A toast shows only with the response of an event. A handler that fails or redire
 
 A toast is a `phem:toast` [browser event](events.md#send-events-to-your-javascript) with the detail `{"message": "Saved", "type": "success"}`.
 
-Change the default duration and the texts with the controller values: `data-phem-toast-duration-value={{ 8000 }}`, `data-phem-toast-error-message-value` and `data-phem-toast-rate-limited-message-value`.
+Change the default duration and the texts with the controller values: `data-phem-toast-duration-value={{ 8000 }}`, `data-phem-toast-error-message-value`, `data-phem-toast-rate-limited-message-value` and `data-phem-toast-close-label-value` (the label of the close button, "Close" by default).
+
+The `show` action shows the detail of another browser event as a toast. A [browser event](events.md#send-events-to-your-javascript) bubbles up to `window`, so listen there: `data-action="phem:saved@window->phem-toast#show"`.
+
+Each toast is a `div` with the `phem-toast` and `phem-toast-<type>` classes. It contains a `.phem-toast-message` and a `.phem-toast-close` button. The default styles in `phem.css` use `:where()`, so a rule of your app replaces them.
 
 ### Copy text to the clipboard
 
@@ -199,7 +203,7 @@ Change the default duration and the texts with the controller values: `data-phem
 </div>
 ```
 
-It copies the `text` value, or the text of the `source` target when there’s no value. The `feedback` targets show “Copied” for 2s. Browsers allow a page to copy only on HTTPS or `localhost`.
+It copies the `text` value, or the text of the `source` target when there’s no value. The `feedback` targets show the `label` value (“Copied” by default) for the `duration` value (2000 ms by default), and the controller element gets the class of `data-phem-clipboard-copied-class` for the same time. The controller dispatches `phem-clipboard:copied` (detail `text`), or `phem-clipboard:error` (detail `error`) when the browser does not copy. Browsers allow a page to copy only on HTTPS or `localhost`.
 
 ### Focus a field after an event
 
@@ -211,7 +215,9 @@ It copies the `text` value, or the text of the `source` target when there’s no
 {% endif %}
 ```
 
-It doesn’t steal the focus from a field the user is editing.
+To focus a child, put the controller on a parent and add `data-phem-autofocus-target="focus"` to the child.
+
+The element gets the focus on page load and in the morph of an event that the user started. A push or a refresh of the server doesn’t move the focus. It doesn’t steal the focus from a field the user is editing.
 
 #### Open the iOS keyboard after a round trip
 
@@ -240,7 +246,7 @@ During the tap, a hidden field takes the focus and the keyboard opens. The keybo
         data-phem-confirm-message-value="Delete this item?">Delete</button>
 ```
 
-When the user cancels, the browser sends no event.
+With no `message` value, the question is “Are you sure?”. When the user cancels, the browser sends no event.
 
 #### Ask in a dialog of the page
 

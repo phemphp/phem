@@ -13,7 +13,7 @@ Flex and the bundle set up these parts of the application:
 - **Preload**: in production, `config/preload.php` also preloads the compiled components without a change (see [OPcache preload](deployment.md#turn-on-the-opcache-preload))
 - **Compiler**: `vendor/bin/phemc` downloads the `phemc` binary of the same version on its first run (see [The `phemc` binary](#the-phemc-binary))
 
-The bundle defaults match this layout: `phemc` reads `src/` and writes to `var/phem/`, which is the `build_dir` default. You don’t need a `config/packages/phem.yaml` file.
+The bundle defaults match this layout: `phemc` reads `src/` and writes to `var/phem/`, which is the `build_dir` default. You don’t need a `config/packages/phem.yaml` file. For all the options and their defaults, see [Configuration](configuration.md).
 
 ## Flex recipe options
 
@@ -51,11 +51,22 @@ cargo build --release --manifest-path compiler/Cargo.toml -p phemc-cli
 ```
 
 `vendor/bin/phemc` reads the `PHEMC_DOWNLOAD_URL` environment variable as the base URL of the release assets (`https://github.com/phemphp/phem/releases/download` by default). The application also needs PHP 8.4 or later.
+
 ## Client assets
 
-The client of Phem is the `phem` Stimulus controller and the `phem-c{display:contents}` CSS rule, which styles the `<phem-c>` element around a component that doesn’t render one element. The bundle ships them as a Symfony UX package (`assets/package.json`), and AssetMapper exposes them in the `phemjs` namespace. The controller imports `@hotwired/stimulus` and `@hotwired/turbo` from the importmap of the application, so the page loads one Turbo and one Stimulus.
+The client of Phem is the `phem` Stimulus controller and the `phem.css` file. The bundle ships them as a Symfony UX package (`assets/package.json`), and AssetMapper exposes them in the `phemjs` namespace. The controller imports `@hotwired/stimulus` and `@hotwired/turbo` from the importmap of the application, so the page loads one Turbo and one Stimulus.
 
-`phem/phem` requires StimulusBundle and AssetMapper (see [Install without the `--webapp` skeleton](#install-without-the---webapp-skeleton)). Symfony Flex adds `@hotwired/stimulus` and `@hotwired/turbo` to `importmap.php`, and enables the controller in `assets/controllers.json`:
+The CSS file has these rules:
+
+- `phem-c{display:contents}`: the `<phem-c>` element around a component that doesn’t render one element doesn’t change the layout
+- `phem-suspense{display:block}`: the fallback of a `<Suspense>` is a box, so a lazy boundary can come into view
+- `.phem-error`: the default message of a failed event (see [Failed events and limits](errors-and-limits.md))
+- `[data-phem-loading][hidden]` and `[data-phem-progress][hidden]`: a `phem:loading` or `phem:progress` element stays hidden while no handler runs, also with a `display` of its own. The rule is `!important`, so you can’t override it
+- `.phem-toast`, `.phem-toast-<type>`, `.phem-toast-message`, `.phem-toast-close` and the `phem-toast` container: the default look of the toasts
+
+The toast rules are in `:where()`, so any rule of the application overrides them. To change the `phem-c`, `phem-suspense` and `.phem-error` rules, write a rule with a higher specificity, or load your CSS after `phem.css`.
+
+`phem/phem` requires StimulusBundle. It doesn’t require AssetMapper: install it yourself to load the client assets with an importmap (see [Install without the `--webapp` skeleton](#install-without-the---webapp-skeleton)). Symfony Flex adds `@hotwired/stimulus` and `@hotwired/turbo` to `importmap.php`, and enables the controller in `assets/controllers.json`:
 
 ```json
 {

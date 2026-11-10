@@ -61,6 +61,7 @@ When the server can’t use the state that the browser sent, it answers `409` an
 - **Other URL**: the state belongs to another URL of the same page, such as `/items/3` and not `/items/4`
 - **Missing entity**: an entity of the page’s route was deleted, so the reload shows the 404 page
 - **Changed page**: the page’s component tree changed since the browser rendered it, for example after a deploy
+- **Missing handler**: the handler isn’t in the page any more, for example a row that another user removed, or a feed item that is gone or has a signature that isn’t valid
 
 A reload drops the values that the user typed and didn’t save. If users leave pages open for longer than a day, raise `phem.state_max_age`, or set it to `0` for no limit:
 
@@ -92,7 +93,7 @@ phem:
 
 ### The files of an event are too large
 
-The files of one event have their own limit: `phem.max_upload_size`, 8 MB (`8388608` bytes) by default. The `post_max_size` and `upload_max_filesize` options of PHP also apply. See [File uploads](forms.md#accept-file-uploads).
+The files of one event have their own limit: `phem.max_upload_size`, 8 MB (`8388608` bytes) by default. The `post_max_size` and `upload_max_filesize` options of PHP also apply. See [Limit the upload size](forms.md#limit-the-upload-size).
 
 ## An event makes two requests
 
@@ -114,7 +115,18 @@ To turn the cache off and send the full state with each event, set `phem.state_c
 
 ## An event is dropped with a 429
 
-A `#[RateLimit]` on the page dropped the event: the handler didn’t run and the page doesn’t change. The browser doesn’t retry, and dispatches `phem:rate-limited` with `retryAfter` (in seconds) in its detail, not `phem:error`. See [Rate limits](security.md#rate-limit-events) to change the limit.
+A `#[RateLimit]` on the page or on the handler method dropped the event: the handler didn’t run and the page doesn’t change. The response has a `Retry-After` header. The browser doesn’t retry, and dispatches `phem:rate-limited` with `retryAfter` (in seconds) in its detail, not `phem:error`. See [Rate limits](security.md#rate-limit-events) to change the limit.
+
+## An event fails with a 400, 403, 405 or 415
+
+The browser client of Phem doesn’t send these requests. Look for a proxy, a script or a test that sends the event with another body or other headers:
+
+| Status | Cause |
+| --- | --- |
+| `400` | The body isn’t valid: it isn’t JSON, is deeper than 8 levels, has no handler, is a gzip body that isn’t valid, or is an event with files and no state. It also has more than 100 stale components, 100 boundaries in one load or 100 feed items, or a feed item longer than 1024 bytes |
+| `403` | The event comes from another origin |
+| `405` | A `POST` request of the page has no `X-Phem-Event` header, and the route of the page doesn’t accept `POST` |
+| `415` | The `Content-Type` isn’t JSON or `multipart/form-data`, or the body has a `Content-Encoding` other than `gzip`. A body with files can’t use `gzip` |
 
 ## Events feel slow
 

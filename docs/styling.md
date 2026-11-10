@@ -49,6 +49,17 @@ The merger accepts these other options:
 
 - **`prefix`**: the prefix of your Tailwind build (`@import "tailwindcss" prefix(tw);`), without the colon, for example `tw`
 - **`cache`**: the id of a PSR-16 cache service for the merged classes, for example `app.psr16_cache`
-- **`theme`**: theme names by hand, by theme key, for example `{ text: [caption, price-lg] }`
+- **`theme`**: theme names by hand, by theme key, for example `{ text: [caption, price-lg] }`. The names of a key replace the names that Phem reads from the `css` file. Another key than the [valid keys](configuration.md#class-merger) fails the container build
 
 To use your own merger, set `class_merger.service` to the id of a `Phem\Dom\ClassMerger` service instead of `tailwind`, for example `App\Ui\MyClassMerger`.
+
+## Change the default styles of Phem
+
+The `phem.css` file of the client gives a default look to the error message of a failed event and to the toasts (see [Client assets](installation.md#client-assets)). The toast rules are in `:where()`, so a rule of your CSS overrides them with no extra specificity:
+
+```css
+.phem-toast { background: var(--color-ink); border-radius: 0; }
+.phem-toast-success { background: var(--color-brand); }
+```
+
+To change the `.phem-error` message, load your CSS after `phem.css`, or use a selector with a higher specificity.

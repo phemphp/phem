@@ -25,7 +25,7 @@ Run them with Docker, from the root of the repository:
 
 ```sh
 make test-e2e
-make test-e2e ARGS="--filter Guestbook"
+make test-e2e ARGS="--filter Smoke"
 ```
 
 The `e2e` service of `docker/compose.yaml` builds `e2e/Dockerfile`: the dev image with Node.js and the Chromium of Playwright. `e2e/bin/test` installs the Composer packages of `e2e/` and the importmap, removes the data and the failures of the last run, starts the hub of `e2e/Caddyfile` on `localhost:3000`, and runs PHPUnit. The app compiles its `.phem` sources with the `phemc` of `compiler/` (`PHEMC_BIN` of the image).
@@ -74,7 +74,7 @@ docker compose -f docker/compose.yaml run --rm e2e sh
 
 ## Measure a change to the client/server flow
 
-`make bench` runs the pages of `tests/Fixtures/app` (and its `bench.phem`) the way a browser sends their events. It prints the median server time, the bytes of each request and response, the requests per step, and the writes to the state cache.
+`make bench` runs the pages of `tests/Fixtures/app` (and its bench pages in `src/Ui/Bench/`) the way a browser sends their events. It prints the median server time, the bytes of each request and response, the requests per step, and the writes to the state cache.
 
 The time includes no network, so one extra request means one extra round trip in a real browser. Run the benchmark before and after a change to the client/server flow, and put both tables in the pull request.
 
@@ -88,7 +88,7 @@ Run `make vscode-install` or `make phpstorm-install` to build and install the ed
 
 To give Claude Code the compiler diagnostics after each edit, run `make lsp` and start `claude --plugin-dir editors/claude-code`. In an app, the Claude Code plugin runs `vendor/bin/phemc lsp` instead.
 
-All three plugins use the Phem language server (`phemc lsp`), compiled to WebAssembly. It gives diagnostics as you type, completion, go to definition, find references, hover, and outline. For details, see these READMEs:
+All three plugins use the Phem language server (`phemc lsp`). The VS Code and PhpStorm plugins bundle it compiled to WebAssembly. The Claude Code plugin runs the `vendor/bin/phemc lsp` of the application first. It gives diagnostics as you type, completion, go to definition, find references, usage code lenses, quick fixes, hover, and outline. For details, see these READMEs:
 
 - [editors/vscode/README.md](../editors/vscode/README.md), and [editors/vscode/DEVELOPMENT.md](../editors/vscode/DEVELOPMENT.md) to build it
 - [editors/phpstorm/README.md](../editors/phpstorm/README.md)

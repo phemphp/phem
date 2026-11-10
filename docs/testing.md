@@ -156,7 +156,12 @@ $bag->receive()->assertSee('The bag changed');
 
 ### Send cookies
 
-Pass cookies to the browser with the `cookies` argument of `visit()`, as name-to-value strings. Each cookie goes to the URL’s host for all paths (`Path=/`), as a session cookie. A `__Secure-` or `__Host-` cookie is `Secure`, the way a browser stores it.
+Pass cookies to the browser with the `cookies` argument of `visit()`, as name-to-value strings. The two `visit()` methods take different arguments:
+
+- **`$this->visit($uri, $server, $cookies)`**: the second argument is the server values and the headers of each request, for example `['HTTP_ACCEPT_LANGUAGE' => 'fr']`. Give the cookies with the named argument: `$this->visit('/shop', cookies: [...])`
+- **`$page->visit($uri, $cookies)`**: the second argument is the cookies. The page uses the server values of its browser
+
+Each cookie goes to the URL’s host for all paths (`Path=/`), as a session cookie. A `__Secure-` or `__Host-` cookie is `Secure`, the way a browser stores it.
 
 A cookie you pass replaces a response cookie with the same name, host, and path `/`, and the next response that sets that cookie replaces yours. A response cookie with a longer `Path` stays, and the browser sends it on its path.
 

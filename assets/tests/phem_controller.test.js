@@ -1447,6 +1447,19 @@ describe("<Suspense>", () => {
     expect(document.querySelectorAll("[aria-busy]")).toHaveLength(0)
   })
 
+  it("loads at most 100 boundaries in one event", async () => {
+    respond(`<p>Loaded</p>`)
+    respond(`<p>Loaded</p>`)
+    const loaded = new Promise((resolve) => window.addEventListener("phem:done", (e) => e.detail.handler === "c1.b100" && resolve(e)))
+    await mount(Array.from({ length: 101 }, (_, i) => `<phem-suspense data-phem-load="c1.b${i}"><p>Loading…</p></phem-suspense>`).join(""))
+    await loaded
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(sent(0).handler).toHaveLength(100)
+    expect(sent(0).handler[99]).toBe("c1.b99")
+    expect(sent(1).handler).toBe("c1.b100")
+  })
+
   it("loads each boundary alone after a failed load of all of them", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {})
     const quiet = (e) => e.preventDefault()

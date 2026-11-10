@@ -56,6 +56,8 @@ final class SignForm
 - **`toComponent(Inbox::class)`**: every page that renders a component with `#[Broadcast]`
 - **`everywhere()`**: every page with `#[Broadcast]`
 
+A function page or a function component is its first-class callable: `toPage(GuestbookPage(...))`, `toComponent(Inbox(...))`.
+
 To select one URL, give a value for each `#[Path]` property. Give a `#[Path]` entity as the entity, not as its id. All the routes of the page then get the update: `/orders/{order}`, `/orders/{id:order}` and `/o/{slug:order}` select the same order. When you have only the id, give a Doctrine reference:
 
 ```php
@@ -64,7 +66,7 @@ $this->streams->toPage(OrderPage::class, ['order' => $entityManager->getReferenc
 
 ### Change the page with stream actions
 
-The actions are the Turbo Stream actions: `append`, `prepend`, `before`, `after`, `replace`, `update` and `remove`. Each one takes the `id` of the target element.
+The actions are the Turbo Stream actions: `append`, `prepend`, `before`, `after`, `replace`, `update` and `remove`. Each one takes the `id` of the target element. `replace()` and `update()` morph the target by default, so the focus and a field that the user changes stay. Give `false` as the third argument to replace the target with no morph: `->replace('cart', <Cart />, false)`.
 
 The markup goes to every viewer, so don’t push data meant for one user only. Use `refresh($target)` for that instead: each browser renders the component around the target again, with its own access rules.
 
@@ -74,7 +76,7 @@ Pushed content must also be in the server render, so load it in `mount()`, or th
 
 ## Refresh the pages that show an entity
 
-Add `on:` to `#[Broadcast]` to name the Doctrine entities that a page or a component shows. After each flush that inserts, updates or deletes one of these entities, Phem refreshes the page or the component in every browser. You don’t need a Doctrine listener or a stream:
+Add `on:` to `#[Broadcast]` to name the Doctrine entities that a page or a component shows. It needs DoctrineBundle: without it, `on:` does nothing. After each flush that inserts, updates or deletes one of these entities, Phem refreshes the page or the component in every browser. You don’t need a Doctrine listener or a stream:
 
 ```php
 use Phem\Attribute\{Broadcast, BroadcastKey, Component, Page, Path, Prop};
@@ -145,7 +147,7 @@ Phem checks the classes and the fields at the first flush. A class that isn’t 
 ### Know the limits
 
 - Only a flush of the Doctrine ORM refreshes. A DQL `UPDATE` or `DELETE`, or plain SQL, doesn’t go through the unit of work. Push the refresh with `Streams` for them.
-- A flush in a command or in a Messenger handler publishes its refreshes at the end of the command or of the message. In another long process, call `Streams::flush()`.
+- A flush in a command or in a Messenger handler publishes its refreshes at the end of the command or of the message. These processes have no FrankenPHP request, so they publish only with the `publisher_key` and `publish_url` options (see [Use a standalone Mercure hub](#use-a-standalone-mercure-hub)). Without them, Phem logs an error and the refreshes are lost. In another long process, call `Streams::flush()`.
 - A flush in the render of a push refresh doesn’t refresh other browsers. For example, a `mount()` that saves a “last seen” date would make two browsers refresh each other with no end. Save such data in a handler, or leave its entity out of `on:`.
 - A class component with `on:` still refreshes after its own handlers (see [Refresh a component after its own handlers](#refresh-a-component-after-its-own-handlers)). When a handler and a flush refresh the same instances, the browser renders them once. Use `handlers: false` when only the entity changes need a refresh.
 - `on:` goes on a page or a component, not on a handler method or a closure.
@@ -295,7 +297,7 @@ $this->streams->toComponent(BagContents::class)->refresh();
 $this->streams->toComponent(BagContents::class, ['bag' => $bag->id])->refresh();
 ```
 
-The `handlers` argument works on a class component only. On a page, a function, a handler method or a closure, Phem throws a `LogicException`. A component with `handlers: false` can’t also have `#[Broadcast]` on a handler method or a closure. In that case, put `#[Broadcast]` on those handlers only, and leave it off the class.
+The `handlers` argument works on a class component only. On a page, a function or a handler method, `phemc` reports E053. On these and on a closure, Phem throws a `LogicException`. A component with `handlers: false` can’t also have `#[Broadcast]` on a handler method or a closure. In that case, put `#[Broadcast]` on those handlers only, and leave it off the class.
 
 ## Set up the Mercure hub in FrankenPHP
 
@@ -313,7 +315,7 @@ mercure {
 }
 ```
 
-Then give Phem the subscriber key:
+The `issuer` name must be the `phem.mercure.issuer` option (`phem` by default), or the hub rejects the tokens of Phem. Then give Phem the subscriber key:
 
 ```yaml
 # config/packages/phem.yaml
@@ -322,7 +324,16 @@ phem:
         subscriber_key: '%env(MERCURE_SUBSCRIBER_JWT_KEY)%'
 ```
 
-With the subscriber key, the updates are private: each page gets a cookie that grants access to its own topics only. Without a key, the updates are public, and the hub needs the `anonymous` directive. The cookie is `Secure`, so it works on HTTPS and on `localhost`. On another plain HTTP host, set `cookie_name` to a name without the `__Secure-` prefix.
+With the subscriber key, the updates are private: each page gets a cookie that grants access to its own topics only. Without a key, the updates are public, and the hub needs the `anonymous` directive. The cookie is `Secure`, so it works on HTTPS and on `localhost`. On another plain HTTP host, set `phem.mercure.cookie_name` and the `cookie_name` of the hub to the same name without the `__Secure-` prefix.
+
+The browser connects to the hub at `phem.mercure.hub_url` (`/.well-known/mercure` by default). For a hub on another host or port, give its absolute URL:
+
+```yaml
+# config/packages/phem.yaml
+phem:
+    mercure:
+        hub_url: 'https://mercure.example.com/.well-known/mercure'
+```
 
 ### Name the hub
 
@@ -330,7 +341,15 @@ Always give the hub a `name`. Caddy creates one server for each port of the site
 
 ## Use a standalone Mercure hub
 
-With another server, such as PHP-FPM, or when the hub runs apart from the app, Phem publishes through the hub’s HTTP API. Add a publisher key to the hub:
+With another server, such as PHP-FPM or the `symfony serve` server of development, or when the hub runs apart from the app, Phem publishes through the hub’s HTTP API. Commands and Messenger workers, with the workers of `#[Async]` handlers, always publish this way, also when the app runs in FrankenPHP. Without the publisher key, they don’t publish, and a page on another server gets no updates.
+
+Install the Symfony HttpClient:
+
+```sh
+composer require symfony/http-client
+```
+
+Add a publisher key to the hub:
 
 ```caddyfile
 mercure {

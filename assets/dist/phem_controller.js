@@ -139,6 +139,8 @@ const REFRESH_WAIT = 50
 const MAX_STALE = 100
 // The items of feeds that one event sends at most (see markFeed()): the server takes no more (EventPayload::MAX_FEEDS).
 const MAX_FEEDS = 100
+// The boundaries that one load event sends at most: the server takes no more (EventPayload::MAX_LOADS).
+const MAX_LOADS = 100
 
 // The wait before a new connection to the hub after it refused one (an expired token).
 const STREAM_RETRY = 5000
@@ -1116,7 +1118,10 @@ export default class PhemController extends Controller {
   // them in one pass. The event goes from the first boundary, so its `phem:send` and `phem:done`
   // have the first handler id. Each boundary shows the loading state.
   sendLoads() {
-    const batch = this.loadBatch.splice(0)
+    // More boundaries go in the next load events.
+    const batch = this.loadBatch.splice(0, MAX_LOADS)
+    if (this.loadBatch.length > 0) queueMicrotask(() => this.sendLoads())
+
     const load = { type: "load", value: null, checked: null, key: null, form: null }
     if (batch.length < 2) {
       for (const { el, handler } of batch) this.enqueue(el, "data-phem-load", handler, load)

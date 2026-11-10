@@ -112,7 +112,7 @@ before you report the work as done:
 - For a fast check while you work, run PHPUnit in the dev image:
   `docker compose -f docker/compose.yaml run --rm dev vendor/bin/phpunit`. Run `make test` at the end.
 - Run `make test-e2e` alone after a change that a real browser must check: the client
-  (`assets/`), the morph, the events or the Mercure pushes. Add `ARGS="--filter Guestbook"` for one
+  (`assets/`), the morph, the events or the Mercure pushes. Add `ARGS="--filter Smoke"` for one
   test. The specs are in `e2e/tests/`, and their app is in `e2e/src/` (see `docs/contributing.md`).
 - Report the result. If a test fails, show the output. A failed e2e test saves a screenshot and the
   HTML of each page in `e2e/var/failures/`.

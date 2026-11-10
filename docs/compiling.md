@@ -159,7 +159,7 @@ workers:
 
 ### `phemc lsp`
 
-`phemc lsp` runs the language server on stdin and stdout. It takes no option. The server reports the same diagnostics as `phemc check` while you type, and it adds completion, go to definition, hover and the outline of `.phem` files.
+`phemc lsp` runs the language server on stdin and stdout. It takes no command-line option. The editor can give the `sourceDir` initialization option (default `src`): the server checks only the `.phem` files in it. The server reports the same diagnostics as `phemc check` while you type, and it adds completion, go to definition, find references, a code lens with the usage count of each function, class and method, quick fixes (for example for H001), hover and the outline of `.phem` files.
 
 The VS Code and PhpStorm plugins bundle the same server compiled to WebAssembly, so they don’t need a `phemc` binary (see `editors/vscode/README.md` and `editors/phpstorm/README.md`). The Claude Code plugin runs the `vendor/bin/phemc lsp` of the application (see [Use Claude Code](#use-claude-code)).
 

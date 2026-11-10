@@ -48,6 +48,7 @@ export const navigation: NavGroup[] = [
         pages: [
             { slug: 'phem-syntax', label: 'Phem Syntax' },
             { slug: 'compiling', label: 'Compiler' },
+            { slug: 'configuration', label: 'Configuration' },
         ],
     },
     {

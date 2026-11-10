@@ -19,7 +19,7 @@ use function Acme\Ui\Badge;
 #[Page('/')]
 function HomePage(): Node
 {
-    return <Document><Badge label="New" /></Document>;
+    return <Document title="Home"><Badge label="New" /></Document>;
 }
 ```
 
@@ -49,7 +49,7 @@ use Acme\Ui\Layout;
 #[Component(replaces: Layout::class)]
 function PackageLayout(?Html $children = null): Node
 {
-    return <Document>{{ children }}</Document>;
+    return <Document title="Acme">{{ children }}</Document>;
 }
 ```
 
@@ -107,7 +107,7 @@ use function Acme\Ui\Notice;
 function ReplacedPage(): Node
 {
     return (
-        <Document>
+        <Document title="Replaced">
             <Alert>Saved</Alert>
             <Notice>Read this</Notice>
         </Document>

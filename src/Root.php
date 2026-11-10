@@ -19,11 +19,11 @@ namespace Phem;
  *
  *     use Phem\{Html, Root};
  *
- *     function Document(?string $title = null, ?Html $children = null)
+ *     function Document(string $title, Html $children)
  *     {
  *         return (
  *             <html lang="en">
- *                 <head><title>{{ title ?? 'My app' }}</title>{{ importmap('app') }}</head>
+ *                 <head><title>{{ title }}</title>{{ importmap('app') }}</head>
  *                 <body><Root>{{ children }}</Root></body>
  *             </html>
  *         );

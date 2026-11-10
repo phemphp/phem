@@ -7,19 +7,40 @@ This guide shows you how to control what happens on the server around your handl
 Add `#[Transactional]` to a handler method to run it in a Doctrine transaction, or add it to the class to cover every handler. Phem flushes and commits when the handler returns, and rolls back when it throws, so the handler doesn’t call `flush()`:
 
 ```php
+use Doctrine\ORM\EntityManagerInterface;
+use Phem\Attribute\{Component, Prop, Transactional};
+use Phem\{Event, Node};
+
 #[Component, Transactional]
 final class TodoItem
 {
     #[Prop] public Todo $todo;
+
+    public function __construct(
+        private readonly EntityManagerInterface $em,
+    ) {
+    }
 
     public function toggle(): void
     {
         $this->todo->done = !$this->todo->done;   // saved at the commit
     }
 
-    public function delete(): void
+    public function delete(Event $e): void
     {
         $this->em->remove($this->todo);           // deleted at the commit
+        $e->refresh();                            // the list renders again without the row
+    }
+
+    public function render(): Node
+    {
+        return (
+            <li>
+                <input type="checkbox" checked={{ todo.done }} onChange={{ toggle }} />
+                {{ todo.title }}
+                <button onClick={{ delete }}>Delete</button>
+            </li>
+        );
     }
 }
 ```
@@ -33,7 +54,7 @@ A slow component delays the whole page. Wrap it in a `<Suspense>` boundary, and 
 ```php
 use Phem\Suspense;
 
-<Document>
+<Document title="Sales">
     <Suspense>
         <Suspense:fallback><p>Loading the sales report…</p></Suspense:fallback>
         <SalesReport />
@@ -51,7 +72,7 @@ A boundary loads its content in one of two ways:
 - **Streamed (default)**: the same response sends the page with the fallbacks, then one chunk for each boundary
 - **`lazy`**: the browser loads the content with an event when the fallback scrolls into view
 
-When the content throws, the `error` slot shows.
+When the content throws, the `error` slot shows. With no `error` slot, the fallback stays: a streamed boundary loads again with an event, and the event fails.
 
 ### Know the limits of streaming
 
@@ -128,7 +149,7 @@ final class BuildReport
 
 In the request, the method runs as a regular handler and the event renders. The worker then rebuilds the page from the event’s state, calls the method again and runs the closure of the `Promise`. **The method body runs twice**, so keep it fast. The worker drops the pushes of the method body, because they went out with the request, but another side effect, such as a database write or an email, happens twice. Put it in the closure. Pass the values the work needs to the closure, as `use ($ticket)` does: the worker gets the ticket of the event, not the new one.
 
-The worker has no response, so the closure shows its result with `Streams` (see [Push updates to other browsers](real-time-updates.md)). A toast or another browser event of the closure doesn't reach the browser, and the worker logs a warning. The worker has the user of the request, but no session, no cookies and no files. Messenger can retry the closure, so make it safe to run again.
+The worker has no response, so the closure shows its result with `Streams` (see [Push updates to other browsers](real-time-updates.md)). A toast or another browser event of the closure doesn't reach the browser, and the worker logs a warning. The worker has the user of the request, but no session, no cookies and no files. An `#[Async]` handler in an event with files throws a `LogicException`, so move the files in a regular handler. Messenger can retry the closure, so make it safe to run again.
 
 ### Run the Messenger worker
 

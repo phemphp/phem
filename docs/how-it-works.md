@@ -77,7 +77,7 @@ Next, the server renders again only the components that can change:
 
 The server compares the new HTML of each of these components with the hash it had before. For each component that changed, it answers with a Turbo Stream `replace` (`method="morph"`). The response also contains the state entries that changed and the new signature, and the browser writes them into its copy of the state, so a big page doesn’t download all its state again on every event.
 
-The response stays small in three more ways:
+The response stays small in four more ways:
 
 - **JSON patches**: an entry that changed only a bit gets a patch of its JSON text, the shape gets only the hashes that changed, and a large `#[State]` list where one item changed gets only that item
 - **Kept components**: a component that didn’t render again comes back as a `<template data-phem-keep>` placeholder, and the browser keeps its current HTML

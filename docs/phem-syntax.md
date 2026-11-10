@@ -47,7 +47,7 @@ final class Counter
 }
 ```
 
-A tag renders a component: `<MyButton />` or `<Counter label="Clicks" />`. The compiler resolves the tag name with the PHP rules, in this order: a `use function` import, a `use` import, then the current namespace.
+A tag renders a component: `<MyButton />` or `<Counter label="Clicks" />`. The compiler resolves the tag name with the PHP rules, in this order: a `use function` import, a `use` import, then the current namespace. A qualified name is a component too: `<Common\Card />` resolves its first segment with a `use` import or the current namespace, and `<\App\Ui\Card />` is fully qualified.
 
 A function without `#[Component]` is a plain PHP function. PHP code can call it, but a tag can’t use it (E010).
 
@@ -63,9 +63,9 @@ Markup follows these rules:
 
 - **Closed tags**: close every tag, including void elements (`<br />`, `<img ... />`)
 - **One root**: return one root. To return several elements, wrap them in a fragment: `<>...</>`
-- **Tag case**: a lowercase tag is an HTML element, and a capitalized tag is a component
+- **Tag case**: a lowercase tag is an HTML element, and a capitalized or qualified tag (`<Common\Card />`) is a component
 - **Attribute names**: you can write `className` for `class` and `htmlFor` for `for`
-- **Start position**: a markup literal starts where a PHP expression starts: after `return`, `=`, `(`, `,`, `=>`, `?`, `:`, `??`, `[` or `echo`
+- **Start position**: a markup literal starts where a PHP expression starts: after `return`, `yield`, `echo`, `print`, `=`, `??=`, `(`, `,`, `=>`, `?`, `:`, `??`, `[`, `.`, `!`, `&&`, `||`, `and`, `or` or `xor`
 - **Multi-line markup**: put parentheses around markup that spans more than one line
 
 Phem marks the root element of each component with the component ID (`data-phem-c`). When the root isn’t one element (a fragment, a text or another component), Phem wraps it in a `<phem-c>` element. A `<phem-c>` isn’t valid inside a `<table>`, a `<tr>` or a `<select>`, so a row or an option component must return one element.
@@ -104,7 +104,7 @@ Each form of value renders this way:
 | `style={{ {...} }}` | A style from a hash. camelCase keys become kebab-case. Numbers get `px`, except for unitless properties (`opacity`, `zIndex`, …) |
 | `{{ ...attrs }}` in a tag | All the attributes of a hash. A later attribute replaces an earlier one |
 
-`data-*`, `aria-*` and `value` print a boolean as text: `data-open={{ false }}` renders `data-open="false"`. Use `null` to remove them.
+`data-*`, `aria-*`, `value`, `contenteditable`, `draggable`, `spellcheck`, `focusable`, `autoreverse`, `externalResourcesRequired` and `preserveAlpha` print a boolean as text: `data-open={{ false }}` renders `data-open="false"`. Use `null` to remove them.
 
 All Twig filters, tests and tags work. Don’t write PHP in markup: compute values in PHP before the `return`.
 
@@ -131,7 +131,7 @@ final class StaffOrderPage
     public function render(): Node
     {
         return (
-            <Document>
+            <Document title="Order {{ order.id }}">
                 {% if order.status == OrderStatus.Cancelled %}<p>Cancelled</p>{% endif %}
                 <select name="status">
                     {% for s in OrderStatus.cases() %}<option key={{ s.value }} value={{ s.value }}>{{ s.name }}</option>{% endfor %}
@@ -249,7 +249,7 @@ The caller passes `title` as an attribute, the tag content as `children`, and th
 
 A function component doesn’t get services. Each parameter is a prop, even one with a service type, so the caller must pass it. Fetch the data in a function page or in the `mount()` of a class component, and pass it as a prop. A class component gets its services in the constructor (see [Services and `mount()`](components.md#use-services-in-a-component)).
 
-The props of a class component are its public properties with `#[Prop]`. A prop with no default value is required.
+The props of a class component are its public properties with `#[Prop]`. A prop with no default value is required, except a nullable prop: it gets `null`.
 
 Props take values in these forms:
 
@@ -327,7 +327,7 @@ Add `#[Page]` to a class or a function to give it a URL. A page needs no `#[Comp
 #[Page('/about')]
 function AboutPage(): Node
 {
-    return <Document><h1>About us</h1></Document>;
+    return <Document title="About us"><h1>About us</h1></Document>;
 }
 ```
 
@@ -359,7 +359,7 @@ A handler can take these forms:
 - **Prop of type `Closure`**
 - **Call with arguments**: `onClick={{ remove(item) }}` runs `remove($item)` when the user clicks, not during the render. See [Pass arguments to a handler](events.md#pass-arguments-to-a-handler)
 
-The supported events are `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`, `onKeyDown`, `onKeyUp`, `onFocus` and `onBlur`. `phemc` warns about other events (W003). For what a handler receives and returns, see [Handle events](events.md).
+The supported events are `onClick`, `onDoubleClick`, `onChange`, `onInput`, `onSubmit`, `onKeyDown`, `onKeyUp`, `onFocus`, `onBlur`, `onFocusIn` and `onFocusOut`. `phemc` warns about other events (W003). For what a handler receives and returns, see [Handle events](events.md).
 
 ### Directives (`phem:*`)
 
@@ -372,8 +372,8 @@ A `phem:*` attribute adds a Phem behavior to an element:
 
 | Directive | Effect |
 |---|---|
-| `phem:bind={{ prop }}` | Links a form field to a `#[State]` property. See [Bound fields](forms.md#bind-a-field-to-state-without-a-handler) |
-| `phem:live` | Sends each change of a bound field right away |
+| `phem:bind={{ prop }}` | Links a form field to a `#[State]` property or to a `Bound` prop. On a component tag, it gives the property to the `Bound` prop of the child. See [Bound fields](forms.md#bind-a-field-to-state-without-a-handler) and [Bind a parent property from a child component](forms.md#bind-a-parent-property-from-a-child-component) |
+| `phem:live` | Sends each change of a bound field right away. `phem:live={{ expr }}` turns it on only when the value is `true` |
 | `phem:error={{ prop }}` | Renders the element only when the bound property has a validation error, with the id of the error and the message. See [Show the error of a bound field](forms.md#show-the-error-of-a-bound-field). It is not the `phem:error` event of the browser |
 | `phem:loading={{ handler }}` | Shows the element only while the handler runs. See [Loading states](events.md#show-a-loading-state) |
 | `phem:debounce={{ ms }}` | Waits until the user pauses for `ms` milliseconds. `'blur'` waits until the field loses focus. See [Debounce and throttle](events.md#control-when-typing-sends-an-event) |
@@ -381,7 +381,7 @@ A `phem:*` attribute adds a Phem behavior to an element:
 | `phem:progress={{ handler }}` | Shows the progress of a file upload. See [File uploads](forms.md#accept-file-uploads) |
 | `phem:feed={{ prop }}` | Shows a `Feed` property: the element holds one `{% for %}` loop on the feed, with one element for each item. The browser keeps the items. See [Feeds](long-lists.md) |
 
-The value of `phem:bind` and `phem:error` is a property name or a path in an array property: `phem:bind={{ filters.status }}`, `phem:bind={{ rows[i].name }}`. Write it with no spaces and no filter. `phemc` checks directive values (E032, E033, E061, E065, E066).
+The value of `phem:bind` and `phem:error` is a property name, or a path in an array property or in a draft object: `phem:bind={{ filters.status }}`, `phem:bind={{ rows[i].name }}`, `phem:bind={{ draft.address.city }}`. Write it with no spaces and no filter. `phemc` checks directive values (E032, E033, E061, E065, E066).
 
 ### Data attributes (`data-phem-*`)
 
@@ -394,6 +394,9 @@ These `data-phem-*` attributes change how the browser treats an element:
 | `data-phem-guard` | Asks the user to confirm before they leave the page with unsaved changes. See [Unsaved changes](forms.md#warn-about-unsaved-changes) |
 | `data-phem-guard-dialog` | The selector of a `<dialog>` that asks the question of `data-phem-guard` in place of `window.confirm()`. See [Unsaved changes](forms.md#warn-about-unsaved-changes) |
 | `data-phem-guard-accept` | The label of the accept button of the `data-phem-guard-dialog` dialog |
+| `data-phem-guard-message-value` | On the `<Root>` element: the question of a `data-phem-guard` with no value. The default is "You have unsaved changes. Leave the page?" |
+| `data-phem-disable={{ false }}` | On a form: does not lock the controls of the form while its submit event runs. See [The browser shows feedback while an event runs](how-it-works.md#the-browser-shows-feedback-while-an-event-runs) |
+| `data-phem-autofocus-keyboard` | On a link or an event element: opens the iOS keyboard for the `phem-autofocus` field that shows after the round trip. See [Open the iOS keyboard](client-side.md#open-the-ios-keyboard-after-a-round-trip) |
 | `data-phem-transition` | Animates the changes with the View Transitions API. See [Transitions](client-side.md#animate-changes-with-view-transitions) |
 
 ## Built-in components
@@ -458,6 +461,7 @@ The Phem PHP attributes live in the `Phem\Attribute` namespace:
 | `#[Url]` | a `#[State]` property | Keeps the value in the query string. See [State in the URL](components.md#keep-state-in-the-url) |
 | `#[Provide]`, `#[Context]` | a class, a property or a parameter | Passes a value to the components below. See [Context](components.md#pass-a-value-down-the-tree-with-context) |
 | `#[Validated]` | a handler | Validates the state before the handler runs. See [Live validation](forms.md#validate-a-form-while-the-user-types) |
+| `#[MapForm]` | a handler parameter | Gives the handler the submitted form as an object. See [Map a form to an object](forms.md#map-a-form-to-an-object) |
 | `#[Transactional]` | a class or a handler | Runs the handler in a transaction. See [Transactions](server-features.md#save-handler-changes-in-a-transaction) |
 | `#[Broadcast]`, `#[BroadcastKey]` | a page, a component, a handler, a prop or a property | Sends real-time updates. `on:` refreshes after a change of an entity. See [Real-time updates](real-time-updates.md) |
 | `#[Async]` | a handler | Runs slow work after the response. See [Slow work after the response](server-features.md#run-slow-work-after-the-response) |

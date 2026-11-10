@@ -27,7 +27,7 @@ my-app/
     └── cache/           the Symfony cache (don't commit)
 ```
 
-Add DoctrineBundle to `config/bundles.php` for transactions and `#[Path]` entities. The source root holds your PHP classes next to the `.phem` files:
+Add DoctrineBundle to `config/bundles.php` for transactions, `#[Path]` entities and the entity refreshes of `#[Broadcast(on: …)]`. The source root holds your PHP classes next to the `.phem` files:
 
 ```text
 src/

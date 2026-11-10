@@ -27,18 +27,18 @@ In production, Symfony doesn’t check its cache for changes, so rebuild the cac
 ```sh
 export APP_ENV=prod APP_DEBUG=0
 composer install --no-dev --optimize-autoloader
-phemc build src --no-warmup
+vendor/bin/phemc build src --no-warmup
 rm -rf var/cache/prod && php bin/console cache:warmup
 php bin/console asset-map:compile
 ```
 
 Each step has one job:
 
-- **`phemc build src --no-warmup`**: compiles the sources. `cache:warmup` runs the Twig warmup later, so the build skips it
+- **`vendor/bin/phemc build src --no-warmup`**: compiles the sources. `cache:warmup` runs the Twig warmup later, so the build skips it
 - **`cache:warmup`**: builds the container (with the component services), the routes, the Twig cache of the `phemc` templates, the route values of the page links (`path(ProductPage, {product: product})`), and the OPcache preload file of the components
 - **`asset-map:compile`**: writes the assets to `public/assets/`
 
-Set a random `APP_SECRET`, for example in `.env.local`. It signs the component state in the browser (the `phem.secret` option defaults to `%kernel.secret%`).
+Set a random `APP_SECRET`, for example in `.env.local`. The `phem.secret` option defaults to `%kernel.secret%`. It signs the component state in the browser, the Mercure topics, the broadcast keys, the feed items and the `#[Async]` messages. Keep the same secret from one deploy to the next, and give all the servers of the app the same secret. A new secret makes the open pages reload on their next event, and the waiting `#[Async]` messages fail.
 
 ### Turn on the OPcache preload
 
@@ -92,7 +92,11 @@ COPY docker/php-prod.ini /usr/local/etc/php/conf.d/zz-app.ini
 CMD ["frankenphp", "run", "--config", "Caddyfile"]
 ```
 
-Phem signs the component state that it sends to the browser with `APP_SECRET`. The image writes a random value to `.env.local` at build time.
+The image writes a random `APP_SECRET` to `.env.local` at build time, so the build can boot the kernel. Each build gets a new value, so give the real secret when the container starts. A real environment variable overrides `.env.local`, also an empty one, so set `APP_SECRET` in the shell first:
+
+```sh
+docker run --rm -p 8080:8080 -e APP_SECRET="$APP_SECRET" my-app
+```
 
 #### Exclude local files from the build
 
@@ -126,6 +130,7 @@ The `Caddyfile` runs `public/index.php` in FrankenPHP worker mode. Each worker b
     frankenphp {
         worker {
             file ./public/index.php
+            {$FRANKENPHP_WORKER_CONFIG}
         }
     }
 }
@@ -140,11 +145,11 @@ The `Caddyfile` runs `public/index.php` in FrankenPHP worker mode. Each worker b
 
 ### Build and run the image
 
-Build the image and start a container on port 8080:
+Build the image and start a container on port 8080 with the secret of the app:
 
 ```sh
 docker build -t my-app .
-docker run --rm -p 8080:8080 my-app
+docker run --rm -p 8080:8080 -e APP_SECRET="$APP_SECRET" my-app
 ```
 
 Open `http://localhost:8080`. In production, Symfony doesn’t check the cache for changes, so rebuild the image after each change.

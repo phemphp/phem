@@ -29,9 +29,11 @@ phem:
     state_bind_session: true
 ```
 
+`state_bind_session` doesn’t start a session. A visitor with no session gets states that aren’t bound, so the option protects only the users with a session. A new session id, for example after a login, makes the older states of the user invalid.
+
 ## Rate limit events
 
-Use the Symfony `#[RateLimit]` attribute to limit the events of a page. Install `symfony/rate-limiter` and configure the limiters, one for the page and one for its search handler:
+Use the Symfony `#[RateLimit]` attribute to limit the events of a page. The attribute needs Symfony 8.1 or later: on an older version, it does nothing. Install `symfony/rate-limiter` and configure the limiters, one for the page and one for its search handler:
 
 ```yaml
 # config/packages/rate_limiter.yaml
@@ -64,4 +66,4 @@ final class SearchPage
 }
 ```
 
-An event is a `POST` request, so `methods: 'POST'` counts the events and not the page views. On a method, the limit applies to that handler only. Over the limit, the server returns `429` and the browser dispatches `phem:rate-limited` with `retryAfter` in its detail.
+An event is a `POST` request, so `methods: 'POST'` counts the events and not the page views. On a method, the limit applies to that handler only. A closure in `render()` has no limit of its own: only the limit of the page applies to it. Over the limit, the server returns `429` and the browser dispatches `phem:rate-limited` with `retryAfter` in its detail.

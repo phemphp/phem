@@ -24,6 +24,13 @@ that break the code of an application start with **Breaking**.
 - The internal `Phem\Stream\Stream` class is now `Phem\Stream\TurboStream`.
 - `Validation::hasError($field)`: `true` when the field has an error. A template checks it before
   it shows the error: `{% if validation.hasError('email') %}`.
+- **Breaking** The `Phem\Component` trait (`setState()`) is removed. No code used it. Set the
+  state properties directly.
+- A new doc, `docs/configuration.md`, lists all the options of the bundle.
+- The client sends 100 `<Suspense>` boundaries in one load event at most, the limit of the
+  server. With more boundaries, the server answered `400`, and the client loaded each boundary
+  alone.
+- The language server completes `onFocusIn` and `onFocusOut`.
 
 ## 0.3.16 (2026-11-09)
 

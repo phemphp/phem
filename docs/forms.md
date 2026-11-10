@@ -261,6 +261,8 @@ phem:
     max_upload_size: 20971520 # 20 MiB
 ```
 
+The options of PHP also apply. A body larger than `post_max_size` gets a `413`. A file larger than `upload_max_filesize` gets to the handler with an upload error, so check `$file->isValid()`.
+
 ## Validate a form while the user types
 
 To show field errors before the submit, put Symfony constraints on the `#[State]` properties and add a `#[State]` property of type `Phem\Validation`. Phem sets that property for you:
@@ -317,15 +319,15 @@ The `Validation` object has these methods:
 
 | Method | Result |
 |---|---|
-| `error($field)` | The error of a handler, or the first error of a touched field, or `null` |
+| `error($field)` | The error of a handler, the first error of a touched field, the error of the last `#[MapForm]` form, or `null` |
 | `hasError($field)` | `true` when the field has an error |
 | `errors()` | All the errors |
 | `touched($field)` | `true` when the user touched the field |
 | `valid()` | `true` when there’s no error |
-| `touch($field)` | A new `Validation` with this field touched |
+| `touch(...$fields)` | A new `Validation` with these fields touched |
 | `withError($field, $message)` | A new `Validation` with an error of a handler on this field (see [Add an error from a handler](#add-an-error-from-a-handler)) |
 
-A field’s name is the path of its `phem:bind`, for example `address.city`. For a draft object, put `#[Assert\Valid]` on the property: the errors of its constraints have the paths of the bound fields, for example `draft.name`. The error of a class constraint is `validation.error('')`. To start over, for example after a save, set `new Validation()`. Use `#[Validated(groups: ['draft'])]` to validate other groups.
+A field’s name is the path of its `phem:bind`, for example `address.city`. For a draft object, put `#[Assert\Valid]` on the property: the errors of its constraints have the paths of the bound fields, for example `draft.name`. The error of a class constraint is `validation.error('')`. To start over, for example after a save, set `new Validation()`. Use `#[Validated(groups: ['draft'])]` to validate other groups. The next live validations of the component use these groups too, until you set a new `Validation`. `#[Validated]` also works on a closure in `render()`: `#[Validated] fn () => $this->save()`.
 
 ### Add an error from a handler
 

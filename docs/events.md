@@ -10,11 +10,14 @@ A handler can take a `Phem\Event` argument with these properties:
 
 | Property | Value |
 |---|---|
+| `$e->type` | The type of the DOM event, such as `click`, `change` or `submit` |
 | `$e->value` | The value of the element |
 | `$e->checked` | Whether a checkbox is checked |
 | `$e->key` | The key of a key event |
 | `$e->form` | The form fields, by name; a submit, a change or a click sends them (see [Map a form to an object](forms.md#map-a-form-to-an-object)) |
 | `$e->files` | The files of the form (see [Accept file uploads](forms.md#accept-file-uploads)) |
+
+By default, only the component of the handler, the components whose state changed and their children with new props render again. Call `$e->refresh()` in a handler to render the full page after it, for example when a form adds a row to a list in another component.
 
 `onChange` on a text field fires as the user types. The browser waits until the user stops typing for 150 ms before it sends the event (see [Control when typing sends an event](#control-when-typing-sends-an-event)).
 
@@ -126,7 +129,7 @@ public function save(Event $e, NoteRepository $notes, #[CurrentUser] User $user)
 }
 ```
 
-A closure in `render()` receives only the event and the `Request`. Type its parameter, as in `fn (Event $e) => ...`, and inject services through the constructor.
+A closure in `render()` receives the same arguments, except the services: the event, the `Request`, `#[CurrentUser]`, `#[MapForm]` and the other value resolvers. Type its parameter, as in `fn (Event $e) => ...`, and inject services through the constructor.
 
 ## Show a loading state
 
@@ -202,6 +205,8 @@ After the morph, the browser dispatches a `phem:saved` event. A Stimulus control
 
 The event starts on the component’s element and bubbles up to `window`. A service can dispatch events too: inject `Phem\BrowserEventDispatcher`. A handler that fails or redirects dispatches no events.
 
+The name has only letters, digits and `_ - . :`. The browser uses these names itself, so you can’t use them: `before-queue`, `queue`, `send`, `receive`, `done`, `error`, `rate-limited` and `upload-progress`. The detail must be a value that JSON can encode. `dispatch()` throws an `InvalidArgumentException` for a name or a detail that breaks these rules.
+
 To show a message to the user, call `$e->toast('Saved')`. See [Show toast messages](client-side.md#show-toast-messages).
 
 ## Run code around every handler
@@ -229,6 +234,8 @@ final class LoginRequired implements HandlerMiddleware
 
 `$next()` runs the next middleware and then the handler. Return without calling `$next()` to stop the event. The middleware runs for every handler, so check `$handler` or `$event` to apply it to some handlers only.
 
+The `RedirectTo` middleware (priority 10) changes a returned `RedirectTo` into the redirect response. A middleware with a priority above 10 runs outside it, so its `RedirectTo` does nothing. In such a middleware, return a Symfony `RedirectResponse`.
+
 ### Order your middleware with priorities
 
 The tag priority sets the order, and a higher priority runs first, around the others. The built-in middleware uses these priorities:
@@ -240,7 +247,9 @@ The tag priority sets the order, and a higher priority runs first, around the ot
 | 10 | `RedirectTo` |
 | 0 | The pushes of `Streams` |
 | -50 | `#[Validated]` |
+| -60 | `#[MapForm]` |
 | -100 | `#[Transactional]` |
 | -200 | `#[Async]` |
+| -1000 | `#[Broadcast]` |
 
 The default priority is 0, outside the transaction. To run inside the transaction, set a priority between -100 and -200 with `#[AsTaggedItem(priority: -150)]`.

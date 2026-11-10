@@ -6,7 +6,7 @@ This guide shows you how to write a class component, keep its state between even
 
 A class component has up to six parts, and you write them in this order:
 
-- **Inputs**: `#[Prop]` and `#[Context]` properties that the parent sets
+- **Inputs**: `#[Prop]` properties that the parent sets, and `#[Context]` properties that a component above provides
 - **State**: `#[State]` properties that the browser keeps between events
 - **Services**: constructor arguments that the container autowires; they’re never props
 - **`mount()`**: optional; it loads the data when there’s no state yet, or before each render when the component has no `#[State]`. The `mount()` of a page can return a `RedirectTo` (see [Redirect before a page renders](pages.md#redirect-before-a-page-renders))
@@ -152,11 +152,15 @@ So `mount()` loads the data once, and the state keeps it for the next events. A 
 
 Mark a property with `#[State]` to keep it between events. When a handler changes it, Phem calls `render()` again. Each component instance has its own state, and a page class is a component too, so a page can have state.
 
-A `#[Prop]` property is different: the parent sets it on every render. A prop without a default value is required.
+A `#[Prop]` property is different: the parent sets it on every render. A prop without a default value is required, except a nullable prop: it gets `null`.
+
+A prop can be `readonly`. When the parent gives it another value, Phem makes a new instance with the new props and the state of the old instance. As in the first render, `mount()` runs when the browser sent no state.
 
 ### Store only JSON values in the state
 
-The browser keeps the state, and the server signs it. Every event sends the state back to the server, so it must hold JSON values (scalars and arrays), backed enums, or objects that the Serializer encodes as JSON (see [Keep a draft object in the state](#keep-a-draft-object-in-the-state)).
+The browser keeps the state, and the server signs it. Every event sends the state back to the server, so it must hold JSON values (scalars and arrays), backed enums, objects that the Serializer encodes as JSON (see [Keep a draft object in the state](#keep-a-draft-object-in-the-state)), or value objects that implement `Phem\State\StateValue`, as `Validation` does.
+
+A `StateValue` gives its JSON value with `toState()`, and `static fromState(mixed $state)` makes the object again. `fromState(null)` gives the initial object, so such a property is never `null`. Make the object immutable: a change gives a new object, and a child that gets it as a prop renders again only when it is another object.
 
 The browser can send back an older state that the server signed, so keep limits and security decisions out of the state (see [Keep security decisions out of the state](security.md#keep-security-decisions-out-of-the-state)).
 
@@ -299,7 +303,7 @@ final class CountersPage
     public function render(): Node
     {
         return (
-            <Document>
+            <Document title="Counters">
                 <MyButton count={{ count }} onClick={{ handleClick }} />
                 <MyButton count={{ count }} onClick={{ handleClick }} />
             </Document>
@@ -477,9 +481,12 @@ final class Catalog
 }
 ```
 
-The first render reads the query string after `mount()`. After each event, the browser writes the values into the URL, and a value equal to the default removes its key. The attribute takes two arguments:
+The first render reads the query string after `mount()`. After each event, the browser writes the values into the URL, and a value equal to the default removes its key. The attribute takes three arguments:
 
-- **`as`**: the query string key, when it differs from the property name
+- **`as`**: the query string key, when it differs from the property name. It can have only letters, digits, `_` and `-`
 - **`history`**: set it to `true` to add a browser history entry for each change
+- **`except`**: the value that removes the key, when it differs from the default value of the property. Use it for a property that `mount()` sets, as in `#[State, Url(except: 'name')] public string $sort;`
 
-The query string comes from the user, so don’t trust its values.
+The type of the property is a string, an int, a float, a bool, a backed enum, or an array of them. A bool is `1` or `0` (`true` and `false` too). An array with keys goes into the URL as `filters[status]=open`, with only the keys that differ from the default.
+
+The query string comes from the user, so don’t trust its values. A value that doesn’t fit the type is ignored, and the property keeps its value. Phem throws a `LogicException` when a `#[Url]` property isn’t a `#[State]` property, when its key or its type isn’t valid, when the `except` value doesn’t fit the type, or when two properties of the page have the same key.

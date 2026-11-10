@@ -83,13 +83,13 @@ use Symfony\Component\HttpFoundation\Request;
 #[ErrorPage(404)]
 function NotFoundPage(): Node
 {
-    return <Document>…<h1>Page not found</h1>…</Document>;
+    return <Document title="Page not found">…<h1>Page not found</h1>…</Document>;
 }
 
 #[ErrorPage([401, 403])]
 function DeniedPage(int $status): Node
 {
-    return <Document>…<h1>You cannot see this page</h1>…</Document>;
+    return <Document title="Access denied">…<h1>You cannot see this page</h1>…</Document>;
 }
 
 // All the other statuses: 429, 500, 503…
@@ -99,7 +99,7 @@ function ErrorPage(int $status, Request $request): Node
     // The URL that failed, for a "Try again" link.
     $retry = $request->getRequestUri();
 
-    return <Document>…<a href={{ retry }}>Try again</a>…</Document>;
+    return <Document title="Error {{ status }}">…<a href={{ retry }}>Try again</a>…</Document>;
 }
 ```
 
@@ -171,7 +171,7 @@ function SlowDownPage(FlattenException $exception): Node
 {
     $seconds = $exception->getHeaders()['Retry-After'] ?? 60;
 
-    return <Document>…<p>Try again in {{ seconds }} seconds.</p>…</Document>;
+    return <Document title="Too many requests">…<p>Try again in {{ seconds }} seconds.</p>…</Document>;
 }
 ```
 
