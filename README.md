@@ -56,7 +56,7 @@ final class LikeButton
     {
         return (
             <button onClick={{ toggle }}>
-                {{ liked ? '♥ Liked' : '♡ Like' }}
+                {{ liked ? '♥' : '♡' }}
             </button>
         );
     }
