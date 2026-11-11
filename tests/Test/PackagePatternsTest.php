@@ -18,7 +18,7 @@ use Phem\Tests\Fixtures\Package\Kernel;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
- * The patterns of docs/packages.md, with the components of a package (tests/Fixtures/Package):
+ * The patterns of docs/package-authoring.md, with the components of a package (tests/Fixtures/Package):
  * the variants of a component, and the controlled and the uncontrolled state.
  */
 final class PackagePatternsTest extends KernelTestCase

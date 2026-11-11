@@ -62,6 +62,6 @@ The `phem.css` file of the client gives a default look to the error message of a
 [data-phem-toast][data-type="success"] { background: var(--color-brand); }
 ```
 
-The other built-in controllers ship no CSS. Style them with their data attributes and CSS variables, such as `[data-open]`, `[data-side]` and `var(--anchor-width)` (see [Learn the conventions](ui-controllers.md#learn-the-conventions)).
+The other built-in controllers ship no CSS. Style them with their data attributes and CSS variables, such as `[data-open]`, `[data-side]` and `var(--anchor-width)` (see [Learn the conventions](controllers.md#learn-the-conventions)).
 
 To change the `.phem-error` message, load your CSS after `phem.css`, or use a selector with a higher specificity.

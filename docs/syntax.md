@@ -2,7 +2,7 @@
 
 A `.phem` file is a PHP file with markup literals in it. The `phemc` compiler turns each markup literal into a Twig template and keeps the PHP code as it is, so all parsing happens at build time. This page lists each syntax element: the file, components, markup, props, pages and routes, events and directives, built-in components, markup values and the PHP attributes.
 
-For what the features do at runtime, read the topic pages: [Components and state](components.md), [Pages and routes](pages.md), [Events](events.md), [Forms](forms.md), [Client-side behavior](client-side.md), [Styling](styling.md), [Server features](server-features.md) and [Errors and limits](errors-and-limits.md).
+For what the features do at runtime, read the topic pages: [Components and state](components.md), [Pages and routes](pages.md), [Events](events.md), [Forms](forms.md), [Client-side behavior](client-side.md), [Styling](styling.md), [Server features](resilience.md) and [Errors and limits](failed-events.md).
 
 ## File structure and open tag
 
@@ -313,7 +313,7 @@ function Button(Variant $variant = Variant::Primary, ?Html $children = null): No
 <Button variant="outline">Save</Button>   // $variant is Variant::Outline
 ```
 
-A value that isn’t a case is an error that lists the valid values. `phemc` checks a literal value at build time (E018). For classes per case, see [Variants of a component](packages.md#add-variants-to-a-component).
+A value that isn’t a case is an error that lists the valid values. `phemc` checks a literal value at build time (E018). For classes per case, see [Variants of a component](package-authoring.md#add-variants-to-a-component).
 
 ### Merge of classes
 
@@ -384,9 +384,9 @@ A `phem:*` attribute adds a Phem behavior to an element:
 | `phem:prevent` | Cancels the default action of the event of a handler of the element, such as the visit of a link |
 | `phem:poll={{ ms }}` | Sends the `onPoll` event of the element every `ms` milliseconds while the tab is visible. `null` stops the poll. See [Poll the server](events.md#poll-the-server) |
 | `phem:scroll-into-view` | After the morph of an event of the user, the browser scrolls to the element when the element is new. `phem:scroll-into-view={{ expr }}` turns it on only when the value is `true`. See [Scroll to a new item](events.md#scroll-to-a-new-item-after-an-event) |
-| `phem:keep-scroll` | On an element that scrolls: the element in view stays at its place in each render. `phem:keep-scroll="end"` also keeps the element at its end when it is at its end (a chat). See [Keep the scroll position](long-lists.md#keep-the-scroll-position-of-a-list) |
+| `phem:keep-scroll` | On an element that scrolls: the element in view stays at its place in each render. `phem:keep-scroll="end"` also keeps the element at its end when it is at its end (a chat). See [Keep the scroll position](feeds.md#keep-the-scroll-position-of-a-list) |
 | `phem:progress={{ handler }}` | Shows the progress of a file upload. See [File uploads](forms.md#accept-file-uploads) |
-| `phem:feed={{ prop }}` | Shows a `Feed` property: the element holds one `{% for %}` loop on the feed, with one element for each item. The browser keeps the items. See [Feeds](long-lists.md) |
+| `phem:feed={{ prop }}` | Shows a `Feed` property: the element holds one `{% for %}` loop on the feed, with one element for each item. The browser keeps the items. See [Feeds](feeds.md) |
 
 The value of `phem:bind` and `phem:error` is a property name, or a path in an array property or in a draft object: `phem:bind={{ filters.status }}`, `phem:bind={{ rows[i].name }}`, `phem:bind={{ draft.address.city }}`. Write it with no spaces and no filter. `phemc` checks directive values (E032, E033, E061, E065, E066).
 
@@ -402,8 +402,8 @@ These `data-phem-*` attributes change how the browser treats an element:
 | `data-phem-guard-dialog` | The selector of a `<dialog>` that asks the question of `data-phem-guard` in place of `window.confirm()`. See [Unsaved changes](forms.md#warn-about-unsaved-changes) |
 | `data-phem-guard-accept` | The label of the accept button of the `data-phem-guard-dialog` dialog |
 | `data-phem-guard-message-value` | On the `<Root>` element: the question of a `data-phem-guard` with no value. The default is "You have unsaved changes. Leave the page?" |
-| `data-phem-disable={{ false }}` | On a form: does not lock the controls of the form while its submit event runs. See [The browser shows feedback while an event runs](how-it-works.md#the-browser-shows-feedback-while-an-event-runs) |
-| `data-phem-autofocus-keyboard` | On a link or an event element: opens the iOS keyboard for the `phem-autofocus` field that shows after the round trip. See [Open the iOS keyboard](ui-controllers.md#open-the-ios-keyboard-after-a-round-trip) |
+| `data-phem-disable={{ false }}` | On a form: does not lock the controls of the form while its submit event runs. See [The browser shows feedback while an event runs](architecture.md#the-browser-shows-feedback-while-an-event-runs) |
+| `data-phem-autofocus-keyboard` | On a link or an event element: opens the iOS keyboard for the `phem-autofocus` field that shows after the round trip. See [Open the iOS keyboard](controllers.md#open-the-ios-keyboard-after-a-round-trip) |
 | `data-phem-transition` | Animates the changes with the View Transitions API. See [Transitions](client-side.md#animate-changes-with-view-transitions) |
 
 ## Built-in components
@@ -438,8 +438,8 @@ The other three built-in components handle the page root, deferred content and e
 | Component | Use |
 |---|---|
 | `<Root>` (`Phem\Root`) | The root element of a page, in the document of the application. See [The `<Root>` element](pages.md#render-the-root-element) |
-| `<Suspense>` (`Phem\Suspense`) | Loads its content after the page. Slots: `fallback`, `error`. See [Content that loads after the page](server-features.md#load-slow-content-after-the-page) |
-| `<ErrorBoundary>` (`Phem\ErrorBoundary`) | Shows its `fallback` slot when its content throws. See [Errors in a part of the page](server-features.md#show-a-fallback-when-part-of-the-page-fails) |
+| `<Suspense>` (`Phem\Suspense`) | Loads its content after the page. Slots: `fallback`, `error`. See [Content that loads after the page](resilience.md#load-slow-content-after-the-page) |
+| `<ErrorBoundary>` (`Phem\ErrorBoundary`) | Shows its `fallback` slot when its content throws. See [Errors in a part of the page](resilience.md#show-a-fallback-when-part-of-the-page-fails) |
 
 ## Markup as a PHP value
 
@@ -459,7 +459,7 @@ The Phem PHP attributes live in the `Phem\Attribute` namespace:
 
 | Attribute | On | Effect |
 |---|---|---|
-| `#[Component]` | a function or a class | Makes a component. `replaces:` replaces a component of a package (see [Replace a component of a package](using-packages.md#replace-a-component-of-a-package)) |
+| `#[Component]` | a function or a class | Makes a component. `replaces:` replaces a component of a package (see [Replace a component of a package](packages.md#replace-a-component-of-a-package)) |
 | `#[Page]` | a function or a class | Gives a component a URL |
 | `#[ErrorPage]` | a function | Renders the page of an HTTP error. See [Error pages](error-pages.md) |
 | `#[Prop]` | a property | Makes a prop. `rest: true` makes the rest prop |
@@ -469,6 +469,6 @@ The Phem PHP attributes live in the `Phem\Attribute` namespace:
 | `#[Provide]`, `#[Context]` | a class, a property or a parameter | Passes a value to the components below. See [Context](components.md#pass-a-value-down-the-tree-with-context) |
 | `#[Validated]` | a handler | Validates the state before the handler runs. See [Live validation](forms.md#validate-a-form-while-the-user-types) |
 | `#[MapForm]` | a handler parameter | Gives the handler the submitted form as an object. See [Map a form to an object](forms.md#map-a-form-to-an-object) |
-| `#[Transactional]` | a class or a handler | Runs the handler in a transaction. See [Transactions](server-features.md#save-handler-changes-in-a-transaction) |
-| `#[Broadcast]`, `#[BroadcastKey]` | a page, a component, a handler, a prop or a property | Sends real-time updates. `on:` refreshes after a change of an entity. See [Real-time updates](real-time-updates.md) |
-| `#[Async]` | a handler | Runs slow work after the response. See [Slow work after the response](server-features.md#run-slow-work-after-the-response) |
+| `#[Transactional]` | a class or a handler | Runs the handler in a transaction. See [Transactions](resilience.md#save-handler-changes-in-a-transaction) |
+| `#[Broadcast]`, `#[BroadcastKey]` | a page, a component, a handler, a prop or a property | Sends real-time updates. `on:` refreshes after a change of an entity. See [Real-time updates](real-time.md) |
+| `#[Async]` | a handler | Runs slow work after the response. See [Slow work after the response](resilience.md#run-slow-work-after-the-response) |

@@ -36,7 +36,7 @@ Prepare your app once before you write tests:
 3. Run `phemc build` before the tests, because they use the compiled `.phem` files.
 4. Use the `InteractsWithPhem` trait in a `KernelTestCase` or a `WebTestCase`.
 
-A Composer package with `.phem` components has no app. Test it with `Phem\Test\TestKernel` and a small test app, as shown in [Test a package](packages.md#test-a-package).
+A Composer package with `.phem` components has no app. Test it with `Phem\Test\TestKernel` and a small test app, as shown in [Test a package](package-authoring.md#test-a-package).
 
 ## Choose between mount() and visit()
 
@@ -129,7 +129,7 @@ The tester follows browser behavior for pushes:
 - A `refresh()` sends one event with no handler.
 - After a handler of a component with `#[Broadcast]`, `receive()` on the same page doesn’t render that component again, because the event already rendered it.
 - An element with `data-phem-ignore` and an `id` (a target that only pushes fill) keeps its content when an event renders it again.
-- A feed element keeps its items in a morph, and the streams of the feeds apply after the morph (see [Show long lists with feeds](long-lists.md#test-a-feed)). A push of a feed removes a deleted item, or sends the new item with the refresh.
+- A feed element keeps its items in a morph, and the streams of the feeds apply after the morph (see [Show long lists with feeds](feeds.md#test-a-feed)). A push of a feed removes a deleted item, or sends the new item with the refresh.
 
 To see a push, open the page twice, like two tabs:
 

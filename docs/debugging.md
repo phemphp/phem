@@ -1,6 +1,6 @@
 # Debug a Phem app
 
-This page shows you how to see what Phem does for a page request or an event: the Symfony profiler panel and the console commands. For an event that fails, see [Troubleshoot failed events and limits](errors-and-limits.md).
+This page shows you how to see what Phem does for a page request or an event: the Symfony profiler panel and the console commands. For an event that fails, see [Troubleshoot failed events and limits](failed-events.md).
 
 ## Inspect requests in the Symfony profiler
 
@@ -18,7 +18,7 @@ The Phem panel shows each page request and each event:
 - **State**: the size of the signed state, and whether it came from the state cache
 - **Inputs and outputs**: the bound values, the browser events of the handler, and the warnings of the dev-mode check
 - **Transaction**: the Doctrine transaction of the handler, its commit or rollback, and its time
-- **Real-time updates**: the Turbo Streams that the request pushed to the Mercure hub with their topics, and the stale components that an event rendered again (see [Real-time updates](real-time-updates.md))
+- **Real-time updates**: the Turbo Streams that the request pushed to the Mercure hub with their topics, and the stale components that an event rendered again (see [Real-time updates](real-time.md))
 
 The Performance panel shows the render passes, the handler and the transaction in the `phem` category. With the profiler on, the browser console logs each event with a link to its Phem panel (`console.debug`). Without debug mode, Phem doesn’t measure the renders.
 

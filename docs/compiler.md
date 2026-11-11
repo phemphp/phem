@@ -51,7 +51,7 @@ The build has these properties:
 
 - **Incremental output**: it writes a file only when its content changed, so the Twig cache and OPcache stay valid. It deletes the output of a removed source file or a removed package
 - **All or nothing**: when a file has an error, it prints the diagnostics and `phemc: build failed: 1 error(s), 0 warning(s)`, writes nothing, and exits with code 1
-- **Composer packages**: it also compiles the `.phem` files of each installed package that sets `extra.phem.source` in its `composer.json` (see [Component packages](packages.md)). The summary then counts them: `compiled 42 file(s) (2 package(s)), …`
+- **Composer packages**: it also compiles the `.phem` files of each installed package that sets `extra.phem.source` in its `composer.json` (see [Component packages](package-authoring.md)). The summary then counts them: `compiled 42 file(s) (2 package(s)), …`
 - **Warmup environment**: the warmup runs in the environment of `APP_ENV`. When the project has no `bin/console` or no `vendor/autoload.php`, the build skips the warmup and says so. A failed warmup exits with code 1
 
 In debug mode (`APP_ENV=dev`), Symfony rebuilds the container and the routes when the manifest or a compiled page changes, so a new component, page or route doesn’t need `cache:clear`.
@@ -203,7 +203,7 @@ Errors start with `E` and stop the build; warnings start with `W` and don’t. H
 | E058 | `#[Validated]` on a function, or on a handler of a component with no non-static `#[State]` property of type `Phem\Validation` (a property of a trait or a parent class counts), or a component with more than one `Validation` property |
 | E059, E060 | `#[ErrorPage]` on a class (an error page is a function), or in a package (only the application has error pages). See [Error pages](error-pages.md) |
 | E061 | An invalid `phem:error`: not a `#[State]` property or a `Bound` prop, a component with no `Validation` property, an element with an `id`, content or `phem:bind`, a void element, or a component tag whose component has no `id` prop or no `children` |
-| E062 | A class name in markup with a case or a constant that the enum doesn’t have (`OrderStatus.Canceled`), or `cases()` of a component, when the enum is in a `.phem` file. See [Classes in markup](phem-syntax.md#classes-in-markup) |
+| E062 | A class name in markup with a case or a constant that the enum doesn’t have (`OrderStatus.Canceled`), or `cases()` of a component, when the enum is in a `.phem` file. See [Classes in markup](syntax.md#classes-in-markup) |
 | E063 | `path()` or `url()` of a class or a function that isn’t a page with a route (`path(Card)`, or an error page) |
 | E064 | A class name in markup in another place than `Class.NAME`, `Class.cases()` or `path(Page)`, for example `{{ OrderStatus }}` or `OrderStatus.from('paid')` |
 | E065 | An invalid `phem:feed`: not a `Feed` property of the class component (a function component, a local variable that hides the property, a property of another type, or an expression), a `Feed` property that isn’t public or is static, readonly, promoted or nullable, or has `#[State]`, `#[Prop]`, `#[Path]` or `#[Context]`, on the tag of a component or a `<Dynamic>`, on an element with an `id`, a spread, a `phem:bind` or a `phem:error`, or a feed element that renders more than one time (in a `{% for %}` loop, in an item of a feed, or a second element for the same feed) |

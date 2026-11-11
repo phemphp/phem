@@ -1,6 +1,6 @@
 # Deploy a Phem app
 
-Serve your Phem app with [FrankenPHP](https://frankenphp.dev) or PHP-FPM, build it for production, and package it in a Docker image with static error pages for the web server. You need an app from [Getting started](getting-started.md). Run every command from the root of your app.
+Serve your Phem app with [FrankenPHP](https://frankenphp.dev) or PHP-FPM, build it for production, and package it in a Docker image with static error pages for the web server. You need an app from [Getting started](quickstart.md). Run every command from the root of your app.
 
 ## Serve the app
 
@@ -18,7 +18,7 @@ The server setup has these parts:
 - **Environment**: `APP_ENV=dev`, the default in `.env`, shows the Symfony error pages with the `.phem` location
 - **Database**: the application expects the database to exist. Create it before the first run, for example with `bin/console doctrine:schema:create` and `bin/console doctrine:fixtures:load`. In Docker, run these commands in the entrypoint, only when the database doesn’t exist yet
 
-For a watch loop that rebuilds and restarts the server, see [`phemc watch`](compiling.md#phemc-watch).
+For a watch loop that rebuilds and restarts the server, see [`phemc watch`](compiler.md#phemc-watch).
 
 ## Build for production
 
@@ -154,7 +154,7 @@ docker run --rm -p 8080:8080 -e APP_SECRET="$APP_SECRET" my-app
 
 Open `http://localhost:8080`. In production, Symfony doesn’t check the cache for changes, so rebuild the image after each change.
 
-To use FrankenPHP in development too, see [`phemc watch`](compiling.md#phemc-watch).
+To use FrankenPHP in development too, see [`phemc watch`](compiler.md#phemc-watch).
 
 ### Add static error pages for the web server
 

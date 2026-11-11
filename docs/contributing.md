@@ -80,7 +80,7 @@ The time includes no network, so one extra request means one extra round trip in
 
 ## Try a change in a browser
 
-Create an app as in [Getting started](getting-started.md), then require your checkout of this repository with a Composer path repository.
+Create an app as in [Getting started](quickstart.md), then require your checkout of this repository with a Composer path repository.
 
 ## Build and install the editor support
 

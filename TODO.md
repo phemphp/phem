@@ -28,7 +28,7 @@ Talk about each item before its implementation. The open questions are a start, 
 ### [ ] An event with no render of the path to its handler — P3
 
 The first pass of an event renders the ancestors of the handler component, to get the handler
-closure and the props of the component. This is a documented limit (docs/how-it-works.md, Limits).
+closure and the props of the component. This is a documented limit (docs/architecture.md, Limits).
 A stress run on 2026-10-28 (the server time, with no network):
 
 - A leaf with no `#[Prop]`: about 0.3 ms under 10 levels, 15 ms under 400 levels, 45 ms under 800.
@@ -52,7 +52,7 @@ A stress run on 2026-10-28 (the server time, with no network):
 Low priority for now. Until the recipe is in recipes-contrib, the app enables the bundle and
 copies the files of `recipe/` by hand.
 
-The getting-started guide and the README show 3 commands: `symfony new my-app --webapp`,
+The quickstart guide and the README show 3 commands: `symfony new my-app --webapp`,
 `composer require phem/phem`, and `symfony serve`. This flow needs the recipe of `phem/phem` in
 [symfony/recipes-contrib](https://github.com/symfony/recipes-contrib). Until the recipe is there,
 Flex does not enable the bundle and does not add the first page or the `phemc` worker.

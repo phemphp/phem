@@ -15,7 +15,7 @@ Pick the tool for your task:
 | A test for an error page | `errorPage()` in a `KernelTestCase` |
 | An error page when PHP doesn’t answer | `bin/console error:dump` |
 
-Error pages are for failed requests. When one part of a page fails, use an [`<ErrorBoundary>`](server-features.md#show-a-fallback-when-part-of-the-page-fails). For an event that fails, see [Failed events](errors-and-limits.md#an-event-fails-and-the-page-doesnt-change).
+Error pages are for failed requests. When one part of a page fails, use an [`<ErrorBoundary>`](resilience.md#show-a-fallback-when-part-of-the-page-fails). For an event that fails, see [Failed events](failed-events.md#an-event-fails-and-the-page-doesnt-change).
 
 ## Add one page for every error
 
@@ -205,7 +205,7 @@ phemc reports these errors for error pages:
 Phem passes the error to the next Symfony renderer in these cases:
 
 - **No match**: No `#[ErrorPage]` matches the status and path. Symfony then tries the [Twig template](https://symfony.com/doc/current/controller/error_pages.html) (`templates/bundles/TwigBundle/Exception/error404.html.twig`), then its own page.
-- **Phem events**: The request is a Phem event. The browser doesn’t show the body of a failed event. It dispatches `phem:error` instead (see [Failed events](errors-and-limits.md#an-event-fails-and-the-page-doesnt-change)).
+- **Phem events**: The request is a Phem event. The browser doesn’t show the body of a failed event. It dispatches `phem:error` instead (see [Failed events](failed-events.md#an-event-fails-and-the-page-doesnt-change)).
 - **Exceptions shown**: `phem.show_exceptions` is true, so the exception page shows. See [Preview an error page in debug mode](#preview-an-error-page-in-debug-mode).
 - **Page throws**: The error page itself throws. In debug mode, the exception propagates so you see the bug. In production, Phem logs it and falls back to the Symfony page, because an error page must not fail.
 

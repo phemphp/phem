@@ -23,7 +23,7 @@ that break the code of an application start with **Breaking**.
   the value of a field, and disables the controls of a hidden panel. `phem-time` shows a
   `<time datetime>` in the time zone and the language of the user, as a relative time that
   updates, and dispatches `phem-time:reached` when a future time comes. See
-  docs/ui-controllers.md.
+  docs/controllers.md.
 - The morph keeps the value of a touched password field of a Symfony form also when the client
   shows it as a text field.
 - The `phem:live` events of the fields of one `phem:bind` property that wait in the queue go in
@@ -49,7 +49,7 @@ that break the code of an application start with **Breaking**.
   `onCall` handler of the list with `{ id, index, list }`. The popups go next to their anchor with
   `side`, `align`, the offsets and `collision-padding`, flip and shift in the viewport, and get
   `data-side`, `data-align`, `--anchor-width`, `--available-height` and `--transform-origin`.
-  A popup with `popover="manual"` shows in the top layer. See docs/ui-controllers.md.
+  A popup with `popover="manual"` shows in the top layer. See docs/controllers.md.
 - **Breaking:** the built-in controllers use the conventions of Base UI. `phem-toggle` is now
   `phem-collapsible`, with the `trigger` and `panel` targets, and no Escape or click outside (use
   `phem-popover` or `phem-menu` for a dropdown). The `dialog` target of `phem-dialog` is now

@@ -1,6 +1,6 @@
 # Build components and manage their state
 
-This guide shows you how to write a class component, keep its state between events, load its data from services, and share values with the components below it. It also covers state in the URL. To keep security decisions out of the state, see [Secure events and state](security.md). For the attribute syntax, see [The `.phem` syntax](phem-syntax.md).
+This guide shows you how to write a class component, keep its state between events, load its data from services, and share values with the components below it. It also covers state in the URL. To keep security decisions out of the state, see [Secure events and state](security.md). For the attribute syntax, see [The `.phem` syntax](syntax.md).
 
 ## Write a class component
 
@@ -64,7 +64,7 @@ The methods follow. `mount()` loads the first list, `refresh()` is a handler, an
 }
 ```
 
-Only `render()` is required. If a component has no state, no services and no handlers, write a function instead of a class. Start with the smallest form, and move to a class when you need state or services (see [Use the smallest form of a component](philosophy.md#use-the-smallest-form-of-a-component)).
+Only `render()` is required. If a component has no state, no services and no handlers, write a function instead of a class. Start with the smallest form, and move to a class when you need state or services (see [Use the smallest form of a component](principles.md#use-the-smallest-form-of-a-component)).
 
 ### Read the properties in the markup
 
@@ -132,7 +132,7 @@ function Button(string $label, Variant $variant = Variant::Primary): Node
 }
 ```
 
-A caller then writes `<Button label="Delete" variant="danger" />`, and `phemc` checks the value (`variant="big"` is E018). For the full pattern, see [Add variants to a component](packages.md#add-variants-to-a-component).
+A caller then writes `<Button label="Delete" variant="danger" />`, and `phemc` checks the value (`variant="big"` is E018). For the full pattern, see [Add variants to a component](package-authoring.md#add-variants-to-a-component).
 
 ### Know what runs on the first render and on an event
 
@@ -146,7 +146,7 @@ Phem creates a new object for each component in each request, but the steps diff
 | Handler | Doesn’t run | Runs |
 | `render()` | Runs | Runs when the component can change |
 
-So `mount()` loads the data once, and the state keeps it for the next events. A handler loads fresh data when it needs it, as `refresh()` does. A component with no `#[State]` has nothing to restore, so its `mount()` runs every time it renders. A component with a `Feed` property is the exception: its `mount()` runs on the first render only, because the browser keeps its items (see [Show long lists with feeds](long-lists.md)).
+So `mount()` loads the data once, and the state keeps it for the next events. A handler loads fresh data when it needs it, as `refresh()` does. A component with no `#[State]` has nothing to restore, so its `mount()` runs every time it renders. A component with a `Feed` property is the exception: its `mount()` runs on the first render only, because the browser keeps its items (see [Show long lists with feeds](feeds.md)).
 
 ## Keep state between events
 
@@ -273,7 +273,7 @@ The `phem-dialog` controller opens and closes the dialog in the browser, with no
 </div>
 ```
 
-Keep the value in the state only when the server decides it. For example, a handler opens the dialog after it finds a problem. Then set `data-phem-dialog-open-value={{ askingCancel }}`. See [Open a modal dialog](ui-controllers.md#open-a-modal-dialog). For the same reason, use [`phem-tabs`](ui-controllers.md#switch-between-tabs) for tabs and [`phem-confirm`](ui-controllers.md#ask-for-confirmation-before-an-event) for a confirmation.
+Keep the value in the state only when the server decides it. For example, a handler opens the dialog after it finds a problem. Then set `data-phem-dialog-open-value={{ askingCancel }}`. See [Open a modal dialog](controllers.md#open-a-modal-dialog). For the same reason, use [`phem-tabs`](controllers.md#switch-between-tabs) for tabs and [`phem-confirm`](controllers.md#ask-for-confirmation-before-an-event) for a confirmation.
 
 ### Don’t use hook functions
 

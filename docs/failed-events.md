@@ -29,7 +29,7 @@ document.addEventListener('phem:error', (event) => {
 })
 ```
 
-The built-in [toasts](ui-controllers.md#show-toast-messages) also listen to `phem:error`, and show the error as a toast in place of the default message.
+The built-in [toasts](controllers.md#show-toast-messages) also listen to `phem:error`, and show the error as a toast in place of the default message.
 
 ## An event fails on an unstable network
 
@@ -73,7 +73,7 @@ phem:
 
 ### A real-time refresh shows an error, not a reload
 
-A refresh comes from a push, not from a click, so the browser protects the user’s unsaved work. When the render of a refresh finds a page that this user can’t see now (a `401`, `403`, `404` or `410`), the server answers `409`. If a `data-phem-guard` form has changes that the user didn’t save, the browser dispatches `phem:error` with the status `409` and doesn’t reload. The user can copy the changes before they reload. See [Real-time updates](real-time-updates.md).
+A refresh comes from a push, not from a click, so the browser protects the user’s unsaved work. When the render of a refresh finds a page that this user can’t see now (a `401`, `403`, `404` or `410`), the server answers `409`. If a `data-phem-guard` form has changes that the user didn’t save, the browser dispatches `phem:error` with the status `409` and doesn’t reload. The user can copy the changes before they reload. See [Real-time updates](real-time.md).
 
 ## An event fails with a 413
 

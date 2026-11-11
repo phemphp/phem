@@ -1,6 +1,6 @@
 # Add client-side behavior
 
-This guide shows you how to handle changes that don’t need the server, such as opening a menu, toggling a class or moving the focus. It covers Stimulus controllers that keep their changes through the morph, HTML and CSS that need no controller, the event lifecycle in the browser, optimistic updates and view transitions. For the built-in controllers, see [Build UI with the built-in controllers](ui-controllers.md).
+This guide shows you how to handle changes that don’t need the server, such as opening a menu, toggling a class or moving the focus. It covers Stimulus controllers that keep their changes through the morph, HTML and CSS that need no controller, the event lifecycle in the browser, optimistic updates and view transitions. For the built-in controllers, see [Build UI with the built-in controllers](controllers.md).
 
 ## Keep Stimulus changes through the morph
 
@@ -34,7 +34,7 @@ Each `phem:send` gets exactly one `phem:done`, even when the event fails, redire
 
 After the morph, a bound field that still has a value that the server did not take gets the server value again. Each such field dispatches `phem:reset`, which bubbles. A controller that shows the value of a field (a count, a panel) listens to it and renders again; `ClientState` does it for the built-in controllers.
 
-A push (see [Push updates to other browsers](real-time-updates.md)) has no sending element, so it dispatches none of these events. Instead, the root element has the `data-phem-push-pending` attribute until the page finishes its pushes. A browser test waits for it (see [Test with a real browser](testing.md#test-with-a-real-browser)).
+A push (see [Push updates to other browsers](real-time.md)) has no sending element, so it dispatches none of these events. Instead, the root element has the `data-phem-push-pending` attribute until the page finishes its pushes. A browser test waits for it (see [Test with a real browser](testing.md#test-with-a-real-browser)).
 
 ## Update the page before the server answers
 
@@ -73,7 +73,7 @@ A param is an attribute on the element of the action, such as `data-phem-optimis
 
 ## Use the built-in controllers
 
-Phem ships Stimulus controllers for common UI patterns: a section that opens, an accordion, a section that shows from the value of a field, a popover, a tooltip, a menu, a combobox, a sortable list, a modal dialog, tabs, toasts, a copy button, a count of characters, a password that shows, a "select all" box, a local time, the focus after an event and a confirmation. Their state survives the morph after an event. See [Build UI with the built-in controllers](ui-controllers.md).
+Phem ships Stimulus controllers for common UI patterns: a section that opens, an accordion, a section that shows from the value of a field, a popover, a tooltip, a menu, a combobox, a sortable list, a modal dialog, tabs, toasts, a copy button, a count of characters, a password that shows, a "select all" box, a local time, the focus after an event and a confirmation. Their state survives the morph after an event. See [Build UI with the built-in controllers](controllers.md).
 
 ## Use HTML and CSS before a controller
 

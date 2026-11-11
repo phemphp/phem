@@ -1,6 +1,6 @@
 # Handle events
 
-This guide shows you how to respond when the user clicks, types or changes a field. It covers drops and pastes, loads on view and polls, handler arguments, services in handlers, loading states, key filters and event modifiers, the wait before an event, redirects, browser events for your JavaScript, and code that runs around every handler. For forms, see [Handle forms](forms.md). For the syntax of the `on*` attributes and the `phem:*` directives, see [The `.phem` syntax](phem-syntax.md).
+This guide shows you how to respond when the user clicks, types or changes a field. It covers drops and pastes, loads on view and polls, handler arguments, services in handlers, loading states, key filters and event modifiers, the wait before an event, redirects, browser events for your JavaScript, and code that runs around every handler. For forms, see [Handle forms](forms.md). For the syntax of the `on*` attributes and the `phem:*` directives, see [The `.phem` syntax](syntax.md).
 
 ## Respond to a click, a key or a change
 
@@ -24,7 +24,7 @@ By default, only the component of the handler, the components whose state change
 
 ## Respond to a drop, a paste or a right-click
 
-These events also go to the server: `onDragStart`, `onDragOver`, `onDrop`, `onPaste`, `onContextMenu`, `onPointerDown`, `onPointerUp` and `onScroll`. For the data of a JavaScript library, see [Call a handler from your JavaScript](#call-a-handler-from-your-javascript). For the full list, see [The `.phem` syntax](phem-syntax.md#event-handlers).
+These events also go to the server: `onDragStart`, `onDragOver`, `onDrop`, `onPaste`, `onContextMenu`, `onPointerDown`, `onPointerUp` and `onScroll`. For the data of a JavaScript library, see [Call a handler from your JavaScript](#call-a-handler-from-your-javascript). For the full list, see [The `.phem` syntax](syntax.md#event-handlers).
 
 A drop and a paste send their files. The handler gets them in `$e->files`, as a list of Symfony `UploadedFile` objects:
 
@@ -380,7 +380,7 @@ The event starts on the component’s element and bubbles up to `window`. A serv
 
 The name has only letters, digits and `_ - . :`. The browser uses these names itself, so you can’t use them: `call`, `before-queue`, `queue`, `send`, `receive`, `done`, `error`, `rate-limited` and `upload-progress`. The detail must be a value that JSON can encode. `dispatch()` throws an `InvalidArgumentException` for a name or a detail that breaks these rules.
 
-To show a message to the user, call `$e->toast('Saved')`. See [Show toast messages](ui-controllers.md#show-toast-messages). To tell only a screen reader, call `$e->announce()`. See [Announce a change to screen readers](#announce-a-change-to-screen-readers).
+To show a message to the user, call `$e->toast('Saved')`. See [Show toast messages](controllers.md#show-toast-messages). To tell only a screen reader, call `$e->announce()`. See [Announce a change to screen readers](#announce-a-change-to-screen-readers).
 
 ## Scroll to a new item after an event
 
@@ -411,7 +411,7 @@ After `add`, the new item has the attribute:
 
 The browser scrolls to the first element in the page that has the attribute now and did not have it before the morph. An element that keeps the attribute in the next events does not scroll again. Give a `key` to the items of a list: with no key, the morph can give the element of one item to another item, and the browser can scroll to an item again. The browser scrolls only as much as necessary (`block: "nearest"`), and the CSS `scroll-behavior` of the page sets the animation.
 
-Only an event of the user scrolls. The browser does not scroll on page load, for a `<Suspense>` boundary that loads, for `onPoll` and `onVisible`, in a push, or in the refresh after a push: a change that the user did not start does not move the view. The focus does not move. To move the focus, see [Focus a field after an event](ui-controllers.md#focus-a-field-after-an-event).
+Only an event of the user scrolls. The browser does not scroll on page load, for a `<Suspense>` boundary that loads, for `onPoll` and `onVisible`, in a push, or in the refresh after a push: a change that the user did not start does not move the view. The focus does not move. To move the focus, see [Focus a field after an event](controllers.md#focus-a-field-after-an-event).
 
 `phem:scroll-into-view` with no value always adds the attribute. `phem:scroll-into-view={{ expr }}` adds it only when the value is `true`.
 
@@ -502,7 +502,7 @@ The list renders with a `data-phem-on-call` attribute. The request of the event 
 
 The event needs no `bubbles: true`: the page root listens to `phem:call` in the capture phase. The closest element with an `onCall` handler gets it, as for the other events, and `phem:stop` keeps it from the handlers around an element. The detail must be a value that JSON can encode. The browser takes a copy of it at the time of the call, so a later change of the object does not change the event. A detail that JSON can’t encode, such as an object with a cycle, sends no event, and the browser shows an error in the console. With no detail, `$e->detail` is `null`. A `phem:call` with no `onCall` handler on the element or around it sends no event, and the browser shows a warning in the console. The warning also tells when a `phem:stop` element keeps the event from the handler, or when the page has no state yet.
 
-For a sortable list, the built-in `phem-sortable` controller dispatches this event on a drop (see [Sort a list with drag and drop](ui-controllers.md#sort-a-list-with-drag-and-drop)).
+For a sortable list, the built-in `phem-sortable` controller dispatches this event on a drop (see [Sort a list with drag and drop](controllers.md#sort-a-list-with-drag-and-drop)).
 
 The browser makes the detail, so a user can change it. Check it in the handler, as you check `$e->value`. The event goes in the queue as the other events: `phem:debounce`, `phem:throttle`, `phem:loading` and `phem:before-queue` work the same. Its type is `call`.
 
@@ -555,13 +555,13 @@ The trigger renders with a `data-phem-on-visible` attribute, and the event has t
 {"type": "visible", "value": null, "checked": null, "key": null, "form": null}
 ```
 
-The browser sends the event each time the element comes into view, and one time only while it stays in view. After the update of the event, an element that is still in view sends the event again, but only when the update moved it, for example with new items before it. So the list loads until the items fill the view, and an update with no new items stops the loads. A failed event does not load again. An update that adds items after the element, such as older messages below a trigger at the top of a chat, does not move it: the element sends the event again only when it leaves the view and comes back. For a long list whose items stay in the browser, use a feed: see [Load older items](long-lists.md#load-older-items).
+The browser sends the event each time the element comes into view, and one time only while it stays in view. After the update of the event, an element that is still in view sends the event again, but only when the update moved it, for example with new items before it. So the list loads until the items fill the view, and an update with no new items stops the loads. A failed event does not load again. An update that adds items after the element, such as older messages below a trigger at the top of a chat, does not move it: the element sends the event again only when it leaves the view and comes back. For a long list whose items stay in the browser, use a feed: see [Load older items](feeds.md#load-older-items).
 
 The browser sends the event of the element itself: an element in it does not send it, and `phem:stop` does not change it. A morph or a push can show a new `onVisible` element, and the browser watches it too.
 
 ## Poll the server
 
-Put an `onPoll` handler and a `phem:poll` interval in milliseconds on an element, and the browser sends the event at this interval. Use it for a status or a "last seen" value when the application has no Mercure hub (see [Real-time updates](real-time-updates.md)):
+Put an `onPoll` handler and a `phem:poll` interval in milliseconds on an element, and the browser sends the event at this interval. Use it for a status or a "last seen" value when the application has no Mercure hub (see [Real-time updates](real-time.md)):
 
 ```php
 #[Component]

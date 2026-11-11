@@ -74,7 +74,7 @@ composer require phem/phem
 symfony serve
 ```
 
-Build a new app from scratch using Phem. See [Create your first Phem app](docs/getting-started.md).
+Build a new app from scratch using Phem. See [Create your first Phem app](docs/quickstart.md).
 
 ## Documentation
 

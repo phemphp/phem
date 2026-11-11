@@ -60,7 +60,7 @@ The CSS file has these rules:
 
 - `phem-c{display:contents}`: the `<phem-c>` element around a component that doesn’t render one element doesn’t change the layout
 - `phem-suspense{display:block}`: the fallback of a `<Suspense>` is a box, so a lazy boundary can come into view
-- `.phem-error`: the default message of a failed event (see [Failed events and limits](errors-and-limits.md))
+- `.phem-error`: the default message of a failed event (see [Failed events and limits](failed-events.md))
 - `[data-phem-loading][hidden]` and `[data-phem-progress][hidden]`: a `phem:loading` or `phem:progress` element stays hidden while no handler runs, also with a `display` of its own. The rule is `!important`, so you can’t override it
 - `[data-phem-toast]`, `[data-type]`, `[data-limited]`, `[data-phem-toast-description]`, `[data-phem-toast-close]` and the `phem-toast` container: the default look of the toasts
 - `touch-action: none` on the handles of `phem-sortable` (or on its items with no handle), and no text selection during a drag (`[data-phem-sorting]`)
@@ -80,4 +80,4 @@ The toast rules are in `:where()`, so any rule of the application overrides them
 }
 ```
 
-The package also has optional controllers (`phem-optimistic`, `phem-collapsible`, `phem-accordion`, `phem-depends`, `phem-dialog`, `phem-popover`, `phem-tooltip`, `phem-menu`, `phem-combobox`, `phem-tabs`, `phem-toast`, `phem-clipboard`, `phem-count`, `phem-reveal`, `phem-checkbox-group`, `phem-time`, `phem-autofocus`, `phem-confirm` and `phem-sortable`), which are off by default. Enable one with its key in the `@phem/phem` entry, for example `"popover": { "enabled": true, "fetch": "lazy" }`. See [Built-in controllers](ui-controllers.md#enable-the-controllers).
+The package also has optional controllers (`phem-optimistic`, `phem-collapsible`, `phem-accordion`, `phem-depends`, `phem-dialog`, `phem-popover`, `phem-tooltip`, `phem-menu`, `phem-combobox`, `phem-tabs`, `phem-toast`, `phem-clipboard`, `phem-count`, `phem-reveal`, `phem-checkbox-group`, `phem-time`, `phem-autofocus`, `phem-confirm` and `phem-sortable`), which are off by default. Enable one with its key in the `@phem/phem` entry, for example `"popover": { "enabled": true, "fetch": "lazy" }`. See [Built-in controllers](controllers.md#enable-the-controllers).

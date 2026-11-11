@@ -548,7 +548,7 @@ $this->toasts->success('Saved', 8000);
 
 An empty message throws an `InvalidArgumentException`. So does a duration below 0 or above `Toasts::MAX_DURATION` (2147483647 ms, the longest timer of a browser).
 
-A toast shows only with the response of an event. A handler that fails or redirects shows no toast. A toast of a page load doesn't show. The work of an [`#[Async]` handler](server-features.md#run-slow-work-after-the-response) has no response either: a toast there logs a warning, so show the result with `Streams`.
+A toast shows only with the response of an event. A handler that fails or redirects shows no toast. A toast of a page load doesn't show. The work of an [`#[Async]` handler](resilience.md#run-slow-work-after-the-response) has no response either: a toast there logs a warning, so show the result with `Streams`.
 
 A toast is a `phem:toast` [browser event](events.md#send-events-to-your-javascript) with the detail `{"message": "Saved", "type": "success"}`.
 

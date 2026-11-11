@@ -63,7 +63,7 @@ The signature works like a wax seal: anyone can read the state, but nobody can c
 
 Sending a big state with every event wastes bandwidth, so Phem switches strategy above a size threshold. A state under 4 KB (4,096 bytes, by default) goes with each event, together with its signature. For a larger state, the server stores the state it signs in a cache pool, keyed by its signature, and the browser sends only the signature.
 
-When the pool doesn’t have the entry, for example because it expired or the request reached another machine, the browser sends the event again with the full state, compressed. The cache is only an optimization: the browser always keeps the state (see [State cache](errors-and-limits.md#an-event-makes-two-requests)).
+When the pool doesn’t have the entry, for example because it expired or the request reached another machine, the browser sends the event again with the full state, compressed. The cache is only an optimization: the browser always keeps the state (see [State cache](failed-events.md#an-event-makes-two-requests)).
 
 ### The server renders only what changed
 
@@ -82,7 +82,7 @@ The response stays small in four more ways:
 - **JSON patches**: an entry that changed only a bit gets a patch of its JSON text, the shape gets only the hashes that changed, and a large `#[State]` list where one item changed gets only that item
 - **Kept components**: a component that didn’t render again comes back as a `<template data-phem-keep>` placeholder, and the browser keeps its current HTML
 - **Kept runs**: adjacent kept components share one placeholder (`first..last`), and the browser finds the components of the run in the shape it already has
-- **Feeds**: the items of a `Phem\Feed` aren’t in the state or in the hash of their component. An event renders only the items that it changes, in their own streams after the morph, and the browser keeps the other items (see [Feeds](long-lists.md))
+- **Feeds**: the items of a `Phem\Feed` aren’t in the state or in the hash of their component. An event renders only the items that it changes, in their own streams after the morph, and the browser keeps the other items (see [Feeds](feeds.md))
 
 All of this depends on a pure `render()`, because Phem assumes that a component with the same inputs gives the same HTML (see [Keep `render()` pure](components.md#keep-render-pure)). Only the content of the `<Root>` changes; the document around it, for example the title, stays the same. Events wait in a queue, so each event starts from the newest state.
 
@@ -95,7 +95,7 @@ The round trip takes time, so the `phem` controller tells the user what’s goin
 - **Form lock**: during a submit event, the form’s buttons and controls are disabled, its text fields are read-only, and a second submit is ignored; add `data-phem-disable={{ false }}` to the form to turn this off
 - **Offline state**: while the browser is offline, the `<Root>` element has the `phem-offline` class
 
-When something goes wrong, the controller handles it too. If an event fails, for example with a 500 error, the browser shows a default error message, and a `phem:error` listener can replace it with your own (see [Failed events](errors-and-limits.md#an-event-fails-and-the-page-doesnt-change)). After a network error, a 502, or a 503, the browser sends the event again and waits longer before each new try (see [Retries](errors-and-limits.md#an-event-fails-on-an-unstable-network)).
+When something goes wrong, the controller handles it too. If an event fails, for example with a 500 error, the browser shows a default error message, and a `phem:error` listener can replace it with your own (see [Failed events](failed-events.md#an-event-fails-and-the-page-doesnt-change)). After a network error, a 502, or a 503, the browser sends the event again and waits longer before each new try (see [Retries](failed-events.md#an-event-fails-on-an-unstable-network)).
 
 To animate an update, add `data-phem-transition` to an element, and the morph of its components runs in a view transition (see [Transitions](client-side.md#animate-changes-with-view-transitions)).
 
@@ -103,9 +103,9 @@ To animate an update, add `data-phem-transition` to an element, and the morph of
 
 Events update the browser that sent them; real-time updates reach every other open page. A page with `#[Broadcast]`, or with a component that has `#[Broadcast]`, opens one connection to the Mercure hub (the hub built into FrankenPHP, or a standalone hub).
 
-A handler pushes Turbo Streams to the open pages with `Phem\Stream\Streams`. A push is either plain markup (`prepend`, `update`, `remove`, and so on) or a `refresh()`, which makes each browser render a component again through a normal event. A component with `#[Broadcast]` refreshes itself in the other browsers after its handlers run, unless you set `handlers: false`. The next event on a page renders again the components that a push changed (see [Real-time updates](real-time-updates.md)).
+A handler pushes Turbo Streams to the open pages with `Phem\Stream\Streams`. A push is either plain markup (`prepend`, `update`, `remove`, and so on) or a `refresh()`, which makes each browser render a component again through a normal event. A component with `#[Broadcast]` refreshes itself in the other browsers after its handlers run, unless you set `handlers: false`. The next event on a page renders again the components that a push changed (see [Real-time updates](real-time.md)).
 
-The same channel delivers slow work. An `#[Async]` handler returns its slow work in a `Promise`, so the event answers at once, and a Messenger worker runs the work later and pushes the result (see [Slow work after the response](server-features.md#run-slow-work-after-the-response)).
+The same channel delivers slow work. An `#[Async]` handler returns its slow work in a `Promise`, so the event answers at once, and a Messenger worker runs the work later and pushes the result (see [Slow work after the response](resilience.md#run-slow-work-after-the-response)).
 
 ## FrankenPHP keeps the kernel in memory
 
@@ -115,4 +115,4 @@ Symfony Runtime passes each request to the kernel, and the kernel resets its ser
 
 ## Where to find event size and render cost limits
 
-This page explains the mechanism; the numbers live elsewhere. For the maximum size of an event, the state cache settings, and the cost of a render, read [Errors and limits](errors-and-limits.md).
+This page explains the mechanism; the numbers live elsewhere. For the maximum size of an event, the state cache settings, and the cost of a render, read [Errors and limits](failed-events.md).

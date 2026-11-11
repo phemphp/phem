@@ -1,42 +1,17 @@
-# Make a component package
+# Use and customize component packages
 
-A Composer package can ship `.phem` components, for example a UI kit with a theme. This guide shows how to declare the components, write them so apps can customize them, ship pages, CSS, and Stimulus controllers, share behavior between themes, and test the package. To install and customize a package in your app, see [Use and customize component packages](using-packages.md).
+Install a Composer package of `.phem` components and use its components like your own. This guide also shows how to import its pages, replace one of its components, merge Tailwind classes, and add its styles to your Tailwind build. To write a package, see [Make a component package](package-authoring.md).
 
-## Declare the components in composer.json
+## Install a package
 
-Point `extra.phem.source` in the package’s `composer.json` to the directory of its `.phem` files, and require `phem/phem`:
+Require the package, then build. `phemc` compiles the package’s `.phem` files with your app:
 
-```json
-{
-    "name": "acme/ui",
-    "require": {
-        "phem/phem": "^0.3"
-    },
-    "extra": {
-        "phem": {
-            "source": "components"
-        }
-    }
-}
+```sh
+composer require acme/ui
+vendor/bin/phemc build src
 ```
 
-A package with this setup has the following layout:
-
-```text
-acme-ui/
-├── composer.json
-├── components/            the .phem files of the package (extra.phem.source)
-│   ├── Badge.phem
-│   └── GalleryPage.phem
-├── src/                   the PHP classes of the package (enums, services), with PSR-4
-└── tests/
-    ├── Kernel.php         the test kernel (see "Test a package")
-    └── app/src/           the test app: pages and components that use the package
-```
-
-The `.phem` files don’t need a PSR-4 autoload entry, because the app’s `phemc build` compiles them. The package’s other PHP classes, such as an enum of variants or a service, use the normal Composer autoload.
-
-Once an app runs `composer require acme/ui` and `phemc build`, its pages use the components as their own:
+Import a component of the package and use it as a tag:
 
 ```php
 use function Acme\Ui\Badge;
@@ -48,323 +23,166 @@ function HomePage(): Node
 }
 ```
 
-## Write components that apps can customize
+Add classes where you use a component, for example `<Button className="w-full" />`. The package’s classes stay, and `classes()` merges yours in (see [Merge of classes](syntax.md#merge-of-classes)).
 
-Apps customize a package component in three ways, and each needs a choice in the component:
+## Import the pages of a package
 
-- **Extra classes**: Mark the default classes with `classes()`, so `<Button className="w-full" />` keeps the classes of `Button` and adds the caller’s. See [Merge of classes](phem-syntax.md#merge-of-classes).
-- **Another element**: Take the tag in a prop and render `<Dynamic tag={{ tag }}>`, so a `Button` can render as a link. See [Dynamic element](phem-syntax.md#dynamic-element).
-- **Replacement**: The app can replace any component in every tag, including tags inside your other components. Don’t make classes `final`, so an app can extend one and replace the original. See [Replace a component of a package](using-packages.md#replace-a-component-of-a-package).
+A package’s `#[Page]` pages aren’t routes of your app until you import them. The `routing.controllers` resource (and the `phem` resource `.`) only loads your app’s pages. Import a package’s pages by its name, with a prefix if you like:
 
-## Add variants to a component
+```yaml
+# config/routes/acme_ui.yaml
+acme_ui:
+    resource: acme/ui
+    type: phem
+    prefix: /ui
+```
 
-A variant such as `primary` or `outline` needs no special feature. Use a backed enum prop (see [Enum props](phem-syntax.md#enum-props)) and give each case its classes in an enum method:
+The routes come from the build. Right after `composer require`, the import has no routes until the next `phemc build`, which rebuilds your app’s routes. Naming a package that isn’t installed is an error, and the message lists the packages that have pages.
+
+### Render package pages in your document
+
+A package page can’t import your `Document`, so it uses a layout component of the package. Replace that layout with a component that renders your `Document`, and the package pages get your document:
 
 ```php
-// vendor/acme/ui/components/Button.phem
-namespace Acme\Ui;
+use Acme\Ui\Layout;
 
-enum Variant: string
+#[Component(replaces: Layout::class)]
+function PackageLayout(?Html $children = null): Node
 {
-    case Primary = 'primary';
-    case Outline = 'outline';
-
-    public function classes(): string
-    {
-        return match ($this) {
-            self::Primary => 'bg-blue-500 text-white',
-            self::Outline => 'border border-blue-500 text-blue-500',
-        };
-    }
+    return <Document title="Acme">{{ children }}</Document>;
 }
 ```
 
-The component passes the variant’s classes to `classes()`, which merges them with the base classes and the caller’s classes:
+## Replace a component of a package
+
+Put `#[Component(replaces: ...)]` on a component of your app. Every tag of the original then renders your replacement: in your app, and in the components and pages of all packages. Inside the replacement, a tag of the original stays the original, so the replacement can wrap it.
+
+Take this package, where `Notice` uses `Alert`:
 
 ```php
-#[Component]
-function Button(string $label, Variant $variant = Variant::Primary, mixed ...$rest): Node
-{
-    return <button className={{ classes('px-4 py-2', variant.classes()) }} {{ ...rest }}>{{ label }}</button>;
-}
-```
-
-An app then picks a variant and adds its own class:
-
-```php
-<Button label="Save" variant="outline" className="w-full" />
-```
-
-```html
-<button class="px-4 py-2 border border-blue-500 text-blue-500 w-full">Save</button>
-```
-
-Keep these points in mind for variants:
-
-- **Full class names**: Write full class names in the source (`'bg-blue-500'`, not `'bg-'.$color`). Tailwind scans the source files, so it can’t find a class that the code builds at runtime.
-- **Checked values**: `phemc` checks a literal prop value, so `variant="big"` is E018.
-- **Conflicting classes**: With the [Tailwind class merger](styling.md#merge-tailwind-classes), a caller’s class replaces a variant class of the same group. `<Button variant="outline" className="border-red-500" />` gives `px-4 py-2 border text-blue-500 border-red-500`.
-
-## Support controlled and uncontrolled state
-
-A package component often keeps a value in its `#[State]`, for example the active tab of `Tabs`. Some apps only set the first value, while others keep the value in their own state. Support both with two props:
-
-- **`defaultValue`** (uncontrolled): the component copies it to its `#[State]` in `mount()` and then manages the value itself
-- **`value` with an `onChange` closure** (controlled): the parent keeps the value, and the component’s handler calls `onChange` without changing its own state
-
-Declare both props next to the state, and seed the state in `mount()`:
-
-```php
-// vendor/acme/ui/components/Tabs.phem
+// vendor/acme/ui/components/Alert.phem
 namespace Acme\Ui;
 
 #[Component]
-class Tabs
+function Alert(string $type = 'info', ?Html $children = null): Node
 {
-    /** @var list<string> */
-    #[Prop] public array $names = [];
-    #[Prop] public ?string $value = null;
-    #[Prop] public ?string $defaultValue = null;
-    #[Prop] public ?Closure $onChange = null;
-    #[State] public string $active = '';
-
-    public function mount(): void
-    {
-        $this->active = $this->defaultValue ?? $this->names[0] ?? '';
-    }
-```
-
-The handler changes `active` only when `value` is `null`, and it always calls `onChange`. `render()` shows `value ?? active`:
-
-```php
-    public function select(string $name): void
-    {
-        if (null === $this->value) {
-            $this->active = $name;
-        }
-
-        if (null !== $this->onChange) {
-            ($this->onChange)($name);
-        }
-    }
-
-    public function render(): Node
-    {
-        $current = $this->value ?? $this->active;
-
-        return (
-            <div role="tablist">
-                {% for name in names %}
-                    <button key={{ name }} role="tab" aria-selected={{ name == current }} onClick={{ select(name) }}>{{ name }}</button>
-                {% endfor %}
-            </div>
-        );
-    }
+    return <div className="alert alert-{{ type }}" role="alert">{{ children }}</div>;
 }
-```
 
-An app can now use `Tabs` both ways on the same page:
-
-```php
-#[Page('/settings')]
-final class SettingsPage
-{
-    #[State] public string $tab = 'general';
-
-    public function show(string $name): void
-    {
-        $this->tab = $name;
-    }
-
-    public function render(): Node
-    {
-        return (
-            <Document title="Settings">
-                <Tabs names={{ ['general', 'security'] }} defaultValue="security" />
-                <Tabs names={{ ['general', 'security'] }} value={{ tab }} onChange={{ show }} />
-                <p>{{ tab }}</p>
-            </Document>
-        );
-    }
-}
-```
-
-A click on “security” in the second `Tabs` runs `select('security')`, which calls `show('security')`. The page renders again with its new state, and the second `Tabs` gets the new `value`. The result, without the `data-phem-*` attributes:
-
-```html
-<div role="tablist">
-    <button role="tab" aria-selected="false">general</button>
-    <button role="tab" aria-selected="true">security</button>
-</div>
-<p>security</p>
-```
-
-This pattern needs no core feature. After an event, each component whose state changed renders again, and the parent sits on the path to the handler, so it renders again when `onChange` changes its state. A controlled component without `onChange` never changes: its value is read-only.
-
-## Ship pages in a package
-
-A package can declare `#[Page]` pages, but they only become routes when an app imports them (see [Import the pages of a package](using-packages.md#import-the-pages-of-a-package)). A package page can’t import the app’s `Document`, so give it a layout component of the package with a default document and a `<Root>`:
-
-```php
+// The Notice of the package renders the replacement of the app.
 #[Component]
-function Layout(?Html $children = null): Node
+function Notice(?Html $children = null): Node
+{
+    return <section className="notice"><Alert type="warning">{{ children }}</Alert></section>;
+}
+```
+
+The app replaces `Alert` with a version that adds a label and wraps the original:
+
+```php
+// src/Ui/Common/Alert.phem
+namespace App\Ui\Common;
+
+use Acme\Ui\Alert as UiAlert;
+
+#[Component(replaces: UiAlert::class)]
+function Alert(string $type = 'info', ?Html $children = null): Node
+{
+    $label = 'warning' === $type ? 'Careful' : 'Note';
+
+    return <UiAlert type={{ type }}><strong>{{ label }}</strong> {{ children }}</UiAlert>;
+}
+```
+
+A page that uses both package components:
+
+```php
+// src/Ui/ReplacedPage.phem
+namespace App\Ui;
+
+use Acme\Ui\Alert;
+use function Acme\Ui\Notice;
+
+#[Page('/replaced')]
+function ReplacedPage(): Node
 {
     return (
-        <html lang="en">
-            <head><title>Acme UI</title></head>
-            <body><Root>{{ children }}</Root></body>
-        </html>
-    );
-}
-
-#[Page('/gallery')]
-function GalleryPage(): Node
-{
-    return <Layout><Badge label="New" /></Layout>;
-}
-```
-
-The app can replace `Layout` with a component that renders its own `Document`, so your pages get the app’s document.
-
-Don’t declare `#[ErrorPage]` in a package, because only the app has error pages (E060). Ship the error content as a component instead, and let the app render it in its own error page.
-
-## Share behavior between theme packages
-
-Two theme packages, for example `acme/ui-tailwind` and `acme/ui-shadcn`, can share the props, state, handlers, and `#[Provide]` of their components. Put abstract classes with no `#[Component]` and no `render()` in a base package:
-
-```php
-// vendor/acme/ui-base/components/AbstractTabs.phem
-namespace Acme\UiBase;
-
-#[Provide]
-abstract class AbstractTabs
-{
-    #[State] public string $active = '';
-    #[Prop] public ?Html $children = null;
-
-    public function select(string $name): void
-    {
-        $this->active = $name;
-    }
-}
-```
-
-Each theme extends the base classes, adds `#[Component]`, and implements `render()`. Consumers of the context declare the base type:
-
-```php
-// vendor/acme/ui-tailwind/components/Tabs.phem
-namespace Acme\Ui;
-
-use Acme\UiBase\AbstractTabs;
-
-#[Component]
-class Tabs extends AbstractTabs
-{
-    public function render(): Node
-    {
-        return <div role="tablist" className={{ classes('flex gap-2') }}>{{ children }}</div>;
-    }
-}
-
-#[Component]
-function Tab(string $name, #[Context] AbstractTabs $tabs, ?Html $children = null): Node
-{
-    return (
-        <button role="tab" aria-selected={{ tabs.active == name }} onClick={{ tabs.select(name) }}>
-            {{ children }}
-        </button>
+        <Document title="Replaced">
+            <Alert>Saved</Alert>
+            <Notice>Read this</Notice>
+        </Document>
     );
 }
 ```
 
-These rules apply to base classes:
+Both alerts render the replacement, including the one inside `Notice`:
 
-- **Inherited `#[Provide]`**: `#[Provide]` on a parent class applies to its children. PHP doesn’t inherit class attributes, but Phem checks the parents, both in `phemc` (E015) and at runtime. `#[Component]` isn’t inherited, so the base isn’t a component.
-- **Base type in consumers**: Declare the base type (`#[Context] AbstractTabs $tabs`). The lookup takes the nearest provider whose value is an instance of the type, so consumers work with every theme.
-- **No abstract components**: `#[Component]` on an abstract class is E045. The base stays a plain class, and a tag of it is E010.
-- **No `final`**: Leave the classes open for extension, so an app can extend a theme class (to change a handler, for example) and replace the original with `#[Component(replaces: ...)]`.
-
-### Let apps switch themes
-
-Give the components of each theme the same names (`Acme\Ui\Tabs`), so the app’s imports don’t change. Each theme declares a Composer `conflict` with the other themes, and it can `provide` a virtual package for packages that need a theme:
-
-```json
-{
-    "name": "acme/ui-tailwind",
-    "require": { "acme/ui-base": "^1.0" },
-    "conflict": { "acme/ui-shadcn": "*" },
-    "provide": { "acme/ui-theme": "1.0" },
-    "extra": { "phem": { "source": "components" } }
-}
+```html
+<div class="alert alert-info" role="alert" data-phem-c="phemf06a118edb20"><strong>Note</strong> Saved</div>
+<section class="notice"><div class="alert alert-warning" role="alert" data-phem-c="phem57a1d908ae81"><strong>Careful</strong> Read this</div></section>
 ```
 
-`composer require acme/ui-shadcn` then removes `acme/ui-tailwind`. If two themes are installed anyway, `phemc` reports the duplicate components (E014).
+`phemc` rewrites the tags at compile time. The template of `Notice` renders the replacement, and the template of the replacement renders the original:
 
-## Ship CSS and Stimulus controllers
+```twig
+{# vendor/acme/ui/Alert.1.twig (Notice) #}
+<section class="notice">{% component embed 'App\\Ui\\Common\\Alert' with {'type': 'warning'} only %}...{% endcomponent %}</section>
 
-Phem has no CSS feature for packages. Your package relies on the app’s Tailwind build for styles and on the Symfony UX format for Stimulus controllers.
-
-For styles, keep the classes in the `.phem` sources and put theme tokens (CSS variables and an `@theme` block, as shadcn does) in a CSS file of the package, such as `assets/theme.css`. The app adds both to its Tailwind build, as shown in [Add a package to your Tailwind build](using-packages.md#add-a-package-to-your-tailwind-build). Don’t ship Tailwind CSS through the Symfony UX `autoimport` (the way `@phem/phem` ships `phem.css`), because that file skips the Tailwind build. Use `autoimport` only for plain CSS.
-
-For Stimulus controllers, use the Symfony UX format that `phem/phem` uses: add the `symfony-ux` keyword to `composer.json`, and an `assets/package.json` with the `symfony.controllers` key. Flex then adds the controllers to the app’s `assets/controllers.json`:
-
-```json
-{
-    "name": "@acme/ui",
-    "symfony": {
-        "controllers": {
-            "combobox": {
-                "main": "dist/combobox_controller.js",
-                "fetch": "lazy",
-                "enabled": true
-            }
-        }
-    }
-}
+{# Ui/Common/Alert.0.twig (the replacement) #}
+{% component embed 'Acme\\Ui\\Alert' with {'type': (type)} only %}...{% endcomponent %}
 ```
 
-## Test a package
+Set `replaces` to `Name::class` or a string with the class name (`self::class` is E017). For a function component, also use `Name::class` with a `use` import, not `use function`. PHP doesn’t check that the class exists.
 
-A package has no app, so its tests use a small test app in `tests/app/src` with the pages and components that the tests need (for example a `<Tabs>` around the `<Tab>` items). Extend `Phem\Test\TestKernel` and point PHPUnit to it:
+### Rules for replacements
 
-```php
-// tests/Kernel.php
-namespace Acme\Ui\Tests;
+`phemc` checks each replacement against the original:
 
-final class Kernel extends \Phem\Test\TestKernel
-{
-}
+- **App only**: Only the app replaces a component. `replaces` in a package is E017. A theme package extends the classes of a base package instead (see [Share behavior between theme packages](package-authoring.md#share-behavior-between-theme-packages)).
+- **One replacement per component**: A second replacement is E017. So is a replacement of a replacement, of a page, or of a built-in component (`<Root>`, `<Suspense>`), and a page that replaces a component, because a page isn’t a tag. A component can’t replace itself, but a tag of the replacement inside itself is fine. `replaces: null` means no replacement.
+- **Compatible props and slots**: The replacement accepts every prop and slot of the original, or has a rest prop (`mixed ...$rest`). It requires no prop or slot that the original doesn’t require. A `Bound` prop of the original stays `Bound`, so `phem:bind` on a tag of the original passes a `Bound`. Otherwise `phemc` reports E016. Other types aren’t compared, because PHP checks them.
+- **Class replacements**: In a class replacement, a tag of the original stays the original in all its methods, including methods of its parent classes and traits in the sources (up to the original).
+- **Original checks**: Tags of the original keep the original’s checks. An unknown prop is E011, even when the replacement has a rest prop.
+- **Contexts**: A consumer finds its provider by type. A replacement of a provider extends the original’s class or wraps the original, so the package’s consumers still find it. A required context of the replacement with no provider above a tag of the original is E015 at the tag, and the message names the replacement.
+- **Streams**: A replacement gets the streams of the original with `#[Broadcast]`. `$streams->toComponent(Counter::class)` also refreshes the replacements of `Counter`, with the `#[BroadcastKey]` props of `Counter`.
+- **Plain Twig templates**: `{% component 'Acme\\Ui\\Alert' %}` in a plain Twig template of your app also renders the replacement, because the manifest keeps the replacements. A plain Twig template isn’t inside the replacement, so it can’t render the original. Wrap the original in the replacement’s `.phem` markup instead.
+- **Tooling**: The profiler shows which component each replacement replaces. In the editor, go to definition on a tag of the original opens the replacement, and hover shows both. A prop or slot of the tag goes to the replacement’s prop or slot, or to the original when the replacement takes it in its rest prop. The editor follows the `phemc` rules: with no valid replacement, the tag goes to the original.
+
+## Add a package to your Tailwind build
+
+Tailwind CSS v4 skips the files in `.gitignore`, and `vendor/` is in it. Add each package’s `.phem` root to your input CSS with `@source`. The `.phem` sources contain the classes, so Tailwind doesn’t need the compiled templates in `var/phem`:
+
+```css
+/* assets/styles/app.css */
+@import "tailwindcss";
+
+@source "../../vendor/acme/ui/components";
 ```
 
-```xml
-<!-- phpunit.xml.dist -->
-<php>
-    <server name="KERNEL_CLASS" value="Acme\Ui\Tests\Kernel"/>
-</php>
+When a theme package (shadcn, for example) ships its CSS variables and `@theme` block in a CSS file, import that file too, so your Tailwind build reads it:
+
+```css
+/* assets/styles/app.css */
+@import "tailwindcss";
+@import "../../vendor/acme/ui/assets/theme.css";
+
+@source "../../vendor/acme/ui/components";
 ```
 
-The test kernel works like this:
+With the Tailwind merger, pass your input CSS to the `css` option (see [Turn on the Tailwind class merger](styling.md#merge-tailwind-classes)). Phem reads the `@theme` blocks of relative imports too, so it also reads the package’s theme.
 
-- **Project dir**: the root of the package, the directory of its `composer.json`
-- **Compilation**: when the kernel boots, it compiles the test app with `phemc` once per test run. It finds `phemc` in `PHEMC_BIN`, in `vendor/bin/phemc`, or in the `PATH`. Without `phemc`, the test is skipped.
-- **Package as an app sees it**: `phemc` also reads `extra.phem.source` from the root `composer.json` and compiles the package as a package, so its pages need a route import
-- **Bundles and routes**: FrameworkBundle, TwigBundle, StimulusBundle, and PhemBundle, with `framework.test` and the `routing.controllers` routes. Override `registerBundles()`, `configureContainer()`, or `configureRoutes()` to add more, and call the parent method.
-- **Directories**: override `sourceDir()` for another test app directory, and `buildDir()` for another `phemc` output directory. The default is `var/phem`, which is also the `phem.build_dir` option.
+Packages ship their Stimulus controllers in the Symfony UX format, so Flex adds them to `assets/controllers.json` when you install the package. You don’t need to register them by hand.
 
-The tests use `InteractsWithPhem`, as in an app (see [Test components and pages](testing.md)):
+## How phemc builds your packages
 
-```php
-final class BadgeTest extends KernelTestCase
-{
-    use InteractsWithPhem;
+`phemc build`, `check`, and `watch` find packages in `installed.json` in the Composer dir of your vendor dir (`vendor/composer/`, or the `config.vendor-dir` of `composer.json`, or `COMPOSER_VENDOR_DIR`). They compile the `.phem` files of each package with `extra.phem.source` together with your app, in one build. This affects your build in these ways:
 
-    public function testTheBadgeShowsItsLabel(): void
-    {
-        $this->mount('Acme\Ui\Badge', ['label' => 'New'])->assertSee('New');
-    }
-}
-```
-
-### Check the package in CI
-
-In continuous integration (CI), run `vendor/bin/phemc check tests/app/src` to check the package too. A package without a test app can run the same command: when the source dir doesn’t exist in a package (its root `composer.json` sets `extra.phem.source`), `phemc` compiles only the package root. In an app, a missing source dir is an error.
+- **One manifest**: The manifest has the components of your app and all packages, so a package can use another package’s components (a theme can extend a base package).
+- **Output paths**: A package compiles to `var/phem/php/vendor/<package>/` and `var/phem/templates/vendor/<package>/`. An app file with the same output path (in `src/vendor/<package>/`) is an error, so rename or move one of the two files.
+- **Skipped directories**: A root doesn’t read the directory of another root (a test app in the root `.` of a package), a Composer vendor dir, `node_modules`, or `.git`.
+- **Matching versions**: `phemc` compiles a package from its source. The package requires `phem/phem`, which ships `phemc`, so Composer installs a compatible version.
+- **Errors and warnings**: An error in a package stops the build, and `phemc` shows it with its path in `vendor/`. Warnings of a package don’t show, because your app can’t fix them. Your app’s diagnostics about package components (an unknown prop, a missing slot) show as usual.
+- **Duplicate components**: Two packages that declare the same component are E014, and the message gives the path of the other file.
+- **Editor support**: The language server checks packages with your app and gives completion, go to definition, and hover for their components (see [The language server](compiler.md#phemc-lsp)).
+- **Watch mode**: `phemc watch` also watches `vendor/composer/installed.json`, so it rebuilds with the new packages after `composer require` or `composer update`. It watches each package directory too, for a package in development (a Composer path repository). When a package root is wrong, it shows the error and keeps watching your app and `installed.json`, so fixing the package triggers a new build.
+- **Template errors**: An error in a package template points to the package’s `.phem` file in `vendor/`.

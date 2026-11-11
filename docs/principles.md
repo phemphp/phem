@@ -1,6 +1,6 @@
 # Design components that fit how Phem works
 
-Phem rests on a few ideas: the server owns the UI, state is disposable UI state, and Symfony does everything that isn’t a component. Each rule on this page follows from one of those ideas and comes with an example, so you can apply it when you write a component or design a page. The page ends with a checklist to review a component before you finish it. For the syntax itself, read [The `.phem` syntax](phem-syntax.md).
+Phem rests on a few ideas: the server owns the UI, state is disposable UI state, and Symfony does everything that isn’t a component. Each rule on this page follows from one of those ideas and comes with an example, so you can apply it when you write a component or design a page. The page ends with a checklist to review a component before you finish it. For the syntax itself, read [The `.phem` syntax](syntax.md).
 
 ## Let the server own the UI
 
@@ -235,7 +235,7 @@ Some changes don’t need the server at all: opening a menu, toggling a class, f
 </span>
 ```
 
-The dropdown opens and closes in the browser, while the **Star** button inside it still sends an event to the server. For an element that a JavaScript library controls (a chart, a map, an editor), add `data-phem-ignore` so the morph skips it. Before you write a new controller, check the [built-in ones](ui-controllers.md), such as `phem-popover`, `phem-menu`, `phem-optimistic`, and `phem-confirm`.
+The dropdown opens and closes in the browser, while the **Star** button inside it still sends an event to the server. For an element that a JavaScript library controls (a chart, a map, an editor), add `data-phem-ignore` so the morph skips it. Before you write a new controller, check the [built-in ones](controllers.md), such as `phem-popover`, `phem-menu`, `phem-optimistic`, and `phem-confirm`.
 
 ## Design for the round trip
 
@@ -268,7 +268,7 @@ This chart loads after the page and shows a fallback message if it fails:
 vendor/bin/phemc check src
 ```
 
-Give each prop a precise type and each component the return type `Node`. The compiler, PHP, and PHPStan then check every call for you. To run PHPStan on the compiled PHP, read [Static analysis](compiling.md#static-analysis-phpstan).
+Give each prop a precise type and each component the return type `Node`. The compiler, PHP, and PHPStan then check every call for you. To run PHPStan on the compiled PHP, read [Static analysis](compiler.md#static-analysis-phpstan).
 
 ## Test without a browser
 

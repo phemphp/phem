@@ -4,7 +4,7 @@ A page is a component with a URL. This guide shows you how to declare a page, wr
 
 ## Declare a page
 
-Add `#[Page]` to a class or a function to make it a page. A page needs no `#[Component]`, and by convention its name ends with `Page` (see [Organize the UI](project-structure.md#organize-the-ui)):
+Add `#[Page]` to a class or a function to make it a page. A page needs no `#[Component]`, and by convention its name ends with `Page` (see [Organize the UI](structure.md#organize-the-ui)):
 
 ```php
 use Phem\Attribute\Page;
@@ -226,7 +226,7 @@ The values are by prop or by route value:
 
 The third argument works as in Twig: `path(ScientistPage, {...}, true)` gives a relative path, and `url(ScientistPage, {...}, true)` gives a URL with no scheme (`//example.com/...`).
 
-`phemc` checks that the class is a page with a route (E063). A page of a package has a route only when your app imports the pages of the package (see [Import the pages of a package](using-packages.md#import-the-pages-of-a-package)). The same values work in PHP, in `RedirectTo` and in `PageUrlGenerator::generate()`: `new RedirectTo(ScientistPage::class, ['scientist' => $scientist])`. Markup also reads the cases of an enum with its class name (see [Classes in markup](phem-syntax.md#classes-in-markup)).
+`phemc` checks that the class is a page with a route (E063). A page of a package has a route only when your app imports the pages of the package (see [Import the pages of a package](packages.md#import-the-pages-of-a-package)). The same values work in PHP, in `RedirectTo` and in `PageUrlGenerator::generate()`: `new RedirectTo(ScientistPage::class, ['scientist' => $scientist])`. Markup also reads the cases of an enum with its class name (see [Classes in markup](syntax.md#classes-in-markup)).
 
 ## Redirect before a page renders
 

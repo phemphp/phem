@@ -1,6 +1,6 @@
 # Understand Phem in five ideas
 
-Phem is a component layer for Symfony web apps. You write a component’s logic and markup together in one `.phem` file, and the server renders the HTML, runs the event handlers, and updates only the parts of the page that change. You don’t write JavaScript, an API, or a client store. This page explains the five ideas behind Phem with one small example each, and shows where Phem stops. When you’re ready to build, follow [Getting started](getting-started.md) and then the [tutorial](tutorial.md).
+Phem is a component layer for Symfony web apps. You write a component’s logic and markup together in one `.phem` file, and the server renders the HTML, runs the event handlers, and updates only the parts of the page that change. You don’t write JavaScript, an API, or a client store. This page explains the five ideas behind Phem with one small example each, and shows where Phem stops. When you’re ready to build, follow [Getting started](quickstart.md) and then the [tutorial](tutorial.md).
 
 > [!NOTE]
 > Phem takes inspiration from [React Server Components](https://react.dev/reference/rsc/server-components).
@@ -24,7 +24,7 @@ function Greeting(string $name): Node
 }
 ```
 
-This file defines a `Greeting` component that takes a `name` prop and renders a paragraph. The `phemc` compiler reads your `.phem` files at build time and writes plain PHP and Twig templates. When it finds an error, it reports the line in your `.phem` file. Nothing parses `.phem` files at runtime. To learn more, read [Compiling](compiling.md).
+This file defines a `Greeting` component that takes a `name` prop and renders a paragraph. The `phemc` compiler reads your `.phem` files at build time and writes plain PHP and Twig templates. When it finds an error, it reports the line in your `.phem` file. Nothing parses `.phem` files at runtime. To learn more, read [Compiling](compiler.md).
 
 ## A page is a component with a URL
 
@@ -42,7 +42,7 @@ function HelloPage(): Node
 }
 ```
 
-Visiting `/hello` renders the `Greeting` component inside `Document`. `Document` is a component that your app defines once: it holds the HTML document (`<html>`, `<head>`, `<body>`) that wraps every page, and its `title` prop (`<Document title="Hello">`) sets the title of the page. By convention, a page’s name ends with `Page`, and your `.phem` files live in `src/Ui/` (see [Organize the UI](project-structure.md#organize-the-ui)).
+Visiting `/hello` renders the `Greeting` component inside `Document`. `Document` is a component that your app defines once: it holds the HTML document (`<html>`, `<head>`, `<body>`) that wraps every page, and its `title` prop (`<Document title="Hello">`) sets the title of the page. By convention, a page’s name ends with `Page`, and your `.phem` files live in `src/Ui/` (see [Organize the UI](structure.md#organize-the-ui)).
 
 ## A component is a function or a class
 
@@ -101,7 +101,7 @@ The `increment()` method above is PHP, so it can’t run in the browser. Instead
 Think of the state as a sealed envelope that the browser carries between requests. The server seals it with a signature, so the browser can’t change what’s inside, and the server doesn’t need a session to remember anything between two events.
 
 > [!NOTE]
-> State is for the UI. Keep limits and security decisions in the database or the session, not in `#[State]`. Read [Treat state as UI state, not trusted data](philosophy.md#treat-state-as-ui-state-not-trusted-data) to see why.
+> State is for the UI. Keep limits and security decisions in the database or the session, not in `#[State]`. Read [Treat state as UI state, not trusted data](principles.md#treat-state-as-ui-state-not-trusted-data) to see why.
 
 ## Symfony does everything else
 
@@ -154,5 +154,5 @@ Phem is built for server-rendered Symfony apps, and that choice sets its boundar
 
 Two pages take you from here to a working app:
 
-- [Create your first Phem app](getting-started.md): install Phem in a new Symfony app
+- [Create your first Phem app](quickstart.md): install Phem in a new Symfony app
 - [Build a task list](tutorial.md): build a small app, one idea at a time

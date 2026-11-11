@@ -4,7 +4,7 @@ In this tutorial, you build a small task list. Each step adds one Phem idea: a p
 
 ## Before you begin
 
-You need the app from [Create your first Phem app](getting-started.md), with `symfony serve` running. The `phemc` watcher compiles your `.phem` files each time you save them, so you can reload the browser after each step.
+You need the app from [Create your first Phem app](quickstart.md), with `symfony serve` running. The `phemc` watcher compiles your `.phem` files each time you save them, so you can reload the browser after each step.
 
 When you’re done, you’ll have this page at `/tasks`:
 
@@ -221,7 +221,7 @@ Here’s how `render()` works:
 - **PHP computes, markup shows**: PHP computes `$left`, and the markup only prints it.
 
 > [!NOTE]
-> Phem calls `render()` for you, so you never call it yourself. A class component can also have a constructor, which gets the services, and a `mount()` method, which sets the first values before the first render. `TaskList` doesn’t need them, because its tasks have default values. Don’t name a handler `mount` or `render`: Phem reserves these names, and the compiler reports an error. Read [Methods that Phem calls for you](what-is-phem.md#methods-that-phem-calls-for-you) for the details.
+> Phem calls `render()` for you, so you never call it yourself. A class component can also have a constructor, which gets the services, and a `mount()` method, which sets the first values before the first render. `TaskList` doesn’t need them, because its tasks have default values. Don’t name a handler `mount` or `render`: Phem reserves these names, and the compiler reports an error. Read [Methods that Phem calls for you](introduction.md#methods-that-phem-calls-for-you) for the details.
 
 ### Show the task list on the page
 
@@ -404,15 +404,15 @@ OK (3 tests, 10 assertions)
 
 You’ve used the main ideas of Phem. Learn more about each one:
 
-- [Philosophy and conventions](philosophy.md): the rules to keep in mind when you design with Phem
-- [The `.phem` syntax](phem-syntax.md): markup, props, slots, lists, directives, and attributes
+- [Philosophy and conventions](principles.md): the rules to keep in mind when you design with Phem
+- [The `.phem` syntax](syntax.md): markup, props, slots, lists, directives, and attributes
 - [Components and state](components.md): the anatomy of a component, state, `mount()`, context, and URL state
 - [Pages and routes](pages.md): the document, the routes, route values, and redirects
 - [Handle events](events.md): handlers, loading states, and redirects
 - [Handle forms](forms.md): bound fields, forms, validation, and uploads
 - [Client-side behavior](client-side.md): Stimulus and the built-in controllers
-- [Server features](server-features.md): transactions, Suspense, and async work
+- [Server features](resilience.md): transactions, Suspense, and async work
 - [Security](security.md): access rules, state reuse, and rate limits
-- [Errors and limits](errors-and-limits.md): failed events, retries, and the limits of an event
+- [Errors and limits](failed-events.md): failed events, retries, and the limits of an event
 - [Testing components and pages](testing.md): all the test helpers
 - [Deployment](deployment.md): serve the app, build it for production, and build a Docker image
