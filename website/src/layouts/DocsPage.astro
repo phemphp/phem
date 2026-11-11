@@ -2,6 +2,7 @@
 // Design system: DocsPage. Sidebar, article and "On this page", in the order of the page anatomy:
 // Breadcrumbs, the article (h1 and lead), PrevNext and PageMeta.
 import Breadcrumbs from '../components/Breadcrumbs.astro';
+import ImageViewer from '../components/ImageViewer.astro';
 import PageMeta from '../components/PageMeta.astro';
 import PrevNext from '../components/PrevNext.astro';
 import SidebarNav from '../components/SidebarNav.astro';
@@ -34,4 +35,5 @@ const label = pages.find((page) => page.slug === doc.slug)?.label ?? doc.title;
             <TableOfContents headings={doc.headings} editUrl={doc.editUrl} />
         </aside>
     </div>
+    <ImageViewer />
 </Base>

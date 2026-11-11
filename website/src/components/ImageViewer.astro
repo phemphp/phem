@@ -1,0 +1,95 @@
+---
+// The images of a doc open in this dialog at their natural size. The dialog scrolls when the
+// image is larger than the window. A click, the close button or Escape closes it. The image zooms
+// from its place in the page to its natural size, and back to its place when the dialog closes.
+import Icon from './Icon.astro';
+---
+<dialog class="image-viewer" data-image-viewer aria-label="Image">
+    <button class="ph-icon-btn image-viewer__close" type="button" aria-label="Close image"><Icon name="x-mark" /></button>
+    <img class="image-viewer__img" alt="" />
+</dialog>
+
+<script>
+    const dialog = document.querySelector<HTMLDialogElement>('[data-image-viewer]');
+    const images = document.querySelectorAll<HTMLImageElement>('.ph-prose img');
+    const timing: KeyframeAnimationOptions = { duration: 300, easing: 'cubic-bezier(.2, 0, 0, 1)' };
+
+    // The transform that puts the image of the dialog (at `to`) on the image of the page (at `from`).
+    function onto(from: DOMRect, to: DOMRect): string {
+        return `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`;
+    }
+
+    function zoom(dialog: HTMLDialogElement, viewed: HTMLImageElement, source: HTMLImageElement, opening: boolean): Promise<unknown> {
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            return Promise.resolve();
+        }
+
+        const small = onto(source.getBoundingClientRect(), viewed.getBoundingClientRect());
+        const transform = opening ? [small, 'none'] : ['none', small];
+        const opacity = opening ? [0, 1] : [1, 0];
+
+        const animations = [
+            viewed.animate({ transform, transformOrigin: ['top left', 'top left'] }, timing),
+            dialog.animate({ opacity }, { ...timing, pseudoElement: '::backdrop' }),
+            dialog.querySelector('.image-viewer__close')!.animate({ opacity }, timing),
+        ];
+
+        return Promise.all(animations.map((animation) => animation.finished));
+    }
+
+    if (dialog) {
+        const viewed = dialog.querySelector<HTMLImageElement>('.image-viewer__img')!;
+        let source: HTMLImageElement | null = null;
+        let closing = false;
+
+        async function open(image: HTMLImageElement): Promise<void> {
+            viewed.src = image.currentSrc || image.src;
+            viewed.alt = image.alt;
+            await viewed.decode().catch(() => undefined);
+
+            source = image;
+            dialog!.showModal();
+            dialog!.scrollTo(0, 0);
+            image.style.visibility = 'hidden';
+
+            await zoom(dialog!, viewed, image, true);
+        }
+
+        async function close(): Promise<void> {
+            if (closing || !source) {
+                return;
+            }
+
+            closing = true;
+            await zoom(dialog!, viewed, source, false);
+
+            dialog!.close();
+            source.style.visibility = '';
+            source.focus({ preventScroll: true });
+            source = null;
+            closing = false;
+        }
+
+        for (const image of images) {
+            image.classList.add('is-zoomable');
+            image.tabIndex = 0;
+            image.setAttribute('role', 'button');
+            image.setAttribute('aria-label', `Open the image in its original size: ${image.alt}`);
+            image.addEventListener('click', () => open(image));
+            image.addEventListener('keydown', (event) => {
+                if ('Enter' === event.key || ' ' === event.key) {
+                    event.preventDefault();
+                    open(image);
+                }
+            });
+        }
+
+        // Escape closes the dialog with the same animation as a click.
+        dialog.addEventListener('cancel', (event) => {
+            event.preventDefault();
+            close();
+        });
+
+        dialog.addEventListener('click', () => close());
+    }
+</script>

@@ -6,23 +6,7 @@ A `.phem` file goes through four stages before a user can click on it: the `phem
 
 The whole pipeline fits in one diagram. The top half runs once, at build time and at boot; the bottom half runs on every request and every event:
 
-```text
-.phem ─► phemc (Rust) ─┬─► php/*.php         markup → new \Phem\Element(...)
-                       ├─► templates/*.twig  one template per markup literal
-                       └─► manifest.php, autoload.php
-                                  │
-bin/console phem:warmup ─► Twig cache (compiled at build time)
-                                  │
-PhemBundle ─┬─ class components → services (autowired, not shared)
-            └─ #[Page] classes and functions → routes
-                 → PageController / EventController
-                                  │
-HttpKernel (FrankenPHP worker mode, or PHP-FPM) ─► HTML ─► browser
-                                  │
-phem Stimulus controller ─► POST <page URL> {signature, handler, event}
-                         ◄─ Turbo Streams (morph of changed components)
-                            + changed state entries
-```
+![The Phem pipeline: phemc compiles a .phem file to PHP, Twig templates and a manifest. phem:warmup fills the Twig cache. PhemBundle registers the components as services and the #[Page] classes as routes. HttpKernel renders the HTML for the browser, and the browser sends events back as a POST and gets Turbo Streams with the morph and the state.](images/architecture.webp)
 
 Each section below explains one part of the diagram, in the same order.
 

@@ -40,3 +40,12 @@
 .ph-code--bare { position: relative; }
 .ph-code--bare > .ph-code__copy { position: absolute; top: var(--space-2); right: var(--space-2); }
 .ph-code--bare pre { padding-right: var(--space-12); }
+/* The image viewer of the docs (ImageViewer.astro): the image at its natural size, on the
+   overlay. The dialog fills the window and scrolls when the image is larger. */
+.ph-prose img.is-zoomable { cursor: zoom-in; }
+.ph-prose img.is-zoomable:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.image-viewer { width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: var(--space-6); border: 0; background: transparent; overflow: auto; box-sizing: border-box; cursor: zoom-out; z-index: var(--z-dialog); }
+.image-viewer[open] { display: flex; }
+.image-viewer::backdrop { background: var(--overlay); }
+.image-viewer__img { display: block; flex: none; margin: auto; max-width: none; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); }
+.image-viewer__close { position: fixed; top: var(--space-4); right: var(--space-4); background: var(--surface-raised); color: var(--ink); box-shadow: var(--shadow-lg); }
