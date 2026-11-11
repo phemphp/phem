@@ -1,7 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 
+- The extension id is now `yceruto.phem` (before: `phem.phem`). Uninstall the old
+  extension: `code --uninstall-extension phem.phem`.
 - Completion for the Phem attributes `phem:scroll-into-view` and `phem:keep-scroll`.
 - Completion for the Phem attributes `phem:key`, `phem:stop`, `phem:prevent` and `phem:poll`,
   and for the events `onVisible` and `onPoll`.
@@ -18,9 +20,6 @@
   `cases()` of an enum), and of the pages in `path(` and `url(`, with their import. Go to
   definition and hover on the class and on the case. The diagnostics show the new E062, E063 and
   E064.
-
-## 0.5.0
-
 - The extension runs the Phem language server (the `phemc-lsp` crate of the compiler). The
   completion, the definition, the hover, and the outline come from the server. The JavaScript
   copy of the parser is removed. The PhpStorm plugin uses the same server.

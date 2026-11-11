@@ -3,8 +3,17 @@
     "displayName": "Phem",
     "description": "Syntax highlighting, and the Phem language server for .phem files: diagnostics as you type, completion, go to definition, find references with usage counts, hover, and outline.",
     "version": "0.5.0",
-    "publisher": "phem",
+    "publisher": "yceruto",
     "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/phemphp/phem.git",
+        "directory": "editors/vscode"
+    },
+    "homepage": "https://github.com/phemphp/phem/tree/main/editors/vscode#readme",
+    "bugs": {
+        "url": "https://github.com/phemphp/phem/issues"
+    },
     "icon": "icons/icon.png",
     "engines": {
         "vscode": "^1.82.0"

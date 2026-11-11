@@ -126,3 +126,23 @@ language server (`editors/server/phem-lsp.wasm`). An old build shows old diagnos
   server) or in `editors/`, run `make vscode-install phpstorm-install`. It rebuilds the server and
   installs the two plugins.
 - Tell the user to reload the VS Code window and to restart PhpStorm.
+
+### Plugin version
+
+The Marketplace refuses a version that it already has. Increase the version of the VS Code
+extension when you change it, so that the next publish works.
+
+- A change in `editors/vscode/`, `editors/server/` or the language server in `compiler/` changes
+  the extension.
+- Get the published version:
+  `npx --yes @vscode/vsce@4.0.0 show yceruto.phem --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).versions[0].version))'`
+- If `version` in `editors/vscode/package.json` is the published version, increase it. Increase
+  the minor version (`0.5.0` → `0.6.0`) for a new feature or a changed behavior. Increase the
+  patch version (`0.5.0` → `0.5.1`) for a bug fix only. If the version is already higher than
+  the published version, do not change it: one release collects all the changes.
+- Add a `## <version>` heading for a new version at the top of `editors/vscode/CHANGELOG.md`, and
+  put each change under the heading of the version in `package.json`.
+- Do not publish. The user publishes with `vsce publish`.
+
+The PhpStorm plugin is not on the JetBrains Marketplace yet. Do not change its `pluginVersion` in
+`editors/phpstorm/gradle.properties`.

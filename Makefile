@@ -27,7 +27,7 @@ vscode: lsp ## Build the VS Code extension: editors/vscode/phem-<version>.vsix
 	docker run --rm -e NPM_CONFIG_UPDATE_NOTIFIER=false -e NPM_CONFIG_LOGLEVEL=warn -v "$(CURDIR)/editors/vscode:/ext" -w /ext node:22-alpine sh -c ' \
 		npm install --global --no-fund --no-audit npm@12.2.0 > /dev/null && \
 		npm install --ignore-scripts --no-fund --no-audit && \
-		npx --yes @vscode/vsce@4.0.0 package --skip-license --allow-missing-repository'
+		npx --yes @vscode/vsce@4.0.0 package'
 
 VSCODE_VERSION = $(shell sed -n 's/^    "version": "\(.*\)",/\1/p' editors/vscode/package.json)
 # The VS Code profile to install the extension in. Empty means the Default profile.
