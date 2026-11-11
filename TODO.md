@@ -99,13 +99,6 @@ A page has no built-in way to keep the choice of a light or a dark theme. The ch
 - **Proposal:** a small inline script for `<head>` (a `<ThemeScript>` component) and a
   `phem-theme` controller for the switch, with `data-theme` on `<html>`.
 
-### [ ] Remember a dismissed banner — P3
-
-`phem-collapsible` closes a banner, but the banner shows again after a reload.
-
-- **Proposal:** a `persist` value (`data-phem-collapsible-persist-value="promo-2026"`) that keeps
-  the state in `localStorage`.
-
 ### [ ] Scroll spy — P3
 
 A table of contents cannot mark the section in view.

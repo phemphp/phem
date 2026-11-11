@@ -75,6 +75,11 @@ export class ClientState {
     })
   }
 
+  // The last value of the state value attribute in a server render, or null.
+  get server() {
+    return this.#server
+  }
+
   // The name of the attribute of the state value, as Stimulus reads it.
   get #attribute() {
     if (!this.#value) return null

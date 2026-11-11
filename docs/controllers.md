@@ -154,6 +154,27 @@ The panel gets the size of its content in `--collapsible-panel-height` and `--co
 
 Set `data-phem-collapsible-open-value="true"` to open it on load. With `data-phem-collapsible-hidden-until-found-value="true"`, a closed panel has `hidden="until-found"`: the search of the browser (Ctrl+F) finds its text and opens it. A collapsible does not close on Escape or on a click outside. For a dropdown, use `phem-popover` or `phem-menu`.
 
+### Remember a dismissed banner
+
+Set `data-phem-collapsible-persist-value` to a key, and the state goes in `localStorage`. A banner that the user closed stays closed after a reload:
+
+```html
+<div data-controller="phem-collapsible"
+     data-phem-collapsible-open-value="true"
+     data-phem-collapsible-persist-value="promo-2026">
+    <div data-phem-collapsible-target="panel">
+        New plans for 2026.
+        <button data-phem-collapsible-target="trigger" aria-label="Dismiss">×</button>
+    </div>
+</div>
+```
+
+After a click on the trigger, `localStorage` has `phem-collapsible:promo-2026` with the value `false`. On the next load, the stored state wins over the `open` value of the server render, and the panel closes when the controller connects. Use a new key for a new banner. When the key changes, the controller takes the stored state of the new key, or the `open` value of the server render.
+
+Only a click on a trigger and the `toggle`, `open` and `close` actions store the state. An open by the search of the browser (`hiddenUntilFound`) or by a new `open` value of the server render does not. The other collapsibles with the same key get the stored state at once, also in the other tabs. When the browser blocks `localStorage` (for example in some private windows), the state lives until the reload.
+
+The server renders the banner open, so a dismissed banner shows until the controller connects, and then closes.
+
 ## Open one item of an accordion at a time
 
 `phem-accordion` shows a list of items that open and close. When one item opens, the other items close:

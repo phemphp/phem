@@ -17,6 +17,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  localStorage.clear()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
   document.body.innerHTML = ""
@@ -263,5 +264,101 @@ describe("phem-collapsible", () => {
     await done
 
     expect(document.querySelector('[data-phem-key="2"] span').hidden).toBe(false)
+  })
+
+  it("keeps the state in localStorage with the persist value", async () => {
+    const banner = section('data-phem-collapsible-open-value="true" data-phem-collapsible-persist-value="promo-2026"')
+    await mount(banner)
+    click("#close")
+
+    expect(isOpen()).toBe(false)
+    expect(localStorage.getItem("phem-collapsible:promo-2026")).toBe("false")
+
+    // A reload: the stored state wins over the open value of the server render.
+    document.body.innerHTML = ""
+    await mount(banner)
+    expect(isOpen()).toBe(false)
+
+    click("#open")
+    expect(localStorage.getItem("phem-collapsible:promo-2026")).toBe("true")
+  })
+
+  it("keeps no state in localStorage with no persist value", async () => {
+    await mount(section())
+    click("#open")
+
+    expect(localStorage.length).toBe(0)
+  })
+
+  it("works when localStorage throws", async () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("denied") })
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("denied") })
+    await mount(section('data-phem-collapsible-persist-value="promo"'))
+    click("#open")
+
+    expect(isOpen()).toBe(true)
+  })
+
+  it("keeps a dismissed state after the morph of an event with the same open value", async () => {
+    localStorage.setItem("phem-collapsible:promo", "false")
+    const banner = section('data-phem-collapsible-open-value="true" data-phem-collapsible-persist-value="promo"')
+    await mount(banner)
+    respond(banner)
+    const done = nextDone()
+    click("#star")
+    await done
+
+    expect(isOpen()).toBe(false)
+  })
+
+  it("does not store an open by a new open value of the server render", async () => {
+    await mount(section('data-phem-collapsible-persist-value="promo"'))
+    respond(section('data-phem-collapsible-open-value="true" data-phem-collapsible-persist-value="promo"'))
+    const done = nextDone()
+    click("#star")
+    await done
+
+    expect(isOpen()).toBe(true)
+    expect(localStorage.getItem("phem-collapsible:promo")).toBeNull()
+  })
+
+  it("does not store an open by the search of the browser", async () => {
+    localStorage.setItem("phem-collapsible:promo", "false")
+    await mount(section('data-phem-collapsible-persist-value="promo" data-phem-collapsible-hidden-until-found-value="true"'))
+    document.getElementById("panel").dispatchEvent(new Event("beforematch", { bubbles: true }))
+
+    expect(isOpen()).toBe(true)
+    expect(localStorage.getItem("phem-collapsible:promo")).toBe("false")
+  })
+
+  it("gives the stored state to the other collapsibles with the same key", async () => {
+    await mount(`${section('data-phem-collapsible-open-value="true" data-phem-collapsible-persist-value="promo"')}
+      <div data-controller="phem-collapsible" data-phem-collapsible-open-value="true" data-phem-collapsible-persist-value="promo">
+        <div id="footer-panel" data-phem-collapsible-target="panel">Footer</div>
+      </div>`)
+    click("#close")
+
+    expect(document.getElementById("footer-panel").hidden).toBe(true)
+  })
+
+  it("gives the state that another tab stored", async () => {
+    await mount(section('data-phem-collapsible-open-value="true" data-phem-collapsible-persist-value="promo"'))
+    window.dispatchEvent(new StorageEvent("storage", { key: "phem-collapsible:promo", newValue: "false" }))
+
+    expect(isOpen()).toBe(false)
+  })
+
+  it("takes the state of a new key, or the open value of the server render", async () => {
+    localStorage.setItem("phem-collapsible:promo-2026", "false")
+    await mount(section('data-phem-collapsible-open-value="true" data-phem-collapsible-persist-value="promo-2026"'))
+    expect(isOpen()).toBe(false)
+
+    respond(section('data-phem-collapsible-open-value="true" data-phem-collapsible-persist-value="promo-2027"'))
+    click("#star")
+    await nextDone()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(isOpen()).toBe(true)
+    expect(localStorage.getItem("phem-collapsible:promo-2027")).toBeNull()
   })
 })

@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
+import { PhemStorage } from "./phem_storage.js"
 import { hide, measure, render, show } from "./phem_transition.js"
 
 // Each controller has a prefix for the id of a panel with no id (for `aria-controls`). The morph
@@ -33,9 +34,15 @@ const controlled = new WeakSet()
 //
 // With the `hiddenUntilFound` value, a closed panel has `hidden="until-found"`: the search of the
 // browser (Ctrl+F) finds its text, and opens it.
+//
+// With the `persist` value (a key, for example `promo-2026`), the state goes in `localStorage`:
+// a banner that the user closed stays closed after a reload. The stored state wins over the
+// `open` value of the server render on load. Only a click or an action of the user stores the
+// state: an open by the search of the browser or by a server render does not. The other
+// controllers with the same key, also in the other tabs, get the stored state.
 export default class PhemCollapsibleController extends Controller {
   static targets = ["trigger", "panel"]
-  static values = { open: Boolean, hiddenUntilFound: Boolean }
+  static values = { open: Boolean, hiddenUntilFound: Boolean, persist: String }
 
   connect() {
     this.state = new ClientState(this, {
@@ -45,12 +52,17 @@ export default class PhemCollapsibleController extends Controller {
     })
     this.state.connect()
 
+    this.#listen()
+    const stored = this.#stored()
+    if (stored !== null) this.openValue = stored
+
     this.element.addEventListener("click", this.onClick)
     this.element.addEventListener("beforematch", this.onBeforeMatch)
     this.#render()
   }
 
   disconnect() {
+    this.listening?.abort()
     this.state.disconnect()
     this.element.removeEventListener("click", this.onClick)
     this.element.removeEventListener("beforematch", this.onBeforeMatch)
@@ -58,15 +70,15 @@ export default class PhemCollapsibleController extends Controller {
   }
 
   toggle() {
-    this.#set(!this.openValue)
+    this.#set(!this.openValue, { store: true })
   }
 
   open() {
-    this.#set(true)
+    this.#set(true, { store: true })
   }
 
   close() {
-    this.#set(false)
+    this.#set(false, { store: true })
   }
 
   // A server render with a new `open` value, or a change of the value by a script.
@@ -74,6 +86,16 @@ export default class PhemCollapsibleController extends Controller {
     if (this.rendered === undefined || this.rendered === this.openValue) return
 
     this.#apply()
+  }
+
+  // A new key takes its stored state, or the `open` value of the server render.
+  persistValueChanged(value, previous) {
+    if (this.rendered === undefined || previous === undefined) return
+
+    this.#listen()
+    const stored = this.#stored()
+    const server = this.state.server
+    this.#set(stored ?? (server !== null && server !== "false" && server !== "0"))
   }
 
   // A target that the morph adds gets the state.
@@ -100,11 +122,13 @@ export default class PhemCollapsibleController extends Controller {
     if (this.panelTargets.includes(event.target)) this.#set(true)
   }
 
-  #set(open) {
-    if (open === this.openValue && this.rendered === open) return
+  #set(open, { store = false } = {}) {
+    if (open !== this.openValue || this.rendered !== open) {
+      this.openValue = open
+      this.#apply()
+    }
 
-    this.openValue = open
-    this.#apply()
+    if (store) this.#store(open)
   }
 
   // The state with its animations.
@@ -155,6 +179,28 @@ export default class PhemCollapsibleController extends Controller {
       trigger.setAttribute("aria-expanded", String(open))
       trigger.toggleAttribute("data-panel-open", open)
     }
+  }
+
+  // The stored state, or null with no `persist` value or no stored state.
+  #stored() {
+    const value = this.#storage?.get() ?? null
+
+    return value === null ? null : value === "true"
+  }
+
+  #store(open) {
+    this.#storage?.set(String(open))
+  }
+
+  // The state that another controller with the same key stored.
+  #listen() {
+    this.listening?.abort()
+    this.listening = new AbortController()
+    this.#storage?.listen((value) => this.#set(value === "true"), this.listening.signal)
+  }
+
+  get #storage() {
+    return this.persistValue ? new PhemStorage(`collapsible:${this.persistValue}`) : null
   }
 
   get #hidden() {

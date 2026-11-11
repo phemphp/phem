@@ -8,6 +8,10 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- `phem-collapsible` takes a `persist` value: a key for the state in `localStorage`. A banner
+  that the user closed stays closed after a reload. Only a click or an action of the user stores
+  the state, and the other collapsibles with the same key, also in the other tabs, get it. See
+  docs/controllers.md.
 - More parts for the built-in controllers. A `phem-menu` in the popup of a menu is a submenu,
   which opens on hover, with a click and with ArrowRight. `data-phem-menu-modal-value="true"`
   locks the scroll and the pointer events of the page while the menu is open. The new
