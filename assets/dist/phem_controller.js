@@ -12,6 +12,7 @@ import { scrollTargets, scrollToNew } from "./phem_scroll.js"
 import { DialogQuestion } from "./phem_dialog_question.js"
 import { fieldsValue } from "./phem_fields.js"
 import { matchesKey } from "./phem_keys.js"
+import { OfflineQueue } from "./phem_offline_queue.js"
 
 const TEXT_INPUTS = new Set(["text", "search", "email", "url", "tel", "password", "number", "date", "time", "datetime-local", "month", "week", "color", "range"])
 
@@ -110,6 +111,17 @@ function formOf(el) {
 // its form, the field is a text field, and the field has no `phem:live` (it sends its own events).
 function formTakesKeys(el, field) {
   return el instanceof HTMLFormElement && isTextLike(field) && !field.hasAttribute("data-phem-live")
+}
+
+// The error of an event that waited for the connection when its page left: the offline queue
+// keeps it for the next load of the page.
+class PageLeft extends Error {}
+
+// The URL of the page with no fragment: the key of its events in the offline queue.
+function pageUrl() {
+  const url = new URL(window.location.href)
+  url.hash = ""
+  return url.href
 }
 
 // The value of a field of a form, to compare it with a later value.
@@ -736,6 +748,11 @@ export default class PhemController extends Controller {
     // An event sends a state shorter than this with its signature: the server does not cache it.
     // With no value, the server has no cache, and each event sends the state.
     stateInline: { type: Number, default: Infinity },
+    // Keep the events that wait for the connection in IndexedDB: the next load of the page sends them.
+    offlineQueue: { type: Boolean, default: false },
+    // The seconds that the offline queue keeps the events of a page that does not load again (0
+    // for no limit). Older events leave the storage of the browser.
+    offlineQueueMaxAge: { type: Number, default: 86400 },
   }
 
   connect() {
@@ -761,6 +778,17 @@ export default class PhemController extends Controller {
 
     this.inactive = false
     this.queue = Promise.resolve()
+    // The events of the user in the queue, in their order: they keep their bound values while one
+    // of them waits for the connection, and the offline queue keeps them (see saveOfflineQueue()).
+    this.jobs = new Set()
+    // The job that runs now (see waitOnline()).
+    this.runningJob = null
+    this.offlineQueue = this.offlineQueueValue && OfflineQueue.supported() ? new OfflineQueue() : null
+    // The events that an earlier load of this page did not send go first (see replayOfflineQueue()).
+    if (this.offlineQueue) this.queue = this.offlineQueue.take(pageUrl(), this.offlineQueueMaxAgeValue).then(
+      (records) => this.replayOfflineQueue(records),
+      (e) => console.warn("[phem] the offline queue could not be read", e),
+    )
     // element => (handler attribute => {send, timer}): the events that wait for a debounce or a throttle
     this.pending = new Map()
     // element => (handler attribute => the time of the last event that the throttle let go)
@@ -971,6 +999,9 @@ export default class PhemController extends Controller {
     this.showOffline()
     window.addEventListener("online", this.showOffline)
     window.addEventListener("offline", this.showOffline)
+    // The events in the queue keep the bound values of the time the browser went offline.
+    this.queueOffline = () => this.goOffline([...this.jobs])
+    window.addEventListener("offline", this.queueOffline)
 
     // The `phem-dirty` class of the bound fields that the user changed, and of the file inputs with files.
     this.showDirty = () => this.markDirty()
@@ -1102,6 +1133,7 @@ export default class PhemController extends Controller {
     this.pending.clear()
     window.removeEventListener("online", this.showOffline)
     window.removeEventListener("offline", this.showOffline)
+    window.removeEventListener("offline", this.queueOffline)
     this.element.removeEventListener("input", this.showDirty)
     this.element.removeEventListener("change", this.showDirty)
     window.removeEventListener("beforeunload", this.guardUnload)
@@ -1113,6 +1145,13 @@ export default class PhemController extends Controller {
     this.visibleTriggers.disconnect()
     this.polls.disconnect()
     this.hideError()
+    // The events that wait for the connection stay in the offline queue: the next load of the
+    // page sends them, not this controller.
+    if (this.offlineQueue) {
+      if ([...this.jobs].some((job) => job.offline)) for (const job of this.jobs) job.left = true
+      this.offlineQueue.close()
+      this.offlineQueue = null
+    }
     // An event that still runs does not start the triggers or the polls again (see watchTriggers()).
     this.inactive = true
   }
@@ -1619,8 +1658,9 @@ export default class PhemController extends Controller {
   // live events of a group of bound fields (the checkboxes of a list) count as the events of its
   // first field: a "select all" that changes 100 checkboxes sends one event.
   // `end(ok)` runs at the end of the event, after its update, also when it failed (ok is false).
-  enqueue(el, attr, handler, payload, ids = new Set(), end = null) {
-    const coalesce = COALESCED_EVENTS.has(payload.type)
+  // `replay` is the event of an earlier load of the page (see replayOfflineQueue()).
+  enqueue(el, attr, handler, payload, ids = new Set(), end = null, replay = null) {
+    const coalesce = !replay && COALESCED_EVENTS.has(payload.type)
     const group = payload.live ? (this.boundFields(handler)[0] ?? el) : el
     const waiting = coalesce ? (this.waiting.get(group) ?? new Map()) : null
     const old = waiting?.get(attr)
@@ -1628,20 +1668,35 @@ export default class PhemController extends Controller {
       old.payload = payload
       for (const id of ids) old.ids.add(id)
       if (end) old.ends.push(end)
+      // The new payload takes the bound values of now.
+      if (old.offline || !navigator.onLine) {
+        old.bound = this.dirtyBound()
+        this.goOffline([old])
+      }
+
       return
     }
 
-    const job = { handler, payload, ids, ends: end ? [end] : [] }
+    // `bound` is the bound values of the event: from the time the browser went offline for an
+    // event that waits, so the values that the user types later go with the later events.
+    const job = { handler, payload, ids, ends: end ? [end] : [], bound: replay?.bound ?? null, offline: false, left: false, replay }
     let ok = false
     if (coalesce) {
       waiting.set(attr, job)
       this.waiting.set(group, waiting)
     }
 
+    // The events of the user keep their bound values while they wait for the connection, and the
+    // offline queue keeps them: the browser sends the others again itself.
+    if (!BROWSER_EVENTS.has(payload.type)) {
+      this.jobs.add(job)
+      if (replay || !navigator.onLine) this.goOffline([job])
+    }
+
     const upload = payload.files ? { progress: 0 } : null
     const done = this.startLoading(el, handler, upload)
     // After formFields(): a disabled control is not in the form data.
-    const unlock = payload.type === "submit" ? this.lockForm(el) : () => {}
+    const unlock = payload.type === "submit" && el instanceof HTMLFormElement ? this.lockForm(el) : () => {}
     const onProgress = upload && ((loaded, total) => this.uploadProgress(el, handler, payload.files, upload, loaded, total))
 
     this.queue = this.queue
@@ -1651,17 +1706,150 @@ export default class PhemController extends Controller {
           if (!waiting.size) this.waiting.delete(group)
         }
 
-        return this.send(el, job.handler, job.payload, unlock, onProgress, job.ids, (result) => (ok = result))
+        // The page left with the event in the offline queue (see disconnect()), or the server did
+        // not take an earlier event of the same replay.
+        if (job.left || job.replay?.segment.dropped) return
+        if (job.replay?.first) this.startReplay(job.replay.segment)
+
+        this.runningJob = job
+        const options = { bound: job.bound, replay: job.replay?.segment ?? null, job }
+
+        return this.send(el, job.handler, job.payload, unlock, onProgress, job.ids, (result) => (ok = result), options)
       })
       .catch((e) => {
         ok = false
         console.error("[phem]", e)
       })
       .finally(() => {
+        if (this.runningJob === job) this.runningJob = null
+        if (job.replay) {
+          job.replay.segment.done++
+          if (ok) job.replay.segment.sent++
+        }
+
+        if (this.jobs.delete(job)) this.saveOfflineQueue()
         unlock()
         done()
         for (const end of job.ends) end(ok)
       })
+  }
+
+  // The events of these jobs wait for the connection: they go in the offline queue. A job that
+  // has no bound values gets the values of now; a job that runs has the values that it sends
+  // (see sendNow()).
+  goOffline(jobs) {
+    let now = null
+    for (const job of jobs) {
+      if (!this.jobs.has(job)) continue
+
+      job.bound ??= now ??= this.dirtyBound()
+      job.offline = true
+    }
+
+    this.saveOfflineQueue()
+  }
+
+  // Writes the events of the user in the queue to the offline queue while one of them waits for
+  // the connection, with the signed state before the first of them. It removes the record when
+  // none waits. An event that runs now is in the record too: its state is the state before it.
+  // The first event of a replay segment that did not start yet carries the state of its segment.
+  saveOfflineQueue() {
+    if (!this.offlineQueue) return
+
+    const jobs = [...this.jobs]
+    if (!jobs.some((job) => job.offline)) {
+      this.offlineQueue.remove()
+      return
+    }
+
+    // A password does not go in the storage of the browser: the events wait in the page only.
+    const passwords = this.passwordFields()
+    if (jobs.some(({ payload, bound }) => (payload.form ?? []).some(([name, value]) => passwords.names.has(name) && value !== "") || Object.entries(bound ?? {}).some(([key, value]) => passwords.keys.has(key) && value !== ""))) {
+      console.warn("[phem] an event that waits for the connection has a password: the offline queue does not keep the events")
+      this.offlineQueue.remove()
+      return
+    }
+
+    let now = null
+    const events = jobs.map((job) => {
+      // The file inputs stay in the page: the files go with the event.
+      const { fileInputs, ...event } = job.payload
+      const entry = { handler: job.handler, event, bound: job.bound ?? (now ??= this.dirtyBound()) }
+      const segment = job.replay?.first && job !== this.runningJob ? job.replay.segment : null
+
+      return segment ? { ...entry, state: segment.state, signature: segment.signature } : entry
+    })
+    this.offlineQueue.save({ url: pageUrl(), state: this.stateValue, signature: this.signatureValue, events })
+  }
+
+  // The password inputs of the page: their form field names, and their bound keys.
+  passwordFields() {
+    const inputs = [...this.element.querySelectorAll('input[type="password"]')]
+
+    return {
+      names: new Set(inputs.map((input) => input.name).filter(Boolean)),
+      keys: new Set(inputs.map((input) => input.getAttribute("data-phem-bind")).filter(Boolean)),
+    }
+  }
+
+  // Sends the events of the records that an earlier load of this page kept (see OfflineQueue),
+  // the oldest record first. A segment of events starts from its own signed state: the state of
+  // the record, or of the event that starts it. Resolves at the end of the replay: the events
+  // that came in the meantime wait for it, and come after it in the offline queue.
+  replayOfflineQueue(records) {
+    const tail = this.queue
+    const later = [...this.jobs]
+    this.queue = Promise.resolve()
+    this.jobs.clear()
+
+    for (const record of records) {
+      let segment = null
+      for (const { handler, event, bound, state, signature } of record.events ?? []) {
+        const first = segment === null || state !== undefined
+        if (first) segment = { state: state ?? record.state, signature: signature ?? record.signature, events: 0, done: 0, sent: 0, dropped: false }
+        segment.events++
+        this.enqueue(this.componentRoot(handler), "data-phem-replay", handler, event, new Set(), null, { segment, bound, first })
+      }
+    }
+
+    for (const job of later) this.jobs.add(job)
+    this.saveOfflineQueue()
+
+    const replay = this.queue
+    this.queue = tail
+
+    return replay
+  }
+
+  // Before the first event of a segment: the page takes the signed state of the segment. The
+  // page shows the render of the state of now, so the first event renders all the content again.
+  startReplay(segment) {
+    segment.before = { state: this.stateValue, signature: this.signatureValue }
+    this.stateValue = segment.state
+    this.signatureValue = segment.signature
+    segment.content = this.markContentStale() ? this.element.querySelector(`[${FIBER}]`).getAttribute(FIBER) : null
+    this.element.dispatchEvent(new CustomEvent("phem:replay", { detail: { events: segment.events }, bubbles: true }))
+  }
+
+  // The server did not take an event of a replay (a `409`: the state is too old, or the page
+  // changed): the page does not load again, and the other events of the segment do not go. When
+  // the server took no event of the segment, the page gets its own state again.
+  dropReplay(segment, status) {
+    segment.dropped = true
+    if (segment.sent === 0) {
+      this.stateValue = segment.before.state
+      this.signatureValue = segment.before.signature
+      if (segment.content) this.stale.delete(segment.content)
+    }
+
+    const detail = { events: segment.events - segment.done, status }
+    console.warn("[phem] the server did not take the events of the offline queue", detail)
+    this.element.dispatchEvent(new CustomEvent("phem:replay-failed", { detail, bubbles: true }))
+  }
+
+  // The bound values that the user changed: key => value.
+  dirtyBound() {
+    return Object.fromEntries(Object.entries(this.boundValues()).filter(([, { dirty }]) => dirty).map(([key, { value }]) => [key, value]))
   }
 
   // The wait of an event: {debounce: ms or "blur"}, {throttle: ms}, or null to send it at once.
@@ -1900,11 +2088,13 @@ export default class PhemController extends Controller {
   // Sends the event of the element `el`. `beforeRender` runs when the last response arrives,
   // before the page changes. `onProgress` gets the progress of an upload. The pushes that come
   // while it runs wait for its end (see receive()). `ids` are the ids of the DOM events that it
-  // carries (see schedule()). Resolves with false after a server error.
-  async send(el, handler, event, beforeRender, onProgress = null, ids = new Set(), onDone = null) {
+  // carries (see schedule()). Resolves with false after a server error. `options.bound` replaces
+  // the bound values of the page (an event that waited for the connection), and `options.replay`
+  // is the record of the offline queue of the event (see replayOfflineQueue()).
+  async send(el, handler, event, beforeRender, onProgress = null, ids = new Set(), onDone = null, options = {}) {
     this.busy++
     try {
-      return await this.sendNow(el, handler, event, beforeRender, onProgress, ids, onDone)
+      return await this.sendNow(el, handler, event, beforeRender, onProgress, ids, onDone, options)
     } finally {
       this.busy--
       if (!this.busy && this.held.length) {
@@ -1915,7 +2105,7 @@ export default class PhemController extends Controller {
   }
 
   // `onDone(ok)` gets the result of the `phem:done` of the event.
-  async sendNow(el, handler, event, beforeRender, onProgress, ids, onDone) {
+  async sendNow(el, handler, event, beforeRender, onProgress, ids, onDone, { bound: sentBound = null, replay = null, job = null } = {}) {
     const notify = (name, detail = {}) => {
       if (name === "done") onDone?.(detail.ok === true)
       this.notify(el, handler, name, { ids: [...ids], ...detail })
@@ -1926,13 +2116,16 @@ export default class PhemController extends Controller {
     const fields = this.boundValues()
     // The fields of the form of a change or a click when the event starts, as the bound fields:
     // a field that the user changed while the event waited goes with it. A submit locks its form.
-    if (event.form && event.type !== "submit") {
+    // An event that waited for the connection keeps the fields of its time.
+    if (event.form && event.type !== "submit" && !sentBound) {
       const form = formOf(el)
       if (form && this.element.contains(form)) event = { ...event, form: formFields(form, null).fields, touched: touchedNames(form) }
     }
 
     const formValues = this.formValues()
-    const bound = Object.fromEntries(Object.entries(fields).filter(([, { dirty }]) => dirty).map(([key, { value }]) => [key, value]))
+    const bound = sentBound ?? Object.fromEntries(Object.entries(fields).filter(([, { dirty }]) => dirty).map(([key, { value }]) => [key, value]))
+    // The values that the event sends, also when it waits for the connection later.
+    if (job) job.bound = bound
 
     if (event.live && !Object.keys(bound).length) {
       // The field has its server value again: nothing to send.
@@ -1955,6 +2148,9 @@ export default class PhemController extends Controller {
       response = await this.fetchEvent(handler, event, bound, onProgress)
     } catch (e) {
       beforeRender()
+      // The next load of the page sends the event (see disconnect()).
+      if (e instanceof PageLeft) return
+
       console.error("[phem] event failed (network error)", e)
       this.showError(handler, null)
       failed(null)
@@ -1963,6 +2159,13 @@ export default class PhemController extends Controller {
 
     beforeRender()
     logProfile(handler, event, response)
+
+    if (response.status === 409 && replay) {
+      // The page shows the render of the state of now: a reload does not help.
+      failed(409)
+      this.dropReplay(replay, 409)
+      return
+    }
 
     if (response.status === 409) {
       // The state is not valid any more (a new build, or a new secret), or the page that a
@@ -2225,6 +2428,10 @@ export default class PhemController extends Controller {
     const plain = files.length ? null : await jsonBody(json)
 
     for (let attempt = 0; ; attempt++) {
+      // A try does not start while the browser is offline: the request cannot leave, so the wait
+      // does not count as a try.
+      while (!navigator.onLine) await this.waitOnline()
+
       let response = null
       let error = null
       const headers = { Accept: "application/json", "X-Phem-Event": "1", ...plain?.headers }
@@ -2254,8 +2461,16 @@ export default class PhemController extends Controller {
       if (!Number.isNaN(retryAfter)) delay = Math.max(delay, retryAfter * 1000)
       console.warn(`[phem] event failed (${error ? "network error" : response.status}), new try in ${delay} ms`)
       await new Promise((resolve) => setTimeout(resolve, delay))
-      if (!navigator.onLine) await new Promise((resolve) => window.addEventListener("online", resolve, { once: true }))
     }
+  }
+
+  // Waits until the browser is online. The event that waits goes in the offline queue. It throws
+  // PageLeft when the page left with it (see disconnect()).
+  async waitOnline() {
+    const job = this.runningJob
+    if (job) this.goOffline([job])
+    await new Promise((resolve) => window.addEventListener("online", resolve, { once: true }))
+    if (job?.left) throw new PageLeft("the page left: the next load of the page sends the event")
   }
 
   // The morph of a field of a form with no `phem:bind` (a Symfony form): the value stays in the

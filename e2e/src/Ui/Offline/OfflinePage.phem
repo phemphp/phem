@@ -1,0 +1,44 @@
+<?phem
+
+namespace App\Ui\Offline;
+
+use Phem\Attribute\{Page, State};
+use Phem\{Node, Root};
+
+// A list of notes in the state, with the offline queue: the notes that the user adds offline go
+// to the server on the next load of the page.
+#[Page('/offline')]
+final class OfflinePage
+{
+    #[State] public string $draft = '';
+    #[State] public array $notes = [];
+
+    public function add(): void
+    {
+        $this->notes[] = $this->draft;
+        $this->draft = '';
+    }
+
+    public function render(): Node
+    {
+        return (
+            <html lang="en">
+                <head>
+                    <meta charset="utf-8" />
+                    <title>Offline</title>
+                    <link rel="icon" href="data:," />
+                    {{ importmap('app') }}
+                </head>
+                <body>
+                    <Root data-phem-offline-queue-value="true" data-phem-retry-delay-value={{ 0 }}>
+                        <input id="draft" aria-label="Note" phem:bind={{ draft }} />
+                        <button id="add" type="button" onClick={{ add }}>Add</button>
+                        <ul id="notes">
+                            {% for note in notes %}<li>{{ note }}</li>{% endfor %}
+                        </ul>
+                    </Root>
+                </body>
+            </html>
+        );
+    }
+}

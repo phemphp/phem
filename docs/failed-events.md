@@ -33,7 +33,7 @@ The built-in [toasts](controllers.md#show-toast-messages) also listen to `phem:e
 
 ## An event fails on an unstable network
 
-A network error, a `502` or a `503` can be temporary, so the browser sends the event again before it reports a failure. It tries up to 3 more times and doubles the wait each time: 500 ms, 1s, then 2s. When the response has a `Retry-After` header, the browser waits at least that long. While the browser is offline, it waits until the connection comes back. When the last try fails, the browser dispatches `phem:error`.
+A network error, a `502` or a `503` can be temporary, so the browser sends the event again before it reports a failure. It tries up to 3 more times and doubles the wait each time: 500 ms, 1s, then 2s. When the response has a `Retry-After` header, the browser waits at least that long. While the browser is offline, it waits until the connection comes back: the wait doesn’t count as a try, because the request can’t leave. Each event that waits keeps the values of the bound fields from the time the browser went offline: the values that the user types later go with the later events. When the last try fails, the browser dispatches `phem:error`.
 
 To change the number of tries or the first wait, set these values on the `<Root>` element:
 
@@ -50,6 +50,74 @@ A network error can come after the handler committed its changes, for example wh
 ```html
 <Root data-phem-retries-value={{ 0 }}>
 ```
+
+### Keep the events of an offline page after a reload
+
+By default, the events that wait for the connection live in the page. When the user reloads the page or closes the tab before the connection comes back, the events are lost. To keep them, set `data-phem-offline-queue-value` on the `<Root>` element:
+
+```html
+<Root data-phem-offline-queue-value="true">{{ children }}</Root>
+```
+
+While an event waits for the connection, the browser keeps it in IndexedDB: the signed state before the first event that waits, and each event with its bound values and its files. The record leaves IndexedDB when the server gets the events. The next load of the same URL sends the events of the record before its own events, with the signed state of the record, and renders the full page from the answer. An open tab of the same URL keeps its own events: it sends them when the connection comes back.
+
+For example, the user adds two notes on a train with no connection, and closes the tab. The next day, they open the page again:
+
+```php
+#[Page('/notes')]
+final class NotesPage
+{
+    #[State] public string $draft = '';
+    #[State] public array $notes = [];
+
+    public function add(): void
+    {
+        $this->notes[] = $this->draft;
+        $this->draft = '';
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Notes">
+                <input aria-label="Note" phem:bind={{ draft }} />
+                <button type="button" onClick={{ add }}>Add</button>
+                <ul>{% for note in notes %}<li>{{ note }}</li>{% endfor %}</ul>
+            </Document>
+        );
+    }
+}
+```
+
+The page loads with no notes, then the browser sends the two `add` events, each with its own `draft`, and the page shows the two notes:
+
+```html
+<ul><li>Buy milk</li><li>Call Ana</li></ul>
+```
+
+The browser dispatches these events on the `<Root>` element:
+
+| Event | When | `detail` |
+| --- | --- | --- |
+| `phem:replay` | Before the first event of a record | `events`: the number of events |
+| `phem:replay-failed` | The server didn’t take an event of the record. The page doesn’t reload, and the events after it don’t go | `events`: the number of events that didn’t go; `status`: `409` |
+
+```js
+document.addEventListener('phem:replay-failed', (event) => {
+    alert(`${event.detail.events} changes made offline were not saved.`)
+})
+```
+
+Keep these limits in mind:
+
+- **Age of the record**: a record that no page takes leaves IndexedDB after one day, with its events. Set `data-phem-offline-queue-max-age-value` on the `<Root>` element to change the seconds (`0` for no limit). Keep it the same as `phem.state_max_age`: the server doesn’t take an older state.
+- **State age**: the signature of the state gets old after `phem.state_max_age` (one day by default). The server answers `409` to an older state (see [The page reloads after an event](#the-page-reloads-after-an-event)), and the browser dispatches `phem:replay-failed`. Raise `phem.state_max_age` if users come back later than that.
+- **A page that changed**: a deploy that changes the component tree of the page gives a `409` too.
+- **The events of the user only**: the browser doesn’t keep the loads of `<Suspense>`, the polls, the `onVisible` events and the refreshes, because the next load sends them again.
+- **No offline page**: Phem has no service worker. A reload with no connection shows the error page of the browser. The events go when the page loads again with a connection.
+- **Passwords**: while an event that waits sends the value of a password input (`<input type="password">`), the browser keeps no event of the page in IndexedDB. The events wait in the page only, and a reload loses them.
+- **Private data**: the values of the bound fields and the files of the events stay in the browser until the server gets them, or until the record is too old. Don’t turn the queue on for a page whose fields the browser must not keep, for example on a shared computer.
+- **Handlers that run again**: as with a retry, a handler can run two times when the connection drops after the server got the event (see [A handler runs two times](#a-handler-runs-two-times)).
 
 ## The page reloads after an event
 
@@ -154,4 +222,6 @@ These are the defaults for events and state. Set the `phem.*` options in `config
 | Smallest event body that the browser compresses | 1 KB | Not configurable |
 | Retries after a network error, `502` or `503` | 3 | `data-phem-retries-value` |
 | First wait before a retry, doubled each time | 500 ms | `data-phem-retry-delay-value` |
+| Keep the events that wait for the connection after a reload | Off | `data-phem-offline-queue-value` |
+| Age of a record of the offline queue | `86400` seconds (one day) | `data-phem-offline-queue-max-age-value` (`0` for no limit) |
 | Default error message | “Something went wrong. Please try again.” | `data-phem-error-message-value` |

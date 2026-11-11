@@ -99,15 +99,6 @@ A page has no built-in way to keep the choice of a light or a dark theme. The ch
 - **Proposal:** a small inline script for `<head>` (a `<ThemeScript>` component) and a
   `phem-theme` controller for the switch, with `data-theme` on `<html>`.
 
-### [ ] Offline queue — P3
-
-The `phem-offline` class shows the state, and events wait for `online`. A reload loses the
-queue, and the app has no service worker or PWA shell.
-
-- **Best peer:** none of the peers does it well.
-- **Open question:** a queue in IndexedDB must keep the signed state of each event. The signature
-  gets old after `phem.state_max_age`.
-
 ### [ ] Sync between tabs — P3
 
 Two tabs of the same page keep different signed state, unless the page has `#[Broadcast]` and a

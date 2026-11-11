@@ -77,7 +77,7 @@ The round trip takes time, so the `phem` controller tells the user what’s goin
 - **Loading state**: after a delay of 200 ms, the element that sent the event and its component get `aria-busy="true"` and the `phem-loading` class, which you can style with CSS such as `.phem-loading { opacity: .5 }`; set `data-phem-loading-delay-value` on the `<Root>` element to change the delay
 - **Targeted indicators**: an element with `phem:loading={{ save }}` shows only while a `save` event runs (see [Loading states](events.md#show-a-loading-state))
 - **Form lock**: during a submit event, the form’s buttons and controls are disabled, its text fields are read-only, and a second submit is ignored; add `data-phem-disable={{ false }}` to the form to turn this off
-- **Offline state**: while the browser is offline, the `<Root>` element has the `phem-offline` class
+- **Offline state**: while the browser is offline, the `<Root>` element has the `phem-offline` class, and the events wait for the connection; with `data-phem-offline-queue-value`, they stay after a reload (see [Offline queue](failed-events.md#keep-the-events-of-an-offline-page-after-a-reload))
 
 When something goes wrong, the controller handles it too. If an event fails, for example with a 500 error, the browser shows a default error message, and a `phem:error` listener can replace it with your own (see [Failed events](failed-events.md#an-event-fails-and-the-page-doesnt-change)). After a network error, a 502, or a 503, the browser sends the event again and waits longer before each new try (see [Retries](failed-events.md#an-event-fails-on-an-unstable-network)).
 
