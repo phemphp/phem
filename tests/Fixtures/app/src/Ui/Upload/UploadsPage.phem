@@ -1,0 +1,93 @@
+<?phem
+
+namespace App\Ui\Upload;
+
+use Phem\Attribute\{Component, Page, State};
+use Phem\Event;
+use Phem\Node;
+use Phem\Upload\DirectFile;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\Request;
+
+use function App\Ui\Common\Document;
+
+// The files of the inputs with data-phem-upload in a ComponentTester: they go up before the event.
+#[Component]
+final class UploadForm
+{
+    #[State] public array $got = [];
+
+    public function save(Event $e): void
+    {
+        $files = $e->files;
+        $this->got = [];
+        array_walk_recursive($files, function (UploadedFile|DirectFile $file): void {
+            $this->got[] = $file instanceof DirectFile
+                ? 'direct '.$file->name.' '.$file->size
+                : (str_contains($file->getPathname(), 'phem_uploads') ? 'chunked ' : 'post ').$file->getClientOriginalName().' '.file_get_contents($file->getPathname());
+        });
+        $e->clearFiles();
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div>
+                <form onSubmit={{ save }}>
+                    <input type="file" name="video" data-phem-upload="chunked" />
+                    <input type="file" name="docs[]" multiple data-phem-upload="direct" />
+                    <input type="file" name="photo" />
+                    <button type="submit">Save</button>
+                </form>
+                <div id="zone" onDrop={{ save }} data-phem-upload="chunked">Drop</div>
+                <pre id="got">{{ got|json_encode }}</pre>
+            </div>
+        );
+    }
+}
+
+#[Page('/upload-form')]
+final class UploadFormPage
+{
+    public function render(): Node
+    {
+        return <Document><UploadForm /></Document>;
+    }
+}
+
+// The files of the uploads of an event (see Phem\Upload\UploadResolver): the test reads what the
+// handler got in $received.
+#[Page('/uploads')]
+final class UploadsPage
+{
+    /** @var list<string> */
+    public static array $received = [];
+
+    public function receive(Event $e, Request $request): void
+    {
+        $files = $e->files;
+        array_walk_recursive($files, static function (UploadedFile|DirectFile $file): void {
+            self::$received[] = $file instanceof DirectFile
+                ? 'direct '.$file->key.' '.$file->name.' '.$file->type.' '.$file->size
+                : 'file '.$file->getClientOriginalName().' '.$file->getClientMimeType().' '.file_get_contents($file->getPathname());
+        });
+
+        // A Symfony form gets the chunked uploads in the request, as the other files.
+        foreach ($request->files->all() as $name => $file) {
+            self::$received[] = 'request '.$name;
+        }
+
+        if ('move' === $e->value && ($e->files['video'] ?? null) instanceof UploadedFile) {
+            $e->files['video']->move(sys_get_temp_dir(), 'phem-moved-upload');
+        }
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <button id="receive" onClick={{ receive }}>Receive</button>
+            </Document>
+        );
+    }
+}

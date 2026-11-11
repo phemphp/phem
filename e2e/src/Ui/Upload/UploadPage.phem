@@ -1,0 +1,119 @@
+<?phem
+
+namespace App\Ui\Upload;
+
+use App\FakeStorage;
+use Phem\Attribute\{Page, State};
+use Phem\Event;
+use Phem\Node;
+use Phem\Upload\DirectFile;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+
+use function App\Ui\Common\Document;
+
+// The upload work in the browser: a file in chunks or to a storage (data-phem-upload), and an
+// image that phem-image-input shows and makes smaller.
+#[Page('/upload')]
+final class UploadPage
+{
+    #[State] public string $video = '';
+    #[State] public string $photo = '';
+    #[State] public string $direct = '';
+    #[State] public string $dropped = '';
+    #[State] public int $checks = 0;
+
+    public function __construct(private readonly FakeStorage $storage)
+    {
+    }
+
+    public function saveVideo(Event $e): void
+    {
+        $file = $e->files['video'] ?? null;
+        if (!$file instanceof UploadedFile) {
+            return;
+        }
+
+        $this->video = self::describe($file);
+        $e->clearFiles();
+    }
+
+    public function savePhoto(Event $e): void
+    {
+        $file = $e->files['photo'] ?? null;
+        if (!$file instanceof UploadedFile) {
+            return;
+        }
+
+        [$width, $height] = getimagesize($file->getPathname()) ?: [0, 0];
+        $this->photo = $file->getClientOriginalName().' '.$width.'x'.$height.' '.$file->getClientMimeType();
+        $e->clearFiles();
+    }
+
+    // A file of the storage: the handler checks its bytes there.
+    public function saveDirect(Event $e): void
+    {
+        $this->direct = implode(', ', array_map(function (DirectFile $file): string {
+            $bytes = $this->storage->read($file->key);
+
+            return $file->name.' '.$file->type.' '.$file->size.' '.(null === $bytes ? 'missing' : md5($bytes));
+        }, $e->files['docs'] ?? []));
+        $e->clearFiles();
+    }
+
+    public function drop(Event $e): void
+    {
+        $this->dropped = implode(', ', array_map(self::describe(...), $e->files));
+    }
+
+    // An event that does not take the files: the morph keeps the previews.
+    public function check(): void
+    {
+        ++$this->checks;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Upload">
+                <form id="video-form" onSubmit={{ saveVideo }}>
+                    <input type="file" name="video" data-phem-upload="chunked" />
+                    <progress id="video-progress" phem:progress={{ saveVideo }} max="100"></progress>
+                    <button type="submit">Upload the video</button>
+                </form>
+                <output id="video">{{ video }}</output>
+
+                <form id="direct-form" onSubmit={{ saveDirect }}>
+                    <input type="file" name="docs[]" multiple data-phem-upload="direct" />
+                    <button type="submit">Upload the docs</button>
+                </form>
+                <output id="direct">{{ direct }}</output>
+
+                <div id="zone" onDrop={{ drop }} data-phem-upload="chunked" style="padding: 2rem; border: 1px dashed">Drop the files here</div>
+                <output id="dropped">{{ dropped }}</output>
+
+                <form id="photo-form" onSubmit={{ savePhoto }}>
+                    <div id="picker" data-controller="phem-image-input"
+                         data-phem-image-input-max-width-value={{ 100 }}
+                         data-phem-image-input-max-height-value={{ 100 }}
+                         data-phem-image-input-type-value="image/webp"
+                         data-phem-image-input-preview-class="thumb">
+                        <input type="file" name="photo" accept="image/*" data-phem-image-input-target="input" />
+                        <div id="preview" data-phem-image-input-target="preview"></div>
+                        <img id="avatar" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="" data-phem-image-input-target="preview" />
+                    </div>
+                    <button type="submit">Upload the photo</button>
+                    <button type="button" onClick={{ check }}>Check {{ checks }}</button>
+                </form>
+                <output id="photo">{{ photo }}</output>
+            </Document>
+        );
+    }
+
+    // A chunked upload is a file of phem.upload_dir, not a PHP upload.
+    private static function describe(UploadedFile $file): string
+    {
+        $how = str_contains($file->getPathname(), 'phem_uploads') ? 'chunked' : 'post';
+
+        return $how.' '.$file->getClientOriginalName().' '.$file->getSize().' '.md5_file($file->getPathname());
+    }
+}

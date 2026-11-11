@@ -143,6 +143,12 @@
                 "main": "dist/phem_scrollspy_controller.js",
                 "fetch": "lazy",
                 "enabled": false
+            },
+            "image-input": {
+                "name": "phem-image-input",
+                "main": "dist/phem_image_input_controller.js",
+                "fetch": "lazy",
+                "enabled": false
             }
         },
         "importmap": {

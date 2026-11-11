@@ -107,13 +107,3 @@ Mercure hub.
 - **Proposal:** a `BroadcastChannel` that sends a `refresh()` to the other tabs of the same user
   after an event.
 
-### [ ] Upload work in the browser — P3
-
-`phem:progress` shows the progress of one request. These are missing:
-
-- an image preview before the upload;
-- chunked uploads that can resume, and direct uploads to S3 for large files;
-- an image resize in the browser.
-
-- **Best peer:** LW `WithFileUploads` (temporary uploads, S3 direct upload), LV `allow_upload`
-  (chunks, previews, external uploads).

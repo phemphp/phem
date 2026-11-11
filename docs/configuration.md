@@ -15,6 +15,9 @@ phem:
     state_cache_min_size: 4096
     max_event_size: 1048576
     max_upload_size: 8388608
+    upload_chunk_size: 2097152
+    upload_dir: '%kernel.project_dir%/var/phem_uploads'
+    upload_dir_max_size: 1073741824
     suspense_stream: true
     show_exceptions: null
     class_merger:
@@ -50,7 +53,10 @@ phem:
 | Option | Default | What it does |
 |---|---|---|
 | `max_event_size` | `1048576` | The maximum size of an event body in bytes, with the state of the page. `0` is no limit. A larger event gets a `413`. See [An event fails with a 413](failed-events.md#an-event-fails-with-a-413) |
-| `max_upload_size` | `8388608` | The maximum size of the files of one event in bytes, together. `0` is no limit. See [Accept file uploads](forms.md#accept-file-uploads) |
+| `max_upload_size` | `8388608` | The maximum size of the files of one event in bytes, together. `0` is no limit. The files of `data-phem-upload` count too. See [Accept file uploads](forms.md#accept-file-uploads) |
+| `upload_chunk_size` | `2097152` | The size in bytes of a chunk of a file with `data-phem-upload="chunked"`. Keep it under the `post_max_size` option of PHP. See [Upload a large file in chunks](forms.md#upload-a-large-file-in-chunks) |
+| `upload_dir` | `'%kernel.project_dir%/var/phem_uploads'` | The directory of the chunked uploads until their event. All the servers of the app must share it |
+| `upload_dir_max_size` | `1073741824` | The maximum size in bytes of the chunked uploads in `upload_dir` together. `0` is no limit. A new upload over the limit gets a `507` |
 | `suspense_stream` | `true` | Streams the `<Suspense>` boundaries that aren’t lazy in the response of the page. With `false`, the browser loads them with an event after the page. See [Load slow content after the page](resilience.md#load-slow-content-after-the-page) |
 | `show_exceptions` | `null` | Shows the Symfony exception page for an HTTP error, not the `#[ErrorPage]` of the app. `null` is the debug mode of the kernel. See [Preview an error page in debug mode](error-pages.md#preview-an-error-page-in-debug-mode) |
 

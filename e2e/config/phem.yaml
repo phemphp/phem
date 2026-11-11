@@ -6,3 +6,5 @@ phem:
         subscriber_key: '%env(MERCURE_SUBSCRIBER_JWT_KEY)%'
         publisher_key: '%env(MERCURE_PUBLISHER_JWT_KEY)%'
         publish_url: 'http://localhost:3000/.well-known/mercure'
+    # Small chunks: the file of UploadTest goes in more than one chunk.
+    upload_chunk_size: 1024

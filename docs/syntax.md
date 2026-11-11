@@ -405,6 +405,8 @@ These `data-phem-*` attributes change how the browser treats an element:
 | `data-phem-disable={{ false }}` | On a form: does not lock the controls of the form while its submit event runs. See [The browser shows feedback while an event runs](architecture.md#the-browser-shows-feedback-while-an-event-runs) |
 | `data-phem-autofocus-keyboard` | On a link or an event element: opens the iOS keyboard for the `phem-autofocus` field that shows after the round trip. See [Open the iOS keyboard](controllers.md#open-the-ios-keyboard-after-a-round-trip) |
 | `data-phem-transition` | Animates the changes with the View Transitions API. See [Transitions](client-side.md#animate-changes-with-view-transitions) |
+| `data-phem-upload="chunked"` | On a file input, or on the element of an `onDrop` or an `onPaste`: the browser sends the files to the server in chunks before the event. See [Upload a large file in chunks](forms.md#upload-a-large-file-in-chunks) |
+| `data-phem-upload="direct"` | The browser sends the files to a storage, such as S3, before the event. See [Upload a file to a storage](forms.md#upload-a-file-to-a-storage-such-as-s3) |
 
 ## Built-in components
 

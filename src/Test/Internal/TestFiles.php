@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Phem\Test\Internal;
 
+use Phem\Http\FileTree;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
@@ -35,31 +36,7 @@ final class TestFiles
     {
         $tree = [];
         foreach ($files as [$name, $path]) {
-            $base = str_starts_with($name, '[') ? $name : explode('[', $name, 2)[0];
-            preg_match_all('/\[([^\]]*)\]/', substr($name, \strlen($base)), $m);
-            $tree = self::insert($tree, [$base, ...$m[1]], self::copy($path));
-        }
-
-        return $tree;
-    }
-
-    /**
-     * Puts a file at the keys of a field name, as PHP does: an empty key (`[]`) adds an item.
-     *
-     * @param array<mixed>           $tree
-     * @param non-empty-list<string> $keys
-     *
-     * @return array<mixed>
-     */
-    private static function insert(array $tree, array $keys, UploadedFile $file): array
-    {
-        $key = array_shift($keys);
-        $value = [] === $keys ? $file : self::insert('' !== $key && \is_array($tree[$key] ?? null) ? $tree[$key] : [], $keys, $file);
-
-        if ('' === $key) {
-            $tree[] = $value;
-        } else {
-            $tree[$key] = $value;
+            $tree = FileTree::insert($tree, $name, self::copy($path));
         }
 
         return $tree;

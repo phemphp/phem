@@ -1,6 +1,6 @@
 # Build UI with the built-in controllers
 
-This guide shows you how to use the Stimulus controllers that Phem ships for common UI patterns: a section that opens, an accordion, a section that shows from the value of a field, a popover, a tooltip, a menu, a context menu, a combobox, a sortable list, a modal dialog, tabs, a table of contents that marks the section in view, toasts, a copy button, a count of characters, a password that shows, a "select all" box, a local time, the focus after an event and a confirmation. Their state belongs to the client, so it stays after the morph of an event.
+This guide shows you how to use the Stimulus controllers that Phem ships for common UI patterns: a section that opens, an accordion, a section that shows from the value of a field, a popover, a tooltip, a menu, a context menu, a combobox, a sortable list, a modal dialog, tabs, a table of contents that marks the section in view, toasts, a copy button, a count of characters, an image input with a preview, a password that shows, a "select all" box, a local time, the focus after an event and a confirmation. Their state belongs to the client, so it stays after the morph of an event.
 
 The controllers follow the design of [Base UI](https://base-ui.com): they ship no CSS, and your markup gives all the elements. A UI library can put its own styled markup on them.
 
@@ -30,7 +30,8 @@ The controllers are off by default. Enable each one that you use in `assets/cont
     "reveal": { "enabled": true, "fetch": "lazy" },
     "checkbox-group": { "enabled": true, "fetch": "lazy" },
     "time": { "enabled": true, "fetch": "lazy" },
-    "scrollspy": { "enabled": true, "fetch": "lazy" }
+    "scrollspy": { "enabled": true, "fetch": "lazy" },
+    "image-input": { "enabled": true, "fetch": "lazy" }
 }
 ```
 
@@ -895,6 +896,38 @@ The maximum is the `maxlength` of the field, or the `max` value (`data-phem-coun
 ```
 
 When the `field` targets are checkboxes, the count is the number of checked boxes, for a "3 selected" text. Give the output a server render of the count, for the time before the controller connects. The count belongs to the client, so it stays right after the morph of an event. The output has no `aria-live`: a screen reader that reads each key is noisy. Add `aria-live="polite"` to the output when your users need it.
+
+## Select images with a preview
+
+`phem-image-input` shows the images of a file input before the upload, and makes the large images smaller in the browser:
+
+```html
+<div data-controller="phem-image-input"
+     data-phem-image-input-max-width-value={{ 1600 }}
+     data-phem-image-input-preview-class="h-20 w-20 object-cover">
+    <input type="file" name="photos[]" multiple accept="image/*" data-phem-image-input-target="input" />
+    <div data-phem-image-input-target="preview"></div>
+</div>
+```
+
+After the user selects `beach.jpg`, the preview has:
+
+```html
+<div data-phem-image-input-target="preview">
+    <img src="blob:https://app.example/3f6c…" alt="beach.jpg" class="h-20 w-20 object-cover">
+</div>
+```
+
+| Part | Attribute | Effect |
+|---|---|---|
+| Input | `data-phem-image-input-target="input"` | The file input |
+| Preview | `data-phem-image-input-target="preview"` | Gets an `<img>` for each image. An `<img>` target shows the first image, and its own `src` with no file |
+| Controller | `data-phem-image-input-preview-class` | The classes of each `<img>` of a preview |
+| Controller | `data-phem-image-input-max-width-value`, `-max-height-value` | The maximum size in pixels of an image (`0`, the default, is no limit) |
+| Controller | `data-phem-image-input-type-value` | The media type of the new images, such as `image/webp` |
+| Controller | `data-phem-image-input-quality-value` | The quality of a JPEG or a WebP, from `0` to `1` (`0.85`) |
+
+The controller element has `data-resizing` while the browser resizes, and a submit waits for the end. The previews belong to the client: the morph of an event keeps them, and they go when the handler calls `$e->clearFiles()`. The controller dispatches `phem-image-input:resized` with the new `files`. For the rules of the resize, see [Make the images smaller before the upload](forms.md#make-the-images-smaller-before-the-upload).
 
 ## Show the text of a password
 

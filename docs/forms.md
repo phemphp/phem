@@ -262,9 +262,191 @@ Pass the handler to `phem:progress` to show the progress of the upload:
 
 The element shows only while the files upload. Its `--phem-progress` CSS property goes from 0 to 1, so any element can display it: `width: calc(var(--phem-progress) * 100%)`. For the progress of each file, listen for the `phem:upload-progress` event on the form.
 
+### Show a preview of the images
+
+The `phem-image-input` controller shows the images that the user selects, before the upload. Enable it (see [Enable the controllers](controllers.md#enable-the-controllers)), and put it around the file input:
+
+```php
+<form onSubmit={{ save }}>
+    <div data-controller="phem-image-input" data-phem-image-input-preview-class="h-20 w-20 rounded object-cover">
+        <input type="file" name="photos[]" multiple accept="image/*" data-phem-image-input-target="input" />
+        <div className="flex gap-2" data-phem-image-input-target="preview"></div>
+    </div>
+    <button type="submit">Upload</button>
+</form>
+```
+
+After the user selects two photos, the preview has an image for each one. The `alt` is the name of the file:
+
+```html
+<div class="flex gap-2" data-phem-image-input-target="preview">
+    <img src="blob:https://app.example/3f6c…" alt="beach.jpg" class="h-20 w-20 rounded object-cover">
+    <img src="blob:https://app.example/9a1d…" alt="dog.png" class="h-20 w-20 rounded object-cover">
+</div>
+```
+
+A `preview` target that is an `<img>` shows the first image, for example a new avatar. With no file, it shows its own `src` again:
+
+```php
+<img src={{ user.avatarUrl }} alt="" data-phem-image-input-target="preview" />
+```
+
+The previews belong to the browser: the morph of an event keeps them. When the handler calls `$e->clearFiles()`, the input is empty and the previews go. See [Select images with a preview](controllers.md#select-images-with-a-preview).
+
+### Make the images smaller before the upload
+
+A photo of a phone can be 12 MB. Give a maximum size to `phem-image-input`, and the browser makes the larger images smaller before the submit. The upload is faster, and the server gets smaller files:
+
+```php
+<div data-controller="phem-image-input"
+     data-phem-image-input-max-width-value="1600"
+     data-phem-image-input-max-height-value="1600"
+     data-phem-image-input-type-value="image/webp"
+     data-phem-image-input-quality-value="0.8">
+    <input type="file" name="photo" accept="image/*" data-phem-image-input-target="input" />
+</div>
+```
+
+A `4032×3024` photo `IMG_0042.jpeg` goes to the handler as a `1600×1200` file `IMG_0042.webp`, of type `image/webp`. The handler code does not change:
+
+```php
+public function save(Event $e): void
+{
+    $photo = $e->files['photo'];
+    $photo->move($this->photoDir, uniqid().'.'.$photo->guessExtension());
+}
+```
+
+The rules:
+
+- Only a JPEG, a PNG or a WebP image changes. A GIF, an SVG, another file, or an image that the browser cannot read stays as it is.
+- The image keeps its ratio, and the browser applies the EXIF orientation of the photo. An image in the limits does not change, unless `type` sets another type.
+- `type` is the new media type. With no `type`, the image keeps its type. The name of the file gets the extension of the new type.
+- `quality` (from `0` to `1`, `0.85` by default) is the quality of a JPEG or a WebP.
+- The controller element has `data-resizing` while the browser works. A submit in this time waits, then it sends the smaller files.
+- The controller dispatches `phem-image-input:resized` with the new `files`.
+
+The browser of the user makes the files: check them on the server as other uploads, with `#[Assert\Image]`.
+
+### Upload a large file in chunks
+
+PHP refuses a body larger than `post_max_size` (8 MB by default), and a large upload starts again from zero after a network error. Add `data-phem-upload="chunked"` to the file input: the browser sends the file in chunks before the event, and the handler gets it as an `UploadedFile`:
+
+```php
+#[Component]
+final class VideoForm
+{
+    #[State] public ?string $saved = null;
+
+    public function save(Event $e): void
+    {
+        $video = $e->files['video'];
+        $video->move($this->videoDir, $name = uniqid().'.mp4');
+        $this->saved = $name;
+        $e->clearFiles();
+    }
+
+    public function render(): Node
+    {
+        return (
+            <form onSubmit={{ save }}>
+                <input type="file" name="video" accept="video/*" data-phem-upload="chunked" />
+                <progress phem:progress={{ save }} max="100"></progress>
+                <button type="submit">Upload</button>
+            </form>
+        );
+    }
+}
+```
+
+For a 5 MB file, the browser sends these requests to the URL of the page:
+
+```http
+POST /videos  X-Phem-Upload: start                         {"mode":"chunked","name":"talk.mp4","type":"video/mp4","size":5242880,"resume":null}
+              → {"id":"7c4f…","offset":0,"chunkSize":2097152}
+POST /videos  X-Phem-Upload: 7c4f…  X-Phem-Upload-Offset: 0         (2 MiB)  → {"offset":2097152}
+POST /videos  X-Phem-Upload: 7c4f…  X-Phem-Upload-Offset: 2097152   (2 MiB)  → {"offset":4194304}
+POST /videos  X-Phem-Upload: 7c4f…  X-Phem-Upload-Offset: 4194304   (1 MiB)  → {"offset":5242880,"token":"eyJt…"}
+POST /videos  X-Phem-Event: 1       _phem_uploads[]={"field":"video","token":"eyJt…"}
+```
+
+The rules:
+
+- The upload requests go to the URL of the page, as the events. The access rules of the page apply to them.
+- After a network error, a `502` or a `503`, the browser sends the chunk again, with the retries of the events (`data-phem-retries-value` and `data-phem-retry-delay-value`, see [An event fails on an unstable network](failed-events.md#an-event-fails-on-an-unstable-network)). While the browser is offline, the upload waits. A chunk that the server has already gets a `409` with the right offset, and the browser continues from there.
+- The id of the upload stays in `localStorage`. When the user selects the same file again after a reload of the page, the upload continues at the end of the last chunk that arrived. The same file has the same name and the same fingerprint: a SHA-256 hash of its size, its first 64 KiB and its last 64 KiB. Another file with the same name starts again. A page that is not secure (not HTTPS, not `localhost`) has no Web Crypto: its uploads do not continue after a reload.
+- The browser uploads up to 3 files at the same time. The event sends their tokens in the order of the files.
+- The handler gets an `UploadedFile`, in `$e->files` and in the `Request`, at the name of the input. A Symfony form with a `FileType` field gets it as a regular file.
+- The file goes after the event, as a PHP upload. Move it in the handler. An upload with no event goes after 24 hours. A next submit of the same file, for example after a validation error, uploads it again.
+- `$e->clearFiles()`, `phem:progress` and `phem:upload-progress` work as for the other files. The progress counts the chunks.
+- On the element of an `onDrop` or an `onPaste`, `data-phem-upload` sends the dropped and the pasted files the same way.
+
+The chunk size is the `upload_chunk_size` option (2 MiB by default). Keep it under `post_max_size`. The server keeps the chunks in `upload_dir` until the event. All the servers of the app must share this directory. Against a full disk, the uploads in `upload_dir` have a maximum size together, `upload_dir_max_size` (1 GiB by default). A new upload over this limit gets a `507` with `Retry-After: 60`, and its event fails:
+
+```yaml
+# config/packages/phem.yaml
+phem:
+    max_upload_size: 1073741824      # 1 GiB, the maximum size of the files of one event
+    upload_chunk_size: 5242880       # 5 MiB
+    upload_dir: '%kernel.project_dir%/var/phem_uploads'
+    upload_dir_max_size: 10737418240 # 10 GiB
+```
+
+### Upload a file to a storage, such as S3
+
+With `data-phem-upload="direct"`, the browser sends the file to a storage, and the file does not go through your server. Implement `Phem\Upload\DirectUploader`: it gives the URL of the upload, for example a presigned `PUT` URL of S3. With autoconfiguration, Phem finds the service by its interface:
+
+```php
+use Aws\S3\S3Client;
+use Phem\Upload\DirectUpload;
+use Phem\Upload\DirectUploader;
+
+final class S3Uploader implements DirectUploader
+{
+    public function __construct(private readonly S3Client $s3)
+    {
+    }
+
+    public function prepare(string $name, string $type, int $size): DirectUpload
+    {
+        // A key of the server: the name comes from the user.
+        $key = 'uploads/'.bin2hex(random_bytes(16));
+        $command = $this->s3->getCommand('PutObject', ['Bucket' => 'my-bucket', 'Key' => $key, 'ContentType' => $type, 'ContentLength' => $size]);
+        $url = (string) $this->s3->createPresignedRequest($command, '+15 minutes')->getUri();
+
+        return new DirectUpload($url, $key, ['Content-Type' => $type]);
+    }
+}
+```
+
+The handler gets a `Phem\Upload\DirectFile` in `$e->files`, with the `key`, the `name`, the `type` and the `size`:
+
+```php
+<input type="file" name="photos[]" multiple data-phem-upload="direct" />
+```
+
+```php
+public function save(Event $e): void
+{
+    foreach ($e->files['photos'] as $photo) {
+        // A DirectFile: the file is in the bucket.
+        $this->photos->add($photo->key, $photo->name);
+    }
+}
+```
+
+The rules:
+
+- The browser sends the file with the `method` (`PUT` by default) and the `headers` of the `DirectUpload`. The storage must accept a request from the origin of your app: set the CORS rules of the bucket.
+- The server signs the key: the browser cannot change it. The browser gives the name, the type and the size, so check the object in the storage before you keep it.
+- A `DirectFile` is only in `$e->files`, not in the files of the `Request`: a Symfony form does not get it.
+- With no `DirectUploader` service, the upload gets a `400`. With more than one, the container does not build: give the alias `Phem\Upload\DirectUploader` to the one for the uploads (`#[AsAlias(DirectUploader::class)]`).
+- Only the start of a direct upload builds the `DirectUploader`: the other events do not build an S3 client.
+- The browser keeps the token of the file: the next submit of the same file, for example after a validation error, does not upload it again.
+
 ### Limit the upload size
 
-The `max_upload_size` option sets the maximum total size, in bytes, of the files in one event. The default is 8 MiB, and `0` turns the limit off. Over the limit, the server returns `413` and the handler doesn’t run:
+The `max_upload_size` option sets the maximum total size, in bytes, of the files in one event. The default is 8 MiB, and `0` turns the limit off. Over the limit, the server returns `413` and the handler doesn’t run. The files of `data-phem-upload` count too. The limit also applies to each one of these files when its upload starts, so a file over the limit does not go up:
 
 ```yaml
 # config/packages/phem.yaml

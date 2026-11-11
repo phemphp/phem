@@ -378,7 +378,7 @@ After the morph, the browser dispatches a `phem:saved` event. A Stimulus control
 
 The event starts on the component’s element and bubbles up to `window`. A service can dispatch events too: inject `Phem\BrowserEventDispatcher`. A handler that fails or redirects dispatches no events.
 
-The name has only letters, digits and `_ - . :`. The browser uses these names itself, so you can’t use them: `call`, `before-queue`, `queue`, `send`, `receive`, `done`, `error`, `rate-limited` and `upload-progress`. The detail must be a value that JSON can encode. `dispatch()` throws an `InvalidArgumentException` for a name or a detail that breaks these rules.
+The name has only letters, digits and `_ - . :`. The browser uses these names itself, so you can’t use them: `call`, `before-queue`, `queue`, `send`, `receive`, `done`, `error`, `rate-limited`, `upload-progress` and `clear-files`. The detail must be a value that JSON can encode. `dispatch()` throws an `InvalidArgumentException` for a name or a detail that breaks these rules.
 
 To show a message to the user, call `$e->toast('Saved')`. See [Show toast messages](controllers.md#show-toast-messages). To tell only a screen reader, call `$e->announce()`. See [Announce a change to screen readers](#announce-a-change-to-screen-readers).
 

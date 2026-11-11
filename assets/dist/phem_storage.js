@@ -5,6 +5,7 @@
 //     const storage = new PhemStorage("collapsible:promo-2026")
 //     storage.get()          // "false", or null
 //     storage.set("false")   // tells the other tabs and the other controllers of the page
+//     storage.remove()
 //     storage.listen((value) => …, signal)
 export class PhemStorage {
   #key
@@ -30,6 +31,15 @@ export class PhemStorage {
 
     // The `storage` event only goes to the other tabs.
     window.dispatchEvent(new CustomEvent("phem:storage", { detail: { key: this.#key, value } }))
+  }
+
+  // Removes the value. The other tabs and controllers do not hear it.
+  remove() {
+    try {
+      localStorage.removeItem(this.#key)
+    } catch {
+      // A private window: there is nothing to remove.
+    }
   }
 
   // Calls `callback` with the new value when another tab or another controller of the page sets it.

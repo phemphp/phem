@@ -13,6 +13,7 @@ import { DialogQuestion } from "./phem_dialog_question.js"
 import { fieldsValue } from "./phem_fields.js"
 import { matchesKey } from "./phem_keys.js"
 import { OfflineQueue } from "./phem_offline_queue.js"
+import { UPLOAD_MODES, UploadFailed, sendXhr, upload } from "./phem_upload.js"
 
 const TEXT_INPUTS = new Set(["text", "search", "email", "url", "tel", "password", "number", "date", "time", "datetime-local", "month", "week", "color", "range"])
 
@@ -80,12 +81,28 @@ function eventType(event) {
   return event.type === CALL_EVENT ? "call" : event.type
 }
 
+// The uploads of `data-phem-upload` that run at the same time, for an event with many files.
+const UPLOAD_CONCURRENCY = 3
+
 // The name of the multipart parts of the files of a drop or a paste (Phem\Event::FILES).
 const TRANSFERRED_FILES = "_phem_files[]"
 
 // The data of a drop or a paste, or null for another event.
 function transferOf(event) {
   return event.type === "drop" ? (event.dataTransfer ?? null) : event.type === "paste" ? (event.clipboardData ?? null) : null
+}
+
+// The multipart parts of the files, with the mode of the `data-phem-upload` of their input (or of
+// the element of a drop or a paste): [name, file, mode], with null for a file that goes with the
+// event. The files that go up before the event come first, so the progress of the event follows
+// their order (see uploadProgress()).
+function withUploadModes(files, inputOf) {
+  const parts = files.map(([name, file]) => {
+    const mode = inputOf(name)?.dataset?.phemUpload ?? null
+    return [name, file, UPLOAD_MODES.has(mode) ? mode : null]
+  })
+
+  return [...parts.filter(([, , mode]) => mode), ...parts.filter(([, , mode]) => !mode)]
 }
 
 // The files of a drop or a paste, as multipart parts (see fetchWithRetry()). The server gives
@@ -602,41 +619,6 @@ async function jsonBody(json) {
 
   const body = await new Response(blob.stream().pipeThrough(new CompressionStream("gzip"))).blob()
   return { body, headers: { ...headers, "Content-Encoding": "gzip" } }
-}
-
-// Posts a body with XHR, so `onProgress(loaded, total)` gets the progress of the upload (`fetch`
-// cannot give it). Resolves with a Response, as `fetch()`, or rejects with a TypeError for a
-// network error.
-function post(url, headers, body, onProgress) {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
-    const fail = () => reject(new TypeError("Network request failed"))
-
-    xhr.open("POST", url)
-    for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value)
-    xhr.responseType = "blob"
-
-    // Before send(): a listener that comes later gets no progress.
-    xhr.upload.addEventListener("progress", (e) => onProgress(e.loaded, e.lengthComputable ? e.total : 0))
-    xhr.addEventListener("load", () => {
-      if (xhr.status < 200) return fail()
-
-      const responseHeaders = new Headers()
-      for (const line of xhr.getAllResponseHeaders().split(/\r?\n/)) {
-        const colon = line.indexOf(":")
-        if (colon > 0) responseHeaders.append(line.slice(0, colon).trim(), line.slice(colon + 1).trim())
-      }
-
-      const body = [204, 205, 304].includes(xhr.status) ? null : xhr.response
-      resolve(new Response(body, { status: xhr.status, statusText: xhr.statusText, headers: responseHeaders }))
-    })
-
-    xhr.addEventListener("error", fail)
-    xhr.addEventListener("abort", fail)
-    xhr.addEventListener("timeout", fail)
-
-    xhr.send(body)
-  })
 }
 
 // With the Symfony profiler (debug mode), logs each event with the link to its Phem panel. The
@@ -1567,8 +1549,8 @@ export default class PhemController extends Controller {
     // Not in the JSON: fetchWithRetry() sends the files as parts of a multipart body. The handler
     // can take them: then the controller empties their inputs (see clearFiles()).
     if (submit && files.length) {
-      payload.files = files
       payload.fileInputs = sentFileInputs(form)
+      payload.files = withUploadModes(files, (name) => payload.fileInputs.find(([input]) => input.name === name)?.[0])
     }
 
     // The text of a drop or a paste: the paste fires before the browser inserts it in the field.
@@ -1576,7 +1558,7 @@ export default class PhemController extends Controller {
     if (transfer) payload.text = transfer.getData?.("text/plain") ?? ""
 
     const transferred = transferredFiles(event)
-    if (transferred.length) payload.files = transferred
+    if (transferred.length) payload.files = withUploadModes(transferred, () => el)
 
     // The data of the JS code that calls the handler: it goes as JSON.
     if (type === "call") payload.detail = detail
@@ -2397,11 +2379,54 @@ export default class PhemController extends Controller {
     return transition.updateCallbackDone
   }
 
+  // Uploads the files with an upload mode before the event, a few at a time (see
+  // phem_upload.js), with the retries of the events. The event sends their tokens in the place of
+  // the files.
+  async uploadFirst(event, onProgress) {
+    const total = event.files.reduce((sum, [, file]) => sum + file.size, 0)
+    const files = event.files.filter(([, , mode]) => mode)
+    const loaded = files.map(() => 0)
+    const uploads = []
+    const options = { retries: this.retriesValue, retryDelay: this.retryDelayValue, waitOnline: () => this.waitOnline() }
+    const report = (i, bytes) => {
+      loaded[i] = bytes
+      onProgress?.(loaded.reduce((sum, n) => sum + n, 0), total)
+    }
+
+    let next = 0
+    const worker = async () => {
+      while (next < files.length) {
+        const i = next++
+        const [name, file, mode] = files[i]
+        uploads[i] = [name, await upload(file, mode, (bytes) => report(i, bytes), options)]
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(UPLOAD_CONCURRENCY, files.length) }, worker))
+
+    return { ...event, files: event.files.filter(([, , mode]) => !mode), uploads, uploadTotal: total }
+  }
+
   // Posts the event with only the signature of a large state. When the server does not have the
   // state (a 409 with `{"state": "required"}`), posts it again with the state. A small state (see
   // `stateInline`) and an event with files always go with the event.
   async fetchEvent(handler, event, bound = {}, onProgress = null) {
-    const withState = Boolean(event.files?.length) || this.stateValue.length < this.stateInlineValue
+    if (event.files?.some(([, , mode]) => mode)) {
+      try {
+        event = await this.uploadFirst(event, onProgress)
+      } catch (e) {
+        // The server did not take a file: the event fails with the response of the upload.
+        if (e instanceof UploadFailed) return e.response
+        throw e
+      }
+
+      // The progress of the files that go with the event comes after the uploads.
+      const total = event.uploadTotal
+      const before = total - event.files.reduce((sum, [, file]) => sum + file.size, 0)
+      const progress = onProgress
+      onProgress = progress && ((loaded, size) => progress(before + (size > 0 ? loaded / size : 0) * (total - before), total))
+    }
+
+    const withState = Boolean(event.files?.length || event.uploads?.length) || this.stateValue.length < this.stateInlineValue
     const response = await this.fetchWithRetry(handler, event, bound, onProgress, withState)
     if (withState || response.status !== 409) return response
 
@@ -2416,7 +2441,7 @@ export default class PhemController extends Controller {
   // files goes with XHR when `onProgress` wants the progress of the upload.
   async fetchWithRetry(handler, event, bound, onProgress, withState) {
     // The file inputs stay in the page (see clearFiles()).
-    const { files = [], fileInputs, stale = [], loads = null, item = null, feeds = [], ...data } = event
+    const { files = [], uploads = [], uploadTotal, fileInputs, stale = [], loads = null, item = null, feeds = [], ...data } = event
 
     // A `phem:live` event has no handler: the server only sets the bound values. A refresh has
     // no handler either: the server renders the stale components. A load of many boundaries has
@@ -2425,7 +2450,8 @@ export default class PhemController extends Controller {
     const json = JSON.stringify({ ...state, signature: this.signatureValue, handler: data.live ? null : (loads ?? handler), event: data, bound, ...(stale.length ? { stale } : {}), ...(item ? { item } : {}), ...(feeds.length ? { feeds } : {}) })
 
     // An event with files is not compressed: the files are most of the body.
-    const plain = files.length ? null : await jsonBody(json)
+    const multipart = files.length > 0 || uploads.length > 0
+    const plain = multipart ? null : await jsonBody(json)
 
     for (let attempt = 0; ; attempt++) {
       // A try does not start while the browser is offline: the request cannot leave, so the wait
@@ -2436,16 +2462,18 @@ export default class PhemController extends Controller {
       let error = null
       const headers = { Accept: "application/json", "X-Phem-Event": "1", ...plain?.headers }
       let body = plain?.body
-      if (files.length) {
+      if (multipart) {
         // The browser sets the Content-Type, with the boundary of the parts.
         body = new FormData()
         body.append("_phem", json)
         for (const [name, file] of files) body.append(name, file)
+        // The files that went up before the event (see Phem\Upload\UploadResolver).
+        for (const [field, token] of uploads) body.append("_phem_uploads[]", JSON.stringify({ field, token }))
       }
 
       try {
         // The URL of the page, from the browser: always the same origin.
-        response = files.length && onProgress ? await post(window.location.href, headers, body, onProgress) : await fetch(window.location.href, { method: "POST", headers, body })
+        response = files.length && onProgress ? await sendXhr("POST", window.location.href, headers, body, onProgress) : await fetch(window.location.href, { method: "POST", headers, body })
       } catch (e) {
         error = e
       }
@@ -2579,7 +2607,11 @@ export default class PhemController extends Controller {
   // changed after the request left keeps its new files.
   clearFiles(event) {
     for (const [input, files] of event.fileInputs ?? []) {
-      if (input.files.length === files.length && files.every((file, i) => input.files[i] === file)) input.value = ""
+      if (input.files.length === files.length && files.every((file, i) => input.files[i] === file)) {
+        input.value = ""
+        // The `phem-upload` controller removes its previews.
+        input.dispatchEvent(new CustomEvent("phem:clear-files", { bubbles: true }))
+      }
     }
   }
 

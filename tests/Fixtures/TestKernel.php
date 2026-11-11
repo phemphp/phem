@@ -90,6 +90,8 @@ final class TestKernel extends PhemTestKernel
 
         $container->services()
             ->set(InMemoryStorage::class)
+            // The direct uploads of UploadsPage: Phem finds the service by its interface.
+            ->set(FakeDirectUploader::class)->autoconfigure()
             // FrameworkBundle removes this service when symfony/expression-language is a dev package of the root.
             // The Expression key of a #[RateLimit] in access.phem needs it.
             ->set('controller.expression_language', ExpressionLanguage::class)

@@ -104,6 +104,8 @@ Each action finds an element with a CSS selector and sends the event the way the
 
 `drop()` and `paste()` send their files with the event at once. The handler gets them as a list in `$e->files`. With no paths, they send the event with no files. The `text` argument gives the dropped or pasted text to `$e->text`: `->paste('input', text: 'https://example.com')`.
 
+The files of an input with `data-phem-upload` go up before the event, as in the browser: `chunked` sends them in chunks to the server, and the handler gets a file of `upload_dir`. `direct` gets the URL of your `DirectUploader`, but the test sends no file to the storage: the handler gets the `DirectFile`, so give the test a `DirectUploader` that does not need a storage. An upload that the server refuses (a `413`, a `507`) makes the event fail with its status.
+
 As in a browser, the files of an input stay in the input after an event, even when the morph renders the input again. They’re cleared when the handler calls `$e->clearFiles()`, or when the page gets a new element for the input: a morph that gives the input another `id`, or a push that isn’t a morph.
 
 ### Load Suspense boundaries

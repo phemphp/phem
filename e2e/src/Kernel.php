@@ -18,6 +18,7 @@ use Playwright\Symfony\PlaywrightSymfonyBundle;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
 
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
 
@@ -55,7 +56,21 @@ final class Kernel extends TestKernel implements CompilerPassInterface
             ->set(Chat::class)
                 ->args([service(Database::class)])
             ->alias('phem.entity_finder', Chat::class)
-            ->alias('phem.object_identifier', Chat::class);
+            ->alias('phem.object_identifier', Chat::class)
+            // The storage of the direct uploads of UploadPage, and its PUT route. Phem finds it by
+            // its interface (DirectUploader).
+            ->set(FakeStorage::class)
+                ->args(['%kernel.project_dir%/var/storage'])
+                ->autoconfigure()
+                ->public()
+                ->tag('controller.service_arguments');
+    }
+
+    protected function configureRoutes(RoutingConfigurator $routes): void
+    {
+        parent::configureRoutes($routes);
+
+        $routes->add('fake_storage', '/storage/{key}')->controller(FakeStorage::class)->methods(['PUT']);
     }
 
     /**

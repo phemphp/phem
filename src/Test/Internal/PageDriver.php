@@ -20,6 +20,7 @@ use Phem\Rendering\KeptRuns;
 use Phem\State\PageState;
 use Phem\State\StateJson;
 use Phem\State\UrlQuery;
+use Phem\Upload\UploadResolver;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -100,12 +101,28 @@ final class PageDriver implements Driver
         $files = $event['files'] ?? [];
         unset($event['files']);
 
+        // As the browser: the files of `data-phem-upload` go up before the event.
+        $uploads = [];
+        if ([] !== TestUploads::of($files)) {
+            $send = function (Request $request): Response {
+                $request->cookies->add($this->cookies->for($this->url));
+
+                return $this->send($request)[1];
+            };
+            $uploads = TestUploads::send(TestUploads::of($files), $send, $this->url, $this->server);
+            if (\is_int($uploads)) {
+                return EventResult::error($uploads);
+            }
+        }
+
+        $files = TestUploads::others($files);
+
         // As the browser: only the signature of a large state, and the state again when the server
         // does not have it. A small state and an event with files always go with the event.
         // As the browser: the items of the feeds go next to the event.
         $extra = (null !== $item ? ['item' => $item] : []) + ([] !== $feeds ? ['feeds' => $feeds] : []);
-        $response = $this->post($handlers, $event, $bound, $files, [] !== $files || \strlen($this->state) < $this->inline, $stale, $extra);
-        if ([] === $files && 409 === $response->getStatusCode() && '{"state":"required"}' === $response->getContent()) {
+        $response = $this->post($handlers, $event, $bound, $files, [] !== $files || [] !== $uploads || \strlen($this->state) < $this->inline, $stale, $extra, $uploads);
+        if ([] === $files && [] === $uploads && 409 === $response->getStatusCode() && '{"state":"required"}' === $response->getContent()) {
             $response = $this->post($handlers, $event, $bound, $files, true, $stale, $extra);
         }
 
@@ -149,8 +166,9 @@ final class PageDriver implements Driver
      * @param list<array{0: string, 1: string}> $files    [field name, path] pairs
      * @param list<string>                      $stale
      * @param array<string, mixed>              $extra    the items of the feeds (see dispatch())
+     * @param list<string>                      $uploads  the `_phem_uploads[]` parts (see TestUploads)
      */
-    private function post(array $handlers, array $event, array $bound, array $files, bool $withState, array $stale = [], array $extra = []): Response
+    private function post(array $handlers, array $event, array $bound, array $files, bool $withState, array $stale = [], array $extra = [], array $uploads = []): Response
     {
         $state = $withState ? ['state' => $this->state] : [];
         // As the browser: one id, null for no handler, or a list for a load of many boundaries.
@@ -167,9 +185,10 @@ final class PageDriver implements Driver
             'HTTP_SEC_FETCH_SITE' => 'same-origin',
         ] + $this->server;
 
-        $request = [] === $files
+        $parts = [EventBody::PART => $body] + ([] !== $uploads ? [UploadResolver::PART => $uploads] : []);
+        $request = [] === $files && [] === $uploads
             ? Request::create($this->url, 'POST', cookies: $this->cookies->for($this->url), server: ['CONTENT_TYPE' => 'application/json'] + $server, content: $body)
-            : Request::create($this->url, 'POST', [EventBody::PART => $body], $this->cookies->for($this->url), TestFiles::of($files), ['CONTENT_TYPE' => 'multipart/form-data; boundary=phem'] + $server);
+            : Request::create($this->url, 'POST', $parts, $this->cookies->for($this->url), TestFiles::of($files), ['CONTENT_TYPE' => 'multipart/form-data; boundary=phem'] + $server);
 
         return $this->send($request)[1];
     }

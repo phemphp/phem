@@ -21,7 +21,9 @@ use Phem\Http\EventPayload;
 use Phem\Http\EventReplay;
 use Phem\Http\EventRequest;
 use Phem\Http\FeedStreams;
+use Phem\Http\FileTree;
 use Phem\Http\RouteValues;
+use Phem\Http\SameOrigin;
 use Phem\Http\TurboStreams;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Path\PathResolver;
@@ -37,7 +39,9 @@ use Phem\State\StateSizeLimit;
 use Phem\State\UrlQuery;
 use Phem\Stream\SenderToken;
 use Phem\Stream\Subscription;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Phem\Upload\ResolvedUploads;
+use Phem\Upload\UploadController;
+use Phem\Upload\UploadResolver;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -75,7 +79,9 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
  *
  * An event with the files of a form is `multipart/form-data` (see EventBody). The handler
  * gets them as UploadedFile objects (see Event::$files). PHP removes a file that the handler does
- * not move at the end of the request.
+ * not move at the end of the request. The files of an input with `data-phem-upload` go before
+ * the event, in chunks or to a storage (see UploadController): the event has their tokens, and
+ * the handler gets their files too (see UploadResolver).
  *
  * Against CSRF, an event has the `X-Phem-Event` header (a cross-site request with it needs a CORS
  * preflight), it is JSON, or multipart with files, and it comes from the same origin
@@ -118,16 +124,23 @@ final class EventController
         private readonly SenderToken $sender = new SenderToken(),
         private readonly StateSizeLimit $limit = new StateSizeLimit(),
         private readonly FeedStreams $feeds = new FeedStreams(),
+        private readonly ?UploadController $uploads = null,
+        private readonly ?UploadResolver $resolver = null,
     ) {
     }
 
     public function __invoke(Request $request): Response
     {
+        // The upload of a file of an input with `data-phem-upload`, before its event.
+        if (null !== $this->uploads && $request->headers->has(UploadController::HEADER)) {
+            return ($this->uploads)($request);
+        }
+
         if (!$request->headers->has(self::HEADER)) {
             return $this->notAnEvent($request);
         }
 
-        if (!self::isSameOrigin($request)) {
+        if (!SameOrigin::check($request)) {
             throw new AccessDeniedHttpException('An event must come from the same origin.');
         }
 
@@ -192,11 +205,14 @@ final class EventController
             $request->attributes->set(EventReplay::ATTRIBUTE, new EventReplay($page, $json, $payload->bound, $payload->handlers[0], $payload->event, $payload->item));
         }
 
+        // After the checks of the state: a reload keeps the chunked uploads for the next try.
+        $uploads = $multipart && null !== $this->resolver ? $this->resolver->resolve($request) : new ResolvedUploads($request->files->all());
+
         // The refreshes of the handlers get the token of the event (see SenderToken).
         $this->sender->startEvent([] === $payload->handlers);
 
         try {
-            $outcome = $this->events->run($tree, $payload->handlers, $payload->bound, $this->dispatcher, fn (): Event => Event::fromArray($payload->event, $this->dispatcher, $request->files->all()), $payload->stale, EventRequest::of($request, $payload->event));
+            $outcome = $this->events->run($tree, $payload->handlers, $payload->bound, $this->dispatcher, fn (): Event => Event::fromArray($payload->event, $this->dispatcher, $uploads->files), $payload->stale, EventRequest::of($request, $payload->event));
         } catch (HttpExceptionInterface $e) {
             // A refresh (an event with no handler, after a push) of a page that this user cannot
             // see now: the browser loads the page again, and shows the error page of the server.
@@ -207,6 +223,7 @@ final class EventController
             return self::reload();
         } finally {
             $this->sender->endEvent();
+            $uploads->release();
         }
 
         if ($outcome->reload) {
@@ -273,48 +290,14 @@ final class EventController
 
     /**
      * Whether the files are larger than `phem.max_upload_size` together. A file with an upload
-     * error (larger than `upload_max_filesize` of PHP) has no content: the handler gets it, so a
+     * error (larger than `upload_max_filesize` of PHP) does not count: the handler gets it, so a
      * form can show the error (`#[Assert\File]`).
      *
      * @param array<mixed> $files the files of the request, in their PHP shape
      */
     private function filesAreTooLarge(array $files): bool
     {
-        if (0 === $this->maxUploadSize) {
-            return false;
-        }
-
-        $size = 0;
-        array_walk_recursive($files, static function (mixed $file) use (&$size): void {
-            if ($file instanceof UploadedFile && \UPLOAD_ERR_OK === $file->getError()) {
-                $size += (int) $file->getSize();
-            }
-        });
-
-        return $size > $this->maxUploadSize;
-    }
-
-    /**
-     * Whether the browser sent the request from a page of the same origin. Without the
-     * `Sec-Fetch-Site` and `Origin` headers, the client is not a browser, and a CSRF attack
-     * needs one.
-     */
-    private static function isSameOrigin(Request $request): bool
-    {
-        $site = $request->headers->get('Sec-Fetch-Site');
-        if (null !== $site) {
-            return 'same-origin' === $site;
-        }
-
-        $origin = $request->headers->get('Origin');
-        if (null === $origin) {
-            return true;
-        }
-
-        $url = parse_url($origin);
-        $host = ($url['host'] ?? '').(isset($url['port']) ? ':'.$url['port'] : '');
-
-        return '' !== $host && 0 === strcasecmp($host, $request->getHttpHost());
+        return 0 !== $this->maxUploadSize && FileTree::size($files) > $this->maxUploadSize;
     }
 
     /**

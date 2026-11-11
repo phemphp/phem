@@ -28,9 +28,14 @@ use Phem\State\PageState;
 use Phem\State\StateAccessor;
 use Phem\State\StateCodec;
 use Phem\State\UrlQuery;
+use Phem\Upload\ResolvedUploads;
+use Phem\Upload\UploadController;
+use Phem\Upload\UploadResolver;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
@@ -68,6 +73,8 @@ final class ComponentDriver implements Driver
         private readonly BrowserEventDispatcher $dispatcher = new BrowserEventDispatcher(),
         private readonly UrlQuery $query = new UrlQuery(),
         private readonly FeedStreams $feeds = new FeedStreams(),
+        private readonly ?UploadController $uploads = null,
+        private readonly ?UploadResolver $resolver = null,
     ) {
         $this->state = new PageState();
         // As the end of the stream of a page: the `<Suspense>` boundaries that are not lazy show their children.
@@ -97,8 +104,26 @@ final class ComponentDriver implements Driver
         $this->redirect = null;
 
         $request = $this->request('POST');
-        $request->files->replace(TestFiles::of($event['files'] ?? []));
+        $files = $event['files'] ?? [];
         unset($event['files']);
+        $request->files->replace(TestFiles::of(TestUploads::others($files)));
+
+        // As the browser: the files of `data-phem-upload` go up before the event (see TestUploads).
+        $uploads = new ResolvedUploads($request->files->all());
+        if ([] !== TestUploads::of($files) && null !== $this->uploads && null !== $this->resolver) {
+            $parts = TestUploads::send(TestUploads::of($files), $this->upload(...));
+            if (\is_int($parts)) {
+                return EventResult::error($parts);
+            }
+
+            $request->request->set(UploadResolver::PART, $parts);
+
+            try {
+                $uploads = $this->resolver->resolve($request);
+            } catch (HttpExceptionInterface $e) {
+                return EventResult::error($e->getStatusCode());
+            }
+        }
 
         // As the server reads them (see Phem\Http\EventPayload).
         $items = array_values(array_filter([
@@ -106,12 +131,30 @@ final class ComponentDriver implements Driver
             ...array_map(static fn (array $f): ?FeedItem => FeedItem::of($f['feed'], $f['token'], \in_array($f['op'], ['append', 'prepend', 'update'], true) ? $f['op'] : null), $feeds),
         ]));
 
-        return $this->within($request, function (Request $request) use ($handlers, $event, $bound, $stale, $items): EventResult {
+        try {
+            return $this->run($request, $handlers, $event, $bound, $stale, $items, $uploads);
+        } finally {
+            $uploads->release();
+        }
+    }
+
+    /**
+     * Runs the event with its files.
+     *
+     * @param list<string>         $handlers
+     * @param array<string, mixed> $event
+     * @param array<string, mixed> $bound
+     * @param list<string>         $stale
+     * @param list<FeedItem>       $items
+     */
+    private function run(Request $request, array $handlers, array $event, array $bound, array $stale, array $items, ResolvedUploads $uploads): EventResult
+    {
+        return $this->within($request, function (Request $request) use ($handlers, $event, $bound, $stale, $items, $uploads): EventResult {
             $tree = new Tree($this->component, $this->state->fibers, $this->props, shape: $this->state->shape, feedItems: $items);
 
             // As the browser sends them: JSON values.
             $bound = json_decode(json_encode((object) $bound, \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR);
-            $outcome = $this->events->run($tree, $handlers, $bound, $this->dispatcher, fn (): Event => Event::fromArray($event, $this->dispatcher, $request->files->all()), $stale, EventRequest::of($request, $event));
+            $outcome = $this->events->run($tree, $handlers, $bound, $this->dispatcher, fn (): Event => Event::fromArray($event, $this->dispatcher, $uploads->files), $stale, EventRequest::of($request, $event));
             if ($outcome->reload) {
                 return EventResult::reload();
             }
@@ -207,6 +250,16 @@ final class ComponentDriver implements Driver
             return $callback($request);
         } finally {
             $this->requests?->pop();
+        }
+    }
+
+    /** Sends a request of an upload to the UploadController, as the HTTP kernel does. */
+    private function upload(Request $request): Response
+    {
+        try {
+            return ($this->uploads ?? throw new \LogicException('No upload controller.'))($request);
+        } catch (HttpExceptionInterface $e) {
+            return new Response($e->getMessage(), $e->getStatusCode());
         }
     }
 }

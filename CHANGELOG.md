@@ -8,6 +8,19 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- More upload work in the browser. The new `phem-image-input` controller shows a preview of the
+  images of a file input, and makes the large images smaller before the submit (`maxWidth`,
+  `maxHeight`, `type`, `quality`). `data-phem-upload="chunked"` on a file input (or on the element
+  of a drop or a paste) sends the files in chunks before the event: a file can be larger than
+  `post_max_size`, a chunk goes again after a network error, and the upload continues after a
+  reload. `data-phem-upload="direct"` sends the files to a storage, such as a presigned URL of S3,
+  from a `Phem\Upload\DirectUploader` service, which autoconfiguration finds; the handler gets a
+  `Phem\Upload\DirectFile`. The browser uploads up to 3 files at the same time, with the retries
+  of the events. A chunked upload continues only for a file with the same fingerprint. The files
+  of `data-phem-upload` count in `max_upload_size`. New options: `upload_chunk_size`,
+  `upload_dir` and `upload_dir_max_size`. `ComponentTester` sends the files of
+  `data-phem-upload` as the browser does. `clear-files` is a reserved name of a browser event.
+  See docs/forms.md.
 - The new `phem-scrollspy` controller marks the link of the section in view, for a table of
   contents: the link gets `aria-current="true"` and `data-active`. A section is current from its
   `scroll-margin-top`, so a click on a link marks the clicked link. The controller dispatches

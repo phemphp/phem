@@ -112,6 +112,12 @@ use Phem\Twig\PhemExtension;
 use Phem\Twig\PhemRuntime;
 use Phem\Twig\TemplateLoader;
 use Phem\Twig\TemplateWarmer;
+use Phem\Upload\ChunkedUploadMode;
+use Phem\Upload\ChunkStore;
+use Phem\Upload\DirectUploadMode;
+use Phem\Upload\UploadController;
+use Phem\Upload\UploadResolver;
+use Phem\Upload\UploadToken;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 return static function (ContainerConfigurator $container): void {
@@ -662,6 +668,24 @@ return static function (ContainerConfigurator $container): void {
     $services->set('phem.event_body', EventBody::class)
         ->args([1048576]);
 
+    // The uploads of the inputs with `data-phem-upload`, before their event (see UploadController).
+    // The modes are in a locator: an event builds no DirectUploader.
+    $services->set('phem.upload_token', UploadToken::class)
+        ->args(['%kernel.secret%']);
+    $services->set('phem.chunk_store', ChunkStore::class)
+        ->args(['%kernel.project_dir%/var/phem_uploads', 1073741824]);
+    $services->set('phem.upload_mode.chunked', ChunkedUploadMode::class)
+        ->args([service('phem.chunk_store'), service('phem.upload_token'), 2097152])
+        ->tag('phem.upload_mode', ['mode' => 'chunked']);
+    // The DirectUploader of the application (see DirectUploaderPass).
+    $services->set('phem.upload_mode.direct', DirectUploadMode::class)
+        ->args([service('phem.upload_token'), service('phem.direct_uploader')->nullOnInvalid()])
+        ->tag('phem.upload_mode', ['mode' => 'direct']);
+    $services->set('phem.upload_resolver', UploadResolver::class)
+        ->args([service('phem.upload_token'), tagged_locator('phem.upload_mode', 'mode'), 8388608]);
+    $services->set('phem.controller.upload', UploadController::class)
+        ->args([tagged_locator('phem.upload_mode', 'mode'), 8388608]);
+
     $services->set('phem.controller.event', EventController::class)
         ->public()
         ->args([
@@ -681,6 +705,8 @@ return static function (ContainerConfigurator $container): void {
             service('phem.sender_token'),
             service('phem.state_size_limit'),
             service('phem.feed_streams'),
+            service('phem.controller.upload'),
+            service('phem.upload_resolver'),
         ]);
 
     /*

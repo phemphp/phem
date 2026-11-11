@@ -41,7 +41,7 @@ final class BrowserEventDispatcher
      * The names of the events that the browser uses itself: it dispatches `phem:done`, ..., and
      * a `phem:call` of the JS code calls an `onCall` handler.
      */
-    private const RESERVED = ['call', 'before-queue', 'queue', 'send', 'receive', 'done', 'error', 'rate-limited', 'upload-progress'];
+    private const RESERVED = ['call', 'before-queue', 'queue', 'send', 'receive', 'done', 'error', 'rate-limited', 'upload-progress', 'clear-files'];
 
     /** @var list<array{name: string, detail: mixed}> */
     private array $dispatched = [];

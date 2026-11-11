@@ -31,6 +31,8 @@ use Phem\Test\Internal\Browser;
 use Phem\Test\Internal\ComponentDriver;
 use Phem\Test\Internal\ErrorPageDriver;
 use Phem\Test\Internal\PageDriver;
+use Phem\Upload\UploadController;
+use Phem\Upload\UploadResolver;
 use PHPUnit\Framework\Attributes\After;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\ErrorHandler\ErrorRenderer\ErrorRendererInterface;
@@ -93,6 +95,8 @@ trait InteractsWithPhem
         $metadata = $container->get('phem.metadata');
         $events = $container->get('phem.event_renderer');
         $identity = $container->get('phem.feed_identity');
+        $uploads = $container->get('phem.controller.upload');
+        $resolver = $container->get('phem.upload_resolver');
         \assert($renderer instanceof Renderer && $accessor instanceof StateAccessor && $codec instanceof StateCodec && $dispatcher instanceof BrowserEventDispatcher && $metadata instanceof ComponentMetadata && $events instanceof EventRenderer && $identity instanceof FeedIdentity);
 
         return new ComponentTester(new ComponentDriver(
@@ -108,6 +112,8 @@ trait InteractsWithPhem
             $dispatcher,
             new UrlQuery($metadata),
             new FeedStreams($identity),
+            $uploads instanceof UploadController ? $uploads : null,
+            $resolver instanceof UploadResolver ? $resolver : null,
         ));
     }
 

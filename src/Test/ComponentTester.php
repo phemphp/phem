@@ -804,7 +804,8 @@ final class ComponentTester
         $data[1]['text'] = $text;
 
         if ([] !== $paths) {
-            $data[1]['files'] = array_map(static fn (string $path): array => [Event::FILES.'[]', $path], $paths);
+            $mode = self::uploadMode($this->enabled($selector));
+            $data[1]['files'] = array_map(static fn (string $path): array => null !== $mode ? [Event::FILES.'[]', $path, $mode] : [Event::FILES.'[]', $path], $paths);
         }
 
         return $this->send($data);
@@ -1617,19 +1618,32 @@ final class ComponentTester
     }
 
     /**
-     * The files of the file inputs of a form as [name, path] pairs, as `new FormData(form)` has
-     * them (see fileInputs()).
+     * The `data-phem-upload` mode of an element, as the browser reads it: `chunked`, `direct`, or
+     * null for the files that go with the event.
+     */
+    private static function uploadMode(Element $el): ?string
+    {
+        $mode = $el->getAttribute('data-phem-upload');
+
+        return \in_array($mode, ['chunked', 'direct'], true) ? $mode : null;
+    }
+
+    /**
+     * The files of the file inputs of a form as [name, path, mode] triples, as `new FormData(form)`
+     * has them (see fileInputs()). The mode is the `data-phem-upload` of the input: a file with no
+     * mode is a [name, path] pair.
      *
      * @param list<Element> $inputs
      *
-     * @return list<array{string, string}>
+     * @return list<array{0: string, 1: string, 2?: string}>
      */
     private function files(array $inputs): array
     {
         $files = [];
         foreach ($inputs as $input) {
             foreach ($this->selected[$input] as $path) {
-                $files[] = [(string) $input->getAttribute('name'), $path];
+                $mode = self::uploadMode($input);
+                $files[] = null !== $mode ? [(string) $input->getAttribute('name'), $path, $mode] : [(string) $input->getAttribute('name'), $path];
             }
         }
 

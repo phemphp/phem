@@ -37,6 +37,7 @@ final class InteractsWithPhemTest extends KernelTestCase
     private const CATALOG = 'App\Ui\Url\Catalog';
     private const UPLOADER = 'App\Ui\Upload\Uploader';
     private const DROP_ZONE = 'App\Ui\Upload\DropZone';
+    private const UPLOAD_FORM = 'App\Ui\Upload\UploadForm';
 
     protected static function getKernelClass(): string
     {
@@ -734,6 +735,23 @@ final class InteractsWithPhemTest extends KernelTestCase
             $tester()->upload('input[name=photo]', $a)->upload('input[name=photo]', [])->submit()->assertState('uploaded', [], in: 'form');
             $tester()->upload('input[name=photo]', $a)->click('button[value=move]')->assertSelectorTextContains('#request', 'moved');
             self::assertFileExists($a, $how.': the handler moves a copy of the file');
+        }
+    }
+
+    public function testFilesOfAnInputWithAnUploadModeGoUpBeforeTheEvent(): void
+    {
+        [$a, $b, $c] = self::files(['a.mp4' => 'alpha', 'b.pdf' => 'beta', 'c.png' => 'gamma']);
+        $open = ['mount' => fn () => $this->mount(self::UPLOAD_FORM), 'visit' => fn () => $this->visit('/upload-form')];
+
+        foreach ($open as $how => $tester) {
+            $tester()
+                ->upload('input[name=video]', $a)
+                ->upload('input[name="docs[]"]', [$b])
+                ->upload('input[name=photo]', $c)
+                ->submit()
+                ->assertState('got', ['post c.png gamma', 'chunked a.mp4 alpha', 'direct b.pdf 4'], in: 'form');
+
+            $tester()->drop('#zone', [$a])->assertState('got', ['chunked a.mp4 alpha'], in: 'form');
         }
     }
 
