@@ -1,0 +1,39 @@
+<?phem
+
+namespace App\Ui\Theme;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Common\Document;
+
+// A theme switch with `phem-theme`: three buttons and a toggle. The document has
+// `theme_script()` in its `<head>`. The Save button sends an event, so the test checks the marks
+// after the morph.
+#[Page('/theme')]
+final class ThemePage
+{
+    #[State] public int $saves = 0;
+
+    public function save(): void
+    {
+        ++$this->saves;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Theme">
+                <div id="switch" data-controller="phem-theme" role="group" aria-label="Theme">
+                    <button id="light" data-phem-theme-target="option" data-action="phem-theme#choose" data-phem-theme-theme-param="light">Light</button>
+                    <button id="dark" data-phem-theme-target="option" data-action="phem-theme#choose" data-phem-theme-theme-param="dark">Dark</button>
+                    <button id="system" data-phem-theme-target="option" data-action="phem-theme#choose" data-phem-theme-theme-param="system">System</button>
+                </div>
+                <button id="toggle" data-controller="phem-theme" data-action="phem-theme#toggle">Toggle</button>
+
+                <button id="save" onClick={{ save }}>Save</button>
+                <output id="saves">{{ saves }}</output>
+            </Document>
+        );
+    }
+}

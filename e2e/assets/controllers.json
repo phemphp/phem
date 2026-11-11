@@ -60,6 +60,10 @@
                 "enabled": true,
                 "fetch": "eager"
             },
+            "theme": {
+                "enabled": true,
+                "fetch": "eager"
+            },
             "image-input": {
                 "enabled": true,
                 "fetch": "eager"

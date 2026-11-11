@@ -91,14 +91,6 @@ call, the page shows old data, with no error.
 These items come from a review of the client side on 2026-11-09, with a complex app as the
 model: a project tool with a kanban board, a command palette, inline edits and a live feed.
 
-### [ ] A theme switch (dark mode) — P3
-
-A page has no built-in way to keep the choice of a light or a dark theme. The choice must go in
-`localStorage`, and the page must set the theme before its first paint, or the page flashes.
-
-- **Proposal:** a small inline script for `<head>` (a `<ThemeScript>` component) and a
-  `phem-theme` controller for the switch, with `data-theme` on `<html>`.
-
 ### [ ] Sync between tabs — P3
 
 Two tabs of the same page keep different signed state, unless the page has `#[Broadcast]` and a

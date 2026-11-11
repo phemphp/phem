@@ -144,6 +144,12 @@
                 "fetch": "lazy",
                 "enabled": false
             },
+            "theme": {
+                "name": "phem-theme",
+                "main": "dist/phem_theme_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
             "image-input": {
                 "name": "phem-image-input",
                 "main": "dist/phem_image_input_controller.js",

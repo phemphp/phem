@@ -14,6 +14,11 @@ export class PhemStorage {
     this.#key = `phem-${key}`
   }
 
+  // The key in `localStorage`, with the prefix.
+  get key() {
+    return this.#key
+  }
+
   get() {
     try {
       return localStorage.getItem(this.#key)

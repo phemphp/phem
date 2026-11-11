@@ -5,6 +5,7 @@
 - Completion for the Phem attribute `phem:shortcut`, and diagnostics for its keys.
 - `phem:key` and `phem:shortcut` take the `mod+` modifier: Command on a Mac, Ctrl on other
   systems.
+- Completion for the `theme_script()` Twig function of the `phem-theme` controller.
 
 ## 0.5.1
 

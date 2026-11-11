@@ -8,6 +8,11 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- The new `phem-theme` controller keeps the choice of the user between a light, a dark and the
+  system theme in `localStorage`, and gives `<html>` `data-theme="light"` or `data-theme="dark"`.
+  The new `theme_script()` Twig function goes in the `<head>`: it sets the theme before the first
+  paint, so a dark page does not flash white, and gives its `default` to the switches. See
+  docs/controllers.md.
 - More upload work in the browser. The new `phem-image-input` controller shows a preview of the
   images of a file input, and makes the large images smaller before the submit (`maxWidth`,
   `maxHeight`, `type`, `quality`). `data-phem-upload="chunked"` on a file input (or on the element

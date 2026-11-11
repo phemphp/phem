@@ -1,6 +1,6 @@
 # Build UI with the built-in controllers
 
-This guide shows you how to use the Stimulus controllers that Phem ships for common UI patterns: a section that opens, an accordion, a section that shows from the value of a field, a popover, a tooltip, a menu, a context menu, a combobox, a sortable list, a modal dialog, tabs, a table of contents that marks the section in view, toasts, a copy button, a count of characters, an image input with a preview, a password that shows, a "select all" box, a local time, the focus after an event and a confirmation. Their state belongs to the client, so it stays after the morph of an event.
+This guide shows you how to use the Stimulus controllers that Phem ships for common UI patterns: a section that opens, an accordion, a section that shows from the value of a field, a popover, a tooltip, a menu, a context menu, a combobox, a sortable list, a modal dialog, tabs, a table of contents that marks the section in view, a theme switch, toasts, a copy button, a count of characters, an image input with a preview, a password that shows, a "select all" box, a local time, the focus after an event and a confirmation. Their state belongs to the client, so it stays after the morph of an event.
 
 The controllers follow the design of [Base UI](https://base-ui.com): they ship no CSS, and your markup gives all the elements. A UI library can put its own styled markup on them.
 
@@ -748,6 +748,95 @@ When the current section changes, the controller dispatches `phem-scrollspy:chan
 
 ```html
 <nav data-controller="phem-scrollspy" data-action="phem-scrollspy:change->toc#follow">...</nav>
+```
+
+The marks belong to the client, so they stay after the morph of an event.
+
+## Switch between a light and a dark theme
+
+`phem-theme` keeps the choice of the user between a light and a dark theme. The choice goes in `localStorage`, and `<html>` gets the theme. Put `theme_script()` in the `<head>` of the document. This inline script sets the theme before the first paint, so a dark page does not flash white on load:
+
+```php
+#[Component]
+function Document(string $title, Html $children): Node
+{
+    return (
+        <html lang="en">
+            <head>
+                <title>{{ title }}</title>
+                {{ theme_script() }}
+                {{ importmap('app') }}
+            </head>
+            <body><Root>{{ children }}</Root></body>
+        </html>
+    );
+}
+```
+
+Then put the switch in the page. The `choose` action stores the `theme` param of the button: `light`, `dark` or `system`:
+
+```html
+<div data-controller="phem-theme" role="group" aria-label="Theme">
+    <button data-phem-theme-target="option" data-action="phem-theme#choose" data-phem-theme-theme-param="light">Light</button>
+    <button data-phem-theme-target="option" data-action="phem-theme#choose" data-phem-theme-theme-param="dark">Dark</button>
+    <button data-phem-theme-target="option" data-action="phem-theme#choose" data-phem-theme-theme-param="system">System</button>
+</div>
+```
+
+After a click on "Dark", the browser shows:
+
+```html
+<html lang="en" data-theme="dark" style="color-scheme: dark;">
+...
+<div data-controller="phem-theme" role="group" aria-label="Theme" data-theme="dark" data-preference="dark">
+    <button ... data-phem-theme-theme-param="light" aria-pressed="false">Light</button>
+    <button ... data-phem-theme-theme-param="dark" aria-pressed="true">Dark</button>
+    <button ... data-phem-theme-theme-param="system" aria-pressed="false">System</button>
+</div>
+```
+
+`data-theme` on `<html>` is always `light` or `dark`, so your CSS needs one rule for each theme:
+
+```css
+:root { --bg: white; --text: #111; }
+:root[data-theme="dark"] { --bg: #111; --text: #eee; }
+```
+
+With Tailwind, make the `dark:` variant use the attribute:
+
+```css
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+```
+
+With `system`, or with no choice, the theme follows the `prefers-color-scheme` of the system, also when the system changes it. `color-scheme` gives the native controls and the scroll bars the same theme.
+
+Other markup for the switch:
+
+- **One button**: the `toggle` action stores the opposite of the current theme: `<button data-controller="phem-theme" data-action="phem-theme#toggle">Theme</button>`.
+- **A `<select>` or radio buttons**: with no `theme` param, `choose` stores the value of the element. Make each `<option>` or radio button an `option` target, and the controller selects or checks the option of the choice:
+
+```html
+<select data-controller="phem-theme" data-action="phem-theme#choose" aria-label="Theme">
+    <option data-phem-theme-target="option" value="system">System</option>
+    <option data-phem-theme-target="option" value="light">Light</option>
+    <option data-phem-theme-target="option" value="dark">Dark</option>
+</select>
+```
+
+The controller element gets `data-theme` (the current theme) and `data-preference` (the choice), for example to show a sun or a moon icon. An `option` target of the choice gets `aria-pressed="true"` (a button), `checked` (a radio button) or `selected` (an `<option>`), and the other options lose it.
+
+The theme with no choice is `system`. To use another default, give it to the script. The script gives it to `<html>` (`data-theme-default`), and the switches take it from there:
+
+```twig
+{{ theme_script(default: 'light') }}
+```
+
+When your Content Security Policy blocks inline scripts, give the nonce of the response: `{{ theme_script(nonce: csp_nonce('script')) }}` (NelmioSecurityBundle).
+
+A choice changes the theme in the other tabs of the site, and in the other switches of the page. A choice that another tab removes (also with `localStorage.clear()`) gives the default theme again. When the theme or the choice changes, `<html>` dispatches one `phem-theme:change` event, also when the page has more than one switch. Its `detail` has the `theme` and the `preference`. Listen to it on the document:
+
+```html
+<div data-controller="chart" data-action="phem-theme:change@document->chart#redraw">...</div>
 ```
 
 The marks belong to the client, so they stay after the morph of an event.
