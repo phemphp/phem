@@ -62,21 +62,29 @@ final class UploadResolver
         $size = FileTree::size($files);
         $others = [];
         $uploads = [];
-        foreach ($parts as $part) {
-            [$field, $data, $mode] = $this->upload($part);
-            $file = $mode->file($data);
-            $uploads[] = [$mode, $data];
-            $size += (int) ($file instanceof UploadedFile ? $file->getSize() : $file->size);
+        try {
+            foreach ($parts as $part) {
+                [$field, $data, $mode] = $this->upload($part);
+                // Before file(): a file that it makes goes away with the others when the event fails.
+                $uploads[] = [$mode, $data];
+                $file = $mode->file($data);
+                $size += (int) ($file instanceof UploadedFile ? $file->getSize() : $file->size);
 
-            if ($file instanceof UploadedFile) {
-                $files = FileTree::insert($files, $field, $file);
-            } else {
-                $others[] = [$field, $file];
+                if ($file instanceof UploadedFile) {
+                    $files = FileTree::insert($files, $field, $file);
+                } else {
+                    $others[] = [$field, $file];
+                }
             }
-        }
 
-        if (0 !== $this->maxUploadSize && $size > $this->maxUploadSize) {
-            throw new HttpException(413, \sprintf('The files of an event can have a maximum of %d bytes together (the phem.max_upload_size option).', $this->maxUploadSize));
+            if (0 !== $this->maxUploadSize && $size > $this->maxUploadSize) {
+                throw new HttpException(413, \sprintf('The files of an event can have a maximum of %d bytes together (the phem.max_upload_size option).', $this->maxUploadSize));
+            }
+        } catch (\Throwable $e) {
+            // The handler does not run: the uploads end now, as after an event.
+            new ResolvedUploads([], $uploads)->release();
+
+            throw $e;
         }
 
         $request->files->replace($files);

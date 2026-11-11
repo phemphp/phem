@@ -159,8 +159,8 @@ final class ChunkStore
     }
 
     /**
-     * An empty file for the event of an empty upload (see ChunkedUploadMode), with no entry in the
-     * limits of the store. remove() removes it after the event.
+     * An empty file for the event of an empty upload (see ChunkedUploadMode). remove() removes it
+     * after the event, and purge() after IDLE_AGE seconds when the event did not end.
      */
     public function empty(string $id, string $name, string $type): UploadedFile
     {
@@ -173,6 +173,8 @@ final class ChunkStore
         }
 
         file_put_contents($this->path($id), '');
+        // With its info, purge() removes it after IDLE_AGE seconds when its event did not end.
+        file_put_contents($this->dir.'/'.$id.'.json', json_encode(['name' => $name, 'type' => $type, 'size' => 0, 'fingerprint' => null], \JSON_THROW_ON_ERROR));
 
         // `test: true`: the file did not come from a PHP upload, but move() and isValid() work.
         return new UploadedFile($this->path($id), $name, '' !== $type ? $type : null, \UPLOAD_ERR_OK, true);

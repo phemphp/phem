@@ -125,6 +125,32 @@ final class UploadTest extends TestCase
         self::assertSame($before, glob($this->store()->path('*')) ?: [], 'the empty file goes after the event');
     }
 
+    public function testEventThatFailsReleasesItsUploads(): void
+    {
+        $before = glob($this->store()->path('*')) ?: [];
+        $empty = self::json($this->start(['mode' => 'chunked', 'name' => 'empty.txt', 'type' => '', 'size' => 0]))['token'];
+        $token = $this->upload('a.txt', 'alpha');
+        $id = json_decode((string) base64_decode(strtr(explode('.', $token)[0], '-_', '+/')), true)['id'];
+
+        self::assertSame(400, $this->send([['field' => 'a', 'token' => $empty], ['field' => 'b', 'token' => $token], ['field' => 'c', 'token' => 'nope']])->getStatusCode());
+
+        self::assertSame([], self::received(), 'the handler does not run');
+        self::assertSame($before, glob($this->store()->path('*')) ?: [], 'no file stays: the empty file and the upload go');
+        self::assertNull($this->store()->info($id));
+    }
+
+    public function testEmptyFileOfAnEventThatDidNotEndGoesSoon(): void
+    {
+        $store = new ChunkStore(sys_get_temp_dir().'/phem-uploads-'.bin2hex(random_bytes(4)));
+        $id = str_repeat('a', 32);
+        $store->empty($id, 'e.txt', '');
+        touch($store->path($id), time() - ChunkStore::IDLE_AGE - 60);
+
+        $store->start(['name' => 'b', 'type' => '', 'size' => 4, 'fingerprint' => null]);
+
+        self::assertFileDoesNotExist($store->path($id));
+    }
+
     public function testEachUploadCountsAtLeastOneChunk(): void
     {
         $store = new ChunkStore(sys_get_temp_dir().'/phem-uploads-'.bin2hex(random_bytes(4)), 10, 4);
