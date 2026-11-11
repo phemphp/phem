@@ -137,6 +137,12 @@
                 "main": "dist/phem_time_controller.js",
                 "fetch": "lazy",
                 "enabled": false
+            },
+            "scrollspy": {
+                "name": "phem-scrollspy",
+                "main": "dist/phem_scrollspy_controller.js",
+                "fetch": "lazy",
+                "enabled": false
             }
         },
         "importmap": {

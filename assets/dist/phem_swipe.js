@@ -1,4 +1,5 @@
 import { INTERACTIVE, noClick } from "./phem_press.js"
+import { scrolls } from "./phem_scroll.js"
 
 // The swipe of a part with the pointer: a toast (`phem-toast`) and a drawer (`phem-dialog` with
 // its `swipeDirection` value).
@@ -211,12 +212,6 @@ function scrolledBack(dialog, target, name) {
   }
 
   return false
-}
-
-function scrolls(el, axis) {
-  const overflow = getComputedStyle(el)[axis === "x" ? "overflowX" : "overflowY"]
-
-  return overflow === "auto" || overflow === "scroll"
 }
 
 function atStart(el, name) {

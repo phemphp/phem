@@ -55,6 +55,10 @@
             "time": {
                 "enabled": true,
                 "fetch": "eager"
+            },
+            "scrollspy": {
+                "enabled": true,
+                "fetch": "eager"
             }
         }
     },

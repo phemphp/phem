@@ -99,13 +99,6 @@ A page has no built-in way to keep the choice of a light or a dark theme. The ch
 - **Proposal:** a small inline script for `<head>` (a `<ThemeScript>` component) and a
   `phem-theme` controller for the switch, with `data-theme` on `<html>`.
 
-### [ ] Scroll spy — P3
-
-A table of contents cannot mark the section in view.
-
-- **Proposal:** a `phem-scrollspy` controller with an `IntersectionObserver`, that gives
-  `aria-current` and `data-active` to the link of the section in view.
-
 ### [ ] Offline queue — P3
 
 The `phem-offline` class shows the state, and events wait for `online`. A reload loses the

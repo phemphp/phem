@@ -59,6 +59,19 @@ document.addEventListener("turbo:before-stream-render", (event) => {
   }
 })
 
+// Whether the element is at the end of its scroll. An element that does not overflow is at its
+// end.
+export function atEnd(el) {
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= END
+}
+
+// Whether the CSS of the element lets it scroll on the axis (`x` or `y`).
+export function scrolls(el, axis = "y") {
+  const overflow = getComputedStyle(el)[axis === "x" ? "overflowX" : "overflowY"]
+
+  return overflow === "auto" || overflow === "scroll"
+}
+
 // The `data-phem-keep-scroll` elements that the stream can change: in a target, or around one.
 function containers(stream) {
   const all = [...document.querySelectorAll(KEEP_SCROLL)]
@@ -75,7 +88,7 @@ function containers(stream) {
 function position(container) {
   const id = realId(container)
   const end = container.getAttribute("data-phem-keep-scroll") === "end"
-  if (end && container.scrollHeight - container.scrollTop - container.clientHeight <= END) return { container, id, atEnd: true }
+  if (end && atEnd(container)) return { container, id, atEnd: true }
 
   const top = container.getBoundingClientRect().top
   const chain = []

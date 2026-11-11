@@ -8,6 +8,10 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- The new `phem-scrollspy` controller marks the link of the section in view, for a table of
+  contents: the link gets `aria-current="true"` and `data-active`. A section is current from its
+  `scroll-margin-top`, so a click on a link marks the clicked link. The controller dispatches
+  `phem-scrollspy:change`. See docs/controllers.md.
 - `phem-collapsible` takes a `persist` value: a key for the state in `localStorage`. A banner
   that the user closed stays closed after a reload. Only a click or an action of the user stores
   the state, and the other collapsibles with the same key, also in the other tabs, get it. See

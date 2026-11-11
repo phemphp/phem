@@ -1,0 +1,46 @@
+<?phem
+
+namespace App\Ui\ScrollSpy;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Common\Document;
+
+// A table of contents with `phem-scrollspy`, a sticky header of 60px, and sections with a
+// `scroll-margin-top` of 80px. The last section is short: it does not get to the line, so the
+// end of the scroll marks it. The Save button sends an event, so the test checks the marks after
+// the morph.
+#[Page('/scrollspy')]
+final class ScrollSpyPage
+{
+    #[State] public int $saves = 0;
+
+    public function save(): void
+    {
+        ++$this->saves;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Scroll spy">
+                <header style="position: sticky; top: 0; height: 60px; background: white">
+                    <button id="save" onClick={{ save }}>Save</button>
+                    <output id="saves">{{ saves }}</output>
+                </header>
+
+                <nav id="toc" style="position: fixed; top: 70px; right: 0" aria-label="On this page" data-controller="phem-scrollspy">
+                    <a id="to-install" href="#install" data-phem-scrollspy-target="link">Install</a>
+                    <a id="to-configure" href="#configure" data-phem-scrollspy-target="link">Configure</a>
+                    <a id="to-deploy" href="#deploy" data-phem-scrollspy-target="link">Deploy</a>
+                </nav>
+
+                <p style="height: 200px">Intro</p>
+                <section id="install" style="scroll-margin-top: 80px; height: 1200px"><h2>Install</h2></section>
+                <section id="configure" style="scroll-margin-top: 80px; height: 1200px"><h2>Configure</h2></section>
+                <section id="deploy" style="scroll-margin-top: 80px; height: 200px"><h2>Deploy</h2></section>
+            </Document>
+        );
+    }
+}

@@ -1,6 +1,6 @@
 # Build UI with the built-in controllers
 
-This guide shows you how to use the Stimulus controllers that Phem ships for common UI patterns: a section that opens, an accordion, a section that shows from the value of a field, a popover, a tooltip, a menu, a context menu, a combobox, a sortable list, a modal dialog, tabs, toasts, a copy button, a count of characters, a password that shows, a "select all" box, a local time, the focus after an event and a confirmation. Their state belongs to the client, so it stays after the morph of an event.
+This guide shows you how to use the Stimulus controllers that Phem ships for common UI patterns: a section that opens, an accordion, a section that shows from the value of a field, a popover, a tooltip, a menu, a context menu, a combobox, a sortable list, a modal dialog, tabs, a table of contents that marks the section in view, toasts, a copy button, a count of characters, a password that shows, a "select all" box, a local time, the focus after an event and a confirmation. Their state belongs to the client, so it stays after the morph of an event.
 
 The controllers follow the design of [Base UI](https://base-ui.com): they ship no CSS, and your markup gives all the elements. A UI library can put its own styled markup on them.
 
@@ -29,7 +29,8 @@ The controllers are off by default. Enable each one that you use in `assets/cont
     "count": { "enabled": true, "fetch": "lazy" },
     "reveal": { "enabled": true, "fetch": "lazy" },
     "checkbox-group": { "enabled": true, "fetch": "lazy" },
-    "time": { "enabled": true, "fetch": "lazy" }
+    "time": { "enabled": true, "fetch": "lazy" },
+    "scrollspy": { "enabled": true, "fetch": "lazy" }
 }
 ```
 
@@ -68,7 +69,7 @@ The controller shows its state in data attributes. Use them in your CSS, or as T
 | `data-swiping`, `data-swipe-direction` | A toast, a drawer | The user swipes the part, and the direction of the swipe that closed it |
 | `data-disabled` | An item, a tab | The element is disabled |
 | `data-orientation` | The parts of `phem-tabs` | `horizontal` or `vertical` |
-| `data-active` | A tab | The tab is selected |
+| `data-active` | A tab, a link of `phem-scrollspy` | The tab is selected, or the section of the link is in view |
 | `data-starting-style`, `data-ending-style` | A part that opens or closes | The first frame of the open, and the time of the close |
 | `data-instant` | A popup | The change has no animation |
 
@@ -709,6 +710,46 @@ The `indicator` part gets the box of the selected tab in the list, for a line un
 ```
 
 The variables are `--active-tab-left`, `--active-tab-top`, `--active-tab-right`, `--active-tab-bottom`, `--active-tab-width` and `--active-tab-height`.
+
+## Mark the section in view
+
+`phem-scrollspy` marks the link of the section in view, for a table of contents:
+
+```html
+<nav data-controller="phem-scrollspy" aria-label="On this page">
+    <a href="#install" data-phem-scrollspy-target="link">Install</a>
+    <a href="#configure" data-phem-scrollspy-target="link">Configure</a>
+</nav>
+
+<h2 id="install">Install</h2>
+...
+<h2 id="configure">Configure</h2>
+...
+```
+
+The section of a link is the element of the page with the id of its hash. A section is current when its top is at its `scroll-margin-top` or above it, and the current link is the link of the last current section. A click on a link scrolls its section to this place, so a click always marks the clicked link. When the page has a sticky header, give the sections a `scroll-margin-top` (the header can then cover no heading after a click):
+
+```css
+h2, h3 {
+    scroll-margin-top: 80px;
+}
+```
+
+While "Configure" is the current section, the browser shows:
+
+```html
+<a href="#configure" data-phem-scrollspy-target="link" aria-current="true" data-active>Configure</a>
+```
+
+Above the first section, no link is current. At the end of the scroll, the last section is current, also when it is too short to get to the line. A section whose link the user clicked stays current at the end of the scroll while it is in view, until the user scrolls. When two links point to the same section, both get the marks. A change of the height of the content (an image that loads, a section that opens) marks the link again with no scroll. When the sections are in an element that scrolls (`overflow: auto` or `scroll`), the line starts at the top of this element. A link to another page, or to an id that the page does not have, gets no mark.
+
+When the current section changes, the controller dispatches `phem-scrollspy:change`. Its `detail` has the `link` and the `section`, or `null` for the two above the first section. Use it, for example, to keep the current link in view in a long table of contents:
+
+```html
+<nav data-controller="phem-scrollspy" data-action="phem-scrollspy:change->toc#follow">...</nav>
+```
+
+The marks belong to the client, so they stay after the morph of an event.
 
 ## Show toast messages
 
