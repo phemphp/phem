@@ -530,6 +530,7 @@ fn the_phem_attributes_of_an_html_element() {
     assert_eq!(snippet(r.get("phem:error")), "phem:error={{ ${1} }}");
     assert_eq!(snippet(r.get("phem:feed")), "phem:feed={{ ${1} }}");
     assert_eq!(snippet(r.get("phem:key")), "phem:key=\"${1:Enter}\"");
+    assert_eq!(snippet(r.get("phem:shortcut")), "phem:shortcut=\"${1:mod+k}\"");
     assert_eq!(snippet(r.get("phem:stop")), "phem:stop");
     assert_eq!(snippet(r.get("phem:prevent")), "phem:prevent");
     assert_eq!(snippet(r.get("phem:poll")), "phem:poll={{ ${1:30000} }}");

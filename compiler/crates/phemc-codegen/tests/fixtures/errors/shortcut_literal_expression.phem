@@ -1,0 +1,2 @@
+<?phem // expect: E032
+function App() { $open = fn() => 1; return <button onClick={{ open }} phem:shortcut={{ 'mod+' }}>Search</button>; }

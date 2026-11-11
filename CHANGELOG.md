@@ -8,6 +8,13 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Keyboard shortcuts of the page: `phem:shortcut="mod+k"` on an element clicks it, or focuses it
+  when it is a field, when the user presses the keys where the focus is. A shortcut runs a
+  server handler, a link, or a trigger of a built-in controller. A key with no modifier does not
+  run while the user types in a field, and only the shortcuts of an open modal dialog run. The
+  tester has `shortcut($key, $modifiers)`. See docs/events.md.
+- `phem:key` and `phem:shortcut` take the `mod+` modifier: the Command key on a Mac, an iPhone
+  and an iPad, and Ctrl on other systems.
 - Built-in controllers for state that belongs to the browser, with no round trip. `phem-count`
   shows the number of characters of a field (`{count}/{max}`, `data-over` above the max) or of
   checked boxes. `phem-reveal` shows and hides the text of a password field. `phem-checkbox-group`

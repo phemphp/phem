@@ -235,7 +235,7 @@ The server renders the keys in a data attribute:
 <input data-phem-on-keydown="…" data-phem-key-filter="Escape">
 ```
 
-Separate the keys with spaces. A key is the `key` of the browser event: one character such as `s` or `?`, or a name such as `Enter`, `Escape`, `Tab`, `ArrowUp` or `Space`. Put the modifiers before it: `ctrl+`, `shift+`, `alt+` and `meta+` (the Command key on a Mac). The names have no case. The modifiers must match: `Enter` doesn’t match Shift+Enter, so a user can still add a new line in the textarea. Shift is free for a character that isn’t a letter, such as `?`, which needs Shift on some keyboards. A value from an expression works too: `phem:key={{ shortcut }}`.
+Separate the keys with spaces. A key is the `key` of the browser event: one character such as `s` or `?`, or a name such as `Enter`, `Escape`, `Tab`, `ArrowUp` or `Space`. Put the modifiers before it: `ctrl+`, `shift+`, `alt+`, `meta+` (the Command key on a Mac) and `mod+` (the Command key on a Mac, an iPhone and an iPad, and Ctrl on other systems). `mod+` doesn’t go with `ctrl+` or `meta+` in one key. The names have no case. The modifiers must match: `Enter` doesn’t match Shift+Enter, so a user can still add a new line in the textarea. Shift is free for a character that isn’t a letter, such as `?`, which needs Shift on some keyboards. A value from an expression works too: `phem:key={{ shortcut }}`.
 
 A click goes to the closest element with an `onClick`, and to no other one. A click on an element with no handler inside a row with `onClick` runs the handler of the row. Add `phem:stop` to an element to keep its events, and the events of its content, from the handlers around it:
 
@@ -256,6 +256,68 @@ Add `phem:prevent` to cancel the default action of the event of a handler. The l
 ```
 
 A submit and a drop always cancel their default action. `phem:stop` and `phem:prevent` take a bool too: `phem:stop={{ inRow }}`. `phemc` checks the keys of `phem:key` (E032), and warns about `phem:key` with no `onKeyDown` or `onKeyUp`, and `phem:prevent` with no handler (W006).
+
+## Add keyboard shortcuts
+
+A command palette opens with `Cmd+K`, and `j` and `k` move in a list, where the focus is. Add `phem:shortcut` with the keys to the element that runs the action. A shortcut on the page clicks the element, as a user does: the click runs its `onClick` handler, opens its link, or opens the popup of a trigger. A field gets the focus:
+
+```php
+#[Component]
+final class Board
+{
+    #[State] public int $selected = 0;
+
+    public function next(): void
+    {
+        ++$this->selected;
+    }
+
+    public function previous(): void
+    {
+        $this->selected = max(0, $this->selected - 1);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div>
+                <input type="search" name="q" placeholder="Search (/)" phem:shortcut="/" />
+                <button onClick={{ previous }} phem:shortcut="k ArrowUp">Previous</button>
+                <button onClick={{ next }} phem:shortcut="j ArrowDown">Next</button>
+                <div data-controller="phem-dialog">
+                    <button data-phem-dialog-target="trigger" phem:shortcut="mod+k" aria-keyshortcuts="Meta+K Control+K">Commands</button>
+                    <dialog data-phem-dialog-target="popup">…</dialog>
+                </div>
+            </div>
+        );
+    }
+}
+```
+
+The server renders the keys in a data attribute:
+
+```html
+<input type="search" name="q" placeholder="Search (/)" data-phem-shortcut="/">
+<button data-phem-on-click="…" data-phem-shortcut="k ArrowUp">Previous</button>
+<button data-phem-on-click="…" data-phem-shortcut="j ArrowDown">Next</button>
+<div data-controller="phem-dialog">
+    <button data-phem-dialog-target="trigger" data-phem-shortcut="mod+k" aria-keyshortcuts="Meta+K Control+K">Commands</button>
+    <dialog data-phem-dialog-target="popup">…</dialog>
+</div>
+```
+
+`/` focuses the search field, `j` sends the `next` event, and `Cmd+K` (`Ctrl+K` on Windows and Linux) opens the dialog in the browser, with no round trip. The keys have the syntax of [`phem:key`](#filter-keys-and-stop-events). The key of a shortcut doesn’t do its default action: `Ctrl+K` doesn’t go to the search bar of the browser, and `/` doesn’t go in the field.
+
+These rules keep a shortcut from running:
+
+- A key with no `ctrl+`, `alt+`, `meta+` or `mod+` doesn’t run while the focus is on a control that uses the key: `j` is text in a field, `ArrowDown` changes a `<select>`, a radio button or a range, and `Enter` and `Space` activate a focused button or link. `Escape` runs.
+- An element or a listener of the page that gets the key first, and cancels it, keeps it: an open menu or popover closes with `Escape`, and a shortcut on `Escape` doesn’t run.
+- A held key runs the shortcut once, not again for each repeat.
+- A disabled, hidden or inert element doesn’t run. While a modal dialog is open, only the shortcuts in the dialog that opened last run.
+
+When two elements have the same shortcut, the first one that can run gets the key. Each element of a list can have the same shortcut: only the one that shows runs. A value from an expression works too: `phem:shortcut={{ keys }}`. `phemc` checks the keys (E032).
+
+Phem doesn’t show the shortcut to the user. Add a `<kbd>` to the label, and `aria-keyshortcuts` for screen readers: `Meta+K` and `Control+K` for `mod+k`.
 
 ## Control when typing sends an event
 

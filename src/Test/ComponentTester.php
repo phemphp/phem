@@ -134,16 +134,39 @@ final class ComponentTester
      */
     public function click(string $selector): self
     {
-        $element = $this->enabled($selector);
-        $form = self::formOf($element);
+        return $this->clickElement($this->enabled($selector), \sprintf('The element "%s"', $selector));
+    }
 
-        // The browser makes both events before the answer of the first one.
-        $events = array_filter([$this->event($element, 'click'), null !== $form ? $this->event($form, 'submit', $element) : null]);
-        if ([] === $events) {
-            Assert::fail(\sprintf('The element "%s" has no onClick handler, and it does not submit a form with an onSubmit handler.', $selector));
+    /**
+     * Presses a keyboard shortcut on the page (`phem:shortcut`): the `key` of the browser event
+     * (`k`, `Escape`), with the modifiers that the user holds (`ctrl`, `shift`, `alt`, `meta`, or
+     * `mod`). As in the browser, the first element with the shortcut that is not disabled, hidden
+     * or inert gets a click:
+     *
+     *     ->shortcut('k', ['mod'])
+     *
+     * A field gets the focus in the browser, and no event: here, nothing happens. A link with no
+     * `onClick` opens its page in the browser: here, nothing happens too.
+     *
+     * @param list<string> $modifiers
+     */
+    public function shortcut(string $key, array $modifiers = []): self
+    {
+        foreach ($this->document->querySelectorAll('[data-phem-shortcut]') as $element) {
+            if (!KeyFilter::parse((string) $element->getAttribute('data-phem-shortcut'), 'phem:shortcut')->matches($key, $modifiers) || !$this->canRunShortcut($element)) {
+                continue;
+            }
+
+            $field = self::isTextLike($element) || 'select' === $element->localName || null !== $element->closest('[contenteditable]:not([contenteditable=false])');
+            $link = 'a' === $element->localName && $element->hasAttribute('href') && null === $this->handlerElement($element, 'click');
+            if ($field || $link) {
+                return $this;
+            }
+
+            return $this->clickElement($element, \sprintf('The element of the shortcut "%s"', self::keyName($key, $modifiers)));
         }
 
-        return $this->send(...$events);
+        Assert::fail(\sprintf('No element that can run has the shortcut "%s" (`phem:shortcut`). %s', self::keyName($key, $modifiers), $this->context()));
     }
 
     public function doubleClick(string $selector): self
@@ -1241,6 +1264,52 @@ final class ComponentTester
     }
 
     /** The element of a selector: the test fails when no element matches. */
+    /** Clicks an element: its `onClick`, and the `onSubmit` of the form of a submit button. */
+    private function clickElement(Element $element, string $label): self
+    {
+        $form = self::formOf($element);
+
+        // The browser makes both events before the answer of the first one.
+        $events = array_filter([$this->event($element, 'click'), null !== $form ? $this->event($form, 'submit', $element) : null]);
+        if ([] === $events) {
+            Assert::fail(\sprintf('%s has no onClick handler, and it does not submit a form with an onSubmit handler.', $label));
+        }
+
+        return $this->send(...$events);
+    }
+
+    /**
+     * Whether the shortcut of an element runs, as in the browser: it is not disabled, hidden or
+     * inert, and not in a closed `<dialog>` or in the content of a closed `<details>`. While a
+     * modal dialog is open, only its elements run: here, an open dialog is modal.
+     */
+    private function canRunShortcut(Element $element): bool
+    {
+        if ($element->hasAttribute('disabled') || null !== $element->closest('fieldset[disabled]') || 'true' === $element->getAttribute('aria-disabled')) {
+            return false;
+        }
+
+        if (null !== $element->closest('[hidden], [inert], dialog:not([open])')) {
+            return false;
+        }
+
+        $details = $element->closest('details:not([open])');
+        if (null !== $details && $element->closest('summary')?->parentElement !== $details) {
+            return false;
+        }
+
+        $dialogs = $this->document->querySelectorAll('dialog[open]');
+        $top = $dialogs->length > 0 ? $dialogs->item($dialogs->length - 1) : null;
+
+        return null === $top || $top->contains($element);
+    }
+
+    /** @param list<string> $modifiers */
+    private static function keyName(string $key, array $modifiers): string
+    {
+        return implode('+', [...$modifiers, $key]);
+    }
+
     private function element(string $selector): Element
     {
         return $this->document->querySelector($selector) ?? Assert::fail(\sprintf('No element matches "%s". %s', $selector, $this->context()));

@@ -16,3 +16,14 @@ export function fieldsValue(fields, { list = fields[0]?.hasAttribute("data-phem-
 
   return first.value
 }
+
+// The input types that do not take text.
+const NO_TEXT_INPUTS = new Set(["button", "checkbox", "color", "file", "hidden", "image", "radio", "range", "reset", "submit"])
+
+// Whether the user types text in an element: a text field, a textarea or an editable element.
+export function takesText(el) {
+  if (!(el instanceof Element)) return false
+  if (el.isContentEditable || el.getAttribute("contenteditable") === "true" || el.getAttribute("contenteditable") === "" || el instanceof HTMLTextAreaElement) return true
+
+  return el instanceof HTMLInputElement && !NO_TEXT_INPUTS.has(el.type)
+}

@@ -831,8 +831,8 @@ impl<'a> Lowerer<'a> {
                         continue;
                     }
 
-                    if name == KEY {
-                        match self.key_filter_value(*name_span, value, a.span) {
+                    if name == KEY || name == SHORTCUT {
+                        match self.key_filter_value(name, *name_span, value, a.span) {
                             Some(KeyFilterValue::Text { text, .. }) => hash.push(format!("{}: {}", php_str(name), php_str(&text))),
                             Some(KeyFilterValue::Expr(c)) => hash.push(format!("{}: {c}", php_str(name))),
                             None => {}
@@ -1135,37 +1135,39 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// The value of `phem:key`: a text with the keys (`phem:key="Enter"`), or an expression. Only
-    /// a literal can be checked here. The runtime checks the other values.
-    fn key_filter_value(&mut self, name_span: Span, value: &AttrValue, span: Span) -> Option<KeyFilterValue> {
+    /// The value of `phem:key` and `phem:shortcut`: a text with the keys (`phem:key="Enter"`), or
+    /// an expression. Only a literal can be checked here. The runtime checks the other values.
+    fn key_filter_value(&mut self, name: &str, name_span: Span, value: &AttrValue, span: Span) -> Option<KeyFilterValue> {
         match value {
             AttrValue::Quoted { parts, raw, quote } if !has_expr(parts) => {
                 let text: String = parts.iter().map(|p| if let StrPart::Lit(s) = p { s.as_str() } else { "" }).collect();
-                self.check_key_filter(&text, span);
+                self.check_key_filter(name, &text, span);
                 Some(KeyFilterValue::Text { html: format!("{quote}{raw}{quote}"), text })
             }
             AttrValue::Quoted { parts, .. } => Some(KeyFilterValue::Expr(self.quoted_expr(parts, span))),
             AttrValue::Expr(x) => {
                 let c = self.expr_code(x);
                 if let Some(text) = string_literal(&c) {
-                    self.check_key_filter(&text, x.span);
+                    self.check_key_filter(name, &text, x.span);
                 }
 
                 Some(KeyFilterValue::Expr(format!("({c})")))
             }
             AttrValue::None => {
-                self.error(codes::BAD_ATTRIBUTE, "`phem:key` takes the keys", name_span).help =
-                    Some("write the keys, for example `phem:key=\"Enter\"` or `phem:key=\"ctrl+s Escape\"`".into());
+                self.error(codes::BAD_ATTRIBUTE, format!("`{name}` takes the keys"), name_span).help = Some(format!("write the keys, for example {}", key_examples(name)));
                 None
             }
         }
     }
 
-    /// The keys of `phem:key`: names separated by spaces, each with its modifiers (`ctrl+s`).
-    fn check_key_filter(&mut self, text: &str, span: Span) {
+    /// The keys of `phem:key` and `phem:shortcut`: names separated by spaces, each with its
+    /// modifiers (`ctrl+s`, `mod+k`).
+    fn check_key_filter(&mut self, name: &str, text: &str, span: Span) {
         if let Err(reason) = key_filter_error(text) {
-            self.error(codes::BAD_ATTRIBUTE, format!("`phem:key` {reason}"), span).help =
-                Some("write the `key` of the browser event, with `ctrl+`, `shift+`, `alt+` or `meta+` before it, for example `phem:key=\"Enter\"` or `phem:key=\"ctrl+s Escape\"`".into());
+            self.error(codes::BAD_ATTRIBUTE, format!("`{name}` {reason}"), span).help = Some(format!(
+                "write the `key` of the browser event, with `ctrl+`, `shift+`, `alt+`, `meta+` or `mod+` before it, for example {}",
+                key_examples(name)
+            ));
         }
     }
 
@@ -1509,10 +1511,11 @@ impl<'a> Lowerer<'a> {
                     return;
                 }
 
-                if name == KEY {
-                    match self.key_filter_value(*name_span, value, a.span) {
-                        Some(KeyFilterValue::Text { html, .. }) => out.push_str(&format!("{ws}data-phem-key-filter={html}")),
-                        Some(KeyFilterValue::Expr(c)) => out.push_str(&format!("{ws}{{{{ phem_key_filter({c}) }}}}")),
+                if name == KEY || name == SHORTCUT {
+                    let (attribute, function) = if name == KEY { ("data-phem-key-filter", "phem_key_filter") } else { ("data-phem-shortcut", "phem_shortcut") };
+                    match self.key_filter_value(name, *name_span, value, a.span) {
+                        Some(KeyFilterValue::Text { html, .. }) => out.push_str(&format!("{ws}{attribute}={html}")),
+                        Some(KeyFilterValue::Expr(c)) => out.push_str(&format!("{ws}{{{{ {function}({c}) }}}}")),
                         None => {}
                     }
 
@@ -2308,6 +2311,18 @@ const TIMINGS: &[&str] = &[DEBOUNCE, "phem:throttle"];
 /// `phem:key="Enter"`: only these keys send the `onKeyDown` or `onKeyUp` event of the element.
 const KEY: &str = "phem:key";
 
+/// `phem:shortcut="mod+k"`: these keys on the page click the element, or focus it when it is a field.
+const SHORTCUT: &str = "phem:shortcut";
+
+/// Two examples of the keys of a directive, for the help of a diagnostic.
+fn key_examples(name: &str) -> &'static str {
+    if name == SHORTCUT {
+        "`phem:shortcut=\"mod+k\"` or `phem:shortcut=\"j ArrowDown\"`"
+    } else {
+        "`phem:key=\"Enter\"` or `phem:key=\"mod+s Escape\"`"
+    }
+}
+
 /// `phem:poll={{ 30000 }}`: the browser sends the `onPoll` event of the element at this interval.
 const POLL: &str = "phem:poll";
 
@@ -2333,8 +2348,9 @@ enum KeepScroll {
     Expr(String),
 }
 
-/// The modifiers of a key in `phem:key` (`ctrl+s`), as in the client.
-const KEY_MODIFIERS: &[&str] = &["ctrl", "shift", "alt", "meta"];
+/// The modifiers of a key in `phem:key` and `phem:shortcut` (`ctrl+s`), as in the client. `mod` is
+/// `meta` on a Mac, and `ctrl` on the other systems.
+const KEY_MODIFIERS: &[&str] = &["ctrl", "shift", "alt", "meta", "mod"];
 
 /// The value of `phem:key`: a static text (as it is in the markup, with its quotes, and as a
 /// text), or a Twig expression.
@@ -2343,7 +2359,8 @@ enum KeyFilterValue {
     Expr(String),
 }
 
-/// Why the keys of `phem:key` are not valid (the check of `Attributes::keyFilter()` of the runtime).
+/// Why the keys of `phem:key` or `phem:shortcut` are not valid (the check of `KeyFilter::parse()`
+/// of the runtime).
 fn key_filter_error(text: &str) -> Result<(), String> {
     if text.trim().is_empty() {
         return Err("needs at least one key".into());
@@ -2372,6 +2389,12 @@ fn key_filter_error(text: &str) -> Result<(), String> {
             if !KEY_MODIFIERS.contains(&m.to_ascii_lowercase().as_str()) {
                 return Err(format!("has the unknown modifier `{m}` in `{combo}`"));
             }
+        }
+
+        // `mod` is `ctrl` or `meta`: with one of them, the key is not the same on each system.
+        let mods: Vec<String> = mods.split('+').map(|m| m.to_ascii_lowercase()).collect();
+        if mods.iter().any(|m| m == "mod") && mods.iter().any(|m| m == "ctrl" || m == "meta") {
+            return Err(format!("has `mod` with `ctrl` or `meta` in `{combo}`"));
         }
     }
 

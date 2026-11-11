@@ -32,6 +32,7 @@ final class Modifiers
     public function render(): Node
     {
         $keys = 'ctrl+Enter meta+Enter';
+        $next = 'j ArrowDown';
         $rest = ['phem:stop' => true];
 
         return (
@@ -45,6 +46,10 @@ final class Modifiers
                 </a>
                 <button type="button" {{ ...rest }} onClick={{ star }} phem:prevent phem:key="Enter">Star</button>
                 <input {{ ...rest }} onKeyDown={{ save }} phem:key="\ ctrl+n" />
+                <button type="button" onClick={{ open }} phem:shortcut="mod+k">Search</button>
+                <input type="search" phem:shortcut="/" />
+                <button type="button" onClick={{ star }} phem:shortcut={{ next }}>Next</button>
+                <button type="button" {{ ...rest }} onClick={{ save }} phem:shortcut="mod+s">Save</button>
             </div>
         );
     }

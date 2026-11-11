@@ -44,6 +44,18 @@ final class KeyFilterTest extends TestCase
         yield 'shift is not free for a letter' => ['k', 'K', ['shift'], false];
         yield 'the plus key' => ['+', '+', [], true];
         yield 'the plus key with a modifier' => ['ctrl++', '+', ['ctrl'], true];
+        yield 'mod is ctrl' => ['mod+k', 'k', ['ctrl'], true];
+        yield 'mod is meta' => ['mod+k', 'k', ['meta'], true];
+        yield 'mod is mod' => ['mod+k', 'k', ['mod'], true];
+        yield 'mod needs a modifier' => ['mod+k', 'k', [], false];
+        yield 'mod is not ctrl and meta' => ['mod+k', 'k', ['ctrl', 'meta'], false];
+        yield 'mod with shift' => ['mod+shift+p', 'P', ['shift', 'meta'], true];
+    }
+
+    public function testNamesTheDirectiveInTheMessage(): void
+    {
+        $this->expectExceptionMessage('"phem:shortcut" has an invalid key "cmd+k"');
+        KeyFilter::parse('cmd+k', 'phem:shortcut');
     }
 
     #[DataProvider('invalid')]
@@ -61,5 +73,7 @@ final class KeyFilterTest extends TestCase
         yield 'no key' => ['ctrl+'];
         yield 'an empty modifier' => ['ctrl++s'];
         yield 'a name with other characters' => ['Arrow-Up'];
+        yield 'mod with ctrl' => ['ctrl+mod+k'];
+        yield 'mod with meta' => ['mod+meta+k'];
     }
 }

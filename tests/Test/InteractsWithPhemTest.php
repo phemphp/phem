@@ -260,6 +260,31 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->assertSelectorExists('#row[data-phem-prevent]');
     }
 
+    public function testShortcutClicksTheFirstElementThatCanRun(): void
+    {
+        $this->mount('App\Ui\Modifiers\Inbox')
+            ->shortcut('k', ['mod'])
+            ->shortcut('k', ['meta'])
+            // The disabled button does not run: the next one with the shortcut gets the key.
+            ->shortcut('e')
+            // A field gets the focus in the browser, and sends no event.
+            ->shortcut('/')
+            ->shortcut('n')
+            // A link with no onClick opens its page in the browser, and sends no event.
+            ->shortcut('g')
+            // A closed dialog and the content of a closed details do not run.
+            ->shortcut('a')
+            ->assertSelectorTextContains('#log', 'palette, palette, archive, archive');
+    }
+
+    public function testShortcutWithNoElementFails(): void
+    {
+        $this->expectException(AssertionFailedError::class);
+        $this->expectExceptionMessage('No element that can run has the shortcut "ctrl+e" (`phem:shortcut`).');
+
+        $this->mount('App\Ui\Modifiers\Inbox')->shortcut('e', ['ctrl']);
+    }
+
     public function testClickInAStoppedElementWithNoHandlerFails(): void
     {
         $this->expectException(AssertionFailedError::class);

@@ -91,15 +91,6 @@ call, the page shows old data, with no error.
 These items come from a review of the client side on 2026-11-09, with a complex app as the
 model: a project tool with a kanban board, a command palette, inline edits and a live feed.
 
-### [ ] Global keyboard shortcuts — P3
-
-A command palette (`Cmd+K`), list moves (`j` / `k`) and `Esc` need a listener on the window, not
-on a focused element.
-
-- **Best peer:** LV `phx-window-keydown`, LW `@keydown.window`.
-- **Proposal:** `phem:shortcut="mod+k"` on the element of the handler, or a built-in
-  `phem-shortcut` controller for browser-only actions.
-
 ### [ ] A theme switch (dark mode) — P3
 
 A page has no built-in way to keep the choice of a light or a dark theme. The choice must go in

@@ -4,11 +4,14 @@ import { Controller } from "@hotwired/stimulus"
 import "./phem_keyboard.js"
 // Listens on each page: the messages of `$e->announce()` for screen readers.
 import "./phem_announcer.js"
+// Listens on each page: the keyboard shortcuts of `phem:shortcut`.
+import "./phem_shortcut.js"
 // Keeps the scroll position of `phem:keep-scroll` in each render, and scrolls to a new
 // `phem:scroll-into-view` element after the morph of an event.
 import { scrollTargets, scrollToNew } from "./phem_scroll.js"
 import { DialogQuestion } from "./phem_dialog_question.js"
 import { fieldsValue } from "./phem_fields.js"
+import { matchesKey } from "./phem_keys.js"
 
 const TEXT_INPUTS = new Set(["text", "search", "email", "url", "tel", "password", "number", "date", "time", "datetime-local", "month", "week", "color", "range"])
 
@@ -95,34 +98,6 @@ function transferredFiles(event) {
 function keepsDefault(event) {
   const t = event.target
   return event.type === "drop" && !event.dataTransfer?.files?.length && (isTextLike(t) || t.isContentEditable === true)
-}
-
-// The modifier keys of a key filter (`phem:key="ctrl+Enter"`).
-const KEY_MODIFIERS = ["ctrl", "shift", "alt", "meta"]
-
-// Whether a key event matches a key filter (`phem:key`): a list of keys separated by spaces, each
-// with its modifiers (`Enter`, `ctrl+s`, `shift+Enter`, `Space`). The names have no case. The
-// modifiers must match: `Enter` does not match Shift+Enter. Shift is free for a character that is
-// not a letter, such as `?`, which needs Shift on some keyboards.
-function matchesKey(filter, event) {
-  const pressed = (event.key ?? "").toLowerCase()
-
-  return filter.trim().split(/\s+/).some((combo) => {
-    const parts = combo.toLowerCase().split("+")
-    let key = parts.pop()
-    // `+` or `ctrl++`: the key is `+`.
-    if (key === "" && parts.at(-1) === "") {
-      parts.pop()
-      key = "+"
-    }
-
-    if (key === "space") key = " "
-    if (key !== pressed) return false
-
-    const freeShift = key.length === 1 && key.toLowerCase() === key.toUpperCase()
-
-    return KEY_MODIFIERS.every((m) => (m === "shift" && freeShift && !parts.includes(m)) || event[`${m}Key`] === parts.includes(m))
-  })
 }
 
 // The form of an element: the form itself, the form of a control (also with a `form` attribute),

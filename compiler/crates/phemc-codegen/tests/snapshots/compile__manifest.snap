@@ -637,7 +637,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     },
     "Ui/Common/Modifiers.0.twig": {
       "source": "Ui/Common/Modifiers.phem",
-      "line": 38
+      "line": 39
     },
     "Ui/Common/Rest.0.twig": {
       "source": "Ui/Common/Rest.phem",

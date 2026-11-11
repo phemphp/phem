@@ -192,6 +192,22 @@ final class TwigFunctionsTest extends TestCase
         yield 'a name with other characters' => ['Enter" onfocus="x'];
     }
 
+    public function testShortcut(): void
+    {
+        self::assertSame('data-phem-shortcut="mod+k"', (string) Attributes::shortcut('mod+k'));
+        self::assertSame('data-phem-shortcut="j ArrowDown"', (string) Attributes::shortcut('j ArrowDown'));
+        self::assertSame('', (string) Attributes::shortcut(null));
+        self::assertSame('', (string) Attributes::shortcut(false));
+        self::assertSame('id="a" data-phem-shortcut="/"', (string) $this->runtime()->attrs(['id' => 'a', 'phem:shortcut' => '/']), 'in a spread');
+    }
+
+    #[DataProvider('invalidKeyFilters')]
+    public function testShortcutTakesTheKeys(mixed $value): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        Attributes::shortcut($value);
+    }
+
     public function testPoll(): void
     {
         self::assertSame('data-phem-poll="30000"', (string) Attributes::poll(30000));

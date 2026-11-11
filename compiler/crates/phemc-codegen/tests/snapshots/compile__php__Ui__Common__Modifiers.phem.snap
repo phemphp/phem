@@ -36,10 +36,15 @@ final class Modifiers
     public function render(): Node
     {
         $keys = 'ctrl+Enter meta+Enter';
+        $next = 'j ArrowDown';
         $rest = ['phem:stop' => true];
 
         return (
-            new \Phem\Element('Ui/Common/Modifiers.0.twig', ['save' => $this->save(...), 'cancel' => $this->cancel(...), 'keys' => $keys, 'open' => $this->open(...), 'star' => $this->star(...), 'guard' => $this->guard, 'rest' => $rest])
+            new \Phem\Element('Ui/Common/Modifiers.0.twig', ['save' => $this->save(...), 'cancel' => $this->cancel(...), 'keys' => $keys, 'open' => $this->open(...), 'star' => $this->star(...), 'guard' => $this->guard, 'rest' => $rest, 'next' => $next])
+
+
+
+
 
 
 

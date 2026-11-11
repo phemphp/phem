@@ -6,7 +6,8 @@ use Phem\Attribute\{Component, State};
 use Phem\Event;
 use Phem\Node;
 
-// The key filters and the event modifiers: phem:key, phem:stop and phem:prevent.
+// The key filters, the shortcuts and the event modifiers: phem:key, phem:shortcut, phem:stop and
+// phem:prevent.
 #[Component]
 final class Inbox
 {
@@ -32,6 +33,16 @@ final class Inbox
         $this->log[] = 'star';
     }
 
+    public function palette(): void
+    {
+        $this->log[] = 'palette';
+    }
+
+    public function archive(): void
+    {
+        $this->log[] = 'archive';
+    }
+
     public function render(): Node
     {
         return (
@@ -43,6 +54,15 @@ final class Inbox
                     <button id="star" onClick={{ star }} phem:stop>★</button>
                     <span id="tags" phem:stop>Tags</span>
                 </a>
+                <button id="palette" onClick={{ palette }} phem:shortcut="mod+k">Search</button>
+                <button id="old" onClick={{ star }} phem:shortcut="e" disabled>Archive</button>
+                <button id="archive" onClick={{ archive }} phem:shortcut="e">Archive</button>
+                <input id="filter" phem:shortcut="/" />
+                <dialog><button id="closed" onClick={{ star }} phem:shortcut="a">Archive</button></dialog>
+                <details><summary>More</summary><button id="folded" onClick={{ star }} phem:shortcut="a">Archive</button></details>
+                <button id="all" onClick={{ archive }} phem:shortcut="a">Archive all</button>
+                <a id="inbox" href="/inbox" phem:shortcut="g">Inbox</a>
+                <div id="note" contenteditable phem:shortcut="n"></div>
                 <output id="log">{{ log|join(', ') }}</output>
             </div>
         );

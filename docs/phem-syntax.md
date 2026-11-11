@@ -379,6 +379,7 @@ A `phem:*` attribute adds a Phem behavior to an element:
 | `phem:debounce={{ ms }}` | Waits until the user pauses for `ms` milliseconds. `'blur'` waits until the field loses focus. See [Debounce and throttle](events.md#control-when-typing-sends-an-event) |
 | `phem:throttle={{ ms }}` | Sends at most one event every `ms` milliseconds |
 | `phem:key="keys"` | Sends the `onKeyDown` or `onKeyUp` event only for these keys, such as `"Enter"` or `"ctrl+s Escape"`. See [Filter keys and stop events](events.md#filter-keys-and-stop-events) |
+| `phem:shortcut="keys"` | Clicks the element, or focuses a field, when the user presses these keys on the page, such as `"mod+k"` or `"j ArrowDown"`. See [Add keyboard shortcuts](events.md#add-keyboard-shortcuts) |
 | `phem:stop` | Keeps the events of the element and its content from the handlers around it |
 | `phem:prevent` | Cancels the default action of the event of a handler of the element, such as the visit of a link |
 | `phem:poll={{ ms }}` | Sends the `onPoll` event of the element every `ms` milliseconds while the tab is visible. `null` stops the poll. See [Poll the server](events.md#poll-the-server) |

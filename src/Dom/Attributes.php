@@ -155,6 +155,7 @@ final class Attributes
             'phem:debounce' => static fn (mixed $ms): Markup => self::timing('debounce', $ms),
             'phem:throttle' => static fn (mixed $ms): Markup => self::timing('throttle', $ms),
             'phem:key' => self::keyFilter(...),
+            'phem:shortcut' => self::shortcut(...),
             'phem:poll' => self::poll(...),
             'phem:stop' => self::flag('data-phem-stop'),
             'phem:prevent' => self::flag('data-phem-prevent'),
@@ -218,10 +219,27 @@ final class Attributes
         }
 
         if (!\is_string($keys)) {
-            throw new \InvalidArgumentException(\sprintf('"phem:key" takes the keys, for example "Enter" or "ctrl+s Escape", "%s" given.', get_debug_type($keys)));
+            throw new \InvalidArgumentException(\sprintf('"phem:key" takes the keys, for example "Enter" or "mod+s Escape", "%s" given.', get_debug_type($keys)));
         }
 
         return new Markup(\sprintf('data-phem-key-filter="%s"', self::e(KeyFilter::parse($keys)->keys)), 'UTF-8');
+    }
+
+    /**
+     * `phem:shortcut="mod+k"` → `data-phem-shortcut="mod+k"`: these keys on the page click the
+     * element, or focus it when it is a field (see KeyFilter). Null or false renders nothing.
+     */
+    public static function shortcut(mixed $keys): Markup
+    {
+        if (null === $keys || false === $keys) {
+            return new Markup('', 'UTF-8');
+        }
+
+        if (!\is_string($keys)) {
+            throw new \InvalidArgumentException(\sprintf('"phem:shortcut" takes the keys, for example "mod+k" or "j ArrowDown", "%s" given.', get_debug_type($keys)));
+        }
+
+        return new Markup(\sprintf('data-phem-shortcut="%s"', self::e(KeyFilter::parse($keys, 'phem:shortcut')->keys)), 'UTF-8');
     }
 
     /**

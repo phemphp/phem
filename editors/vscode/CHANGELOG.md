@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- Completion for the Phem attribute `phem:shortcut`, and diagnostics for its keys.
+- `phem:key` and `phem:shortcut` take the `mod+` modifier: Command on a Mac, Ctrl on other
+  systems.
+
 ## 0.5.1
 
 - The README links to the documentation at https://phem.dev.

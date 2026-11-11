@@ -12,4 +12,8 @@ expression: t.content
                 </a>
                 <button {{ phem_attrs({'type': 'button'}, rest, {'onClick': (star), 'phem:prevent': true, 'phem:key': 'Enter'}) }}>Star</button>
                 <input {{ phem_attrs(rest, {'onKeyDown': (save), 'phem:key': '\\ ctrl+n'}) }}>
+                <button type="button" {{ phem_on('click', open) }} data-phem-shortcut="mod+k">Search</button>
+                <input type="search" data-phem-shortcut="/">
+                <button type="button" {{ phem_on('click', star) }} {{ phem_shortcut((next)) }}>Next</button>
+                <button {{ phem_attrs({'type': 'button'}, rest, {'onClick': (save), 'phem:shortcut': 'mod+s'}) }}>Save</button>
             </div>

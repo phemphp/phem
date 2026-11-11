@@ -16,7 +16,8 @@ namespace App\Tests;
 use function Playwright\Testing\expect;
 
 /**
- * The key filters and the event modifiers: `phem:key`, `phem:stop` and `phem:prevent`.
+ * The key filters, the shortcuts and the event modifiers: `phem:key`, `phem:shortcut`, `phem:stop`
+ * and `phem:prevent`.
  */
 final class ModifiersTest extends E2eTestCase
 {
@@ -60,5 +61,39 @@ final class ModifiersTest extends E2eTestCase
         $page->locator('#link')->click();
         expect($page->locator('#log'))->toHaveExactText('open');
         self::assertStringEndsWith('/modifiers', $page->url());
+    }
+
+    public function testShortcutClicksItsElementFromThePage(): void
+    {
+        $page = $this->visit('/modifiers');
+        self::assertResponseIsSuccessful();
+
+        // `mod` is Ctrl on Linux.
+        $page->keyboard()->press('Control+k');
+        expect($page->locator('#log'))->toHaveExactText('palette');
+
+        $page->keyboard()->press('j');
+        expect($page->locator('#log'))->toHaveExactText('palette, next');
+    }
+
+    public function testShortcutFocusesAFieldAndLetsTheUserType(): void
+    {
+        $page = $this->visit('/modifiers');
+        self::assertResponseIsSuccessful();
+
+        // The key does not do its default action: the field gets the focus, and no "/".
+        $page->keyboard()->press('/');
+        $filter = $page->locator('#filter');
+        expect($filter)->toBeFocused();
+        expect($filter)->toHaveValue('');
+
+        // In a field, a key with no modifier is text.
+        $filter->pressSequentially('j/');
+        expect($filter)->toHaveValue('j/');
+        self::assertSame('GET', $this->getLastRequest()?->getMethod());
+
+        // A key with a modifier runs.
+        $filter->press('Control+k');
+        expect($page->locator('#log'))->toHaveExactText('palette');
     }
 }

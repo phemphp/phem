@@ -79,6 +79,7 @@ Each action finds an element with a CSS selector and sends the event the way the
 | `drop($selector, $paths)` | `onDrop`, with the files | `->drop('.dropzone', [__DIR__.'/ada.jpg'])` |
 | `paste($selector, $paths)` | `onPaste`, with the files | `->paste('textarea', __DIR__.'/shot.png')` |
 | `keyDown($selector, $key, $modifiers)`, `keyUp($selector, $key, $modifiers)` | `onKeyDown`, `onKeyUp`, or nothing for a key that `phem:key` doesn’t list | `->keyDown('textarea', 'Enter', ['ctrl'])` |
+| `shortcut($key, $modifiers)` | The `onClick` of the first element with this `phem:shortcut` that isn’t disabled, hidden, inert, in a closed `<dialog>` or `<details>`, or outside the last open dialog. A field and a link with no `onClick` get no event | `->shortcut('k', ['mod'])` |
 | `focus($selector)`, `blur($selector)` | `onFocus`, `onBlur` | `->focus('input')` |
 | `fire($selector, $type, $event)` | Any DOM event, such as `contextmenu` or `scroll` | `->fire('div', 'contextmenu')` |
 | `load($selector)` | The load of a `<Suspense>` boundary | `->load()`, `->load('#report')` |

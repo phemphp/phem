@@ -459,7 +459,7 @@ The new order shows at once. The morph after the event shows the order of the se
 </div>
 ```
 
-A click on a trigger opens the dialog, and a click on a `close` part closes it. The `open` and `close` actions do the same from another element. The dialog gets `aria-labelledby` (the `title` part) and `aria-describedby` (a `description` part), and `data-open` or `data-closed`. A close waits for the animations of `[data-ending-style]`, then calls `close()`. The trigger gets `aria-haspopup="dialog"`, `aria-expanded` and `data-popup-open`.
+A click on a trigger opens the dialog, and a click on a `close` part closes it. Add `phem:shortcut="mod+k"` to a trigger to open the dialog with a key (see [Add keyboard shortcuts](events.md#add-keyboard-shortcuts)). The `open` and `close` actions do the same from another element. The dialog gets `aria-labelledby` (the `title` part) and `aria-describedby` (a `description` part), and `data-open` or `data-closed`. A close waits for the animations of `[data-ending-style]`, then calls `close()`. The trigger gets `aria-haspopup="dialog"`, `aria-expanded` and `data-popup-open`.
 
 Escape and a tap on the backdrop close the dialog. Set `data-phem-dialog-dismiss-value="false"` to keep it open on Escape and on a tap on the backdrop. The server can open it with `data-phem-dialog-open-value={{ editing }}`. A dialog that closes in another way, such as a `<form method="dialog">`, also sets the state.
 
