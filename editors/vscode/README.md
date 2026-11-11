@@ -94,6 +94,6 @@ Twig and HTML support in these files.
 
 ## Links
 
-- [Phem documentation](https://github.com/phemphp/phem/tree/main/docs)
+- [Phem documentation](https://phem.dev)
 - [Report an issue](https://github.com/phemphp/phem/issues)
 - [Build the extension from source](https://github.com/phemphp/phem/blob/main/editors/vscode/DEVELOPMENT.md)

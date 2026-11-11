@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1
+
+- The README links to the documentation at https://phem.dev.
+
 ## 0.5.0
 
 - The extension id is now `yceruto.phem` (before: `phem.phem`). Uninstall the old
