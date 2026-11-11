@@ -196,9 +196,14 @@
     var ticking = false;
     function update() {
       ticking = false;
-      var offset = (parseInt(getComputedStyle(doc.documentElement).getPropertyValue('--header-height'), 10) || 64) + 24;
+      // A heading is current from the place where a click on its link scrolls it to: its
+      // scroll-margin-top (the header and the banner above it).
+      var fallback = (parseInt(getComputedStyle(doc.documentElement).getPropertyValue('--header-height'), 10) || 64) + 24;
       var current = heads[0];
-      for (var i = 0; i < heads.length; i++) if (heads[i].el.getBoundingClientRect().top - offset <= 1) current = heads[i];
+      for (var i = 0; i < heads.length; i++) {
+        var offset = parseFloat(getComputedStyle(heads[i].el).scrollMarginTop) || fallback;
+        if (heads[i].el.getBoundingClientRect().top - offset <= 1) current = heads[i];
+      }
       if ((window.innerHeight + window.scrollY) >= doc.documentElement.scrollHeight - 2) current = heads[heads.length - 1];
       each(heads, function (h) { if (h === current) h.link.setAttribute('aria-current', 'true'); else h.link.removeAttribute('aria-current'); });
     }
