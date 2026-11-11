@@ -1,5 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
+import "./phem_announcer.js"
 import { ClientState } from "./phem_client_state.js"
+import { INTERACTIVE, noClick } from "./phem_press.js"
 
 // The distance (px) of the pointer before a press becomes a drag: a click stays a click.
 const THRESHOLD = 5
@@ -7,9 +9,6 @@ const THRESHOLD = 5
 const LIST = '[data-controller~="phem-sortable"]'
 const ITEM = '[data-phem-sortable-target~="item"]'
 const HANDLE = '[data-phem-sortable-target~="handle"]'
-
-// A press on these elements does not start a drag, unless they are in a handle.
-const INTERACTIVE = "input, textarea, select, button, a[href], [contenteditable], label"
 
 // The drag of the page: one at a time.
 let drag = null
@@ -33,7 +32,12 @@ let drag = null
 //
 // With the keyboard: Space or Enter on an item (or on its handle) takes it, the arrow keys of the
 // `orientation` value (vertical by default) move it, the other arrow keys move it to the list
-// before or after in the group, and Space or Enter drops it. Escape and the blur cancel it.
+// before or after in the group, and Space or Enter drops it. Escape and the blur cancel it. A
+// screen reader reads each step in the live region of the page (phem_announcer.js): the
+// `pickedUpMessage`, `movedMessage`, `droppedMessage` and `cancelledMessage` values of the list
+// where the drag starts, with `{item}` (the `aria-label` or the text of the item), `{position}`,
+// `{count}` and `{list}` (the `aria-label` of the list, or its `list` value). A list with no
+// name has no " in {list}" part in the texts.
 //
 // The new order is optimistic: the morph after the event shows the order of the server render, so
 // an item that the handler did not move goes back. A morph of a list during a drag cancels it.
@@ -44,7 +48,15 @@ let drag = null
 // does not scroll the page.
 export default class PhemSortableController extends Controller {
   static targets = ["item", "handle"]
-  static values = { group: String, list: String, orientation: { type: String, default: "vertical" } }
+  static values = {
+    group: String,
+    list: String,
+    orientation: { type: String, default: "vertical" },
+    pickedUpMessage: { type: String, default: "Picked up {item}. Position {position} of {count} in {list}." },
+    movedMessage: { type: String, default: "{item}: position {position} of {count} in {list}." },
+    droppedMessage: { type: String, default: "Dropped {item} at position {position} of {count} in {list}." },
+    cancelledMessage: { type: String, default: "Cancelled. {item} is back at position {position} of {count} in {list}." },
+  }
 
   connect() {
     this.state = new ClientState(this, {
@@ -133,8 +145,9 @@ export default class PhemSortableController extends Controller {
       const move = drag.keys[event.key]
       if (event.key === " " || event.key === "Enter") drop()
       else if (event.key === "Escape") cancel()
-      else if (move) move()
-      else return
+      else if (move) {
+        if (move()) announce("moved")
+      } else return
 
       event.preventDefault()
 
@@ -149,6 +162,7 @@ export default class PhemSortableController extends Controller {
 
     event.preventDefault()
     begin(this, item, "keyboard", null)
+    announce("pickedUp")
   }
 
   onFocusOut = (event) => {
@@ -220,6 +234,7 @@ function begin(controller, item, mode, pressing) {
   const origin = { list, parent: item.parentElement, next: item.nextSibling, index: itemsOf(list).indexOf(item) }
 
   drag = {
+    controller,
     item,
     mode,
     pressing,
@@ -242,20 +257,24 @@ function keyboardMoves() {
     const items = itemsOf(list())
     const at = items.indexOf(drag.item)
     const to = items[at + step]
-    if (!to) return
+    if (!to) return false
 
     place(list(), step > 0 ? to.nextSibling : to, step > 0 ? to : null)
+
+    return true
   }
   const across = (step) => () => {
     const lists = drag.lists()
     const to = lists[lists.indexOf(list()) + step]
-    if (!to) return
+    if (!to) return false
 
     // The same position in the other list, or its end.
     const at = itemsOf(list()).indexOf(drag.item)
     const items = itemsOf(to)
     const before = items[at] ?? null
     insert(to, before)
+
+    return true
   }
 
   const isVertical = vertical(listOf(drag.item))
@@ -318,6 +337,7 @@ function drop() {
   const { item, origin } = drag
   const list = listOf(item)
   const index = itemsOf(list).indexOf(item)
+  if (drag.mode === "keyboard") announce("dropped")
   end()
 
   if (list === origin.list && index === origin.index) return
@@ -334,6 +354,7 @@ function cancel() {
   if (origin.next && origin.next.parentNode === origin.parent) origin.parent.insertBefore(item, origin.next)
   else if (origin.parent.isConnected) origin.parent.append(item)
   drag.moving = false
+  if (drag.mode === "keyboard") announce("cancelled")
   end()
   focused?.focus({ preventScroll: true })
 }
@@ -347,14 +368,32 @@ function end() {
   drag = null
 }
 
-// The click after a drop with the pointer does not run the handler of the item.
-function noClick() {
-  const stop = (event) => {
-    event.preventDefault()
-    event.stopPropagation()
+// The live text of a step of a keyboard drag, from the values of the list where it started.
+function announce(step) {
+  const { controller, item } = drag
+  const list = listOf(item)
+  const items = itemsOf(list)
+  const words = {
+    item: labelOf(item),
+    position: String(items.indexOf(item) + 1),
+    count: String(items.length),
+    list: list.getAttribute("aria-label") || list.getAttribute("data-phem-sortable-list-value") || "",
   }
-  window.addEventListener("click", stop, { capture: true, once: true })
-  setTimeout(() => window.removeEventListener("click", stop, { capture: true }), 0)
+
+  // A list with no name: the text has no " in {list}".
+  let message = controller[`${step}MessageValue`]
+  if (words.list === "") message = message.replace(/ in \{list\}/g, "")
+
+  message = message.replace(/\{(item|position|count|list)\}/g, (_, name) => words[name])
+
+  window.dispatchEvent(new CustomEvent("phem:announce", { detail: message }))
+}
+
+// The name of an item: its `aria-label`, or the one of its handle, or its text.
+function labelOf(item) {
+  const handle = [...item.querySelectorAll(HANDLE)].find((el) => listOf(el) === listOf(item))
+
+  return item.getAttribute("aria-label") || handle?.getAttribute("aria-label") || item.textContent.trim().replace(/\s+/g, " ")
 }
 
 // Escape cancels a drag with the pointer.

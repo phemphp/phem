@@ -220,4 +220,134 @@ describe("phem-combobox", () => {
     expect(down.defaultPrevented).toBe(true)
     expect($("input").getAttribute("aria-activedescendant")).toBe("city-Parma")
   })
+
+  describe("a choice of more than one value", () => {
+    // A tag field: "a" and "b" are chosen, and the list has "a", "b" and "c". The remove button of
+    // a chip and a click on an item log their tag.
+    function tags(chosen = ["a", "b"]) {
+      const chip = (t) => `<span id="chip-${t}" data-phem-combobox-target="chip">${t}<button id="remove-${t}" data-phem-combobox-target="chipRemove" aria-label="Remove ${t}">×</button></span>`
+      const item = (t) => `<li id="tag-${t}" data-phem-combobox-target="item" aria-selected="${chosen.includes(t)}">${t}</li>`
+
+      return `<div id="combobox" data-controller="phem-combobox" data-phem-combobox-multiple-value="true">
+          ${chosen.map(chip).join("")}
+          <input id="input" data-phem-combobox-target="input" aria-label="Tags" />
+          <div id="popup" data-phem-combobox-target="popup" hidden>
+            <ul id="list" data-phem-combobox-target="list">${["a", "b", "c"].map(item).join("")}</ul>
+          </div>
+        </div>`
+    }
+
+    function key(el, key) {
+      const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true })
+      el.dispatchEvent(event)
+
+      return event
+    }
+
+    function log() {
+      const removed = []
+      for (const el of document.querySelectorAll("[data-phem-combobox-target=chipRemove]")) el.addEventListener("click", () => removed.push(el.id))
+
+      return removed
+    }
+
+    it("keeps the choice of the server in aria-selected, and the highlight in data-highlighted", async () => {
+      await mount(tags())
+      $("input").focus()
+      press("ArrowDown")
+
+      expect($("list").getAttribute("aria-multiselectable")).toBe("true")
+      expect($("tag-a").getAttribute("aria-selected")).toBe("true")
+      expect($("tag-a").hasAttribute("data-selected")).toBe(true)
+      expect($("tag-a").hasAttribute("data-highlighted")).toBe(true)
+      expect($("tag-c").getAttribute("aria-selected")).toBe("false")
+      expect($("tag-c").hasAttribute("data-selected")).toBe(false)
+
+      press("ArrowDown")
+      press("ArrowDown")
+      expect($("tag-a").getAttribute("aria-selected")).toBe("true")
+      expect($("tag-c").hasAttribute("data-highlighted")).toBe(true)
+      expect($("input").getAttribute("aria-activedescendant")).toBe("tag-c")
+    })
+
+    it("keeps the popup open and the highlight after a choice", async () => {
+      await mount(tags())
+      const selected = vi.fn()
+      $("combobox").addEventListener("phem-combobox:select", selected)
+      $("input").focus()
+      press("ArrowDown")
+      press("ArrowDown")
+      press("ArrowDown")
+      press("Enter")
+
+      expect(selected).toHaveBeenCalledTimes(1)
+      expect($("popup").hidden).toBe(false)
+      expect($("tag-c").hasAttribute("data-highlighted")).toBe(true)
+      expect(document.activeElement.id).toBe("input")
+    })
+
+    it("moves between the chips and the input with the arrow keys", async () => {
+      await mount(tags())
+      $("input").focus()
+
+      expect($("chip-a").tabIndex).toBe(-1)
+      expect($("remove-a").tabIndex).toBe(-1)
+
+      key($("input"), "ArrowLeft")
+      expect(document.activeElement.id).toBe("chip-b")
+      key($("chip-b"), "ArrowLeft")
+      expect(document.activeElement.id).toBe("chip-a")
+      key($("chip-a"), "ArrowLeft")
+      expect(document.activeElement.id).toBe("chip-a")
+      key($("chip-a"), "ArrowRight")
+      key($("chip-b"), "ArrowRight")
+      expect(document.activeElement.id).toBe("input")
+    })
+
+    it("goes to the chips only from the start of the input", async () => {
+      await mount(tags())
+      $("input").focus()
+      $("input").value = "ab"
+      $("input").setSelectionRange(2, 2)
+
+      const event = key($("input"), "ArrowLeft")
+      expect(event.defaultPrevented).toBe(false)
+      expect(document.activeElement.id).toBe("input")
+    })
+
+    it("removes a chip with Backspace and Delete", async () => {
+      await mount(tags(["a", "b", "c"]))
+      const removed = log()
+
+      $("chip-b").focus()
+      key($("chip-b"), "Backspace")
+      expect(removed).toEqual(["remove-b"])
+      expect(document.activeElement.id).toBe("chip-a")
+
+      key($("chip-a"), "Delete")
+      expect(removed).toEqual(["remove-b", "remove-a"])
+      expect(document.activeElement.id).toBe("chip-b")
+    })
+
+    it("removes the last chip with Backspace in an empty input", async () => {
+      await mount(tags())
+      const removed = log()
+      $("input").focus()
+      key($("input"), "Backspace")
+      expect(removed).toEqual(["remove-b"])
+
+      $("input").value = "x"
+      const event = key($("input"), "Backspace")
+      expect(event.defaultPrevented).toBe(false)
+      expect(removed).toEqual(["remove-b"])
+    })
+
+    it("keeps the focus in the input on a press on the remove button of a chip", async () => {
+      await mount(tags())
+      const event = new PointerEvent("pointerdown", { bubbles: true, cancelable: true })
+      $("remove-a").dispatchEvent(event)
+
+      expect(event.defaultPrevented).toBe(true)
+    })
+  })
 })

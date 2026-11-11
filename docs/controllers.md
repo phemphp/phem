@@ -1,6 +1,6 @@
 # Build UI with the built-in controllers
 
-This guide shows you how to use the Stimulus controllers that Phem ships for common UI patterns: a section that opens, an accordion, a section that shows from the value of a field, a popover, a tooltip, a menu, a combobox, a sortable list, a modal dialog, tabs, toasts, a copy button, a count of characters, a password that shows, a "select all" box, a local time, the focus after an event and a confirmation. Their state belongs to the client, so it stays after the morph of an event.
+This guide shows you how to use the Stimulus controllers that Phem ships for common UI patterns: a section that opens, an accordion, a section that shows from the value of a field, a popover, a tooltip, a menu, a context menu, a combobox, a sortable list, a modal dialog, tabs, toasts, a copy button, a count of characters, a password that shows, a "select all" box, a local time, the focus after an event and a confirmation. Their state belongs to the client, so it stays after the morph of an event.
 
 The controllers follow the design of [Base UI](https://base-ui.com): they ship no CSS, and your markup gives all the elements. A UI library can put its own styled markup on them.
 
@@ -18,6 +18,7 @@ The controllers are off by default. Enable each one that you use in `assets/cont
     "popover": { "enabled": true, "fetch": "lazy" },
     "tooltip": { "enabled": true, "fetch": "lazy" },
     "menu": { "enabled": true, "fetch": "lazy" },
+    "context-menu": { "enabled": true, "fetch": "lazy" },
     "combobox": { "enabled": true, "fetch": "lazy" },
     "tabs": { "enabled": true, "fetch": "lazy" },
     "toast": { "enabled": true, "fetch": "lazy" },
@@ -62,6 +63,9 @@ The controller shows its state in data attributes. Use them in your CSS, or as T
 | `data-panel-open` | A trigger of `phem-collapsible` | Its panel is open |
 | `data-side`, `data-align` | A positioned popup, its arrow | The side and the alignment after a flip: `top`, `bottom`, `left`, `right`, `inline-start`, `inline-end`, and `start`, `center`, `end` |
 | `data-highlighted` | An item of a menu or of a combobox | The item has the focus, or the highlight |
+| `data-selected` | An item of a combobox with `multiple` | The server chose the item (`aria-selected="true"`) |
+| `data-expanded` | The `phem-toast` element, a toast | The pointer or the focus is on the stack |
+| `data-swiping`, `data-swipe-direction` | A toast, a drawer | The user swipes the part, and the direction of the swipe that closed it |
 | `data-disabled` | An item, a tab | The element is disabled |
 | `data-orientation` | The parts of `phem-tabs` | `horizontal` or `vertical` |
 | `data-active` | A tab | The tab is selected |
@@ -88,7 +92,7 @@ A transition can go back in the middle: a popup that opens again before the end 
 
 ### Position
 
-`phem-popover`, `phem-tooltip`, `phem-menu` and `phem-combobox` place their popup next to their anchor (the trigger, or the input). The popup gets `position: fixed` and its `top` and `left`, so a `transform` of the popup stays free for an animation. These values set the position:
+`phem-popover`, `phem-tooltip`, `phem-menu`, `phem-context-menu` and `phem-combobox` place their popup next to their anchor (the trigger, or the input). The popup gets `position: fixed` and its `top` and `left`, so a `transform` of the popup stays free for an animation. These values set the position:
 
 | Value | Default | Effect |
 |---|---|---|
@@ -311,6 +315,74 @@ The keys skip a disabled item (`disabled` or `aria-disabled="true"`). From the l
 
 A click on an item runs its own handler, and closes the menu. The item with `data-phem-menu-close-on-click="false"` keeps the menu open, as **Pin** above: after its event, the morph shows the new `aria-checked` in the open menu. A click outside and the focus out of the menu close it. With `data-phem-menu-open-on-hover-value="true"`, the pointer on the trigger opens the menu after the `delay` value (100 ms).
 
+### Add a submenu
+
+Put a `phem-menu` in the popup of a menu. Its trigger is an item of the menu around it:
+
+```html
+<div data-controller="phem-menu">
+    <button data-phem-menu-target="trigger">Actions</button>
+    <div data-phem-menu-target="popup" hidden>
+        <button data-phem-menu-target="item" onClick={{ rename }}>Rename</button>
+        <div data-controller="phem-menu">
+            <button data-phem-menu-target="trigger">Move to</button>
+            <div data-phem-menu-target="popup" hidden>
+                {% for folder in folders %}
+                    <button key={{ folder.id }} data-phem-menu-target="item" onClick={{ move(folder.id) }}>{{ folder.name }}</button>
+                {% endfor %}
+            </div>
+        </div>
+        <button data-phem-menu-target="item" onClick={{ delete }}>Delete</button>
+    </div>
+</div>
+```
+
+The arrow keys of the menu go to **Move to** as to the other items. The pointer on it opens the submenu after the `delay` value (100 ms), and the focus stays on it. While the submenu is open, the pointer on another item of the menu gives it the focus after 150 ms, so the pointer can cross an item on its way to the submenu. A trigger with `aria-disabled="true"` does not open the submenu. Set `data-phem-menu-open-on-hover-value="false"` on the submenu to open it only with a click or a key. After ArrowRight on **Move to**, the browser shows:
+
+```html
+<button data-phem-menu-target="trigger" role="menuitem" tabindex="-1" aria-haspopup="menu"
+        aria-controls="phem-menu-2" aria-expanded="true" data-popup-open>Move to</button>
+<div data-phem-menu-target="popup" role="menu" id="phem-menu-2" tabindex="-1"
+     data-open data-side="inline-end" data-align="start" style="...">
+```
+
+| Key | On | Action |
+|---|---|---|
+| Click, Enter, Space, ArrowRight | The trigger of the submenu | Opens the submenu. The keyboard puts the focus on its first item |
+| ArrowLeft, Escape | The submenu | Closes the submenu, and gives the focus back to its trigger |
+
+In a right-to-left page, ArrowLeft opens the submenu and ArrowRight closes it. The popup of a submenu goes on the `inline-end` side of its trigger. A click on an item of a submenu runs its handler and closes all the menus. When the menu closes, its submenus close too.
+
+### Lock the page while the menu is open
+
+Set `data-phem-menu-modal-value="true"` for a modal menu. While it is open, the page does not scroll, and the elements out of the menu get no hover and no click: the body gets `pointer-events: none`, and the popup `pointer-events: auto`. A click outside closes the menu, and the element under the pointer does not get the click. The width of the scroll bar stays, so the page does not move. A Turbo visit gives the page its styles back before Turbo keeps the page in its cache.
+
+## Open a menu on a right click
+
+`phem-context-menu` is a `phem-menu` that opens at the point of the pointer, in place of the menu of the browser. Its trigger is an area of the page:
+
+```html
+<div data-controller="phem-context-menu">
+    <div data-phem-context-menu-target="trigger" class="file">{{ file.name }}</div>
+    <div data-phem-context-menu-target="popup" hidden>
+        <button data-phem-context-menu-target="item" onClick={{ open(file.id) }}>Open</button>
+        <button data-phem-context-menu-target="item" onClick={{ rename(file.id) }}>Rename</button>
+        <div data-phem-context-menu-target="separator"></div>
+        <button data-phem-context-menu-target="item" onClick={{ delete(file.id) }}>Delete</button>
+    </div>
+</div>
+```
+
+A right click on the trigger opens the menu with its top left corner at the pointer. The Menu key and Shift+F10 open it below the element with the focus. On a touch screen, a long press of 500 ms opens it. A new right click on the trigger moves the open menu to the new point. Put the popup out of the trigger. After a right click, the browser shows:
+
+```html
+<div data-phem-context-menu-target="trigger" class="file" data-popup-open>report.pdf</div>
+<div data-phem-context-menu-target="popup" role="menu" id="phem-menu-1" tabindex="-1"
+     data-open data-side="bottom" data-align="start" style="position: fixed; top: 212px; left: 348px; ...">
+```
+
+The focus goes to the popup, so ArrowDown goes to the first item. When the popup opens under the pointer, the item under the pointer gets the focus. The parts, the keys, the submenus and the values are the ones of `phem-menu`, with `data-phem-context-menu-` in their names. A click on the trigger does not open the menu, and the trigger gets no ARIA attributes, because it is not a button. Escape gives the focus back to the element that had it before the menu opened. A menu that opens with no point, with the `open` action or with `data-phem-context-menu-open-value` from the server, goes below the trigger.
+
 ## Suggest values while the user types
 
 `phem-combobox` adds a list of suggestions to a text field. The server gives the suggestions: the input sends its text, and the render of the server gives the items. The controller adds the roles and the keyboard.
@@ -379,6 +451,75 @@ To choose an item is a click on it: its handler runs (here `choose`), or its lin
 
 The highlight stays on the item with the same `id` through the morph of another event, so give each item a stable `id`. When the user types, the highlight goes. With `data-phem-combobox-auto-highlight-value="true"`, the first item gets the highlight. The popup and the list get `data-empty` when there is no item, and the `empty` parts show only then. A `status` part gets `role="status"`, so a screen reader reads its text, for example "3 cities". Use `var(--anchor-width)` to give the popup the width of the input.
 
+### Choose more than one value
+
+Set `data-phem-combobox-multiple-value="true"` to choose more than one item, for a field of tags. Show the chosen values as `chip` parts, each with a `chipRemove` part:
+
+```php
+#[Component]
+final class TagField
+{
+    private const array TAGS = ['bug', 'docs', 'feature', 'question'];
+
+    #[State] public string $query = '';
+    #[State] public array $tags = [];
+
+    public function toggle(string $tag): void
+    {
+        $this->tags = \in_array($tag, $this->tags, true)
+            ? array_values(array_diff($this->tags, [$tag]))
+            : [...$this->tags, $tag];
+        $this->query = '';
+    }
+
+    public function render(): Node
+    {
+        $text = strtolower(trim($this->query));
+        $results = array_values(array_filter(self::TAGS, static fn (string $tag): bool => str_starts_with($tag, $text)));
+
+        return (
+            <div data-controller="phem-combobox" data-phem-combobox-multiple-value="true">
+                {% for tag in tags %}
+                    <span key={{ tag }} data-phem-combobox-target="chip">
+                        {{ tag }}
+                        <button data-phem-combobox-target="chipRemove" onClick={{ toggle(tag) }} aria-label={{ 'Remove ' ~ tag }}>×</button>
+                    </span>
+                {% endfor %}
+                <input data-phem-combobox-target="input" phem:bind={{ query }} phem:live aria-label="Tags" />
+                <div data-phem-combobox-target="popup" hidden>
+                    <ul data-phem-combobox-target="list">
+                        {% for tag in results %}
+                            <li key={{ tag }} id={{ 'tag-' ~ tag }} data-phem-combobox-target="item"
+                                aria-selected={{ tag in tags ? 'true' : 'false' }} onClick={{ toggle(tag) }}>{{ tag }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        );
+    }
+}
+```
+
+The server gives the chosen items `aria-selected="true"`, and the controller does not change it: the highlight is `data-highlighted` and `aria-activedescendant`. A choice keeps the popup open and the highlight, so the user can choose more items. When the user chose **bug** and highlights **docs**, the browser shows:
+
+```html
+<span data-phem-combobox-target="chip" tabindex="-1">bug <button data-phem-combobox-target="chipRemove" tabindex="-1" aria-label="Remove bug">×</button></span>
+<input data-phem-combobox-target="input" role="combobox" aria-activedescendant="tag-docs" aria-expanded="true" ...>
+<ul data-phem-combobox-target="list" role="listbox" aria-multiselectable="true" id="phem-combobox-1">
+    <li id="tag-bug" role="option" aria-selected="true" data-selected>bug</li>
+    <li id="tag-docs" role="option" aria-selected="false" data-highlighted>docs</li>
+</ul>
+```
+
+| Key | On | Action |
+|---|---|---|
+| ArrowLeft | The start of the input | Moves the focus to the last chip |
+| Backspace | An empty input | Clicks the `chipRemove` of the last chip |
+| ArrowLeft, ArrowRight | A chip | Moves the focus to the chip before or after it, or back to the input |
+| Backspace, Delete | A chip | Clicks its `chipRemove`. The focus goes to the chip before it (Backspace) or after it (Delete), or to the input |
+
+The chips and their `chipRemove` parts get `tabindex="-1"`, so Tab goes from the input out of the combobox. A press on a `chipRemove` keeps the focus in the input.
+
 ## Sort a list with drag and drop
 
 `phem-sortable` moves the items of a list with the pointer (mouse, touch and pen) and with the keyboard. A drop calls the [`onCall` handler](events.md#call-a-handler-from-your-javascript) of the list. Lists with the same `group` value share their items, for a board:
@@ -443,6 +584,21 @@ The new order shows at once. The morph after the event shows the order of the se
 
 `phem.css` stops the text selection during a drag, and sets `touch-action: none` on the handles (or on the items with no handle), so a touch drag does not scroll the page.
 
+During a drag with the keyboard, a screen reader reads each step in the live region of the page. When the user takes card `b`, moves it to the `done` list and drops it, it reads:
+
+```text
+Picked up b. Position 2 of 3 in todo.
+b: position 1 of 2 in done.
+Dropped b at position 1 of 2 in done.
+```
+
+The name of the item is its `aria-label`, the `aria-label` of its handle, or its text. The name of the list is its `aria-label`, or its `list` value, so give a list a label that a user knows, such as `aria-label="To do"`. A list with no name has no ` in {list}` part in the texts: "Picked up b. Position 2 of 3." Change the texts with the values of the list where the drag starts: `picked-up-message`, `moved-message`, `dropped-message` and `cancelled-message`. In a text, `{item}`, `{position}`, `{count}` and `{list}` get their values:
+
+```html
+<ul data-controller="phem-sortable" aria-label="Tâches"
+    data-phem-sortable-picked-up-message-value="{item} pris, position {position} sur {count}.">
+```
+
 ## Open a modal dialog
 
 `phem-dialog` opens a native `<dialog>` as a modal:
@@ -470,6 +626,33 @@ A dialog in an open dialog gets `data-nested`. The dialog around it gets `data-n
 ```css
 dialog[data-nested-dialog-open] { scale: calc(1 - 0.05 * var(--nested-dialogs)); }
 ```
+
+### Close a drawer with a swipe
+
+Set the `swipe-direction` value (`up`, `down`, `left` or `right`) to make the dialog a drawer that closes with a swipe in that direction:
+
+```html
+<div data-controller="phem-dialog" data-phem-dialog-swipe-direction-value="down">
+    <button data-phem-dialog-target="trigger">Filters</button>
+    <dialog data-phem-dialog-target="popup" class="sheet">...</dialog>
+</div>
+```
+
+A press on the dialog and a move of 5 px in the direction start a swipe. The dialog gets `data-swiping`, the distance in `--dialog-swipe-movement-x` or `--dialog-swipe-movement-y`, and the part of its size in `--dialog-swipe-progress` (from 0 to 1). A move in the other direction has a resistance. A release after half the size of the dialog, or after a fast swipe, closes it. A shorter swipe gives the dialog its place again. Use the variables in your CSS:
+
+```css
+.sheet {
+    margin: auto 0 0;
+    width: 100%;
+    transform: translateY(var(--dialog-swipe-movement-y, 0px));
+    transition: transform 300ms;
+}
+.sheet[data-swiping] { transition: none; }
+.sheet[data-starting-style], .sheet[data-ending-style] { transform: translateY(100%); }
+.sheet::backdrop { opacity: calc(1 - var(--dialog-swipe-progress, 0)); }
+```
+
+The dialog that a swipe closed gets `data-swipe-direction` until the end of its `[data-ending-style]` transition, so the transition goes on from its place. A press on a field, a button, a link or a label does not start a swipe. In content that scrolls (`overflow: auto` or `scroll`), the swipe starts only when the content is at its start: the list of a bottom sheet scrolls up first. A touch needs no `touch-action`: a touch that moves in the direction of the swipe swipes the dialog, and a touch that moves the other way scrolls the content of the dialog.
 
 ## Switch between tabs
 
@@ -581,6 +764,36 @@ To use your own markup, put a `<template>` part in the element, with the same pa
 ```
 
 The default styles in `phem.css` use `:where()`, so a rule of your app replaces them.
+
+### Show the stack on hover
+
+The pointer or the focus on the `phem-toast` element expands the stack: the element and each toast get `data-expanded`, and the time of all the toasts stops. The stack closes when the pointer and the focus go, and when its last toast goes. The state stays after the morph of an event. Each toast gets `--toast-height` (its height) and `--toast-offset-y` (the heights of the newer toasts), and the element gets `--toast-frontmost-height` (the height of the last toast). Use them for a stack that shows only the last toast until the pointer comes:
+
+```css
+[data-controller~="phem-toast"] { display: block; height: var(--toast-frontmost-height); }
+[data-phem-toast] {
+    position: absolute;
+    inset: auto 0 0;
+    transform: translateY(calc(var(--toast-index) * -10px)) scale(calc(1 - var(--toast-index) * 0.05));
+    transition: transform 200ms;
+}
+[data-phem-toast][data-expanded] {
+    transform: translateY(calc(-1 * var(--toast-offset-y) - var(--toast-index) * 8px));
+}
+```
+
+### Close a toast with a swipe
+
+A swipe of a toast to the right or down closes it. Set `data-phem-toast-swipe-direction-value` to other directions (`up`, `down`, `left` and `right`, with a space between them), or to an empty text to turn off the swipe. During the swipe, the toast gets `data-swiping`, and the distance in `--toast-swipe-movement-x` and `--toast-swipe-movement-y`. A move in another direction has a resistance. A swipe of 40 px closes the toast, with `data-swipe-direction`, so its `[data-ending-style]` transition can go on in that direction:
+
+```css
+[data-phem-toast][data-ending-style][data-swipe-direction="right"] {
+    transform: translateX(calc(var(--toast-swipe-movement-x) + 100%));
+    opacity: 0;
+}
+```
+
+A shorter swipe gives the toast its place again, and its time starts again. A press on the close button, a link or a field of the toast does not start a swipe. `phem.css` moves a toast with the swipe variables. A touch that moves in a direction of the swipe does not scroll the page, and a touch that moves in another direction scrolls it.
 
 ## Copy text to the clipboard
 

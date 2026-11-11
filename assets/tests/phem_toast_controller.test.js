@@ -336,4 +336,145 @@ describe("phem-toast", () => {
 
     expect(messages()).toEqual(["Root text."])
   })
+
+  it("expands the stack on hover, and stops the time of all the toasts", async () => {
+    await mount(page(`data-phem-toast-duration-value="1000"`))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    toast("First")
+    toast("Second")
+    const root = document.getElementById("toasts")
+    const [first, second] = toasts()
+
+    expect(first.style.getPropertyValue("--toast-offset-y")).toBe("0px")
+    expect(first.style.getPropertyValue("--toast-height")).toBe("0px")
+    expect(root.style.getPropertyValue("--toast-frontmost-height")).toBe("0px")
+
+    second.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }))
+    expect(root.hasAttribute("data-expanded")).toBe(true)
+    expect(first.hasAttribute("data-expanded")).toBe(true)
+
+    // A new toast of an expanded stack waits too.
+    toast("Third")
+    expect(toasts()[2].hasAttribute("data-expanded")).toBe(true)
+    vi.advanceTimersByTime(5000)
+    expect(messages()).toEqual(["First", "Second", "Third"])
+
+    second.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }))
+    expect(root.hasAttribute("data-expanded")).toBe(false)
+    expect(first.hasAttribute("data-expanded")).toBe(false)
+    vi.advanceTimersByTime(1000)
+    expect(toasts()).toEqual([])
+  })
+
+  describe("a swipe", () => {
+    function pointer(type, x, y, target = document) {
+      target.dispatchEvent(new PointerEvent(type, { bubbles: true, isPrimary: true, button: 0, pointerId: 1, clientX: x, clientY: y }))
+    }
+
+    it("closes a toast after 40 px in a direction of the swipe", async () => {
+      await mount(page())
+      toast("Hello")
+      const el = toasts()[0]
+
+      pointer("pointerdown", 100, 100, el)
+      pointer("pointermove", 120, 100)
+      expect(el.hasAttribute("data-swiping")).toBe(true)
+      expect(el.style.getPropertyValue("--toast-swipe-movement-x")).toBe("20px")
+      expect(el.style.getPropertyValue("--toast-swipe-movement-y")).toBe("0px")
+
+      pointer("pointermove", 145, 100)
+      pointer("pointerup", 145, 100)
+      expect(el.hasAttribute("data-swiping")).toBe(false)
+      expect(el.getAttribute("data-swipe-direction")).toBe("right")
+      expect(el.isConnected).toBe(false)
+    })
+
+    it("gives the toast its place again after a short swipe, and starts its time again", async () => {
+      await mount(page(`data-phem-toast-duration-value="1000"`))
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+      toast("Hello")
+      const el = toasts()[0]
+
+      pointer("pointerdown", 100, 100, el)
+      pointer("pointermove", 100, 130)
+      vi.advanceTimersByTime(5000)
+      expect(el.isConnected).toBe(true)
+
+      pointer("pointerup", 100, 130)
+      expect(el.hasAttribute("data-swiping")).toBe(false)
+      expect(el.style.getPropertyValue("--toast-swipe-movement-y")).toBe("")
+      vi.advanceTimersByTime(1000)
+      expect(el.isConnected).toBe(false)
+    })
+
+    it("resists a swipe in another direction, and does not close the toast", async () => {
+      await mount(page())
+      toast("Hello")
+      const el = toasts()[0]
+
+      pointer("pointerdown", 100, 100, el)
+      pointer("pointermove", 100, 0)
+      expect(el.style.getPropertyValue("--toast-swipe-movement-y")).toBe("-10px")
+
+      pointer("pointerup", 100, 0)
+      expect(el.isConnected).toBe(true)
+    })
+
+    it("closes in the directions of the swipe-direction value, and not on a press on the close button", async () => {
+      await mount(page(`data-phem-toast-swipe-direction-value="up"`))
+      toast("Hello")
+      const el = toasts()[0]
+
+      pointer("pointerdown", 100, 100, el.querySelector("[data-phem-toast-close]"))
+      pointer("pointermove", 100, 0)
+      expect(el.hasAttribute("data-swiping")).toBe(false)
+      pointer("pointerup", 100, 0)
+
+      pointer("pointerdown", 100, 100, el)
+      pointer("pointermove", 100, 50)
+      pointer("pointerup", 100, 50)
+      expect(el.getAttribute("data-swipe-direction")).toBe("up")
+      expect(el.isConnected).toBe(false)
+    })
+
+    it("does not swipe with an empty swipe-direction value", async () => {
+      await mount(page(`data-phem-toast-swipe-direction-value=""`))
+      toast("Hello")
+      const el = toasts()[0]
+
+      pointer("pointerdown", 100, 100, el)
+      pointer("pointermove", 200, 100)
+      pointer("pointerup", 200, 100)
+      expect(el.isConnected).toBe(true)
+    })
+  })
+
+  it("keeps the state of the stack after the morph of an event", async () => {
+    await mount(page())
+    toast("Hello")
+    const root = document.getElementById("toasts")
+    toasts()[0].dispatchEvent(new MouseEvent("mouseover", { bubbles: true }))
+    respond(page())
+    await save()
+
+    expect(root.hasAttribute("data-expanded")).toBe(true)
+    expect(root.style.getPropertyValue("--toast-frontmost-height")).toBe("0px")
+  })
+
+  it("closes the stack when the last toast goes with the focus on it", async () => {
+    await mount(page(`data-phem-toast-duration-value="1000"`))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    toast("First")
+    const close = toasts()[0].querySelector("[data-phem-toast-close]")
+    close.focus()
+    expect(document.getElementById("toasts").hasAttribute("data-expanded")).toBe(true)
+
+    // The toast goes with no focusout, as in Firefox.
+    close.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    expect(document.getElementById("toasts").hasAttribute("data-expanded")).toBe(false)
+
+    toast("Second")
+    vi.advanceTimersByTime(1000)
+    expect(toasts()).toEqual([])
+  })
 })

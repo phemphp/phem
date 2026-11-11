@@ -8,6 +8,21 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- More parts for the built-in controllers. A `phem-menu` in the popup of a menu is a submenu,
+  which opens on hover, with a click and with ArrowRight. `data-phem-menu-modal-value="true"`
+  locks the scroll and the pointer events of the page while the menu is open. The new
+  `phem-context-menu` controller opens a menu at the pointer on a right click or a long press.
+  `phem-combobox` takes `multiple`, with `chip` and `chipRemove` parts and their keys.
+  `phem-toast` expands the stack on hover (`data-expanded`, `--toast-offset-y`) and closes a
+  toast with a swipe (`swipeDirection`). `phem-dialog` takes `swipeDirection` for a drawer that
+  closes with a swipe. A touch swipe needs no `touch-action`: a touch in another direction
+  scrolls. `phem-sortable` tells each step of a keyboard drag to a screen reader. See
+  docs/controllers.md.
+- A positioned popup (`phem-popover`, `phem-tooltip`, `phem-menu`, `phem-combobox`) has its
+  right place at once: the first place measured a block popup as wide as its container, and only
+  a later resize gave it its place.
+- **Breaking** The pointer or the focus on the `phem-toast` element stops the time of all the
+  toasts, not only of the toast under the pointer.
 - Keyboard shortcuts of the page: `phem:shortcut="mod+k"` on an element clicks it, or focuses it
   when it is a field, when the user presses the keys where the focus is. A shortcut runs a
   server handler, a link, or a trigger of a built-in controller. A key with no modifier does not

@@ -66,6 +66,12 @@
                 "fetch": "lazy",
                 "enabled": false
             },
+            "context-menu": {
+                "name": "phem-context-menu",
+                "main": "dist/phem_context_menu_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
             "combobox": {
                 "name": "phem-combobox",
                 "main": "dist/phem_combobox_controller.js",

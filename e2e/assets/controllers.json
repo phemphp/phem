@@ -20,6 +20,10 @@
                 "enabled": true,
                 "fetch": "eager"
             },
+            "context-menu": {
+                "enabled": true,
+                "fetch": "eager"
+            },
             "combobox": {
                 "enabled": true,
                 "fetch": "eager"

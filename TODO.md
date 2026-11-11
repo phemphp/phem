@@ -140,15 +140,3 @@ Mercure hub.
 
 - **Best peer:** LW `WithFileUploads` (temporary uploads, S3 direct upload), LV `allow_upload`
   (chunks, previews, external uploads).
-
-### [ ] More parts for the built-in controllers — P3
-
-The built-in controllers of 2026-11-10 follow Base UI, with less parts. These are missing:
-
-- **Menu:** submenus (`SubmenuTrigger`), a modal menu, and `phem-context-menu`;
-- **Combobox:** a choice of more than one value, with chips;
-- **Toast:** a swipe to close, and the toasts of a stack that show on hover;
-- **Dialog:** a drawer that closes with a swipe;
-- **Sortable:** an `aria-live` text for the moves of the keyboard.
-
-- **Best peer:** Base UI.

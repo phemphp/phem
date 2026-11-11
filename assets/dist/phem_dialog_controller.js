@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { onBackdropTap } from "./phem_backdrop.js"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
+import { SWIPE_ATTRIBUTES, swipeable, unswipe } from "./phem_swipe.js"
 import { hide, render, show } from "./phem_transition.js"
 
 // The attributes of a dialog in a dialog.
@@ -32,9 +33,12 @@ const NESTED_ATTRIBUTES = new Set(["data-nested", "data-nested-dialog-open", "st
 // `aria-haspopup="dialog"`, `aria-expanded` and `data-popup-open`. A dialog in an open dialog gets
 // `data-nested`, and the dialog around it gets `data-nested-dialog-open` and the
 // `--nested-dialogs` CSS variable (the number of open dialogs in it), for a stack of dialogs.
+//
+// With the `swipeDirection` value (`up`, `down`, `left` or `right`), the dialog is a drawer: a
+// swipe in that direction closes it (see phem_swipe.js).
 export default class PhemDialogController extends Controller {
   static targets = ["trigger", "popup", "close", "title", "description"]
-  static values = { open: Boolean, dismiss: { type: Boolean, default: true } }
+  static values = { open: Boolean, dismiss: { type: Boolean, default: true }, swipeDirection: String }
 
   // dialog => the AbortController of its listeners.
   #listening = new Map()
@@ -85,6 +89,7 @@ export default class PhemDialogController extends Controller {
     el.addEventListener("cancel", this.onCancel, { signal: listening.signal })
     el.addEventListener("close", this.onClose, { signal: listening.signal })
     onBackdropTap(el, () => this.dismissValue && this.close(), listening.signal)
+    swipeable(el, { direction: () => this.swipeDirectionValue, close: () => this.close() }, listening.signal)
 
     this.#render(el)
     this.#renderAria()
@@ -141,11 +146,20 @@ export default class PhemDialogController extends Controller {
 
     for (const el of this.popupTargets) {
       if (this.openValue) {
+        unswipe(el)
         this.#showModal(el)
         show(el, { hidden: false })
         this.#renderNesting(el, true)
       } else if (el.open) {
-        hide(el, { hidden: false, onEnd: () => !this.openValue && el.open && el.close() })
+        hide(el, {
+          hidden: false,
+          onEnd: () => {
+            if (this.openValue) return
+
+            unswipe(el)
+            if (el.open) el.close()
+          },
+        })
       }
     }
   }
@@ -199,13 +213,15 @@ export default class PhemDialogController extends Controller {
     }
   }
 
-  // The attributes of the state: `open` and the open state of a dialog, its nesting, and
-  // `aria-expanded` and `data-popup-open` on a trigger.
+  // The attributes of the state: `open` and the open state of a dialog, its nesting, its swipe,
+  // and `aria-expanded` and `data-popup-open` on a trigger.
   #owns(el, name) {
     if (el instanceof HTMLDialogElement && NESTED_ATTRIBUTES.has(name) && el.querySelector("dialog[open]")) return true
-    if (this.popupTargets.includes(el)) return name === "open" || OPEN_ATTRIBUTES.has(name) || name === "data-nested"
-    if (this.triggerTargets.includes(el)) return name === "aria-expanded" || name === "data-popup-open"
+    if (!this.popupTargets.includes(el)) return this.triggerTargets.includes(el) && (name === "aria-expanded" || name === "data-popup-open")
 
-    return false
+    // The `style` of a swipe: the dialog stays at its place.
+    if (name === "style") return [...SWIPE_ATTRIBUTES].some((attribute) => el.hasAttribute(attribute))
+
+    return name === "open" || OPEN_ATTRIBUTES.has(name) || name === "data-nested" || SWIPE_ATTRIBUTES.has(name)
   }
 }

@@ -45,10 +45,20 @@ const ids = new WeakMap()
 // `empty` targets show only then. A `status` target gets `role="status"`: a screen reader reads
 // it (for example "3 results"). The popup is positioned as a `phem-popover` (phem_position.js),
 // below the input by default: use `var(--anchor-width)` for its width.
+//
+// With the `multiple` value, the user chooses more than one item. The server gives the chosen
+// items `aria-selected="true"`, and the list gets `aria-multiselectable="true"`. A choice keeps
+// the popup open and the highlight. The `chip` targets show the chosen values, each with a
+// `chipRemove` target whose handler removes its value. ArrowLeft at the start of the input goes
+// to the last chip, ArrowLeft and ArrowRight move between the chips and back to the input, and
+// Backspace or Delete on a chip clicks its `chipRemove`. Backspace in an empty input clicks the
+// `chipRemove` of the last chip. The chips and their `chipRemove` targets get `tabindex="-1"`,
+// and a chosen item gets `data-selected`.
 export default class PhemComboboxController extends Controller {
-  static targets = ["input", "trigger", "clear", "popup", "list", "item", "empty", "status"]
+  static targets = ["input", "trigger", "clear", "popup", "list", "item", "empty", "status", "chip", "chipRemove"]
   static values = {
     autoHighlight: Boolean,
+    multiple: Boolean,
     loopFocus: { type: Boolean, default: true },
     ...positionValues("bottom", "start"),
   }
@@ -117,6 +127,14 @@ export default class PhemComboboxController extends Controller {
     this.#later()
   }
 
+  chipTargetConnected() {
+    this.#later()
+  }
+
+  chipRemoveTargetConnected() {
+    this.#later()
+  }
+
   onInput = (event) => {
     if (event.target !== this.#input) return
 
@@ -126,7 +144,18 @@ export default class PhemComboboxController extends Controller {
   }
 
   onKeydown = (event) => {
-    if (event.target !== this.#input || event.defaultPrevented || event.isComposing) return
+    if (event.defaultPrevented || event.isComposing) return
+
+    const chip = this.#chipOf(event.target)
+    if (chip) {
+      this.#chipKeydown(event, chip)
+
+      return
+    }
+
+    if (event.target !== this.#input) return
+
+    if (this.#chipsKeydown(event)) return
 
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault()
@@ -160,12 +189,18 @@ export default class PhemComboboxController extends Controller {
   onClick = (event) => {
     if (event.defaultPrevented) return
 
+    if (this.chipRemoveTargets.some((el) => el.contains(event.target))) return
+
     const item = this.#itemOf(event.target)
     if (item) {
       if (isDisabled(item)) return
 
-      this.wanted = false
-      this.activeId = null
+      // A choice of more than one item keeps the popup open, with its highlight.
+      if (!this.multipleValue) {
+        this.wanted = false
+        this.activeId = null
+      }
+
       this.#render()
       this.#input?.focus({ preventScroll: true })
       this.dispatch("select", { detail: { item } })
@@ -187,9 +222,11 @@ export default class PhemComboboxController extends Controller {
     }
   }
 
-  // A press on an item does not move the focus out of the input.
+  // A press on an item, a trigger or the remove button of a chip does not move the focus out of
+  // the input.
   onPointerDown = (event) => {
-    if (this.#itemOf(event.target) || this.triggerTargets.some((el) => el.contains(event.target))) event.preventDefault()
+    const parts = [...this.triggerTargets, ...this.chipRemoveTargets]
+    if (this.#itemOf(event.target) || parts.some((el) => el.contains(event.target))) event.preventDefault()
   }
 
   onPointerOver = (event) => {
@@ -202,6 +239,57 @@ export default class PhemComboboxController extends Controller {
     if (to instanceof Node && (this.element.contains(to) || this.popupTargets.some((el) => el.contains(to)))) return
 
     this.#dismiss()
+  }
+
+  // The keys of the input that go to the chips. Returns true when the key went to a chip.
+  #chipsKeydown(event) {
+    const chips = this.chipTargets
+    const input = this.#input
+    if (chips.length === 0) return false
+
+    const start = input.selectionStart === 0 && input.selectionEnd === 0
+    const back = this.#rtl ? "ArrowRight" : "ArrowLeft"
+
+    if (event.key === back && start) {
+      event.preventDefault()
+      chips.at(-1).focus()
+
+      return true
+    }
+
+    if (event.key === "Backspace" && input.value === "") {
+      event.preventDefault()
+      this.#removeOf(chips.at(-1))?.click()
+
+      return true
+    }
+
+    return false
+  }
+
+  // ArrowLeft and ArrowRight move between the chips and to the input. Backspace and Delete remove
+  // the chip: the focus goes to the chip before it (Backspace) or after it (Delete), or to the
+  // input.
+  #chipKeydown(event, chip) {
+    const chips = this.chipTargets
+    const at = chips.indexOf(chip)
+    const [back, forward] = this.#rtl ? ["ArrowRight", "ArrowLeft"] : ["ArrowLeft", "ArrowRight"]
+
+    if (event.key === back || event.key === forward) {
+      event.preventDefault()
+      const to = chips[at + (event.key === forward ? 1 : -1)]
+      if (to) to.focus()
+      else if (event.key === forward) this.#input?.focus()
+
+      return
+    }
+
+    if (event.key !== "Backspace" && event.key !== "Delete") return
+
+    event.preventDefault()
+    const to = event.key === "Backspace" ? (chips[at - 1] ?? chips[at + 1]) : chips[at + 1]
+    ;(to ?? this.#input)?.focus()
+    this.#removeOf(chip)?.click()
   }
 
   #dismiss() {
@@ -247,7 +335,11 @@ export default class PhemComboboxController extends Controller {
     if (list) {
       if (!list.hasAttribute("role")) list.setAttribute("role", "listbox")
       if (!list.id) list.id = this.listId ??= `phem-combobox-${++count}`
+      if (this.multipleValue) list.setAttribute("aria-multiselectable", "true")
     }
+
+    for (const chip of this.chipTargets) chip.tabIndex = -1
+    for (const remove of this.chipRemoveTargets) remove.tabIndex = -1
 
     for (const el of [...this.popupTargets, ...this.listTargets]) el.toggleAttribute("data-empty", empty)
     for (const el of this.emptyTargets) el.hidden = !empty
@@ -261,9 +353,18 @@ export default class PhemComboboxController extends Controller {
     for (const item of items) {
       if (!item.hasAttribute("role")) item.setAttribute("role", "option")
       this.#idOf(item)
-      item.setAttribute("aria-selected", String(item === active))
       item.toggleAttribute("data-highlighted", item === active)
       item.toggleAttribute("data-disabled", isDisabled(item))
+
+      // A choice of more than one item: `aria-selected` is the choice of the server.
+      if (this.multipleValue) {
+        if (!item.hasAttribute("aria-selected")) item.setAttribute("aria-selected", "false")
+        item.toggleAttribute("data-selected", item.getAttribute("aria-selected") === "true")
+
+        continue
+      }
+
+      item.setAttribute("aria-selected", String(item === active))
     }
 
     const content = !empty || this.emptyTargets.length > 0 || this.statusTargets.length > 0
@@ -287,7 +388,7 @@ export default class PhemComboboxController extends Controller {
   #owns(el, name) {
     if (this.popup.owns(el, name)) return true
     if (el === this.#input) return ["aria-expanded", "aria-activedescendant", "data-popup-open"].includes(name)
-    if (this.itemTargets.includes(el)) return name === "aria-selected" || name === "data-highlighted"
+    if (this.itemTargets.includes(el)) return (name === "aria-selected" && !this.multipleValue) || name === "data-highlighted"
     if (this.emptyTargets.includes(el)) return name === "hidden"
 
     return false
@@ -316,5 +417,17 @@ export default class PhemComboboxController extends Controller {
 
   #itemOf(el) {
     return this.itemTargets.find((item) => item.contains(el))
+  }
+
+  #chipOf(el) {
+    return this.chipTargets.find((chip) => chip === el)
+  }
+
+  #removeOf(chip) {
+    return this.chipRemoveTargets.find((el) => chip.contains(el)) ?? null
+  }
+
+  get #rtl() {
+    return getComputedStyle(this.element).direction === "rtl"
   }
 }

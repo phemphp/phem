@@ -247,4 +247,67 @@ describe("phem-sortable", () => {
     expect(order("todo")).toBe("a,b,c")
     expect($("a").hasAttribute("data-dragging")).toBe(false)
   })
+
+  describe("the live text of a keyboard drag", () => {
+    let said
+
+    const listen = (event) => said.push(event.detail)
+
+    beforeEach(() => {
+      said = []
+      window.addEventListener("phem:announce", listen)
+    })
+
+    afterEach(() => window.removeEventListener("phem:announce", listen))
+
+    it("tells each step of a move", () => {
+      $("a").focus()
+      press(" ")
+      press("ArrowDown")
+      press("ArrowRight")
+      press("Enter")
+
+      expect(said).toEqual([
+        "Picked up a. Position 1 of 3 in todo.",
+        "a: position 2 of 3 in todo.",
+        "a: position 2 of 2 in done.",
+        "Dropped a at position 2 of 2 in done.",
+      ])
+    })
+
+    it("tells a cancel, and no move at the end of the list", () => {
+      $("c").focus()
+      press("Enter")
+      press("ArrowDown")
+      press("Escape")
+
+      expect(said).toEqual(["Picked up c. Position 3 of 3 in todo.", "Cancelled. c is back at position 3 of 3 in todo."])
+    })
+
+    it("uses the messages of the list, and the aria-label of the item and of the list", () => {
+      $("todo").setAttribute("aria-label", "To do")
+      $("todo").setAttribute("data-phem-sortable-picked-up-message-value", "{item} ({position}/{count}, {list})")
+      $("b").setAttribute("aria-label", "Card B")
+      $("b").focus()
+      press(" ")
+
+      expect(said).toEqual(["Card B (2/3, To do)"])
+      press("Escape")
+    })
+
+    it("has no list in the text of a list with no name", () => {
+      $("todo").removeAttribute("data-phem-sortable-list-value")
+      $("a").focus()
+      press(" ")
+
+      expect(said).toEqual(["Picked up a. Position 1 of 3."])
+      press("Escape")
+    })
+
+    it("tells nothing for a drag with the pointer", () => {
+      drag($("a"), [50, 20], [50, 100])
+
+      expect(said).toEqual([])
+    })
+  })
 })

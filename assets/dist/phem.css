@@ -13,8 +13,12 @@ phem-suspense{display:block}
 :where([data-phem-toast][data-type="warning"]){background:#b45309}
 :where([data-phem-toast][data-type="success"]){background:#15803d}
 :where([data-phem-toast][data-limited]){display:none}
+/* A swipe of a toast: the toast follows the pointer. */
+:where([data-phem-toast][data-swiping],[data-phem-toast][data-swipe-direction]){transform:translate(var(--toast-swipe-movement-x,0px),var(--toast-swipe-movement-y,0px))}
 :where([data-phem-toast-description]){flex:1}
 :where([data-phem-toast-close]){padding:0 .25rem;border:0;background:none;color:inherit;font:inherit;line-height:1;cursor:pointer}
 /* The phem-sortable controller: a touch on a handle (or on an item with no handle) drags, and does not scroll. No text selection during a drag. */
 [data-controller~="phem-sortable"] [data-phem-sortable-target~="handle"],[data-controller~="phem-sortable"] [data-phem-sortable-target~="item"]:not(:has([data-phem-sortable-target~="handle"])){touch-action:none}
 [data-phem-sorting],[data-phem-sorting] *{-webkit-user-select:none;user-select:none}
+/* The swipe of a drawer (phem-dialog with a swipe direction): no text selection. */
+[data-phem-dialog-target~="popup"][data-swiping]{-webkit-user-select:none;user-select:none}

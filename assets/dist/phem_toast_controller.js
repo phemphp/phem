@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { onControl, swipe } from "./phem_swipe.js"
 import { hide, show } from "./phem_transition.js"
 
 // The types of a toast. Another type is `info`.
@@ -13,6 +14,9 @@ const shown = new WeakSet()
 
 // Each toast has an id: the morph does not match it with a new element of the server render.
 let count = 0
+
+// The distance (px) of a swipe that closes the toast.
+const SWIPE = 40
 
 // The `phem-toast` controller: shows a short message (a toast) in its element for the browser
 // events of Phem. The toasts stay after the morph of an event.
@@ -32,8 +36,21 @@ let count = 0
 // the screen starts its time again.
 //
 // A toast goes away after the `duration` value (in ms), or with its close button. A duration of
-// `0` keeps it until the close button. The time stops while the pointer or the focus is on the
-// toast. The element is a live region (`aria-live="polite"`), so a screen reader reads each toast.
+// `0` keeps it until the close button. The element is a live region (`aria-live="polite"`), so a
+// screen reader reads each toast.
+//
+// The pointer or the focus on the element expands the stack: the element and the toasts get
+// `data-expanded`, and the time of all the toasts stops. Each toast gets `--toast-height` (its
+// height) and `--toast-offset-y` (the heights of the newer toasts), and the element gets
+// `--toast-frontmost-height` (the height of the last toast), for a stack that shows only the last
+// toast until the pointer comes. The stack closes when the pointer and the focus go, and when its
+// last toast goes. The morph of the element does not remove its state.
+//
+// A swipe of a toast in a direction of the `swipeDirection` value ("down right" by default; also
+// `up` and `left`) closes it. During the swipe, the toast gets `data-swiping`, and the distance in
+// `--toast-swipe-movement-x` and `--toast-swipe-movement-y`. A swipe of 40 px closes the toast,
+// with `data-swipe-direction`: its `[data-ending-style]` transition can go on in that direction.
+// A shorter swipe gives the toast its place again. An empty value turns off the swipe.
 //
 // Each toast has these parts, as Base UI: the root (`data-phem-toast`), the description
 // (`[data-phem-toast-description]`, the message) and the close button (`[data-phem-toast-close]`).
@@ -53,6 +70,7 @@ export default class PhemToastController extends Controller {
     errorMessage: String,
     rateLimitedMessage: { type: String, default: "Too many changes. Please wait and try again." },
     closeLabel: { type: String, default: "Close" },
+    swipeDirection: { type: String, default: "down right" },
   }
 
   connect() {
@@ -79,29 +97,41 @@ export default class PhemToastController extends Controller {
     }
     this.element.addEventListener("turbo:before-morph-element", this.keepToasts)
 
-    this.element.addEventListener("click", this.onClick)
-    this.element.addEventListener("mouseover", this.pause)
-    this.element.addEventListener("focusin", this.pause)
-    this.element.addEventListener("mouseout", this.resume)
-    this.element.addEventListener("focusout", this.resume)
+    // The morph removes the state of the stack from the element: it gets it again.
+    this.morphed = (event) => {
+      if (event.target !== this.element) return
+
+      this.element.toggleAttribute("data-expanded", this.expanded)
+      this.#stack()
+    }
+    this.element.addEventListener("turbo:morph-element", this.morphed)
+
+    this.listening = new AbortController()
+    const options = { signal: this.listening.signal }
+    this.element.addEventListener("click", this.onClick, options)
+    this.element.addEventListener("mouseover", this.onOver, options)
+    this.element.addEventListener("focusin", this.onOver, options)
+    this.element.addEventListener("mouseout", this.onOut, options)
+    this.element.addEventListener("focusout", this.onOut, options)
+    this.element.addEventListener("pointerdown", this.onPointerDown, options)
 
     window.addEventListener("phem:toast", this.show)
     window.addEventListener("phem:error", this.onError)
     window.addEventListener("phem:rate-limited", this.onRateLimited)
 
-    // The toasts of the element before this connect.
-    for (const el of this.#toasts()) this.#start(el)
+    // The toasts of the element before this connect (a page from the Turbo cache) get their time.
+    this.expanded = true
+    this.#expand(false)
   }
 
   // The toasts stay: a move of the element connects it again.
   disconnect() {
     this.element.removeEventListener("turbo:before-morph-attribute", this.keepLive)
     this.element.removeEventListener("turbo:before-morph-element", this.keepToasts)
-    this.element.removeEventListener("click", this.onClick)
-    this.element.removeEventListener("mouseover", this.pause)
-    this.element.removeEventListener("focusin", this.pause)
-    this.element.removeEventListener("mouseout", this.resume)
-    this.element.removeEventListener("focusout", this.resume)
+    this.element.removeEventListener("turbo:morph-element", this.morphed)
+    this.listening.abort()
+    this.swiping?.()
+    this.swiping = null
     window.removeEventListener("phem:toast", this.show)
     window.removeEventListener("phem:error", this.onError)
     window.removeEventListener("phem:rate-limited", this.onRateLimited)
@@ -141,18 +171,51 @@ export default class PhemToastController extends Controller {
     if (el) this.#remove(el)
   }
 
-  // The time stops while the pointer or the focus is on the toast.
-  pause = (event) => {
-    const el = this.#toastOf(event.target)
-    if (el) clearTimeout(this.timers.get(el))
+  // The pointer or the focus on the element expands the stack, and stops the time.
+  onOver = () => this.#expand(true)
+
+  onOut = (event) => {
+    if (event.relatedTarget instanceof Node && this.element.contains(event.relatedTarget)) return
+
+    const held = event.type === "mouseout" ? this.element.contains(document.activeElement) : this.element.matches(":hover")
+    if (!held) this.#expand(false)
   }
 
-  resume = (event) => {
-    const el = this.#toastOf(event.target)
-    if (!el || el.contains(event.relatedTarget)) return
+  // A swipe: the toast follows the pointer, in the directions of the `swipeDirection` value.
+  onPointerDown = (event) => {
+    if (!event.isPrimary || event.button !== 0 || this.swiping) return
 
-    const held = event.type === "mouseout" ? el.contains(document.activeElement) : el.matches(":hover")
-    if (!held) this.#start(el)
+    const el = this.#toastOf(event.target)
+    const directions = this.swipeDirectionValue.split(/\s+/).filter(Boolean)
+    if (!el || directions.length === 0 || el.hasAttribute("data-ending-style") || onControl(el, event.target)) return
+
+    this.swiping = swipe(event, directions, {
+      end: () => {
+        this.swiping = null
+        el.removeAttribute("data-swiping")
+      },
+      move: (movement) => {
+        el.setAttribute("data-swiping", "")
+        el.style.setProperty("--toast-swipe-movement-x", `${movement.x}px`)
+        el.style.setProperty("--toast-swipe-movement-y", `${movement.y}px`)
+        clearTimeout(this.timers.get(el))
+      },
+      release: ({ direction, distance }) => {
+        if (distance >= SWIPE) {
+          el.setAttribute("data-swipe-direction", direction)
+          this.#remove(el)
+
+          return
+        }
+
+        this.#unswipe(el)
+        if (!this.expanded) this.#start(el)
+      },
+      cancel: () => {
+        this.#unswipe(el)
+        if (!this.expanded) this.#start(el)
+      },
+    })
   }
 
   // True for the first phem-toast element that gets the event.
@@ -179,7 +242,7 @@ export default class PhemToastController extends Controller {
     const same = this.#toasts().find((el) => !el.hasAttribute("data-ending-style") && el.getAttribute("data-type") === type && this.#message(el) === message)
     if (same) {
       same.dataset.phemToastDuration = String(duration)
-      this.#start(same)
+      if (!this.expanded) this.#start(same)
 
       return
     }
@@ -197,7 +260,8 @@ export default class PhemToastController extends Controller {
     this.element.append(el)
     show(el)
     this.#stack()
-    this.#start(el)
+    el.toggleAttribute("data-expanded", this.expanded)
+    if (!this.expanded) this.#start(el)
   }
 
   // A copy of the root of the template, or the default parts.
@@ -225,13 +289,43 @@ export default class PhemToastController extends Controller {
     return (el.querySelector("[data-phem-toast-description]") ?? el).textContent
   }
 
-  // The position of each toast in the stack: 0 for the last toast.
+  // The position of each toast in the stack: 0 for the last toast, and the heights of the newer
+  // toasts.
   #stack() {
-    const toasts = this.#toasts().filter((el) => !el.hasAttribute("data-ending-style"))
-    toasts.reverse().forEach((el, i) => {
+    const toasts = this.#toasts().filter((el) => !el.hasAttribute("data-ending-style")).reverse()
+    let offset = 0
+
+    toasts.forEach((el, i) => {
+      const height = el.offsetHeight
       el.style.setProperty("--toast-index", String(i))
+      el.style.setProperty("--toast-height", `${height}px`)
+      el.style.setProperty("--toast-offset-y", `${offset}px`)
       el.toggleAttribute("data-limited", i >= this.limitValue)
+      offset += height
     })
+
+    this.element.style.setProperty("--toast-frontmost-height", `${toasts[0]?.offsetHeight ?? 0}px`)
+  }
+
+  // The stack shows all its toasts, and their time stops. The time starts again when it closes.
+  #expand(expanded) {
+    if (expanded === this.expanded) return
+
+    this.expanded = expanded
+    this.element.toggleAttribute("data-expanded", expanded)
+
+    for (const el of this.#toasts()) {
+      el.toggleAttribute("data-expanded", expanded)
+      if (expanded) clearTimeout(this.timers.get(el))
+      else if (!el.hasAttribute("data-swiping")) this.#start(el)
+    }
+
+    if (expanded) this.#stack()
+  }
+
+  #unswipe(el) {
+    el.style.removeProperty("--toast-swipe-movement-x")
+    el.style.removeProperty("--toast-swipe-movement-y")
   }
 
   #start(el) {
@@ -248,8 +342,22 @@ export default class PhemToastController extends Controller {
     this.timers.delete(el)
     if (el.hasAttribute("data-ending-style")) return
 
-    hide(el, { onEnd: () => el.remove() })
+    hide(el, {
+      onEnd: () => {
+        el.remove()
+        this.#release()
+      },
+    })
     this.#stack()
+  }
+
+  // A toast that goes does not get a mouseout or a focusout: the stack closes when the pointer
+  // and the focus are not on it, or when it has no toast.
+  #release() {
+    if (!this.expanded) return
+
+    const held = this.element.matches(":hover") || this.element.contains(document.activeElement)
+    if (!held || this.#toasts().length === 0) this.#expand(false)
   }
 
   #toasts() {
@@ -266,3 +374,4 @@ export default class PhemToastController extends Controller {
     return el?.parentElement === this.element && el.hasAttribute("data-phem-toast")
   }
 }
+

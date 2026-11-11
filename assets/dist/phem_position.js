@@ -21,6 +21,10 @@
 // to the side. The CSS of the app puts the arrow on the edge of the popup with `[data-side]`.
 // The popup gets `data-anchor-hidden` when the anchor is out of the viewport.
 //
+// The anchor can be a virtual element: an object with `getBoundingClientRect()` and a
+// `contextElement` (the element of its direction), for a popup at the point of the pointer
+// (`phem-context-menu`).
+//
 // The popup follows its anchor on a scroll, a resize of the window and a resize of the anchor or
 // of the popup, until the signal aborts. The morph resets the `style` attribute: the controllers
 // call the update again after it.
@@ -81,7 +85,7 @@ export function position(anchor, popup, options, signal) {
 
   if (typeof ResizeObserver === "function") {
     const observer = new ResizeObserver(later)
-    observer.observe(anchor)
+    if (anchor instanceof Element) observer.observe(anchor)
     observer.observe(popup)
     signal.addEventListener("abort", () => observer.disconnect(), { once: true })
   }
@@ -108,8 +112,17 @@ export function place(anchor, popup, { side = "bottom", align = "center", sideOf
   side = SIDES.has(side) ? side : "bottom"
   align = ALIGNS.has(align) ? align : "center"
 
-  const rtl = getComputedStyle(anchor).direction === "rtl"
+  const rtl = getComputedStyle(anchor.contextElement ?? anchor).direction === "rtl"
   const a = anchor.getBoundingClientRect()
+
+  // The size of a fixed box at the corner of the viewport: a popup that is a block in the page is
+  // as wide as its container, and a popup at its last place near an edge wraps its text.
+  popup.style.setProperty("position", "fixed")
+  popup.style.setProperty("top", "0px")
+  popup.style.setProperty("left", "0px")
+  popup.style.setProperty("right", "auto")
+  popup.style.setProperty("bottom", "auto")
+
   // The size with no transform: a scale animation does not change the place.
   const size = { width: popup.offsetWidth, height: popup.offsetHeight }
   const view = { width: document.documentElement.clientWidth, height: document.documentElement.clientHeight }

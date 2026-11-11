@@ -278,4 +278,173 @@ describe("phem-dialog", () => {
 
     expect(isModal()).toBe(true)
   })
+
+  describe("a drawer", () => {
+    // The dialog is a box of 300 x 400 px at (0, 400).
+    async function drawer(attributes = 'data-phem-dialog-swipe-direction-value="down"', content = "") {
+      await mount(edit(attributes, content))
+      $("dialog").getBoundingClientRect = () => ({ left: 0, top: 400, right: 300, bottom: 800, width: 300, height: 400 })
+      click("#open")
+    }
+
+    let time = 0
+
+    function pointer(type, x, y, target = document) {
+      const event = new PointerEvent(type, { bubbles: true, cancelable: true, isPrimary: true, button: 0, pointerId: 1, clientX: x, clientY: y })
+      Object.defineProperty(event, "timeStamp", { value: (time += 1000) })
+      target.dispatchEvent(event)
+
+      return event
+    }
+
+    const $ = (id) => document.getElementById(id)
+
+    it("follows a swipe in its direction, and closes after half its size", async () => {
+      await drawer()
+      pointer("pointerdown", 100, 500, $("title"))
+      pointer("pointermove", 100, 600)
+
+      expect($("dialog").hasAttribute("data-swiping")).toBe(true)
+      expect($("dialog").style.getPropertyValue("--dialog-swipe-movement-y")).toBe("100px")
+      expect($("dialog").style.getPropertyValue("--dialog-swipe-progress")).toBe("0.25")
+
+      pointer("pointermove", 100, 700)
+      pointer("pointerup", 100, 700)
+      expect($("dialog").hasAttribute("data-swiping")).toBe(false)
+      expect($("edit").getAttribute("data-phem-dialog-open-value")).toBe("false")
+      expect($("dialog").open).toBe(false)
+      expect($("dialog").hasAttribute("data-swipe-direction")).toBe(false)
+    })
+
+    it("keeps its place and the direction of the swipe during its close animation", async () => {
+      await drawer()
+      let finish
+      $("dialog").getAnimations = () => [{ finished: new Promise((resolve) => (finish = resolve)) }]
+      pointer("pointerdown", 100, 500, $("title"))
+      pointer("pointermove", 100, 700)
+      pointer("pointerup", 100, 700)
+
+      expect($("dialog").getAttribute("data-swipe-direction")).toBe("down")
+      expect($("dialog").hasAttribute("data-ending-style")).toBe(true)
+      expect($("dialog").style.getPropertyValue("--dialog-swipe-movement-y")).toBe("200px")
+
+      finish()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect($("dialog").open).toBe(false)
+      expect($("dialog").hasAttribute("data-swipe-direction")).toBe(false)
+    })
+
+    it("goes back to its place after a short and slow swipe", async () => {
+      await drawer()
+      pointer("pointerdown", 100, 500, $("title"))
+      pointer("pointermove", 100, 600)
+      pointer("pointerup", 100, 600)
+
+      expect($("dialog").open).toBe(true)
+      expect($("dialog").hasAttribute("data-swiping")).toBe(false)
+      expect($("dialog").style.getPropertyValue("--dialog-swipe-movement-y")).toBe("")
+    })
+
+    it("closes after a short and fast swipe", async () => {
+      await drawer()
+      pointer("pointerdown", 100, 500, $("title"))
+      const move = new PointerEvent("pointermove", { bubbles: true, isPrimary: true, pointerId: 1, clientX: 100, clientY: 560 })
+      Object.defineProperty(move, "timeStamp", { value: time + 50 })
+      document.dispatchEvent(move)
+      const up = new PointerEvent("pointerup", { bubbles: true, isPrimary: true, pointerId: 1, clientX: 100, clientY: 560 })
+      Object.defineProperty(up, "timeStamp", { value: time + 60 })
+      document.dispatchEvent(up)
+
+      expect($("dialog").open).toBe(false)
+    })
+
+    it("resists a swipe in the other direction", async () => {
+      await drawer()
+      pointer("pointerdown", 100, 500, $("title"))
+      pointer("pointermove", 100, 400)
+      expect($("dialog").hasAttribute("data-swiping")).toBe(true)
+      expect($("dialog").style.getPropertyValue("--dialog-swipe-movement-y")).toBe("-10px")
+      expect($("dialog").style.getPropertyValue("--dialog-swipe-progress")).toBe("0")
+      pointer("pointerup", 100, 400)
+      expect($("dialog").open).toBe(true)
+    })
+
+    it("does not swipe from a button, from the backdrop or with no swipe direction", async () => {
+      await drawer()
+      pointer("pointerdown", 100, 500, $("save"))
+      pointer("pointermove", 100, 800)
+      pointer("pointerup", 100, 800)
+      expect($("dialog").open).toBe(true)
+
+      pointer("pointerdown", 100, 100, $("dialog"))
+      pointer("pointermove", 100, 800)
+      expect($("dialog").hasAttribute("data-swiping")).toBe(false)
+      pointer("pointerup", 100, 800)
+
+      document.body.innerHTML = ""
+      await drawer("")
+      pointer("pointerdown", 100, 500, $("title"))
+      pointer("pointermove", 100, 800)
+      pointer("pointerup", 100, 800)
+      expect($("dialog").open).toBe(true)
+    })
+
+    it("does not swipe down from a list that is not at its top", async () => {
+      await drawer('data-phem-dialog-swipe-direction-value="down"', `<ul id="list" style="overflow-y: auto"><li id="row">Row</li></ul>`)
+      Object.defineProperty($("list"), "scrollTop", { value: 20, configurable: true })
+      pointer("pointerdown", 100, 500, $("row"))
+      pointer("pointermove", 100, 800)
+      pointer("pointerup", 100, 800)
+      expect($("dialog").open).toBe(true)
+
+      // At its top, the list swipes.
+      Object.defineProperty($("list"), "scrollTop", { value: 0, configurable: true })
+      pointer("pointerdown", 100, 500, $("row"))
+      pointer("pointermove", 100, 800)
+      pointer("pointerup", 100, 800)
+      expect($("dialog").open).toBe(false)
+    })
+
+    it("swipes up from content with a visible overflow", async () => {
+      await drawer('data-phem-dialog-swipe-direction-value="up"', `<div id="header"><span id="icon">Icon</span></div>`)
+      Object.defineProperty($("header"), "scrollHeight", { value: 30 })
+      Object.defineProperty($("header"), "clientHeight", { value: 20 })
+      pointer("pointerdown", 100, 700, $("icon"))
+      pointer("pointermove", 100, 400)
+      pointer("pointerup", 100, 400)
+
+      expect($("dialog").open).toBe(false)
+    })
+
+    it("stops the scroll of a touch that swipes, and not of a touch that scrolls", async () => {
+      await drawer()
+      const touchmove = (y) => {
+        const event = new Event("touchmove", { bubbles: true, cancelable: true })
+        Object.defineProperty(event, "touches", { value: [{ clientX: 100, clientY: y }] })
+        document.dispatchEvent(event)
+
+        return event
+      }
+      const down = new PointerEvent("pointerdown", { bubbles: true, isPrimary: true, button: 0, pointerId: 1, pointerType: "touch", clientX: 100, clientY: 500 })
+      $("title").dispatchEvent(down)
+
+      expect(touchmove(480).defaultPrevented).toBe(false)
+      expect(touchmove(520).defaultPrevented).toBe(true)
+      document.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true, pointerId: 1 }))
+      expect(touchmove(560).defaultPrevented).toBe(false)
+    })
+
+    it("clears the swipe when it opens again", async () => {
+      await drawer()
+      pointer("pointerdown", 100, 500, $("title"))
+      pointer("pointermove", 100, 700)
+      pointer("pointerup", 100, 700)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      click("#open")
+
+      expect($("dialog").open).toBe(true)
+      expect($("dialog").hasAttribute("data-swipe-direction")).toBe(false)
+      expect($("dialog").style.getPropertyValue("--dialog-swipe-movement-y")).toBe("")
+    })
+  })
 })
