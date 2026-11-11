@@ -24,12 +24,8 @@ const section = 'tutorial' === current ? 'tutorial' : current ? 'docs' : undefin
             <button class="ph-search-trigger" type="button" data-ph-search-open>
                 <Icon name="magnifying-glass" /><span class="ph-search-trigger__label">Search docs</span><span class="ph-search-trigger__keys"><kbd class="ph-kbd">⌘</kbd><kbd class="ph-kbd">K</kbd></span>
             </button>
-            <div class="ph-theme" role="group" aria-label="Color theme">
-                <button type="button" data-ph-theme="light" aria-pressed="false" aria-label="Light"><Icon name="sun" /></button>
-                <button type="button" data-ph-theme="system" aria-pressed="true" aria-label="Match system"><Icon name="computer-desktop" /></button>
-                <button type="button" data-ph-theme="dark" aria-pressed="false" aria-label="Dark"><Icon name="moon" /></button>
-            </div>
             <a class="ph-icon-btn header-github" href={repository} target="_blank" rel="noopener" aria-label="GitHub (opens in a new tab)" title="GitHub"><Icon name="github" /></a>
+            <button class="ph-icon-btn ph-theme-toggle" type="button" data-ph-theme-toggle aria-label="Toggle color theme" title="Toggle color theme"><Icon name="moon" /><Icon name="sun" /></button>
         </div>
     </div>
 </header>

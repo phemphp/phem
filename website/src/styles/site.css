@@ -1,6 +1,6 @@
 /* Layout glue of the site that the design system has no class for. Tokens only. */
 .home-section { max-width: var(--page-width); margin: 0 auto; padding: 0 var(--space-6) var(--space-16); box-sizing: border-box; }
-.home-section__title { margin: 0 0 var(--space-6); color: var(--ink); font: 700 24px/32px var(--font-sans); letter-spacing: -0.01em; }
+.home-section__title { margin: 0 0 var(--space-6); color: var(--ink); font: 600 24px/32px var(--font-sans); letter-spacing: -0.025em; }
 @media (max-width: 767px) { .header-github { display: none; } }
 .header-version { flex: none; text-decoration: none; font-family: var(--font-mono); }
 .header-version[hidden] { display: none; }
@@ -9,7 +9,7 @@
 .ph-hero .ph-code { margin: 0; min-width: 0; }
 /* The tables of the docs hold long code: it wraps at its spaces, so the table fits the page. Each
    word of the code is a span (src/markdown/tables.ts). */
-.ph-prose .ph-table code { font-size: 13px; white-space: normal; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.ph-prose .ph-table code { white-space: normal; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .ph-prose .ph-table code > span { white-space: nowrap; }
 .site-banner__text { margin: 0; }
 @media (max-width: 767px) { .site-banner { padding: var(--space-2) var(--space-4); } .site-banner__more { display: none; } }
@@ -20,3 +20,24 @@
 .nav-pill.is-instant { transition: none; }
 .ph-nav.is-pill .ph-nav__link { z-index: 1; background: transparent; }
 @media (prefers-reduced-motion: reduce) { .nav-pill { transition: none; } }
+/* The banner and the header stay at the top of the page. The banner script (Banner.astro) sets
+   --banner-height to the real height of the banner, because the text can wrap. */
+:root { --banner-height: 40px; --top-height: calc(var(--header-height) + var(--banner-height)); }
+.site-top { position: sticky; top: 0; z-index: var(--z-header); }
+.site-top .ph-header { position: relative; }
+.ph-prose :where(h1, h2, h3, h4) { scroll-margin-top: calc(var(--top-height) + var(--space-6)); }
+.ph-docs > .ph-nav { top: var(--top-height); height: calc(100vh - var(--top-height)); }
+.ph-docs__aside { top: var(--top-height); max-height: calc(100vh - var(--top-height)); }
+/* The left nav has no scrollbar. Its top and bottom edges fade into the page background, like
+   ui.shadcn.com. The top fade shows after a scroll, and the bottom fade goes at the end. */
+@property --nav-fade-top { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --nav-fade-bottom { syntax: '<length>'; inherits: false; initial-value: 40px; }
+.ph-docs > .ph-nav { scrollbar-width: none; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--nav-fade-top), #000 calc(100% - var(--nav-fade-bottom)), transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 var(--nav-fade-top), #000 calc(100% - var(--nav-fade-bottom)), transparent 100%); }
+.ph-docs > .ph-nav::-webkit-scrollbar { display: none; }
+@keyframes nav-fade { 0% { --nav-fade-top: 0px; --nav-fade-bottom: 40px; } 10% { --nav-fade-top: 40px; } 90% { --nav-fade-bottom: 40px; } 100% { --nav-fade-top: 40px; --nav-fade-bottom: 0px; } }
+@supports (animation-timeline: scroll()) { .ph-docs > .ph-nav { animation: nav-fade linear both; animation-timeline: scroll(self); } }
+/* A code block with no title bar: the copy button floats in the top right corner, and the code
+   keeps clear of it (src/shiki/code-block.ts). */
+.ph-code--bare { position: relative; }
+.ph-code--bare > .ph-code__copy { position: absolute; top: var(--space-2); right: var(--space-2); }
+.ph-code--bare pre { padding-right: var(--space-12); }

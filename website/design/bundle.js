@@ -1,6 +1,6 @@
 /* Phem Docs — behaviour for static docs pages. Plain JavaScript, no dependencies, no network.
    Everything is wired by data attributes through event delegation, so markup added later works too.
-   Public API: window.PhemDocs = { init, initTheme, setTheme, openSearch, closeSearch, selectTab, version } */
+   Public API: window.PhemDocs = { init, initTheme, setTheme, toggleTheme, openSearch, closeSearch, selectTab, version } */
 (function () {
   'use strict';
   var doc = document;
@@ -20,17 +20,15 @@
     if (mode === 'light' || mode === 'dark') return mode;
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
-  function syncThemeButtons(mode) {
-    each(doc.querySelectorAll('[data-ph-theme]'), function (b) {
-      b.setAttribute('aria-pressed', String(b.getAttribute('data-ph-theme') === mode));
-    });
-  }
   function setTheme(mode) {
     mode = mode === 'light' || mode === 'dark' ? mode : 'system';
     store.set('ph-theme', mode);
     doc.documentElement.setAttribute('data-theme', resolve(mode));
     doc.documentElement.setAttribute('data-theme-mode', mode);
-    syncThemeButtons(mode);
+  }
+  /* One button switches between light and dark: the opposite of the theme on screen. */
+  function toggleTheme() {
+    setTheme(doc.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
   }
   /* Call once, as early as possible (end of <head>), to apply the saved choice before paint. */
   function initTheme() {
@@ -219,8 +217,6 @@
   /* ---------- Init + delegation ---------- */
   function init(root) {
     root = root || doc;
-    var mode = doc.documentElement.getAttribute('data-theme-mode') || store.get('ph-theme');
-    if (mode) syncThemeButtons(mode);
     each(root.querySelectorAll('[data-ph-tabs]'), function (set) {
       var group = set.getAttribute('data-ph-tabs');
       var saved = group && store.get('ph-tabs:' + group);
@@ -233,7 +229,7 @@
 
   doc.addEventListener('click', function (e) {
     var t = e.target, el;
-    if ((el = closest(t, '[data-ph-theme]'))) { setTheme(el.getAttribute('data-ph-theme')); return; }
+    if (closest(t, '[data-ph-theme-toggle]')) { toggleTheme(); return; }
     if ((el = closest(t, '[role="tab"]')) && closest(el, '[data-ph-tabs]')) { selectTab(el); return; }
     if ((el = closest(t, '[data-ph-copy], .ph-code__copy'))) { copy(el); return; }
     if ((el = closest(t, '[data-ph-search-open]'))) { e.preventDefault(); openSearch(); return; }
@@ -293,6 +289,7 @@
     init: init,
     initTheme: initTheme,
     setTheme: setTheme,
+    toggleTheme: toggleTheme,
     openSearch: openSearch,
     closeSearch: closeSearch,
     selectTab: function (tab) { selectTab(tab); }

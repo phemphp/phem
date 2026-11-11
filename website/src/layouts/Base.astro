@@ -30,8 +30,10 @@ const { title, description, current } = Astro.props;
         <script is:inline>PhemDocs.initTheme();</script>
     </head>
     <body>
-        <Banner />
-        <Header current={current} />
+        <div class="site-top">
+            <Banner />
+            <Header current={current} />
+        </div>
         <slot />
         <MobileNav current={current} />
         <SearchDialog />

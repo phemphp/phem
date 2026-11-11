@@ -7,3 +7,14 @@ import Icon from './Icon.astro';
     <Icon name="exclamation-triangle" />
     <p class="site-banner__text">This documentation is under construction.<span class="site-banner__more"> Pages can be missing or change at any time.</span> <a href={repository}>Follow it on GitHub</a>.</p>
 </div>
+<script>
+    // The sticky nav and the anchors are below the banner: keep --banner-height equal to its height.
+    const banner = document.querySelector<HTMLElement>('.site-banner');
+
+    if (banner) {
+        const update = (): void => document.documentElement.style.setProperty('--banner-height', `${banner.offsetHeight}px`);
+        update();
+
+        new ResizeObserver(update).observe(banner);
+    }
+</script>
