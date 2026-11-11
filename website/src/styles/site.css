@@ -30,13 +30,11 @@
 .ph-docs > .ph-nav { top: var(--top-height); height: calc(100vh - var(--top-height)); }
 .ph-docs__aside { top: var(--top-height); max-height: calc(100vh - var(--top-height)); }
 /* The left nav has no scrollbar. Its top and bottom edges fade into the page background, like
-   ui.shadcn.com. The top fade shows after a scroll, and the bottom fade goes at the end. */
-@property --nav-fade-top { syntax: '<length>'; inherits: false; initial-value: 0px; }
-@property --nav-fade-bottom { syntax: '<length>'; inherits: false; initial-value: 40px; }
-.ph-docs > .ph-nav { scrollbar-width: none; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--nav-fade-top), #000 calc(100% - var(--nav-fade-bottom)), transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 var(--nav-fade-top), #000 calc(100% - var(--nav-fade-bottom)), transparent 100%); }
+   ui.shadcn.com. A script of SidebarNav sets the two fades: the top fade shows after a scroll,
+   and the bottom fade goes at the end. Do not use a scroll-driven animation here: the minifier
+   merges animation-timeline into the animation shorthand, and Chrome then drops the declaration. */
+.ph-docs > .ph-nav { scrollbar-width: none; -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--nav-fade-top, 0px), #000 calc(100% - var(--nav-fade-bottom, 40px)), transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 var(--nav-fade-top, 0px), #000 calc(100% - var(--nav-fade-bottom, 40px)), transparent 100%); }
 .ph-docs > .ph-nav::-webkit-scrollbar { display: none; }
-@keyframes nav-fade { 0% { --nav-fade-top: 0px; --nav-fade-bottom: 40px; } 10% { --nav-fade-top: 40px; } 90% { --nav-fade-bottom: 40px; } 100% { --nav-fade-top: 40px; --nav-fade-bottom: 0px; } }
-@supports (animation-timeline: scroll()) { .ph-docs > .ph-nav { animation: nav-fade linear both; animation-timeline: scroll(self); } }
 /* A code block with no title bar: the copy button floats in the top right corner, and the code
    keeps clear of it (src/shiki/code-block.ts). */
 .ph-code--bare { position: relative; }

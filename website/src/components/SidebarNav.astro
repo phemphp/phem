@@ -78,6 +78,28 @@ const { current, pill = false } = Astro.props;
         nav.classList.add('is-pill');
     }
 
+    // The edge fades of the docs nav (site.css): no top fade at the top, and no bottom fade at
+    // the end.
+    function fades(nav: HTMLElement): void {
+        const fade = 40;
+
+        const update = (): void => {
+            const rest = nav.scrollHeight - nav.clientHeight - nav.scrollTop;
+
+            nav.style.setProperty('--nav-fade-top', `${Math.min(Math.max(nav.scrollTop, 0), fade)}px`);
+            nav.style.setProperty('--nav-fade-bottom', `${Math.min(Math.max(rest, 0), fade)}px`);
+        };
+
+        nav.addEventListener('scroll', update, { passive: true });
+        new ResizeObserver(update).observe(nav);
+
+        update();
+    }
+
+    for (const nav of document.querySelectorAll<HTMLElement>('.ph-docs > .ph-nav')) {
+        fades(nav);
+    }
+
     for (const nav of document.querySelectorAll<HTMLElement>('[data-nav-pill]')) {
         const element = nav.querySelector<HTMLElement>('.nav-pill');
 
