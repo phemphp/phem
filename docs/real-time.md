@@ -299,6 +299,48 @@ $this->streams->toComponent(BagContents::class, ['bag' => $bag->id])->refresh();
 
 The `handlers` argument works on a class component only. On a page, a function or a handler method, `phemc` reports E053. On these and on a closure, Phem throws a `LogicException`. A component with `handlers: false` can’t also have `#[Broadcast]` on a handler method or a closure. In that case, put `#[Broadcast]` on those handlers only, and leave it off the class.
 
+## Sync the tabs of one browser without a hub
+
+Each tab keeps its own signed state. When a user opens the same page in two tabs and changes data in one tab, the other tab shows old data until its next event. To refresh the other tabs, set `data-phem-sync-tabs-value` on the `<Root>` element. This needs no `#[Broadcast]` and no Mercure hub:
+
+```php
+#[Page('/orders/{id:order}')]
+final class OrderPage
+{
+    #[Path] public Order $order;
+
+    public function render(): Node
+    {
+        return (
+            <html lang="en">
+                <head>{{ importmap('app') }}</head>
+                <body>
+                    <Root data-phem-sync-tabs-value="true">
+                        <OrderLines order={{ order }} />
+                    </Root>
+                </body>
+            </html>
+        );
+    }
+}
+```
+
+The `<Root>` element renders the value for the `phem` controller:
+
+```html
+<div id="phem-root" data-controller="phem" ... data-phem-sync-tabs-value="true">
+```
+
+After an event of the user, the tab sends a message on a `BroadcastChannel`. Each other tab of the same path refreshes the content of its `<Root>`: it sends a refresh with no handler, as a `refresh()` push does. The refresh keeps the bound fields that the user changed in that tab.
+
+- **Which tabs**: the tabs of the same origin with the same path, so the tabs of one browser, with the cookies of the same user. A tab with another query string or fragment refreshes too. Another path, for example the list of the orders, doesn’t refresh.
+- **Which events**: an event with a handler that the server answered with success, also an event that redirects. A failed event (also a redirect that the browser blocks), a refresh, a `phem:live` update, a `<Suspense>` load, an `onPoll` event and an `onVisible` event send no message. So two tabs don’t refresh each other again and again.
+- **Hidden tabs**: a hidden tab refreshes when it becomes visible again, one time for all the messages since then.
+- **Pages that come back**: Turbo can show a page from its cache when the user goes back. The page refreshes when a message came for it while it was away. A page that the browser restores from its back/forward cache got no messages, so it always refreshes.
+- **Other browsers**: the message doesn’t leave the browser. To update the pages of other users, use `#[Broadcast]` and the Mercure hub. An event that pushes a `refresh()` to a page with an open connection to the hub sends no message: the hub refreshes the other tabs, and a message would refresh them a second time.
+
+The option is off by default, because each event of the user makes one more request in each other tab, and that request renders all the content of the `<Root>`. The tab doesn’t know which data the handler changed, so it renders all of it, also after a handler that changes no data.
+
 ## Set up the Mercure hub in FrankenPHP
 
 Phem publishes updates with the FrankenPHP `mercure_publish()` function. Add the hub to the site in the Caddyfile:

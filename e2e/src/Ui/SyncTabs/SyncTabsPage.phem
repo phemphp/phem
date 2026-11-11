@@ -1,0 +1,75 @@
+<?phem
+
+namespace App\Ui\SyncTabs;
+
+use App\Guestbook;
+use Phem\Attribute\{Component, Page, Path, Prop, State};
+use Phem\{Node, Root};
+
+// The entries: data with no state, so each render reads them again.
+#[Component]
+final class SyncTabsEntries
+{
+    #[Prop] public string $room;
+    public array $entries = [];
+
+    public function __construct(private readonly Guestbook $guestbook)
+    {
+    }
+
+    public function mount(): void
+    {
+        $this->entries = $this->guestbook->entries($this->room);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <ul id="entries">
+                {% for entry in entries %}<li key={{ entry.id }}>{{ entry.text }}</li>{% endfor %}
+            </ul>
+        );
+    }
+}
+
+// A guestbook room with no #[Broadcast] and no hub: after an event, the other tabs of the room
+// refresh with `data-phem-sync-tabs-value`.
+#[Page('/sync-tabs/{room}')]
+final class SyncTabsPage
+{
+    #[Path] public string $room;
+    #[State] public string $text = '';
+
+    public function __construct(private readonly Guestbook $guestbook)
+    {
+    }
+
+    public function sign(): void
+    {
+        $this->guestbook->add($this->room, $this->text);
+        $this->text = '';
+    }
+
+    public function render(): Node
+    {
+        return (
+            <html lang="en">
+                <head>
+                    <meta charset="utf-8" />
+                    <title>Sync tabs {{ room }}</title>
+                    <link rel="icon" href="data:," />
+                    {{ importmap('app') }}
+                </head>
+                <body>
+                    <Root data-phem-sync-tabs-value="true">
+                        <form onSubmit={{ sign }}>
+                            <input name="text" aria-label="Message" phem:bind={{ text }} />
+                            <button id="sign" type="submit">Sign</button>
+                        </form>
+                        <SyncTabsEntries room={{ room }} />
+                    </Root>
+                </body>
+            </html>
+        );
+    }
+}

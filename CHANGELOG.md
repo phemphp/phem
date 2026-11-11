@@ -8,6 +8,13 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- `data-phem-sync-tabs-value="true"` on the `<Root>` element refreshes the other tabs of the same
+  page in the browser after an event of the user, with a `BroadcastChannel`: no `#[Broadcast]`
+  and no Mercure hub. A hidden tab refreshes when it becomes visible. A page that comes back from
+  the Turbo cache refreshes when a message came for it, and a page from the back/forward cache
+  always refreshes. A refresh, a `phem:live` update, a load, a poll, an `onVisible` event and an
+  event that pushed a `refresh()` through an open hub connection send no message. See
+  docs/real-time.md.
 - The new `phem-theme` controller keeps the choice of the user between a light, a dark and the
   system theme in `localStorage`, and gives `<html>` `data-theme="light"` or `data-theme="dark"`.
   The new `theme_script()` Twig function goes in the `<head>`: it sets the theme before the first

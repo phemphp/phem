@@ -13,6 +13,7 @@ import { DialogQuestion } from "./phem_dialog_question.js"
 import { fieldsValue } from "./phem_fields.js"
 import { matchesKey } from "./phem_keys.js"
 import { OfflineQueue } from "./phem_offline_queue.js"
+import { TabSync } from "./phem_tab_sync.js"
 import { UPLOAD_MODES, UploadFailed, sendXhr, upload } from "./phem_upload.js"
 
 const TEXT_INPUTS = new Set(["text", "search", "email", "url", "tel", "password", "number", "date", "time", "datetime-local", "month", "week", "color", "range"])
@@ -735,6 +736,8 @@ export default class PhemController extends Controller {
     // The seconds that the offline queue keeps the events of a page that does not load again (0
     // for no limit). Older events leave the storage of the browser.
     offlineQueueMaxAge: { type: Number, default: 86400 },
+    // After an event of the user, the other tabs of the same page refresh (see TabSync).
+    syncTabs: { type: Boolean, default: false },
   }
 
   connect() {
@@ -1086,6 +1089,9 @@ export default class PhemController extends Controller {
     // A page from the Turbo cache can have the mark of its last pushes: it has none now.
     this.showPushPending()
     this.openStream()
+
+    // An event of another tab of this page: the content of the root element is stale.
+    this.tabSync = this.syncTabsValue && TabSync.supported() ? new TabSync(() => this.markContentStale() && this.scheduleRefresh()) : null
   }
 
   disconnect() {
@@ -1095,6 +1101,8 @@ export default class PhemController extends Controller {
 
     this.source?.close()
     this.source = null
+    this.tabSync?.close()
+    this.tabSync = null
     clearTimeout(this.refreshTimer)
     clearTimeout(this.streamTimer)
     // The refresh that waited does not run: Turbo must not cache the mark with the page.
@@ -2209,10 +2217,13 @@ export default class PhemController extends Controller {
       // The server got the bound values with the event. `phem:done` comes before the visit, so
       // each `phem:send` gets its `phem:done`.
       this.leaving = true
+      this.announceEvent(handler, event, data)
       notify("done", { ok: true, status: response.status, redirect: url.href })
       Turbo.visit(url.href)
       return
     }
+
+    this.announceEvent(handler, event, data)
 
     for (const id of stale) this.stale.delete(id)
     this.feedItems.splice(0, feeds.length)
@@ -2272,6 +2283,18 @@ export default class PhemController extends Controller {
       this.loadBoundaries()
       this.watchTriggers()
     }, renderFailed)
+  }
+
+  // The server ran the handler of an event: the other tabs of this page refresh (see TabSync). Not
+  // after a refresh, a `phem:live` event or an event of the browser (a load, a poll, an element
+  // that comes into view): they change nothing, and a poll would refresh the other tabs each time.
+  // Not after an event that pushed a refresh to this page (`sender`) while its stream is open: the
+  // hub refreshes the other tabs, and the channel would refresh them a second time.
+  announceEvent(handler, event, data) {
+    if (!this.tabSync || handler === null || event.live || BROWSER_EVENTS.has(event.type)) return
+    if (data.sender && this.source && this.source.readyState === EventSource.OPEN) return
+
+    this.tabSync.announce()
   }
 
   // Dispatches `phem:<name>` (`queue`, `send`, `receive` or `done`) for an event, with the `handler` id and `detail`.

@@ -85,17 +85,3 @@ call, the page shows old data, with no error.
 - **Proposal B (automatic):** with `#[Transactional]`, Phem reads the Doctrine unit of work at
   the flush, and renders again each component with a changed entity in a prop or a `#[Path]`.
 - **Open questions:** see "Refresh after a handler" in the design discussions.
-
-## 4. Client side
-
-These items come from a review of the client side on 2026-11-09, with a complex app as the
-model: a project tool with a kanban board, a command palette, inline edits and a live feed.
-
-### [ ] Sync between tabs — P3
-
-Two tabs of the same page keep different signed state, unless the page has `#[Broadcast]` and a
-Mercure hub.
-
-- **Proposal:** a `BroadcastChannel` that sends a `refresh()` to the other tabs of the same user
-  after an event.
-

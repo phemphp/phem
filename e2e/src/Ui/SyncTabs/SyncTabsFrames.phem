@@ -1,0 +1,25 @@
+<?phem
+
+namespace App\Ui\SyncTabs;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\Common\Document;
+
+// Three "tabs" of one browser: each frame is its own document, with its own phem controller.
+// The test client routes the requests of the frames of a page, not of a new tab.
+#[Page('/sync-tabs')]
+final class SyncTabsFrames
+{
+    public function render(): Node
+    {
+        return (
+            <Document title="Sync tabs">
+                <iframe id="first" name="first" title="First tab" src="/sync-tabs/one"></iframe>
+                <iframe id="second" name="second" title="Second tab" src="/sync-tabs/one"></iframe>
+                <iframe id="other" name="other" title="Other page" src="/sync-tabs/two"></iframe>
+            </Document>
+        );
+    }
+}
