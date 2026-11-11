@@ -10,7 +10,8 @@
 //   controller render its state again: the morph removes the attributes that the server render
 //   does not have, and the attributes that the controller does not own. It runs one time for all
 //   the elements of a morph, in a microtask, so a large morph does not render the state again for
-//   each element.
+//   each element. It runs again when phem gives a field in the controller element the server
+//   value after the morph (`phem:reset`, a value that the server did not take).
 //
 //     this.state = new ClientState(this, { value: "open", owns: (el, name) => …, morphed: () => … })
 //     this.state.connect()   // in connect()
@@ -56,6 +57,7 @@ export class ClientState {
     }, options)
 
     element.addEventListener("turbo:morph-element", () => this.#later(), options)
+    element.addEventListener("phem:reset", () => this.#later(), options)
   }
 
   disconnect() {

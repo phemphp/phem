@@ -30,6 +30,18 @@
                 "fetch": "lazy",
                 "enabled": false
             },
+            "accordion": {
+                "name": "phem-accordion",
+                "main": "dist/phem_accordion_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "depends": {
+                "name": "phem-depends",
+                "main": "dist/phem_depends_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
             "dialog": {
                 "name": "phem-dialog",
                 "main": "dist/phem_dialog_controller.js",
@@ -93,6 +105,30 @@
             "sortable": {
                 "name": "phem-sortable",
                 "main": "dist/phem_sortable_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "count": {
+                "name": "phem-count",
+                "main": "dist/phem_count_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "reveal": {
+                "name": "phem-reveal",
+                "main": "dist/phem_reveal_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "checkbox-group": {
+                "name": "phem-checkbox-group",
+                "main": "dist/phem_checkbox_group_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "time": {
+                "name": "phem-time",
+                "main": "dist/phem_time_controller.js",
                 "fetch": "lazy",
                 "enabled": false
             }

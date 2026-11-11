@@ -100,15 +100,27 @@ on a focused element.
 - **Proposal:** `phem:shortcut="mod+k"` on the element of the handler, or a built-in
   `phem-shortcut` controller for browser-only actions.
 
-### [ ] Client-side reactive state — P3
+### [ ] A theme switch (dark mode) — P3
 
-A small computed value needs a custom Stimulus controller or a round trip: a character counter, a
-"show password" toggle, a "select all" checkbox that counts the selected rows.
-`phem-optimistic` changes the page only before the server answers.
+A page has no built-in way to keep the choice of a light or a dark theme. The choice must go in
+`localStorage`, and the page must set the theme before its first paint, or the page flashes.
 
-- **Best peer:** LW with Alpine (`x-data`, `$wire.entangle`).
-- **Open question:** a small built-in controller (`phem-count`, `phem-reveal`), or a guide for
-  Alpine with `data-phem-client`.
+- **Proposal:** a small inline script for `<head>` (a `<ThemeScript>` component) and a
+  `phem-theme` controller for the switch, with `data-theme` on `<html>`.
+
+### [ ] Remember a dismissed banner — P3
+
+`phem-collapsible` closes a banner, but the banner shows again after a reload.
+
+- **Proposal:** a `persist` value (`data-phem-collapsible-persist-value="promo-2026"`) that keeps
+  the state in `localStorage`.
+
+### [ ] Scroll spy — P3
+
+A table of contents cannot mark the section in view.
+
+- **Proposal:** a `phem-scrollspy` controller with an `IntersectionObserver`, that gives
+  `aria-current` and `data-active` to the link of the section in view.
 
 ### [ ] Offline queue — P3
 
@@ -145,6 +157,7 @@ The built-in controllers of 2026-11-10 follow Base UI, with less parts. These ar
 - **Menu:** submenus (`SubmenuTrigger`), a modal menu, and `phem-context-menu`;
 - **Combobox:** a choice of more than one value, with chips;
 - **Toast:** a swipe to close, and the toasts of a stack that show on hover;
+- **Dialog:** a drawer that closes with a swipe;
 - **Sortable:** an `aria-live` text for the moves of the keyboard.
 
 - **Best peer:** Base UI.

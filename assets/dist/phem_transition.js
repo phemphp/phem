@@ -91,6 +91,13 @@ export function render(part, open, { hidden = true } = {}) {
   } else end(part, hidden)
 }
 
+// Gives a panel the size of its content in the `--<name>-panel-height` and `--<name>-panel-width`
+// CSS variables, for a transition of its height (`phem-collapsible`, `phem-accordion`).
+export function measure(panel, name) {
+  panel.style.setProperty(`--${name}-panel-height`, `${panel.scrollHeight}px`)
+  panel.style.setProperty(`--${name}-panel-width`, `${panel.scrollWidth}px`)
+}
+
 function restart(part) {
   running.get(part)?.abort()
   const controller = new AbortController()

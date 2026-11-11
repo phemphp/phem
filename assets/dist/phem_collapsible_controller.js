@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
-import { hide, render, show } from "./phem_transition.js"
+import { hide, measure, render, show } from "./phem_transition.js"
 
 // Each controller has a prefix for the id of a panel with no id (for `aria-controls`). The morph
 // removes an id that the server render does not have, or replaces the panel: the panel at the same
@@ -114,9 +114,9 @@ export default class PhemCollapsibleController extends Controller {
     for (const panel of this.panelTargets) {
       if (this.openValue) {
         show(panel)
-        this.#measure(panel)
+        measure(panel, "collapsible")
       } else {
-        this.#measure(panel)
+        measure(panel, "collapsible")
         hide(panel, { hidden: this.#hidden })
       }
     }
@@ -143,7 +143,7 @@ export default class PhemCollapsibleController extends Controller {
       return panel.id
     })
 
-    for (const panel of this.panelTargets) if (open) this.#measure(panel)
+    for (const panel of this.panelTargets) if (open) measure(panel, "collapsible")
 
     for (const trigger of this.triggerTargets) {
       // The server render can give its own `aria-controls`.
@@ -155,12 +155,6 @@ export default class PhemCollapsibleController extends Controller {
       trigger.setAttribute("aria-expanded", String(open))
       trigger.toggleAttribute("data-panel-open", open)
     }
-  }
-
-  // The size of the content of an open panel.
-  #measure(panel) {
-    panel.style.setProperty("--collapsible-panel-height", `${panel.scrollHeight}px`)
-    panel.style.setProperty("--collapsible-panel-width", `${panel.scrollWidth}px`)
   }
 
   get #hidden() {

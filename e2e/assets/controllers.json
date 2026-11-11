@@ -27,6 +27,30 @@
             "sortable": {
                 "enabled": true,
                 "fetch": "eager"
+            },
+            "count": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "reveal": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "checkbox-group": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "depends": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "accordion": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "time": {
+                "enabled": true,
+                "fetch": "eager"
             }
         }
     },

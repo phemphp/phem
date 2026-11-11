@@ -1,0 +1,78 @@
+<?phem
+
+namespace App\Ui\FormHelpers;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Common\Document;
+
+// The client-side helpers of a form: a count, a shown password, a "select all" box, a section
+// from the value of a field, an accordion and a local time. The Save button sends an event, so
+// the tests check the state of each helper after the morph.
+#[Page('/form-helpers')]
+final class FormHelpersPage
+{
+    #[State] public string $bio = '';
+    #[State] public array $selected = [];
+    #[State] public string $reason = 'price';
+    #[State] public int $saves = 0;
+
+    public function save(): void
+    {
+        ++$this->saves;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Form helpers">
+                <div id="bio" data-controller="phem-count">
+                    <textarea id="bio-field" phem:bind={{ bio }} maxlength="20" aria-label="Bio" data-phem-count-target="field"></textarea>
+                    <span id="bio-count" data-phem-count-target="output">{{ bio|length }}/20</span>
+                </div>
+
+                <div id="password" data-controller="phem-reveal">
+                    <input id="password-field" type="password" aria-label="Password" data-phem-reveal-target="field" />
+                    <button id="password-show" type="button" data-phem-reveal-target="trigger">Show</button>
+                </div>
+
+                <div id="rows" data-controller="phem-checkbox-group phem-count">
+                    <input id="all" type="checkbox" aria-label="All" data-phem-checkbox-group-target="parent" />
+                    {% for id in ['1', '2', '3'] %}
+                        <input key={{ id }} id={{ 'row-' ~ id }} type="checkbox" value={{ id }} phem:bind={{ selected }}
+                               aria-label={{ 'Row ' ~ id }} data-phem-checkbox-group-target="item" data-phem-count-target="field" />
+                    {% endfor %}
+                    <span id="rows-count" data-phem-count-target="output" data-phem-count-template="{count} selected"></span>
+                </div>
+
+                <div id="reason" data-controller="phem-depends">
+                    <select id="reason-field" phem:bind={{ reason }} aria-label="Reason" data-phem-depends-target="field">
+                        <option value="price">Price</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <div id="reason-other" data-phem-depends-target="panel" data-phem-depends-match="other" hidden>
+                        <input id="reason-text" name="reasonText" aria-label="Other reason" />
+                    </div>
+                </div>
+
+                <div id="faq" data-controller="phem-accordion">
+                    <div id="faq-shipping" data-value="shipping" data-phem-accordion-target="item">
+                        <button id="faq-shipping-trigger" data-phem-accordion-target="trigger">Shipping</button>
+                        <div id="faq-shipping-panel" data-phem-accordion-target="panel" hidden>Two days.</div>
+                    </div>
+                    <div id="faq-returns" data-value="returns" data-phem-accordion-target="item">
+                        <button id="faq-returns-trigger" data-phem-accordion-target="trigger">Returns</button>
+                        <div id="faq-returns-panel" data-phem-accordion-target="panel" hidden>Thirty days.</div>
+                    </div>
+                </div>
+
+                <time id="time" datetime="2020-01-01T00:00:00Z" data-controller="phem-time">2020-01-01 00:00 UTC</time>
+
+                <button id="save" onClick={{ save }}>Save</button>
+                <output id="saves">{{ saves }}</output>
+                <output id="selected">{{ selected|join(',') }}</output>
+            </Document>
+        );
+    }
+}

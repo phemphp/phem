@@ -8,6 +8,7 @@ import "./phem_announcer.js"
 // `phem:scroll-into-view` element after the morph of an event.
 import { scrollTargets, scrollToNew } from "./phem_scroll.js"
 import { DialogQuestion } from "./phem_dialog_question.js"
+import { fieldsValue } from "./phem_fields.js"
 
 const TEXT_INPUTS = new Set(["text", "search", "email", "url", "tel", "password", "number", "date", "time", "datetime-local", "month", "week", "color", "range"])
 
@@ -341,18 +342,6 @@ class Polls {
 // A callback of the same kind that starts later runs after it.
 function afterStreams() {
   return new Promise((resolve) => (document.visibilityState === "hidden" ? setTimeout(resolve, 0) : requestAnimationFrame(() => setTimeout(resolve, 0))))
-}
-
-// The bound fields (`phem:bind`): the value of a key, from all of its fields, as the server takes it.
-function boundValue(fields) {
-  const [first] = fields
-  if (first instanceof HTMLInputElement && first.type === "checkbox") {
-    return first.hasAttribute("data-phem-bind-list") ? fields.filter((f) => f.checked).map((f) => f.value) : first.checked
-  }
-
-  if (first instanceof HTMLInputElement && first.type === "radio") return fields.find((f) => f.checked)?.value ?? null
-  if (first instanceof HTMLSelectElement && first.multiple) return [...first.selectedOptions].map((o) => o.value)
-  return first.value
 }
 
 // The option that a single <select> shows with no change: the default one, or the first one.
@@ -859,7 +848,7 @@ export default class PhemController extends Controller {
       }
 
       if (!(key in this.sentBound)) return
-      if (!sameValue(boundValue(this.boundFields(key)), this.sentBound[key])) event.preventDefault()
+      if (!sameValue(fieldsValue(this.boundFields(key)), this.sentBound[key])) event.preventDefault()
     }
     this.element.addEventListener("turbo:before-morph-attribute", this.keepEdited)
 
@@ -869,8 +858,9 @@ export default class PhemController extends Controller {
     // The fields whose value the morph keeps (see keepFormField()). The server marks them as
     // touched, so they belong to a Symfony form with live validation: the focused text field (not
     // after a submit: the server can give a new form), and a password field that the server
-    // renders with no value (a PasswordType). The other fields, for example a controlled input
-    // (`value={{ name }}`), get the value of the server render.
+    // renders with no value (a PasswordType), also when `phem-reveal` shows it as a text field.
+    // The other fields, for example a controlled input (`value={{ name }}`), get the value of the
+    // server render.
     this.keptValues = new WeakSet()
     // The fields that the controller marked as touched, and the server not yet (see dispatch()).
     this.clientMarks = new WeakSet()
@@ -882,7 +872,7 @@ export default class PhemController extends Controller {
 
       const touched = this.sentForm !== null && next?.localName === t.localName && next.hasAttribute(TOUCHED)
       const focused = touched && !this.sentForm.submit && t === document.activeElement && isTextLike(t)
-      const password = touched && t.type === "password" && next.type === "password" && t.value !== "" && !next.hasAttribute("value")
+      const password = touched && next.type === "password" && t.value !== "" && !next.hasAttribute("value")
       if (focused || password) this.keptValues.add(t)
       else this.keptValues.delete(t)
     }
@@ -1650,11 +1640,14 @@ export default class PhemController extends Controller {
   }
 
   // Puts an event in the queue. An event of COALESCED_EVENTS that waits in the queue for the same
-  // handler and element takes the new payload, and the new event does not go in the queue.
+  // handler and element takes the new payload, and the new event does not go in the queue. The
+  // live events of a group of bound fields (the checkboxes of a list) count as the events of its
+  // first field: a "select all" that changes 100 checkboxes sends one event.
   // `end(ok)` runs at the end of the event, after its update, also when it failed (ok is false).
   enqueue(el, attr, handler, payload, ids = new Set(), end = null) {
     const coalesce = COALESCED_EVENTS.has(payload.type)
-    const waiting = coalesce ? (this.waiting.get(el) ?? new Map()) : null
+    const group = payload.live ? (this.boundFields(handler)[0] ?? el) : el
+    const waiting = coalesce ? (this.waiting.get(group) ?? new Map()) : null
     const old = waiting?.get(attr)
     if (old && old.handler === handler) {
       old.payload = payload
@@ -1667,7 +1660,7 @@ export default class PhemController extends Controller {
     let ok = false
     if (coalesce) {
       waiting.set(attr, job)
-      this.waiting.set(el, waiting)
+      this.waiting.set(group, waiting)
     }
 
     const upload = payload.files ? { progress: 0 } : null
@@ -1680,7 +1673,7 @@ export default class PhemController extends Controller {
       .then(() => {
         if (waiting?.get(attr) === job) {
           waiting.delete(attr)
-          if (!waiting.size) this.waiting.delete(el)
+          if (!waiting.size) this.waiting.delete(group)
         }
 
         return this.send(el, job.handler, job.payload, unlock, onProgress, job.ids, (result) => (ok = result))
@@ -2333,7 +2326,7 @@ export default class PhemController extends Controller {
     }
 
     const values = {}
-    for (const [key, fields] of keys) values[key] = { value: boundValue(fields), dirty: fields.some(isDirty) }
+    for (const [key, fields] of keys) values[key] = { value: fieldsValue(fields), dirty: fields.some(isDirty) }
 
     return values
   }
@@ -2402,10 +2395,15 @@ export default class PhemController extends Controller {
 
   // After the morph: a field that still has the value that the request sent, and not the value of
   // the server render, has a value that the server did not take. It gets the server value again.
+  // Each field that changes dispatches `phem:reset`, so a controller that shows the value (for
+  // example `phem-count`) shows it again.
   resetRejected(bound) {
     for (const [key, value] of Object.entries(bound)) {
       const fields = this.boundFields(key)
-      if (fields.some(isDirty) && sameValue(boundValue(fields), value)) fields.forEach(resetField)
+      if (!fields.some(isDirty) || !sameValue(fieldsValue(fields), value)) continue
+
+      fields.forEach(resetField)
+      for (const field of fields) field.dispatchEvent(new CustomEvent("phem:reset", { bubbles: true }))
     }
   }
 

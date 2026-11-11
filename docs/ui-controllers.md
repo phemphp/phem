@@ -1,6 +1,6 @@
 # Build UI with the built-in controllers
 
-This guide shows you how to use the Stimulus controllers that Phem ships for common UI patterns: a section that opens, a popover, a tooltip, a menu, a combobox, a sortable list, a modal dialog, tabs, toasts, a copy button, the focus after an event and a confirmation. Their state belongs to the client, so it stays after the morph of an event.
+This guide shows you how to use the Stimulus controllers that Phem ships for common UI patterns: a section that opens, an accordion, a section that shows from the value of a field, a popover, a tooltip, a menu, a combobox, a sortable list, a modal dialog, tabs, toasts, a copy button, a count of characters, a password that shows, a "select all" box, a local time, the focus after an event and a confirmation. Their state belongs to the client, so it stays after the morph of an event.
 
 The controllers follow the design of [Base UI](https://base-ui.com): they ship no CSS, and your markup gives all the elements. A UI library can put its own styled markup on them.
 
@@ -12,6 +12,8 @@ The controllers are off by default. Enable each one that you use in `assets/cont
 "@phem/phem": {
     "optimistic": { "enabled": true, "fetch": "lazy" },
     "collapsible": { "enabled": true, "fetch": "lazy" },
+    "accordion": { "enabled": true, "fetch": "lazy" },
+    "depends": { "enabled": true, "fetch": "lazy" },
     "dialog": { "enabled": true, "fetch": "lazy" },
     "popover": { "enabled": true, "fetch": "lazy" },
     "tooltip": { "enabled": true, "fetch": "lazy" },
@@ -22,7 +24,11 @@ The controllers are off by default. Enable each one that you use in `assets/cont
     "clipboard": { "enabled": true, "fetch": "lazy" },
     "autofocus": { "enabled": true, "fetch": "lazy" },
     "confirm": { "enabled": true, "fetch": "lazy" },
-    "sortable": { "enabled": true, "fetch": "lazy" }
+    "sortable": { "enabled": true, "fetch": "lazy" },
+    "count": { "enabled": true, "fetch": "lazy" },
+    "reveal": { "enabled": true, "fetch": "lazy" },
+    "checkbox-group": { "enabled": true, "fetch": "lazy" },
+    "time": { "enabled": true, "fetch": "lazy" }
 }
 ```
 
@@ -143,6 +149,77 @@ The panel gets the size of its content in `--collapsible-panel-height` and `--co
 ```
 
 Set `data-phem-collapsible-open-value="true"` to open it on load. With `data-phem-collapsible-hidden-until-found-value="true"`, a closed panel has `hidden="until-found"`: the search of the browser (Ctrl+F) finds its text and opens it. A collapsible does not close on Escape or on a click outside. For a dropdown, use `phem-popover` or `phem-menu`.
+
+## Open one item of an accordion at a time
+
+`phem-accordion` shows a list of items that open and close. When one item opens, the other items close:
+
+```html
+<div data-controller="phem-accordion">
+    <div data-value="shipping" data-phem-accordion-target="item">
+        <h3><button id="shipping-trigger" data-phem-accordion-target="trigger">Shipping</button></h3>
+        <div id="shipping-panel" data-phem-accordion-target="panel" hidden>Two days.</div>
+    </div>
+    <div data-value="returns" data-phem-accordion-target="item">
+        <h3><button id="returns-trigger" data-phem-accordion-target="trigger">Returns</button></h3>
+        <div id="returns-panel" data-phem-accordion-target="panel" hidden>Thirty days.</div>
+    </div>
+</div>
+```
+
+Each `item` has one `trigger` and one `panel`. A click on a trigger opens and closes its item. ArrowDown, ArrowUp, Home and End move the focus between the triggers. With `data-phem-accordion-orientation-value="horizontal"`, ArrowRight and ArrowLeft move it. From the last trigger, ArrowDown goes to the first one, unless `data-phem-accordion-loop-focus-value="false"`. A disabled trigger (`disabled` or `aria-disabled="true"`) does not open, and does not get the focus. After a click on **Returns**, the browser shows:
+
+```html
+<div data-value="returns" data-phem-accordion-target="item" data-open>
+    <h3><button id="returns-trigger" data-phem-accordion-target="trigger" aria-expanded="true"
+                aria-controls="returns-panel" data-panel-open>Returns</button></h3>
+    <div id="returns-panel" data-phem-accordion-target="panel" role="region"
+         aria-labelledby="returns-trigger" data-open
+         style="--accordion-panel-height: 20px; --accordion-panel-width: 320px;">Thirty days.</div>
+</div>
+```
+
+Give each trigger and each panel an `id`, for example `id={{ 'faq-' ~ key ~ '-panel' }}` in a loop. The controller links a trigger and its panel with `aria-controls` and `aria-labelledby` only when both have an id. It gives them no id itself: the morph of an event does not match an element whose id the server render does not have, and replaces it, with the state of its content.
+
+Set `data-phem-accordion-multiple-value="true"` to let more than one item open. The `open` value is the list of the open items. An item is its `data-value` attribute, its `key`, or its index. The server opens an item with `data-phem-accordion-open-value={{ ['returns'] }}`. A panel gets `--accordion-panel-height` and `--accordion-panel-width`, for a transition of its height, as a panel of `phem-collapsible`. With `data-phem-accordion-hidden-until-found-value="true"`, the search of the browser (Ctrl+F) opens the item that has the text.
+
+## Show a section from the value of a field
+
+`phem-depends` shows a panel when a field has a value, with no round trip. Use it for an "Other" option that asks for a text, or for a checkbox that shows more fields:
+
+```html
+<div data-controller="phem-depends">
+    <select phem:bind={{ reason }} data-phem-depends-target="field">
+        <option value="price">Price</option>
+        <option value="other">Other</option>
+    </select>
+    <div data-phem-depends-target="panel" data-phem-depends-match="other" hidden>
+        <input phem:bind={{ reasonOther }} aria-label="Other reason" />
+    </div>
+</div>
+```
+
+A panel shows when the value of the field is one of the words of its `data-phem-depends-match` attribute, for example `data-phem-depends-match="price quality"`. With `data-phem-depends-match` and no value, a panel shows when the field has a value. After the user selects **Other**, the browser shows:
+
+```html
+<div data-controller="phem-depends" data-field-value="other">
+    ...
+    <div data-phem-depends-target="panel" data-phem-depends-match="other" data-open>
+        <input aria-label="Other reason" ... />
+    </div>
+</div>
+```
+
+The `field` targets are one field:
+
+| Field | Its value |
+|---|---|
+| A `<select>`, a text field | The value. An empty text has no value |
+| A checkbox | `checked` or `unchecked` |
+| A group of checkboxes: more than one checkbox, a `phem:bind` list, or a `name` that ends with `[]` | The checked values: a panel shows when one of its words is checked |
+| A group of radio buttons | The value of the checked button |
+
+A hidden panel disables its form controls, so a form submit does not send them. A control that the controller disables gets `data-phem-depends-disabled`, and a control that the server render disables stays disabled. The controller element gets the words of the field in `data-field-value`. A `phem:bind` property keeps its value when its panel hides, so the handler must not use the value of a hidden field. The server must also validate the fields: the controller only changes what the user sees. The state comes from the field, so it stays right after the morph of an event.
 
 ## Show a popover
 
@@ -518,6 +595,116 @@ The default styles in `phem.css` use `:where()`, so a rule of your app replaces 
 ```
 
 It copies the `text` value, or the text of the `source` target when there’s no value. The `feedback` targets show the `label` value (“Copied” by default) for the `duration` value (2000 ms by default), and the controller element gets `data-copied` for the same time. The controller dispatches `phem-clipboard:copied` (detail `text`), or `phem-clipboard:error` (detail `error`) when the browser does not copy. Browsers allow a page to copy only on HTTPS or `localhost`.
+
+## Count the characters of a field
+
+`phem-count` shows the number of characters of a text field while the user types:
+
+```html
+<div data-controller="phem-count">
+    <textarea phem:bind={{ bio }} maxlength="160" aria-label="Bio" data-phem-count-target="field"></textarea>
+    <span data-phem-count-target="output">{{ bio|length }}/160</span>
+</div>
+```
+
+After the user types "Hello", the browser shows:
+
+```html
+<span data-phem-count-target="output" data-count="5" data-max="160">5/160</span>
+```
+
+The maximum is the `maxlength` of the field, or the `max` value (`data-phem-count-max-value={{ 140 }}`). The `max` value is a soft limit: the user can type more, and the controller element and the outputs get `data-over`. Each output shows the `data-phem-count-template` attribute, where `{count}`, `{max}` and `{remaining}` get their numbers. The default is `{count}/{max}`, or `{count}` with no maximum:
+
+```html
+<span data-phem-count-target="output" data-phem-count-template="{remaining} characters left"></span>
+```
+
+When the `field` targets are checkboxes, the count is the number of checked boxes, for a "3 selected" text. Give the output a server render of the count, for the time before the controller connects. The count belongs to the client, so it stays right after the morph of an event. The output has no `aria-live`: a screen reader that reads each key is noisy. Add `aria-live="polite"` to the output when your users need it.
+
+## Show the text of a password
+
+`phem-reveal` shows and hides the text of a password field:
+
+```html
+<div data-controller="phem-reveal">
+    <input type="password" name="password" aria-label="Password" data-phem-reveal-target="field" />
+    <button type="button" data-phem-reveal-target="trigger">Show</button>
+</div>
+```
+
+A click on a trigger shows the text (`type="text"`), and a second click hides it again. The `toggle`, `show` and `hide` actions do the same from another element. The field keeps its value. A click on the trigger gives the focus to the trigger. When the field has the focus (for example, a keyboard shortcut calls `toggle`), it keeps the focus and its selection. After a click, the browser shows:
+
+```html
+<div data-controller="phem-reveal" data-phem-reveal-revealed-value="true" data-revealed>
+    <input type="text" name="password" ... data-revealed />
+    <button type="button" data-phem-reveal-target="trigger" aria-pressed="true" data-revealed>Show</button>
+</div>
+```
+
+A trigger gets `aria-controls` when the field has an `id`. Use `data-revealed` to change the label or the icon in CSS. The server can hide the text again with `data-phem-reveal-revealed-value={{ false }}`. A shown password stays a shown password after the morph of an event. In a Symfony form with live validation, the morph also keeps the value of a shown password, as it keeps the value of a hidden one.
+
+## Select all the rows
+
+`phem-checkbox-group` adds a parent checkbox that checks and unchecks all the items, for a "select all" box of a list or of a table:
+
+```html
+<table data-controller="phem-checkbox-group phem-count">
+    <tr>
+        <th><input type="checkbox" aria-label="All" data-phem-checkbox-group-target="parent" /></th>
+        <th><span data-phem-count-target="output" data-phem-count-template="{count} selected"></span></th>
+    </tr>
+    {% for row in rows %}
+        <tr key={{ row.id }}>
+            <td><input type="checkbox" phem:bind={{ selected }} value={{ row.id }} aria-label={{ row.name }}
+                       data-phem-checkbox-group-target="item" data-phem-count-target="field" /></td>
+            <td>{{ row.name }}</td>
+        </tr>
+    {% endfor %}
+</table>
+```
+
+A click on the parent checks all the items, or unchecks all of them when all are checked. A disabled item keeps its state. Each item that changes dispatches `input` and `change`, so `phem:bind`, `phem:live` and `phem-count` see the change. With `phem:live`, the changes of the fields of one `phem:bind` property go in one event.
+
+The parent shows the state of the items: it is checked when all the items are checked, and indeterminate when some of them are checked. It gets `data-checked`, `data-unchecked` or `data-indeterminate`, and `aria-controls` with the items that have an `id`. After a click on one row of three, the browser shows:
+
+```html
+<input type="checkbox" aria-label="All" data-phem-checkbox-group-target="parent" data-indeterminate />
+```
+
+## Show a time in the time zone of the user
+
+The server has no session, so it does not know the time zone of the user. `phem-time` shows the `datetime` of a `<time>` element in the time zone and the language of the browser:
+
+```html
+<time datetime={{ comment.createdAt|date('c') }} data-controller="phem-time">{{ comment.createdAt|date('Y-m-d H:i') }} UTC</time>
+```
+
+The browser shows a relative time, and the full date in the `title`:
+
+```html
+<time datetime="2026-11-11T13:57:00+00:00" data-controller="phem-time" data-past title="November 11, 2026 at 2:57 PM">3 minutes ago</time>
+```
+
+| Value | Default | Effect |
+|---|---|---|
+| `format` | `relative` | `relative` ("3 minutes ago", "in 30 seconds"), `date`, `time` or `datetime` |
+| `date-style`, `time-style` | | The style of `date`, `time` and `datetime`: `short`, `medium`, `long` or `full` |
+
+The language is the `lang` attribute of the element or of the page. A Symfony locale such as `fr_FR` works as the tag `fr-FR`, and a language that the browser does not know gives the language of the browser. A relative time updates while the page shows. The element gets `data-past` or `data-future`, and a `title` when the server render gives none. When a future time comes, the element gets `data-past` and dispatches `phem-time:reached`, which bubbles to the controllers around it. Use `data-future` for a countdown:
+
+```html
+<p class="resend">
+    <span>You can ask for a new code <time datetime={{ resendAt|date('c') }} data-controller="phem-time">soon</time>.</span>
+    <button onClick={{ resend }}>Send a new code</button>
+</p>
+```
+
+```css
+.resend:has(time[data-future]) button,
+.resend:not(:has(time[data-future])) span { display: none; }
+```
+
+The text before the controller connects is the server render, so give it a text that is correct in all time zones, such as the UTC time. The text belongs to the client: after the morph of an event, the controller shows it again, also for a new `datetime`.
 
 ## Focus a field after an event
 

@@ -80,4 +80,4 @@ The toast rules are in `:where()`, so any rule of the application overrides them
 }
 ```
 
-The package also has optional controllers (`phem-optimistic`, `phem-collapsible`, `phem-dialog`, `phem-popover`, `phem-tooltip`, `phem-menu`, `phem-combobox`, `phem-tabs`, `phem-toast`, `phem-clipboard`, `phem-autofocus`, `phem-confirm` and `phem-sortable`), which are off by default. Enable one with its key in the `@phem/phem` entry, for example `"popover": { "enabled": true, "fetch": "lazy" }`. See [Built-in controllers](ui-controllers.md#enable-the-controllers).
+The package also has optional controllers (`phem-optimistic`, `phem-collapsible`, `phem-accordion`, `phem-depends`, `phem-dialog`, `phem-popover`, `phem-tooltip`, `phem-menu`, `phem-combobox`, `phem-tabs`, `phem-toast`, `phem-clipboard`, `phem-count`, `phem-reveal`, `phem-checkbox-group`, `phem-time`, `phem-autofocus`, `phem-confirm` and `phem-sortable`), which are off by default. Enable one with its key in the `@phem/phem` entry, for example `"popover": { "enabled": true, "fetch": "lazy" }`. See [Built-in controllers](ui-controllers.md#enable-the-controllers).

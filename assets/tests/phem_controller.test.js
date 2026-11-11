@@ -1518,6 +1518,20 @@ describe("the fields of a form with no phem:bind", () => {
     expect(field("password").value).toBe("")
   })
 
+  it("keeps the value of a touched password that the client shows as a text field", async () => {
+    await mountForm(form())
+    respond(form({ city: "Paris", touched: ["city", "password"] }))
+    const done = nextDone()
+    // `phem-reveal` shows the password: the field is a text field until the morph.
+    field("password").type = "text"
+    field("password").value = "secret123"
+    field("password").setAttribute("data-phem-touched", "")
+    type(field("city"), "Paris")
+    await done
+
+    expect(field("password").value).toBe("secret123")
+  })
+
   it("sets the value of the server render in a focused controlled input", async () => {
     // A field with no mark of the server: not a field of a Symfony form with live validation.
     await mountForm(form())

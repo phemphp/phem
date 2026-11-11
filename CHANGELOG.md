@@ -8,6 +8,22 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Built-in controllers for state that belongs to the browser, with no round trip. `phem-count`
+  shows the number of characters of a field (`{count}/{max}`, `data-over` above the max) or of
+  checked boxes. `phem-reveal` shows and hides the text of a password field. `phem-checkbox-group`
+  adds a "select all" box that is checked or indeterminate from its items. `phem-accordion` opens
+  one item at a time, with the arrow keys between the triggers. `phem-depends` shows a panel from
+  the value of a field, and disables the controls of a hidden panel. `phem-time` shows a
+  `<time datetime>` in the time zone and the language of the user, as a relative time that
+  updates, and dispatches `phem-time:reached` when a future time comes. See
+  docs/ui-controllers.md.
+- The morph keeps the value of a touched password field of a Symfony form also when the client
+  shows it as a text field.
+- The `phem:live` events of the fields of one `phem:bind` property that wait in the queue go in
+  one event: a "select all" of 100 checkboxes queues one event, with one `phem:done`, not 100.
+- After the morph, a bound field that gets the server value again (a value that the server did
+  not take) dispatches `phem:reset`, so the built-in controllers show the new value.
+
 - Scroll and screen-reader support after a morph. `phem:scroll-into-view` on an element that an
   event adds (a new comment) scrolls the browser to it after the morph of an event of the user,
   but not on page load, for a boundary that loads, a poll, `onVisible`, a push or a refresh.
