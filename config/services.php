@@ -673,7 +673,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set('phem.upload_token', UploadToken::class)
         ->args(['%kernel.secret%']);
     $services->set('phem.chunk_store', ChunkStore::class)
-        ->args(['%kernel.project_dir%/var/phem_uploads', 1073741824]);
+        ->args(['%kernel.project_dir%/var/phem_uploads', 1073741824, 2097152, 1000]);
     $services->set('phem.upload_mode.chunked', ChunkedUploadMode::class)
         ->args([service('phem.chunk_store'), service('phem.upload_token'), 2097152])
         ->tag('phem.upload_mode', ['mode' => 'chunked']);

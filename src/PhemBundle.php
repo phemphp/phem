@@ -70,6 +70,7 @@ use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_lo
  *         upload_chunk_size: 2097152 # bytes of a chunk of data-phem-upload="chunked"
  *         upload_dir: '%kernel.project_dir%/var/phem_uploads'
  *         upload_dir_max_size: 1073741824 # bytes of the pending chunked uploads; 0 for no limit
+ *         upload_dir_max_files: 1000 # pending chunked uploads; 0 for no limit
  *         suspense_stream: true      # stream the <Suspense> boundaries in the response of the page
  *         show_exceptions: ~         # the page of the exception, not the #[ErrorPage]; ~ is %kernel.debug%
  *         mercure:
@@ -106,7 +107,7 @@ final class PhemBundle extends AbstractBundle
     }
 
     /**
-     * @param array{build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, state_cache_min_size: int, max_event_size: int, max_upload_size: int, upload_chunk_size: int, upload_dir: string, upload_dir_max_size: int, suspense_stream: bool, show_exceptions: bool|null, class_merger: array{tailwind: array{enabled: bool, prefix: string|null, cache: string|null, css: string|null, theme: array<string, list<string>>}, service: string|null}, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string, publisher_key: string|null, publish_url: string|null}} $config
+     * @param array{build_dir: string, secret: string, state_max_age: int, state_bind_session: bool, state_cache: bool, state_cache_min_size: int, max_event_size: int, max_upload_size: int, upload_chunk_size: int, upload_dir: string, upload_dir_max_size: int, upload_dir_max_files: int, suspense_stream: bool, show_exceptions: bool|null, class_merger: array{tailwind: array{enabled: bool, prefix: string|null, cache: string|null, css: string|null, theme: array<string, list<string>>}, service: string|null}, mercure: array{hub_url: string, subscriber_key: string|null, issuer: string, cookie_name: string, publisher_key: string|null, publish_url: string|null}} $config
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
@@ -172,7 +173,9 @@ final class PhemBundle extends AbstractBundle
             ->arg(2, $config['upload_chunk_size']);
         $container->services()->get('phem.chunk_store')
             ->arg(0, $config['upload_dir'])
-            ->arg(1, $config['upload_dir_max_size']);
+            ->arg(1, $config['upload_dir_max_size'])
+            ->arg(2, $config['upload_chunk_size'])
+            ->arg(3, $config['upload_dir_max_files']);
         $container->services()->get('phem.upload_token')
             ->arg(0, $config['secret']);
         $container->services()->get('phem.topics')

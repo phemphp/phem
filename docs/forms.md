@@ -381,7 +381,14 @@ The rules:
 - `$e->clearFiles()`, `phem:progress` and `phem:upload-progress` work as for the other files. The progress counts the chunks.
 - On the element of an `onDrop` or an `onPaste`, `data-phem-upload` sends the dropped and the pasted files the same way.
 
-The chunk size is the `upload_chunk_size` option (2 MiB by default). Keep it under `post_max_size`. The server keeps the chunks in `upload_dir` until the event. All the servers of the app must share this directory. Against a full disk, the uploads in `upload_dir` have a maximum size together, `upload_dir_max_size` (1 GiB by default). A new upload over this limit gets a `507` with `Retry-After: 60`, and its event fails:
+The chunk size is the `upload_chunk_size` option (2 MiB by default). Keep it under `post_max_size`. The server keeps the chunks in `upload_dir` until the event. All the servers of the app must share this directory. Against a full disk, the uploads in `upload_dir` have limits:
+
+- A maximum size together, `upload_dir_max_size` (1 GiB by default). Each upload counts at least one chunk (`upload_chunk_size`), so many small uploads also fill it.
+- A maximum number, `upload_dir_max_files` (1000 by default).
+- An upload that gets no chunk goes after 15 minutes. A started upload stays for 24 hours, so it can continue after a reload.
+- An empty file takes no place: its start gives the token at once.
+
+A new upload over a limit gets a `507` with `Retry-After: 60`, and its event fails:
 
 ```yaml
 # config/packages/phem.yaml
@@ -390,6 +397,7 @@ phem:
     upload_chunk_size: 5242880       # 5 MiB
     upload_dir: '%kernel.project_dir%/var/phem_uploads'
     upload_dir_max_size: 10737418240 # 10 GiB
+    upload_dir_max_files: 5000
 ```
 
 ### Upload a file to a storage, such as S3

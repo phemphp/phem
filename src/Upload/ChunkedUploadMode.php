@@ -51,6 +51,12 @@ final class ChunkedUploadMode implements UploadMode
             $fingerprint = null;
         }
 
+        // An empty file has no bytes to send: its token is all the upload, and it takes no place in
+        // the store until its event.
+        if (0 === $size) {
+            return ['offset' => 0, 'token' => $this->tokens->sign(['mode' => 'chunked', 'empty' => true, 'name' => $name, 'type' => $type, 'size' => 0])];
+        }
+
         $resume = null !== $fingerprint && \is_string($data['resume'] ?? null) ? $data['resume'] : null;
 
         try {
@@ -95,6 +101,10 @@ final class ChunkedUploadMode implements UploadMode
 
     public function file(array $token): UploadedFile
     {
+        if (true === ($token['empty'] ?? false)) {
+            return $this->store->empty(self::emptyId($token), (string) ($token['name'] ?? ''), (string) ($token['type'] ?? ''));
+        }
+
         $id = (string) ($token['id'] ?? '');
         $info = $this->store->info($id);
         $path = $this->store->path($id);
@@ -109,7 +119,18 @@ final class ChunkedUploadMode implements UploadMode
 
     public function release(array $token): void
     {
-        $this->store->remove((string) ($token['id'] ?? ''));
+        $this->store->remove(true === ($token['empty'] ?? false) ? self::emptyId($token) : (string) ($token['id'] ?? ''));
+    }
+
+    /**
+     * The id of the empty file of a token in the store, for its event: the same token gives the
+     * same id.
+     *
+     * @param array<string, mixed> $token
+     */
+    private static function emptyId(array $token): string
+    {
+        return substr(hash('sha256', json_encode($token, \JSON_THROW_ON_ERROR)), 0, 32);
     }
 
     /**

@@ -157,7 +157,8 @@ async function chunked(file, onBytes, options) {
   const started = await start(file, "chunked", options, { fingerprint: print, resume: storage?.get() ?? null })
   const { id, chunkSize } = started
   let { offset, token } = started
-  storage?.set(id)
+  // An empty file has its token at the start, with no upload to continue.
+  if (id) storage?.set(id)
   onBytes(offset)
 
   while (!token) {

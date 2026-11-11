@@ -112,12 +112,60 @@ final class UploadTest extends TestCase
         self::assertNotSame($other, self::json($this->start([...$blind, 'resume' => $other]))['id'], 'no fingerprint: no resume');
     }
 
-    public function testEmptyFileHasItsTokenAtTheStart(): void
+    public function testEmptyFileHasItsTokenAtTheStartAndNoPlaceInTheStore(): void
     {
+        $before = glob($this->store()->path('*')) ?: [];
         $data = self::json($this->start(['mode' => 'chunked', 'name' => 'empty.txt', 'type' => 'text/plain', 'size' => 0]));
 
-        self::assertSame(0, $data['offset']);
-        self::assertIsString($data['token']);
+        self::assertSame(['offset' => 0], array_diff_key($data, ['token' => true]), 'no id: nothing to continue');
+        self::assertSame($before, glob($this->store()->path('*')) ?: [], 'no file in the store');
+
+        $this->send([['field' => 'video', 'token' => $data['token']]]);
+        self::assertSame(['file empty.txt text/plain ', 'request video'], self::received());
+        self::assertSame($before, glob($this->store()->path('*')) ?: [], 'the empty file goes after the event');
+    }
+
+    public function testEachUploadCountsAtLeastOneChunk(): void
+    {
+        $store = new ChunkStore(sys_get_temp_dir().'/phem-uploads-'.bin2hex(random_bytes(4)), 10, 4);
+        $store->start(['name' => 'a', 'type' => '', 'size' => 1, 'fingerprint' => null]);
+        $store->start(['name' => 'b', 'type' => '', 'size' => 1, 'fingerprint' => null]);
+
+        $this->expectException(\OverflowException::class);
+        $store->start(['name' => 'c', 'type' => '', 'size' => 1, 'fingerprint' => null]);
+    }
+
+    public function testStoreHasAMaximumNumberOfUploads(): void
+    {
+        $store = new ChunkStore(sys_get_temp_dir().'/phem-uploads-'.bin2hex(random_bytes(4)), maxCount: 2);
+        $store->start(['name' => 'a', 'type' => '', 'size' => 1, 'fingerprint' => null]);
+        $store->start(['name' => 'b', 'type' => '', 'size' => 1, 'fingerprint' => null]);
+
+        $this->expectException(\OverflowException::class);
+        $this->expectExceptionMessage('phem.upload_dir_max_files');
+        $store->start(['name' => 'c', 'type' => '', 'size' => 1, 'fingerprint' => null]);
+    }
+
+    public function testUploadWithNoChunkGoesSoon(): void
+    {
+        $store = new ChunkStore(sys_get_temp_dir().'/phem-uploads-'.bin2hex(random_bytes(4)), maxCount: 2);
+        [$idle] = $store->start(['name' => 'a', 'type' => '', 'size' => 4, 'fingerprint' => null]);
+        [$started] = $store->start(['name' => 'b', 'type' => '', 'size' => 4, 'fingerprint' => null]);
+        $chunk = fopen('php://memory', 'r+');
+        self::assertNotFalse($chunk);
+        fwrite($chunk, 'ab');
+        rewind($chunk);
+        $store->append($started, 0, $chunk);
+
+        // 16 minutes later: the upload with no chunk goes, the started upload stays.
+        $old = time() - ChunkStore::IDLE_AGE - 60;
+        foreach ([$idle, $started] as $id) {
+            touch($store->path($id), $old);
+        }
+
+        $store->start(['name' => 'c', 'type' => '', 'size' => 4, 'fingerprint' => null]);
+        self::assertNull($store->info($idle));
+        self::assertNotNull($store->info($started));
     }
 
     public function testDirectUploadGivesTheUrlOfTheStorage(): void

@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Phem\Upload;
 
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+
 /**
  * The files of the chunked uploads, in a directory of the server (`phem.upload_dir`). The browser
  * sends a large file in chunks, one request each, so a file can be larger than `post_max_size`.
@@ -22,23 +24,31 @@ namespace Phem\Upload;
  * Each upload has a random id of 32 hex characters, and two files: `<id>.part` with the bytes,
  * and `<id>.json` with the name, the media type, the size and the fingerprint that the browser
  * declared. All the servers of an application must share the directory. The store removes the
- * uploads that did not change for MAX_AGE seconds when a new upload starts. The declared sizes
- * of the uploads in the store have a maximum together (`phem.upload_dir_max_size`), against a
- * full disk.
+ * uploads that did not change for MAX_AGE seconds when a new upload starts, and the uploads that
+ * got no chunk for IDLE_AGE seconds. Against a full disk, the uploads in the store have a maximum
+ * size together (`phem.upload_dir_max_size`), where each one counts at least one chunk, and a
+ * maximum number (`phem.upload_dir_max_files`).
  */
 final class ChunkStore
 {
     /** The seconds that an upload with no new chunk stays (the same as an UploadToken). */
     public const MAX_AGE = UploadToken::MAX_AGE;
 
+    /** The seconds that an upload with no chunk at all stays: a start with no bytes reserves nothing for long. */
+    public const IDLE_AGE = 900;
+
     private const ID = '/^[0-9a-f]{32}$/';
 
     /**
-     * @param int $maxSize the maximum of the declared sizes of the uploads in the store together, in bytes (0 for no limit)
+     * @param int $maxSize  the maximum of the sizes of the uploads in the store together, in bytes (0 for no limit)
+     * @param int $minSize  the size that an upload counts at least, in bytes (the chunk size): many small uploads also fill the limit
+     * @param int $maxCount the maximum number of uploads in the store (0 for no limit)
      */
     public function __construct(
         private readonly string $dir,
         private readonly int $maxSize = 0,
+        private readonly int $minSize = 0,
+        private readonly int $maxCount = 0,
     ) {
     }
 
@@ -50,7 +60,8 @@ final class ChunkStore
      *
      * @return array{string, int} the id of the upload and the bytes that the store has
      *
-     * @throws \OverflowException when the uploads in the store would be larger than its maximum size
+     * @throws \OverflowException when the uploads in the store would be larger than its maximum
+     *                            size, or more than its maximum number
      */
     public function start(array $info, ?string $resume = null): array
     {
@@ -60,10 +71,14 @@ final class ChunkStore
             return [$resume, (int) filesize($this->path($resume))];
         }
 
-        // The declared sizes of the uploads that stay: a new upload can use the rest.
-        $pending = $this->purge();
-        if (0 !== $this->maxSize && $pending + $info['size'] > $this->maxSize) {
+        // The uploads that stay: a new upload can use the rest.
+        [$pending, $count] = $this->purge();
+        if (0 !== $this->maxSize && $pending + $this->cost($info['size']) > $this->maxSize) {
             throw new \OverflowException(\sprintf('The uploads of the server have a maximum of %d bytes together (the phem.upload_dir_max_size option). Try again later.', $this->maxSize));
+        }
+
+        if (0 !== $this->maxCount && $count >= $this->maxCount) {
+            throw new \OverflowException(\sprintf('The server has a maximum of %d uploads (the phem.upload_dir_max_files option). Try again later.', $this->maxCount));
         }
 
         if (!is_dir($this->dir) && !@mkdir($this->dir, 0o777, true) && !is_dir($this->dir)) {
@@ -143,6 +158,26 @@ final class ChunkStore
         return ['name' => $info['name'], 'type' => $info['type'], 'size' => $info['size'], 'fingerprint' => \is_string($info['fingerprint'] ?? null) ? $info['fingerprint'] : null];
     }
 
+    /**
+     * An empty file for the event of an empty upload (see ChunkedUploadMode), with no entry in the
+     * limits of the store. remove() removes it after the event.
+     */
+    public function empty(string $id, string $name, string $type): UploadedFile
+    {
+        if (1 !== preg_match(self::ID, $id)) {
+            throw new \InvalidArgumentException('An upload id has 32 hex characters.');
+        }
+
+        if (!is_dir($this->dir) && !@mkdir($this->dir, 0o777, true) && !is_dir($this->dir)) {
+            throw new \RuntimeException(\sprintf('Cannot create the upload directory "%s".', $this->dir));
+        }
+
+        file_put_contents($this->path($id), '');
+
+        // `test: true`: the file did not come from a PHP upload, but move() and isValid() work.
+        return new UploadedFile($this->path($id), $name, '' !== $type ? $type : null, \UPLOAD_ERR_OK, true);
+    }
+
     /** The file with the bytes of the upload. */
     public function path(string $id): string
     {
@@ -161,26 +196,38 @@ final class ChunkStore
     }
 
     /**
-     * Removes the uploads with no new chunk for MAX_AGE seconds.
+     * Removes the uploads with no new chunk for MAX_AGE seconds, and the uploads with no chunk at
+     * all for IDLE_AGE seconds.
      *
-     * @return int the declared sizes of the other uploads together
+     * @return array{int, int} the sizes (see cost()) and the number of the other uploads
      */
-    private function purge(): int
+    private function purge(): array
     {
-        $old = time() - self::MAX_AGE;
+        $now = time();
         $pending = 0;
+        $count = 0;
         foreach (glob($this->dir.'/*.json') ?: [] as $meta) {
             $id = basename($meta, '.json');
             $part = $this->path($id);
-            if ((is_file($part) ? filemtime($part) : filemtime($meta)) < $old) {
+            clearstatcache(true, $part);
+            $empty = !is_file($part) || 0 === filesize($part);
+            $changed = is_file($part) ? (int) filemtime($part) : (int) filemtime($meta);
+            if ($changed < $now - ($empty ? self::IDLE_AGE : self::MAX_AGE)) {
                 $this->remove($id);
 
                 continue;
             }
 
-            $pending += $this->info($id)['size'] ?? 0;
+            $pending += $this->cost($this->info($id)['size'] ?? 0);
+            ++$count;
         }
 
-        return $pending;
+        return [$pending, $count];
+    }
+
+    /** The size that an upload counts in the maximum size: at least the minimum size. */
+    private function cost(int $size): int
+    {
+        return max($size, $this->minSize);
     }
 }

@@ -18,6 +18,7 @@ phem:
     upload_chunk_size: 2097152
     upload_dir: '%kernel.project_dir%/var/phem_uploads'
     upload_dir_max_size: 1073741824
+    upload_dir_max_files: 1000
     suspense_stream: true
     show_exceptions: null
     class_merger:
@@ -56,7 +57,8 @@ phem:
 | `max_upload_size` | `8388608` | The maximum size of the files of one event in bytes, together. `0` is no limit. The files of `data-phem-upload` count too. See [Accept file uploads](forms.md#accept-file-uploads) |
 | `upload_chunk_size` | `2097152` | The size in bytes of a chunk of a file with `data-phem-upload="chunked"`. Keep it under the `post_max_size` option of PHP. See [Upload a large file in chunks](forms.md#upload-a-large-file-in-chunks) |
 | `upload_dir` | `'%kernel.project_dir%/var/phem_uploads'` | The directory of the chunked uploads until their event. All the servers of the app must share it |
-| `upload_dir_max_size` | `1073741824` | The maximum size in bytes of the chunked uploads in `upload_dir` together. `0` is no limit. A new upload over the limit gets a `507` |
+| `upload_dir_max_size` | `1073741824` | The maximum size in bytes of the chunked uploads in `upload_dir` together. Each upload counts at least one chunk. `0` is no limit. A new upload over the limit gets a `507` |
+| `upload_dir_max_files` | `1000` | The maximum number of chunked uploads in `upload_dir`. `0` is no limit. A new upload over the limit gets a `507`. An upload with no chunk goes after 15 minutes |
 | `suspense_stream` | `true` | Streams the `<Suspense>` boundaries that aren’t lazy in the response of the page. With `false`, the browser loads them with an event after the page. See [Load slow content after the page](resilience.md#load-slow-content-after-the-page) |
 | `show_exceptions` | `null` | Shows the Symfony exception page for an HTTP error, not the `#[ErrorPage]` of the app. `null` is the debug mode of the kernel. See [Preview an error page in debug mode](error-pages.md#preview-an-error-page-in-debug-mode) |
 

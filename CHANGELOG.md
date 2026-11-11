@@ -17,8 +17,10 @@ that break the code of an application start with **Breaking**.
   from a `Phem\Upload\DirectUploader` service, which autoconfiguration finds; the handler gets a
   `Phem\Upload\DirectFile`. The browser uploads up to 3 files at the same time, with the retries
   of the events. A chunked upload continues only for a file with the same fingerprint. The files
-  of `data-phem-upload` count in `max_upload_size`. New options: `upload_chunk_size`,
-  `upload_dir` and `upload_dir_max_size`. `ComponentTester` sends the files of
+  of `data-phem-upload` count in `max_upload_size`. The pending chunked uploads have a maximum
+  size (each one counts at least one chunk) and a maximum number, and an upload with no chunk
+  goes after 15 minutes. New options: `upload_chunk_size`, `upload_dir`, `upload_dir_max_size`
+  and `upload_dir_max_files`. `ComponentTester` sends the files of
   `data-phem-upload` as the browser does. `clear-files` is a reserved name of a browser event.
   See docs/forms.md.
 - The new `phem-scrollspy` controller marks the link of the section in view, for a table of
