@@ -9,13 +9,16 @@ that break the code of an application start with **Breaking**.
 ## Unreleased
 
 - The `#[IsGranted]` attribute of Symfony protects one event handler: on a handler method, on a
-  closure in `render()`, or on the class of a component for all its handlers. The subject is a
-  property of the component (`subject: 'post'`). Before, Phem ignored the attribute on a
-  handler, and the handler ran for every user. See docs/security.md.
+  closure in `render()`, or on the class of a component for all its handlers. The attribute of
+  the class and of the method both apply. The subject is the argument of the call in the markup
+  (`delete(todo)`), or else a property of the component. Before, Phem ignored the attribute on
+  a handler, and the handler ran for every user. See docs/security.md.
+- The new `HandlerCallMiddleware` interface gives a middleware the arguments of the call in the
+  markup. A Closure or an Expression key of `#[RateLimit]` now gets them in `args`.
 - A route file can route a page, as a controller: `controller: App\Ui\BlogPage`. The route gets
   the route values, the events and the access rules of the page. A `#[Page]` with no path has no
   route of its own, and its first route in a route file has the name of the page as an alias.
-  See docs/pages.md.
+  A page of the application with no path and no route is an error. See docs/pages.md.
 - The events of a page under an import with a localized prefix or a localized host now have the
   route name of the page (`_route`), so the `access_control` rules on route names cover them.
   Phem adds the event routes after all the imports. The event route of a page under a name

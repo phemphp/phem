@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Phem\Tests\Fixtures\GrantedHandlers;
 
+use Phem\Attribute\Component;
+use Phem\Attribute\Page;
 use Symfony\Component\ExpressionLanguage\Expression;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Vote;
@@ -91,6 +93,26 @@ final class PostCard
         return 'both';
     }
 
+    // `item` is an argument of the call in the markup: `remove(item)`.
+    #[IsGranted('EDIT', subject: 'item')]
+    public function remove(Post $item): string
+    {
+        return 'removed '.$item->author;
+    }
+
+    // An argument `post` comes before the property `post`.
+    #[IsGranted('EDIT', subject: 'post')]
+    public function replace(Post $post): string
+    {
+        return 'replaced';
+    }
+
+    #[IsGranted('EDIT', subject: new Expression('args[\'item\']'))]
+    public function drop(Post $item): string
+    {
+        return 'dropped';
+    }
+
     #[IsGranted('EDIT', subject: 'missing')]
     public function lost(): string
     {
@@ -124,6 +146,31 @@ final class AdminPanel
     }
 
     // The class attribute and this one: both must pass.
+    #[IsGranted('ROLE_EDITOR')]
+    public function publish(): string
+    {
+        return 'published';
+    }
+
+    // A static closure has no $this, but it has the class of the component.
+    public function wipe(): \Closure
+    {
+        return static fn (): string => 'wiped';
+    }
+}
+
+// The #[IsGranted] of the class of a page is a rule of the page (see PageAttributesListener). A
+// component with a route can also be a tag in another page.
+#[IsGranted('ROLE_ADMIN')]
+#[Component]
+#[Page('/granted')]
+final class GrantedPage
+{
+    public function save(): string
+    {
+        return 'saved';
+    }
+
     #[IsGranted('ROLE_EDITOR')]
     public function publish(): string
     {

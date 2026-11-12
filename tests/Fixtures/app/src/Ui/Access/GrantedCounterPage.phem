@@ -1,0 +1,50 @@
+<?phem
+
+namespace App\Ui\Access;
+
+use Phem\Attribute\{Component, Page, State};
+use Phem\Node;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+
+use function App\Ui\Layout\Document;
+
+// The #[IsGranted] of the class of a page is a rule of the page: a component test doesn't check
+// it. The fixture app has no security, so a check of it is an error.
+#[IsGranted('ROLE_ADMIN')]
+#[Page('/granted/counter')]
+final class GrantedCounterPage
+{
+    #[State] public int $count = 0;
+
+    public function increment(): void
+    {
+        ++$this->count;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <button onClick={{ increment }}>{{ count }}</button>
+            </Document>
+        );
+    }
+}
+
+// The #[IsGranted] of the class of a component applies to its handlers, also in a component test.
+#[IsGranted('ROLE_ADMIN')]
+#[Component]
+final class GrantedCounter
+{
+    #[State] public int $count = 0;
+
+    public function increment(): void
+    {
+        ++$this->count;
+    }
+
+    public function render(): Node
+    {
+        return <button onClick={{ increment }}>{{ count }}</button>;
+    }
+}

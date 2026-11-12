@@ -16,7 +16,6 @@ namespace Phem\Handler;
 use Phem\Event;
 use Symfony\Component\ExpressionLanguage\Expression;
 use Symfony\Component\ExpressionLanguage\ExpressionLanguage;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Attribute\RateLimit;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
@@ -33,9 +32,10 @@ use Symfony\Contracts\Service\ServiceProviderInterface;
  * IP, the method and the path of the request, and `Class::method`. Over the limit, it throws a
  * TooManyRequestsHttpException (429 with Retry-After), and the handler does not run.
  *
- * A closure in `render()` has no method, so it has no limit of its own.
+ * A closure in `render()` has no method, so it has no limit of its own. A Closure or an
+ * Expression key gets the arguments of the call in the markup (see HandlerContext).
  */
-final class RateLimitMiddleware implements HandlerMiddleware
+final class RateLimitMiddleware implements HandlerCallMiddleware
 {
     /**
      * @param ServiceProviderInterface<RateLimiterFactoryInterface> $limiters
@@ -50,6 +50,11 @@ final class RateLimitMiddleware implements HandlerMiddleware
 
     public function handle(\Closure $handler, Event $event, \Closure $next): mixed
     {
+        return $this->handleCall($handler, [], $event, $next);
+    }
+
+    public function handleCall(\Closure $handler, array $arguments, Event $event, \Closure $next): mixed
+    {
         $function = new \ReflectionFunction($handler);
         $class = $function->getClosureScopeClass();
         if (null === $class || !$class->hasMethod($function->getName())) {
@@ -57,31 +62,32 @@ final class RateLimitMiddleware implements HandlerMiddleware
         }
 
         $method = $class->getMethod($function->getName());
-        $request = $this->requests?->getCurrentRequest();
+        $context = HandlerContext::of($handler, $arguments, $this->requests?->getCurrentRequest());
 
         foreach ($this->attributes->of($handler, RateLimit::class) as $attribute) {
-            if (null !== $request && $attribute->methods && !\in_array($request->getMethod(), $attribute->methods, true)) {
+            if (null !== $context->request && $attribute->methods && !\in_array($context->request->getMethod(), $attribute->methods, true)) {
                 continue;
             }
 
-            $this->consume($attribute, $method, $function->getClosureThis(), $request);
+            $this->consume($attribute, $method, $context);
         }
 
         return $next();
     }
 
-    private function consume(RateLimit $attribute, \ReflectionMethod $method, ?object $component, ?Request $request): void
+    private function consume(RateLimit $attribute, \ReflectionMethod $method, HandlerContext $context): void
     {
+        $request = $context->request;
+
         if (!$this->limiters->has($attribute->limiter)) {
             throw new \InvalidArgumentException(\sprintf('Rate limiter "%s" does not exist. Did you forget to configure it? Available limiters: "%s".', $attribute->limiter, implode('", "', array_keys($this->limiters->getProvidedServices()))));
         }
 
         $key = match (true) {
             null === $attribute->key => ($request?->getClientIp() ?? 'unknown').'~'.($request?->getMethod() ?? 'POST').'~'.($request?->getPathInfo() ?? '').'~'.$method->class.'::'.$method->name,
-            // As the RateLimitAttributeListener of Symfony: the controller is the component, and a handler has no arguments.
-            $attribute->key instanceof \Closure => ($attribute->key)([], $request, $component),
-            $attribute->key instanceof Expression => ($this->expressionLanguage ?? throw new \LogicException('Cannot evaluate the Expression of a #[RateLimit] key since no ExpressionLanguage service was configured.'))
-                ->evaluate($attribute->key, ['request' => $request, 'args' => [], 'this' => $component]),
+            // As the RateLimitAttributeListener of Symfony: the controller is the component, and
+            // the arguments are the arguments of the call in the markup.
+            $attribute->key instanceof \Closure, $attribute->key instanceof Expression => $context->evaluate($attribute->key, $this->expressionLanguage, 'a #[RateLimit] key'),
             default => $attribute->key,
         };
 

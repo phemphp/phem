@@ -215,3 +215,11 @@ final class RoutedInConfig
 {
     #[Path] public int $id;
 }
+
+// An empty list of paths has no route: the alias goes to the next route.
+#[Component]
+#[Page([])]
+#[Page('/empty-paths', name: 'empty_paths')]
+final class EmptyPaths
+{
+}

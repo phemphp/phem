@@ -14,8 +14,12 @@ declare(strict_types=1);
 namespace Phem\Tests\Runtime;
 
 use Phem\Event;
+use Phem\Handler\HandlerCall;
+use Phem\Handler\HandlerInvoker;
 use Phem\Handler\IsGrantedMiddleware;
 use Phem\Tests\Fixtures\GrantedHandlers\AdminPanel;
+use Phem\Tests\Fixtures\GrantedHandlers\GrantedPage;
+use Phem\Tests\Fixtures\GrantedHandlers\Post;
 use Phem\Tests\Fixtures\GrantedHandlers\PostCard;
 use Phem\Tests\Fixtures\GrantedHandlers\PostVoter;
 use PHPUnit\Framework\TestCase;
@@ -91,7 +95,7 @@ final class IsGrantedMiddlewareTest extends TestCase
     public function testASubjectThatIsNotAPropertyIsAnError(): void
     {
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Could not find the subject "missing" for the #[IsGranted] attribute of an event handler. The subject of a handler is a property of its component: add a "$missing" property to "Phem\Tests\Fixtures\GrantedHandlers\PostCard".');
+        $this->expectExceptionMessage('Could not find the subject "missing" for the #[IsGranted] attribute of an event handler. Pass it to the handler in the markup (`delete(missing)` for a "$missing" parameter), or add a "$missing" property to "Phem\Tests\Fixtures\GrantedHandlers\PostCard".');
 
         $this->handle(new PostCard()->lost(...), [], 'ada');
     }
@@ -142,22 +146,55 @@ final class IsGrantedMiddlewareTest extends TestCase
         }
     }
 
-    public function testTheClassAttributeOfThePageOfTheRequestIsLeftToThePage(): void
+    public function testTheClassAttributeAppliesToAStaticClosureOfTheComponent(): void
     {
-        // PageAttributesListener checks the #[IsGranted] of the page for the event request.
-        $this->requests->getCurrentRequest()?->attributes->set('_phem_page', AdminPanel::class);
-
-        self::assertSame('saved', $this->handle(new AdminPanel()->save(...), []));
-    }
-
-    public function testTheMethodAttributeOfAHandlerOfThePageIsStillChecked(): void
-    {
-        $this->requests->getCurrentRequest()?->attributes->set('_phem_page', AdminPanel::class);
-
-        self::assertSame('published', $this->handle(new AdminPanel()->publish(...), ['ROLE_EDITOR']), 'the page checked ROLE_ADMIN');
+        self::assertSame('wiped', $this->handle(new AdminPanel()->wipe(), ['ROLE_ADMIN']));
 
         $this->expectException(AccessDeniedException::class);
-        $this->handle(new AdminPanel()->publish(...), ['ROLE_ADMIN']);
+        $this->handle(new AdminPanel()->wipe(), []);
+    }
+
+    public function testTheClassAttributeOfThePageOfTheRequestIsLeftToThePage(): void
+    {
+        // PageAttributesListener checks it for the page and its events.
+        $this->requests->getCurrentRequest()?->attributes->set('_phem_page', GrantedPage::class);
+
+        self::assertSame('saved', $this->handle(new GrantedPage()->save(...), []));
+    }
+
+    public function testTheClassAttributeOfAComponentWithARouteInAnotherPageIsChecked(): void
+    {
+        // A component with a route can be a tag in another page: its class has no listener.
+        $this->requests->getCurrentRequest()?->attributes->set('_phem_page', 'App\Ui\OtherPage');
+
+        $this->expectException(AccessDeniedException::class);
+        $this->handle(new GrantedPage()->save(...), []);
+    }
+
+    public function testTheMethodAttributeOfAHandlerOfAPageIsChecked(): void
+    {
+        $this->requests->getCurrentRequest()?->attributes->set('_phem_page', GrantedPage::class);
+
+        self::assertSame('published', $this->handle(new GrantedPage()->publish(...), ['ROLE_EDITOR']));
+
+        $this->expectException(AccessDeniedException::class);
+        $this->handle(new GrantedPage()->publish(...), ['ROLE_ADMIN']);
+    }
+
+    public function testAnArgumentOfTheCallIsTheSubject(): void
+    {
+        self::assertSame('removed ada', $this->handle(self::call(new PostCard()->remove(...), [new Post('ada')]), [], 'ada'));
+        self::assertSame('dropped', $this->handle(self::call(new PostCard()->drop(...), [new Post('ada')]), [], 'ada'), 'an Expression gets the arguments');
+
+        $this->expectException(AccessDeniedException::class);
+        $this->handle(self::call(new PostCard()->remove(...), [new Post('marie')]), [], 'ada');
+    }
+
+    public function testAnArgumentComesBeforeAPropertyWithTheSameName(): void
+    {
+        // The property `post` is the post of ada.
+        $this->expectException(AccessDeniedException::class);
+        $this->handle(self::call(new PostCard()->replace(...), [new Post('marie')]), [], 'ada');
     }
 
     public function testAHandlerWithTheAttributeNeedsTheSecurity(): void
@@ -168,6 +205,16 @@ final class IsGrantedMiddlewareTest extends TestCase
         new IsGrantedMiddleware(requests: $this->requests)->handle(new PostCard()->delete(...), new Event('click'), static fn (): string => 'ran');
     }
 
+    /**
+     * The handler with the arguments of a call in the markup.
+     *
+     * @param list<mixed> $arguments
+     */
+    private static function call(\Closure $handler, array $arguments): \Closure
+    {
+        return HandlerCall::bind($handler, $arguments) ?? self::fail('No handler.');
+    }
+
     /** @param list<string> $roles */
     private function handle(\Closure $handler, array $roles, string $user = 'ada'): mixed
     {
@@ -175,6 +222,6 @@ final class IsGrantedMiddlewareTest extends TestCase
         $tokens->setToken(new UsernamePasswordToken(new InMemoryUser($user, null, $roles), 'main', $roles));
         $authorization = new AuthorizationChecker($tokens, new AccessDecisionManager([new RoleVoter(), new PostVoter()]));
 
-        return new IsGrantedMiddleware($authorization, requests: $this->requests)->handle($handler, new Event('click'), static fn (): mixed => $handler());
+        return new HandlerInvoker([new IsGrantedMiddleware($authorization, requests: $this->requests)])->invoke($handler, new Event('click'));
     }
 }

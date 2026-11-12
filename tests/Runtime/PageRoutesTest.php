@@ -17,10 +17,12 @@ use Phem\Manifest\Manifest;
 use Phem\Routing\PageLoader;
 use Phem\Routing\PageRoutes;
 use Phem\Routing\PageRoutesLoader;
+use Phem\Tests\Fixtures\PathPages\EmptyPaths;
 use Phem\Tests\Fixtures\PathPages\Paged;
 use Phem\Tests\Fixtures\PathPages\RoutedInConfig;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Loader\LoaderResolver;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use Symfony\Component\Routing\Generator\UrlGenerator;
 use Symfony\Component\Routing\Loader\ClosureLoader;
 use Symfony\Component\Routing\Loader\Configurator\Traits\HostTrait;
@@ -41,7 +43,8 @@ final class PageRoutesTest extends TestCase
         $this->dir = sys_get_temp_dir().'/phem-page-routes-'.bin2hex(random_bytes(4));
         mkdir($this->dir);
         file_put_contents($this->dir.'/autoload.php', '<?php');
-        file_put_contents($this->dir.'/manifest.php', '<?php return '.var_export(['pages' => [Paged::class => '', RoutedInConfig::class => '']], true).';');
+        // A package page: the application doesn't need to route it.
+        $this->manifest([Paged::class => '', RoutedInConfig::class => 'acme/ui']);
     }
 
     protected function tearDown(): void
@@ -169,9 +172,63 @@ final class PageRoutesTest extends TestCase
 
     public function testAPageWithNoPathHasNoRouteOfItsOwn(): void
     {
-        file_put_contents($this->dir.'/manifest.php', '<?php return '.var_export(['pages' => [RoutedInConfig::class => '']], true).';');
+        $this->manifest([RoutedInConfig::class => '']);
 
         self::assertCount(0, (new PageLoader(new Manifest($this->dir)))->load('.', 'phem'));
+    }
+
+    public function testAPageOfTheApplicationWithNoPathNeedsARoute(): void
+    {
+        $this->manifest([RoutedInConfig::class => '']);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The page "Phem\Tests\Fixtures\PathPages\RoutedInConfig" has a #[Page] with no path, and no route of the application routes it. Add a route with the controller "Phem\Tests\Fixtures\PathPages\RoutedInConfig" to a route file, or give the #[Page] a path.');
+
+        $this->complete(new RouteCollection());
+    }
+
+    public function testAPageOfTheApplicationWithNoPathAndARouteLoads(): void
+    {
+        $this->manifest([RoutedInConfig::class => '']);
+        $routes = new RouteCollection();
+        $routes->add('item', new Route('/items/{id}', ['_controller' => RoutedInConfig::class]));
+
+        self::assertNotNull($this->complete($routes)->get('phem_event.item'));
+    }
+
+    public function testTheControllerOfARouteFileCanBeAParameter(): void
+    {
+        $routes = new RouteCollection();
+        $routes->add('item', new Route('/items/{id}', ['_controller' => '%app.item_page%']));
+
+        $routes = (new PageRoutes(new Manifest($this->dir), parameters: new ParameterBag(['app.item_page' => RoutedInConfig::class])))->complete($routes);
+
+        self::assertSame(RoutedInConfig::class, $routes->get('item')?->getDefault('_phem_page'));
+        self::assertNotNull($routes->get('phem_event.item'));
+    }
+
+    public function testAnImportCanAddRouteValuesThatThePageDoesNotHave(): void
+    {
+        // PageLoader checks the values of a #[Page] route before the import adds its own.
+        $routes = $this->pages();
+        $routes->addPrefix('/{tenant}');
+        $routes->addDefaults(['theme' => 'dark']);
+        $routes->setHost('{region}.example.com');
+
+        $routes = $this->complete($routes);
+
+        self::assertSame('/{tenant}/paged', $routes->get('phem_event.paged')?->getPath());
+        self::assertSame('paged', $this->match($routes, 'POST', '/acme/paged', 'eu.example.com'));
+    }
+
+    public function testAnEmptyListOfPathsHasNoRouteAndKeepsTheAliasForTheNextRoute(): void
+    {
+        $this->manifest([EmptyPaths::class => '']);
+
+        $routes = (new PageLoader(new Manifest($this->dir)))->load('.', 'phem');
+
+        self::assertSame(['empty_paths'], array_keys($routes->all()));
+        self::assertSame('empty_paths', $routes->getAlias(EmptyPaths::class)?->getId());
     }
 
     public function testTheLoaderOfTheRouterCompletesTheRoutes(): void
@@ -185,6 +242,12 @@ final class PageRoutesTest extends TestCase
         self::assertNotNull($routes->get('phem_event.paged'));
         self::assertTrue($loader->supports(static fn () => null, 'closure'));
         self::assertSame($resolver, $loader->getResolver());
+    }
+
+    /** @param array<string, string> $pages page => package */
+    private function manifest(array $pages): void
+    {
+        file_put_contents($this->dir.'/manifest.php', '<?php return '.var_export(['pages' => $pages], true).';');
     }
 
     private function pages(): RouteCollection

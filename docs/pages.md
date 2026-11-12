@@ -132,7 +132,9 @@ final class BlogPage
 }
 ```
 
-The first route of such a page has the name of the page as an alias, so `path('App\\Ui\\BlogPage')` and `RedirectTo` work.
+The first route of such a page has the name of the page as an alias, so `path('App\\Ui\\BlogPage')` and `RedirectTo` work. A page of your app with no path and no route in a route file is an error when the routes load. The controller can also be a parameter: `controller: '%app.blog_page%'`.
+
+The route values of a route file need a `#[Path]` property or a parameter, as the values of a `#[Page]` route do. The values that an import adds to a `#[Page]` route, such as `prefix: /{tenant}` or the `defaults` of the import, don't need one.
 
 The default values of the `#[Path]` properties and the parameters apply only to the `#[Page]` routes (see [Make a route value optional](#make-a-route-value-optional)). In a route file, set the defaults of the route, as for a controller.
 

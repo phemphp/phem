@@ -36,6 +36,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
@@ -225,6 +226,12 @@ final class ComponentDriver implements Driver
     private function request(string $method): Request
     {
         $request = Request::create('/', $method, server: 'POST' === $method ? ['CONTENT_TYPE' => 'application/json'] : []);
+
+        // A mounted page is the page of the request, as in the kernel: its #[IsGranted] is a rule
+        // of the page, and the rules of a page don't apply here (see Phem\Handler\IsGrantedMiddleware).
+        if (class_exists($this->component) && [] !== new \ReflectionClass($this->component)->getAttributes(Route::class, \ReflectionAttribute::IS_INSTANCEOF)) {
+            $request->attributes->set('_phem_page', $this->component);
+        }
 
         if (null !== $this->session) {
             $request->setSession($this->session);

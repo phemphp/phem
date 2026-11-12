@@ -42,8 +42,9 @@ use Symfony\Component\Routing\RouteCollection;
  * controller, the default value of the prop or the parameter makes its route value optional
  * (see PageRouteDefaults).
  *
- * The event routes of the pages, and the check of the route values, come after the imports, on
- * the routes of the application (see PageRoutes).
+ * Each route value needs a #[Path] property or a parameter (see PageRouteCheck). The check
+ * comes before the imports: the values of an import (a `/{tenant}` prefix) are not values of
+ * the page. The event routes of the pages come after the imports (see PageRoutes).
  *
  * The `routing.controllers` resource of the application routes has the pages of the application
  * (see ControllersLoader). An application without this resource imports them:
@@ -64,6 +65,8 @@ final class PageLoader extends Loader
 {
     private readonly PageRouteDefaults $defaults;
 
+    private readonly PageRouteCheck $check;
+
     public function __construct(
         private readonly Manifest $manifest,
         ?string $env = null,
@@ -72,6 +75,7 @@ final class PageLoader extends Loader
         parent::__construct($env);
 
         $this->defaults = new PageRouteDefaults($metadata);
+        $this->check = new PageRouteCheck($metadata);
     }
 
     public function load(mixed $resource, ?string $type = null): RouteCollection
@@ -154,7 +158,7 @@ final class PageLoader extends Loader
         }
 
         // A page whose routes are in the route files of the application.
-        if (null === $attr->path) {
+        if (null === $attr->path || [] === $attr->path) {
             return false;
         }
 
@@ -171,6 +175,7 @@ final class PageLoader extends Loader
 
         foreach ($paths as $locale => $path) {
             $route = new Route($path, $defaults, $attr->requirements, $attr->options, $attr->host ?? '', $attr->schemes, $attr->methods, $attr->condition ?? '');
+            $this->check->check($route, $name, $page);
 
             $routeName = $name;
             if (0 !== $locale) {

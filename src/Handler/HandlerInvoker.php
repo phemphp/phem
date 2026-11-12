@@ -52,7 +52,18 @@ final class HandlerInvoker
         $next = fn (): mixed => $call($handler, $this->arguments->of($handler, $request, $event, bound: $bound));
         $middlewares = $this->middlewares instanceof \Traversable ? iterator_to_array($this->middlewares, false) : $this->middlewares;
 
+        // The arguments of the call in the markup, for the middlewares that need them.
+        $named = null;
         foreach (array_reverse($middlewares) as $middleware) {
+            if ($middleware instanceof HandlerCallMiddleware) {
+                $next = static function () use ($middleware, $handler, $bound, $event, $next, &$named): mixed {
+                    $named ??= CallableArguments::call(new \ReflectionFunction($handler), $bound);
+
+                    return $middleware->handleCall($handler, $named, $event, $next);
+                };
+                continue;
+            }
+
             $next = static fn (): mixed => $middleware->handle($handler, $event, $next);
         }
 

@@ -97,8 +97,10 @@ final class CallableArguments
      * @param list<mixed> $bound
      *
      * @return array<string, mixed>
+     *
+     * @throws \ArgumentCountError when the call has more arguments than the handler has parameters
      */
-    private static function call(\ReflectionFunction $function, array $bound): array
+    public static function call(\ReflectionFunction $function, array $bound): array
     {
         $call = [];
         foreach ($function->getParameters() as $i => $parameter) {

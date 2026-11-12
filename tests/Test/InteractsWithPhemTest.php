@@ -66,6 +66,20 @@ final class InteractsWithPhemTest extends KernelTestCase
             ->assertState('count', 2);
     }
 
+    public function testTheIsGrantedOfThePageClassDoesNotApplyInAComponentTest(): void
+    {
+        // The fixture app has no security: a check of the attribute would throw.
+        $this->mount('App\\Ui\\Access\\GrantedCounterPage')->click('button')->assertState('count', 1);
+    }
+
+    public function testTheIsGrantedOfAComponentClassAppliesInAComponentTest(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('The #[IsGranted] attribute of an event handler needs the security of Symfony.');
+
+        $this->mount('App\\Ui\\Access\\GrantedCounter')->click('button');
+    }
+
     public function testLoadingElementHasTheScopeOfItsHandler(): void
     {
         $html = $this->mount(self::COUNTER)->assertSelectorExists('span.spinner[hidden]')->html();

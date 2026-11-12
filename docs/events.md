@@ -625,6 +625,8 @@ final class LoginRequired implements HandlerMiddleware
 
 `$next()` runs the next middleware and then the handler. Return without calling `$next()` to stop the event. The middleware runs for every handler, so check `$handler` or `$event` to apply it to some handlers only.
 
+To read the arguments of the call in the markup (`onClick={{ delete(todo) }}`), implement `Phem\Handler\HandlerCallMiddleware` instead. Phem calls its `handleCall()` with the arguments by parameter name, `['todo' => $todo]`. The other arguments, such as the services, come after the middleware. `#[IsGranted]` and `#[RateLimit]` use it.
+
 The `RedirectTo` middleware (priority 10) changes a returned `RedirectTo` into the redirect response. A middleware with a priority above 10 runs outside it, so its `RedirectTo` does nothing. In such a middleware, return a Symfony `RedirectResponse`.
 
 ### Order your middleware with priorities

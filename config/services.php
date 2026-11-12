@@ -551,7 +551,7 @@ return static function (ContainerConfigurator $container): void {
 
     // The event routes, and the pages of the route files, after all the imports.
     $services->set('phem.page_routes', PageRoutes::class)
-        ->args([service('phem.manifest'), service('phem.metadata')]);
+        ->args([service('phem.manifest'), service('phem.metadata'), service('parameter_bag')->nullOnInvalid()]);
 
     $services->set('phem.route_loader.pages', PageRoutesLoader::class)
         ->decorate('routing.loader')

@@ -47,6 +47,7 @@ Use `mount()` for a unit test of one component. Use `visit()` to test a page and
 | What it renders | One component, with its props | A page, with its document |
 | How events run | In the test process, the way the `EventController` runs them | As HTTP requests to the page URL, through the kernel |
 | Page access rules | Don’t apply | Apply (a firewall, `access_control`, `#[IsGranted]`, `#[RateLimit]`) |
+| `#[IsGranted]` on a handler or on the class of a component | Applies | Applies |
 | Signed state | Signed and checked, as JSON | Signed and checked, as in the browser |
 | Session | A new session for the test | The browser cookies (the session) go with each request and to the pages of `->visit()` |
 | Redirect from a handler | `assertRedirect()` | `assertRedirect()`, then `followRedirect()` |
