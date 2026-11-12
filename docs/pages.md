@@ -148,6 +148,40 @@ final class ScientistPage
 
 For other types, such as a date or a value object, see [Other types of route values](#convert-route-values-to-your-own-types).
 
+### Make a route value optional
+
+A default value makes a route value optional, as a default value does for a parameter of a Symfony controller. The default value of the `#[Path]` property or of the parameter becomes the default of the route:
+
+```php
+#[Page('/blog/{page}', requirements: ['page' => '\d+'])]
+final class BlogPage
+{
+    #[Path] public int $page = 1;
+}
+
+#[Page('/tags/{sort}')]
+function TagsPage(Sort $sort = Sort::Name): Node
+{
+    // ...
+}
+```
+
+`/blog` renders `BlogPage` with `$page = 1`, and `/blog/3` renders it with `$page = 3`. `path('App\\Ui\\BlogPage')` generates `/blog`. A backed enum gives its value to the route (`'name'`). Your converter of the enum type turns it back into the enum (see [Convert route values to your own types](#convert-route-values-to-your-own-types)). A mapped value gets the default of its property: `{id:scientist}` and `?Scientist $scientist = null` make `/scientists` match with no scientist, and Phem doesn't query the database. An untyped property has the default `null`, as in PHP, so `#[Path] public $page;` makes `{page}` optional too.
+
+A default in the `defaults` option of the route comes first. Only a scalar, `null` or a backed enum can be a route default. Phem ignores the other default values, such as an object.
+
+As in Symfony, only the last route values of a path can be optional. A default value of another route value doesn't become a route default, so a URL without this value is still an error:
+
+```php
+#[Page('/notes/{id}/edit')]
+final class EditNotePage
+{
+    #[Path] public int $id = 0; // `/notes/edit` doesn't match, and path() needs the id
+}
+```
+
+With localized paths, a route value is optional only when it is optional in all the paths.
+
 ### Convert route values to your own types
 
 A converter turns a route value into another type, such as a date, an enum or a value object. Create a service that implements `Phem\Path\PathValueConverter`:

@@ -54,15 +54,15 @@ final class ThemeScriptTest extends TestCase
 
     public function testHasTheThemesAndTheKeyOfTheController(): void
     {
-        $module = file_get_contents(\dirname(__DIR__, 2).'/assets/dist/phem_theme.js');
+        $module = (string) file_get_contents(\dirname(__DIR__, 2).'/assets/dist/phem_theme.js');
+        $storage = (string) file_get_contents(\dirname(__DIR__, 2).'/assets/dist/phem_storage.js');
 
         self::assertSame(1, preg_match('/^export const THEMES = (\[.*\])$/m', $module, $themes));
         self::assertSame(ThemeScript::THEMES, json_decode($themes[1], true, flags: \JSON_THROW_ON_ERROR));
 
-        // PhemStorage adds the `phem-` prefix.
-        self::assertStringContainsString('new PhemStorage("theme")', $module);
-        self::assertSame('phem-theme', ThemeScript::KEY);
-        self::assertStringContainsString('this.#key = `phem-${key}`', file_get_contents(\dirname(__DIR__, 2).'/assets/dist/phem_storage.js'));
+        // PhemStorage adds the `phem-` prefix to the key of the controller.
+        self::assertStringContainsString('new PhemStorage("'.substr(ThemeScript::KEY, \strlen('phem-')).'")', $module);
+        self::assertStringContainsString('this.#key = `phem-${key}`', $storage);
     }
 
     public function testIsATwigFunctionThatIsNotEscaped(): void

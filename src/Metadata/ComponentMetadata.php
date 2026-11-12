@@ -612,6 +612,34 @@ final class ComponentMetadata
         return $this->paths[$page] = $out;
     }
 
+    /**
+     * The default values of the #[Path] properties of a class page, or of the parameters of a
+     * function page. As for the parameters of a controller, they make the route values optional
+     * (see Phem\Routing\PageLoader).
+     *
+     * @return array<string, mixed> name => default value
+     */
+    public function pathDefaults(string $page): array
+    {
+        $out = [];
+        if (class_exists($page)) {
+            foreach ($this->props($page) as $name => $p) {
+                // As in PHP, an untyped property has the default null, also without `= null`.
+                if ([] !== $p->getAttributes(Path::class) && $p->hasDefaultValue()) {
+                    $out[$name] = $p->getDefaultValue();
+                }
+            }
+        } elseif (\function_exists($page)) {
+            foreach ((new \ReflectionFunction($page))->getParameters() as $p) {
+                if ($p->isDefaultValueAvailable()) {
+                    $out[$p->getName()] = $p->getDefaultValue();
+                }
+            }
+        }
+
+        return $out;
+    }
+
     /** Whether a query string can hold a value of this type: no type, a scalar, a backed enum, an array, or a union of them. */
     private static function fitsQuery(?\ReflectionType $type): bool
     {

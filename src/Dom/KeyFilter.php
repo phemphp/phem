@@ -66,7 +66,7 @@ final class KeyFilter
      * Whether a key event matches: its `key` and the modifiers that it has.
      *
      * @param list<string> $modifiers the modifiers of the event (`ctrl`, `shift`, `alt`, `meta`,
-     *                             or `mod` for `ctrl`)
+     *                                or `mod` for `ctrl`)
      */
     public function matches(string $key, array $modifiers = []): bool
     {

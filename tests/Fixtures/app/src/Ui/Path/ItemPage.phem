@@ -115,3 +115,36 @@ function ScientistCardPage(Scientist $scientist): Node
         </Document>
     );
 }
+
+// A default value makes the route value optional: `/pages` renders with `$page = 1`.
+#[Page('/pages/{page}', requirements: ['page' => '\d+'])]
+final class PagedListPage
+{
+    #[Path] public int $page = 1;
+    #[State] public int $count = 0;
+
+    public function increment(): void
+    {
+        ++$this->count;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document>
+                <button id="paged" onClick={{ increment }}>Page {{ page }}: {{ count }}</button>
+            </Document>
+        );
+    }
+}
+
+// A function page with an optional route value, and an optional mapped entity.
+#[Page('/shelves/{id:scientist}/{limit}')]
+function ShelfPage(?Scientist $scientist = null, int $limit = 10): Node
+{
+    return (
+        <Document>
+            <p id="shelf">{{ scientist ? scientist.name : 'Nobody' }} {{ limit }}</p>
+        </Document>
+    );
+}

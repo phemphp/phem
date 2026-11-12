@@ -46,7 +46,9 @@ use Symfony\Component\Routing\RouteCollection;
  * A route value (`{id}`, or a `defaults` key) goes to the #[Path] property with the same name,
  * or to the parameter with the same name of a function page. A route value without one is an
  * error. The keys that start with `_` are not route values. As for the Doctrine controller
- * arguments, `{slug:post}` maps the value `slug` to the entity prop `post`.
+ * arguments, `{slug:post}` maps the value `slug` to the entity prop `post`. As for the
+ * parameters of a controller, the default value of the prop or the parameter makes its route
+ * value optional (see PageRouteDefaults).
  *
  * The `routing.controllers` resource of the application routes has the pages of the application
  * (see ControllersLoader). An application without this resource imports them:
@@ -68,12 +70,16 @@ final class PageLoader extends Loader
     /** The prefix of the event route names: `phem_event.app_page_counter`. */
     public const EVENT_ROUTE = 'phem_event';
 
+    private readonly PageRouteDefaults $defaults;
+
     public function __construct(
         private readonly Manifest $manifest,
         ?string $env = null,
         private readonly ComponentMetadata $metadata = new ComponentMetadata(),
     ) {
         parent::__construct($env);
+
+        $this->defaults = new PageRouteDefaults($metadata);
     }
 
     public function load(mixed $resource, ?string $type = null): RouteCollection
@@ -186,8 +192,15 @@ final class PageLoader extends Loader
         }
 
         $name = $attr->name ?? self::routeName($page).($index > 0 ? '_'.$index : '');
-        $defaults = array_replace($attr->defaults, ['_controller' => 'phem.controller.page', '_phem_page' => $page]);
+
+        foreach ($attr->requirements as $placeholder => $requirement) {
+            if (\is_int($placeholder)) {
+                throw new \InvalidArgumentException(\sprintf('A placeholder name must be a string (%d given). Did you forget to specify the placeholder key for the requirement "%s" of the route "%s" of the page "%s"?', $placeholder, $requirement, $name, $page));
+            }
+        }
+
         $paths = \is_array($attr->path) ? $attr->path : [0 => (string) $attr->path];
+        $defaults = array_replace($this->defaults->of($attr->defaults, $paths, $attr->requirements, $page), ['_controller' => 'phem.controller.page', '_phem_page' => $page]);
 
         foreach ($paths as $locale => $path) {
             $route = new Route($path, $defaults, $attr->requirements, $attr->options, $attr->host ?? '', $attr->schemes, $attr->methods, $attr->condition ?? '');

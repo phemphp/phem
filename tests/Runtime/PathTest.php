@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Phem\Tests\Runtime;
 
 use Phem\Binding\PropError;
+use Phem\Http\RouteValues;
 use Phem\Manifest\Manifest;
 use Phem\Metadata\ComponentMetadata;
 use Phem\Path\EntityFinder;
@@ -29,6 +30,11 @@ use Phem\Tests\Fixtures\PathPages\Typed;
 use Phem\Tests\Fixtures\Scientist;
 use Phem\Tests\Fixtures\ScientistFinder;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Exception\MissingMandatoryParametersException;
+use Symfony\Component\Routing\Generator\UrlGenerator;
+use Symfony\Component\Routing\Matcher\UrlMatcher;
+use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\RouteCollection;
 
 require_once \dirname(__DIR__).'/Fixtures/PathPages.php';
@@ -153,6 +159,81 @@ final class PathTest extends TestCase
         self::assertSame('/es/paged', $routes->get('paged_i18n.es')?->getPath(), 'a localized path');
         self::assertSame('es', $routes->get('paged_i18n.es')->getDefault('_locale'));
         self::assertSame('/en/paged', $routes->get('phem_event.paged_i18n.en')->getPath());
+    }
+
+    public function testDefaultValueOfAPathPropMakesTheRouteValueOptional(): void
+    {
+        $routes = $this->load('OptionalPage');
+        $matcher = new UrlMatcher($routes, new RequestContext());
+
+        self::assertSame(1, $routes->get('blog')?->getDefault('page'));
+        self::assertSame(1, $routes->get('phem_event.blog')?->getDefault('page'), 'the event route too');
+        self::assertSame(5, $routes->get('archive')?->getDefault('page'), 'a default of the route comes first');
+        self::assertSame(['page' => 1, '_route' => 'blog'], array_intersect_key($matcher->match('/blog'), ['page' => 0, '_route' => 0]));
+        self::assertSame('/blog', (new UrlGenerator($routes, new RequestContext()))->generate('blog'));
+    }
+
+    public function testDefaultValueOfAFunctionPageParameterMakesTheRouteValueOptional(): void
+    {
+        $route = $this->load('FunctionOptional')->get('phem_tests_fixtures_pathpages_functionoptional');
+
+        self::assertSame('name', $route?->getDefault('sort'), 'a backed enum gives its value');
+        self::assertSame(10, $route->getDefault('limit'), 'with an inline requirement');
+        self::assertFalse($route->hasDefault('at'), 'a parameter that is not a route value');
+    }
+
+    public function testDefaultValueOfAMappedPropGoesToItsRouteValue(): void
+    {
+        $route = $this->load('OptionalEntity')->get('phem_tests_fixtures_pathpages_optionalentity');
+
+        self::assertTrue($route?->hasDefault('id'));
+        self::assertNull($route->getDefault('id'));
+        self::assertFalse($route->hasDefault('scientist'));
+    }
+
+    public function testDefaultValueOfARouteValueThatIsNotLastIsNotARouteDefault(): void
+    {
+        $routes = $this->load('NotTrailing');
+        $generator = new UrlGenerator($routes, new RequestContext());
+
+        self::assertFalse($routes->get('note_edit')?->hasDefault('id'), '{id} is before "/edit"');
+        self::assertSame(['id' => 0, 'tab' => 'main'], array_intersect_key($routes->get('note_tab')?->getDefaults() ?? [], ['id' => 0, 'tab' => 0]), 'the last two route values');
+        self::assertSame('/notes', $generator->generate('note_tab'));
+
+        $this->expectException(MissingMandatoryParametersException::class);
+        $generator->generate('note_edit');
+    }
+
+    public function testDefaultValueOfARouteValueThatIsNotLastInAllPathsIsNotARouteDefault(): void
+    {
+        $routes = $this->load('NotTrailingInAllPaths');
+
+        self::assertFalse($routes->get('book.es')?->hasDefault('section'), '{section} is before "/todo"');
+        self::assertFalse($routes->get('book.en')?->hasDefault('section'), 'the routes of the paths have the same defaults');
+        self::assertFalse($routes->get('book.en')->hasDefault('book'), '{section} after it is required now');
+    }
+
+    public function testUntypedPathPropHasTheDefaultNull(): void
+    {
+        $route = $this->load('UntypedPath')->get('phem_tests_fixtures_pathpages_untypedpath');
+
+        self::assertTrue($route?->hasDefault('page'));
+        self::assertNull($route->getDefault('page'));
+    }
+
+    public function testNullMappedRouteValueGivesTheEntityPropNull(): void
+    {
+        $request = new Request(attributes: ['_route_params' => ['id' => null, 'name' => 'Ada'], '_route_mapping' => ['id' => 'scientist', 'name' => ['author', 'name']]]);
+
+        self::assertSame(['scientist' => null, 'author' => ['name' => 'Ada']], RouteValues::fromRequest($request));
+    }
+
+    public function testRequirementWithoutAPlaceholderNameIsAnError(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('A placeholder name must be a string (0 given). Did you forget to specify the placeholder key for the requirement "\d+" of the route "phem_tests_fixtures_pathpages_requirementwithoutkey" of the page "Phem\\Tests\\Fixtures\\PathPages\\RequirementWithoutKey"?');
+
+        $this->load('RequirementWithoutKey');
     }
 
     public function testNameOfAPageIsAnAliasOfItsFirstRoute(): void

@@ -131,6 +131,25 @@ final class PathPageTest extends TestCase
         self::assertSame(404, $this->request('GET', '/scientist-cards/9')->getStatusCode());
     }
 
+    public function testClassPageGetsTheDefaultValueOfAnOptionalRouteValue(): void
+    {
+        self::assertStringContainsString('>Page 1: 0</button>', (string) $this->request('GET', '/pages')->getContent());
+        self::assertStringContainsString('>Page 3: 0</button>', (string) $this->request('GET', '/pages/3')->getContent());
+
+        [$state, $signature, $handler] = $this->page('/pages');
+        $response = $this->click('/pages', $state, $signature, $handler);
+
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getContent());
+        self::assertStringContainsString('Page 1: 1', json_decode((string) $response->getContent(), true)['streams'], 'an event keeps the default');
+    }
+
+    public function testFunctionPageGetsTheDefaultValuesOfOptionalRouteValues(): void
+    {
+        self::assertMatchesRegularExpression('#<p id="shelf" data-phem-c="phem[0-9a-f]{12}">Nobody 10</p>#', (string) $this->request('GET', '/shelves')->getContent());
+        self::assertMatchesRegularExpression('#<p id="shelf" data-phem-c="phem[0-9a-f]{12}">Ada 10</p>#', (string) $this->request('GET', '/shelves/1')->getContent());
+        self::assertMatchesRegularExpression('#<p id="shelf" data-phem-c="phem[0-9a-f]{12}">Marie 5</p>#', (string) $this->request('GET', '/shelves/2/5')->getContent());
+    }
+
     /** @return array{0: string, 1: string, 2: string} the state, its signature, and the click handler */
     private function page(string $uri): array
     {

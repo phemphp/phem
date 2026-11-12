@@ -19,7 +19,8 @@ use Symfony\Component\HttpFoundation\Request;
  * The route values of a page request, by prop name.
  *
  * As for the Doctrine controller arguments, `{slug:post}` gives the `post` entity prop the
- * criteria `['slug' => value]`, and `{name:post.title}` gives it `['title' => value]`.
+ * criteria `['slug' => value]`, and `{name:post.title}` gives it `['title' => value]`. A null
+ * value (the default of an optional route value) gives the prop null.
  */
 final class RouteValues
 {
@@ -36,6 +37,13 @@ final class RouteValues
             [$prop, $field] = \is_array($target) ? $target : [$target, $parameter];
             $criteria[$prop][$field] = $values[$parameter];
             unset($values[$parameter]);
+        }
+
+        // An optional value without a value (its default is null) finds no entity: no query.
+        foreach ($criteria as $prop => $fields) {
+            if (\in_array(null, $fields, true)) {
+                $criteria[$prop] = null;
+            }
         }
 
         return $criteria + $values;

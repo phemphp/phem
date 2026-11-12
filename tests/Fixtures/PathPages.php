@@ -149,3 +149,61 @@ final class ObjectPath
 {
     #[Path] public \DateTimeImmutable $at;
 }
+
+enum Sort: string
+{
+    case Name = 'name';
+    case Date = 'date';
+}
+
+// A default value makes a route value optional, as for a controller parameter.
+#[Component]
+#[Page('/blog/{page}', name: 'blog')]
+#[Page('/archive/{page}', name: 'archive', defaults: ['page' => 5])]
+final class OptionalPage
+{
+    #[Path] public int $page = 1;
+}
+
+#[Page('/function-tags/{sort}/{limit<\d+>}')]
+function FunctionOptional(Sort $sort = Sort::Name, int $limit = 10, \DateTimeImmutable $at = new \DateTimeImmutable('2026-01-01')): void
+{
+}
+
+#[Component]
+#[Page('/optional-scientists/{id:scientist}')]
+final class OptionalEntity
+{
+    #[Path] public ?Scientist $scientist = null;
+}
+
+#[Component]
+#[Page('/requirement/{id}', requirements: ['\d+'])]
+final class RequirementWithoutKey
+{
+    #[Path] public int $id;
+}
+
+// Only the last route values of a path can be optional.
+#[Component]
+#[Page('/notes/{id}/edit', name: 'note_edit')]
+#[Page('/notes/{id}/{tab}', name: 'note_tab')]
+final class NotTrailing
+{
+    #[Path] public int $id = 0;
+    #[Path] public string $tab = 'main';
+}
+
+// `{section}` is optional in the `en` path only, so it is required, and `{book}` before it too.
+#[Page(['en' => '/books/{book}/{section}', 'es' => '/libros/{section}/todo'], name: 'book')]
+function NotTrailingInAllPaths(int $book = 1, string $section = 'intro'): void
+{
+}
+
+#[Component]
+#[Page('/untyped/{page}')]
+final class UntypedPath
+{
+    /** @var mixed an untyped property, for the test */
+    #[Path] public $page;
+}
