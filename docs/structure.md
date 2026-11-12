@@ -36,7 +36,7 @@ src/
 ├── Repository/          services that components get injected
 ├── DataFixtures/        optional: Doctrine fixtures
 └── Ui/                  the pages and their components, by context
-    ├── Common/
+    ├── Layout/
     │   └── Document.phem      the HTML document, with a <Root>
     ├── HomePage.phem          #[Page('/')]
     └── Example/
@@ -48,18 +48,20 @@ These directories are a convention. A page is any class with the `#[Page]` attri
 
 ## Organize the UI
 
-Put the `.phem` files in `src/Ui/`, and split them by context, not into `Component/` and `Page/` directories. The namespace follows the directory: `src/Ui/` is `App\Ui`, and `src/Ui/Scientist/` is `App\Ui\Scientist`. The convention has four rules:
+Put the `.phem` files in `src/Ui/`, and split them by context, not into `Component/` and `Page/` directories. The namespace follows the directory: `src/Ui/` is `App\Ui`, and `src/Ui/Scientist/` is `App\Ui\Scientist`. The convention has five rules:
 
 - **Page**: the name ends with `Page` (`HomePage`, `ScientistPage`). It goes in the directory of its context (`src/Ui/Scientist/`). A page with no context, such as the home page, stays in `src/Ui/`
 - **Component of a page**: it goes in the directory of the page that uses it, in the same namespace. Its name has no suffix (`ScientistCard`, not `ScientistCardComponent`)
-- **Common component**: a component that more than one context uses goes in `src/Ui/Common/` (the document, a button, a badge)
+- **Common component**: a component that more than one context uses goes in `src/Ui/Common/` (a button, a badge)
+- **Layout component**: the HTML document of the pages goes in `src/Ui/Layout/` (`Document`)
 - **Subcontext**: when a context grows, add a directory inside it (`src/Ui/Admin/User/`)
 
 ```text
 src/Ui/                      App\Ui
 ├── Common/                  App\Ui\Common
-│   ├── Document.phem
 │   └── Badge.phem
+├── Layout/                  App\Ui\Layout
+│   └── Document.phem
 ├── HomePage.phem            #[Page('/')]
 ├── Scientist/               App\Ui\Scientist
 │   ├── ScientistsPage.phem  the list
@@ -72,7 +74,7 @@ src/Ui/                      App\Ui
         └── UserForm.phem
 ```
 
-Because a page and its components share a namespace, the page uses them with no `use` import. It imports only the common components. Here `ScientistCard` resolves to `App\Ui\Scientist\ScientistCard`, and `Document` comes from `App\Ui\Common`:
+Because a page and its components share a namespace, the page uses them with no `use` import. It imports only the common and layout components. Here `ScientistCard` resolves to `App\Ui\Scientist\ScientistCard`, and `Document` comes from `App\Ui\Layout`:
 
 ```php
 <?phem
@@ -83,7 +85,7 @@ use App\Model\Scientist;
 use Phem\Attribute\{Page, Path};
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 #[Page('/scientists/{id:scientist}')]
 final class ScientistPage

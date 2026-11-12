@@ -5,7 +5,7 @@ namespace App\Ui\FormHelpers;
 use Phem\Attribute\{Page, State};
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The client-side helpers of a form: a count, a shown password, a "select all" box, a section
 // from the value of a field, an accordion and a local time. The Save button sends an event, so

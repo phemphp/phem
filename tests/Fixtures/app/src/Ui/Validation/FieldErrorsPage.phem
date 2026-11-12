@@ -9,7 +9,7 @@ use Phem\Node;
 use Phem\Validation;
 use Symfony\Component\Validator\Constraints as Assert;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The errors of the bound fields: `phem:bind` sets `aria-invalid` and `aria-describedby`, and
 // `phem:error` renders the message (see Phem\Rendering\FieldErrors).

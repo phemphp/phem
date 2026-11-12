@@ -11,7 +11,7 @@ use Phem\Feed;
 use Phem\Node;
 use Phem\Stream\Streams;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // A thread that scrolls, with the newest entry first. phem:keep-scroll keeps the entry in view
 // at its place when a push adds an entry before it, and phem:scroll-into-view shows the entry

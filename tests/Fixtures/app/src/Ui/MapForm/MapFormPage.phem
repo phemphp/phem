@@ -8,7 +8,7 @@ use Phem\Node;
 use Phem\Tests\Fixtures\ClosedDates;
 use Phem\Validation;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // A #[MapForm] handler: its errors go to the Validation property (see Phem\Attribute\MapForm).
 #[Component]

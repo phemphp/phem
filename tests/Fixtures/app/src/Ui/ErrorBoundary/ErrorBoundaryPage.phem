@@ -6,7 +6,7 @@ use Phem\Attribute\{Component, Page, State};
 use Phem\ErrorBoundary;
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The tests of <ErrorBoundary> (see Phem\Rendering\ErrorBoundaryRenderer).
 

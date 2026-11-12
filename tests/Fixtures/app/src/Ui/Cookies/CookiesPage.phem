@@ -6,7 +6,7 @@ use Phem\Attribute\Page;
 use Phem\Node;
 use Symfony\Component\HttpFoundation\Request;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The cookies and the language that the browser sends, for the cookies of the browser of the
 // tests (see Phem\Tests\Fixtures\CookieSetter). A click sends an event with the same cookies.

@@ -6,7 +6,7 @@ use Phem\Attribute\{Page, State};
 use Phem\Event;
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The key filters, the shortcuts and the event modifiers: phem:key, phem:shortcut, phem:stop and
 // phem:prevent.

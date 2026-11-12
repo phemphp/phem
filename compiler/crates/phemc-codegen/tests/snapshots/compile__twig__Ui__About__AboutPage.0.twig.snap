@@ -2,6 +2,6 @@
 source: crates/phemc-codegen/tests/compile.rs
 expression: t.content
 ---
-{% component embed 'App\\Ui\\Common\\Document' only %}{% block children %}{% with _phem_caller only %}
+{% component embed 'App\\Ui\\Layout\\Document' only %}{% block children %}{% with _phem_caller only %}
                 <p id="about">About</p>
             {% endwith %}{% endblock %}{% endcomponent %}

@@ -8,7 +8,7 @@ Flex and the bundle set up these parts of the application:
 
 - **Bundle**: Flex enables `PhemBundle` in `config/bundles.php`
 - **Client**: Flex adds the `phem` Stimulus controller and Turbo to the assets. The controller is the client of Phem: it sends the events to the server and updates the page (see [Client assets](#client-assets))
-- **Starter files**: the recipe copies `src/Ui/Common/Document.phem` (the HTML document of the pages), `src/Ui/HomePage.phem` (the page at `/`) and `.symfony.local.yaml` (the `phemc watch src` worker of `symfony serve`)
+- **Starter files**: the recipe copies `src/Ui/Layout/Document.phem` (the HTML document of the pages), `src/Ui/HomePage.phem` (the page at `/`) and `.symfony.local.yaml` (the `phemc watch src` worker of `symfony serve`)
 - **Routes**: the `routing.controllers` resource of `config/routes.yaml` loads the routes of the `#[Page]` attributes, as it does for controllers, so the pages need no routes file (see [Route loading](pages.md#load-the-routes-of-the-pages))
 - **Preload**: in production, `config/preload.php` also preloads the compiled components without a change (see [OPcache preload](deployment.md#turn-on-the-opcache-preload))
 - **Compiler**: `vendor/bin/phemc` downloads the `phemc` binary of the same version on its first run (see [The `phemc` binary](#the-phemc-binary))

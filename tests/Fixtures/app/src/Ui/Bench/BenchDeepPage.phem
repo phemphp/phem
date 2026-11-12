@@ -6,7 +6,7 @@ use Phem\Attribute\{Component, Page, Prop, State};
 use Phem\Node;
 use Phem\Suspense;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The pages of the benchmark (bench/run.php).
 

@@ -30,7 +30,7 @@ use App\Ui\HomePage;
 use Phem\Attribute\ErrorPage;
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 #[ErrorPage]
 function ErrorPage(int $status): Node

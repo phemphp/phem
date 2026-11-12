@@ -7,7 +7,7 @@ use Phem\Html;
 use Phem\Node;
 use Phem\Tests\Fixtures\Titled;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // A template component with a required slot, and a slot that the template tests.
 #[Component]

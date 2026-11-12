@@ -6,7 +6,7 @@ use Phem\Attribute\{Component, Page, State, Url};
 use Phem\Node;
 use Phem\Tests\Fixtures\Size;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The #[Url] properties: the first render reads them from the query string, and the browser
 // writes them into the URL after each event.

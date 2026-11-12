@@ -5,7 +5,7 @@ namespace App\Ui\Theme;
 use Phem\Attribute\{Page, State};
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // A theme switch with `phem-theme`: three buttons and a toggle. The document has
 // `theme_script()` in its `<head>`. The Save button sends an event, so the test checks the marks

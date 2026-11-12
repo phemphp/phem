@@ -7,7 +7,7 @@ use Phem\Html;
 use Phem\Node;
 use Phem\Tests\Fixtures\Many;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // Pages with many components: the render time grows linearly with the number of components
 // (tests/Runtime/ManyComponentsTest.php). The number of rows is in the state, so an event renders

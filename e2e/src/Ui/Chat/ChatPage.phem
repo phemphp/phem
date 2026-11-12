@@ -10,7 +10,7 @@ use Phem\Node;
 use Phem\Stream\FeedPush;
 use Phem\Stream\Streams;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // A chat room: the messages are a feed (see Phem\Feed). The browser keeps them, and each change
 // goes to the other browsers of the room.

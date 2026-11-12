@@ -8,7 +8,7 @@ use Phem\Node;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The files of a form (see Phem\Event::$files), and the request of the event.
 #[Component]

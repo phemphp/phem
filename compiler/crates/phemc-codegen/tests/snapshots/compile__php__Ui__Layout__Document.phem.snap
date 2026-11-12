@@ -2,9 +2,9 @@
 source: crates/phemc-codegen/tests/compile.rs
 expression: f.php
 ---
-<?php /* compiled by phemc from Ui/Common/Document.phem; do not edit */
+<?php /* compiled by phemc from Ui/Layout/Document.phem; do not edit */
 
-namespace App\Ui\Common;
+namespace App\Ui\Layout;
 
 use Phem\Attribute\Component;
 use Phem\{Html, Node, Root};
@@ -15,7 +15,7 @@ use Phem\{Html, Node, Root};
 function Document(?string $title = null, ?Html $children = null): Node
 {
     return (
-        new \Phem\Element('Ui/Common/Document.0.twig', ['title' => $title, 'children' => $children])
+        new \Phem\Element('Ui/Layout/Document.0.twig', ['title' => $title, 'children' => $children])
 
 
 

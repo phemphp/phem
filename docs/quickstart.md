@@ -28,7 +28,7 @@ The recipe sets up everything Phem needs, so you don’t create a config file or
 my-app/
 ├── src/
 │   └── Ui/
-│       ├── Common/
+│       ├── Layout/
 │       │   └── Document.phem   the HTML document of every page
 │       └── HomePage.phem       the page at /
 └── .symfony.local.yaml         runs the phemc watcher with the server
@@ -67,12 +67,12 @@ Your app has two components so far. Open them in your editor to see how a page i
 
 ### The HTML document
 
-`src/Ui/Common/Document.phem` is the HTML document that every page renders into. Because all pages share it, it lives in `src/Ui/Common/`:
+`src/Ui/Layout/Document.phem` is the HTML document that every page renders into. It is the layout of all the pages, so it lives in `src/Ui/Layout/`:
 
-```php title="src/Ui/Common/Document.phem"
+```php title="src/Ui/Layout/Document.phem"
 <?phem
 
-namespace App\Ui\Common;
+namespace App\Ui\Layout;
 
 use Phem\Attribute\Component;
 use Phem\{Html, Node, Root};
@@ -117,7 +117,7 @@ namespace App\Ui;
 use Phem\Attribute\Page;
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 #[Page('/')]
 function HomePage(): Node

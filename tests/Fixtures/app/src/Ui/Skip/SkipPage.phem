@@ -7,7 +7,7 @@ use Phem\Event;
 use Phem\Node;
 use Phem\Tests\Fixtures\Renders;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The tests of the render of only the components that can change (see Phem\Rendering\EventRenderer).
 

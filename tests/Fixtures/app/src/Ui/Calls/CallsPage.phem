@@ -7,7 +7,7 @@ use Phem\Event;
 use Phem\Node;
 use Phem\Tests\Fixtures\{Rows, Scientist, Size};
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // Handler calls with arguments: `onClick={{ remove(scientist) }}` (tests/Runtime/HandlerCallTest.php).
 #[Page('/calls')]

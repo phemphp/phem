@@ -9,7 +9,7 @@ use Phem\Tests\Fixtures\Scientist;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // A class page: the {id} route value goes to the #[Path] property.
 #[Page('/items/{id}')]

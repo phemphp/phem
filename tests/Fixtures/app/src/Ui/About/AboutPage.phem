@@ -6,7 +6,7 @@ use App\Ui\Common\Counter;
 use Phem\Attribute\Page;
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // A function page: a template component, with a repeated #[Page].
 #[Page('/about')]

@@ -10,7 +10,7 @@ use Phem\Stream\Streams;
 use Phem\Tests\Fixtures\Chat;
 use Phem\Tests\Fixtures\ChatMessage;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The feeds of Phem\Feed: the messages of a room live in the browser, not in the state.
 

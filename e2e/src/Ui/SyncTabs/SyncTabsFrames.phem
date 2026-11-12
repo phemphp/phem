@@ -5,7 +5,7 @@ namespace App\Ui\SyncTabs;
 use Phem\Attribute\Page;
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // Three "tabs" of one browser: each frame is its own document, with its own phem controller.
 // The test client routes the requests of the frames of a page, not of a new tab.

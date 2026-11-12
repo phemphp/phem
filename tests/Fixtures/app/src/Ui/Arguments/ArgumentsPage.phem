@@ -9,7 +9,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The arguments of the handlers, as for the actions of a Symfony controller: the event at any
 // position or not at all, the request, the services, and #[Autowire].

@@ -5,7 +5,7 @@ namespace App\Ui\Table;
 use Phem\Attribute\{Component, Page, Prop, State};
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // Components in a <table> and in a <select>: the fiber id is on their root element, because a
 // <phem-c> is not valid there.

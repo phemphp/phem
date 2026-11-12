@@ -8,7 +8,7 @@ use Phem\Node;
 use Phem\RedirectTo;
 
 use function App\Ui\About\AboutPage;
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // A function page that redirects in the worker: the work of its #[Async] handler does not run.
 final class AsyncRedirectSwitch

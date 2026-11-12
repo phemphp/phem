@@ -8,7 +8,7 @@ use Phem\Tests\Fixtures\{PetDraft, Renders, Size};
 use Phem\Validation;
 use Symfony\Component\Validator\Constraints as Assert;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // A child that gets the draft as a prop: it renders again only when the draft changes.
 #[Component]

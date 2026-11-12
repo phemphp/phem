@@ -121,7 +121,7 @@ use App\Ui\Shop\ProductPage;
 use Phem\Attribute\{Page, Path};
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 #[Page('/staff/orders/{id:order}')]
 final class StaffOrderPage

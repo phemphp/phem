@@ -1,12 +1,11 @@
 <?phem
 
-namespace App\Ui\Common;
+namespace App\Ui\Layout;
 
 use Phem\Attribute\Component;
 use Phem\{Html, Node, Root};
 
-// The HTML document of the e2e pages. It sets the theme before the first paint (for ThemeTest),
-// and loads assets/app.js, which starts the phem controller.
+// The HTML document of the pages. A page gives its title with <Document title="...">.
 #[Component]
 function Document(string $title, Html $children): Node
 {
@@ -14,9 +13,9 @@ function Document(string $title, Html $children): Node
         <html lang="en">
             <head>
                 <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1" />
                 <title>{{ title }}</title>
                 <link rel="icon" href="data:," />
-                {{ theme_script() }}
                 {{ importmap('app') }}
             </head>
             <body>

@@ -10,7 +10,7 @@ Add `#[Page]` to a class or a function to make it a page. A page needs no `#[Com
 use Phem\Attribute\Page;
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 #[Page('/')]
 final class HomePage
@@ -43,7 +43,7 @@ The application owns the HTML document. It’s a component in the `.phem` source
 ```php
 <?phem
 
-namespace App\Ui\Common;
+namespace App\Ui\Layout;
 
 use Phem\Attribute\Component;
 use Phem\{Html, Node, Root};
@@ -264,7 +264,7 @@ use Phem\Attribute\{Page, Path, State};
 use Phem\Node;
 use Phem\RedirectTo;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 #[Page('/orders/{id:order}')]
 final class OrderPage

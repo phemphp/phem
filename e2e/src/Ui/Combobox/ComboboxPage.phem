@@ -5,7 +5,7 @@ namespace App\Ui\Combobox;
 use Phem\Attribute\{Page, State};
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // A city field: the server gives the cities that start with the text.
 #[Page('/combobox')]

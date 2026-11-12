@@ -7,7 +7,7 @@ use Phem\Event;
 use Phem\Node;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The fields and the events of the test helpers (see Phem\Test\ComponentTester).
 #[Component]

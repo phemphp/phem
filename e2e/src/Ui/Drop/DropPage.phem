@@ -7,7 +7,7 @@ use Phem\Event;
 use Phem\Node;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The events of a drop zone, a paste, a context menu and a scroll.
 #[Page('/drop')]

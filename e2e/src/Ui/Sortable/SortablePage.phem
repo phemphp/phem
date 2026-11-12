@@ -6,7 +6,7 @@ use Phem\Attribute\{Page, State};
 use Phem\Event;
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // A board with two columns: a drop moves a card in a column or to the other column.
 #[Page('/sortable')]

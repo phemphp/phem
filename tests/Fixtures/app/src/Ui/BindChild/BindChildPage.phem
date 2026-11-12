@@ -6,7 +6,7 @@ use Phem\Attribute\{Component, Page, Prop, State};
 use Phem\Bound;
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The fields of child components bind the properties of their parent (`phem:bind` on the tag of
 // a component, and a `Bound` prop in the child).

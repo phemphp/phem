@@ -9,7 +9,7 @@ use Phem\Attribute\{Component, Page, State};
 use Phem\Node;
 
 use function Acme\Ui\Notice;
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // `phem:bind` on a tag of a package field: the replacement (src/Ui/Common/Field.phem) gets the
 // Bound and gives it to the original.

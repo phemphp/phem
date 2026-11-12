@@ -11,7 +11,7 @@ use Phem\Tests\Fixtures\Guestbook;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 use App\Ui\Notify\NotifyPage;
 
 // The pushes of Phem\Stream\Streams: a page with #[Broadcast], plain markup and refresh().

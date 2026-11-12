@@ -6,7 +6,7 @@ use Phem\Attribute\{Component, Page, State};
 use Phem\Node;
 use Phem\Tests\Fixtures\Size;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The bound fields (`phem:bind`): the next event sends their values.
 #[Component]

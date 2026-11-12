@@ -9,7 +9,7 @@ use Phem\Tests\Fixtures\PetDraft;
 use Phem\Validation;
 use Symfony\Component\Validator\Constraints as Assert;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The errors that a handler adds to a field (Validation::withError()): errors that no constraint
 // finds, such as a name that another category has.

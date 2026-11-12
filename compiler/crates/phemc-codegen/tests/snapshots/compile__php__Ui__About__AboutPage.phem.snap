@@ -8,7 +8,7 @@ namespace App\Ui\About;
 
 use Phem\Attribute\Page;
 use Phem\Node;
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 #[Page('/about')]
 #[Page('/about-us', name: 'about_us')]

@@ -6,7 +6,7 @@ use Phem\Attribute\{Component, Page};
 use Phem\{Event, Html, Node};
 use Phem\Tests\Fixtures\Setting;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The slots belong to the component that gives them (the owner): when the owner renders again,
 // a component with slots renders again too, also when its props are the same.

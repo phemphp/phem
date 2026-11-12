@@ -9,7 +9,8 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 
 use App\Ui\Common\Counter;
 
-use function App\Ui\Common\{Badge, Card, Document, Tag};
+use function App\Ui\Common\{Badge, Card, Tag};
+use function App\Ui\Layout\Document;
 
 // A function component that returns a string: it is text, as in React.
 #[Component]

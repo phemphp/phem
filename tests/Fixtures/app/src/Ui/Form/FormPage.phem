@@ -9,7 +9,7 @@ use Phem\Tests\Fixtures\{Account, AccountType};
 use Symfony\Component\Form\{FormFactoryInterface, FormInterface};
 use Symfony\Component\HttpFoundation\Request;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The live validation of a Symfony form (see Phem\Form\TouchedFieldsRequestHandler).
 #[Component]

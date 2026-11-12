@@ -9,7 +9,7 @@ use Phem\Node;
 use Phem\Upload\DirectFile;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The upload work in the browser: a file in chunks or to a storage (data-phem-upload), and an
 // image that phem-image-input shows and makes smaller.

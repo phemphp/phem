@@ -9,7 +9,8 @@ namespace App\Ui;
 use App\Ui\Common\Counter;
 use Phem\Attribute\{Component, Page, State};
 use Phem\Node;
-use function App\Ui\Common\{MyButton, Card, Badge, Tag, Document};
+use function App\Ui\Common\{MyButton, Card, Badge, Tag};
+use function App\Ui\Layout\Document;
 
 #[Component]
 function Toolbar(string $theme = 'light'): Node {

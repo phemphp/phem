@@ -7,7 +7,7 @@ use Phem\Html;
 use Phem\Node;
 use Phem\Tests\Fixtures\Framed;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 use function App\Ui\Edge\Panel;
 
 #[Component]

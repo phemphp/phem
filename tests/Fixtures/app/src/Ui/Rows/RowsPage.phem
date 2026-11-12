@@ -6,7 +6,7 @@ use Phem\Attribute\Page;
 use Phem\Node;
 use Phem\Tests\Fixtures\{Rows, Scientist};
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // One component with a handler for each row: a closure that captures the row.
 #[Page('/rows')]

@@ -6,7 +6,7 @@ use Phem\Attribute\{Component, Page, Path, State};
 use Phem\Node;
 use Phem\RedirectTo;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 use App\Ui\Path\ItemPage;
 use function App\Ui\About\AboutPage;
 

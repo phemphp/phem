@@ -9,7 +9,7 @@ use Symfony\Component\HttpKernel\Attribute\Cache;
 use Symfony\Component\ExpressionLanguage\Expression;
 use Symfony\Component\HttpKernel\Attribute\RateLimit;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // A page behind a path rule (`access_control`): its events go to its URL, so the rule applies.
 #[Page('/private/counter')]

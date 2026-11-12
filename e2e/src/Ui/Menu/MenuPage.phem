@@ -5,7 +5,7 @@ namespace App\Ui\Menu;
 use Phem\Attribute\{Page, State};
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // A menu of actions: each item runs a handler. "Move to" is a submenu, and the area has a
 // context menu.

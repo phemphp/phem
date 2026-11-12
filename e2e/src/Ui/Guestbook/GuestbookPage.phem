@@ -7,7 +7,7 @@ use Phem\Attribute\{Broadcast, Component, Page, Path, Prop, State};
 use Phem\Node;
 use Phem\Stream\Streams;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The entries: data with no state, so each render reads them again. The server render has the
 // pushed entries too, so the next event keeps them.

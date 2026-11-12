@@ -6,7 +6,7 @@ use Phem\Attribute\{Component, Context, Page, Prop, Provide, State};
 use Phem\{Event, Html, Node};
 use Phem\Tests\Fixtures\{Renders, Theme};
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The tests of the contexts (see Phem\Rendering\ContextResolver).
 

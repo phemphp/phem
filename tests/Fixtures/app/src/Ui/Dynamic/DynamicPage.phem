@@ -5,7 +5,7 @@ namespace App\Ui\Dynamic;
 use Phem\Attribute\{Component, Page, Prop, State};
 use Phem\{Dynamic, Html, Node};
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // A button that renders as a link: the tag is a prop.
 #[Component]

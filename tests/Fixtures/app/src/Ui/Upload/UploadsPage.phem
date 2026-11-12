@@ -9,7 +9,7 @@ use Phem\Upload\DirectFile;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The files of the inputs with data-phem-upload in a ComponentTester: they go up before the event.
 #[Component]

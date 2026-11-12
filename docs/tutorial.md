@@ -33,7 +33,7 @@ namespace App\Ui\Task;
 use Phem\Attribute\Page;
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 #[Page('/tasks')]
 function TasksPage(): Node
@@ -54,7 +54,7 @@ Here’s what this code does:
 
 - **The return value**: the function returns the markup. It follows two rules: close every tag (`<br />`) and return one root element. The parentheses around multi-line markup are optional, but they make it easier to read.
 - **The file location**: page names end with `Page`. A page and its components share one directory per feature, here `src/Ui/Task/`.
-- **`Document`**: it’s the HTML document of your app, from `src/Ui/Common/Document.phem`. Its `title` prop (`<Document title="Tasks">`) sets the title of the page.
+- **`Document`**: it’s the HTML document of your app, from `src/Ui/Layout/Document.phem`. Its `title` prop (`<Document title="Tasks">`) sets the title of the page.
 
 Save the file and open `/tasks`. The page shows the title and the two tasks.
 

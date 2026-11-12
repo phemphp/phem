@@ -9,7 +9,7 @@ use Phem\Tests\Fixtures\Scientist;
 use Phem\Tests\Fixtures\Size;
 
 use function App\Ui\About\AboutPage;
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // The class names in markup: the cases of an enum (a plain PHP class), and links to pages.
 #[Page('/links')]

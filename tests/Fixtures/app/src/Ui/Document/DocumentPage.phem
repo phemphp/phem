@@ -6,7 +6,8 @@ use Phem\Attribute\{Component, Page, State};
 use Phem\{Html, Node, Root};
 use Symfony\Component\Routing\Attribute\Route;
 
-use function App\Ui\Common\{Badge, Document};
+use function App\Ui\Common\Badge;
+use function App\Ui\Layout\Document;
 use App\Ui\Toggle;
 
 // Another document: another component, as another base template. Components can render

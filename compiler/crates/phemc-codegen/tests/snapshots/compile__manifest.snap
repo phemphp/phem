@@ -90,21 +90,6 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       "required": [],
       "rest": false
     },
-    "App\\Ui\\Common\\Document": {
-      "fqcn": "App\\Ui\\Common\\Document",
-      "kind": "template",
-      "source": "Ui/Common/Document.phem",
-      "template": "Ui/Common/Document.0.twig",
-      "props": [
-        "title",
-        "children"
-      ],
-      "slots": [
-        "children"
-      ],
-      "required": [],
-      "rest": false
-    },
     "App\\Ui\\Common\\DynamicButton": {
       "fqcn": "App\\Ui\\Common\\DynamicButton",
       "kind": "template",
@@ -502,6 +487,21 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       "required": [],
       "rest": false
     },
+    "App\\Ui\\Layout\\Document": {
+      "fqcn": "App\\Ui\\Layout\\Document",
+      "kind": "template",
+      "source": "Ui/Layout/Document.phem",
+      "template": "Ui/Layout/Document.0.twig",
+      "props": [
+        "title",
+        "children"
+      ],
+      "slots": [
+        "children"
+      ],
+      "required": [],
+      "rest": false
+    },
     "App\\Ui\\Shop\\OrderPage": {
       "fqcn": "App\\Ui\\Shop\\OrderPage",
       "kind": "class",
@@ -599,10 +599,6 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
       "source": "Ui/Common/Counter.phem",
       "line": 29
     },
-    "Ui/Common/Document.0.twig": {
-      "source": "Ui/Common/Document.phem",
-      "line": 14
-    },
     "Ui/Common/Dynamic.0.twig": {
       "source": "Ui/Common/Dynamic.phem",
       "line": 12
@@ -693,31 +689,35 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     },
     "Ui/HomePage.0.twig": {
       "source": "Ui/HomePage.phem",
-      "line": 12
+      "line": 13
     },
     "Ui/HomePage.1.twig": {
       "source": "Ui/HomePage.phem",
-      "line": 23
+      "line": 24
     },
     "Ui/HomePage.2.twig": {
       "source": "Ui/HomePage.phem",
-      "line": 39
+      "line": 40
     },
     "Ui/HomePage.3.twig": {
       "source": "Ui/HomePage.phem",
-      "line": 41
+      "line": 42
     },
     "Ui/HomePage.4.twig": {
       "source": "Ui/HomePage.phem",
-      "line": 45
+      "line": 46
     },
     "Ui/HomePage.5.twig": {
       "source": "Ui/HomePage.phem",
-      "line": 82
+      "line": 83
     },
     "Ui/HomePage.6.twig": {
       "source": "Ui/HomePage.phem",
-      "line": 85
+      "line": 86
+    },
+    "Ui/Layout/Document.0.twig": {
+      "source": "Ui/Layout/Document.phem",
+      "line": 14
     },
     "Ui/Shop/OrderPage.0.twig": {
       "source": "Ui/Shop/OrderPage.phem",
@@ -730,7 +730,6 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "php/Ui/Common/Buttons.php",
     "php/Ui/Common/Classes.php",
     "php/Ui/Common/Counter.php",
-    "php/Ui/Common/Document.php",
     "php/Ui/Common/Dynamic.php",
     "php/Ui/Common/Errors.php",
     "php/Ui/Common/Filters.php",
@@ -742,6 +741,7 @@ expression: "manifest.replacen(&version, r#\"\"version\": \"[version]\"\"#, 1)"
     "php/Ui/Common/Triggers.php",
     "php/Ui/Feed/ChatRoom.php",
     "php/Ui/HomePage.php",
+    "php/Ui/Layout/Document.php",
     "php/Ui/Shop/OrderPage.php"
   ]
 }

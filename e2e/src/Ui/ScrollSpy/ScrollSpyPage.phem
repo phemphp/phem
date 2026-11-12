@@ -5,7 +5,7 @@ namespace App\Ui\ScrollSpy;
 use Phem\Attribute\{Page, State};
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // A table of contents with `phem-scrollspy`, a sticky header of 60px, and sections with a
 // `scroll-margin-top` of 80px. The last section is short: it does not get to the line, so the

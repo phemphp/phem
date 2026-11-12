@@ -6,7 +6,7 @@ use Phem\Attribute\{Page, State};
 use Phem\Event;
 use Phem\Node;
 
-use function App\Ui\Common\Document;
+use function App\Ui\Layout\Document;
 
 // A handler that JS code calls with a `phem:call` event (onCall), as a sortable list does.
 #[Page('/call')]
