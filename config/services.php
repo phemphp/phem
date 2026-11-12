@@ -82,6 +82,8 @@ use Phem\Rendering\SuspenseStream;
 use Phem\Rendering\TemplateComponentRenderer;
 use Phem\Routing\ControllersLoader;
 use Phem\Routing\PageLoader;
+use Phem\Routing\PageRoutes;
+use Phem\Routing\PageRoutesLoader;
 use Phem\Routing\PageRouteValues;
 use Phem\Routing\PageUrlGenerator;
 use Phem\Routing\PageUrlKeys;
@@ -546,6 +548,14 @@ return static function (ContainerConfigurator $container): void {
     $services->set('phem.route_loader.controllers', ControllersLoader::class)
         ->decorate('routing.loader.attribute.services', null, 0, ContainerInterface::IGNORE_ON_INVALID_REFERENCE)
         ->args([service('.inner'), service('phem.route_loader')]);
+
+    // The event routes, and the pages of the route files, after all the imports.
+    $services->set('phem.page_routes', PageRoutes::class)
+        ->args([service('phem.manifest'), service('phem.metadata')]);
+
+    $services->set('phem.route_loader.pages', PageRoutesLoader::class)
+        ->decorate('routing.loader')
+        ->args([service('.inner'), service('phem.page_routes')]);
 
     $services->set('phem.page_route_values', PageRouteValues::class)
         ->args([service('router')]);

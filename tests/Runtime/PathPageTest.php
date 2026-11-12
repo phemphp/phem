@@ -16,6 +16,7 @@ namespace Phem\Tests\Runtime;
 use Phem\State\StateJson;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 final class PathPageTest extends TestCase
 {
@@ -148,6 +149,29 @@ final class PathPageTest extends TestCase
         self::assertMatchesRegularExpression('#<p id="shelf" data-phem-c="phem[0-9a-f]{12}">Nobody 10</p>#', (string) $this->request('GET', '/shelves')->getContent());
         self::assertMatchesRegularExpression('#<p id="shelf" data-phem-c="phem[0-9a-f]{12}">Ada 10</p>#', (string) $this->request('GET', '/shelves/1')->getContent());
         self::assertMatchesRegularExpression('#<p id="shelf" data-phem-c="phem[0-9a-f]{12}">Marie 5</p>#', (string) $this->request('GET', '/shelves/2/5')->getContent());
+    }
+
+    public function testRouteOfTheApplicationGivesAPageASecondUrl(): void
+    {
+        self::assertStringContainsString('>Page 2: 0</button>', (string) $this->request('GET', '/again')->getContent(), 'the default of the route');
+        self::assertStringContainsString('>Page 4: 0</button>', (string) $this->request('GET', '/again/4')->getContent());
+
+        [$state, $signature, $handler] = $this->page('/again/4');
+        $response = $this->click('/again/4', $state, $signature, $handler);
+
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getContent());
+        self::assertStringContainsString('Page 4: 1', json_decode((string) $response->getContent(), true)['streams'], 'the event route of the route');
+    }
+
+    public function testPageWithNoPathHasItsRouteInTheRoutesOfTheApplication(): void
+    {
+        self::assertStringContainsString('<p id="routed">Marie</p>', (string) $this->request('GET', '/routed-in-config/2')->getContent());
+        self::assertSame(404, $this->request('GET', '/routed-in-config/9')->getStatusCode());
+        self::assertSame('/routed-in-config/1', $this->service('router', UrlGeneratorInterface::class)->generate('App\Ui\Path\RoutedInConfigPage', ['id' => 1]), 'the name of the page is an alias of its route');
+
+        [$state, $signature, $handler] = $this->page('/routed-in-config/2');
+
+        self::assertSame(200, $this->click('/routed-in-config/2', $state, $signature, $handler)->getStatusCode());
     }
 
     /** @return array{0: string, 1: string, 2: string} the state, its signature, and the click handler */

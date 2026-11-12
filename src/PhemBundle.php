@@ -22,6 +22,7 @@ use Phem\DependencyInjection\TestAsyncPass;
 use Phem\DependencyInjection\TestPublisherPass;
 use Phem\Dom\TailwindClassMerger;
 use Phem\Handler\HandlerMiddleware;
+use Phem\Handler\IsGrantedMiddleware;
 use Phem\Handler\RateLimitMiddleware;
 use Phem\Manifest\Manifest;
 use Phem\Path\PathValueConverter;
@@ -48,6 +49,7 @@ use Symfony\Component\HttpKernel\Attribute\RateLimit;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use TalesFromADev\TailwindMerge\TailwindMerge;
 
 use function Symfony\Component\DependencyInjection\Loader\Configurator\param;
@@ -269,6 +271,18 @@ final class PhemBundle extends AbstractBundle
             $container->services()->set('phem.handler_middleware.rate_limit', RateLimitMiddleware::class)
                 ->args([tagged_locator('rate_limiter', 'name'), service('controller.expression_language')->nullOnInvalid(), service('request_stack')])
                 ->tag('phem.handler_middleware', ['priority' => 100]);
+        }
+
+        if (class_exists(IsGranted::class)) {
+            // The #[IsGranted] attribute of Symfony on a handler, before the rate limit: a
+            // denied event uses no limit.
+            $container->services()->set('phem.handler_middleware.is_granted', IsGrantedMiddleware::class)
+                ->args([
+                    service('security.authorization_checker')->nullOnInvalid(),
+                    service('security.is_granted_attribute_expression_language')->nullOnInvalid(),
+                    service('request_stack'),
+                ])
+                ->tag('phem.handler_middleware', ['priority' => 200]);
         }
     }
 

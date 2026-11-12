@@ -207,3 +207,11 @@ final class UntypedPath
     /** @var mixed an untyped property, for the test */
     #[Path] public $page;
 }
+
+// A page with no path: its routes are in the route files of the application.
+#[Component]
+#[Page]
+final class RoutedInConfig
+{
+    #[Path] public int $id;
+}

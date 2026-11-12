@@ -633,6 +633,7 @@ The tag priority sets the order, and a higher priority runs first, around the ot
 
 | Priority | Built-in middleware |
 |---|---|
+| 200 | `#[IsGranted]` |
 | 100 | `#[RateLimit]` |
 | 50 | The Symfony profiler (debug only) |
 | 10 | `RedirectTo` |

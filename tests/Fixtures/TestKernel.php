@@ -127,5 +127,10 @@ final class TestKernel extends PhemTestKernel
 
         // The pages of the fixture package (app/vendor/acme/ui).
         $routes->import('acme/ui', 'phem')->prefix('/ui');
+
+        // Pages in the routes of the application, as controllers: a second URL of a page, and
+        // a page with no path in its #[Page] (see Phem\Routing\PageRoutes).
+        $routes->add('pages_again', '/again/{page}')->controller('App\\Ui\\Path\\PagedListPage')->defaults(['page' => 2]);
+        $routes->add('routed_in_config', '/routed-in-config/{id:scientist}')->controller('App\\Ui\\Path\\RoutedInConfigPage');
     }
 }

@@ -57,7 +57,7 @@ final class ControllersLoaderTest extends TestCase
 
         self::assertSame('/', $routes->get('app_home')?->getPath());
         self::assertSame('/paged', $routes->get('paged')?->getPath());
-        self::assertSame('/paged', $routes->get('phem_event.paged')?->getPath());
+        self::assertNull($routes->get('phem_event.paged'), 'the event routes come after the imports (see PageRoutes)');
     }
 
     public function testTheResourceWithoutBuild(): void

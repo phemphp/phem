@@ -24,6 +24,7 @@ use Phem\Path\PathResolver;
 use Phem\Path\PathValueConverter;
 use Phem\Path\ScalarPathConverter;
 use Phem\Routing\PageLoader;
+use Phem\Routing\PageRoutes;
 use Phem\Tests\Fixtures\PathPages\EntityPath;
 use Phem\Tests\Fixtures\PathPages\ObjectPath;
 use Phem\Tests\Fixtures\PathPages\Typed;
@@ -360,6 +361,8 @@ final class PathTest extends TestCase
     {
         file_put_contents($this->dir.'/manifest.php', '<?php return '.var_export(['pages' => [self::NS.$page => '']], true).';');
 
-        return (new PageLoader(new Manifest($this->dir)))->load('.', 'phem');
+        $manifest = new Manifest($this->dir);
+
+        return (new PageRoutes($manifest))->complete((new PageLoader($manifest))->load('.', 'phem'));
     }
 }

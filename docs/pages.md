@@ -108,6 +108,34 @@ phem:
 
 Use only one of the two. With both, each page gets its routes twice, and the last import replaces the routes of the first.
 
+### Route a page from a route file
+
+A page can have a route in a route file, as a controller can. Set the page as the controller of the route:
+
+```yaml
+# config/routes.yaml
+blog_archive:
+    path: /archive/{page}
+    controller: App\Ui\BlogPage
+    defaults: { page: 1 }
+```
+
+The route is a page route, as a `#[Page]` route is: it gets the route values, the events and the access rules of the page. Use it to give a page a second URL, or to put the page of a package at your own path. A function page works the same way: `controller: App\Ui\TagsPage`.
+
+To keep all the routes of a page in your route files, give the page a `#[Page]` with no path. Phem then adds no route for it:
+
+```php
+#[Page]
+final class BlogPage
+{
+    #[Path] public int $page;
+}
+```
+
+The first route of such a page has the name of the page as an alias, so `path('App\\Ui\\BlogPage')` and `RedirectTo` work.
+
+The default values of the `#[Path]` properties and the parameters apply only to the `#[Page]` routes (see [Make a route value optional](#make-a-route-value-optional)). In a route file, set the defaults of the route, as for a controller.
+
 ## Read route values
 
 A class page receives a route value in a public `#[Path]` property whose name is the name of the route value. A function page receives it in the parameter with that name:

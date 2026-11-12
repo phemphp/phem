@@ -34,21 +34,16 @@ use Symfony\Component\Routing\RouteCollection;
  * priority, env and aliases. Without a name, the route name comes from the component:
  * `App\Ui\CounterPage` → `app_ui_counterpage`. The first route of a page also has the name of the
  * page as an alias: `$urlGenerator->generate(CounterPage::class)`, `path('App\\Ui\\CounterPage')`, and
- * Phem\RedirectTo use it.
- *
- * The events of a page go to the URL of the page (`POST`, see EventController), so the access
- * rules of the page (`access_control`, the firewall, the host and the condition of the route)
- * apply to them too. Each page route has an event route (`phem_event.<name>`) with the same
- * path and the `POST` method. It comes first, so a page route without methods does not take
- * the events. A request that it matches has the name of the page route (`_route`), so the
- * access rules on the route name (`access_control: [{route: ...}]`) apply to the events too.
+ * Phem\RedirectTo use it. A `#[Page]` with no path has no route here: its routes are in the
+ * route files of the application (see PageRoutes).
  *
  * A route value (`{id}`, or a `defaults` key) goes to the #[Path] property with the same name,
- * or to the parameter with the same name of a function page. A route value without one is an
- * error. The keys that start with `_` are not route values. As for the Doctrine controller
- * arguments, `{slug:post}` maps the value `slug` to the entity prop `post`. As for the
- * parameters of a controller, the default value of the prop or the parameter makes its route
- * value optional (see PageRouteDefaults).
+ * or to the parameter with the same name of a function page. As for the parameters of a
+ * controller, the default value of the prop or the parameter makes its route value optional
+ * (see PageRouteDefaults).
+ *
+ * The event routes of the pages, and the check of the route values, come after the imports, on
+ * the routes of the application (see PageRoutes).
  *
  * The `routing.controllers` resource of the application routes has the pages of the application
  * (see ControllersLoader). An application without this resource imports them:
@@ -67,15 +62,12 @@ use Symfony\Component\Routing\RouteCollection;
  */
 final class PageLoader extends Loader
 {
-    /** The prefix of the event route names: `phem_event.app_page_counter`. */
-    public const EVENT_ROUTE = 'phem_event';
-
     private readonly PageRouteDefaults $defaults;
 
     public function __construct(
         private readonly Manifest $manifest,
         ?string $env = null,
-        private readonly ComponentMetadata $metadata = new ComponentMetadata(),
+        ComponentMetadata $metadata = new ComponentMetadata(),
     ) {
         parent::__construct($env);
 
@@ -151,43 +143,18 @@ final class PageLoader extends Loader
     }
 
     /**
-     * Each route value needs a #[Path] property (a parameter of a function page). A mapped value
-     * (`{slug:post}`) needs one with an entity type.
-     */
-    private function checkValues(Route $route, string $name, string $page): void
-    {
-        $paths = $this->metadata->pathProps($page);
-        $what = class_exists($page) ? '#[Path] property' : 'parameter';
-        $mapping = (array) ($route->getDefault('_route_mapping') ?? []);
-
-        foreach (PageRouteValues::props($route) as $value => $prop) {
-            if (isset($mapping[$value])) {
-                if (!\array_key_exists($prop, $paths)) {
-                    throw new \InvalidArgumentException(\sprintf('The route "%s" maps the value "%s" to "%s", but the page "%s" has no %s "%s".', $name, $value, $prop, $page, $what, $prop));
-                }
-
-                $type = $paths[$prop];
-                if (!$type instanceof \ReflectionNamedType || $type->isBuiltin()) {
-                    throw new \InvalidArgumentException(\sprintf('The route "%s" maps the value "%s" to the %s "%s" of the page "%s", but its type is not an entity class.', $name, $value, $what, $prop, $page));
-                }
-
-                continue;
-            }
-
-            if (!\array_key_exists($prop, $paths)) {
-                throw new \InvalidArgumentException(\sprintf('The route "%s" has the value "%s", but the page "%s" has no %s "%s". Add one, or remove the value from the route.', $name, $value, $page, $what, $value));
-            }
-        }
-    }
-
-    /**
      * @param bool $alias true to add the name of the page as an alias of the route
      *
-     * @return bool false when the route is not for this environment
+     * @return bool false when the route is not for this environment, or has no path
      */
     private function addRoute(RouteCollection $routes, RouteAttribute $attr, string $page, int $index, bool $alias): bool
     {
         if ($attr->envs && !\in_array($this->env, $attr->envs, true)) {
+            return false;
+        }
+
+        // A page whose routes are in the route files of the application.
+        if (null === $attr->path) {
             return false;
         }
 
@@ -204,7 +171,6 @@ final class PageLoader extends Loader
 
         foreach ($paths as $locale => $path) {
             $route = new Route($path, $defaults, $attr->requirements, $attr->options, $attr->host ?? '', $attr->schemes, $attr->methods, $attr->condition ?? '');
-            $this->checkValues($route, $name, $page);
 
             $routeName = $name;
             if (0 !== $locale) {
@@ -214,14 +180,6 @@ final class PageLoader extends Loader
                 $routeName .= '.'.$locale;
             }
 
-            // The event route first: it takes the POST requests of the page URL. Its `_route` is
-            // the name of the page route, so the access rules of this name apply to it too.
-            $event = (clone $route)
-                ->setMethods(['POST'])
-                ->setDefault('_controller', 'phem.controller.event')
-                ->setDefault('_phem_methods', $route->getMethods())
-                ->setDefault('_canonical_route', $name);
-            $routes->add(self::EVENT_ROUTE.'.'.$routeName, $event, $attr->priority ?? 0);
             $routes->add($routeName, $route, $attr->priority ?? 0);
         }
 

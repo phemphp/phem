@@ -30,6 +30,7 @@ return static function (ContainerConfigurator $container): void {
                 'phem.handler_middleware.async',
                 'phem.handler_middleware.redirect',
                 'phem.handler_middleware.rate_limit',
+                'phem.handler_middleware.is_granted',
                 'phem.handler_middleware.validation',
                 'phem.handler_middleware.profiler',
             ]),

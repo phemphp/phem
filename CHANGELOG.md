@@ -8,6 +8,22 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- The `#[IsGranted]` attribute of Symfony protects one event handler: on a handler method, on a
+  closure in `render()`, or on the class of a component for all its handlers. The subject is a
+  property of the component (`subject: 'post'`). Before, Phem ignored the attribute on a
+  handler, and the handler ran for every user. See docs/security.md.
+- A route file can route a page, as a controller: `controller: App\Ui\BlogPage`. The route gets
+  the route values, the events and the access rules of the page. A `#[Page]` with no path has no
+  route of its own, and its first route in a route file has the name of the page as an alias.
+  See docs/pages.md.
+- The events of a page under an import with a localized prefix or a localized host now have the
+  route name of the page (`_route`), so the `access_control` rules on route names cover them.
+  Phem adds the event routes after all the imports. The event route of a page under a name
+  prefix is now `phem_event.acme_blog`, not `acme_phem_event.blog`.
+- **Breaking** The default value of a `#[Path]` property or of a parameter of a function page
+  makes its route value optional, as for a Symfony controller: `#[Page('/blog/{page}')]` and
+  `#[Path] public int $page = 1` match `/blog`. Only the last route values of a path can be
+  optional. A requirement without a placeholder name is an error. See docs/pages.md.
 - `data-phem-sync-tabs-value="true"` on the `<Root>` element refreshes the other tabs of the same
   page in the browser after an event of the user, with a `BroadcastChannel`: no `#[Broadcast]`
   and no Mercure hub. A hidden tab refreshes when it becomes visible. A page that comes back from

@@ -148,3 +148,15 @@ function ShelfPage(?Scientist $scientist = null, int $limit = 10): Node
         </Document>
     );
 }
+
+// A page with no path: its route is in the routes of the application (see TestKernel).
+#[Page]
+function RoutedInConfigPage(Scientist $scientist): Node
+{
+    return (
+        <Document>
+            <p id="routed">{{ scientist.name }}</p>
+            <Counter label="Likes" />
+        </Document>
+    );
+}
