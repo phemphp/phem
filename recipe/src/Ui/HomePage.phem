@@ -11,7 +11,7 @@ use function App\Ui\Layout\Document;
 function HomePage(): Node
 {
     return (
-        <Document title="My app">
+        <Document title="Phem">
             <h1>Hello, Phem!</h1>
         </Document>
     );

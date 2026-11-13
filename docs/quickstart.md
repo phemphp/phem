@@ -77,17 +77,15 @@ namespace App\Ui\Layout;
 use Phem\Attribute\Component;
 use Phem\{Html, Node, Root};
 
-// The HTML document of the pages. A page gives its title with <Document title="...">.
 #[Component]
 function Document(string $title, Html $children): Node
 {
     return (
-        <html lang="en">
+        <html>
             <head>
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
                 <title>{{ title }}</title>
-                <link rel="icon" href="data:," />
                 {{ importmap('app') }}
             </head>
             <body>
@@ -103,7 +101,7 @@ Two lines in this file make the page interactive:
 - **`<Root>`**: it marks the part of the page where Phem listens for events, such as clicks
 - **`{{ importmap('app') }}`**: it loads `assets/app.js`, which starts the `phem` Stimulus controller in the browser
 
-A page passes its title with the `title` prop: `<Document title="My app">`. Everything else inside `<Document>` goes to `children`.
+A page passes its title with the `title` prop: `<Document title="Phem">`. Everything else inside `<Document>` goes to `children`.
 
 ### The home page
 
@@ -123,7 +121,7 @@ use function App\Ui\Layout\Document;
 function HomePage(): Node
 {
     return (
-        <Document title="My app">
+        <Document title="Phem">
             <h1>Hello, Phem!</h1>
         </Document>
     );
@@ -175,7 +173,7 @@ Next, use the counter twice on the home page. `Counter` is in the same namespace
 function HomePage(): Node
 {
     return (
-        <Document title="My app">
+        <Document title="Phem">
             <h1>Hello, Phem!</h1>
             <Counter />
             <Counter />
