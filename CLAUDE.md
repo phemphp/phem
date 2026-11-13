@@ -149,11 +149,26 @@ language server in `compiler/` changes the plugin.
 
 - Get the published version (the plugin ID is `phem`):
   `curl -s 'https://plugins.jetbrains.com/plugins/list?pluginId=phem' | grep -o '<version>[^<]*' | head -n 1 | cut -c10-`
-  The list starts with the newest version. An empty result means that no version is published
-  yet: keep `0.1.0` until the first upload.
+  The list starts with the newest version. It shows only the versions that JetBrains approved.
+  0.1.0 is uploaded (https://plugins.jetbrains.com/plugin/36117-phem) and waits for the approval
+  of the first version, so an empty result means 0.1.0: count it as published.
 - If `pluginVersion` in `editors/phpstorm/gradle.properties` is the published version, increase
   it with the same minor and patch rules. If it is already higher, do not change it.
 - Put each change under the `## <version>` heading of `pluginVersion` in
   `editors/phpstorm/CHANGELOG.md`. The build uses this section as the change notes, and it fails
   when the section is missing or empty.
 - Do not publish, except in the `/release-editors` skill when the user runs it.
+
+### Release
+
+The users get a change in the editors only with a new release. The Marketplace version bundles
+the old language server, so it shows the old diagnostics and completion until the next release.
+
+- A change that changes the extension or the plugin (see the paths in "Plugin version") needs a
+  release.
+- You do not have to release after each change. One release collects all the changes since the
+  last published version.
+- When you change the editors, tell the user at the end of the work whether a plugin has changes
+  that are not released. Compare the local version with the published version. Recommend the
+  `/release-editors` skill when there are such changes.
+- The release must come from a clean `main` that is pushed. Commit and push the changes first.

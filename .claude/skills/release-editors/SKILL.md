@@ -45,9 +45,11 @@ Then decide for each plugin:
   version and the changelog items with the rules of "Plugin version" in `CLAUDE.md`. Make the
   changes only after the user agrees, then stop. The user must commit and push them before the
   release.
-- **The PhpStorm published version is empty:** the plugin is not on the Marketplace yet. A token
-  cannot create a plugin. Tell the user to upload the first version in the web UI (see
-  "Publish" in `editors/phpstorm/README.md`), and skip the PhpStorm plugin.
+- **The PhpStorm published version is empty:** the list shows only the versions that JetBrains
+  approved. The plugin is on the Marketplace (https://plugins.jetbrains.com/plugin/36117-phem),
+  and its first version 0.1.0 waits for the approval. Count 0.1.0 as the published version, and
+  decide with the rules above. Ask the user whether the moderators accept a new version before
+  they approve the first one.
 
 Show the user a table: each plugin, its published version, its local version, and the action
 (release or skip).
