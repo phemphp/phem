@@ -21,7 +21,7 @@ function Button(?Html $children = null, mixed ...$rest): Node
 // class="px-4 py-2 bg-red-500" with the Tailwind merger
 ```
 
-Position decides who wins. `classes()` before the spread sets defaults that the caller can change, and `classes()` after the spread sets classes that the caller can’t remove. `classes()` takes the same inputs as clsx: strings, lists and condition maps (`{'active': isActive}`). A `class` attribute takes a list too: `className={{ ['btn', {'active': isActive}] }}`. In PHP code, call `Phem\classes()`.
+Position decides who wins. `classes()` before the spread sets defaults that the caller can change, and `classes()` after the spread sets classes that the caller can’t remove. `classes()` takes the same inputs as clsx: strings, lists and condition maps (`{'active': isActive}`). A `class` attribute takes a list too: `className={{ ['btn', {'active': isActive}] }}`. In PHP code, call `Phem\classes()`. For the classes of the variants of a component, see [Combine the variants of two axes](package-authoring.md#combine-the-variants-of-two-axes).
 
 `style` doesn’t merge: the last value wins.
 

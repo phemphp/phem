@@ -22,3 +22,15 @@ function classes(mixed ...$inputs): ClassList
 {
     return ClassList::of(...$inputs);
 }
+
+/**
+ * The classes of the variants of a component (see Variants):
+ * `variants(base: 'px-4', variants: ['size' => ['sm' => 'text-sm']])->apply(size: $size)`.
+ *
+ * @param array<string, array<string|int, mixed>>  $variants
+ * @param list<array{array<string, mixed>, mixed}> $compound
+ */
+function variants(mixed $base = null, array $variants = [], array $compound = []): Variants
+{
+    return new Variants($base, $variants, $compound);
+}

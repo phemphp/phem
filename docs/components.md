@@ -132,7 +132,7 @@ function Button(string $label, Variant $variant = Variant::Primary): Node
 }
 ```
 
-A caller then writes `<Button label="Delete" variant="danger" />`, and `phemc` checks the value (`variant="big"` is E018). For the full pattern, see [Add variants to a component](package-authoring.md#add-variants-to-a-component).
+A caller then writes `<Button label="Delete" variant="danger" />`, and `phemc` checks the value (`variant="big"` is E018). For the full pattern, see [Add variants to a component](package-authoring.md#add-variants-to-a-component). When classes apply only to a combination of two props (for example `danger` and `lg`), use `Phem\variants()` (see [Combine the variants of two axes](package-authoring.md#combine-the-variants-of-two-axes)).
 
 ### Know what runs on the first render and on an event
 

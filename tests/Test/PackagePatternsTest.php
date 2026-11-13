@@ -19,7 +19,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
  * The patterns of docs/package-authoring.md, with the components of a package (tests/Fixtures/Package):
- * the variants of a component, and the controlled and the uncontrolled state.
+ * the variants of a component (an enum method or variants()), and the controlled and the uncontrolled state.
  */
 final class PackagePatternsTest extends KernelTestCase
 {
@@ -37,6 +37,15 @@ final class PackagePatternsTest extends KernelTestCase
 
         $this->mount('Acme\Kit\Button', ['label' => 'Go'])
             ->assertSeeHtml('<button class="kit px-4 py-2 bg-blue-500 text-white" data-phem-c=');
+    }
+
+    public function testTheVariantsOfTwoAxesGiveTheirClassesAndTheCompoundClasses(): void
+    {
+        $this->visit('/tabs')
+            ->assertSeeHtml('<span class="kit rounded bg-red-100 text-red-800 px-3 text-sm font-bold ml-2">Failed</span>');
+
+        $this->mount('Acme\Kit\Badge', ['label' => 'New'])
+            ->assertSeeHtml('<span class="kit rounded bg-blue-100 text-blue-800 px-2 text-xs" data-phem-c=');
     }
 
     public function testUncontrolledTabsKeepTheActiveTab(): void

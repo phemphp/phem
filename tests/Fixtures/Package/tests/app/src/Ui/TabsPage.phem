@@ -9,6 +9,7 @@ use Phem\Root;
 
 use Acme\Kit\Tabs;
 
+use function Acme\Kit\Badge;
 use function Acme\Kit\Button;
 
 // The patterns of the components of a package: a variant, and a controlled and an uncontrolled
@@ -31,6 +32,7 @@ final class TabsPage
                 <body>
                     <Root>
                         <p id="variant"><Button label="Save" variant="outline" className="w-full" /></p>
+                        <p id="badge"><Badge label="Failed" tone="danger" size="lg" className="ml-2" /></p>
                         <div id="uncontrolled"><Tabs names={{ ['general', 'security'] }} defaultValue="security" /></div>
                         <div id="controlled"><Tabs names={{ ['general', 'security'] }} value={{ tab }} onChange={{ show }} /></div>
                         <p id="tab">{{ tab }}</p>

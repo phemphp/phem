@@ -105,6 +105,77 @@ Keep these points in mind for variants:
 - **Checked values**: `phemc` checks a literal prop value, so `variant="big"` is E018.
 - **Conflicting classes**: With the [Tailwind class merger](styling.md#merge-tailwind-classes), a caller’s class replaces a variant class of the same group. `<Button variant="outline" className="border-red-500" />` gives `px-4 py-2 border text-blue-500 border-red-500`.
 
+### Combine the variants of two axes
+
+When a component has two or more enum props, some classes apply only to a combination of values, for example a bold `danger` badge only in the `lg` size. A `match` on one enum can't express this. Use `Phem\variants()`, which works like cva: the base classes, the classes of each value of each axis, and the classes of each compound variant.
+
+Put the recipe in a method of the main enum, and give the other props as arguments. The markup then calls the method, as with one axis:
+
+```php
+// vendor/acme/ui/components/Badge.phem
+namespace Acme\Ui;
+
+use Phem\ClassList;
+
+use function Phem\variants;
+
+enum Tone: string
+{
+    case Info = 'info';
+    case Danger = 'danger';
+
+    public function classes(Size $size): ClassList
+    {
+        static $recipe = variants(
+            base: 'rounded',
+            variants: [
+                'tone' => ['info' => 'bg-blue-100 text-blue-800', 'danger' => 'bg-red-100 text-red-800'],
+                'size' => ['sm' => 'px-2 text-xs', 'lg' => 'px-3 text-sm'],
+            ],
+            compound: [
+                [['tone' => Tone::Danger, 'size' => Size::Lg], 'font-bold'],
+            ],
+        );
+
+        return $recipe->apply(tone: $this, size: $size);
+    }
+}
+
+enum Size: string
+{
+    case Sm = 'sm';
+    case Lg = 'lg';
+}
+
+#[Component]
+function Badge(string $label, Tone $tone = Tone::Info, Size $size = Size::Sm, mixed ...$rest): Node
+{
+    return <span className={{ tone.classes(size) }} {{ ...rest }}>{{ label }}</span>;
+}
+```
+
+```php
+<Badge label="Failed" tone="danger" size="lg" className="ml-2" />
+<Badge label="New" />
+```
+
+```html
+<span class="rounded bg-red-100 text-red-800 px-3 text-sm font-bold ml-2">Failed</span>
+<span class="rounded bg-blue-100 text-blue-800 px-2 text-xs">New</span>
+```
+
+The `static` variable builds the recipe at the first call only, not one time for each badge. `Badge` has only a `return`, so it renders inline, as `Button` does. Code before the `return` makes a function component render as its own component, with a `data-phem-c` marker on its element.
+
+The enums stay the props, so `phemc` still checks the values (E018), and the PHP defaults are the default variants. `variants()` doesn't need `defaultVariants`. `apply()` works in this way:
+
+- **Order**: The base classes come first, then the classes of each axis in the order of the recipe, and then the classes of each compound variant that matches.
+- **Keys**: A backed enum gives its value, a pure enum gives its name, and a bool gives `'true'` or `'false'`. An axis without a value, or with `null`, adds no class.
+- **Compound variants**: Each one is a pair of conditions and classes. A compound variant matches when all its conditions match. A condition is one value or a list of values: `['tone' => [Tone::Info, Tone::Danger]]`.
+- **Result**: `apply()` gives a `ClassList`, so the caller's `className` merges into it, as with `classes()`. The classes of a recipe take the inputs of `classes()` too, for example a condition map.
+- **Errors**: The recipe is strict, as a `match` is. An axis or a value that isn't in the recipe is an error, in `apply()` and in a compound variant. So when you add a case to an enum and forget the recipe, the first render fails, and no class is silently lost. Give a value that has no classes an empty string: `'md' => ''`. A compound variant that isn't a pair (for example the cva shape `['tone' => 'danger', 'class' => '...']`) is an error too.
+
+Keep the enum method for a component with one axis. It is simpler.
+
 ## Support controlled and uncontrolled state
 
 A package component often keeps a value in its `#[State]`, for example the active tab of `Tabs`. Some apps only set the first value, while others keep the value in their own state. Support both with two props:
