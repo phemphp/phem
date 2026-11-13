@@ -60,7 +60,7 @@ Put `#[Component(replaces: ...)]` on a component of your app. Every tag of the o
 Take this package, where `Notice` uses `Alert`:
 
 ```php
-// vendor/acme/ui/components/Alert.phem
+// vendor/acme/ui/src/Ui/Alert.phem
 namespace Acme\Ui;
 
 #[Component]
@@ -156,7 +156,7 @@ Tailwind CSS v4 skips the files in `.gitignore`, and `vendor/` is in it. Add eac
 /* assets/styles/app.css */
 @import "tailwindcss";
 
-@source "../../vendor/acme/ui/components";
+@source "../../vendor/acme/ui/src/Ui";
 ```
 
 When a theme package (shadcn, for example) ships its CSS variables and `@theme` block in a CSS file, import that file too, so your Tailwind build reads it:
@@ -166,7 +166,7 @@ When a theme package (shadcn, for example) ships its CSS variables and `@theme` 
 @import "tailwindcss";
 @import "../../vendor/acme/ui/assets/theme.css";
 
-@source "../../vendor/acme/ui/components";
+@source "../../vendor/acme/ui/src/Ui";
 ```
 
 With the Tailwind merger, pass your input CSS to the `css` option (see [Turn on the Tailwind class merger](styling.md#merge-tailwind-classes)). Phem reads the `@theme` blocks of relative imports too, so it also reads the package’s theme.

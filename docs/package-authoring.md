@@ -4,17 +4,23 @@ A Composer package can ship `.phem` components, for example a UI kit with a them
 
 ## Declare the components in composer.json
 
-Point `extra.phem.source` in the package’s `composer.json` to the directory of its `.phem` files, and require `phem/phem`:
+Put the `.phem` files in `src/Ui`, next to the other PHP classes of the package. Point `extra.phem.source` in the package’s `composer.json` to this directory, require `phem/phem`, and autoload `src/` with PSR-4:
 
 ```json
 {
     "name": "acme/ui",
+    "type": "library",
     "require": {
         "phem/phem": "^0.3"
     },
+    "autoload": {
+        "psr-4": {
+            "Acme\\": "src/"
+        }
+    },
     "extra": {
         "phem": {
-            "source": "components"
+            "source": "src/Ui"
         }
     }
 }
@@ -24,17 +30,22 @@ A package with this setup has the following layout:
 
 ```text
 acme-ui/
-├── composer.json
-├── components/            the .phem files of the package (extra.phem.source)
-│   ├── Badge.phem
-│   └── GalleryPage.phem
-├── src/                   the PHP classes of the package (enums, services), with PSR-4
-└── tests/
-    ├── Kernel.php         the test kernel (see "Test a package")
-    └── app/src/           the test app: pages and components that use the package
+├── assets/                the CSS and the Stimulus controllers of the package (optional)
+├── src/
+│   ├── Ui/                the components of the package (extra.phem.source)
+│   │   ├── Badge.phem     namespace Acme\Ui
+│   │   ├── Button.phem
+│   │   └── Variant.php    a PHP class next to the components (an enum of variants)
+│   └── AcmeUiBundle.php   a Symfony bundle, only when the package changes the app config
+├── tests/
+│   ├── app/src/           the test app: pages and components that use the package
+│   └── Kernel.php         the test kernel (see "Test a package")
+└── composer.json
 ```
 
-The `.phem` files don’t need a PSR-4 autoload entry, because the app’s `phemc build` compiles them. The package’s other PHP classes, such as an enum of variants or a service, use the normal Composer autoload.
+The namespace of each file follows its directory, as PSR-4 does. A component in `src/Ui/Badge.phem` is in `Acme\Ui`, and the enum in `src/Ui/Variant.php` is `Acme\Ui\Variant`. The `.phem` files don’t need the autoload, because the app’s `phemc build` compiles them. The autoload loads the other PHP classes of the package, such as an enum of variants, a service, or a bundle. `phemc` reads only the `.phem` files of `src/Ui`, so a `.php` file in the same directory is correct.
+
+The package doesn’t need to be a Symfony bundle. `phemc` finds the components through `extra.phem.source`, and `PhemBundle` in the app renders them. Keep `"type": "library"` when the package has only components and PHP classes. A package that must change the app’s configuration, for example to add its styles to AssetMapper, must be a bundle (see [Add a bundle to a package](#add-a-bundle-to-a-package)).
 
 Once an app runs `composer require acme/ui` and `phemc build`, its pages use the components as their own:
 
@@ -61,7 +72,7 @@ Apps customize a package component in three ways, and each needs a choice in the
 A variant such as `primary` or `outline` needs no special feature. Use a backed enum prop (see [Enum props](syntax.md#enum-props)) and give each case its classes in an enum method:
 
 ```php
-// vendor/acme/ui/components/Button.phem
+// vendor/acme/ui/src/Ui/Button.phem
 namespace Acme\Ui;
 
 enum Variant: string
@@ -186,7 +197,7 @@ A package component often keeps a value in its `#[State]`, for example the activ
 Declare both props next to the state, and seed the state in `mount()`:
 
 ```php
-// vendor/acme/ui/components/Tabs.phem
+// vendor/acme/ui/src/Ui/Tabs.phem
 namespace Acme\Ui;
 
 #[Component]
@@ -304,7 +315,7 @@ Don’t declare `#[ErrorPage]` in a package, because only the app has error page
 Two theme packages, for example `acme/ui-tailwind` and `acme/ui-shadcn`, can share the props, state, handlers, and `#[Provide]` of their components. Put abstract classes with no `#[Component]` and no `render()` in a base package:
 
 ```php
-// vendor/acme/ui-base/components/AbstractTabs.phem
+// vendor/acme/ui-base/src/UiBase/AbstractTabs.phem
 namespace Acme\UiBase;
 
 #[Provide]
@@ -323,7 +334,7 @@ abstract class AbstractTabs
 Each theme extends the base classes, adds `#[Component]`, and implements `render()`. Consumers of the context declare the base type:
 
 ```php
-// vendor/acme/ui-tailwind/components/Tabs.phem
+// vendor/acme/ui-tailwind/src/Ui/Tabs.phem
 namespace Acme\Ui;
 
 use Acme\UiBase\AbstractTabs;
@@ -365,7 +376,8 @@ Give the components of each theme the same names (`Acme\Ui\Tabs`), so the app’
     "require": { "acme/ui-base": "^1.0" },
     "conflict": { "acme/ui-shadcn": "*" },
     "provide": { "acme/ui-theme": "1.0" },
-    "extra": { "phem": { "source": "components" } }
+    "autoload": { "psr-4": { "Acme\\": "src/" } },
+    "extra": { "phem": { "source": "src/Ui" } }
 }
 ```
 
@@ -393,6 +405,42 @@ For Stimulus controllers, use the Symfony UX format that `phem/phem` uses: add t
     }
 }
 ```
+
+## Add a bundle to a package
+
+A package of components and PHP classes doesn’t need a bundle. A package that must change the configuration of the app needs one, because only a bundle can prepend configuration or register services. For example, a package with styles in `assets/` needs a bundle to add this directory to AssetMapper. The components work the same with or without a bundle.
+
+Set `"type": "symfony-bundle"` in `composer.json`, so Flex adds the bundle to the app’s `config/bundles.php`. Put the bundle class in `src/`, out of `src/Ui`:
+
+```php
+// src/AcmeUiBundle.php
+namespace Acme;
+
+use Symfony\Component\AssetMapper\AssetMapperInterface;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
+
+class AcmeUiBundle extends AbstractBundle
+{
+    public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
+    {
+        if (!interface_exists(AssetMapperInterface::class)) {
+            return;
+        }
+
+        $builder->prependExtensionConfig('framework', [
+            'asset_mapper' => [
+                'paths' => [$this->getPath().'/assets' => '@acme/ui'],
+            ],
+        ]);
+    }
+}
+```
+
+The class is in `src/`, so `getPath()` of the `AbstractBundle` is the package root. The app then loads the styles with the `@acme/ui/ui.css` logical path.
+
+The bundle needs these packages in `require`: `symfony/config`, `symfony/dependency-injection`, and `symfony/http-kernel`. Put `symfony/asset-mapper` in `suggest`, because the bundle only uses it when the app has it.
 
 ## Test a package
 
