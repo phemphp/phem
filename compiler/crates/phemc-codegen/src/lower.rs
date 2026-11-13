@@ -2334,8 +2334,9 @@ const PREVENT: &str = "phem:prevent";
 
 /// The directives with no value or a bool: true renders `data-phem-…` with no value.
 /// `phem:scroll-into-view`: after the morph of an event of the user, the browser scrolls to the
-/// element when it is new.
-const FLAGS: &[&str] = &[STOP, PREVENT, "phem:scroll-into-view"];
+/// element when it is new. `phem:announce`: after the morph of an event of the user, the browser
+/// announces the text of the element to screen readers when the text changed.
+const FLAGS: &[&str] = &[STOP, PREVENT, "phem:scroll-into-view", "phem:announce"];
 
 /// `phem:keep-scroll`: the item in view of the scroll element stays at its place in each render.
 /// `phem:keep-scroll="end"`: the element also stays at its end when it is at its end.

@@ -33,6 +33,7 @@ final class InteractsWithPhemTest extends KernelTestCase
     private const COUNTER = 'App\Ui\Common\Counter';
     private const SIGNUP = 'App\Ui\Signup\Signup';
     private const NOTIFIER = 'App\Ui\Notify\Notifier';
+    private const SEARCH = 'App\Ui\Announce\Search';
     private const PROFILE = 'App\Ui\Bind\Profile';
     private const CATALOG = 'App\Ui\Url\Catalog';
     private const UPLOADER = 'App\Ui\Upload\Uploader';
@@ -640,6 +641,52 @@ final class InteractsWithPhemTest extends KernelTestCase
 
         $tester->click('#quiet');
         $this->assertFails(static fn () => $tester->assertAnnounced('3 results'), 'The last action did not announce "3 results".');
+    }
+
+    public function testAssertAnnouncedSeesTheNewTextOfAPhemAnnounceElement(): void
+    {
+        // The page load does not announce.
+        $tester = $this->mount(self::SEARCH)->assertSee('4 results');
+        $this->assertFails(static fn () => $tester->assertAnnounced('4 results'), 'The last action did not announce "4 results".');
+
+        // The grid has no handler: the event of the parent renders it again with a new text.
+        $tester->click('#apples')->assertAnnounced('2 results')->assertNotDispatched('announce');
+        $tester->click('#bananas')->assertAnnounced('1 results');
+
+        // The same text again announces nothing.
+        $tester->click('#star');
+        $this->assertFails(static fn () => $tester->assertAnnounced('1 results'), 'The last action did not announce "1 results".');
+
+        // An event of the browser does not announce.
+        $tester->poll('#status')->assertSee('4 results');
+        $this->assertFails(static fn () => $tester->assertAnnounced('4 results'), 'The last action did not announce "4 results".');
+    }
+
+    public function testAPushAndAReceiveWithNoRefreshDoNotAnnounce(): void
+    {
+        $other = $this->visit('/guestbook/lobby')
+            ->click('#toggle')
+            ->assertAnnounced('0 entries, open');
+
+        // No push: the texts of the last event are gone.
+        $other->receive();
+        $this->assertFails(static fn () => $other->assertAnnounced('0 entries, open'), 'The last action did not announce "0 entries, open".');
+
+        // The refresh of a push renders a new text, but does not announce it.
+        $this->visit('/guestbook/lobby')->fill('input[name=text]', 'Hello')->click('#sign');
+        $other->receive()->assertSee('1 entries, open');
+        $this->assertFails(static fn () => $other->assertAnnounced('1 entries, open'), 'The last action did not announce "1 entries, open".');
+
+        $other->click('#toggle')->assertAnnounced('1 entries');
+    }
+
+    public function testTheTesterHasTheBrowserEventsOfTheController(): void
+    {
+        $controller = (string) file_get_contents(\dirname(__DIR__, 2).'/assets/dist/phem_controller.js');
+        self::assertSame(1, preg_match('/const BROWSER_EVENTS = new Set\(\[([^\]]*)\]\)/', $controller, $match));
+        preg_match_all('/"([^"]+)"/', $match[1], $names);
+
+        self::assertSame($names[1], new \ReflectionClassConstant(ComponentTester::class, 'BROWSER_EVENTS')->getValue());
     }
 
     public function testAHandlerShowsAToastWithTheInjectedService(): void

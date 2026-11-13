@@ -160,6 +160,7 @@ final class Attributes
             'phem:stop' => self::flag('data-phem-stop'),
             'phem:prevent' => self::flag('data-phem-prevent'),
             'phem:scroll-into-view' => self::flag('data-phem-scroll-into-view'),
+            'phem:announce' => self::flag('data-phem-announce'),
             'phem:keep-scroll' => self::keepScroll(...),
         ];
     }

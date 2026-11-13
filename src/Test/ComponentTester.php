@@ -21,10 +21,12 @@ use Phem\Event;
 use Phem\Form\TouchedFields;
 use Phem\Http\EventPayload;
 use Phem\Stream\TurboStream;
+use Phem\Test\Internal\AnnounceTexts;
 use Phem\Test\Internal\Browser;
 use Phem\Test\Internal\Driver;
 use Phem\Test\Internal\EventResult;
 use Phem\Test\Internal\StreamTopics;
+use Phem\Test\Internal\Text;
 use Phem\Toast;
 use Phem\ToastType;
 use PHPUnit\Framework\Assert;
@@ -56,6 +58,12 @@ final class ComponentTester
      */
     private const OWN_EVENTS = ['scroll', 'visible', 'poll'];
 
+    /**
+     * The events that the browser sends with no action of the user: they do not announce. The
+     * same list as BROWSER_EVENTS in assets/dist/phem_controller.js (a test checks it).
+     */
+    private const BROWSER_EVENTS = ['load', 'poll', 'visible'];
+
     private const TEXT_INPUTS = ['text', 'search', 'email', 'url', 'tel', 'password', 'number', 'date', 'time', 'datetime-local', 'month', 'week', 'color', 'range'];
 
     private HTMLDocument $document;
@@ -64,6 +72,12 @@ final class ComponentTester
     private bool $reload = false;
     /** @var list<array{name: string, detail: mixed}> */
     private array $dispatched = [];
+    /**
+     * The new texts of the `phem:announce` elements after the last action (see AnnounceTexts).
+     *
+     * @var list<string>
+     */
+    private array $announced = [];
     /**
      * The bound fields (`phem:bind`) that the user changed, as the browser keeps them until the
      * next event: key => the fields of the key, with a function that gives back the server value.
@@ -463,6 +477,7 @@ final class ComponentTester
 
         $this->seen = \count($updates);
         $this->dispatched = [];
+        $this->announced = [];
 
         if (!$refresh || [] === $this->stale) {
             return $this;
@@ -558,7 +573,7 @@ final class ComponentTester
     /** The text in the body, with the white space of the HTML as one space. */
     public function text(): string
     {
-        return self::normalize($this->document->body->textContent ?? '');
+        return Text::normalize($this->document->body->textContent ?? '');
     }
 
     /** The DOM of the HTML. Change it only as a user does. */
@@ -592,14 +607,14 @@ final class ComponentTester
 
     public function assertSee(string $text): self
     {
-        Assert::assertStringContainsString(self::normalize($text), $this->text(), $this->context());
+        Assert::assertStringContainsString(Text::normalize($text), $this->text(), $this->context());
 
         return $this;
     }
 
     public function assertDontSee(string $text): self
     {
-        Assert::assertStringNotContainsString(self::normalize($text), $this->text(), $this->context());
+        Assert::assertStringNotContainsString(Text::normalize($text), $this->text(), $this->context());
 
         return $this;
     }
@@ -642,7 +657,7 @@ final class ComponentTester
     public function assertSelectorTextContains(string $selector, string $text): self
     {
         $element = $this->element($selector);
-        Assert::assertStringContainsString(self::normalize($text), self::normalize($element->textContent ?? ''), \sprintf('The text of "%s".', $selector));
+        Assert::assertStringContainsString(Text::normalize($text), Text::normalize($element->textContent ?? ''), \sprintf('The text of "%s".', $selector));
 
         return $this;
     }
@@ -762,15 +777,16 @@ final class ComponentTester
     }
 
     /**
-     * Asserts that the last action announced this message to screen readers (see
-     * Phem\Announcements), as the browser reads it: an empty message does not count.
+     * Asserts that the last action announced this message to screen readers, as the browser
+     * reads it: a message of Phem\Announcements, or a new text of a `phem:announce` element. An
+     * empty message does not count.
      *
      *     ->assertAnnounced('3 results')
      */
     public function assertAnnounced(string $message): self
     {
-        // The messages that the browser puts in its live region.
-        $messages = array_values(array_filter(array_map(Announcements::messageOf(...), $this->detailsOf(Announcements::EVENT))));
+        // The messages that the browser puts in its live region, in its order.
+        $messages = [...$this->announced, ...array_values(array_filter(array_map(Announcements::messageOf(...), $this->detailsOf(Announcements::EVENT))))];
         $announced = [] === $messages ? '' : \sprintf(' (it announced "%s")', implode('", "', $messages));
 
         Assert::assertContains($message, $messages, \sprintf('The last action did not announce "%s"%s.', $message, $announced));
@@ -824,6 +840,13 @@ final class ComponentTester
     private function send(array ...$events): self
     {
         $this->dispatched = [];
+        $this->announced = [];
+
+        // As the browser: only an event of the user announces the new texts of `phem:announce`,
+        // not a refresh and not the events of the browser (see BROWSER_EVENTS).
+        $first = $events[0][1] ?? [];
+        $byUser = !($first['refresh'] ?? false) && !\in_array($first['type'] ?? null, self::BROWSER_EVENTS, true);
+        $texts = $byUser ? AnnounceTexts::of($this->document) : null;
 
         foreach ($events as $data) {
             [$handler, $event] = $data;
@@ -874,6 +897,10 @@ final class ComponentTester
 
             $this->edited = [];
             array_push($this->dispatched, ...$result->dispatched);
+        }
+
+        if (null !== $texts && 200 === $this->status && null === $this->redirect) {
+            $this->announced = AnnounceTexts::added($texts, AnnounceTexts::of($this->document));
         }
 
         return $this;
@@ -1778,7 +1805,7 @@ final class ComponentTester
 
     private static function optionValue(Element $option): string
     {
-        return $option->getAttribute('value') ?? self::normalize($option->textContent ?? '');
+        return $option->getAttribute('value') ?? Text::normalize($option->textContent ?? '');
     }
 
     private static function isTextLike(Element $element): bool
@@ -1795,11 +1822,6 @@ final class ComponentTester
         }
 
         return (string) $value;
-    }
-
-    private static function normalize(string $text): string
-    {
-        return trim((string) preg_replace('/\s+/u', ' ', $text));
     }
 
     /**

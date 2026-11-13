@@ -9,6 +9,8 @@ import "./phem_shortcut.js"
 // Keeps the scroll position of `phem:keep-scroll` in each render, and scrolls to a new
 // `phem:scroll-into-view` element after the morph of an event.
 import { scrollTargets, scrollToNew } from "./phem_scroll.js"
+// Announces the new text of a `phem:announce` element after the morph of an event.
+import { watchAnnounce } from "./phem_announce_changes.js"
 import { DialogQuestion } from "./phem_dialog_question.js"
 import { fieldsValue } from "./phem_fields.js"
 import { matchesKey } from "./phem_keys.js"
@@ -386,7 +388,8 @@ function resetField(field) {
 // keyIds() and componentIds()).
 const KEY_ID = "phem-key:"
 
-// The events that the browser sends with no action of the user (see scrollToNew()).
+// The events that the browser sends with no action of the user (see scrollToNew() and
+// watchAnnounce()). The tester has the same list (BROWSER_EVENTS in Phem\Test\ComponentTester).
 const BROWSER_EVENTS = new Set(["load", "poll", "visible"])
 
 // The attribute of the fiber id of a component: on its root element, or on its `<phem-c>` when
@@ -2248,14 +2251,19 @@ export default class PhemController extends Controller {
     notify("receive")
     // Turbo dispatches `turbo:before-stream-render` while renderStreams() runs (see keyMorph).
     this.stateBefore = stateBefore
-    // Only an event of the user scrolls: not a refresh (the changes of another browser), and not
-    // the events of the browser (a boundary that loads, a poll, an element that comes into view).
-    const scrolls = event.refresh || BROWSER_EVENTS.has(event.type) ? null : scrollTargets(this.element)
+    // Only an event of the user scrolls and announces: not a refresh (the changes of another
+    // browser), and not the events of the browser (a boundary that loads, a poll, an element that
+    // comes into view).
+    const byUser = !event.refresh && !BROWSER_EVENTS.has(event.type)
+    const scrolls = byUser ? scrollTargets(this.element) : null
+    // Only the streams of this answer: Turbo takes them while renderStreams() runs.
+    const announces = byUser ? watchAnnounce() : null
     let rendered
     try {
       rendered = data.streams ? this.renderStreams(data.streams, handler) : afterStreams()
     } finally {
       this.stateBefore = null
+      announces?.stop()
     }
     // The render of the answer failed: the event ends as an event that the server did not take.
     const renderFailed = (e) => {
@@ -2272,6 +2280,7 @@ export default class PhemController extends Controller {
       if (data.clearFiles) this.clearFiles(event)
       this.markDirty()
       if (scrolls) scrollToNew(this.element, scrolls)
+      announces?.announce()
 
       // After the morph, so a listener sees the new page.
       const target = this.componentRoot(handler)

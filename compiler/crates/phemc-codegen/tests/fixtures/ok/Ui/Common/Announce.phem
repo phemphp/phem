@@ -1,0 +1,28 @@
+<?phem
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+
+#[Component]
+final class Announce
+{
+    /** @var list<string> */
+    public array $products = [];
+
+    public bool $loaded = true;
+
+    public function render(): Node
+    {
+        $rest = ['phem:announce' => true];
+
+        return (
+            <section>
+                <p phem:announce>{{ products|length }} results</p>
+                <p phem:announce={{ loaded }}>Loaded</p>
+                <p {{ ...rest }}>Rest</p>
+            </section>
+        );
+    }
+}

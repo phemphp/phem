@@ -1,0 +1,69 @@
+<?phem
+
+namespace App\Ui\Announce;
+
+use Phem\Attribute\{Component, Page, Prop, State};
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// A grid with no #[State] and no handler: mount() loads the products on each render.
+// phem:announce tells a screen reader the new count after an event of the parent.
+#[Component]
+final class AnnounceGrid
+{
+    #[Prop] public string $query = '';
+
+    /** @var list<string> */
+    public array $products = [];
+
+    public function mount(): void
+    {
+        $all = ['Apple', 'Apricot', 'Banana', 'Cherry'];
+        $this->products = array_values(array_filter($all, fn (string $name): bool => str_starts_with(strtolower($name), strtolower($this->query))));
+    }
+
+    public function render(): Node
+    {
+        return (
+            <section>
+                <p id="count" phem:announce>{{ products|length }} results</p>
+                <ul>
+                    {% for product in products %}
+                        <li key={{ product }}>{{ product }}</li>
+                    {% endfor %}
+                </ul>
+            </section>
+        );
+    }
+}
+
+#[Component]
+final class AnnounceSearch
+{
+    #[State] public string $query = '';
+
+    public function star(): void
+    {
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div>
+                <label>Search <input type="search" phem:bind={{ query }} phem:live /></label>
+                <button id="star" onClick={{ star }}>Star</button>
+                <AnnounceGrid query={{ query }} />
+            </div>
+        );
+    }
+}
+
+#[Page('/announce')]
+final class AnnouncePage
+{
+    public function render(): Node
+    {
+        return <Document title="Announce"><AnnounceSearch /></Document>;
+    }
+}

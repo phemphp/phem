@@ -447,6 +447,76 @@ $this->announcements->announce('3 results');
 
 `announce()` sends the `announce` browser event with `{"message": "3 results"}`. An empty message throws an `InvalidArgumentException`. A handler that fails or redirects announces nothing. In a test, check the message with `assertAnnounced('3 results')`.
 
+### Announce the new text of an element
+
+A component with no handler cannot call `$e->announce()`. For example, a grid with no `#[State]` loads its products in `mount()`, and its parent has the handler. Do not announce in `mount()`: it also runs on the page load and in a refresh. Add `phem:announce` to the element with the text instead:
+
+```php
+#[Component]
+final class ProductGrid
+{
+    #[Prop] public string $query = '';
+
+    /** @var list<Product> */
+    public array $products = [];
+
+    public function __construct(private readonly Products $catalog) {}
+
+    public function mount(): void
+    {
+        $this->products = $this->catalog->search($this->query);
+    }
+
+    public function render(): Node
+    {
+        return (
+            <section>
+                <p phem:announce>{{ products|length }} results</p>
+                <ul>
+                    {% for product in products %}
+                        <li key={{ product.id }}>{{ product.name }}</li>
+                    {% endfor %}
+                </ul>
+            </section>
+        );
+    }
+}
+```
+
+The parent gives the query, and its handler does not run the search again:
+
+```php
+<input type="search" phem:bind={{ query }} phem:live />
+<ProductGrid query={{ query }} />
+```
+
+The element gets the attribute:
+
+```html
+<p data-phem-announce>3 results</p>
+```
+
+After the morph of an event of the user, the browser compares the texts of the `phem:announce` elements in the components that the answer renders with their texts before the morph. It announces each text that is new, in the same live region as `$e->announce()`:
+
+| Change | Announces |
+|---|---|
+| `3 results` → `12 results` | `12 results` |
+| A new element `Saved` | `Saved` |
+| `3 results` → `3 results`, for example after an event of another button | Nothing |
+| An empty text | Nothing |
+
+The browser compares the texts, not the elements: a morph that replaces the element with the same text announces nothing. To announce the same text again, call `$e->announce()` in the handler.
+
+The text is the text that a screen reader reads:
+
+- The spaces of the markup count as one space.
+- The content with `hidden` or `aria-hidden="true"`, and the `<template>`, `<script>` and `<style>` elements, are not in the text. An element in such content announces nothing.
+- A `phem:announce` element in another one is part of the text of the outer element. Only the outer element announces: `<p phem:announce>Cart: <span phem:announce>4 items</span></p>` announces `Cart: 4 items` one time.
+
+A push that renders another component at the same time announces nothing: only the components of the answer count.
+
+Only an event of the user announces. The page load, a `<Suspense>` boundary that loads, `onPoll`, `onVisible`, a push and the refresh after a push do not announce. A handler that fails or redirects announces nothing. `phem:announce={{ expr }}` adds the attribute only when the value is `true`. In a test, check the text with `assertAnnounced('12 results')`.
+
 ## Call a handler from your JavaScript
 
 A JavaScript library can call a handler with its own data, for example a sortable list ("card 12 moved to column 3 at position 0"), a rich text editor or a map. Put an `onCall` handler on an element, and dispatch a `phem:call` event on the element or on an element in it. The handler gets the detail of the event in `$e->detail`:

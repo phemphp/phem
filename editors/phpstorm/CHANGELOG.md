@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0
+
+- Completion for the Phem attribute `phem:announce`, and a diagnostic for a text value.
+
 ## 0.1.0
 
 - The first version on the JetBrains Marketplace.

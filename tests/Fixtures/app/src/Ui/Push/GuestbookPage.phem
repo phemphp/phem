@@ -92,7 +92,7 @@ final class GuestbookCount
     {
         return (
             <div>
-                <p id="stats">{{ count }} entries{% if open %}, open{% endif %}</p>
+                <p id="stats" phem:announce>{{ count }} entries{% if open %}, open{% endif %}</p>
                 <button id="toggle" onClick={{ toggle }}>Toggle</button>
             </div>
         );

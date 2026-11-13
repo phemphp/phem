@@ -1,0 +1,9 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: t.content
+---
+<section>
+                <p data-phem-announce>{{ products|length }} results</p>
+                <p {{ phem_attr('data-phem-announce', (loaded) is same as(true)) }}>Loaded</p>
+                <p {{ phem_attrs(rest) }}>Rest</p>
+            </section>

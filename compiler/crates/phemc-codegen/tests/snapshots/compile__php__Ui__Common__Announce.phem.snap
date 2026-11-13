@@ -1,0 +1,32 @@
+---
+source: crates/phemc-codegen/tests/compile.rs
+expression: f.php
+---
+<?php /* compiled by phemc from Ui/Common/Announce.phem; do not edit */
+
+namespace App\Ui\Common;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+
+#[Component]
+final class Announce
+{
+    /** @var list<string> */
+    public array $products = [];
+
+    public bool $loaded = true;
+
+    public function render(): Node
+    {
+        $rest = ['phem:announce' => true];
+
+        return (
+            new \Phem\Element('Ui/Common/Announce.0.twig', ['products' => $this->products, 'loaded' => $this->loaded, 'rest' => $rest])
+
+
+
+
+        );
+    }
+}
