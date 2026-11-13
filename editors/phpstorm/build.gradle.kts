@@ -1,8 +1,10 @@
+import org.jetbrains.changelog.Changelog
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 
 plugins {
     id("org.jetbrains.kotlin.jvm") version "2.4.21"
     id("org.jetbrains.intellij.platform") version "2.19.0"
+    id("org.jetbrains.changelog") version "2.5.0"
 }
 
 group = "phem"
@@ -10,6 +12,9 @@ version = providers.gradleProperty("pluginVersion").get()
 
 val phpstormPath = providers.gradleProperty("phpstormPath").getOrElse("/Applications/PhpStorm.app")
 val phpstormVersion = providers.gradleProperty("phpstormVersion").getOrElse("")
+val phpstormMinVersion = providers.gradleProperty("phpstormMinVersion").get()
+// 2026.2 -> 262.
+val pluginSinceBuild = phpstormMinVersion.split(".").let { (year, release) -> year.takeLast(2) + release }
 val serverDir = layout.projectDirectory.dir(providers.gradleProperty("phemServerDir").getOrElse("../server"))
 val vscodeDir = layout.projectDirectory.dir(providers.gradleProperty("phemVscodeDir").getOrElse("../vscode"))
 
@@ -36,18 +41,46 @@ kotlin {
     jvmToolchain(21)
 }
 
+// CHANGELOG.md has a "## <version>" section for each version, with a list of the changes.
+changelog {
+    groups.empty()
+}
+
+// Set verifyRecommended=true to verify against all the PhpStorm versions that the plugin supports.
+// It downloads each IDE.
+val verifyRecommended = providers.gradleProperty("verifyRecommended").map { it.toBoolean() }.getOrElse(false)
+
 intellijPlatform {
     pluginConfiguration {
         version = project.version.toString()
+        // The section of the version, as HTML. Only the tasks that need it read it, and they fail
+        // when the section is missing or empty.
+        changeNotes = provider {
+            val pluginVersion = project.version.toString()
+            val item = changelog.get(pluginVersion).withHeader(false).withEmptySections(false)
+            val html = changelog.renderItem(item, Changelog.OutputType.HTML)
+
+            if (html.isBlank()) {
+                throw GradleException("The \"## $pluginVersion\" section of CHANGELOG.md has no changes.")
+            }
+
+            html
+        }
         ideaVersion {
-            sinceBuild = "262"
+            sinceBuild = pluginSinceBuild
             untilBuild = provider { null }
         }
+    }
+    // publishPlugin uploads a new version. The first version must go up in the Marketplace UI.
+    publishing {
+        token = providers.environmentVariable("PUBLISH_TOKEN")
     }
     // verifyPlugin checks the plugin against the same IDE as the build.
     pluginVerification {
         ides {
-            if (phpstormVersion.isNotBlank()) {
+            if (verifyRecommended) {
+                recommended()
+            } else if (phpstormVersion.isNotBlank()) {
                 create(IntelliJPlatformType.PhpStorm, phpstormVersion)
             } else {
                 local(file(phpstormPath))

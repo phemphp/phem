@@ -82,6 +82,46 @@ To check the plugin against the IDE, run the plugin verifier:
 gradle verifyPlugin
 ```
 
+To check the plugin against all the PhpStorm versions that it supports, run this command in the
+repository root. It downloads each IDE, so it is slow:
+
+```sh
+make phpstorm-verify
+```
+
+## Publish
+
+The plugin ID on the JetBrains Marketplace is `phem`. You cannot change it after the first
+upload.
+
+Upload the first version manually:
+
+1. Run `make phpstorm-verify` and fix the compatibility problems. It builds the plugin against
+   the oldest supported PhpStorm (`phpstormMinVersion` in `gradle.properties`) and verifies it
+   against all the supported versions.
+2. Run `make phpstorm`.
+3. Go to https://plugins.jetbrains.com/plugin/add and select the vendor.
+4. Upload `build/distributions/phem-phpstorm-<version>.zip`.
+5. Set the license, the tags, and the `Stable` channel. Then submit.
+
+JetBrains moderators examine the first version before it shows on the Marketplace.
+
+Publish the next versions from Gradle. For each version after the first one:
+
+1. Increase `pluginVersion` in `gradle.properties`. The Marketplace refuses a version that it
+   already has.
+2. Add a `## <version>` section with the list of the changes at the top of `CHANGELOG.md`. The
+   build uses this section as the change notes of the plugin. The build of the plugin fails when
+   the section is missing or empty.
+3. Make a token at https://plugins.jetbrains.com/author/me/tokens, then run this command in the
+   repository root:
+
+   ```sh
+   PUBLISH_TOKEN=<token> make phpstorm-publish
+   ```
+
+   It builds the plugin against the oldest supported PhpStorm, verifies it, and uploads it.
+
 ## Install
 
 On macOS, build the plugin and install it in the newest PhpStorm configuration:

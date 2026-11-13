@@ -5,12 +5,14 @@ import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.lsp.api.LspClientManager
 import com.intellij.platform.lsp.api.LspIntegrationProvider
 import com.intellij.platform.lsp.api.ProjectWideLspClientDescriptor
 import com.intellij.platform.lsp.api.customization.LspCodeLensCustomizer
 import com.intellij.platform.lsp.api.customization.LspCustomization
+import com.intellij.util.EnvironmentUtil
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -93,7 +95,21 @@ class PhemLspClientDescriptor(project: Project) : ProjectWideLspClientDescriptor
             }
             return file.path
         }
-        return PathEnvironmentVariableUtil.findExecutableInPathOnAnyOS(command)?.path
+
+        // On Windows, only a name with an extension can run: node.exe, phemc.bat. A name without
+        // an extension (the sh script of Composer or npm) cannot run.
+        val names = if (SystemInfo.isWindows && File(command).extension.isEmpty()) {
+            PathEnvironmentVariableUtil.getWindowsExecutableFileExtensions().map { command + it }
+        } else {
+            listOf(command)
+        }
+
+        // The PATH of the shell. On macOS, an IDE that starts from the Dock does not get it.
+        val dirs = EnvironmentUtil.getValue("PATH").orEmpty().split(File.pathSeparatorChar).filter { it.isNotEmpty() }
+
+        return dirs.firstNotNullOfOrNull { dir ->
+            names.map { File(dir, it) }.firstOrNull { it.isFile && it.canExecute() }?.path
+        }
             ?: throw ExecutionException(
                 "Cannot find \"$command\" in PATH. Set the $label path in Settings | Languages & Frameworks | Phem.",
             )

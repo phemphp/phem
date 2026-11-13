@@ -5,11 +5,13 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.lsp.api.LspClient
 import com.intellij.platform.lsp.api.customization.LspCodeLensSupport
 import org.eclipse.lsp4j.Command
 import java.awt.event.MouseEvent
+import javax.swing.SwingUtilities
 
 /**
  * Shows the usages of a declaration when the user clicks its usage count (a code lens of the
@@ -31,10 +33,19 @@ class PhemCodeLensSupport : LspCodeLensSupport() {
         val line = position.get("line")?.asInt ?: return
         val character = position.get("character")?.asInt ?: return
 
-        // The LSP character counts UTF-16 code units, as the column of the IDE.
+        // The editor of the click. Not FileEditorManager.getInstance(): in a build against
+        // 2026.3, it reads the Companion of FileEditorManager, and PhpStorm 2026.2 has no Companion.
         val project = lspClient.project
-        val descriptor = OpenFileDescriptor(project, contextFile, line, character)
-        val editor = FileEditorManager.getInstance(project).openTextEditor(descriptor, true) ?: return
+        val manager = project.getService(FileEditorManager::class.java)
+        val editors = manager.getAllEditors(contextFile).filterIsInstance<TextEditor>().map { it.editor }
+        val clicked = mouseEvent?.component
+        val editor = editors.firstOrNull { clicked != null && SwingUtilities.isDescendingFrom(clicked, it.component) }
+            ?: editors.firstOrNull { it == manager.selectedTextEditor }
+            ?: return
+
+        // Move the caret in this editor now, before Show Usages reads it. The LSP character counts
+        // UTF-16 code units, as the column of the IDE.
+        OpenFileDescriptor(project, contextFile, line, character).navigateIn(editor)
 
         val action = ActionManager.getInstance().getAction("ShowUsages") ?: return
         ActionManager.getInstance().tryToExecute(action, mouseEvent, editor.contentComponent, ActionPlaces.EDITOR_INLAY, true)

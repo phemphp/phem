@@ -144,5 +144,16 @@ extension when you change it, so that the next publish works.
   put each change under the heading of the version in `package.json`.
 - Do not publish. The user publishes with `vsce publish`.
 
-The PhpStorm plugin is not on the JetBrains Marketplace yet. Do not change its `pluginVersion` in
-`editors/phpstorm/gradle.properties`.
+The PhpStorm plugin has the same rule. A change in `editors/phpstorm/`, `editors/server/` or the
+language server in `compiler/` changes the plugin.
+
+- Get the published version (the plugin ID is `phem`):
+  `curl -s 'https://plugins.jetbrains.com/plugins/list?pluginId=phem' | grep -o '<version>[^<]*' | head -n 1 | cut -c10-`
+  The list starts with the newest version. An empty result means that no version is published
+  yet: keep `0.1.0` until the first upload.
+- If `pluginVersion` in `editors/phpstorm/gradle.properties` is the published version, increase
+  it with the same minor and patch rules. If it is already higher, do not change it.
+- Put each change under the `## <version>` heading of `pluginVersion` in
+  `editors/phpstorm/CHANGELOG.md`. The build uses this section as the change notes, and it fails
+  when the section is missing or empty.
+- Do not publish. The user publishes with `make phpstorm-publish`.

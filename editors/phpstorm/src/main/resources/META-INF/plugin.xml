@@ -1,7 +1,7 @@
 <idea-plugin>
-    <id>phem.language</id>
+    <id>phem</id>
     <name>Phem</name>
-    <vendor>Phem</vendor>
+    <vendor url="https://github.com/phemphp/phem">Phem</vendor>
     <description><![CDATA[
         <p>
             Language support for Phem <code>.phem</code> files. A <code>.phem</code> file is a PHP

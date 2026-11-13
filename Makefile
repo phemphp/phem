@@ -1,4 +1,4 @@
-.PHONY: test test-js test-e2e bench shell lsp vscode vscode-install phpstorm phpstorm-install docs docs-build
+.PHONY: test test-js test-e2e bench shell lsp vscode vscode-install phpstorm phpstorm-install phpstorm-verify phpstorm-publish docs docs-build
 
 # The build context of the dev image is the repository.
 COMPOSE = docker compose -f docker/compose.yaml
@@ -37,6 +37,8 @@ vscode-install: vscode ## Build the VS Code extension and install it (then reloa
 	code --install-extension editors/vscode/phem-$(VSCODE_VERSION).vsix --force $(if $(VSCODE_PROFILE),--profile "$(VSCODE_PROFILE)")
 
 PHPSTORM_VERSION = $(shell sed -n 's/^pluginVersion = //p' editors/phpstorm/gradle.properties)
+# The oldest PhpStorm that the plugin supports. Verify and publish a build against it.
+PHPSTORM_MIN = $(shell sed -n 's/^phpstormMinVersion = //p' editors/phpstorm/gradle.properties)
 # The plugins directory of the newest PhpStorm configuration (macOS).
 PHPSTORM_PLUGINS ?= $(shell ls -d "$(HOME)/Library/Application Support/JetBrains/"PhpStorm* 2>/dev/null | sort | tail -n 1)/plugins
 
@@ -48,6 +50,13 @@ phpstorm-install: phpstorm ## Build the PhpStorm plugin and install it (then res
 	rm -rf "$(PHPSTORM_PLUGINS)/phem-phpstorm"
 	unzip -q editors/phpstorm/build/distributions/phem-phpstorm-$(PHPSTORM_VERSION).zip -d "$(PHPSTORM_PLUGINS)"
 	@echo "Installed in $(PHPSTORM_PLUGINS)/phem-phpstorm. Restart PhpStorm."
+
+phpstorm-verify: lsp ## Build the PhpStorm plugin against the oldest supported PhpStorm and verify it against all the supported versions (downloads each IDE)
+	gradle -p editors/phpstorm verifyPlugin -PphpstormVersion=$(PHPSTORM_MIN) -PverifyRecommended=true
+
+phpstorm-publish: lsp ## Build, verify and publish a new version of the PhpStorm plugin to the JetBrains Marketplace (needs PUBLISH_TOKEN)
+	@test -n "$(PUBLISH_TOKEN)" || { echo "Set PUBLISH_TOKEN to a JetBrains Marketplace token."; exit 1; }
+	gradle -p editors/phpstorm verifyPlugin publishPlugin -PphpstormVersion=$(PHPSTORM_MIN) -PverifyRecommended=true
 
 # The docs website (website/, Astro). It reads docs/ and the grammar of editors/, so the container
 # gets the repository. git gives the "Last updated" date of each page. node_modules stays in a

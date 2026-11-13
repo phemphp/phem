@@ -1,6 +1,6 @@
 # Release a version
 
-A release publishes the `phem/phem` Composer package (on Packagist, from the tag) and the `phemc` binaries (on the GitHub release). `vendor/bin/phemc` downloads the binary that matches the installed `phem/phem` version, so the compiler and the runtime always share a version. The VS Code extension and the PhpStorm plugin have their own versions and aren’t part of a release. Build them with `make vscode` and `make phpstorm`.
+A release publishes the `phem/phem` Composer package (on Packagist, from the tag) and the `phemc` binaries (on the GitHub release). `vendor/bin/phemc` downloads the binary that matches the installed `phem/phem` version, so the compiler and the runtime always share a version. The VS Code extension and the PhpStorm plugin have their own versions and aren’t part of a release. Build them with `make vscode` and `make phpstorm`. Upload the first version of the PhpStorm plugin manually in the JetBrains Marketplace. Publish the next versions with `PUBLISH_TOKEN=<token> make phpstorm-publish` (see `editors/phpstorm/README.md`).
 
 ### Check the release prerequisites
 
