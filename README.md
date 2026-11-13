@@ -59,7 +59,3 @@ Build a new app from scratch using Phem. See [Create your first Phem app](docs/q
 ## Documentation
 
 Read the docs on the website: https://phem.dev/.
-
-## License
-
-MIT.
