@@ -113,14 +113,39 @@ Publish the next versions from Gradle. For each version after the first one:
 2. Add a `## <version>` section with the list of the changes at the top of `CHANGELOG.md`. The
    build uses this section as the change notes of the plugin. The build of the plugin fails when
    the section is missing or empty.
-3. Make a token at https://plugins.jetbrains.com/author/me/tokens, then run this command in the
-   repository root:
+3. Run this command in the repository root:
 
    ```sh
-   PUBLISH_TOKEN=<token> make phpstorm-publish
+   make phpstorm-publish
    ```
 
    It builds the plugin against the oldest supported PhpStorm, verifies it, and uploads it.
+
+### The publish token
+
+`make phpstorm-publish` needs a JetBrains Marketplace token. Make it at
+https://plugins.jetbrains.com/author/me/tokens with the account that owns the plugin. The
+Marketplace shows it only once.
+
+Keep the token in the macOS Keychain, not in a file of the project or in your shell profile.
+Agents can read the files of the project and the environment of the shell. Add the token one
+time. The command asks for the value, so it does not go in the shell history:
+
+```sh
+security add-generic-password -a "$USER" -s phem-jetbrains-marketplace -w
+```
+
+`make phpstorm-publish` reads the item only when it runs, and it does not show the value. A
+`PUBLISH_TOKEN` environment variable overrides the item. `.claude/settings.json` denies the
+`security` commands that print a Keychain item, so Claude Code cannot read the token itself.
+
+To change the token, delete the item and add it again:
+
+```sh
+security delete-generic-password -s phem-jetbrains-marketplace
+```
+
+The VS Code token is also in the Keychain: `vsce login yceruto` stores it there.
 
 ## Install
 

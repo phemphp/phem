@@ -142,7 +142,7 @@ extension when you change it, so that the next publish works.
   the published version, do not change it: one release collects all the changes.
 - Add a `## <version>` heading for a new version at the top of `editors/vscode/CHANGELOG.md`, and
   put each change under the heading of the version in `package.json`.
-- Do not publish. The user publishes with `vsce publish`.
+- Do not publish, except in the `/release-editors` skill when the user runs it.
 
 The PhpStorm plugin has the same rule. A change in `editors/phpstorm/`, `editors/server/` or the
 language server in `compiler/` changes the plugin.
@@ -156,4 +156,4 @@ language server in `compiler/` changes the plugin.
 - Put each change under the `## <version>` heading of `pluginVersion` in
   `editors/phpstorm/CHANGELOG.md`. The build uses this section as the change notes, and it fails
   when the section is missing or empty.
-- Do not publish. The user publishes with `make phpstorm-publish`.
+- Do not publish, except in the `/release-editors` skill when the user runs it.

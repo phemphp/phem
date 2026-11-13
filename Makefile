@@ -54,9 +54,19 @@ phpstorm-install: phpstorm ## Build the PhpStorm plugin and install it (then res
 phpstorm-verify: lsp ## Build the PhpStorm plugin against the oldest supported PhpStorm and verify it against all the supported versions (downloads each IDE)
 	gradle -p editors/phpstorm verifyPlugin -PphpstormVersion=$(PHPSTORM_MIN) -PverifyRecommended=true
 
-phpstorm-publish: lsp ## Build, verify and publish a new version of the PhpStorm plugin to the JetBrains Marketplace (needs PUBLISH_TOKEN)
-	@test -n "$(PUBLISH_TOKEN)" || { echo "Set PUBLISH_TOKEN to a JetBrains Marketplace token."; exit 1; }
-	gradle -p editors/phpstorm verifyPlugin publishPlugin -PphpstormVersion=$(PHPSTORM_MIN) -PverifyRecommended=true
+# The JetBrains Marketplace token. An environment variable wins. Otherwise the recipe reads it
+# from the macOS Keychain. The value never goes in a file, in the shell, or in the output.
+PHPSTORM_TOKEN_SERVICE = phem-jetbrains-marketplace
+
+phpstorm-publish: lsp ## Build, verify and publish a new version of the PhpStorm plugin to the JetBrains Marketplace (token in the Keychain)
+	@token="$${PUBLISH_TOKEN:-$$(security find-generic-password -s $(PHPSTORM_TOKEN_SERVICE) -w 2>/dev/null)}"; \
+	if [ -z "$$token" ]; then \
+		echo "No JetBrains Marketplace token. Add it to the Keychain (it asks for the value):"; \
+		echo '  security add-generic-password -a "$$USER" -s $(PHPSTORM_TOKEN_SERVICE) -w'; \
+		exit 1; \
+	fi; \
+	echo "gradle -p editors/phpstorm verifyPlugin publishPlugin -PphpstormVersion=$(PHPSTORM_MIN) -PverifyRecommended=true"; \
+	PUBLISH_TOKEN="$$token" gradle -p editors/phpstorm verifyPlugin publishPlugin -PphpstormVersion=$(PHPSTORM_MIN) -PverifyRecommended=true
 
 # The docs website (website/, Astro). It reads docs/ and the grammar of editors/, so the container
 # gets the repository. git gives the "Last updated" date of each page. node_modules stays in a
