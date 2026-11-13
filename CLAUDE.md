@@ -29,6 +29,11 @@ The docs in `docs/` are plain Markdown: GitHub, the website and LLMs read the sa
 add frontmatter or MDX to them. A new doc must also go in `website/src/navigation.ts`, or the
 website build fails. Run `make docs-build` after a change in `docs/` or `website/`.
 
+## Changelog
+
+Always add an entry to `CHANGELOG.md` in the same change, for the same changes as in "Docs". Put
+it at the top of the `## Unreleased` section. Do not report the work as done without it.
+
 ## Feature discussions
 
 Always show usage examples when we discuss a feature: a TODO item, a design, a proposal, or a
