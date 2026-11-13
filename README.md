@@ -1,10 +1,6 @@
 > [!WARNING]
 > This repository is under construction. The code, the API and the docs can change at any time.
 
-<p align="center">
-  <img src="cover.png" alt="Phem">
-</p>
-
 # Phem
 
 Phem is the place where PHP and Twig stop passing notes and start writing together. Logic and
@@ -19,52 +15,36 @@ right beside the code that gives it life:
 namespace App\Ui;
 
 use Phem\Attribute\{Component, Page, State};
-use Phem\{Node, Root};
+use Phem\{Html, Node, Root};
 
 #[Page('/')]
 function HomePage(): Node
 {
-    return (
-        <html lang="en">
-            <head>
-                <title>Welcome to Phem</title>
-                {{ importmap('app') }}
-            </head>
-            <body>
-                <Root>
-                    <h1>Welcome to Phem!</h1>
-                    <p>UI server components for Symfony web apps, written the way you think.</p>
-                    <LikeButton />
-                </Root>
-            </body>
-        </html>
-    );
+    return <Document title="Phem">
+            <h2>Hello, Phem!</h2>
+            <p>UI server components for Symfony web apps, made of old friends.</p>
+        </Document>;
 }
 
 #[Component]
-final class LikeButton
+function Document(string $title, Html $chidren): Node
 {
-    #[State]
-    public bool $liked = false;
-
-    public function toggle(): void
-    {
-        $this->liked = !$this->liked;
-    }
-
-    public function render(): Node
-    {
-        return (
-            <button onClick={{ toggle }}>
-                {{ liked ? '♥' : '♡' }}
-            </button>
-        );
-    }
+    return (
+        <html>
+            <head>
+                <title>{{ title }}</title>
+                {{ importmap('app') }}
+            </head>
+            <body>
+                <Root>{{ children }}</Root>
+            </body>
+        </html>
+    )
 }
 ```
 
-Phem is new, and it is made of old friends. It brings a modern component model to Symfony, built
-from PHP and Twig, with no new language to learn and no second stack to keep.
+> [!NOTE]
+> Phem brings a modern UI component model to Symfony and PHP.
 
 ## Install
 

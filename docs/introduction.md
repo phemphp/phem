@@ -3,7 +3,7 @@
 Phem is a component layer for Symfony web apps. You write a component’s logic and markup together in one `.phem` file, and the server renders the HTML, runs the event handlers, and updates only the parts of the page that change. You don’t write JavaScript, an API, or a client store. This page explains the five ideas behind Phem with one small example each, and shows where Phem stops. When you’re ready to build, follow [Getting started](quickstart.md) and then the [tutorial](tutorial.md).
 
 > [!NOTE]
-> Phem takes inspiration from [React Server Components](https://react.dev/reference/rsc/server-components).
+> Phem takes inspiration from [React Server Components](https://react.dev/reference/rsc/server-components) and JSX.
 
 ## A `.phem` file is PHP with markup in it
 
