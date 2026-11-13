@@ -1,5 +1,6 @@
 # Keep the Composer dist of phem/phem small: only bin/, src/, config/, templates/, assets/dist/,
 # assets/package.json, composer.json, LICENSE and README.md.
+/.claude export-ignore
 /.claude-plugin export-ignore
 /.gitattributes export-ignore
 /.github export-ignore
