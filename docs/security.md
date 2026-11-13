@@ -54,7 +54,7 @@ The attribute works on these handlers:
 
 - **A handler method** of a page or of a component.
 - **A closure** in `render()`: `#[IsGranted('ROLE_ADMIN')] fn () => ...`.
-- **The class of a component**: all the handlers of the component need the role, also a static closure. On the class of a page, the attribute is a rule of the page: it protects the page and its events, as above. A component with a route that you render as a tag in another page still checks its class attribute for its handlers.
+- **The class of a component**: all the handlers of the component need the role, also a static closure and a handler method of a parent class. As for a controller, Phem reads the attribute of the class of the component, not of its parent classes. On the class of a page, the attribute is a rule of the page: it protects the page and its events, as above. A component with a route that you render as a tag in another page still checks its class attribute for its handlers.
 
 The attribute on the class and the attribute on the method both apply, as on a controller. The user needs both:
 
@@ -76,7 +76,7 @@ On a page, Symfony checks the class attribute before Phem reads the event, so a 
 > [!WARNING]
 > On a component that isn't a page, `#[IsGranted]` on the class protects only the events of its handlers, not its HTML. A user without the role still sees the component, and gets a 403 response when they use it. To hide the component, check the role where you render it, `{% if is_granted('ROLE_ADMIN') %}`, or put the attribute on the page.
 
-The subject comes from the arguments of the call in the markup, as it comes from the arguments of a controller. The other arguments, such as the services or a `#[MapForm]` object, come after the access check, so a subject with no such argument is the property of the component with this name:
+The subject comes from the arguments of the call in the markup, as it comes from the arguments of a controller. The other arguments, such as the services or a `#[MapForm]` object, come after the access check. So a subject that names another parameter of the handler is an error, and a subject that names no parameter is the property of the component with this name:
 
 ```php
 #[Component]
@@ -95,7 +95,7 @@ final class TodoList
 
 | `subject` | The subject that the voter gets |
 |---|---|
-| `'todo'` | The argument `$todo` of the call, or else the `todo` property of the component (also a private one) |
+| `'todo'` | The argument `$todo` of the call. When the handler has no `$todo` parameter, the `todo` property of the component (also a private one) |
 | `['todo', 'list' => 'owner']` | A list: `todo` and `list` (the `owner` argument or property) |
 | `new Expression('args["todo"].list')` | The value of the expression. It has `args` (the arguments of the call), `request` and `this` (the component) |
 | A closure | The value of `fn (array $args, Request $request, object $component)` |

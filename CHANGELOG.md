@@ -8,6 +8,10 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Security** The `#[IsGranted]` on the class of a component now applies to a handler method
+  of a parent class. A subject of `#[IsGranted]` that names a parameter of the handler must come
+  from the call in the markup: before, it fell back to a component property with the same name,
+  and the voter checked another object than the handler used.
 - The `#[IsGranted]` attribute of Symfony protects one event handler: on a handler method, on a
   closure in `render()`, or on the class of a component for all its handlers. The attribute of
   the class and of the method both apply. The subject is the argument of the call in the markup

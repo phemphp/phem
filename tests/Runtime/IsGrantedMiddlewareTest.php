@@ -18,6 +18,7 @@ use Phem\Handler\HandlerCall;
 use Phem\Handler\HandlerInvoker;
 use Phem\Handler\IsGrantedMiddleware;
 use Phem\Tests\Fixtures\GrantedHandlers\AdminPanel;
+use Phem\Tests\Fixtures\GrantedHandlers\AdminTable;
 use Phem\Tests\Fixtures\GrantedHandlers\GrantedPage;
 use Phem\Tests\Fixtures\GrantedHandlers\Post;
 use Phem\Tests\Fixtures\GrantedHandlers\PostCard;
@@ -92,6 +93,15 @@ final class IsGrantedMiddlewareTest extends TestCase
         }
     }
 
+    public function testASubjectThatIsAParameterWithNoArgumentIsAnError(): void
+    {
+        // The property `post` is the post of ada, but the handler acts on its parameter.
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('The subject "post" of the #[IsGranted] attribute of an event handler is a parameter that the call in the markup doesn\'t give.');
+
+        $this->handle(new PostCard()->archive(...), [], 'ada');
+    }
+
     public function testASubjectThatIsNotAPropertyIsAnError(): void
     {
         $this->expectException(\RuntimeException::class);
@@ -152,6 +162,14 @@ final class IsGrantedMiddlewareTest extends TestCase
 
         $this->expectException(AccessDeniedException::class);
         $this->handle(new AdminPanel()->wipe(), []);
+    }
+
+    public function testTheClassAttributeOfTheComponentAppliesToAMethodOfAParentClass(): void
+    {
+        self::assertSame('deleted', $this->handle(new AdminTable()->delete(...), ['ROLE_ADMIN']));
+
+        $this->expectException(AccessDeniedException::class);
+        $this->handle(new AdminTable()->delete(...), []);
     }
 
     public function testTheClassAttributeOfThePageOfTheRequestIsLeftToThePage(): void

@@ -113,6 +113,13 @@ final class PostCard
         return 'dropped';
     }
 
+    // `post` is a parameter: with no argument in the call, the property is not the subject.
+    #[IsGranted('EDIT', subject: 'post')]
+    public function archive(?Post $post = null): string
+    {
+        return 'archived';
+    }
+
     #[IsGranted('EDIT', subject: 'missing')]
     public function lost(): string
     {
@@ -176,4 +183,18 @@ final class GrantedPage
     {
         return 'published';
     }
+}
+
+// A handler method of a parent class: the class attribute of the component applies to it.
+abstract class BaseTable
+{
+    public function delete(): string
+    {
+        return 'deleted';
+    }
+}
+
+#[IsGranted('ROLE_ADMIN')]
+final class AdminTable extends BaseTable
+{
 }
