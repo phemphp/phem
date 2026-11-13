@@ -8,6 +8,15 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- `phem:announce` on an element tells a screen reader its new text after the morph of an event
+  of the user, also in a component with no handler, such as a grid with no `#[State]` that loads
+  its data in `mount()`. The browser announces each text of these elements that the answer
+  renders and that was not there before, in the live region of `$e->announce()`. The same text
+  again, the page load, a boundary that loads, a poll, `onVisible`, a push and a refresh announce
+  nothing. The text is what a screen reader reads: hidden content is not in it, and an element
+  in another `phem:announce` element is part of the outer text.
+  `ComponentTester::assertAnnounced()` also sees these texts. `phemc` gives E032 for a text value
+  of `phem:announce`. See docs/events.md.
 - **Security** The `#[IsGranted]` on the class of a component now applies to a handler method
   of a parent class. A subject of `#[IsGranted]` that names a parameter of the handler must come
   from the call in the markup: before, it fell back to a component property with the same name,
