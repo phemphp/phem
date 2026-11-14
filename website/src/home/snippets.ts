@@ -22,7 +22,7 @@ export const likeButton: Snippet = {
     title: 'src/Ui/LikeButton.phem',
     lang: 'phem',
     code: `#[Component]
-final class LikeButton
+class LikeButton
 {
     #[State]
     public int $likes = 0;
@@ -103,22 +103,21 @@ public function like(): void`,
     marks: [{ name: 'rate-limit', text: 'RateLimit' }],
 };
 
-// Scene 6: the LikeButton of the page (scene 4) saves the like with the repository of scene 5,
-// and #[Broadcast] renders it again in the other browsers that show the same post. The likes are
+// Scene 6: the LikeButton of the page (scene 4) adds a like, #[Transactional] saves it, and
+// #[Broadcast] renders it again in the other browsers that show the same post. The likes are
 // shared data.
 export const broadcast: Snippet = {
     title: 'src/Ui/LikeButton.phem',
     lang: 'phem',
-    code: `#[Component]
-final class LikeButton
+    code: `#[Component, Broadcast]
+class LikeButton
 {
     #[Prop, BroadcastKey] public Post $post;
 
-    #[Broadcast]
+    #[Transactional]
     public function like(): void
     {
         ++$this->post->likes;
-        $this->posts->save($this->post);
     }
 }`,
     marks: [

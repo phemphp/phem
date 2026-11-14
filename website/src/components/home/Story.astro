@@ -120,7 +120,7 @@ const stageQuery = '(min-width: 1280px) and (min-height: 700px)';
                     <Fragment set:html={code.broadcast} />
                     <dl class="legend">
                         <div><dt><span class="legend__dot legend__dot--shared"></span><code>$post-&gt;likes</code></dt><dd>Shared data: every viewer</dd></div>
-                        <div><dt><span class="legend__dot"></span><code>#[State] $open</code></dt><dd>UI state: this browser only</dd></div>
+                        <div><dt><span class="legend__dot legend__dot--transaction"></span><code>#[Transactional]</code></dt><dd>Saved in one transaction: no save() call</dd></div>
                     </dl>
                 </div>
             </div>

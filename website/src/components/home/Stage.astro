@@ -36,8 +36,8 @@ import LikeOutline from './LikeOutline.astro';
                 <path data-s="click-out" class="ln ln--accent" />
                 <path data-s="click-back" class="ln ln--accent" />
                 <path data-s="hub" class="ln ln--accent" />
-                <path data-s="push-b" class="ln ln--accent" d="M 470 339 C 470 318, 475 312, 475 292" />
-                <path data-s="push-c" class="ln ln--accent" d="M 476 345 C 620 345, 710 332, 710 292" />
+                <path data-s="push-b" class="ln ln--accent" d="M 470 339 V 292" />
+                <path data-s="push-c" class="ln ln--accent" d="M 476 345 C 610 345, 690 332, 690 292" />
                 <circle data-s="mercure-dot" class="node-dot node-dot--accent" cx="470" cy="345" r="5" />
                 <!-- Scene 7: the build. -->
                 <path data-s="build-in" class="ln" d="M 460 110 V 198" />
@@ -78,12 +78,12 @@ import LikeOutline from './LikeOutline.astro';
             <BrowserOutline data-s="browser-b" data-outline class="stage__item" counts={[1, 2]} device="tablet" stacked open />
             <BrowserOutline data-s="browser-c" data-outline class="stage__item" counts={[1, 2]} device="phone" stacked />
             <span data-s="mercure" class="stage__item node-label is-end" style="left: 458px; top: 335px">Mercure</span>
-            <span data-s="click-event" class="stage__item tag">event</span>
+            <span data-s="click-event" class="stage__item tag tag--stack"><span>onClick</span><span>Event</span></span>
             <span data-s="click-html" class="stage__item tag">HTML</span>
             <div data-s="broadcast" data-outline data-copy-of="broadcast" class="stage__item stage__code stage__code--small" style="left: 20px; top: 400px; width: 440px"></div>
             <dl data-s="legend" class="stage__item legend" style="left: 510px; top: 500px; width: 380px">
                 <div><dt><span class="legend__dot legend__dot--shared"></span><code>$post-&gt;likes</code></dt><dd>Shared data: every viewer</dd></div>
-                <div><dt><span class="legend__dot"></span><code>#[State] $open</code></dt><dd>UI state: this browser only</dd></div>
+                <div><dt><span class="legend__dot legend__dot--transaction"></span><code>#[Transactional]</code></dt><dd>Saved in one transaction: no save() call</dd></div>
             </dl>
 
             <span data-s="source" data-outline class="stage__item pill is-centered" style="left: 460px; top: 88px"><span class="node__dot"></span>LikeButton.phem</span>

@@ -149,8 +149,19 @@ function stage(root: HTMLElement, context: gsap.Context, intro: boolean): () => 
             scrub: 0.3,
             animation: timeline,
             onUpdate: () => {
-                opening?.progress(1).kill();
+                if (!opening) {
+                    return;
+                }
+
+                opening.progress(1).kill();
                 opening = undefined;
+
+                // The scrub calls onUpdate after it renders the timeline. After a jump, the
+                // timeline can be past scene 1 already, and the end of the intro shows the page
+                // again. Render the timeline again from its start: each element takes the state
+                // of the scroll.
+                const now = timeline.time();
+                timeline.time(0, true).time(now, true);
             },
         });
         ScrollTrigger.refresh();

@@ -176,6 +176,7 @@ h1.scene__title { font-size: clamp(42px, 5.6vw, 76px); }
 .legend dd { margin: 0 0 0 18px; color: var(--story-muted); font: 400 13px/18px var(--font-sans); }
 .legend__dot { flex: none; box-sizing: border-box; width: 8px; height: 8px; border: 1px solid var(--story-muted); border-radius: 50%; }
 .legend__dot--shared { border-color: var(--story-accent); background: var(--story-accent); }
+.legend__dot--transaction { border-radius: 1px; }
 
 /* The drawing of the last scene (Friends.astro). */
 .sketch { display: block; width: 100%; height: auto; overflow: visible; }
@@ -303,8 +304,8 @@ h1.scene__title { font-size: clamp(42px, 5.6vw, 76px); }
 .stage .article > .bound__label { top: -22px; left: 0; }
 /* Scene 6: a desktop, a tablet and a phone. */
 .stage [data-s="browser-a"] { top: 40px; left: 20px; width: 300px; height: 230px; }
-.stage [data-s="browser-b"] { top: 20px; left: 370px; width: 210px; height: 270px; }
-.stage [data-s="browser-c"] { top: 30px; left: 640px; width: 140px; height: 260px; }
+.stage [data-s="browser-b"] { top: 20px; left: 365px; width: 210px; height: 270px; }
+.stage [data-s="browser-c"] { top: 30px; left: 620px; width: 140px; height: 260px; }
 .stage .browser--phone .browser__body { gap: 12px; padding: 16px 14px; }
 .stage .browser--phone .browser__title { font-size: 14px; line-height: 18px; }
 .stage .browser__body { gap: 14px; padding: 22px 20px; }
