@@ -81,13 +81,13 @@ final class ErrorBoundaryPage
                 <button id="toggle" onClick={{ toggle }}>Toggle</button>
                 <section id="card">
                     <ErrorBoundary>
-                        <ErrorBoundary:fallback><p id="card-fallback">No quote.</p></ErrorBoundary:fallback>
+                        <ErrorBoundary.fallback><p id="card-fallback">No quote.</p></ErrorBoundary.fallback>
                         <QuoteCard down={{ down }} />
                     </ErrorBoundary>
                 </section>
                 <section id="other">
                     <ErrorBoundary>
-                        <ErrorBoundary:fallback><p id="other-fallback">Never.</p></ErrorBoundary:fallback>
+                        <ErrorBoundary.fallback><p id="other-fallback">Never.</p></ErrorBoundary.fallback>
                         <Quote down={{ false }} />
                     </ErrorBoundary>
                 </section>

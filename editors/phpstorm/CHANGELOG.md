@@ -2,6 +2,11 @@
 
 ## 0.2.0
 
+- A named slot tag is now `<Card.footer>`, not `<Card:footer>`: highlighting, completion after
+  `<Card.`, hover and go-to-definition. The old form gives an error with a hint, and the
+  completion after `<Card:` writes the new name.
+- A named slot or the children can be a prop with markup: `<Card footer={{ <em>Saved</em> }} />`.
+  Completion, hover and go-to-definition for it.
 - Completion for the Phem attribute `phem:announce`, and a diagnostic for a text value.
 
 ## 0.1.0

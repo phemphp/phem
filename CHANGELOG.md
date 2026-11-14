@@ -8,6 +8,14 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking** A named slot tag is now `<Card.footer>`, not `<Card:footer>`. `phemc` gives E013
+  for the old form, with the new name in the hint. The compiled Twig does not change.
+- A named slot can be a prop with markup: `<Card footer={{ <em>Saved</em> }} />` is the same as
+  `<Card><Card.footer><em>Saved</em></Card.footer></Card>`. The value follows the rules of markup
+  in `{{ }}` (one literal, a branch of `?:`, or markup after `and`). `children={{ <p>Body</p> }}`
+  also works. The compiler checks a slot prop as a slot tag (variables, feeds, `phem:error`). A
+  slot that the tag gives two times, or a slot tag outside its component tag, is E013. Markup in
+  a prop that is not an `Html` slot stays E031. See docs/syntax.md.
 - `phem:announce` on an element tells a screen reader its new text after the morph of an event
   of the user, also in a component with no handler, such as a grid with no `#[State]` that loads
   its data in `mount()`. The browser announces each text of these elements that the answer

@@ -3,7 +3,7 @@
 use crate::classes::{Found, Index, Member, MemberKind};
 use crate::complete::rel;
 use crate::data;
-use crate::decl::{param_text, ComponentKind, UseKind};
+use crate::decl::{param_text, Component, ComponentKind, UseKind};
 use crate::imports::resolve_component;
 use crate::markup_classes::{markup_class, MarkupClass};
 use crate::project::{FileComponent, SymbolKind};
@@ -72,6 +72,11 @@ fn is_word(c: u8) -> bool {
     c.is_ascii_alphanumeric() || c == b'_'
 }
 
+/// A named slot, or the children: a prop with markup (`footer={{ <em>Saved</em> }}`).
+fn is_slot(comp: &Component, name: &str) -> bool {
+    comp.slots.iter().any(|s| s == name) || (name == "children" && comp.children)
+}
+
 impl Resolver<'_, '_> {
     fn root(&self) -> &Path {
         self.index.root()
@@ -120,21 +125,21 @@ impl Resolver<'_, '_> {
         }
     }
 
-    /// `<Name`, `<Name:slot`, `</Name`, `<div`.
+    /// `<Name`, `<Name.slot`, `</Name`, `<div`.
     fn tag(&self, name: &str, start: usize, end: usize) -> Option<Symbol> {
-        if name.starts_with(|c: char| c.is_ascii_lowercase()) && !name.contains(':') {
+        if name.starts_with(|c: char| c.is_ascii_lowercase()) && !name.contains('.') {
             let (doc, _) = data::element(name)?;
             return Some(Symbol { range: (start, end), location: None, hover: Some(format!("{}\n\n{doc}", code("html", &format!("<{name}>")))) });
         }
 
-        let colon = name.find(':');
-        let comp_name = colon.map_or(name, |c| &name[..c]);
+        let dot = name.find('.');
+        let comp_name = dot.map_or(name, |d| &name[..d]);
         let components = self.components();
         let plain: Vec<_> = components.iter().map(|c| c.component.clone()).collect();
         let found = resolve_component(&self.index.current.parsed, &plain, comp_name)?;
         let comp = components.iter().find(|c| c.fqn == found.fqn)?;
-        if let Some(colon) = colon.filter(|c| self.offset > start + c) {
-            let slot = &name[colon + 1..];
+        if let Some(dot) = dot.filter(|d| self.offset > start + d) {
+            let slot = &name[dot + 1..];
 
             // The slot of the replacement gets the content, as a prop (see `attr()`).
             let target = match self.replacement(&components, comp) {
@@ -145,7 +150,7 @@ impl Resolver<'_, '_> {
             let replaces = if target.fqn != comp.fqn { format!(", the replacement of `{}`", comp.fqn) } else { String::new() };
             let location = self.prop_decl(target, slot).and_then(|offset| self.location(target.file.as_ref()?, offset));
             let hover = format!("{}\n\nSlot of `{}`{replaces}{}", code("php", &format!("?Html ${slot}")), target.fqn, self.defined_in(target.file.as_deref()));
-            return Some(Symbol { range: (start + colon + 1, end), location, hover: Some(hover) });
+            return Some(Symbol { range: (start + dot + 1, end), location, hover: Some(hover) });
         }
 
         let range = (start, start + comp_name.len());
@@ -241,19 +246,30 @@ impl Resolver<'_, '_> {
     /// An attribute name: a prop of a component, or an HTML attribute.
     fn attr(&self, tag: &str, name: &str, end: usize) -> Option<Symbol> {
         let range = (end - name.len(), end);
-        if tag.trim_start_matches('\\').starts_with(|c: char| c.is_ascii_uppercase()) && !tag.contains(':') {
+        if tag.trim_start_matches('\\').starts_with(|c: char| c.is_ascii_uppercase()) && !tag.contains('.') {
             let components = self.components();
             let plain: Vec<_> = components.iter().map(|c| c.component.clone()).collect();
             let found = resolve_component(&self.index.current.parsed, &plain, tag)?;
             let original = components.iter().find(|c| c.fqn == found.fqn)?;
-            original.props.iter().find(|p| p.name == name)?;
+            if !original.props.iter().any(|p| p.name == name) && !is_slot(original, name) {
+                return None;
+            }
 
             // The tag renders the replacement: its prop gets the value. A prop that the
             // replacement takes in its rest prop goes to the original.
             let comp = match self.replacement(&components, original) {
-                Some(r) if !self.inside(r, &original.fqn) && r.props.iter().any(|p| p.name == name) => r,
+                Some(r) if !self.inside(r, &original.fqn) && (r.props.iter().any(|p| p.name == name) || is_slot(r, name)) => r,
                 _ => original,
             };
+
+            let replaces = if comp.fqn != original.fqn { format!(", the replacement of `{}`", original.fqn) } else { String::new() };
+
+            // A named slot as a prop: `footer={{ <em>Saved</em> }}`.
+            if is_slot(comp, name) {
+                let location = self.prop_decl(comp, name).and_then(|o| self.location(comp.file.as_ref()?, o));
+                let hover = format!("{}\n\nSlot of `{}`{replaces}{}", code("php", &format!("?Html ${name}")), comp.fqn, self.defined_in(comp.file.as_deref()));
+                return Some(Symbol { range, location, hover: Some(hover) });
+            }
 
             let prop = comp.props.iter().find(|p| p.name == name)?;
             let location = self.prop_decl(comp, name).and_then(|o| self.location(comp.file.as_ref()?, o));
@@ -263,7 +279,6 @@ impl Resolver<'_, '_> {
                 prop.name,
                 prop.default.as_ref().map_or(String::new(), |d| format!(" = {d}"))
             );
-            let replaces = if comp.fqn != original.fqn { format!(", the replacement of `{}`", original.fqn) } else { String::new() };
             let hover = format!(
                 "{}\n\nProp of `{}`{replaces}{}{}",
                 code("php", &text),

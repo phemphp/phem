@@ -60,8 +60,9 @@ final class EdgePage
                 <main>
                     <svg id="icon"><title>Icon</title></svg>
                     <Panel><p id="body">Body</p></Panel>
-                    <Panel>x<Panel:footer>Foot {{ n }}</Panel:footer></Panel>
-                    <Panel>y<Panel:footer></Panel:footer></Panel>
+                    <Panel>x<Panel.footer>Foot {{ n }}</Panel.footer></Panel>
+                    <Panel>y<Panel.footer></Panel.footer></Panel>
+                    <Panel footer={{ n > 0 ? <em>Prop {{ n }}</em> : <em>No prop</em> }}>z</Panel>
                     <ul id="odd">{{ odd }}</ul>
                     <button onClick={{ bump }}>Bump</button>
                     <Label text="n={{ n }}" />

@@ -62,7 +62,7 @@ fn walk(info: &FileInfo, replacements: &Replacements, owner: &str, node: &Node, 
             let replaced = (child != tag).then_some(tag);
             out.push(Use { owner: owner.to_string(), child: child.clone(), replaced, enclosing: enclosing.clone(), rel: info.rel.clone(), span: e.name_span });
 
-            let slot_prefix = format!("{}:", e.name);
+            let slot_prefix = format!("{}.", e.name);
             enclosing.push(child);
             for c in &e.children {
                 match c {

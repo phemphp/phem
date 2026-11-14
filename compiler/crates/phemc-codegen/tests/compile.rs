@@ -266,6 +266,13 @@ fn a_feed_is_checked() {
     assert_eq!(codes(&item("function Row($m) { return <b>{{ m }}</b>; }")), Vec::<&str>::new());
     assert_eq!(codes(&item("function Row($m) { $x = 1; return <b>{{ m }} {{ x }}</b>; }")), ["E066"]);
     assert_eq!(codes(&item("final class Row { #[\\Phem\\Attribute\\Prop] public $m; public function render() { return <b>{{ m }}</b>; } }")), ["E066"]);
+
+    // The same in markup of an expression, and in a slot prop.
+    let row = "final class Row { #[\\Phem\\Attribute\\Prop] public $m; public function render() { return <b>{{ m }}</b>; } }";
+    let item = |markup: &str| class("public Feed $messages;", &list.replace("<li>{{ m }}</li>", markup)) + "#[Component]\n" + row + "\n#[Component]\nfunction Box(?\\Phem\\Html $footer = null) { return <i>{{ footer }}</i>; }\n";
+    assert_eq!(codes(&item("<li>{{ m ? <Row m={{ m }} /> : null }}</li>")), ["E066"]);
+    assert_eq!(codes(&item("<li><Box footer={{ <Row m={{ m }} /> }} /></li>")), ["E066"]);
+    assert_eq!(codes(&item("<li><Box footer={{ <b>{{ loop.index }}</b> }} /></li>")), ["E066"]);
 }
 
 fn codes(src: &str) -> Vec<&'static str> {
@@ -374,7 +381,7 @@ fn a_class_component_does_not_see_the_private_members_of_its_parent() {
 
 #[test]
 fn a_class_with_a_parent_outside_the_sources_is_not_checked() {
-    let src = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class Box extends \\Vendor\\Base {\n    public function view() { return <b>{{ title }}</b>; }\n}\nfunction Page() { return <Box title=\"a\"><p>kid</p><Box:footer>f</Box:footer></Box>; }\n";
+    let src = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class Box extends \\Vendor\\Base {\n    public function view() { return <b>{{ title }}</b>; }\n}\nfunction Page() { return <Box title=\"a\"><p>kid</p><Box.footer>f</Box.footer></Box>; }\n";
     let (out, diags) = compile(vec![SourceInput::app("Box.phem", src)]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
@@ -487,7 +494,7 @@ fn a_context_consumer_in_a_dynamic_element_is_placed() {
 #[test]
 fn suspense_is_a_built_in_component() {
     let src = |imports: &str, body: &str| format!("<?phem\nnamespace App;\n{imports}\n#[\\Phem\\Attribute\\Component]\nfunction Report() {{ return <p />; }}\n#[\\Phem\\Attribute\\Component]\nfunction Home() {{\n    return {body};\n}}\n");
-    let body = "<Suspense lazy><Suspense:fallback>Loading</Suspense:fallback><Suspense:error>Error</Suspense:error><Report /></Suspense>";
+    let body = "<Suspense lazy><Suspense.fallback>Loading</Suspense.fallback><Suspense.error>Error</Suspense.error><Report /></Suspense>";
     let (out, diags) = compile(vec![SourceInput::app("Home.phem", src("use Phem\\Suspense;", body))]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
@@ -496,7 +503,7 @@ fn suspense_is_a_built_in_component() {
     assert!(out.files[0].templates.iter().any(|t| t.content.contains("{% component embed 'Phem\\\\Suspense' with {'lazy': true} only %}")), "{:?}", out.files[0].templates);
     assert!(!out.manifest.components.contains_key("Phem\\Suspense"), "the runtime knows the built-in components");
 
-    let wrong = "<Suspense><Suspense:loading>Loading</Suspense:loading><Report /></Suspense>";
+    let wrong = "<Suspense><Suspense.loading>Loading</Suspense.loading><Report /></Suspense>";
     assert_eq!(codes(&src("use Phem\\Suspense;", wrong)), ["E013"]);
 
     let (_, diags) = compile(vec![SourceInput::app("Home.phem", src("", body))]);
@@ -507,7 +514,7 @@ fn suspense_is_a_built_in_component() {
 #[test]
 fn error_boundary_is_a_built_in_component() {
     let src = |imports: &str, body: &str| format!("<?phem\nnamespace App;\n{imports}\n#[\\Phem\\Attribute\\Component]\nfunction Quote() {{ return <p />; }}\n#[\\Phem\\Attribute\\Component]\nfunction Home() {{\n    return {body};\n}}\n");
-    let body = "<ErrorBoundary><ErrorBoundary:fallback>No quote</ErrorBoundary:fallback><Quote /></ErrorBoundary>";
+    let body = "<ErrorBoundary><ErrorBoundary.fallback>No quote</ErrorBoundary.fallback><Quote /></ErrorBoundary>";
     let (out, diags) = compile(vec![SourceInput::app("Home.phem", src("use Phem\\ErrorBoundary;", body))]);
 
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
@@ -521,7 +528,7 @@ fn error_boundary_is_a_built_in_component() {
     let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| d.message.clone())).collect();
     assert_eq!(msgs, ["`<ErrorBoundary>` needs the slot `fallback`"]);
 
-    let wrong = "<ErrorBoundary><ErrorBoundary:fallback>No</ErrorBoundary:fallback><ErrorBoundary:error>No</ErrorBoundary:error><Quote /></ErrorBoundary>";
+    let wrong = "<ErrorBoundary><ErrorBoundary.fallback>No</ErrorBoundary.fallback><ErrorBoundary.error>No</ErrorBoundary.error><Quote /></ErrorBoundary>";
     assert_eq!(codes(&src("use Phem\\ErrorBoundary;", wrong)), ["E013"]);
 
     let (_, diags) = compile(vec![SourceInput::app("Home.phem", src("", body))]);
@@ -554,9 +561,79 @@ fn a_required_slot_that_the_caller_does_not_give_is_an_error() {
         diags.iter().flat_map(|f| f.diags.iter().map(|d| (format!("{} {}", d.code, d.message), d.help.clone()))).collect()
     };
 
-    assert_eq!(diags("<Card><p>Body</p></Card>"), [("E011 `<Card>` needs the slot `title`".into(), Some("add `<Card:title>...</Card:title>` in `<Card>`".into()))]);
-    assert_eq!(diags("<Card><Card:title>Hi</Card:title></Card>"), [("E011 `<Card>` needs the slot `children`".into(), Some("put the content between `<Card>` and `</Card>`".into()))]);
-    assert!(diags("<Card><Card:title>Hi</Card:title><p>Body</p></Card>").is_empty());
+    assert_eq!(diags("<Card><p>Body</p></Card>"), [("E011 `<Card>` needs the slot `title`".into(), Some("add `<Card.title>...</Card.title>` in `<Card>`, or `title={{ <b>...</b> }}`".into()))]);
+    assert_eq!(diags("<Card><Card.title>Hi</Card.title></Card>"), [("E011 `<Card>` needs the slot `children`".into(), Some("put the content between `<Card>` and `</Card>`".into()))]);
+    assert!(diags("<Card><Card.title>Hi</Card.title><p>Body</p></Card>").is_empty());
+}
+
+#[test]
+fn a_slot_prop_with_markup_is_a_slot() {
+    let src = |body: &str| format!("<?phem\nnamespace App;\nuse Phem\\Html;\n#[\\Phem\\Attribute\\Component]\nfunction Card(string $title, ?Html $children = null, ?Html $footer = null) {{ return <div>{{{{ children }}}}{{{{ footer }}}}</div>; }}\n#[\\Phem\\Attribute\\Component]\nfunction Home(bool $saved) {{ return {body}; }}\n");
+    let run = |body: &str| -> (Option<String>, Vec<(String, Option<String>)>) {
+        let (out, diags) = compile(vec![SourceInput::app("Home.phem", src(body))]);
+        let msgs = diags.iter().flat_map(|f| f.diags.iter().map(|d| (format!("{} {}", d.code, d.message), d.help.clone()))).collect();
+        let twig = out.map(|o| o.files.iter().find(|f| f.rel == "Home.phem").unwrap().templates.iter().find(|t| t.content.contains("Card")).unwrap().content.clone());
+        (twig, msgs)
+    };
+
+    // The prop and the tag give the same Twig.
+    let (tag, msgs) = run("<Card title=\"Hi\"><p>Body</p><Card.footer><em>Saved</em></Card.footer></Card>");
+    assert!(msgs.is_empty(), "{msgs:?}");
+    let (prop, msgs) = run("<Card title=\"Hi\" footer={{ <em>Saved</em> }}><p>Body</p></Card>");
+    assert!(msgs.is_empty(), "{msgs:?}");
+    assert_eq!(prop, tag);
+    assert_eq!(
+        prop.unwrap(),
+        "{% component embed 'App\\\\Card' with {'title': 'Hi'} only %}{% block children %}{% with _phem_caller only %}<p>Body</p>{% endwith %}{% endblock %}{% block footer %}{% with _phem_caller only %}<em>Saved</em>{% endwith %}{% endblock %}{% endcomponent %}"
+    );
+
+    // A condition: the rules of markup in output.
+    let (twig, msgs) = run("<Card title=\"Hi\" footer={{ saved ? <em>Saved</em> : <em>Draft</em> }} />");
+    assert!(msgs.is_empty(), "{msgs:?}");
+    assert!(twig.unwrap().contains("{% block footer %}{% with _phem_caller only %}{% if saved %}<em>Saved</em>{% else %}<em>Draft</em>{% endif %}{% endwith %}{% endblock %}"));
+
+    // The children as a prop.
+    let (twig, msgs) = run("<Card title=\"Hi\" children={{ <p>Body</p> }} />");
+    assert!(msgs.is_empty(), "{msgs:?}");
+    assert!(twig.unwrap().contains("{% block children %}{% with _phem_caller only %}<p>Body</p>{% endwith %}{% endblock %}"));
+
+    // Errors: the old syntax, in and outside the tag.
+    let (_, msgs) = run("<Card title=\"Hi\"><Card:footer>x</Card:footer></Card>");
+    assert_eq!(msgs, [("E013 `<Card:footer>` is the old slot syntax".into(), Some("write `<Card.footer>` in `<Card>`".into()))]);
+    let (_, msgs) = run("<div><Card:footer>x</Card:footer></div>");
+    assert_eq!(msgs, [("E013 `<Card:footer>` is the old slot syntax".into(), Some("write `<Card.footer>` in `<Card>`".into()))]);
+    let (_, msgs) = run("<div><Card.footer>x</Card.footer></div>");
+    assert_eq!(msgs.iter().map(|m| m.0.as_str()).collect::<Vec<_>>(), ["E013 `<Card.footer>` is a slot of `<Card>`, outside a `<Card>` tag"]);
+
+    // A slot given twice: each help says how the tag gives it.
+    let twice = |body: &str| run(body).1.into_iter().map(|(_, help)| help.unwrap_or_default()).collect::<Vec<_>>();
+    assert_eq!(twice("<Card title=\"Hi\" footer={{ <b>a</b> }}><Card.footer>b</Card.footer></Card>"), ["keep `<Card.footer>` or the `footer` prop, not both"]);
+    assert_eq!(twice("<Card title=\"Hi\"><Card.footer>a</Card.footer><Card.footer>b</Card.footer></Card>"), ["keep one `<Card.footer>`"]);
+    assert_eq!(twice("<Card title=\"Hi\" footer={{ saved }}><Card.footer>b</Card.footer></Card>"), ["keep the `footer` prop or `<Card.footer>`, not both"]);
+    assert_eq!(twice("<Card title=\"Hi\" children={{ <b>a</b> }}><p>b</p></Card>"), ["keep the `children` prop or the content of `<Card>`, not both"]);
+
+    // Markup in a prop that is not an `Html` slot.
+    let (_, msgs) = run("<Card title={{ <b>a</b> }} />");
+    assert_eq!(msgs.iter().map(|m| m.0.as_str()).collect::<Vec<_>>(), ["E031 markup is not allowed in an attribute value"]);
+}
+
+#[test]
+fn a_slot_prop_is_checked_as_a_slot_tag() {
+    let hint = "<?phem\nnamespace App;\nuse Phem\\Html;\nuse Phem\\Attribute\\{Component, State};\nuse Phem\\Validation;\n#[Component]\nfunction Hint(string $id, ?Html $children = null) { return <p id={{ id }}>{{ children }}</p>; }\n";
+    let form = |markup: &str| format!("{hint}#[Component]\nfinal class F {{ #[State] public string $email = ''; #[State] public Validation $validation; public function render() {{ return {markup}; }} }}\n");
+
+    // `phem:error` gives the children: content is E061, and no E013.
+    assert_eq!(codes(&form("<Hint phem:error={{ email }}>Text</Hint>")), ["E061"]);
+    assert_eq!(codes(&form("<Hint phem:error={{ email }} children={{ <b>x</b> }} />")), ["E061"]);
+
+    // A `{% set %}` in a slot prop does not bind after the tag, as in a slot tag.
+    let set = |markup: &str| codes(&format!("<?phem\nuse Phem\\Html;\n#[\\Phem\\Attribute\\Component]\nfunction Card(?Html $footer = null) {{ return <div>{{{{ footer }}}}</div>; }}\n#[\\Phem\\Attribute\\Component]\nfunction Home() {{ return {markup}; }}\n"));
+    assert_eq!(set("<div><Card><Card.footer>{% set x = 1 %}{{ x }}</Card.footer></Card>{{ x }}</div>"), ["E030"]);
+    assert_eq!(set("<div><Card footer={{ <b>{% set x = 1 %}{{ x }}</b> }} />{{ x }}</div>"), ["E030"]);
+
+    // A class with a parent outside the sources: its props are not known, so markup stays E031.
+    let open = "<?phem\nnamespace App;\n#[\\Phem\\Attribute\\Component]\nfinal class Box extends \\Vendor\\Base { public function view() { return <b />; } }\n#[\\Phem\\Attribute\\Component]\nfunction Page() { return <Box header={{ <b>x</b> }} />; }\n";
+    assert_eq!(codes(open), ["E031"]);
 }
 
 #[test]

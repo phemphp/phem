@@ -87,19 +87,19 @@ final class BenchWidgets
         return (
             <div class="widgets">
                 <Suspense lazy={{ lazy }}>
-                    <Suspense:fallback><p>Loading the sales…</p></Suspense:fallback>
+                    <Suspense.fallback><p>Loading the sales…</p></Suspense.fallback>
                     <BenchWidget name="Sales" />
                 </Suspense>
                 <Suspense lazy={{ lazy }}>
-                    <Suspense:fallback><p>Loading the orders…</p></Suspense:fallback>
+                    <Suspense.fallback><p>Loading the orders…</p></Suspense.fallback>
                     <BenchWidget name="Orders" />
                 </Suspense>
                 <Suspense lazy={{ lazy }}>
-                    <Suspense:fallback><p>Loading the users…</p></Suspense:fallback>
+                    <Suspense.fallback><p>Loading the users…</p></Suspense.fallback>
                     <BenchWidget name="Users" />
                 </Suspense>
                 <Suspense lazy={{ lazy }}>
-                    <Suspense:fallback><p>Loading the stock…</p></Suspense:fallback>
+                    <Suspense.fallback><p>Loading the stock…</p></Suspense.fallback>
                     <BenchWidget name="Stock" />
                 </Suspense>
             </div>

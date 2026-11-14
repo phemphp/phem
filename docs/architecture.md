@@ -31,7 +31,7 @@ The compiled templates use your app’s Twig environment, so Twig extensions suc
 When you write a component tag in markup, the compiler turns it into a `{% component %}` Twig tag. The tag has two forms:
 
 - **Include form**: for a self-closing tag such as `<Badge label="New" />`
-- **Embed form**: for a tag with children, where the children and the named slots (`<Card:footer>`) become Twig blocks
+- **Embed form**: for a tag with children, where the children and the named slots (`<Card.footer>`) become Twig blocks
 
 How Phem renders the component depends on its form. A component whose body is only `return <markup>;` is a template component: it renders as plain Twig, with no PHP call. Every other function component and every `#[Component]` class goes through the `Renderer` service.
 

@@ -24,8 +24,8 @@ use Phem\Attribute\State;
  *     use Phem\Suspense;
  *
  *     <Suspense lazy>
- *         <Suspense:fallback><p>Loading the report…</p></Suspense:fallback>
- *         <Suspense:error><p>The report is not available.</p></Suspense:error>
+ *         <Suspense.fallback><p>Loading the report…</p></Suspense.fallback>
+ *         <Suspense.error><p>The report is not available.</p></Suspense.error>
  *         <SalesReport />
  *     </Suspense>
  *

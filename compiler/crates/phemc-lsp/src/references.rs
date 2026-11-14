@@ -180,7 +180,7 @@ fn words(text: &str) -> Vec<(usize, usize)> {
 }
 
 /// Whether a name is a usage. An import, a closing tag (`</Name>`), and a slot tag
-/// (`<Name:slot>`) are not usages: they go with a usage, or they only make a usage possible.
+/// (`<Name.slot>`) are not usages: they go with a usage, or they only make a usage possible.
 fn is_usage(source: &Source, start: usize, end: usize) -> bool {
     let t = source.text.as_bytes();
     if source.parsed.uses.iter().any(|u| u.start <= start && end <= u.end) {
@@ -194,7 +194,7 @@ fn is_usage(source: &Source, start: usize, end: usize) -> bool {
         return false;
     }
 
-    let slot = t.get(end) == Some(&b':') && t.get(end + 1) != Some(&b':');
+    let slot = t.get(end) == Some(&b'.');
 
     !(before.ends_with(b"<") && slot)
 }

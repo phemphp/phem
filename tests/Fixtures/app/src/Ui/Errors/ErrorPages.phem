@@ -109,7 +109,7 @@ function SuspenseErrorPage(): Node
     return (
         <Document>
             <Suspense>
-                <Suspense:fallback><p id="loading">Loading</p></Suspense:fallback>
+                <Suspense.fallback><p id="loading">Loading</p></Suspense.fallback>
                 <Tips />
             </Suspense>
         </Document>

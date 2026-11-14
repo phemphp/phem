@@ -101,30 +101,30 @@ final class SuspensePage
                 <button id="click" onClick={{ click }}>Clicks {{ clicks }}</button>
                 <section id="report">
                     <Suspense>
-                        <Suspense:fallback>
+                        <Suspense.fallback>
                             <p id="report-fallback">Loading the report…</p>
                             <Suspense>
-                                <Suspense:fallback><p id="hint-fallback">…</p></Suspense:fallback>
+                                <Suspense.fallback><p id="hint-fallback">…</p></Suspense.fallback>
                                 <Hint />
                             </Suspense>
-                        </Suspense:fallback>
+                        </Suspense.fallback>
                         <Report />
                         <Suspense>
-                            <Suspense:fallback><p id="notes-fallback">Loading the notes…</p></Suspense:fallback>
+                            <Suspense.fallback><p id="notes-fallback">Loading the notes…</p></Suspense.fallback>
                             <Notes />
                         </Suspense>
                     </Suspense>
                 </section>
                 <section id="chart">
                     <Suspense lazy>
-                        <Suspense:fallback><p id="chart-fallback">Loading the chart…</p></Suspense:fallback>
-                        <Suspense:error><p id="chart-error">No chart.</p></Suspense:error>
+                        <Suspense.fallback><p id="chart-fallback">Loading the chart…</p></Suspense.fallback>
+                        <Suspense.error><p id="chart-error">No chart.</p></Suspense.error>
                         <Broken />
                     </Suspense>
                 </section>
                 <section id="fatal">
                     <Suspense>
-                        <Suspense:fallback><p id="fatal-fallback">Loading…</p></Suspense:fallback>
+                        <Suspense.fallback><p id="fatal-fallback">Loading…</p></Suspense.fallback>
                         <Broken />
                     </Suspense>
                 </section>

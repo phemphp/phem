@@ -2,7 +2,7 @@
     "name": "phem",
     "displayName": "Phem",
     "description": "Syntax highlighting, and the Phem language server for .phem files: diagnostics as you type, completion, go to definition, find references with usage counts, hover, and outline.",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "publisher": "yceruto",
     "license": "MIT",
     "repository": {

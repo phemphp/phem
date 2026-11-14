@@ -113,7 +113,7 @@ final class OpenSlotsPage
     {
         return (
             <Document>
-                <main><Boxed><b>kid</b><Boxed:footer>f</Boxed:footer></Boxed></main>
+                <main><Boxed><b>kid</b><Boxed.footer>f</Boxed.footer></Boxed></main>
             </Document>
         );
     }
@@ -126,7 +126,7 @@ final class IfSlotPage
     {
         return (
             <Document>
-                <main><Panel>x<Panel:footer><Chip label="foot" /></Panel:footer></Panel></main>
+                <main><Panel>x<Panel.footer><Chip label="foot" /></Panel.footer></Panel></main>
             </Document>
         );
     }

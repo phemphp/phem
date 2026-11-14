@@ -11,6 +11,7 @@ mod defined;
 mod lower;
 mod names;
 mod replaces;
+mod slot_props;
 mod vars;
 
 use rayon::prelude::*;
@@ -155,6 +156,14 @@ pub fn compile(inputs: Vec<SourceInput>) -> (Option<ProjectOutput>, Vec<FileDiag
     });
 
     let (registry, mut dup) = phemc_analyze::registry(parsed.iter().map(|p| &p.info));
+
+    // A slot prop with markup becomes a slot tag, before the checks and the lowering.
+    parsed.par_iter_mut().for_each(|p| {
+        if let Some(lexed) = &mut p.lexed {
+            slot_props::desugar(&p.info, &registry, lexed);
+        }
+    });
+
     let (enums, errors) = phemc_analyze::enums(parsed.iter().map(|p| &p.info));
     dup.extend(errors);
     let bases = base_files(&parsed);

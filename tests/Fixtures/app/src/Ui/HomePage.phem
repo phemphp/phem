@@ -96,7 +96,7 @@ final class HomePage
                     <ol id="mapped">{{ listItems }}</ol>
                     <Card title="Hello">
                         <p>Body {{ count }}</p>
-                        <Card:footer><Badge label="foot" /></Card:footer>
+                        <Card.footer><Badge label="foot" /></Card.footer>
                     </Card>
                     <Counter label="Hits">!</Counter>
                     <Toggle />

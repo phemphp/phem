@@ -304,7 +304,8 @@ impl<'a, 'p> Completer<'a, 'p> {
         }
 
         match &context {
-            Context::TagName { partial, start } if partial.contains(':') => self.slots(partial, *start),
+            // `<Card:` is the old slot syntax: the completion writes the new name.
+            Context::TagName { partial, start } if partial.contains(['.', ':']) => self.slots(partial, *start),
             Context::TagName { partial, start } => {
                 let mut items = self.tags(*start);
                 items.extend(self.elements(partial, *start));
@@ -397,9 +398,9 @@ impl<'a, 'p> Completer<'a, 'p> {
             .collect()
     }
 
-    /// `<Name:slot`: the named slots.
+    /// `<Name.slot`: the named slots.
     fn slots(&self, partial: &str, start: usize) -> Vec<Item> {
-        let parent = &partial[..partial.find(':').unwrap()];
+        let parent = &partial[..partial.find(['.', ':']).unwrap()];
         let components: Vec<_> = self.components().into_iter().map(|c| c.component).collect();
         let Some(comp) = resolve_component(&self.index.current.parsed, &components, parent) else { return vec![] };
         let end = self.after_word();
@@ -408,7 +409,7 @@ impl<'a, 'p> Completer<'a, 'p> {
         comp.slots
             .iter()
             .map(|slot| {
-                let tag = format!("{parent}:{slot}");
+                let tag = format!("{parent}.{slot}");
                 let snippet = if name_only { esc(&tag) } else { format!("{0}>$0</{0}>", esc(&tag)) };
                 Item::new(tag, ItemKind::Property, (start, end), format!("0{slot}")).detail(format!("slot of {}", comp.fqn)).snippet(snippet)
             })
@@ -433,7 +434,7 @@ impl<'a, 'p> Completer<'a, 'p> {
         };
 
         let is_component = tag.trim_start_matches('\\').starts_with(|c: char| c.is_ascii_uppercase());
-        if is_component && !tag.contains(':') {
+        if is_component && !tag.contains('.') {
             let components: Vec<_> = self.components().into_iter().map(|c| c.component).collect();
             let mut has_id = false;
             if let Some(comp) = resolve_component(&self.index.current.parsed, &components, tag) {
@@ -447,6 +448,12 @@ impl<'a, 'p> Completer<'a, 'p> {
                         if prop.required { " (required)" } else { "" }
                     );
                     add(&prop.name, prop_snippet(prop, 1), &detail, format!("{}{}", if prop.required { '0' } else { '1' }, prop.name), None);
+                }
+
+                // A named slot takes markup as a prop: `footer={{ <em>Saved</em> }}`.
+                let children = comp.children.then_some("children");
+                for slot in comp.slots.iter().map(String::as_str).chain(children) {
+                    add(slot, format!("{slot}={{{{ $0 }}}}"), &format!("?Html ${slot} (slot)"), format!("1{slot}"), None);
                 }
             }
 

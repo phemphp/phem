@@ -22,7 +22,7 @@ use Phem\Attribute\Prop;
  *     use Phem\ErrorBoundary;
  *
  *     <ErrorBoundary>
- *         <ErrorBoundary:fallback><p>The quote is not available now.</p></ErrorBoundary:fallback>
+ *         <ErrorBoundary.fallback><p>The quote is not available now.</p></ErrorBoundary.fallback>
  *         <StockQuote />
  *     </ErrorBoundary>
  *

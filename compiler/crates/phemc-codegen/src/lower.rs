@@ -4,7 +4,7 @@ use phemc_analyze::{is_bound_type, Class, ComponentDef, Enums, FileInfo, Kind, P
 use phemc_syntax::diag::codes;
 use phemc_syntax::markup::{Attr, AttrKind, AttrValue, Block, Element, ExprPart, Node, StrPart, TwigExpr};
 use phemc_syntax::{Diagnostic, Span};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::classes::ClassNames;
 use crate::replaces::Replacements;
@@ -649,7 +649,16 @@ impl<'a> Lowerer<'a> {
                     self.item_uses(c, feed_loop, loops, components);
                 }
             }
-            Node::Output(o) => read(&o.expr.code(), o.expr.span, loops),
+            Node::Output(o) => {
+                read(&o.expr.code(), o.expr.span, loops);
+
+                // `{{ ok ? <Badge /> : null }}`, or a slot prop (see slot_props.rs).
+                for p in &o.expr.parts {
+                    if let ExprPart::Markup(m) = p {
+                        self.item_uses(m, feed_loop, loops, components);
+                    }
+                }
+            }
             Node::Tag(t) => read(&t.head, t.head_span, loops),
             Node::Block(b) => {
                 for (i, br) in b.branches.iter().enumerate() {
@@ -688,7 +697,7 @@ impl<'a> Lowerer<'a> {
     fn expr_code(&mut self, x: &TwigExpr) -> String {
         if x.has_markup() {
             self.error(codes::MARKUP_IN_EXPRESSION, "markup is not allowed in an attribute value", x.span)
-                .help = Some("assign the markup to a PHP variable first, or use a slot: `<Card:header>...</Card:header>`".into());
+                .help = Some("assign the markup to a PHP variable first, or give it to an `Html` prop: `<Card header={{ <b>...</b> }} />` or `<Card.header>...</Card.header>`".into());
             return "null".into();
         }
 
@@ -1601,6 +1610,18 @@ impl<'a> Lowerer<'a> {
     }
 
     fn component(&mut self, e: &Element, out: &mut String) {
+        // A slot tag outside the tag of its component.
+        if e.name.contains(':') {
+            self.old_slot_syntax(&e.name, e.name_span);
+            return;
+        }
+
+        if let Some((parent, slot)) = e.name.rsplit_once('.') {
+            self.error(codes::UNKNOWN_SLOT, format!("`<{}>` is a slot of `<{parent}>`, outside a `<{parent}>` tag", e.name), e.name_span).help =
+                Some(format!("put it directly in `<{parent}>`, or give the `{slot}` prop: `<{parent} {slot}={{{{ <b>...</b> }}}} />`"));
+            return;
+        }
+
         let fqcn = self.info.resolve_component(&e.name);
         let Some(def) = self.reg.get(&fqcn).cloned() else {
             let short = fqcn.rsplit('\\').next().unwrap_or(&fqcn).to_string();
@@ -1731,13 +1752,6 @@ impl<'a> Lowerer<'a> {
             given.extend(def.bound.iter().cloned());
         }
 
-        // `phem:error={{ email }}`: the child gets the id of the error and its message. An invalid
-        // `phem:error` has its own error: no "needs the prop" for them.
-        if e.attrs.iter().any(|a| matches!(&a.kind, AttrKind::Plain { name, .. } if name == ERROR)) {
-            given.insert("id".to_string());
-            given.insert("children".to_string());
-        }
-
         if let Some(err) = &error {
             let span = e.name_span;
             if !def.rest && !def.open && !def.props.iter().any(|p| p == "id") {
@@ -1754,23 +1768,32 @@ impl<'a> Lowerer<'a> {
             props.push(format!("'children': {}.html", err.var));
         }
 
-        // Children and named slots (`<Card:footer>`).
+        // Children and named slots (`<Card.footer>`, or a slot prop: see slot_props.rs). Each
+        // given slot keeps how the tag gives it, for E013.
         self.components += 1;
-        let slot_prefix = format!("{}:", e.name);
+        let slot_prefix = format!("{}.", e.name);
+        let old_prefix = format!("{}:", e.name);
+        let mut how: HashMap<String, String> = HashMap::new();
         let mut blocks: Vec<(String, String)> = Vec::new();
         let mut default_children: Vec<&Node> = Vec::new();
         for c in &e.children {
             match c {
+                Node::Element(s) if s.name.starts_with(&old_prefix) => self.old_slot_syntax(&s.name, s.name_span),
                 Node::Element(s) if s.name.starts_with(&slot_prefix) => {
                     let slot = s.name[slot_prefix.len()..].to_string();
+                    let this = if s.from_prop { format!("the `{slot}` prop") } else { format!("`<{}>`", s.name) };
                     if !def.open && !def.slots.contains(&slot) {
                         self.error(codes::UNKNOWN_SLOT, format!("`<{}>` has no slot `{slot}`", e.name), s.name_span).help =
                             Some(format!("add a `?Html ${slot} = null` parameter to `{}`", def.fqcn));
+                    } else if given.contains(&slot) {
+                        let first = how.get(&slot).cloned().unwrap_or_else(|| format!("the `{slot}` prop"));
+                        self.slot_given_twice(&e.name, &slot, &first, &this, s.name_span);
                     }
 
                     let mut body = String::new();
                     self.nodes(&s.children, &mut body);
                     given.insert(slot.clone());
+                    how.insert(slot.clone(), this);
                     blocks.push((slot, body));
                 }
                 other => default_children.push(other),
@@ -1788,11 +1811,23 @@ impl<'a> Lowerer<'a> {
                 self.node(n, &mut body);
             }
 
+            if given.contains("children") {
+                let first = how.get("children").cloned().unwrap_or_else(|| "the `children` prop".into());
+                self.slot_given_twice(&e.name, "children", &first, &format!("the content of `<{}>`", e.name), e.name_span);
+            }
+
             given.insert("children".to_string());
             blocks.insert(0, ("children".into(), body));
         }
 
         self.components -= 1;
+
+        // `phem:error={{ email }}`: the child gets the id of the error and its message. An invalid
+        // `phem:error` has its own error: no "needs the prop" for them.
+        if e.attrs.iter().any(|a| matches!(&a.kind, AttrKind::Plain { name, .. } if name == ERROR)) {
+            given.insert("id".to_string());
+            given.insert("children".to_string());
+        }
 
         if !has_spread {
             for r in def.required.iter().filter(|r| !given.contains(*r)) {
@@ -1803,7 +1838,7 @@ impl<'a> Lowerer<'a> {
                         Some(format!("put the content between `<{0}>` and `</{0}>`", e.name));
                 } else {
                     self.error(codes::UNKNOWN_PROP, format!("`<{}>` needs the slot `{r}`", e.name), e.name_span).help =
-                        Some(format!("add `<{0}:{r}>...</{0}:{r}>` in `<{0}>`", e.name));
+                        Some(format!("add `<{0}.{r}>...</{0}.{r}>` in `<{0}>`, or `{r}={{{{ <b>...</b> }}}}`", e.name));
                 }
             }
         }
@@ -1851,6 +1886,19 @@ impl<'a> Lowerer<'a> {
         if error.is_some() {
             out.push_str("{% endif %}");
         }
+    }
+
+    /// E013: `<Card:footer>`, the slot syntax before `<Card.footer>`.
+    fn old_slot_syntax(&mut self, name: &str, span: Span) {
+        let (parent, slot) = name.split_once(':').unwrap_or((name, ""));
+        self.error(codes::UNKNOWN_SLOT, format!("`<{name}>` is the old slot syntax"), span).help = Some(format!("write `<{parent}.{slot}>` in `<{parent}>`"));
+    }
+
+    /// E013: the tag gives a slot two times. `first` and `second` say how: "the `footer` prop",
+    /// "`<Card.footer>`" or "the content of `<Card>`".
+    fn slot_given_twice(&mut self, tag: &str, slot: &str, first: &str, second: &str, span: Span) {
+        let help = if first == second { format!("keep one {first}") } else { format!("keep {first} or {second}, not both") };
+        self.error(codes::UNKNOWN_SLOT, format!("the slot `{slot}` of `<{tag}>` is given twice"), span).help = Some(help);
     }
 
     /// `<Dynamic tag={{ tag }}>`: an element whose tag name is a value. It is an element in the

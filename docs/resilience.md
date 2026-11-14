@@ -56,12 +56,12 @@ use Phem\Suspense;
 
 <Document title="Sales">
     <Suspense>
-        <Suspense:fallback><p>Loading the sales report…</p></Suspense:fallback>
+        <Suspense.fallback><p>Loading the sales report…</p></Suspense.fallback>
         <SalesReport />
     </Suspense>
     <Suspense lazy>
-        <Suspense:fallback><p>Loading the chart…</p></Suspense:fallback>
-        <Suspense:error><p>The chart is not available now.</p></Suspense:error>
+        <Suspense.fallback><p>Loading the chart…</p></Suspense.fallback>
+        <Suspense.error><p>The chart is not available now.</p></Suspense.error>
         <ActivityChart />
     </Suspense>
 </Document>
@@ -94,7 +94,7 @@ An exception while rendering one component makes the whole event fail. When a pa
 use Phem\ErrorBoundary;
 
 <ErrorBoundary>
-    <ErrorBoundary:fallback><p>The stock quote is not available now.</p></ErrorBoundary:fallback>
+    <ErrorBoundary.fallback><p>The stock quote is not available now.</p></ErrorBoundary.fallback>
     <StockQuote />
 </ErrorBoundary>
 ```

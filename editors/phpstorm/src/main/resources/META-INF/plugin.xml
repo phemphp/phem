@@ -19,7 +19,7 @@
             <li><b>Completion:</b>
                 <ul>
                     <li>component tags, with the required props and the <code>use</code> import;</li>
-                    <li>props, named slots (<code>&lt;Card:footer&gt;</code>), and closing tags;</li>
+                    <li>props, named slots (<code>&lt;Card.footer&gt;</code>), and closing tags;</li>
                     <li>HTML elements and attributes, Phem events (<code>onClick</code>), and Phem
                         attributes (<code>phem:loading</code>, <code>phem:bind</code>, <code>phem:feed</code>, ...);</li>
                     <li>Twig variables, attributes, filters, tests, functions, tags, and route names

@@ -250,11 +250,11 @@ This chart loads after the page and shows a fallback message if it fails:
 
 ```php
 <Suspense lazy>
-    <Suspense:fallback><p>Loading the chart…</p></Suspense:fallback>
+    <Suspense.fallback><p>Loading the chart…</p></Suspense.fallback>
     <ErrorBoundary>
-        <ErrorBoundary:fallback>
+        <ErrorBoundary.fallback>
             <p>The chart is not available now.</p>
-        </ErrorBoundary:fallback>
+        </ErrorBoundary.fallback>
         <ActivityChart />
     </ErrorBoundary>
 </Suspense>

@@ -461,14 +461,19 @@ fn a_comparison_is_not_a_tag() {
 fn props_slots_and_closing_tags() {
     let src = format!("{PAGE}use function App\\Ui\\Common\\Layout;\nuse App\\Ui\\Common\\Counter;\n\nfunction HomePage()\n{{\n");
     let r = run(&format!("{src}    return <Layout |\n}}\n"));
-    assert_eq!(r.sorted(), ["key", "title"]);
+    assert_eq!(r.sorted(), ["children", "footer", "key", "title"]);
     assert_eq!(snippet(r.get("title")), "title=\"${1}\"");
+    assert_eq!(snippet(r.get("footer")), "footer={{ $0 }}");
 
     let r = run(&format!("{src}    return <Counter max={{{{ 3 }}}} |\n}}\n"));
     assert_eq!(r.sorted(), ["key", "label"]);
 
+    let r = run(&format!("{src}    return <Layout title=\"x\"><Layout.|\n}}\n"));
+    assert_eq!(snippet(r.get("Layout.footer")), "Layout.footer>$0</Layout.footer>");
+
+    // The old syntax: the completion writes the new name.
     let r = run(&format!("{src}    return <Layout title=\"x\"><Layout:|\n}}\n"));
-    assert_eq!(snippet(r.get("Layout:footer")), "Layout:footer>$0</Layout:footer>");
+    assert_eq!(snippet(r.get("Layout.footer")), "Layout.footer>$0</Layout.footer>");
 
     let r = run(&format!("{src}    return <Layout title=\"x\"><p>a</|\n}}\n"));
     assert_eq!(r.get("p").insert.as_deref(), Some("p>"));
@@ -979,7 +984,7 @@ fn a_prop_or_a_slot_of_a_replaced_tag_goes_to_the_replacement() {
     assert_eq!(target(&r, &page).1, "$title = '', ?Html $children = null, ?Html $footer = null) { return <b />; }");
     assert!(hover(&r).contains("Prop of `App\\Ui\\MyPlate`, the replacement of `App\\Ui\\Plate`"), "{}", hover(&r));
 
-    let page = src(own, "<Plate><Plate:foo‸ter>x</Plate:footer></Plate>");
+    let page = src(own, "<Plate><Plate.foo‸ter>x</Plate.footer></Plate>");
     let r = at_page(&page);
     assert_eq!(target(&r, &page).1, "$footer = null) { return <b />; }");
     assert!(hover(&r).contains("Slot of `App\\Ui\\MyPlate`, the replacement of `App\\Ui\\Plate`"), "{}", hover(&r));
@@ -1002,8 +1007,20 @@ fn a_component_tag_goes_to_the_component() {
     let src = def_fn("<Layout title=\"x\"></Lay‸out>", "");
     assert_eq!(target(&at_page(&src), &src), layout);
 
-    let src = def_fn("<Layout title=\"x\"><Layout:foo‸ter>a</Layout:footer></Layout>", "");
+    let src = def_fn("<Layout title=\"x\"><Layout.foo‸ter>a</Layout.footer></Layout>", "");
     assert_eq!(target(&at_page(&src), &src), pair("src/Ui/Common/Layout.phem", "$footer = null)"));
+
+    // A named slot as a prop.
+    let src = def_fn("<Layout title=\"x\" foo‸ter={{ <em>a</em> }} />", "");
+    let r = at_page(&src);
+    assert_eq!(target(&r, &src), pair("src/Ui/Common/Layout.phem", "$footer = null)"));
+    assert!(hover(&r).contains("Slot of `App\\Ui\\Common\\Layout`"), "{}", hover(&r));
+
+    // The children as a prop.
+    let src = def_fn("<Layout title=\"x\" chil‸dren={{ <p>a</p> }} />", "");
+    let r = at_page(&src);
+    assert_eq!(target(&r, &src), pair("src/Ui/Common/Layout.phem", "$children = null, ?Html $footer = null)"));
+    assert!(hover(&r).contains("?Html $children"), "{}", hover(&r));
 }
 
 #[test]
@@ -1295,7 +1312,7 @@ final class TeamPage
             <Layout title=x>
                 <Avatar name={{ short }} />
                 <button onClick={{ increment }}>+</button>
-                <Layout:footer><Avatar name=y /></Layout:footer>
+                <Layout.footer><Avatar name=y /></Layout.footer>
             </Layout>
         );
     }

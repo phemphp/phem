@@ -76,6 +76,9 @@ pub struct Element {
     pub span: Span,
     /// The start tag, from `<` to `>`.
     pub start_tag: Span,
+    /// A slot tag that phemc made from a slot prop: `footer={{ <em>Saved</em> }}` is
+    /// `<Card.footer>{{ <em>Saved</em> }}</Card.footer>` (see phemc-codegen `slot_props`).
+    pub from_prop: bool,
 }
 
 impl Element {
@@ -320,6 +323,7 @@ impl<'a> Parser<'a> {
                 self_closing,
                 span: start_tag,
                 start_tag,
+                from_prop: false,
             }));
         }
 
@@ -361,6 +365,7 @@ impl<'a> Parser<'a> {
             self_closing,
             span: Span::new(start, self.pos),
             start_tag,
+            from_prop: false,
         }))
     }
 

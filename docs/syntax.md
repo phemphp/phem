@@ -238,14 +238,37 @@ function Card(string $title, ?Html $children = null, ?Html $footer = null): Node
 }
 ```
 
-The caller passes `title` as an attribute, the tag content as `children`, and the `footer` slot with a `<Card:footer>` tag:
+The caller passes `title` as an attribute, the tag content as `children`, and the `footer` slot with a `<Card.footer>` tag:
 
 ```php
 <Card title="Hello">
     <p>The content of the card.</p>
-    <Card:footer>Updated today</Card:footer>
+    <Card.footer>Updated today</Card.footer>
 </Card>
 ```
+
+A slot can also be a prop with markup. These two tags give the same result:
+
+```php
+<Card title="Hello" footer={{ <em>Updated today</em> }}>
+    <p>The content of the card.</p>
+</Card>
+
+<Card title="Hello">
+    <p>The content of the card.</p>
+    <Card.footer><em>Updated today</em></Card.footer>
+</Card>
+```
+
+The HTML:
+
+```html
+<section class="card"><h2>Hello</h2><p>The content of the card.</p><footer><em>Updated today</em></footer></section>
+```
+
+The value of a slot prop follows the rules of markup in `{{ }}`: one markup literal, a branch of `?:`, or markup after `and`. For example, `footer={{ saved ? <em>Saved</em> : <em>Draft</em> }}`. The `children` slot can be a prop too: `children={{ <p>Body</p> }}`. The compiler checks a slot prop as a slot tag, with the same rules for variables, feeds and `phem:error`. A `{% set %}` in a slot prop doesn’t define the variable after the tag.
+
+Give each slot one time: with a prop, with a tag, or with the content for `children`. The compiler reports E013 for a slot that the tag gives two times, and for a slot tag outside the tag of its component. Markup in a prop that is not an `Html` slot is E031. This includes each prop of a class with a parent class or a trait outside the sources, because the compiler doesn’t know its slots: use a slot tag for it.
 
 A function component doesn’t get services. Each parameter is a prop, even one with a service type, so the caller must pass it. Fetch the data in a function page or in the `mount()` of a class component, and pass it as a prop. A class component gets its services in the constructor (see [Services and `mount()`](components.md#use-services-in-a-component)).
 
@@ -257,7 +280,7 @@ Props take values in these forms:
 - **Any value**: `prop={{ expr }}`
 - **`true`**: a bare `prop`
 - **Children**: the tag content goes to the `$children` prop
-- **Named slot**: `<Card:footer>` goes to the prop with that name. A slot of type `Html` with no `?` and no default is required, and the compiler reports E011 when the caller leaves it out
+- **Named slot**: `<Card.footer>` or `footer={{ <em>...</em> }}` goes to the prop with that name. A slot of type `Html` with no `?` and no default is required, and the compiler reports E011 when the caller leaves it out. The old form `<Card:footer>` is E013
 
 An unknown prop is an error, unless the component has rest props.
 
@@ -267,7 +290,7 @@ A slot that the caller leaves out is `null`. A slot that the caller passes is a 
 {% if footer is not empty %}<footer>{{ footer }}</footer>{% endif %}
 ```
 
-`<Card title="Hello" />` and `<Card title="Hello"><Card:footer></Card:footer></Card>` render no `<footer>`. Twig prints a `Phem\Html` value without escaping. A filter that returns a string, such as `|trim`, gives text, and Twig escapes it. The `in` operator does not read the markup of a slot: `'x' in footer` is always false. Use `'x' in (footer ~ '')` to search the markup.
+`<Card title="Hello" />` and `<Card title="Hello"><Card.footer></Card.footer></Card>` render no `<footer>`. Twig prints a `Phem\Html` value without escaping. A filter that returns a string, such as `|trim`, gives text, and Twig escapes it. The `in` operator does not read the markup of a slot: `'x' in footer` is always false. Use `'x' in (footer ~ '')` to search the markup.
 
 A regular Twig template of the application can also render a component, with no state: `{% component 'App\\Ui\\Common\\Profile' with {person: person} %}`.
 
