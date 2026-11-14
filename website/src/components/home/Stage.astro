@@ -1,0 +1,104 @@
+---
+// The stage of the story: one canvas of 920 × 760 design units that CSS scales to the sticky
+// column. The positions below are design units, so the SVG lines and the HTML text align. Each
+// element has a `data-s` name, and src/scripts/story.ts moves, draws and fades it scene by scene.
+// A `data-outline` element gets its borders drawn as paths, so its lines draw in like the others.
+// The stage repeats the static figures for the eyes only: it is hidden from screen readers and
+// has no focusable element, but its text stays selectable. A `data-copy-of` element gets a copy of
+// the code or the drawing of a figure when the stage starts (src/scripts/story.ts).
+import { post } from '../../home/post';
+import BrowserOutline from './BrowserOutline.astro';
+import LikeOutline from './LikeOutline.astro';
+---
+<div class="stage" aria-hidden="true" data-stage>
+    <div class="stage__tilt" data-stage-tilt>
+        <div class="stage__canvas" data-stage-canvas>
+            <svg class="stage__svg" viewBox="0 0 920 760" width="920" height="760" fill="none">
+                <!-- Scene 1: the dot that grows into the Like button of the page. -->
+                <circle data-s="intro-dot" class="node-dot node-dot--ink" r="4" />
+                <!-- Scene 2: the handler and onClick. Scene 3: the round trip. story.ts measures the code. -->
+                <path data-s="bracket" class="ln ln--accent" />
+                <path data-s="trip-out" class="ln ln--accent" />
+                <path data-s="trip-back" class="ln ln--accent" />
+                <!-- Scene 4: the boundaries to the composition. -->
+                <path data-s="lead-document" class="ln" />
+                <path data-s="lead-article" class="ln" />
+                <path data-s="lead-like" class="ln" />
+                <!-- Scene 5: the component to the framework. -->
+                <path data-s="link-services" class="ln" d="M 232 310 C 300 310, 300 70, 364 70" />
+                <path data-s="link-security" class="ln" d="M 232 310 H 364" />
+                <path data-s="link-rate-limit" class="ln" d="M 232 310 C 300 310, 300 460, 364 460" />
+                <circle data-s="dot-services" class="node-dot" cx="370" cy="70" r="4" />
+                <circle data-s="dot-security" class="node-dot" cx="370" cy="310" r="4" />
+                <circle data-s="dot-rate-limit" class="node-dot" cx="370" cy="460" r="4" />
+                <!-- Scene 6: the click goes down to like() and the HTML comes back, then #[Broadcast]
+                     goes up to Mercure and to the other devices. story.ts measures the first three. -->
+                <path data-s="click-out" class="ln ln--accent" />
+                <path data-s="click-back" class="ln ln--accent" />
+                <path data-s="hub" class="ln ln--accent" />
+                <path data-s="push-b" class="ln ln--accent" d="M 470 339 C 470 318, 475 312, 475 292" />
+                <path data-s="push-c" class="ln ln--accent" d="M 476 345 C 620 345, 710 332, 710 292" />
+                <circle data-s="mercure-dot" class="node-dot node-dot--accent" cx="470" cy="345" r="5" />
+                <!-- Scene 7: the build. -->
+                <path data-s="build-in" class="ln" d="M 460 110 V 198" />
+                <path data-s="build-php" class="ln" d="M 460 242 C 460 290, 240 286, 240 336" />
+                <path data-s="build-twig" class="ln" d="M 460 242 C 460 290, 680 286, 680 336" />
+                <!-- The dots that travel on the lines. -->
+                <circle data-s="travel-1" class="travel" r="4" />
+                <circle data-s="travel-2" class="travel" r="4" />
+                <circle data-s="travel-3" class="travel" r="4" />
+            </svg>
+
+            <BrowserOutline data-s="page" data-outline class="stage__item browser--page" like={false} lines={4} />
+            <div data-s="code" data-outline data-copy-of="likeButton" class="stage__item stage__code" style="left: 370px; top: 60px; width: 500px"></div>
+            <span data-s="event" class="stage__item tag">event</span>
+            <span data-s="html" class="stage__item tag">HTML</span>
+
+            <div data-s="document" data-outline class="stage__item bound" style="left: 20px; top: 110px; width: 310px; height: 540px"><span class="bound__label">Document</span></div>
+            <div data-s="article" data-outline class="stage__item article" style="left: 45px; top: 150px; width: 260px; height: 470px">
+                <span class="bound__label">Article</span>
+                <span class="article__title">{post.title}</span>
+                <span class="article__line"></span>
+                <span class="article__line"></span>
+                <span class="article__line article__line--short"></span>
+                <span class="article__line"></span>
+                <span class="article__line article__line--short"></span>
+            </div>
+            <div data-s="like-bound" data-outline class="stage__item bound" style="left: 79px; top: 526px; width: 192px; height: 68px"><span class="bound__label">LikeButton</span></div>
+            <div data-s="compose" data-outline data-copy-of="blogPost" class="stage__item stage__code" style="left: 400px; top: 190px; width: 470px"></div>
+
+            <span data-s="label-services" class="stage__item node-label" style="left: 384px; top: 60px">Services</span>
+            <span data-s="label-security" class="stage__item node-label" style="left: 384px; top: 300px">Security</span>
+            <span data-s="label-rate-limit" class="stage__item node-label" style="left: 384px; top: 450px">Rate limits</span>
+            <div data-s="excerpt-services" data-outline data-copy-of="services" class="stage__item stage__code" style="left: 366px; top: 90px; width: 500px"></div>
+            <div data-s="excerpt-security" data-outline data-copy-of="security" class="stage__item stage__code" style="left: 366px; top: 330px; width: 500px"></div>
+            <div data-s="excerpt-rate-limit" data-outline data-copy-of="rateLimit" class="stage__item stage__code" style="left: 366px; top: 480px; width: 500px"></div>
+
+            <BrowserOutline data-s="browser-a" data-outline class="stage__item" like={false} />
+            <BrowserOutline data-s="browser-b" data-outline class="stage__item" counts={[1, 2]} device="tablet" stacked open />
+            <BrowserOutline data-s="browser-c" data-outline class="stage__item" counts={[1, 2]} device="phone" stacked />
+            <span data-s="mercure" class="stage__item node-label is-end" style="left: 458px; top: 335px">Mercure</span>
+            <span data-s="click-event" class="stage__item tag">event</span>
+            <span data-s="click-html" class="stage__item tag">HTML</span>
+            <div data-s="broadcast" data-outline data-copy-of="broadcast" class="stage__item stage__code stage__code--small" style="left: 20px; top: 400px; width: 440px"></div>
+            <dl data-s="legend" class="stage__item legend" style="left: 510px; top: 500px; width: 380px">
+                <div><dt><span class="legend__dot legend__dot--shared"></span><code>$post-&gt;likes</code></dt><dd>Shared data: every viewer</dd></div>
+                <div><dt><span class="legend__dot"></span><code>#[State] $open</code></dt><dd>UI state: this browser only</dd></div>
+            </dl>
+
+            <span data-s="source" data-outline class="stage__item pill is-centered" style="left: 460px; top: 88px"><span class="node__dot"></span>LikeButton.phem</span>
+            <span data-s="phemc" data-outline class="stage__item pill pill--strong is-centered" style="left: 460px; top: 220px">phemc</span>
+            <span data-s="tag-php" class="stage__item tag is-end" style="left: 228px; top: 296px">PHP</span>
+            <span data-s="tag-twig" class="stage__item tag" style="left: 692px; top: 296px">Twig</span>
+            <div data-s="php" data-outline data-copy-of="compiledPhp" class="stage__item stage__code stage__code--small" style="left: 30px; top: 340px; width: 420px"></div>
+            <div data-s="twig" data-outline data-copy-of="compiledTwig" class="stage__item stage__code stage__code--small" style="left: 470px; top: 340px; width: 420px"></div>
+
+            <div data-s="sketch" class="stage__sketch" data-copy-of="sketch"></div>
+
+            <LikeOutline data-s="btn" class="stage__btn" counts={[0, 1, 2]} stacked />
+
+            <!-- The outlines of the elements above: story.ts draws them as paths (src/scripts/stroke.ts). -->
+            <svg class="stage__svg" viewBox="0 0 920 760" width="920" height="760" fill="none" data-stage-outlines></svg>
+        </div>
+    </div>
+</div>

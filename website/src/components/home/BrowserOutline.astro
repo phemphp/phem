@@ -1,0 +1,39 @@
+---
+// A browser of the story as an outline: a bar with three dots, the article as lines, its Like
+// button and a "Comments" toggle. `open` is the UI state of this browser only. `lines` is the
+// number of text lines of the article: the last one is short. Each browser shows the blog post of
+// the story. `device` sets the frame: a desktop browser with the full URL, or a tablet or a phone
+// with the host only and a home indicator.
+import { post } from '../../home/post';
+import LikeOutline from './LikeOutline.astro';
+
+interface Props {
+    counts?: number[];
+    open?: boolean;
+    like?: boolean;
+    stacked?: boolean;
+    lines?: number;
+    device?: 'desktop' | 'tablet' | 'phone';
+    class?: string;
+    [attribute: `data-${string}`]: string | undefined;
+}
+
+const { counts = [1], open = false, like = true, stacked = false, lines = 2, device = 'desktop', class: className, ...attributes } = Astro.props;
+const desktop = 'desktop' === device;
+---
+<div class:list={['browser', `browser--${device}`, className]} {...attributes}>
+    <span class="browser__bar" aria-hidden="true">{desktop && <><i></i><i></i><i></i></>}<span class="browser__url">{desktop ? post.url : new URL(post.url).host}</span></span>
+    <span class="browser__body">
+        <span class="browser__title">{post.title}</span>
+        {Array.from({ length: lines }, (_, index) => (
+            <span class:list={['browser__line', { 'browser__line--short': index === lines - 1 }]} aria-hidden="true"></span>
+        ))}
+        <span class="browser__like">{like ? <LikeOutline counts={counts} size="sm" stacked={stacked} /> : <span class="like like--sm like--slot" aria-hidden="true"></span>}</span>
+        <span class:list={['browser__toggle', { 'is-open': open }]}><span class="browser__chevron" aria-hidden="true"></span>Comments</span>
+        <span class="browser__comments" hidden={!open}>
+            <span class="browser__line" aria-hidden="true"></span>
+            <span class="browser__line browser__line--short" aria-hidden="true"></span>
+        </span>
+    </span>
+    {!desktop && <span class="browser__home" aria-hidden="true"></span>}
+</div>

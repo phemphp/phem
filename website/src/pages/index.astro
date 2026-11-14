@@ -1,43 +1,10 @@
 ---
-// The home page: Hero and LinkCards (design system).
-import { createHighlighter } from 'shiki';
+// The home page: the story of a Like button (src/components/home/), then the LinkCards (design
+// system). Returning visitors skip the story with the links of its first scene.
 import Icon from '../components/Icon.astro';
+import Story from '../components/home/Story.astro';
 import type { IconName } from '../icons';
 import Base from '../layouts/Base.astro';
-import { codeBlock } from '../shiki/code-block';
-import { phemCode } from '../shiki/phem-code';
-import { phem } from '../shiki/phem';
-
-const example = `#[Component]
-final class LikeButton
-{
-    #[State]
-    public bool $liked = false;
-
-    public function toggle(): void
-    {
-        $this->liked = !$this->liked;
-    }
-
-    public function render(): Node
-    {
-        return (
-            <button onClick={{ toggle }}>
-                {{ liked ? '♥' : '♡' }}
-            </button>
-        );
-    }
-}`;
-
-// The home page highlights its example itself: the <Code> component cannot load the languages
-// that the phem grammar embeds.
-const highlighter = await createHighlighter({ themes: [phemCode], langs: ['php', 'css', 'javascript', phem] });
-const code = highlighter.codeToHtml(example, {
-    lang: 'phem',
-    theme: 'phem-code',
-    transformers: [codeBlock],
-    meta: { __raw: 'title="src/Ui/Common/LikeButton.phem"' },
-});
 
 const cards: { href: string; icon: IconName; title: string; description: string }[] = [
     { href: '/introduction/', icon: 'cube', title: 'Understand Phem', description: 'The five ideas behind Phem, with one small example each.' },
@@ -46,23 +13,10 @@ const cards: { href: string; icon: IconName; title: string; description: string 
 ];
 ---
 <Base title="Phem: UI server components for Symfony" description="Phem puts the logic and the markup of a component in one .phem file. The server renders it and runs its events.">
-    <main id="main">
-        <section class="ph-hero">
-            <div>
-                <h1 class="ph-hero__heading">
-                    <span class="ph-hero__brand">Phem</span>{' '}
-                    <span class="ph-hero__title">UI server components for Symfony, <em>written in PHP</em>.</span>
-                </h1>
-                <p class="ph-hero__lead">Write the logic and the markup of a component in one .phem file. The server renders the HTML and runs the events. You write no JavaScript and no API.</p>
-                <div class="ph-hero__actions">
-                    <a class="ph-btn ph-btn--primary" href="/quickstart/">Get started<Icon name="arrow-right" /></a>
-                    <span class="ph-install"><span><span class="ph-install__prompt">$</span> composer require phem/phem</span><button class="ph-icon-btn" type="button" data-ph-copy="composer require phem/phem" aria-label="Copy install command"><Icon name="clipboard-document" /></button></span>
-                </div>
-            </div>
-            <Fragment set:html={code} />
-        </section>
+    <main id="main" class="home-main">
+        <Story />
         <section class="home-section" aria-labelledby="start">
-            <h2 class="home-section__title" id="start">Start here</h2>
+            <h2 class="home-section__title" id="start" tabindex="-1">Start here</h2>
             <div class="ph-cards">
                 {cards.map((card) => (
                     <a class="ph-card" href={card.href}>
