@@ -127,15 +127,21 @@ class LikeButton
     ],
 };
 
-// Scene 7: the real output of `phemc build src` for LikeButton. The PHP is one line in the
-// output: here it wraps at the array.
+// Scene 7: the real output of `phemc build src` for LikeButton. The render() method keeps its
+// code, and the markup becomes an Element. The Element is one line in the output: here it wraps
+// at the array.
 export const compiledPhp: Snippet = {
     title: 'var/phem/php/Ui/LikeButton.php',
     lang: 'phem',
-    code: `new \\Phem\\Element('Ui/LikeButton.0.twig', [
-    'like' => $this->like(...),
-    'likes' => $this->likes,
-])`,
+    code: `public function render(): Node
+{
+    return (
+        new \\Phem\\Element('Ui/LikeButton.0.twig', [
+            'like' => $this->like(...),
+            'likes' => $this->likes,
+        ])
+    );
+}`,
 };
 
 export const compiledTwig: Snippet = {
