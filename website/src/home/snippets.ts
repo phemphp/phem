@@ -19,7 +19,7 @@ export interface Snippet {
 
 // Scenes 2 and 3: logic and markup in one file.
 export const likeButton: Snippet = {
-    title: 'src/Ui/Common/LikeButton.phem',
+    title: 'src/Ui/LikeButton.phem',
     lang: 'phem',
     code: `#[Component]
 final class LikeButton
@@ -50,7 +50,7 @@ final class LikeButton
 };
 
 // Scene 4: components nest into a page, the page of the blog post of the illustration. Article
-// gets the post, as in scene 6.
+// gets the title, and LikeButton gets the post, as in scene 6.
 export const blogPost: Snippet = {
     title: 'src/Ui/BlogPostPage.phem',
     lang: 'phem',
@@ -59,7 +59,7 @@ function BlogPostPage(Post $post): Node
 {
     return (
         <Document title={{ post.title }}>
-            <Article post={{ post }}>
+            <Article title={{ post.title }}>
                 {{ post.content }}
                 <LikeButton post={{ post }} />
             </Article>
@@ -107,7 +107,7 @@ public function like(): void`,
 // and #[Broadcast] renders it again in the other browsers that show the same post. The likes are
 // shared data.
 export const broadcast: Snippet = {
-    title: 'src/Ui/Common/LikeButton.phem',
+    title: 'src/Ui/LikeButton.phem',
     lang: 'phem',
     code: `#[Component]
 final class LikeButton
@@ -131,16 +131,16 @@ final class LikeButton
 // Scene 7: the real output of `phemc build src` for LikeButton. The PHP is one line in the
 // output: here it wraps at the array.
 export const compiledPhp: Snippet = {
-    title: 'var/phem/php/Ui/Common/LikeButton.php',
+    title: 'var/phem/php/Ui/LikeButton.php',
     lang: 'phem',
-    code: `new \\Phem\\Element('Ui/Common/LikeButton.0.twig', [
+    code: `new \\Phem\\Element('Ui/LikeButton.0.twig', [
     'like' => $this->like(...),
     'likes' => $this->likes,
 ])`,
 };
 
 export const compiledTwig: Snippet = {
-    title: 'var/phem/templates/Ui/Common/LikeButton.0.twig',
+    title: 'var/phem/templates/Ui/LikeButton.0.twig',
     lang: 'twig',
     code: `<button {{ phem_on('click', like) }}>
     Like · {{ likes }}

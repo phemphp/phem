@@ -27,8 +27,8 @@ export function named(canvas: HTMLElement): Named {
     };
 }
 
-// The box of an element in design units, whatever the scale of the canvas.
-function measure(canvas: HTMLElement): (element: Element) => Box {
+// The box of an element or of a range of text in design units, whatever the scale of the canvas.
+function measure(canvas: HTMLElement): (element: Element | Range) => Box {
     const frame = canvas.getBoundingClientRect();
     const scale = frame.width / canvasWidth;
 
@@ -130,26 +130,60 @@ export class StageLines {
     }
 
     // The connectors that start or end at a mark of the code.
-    private connectors(box: (element: Element) => Box): void {
+    private connectors(box: (element: Element | Range) => Box): void {
         const el = this.el;
         const mark = (scope: string, name: string): Box => box(el(scope).querySelector(`[data-mark="${name}"]`) ?? el(scope));
 
-        // Scene 2: a bracket in the gutter links the line of the handler and the line of onClick.
-        const code = box(el('code'));
-        const gutter = code.left + 8;
+        // Scene 2: a bracket on the right of the code links the line of the handler and the line
+        // of onClick. Each arm starts at the end of its line. It draws from onClick up to the
+        // handler.
         const handler = middle(mark('code', 'handler'));
         const render = middle(mark('code', 'render'));
         const onclick = middle(mark('code', 'onclick'));
-        el('bracket').setAttribute('d', `M ${gutter + 7} ${handler} H ${gutter} V ${onclick} H ${gutter + 7}`);
+        const lineOf = (name: string): Element => el('code').querySelector(`[data-mark="${name}"]`)?.closest('.line') ?? el('code');
+        const lineEnd = (name: string): number => {
+            const line = box(lineOf(name));
+
+            return line.left + line.width + 8;
+        };
+
+        // The left edge of the first character of a line that is not a space: the indent is in
+        // the text of the first token.
+        const lineStart = (name: string): number => {
+            const line = lineOf(name);
+            const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+
+            for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+                const offset = (node.textContent ?? '').search(/\S/);
+
+                if (-1 === offset) {
+                    continue;
+                }
+
+                const range = document.createRange();
+                range.setStart(node, offset);
+                range.setEnd(node, offset + 1);
+
+                return box(range).left;
+            }
+
+            return box(line).left;
+        };
+        const handlerEnd = lineEnd('handler');
+        const onclickEnd = lineEnd('onclick');
+        const side = Math.max(handlerEnd, onclickEnd) + 12;
+        el('bracket').setAttribute('d', `M ${onclickEnd} ${onclick} H ${side} V ${handler} H ${handlerEnd}`);
 
         // Scene 3: the event goes from the button to the handler, and the HTML of render() comes
-        // back.
+        // back. The lines end just before `public`, the first word of each line.
         const button = { x: 170 + el('btn').offsetWidth / 2 + 8, y: center.y };
-        el('trip-out').setAttribute('d', `M ${button.x} ${button.y - 12} C ${button.x + 70} ${button.y - 12}, ${gutter - 70} ${handler}, ${gutter} ${handler}`);
-        el('trip-back').setAttribute('d', `M ${gutter} ${render} C ${gutter - 60} ${render}, ${button.x + 60} ${button.y + 12}, ${button.x} ${button.y + 12}`);
+        const handlerStart = lineStart('handler') - 10;
+        const renderStart = lineStart('render') - 10;
+        el('trip-out').setAttribute('d', `M ${button.x} ${button.y - 12} C ${button.x + 70} ${button.y - 12}, ${handlerStart - 70} ${handler}, ${handlerStart} ${handler}`);
+        el('trip-back').setAttribute('d', `M ${renderStart} ${render} C ${renderStart - 60} ${render}, ${button.x + 60} ${button.y + 12}, ${button.x} ${button.y + 12}`);
 
-        // Each tag sits at the middle of its line, on the outer side: "event" before the line that
-        // goes up to the handler, "HTML" under the flat line that comes back from render().
+        // Each tag sits at the middle of its line, on the outer side: "onClick Event" before the
+        // line that goes up to the handler, "HTML" under the flat line that comes back from render().
         const middleOf = (path: string): DOMPoint => {
             const line = el(path) as unknown as SVGPathElement;
 
