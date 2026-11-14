@@ -181,12 +181,9 @@ h1.scene__title { font-size: clamp(42px, 5.6vw, 76px); }
 /* The drawing of the last scene (Friends.astro). */
 .sketch { display: block; width: 100%; height: auto; overflow: visible; }
 .sketch path { fill: none; stroke: color-mix(in srgb, var(--story-ink) 80%, transparent); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
-.sketch text { fill: var(--story-ink); font-family: var(--font-sans); font-weight: 600; }
-.sketch .sketch__text--alt { font-style: italic; }
+.sketch text { fill: var(--story-ink); font-family: var(--font-sans); font-weight: 700; }
 .sketch .sketch__text--logo { font-family: Georgia, "Times New Roman", serif; font-style: italic; text-anchor: middle; }
 .sketch__slot { fill: none; stroke: none; }
-.sketch__slot.is-shown { stroke: var(--story-line-strong); stroke-width: 1.2; }
-.sketch .sketch__like { font-size: 15px; font-weight: 500; text-anchor: middle; }
 
 /* ---------- Static figures ---------- */
 .fig { display: flex; align-items: center; gap: var(--space-8); min-width: 0; }

@@ -228,7 +228,6 @@ function copyFigures(root: HTMLElement): void {
         copy.removeAttribute('data-copy');
         copy.querySelectorAll('.ph-code__copy, .sketch__like').forEach((node) => node.remove());
         copy.querySelectorAll('[tabindex]').forEach((node) => node.removeAttribute('tabindex'));
-        copy.querySelector('.sketch__slot')?.classList.remove('is-shown');
 
         target.append(copy);
     }

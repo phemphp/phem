@@ -405,7 +405,9 @@ export class StoryTime {
 // Like slots of these browsers have the same size (home.css).
 const pageScale = 1.1;
 const browserScale = 0.7;
-const sketchScale = 0.82;
+const sketchScale = 0.78;
+// The page that the elephant holds leans to the left (Friends.astro).
+const sketchTilt = -8;
 
 // Scene 1 at rest: the page and its Like button. The timeline starts from this state, so the
 // scroll back to scene 1 shows the page again, with or without the intro.
@@ -565,7 +567,7 @@ export function scenesTimeline(lines: StageLines, time: StoryTime): gsap.core.Ti
     d.reveal('twig', t, 0.12);
 
     // 7 → 8: the drawing draws in, and the button, with the likes of the story, lands in the page
-    // that the elephant holds.
+    // that the elephant holds, in place of the likes of the drawing.
     d.retract(['build-in', 'build-php', 'build-twig'], into(8), 0.12);
     d.fadeOut(['tag-php', 'tag-twig'], into(8));
     d.conceal(['php', 'twig', 'phemc', 'source'], into(8), 0.18);
@@ -573,7 +575,7 @@ export function scenesTimeline(lines: StageLines, time: StoryTime): gsap.core.Ti
     t = d.sketch(into(8, 0.1), 0.45);
     d.tl.fromTo(d.el('sketch').querySelectorAll('text'), { opacity: 0 }, { opacity: 1, duration: 0.06, stagger: 0.02, immediateRender: false }, t - 0.15);
     const page = lines.slot('sketch', sketchScale);
-    d.move(page.x, page.y, sketchScale, t - 0.1, 0.25, { autoAlpha: 1 });
+    d.move(page.x, page.y, sketchScale, t - 0.1, 0.25, { autoAlpha: 1, rotation: sketchTilt });
 
     // Scene 8 rests at the end of the scroll.
     d.tl.set({}, {}, rest(8));
