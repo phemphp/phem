@@ -759,19 +759,22 @@ final class ComponentTester
 
     /**
      * Asserts that the last action showed a toast with this message (see Phem\Toasts). With
-     * `$type`, the toast has this type too.
+     * `$type`, the toast has this type too. With `$title`, it has this title too.
      *
      *     ->assertToast('Saved')
      *     ->assertToast('No stock', ToastType::Error)
+     *     ->assertToast('The file is in your downloads.', title: 'Export complete')
      */
-    public function assertToast(string $message, ?ToastType $type = null): self
+    public function assertToast(string $message, ?ToastType $type = null, ?string $title = null): self
     {
         // The toasts that the `phem-toast` controller shows.
         $toasts = array_values(array_filter(array_map(Toast::fromDetail(...), $this->detailsOf('toast'))));
-        $found = array_filter($toasts, static fn (Toast $toast): bool => $message === $toast->message && (null === $type || $type === $toast->type));
+        $found = array_filter($toasts, static fn (Toast $toast): bool => $message === $toast->message && (null === $type || $type === $toast->type) && (null === $title || $title === $toast->title));
         $showed = implode(', ', array_map(strval(...), $toasts));
 
-        Assert::assertNotEmpty($found, \sprintf('The last action did not show the toast %s"%s"%s.', null === $type ? '' : $type->value.' ', $message, '' === $showed ? '' : \sprintf(' (it showed %s)', $showed)));
+        $expected = null === $title ? $message : $title.': '.$message;
+
+        Assert::assertNotEmpty($found, \sprintf('The last action did not show the toast %s"%s"%s.', null === $type ? '' : $type->value.' ', $expected, '' === $showed ? '' : \sprintf(' (it showed %s)', $showed)));
 
         return $this;
     }

@@ -69,7 +69,10 @@ A toast part with a `class` attribute gets no default style from `phem.css`: its
 ```html
 <template data-phem-toast-target="template">
     <div class="flex gap-3 rounded-none bg-white p-3 shadow data-limited:hidden">
-        <p class="flex-1" data-phem-toast-description></p>
+        <div class="flex-1" data-phem-toast-content>
+            <strong data-phem-toast-title></strong>
+            <p data-phem-toast-description></p>
+        </div>
         <button class="px-1" data-phem-toast-close aria-label="Close">×</button>
     </div>
 </template>

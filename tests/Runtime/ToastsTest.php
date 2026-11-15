@@ -55,6 +55,27 @@ final class ToastsTest extends TestCase
         self::assertSame([['name' => 'toast', 'detail' => ['message' => 'Check the stock', 'type' => 'warning', 'duration' => 0]]], $dispatcher->dispatched());
     }
 
+    public function testATitleGoesInTheDetail(): void
+    {
+        $dispatcher = new BrowserEventDispatcher();
+        $toasts = new Toasts($dispatcher);
+        $toasts->success('The file is in your downloads.', title: 'Export complete');
+        $toasts->show('No stock', ToastType::Error, 0, 'Order');
+
+        self::assertSame([
+            ['name' => 'toast', 'detail' => ['message' => 'The file is in your downloads.', 'type' => 'success', 'title' => 'Export complete']],
+            ['name' => 'toast', 'detail' => ['message' => 'No stock', 'type' => 'error', 'duration' => 0, 'title' => 'Order']],
+        ], $dispatcher->dispatched());
+    }
+
+    public function testShowRejectsAnEmptyTitle(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The title of a toast cannot be empty. Give null for a toast with no title.');
+
+        new Toasts(new BrowserEventDispatcher())->info('Saved', title: ' ');
+    }
+
     public function testAnEventShowsAToastWithItsDispatcher(): void
     {
         $event = new Event('click');
@@ -100,6 +121,12 @@ final class ToastsTest extends TestCase
         self::assertEquals(new Toast('Odd'), Toast::fromDetail(['message' => 'Odd', 'type' => 'danger']));
         self::assertEquals(new Toast('42'), Toast::fromDetail(['message' => 42]));
         self::assertEquals(new Toast('["a","b"]'), Toast::fromDetail(['message' => ['a', 'b']]));
+        self::assertEquals(new Toast('Saved', title: 'Profile'), Toast::fromDetail(['message' => 'Saved', 'title' => 'Profile']));
+        self::assertEquals(new Toast('Saved', title: 'Profile'), Toast::fromDetail(['message' => 'Saved', 'title' => ' Profile ']));
+        // A title that is empty or not a text is no title.
+        self::assertEquals(new Toast('Saved'), Toast::fromDetail(['message' => 'Saved', 'title' => ' ']));
+        self::assertEquals(new Toast('Saved'), Toast::fromDetail(['message' => 'Saved', 'title' => true]));
+        self::assertEquals(new Toast('Saved'), Toast::fromDetail(['message' => 'Saved', 'title' => ['a']]));
     }
 
     public function testFromDetailGivesNullWhenTheControllerShowsNoToast(): void
@@ -118,5 +145,11 @@ final class ToastsTest extends TestCase
         self::assertSame(['message' => 'Saved', 'type' => 'success', 'duration' => 8000], $toast->detail());
         self::assertEquals($toast, Toast::fromDetail($toast->detail()));
         self::assertSame('success "Saved"', (string) $toast);
+
+        $titled = new Toast('Saved', ToastType::Success, title: 'Profile');
+
+        self::assertSame(['message' => 'Saved', 'type' => 'success', 'title' => 'Profile'], $titled->detail());
+        self::assertEquals($titled, Toast::fromDetail($titled->detail()));
+        self::assertSame('success "Profile: Saved"', (string) $titled);
     }
 }

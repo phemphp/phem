@@ -248,6 +248,195 @@ describe("phem-menu", () => {
     expect($("delete").hasAttribute("data-highlighted")).toBe(false)
   })
 
+  describe("a checkbox item and a radio item", () => {
+    // A menu with a "Wrap" checkbox item, two groups of radio items, two radio items in no group,
+    // a "Pin" checkbox item with a handler, and a "Save" item that sends an event. `wrap`, `size`
+    // and `pinned` are the state of the server render. "Dark" closes the menu.
+    function view({ wrap = false, size = "m", pinned = false } = {}) {
+      return `<div id="menu" data-controller="phem-menu">
+          <button id="trigger" data-phem-menu-target="trigger">View</button>
+          <div id="popup" data-phem-menu-target="popup" hidden>
+            <button id="wrap" data-phem-menu-target="item" role="menuitemcheckbox" aria-checked="${wrap}" data-phem-menu-close-on-click="false">Wrap</button>
+            <div data-phem-menu-target="group">
+              <button id="small" data-phem-menu-target="item" role="menuitemradio" data-value="s" aria-checked="${size === "s"}" data-phem-menu-close-on-click="false">Small</button>
+              <button id="medium" data-phem-menu-target="item" role="menuitemradio" data-value="m" aria-checked="${size === "m"}" data-phem-menu-close-on-click="false">Medium</button>
+              <button id="large" data-phem-menu-target="item" role="menuitemradio" data-value="l" aria-checked="${size === "l"}" data-phem-menu-close-on-click="false">Large</button>
+            </div>
+            <div data-phem-menu-target="group">
+              <button id="light" data-phem-menu-target="item" role="menuitemradio" aria-checked="true" data-phem-menu-close-on-click="false">Light</button>
+              <button id="dark" data-phem-menu-target="item" role="menuitemradio" aria-checked="false">Dark</button>
+            </div>
+            <button id="left" data-phem-menu-target="item" role="menuitemradio" aria-checked="true" data-phem-menu-close-on-click="false">Left</button>
+            <button id="right" data-phem-menu-target="item" role="menuitemradio" aria-checked="false" data-phem-menu-close-on-click="false">Right</button>
+            <button id="pin" data-phem-menu-target="item" role="menuitemcheckbox" aria-checked="${pinned}" data-phem-menu-close-on-click="false" data-phem-on-click="c1.pin">Pin</button>
+            <button id="save" data-phem-menu-target="item" data-phem-menu-close-on-click="false" data-phem-on-click="c1.save">Save</button>
+          </div>
+        </div>`
+    }
+
+    const checked = (id) => {
+      const state = $(id).getAttribute("aria-checked") === "true"
+      if ($(id).hasAttribute("data-checked") !== state || $(id).hasAttribute("data-unchecked") === state) throw new Error(`The attributes of #${id} do not agree`)
+
+      return state
+    }
+
+    it("checks and unchecks a checkbox item in the browser, and keeps the menu open", async () => {
+      await mount(view())
+      const changes = []
+      $("menu").addEventListener("phem-menu:change", (event) => changes.push([event.target.id, event.detail]))
+      expect(checked("wrap")).toBe(false)
+
+      click("#trigger")
+      click("#wrap")
+      expect(checked("wrap")).toBe(true)
+      expect(isOpen()).toBe(true)
+
+      click("#wrap")
+      expect(checked("wrap")).toBe(false)
+      expect(changes).toEqual([["wrap", { checked: true, value: null }], ["wrap", { checked: false, value: null }]])
+      expect(fetch).not.toHaveBeenCalled()
+    })
+
+    it("checks a radio item, and unchecks the other radio items of its group only", async () => {
+      await mount(view())
+      const changes = []
+      $("menu").addEventListener("phem-menu:change", (event) => changes.push([event.target.id, event.detail]))
+      click("#trigger")
+      click("#small")
+
+      expect(checked("small")).toBe(true)
+      expect(checked("medium")).toBe(false)
+      expect(checked("light")).toBe(true)
+      expect(isOpen()).toBe(true)
+
+      // A click on the checked radio item changes nothing.
+      click("#small")
+      expect(checked("small")).toBe(true)
+      expect(changes).toEqual([["small", { checked: true, value: "s" }]])
+    })
+
+    it("closes the menu after a click on an item, unless it has data-phem-menu-close-on-click false", async () => {
+      await mount(view())
+      click("#trigger")
+      click("#dark")
+
+      expect(checked("dark")).toBe(true)
+      expect(checked("light")).toBe(false)
+      expect(isOpen()).toBe(false)
+    })
+
+    it("unchecks only the radio items in no group after a click on a radio item in no group", async () => {
+      await mount(view())
+      click("#trigger")
+      click("#right")
+
+      expect(checked("right")).toBe(true)
+      expect(checked("left")).toBe(false)
+      expect(checked("medium")).toBe(true)
+      expect(checked("light")).toBe(true)
+    })
+
+    it("leaves the state of an item with a handler to the server", async () => {
+      await mount(view())
+      const changed = vi.fn()
+      $("menu").addEventListener("phem-menu:change", changed)
+      click("#trigger")
+
+      // The handler refuses the change: the server render has the same state.
+      respond(view())
+      const refused = nextDone()
+      click("#pin")
+      expect(checked("pin")).toBe(false)
+      await refused
+      expect(checked("pin")).toBe(false)
+
+      respond(view({ pinned: true }))
+      const done = nextDone()
+      click("#pin")
+      await done
+
+      expect(checked("pin")).toBe(true)
+      expect(changed).not.toHaveBeenCalled()
+    })
+
+    it("unchecks the radio item of the browser when the server render checks another one", async () => {
+      await mount(view({ size: "m" }))
+      click("#trigger")
+      click("#large")
+      expect(checked("large")).toBe(true)
+
+      // The server render checks "Small": a new state of "Small" and "Medium", not of "Large".
+      respond(view({ size: "s" }))
+      const done = nextDone()
+      click("#save")
+      await done
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(checked("small")).toBe(true)
+      expect(checked("medium")).toBe(false)
+      expect(checked("large")).toBe(false)
+    })
+
+    it("gives the page of the Turbo cache the state of the server render", async () => {
+      await mount(view())
+      click("#trigger")
+      click("#wrap")
+      click("#small")
+      document.dispatchEvent(new Event("turbo:before-cache"))
+
+      expect(checked("wrap")).toBe(false)
+      expect(checked("small")).toBe(false)
+      expect(checked("medium")).toBe(true)
+    })
+
+    it("does not check a disabled item", async () => {
+      await mount(view())
+      $("wrap").setAttribute("aria-disabled", "true")
+      click("#trigger")
+      click("#wrap")
+
+      expect(checked("wrap")).toBe(false)
+    })
+
+    it("keeps the state of the browser after the morph of an event", async () => {
+      await mount(view())
+      respond(view())
+      click("#trigger")
+      click("#wrap")
+      click("#small")
+      const done = nextDone()
+      click("#save")
+      await done
+
+      expect(checked("wrap")).toBe(true)
+      expect(checked("small")).toBe(true)
+      expect(checked("medium")).toBe(false)
+    })
+
+    it("takes a new state of the server render", async () => {
+      await mount(view())
+      respond(view({ wrap: true, size: "s" }))
+      click("#trigger")
+      const done = nextDone()
+      click("#save")
+      await done
+
+      expect(checked("wrap")).toBe(true)
+      expect(checked("small")).toBe(true)
+      expect(checked("medium")).toBe(false)
+
+      // The server render does not change: the state of the browser stays.
+      respond(view({ wrap: true, size: "s" }))
+      click("#wrap")
+      const again = nextDone()
+      click("#save")
+      await again
+
+      expect(checked("wrap")).toBe(false)
+    })
+  })
+
   describe("a submenu", () => {
     // A menu with a "Move to" submenu between "Rename" and "Delete".
     function nested(attributes = "") {

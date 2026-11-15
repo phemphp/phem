@@ -71,6 +71,11 @@ final class MenuPage
                             <span class="sort-label" data-phem-menu-target="groupLabel">Order</span>
                             <button id="sort-name" data-phem-menu-target="item" data-phem-menu-close-on-click="false" onClick={{ sort }}>Name</button>
                         </div>
+                        <button id="sort-reverse" data-phem-menu-target="item" role="menuitemcheckbox" aria-checked="false" data-phem-menu-close-on-click="false">Reverse</button>
+                        <div data-phem-menu-target="group">
+                            <button id="sort-list" data-phem-menu-target="item" role="menuitemradio" data-value="list" aria-checked="true" data-phem-menu-close-on-click="false">List</button>
+                            <button id="sort-grid" data-phem-menu-target="item" role="menuitemradio" data-value="grid" aria-checked="false" data-phem-menu-close-on-click="false">Grid</button>
+                        </div>
                     </div>
                 </div>
                 <output id="log">{{ log|join(', ') }}</output>

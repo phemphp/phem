@@ -63,6 +63,12 @@ final class Notifier
         $this->toasts->warning('Check the stock', 0);
     }
 
+    // A toast with a title.
+    public function export(Event $e): void
+    {
+        $e->toast('The file is in your downloads.', ToastType::Success, title: 'Export complete');
+    }
+
     // Toast details that the phem-toast controller reads in its own way.
     public function raw(Event $e): void
     {
@@ -103,6 +109,7 @@ final class Notifier
                 <button id="announce" onClick={{ announce }}>Announce</button>
                 <button id="toast" onClick={{ toast }}>Toast</button>
                 <button id="remind" onClick={{ remind }}>Remind</button>
+                <button id="export" onClick={{ export }}>Export</button>
                 <button id="raw" onClick={{ raw }}>Raw</button>
                 <button id="quiet" onClick={{ quiet }}>Quiet</button>
                 <button id="leave" onClick={{ leave }}>Leave</button>

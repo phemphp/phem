@@ -26,14 +26,14 @@ const SWIPE = 40
 // It listens on `window`:
 //
 // - `phem:toast`, from `$e->toast('Saved')` or `Phem\Toasts`. The detail is the message, or an
-//   object with `message`, and an optional `type` and `duration`;
+//   object with `message`, and an optional `type`, `duration` and `title`;
 // - `phem:error`: it shows the error message in place of the default message of Phem. The message
 //   is the `errorMessage` value, or else the `data-phem-error-message-value` of the root element;
 // - `phem:rate-limited`: it shows the `rateLimitedMessage` value.
 //
 // The `show` action shows the detail of another event: `data-action="saved->phem-toast#show"`.
-// A toast with the same type and message as a toast on the screen does not show again: the toast on
-// the screen starts its time again.
+// A toast with the same type, title and message as a toast on the screen does not show again: the
+// toast on the screen starts its time again.
 //
 // A toast goes away after the `duration` value (in ms), or with its close button. A duration of
 // `0` keeps it until the close button. The element is a live region (`aria-live="polite"`), so a
@@ -52,10 +52,14 @@ const SWIPE = 40
 // with `data-swipe-direction`: its `[data-ending-style]` transition can go on in that direction.
 // A shorter swipe gives the toast its place again. An empty value turns off the swipe.
 //
-// Each toast has these parts, as Base UI: the root (`data-phem-toast`), the description
-// (`[data-phem-toast-description]`, the message) and the close button (`[data-phem-toast-close]`).
-// A `<template data-phem-toast-target="template">` in the element gives the markup of the app,
-// with these parts; else the controller makes them. The root gets `data-type` (the type),
+// Each toast has these parts, as Base UI: the root (`data-phem-toast`), the title
+// (`[data-phem-toast-title]`), the description (`[data-phem-toast-description]`, the message) and
+// the close button (`[data-phem-toast-close]`). A toast with no title has no title part: the
+// controller removes it. A template with no title part does not show the title. A `<template data-phem-toast-target="template">` in the element gives the markup of
+// the app, with these parts; else the controller makes them. A template can also have a content
+// part (`[data-phem-toast-content]`, around the text and the button): it gets `data-behind` when a
+// newer toast is in front of its toast, and `data-expanded` with the stack, so a stack can hide
+// the text of the toasts behind the last one. The root gets `data-type` (the type),
 // `--toast-index` (0 for the last toast), and `data-limited` when more than the `limit` value of
 // newer toasts are on the screen. See phem_transition.js for the animations: a toast that goes
 // stays until the end of its `[data-ending-style]` transition.
@@ -140,7 +144,7 @@ export default class PhemToastController extends Controller {
     this.timers.clear()
   }
 
-  // The detail is the message, or `{ message, type, duration }`.
+  // The detail is the message, or `{ message, type, duration, title }`.
   show = (event) => {
     const detail = typeof event.detail === "string" ? { message: event.detail } : (event.detail ?? {})
     if (detail.message === undefined || detail.message === null || detail.message === "") return
@@ -148,7 +152,9 @@ export default class PhemToastController extends Controller {
 
     const type = TYPES.includes(detail.type) ? detail.type : "info"
     const duration = Number(detail.duration ?? NaN)
-    this.#add(String(detail.message), type, Number.isFinite(duration) ? duration : this.durationValue)
+    // A title is a text or a number, as Phem\Toast reads it. Another value is no title.
+    const title = typeof detail.title === "string" || typeof detail.title === "number" ? String(detail.title).trim() : ""
+    this.#add(String(detail.message), type, Number.isFinite(duration) ? duration : this.durationValue, title)
   }
 
   // A listener before this one can show its own message: it prevents the default.
@@ -236,10 +242,10 @@ export default class PhemToastController extends Controller {
     return root?.getAttribute("data-phem-error-message-value") || ERROR_MESSAGE
   }
 
-  // The message is text, not HTML.
-  #add(message, type, duration) {
+  // The message and the title are text, not HTML.
+  #add(message, type, duration, title = "") {
     // A toast that goes away does not count: it is removed at the end of its animation.
-    const same = this.#toasts().find((el) => !el.hasAttribute("data-ending-style") && el.getAttribute("data-type") === type && this.#message(el) === message)
+    const same = this.#toasts().find((el) => !el.hasAttribute("data-ending-style") && el.getAttribute("data-type") === type && this.#message(el) === message && this.#title(el) === title)
     if (same) {
       same.dataset.phemToastDuration = String(duration)
       if (!this.expanded) this.#start(same)
@@ -257,10 +263,17 @@ export default class PhemToastController extends Controller {
     const description = el.querySelector("[data-phem-toast-description]") ?? el
     description.textContent = message
 
+    // The title is also on the root: a template with no title part does not show it.
+    el.dataset.phemToastTitle = title
+
+    const heading = el.querySelector("[data-phem-toast-title]")
+    if (title === "") heading?.remove()
+    else if (heading) heading.textContent = title
+
     this.element.append(el)
     show(el)
     this.#stack()
-    el.toggleAttribute("data-expanded", this.expanded)
+    this.#renderExpanded(el)
     if (!this.expanded) this.#start(el)
   }
 
@@ -271,8 +284,15 @@ export default class PhemToastController extends Controller {
 
     const el = document.createElement("div")
 
+    const content = document.createElement("div")
+    content.setAttribute("data-phem-toast-content", "")
+
+    const title = document.createElement("strong")
+    title.setAttribute("data-phem-toast-title", "")
+
     const text = document.createElement("span")
     text.setAttribute("data-phem-toast-description", "")
+    content.append(title, text)
 
     const close = document.createElement("button")
     close.type = "button"
@@ -280,7 +300,7 @@ export default class PhemToastController extends Controller {
     close.setAttribute("aria-label", this.closeLabelValue)
     close.textContent = "×"
 
-    el.append(text, close)
+    el.append(content, close)
 
     return el
   }
@@ -289,8 +309,18 @@ export default class PhemToastController extends Controller {
     return (el.querySelector("[data-phem-toast-description]") ?? el).textContent
   }
 
+  #title(el) {
+    return el.dataset.phemToastTitle ?? ""
+  }
+
+  // The toast and its content part show the state of the stack.
+  #renderExpanded(el) {
+    el.toggleAttribute("data-expanded", this.expanded)
+    el.querySelector("[data-phem-toast-content]")?.toggleAttribute("data-expanded", this.expanded)
+  }
+
   // The position of each toast in the stack: 0 for the last toast, and the heights of the newer
-  // toasts.
+  // toasts. The content part of a toast behind the last one gets `data-behind`.
   #stack() {
     const toasts = this.#toasts().filter((el) => !el.hasAttribute("data-ending-style")).reverse()
     let offset = 0
@@ -301,6 +331,7 @@ export default class PhemToastController extends Controller {
       el.style.setProperty("--toast-height", `${height}px`)
       el.style.setProperty("--toast-offset-y", `${offset}px`)
       el.toggleAttribute("data-limited", i >= this.limitValue)
+      el.querySelector("[data-phem-toast-content]")?.toggleAttribute("data-behind", i > 0)
       offset += height
     })
 
@@ -315,7 +346,7 @@ export default class PhemToastController extends Controller {
     this.element.toggleAttribute("data-expanded", expanded)
 
     for (const el of this.#toasts()) {
-      el.toggleAttribute("data-expanded", expanded)
+      this.#renderExpanded(el)
       if (expanded) clearTimeout(this.timers.get(el))
       else if (!el.hasAttribute("data-swiping")) this.#start(el)
     }

@@ -608,6 +608,18 @@ final class InteractsWithPhemTest extends KernelTestCase
         $this->assertFails(static fn () => $tester->assertToast('Saved 1'), 'The last action did not show the toast "Saved 1".');
     }
 
+    public function testAssertToastChecksTheTitleOfAToast(): void
+    {
+        $tester = $this->mount(self::NOTIFIER)
+            ->click('#export')
+            ->assertToast('The file is in your downloads.')
+            ->assertToast('The file is in your downloads.', ToastType::Success, 'Export complete')
+            ->assertToast('The file is in your downloads.', title: 'Export complete')
+            ->assertDispatched('toast', ['message' => 'The file is in your downloads.', 'type' => 'success', 'title' => 'Export complete']);
+
+        $this->assertFails(static fn () => $tester->assertToast('The file is in your downloads.', title: 'Done'), 'The last action did not show the toast "Done: The file is in your downloads." (it showed success "Export complete: The file is in your downloads.").');
+    }
+
     public function testAssertToastReadsTheDetailAsTheController(): void
     {
         $tester = $this->mount(self::NOTIFIER)

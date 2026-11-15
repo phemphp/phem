@@ -18,6 +18,9 @@ const MENUBAR = '[data-controller~="phem-menubar"]'
 // open: the pointer can cross an item on its way to the submenu.
 const SUBMENU_GRACE = 150
 
+// The roles of an item that the user checks: a checkbox item and a radio item.
+const CHECKABLE = ["menuitemcheckbox", "menuitemradio"]
+
 // The `phem-menu` controller: a list of actions in a popup, with the keyboard of a menu. The menu
 // stays open after the morph of an event.
 //
@@ -51,6 +54,19 @@ const SUBMENU_GRACE = 150
 // the page does not scroll and the elements out of the menu get no pointer events while it is
 // open (phem_modal.js).
 //
+// An item with the role `menuitemcheckbox` or `menuitemradio` is an item that the user checks.
+// With no handler (`onClick`), its state belongs to the browser. A click on a checkbox item
+// changes its `aria-checked`. A click on a radio item checks it, and unchecks the other radio
+// items of its group: the radio items in the same `group` target, or the radio items in no group.
+// The item sends `phem-menu:change`, with `{ checked, value }` (the `data-value` of the item) in
+// the detail. The first state is the `aria-checked` of the server render. The state stays after
+// the morph of an event, unless the server render gives a new `aria-checked`: then the new value
+// sets the state, and a radio item that the server checks unchecks the others of its group. A
+// page in the Turbo cache has the state of the server render.
+//
+// An item with a handler takes its state from the server: a click does not change it in the
+// browser, and the morph of its event shows the new `aria-checked`.
+//
 // A `phem-menu` in the popup of a menu is a submenu: its trigger is an item of the menu around it.
 // The pointer on the trigger opens it after the `delay` value, and a click, Enter, Space and
 // ArrowRight (ArrowLeft in a right-to-left page) open it on its first item. ArrowLeft and Escape
@@ -69,8 +85,8 @@ const SUBMENU_GRACE = 150
 //
 // The trigger gets `aria-haspopup="menu"`, `aria-expanded`, `aria-controls`, `data-popup-open` and
 // `data-pressed` (not the trigger of a submenu).
-// The popup gets `role="menu"`, the items `role="menuitem"` (an item can have the role
-// `menuitemcheckbox` or `menuitemradio` with `aria-checked`: it gets `data-checked`), the groups
+// The popup gets `role="menu"`, the items `role="menuitem"` (an item with `aria-checked` gets
+// `data-checked` or `data-unchecked`), the groups
 // `role="group"` with `aria-labelledby` (its `groupLabel` target), and the separators
 // `role="separator"`. A popup or a group label with no `id` gets no id: the trigger and the group
 // point to it with an element reference (`ariaControlsElements`, `ariaLabelledByElements`). The
@@ -94,6 +110,9 @@ export default class PhemMenuController extends Controller {
   }
 
   initialize() {
+    // The checked state of each checkbox item and radio item: the last `aria-checked` of a server
+    // render, and the time of the last change by the client. An item connects before the menu.
+    this.checks = new WeakMap()
     this.typeahead = new Typeahead()
     this.popup = new Popup({
       anchor: () => this.anchor,
@@ -120,6 +139,7 @@ export default class PhemMenuController extends Controller {
       value: "open",
       owns: (el, name) => this.#owns(el, name),
       morphed: () => {
+        this.#settleRadios()
         this.#renderParts()
         this.popup.reposition()
       },
@@ -135,6 +155,8 @@ export default class PhemMenuController extends Controller {
     this.element.addEventListener("pointerover", this.onPointerOver, options)
     this.element.addEventListener("pointermove", this.onPointerMove, options)
     this.element.addEventListener("pointerout", this.onPointerOut, options)
+    this.element.addEventListener("turbo:before-morph-element", this.onBeforeMorph, options)
+    document.addEventListener("turbo:before-cache", this.onBeforeCache, options)
 
     this.rendered = this.openValue
     this.popup.render(this.openValue)
@@ -255,6 +277,8 @@ export default class PhemMenuController extends Controller {
     const item = this.#itemOf(event.target)
     if (item) {
       if (isDisabled(item) || this.#isSubmenuTrigger(item)) return
+
+      this.#check(item)
       if (item.getAttribute(`data-${this.identifier}-close-on-click`) !== "false") this.#closeAll()
 
       return
@@ -368,6 +392,92 @@ export default class PhemMenuController extends Controller {
 
   onPointerOut = (event) => this.hover.out(event)
 
+  // The morph of a checkbox item or a radio item: a new `aria-checked` of the server render sets
+  // the state, unless the client changed it after the request of the answer left (`phemSentAt` of
+  // the phem root, see phem_client_state.js).
+  onBeforeMorph = (event) => {
+    const check = this.checks.get(event.target)
+    if (!check) return
+
+    const sentAt = this.element.closest("[data-controller~='phem']")?.phemSentAt ?? null
+    const next = event.detail.newElement?.getAttribute("aria-checked") ?? null
+    check.serverChanged = next !== check.server && !(sentAt !== null && check.changedAt > sentAt)
+    check.server = next
+  }
+
+  // The page that Turbo keeps in its cache has the state of the server render: a new controller
+  // reads the first state of each item from it.
+  onBeforeCache = () => {
+    for (const item of this.itemTargets) {
+      const check = this.checks.get(item)
+      if (!check) continue
+
+      if (check.server === null) item.removeAttribute("aria-checked")
+      else item.setAttribute("aria-checked", check.server)
+
+      this.#renderChecked(item)
+    }
+  }
+
+  // After a morph: a radio item that the server render checked unchecks the other radio items of
+  // its group, also an item that the browser checked.
+  #settleRadios() {
+    for (const item of this.itemTargets) {
+      const check = this.checks.get(item)
+      if (!check?.serverChanged) continue
+
+      check.serverChanged = false
+      if (item.getAttribute("role") !== "menuitemradio" || item.getAttribute("aria-checked") !== "true") continue
+
+      for (const el of this.#radios(item)) {
+        if (el === item || el.getAttribute("aria-checked") !== "true") continue
+
+        el.setAttribute("aria-checked", "false")
+        this.#renderChecked(el)
+      }
+    }
+  }
+
+  // A click on a checkbox item changes its state. A click on a radio item checks it, and unchecks
+  // the other radio items of its group. An item with a handler takes its state from the server.
+  #check(item) {
+    const role = item.getAttribute("role")
+    if (!CHECKABLE.includes(role) || item.hasAttribute("data-phem-on-click")) return
+
+    const checked = item.getAttribute("aria-checked") === "true"
+    if (role === "menuitemradio" && checked) return
+
+    const items = role === "menuitemradio" ? this.#radios(item) : [item]
+    for (const el of items) this.#setChecked(el, el === item ? !checked : false)
+
+    this.dispatch("change", { target: item, detail: { checked: !checked, value: item.getAttribute("data-value") } })
+  }
+
+  #setChecked(item, checked) {
+    if ((item.getAttribute("aria-checked") === "true") === checked) return
+
+    item.setAttribute("aria-checked", String(checked))
+    this.#renderChecked(item)
+
+    const check = this.checks.get(item)
+    if (check) check.changedAt = performance.now()
+  }
+
+  #renderChecked(item) {
+    const checked = item.getAttribute("aria-checked") === "true"
+    item.toggleAttribute("data-checked", checked)
+    item.toggleAttribute("data-unchecked", !checked)
+  }
+
+  // The radio items of the group of a radio item: the radio items in the same `group` target, or
+  // the radio items in no group.
+  #radios(item) {
+    const groupOf = (el) => this.groupTargets.findLast((group) => group.contains(el)) ?? null
+    const group = groupOf(item)
+
+    return this.itemTargets.filter((el) => el.getAttribute("role") === "menuitemradio" && groupOf(el) === group)
+  }
+
   #cancelHighlight() {
     clearTimeout(this.highlighting)
     this.highlightingItem = null
@@ -461,7 +571,12 @@ export default class PhemMenuController extends Controller {
       if (!item.hasAttribute("role")) item.setAttribute("role", "menuitem")
       item.tabIndex = -1
       item.toggleAttribute("data-disabled", isDisabled(item))
-      if (item.hasAttribute("aria-checked")) item.toggleAttribute("data-checked", item.getAttribute("aria-checked") === "true")
+      if (item.hasAttribute("aria-checked")) this.#renderChecked(item)
+
+      // The first state of an item that the user checks is the state of the server render.
+      if (CHECKABLE.includes(item.getAttribute("role")) && !this.checks.has(item)) {
+        this.checks.set(item, { server: item.getAttribute("aria-checked"), serverChanged: false, changedAt: -Infinity })
+      }
     }
 
     for (const group of this.groupTargets) {
@@ -478,13 +593,19 @@ export default class PhemMenuController extends Controller {
 
   // The attributes of the state: the open state of the popup and its position, `aria-expanded`,
   // `data-popup-open` and `data-pressed` on a trigger, and `data-highlighted` on an item (also on
-  // the trigger of a submenu).
+  // the trigger of a submenu). A checkbox item and a radio item with no handler keep `aria-checked`,
+  // `data-checked` and `data-unchecked`, unless the server render gives a new `aria-checked`.
   #owns(el, name) {
     if (this.popup.owns(el, name)) return true
     if (this.triggerTargets.includes(el) && (name === "aria-expanded" || name === "data-popup-open" || name === "data-pressed")) return true
-    if (this.#items.includes(el)) return name === "data-highlighted"
+    if (!this.#items.includes(el)) return false
+    if (name === "data-highlighted") return true
 
-    return false
+    const check = this.checks.get(el)
+
+    if (check === undefined || check.serverChanged || el.hasAttribute("data-phem-on-click")) return false
+
+    return name === "aria-checked" || name === "data-checked" || name === "data-unchecked"
   }
 
   #positionOptions() {

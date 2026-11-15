@@ -370,7 +370,7 @@ A tooltip helps only the users of a pointer and of a keyboard. A touch shows no 
 </div>
 ```
 
-The parts get these roles: the popup `menu`, an item `menuitem`, a group `group` (with `aria-labelledby` to its `groupLabel`), and a separator `separator`. An item can have the role `menuitemcheckbox` or `menuitemradio`, with `aria-checked` from the server: it gets `data-checked` when it is checked.
+The parts get these roles: the popup `menu`, an item `menuitem`, a group `group` (with `aria-labelledby` to its `groupLabel`), and a separator `separator`. An item can have the role `menuitemcheckbox` or `menuitemradio`: see [Add checkbox items and radio items](#add-checkbox-items-and-radio-items).
 
 | Key | On | Action |
 |---|---|---|
@@ -392,6 +392,41 @@ The menu sends `phem-menu:open` when it opens and `phem-menu:close` when it clos
 The trigger gets `aria-haspopup="menu"`, `aria-expanded`, `aria-controls`, `data-popup-open` and `data-pressed` while the menu is open. The trigger of a submenu does not get `data-pressed`. The popup and a `groupLabel` need no `id`: with no id, the trigger and the group point to them with element references (`ariaControlsElements` and `ariaLabelledByElements`). With an id, they get `aria-controls` and `aria-labelledby`.
 
 To put menus in a bar, as the menu bar of an application, see [Build a menu bar](#build-a-menu-bar). In a vertical menubar, ArrowRight (ArrowLeft in a right-to-left page) opens the menu in place of ArrowDown and ArrowUp, and its popup goes on the `inline-end` side of the trigger.
+
+### Add checkbox items and radio items
+
+An item with `role="menuitemcheckbox"` or `role="menuitemradio"` is an item that the user checks. With no handler, the browser keeps its state:
+
+```phem
+<div data-controller="phem-menu">
+    <button data-phem-menu-target="trigger">View</button>
+    <div data-phem-menu-target="popup" hidden>
+        <button data-phem-menu-target="item" role="menuitemcheckbox" aria-checked="true" data-phem-menu-close-on-click="false">Word wrap</button>
+        <div data-phem-menu-target="separator"></div>
+        <div data-phem-menu-target="group">
+            <button data-phem-menu-target="item" role="menuitemradio" data-value="list" aria-checked="true" data-phem-menu-close-on-click="false">List</button>
+            <button data-phem-menu-target="item" role="menuitemradio" data-value="grid" aria-checked="false" data-phem-menu-close-on-click="false">Grid</button>
+        </div>
+    </div>
+</div>
+```
+
+A click on a checkbox item checks or unchecks it. A click on a radio item checks it, and unchecks the other radio items of its group: the radio items in the same `group` part, or the radio items in no group. A disabled item does not change. The item gets `data-checked` or `data-unchecked` with its `aria-checked`. With `data-phem-menu-close-on-click="false"`, the menu stays open, as in a menu of Base UI. After a click on **Grid**, the browser shows:
+
+```html
+<button data-phem-menu-target="item" role="menuitemradio" data-value="list" aria-checked="false" tabindex="-1" data-unchecked>List</button>
+<button data-phem-menu-target="item" role="menuitemradio" data-value="grid" aria-checked="true" tabindex="-1" data-checked data-highlighted>Grid</button>
+```
+
+The `aria-checked` of the server render is the first state. The state of the browser stays after the morph of an event. When the server render gives a new `aria-checked`, the new value sets the state: a radio item that the server checks unchecks the other radio items of its group. A page in the Turbo cache has the state of the server render.
+
+The item sends `phem-menu:change` (`phem-context-menu:change` in a context menu) after a change. The detail has `checked`, and `value` (the `data-value` of the item):
+
+```phem
+<div data-controller="phem-menu" data-action="phem-menu:change->layout#set">
+```
+
+An item with a handler (`onClick`) takes its state from the server, as **Pin** in the first menu. A click does not change the item in the browser and sends no `phem-menu:change`: the handler changes the state, and the morph shows the new `aria-checked`. So a handler that fails or refuses the change leaves the item as it was.
 
 ### Add a submenu
 
@@ -2133,12 +2168,14 @@ Change the default duration and the texts with the controller values: `data-phem
 
 The `show` action shows the detail of another browser event as a toast. A [browser event](events.md#send-events-to-your-javascript) bubbles up to `window`, so listen there: `data-action="phem:saved@window->phem-toast#show"`.
 
-Each toast has these parts: the root (`data-phem-toast`), the description (`[data-phem-toast-description]`, the message) and the close button (`[data-phem-toast-close]`). The root gets `data-type` (the type of the toast) and `--toast-index` (0 for the last toast). A toast gets `data-limited` when more than the `limit` value (3) of newer toasts are on the screen: `phem.css` hides it (a toast with no `class`). A new toast has the animations of the [conventions](#animations), and a toast that goes stays until the end of its `[data-ending-style]` transition. A toast with the same message as a toast that goes shows as a new toast:
+Each toast has these parts: the root (`data-phem-toast`), the content (`[data-phem-toast-content]`), the title (`[data-phem-toast-title]`), the description (`[data-phem-toast-description]`, the message) and the close button (`[data-phem-toast-close]`). A toast with no title has no title part. The root gets `data-type` (the type of the toast) and `--toast-index` (0 for the last toast). A toast gets `data-limited` when more than the `limit` value (3) of newer toasts are on the screen: `phem.css` hides it (a toast with no `class`). A new toast has the animations of the [conventions](#animations), and a toast that goes stays until the end of its `[data-ending-style]` transition. A toast with the same message as a toast that goes shows as a new toast:
 
 ```html
 <div data-controller="phem-toast" aria-live="polite">
     <div id="phem-toast-1" data-phem-toast data-type="success" style="--toast-index: 0;">
-        <span data-phem-toast-description>Saved</span>
+        <div data-phem-toast-content>
+            <span data-phem-toast-description>Saved</span>
+        </div>
         <button type="button" data-phem-toast-close aria-label="Close">×</button>
     </div>
 </div>
@@ -2150,14 +2187,39 @@ To use your own markup, put a `<template>` part in the element, with the same pa
 <div data-controller="phem-toast">
     <template data-phem-toast-target="template">
         <div class="toast">
-            <p data-phem-toast-description></p>
+            <div class="toast-content" data-phem-toast-content>
+                <strong data-phem-toast-title></strong>
+                <p data-phem-toast-description></p>
+            </div>
             <button data-phem-toast-close aria-label="Close">×</button>
         </div>
     </template>
 </div>
 ```
 
+The content and the title are optional parts of a template. The controller removes the title part from a toast with no title. A template with no title part does not show the title. The content part gets `data-behind` when a newer toast is in front of its toast, and `data-expanded` with the stack. Use them to hide the text of the toasts behind the last one in a stack: `.toast-content[data-behind]:not([data-expanded]) { opacity: 0; }`.
+
 The default styles in `phem.css` use `:where()`, so a rule of your app replaces them. A part with a `class` attribute gets no default style: its classes give all the look. So Tailwind utilities work on the parts of a template, also in their cascade layer. Then hide the toasts with `data-limited` yourself, for example with `data-limited:hidden`, and move a toast with the swipe variables (see [Close a toast with a swipe](#close-a-toast-with-a-swipe)).
+
+### Add a title to a toast
+
+Give the `title` argument for a short title above the message:
+
+```php
+$e->toast('The file is in your downloads.', ToastType::Success, title: 'Export complete');
+$this->toasts->error('The card was declined.', title: 'Payment failed');
+```
+
+The browser shows the title in the title part of the toast:
+
+```html
+<div data-phem-toast-content>
+    <strong data-phem-toast-title>Export complete</strong>
+    <span data-phem-toast-description>The file is in your downloads.</span>
+</div>
+```
+
+The detail of the browser event has the title: `{"message": "The file is in your downloads.", "type": "success", "title": "Export complete"}`. An empty title throws an `InvalidArgumentException`. In the detail of an event of your own, a title that is empty or not a text is no title. A toast with the same type, title and message as a toast on the screen does not show again.
 
 ### Show the stack on hover
 

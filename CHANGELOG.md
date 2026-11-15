@@ -8,6 +8,23 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking** The default markup of a toast has a content part (`[data-phem-toast-content]`)
+  around its text: the description is not a child of the toast root now. A CSS rule such as
+  `[data-phem-toast] > [data-phem-toast-description]` does not match. A template of the app does
+  not change.
+- A toast can have a title: `$e->toast('The file is in your downloads.', title: 'Export complete')`,
+  the `title` argument of the `Phem\Toasts` methods, and `title` in the detail of the
+  `phem:toast` event. `phem-toast` shows it in a new title part (`[data-phem-toast-title]`), and
+  removes this part from a toast with no title. A new content part (`[data-phem-toast-content]`)
+  gets `data-behind` and `data-expanded`, as the `Toast.Title` and `Toast.Content` of Base UI.
+  `assertToast()` takes a `title` argument. See docs/controllers.md.
+- `phem-menu` and `phem-context-menu` keep the state of a checkbox item and of a radio item with
+  no handler in the browser, as Base UI does. A click on an item with `role="menuitemcheckbox"`
+  changes its `aria-checked`. A click on an item with `role="menuitemradio"` checks it and
+  unchecks the other radio items of its group. The item gets `data-checked` or `data-unchecked`,
+  and sends `phem-menu:change` with `{ checked, value }`. The state stays after the morph of an
+  event, unless the server render gives a new `aria-checked`. An item with an `onClick` handler
+  takes its state from the server, as before. See docs/controllers.md.
 - Accessibility fixes of the controllers, from the browser tests of a Base UI kit. `phem-toggle`
   links a `<span role="checkbox">` or `role="switch"` to the `<label>` around it
   (`aria-labelledby`, or `ariaLabelledByElements` when the label has no id), so a screen reader

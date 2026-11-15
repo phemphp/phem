@@ -139,4 +139,31 @@ final class MenuTest extends E2eTestCase
         self::assertTrue($page->evaluate($controls));
         self::assertSame(0, $page->evaluate("document.querySelectorAll('.sort-popup[id], .sort-label[id]').length"));
     }
+
+    public function testACheckboxItemAndARadioItemKeepTheirStateInTheBrowser(): void
+    {
+        $page = $this->visit('/menu');
+        self::assertResponseIsSuccessful();
+
+        $page->locator('#sort-trigger')->click();
+
+        // A click checks the item, and the menu stays open.
+        $page->locator('#sort-reverse')->click();
+        expect($page->locator('#sort-reverse'))->toHaveAttribute('aria-checked', 'true');
+        expect($page->locator('#sort-reverse'))->toHaveAttribute('data-checked', '');
+        expect($page->locator('.sort-popup'))->toBeVisible();
+
+        // A radio item unchecks the other radio item of its group.
+        $page->locator('#sort-grid')->click();
+        expect($page->locator('#sort-grid'))->toHaveAttribute('aria-checked', 'true');
+        expect($page->locator('#sort-list'))->toHaveAttribute('aria-checked', 'false');
+        expect($page->locator('#sort-list'))->toHaveAttribute('data-unchecked', '');
+
+        // The server render has the first state: the state of the browser stays after the morph.
+        $page->locator('#sort-name')->click();
+        expect($page->locator('#log'))->toHaveExactText('sort');
+        expect($page->locator('#sort-reverse'))->toHaveAttribute('aria-checked', 'true');
+        expect($page->locator('#sort-grid'))->toHaveAttribute('data-checked', '');
+        expect($page->locator('#sort-list'))->toHaveAttribute('aria-checked', 'false');
+    }
 }

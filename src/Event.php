@@ -95,16 +95,18 @@ final class Event
      *
      *     $e->toast('Saved');
      *     $e->toast('No stock', ToastType::Error);
+     *     $e->toast('The file is in your downloads.', ToastType::Success, title: 'Export complete');
      *
-     * @param int|null $duration the time on the screen in ms (up to Toasts::MAX_DURATION), `0` to
-     *                           keep the toast until its close button, or null for the
-     *                           `duration` value of the controller
+     * @param int|null    $duration the time on the screen in ms (up to Toasts::MAX_DURATION), `0` to
+     *                              keep the toast until its close button, or null for the
+     *                              `duration` value of the controller
+     * @param string|null $title    a short title above the message, or null for a toast with no title
      *
-     * @throws \InvalidArgumentException for an empty message or a duration out of range
+     * @throws \InvalidArgumentException for an empty message, an empty title or a duration out of range
      */
-    public function toast(string $message, ToastType $type = ToastType::Info, ?int $duration = null): void
+    public function toast(string $message, ToastType $type = ToastType::Info, ?int $duration = null, ?string $title = null): void
     {
-        new Toasts($this->dispatcher)->show($message, $type, $duration);
+        new Toasts($this->dispatcher)->show($message, $type, $duration, $title);
     }
 
     /**

@@ -77,6 +77,65 @@ describe("phem-toast", () => {
     expect(document.getElementById("toasts").getAttribute("aria-live")).toBe("off")
   })
 
+  it("shows the title of a toast, and removes the title part of a toast with no title", async () => {
+    await mount(page())
+    toast({ message: "The file is in your downloads.", title: "Export <b>complete</b>" })
+    toast("Saved")
+
+    const [first, second] = toasts().map((el) => el.querySelector("[data-phem-toast-title]"))
+    expect(first.textContent).toBe("Export <b>complete</b>")
+    expect(second).toBeNull()
+    expect(messages()).toEqual(["The file is in your downloads.", "Saved"])
+  })
+
+  it("shows no title for a title that is not a text or a number", async () => {
+    await mount(page())
+    toast({ message: "One", title: true })
+    toast({ message: "Two", title: { a: 1 } })
+    toast({ message: "Three", title: "  " })
+    toast({ message: "Four", title: 4 })
+
+    expect(toasts().map((el) => el.querySelector("[data-phem-toast-title]")?.textContent ?? null)).toEqual([null, null, null, "4"])
+  })
+
+  it("does not show a toast with a title again when the template has no title part", async () => {
+    await mount(`<div id="toasts" data-controller="phem-toast">
+        <template data-phem-toast-target="template"><div class="toast"><p data-phem-toast-description></p></div></template>
+      </div>`)
+    toast({ message: "Saved", title: "Profile" })
+    toast({ message: "Saved", title: "Profile" })
+
+    expect(toasts()).toHaveLength(1)
+    expect(toasts()[0].textContent).toBe("Saved")
+  })
+
+  it("shows a toast again when its title is not the title of the toast on the screen", async () => {
+    await mount(page())
+    toast({ message: "Saved", title: "Profile" })
+    toast({ message: "Saved", title: "Profile" })
+    expect(toasts()).toHaveLength(1)
+
+    toast({ message: "Saved", title: "Settings" })
+    toast("Saved")
+    expect(toasts()).toHaveLength(3)
+  })
+
+  it("marks the content part of the toasts behind the last one, and gives it the state of the stack", async () => {
+    await mount(page())
+    toast("One")
+    toast("Two")
+    const contents = () => toasts().map((el) => el.querySelector("[data-phem-toast-content]"))
+
+    expect(contents().map((el) => el.hasAttribute("data-behind"))).toEqual([true, false])
+    expect(contents().map((el) => el.hasAttribute("data-expanded"))).toEqual([false, false])
+
+    document.getElementById("toasts").dispatchEvent(new MouseEvent("mouseover", { bubbles: true }))
+    expect(contents().map((el) => el.hasAttribute("data-expanded"))).toEqual([true, true])
+
+    toasts()[1].querySelector("[data-phem-toast-close]").click()
+    expect(contents()[0].hasAttribute("data-behind")).toBe(false)
+  })
+
   it("shows a string detail as the message, and the info type by default", async () => {
     await mount(page())
     toast("Hello")
