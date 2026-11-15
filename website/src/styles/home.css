@@ -209,7 +209,7 @@ h1.scene__title { font-size: clamp(42px, 5.6vw, 76px); }
 .fig--split .bound--document { padding: 40px 20px 20px; margin-top: 22px; }
 .bound--document .article { min-width: 220px; }
 .bound--document .article > .bound__label { top: -22px; }
-.fig--split .bound--like { align-self: flex-start; margin-top: 30px; padding: 12px; }
+.fig--split .bound--like { align-self: flex-start; margin-top: 30px; border: 0; }
 
 .fig--symfony { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--space-12); }
 .links { display: grid; gap: var(--space-6); margin: 0; padding: 0 0 0 var(--space-6); border-left: 1px solid var(--story-line-strong); list-style: none; }
@@ -362,13 +362,13 @@ h1.scene__title { font-size: clamp(42px, 5.6vw, 76px); }
 /* Scene 1: a line of the source of the page, beside the part of the page that it renders. */
 .note { color: var(--story-muted); font: 500 13px/20px var(--font-mono); font-variant-ligatures: none; white-space: nowrap; }
 .note b { color: var(--story-ink); font-weight: 500; }
+.bound-label { color: var(--story-muted); font: 500 12px/16px var(--font-mono); letter-spacing: 0.02em; white-space: nowrap; }
 .node-label { color: var(--story-ink); font: 500 13px/20px var(--font-mono); white-space: nowrap; }
 
 /* The wide layout (stage-layout.ts): the place of each element, in design units. */
 .stage [data-s="code"] { top: 60px; left: 370px; width: 500px; }
 .stage [data-s="document"] { top: 110px; left: 20px; width: 310px; height: 540px; }
 .stage [data-s="article"] { top: 150px; left: 45px; width: 260px; height: 470px; }
-.stage [data-s="like-bound"] { top: 526px; left: 79px; width: 192px; height: 68px; }
 .stage [data-s="compose"] { top: 190px; left: 400px; width: 470px; }
 .stage [data-s="label-services"] { top: 60px; left: 384px; }
 .stage [data-s="label-security"] { top: 300px; left: 384px; }
@@ -414,7 +414,7 @@ h1.scene__title { font-size: clamp(42px, 5.6vw, 76px); }
 .story--compact .stage__btn { top: 220px; left: 195px; }
 .story--compact .stage .ph-code__bar { display: none; }
 .story--compact .stage .ph-code pre { padding: 10px 12px; font-size: 11px; line-height: 17px; }
-.story--compact .stage :is(.tag, .note, .node-label) { font-size: 11px; line-height: 16px; }
+.story--compact .stage :is(.tag, .note, .node-label, .bound-label) { font-size: 11px; line-height: 16px; }
 .story--compact .stage .tag--stack { flex-direction: row; gap: 0.6em; }
 .story--compact .stage .bound__label { top: -18px; font-size: 11px; }
 /* Scene 1: the page, with its source on the left. */
@@ -432,7 +432,6 @@ h1.scene__title { font-size: clamp(42px, 5.6vw, 76px); }
 .story--compact .stage [data-s="article"] { top: 54px; left: 29px; width: 328px; height: 128px; gap: 9px; padding: 12px 14px; }
 .story--compact .stage .article__title { margin-bottom: 0; font-size: 14px; line-height: 18px; }
 .story--compact .stage .article__line:nth-of-type(n + 5) { display: none; }
-.story--compact .stage [data-s="like-bound"] { top: 132px; left: 43px; width: 72px; height: 44px; }
 .story--compact .stage [data-s="compose"] { top: 200px; left: 15px; width: 360px; }
 /* Scene 5: the parts of the framework, one below the other. */
 .story--compact .stage [data-s="label-services"] { top: 64px; left: 24px; }

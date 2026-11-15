@@ -531,7 +531,7 @@ export function scenesTimeline(lines: StageLines, time: StoryTime): gsap.core.Ti
     d.reveal('article', into(4, 0.15), 0.3);
     d.reveal('document', into(4, 0.2), 0.3);
     d.reveal('compose', into(4, 0.2), 0.3);
-    t = d.reveal('like-bound', into(4, 0.28), 0.2);
+    t = d.fadeIn(['like-label'], into(4, 0.28), 0.08);
     ['lead-document', 'lead-article', 'lead-like'].forEach((lead, index) => {
         const end = d.draw(lead, t + index * 0.04, 0.12);
         d.mark(d.marks('compose', ['document', 'article', 'like-button'][index]), end - 0.02, 0.04);
@@ -539,7 +539,8 @@ export function scenesTimeline(lines: StageLines, time: StoryTime): gsap.core.Ti
 
     // 4 → 5: the component stays, and lines reach the framework, one at a time.
     d.retract(['lead-document', 'lead-article', 'lead-like'], into(5), 0.12);
-    d.conceal(['compose', 'like-bound', 'document', 'article'], into(5), 0.2);
+    d.fadeOut(['like-label'], into(5));
+    d.conceal(['compose', 'document', 'article'], into(5), 0.2);
     d.move(spots.framework.x, spots.framework.y, spots.framework.scale, into(5, 0.05), 0.3);
     const framework = ['services', 'security', 'rate-limit'];
     framework.forEach((name, index) => {

@@ -61,6 +61,18 @@ const bottom = (b: Box): number => b.top + b.height;
 
 const framework = ['services', 'security', 'rate-limit'];
 
+// Scene 4: the box of the button of the story in the composition, with the "LikeButton" label
+// directly above it.
+function likeButton(sheet: Sheet, spot: Spot): Box {
+    const width = sheet.button.width * spot.scale;
+    const height = sheet.button.height * spot.scale;
+    const box = { left: spot.x - width / 2, top: spot.y - height / 2, width, height };
+
+    sheet.place('like-label', box.left, box.top - 6 - sheet.el('like-label').offsetHeight);
+
+    return box;
+}
+
 // Scene 6: the click goes down from the Like button of browser A to the code, and the HTML comes
 // back up beside it. Returns the place of the two lines.
 function click(sheet: Sheet): { x: number; from: number; to: number } {
@@ -146,10 +158,11 @@ class Wide implements Layout {
     // Scene 4: each boundary leads to its tag in the composition. The lines nest like the boxes:
     // the line of the outer box turns last, so no two lines cross.
     private leads(sheet: Sheet): void {
+        const like = likeButton(sheet, this.spots.compose);
         const leads: [string, string, number, number, number][] = [
             ['lead-document', 'document', 330, 130, 382],
             ['lead-article', 'article', 305, 172, 364],
-            ['lead-like', 'like-button', 271, 560, 346],
+            ['lead-like', 'like-button', right(like), middle(like), 346],
         ];
 
         for (const [path, name, x, y, bend] of leads) {
@@ -258,7 +271,7 @@ class Compact implements Layout {
         down('lead-document', column(0), bottom(sheet.box(el('document'))), end('document'));
         down('lead-article', column(1), bottom(sheet.box(el('article'))), end('article'));
 
-        const like = sheet.box(el('like-bound'));
+        const like = likeButton(sheet, this.spots.compose);
         const to = end('like-button');
         const x = column(2) + 6;
 

@@ -158,6 +158,13 @@ function stage(root: HTMLElement, context: gsap.Context, intro: boolean, mode: M
         prevent: (node: HTMLElement) => null !== node.closest('dialog'),
     });
     const raf = (time: number): void => lenis.raf(time * 1000);
+
+    // A scroll ends the intro before ScrollTrigger renders the timeline: a tween of the timeline
+    // must not start from the state of an intro in progress, or the scroll back shows that state.
+    let endIntro = (): void => {};
+    const onScroll = (): void => endIntro();
+    lenis.on('scroll', onScroll);
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true });
     lenis.on('scroll', ScrollTrigger.update);
     gsap.ticker.add(raf);
     gsap.ticker.lagSmoothing(0);
@@ -220,28 +227,26 @@ function stage(root: HTMLElement, context: gsap.Context, intro: boolean, mode: M
             end: () => `+=${list.offsetHeight - all[all.length - 1].offsetHeight}`,
             scrub: 0.3,
             animation: timeline,
-            onUpdate: () => {
-                if (!opening) {
-                    return;
-                }
-
-                // The scrub calls onUpdate after it renders the timeline. After a jump, the
-                // timeline can be past scene 1 already: its tweens started from the state of the
-                // intro in progress, and the scroll back would show that state. Go back to the
-                // start, end the intro, and forget the start values: the timeline renders again
-                // from scene 1 at rest, and each element takes the state of the scroll.
-                const now = timeline.time();
-                timeline.time(0, true);
-                opening.progress(1).kill();
-                opening = undefined;
-                timeline.invalidate().time(now, true);
-            },
+            onUpdate: () => endIntro(),
         });
+        endIntro = (): void => {
+            if (!opening) {
+                return;
+            }
+
+            // The timeline can be past scene 1 already when ScrollTrigger renders it first: go
+            // back to the start, so the end of the intro does not show the page again.
+            const now = timeline.time();
+            timeline.time(0, true);
+            opening.progress(1).kill();
+            opening = undefined;
+            timeline.time(now, true);
+        };
         ScrollTrigger.refresh();
 
         // The intro plays only when the page opens at scene 1.
         if (0 === trigger.progress) {
-            opening = introTimeline(lines).play();
+            opening = introTimeline(lines).eventCallback('onComplete', () => (opening = undefined)).play();
         }
 
         untilt = tilt(tiltBox, () => timeline.time() / time.into(2));
@@ -304,6 +309,7 @@ function stage(root: HTMLElement, context: gsap.Context, intro: boolean, mode: M
         gsap.ticker.lagSmoothing(500, 33);
         hint?.removeEventListener('click', slowScroll, true);
         lenis.destroy();
+        window.removeEventListener('scroll', onScroll, { capture: true });
         focusable.forEach((element) => (element.matches('pre') ? element.setAttribute('tabindex', '0') : element.removeAttribute('tabindex')));
         root.classList.remove('story--enhanced', ...mode.classes);
         canvas.style.removeProperty('--stage-scale');
