@@ -1,0 +1,22 @@
+#!/bin/sh
+# Prepares the demo: the Composer and importmap packages, the compiled components and the
+# Tailwind CSS. `make demo` and bin/test run it. Set APP_ENV for the environment of the console.
+set -e
+cd "$(dirname "$0")/.."
+
+# composer.lock is not in git. An old lock can pin old packages (for example phem/phem from a path
+# repository), so a composer.json that is newer than the lock (the demo or the bundle) updates it.
+if [ ! -f composer.lock ] || [ composer.json -nt composer.lock ] || [ ../composer.json -nt composer.lock ]; then
+    composer update --quiet --no-interaction
+    touch composer.lock
+else
+    composer install --quiet --no-interaction
+fi
+
+if [ ! -d assets/vendor ] || [ importmap.php -nt assets/vendor ]; then
+    bin/console importmap:install --quiet
+    touch assets/vendor
+fi
+
+vendor/bin/phemc build src
+bin/console tailwind:build --quiet

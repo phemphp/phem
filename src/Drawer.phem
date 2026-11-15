@@ -17,8 +17,8 @@ enum SwipeDirection: string
     public function classes(): string
     {
         return match ($this) {
-            self::Right => 'ms-auto h-dvh w-[20rem] max-w-[calc(100vw-3rem)] border-l [transform:translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:[transform:translateX(100%)] data-ending-style:[transform:translateX(calc(100%+2px))]',
-            self::Left => 'me-auto h-dvh w-[20rem] max-w-[calc(100vw-3rem)] border-r [transform:translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:[transform:translateX(-100%)] data-ending-style:[transform:translateX(calc(-100%-2px))]',
+            self::Right => 'ms-auto h-dvh max-h-none w-[20rem] max-w-[calc(100vw-3rem)] border-l [transform:translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:[transform:translateX(100%)] data-ending-style:[transform:translateX(calc(100%+2px))]',
+            self::Left => 'me-auto h-dvh max-h-none w-[20rem] max-w-[calc(100vw-3rem)] border-r [transform:translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:[transform:translateX(-100%)] data-ending-style:[transform:translateX(calc(-100%-2px))]',
             self::Down => 'mt-auto w-full max-w-none max-h-[calc(100dvh-3rem)] border-t [transform:translateY(calc(var(--drawer-snap-point-offset,0px)+var(--drawer-swipe-movement-y,0px)))] data-starting-style:[transform:translateY(100%)] data-ending-style:[transform:translateY(calc(100%+2px))]',
             self::Up => 'mb-auto w-full max-w-none max-h-[calc(100dvh-3rem)] border-b [transform:translateY(var(--drawer-swipe-movement-y,0px))] data-starting-style:[transform:translateY(-100%)] data-ending-style:[transform:translateY(calc(-100%-2px))]',
         };
@@ -75,7 +75,7 @@ function DrawerPopup(#[Context] Drawer $drawer, ?Html $children = null, mixed ..
     return (
         <dialog
             data-phem-dialog-target="popup"
-            className={{ classes('m-0 inset-0 max-h-none max-w-none h-auto p-6 border-neutral-950 bg-white text-neutral-950 outline-none shadow-[0.25rem_0.25rem_0] shadow-black/12 overflow-y-auto overscroll-contain touch-auto transition-transform duration-[calc(var(--drawer-swipe-strength,1)*450ms)] ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:transition-none data-swiping:select-none dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none backdrop:bg-black backdrop:opacity-[calc(0.2*(1-var(--drawer-swipe-progress,0)))] dark:backdrop:opacity-[calc(0.7*(1-var(--drawer-swipe-progress,0)))] backdrop:transition-opacity backdrop:duration-[450ms] backdrop:ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:backdrop:duration-0 data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0', edge) }}
+            className={{ classes('m-0 inset-0 h-auto p-6 border-neutral-950 bg-white text-neutral-950 outline-none shadow-[0.25rem_0.25rem_0] shadow-black/12 overflow-y-auto overscroll-contain touch-auto transition-transform duration-[calc(var(--drawer-swipe-strength,1)*450ms)] ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:transition-none data-swiping:select-none dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none backdrop:bg-black backdrop:opacity-[calc(0.2*(1-var(--drawer-swipe-progress,0)))] dark:backdrop:opacity-[calc(0.7*(1-var(--drawer-swipe-progress,0)))] backdrop:transition-opacity backdrop:duration-[450ms] backdrop:ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:backdrop:duration-0 data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0', edge) }}
             {{ ...rest }}
         >
             {{ children }}

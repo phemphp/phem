@@ -9,3 +9,4 @@
 /.claude/
 /demo/composer.lock
 /demo/config/reference.php
+/demo/.phpunit.result.cache

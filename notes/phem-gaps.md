@@ -2,9 +2,10 @@
 
 Each item is a candidate fix in phem core. The bundle does not work around them.
 
-Status (2026-11-15): phem commit `f29d41a` fixes all the items except 5 and 6. Item 10 is the
-phemc error E068. Items 5 (menu checkbox and radio items in the browser) and 6 (toast title) are
-still open.
+Status (2026-11-15): phem v0.4.0 (with commit `f29d41a`) fixes items 1 to 13, except 5 and 6.
+Item 10 is the phemc error E068. Items 5 (menu checkbox and radio items in the browser) and 6
+(toast title) are still open. Items 14 to 17 come from the browser tests of the demo. v0.4.0 does
+not fix them.
 
 1. **phemc check misses a method call in class markup.** In a class component, `aria-valuetext={{ text() }}`
    compiles to the Twig function `text()`, and Twig fails at runtime with `Unknown "text" function`.
@@ -70,3 +71,29 @@ still open.
     changes. phem never sets `data-instant` on the positioner, so on the first open the popup moves in
     from the top left corner of the page. Fix: set `data-instant` on the positioner (and the popup)
     for the first open, and remove it when the open item changes.
+
+14. **phem-toggle does not link a wrapping `<label>` to the element.** Base UI gives the `<label>` around a
+    checkbox or a switch an id, and sets `aria-labelledby` on the `<span role="checkbox">` (or
+    `role="switch"`). A label names only a labelable element, so the span of `phem-toggle` has no
+    accessible name. Seen in the demo: `/components/checkbox`, `/components/switch` and
+    `/components/checkbox-group`. A click on the label works. Fix: link the label with
+    `ariaLabelledByElements`, as `phem-dialog` does for its title. The radio group already names its items.
+
+15. **phem-popover links its title and description only by id.** The `PopoverTitle` and
+    `PopoverDescription` function components have no ids, so the popup (`role="dialog"`) has no
+    accessible name. Base UI links them. `phem-dialog` uses element references when a part has no
+    id. Fix: do the same in `phem-popover`.
+
+16. **phem-toggle-group keeps its own roving focus in a phem-toolbar.** In the Base UI toolbar demo,
+    ArrowRight on the last item of the alignment toggle group moves the focus to the next toolbar
+    item. In phem, the toggle group loops to its first item. Fix: a toggle group in a toolbar leaves
+    the arrow keys to the toolbar.
+
+17. **phem-select highlights the item under a pointer that does not move.** The controller highlights
+    an item on `pointerover`. The browser also sends `pointerover` when the popup opens under a
+    pointer that does not move. With `alignItemWithTrigger`, the popup opens over the trigger, so an
+    item comes under the pointer and takes the highlight of the keyboard. Seen in the demo: click
+    Honeycrisp, then press ArrowDown on the trigger. The highlight goes to Pink Lady after some time.
+    Base UI highlights an item on a move of the pointer only (`mousemove`). `phem-menu` and
+    `phem-combobox` also use `pointerover`, so they can have the same problem. Fix: highlight an
+    item on `pointermove`, or ignore a `pointerover` with no move of the pointer after the open.

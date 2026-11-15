@@ -1,0 +1,8 @@
+# The browser tests. The browser sends the requests of the app (port 8000) to the kernel, so the
+# tests need no web server. Other hosts (the images of the demos) go to the network.
+framework:
+    test: true
+
+playwright:
+    base_url: 'http://localhost:8000'
+    intercepted_hosts: ['localhost:8000']

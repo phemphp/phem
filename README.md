@@ -55,11 +55,14 @@ The phem gaps found so far, and which of them phem fixed, are in [notes/phem-gap
 
 ## Develop
 
-The commands run in the dev image of phem (it builds phemc). `phem/phem` is a symlink to `../../phem`.
+The bundle requires the `phem/phem` release from Packagist (`^0.4`). The commands run in the dev image of phem, from the phem checkout in `../../phem`. They use `vendor/bin/phemc`, the phemc binary of the installed phem release.
 
 ```sh
 make install   # composer install
 make test      # PHPUnit render tests
 make check     # phemc check src
 make demo      # the gallery on http://localhost:8100
+make test-e2e  # the browser tests of the demo (Playwright PHP)
 ```
+
+The browser tests (`demo/tests/`) run in the e2e image of phem, with Chromium. They need no web server: the Playwright Symfony bundle sends the requests of the browser to the kernel of the demo, in the PHPUnit process. A failed test saves a screenshot and the HTML of the page in `demo/var/failures/`.
