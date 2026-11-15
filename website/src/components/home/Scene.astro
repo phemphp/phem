@@ -1,0 +1,37 @@
+---
+// One scene of the story: the copy (one headline, at most one sentence, the links), the static
+// figure, and an optional `hint` at the bottom of the scene (the first scene: scroll down). The
+// static figure is the complete scene with no JS, with reduced motion and on small screens. On a
+// large screen with motion, the stage shows the scene and the figure stays for screen readers
+// only. A `long` scene has two screens of scroll on the stage: its copy stays in the middle of
+// the screen while the stage plays its steps (src/scripts/stage-timeline.ts reads it).
+//
+// Each word of the headline has a mask, for the reveal of src/scripts/story.ts. The heading has
+// its text as its name, so a screen reader reads it in one piece. A `brand` starts the name and
+// the text for search engines, but does not show.
+interface Props {
+    id: string;
+    index: number;
+    title: string;
+    brand?: string;
+    lead?: string;
+    level?: 1 | 2;
+    long?: boolean;
+}
+
+const { id, index, title, brand, lead, level = 2, long = false } = Astro.props;
+const Heading = 1 === level ? 'h1' : 'h2';
+const words = title.split(' ');
+---
+<section class:list={['scene', { 'scene--long': long }]} id={id} data-scene={index} aria-labelledby={`${id}-title`}>
+    <div class="scene__copy">
+        <p class="scene__index" aria-hidden="true">{String(index).padStart(2, '0')}</p>
+        <Heading class="scene__title" id={`${id}-title`} aria-label={brand ? `${brand}: ${title}` : title}><span aria-hidden="true">{brand && <span class="ph-sr-only">{brand}: </span>}{words.map((word, position) => <Fragment>{0 < position && ' '}<span class="word"><span class="word__inner">{word}</span></span></Fragment>)}</span></Heading>
+        {lead && <p class="scene__lead" data-story-reveal set:html={lead} />}
+        {Astro.slots.has('actions') && <div class="scene__actions" data-story-reveal><slot name="actions" /></div>}
+    </div>
+    <figure class="scene__figure" data-scene-figure>
+        <slot />
+    </figure>
+    {Astro.slots.has('hint') && <slot name="hint" />}
+</section>

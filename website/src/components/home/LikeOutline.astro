@@ -1,0 +1,23 @@
+---
+// The Like button of the story, as an outline: an illustration, not a control. `counts` gives one
+// span for each value. A static outline shows the last value. A `stacked` outline (the stage)
+// puts the values on top of each other, so the story can cross-fade them; it shows the first.
+interface Props {
+    counts?: number[];
+    size?: 'md' | 'sm';
+    active?: boolean;
+    stacked?: boolean;
+    class?: string;
+    [attribute: `data-${string}`]: string | undefined;
+}
+
+const { counts = [0], size = 'md', active = false, stacked = false, class: className, ...attributes } = Astro.props;
+const shown = stacked ? 0 : counts.length - 1;
+---
+<span class:list={['like', `like--${size}`, { 'is-active': active, 'like--stacked': stacked }, className]} {...attributes}>
+    <span class="like__label">Like</span><span class="like__sep" aria-hidden="true">·</span><span class="like__count">
+        {counts.map((count, index) => (
+            <span class="like__value" data-count={count} aria-hidden={index === shown ? undefined : 'true'} hidden={!stacked && index !== shown}>{count}</span>
+        ))}
+    </span>
+</span>

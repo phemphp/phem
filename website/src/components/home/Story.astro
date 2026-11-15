@@ -1,0 +1,165 @@
+---
+// The story of the home page: one small article and its Like button, in eight scenes. The scenes
+// are plain sections with a static figure. On a large screen with motion, src/scripts/story.ts
+// adds the sticky stage, which keeps the same elements from scene to scene. The interactions are
+// illustrations: nothing on this page runs a PHP handler.
+import { highlight } from '../../home/highlight';
+import { post } from '../../home/post';
+import * as snippets from '../../home/snippets';
+import '../../styles/home.css';
+import Icon from '../Icon.astro';
+import BrowserOutline from './BrowserOutline.astro';
+import Friends from './Friends.astro';
+import LikeOutline from './LikeOutline.astro';
+import Scene from './Scene.astro';
+import Stage from './Stage.astro';
+
+// The code of each scene. Each window has the name of its snippet: the stage shows a copy of it.
+const code = Object.fromEntries(Object.entries(snippets).map(([name, snippet]) => [name, highlight(snippet, name)])) as Record<keyof typeof snippets, string>;
+
+const install = 'composer require phem/phem';
+
+// The size of the stage. Below it, the scale of the stage makes its text too small to read: the
+// page shows the static figures. The inline script and story.ts read it from the page.
+const stageQuery = '(min-width: 1280px) and (min-height: 700px)';
+---
+<div class="story" data-story data-stage-query={stageQuery}>
+    <script is:inline>
+        // Before the first paint: set the layout of the stage, so the page does not jump when
+        // story.ts starts, and hide what the first scene reveals, so it does not show and then
+        // animate in. story.ts keeps the layout in sync with the screen and the motion setting.
+        {
+            const story = document.currentScript.parentElement;
+
+            if (matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+                story.classList.add('story--pending');
+
+                if (matchMedia(story.dataset.stageQuery).matches) {
+                    story.classList.add('story--enhanced');
+                }
+
+                // story.ts removes story--pending when it starts. When it does not start in time
+                // (a slow or a failed script), show the static page.
+                setTimeout(() => {
+                    if (story.classList.contains('story--pending')) {
+                        story.classList.remove('story--pending', 'story--enhanced');
+                    }
+                }, 3000);
+            }
+        }
+    </script>
+    <!-- The background of the story: a canvas that stays on the screen while the story scrolls
+         (src/scripts/field.ts). -->
+    <div class="story__field" aria-hidden="true"><canvas data-story-field></canvas></div>
+    <div class="story__scenes">
+        <Scene id="story-ui" index={1} level={1} brand="Phem" title="Your UI. Written in PHP." lead="Server components for Symfony.">
+            <a slot="actions" class="ph-btn ph-btn--primary" href="/quickstart/">Get started<Icon name="arrow-right" /></a>
+            <a slot="actions" class="ph-btn story-btn" href="/introduction/">Documentation</a>
+            <a slot="actions" class="story-skip" href="#start">Skip the story</a>
+            <a slot="hint" class="scene__hint" href="#story-file">Scroll<Icon name="arrow-down" /></a>
+            <div class="fig fig--center">
+                <BrowserOutline class="browser--page" counts={[0]} lines={4} />
+            </div>
+        </Scene>
+
+        <Scene id="story-file" index={2} title="Logic meets markup." lead="PHP logic and Twig markup in one <code>.phem</code> file.">
+            <div class="fig fig--split">
+                <LikeOutline counts={[0]} />
+                <Fragment set:html={code.likeButton} />
+            </div>
+        </Scene>
+
+        <Scene id="story-roundtrip" index={3} title="Click. PHP. Update." lead="The handler runs on your server and sends back only the HTML that changed.">
+            <div class="fig fig--trip">
+                <LikeOutline counts={[0, 1]} active />
+                <div class="trip">
+                    <span class="trip__row"><span class="tag tag--stack"><span>onClick</span><span>Event</span></span><span class="trip__line trip__line--out"></span></span>
+                    <span class="trip__row"><span class="trip__line trip__line--back"></span><span class="tag">HTML</span></span>
+                </div>
+                <span class="pill"><span class="pill__meta">PHP</span><code>like()</code></span>
+            </div>
+        </Scene>
+
+        <Scene id="story-pages" index={4} title="Small pieces. Complete pages." lead="Components nest, and a page is a component with a URL.">
+            <div class="fig fig--split">
+                <div class="bound bound--document">
+                    <span class="bound__label">Document</span>
+                    <div class="article">
+                        <span class="bound__label">Article</span>
+                        <span class="article__title">{post.title}</span>
+                        <span class="article__line" aria-hidden="true"></span>
+                        <span class="article__line" aria-hidden="true"></span>
+                        <span class="article__line article__line--short" aria-hidden="true"></span>
+                        <div class="bound bound--like">
+                            <span class="bound__label">LikeButton</span>
+                            <LikeOutline counts={[1]} />
+                        </div>
+                    </div>
+                </div>
+                <Fragment set:html={code.blogPost} />
+            </div>
+        </Scene>
+
+        <Scene id="story-symfony" index={5} title="Still Symfony." lead="Services, security and rate limits work as they do in a controller.">
+            <div class="fig fig--symfony">
+                <LikeOutline counts={[1]} />
+                <ul class="links">
+                    <li><span class="node"><span class="node__dot"></span>Services</span><Fragment set:html={code.services} /></li>
+                    <li><span class="node"><span class="node__dot"></span>Security</span><Fragment set:html={code.security} /></li>
+                    <li><span class="node"><span class="node__dot"></span>Rate limits</span><Fragment set:html={code.rateLimit} /></li>
+                </ul>
+            </div>
+        </Scene>
+
+        <Scene id="story-broadcast" index={6} long title="One change. Every viewer." lead="<code>#[Broadcast]</code> sends shared data to every viewer through Mercure, and the UI state stays in each browser.">
+            <div class="fig fig--broadcast">
+                <div class="browsers">
+                    <BrowserOutline counts={[2]} />
+                    <BrowserOutline counts={[2]} device="tablet" open />
+                    <BrowserOutline counts={[2]} device="phone" />
+                </div>
+                <span class="node"><span class="node__dot node__dot--accent"></span>Mercure</span>
+                <div class="fig__row">
+                    <Fragment set:html={code.broadcast} />
+                    <dl class="legend">
+                        <div><dt><span class="legend__dot legend__dot--shared"></span><code>$post-&gt;likes</code></dt><dd>Shared data: every viewer</dd></div>
+                        <div><dt><span class="legend__dot legend__dot--transaction"></span><code>#[Transactional]</code></dt><dd>Saved in one transaction: no save() call</dd></div>
+                    </dl>
+                </div>
+            </div>
+        </Scene>
+
+        <Scene id="story-compile" index={7} title="Compiled before it runs." lead="<code>phemc</code> compiles each <code>.phem</code> file to plain PHP and Twig at build time.">
+            <div class="fig fig--pipeline">
+                <span class="pill"><span class="node__dot"></span>LikeButton.phem</span>
+                <span class="vline" aria-hidden="true"></span>
+                <span class="pill pill--strong">phemc</span>
+                <div class="branches">
+                    <div><span class="tag">PHP</span><Fragment set:html={code.compiledPhp} /></div>
+                    <div><span class="tag">Twig</span><Fragment set:html={code.compiledTwig} /></div>
+                </div>
+            </div>
+        </Scene>
+
+        <Scene id="story-start" index={8} title="Make something interactive.">
+            <span slot="actions" class="ph-install story-install"><span><span class="ph-install__prompt">$</span> {install}</span><button class="ph-icon-btn" type="button" data-ph-copy={install} aria-label="Copy install command"><Icon name="clipboard-document" /></button></span>
+            <span slot="actions" class="scene__break" aria-hidden="true"></span>
+            <a slot="actions" class="ph-btn ph-btn--primary" href="/quickstart/">Get started<Icon name="arrow-right" /></a>
+            <a slot="actions" class="ph-btn story-btn" href="/introduction/">Explore the docs</a>
+            <div class="fig fig--sketch">
+                <Friends />
+            </div>
+        </Scene>
+    </div>
+    <Stage />
+</div>
+
+<script>
+    import { story } from '../../scripts/story';
+
+    const root = document.querySelector<HTMLElement>('[data-story]');
+
+    if (root) {
+        story(root);
+    }
+</script>

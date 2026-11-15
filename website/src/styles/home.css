@@ -1,0 +1,339 @@
+/* The story of the home page (src/components/home/). Only lines, dots, text and code: no images,
+   gradients, glow or heavy shadows. One muted accent marks the active code, the events and the
+   changes. The story follows the theme: warm paper in light, charcoal in dark. */
+/* The home page has one background: the page, the header, the story, the cards and the footer
+   share the story color. */
+:root:has([data-story]) {
+    --story-bg: #f4f2ec;
+    --story-ink: #1c1b19;
+    --story-soft: #4a4740;
+    --story-muted: #67635b;
+    --story-line: rgba(28, 27, 25, 0.13);
+    --story-line-strong: rgba(28, 27, 25, 0.42);
+    --story-accent: #2a7262;
+    --surface: var(--story-bg);
+    --surface-raised: var(--story-bg);
+    background: var(--story-bg);
+}
+[data-theme="dark"]:has([data-story]) {
+    --story-bg: #141414;
+    --story-ink: #f1ede6;
+    --story-soft: #cbc6bc;
+    --story-muted: #9a958c;
+    --story-line: rgba(241, 237, 230, 0.12);
+    --story-line-strong: rgba(241, 237, 230, 0.38);
+    --story-accent: #7fcfb8;
+}
+body:has([data-story]) { background: var(--story-bg); }
+/* In the light theme, the sunken parts (the search field, the version badge, the hovers) are a
+   darker tone of the warm paper, not the neutral gray of the other pages. */
+:root:has([data-story]):not([data-theme="dark"]) { --surface-sunken: color-mix(in srgb, var(--story-ink) 6%, var(--story-bg)); }
+/* The story fills the screen, so the whole home page does: the header, the story, the cards and
+   the footer have the same edges. The small gutter is the one of the header on a phone. */
+:root:has([data-story]) { --story-gutter: clamp(24px, 3vw, 56px); }
+@media (max-width: 767px) { :root:has([data-story]) { --story-gutter: var(--space-4); } }
+:root:has([data-story]) :is(.ph-header__inner, .ph-footer__inner) { max-width: none; padding-inline: var(--story-gutter); }
+.home-main .home-section { max-width: none; padding-top: var(--space-16); padding-inline: var(--story-gutter); }
+/* The cards have no fill of their own on this background: an outline marks them. */
+.home-main .ph-card { background: transparent; box-shadow: inset 0 0 0 1px var(--story-line); }
+.home-main .ph-card:hover { box-shadow: inset 0 0 0 1px var(--story-line-strong); }
+
+/* The code and the design system parts inside the story use the story colors. */
+.story {
+    --ink: var(--story-ink);
+    --ink-muted: var(--story-muted);
+    --code-surface: transparent;
+    --code-ink: var(--story-ink);
+    --code-muted: var(--story-muted);
+    --syntax-keyword: var(--story-muted);
+    --syntax-string: var(--story-soft);
+    --syntax-attribute: var(--story-ink);
+    --syntax-variable: var(--story-ink);
+}
+
+.home-main { padding: 0; }
+.home-section__title:focus { outline: none; }
+
+.story { color: var(--story-ink); }
+.story ::selection { background: color-mix(in srgb, var(--story-accent) 30%, transparent); }
+.story__scenes { padding: 0 var(--story-gutter); box-sizing: border-box; }
+
+/* ---------- Scenes: the copy and the static figure ---------- */
+.scene { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: center; gap: var(--space-12) var(--space-16); padding: 112px 0; border-top: 1px solid var(--story-line); }
+.scene:first-child { padding-top: 88px; border-top: 0; }
+.scene, .home-section__title { scroll-margin-top: var(--top-height); }
+.scene__copy { min-width: 0; }
+.scene__index { margin: 0 0 var(--space-5); color: var(--story-muted); font: 500 12px/16px var(--font-mono); letter-spacing: 0.08em; }
+.scene__title { margin: 0; color: var(--story-ink); font: 600 clamp(34px, 4.4vw, 58px)/1.04 var(--font-sans); letter-spacing: -0.035em; text-wrap: balance; }
+h1.scene__title { font-size: clamp(42px, 5.6vw, 76px); }
+.scene__lead { max-width: 28em; margin: var(--space-5) 0 0; color: var(--story-muted); font: 400 18px/28px var(--font-sans); text-wrap: pretty; }
+.scene__lead code { color: var(--story-ink); font: 500 0.88em/1 var(--font-mono); font-variant-ligatures: none; }
+.scene__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-8); }
+.scene__figure { min-width: 0; margin: 0; }
+
+/* The link to the next scene, at the bottom of the first scene. Only the stage has full-screen
+   scenes, so only the stage shows it. */
+.scene__hint { display: none; }
+.story--enhanced .scene { position: relative; }
+.story--enhanced .scene__hint { position: absolute; bottom: var(--space-12); left: 0; display: inline-flex; align-items: center; gap: var(--space-2); color: var(--story-muted); font: 500 12px/16px var(--font-mono); letter-spacing: 0.08em; text-decoration: none; text-transform: uppercase; }
+.scene__hint svg { width: 16px; height: 16px; animation: story-hint 1.8s ease-in-out infinite; }
+.scene__hint:hover { color: var(--story-ink); }
+.scene__hint:focus-visible { outline: 2px solid var(--story-accent); outline-offset: 4px; border-radius: 2px; }
+@keyframes story-hint { 50% { transform: translateY(4px); } }
+@media (prefers-reduced-motion: reduce) { .scene__hint svg { animation: none; } }
+
+/* Until story.ts starts, the first scene hides the heading and the figure that it reveals. The
+   inline script of Story.astro sets story--pending, and removes it after 3 s if the script does
+   not start. */
+.story--pending .scene:first-child :is(.scene__title, [data-scene-figure]) { opacity: 0; }
+
+/* The masks of the words of the headings (Scene.astro), for the reveal of story.ts. */
+.word { display: inline-block; overflow: hidden; padding-bottom: 0.12em; margin-bottom: -0.12em; vertical-align: top; }
+.word__inner { display: inline-block; }
+
+.story .ph-btn--primary { background: var(--story-ink); color: var(--story-bg); }
+.story .ph-btn--primary:hover { background: var(--story-soft); }
+.story .ph-btn:focus-visible { outline-color: var(--story-accent); }
+.story-btn { background: transparent; color: var(--story-ink); box-shadow: inset 0 0 0 1px var(--story-line-strong); }
+.story-btn:hover { box-shadow: inset 0 0 0 1px var(--story-ink); }
+.story-skip { margin-left: var(--space-1); color: var(--story-muted); font: 500 14px/20px var(--font-sans); text-decoration: underline; text-decoration-color: var(--story-line-strong); text-underline-offset: 4px; }
+.story-skip:hover { color: var(--story-ink); text-decoration-color: currentColor; }
+.story-skip:focus-visible { outline: 2px solid var(--story-accent); outline-offset: 4px; border-radius: 2px; }
+.scene__break { flex-basis: 100%; height: 0; }
+.story .story-install { background: transparent; box-shadow: inset 0 0 0 1px var(--story-line-strong); }
+.story-install .ph-icon-btn { color: var(--story-muted); }
+.story-install .ph-icon-btn:hover { color: var(--story-ink); background: var(--story-line); }
+.story-install .ph-icon-btn:focus-visible { outline: 2px solid var(--story-accent); outline-offset: 1px; }
+
+/* ---------- Shared parts ---------- */
+.like { --like-size: 18px; display: inline-flex; flex: none; align-items: center; gap: 0.3em; box-sizing: border-box; height: 2.8em; padding: 0 1.15em; border: 1px solid color-mix(in srgb, var(--story-accent) calc(var(--active, 0) * 100%), var(--story-line-strong)); border-radius: 0.55em; color: var(--story-ink); font: 500 var(--like-size)/1 var(--font-sans); letter-spacing: -0.01em; white-space: nowrap; }
+.like--sm { --like-size: 12.6px; }
+.like.is-active { --active: 1; }
+.like__sep { color: var(--story-muted); }
+.like__count { display: inline-grid; color: color-mix(in srgb, var(--story-accent) calc(var(--active, 0) * 100%), var(--story-ink)); font-variant-numeric: tabular-nums; }
+.like__value { grid-area: 1 / 1; }
+.like__value[hidden] { display: none; }
+.like--stacked .like__value:not(:first-child) { opacity: 0; }
+.like--slot { visibility: hidden; width: 6.4em; }
+
+.story .ph-code { min-width: 0; margin: 0; border: 1px solid var(--story-line); border-radius: var(--radius-lg); background: transparent; box-shadow: none; }
+.story .ph-code__bar { border-bottom: 1px solid var(--story-line); color: var(--story-muted); }
+.story .ph-code__bar > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.story .ph-code__copy { color: var(--story-muted); }
+.story .ph-code__copy:hover { color: var(--story-ink); background: var(--story-line); }
+.story .ph-code__copy:focus-visible { outline-color: var(--story-accent); }
+/* A mark is a token that the scene talks about. The stage turns it on with --on. */
+.story [data-mark], .story [data-mark] span { color: color-mix(in srgb, var(--story-accent) calc(var(--on, 1) * 100%), var(--story-ink)) !important; }
+.story [data-mark] { text-decoration: underline 1px color-mix(in srgb, var(--story-accent) calc(var(--on, 1) * 100%), transparent); text-underline-offset: 5px; }
+
+.tag { color: var(--story-accent); font: 500 11px/16px var(--font-mono); letter-spacing: 0.04em; white-space: nowrap; }
+/* Two words, one below the other, aligned on the line that they name. */
+.tag--stack { display: inline-flex; flex-direction: column; align-items: flex-end; }
+.pill { display: inline-flex; align-items: center; gap: 10px; box-sizing: border-box; height: 40px; padding: 0 18px; border: 1px solid var(--story-line-strong); border-radius: var(--radius-full); color: var(--story-ink); font: 500 14px/1 var(--font-mono); font-variant-ligatures: none; white-space: nowrap; }
+.pill--strong { border-color: var(--story-ink); }
+.pill__meta { color: var(--story-muted); font-size: 12px; }
+.pill code { color: var(--story-accent); font: inherit; }
+.node { display: inline-flex; align-items: center; gap: 10px; color: var(--story-ink); font: 500 13px/20px var(--font-mono); }
+.node__dot { flex: none; box-sizing: border-box; width: 8px; height: 8px; border: 1px solid var(--story-ink); border-radius: 50%; }
+.node__dot--accent { border-color: var(--story-accent); background: var(--story-accent); }
+
+.bound { position: relative; box-sizing: border-box; border: 1px dashed var(--story-line-strong); border-radius: 10px; }
+.bound__label { position: absolute; top: -22px; left: 0; color: var(--story-muted); font: 500 11px/16px var(--font-mono); letter-spacing: 0.02em; white-space: nowrap; }
+.article { position: relative; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; padding: 24px; border: 1px solid var(--story-line-strong); border-radius: 8px; }
+.article__title { margin-bottom: 4px; color: var(--story-ink); font: 600 17px/24px var(--font-sans); letter-spacing: -0.01em; }
+.article__line { height: 1px; background: var(--story-line-strong); }
+.article__line--short { width: 60%; }
+
+.browser { display: flex; flex-direction: column; box-sizing: border-box; min-width: 0; overflow: hidden; border: 1px solid var(--story-line-strong); border-radius: 10px; background: var(--story-bg); }
+.browser__bar { display: flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border-bottom: 1px solid var(--story-line); }
+.browser__bar i { box-sizing: border-box; width: 6px; height: 6px; border: 1px solid var(--story-line-strong); border-radius: 50%; }
+.browser__url { margin-left: 8px; color: var(--story-muted); font: 400 10px/1 var(--font-mono); }
+.browser__body { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
+.browser__title { color: var(--story-ink); font: 600 13px/18px var(--font-sans); }
+.browser__line { height: 1px; background: var(--story-line-strong); }
+.browser__line--short { width: 60%; }
+.browser__like { display: flex; margin-top: 6px; }
+.browser__toggle { display: inline-flex; align-items: center; gap: 8px; color: var(--story-muted); font: 500 11px/16px var(--font-mono); }
+.browser__chevron { box-sizing: border-box; width: 5px; height: 5px; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; transform: rotate(-45deg); }
+.browser__toggle.is-open .browser__chevron { transform: rotate(45deg); }
+.browser__comments { display: flex; flex-direction: column; gap: 8px; padding-left: 12px; border-left: 1px solid var(--story-line); }
+.browser__comments[hidden] { display: none; }
+/* A tablet and a phone: rounder, the host in the middle of the bar, and a home indicator. */
+.browser--tablet { border-radius: 16px; }
+.browser--phone { border-radius: 20px; }
+.browser--tablet .browser__bar, .browser--phone .browser__bar { justify-content: center; }
+.browser--tablet .browser__url, .browser--phone .browser__url { margin-left: 0; }
+.browser__home { align-self: center; width: 36%; height: 1px; margin: auto 0 8px; background: var(--story-line-strong); }
+/* The blog post page of scene 1: a large browser. Its Like slot has the size of the button of the
+   story at the scale of the page (stage-timeline.ts). */
+.browser--page { width: 100%; max-width: 480px; }
+.browser--page .browser__body { gap: 14px; padding: 28px 28px 24px; }
+.browser--page .browser__title { font-size: 22px; line-height: 28px; letter-spacing: -0.015em; }
+.browser--page .browser__like { margin-top: 10px; }
+.browser--page .like { --like-size: 19.8px; }
+
+.legend { display: grid; gap: 14px; margin: 0; }
+.legend > div { display: grid; gap: 2px; }
+.legend dt { display: flex; align-items: center; gap: 10px; color: var(--story-ink); font: 500 13px/18px var(--font-mono); font-variant-ligatures: none; }
+.legend code { font: inherit; }
+.legend dd { margin: 0 0 0 18px; color: var(--story-muted); font: 400 13px/18px var(--font-sans); }
+.legend__dot { flex: none; box-sizing: border-box; width: 8px; height: 8px; border: 1px solid var(--story-muted); border-radius: 50%; }
+.legend__dot--shared { border-color: var(--story-accent); background: var(--story-accent); }
+.legend__dot--transaction { border-radius: 1px; }
+
+/* The drawing of the last scene (Friends.astro). */
+.sketch { display: block; width: 100%; height: auto; overflow: visible; }
+/* The lines and the text of the drawing have the color of the lines of the other scenes. */
+.sketch path { fill: none; stroke: var(--story-line-strong); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; shape-rendering: geometricPrecision; }
+.sketch text { fill: var(--story-line-strong); font-family: var(--font-sans); font-weight: 700; text-rendering: geometricPrecision; }
+.sketch .sketch__logo { fill: var(--story-line-strong); stroke: none; }
+.sketch__slot { fill: none; stroke: none; }
+
+/* ---------- Static figures ---------- */
+.fig { display: flex; align-items: center; gap: var(--space-8); min-width: 0; }
+.fig--center { justify-content: center; min-height: 240px; }
+.fig--sketch { display: block; }
+/* The figure shows the drawing smaller than the stage: its lines keep one pixel, so they do not
+   fade into a thin, jagged gray. */
+.fig--sketch .sketch path { vector-effect: non-scaling-stroke; stroke-width: 1px; }
+.fig--split { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--space-12); }
+
+.fig--trip { flex-wrap: wrap; justify-content: center; gap: var(--space-5); }
+.trip { display: grid; flex: 1 1 120px; gap: 14px; max-width: 200px; }
+.trip__row { display: flex; align-items: center; gap: 10px; }
+.trip__line { position: relative; flex: 1; height: 1px; background: var(--story-accent); }
+.trip__line::after { content: ""; position: absolute; top: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--story-accent); }
+.trip__line--out::after { right: -3px; }
+.trip__line--back::after { left: -3px; }
+
+.fig--split .bound--document { padding: 40px 20px 20px; margin-top: 22px; }
+.bound--document .article { min-width: 220px; }
+.bound--document .article > .bound__label { top: -22px; }
+.fig--split .bound--like { align-self: flex-start; margin-top: 30px; padding: 12px; }
+
+.fig--symfony { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--space-12); }
+.links { display: grid; gap: var(--space-6); margin: 0; padding: 0 0 0 var(--space-6); border-left: 1px solid var(--story-line-strong); list-style: none; }
+.links li { position: relative; display: grid; gap: var(--space-2); min-width: 0; }
+.links .node__dot { position: absolute; top: 6px; left: calc(-1 * var(--space-6) - 4.5px); background: var(--story-bg); }
+
+.fig--broadcast { display: grid; justify-items: center; gap: var(--space-6); }
+.browsers { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.1fr) minmax(0, 0.8fr); align-items: end; gap: var(--space-4); width: 100%; }
+.fig__row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: center; gap: var(--space-6); width: 100%; }
+
+.fig--pipeline { display: flex; flex-direction: column; align-items: center; }
+.vline { width: 1px; height: 28px; background: var(--story-line-strong); }
+.branches { position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); width: 100%; padding-top: 28px; }
+.branches::before { content: ""; position: absolute; top: 0; left: 25%; right: 25%; height: 1px; background: var(--story-line-strong); }
+.branches > div { position: relative; display: grid; justify-items: center; gap: var(--space-2); min-width: 0; }
+.branches > div::before { content: ""; position: absolute; top: -28px; left: 50%; width: 1px; height: 22px; background: var(--story-line-strong); }
+.branches .ph-code { justify-self: stretch; }
+.fig--pipeline .ph-code pre, .stage__code--small .ph-code pre { font-size: 12.5px; }
+
+@media (max-width: 899px) {
+    .scene { grid-template-columns: minmax(0, 1fr); gap: var(--space-8); padding: 72px 0; }
+    .scene:first-child { padding-top: 56px; }
+    .fig--center { min-height: 160px; }
+}
+@media (max-width: 639px) {
+    .scene__lead { font-size: 17px; line-height: 26px; }
+    .story .ph-code pre { font-size: 13px; }
+    .fig--split, .fig--symfony, .fig__row { grid-template-columns: minmax(0, 1fr); gap: var(--space-8); }
+    .fig--split > .like, .fig--symfony > .like { justify-self: start; }
+    .browsers { gap: var(--space-2); }
+    .browser__body { gap: 8px; padding: 10px; }
+    .browser__url { display: none; }
+    .browser .like--sm { --like-size: 10.5px; }
+    .browser__title { font-size: 11px; line-height: 15px; }
+    .browser--page .browser__body { gap: 12px; padding: 20px; }
+    .browser--page .browser__title { font-size: 18px; line-height: 24px; }
+    .browser--page .like { --like-size: 16px; }
+    .branches { grid-template-columns: minmax(0, 1fr); padding-top: 20px; }
+    .branches::before, .branches > div::before { display: none; }
+}
+
+/* ---------- The stage (large screens with motion; story.ts sets story--enhanced) ---------- */
+.stage { display: none; }
+
+.story--enhanced { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(360px, 37fr) minmax(0, 63fr); padding: 0 var(--story-gutter); }
+/* The background of the story (field.ts): it covers the screen under the header while the story
+   scrolls, behind the text and the stage. */
+.story__field { display: none; }
+.story--enhanced .story__field { position: absolute; inset: 0; z-index: -1; display: block; pointer-events: none; }
+/* It sticks under the header from the first pixel of the scroll, so the grid never moves. */
+.story__field canvas { position: sticky; top: var(--top-height); display: block; width: 100%; height: calc(100vh - var(--top-height)); }
+/* The grid does not show through the text and the elements: each one has the background of the
+   page, and the text takes only the width that it needs. */
+.story--enhanced .scene__index { width: fit-content; }
+.story--enhanced :is(.scene__index, .scene__hint, .story-btn, .story-skip, .story-install),
+.stage :is(.stage__item, .stage__btn, .bound__label) { background-color: var(--story-bg); }
+.story--enhanced .story__scenes { padding: 0; }
+.story--enhanced .scene { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; box-sizing: border-box; height: calc(100vh - var(--top-height)); padding: 0 var(--space-8) 0 0; border: 0; }
+/* A long scene has two screens of scroll: its copy stays in the middle of the screen. */
+.story--enhanced .scene--long { display: block; height: calc(2 * (100vh - var(--top-height))); }
+.story--enhanced .scene--long .scene__copy { position: sticky; top: var(--top-height); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; height: calc(100vh - var(--top-height)); }
+.story--enhanced .scene__lead { max-width: 24em; }
+.story--enhanced h1.scene__title { font-size: clamp(44px, 4.2vw, 64px); }
+/* The stage shows the figures: they stay for screen readers only. */
+.story--enhanced .scene__figure { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.story--enhanced .stage { perspective: 1400px; position: sticky; top: var(--top-height); display: block; align-self: start; height: calc(100vh - var(--top-height)); overflow: hidden; }
+.stage__tilt { position: absolute; inset: 0; transform-origin: 50% 50%; }
+.stage__canvas { position: absolute; top: 50%; left: 50%; width: 920px; height: 760px; transform: translate(-50%, -50%) scale(var(--stage-scale, 1)); transform-origin: 50% 50%; }
+/* The lines, their dots and the outlines go above the elements: the background of an element must
+   not hide a line that ends on it or crosses it. */
+.stage__svg { position: absolute; inset: 0; z-index: 1; overflow: visible; }
+.stage [data-s] { visibility: hidden; opacity: 0; }
+.stage [data-mark] { --on: 0; }
+.stage__item { position: absolute; }
+.stage .is-centered { translate: -50% -50%; }
+/* The `left` of the element is its right edge. */
+.stage .is-end { translate: -100% 0; }
+/* The button of the story scales from scene to scene (stage-timeline.ts): its border stays as wide
+   as the lines of the stage, 1.2 units. */
+.stage__btn { position: absolute; top: 380px; left: 460px; border-width: calc(1.2px / var(--btn-scale, 1)); }
+.stage__sketch { position: absolute; inset: 0; width: 920px; height: 760px; }
+.stage .sketch :is(text, .sketch__logo) { opacity: 0; }
+
+/* The lines of the stage. Their dash comes from src/scripts/stroke.ts, so a line draws with the
+   dot on it. */
+.stage__svg { pointer-events: none; }
+.ln { fill: none; stroke: var(--story-line-strong); stroke-width: 1.2; stroke-linecap: butt; }
+.ln--soft { stroke: var(--story-line); }
+.ln--accent { stroke: var(--story-accent); }
+.ln--like { stroke: color-mix(in srgb, var(--story-accent) calc(var(--active, 0) * 100%), var(--story-line-strong)); }
+.ln.ln--dashed { stroke-dasharray: 4 4; }
+.ln-mask { fill: none; stroke: #fff; stroke-width: 6; }
+.node-dot { fill: var(--story-bg); stroke: var(--story-ink); stroke-width: 1.2; }
+.node-dot--accent { fill: var(--story-accent); stroke: var(--story-accent); }
+.node-dot--ink { fill: var(--story-ink); stroke: none; }
+/* The paths draw the outlines, so the HTML keeps only the text. */
+.stage.is-drawn :is(.ph-code, .article, .bound, .browser, .pill, .browser .like) { border-color: transparent; }
+.stage.is-drawn :is(.ph-code__bar, .browser__bar) { border-bottom-color: transparent; }
+.stage.is-drawn :is(.article__line, .browser__line, .browser__home) { background: transparent; }
+.stage.is-drawn .browser__comments { border-left-color: transparent; }
+.travel { fill: var(--story-accent); }
+/* Scene 1: a line of the source of the page, beside the part of the page that it renders. */
+.note { color: var(--story-muted); font: 500 13px/20px var(--font-mono); font-variant-ligatures: none; white-space: nowrap; }
+.note b { color: var(--story-ink); font-weight: 500; }
+.node-label { color: var(--story-ink); font: 500 13px/20px var(--font-mono); white-space: nowrap; }
+
+/* The stage scales down to about 0.77 at its smallest size: its small labels are larger than in the
+   static figures, so they stay readable. */
+.stage .tag { font-size: 13px; }
+.stage .bound__label { top: -22px; font-size: 12px; }
+.stage .article { gap: 14px; padding: 28px 24px; }
+.stage .article > .bound__label { top: -22px; left: 0; }
+/* Scene 6: a desktop, a tablet and a phone. */
+.stage [data-s="browser-a"] { top: 40px; left: 20px; width: 300px; height: 230px; }
+.stage [data-s="browser-b"] { top: 20px; left: 365px; width: 210px; height: 270px; }
+.stage [data-s="browser-c"] { top: 30px; left: 620px; width: 140px; height: 260px; }
+.stage .browser--phone .browser__body { gap: 12px; padding: 16px 14px; }
+.stage .browser--phone .browser__title { font-size: 14px; line-height: 18px; }
+.stage .browser__body { gap: 14px; padding: 22px 20px; }
+.stage .browser__title { font-size: 15px; line-height: 20px; }
+.stage [data-s="page"] { top: 170px; left: 170px; width: 580px; max-width: none; height: 420px; }
+.stage .browser--page .browser__bar { height: 32px; }
+.stage .browser--page .browser__body { gap: 20px; padding: 40px 44px; }
+.stage .browser--page .browser__title { margin-bottom: 6px; font-size: 30px; line-height: 36px; }
+.stage .browser--page .browser__url { font-size: 12px; }
+.stage .browser--page .browser__toggle { font-size: 13px; }
