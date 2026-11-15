@@ -4,6 +4,9 @@
     "type": "symfony-bundle",
     "license": "MIT",
     "keywords": ["symfony-ux", "phem", "base-ui", "tailwindcss"],
+    "authors": [
+        { "name": "Yonel Ceruto", "email": "open@yceruto.dev" }
+    ],
     "repositories": [
         { "type": "path", "url": "../../phem", "options": { "symlink": true, "versions": { "phem/phem": "dev-main" } } }
     ],

@@ -15,7 +15,7 @@ function FieldDemo(): Node
         <Form>
             <Field validationMode="onBlur">
                 <FieldLabel>Name</FieldLabel>
-                <FieldControl name="name" required />
+                <FieldControl name="name" required defaultValue="Ada" />
                 <FieldError match="valueMissing">Please enter your name</FieldError>
                 <FieldDescription>Visible on your profile</FieldDescription>
             </Field>

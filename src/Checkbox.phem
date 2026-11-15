@@ -75,7 +75,7 @@ class Checkbox
                 {{ ...attrs }}
             >
                 {{ children }}
-                <input type="checkbox" hidden phem:bind={{ checked }} data-phem-toggle-target="input" />
+                <input type="checkbox" hidden phem:bind={{ checked }} checked={{ on }} data-phem-toggle-target="input" />
             </span>
         );
     }

@@ -50,7 +50,6 @@ All 37 Base UI components are here. The parts follow the Base UI anatomy, with t
 - **Switch**: the root is `SwitchRoot`, because `switch` is a reserved word in PHP.
 - **Menu checkbox and radio items**: the server gives their state (`checked`), with an `onClick` handler.
 - **Toast**: one message, with no title.
-- **Input**: no `defaultValue` yet (see the gaps).
 
 The phem gaps found so far, and which of them phem fixed, are in [notes/phem-gaps.md](notes/phem-gaps.md).
 

@@ -2,8 +2,9 @@
 
 Each item is a candidate fix in phem core. The bundle does not work around them.
 
-Status (2026-11-15): items 1 to 4 and 7 to 9 are fixed in phem (not committed). Items 5 and 6 are
-still open. Items 10 to 13 went to the phem core session.
+Status (2026-11-15): phem commit `f29d41a` fixes all the items except 5 and 6. Item 10 is the
+phemc error E068. Items 5 (menu checkbox and radio items in the browser) and 6 (toast title) are
+still open.
 
 1. **phemc check misses a method call in class markup.** In a class component, `aria-valuetext={{ text() }}`
    compiles to the Twig function `text()`, and Twig fails at runtime with `Unknown "text" function`.

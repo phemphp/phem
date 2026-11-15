@@ -24,7 +24,7 @@ final class ControlsTest extends KernelTestCase
         $this->mount(self::APP.'SwitchDemo')
             ->assertSelectorExists('[role="switch"][data-controller="phem-toggle"][aria-checked="true"][data-checked][data-phem-toggle-name-value="alerts"]')
             ->assertSelectorExists('[role="switch"] [data-phem-toggle-target="indicator"][data-checked]')
-            ->assertSelectorExists('[role="switch"] input[type="checkbox"][hidden][data-phem-toggle-target="input"]');
+            ->assertSelectorExists('[role="switch"] input[type="checkbox"][hidden][checked][data-phem-toggle-target="input"]');
     }
 
     public function testABoundSwitchTakesTheStateOfTheApp(): void
@@ -47,7 +47,8 @@ final class ControlsTest extends KernelTestCase
             ->assertSelectorExists('[data-controller="phem-checkbox-group"][data-phem-checkbox-group-value-value=\'["fuji"]\'][data-phem-checkbox-group-all-values-value=\'["fuji","gala"]\']')
             ->assertSelectorExists('[data-phem-checkbox-group-target="parent"][aria-checked="mixed"][data-indeterminate]')
             ->assertSelectorExists('[data-phem-checkbox-group-target="item"][data-value="fuji"][aria-checked="true"]:not([data-phem-toggle-checked-value])')
-            ->assertSelectorExists('[data-phem-checkbox-group-target="item"][data-value="gala"][aria-checked="false"]');
+            ->assertSelectorExists('[data-phem-checkbox-group-target="item"][data-value="fuji"] input[checked]')
+            ->assertSelectorExists('[data-phem-checkbox-group-target="item"][data-value="gala"][aria-checked="false"] input:not([checked])');
     }
 
     public function testTheToggleGroupPressesItsDefaultValue(): void
