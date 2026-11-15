@@ -13,31 +13,63 @@ final class PickersTest extends DemoTestCase
         $page = $this->visitComponent('combobox');
 
         $input = $page->getByRole('combobox', ['name' => 'Choose a fruit']);
-        $input->fill('berry');
-        expect($page->getByRole('listbox'))->toBeVisible();
-        expect($page->getByRole('option'))->toHaveCount(3);
+        $clear = $page->getByRole('button', ['name' => 'Clear selection']);
+        expect($clear)->toBeHidden();
 
+        // A click on the input opens the popup with the 25 fruits.
+        $input->click();
+        expect($page->getByRole('listbox'))->toBeVisible();
+        expect($page->getByRole('option'))->toHaveCount(25);
+
+        $input->fill('berry');
+        expect($page->getByRole('option'))->toHaveCount(4);
+
+        // Enter selects the highlighted item: it gets the check, and the Clear button shows.
         $page->keyboard()->press('ArrowDown');
         $page->keyboard()->press('Enter');
         expect($input)->toHaveValue('Strawberry');
+        expect($page->locator('[role="option"][data-selected]'))->toHaveCount(1);
+        expect($clear)->toBeVisible();
 
-        $input->fill('kiwi');
+        // The popup opens again with all the fruits, and the check on the selected one.
+        $input->click();
+        expect($page->getByRole('option'))->toHaveCount(25);
+        expect($page->getByRole('option', ['name' => 'Strawberry']))->toHaveAttribute('aria-selected', 'true');
+
+        $input->fill('zzz');
         expect($page->getByRole('option'))->toHaveCount(0);
         expect($page->getByText('No fruits found.'))->toBeVisible();
+
+        // The input has no free text: it gets the label of the selection again.
+        $input->blur();
+        expect($input)->toHaveValue('Strawberry');
+
+        $clear->click();
+        expect($input)->toHaveValue('');
+        expect($clear)->toBeHidden();
     }
 
-    public function testAutocompleteAsksTheServerForTheItems(): void
+    public function testAutocompleteFiltersTheTagsInTheBrowser(): void
     {
         $page = $this->visitComponent('autocomplete');
 
-        $input = $page->getByRole('combobox', ['name' => 'Search fruits']);
-        $input->pressSequentially('ap');
-        expect($page->getByRole('option', ['name' => 'Apple', 'exact' => true]))->toBeVisible();
-        expect($page->getByRole('option', ['name' => 'Grape', 'exact' => true]))->toBeVisible();
-        expect($page->getByRole('option', ['name' => 'Mango', 'exact' => true]))->toHaveCount(0);
+        $input = $page->getByRole('combobox', ['name' => 'Search tags']);
 
-        $page->getByRole('option', ['name' => 'Pineapple', 'exact' => true])->click();
-        expect($input)->toHaveValue('Pineapple');
+        // The input shows its focus ring, as the input of the Base UI demo.
+        $input->focus();
+        expect($input)->toHaveCSS('outline-style', 'solid');
+        expect($input)->toHaveCSS('outline-width', '2px');
+
+        $input->pressSequentially('too');
+        expect($page->getByRole('option', ['name' => 'component: tooltip', 'exact' => true]))->toBeVisible();
+        expect($page->getByRole('option', ['name' => 'component: toolbar', 'exact' => true]))->toBeVisible();
+        expect($page->getByRole('option', ['name' => 'feature', 'exact' => true]))->toHaveCount(0);
+
+        $page->getByRole('option', ['name' => 'component: toolbar', 'exact' => true])->click();
+        expect($input)->toHaveValue('component: toolbar');
+
+        $input->fill('zzz');
+        expect($page->getByText('No tags found.'))->toBeVisible();
     }
 
     public function testSelect(): void

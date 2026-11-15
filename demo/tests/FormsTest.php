@@ -28,15 +28,32 @@ final class FormsTest extends DemoTestCase
         expect($input)->toHaveAttribute('data-filled', '');
     }
 
-    public function testFormFocusesTheFirstInvalidFieldOnSubmit(): void
+    public function testFormShowsTheErrorOfTheServerAndFocusesAnInvalidField(): void
     {
         $page = $this->visitComponent('form');
 
         $input = $page->getByRole('textbox', ['name' => 'Homepage']);
-        $page->getByRole('button', ['name' => 'Submit'])->click();
+        $submit = $page->getByRole('button', ['name' => 'Submit']);
+        expect($input)->toHaveValue('https://example.com');
+
+        // The value of the demo is valid for the browser: the server refuses it after 1 second.
+        $submit->click();
+        expect($page->getByText('The example domain is not allowed'))->toBeVisible();
+        expect($input)->toHaveAttribute('aria-invalid', 'true');
+
+        // An empty value does not go to the server: the field shows the error of the browser,
+        // and the control gets the focus.
+        $input->fill('');
+        $submit->click();
         expect($input)->toBeFocused();
         expect($input)->toHaveAttribute('data-invalid', '');
-        expect($input)->toHaveAttribute('aria-invalid', 'true');
+        expect($page->getByText('The example domain is not allowed'))->toBeHidden();
+
+        // A value that the server accepts removes the error.
+        $input->fill('https://base-ui.com');
+        $submit->click();
+        expect($input)->not()->toHaveAttribute('aria-invalid', 'true');
+        expect($input)->toHaveValue('https://base-ui.com');
     }
 
     public function testNumberField(): void

@@ -64,15 +64,15 @@ function FieldDescription(?Html $children = null, mixed ...$rest): Node
 function FieldError(?string $match = null, ?Html $children = null, mixed ...$rest): Node
 {
     return (
-        <p
+        <div
             data-phem-field-target="error"
             data-match={{ match }}
             hidden
-            className={{ classes('m-0 text-sm text-red-700 dark:text-red-400 [&[hidden]]:hidden') }}
+            className={{ classes('text-sm text-red-700 dark:text-red-400 [&[hidden]]:hidden') }}
             {{ ...rest }}
         >
             {{ children }}
-        </p>
+        </div>
     );
 }
 

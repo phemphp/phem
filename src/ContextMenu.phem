@@ -15,6 +15,10 @@ use Phem\{Html, Node};
 #[Component]
 class ContextMenu extends Menu
 {
+    // The offsets of Base UI: the corner of the popup is under the pointer.
+    #[Prop] public int $sideOffset = -5;
+    #[Prop] public int $alignOffset = 2;
+
     public function controller(): string
     {
         return 'phem-context-menu';

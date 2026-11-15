@@ -73,7 +73,7 @@ function NumberFieldScrubAreaCursor(?Html $children = null, mixed ...$rest): Nod
 {
     return (
         <span data-phem-number-field-target="scrubAreaCursor" hidden className={{ classes('drop-shadow-[0_1px_1px_#0008] filter [&[hidden]]:hidden') }} {{ ...rest }}>
-            {{ children ? children : <svg aria-hidden="true" width="26" height="14" viewBox="0 0 24 14" fill="black" stroke="white"><path d="M19.5 5.5L6.49737 5.51844V2L1 6.9999L6.5 12L6.49737 8.5L19.5 8.5V12L25 6.9999L19.5 2V5.5Z" /></svg> }}
+            {{ children ? children : <svg aria-hidden="true" width="26" height="14" viewBox="0 0 24 14" fill="black" stroke="white" className="block"><path d="M19.5 5.5L6.49737 5.51844V2L1 6.9999L6.5 12L6.49737 8.5L19.5 8.5V12L25 6.9999L19.5 2V5.5Z" /></svg> }}
         </span>
     );
 }

@@ -36,6 +36,16 @@ class Combobox
     #[Prop] public int $sideOffset = 4;
     #[Prop] public int $alignOffset = 0;
     #[Prop] public int $collisionPadding = 5;
+    /** The name of the selected value in a form: a hidden input gets the `value` of the selected item. */
+    #[Prop] public ?string $name = null;
+    /** The `value` of the item that is selected at first: Base UI `defaultValue`. */
+    #[Prop] public ?string $defaultValue = null;
+    /** The text of the input at first, for example the label of `defaultValue`: Base UI `defaultInputValue`. */
+    #[Prop] public ?string $defaultInputValue = null;
+    /** `single` (one selected item, no free text) or `none`. Null gives the Base UI default of the component. */
+    #[Prop] public ?string $selectionMode = null;
+    /** A click on the input opens the popup. Null gives the Base UI default of the component. */
+    #[Prop] public ?bool $openOnInputClick = null;
     #[Prop] public ?Html $children = null;
     #[Prop(rest: true)] public array $attrs = [];
 
@@ -44,11 +54,40 @@ class Combobox
         return $this->id.'-'.$part;
     }
 
+    /** Whether the browser has all the items (`filter`), so it keeps the selection and can open with no text. */
+    protected function hasClientList(): bool
+    {
+        return null !== $this->filter && '' !== $this->filter;
+    }
+
+    /**
+     * The selection of Base UI: a Combobox with a list of the browser has one selected item, and
+     * its input has no free text. An Autocomplete has no selection.
+     */
+    public function resolvedSelectionMode(): string
+    {
+        return $this->selectionMode ?? ($this->hasClientList() && !$this->multiple ? 'single' : 'none');
+    }
+
+    /**
+     * A click on the input opens the popup of a Combobox with a list of the browser. A list of the
+     * server has no item before the user types, and an Autocomplete opens only on a key.
+     */
+    public function resolvedOpenOnInputClick(): bool
+    {
+        return $this->openOnInputClick ?? $this->hasClientList();
+    }
+
     public function render(): Node
     {
+        $selectionMode = $this->resolvedSelectionMode();
+        $openOnInputClick = $this->resolvedOpenOnInputClick();
+
         return (
             <div
                 data-controller="phem-combobox"
+                data-phem-combobox-selection-mode-value={{ 'single' === selectionMode ? 'single' : null }}
+                data-phem-combobox-open-on-input-click-value={{ openOnInputClick ? 'true' : null }}
                 data-phem-combobox-multiple-value={{ multiple ? 'true' : null }}
                 data-phem-combobox-filter-value={{ filter }}
                 data-phem-combobox-mode-value={{ mode }}
@@ -65,6 +104,7 @@ class Combobox
                 {{ ...attrs }}
             >
                 {{ children }}
+                {% if name and 'single' === selectionMode %}<input type="hidden" name={{ name }} value={{ defaultValue }} data-phem-combobox-target="value" />{% endif %}
             </div>
         );
     }
@@ -85,7 +125,8 @@ function ComboboxInputGroup(?Html $children = null, mixed ...$rest): Node
 {
     return (
         <div
-            className={{ classes('relative h-8 w-56 border border-neutral-950 bg-white dark:bg-neutral-950 focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-neutral-950 dark:focus-within:outline-white dark:border-white [&>input]:pr-[calc(0.5rem+2rem)] has-[.combobox-clear]:[&>input]:pr-[calc(0.5rem+2rem*2)]') }}
+            data-phem-combobox-target="inputGroup"
+            className={{ classes('relative h-8 w-56 border border-neutral-950 bg-white dark:bg-neutral-950 focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-neutral-950 dark:focus-within:outline-white dark:border-white [&>input]:pr-[calc(0.5rem+2rem)] has-[.combobox-clear:not([hidden])]:[&>input]:pr-[calc(0.5rem+2rem*2)]') }}
             {{ ...rest }}
         >
             {{ children }}
@@ -98,11 +139,13 @@ function ComboboxInputGroup(?Html $children = null, mixed ...$rest): Node
 function ComboboxInput(#[Context] Combobox $combobox, ?Bound $value = null, mixed ...$rest): Node
 {
     $id = $combobox->partId('input');
+    $text = $combobox->defaultInputValue;
 
     return (
         <input
             id={{ id }}
             phem:bind={{ value }}
+            value={{ text }}
             phem:live
             data-phem-combobox-target="input"
             className={{ classes('h-full w-full border-0 bg-white pl-2 dark:bg-neutral-950 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 outline-none placeholder:text-neutral-500 dark:placeholder:text-neutral-400 dark:text-white') }}
@@ -144,7 +187,7 @@ function ComboboxClear(?Html $children = null, mixed ...$rest): Node
             type="button"
             tabindex="-1"
             data-phem-combobox-target="clear"
-            className={{ classes('combobox-clear flex h-full w-6 items-center justify-center border-0 bg-transparent p-0 text-neutral-950 dark:text-white') }}
+            className={{ classes('combobox-clear flex h-full w-6 items-center justify-center border-0 bg-transparent [&[hidden]]:hidden p-0 text-neutral-950 dark:text-white') }}
             {{ ...rest }}
         >
             {{ children ? children : <XIcon /> }}
@@ -183,13 +226,18 @@ function ComboboxList(?Html $children = null, mixed ...$rest): Node
 }
 
 /**
- * A suggestion. `value` gives its id. A click runs its `onClick` handler, which chooses it. The server
- * gives `selected` to the chosen items.
+ * A suggestion. `value` gives its id, and the value of the selection.
+ *
+ * With a list of the browser (`filter` on the root), a click selects the item in the browser: it
+ * needs no handler, and the item with the `defaultValue` of the root is selected at first. With a
+ * list of the server, a click runs its `onClick` handler, which chooses it, and the server gives
+ * `selected` to the chosen items.
  */
 #[Component]
 function ComboboxItem(#[Context] Combobox $combobox, string $value, bool $selected = false, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
 {
     $id = $combobox->partId('item-'.$value);
+    $selected = $selected || (null !== $combobox->defaultValue && $value === $combobox->defaultValue);
 
     return (
         <div

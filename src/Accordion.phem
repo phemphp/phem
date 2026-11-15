@@ -19,8 +19,12 @@ class Accordion
     #[Prop] public bool $multiple = false;
     #[Prop] public bool $disabled = false;
     #[Prop] public bool $hiddenUntilFound = false;
+    /** The arrow keys of `rovingFocus`: ArrowDown and ArrowUp, or ArrowRight and ArrowLeft. No effect without `rovingFocus`. */
     #[Prop] public Orientation $orientation = Orientation::Vertical;
+    /** With `rovingFocus`, an arrow key goes from the last trigger to the first one. No effect without `rovingFocus`. */
     #[Prop] public bool $loopFocus = true;
+    /** The arrow keys, Home and End move the focus between the triggers. Off by default, as in Base UI. */
+    #[Prop] public bool $rovingFocus = false;
     #[Prop] public ?string $id = null;
     #[Prop] public ?Html $children = null;
     #[Prop(rest: true)] public array $attrs = [];
@@ -47,6 +51,7 @@ class Accordion
                 data-phem-accordion-multiple-value={{ multiple ? 'true' : null }}
                 data-phem-accordion-orientation-value={{ orientation.value }}
                 data-phem-accordion-loop-focus-value={{ loopFocus ? null : 'false' }}
+                data-phem-accordion-roving-focus-value={{ rovingFocus ? 'true' : null }}
                 data-phem-accordion-hidden-until-found-value={{ hiddenUntilFound ? 'true' : null }}
                 data-orientation={{ orientation.value }}
                 data-disabled={{ disabled ? '' : null }}
@@ -104,7 +109,7 @@ function AccordionHeader(#[Context] AccordionItem $item, ?Html $children = null,
 {
     $open = $item->open();
 
-    return <h3 data-open={{ open ? '' : null }} className={{ classes('m-0') }} {{ ...rest }}>{{ children }}</h3>;
+    return <h3 data-phem-accordion-target="header" data-open={{ open ? '' : null }} className={{ classes('m-0') }} {{ ...rest }}>{{ children }}</h3>;
 }
 
 /** The button that opens and closes the item. It has a plus icon that turns when the item is open. */

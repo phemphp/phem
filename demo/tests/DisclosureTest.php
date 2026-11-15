@@ -22,8 +22,11 @@ final class DisclosureTest extends DemoTestCase
         expect($what)->toHaveAttribute('data-panel-open', '');
         expect($answer)->toBeVisible();
 
-        // The arrow keys move between the triggers.
+        // As in Base UI v1.9.0, the arrow keys do not move the focus: Tab goes to the next trigger.
+        expect($page->locator('h3[data-phem-accordion-target="header"]')->first())->toHaveAttribute('data-open', '');
         $page->keyboard()->press('ArrowDown');
+        expect($what)->toBeFocused();
+        $page->keyboard()->press('Tab');
         expect($start)->toBeFocused();
         $page->keyboard()->press('Enter');
         expect($start)->toHaveAttribute('aria-expanded', 'true');

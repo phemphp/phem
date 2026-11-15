@@ -19,7 +19,7 @@ final class FormsTest extends KernelTestCase
             ->assertSelectorExists('form[data-controller="phem-form"] [data-controller="phem-field"][data-phem-field-validation-mode-value="onBlur"]')
             ->assertSelectorExists('label[data-phem-field-target="label"]')
             ->assertSelectorExists('input[data-phem-field-target="control"][name="name"][required][value="Ada"]')
-            ->assertSelectorExists('p[data-phem-field-target="error"][data-match="valueMissing"][hidden]')
+            ->assertSelectorExists('div[data-phem-field-target="error"][data-match="valueMissing"][hidden]')
             ->assertSelectorExists('p[data-phem-field-target="description"]');
     }
 

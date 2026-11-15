@@ -27,11 +27,34 @@ final class PickersTest extends KernelTestCase
             ->assertSelectorExists('[data-phem-combobox-target="empty"]');
     }
 
+    public function testAComboboxHasOneSelectedItemAndAnAutocompleteHasNone(): void
+    {
+        $this->mount(self::APP.'ComboboxSelectionDemo')
+            ->assertSelectorExists('#pick-input')
+            ->assertSelectorExists('[data-controller="phem-combobox"][data-phem-combobox-selection-mode-value="single"][data-phem-combobox-open-on-input-click-value="true"] input[type="hidden"][name="fruit"][data-phem-combobox-target="value"]')
+            // The first selection: the value of the form, the text of the input and the selected item.
+            ->assertSelectorExists('input[type="hidden"][name="fruit"][value="apple"]')
+            ->assertSelectorExists('#pick-input[value="Apple"]')
+            ->assertSelectorExists('#pick-item-apple[data-selected]')
+            ->assertSelectorExists('#pick-item-pear:not([data-selected])')
+            // The props set the selection mode and the click on the input.
+            ->assertSelectorCount(1, '[data-phem-combobox-selection-mode-value]')
+            ->assertSelectorCount(1, '[data-phem-combobox-open-on-input-click-value]')
+            ->assertSelectorNotExists('input[name="tag"]');
+
+        // A list of the server: no selection, and no open on a click.
+        $this->mount(self::APP.'ComboboxDemo')
+            ->assertSelectorExists('[data-phem-combobox-target="inputGroup"] button[data-phem-combobox-target="clear"]')
+            ->assertSelectorNotExists('[data-phem-combobox-selection-mode-value]')
+            ->assertSelectorNotExists('[data-phem-combobox-open-on-input-click-value]');
+    }
+
     public function testTheDrawerIsADialogWithASwipe(): void
     {
         $html = $this->mount(self::APP.'DrawerDemo')
             ->assertSelectorExists('[data-controller="phem-dialog"][data-phem-dialog-swipe-direction-value="right"]')
             ->assertSelectorExists('dialog[data-phem-dialog-target="popup"] h2[data-phem-dialog-target="title"]')
+            ->assertSelectorExists('dialog [data-phem-dialog-target="content"]')
             ->html();
 
         self::assertStringContainsString('border-l', $html);

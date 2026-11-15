@@ -2,12 +2,12 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\Page;
+use Phem\Attribute\{Page, State};
 use Phem\Node;
 
 use function App\Ui\DemoPage;
-use function Phem\Ui\Base\{FieldsetLegend, MeterIndicator, MeterLabel, MeterTrack, MeterValue, ProgressIndicator, ProgressLabel, ProgressTrack, ProgressValue};
-use Phem\Ui\Base\{Button, Fieldset, Input, Meter, Progress, Separator};
+use function Phem\Ui\Base\{FieldControl, FieldLabel, FieldsetLegend, MeterIndicator, MeterLabel, MeterTrack, MeterValue, ProgressIndicator, ProgressLabel, ProgressTrack, ProgressValue};
+use Phem\Ui\Base\{Button, Field, Fieldset, Input, Meter, Progress, Separator};
 
 #[Page('/components/button')]
 function ButtonPage(): Node
@@ -55,14 +55,14 @@ function FieldsetPage(): Node
         <DemoPage title="Fieldset">
             <Fieldset>
                 <FieldsetLegend>Billing details</FieldsetLegend>
-                <label className="flex flex-col items-start gap-1 text-sm font-bold">
-                    Company
-                    <Input placeholder="Enter company name" className="w-full" />
-                </label>
-                <label className="flex flex-col items-start gap-1 text-sm font-bold">
-                    Tax ID
-                    <Input placeholder="Enter fiscal number" className="w-full" />
-                </label>
+                <Field>
+                    <FieldLabel>Company</FieldLabel>
+                    <FieldControl placeholder="Enter company name" />
+                </Field>
+                <Field>
+                    <FieldLabel>Tax ID</FieldLabel>
+                    <FieldControl placeholder="Enter fiscal number" />
+                </Field>
             </Fieldset>
         </DemoPage>
     );
@@ -82,16 +82,35 @@ function MeterPage(): Node
     );
 }
 
+// The value grows each second, as in the Base UI demo: a poll adds a random step, up to 100.
 #[Page('/components/progress')]
-function ProgressPage(): Node
+final class ProgressPage
 {
-    return (
-        <DemoPage title="Progress">
-            <Progress id="export" value={{ 20 }}>
+    #[State] public int $value = 20;
+
+    public function advance(): void
+    {
+        $this->value = min(100, $this->value + random_int(0, 25));
+    }
+
+    public function render(): Node
+    {
+        $bar = (
+            <Progress id="export" value={{ value }}>
                 <ProgressLabel>Export data</ProgressLabel>
                 <ProgressValue />
                 <ProgressTrack><ProgressIndicator /></ProgressTrack>
             </Progress>
-        </DemoPage>
-    );
+        );
+
+        return (
+            <DemoPage title="Progress">
+                {% if value < 100 %}
+                    <div className="contents" onPoll={{ advance }} phem:poll={{ 1000 }}>{{ bar }}</div>
+                {% else %}
+                    <div className="contents">{{ bar }}</div>
+                {% endif %}
+            </DemoPage>
+        );
+    }
 }

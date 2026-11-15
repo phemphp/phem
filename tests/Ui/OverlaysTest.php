@@ -99,6 +99,16 @@ final class OverlaysTest extends KernelTestCase
             ->assertSelectorExists('[data-phem-menu-target="separator"]');
     }
 
+    public function testAMenuIsModalUnlessThePointerOpensIt(): void
+    {
+        $this->mount(self::APP.'MenuOptionsDemo')
+            ->assertSelectorExists('#modal[data-phem-menu-modal-value="true"]')
+            ->assertSelectorExists('#hover[data-phem-menu-open-on-hover-value="true"]:not([data-phem-menu-modal-value])')
+            // `disabled` on the root disables the trigger, and the trigger of a disabled submenu.
+            ->assertSelectorExists('#off > button[data-phem-menu-target="trigger"][disabled]')
+            ->assertSelectorExists('#off-sub[aria-disabled="true"]');
+    }
+
     public function testTheCheckItemsOfAMenuFollowTheStateRules(): void
     {
         $this->mount(self::APP.'MenuStateDemo')

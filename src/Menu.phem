@@ -11,12 +11,17 @@ use Phem\{Html, Node};
  * The props of the Base UI Positioner are props of the root. The popup goes in the top layer
  * (`popover="manual"`), so it needs no Portal. The parts read the root, so the same parts work in
  * a ContextMenu and in a MenuSubmenu.
+ *
+ * As in Base UI, the menu is modal by default: the page does not scroll while it is open. A menu
+ * with `openOnHover` and a menu in a Menubar are not modal. With `disabled`, the trigger does not
+ * open it.
  */
 #[Component, Provide]
 class Menu
 {
     #[Prop] public bool $defaultOpen = false;
-    #[Prop] public bool $modal = false;
+    #[Prop] public bool $disabled = false;
+    #[Prop] public bool $modal = true;
     #[Prop] public bool $openOnHover = false;
     #[Prop] public int $delay = 100;
     #[Prop] public bool $loopFocus = true;
@@ -29,6 +34,7 @@ class Menu
     #[Prop] public int $collisionPadding = 5;
     #[Prop] public ?Html $children = null;
     #[Prop(rest: true)] public array $attrs = [];
+    #[Context] public ?Menubar $menubar = null;
 
     /** The Stimulus identifier of the controller of the parts. */
     public function controller(): string
@@ -69,7 +75,9 @@ class Menu
         return [
             'data-controller' => $this->controller(),
             $prefix.'open-value' => $this->defaultOpen ? 'true' : null,
-            $prefix.'modal-value' => $this->modal ? 'true' : null,
+            // A Menubar locks the page for its menus.
+            // No lock for a menu that the pointer opens: the lock takes the pointer from its trigger.
+            $prefix.'modal-value' => $this->modal && !$this->openOnHover && null === $this->menubar ? 'true' : null,
             $prefix.'open-on-hover-value' => $this->openOnHover ? 'true' : null,
             $prefix.'delay-value' => 100 === $this->delay ? null : (string) $this->delay,
             $prefix.'loop-focus-value' => $this->loopFocus ? null : 'false',
@@ -106,6 +114,7 @@ class MenuSubmenu extends Menu
 #[Component]
 function MenuTrigger(#[Context] Menu $menu, #[Context] ?Menubar $menubar = null, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
 {
+    $disabled = $disabled || $menu->disabled;
     $target = $menu->target('trigger');
     $base = null !== $menubar
         ? 'h-8 border-0 bg-transparent px-3 font-[inherit] text-sm font-normal text-neutral-950 select-none data-pressed:bg-neutral-100 data-disabled:text-neutral-500 dark:text-white dark:focus-visible:bg-neutral-800 dark:data-pressed:bg-neutral-800 dark:data-disabled:text-neutral-400 focus-visible:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 focus-visible:relative dark:focus-visible:outline-white'
@@ -130,6 +139,7 @@ function MenuTrigger(#[Context] Menu $menu, #[Context] ?Menubar $menubar = null,
 #[Component]
 function MenuSubmenuTrigger(#[Context] Menu $menu, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
 {
+    $disabled = $disabled || $menu->disabled;
     $target = $menu->target('trigger');
     $base = Style::MENU_SUBMENU_TRIGGER;
 
@@ -171,12 +181,12 @@ function MenuArrow(#[Context] Menu $menu, mixed ...$rest): Node
  * `closeOnClick={{ false }}`, the menu stays open.
  */
 #[Component]
-function MenuItem(#[Context] Menu $menu, bool $disabled = false, bool $closeOnClick = true, ?Html $children = null, mixed ...$rest): Node
+function MenuItem(#[Context] Menu $menu, #[Context] ?Menubar $menubar = null, bool $disabled = false, bool $closeOnClick = true, ?Html $children = null, mixed ...$rest): Node
 {
     $target = $menu->target('item');
     $close = $closeOnClick ? null : 'false';
     $closeAttr = 'data-'.$menu->controller().'-close-on-click';
-    $base = Style::MENU_ITEM;
+    $base = null !== $menubar ? Style::MENUBAR_ITEM : Style::MENU_ITEM;
 
     return (
         <button
@@ -198,7 +208,7 @@ function MenuItem(#[Context] Menu $menu, bool $disabled = false, bool $closeOnCl
 function MenuLinkItem(#[Context] Menu $menu, string $href, ?Html $children = null, mixed ...$rest): Node
 {
     $target = $menu->target('item');
-    $base = Style::MENU_ITEM;
+    $base = null !== $menu->menubar ? Style::MENUBAR_ITEM : Style::MENU_ITEM;
 
     return <a href={{ href }} className={{ classes(base) }} {{ ...target }} {{ ...rest }}>{{ children }}</a>;
 }
@@ -239,7 +249,7 @@ function MenuGroupLabel(#[Context] Menu $menu, ?Html $children = null, mixed ...
 function MenuCheckboxItem(#[Context] Menu $menu, ?bool $checked = null, bool $defaultChecked = false, bool $disabled = false, bool $closeOnClick = false, ?Html $children = null, mixed ...$rest): Node
 {
     $item = $menu->checkItem('menuitemcheckbox', $checked ?? $defaultChecked, $disabled, $closeOnClick);
-    $base = Style::MENU_CHECK_ITEM;
+    $base = null !== $menu->menubar ? Style::MENUBAR_CHECK_ITEM : Style::MENU_CHECK_ITEM;
 
     return <button type="button" disabled={{ disabled }} className={{ classes('group', base) }} {{ ...item }} {{ ...rest }}>{{ children }}</button>;
 }
@@ -301,7 +311,7 @@ function MenuRadioItem(#[Context] Menu $menu, #[Context] ?MenuRadioGroup $group 
 {
     $current = $group?->menu === $menu ? $group->current() : null;
     $item = $menu->checkItem('menuitemradio', null === $current ? $checked : $value === $current, $disabled, $closeOnClick, $value);
-    $base = Style::MENU_CHECK_ITEM;
+    $base = null !== $menu->menubar ? Style::MENUBAR_CHECK_ITEM : Style::MENU_CHECK_ITEM;
 
     return <button type="button" disabled={{ disabled }} className={{ classes('group', base) }} {{ ...item }} {{ ...rest }}>{{ children }}</button>;
 }

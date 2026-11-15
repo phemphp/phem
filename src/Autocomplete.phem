@@ -15,4 +15,13 @@ use Phem\Attribute\Component;
 #[Component]
 class Autocomplete extends Combobox
 {
+    public function resolvedSelectionMode(): string
+    {
+        return $this->selectionMode ?? 'none';
+    }
+
+    public function resolvedOpenOnInputClick(): bool
+    {
+        return $this->openOnInputClick ?? false;
+    }
 }

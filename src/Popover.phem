@@ -57,7 +57,7 @@ function PopoverTrigger(bool $disabled = false, ?Html $children = null, mixed ..
             disabled={{ disabled }}
             data-disabled={{ disabled ? '' : null }}
             data-phem-popover-target="trigger"
-            className={{ classes(base, 'data-popup-open:bg-neutral-100 dark:data-popup-open:bg-neutral-800') }}
+            className={{ classes(base, 'data-pressed:bg-neutral-100 dark:data-pressed:bg-neutral-800') }}
             {{ ...rest }}
         >
             {{ children }}

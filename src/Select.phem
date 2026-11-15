@@ -85,7 +85,7 @@ function SelectLabel(#[Context] Select $select, ?Html $children = null, mixed ..
 {
     $id = $select->partId('label');
 
-    return <div id={{ id }} className={{ classes('cursor-default text-sm font-bold text-neutral-950 dark:text-white') }} {{ ...rest }}>{{ children }}</div>;
+    return <div id={{ id }} data-phem-select-target="label" className={{ classes('cursor-default text-sm font-bold text-neutral-950 dark:text-white') }} {{ ...rest }}>{{ children }}</div>;
 }
 
 /** The button that opens the popup. In a Toolbar, it is an item of the toolbar. */
@@ -143,7 +143,7 @@ function SelectPopup(?Html $children = null, mixed ...$rest): Node
             data-phem-select-target="popup"
             popover="manual"
             hidden
-            className={{ classes('m-0 inset-auto overflow-visible group min-w-[var(--anchor-width)] origin-[var(--transform-origin)] bg-clip-padding border border-neutral-950 bg-white text-neutral-950 outline-hidden shadow-[0.25rem_0.25rem_0] shadow-black/12 transition-[scale,opacity] duration-100 ease-out data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-[side=none]:translate-y-px data-[side=none]:min-w-[calc(var(--anchor-width)+1.75rem)] data-[side=none]:data-ending-style:transition-none data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-[side=none]:data-starting-style:scale-100 data-[side=none]:data-starting-style:opacity-100 data-[side=none]:data-starting-style:transition-none dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none [&[hidden]]:hidden') }}
+            className={{ classes('m-0 inset-auto overflow-visible group min-w-[var(--anchor-width)] origin-[var(--transform-origin)] bg-clip-padding border border-neutral-950 bg-white text-neutral-950 outline-hidden select-none shadow-[0.25rem_0.25rem_0] shadow-black/12 transition-[scale,opacity] duration-100 ease-out data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-[side=none]:translate-y-px data-[side=none]:min-w-[calc(var(--anchor-width)+1.75rem)] data-[side=none]:data-ending-style:transition-none data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-[side=none]:data-starting-style:scale-100 data-[side=none]:data-starting-style:opacity-100 data-[side=none]:data-starting-style:transition-none dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none [&[hidden]]:hidden') }}
             {{ ...rest }}
         >
             {{ children }}
@@ -162,7 +162,7 @@ function SelectScrollUpArrow(?Html $children = null, mixed ...$rest): Node
 {
     return (
         <div data-phem-select-target="scrollUpArrow" className={{ classes("top-0 z-[1] flex h-4 w-full cursor-default items-center justify-center bg-white text-center text-xs before:absolute data-[side=none]:before:top-[-100%] before:left-0 before:h-full before:w-full before:content-[''] dark:bg-neutral-950") }} {{ ...rest }}>
-            {{ children ? children : '▲' }}
+            {{ children ? children : <CaretUpIcon /> }}
         </div>
     );
 }
@@ -172,7 +172,7 @@ function SelectScrollDownArrow(?Html $children = null, mixed ...$rest): Node
 {
     return (
         <div data-phem-select-target="scrollDownArrow" className={{ classes("bottom-0 z-[1] flex h-4 w-full cursor-default items-center justify-center bg-white text-center text-xs before:absolute before:left-0 before:h-full before:w-full before:content-[''] data-[side=none]:before:bottom-[-100%] dark:bg-neutral-950") }} {{ ...rest }}>
-            {{ children ? children : '▼' }}
+            {{ children ? children : <CaretDownIcon /> }}
         </div>
     );
 }
@@ -190,7 +190,7 @@ function SelectItem(#[Context] Select $select, string $value, bool $disabled = f
             data-selected={{ selected ? '' : null }}
             data-disabled={{ disabled ? '' : null }}
             data-phem-select-target="item"
-            className={{ classes('grid cursor-default grid-cols-[1rem_1fr] items-center gap-2 py-1.5 pr-4 pl-2.5 text-sm outline-hidden select-none data-highlighted:bg-neutral-950 data-highlighted:text-white dark:data-highlighted:bg-white dark:data-highlighted:text-neutral-950 data-disabled:text-neutral-500 pointer-coarse:py-2.5') }}
+            className={{ classes('grid cursor-default grid-cols-[1rem_1fr] items-center gap-2 py-1.5 pr-4 pl-2.5 text-sm outline-hidden select-none data-highlighted:bg-neutral-950 data-highlighted:text-white dark:data-highlighted:bg-white dark:data-highlighted:text-neutral-950 data-disabled:text-neutral-500') }}
             {{ ...rest }}
         >
             {{ children }}

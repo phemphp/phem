@@ -51,7 +51,7 @@ function MenubarDemo(): Node
 function NavigationMenuDemo(): Node
 {
     return (
-        <NavigationMenu>
+        <NavigationMenu collisionPaddingInline={{ 20 }} flip={{ false }}>
             <NavigationMenuList>
                 <NavigationMenuItem value="overview">
                     <NavigationMenuTrigger>Overview <NavigationMenuIcon /></NavigationMenuTrigger>

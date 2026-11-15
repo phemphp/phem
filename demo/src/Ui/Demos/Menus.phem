@@ -10,24 +10,48 @@ use function Phem\Ui\Base\{ContextMenuTrigger, MenuCheckboxItem, MenuItem, MenuI
 use Phem\Ui\Base\{ContextMenu, Menu, MenuRadioGroup, MenuSubmenu};
 
 #[Page('/components/menu')]
-final class MenuPage
+function MenuPage(): Node
 {
-    #[State] public bool $minimap = true;
+    return (
+        <DemoPage title="Menu">
+            <Menu sideOffset={{ 8 }}>
+                <MenuTrigger>Song</MenuTrigger>
+                <MenuPopup>
+                    <MenuItem>Add to Library</MenuItem>
+                    <MenuItem>Add to Playlist</MenuItem>
+                    <MenuSeparator />
+                    <MenuItem>Play Next</MenuItem>
+                    <MenuItem>Play Last</MenuItem>
+                    <MenuSeparator />
+                    <MenuItem>Favorite</MenuItem>
+                    <MenuItem>Share</MenuItem>
+                </MenuPopup>
+            </Menu>
+        </DemoPage>
+    );
+}
 
-    public function toggleMinimap(): void
+// The other examples of the Base UI Menu docs: a submenu, checkbox items and radio items. The
+// browser keeps the state of the items with no handler. "Autosave" has a handler: the server
+// keeps its state.
+#[Page('/components/menu-check-items')]
+final class MenuCheckItemsPage
+{
+    #[State] public bool $autosave = true;
+
+    public function toggleAutosave(): void
     {
-        $this->minimap = !$this->minimap;
+        $this->autosave = !$this->autosave;
     }
 
     public function render(): Node
     {
         return (
-            <DemoPage title="Menu">
+            <DemoPage title="Menu: submenu, checkbox and radio items">
                 <Menu sideOffset={{ 8 }}>
-                    <MenuTrigger>Song</MenuTrigger>
+                    <MenuTrigger>Workspace</MenuTrigger>
                     <MenuPopup>
-                        <MenuItem>Add to Library</MenuItem>
-                        <MenuSubmenu sideOffset={{ -4 }}>
+                        <MenuSubmenu sideOffset={{ -4 }} alignOffset={{ -4 }}>
                             <MenuSubmenuTrigger>Add to Playlist</MenuSubmenuTrigger>
                             <MenuPopup>
                                 <MenuItem>Get Up!</MenuItem>
@@ -36,61 +60,42 @@ final class MenuPage
                             </MenuPopup>
                         </MenuSubmenu>
                         <MenuSeparator />
-                        <MenuItem>Play Next</MenuItem>
-                        <MenuItem>Play Last</MenuItem>
-                        <MenuSeparator />
-                        <MenuCheckboxItem checked={{ minimap }} onClick={{ toggleMinimap }}>
+                        <MenuCheckboxItem defaultChecked>
                             <MenuItemIndicator />
                             <MenuItemLabel>Minimap</MenuItemLabel>
                         </MenuCheckboxItem>
-                        <MenuItem>Share</MenuItem>
+                        <MenuCheckboxItem defaultChecked>
+                            <MenuItemIndicator />
+                            <MenuItemLabel>Search</MenuItemLabel>
+                        </MenuCheckboxItem>
+                        <MenuCheckboxItem>
+                            <MenuItemIndicator />
+                            <MenuItemLabel>Sidebar</MenuItemLabel>
+                        </MenuCheckboxItem>
+                        <MenuCheckboxItem checked={{ autosave }} onClick={{ toggleAutosave }}>
+                            <MenuItemIndicator />
+                            <MenuItemLabel>Autosave</MenuItemLabel>
+                        </MenuCheckboxItem>
+                        <MenuSeparator />
+                        <MenuRadioGroup defaultValue="date">
+                            <MenuRadioItem value="date">
+                                <MenuItemIndicator />
+                                <MenuItemLabel>Date</MenuItemLabel>
+                            </MenuRadioItem>
+                            <MenuRadioItem value="name">
+                                <MenuItemIndicator />
+                                <MenuItemLabel>Name</MenuItemLabel>
+                            </MenuRadioItem>
+                            <MenuRadioItem value="type">
+                                <MenuItemIndicator />
+                                <MenuItemLabel>Type</MenuItemLabel>
+                            </MenuRadioItem>
+                        </MenuRadioGroup>
                     </MenuPopup>
                 </Menu>
             </DemoPage>
         );
     }
-}
-
-// The checkbox items and the radio items of the Base UI Menu docs: the browser keeps their state.
-#[Page('/components/menu-check-items')]
-function MenuCheckItemsPage(): Node
-{
-    return (
-        <DemoPage title="Menu: checkbox and radio items">
-            <Menu sideOffset={{ 8 }}>
-                <MenuTrigger>Workspace</MenuTrigger>
-                <MenuPopup>
-                    <MenuCheckboxItem defaultChecked>
-                        <MenuItemIndicator />
-                        <MenuItemLabel>Minimap</MenuItemLabel>
-                    </MenuCheckboxItem>
-                    <MenuCheckboxItem defaultChecked>
-                        <MenuItemIndicator />
-                        <MenuItemLabel>Search</MenuItemLabel>
-                    </MenuCheckboxItem>
-                    <MenuCheckboxItem>
-                        <MenuItemIndicator />
-                        <MenuItemLabel>Sidebar</MenuItemLabel>
-                    </MenuCheckboxItem>
-                    <MenuSeparator />
-                    <MenuRadioGroup defaultValue="date">
-                        <MenuRadioItem value="date">
-                            <MenuItemIndicator />
-                            <MenuItemLabel>Date</MenuItemLabel>
-                        </MenuRadioItem>
-                        <MenuRadioItem value="name">
-                            <MenuItemIndicator />
-                            <MenuItemLabel>Name</MenuItemLabel>
-                        </MenuRadioItem>
-                        <MenuRadioItem value="type">
-                            <MenuItemIndicator />
-                            <MenuItemLabel>Type</MenuItemLabel>
-                        </MenuRadioItem>
-                    </MenuRadioGroup>
-                </MenuPopup>
-            </Menu>
-        </DemoPage>
-    );
 }
 
 #[Page('/components/context-menu')]

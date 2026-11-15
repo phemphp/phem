@@ -57,7 +57,11 @@ final class BasicsTest extends DemoTestCase
         $page = $this->visitComponent('progress');
 
         $progress = $page->getByRole('progressbar', ['name' => 'Export data']);
-        expect($progress)->toHaveAttribute('aria-valuenow', '20');
         expect($progress)->toHaveAttribute('data-progressing', '');
+        self::assertGreaterThanOrEqual(20, (int) $progress->getAttribute('aria-valuenow'));
+
+        // The value grows each second, as in the Base UI demo.
+        $page->waitForFunction('() => Number(document.querySelector(\'[role="progressbar"]\').getAttribute("aria-valuenow")) > 45', null, ['timeout' => 30_000]);
+        expect($page->getByText('%'))->toBeVisible();
     }
 }

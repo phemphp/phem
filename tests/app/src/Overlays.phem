@@ -135,6 +135,24 @@ function MenuDemo(): Node
     );
 }
 
+// The defaults of a menu: modal, but not with `openOnHover`. `disabled` disables the triggers.
+#[Component]
+function MenuOptionsDemo(): Node
+{
+    return (
+        <div>
+            <Menu id="modal"><MenuTrigger>Modal</MenuTrigger><MenuPopup><MenuItem>One</MenuItem></MenuPopup></Menu>
+            <Menu id="hover" openOnHover><MenuTrigger>Hover</MenuTrigger><MenuPopup><MenuItem>One</MenuItem></MenuPopup></Menu>
+            <Menu id="off" disabled>
+                <MenuTrigger>Off</MenuTrigger>
+                <MenuPopup>
+                    <MenuSubmenu disabled><MenuSubmenuTrigger id="off-sub">More</MenuSubmenuTrigger><MenuPopup><MenuItem>Two</MenuItem></MenuPopup></MenuSubmenu>
+                </MenuPopup>
+            </Menu>
+        </div>
+    );
+}
+
 // The state rules of the check items: a `checked` prop wins over `defaultChecked`, the value of a
 // group wins over the `checked` prop of an item, and a group does not reach into a submenu.
 #[Component]
