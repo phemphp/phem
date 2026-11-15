@@ -251,37 +251,84 @@ h1.scene__title { font-size: clamp(42px, 5.6vw, 76px); }
     .branches::before, .branches > div::before { display: none; }
 }
 
-/* ---------- The stage (large screens with motion; story.ts sets story--enhanced) ---------- */
+/* ---------- The stage (a screen with enough space and with motion) ----------
+   story.ts sets story--enhanced and the classes of the mode of the screen (Story.astro):
+   - story--side: the copy on the left, the stage on the right (story--narrow: a laptop).
+   - story--stacked: the stage on top, the copy below (story--compact: a phone, with the compact
+     layout of the stage). */
 .stage { display: none; }
 
-.story--enhanced { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(360px, 37fr) minmax(0, 63fr); padding: 0 var(--story-gutter); }
+/* The height of one scene: the screen under the header. */
+.story--enhanced { --story-screen: calc(100vh - var(--top-height)); position: relative; isolation: isolate; display: grid; padding: 0 var(--story-gutter); }
+.story--side { grid-template-columns: minmax(360px, 37fr) minmax(0, 63fr); }
 /* The background of the story (field.ts): it covers the screen under the header while the story
    scrolls, behind the text and the stage. */
 .story__field { display: none; }
 .story--enhanced .story__field { position: absolute; inset: 0; z-index: -1; display: block; pointer-events: none; }
 /* It sticks under the header from the first pixel of the scroll, so the grid never moves. */
-.story__field canvas { position: sticky; top: var(--top-height); display: block; width: 100%; height: calc(100vh - var(--top-height)); }
+.story__field canvas { position: sticky; top: var(--top-height); display: block; width: 100%; height: var(--story-screen); }
 /* The grid does not show through the text and the elements: each one has the background of the
    page, and the text takes only the width that it needs. */
 .story--enhanced .scene__index { width: fit-content; }
 .story--enhanced :is(.scene__index, .scene__hint, .story-btn, .story-skip, .story-install),
 .stage :is(.stage__item, .stage__btn, .bound__label) { background-color: var(--story-bg); }
 .story--enhanced .story__scenes { padding: 0; }
-.story--enhanced .scene { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; box-sizing: border-box; height: calc(100vh - var(--top-height)); padding: 0 var(--space-8) 0 0; border: 0; }
+.story--enhanced .scene { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; box-sizing: border-box; height: var(--story-screen); padding: 0 var(--space-8) 0 0; border: 0; }
 /* A long scene has two screens of scroll: its copy stays in the middle of the screen. */
-.story--enhanced .scene--long { display: block; height: calc(2 * (100vh - var(--top-height))); }
-.story--enhanced .scene--long .scene__copy { position: sticky; top: var(--top-height); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; height: calc(100vh - var(--top-height)); }
+.story--enhanced .scene--long { display: block; height: calc(2 * var(--story-screen)); }
+.story--enhanced .scene--long .scene__copy { position: sticky; top: var(--top-height); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; height: var(--story-screen); }
 .story--enhanced .scene__lead { max-width: 24em; }
 .story--enhanced h1.scene__title { font-size: clamp(44px, 4.2vw, 64px); }
 /* The stage shows the figures: they stay for screen readers only. */
 .story--enhanced .scene__figure { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-.story--enhanced .stage { perspective: 1400px; position: sticky; top: var(--top-height); display: block; align-self: start; height: calc(100vh - var(--top-height)); overflow: hidden; }
+.story--enhanced .stage { perspective: 1400px; position: sticky; top: var(--top-height); display: block; align-self: start; height: var(--story-screen); overflow: hidden; }
+
+/* A laptop: the stage takes more of the width, and the copy is smaller. */
+.story--narrow { grid-template-columns: minmax(280px, 30fr) minmax(0, 70fr); }
+.story--narrow .scene { padding-right: var(--space-5); }
+.story--narrow .scene__title { font-size: clamp(30px, 3.4vw, 42px); }
+.story--narrow h1.scene__title { font-size: clamp(36px, 4vw, 50px); }
+.story--narrow .scene__lead { font-size: 16px; line-height: 25px; }
+
+/* The stage on top, the copy below. The stage and the scenes share one cell. The stage sticks
+   under the header with the height --stage-h, and each scene keeps that space free above its
+   copy. The copy scrolls with the page and leaves under the stage: the background of the story is
+   the opaque back of the stage. */
+.story--stacked { --stage-h: min(calc((100vw - 2 * var(--story-gutter)) * 760 / 920), calc(var(--story-screen) - 300px)); grid-template-columns: minmax(0, 1fr); }
+.story--stacked :is(.story__scenes, .stage) { grid-area: 1 / 1; }
+.story--stacked .story__scenes { position: relative; z-index: -2; }
+.story--stacked .story__field canvas { height: var(--stage-h); background: var(--story-bg); box-shadow: 0 1px 0 var(--story-line); }
+.story--stacked .stage { height: var(--stage-h); }
+.story--stacked .scene { justify-content: flex-start; padding: var(--stage-h) 0 0; }
+/* The copy sits in the middle of the space under the stage. A copy that is too high starts at
+   the top of that space and goes on below the screen. */
+.story--stacked .scene__copy { flex: none; margin-block: auto; padding-block: var(--space-6); }
+.story--stacked .scene--long .scene__copy { top: calc(var(--top-height) + var(--stage-h)); box-sizing: border-box; height: calc(var(--story-screen) - var(--stage-h)); margin: 0; }
+.story--stacked .scene__lead { max-width: 32em; }
+.story--stacked .scene__hint { bottom: var(--space-6); }
+/* The small viewport height keeps the whole scene on the screen when a phone shows its toolbars.
+   A browser that does not have it keeps the height of the other modes. */
+@supports (height: 100svh) { .story--stacked { --story-screen: calc(100svh - var(--top-height)); } }
+/* A link that gets the focus scrolls into the space under the stage, not under the stage. */
+.story--stacked .scene__copy :is(a, button) { scroll-margin-top: calc(var(--top-height) + var(--stage-h) + var(--space-4)); }
+
+/* A phone: the compact stage fills the width of the screen, and the copy is smaller. */
+.story--compact { --stage-h: min(calc(100vw * 440 / 390), calc(var(--story-screen) - 190px)); }
+.story--compact .stage { margin-inline: calc(-1 * var(--story-gutter)); }
+.story--compact .scene__copy { padding-block: var(--space-5); }
+.story--compact .scene__index { margin-bottom: var(--space-2); }
+.story--compact .scene__title { font-size: 28px; }
+.story--compact h1.scene__title { font-size: 34px; }
+.story--compact .scene__lead { margin-top: var(--space-3); font-size: 15px; line-height: 23px; }
+.story--compact .scene__actions { margin-top: var(--space-5); }
+.story--compact .scene__hint { display: none; }
+
 .stage__tilt { position: absolute; inset: 0; transform-origin: 50% 50%; }
 .stage__canvas { position: absolute; top: 50%; left: 50%; width: 920px; height: 760px; transform: translate(-50%, -50%) scale(var(--stage-scale, 1)); transform-origin: 50% 50%; }
 /* The lines, their dots and the outlines go above the elements: the background of an element must
    not hide a line that ends on it or crosses it. */
-.stage__svg { position: absolute; inset: 0; z-index: 1; overflow: visible; }
+.stage__svg { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; overflow: visible; }
 .stage [data-s] { visibility: hidden; opacity: 0; }
 .stage [data-mark] { --on: 0; }
 .stage__item { position: absolute; }
@@ -317,6 +364,28 @@ h1.scene__title { font-size: clamp(42px, 5.6vw, 76px); }
 .note b { color: var(--story-ink); font-weight: 500; }
 .node-label { color: var(--story-ink); font: 500 13px/20px var(--font-mono); white-space: nowrap; }
 
+/* The wide layout (stage-layout.ts): the place of each element, in design units. */
+.stage [data-s="code"] { top: 60px; left: 370px; width: 500px; }
+.stage [data-s="document"] { top: 110px; left: 20px; width: 310px; height: 540px; }
+.stage [data-s="article"] { top: 150px; left: 45px; width: 260px; height: 470px; }
+.stage [data-s="like-bound"] { top: 526px; left: 79px; width: 192px; height: 68px; }
+.stage [data-s="compose"] { top: 190px; left: 400px; width: 470px; }
+.stage [data-s="label-services"] { top: 60px; left: 384px; }
+.stage [data-s="label-security"] { top: 300px; left: 384px; }
+.stage [data-s="label-rate-limit"] { top: 450px; left: 384px; }
+.stage [data-s="excerpt-services"] { top: 90px; left: 366px; width: 500px; }
+.stage [data-s="excerpt-security"] { top: 330px; left: 366px; width: 500px; }
+.stage [data-s="excerpt-rate-limit"] { top: 480px; left: 366px; width: 500px; }
+.stage [data-s="mercure"] { top: 335px; left: 458px; }
+.stage [data-s="broadcast"] { top: 400px; left: 20px; width: 440px; }
+.stage [data-s="legend"] { top: 500px; left: 510px; width: 380px; }
+.stage [data-s="source"] { top: 88px; left: 460px; }
+.stage [data-s="phemc"] { top: 220px; left: 460px; }
+.stage [data-s="tag-php"] { top: 296px; left: 228px; }
+.stage [data-s="tag-twig"] { top: 296px; left: 692px; }
+.stage [data-s="php"] { top: 340px; left: 30px; width: 420px; }
+.stage [data-s="twig"] { top: 340px; left: 470px; width: 420px; }
+
 /* The stage scales down to about 0.77 at its smallest size: its small labels are larger than in the
    static figures, so they stay readable. */
 .stage .tag { font-size: 13px; }
@@ -337,3 +406,68 @@ h1.scene__title { font-size: clamp(42px, 5.6vw, 76px); }
 .stage .browser--page .browser__title { margin-bottom: 6px; font-size: 30px; line-height: 36px; }
 .stage .browser--page .browser__url { font-size: 12px; }
 .stage .browser--page .browser__toggle { font-size: 13px; }
+
+/* ---------- The compact layout of the stage (a phone; stage-layout.ts) ----------
+   390 × 440 design units. The elements of a scene sit one below the other, the code is smaller
+   and has no title bar, and the lines run in the margins. */
+.story--compact .stage__canvas { width: 390px; height: 440px; }
+.story--compact .stage__btn { top: 220px; left: 195px; }
+.story--compact .stage .ph-code__bar { display: none; }
+.story--compact .stage .ph-code pre { padding: 10px 12px; font-size: 11px; line-height: 17px; }
+.story--compact .stage :is(.tag, .note, .node-label) { font-size: 11px; line-height: 16px; }
+.story--compact .stage .tag--stack { flex-direction: row; gap: 0.6em; }
+.story--compact .stage .bound__label { top: -18px; font-size: 11px; }
+/* Scene 1: the page, with its source on the left. */
+.story--compact .stage [data-s="page"] { top: 104px; left: 150px; width: 232px; height: 222px; }
+.story--compact .stage .browser--page .browser__bar { height: 24px; }
+.story--compact .stage .browser--page .browser__body { gap: 12px; padding: 18px 16px; }
+.story--compact .stage .browser--page .browser__title { margin-bottom: 0; font-size: 16px; line-height: 20px; }
+.story--compact .stage .browser--page .browser__url { font-size: 10px; }
+.story--compact .stage .browser--page .browser__toggle { font-size: 11px; }
+.story--compact .stage .browser--page .like { --like-size: 13.5px; }
+/* Scenes 2 and 3: the button above its code. The left margin has the lines of the round trip. */
+.story--compact .stage [data-s="code"] { top: 62px; left: 30px; width: 350px; }
+/* Scene 4: the boundaries above the composition. */
+.story--compact .stage [data-s="document"] { top: 24px; left: 15px; width: 360px; height: 166px; }
+.story--compact .stage [data-s="article"] { top: 54px; left: 29px; width: 328px; height: 128px; gap: 9px; padding: 12px 14px; }
+.story--compact .stage .article__title { margin-bottom: 0; font-size: 14px; line-height: 18px; }
+.story--compact .stage .article__line:nth-of-type(n + 5) { display: none; }
+.story--compact .stage [data-s="like-bound"] { top: 132px; left: 43px; width: 72px; height: 44px; }
+.story--compact .stage [data-s="compose"] { top: 200px; left: 15px; width: 360px; }
+/* Scene 5: the parts of the framework, one below the other. */
+.story--compact .stage [data-s="label-services"] { top: 64px; left: 24px; }
+.story--compact .stage [data-s="excerpt-services"] { top: 84px; left: 22px; width: 363px; }
+.story--compact .stage [data-s="label-security"] { top: 222px; left: 24px; }
+.story--compact .stage [data-s="excerpt-security"] { top: 242px; left: 22px; width: 363px; }
+.story--compact .stage [data-s="label-rate-limit"] { top: 312px; left: 24px; }
+.story--compact .stage [data-s="excerpt-rate-limit"] { top: 332px; left: 22px; width: 363px; }
+.story--compact .stage :is([data-s="excerpt-services"], [data-s="excerpt-security"], [data-s="excerpt-rate-limit"]) pre { padding-inline: 10px; }
+/* Scene 6: the three devices above the code. The legend has no space. */
+.story--compact .stage [data-s="browser-a"] { top: 16px; left: 11px; width: 152px; height: 150px; }
+.story--compact .stage [data-s="browser-b"] { top: 6px; left: 173px; width: 112px; height: 178px; }
+.story--compact .stage [data-s="browser-c"] { top: 12px; left: 295px; width: 84px; height: 168px; }
+.story--compact .stage .browser__bar { height: 20px; }
+/* The static figures hide the URL on a phone: the stage shows it. */
+.story--compact .stage .browser__url { display: inline; font-size: 8px; }
+.story--compact .stage .browser__body, .story--compact .stage .browser--phone .browser__body { gap: 8px; padding: 10px; }
+.story--compact .stage .browser__title, .story--compact .stage .browser--phone .browser__title { font-size: 11px; line-height: 14px; }
+.story--compact .stage .browser__like { margin-top: 2px; }
+/* The Like slot of the page of scene 1 has a rule of its own, above. */
+.story--compact .stage .like--sm { --like-size: 9.9px; }
+.story--compact .stage .browser__toggle { gap: 6px; font-size: 9px; line-height: 12px; }
+.story--compact .stage .browser__comments { gap: 6px; padding-left: 8px; }
+.story--compact .stage .browser__home { margin-bottom: 6px; }
+.story--compact .stage [data-s="mercure"] { translate: none; }
+.story--compact .stage [data-s="broadcast"] { top: 220px; left: 15px; width: 360px; }
+.story--compact .stage [data-s="legend"] { display: none; }
+/* Scene 7: the source, phemc, the PHP and the Twig, one below the other. */
+.story--compact .stage .pill { gap: 8px; height: 32px; padding: 0 14px; font-size: 12px; }
+.story--compact .stage [data-s="source"] { top: 26px; left: 195px; }
+.story--compact .stage [data-s="phemc"] { top: 84px; left: 195px; }
+.story--compact .stage [data-s="tag-php"] { top: 108px; left: 15px; translate: none; }
+.story--compact .stage [data-s="php"] { top: 126px; left: 15px; width: 360px; }
+.story--compact .stage [data-s="tag-twig"] { top: 318px; left: 15px; }
+.story--compact .stage [data-s="twig"] { top: 336px; left: 15px; width: 360px; }
+/* Scene 8: the drawing at the width of the canvas. Its lines keep the width of the other lines. */
+.story--compact .stage__sketch { inset: 60px 0 auto; width: 390px; height: auto; }
+.story--compact .stage .sketch path:not(.sketch__logo) { stroke-width: 2.6; }

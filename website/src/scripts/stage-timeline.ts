@@ -1,19 +1,14 @@
 // The stage of the story (src/components/home/Stage.astro) and its timeline. StageLines measures
 // the stage and builds its lines; the Director gives the timeline its verbs (draw, travel,
-// reveal, conceal); scenesTimeline() tells the story with them.
+// reveal, conceal); scenesTimeline() tells the story with them. The layout gives the composition
+// for the size of the screen (src/scripts/stage-layout.ts).
 //
 // Every line draws as a path and fades: the connectors, the outlines of the code windows, of the
 // article and of the browsers, and their inner lines. A dot that travels on a line is the head of
 // that line, because one state sets both (src/scripts/stroke.ts).
 import { gsap } from 'gsap';
+import { middle, type Layout, type Named, type Sheet } from './stage-layout';
 import { outline, rectangle, Stroke, type Box, type Outline } from './stroke';
-
-// The design size of the canvas, in the units of Stage.astro, and the center of scene 1.
-export const canvasWidth = 920;
-export const canvasHeight = 760;
-const center = { x: 460, y: 380 };
-
-export type Named = (name: string) => HTMLElement;
 
 export function named(canvas: HTMLElement): Named {
     return (name) => {
@@ -28,9 +23,9 @@ export function named(canvas: HTMLElement): Named {
 }
 
 // The box of an element or of a range of text in design units, whatever the scale of the canvas.
-function measure(canvas: HTMLElement): (element: Element | Range) => Box {
+function measure(canvas: HTMLElement, width: number): (element: Element | Range) => Box {
     const frame = canvas.getBoundingClientRect();
-    const scale = frame.width / canvasWidth;
+    const scale = frame.width / width;
 
     return (element) => {
         const rect = element.getBoundingClientRect();
@@ -44,27 +39,35 @@ function measure(canvas: HTMLElement): (element: Element | Range) => Box {
     };
 }
 
-const middle = (b: Box): number => b.top + b.height / 2;
-
 // The lines of the stage: the geometry that depends on the text, the strokes of the connectors,
-// and the outlines of the elements with `data-outline`.
-export class StageLines {
+// and the outlines of the elements with `data-outline`. It is the sheet that the layout draws on.
+export class StageLines implements Sheet {
     readonly el: Named;
     readonly strokes = new Map<string, Stroke>();
     readonly outlines = new Map<string, Outline>();
     sketch: Stroke[] = [];
+    readonly box: (element: Element | Range) => Box;
     private readonly slots = new Map<string, Box>();
 
-    constructor(private readonly canvas: HTMLElement) {
+    constructor(
+        private readonly canvas: HTMLElement,
+        readonly layout: Layout,
+    ) {
         this.el = named(canvas);
+        this.box = measure(canvas, layout.width);
+    }
+
+    get button(): { width: number; height: number } {
+        const btn = this.el('btn');
+
+        return { width: btn.offsetWidth, height: btn.offsetHeight };
     }
 
     build(): void {
-        const box = measure(this.canvas);
-
-        this.connectors(box);
-        this.source(box);
-        this.sketchLike(box);
+        this.bracket();
+        this.layout.connect(this);
+        this.source();
+        this.sketchLike();
 
         for (const path of this.canvas.querySelectorAll<SVGPathElement>('path[data-s]')) {
             this.strokes.set(path.dataset.s ?? '', new Stroke(path));
@@ -74,7 +77,7 @@ export class StageLines {
 
         if (layer) {
             for (const element of this.canvas.querySelectorAll<HTMLElement>('[data-outline]')) {
-                const drawn = outline(element, layer, box);
+                const drawn = outline(element, layer, this.box);
                 gsap.set(drawn.group, { autoAlpha: 0 });
                 this.outlines.set(element.dataset.s ?? '', drawn);
             }
@@ -83,11 +86,11 @@ export class StageLines {
         // Scene 1 (the page), scene 6 (browser A) and scene 8 (the drawing): the button of the
         // browser is the button of the story.
         for (const name of ['page', 'browser-a']) {
-            this.slots.set(name, box(this.el(name).querySelector('.like--slot') ?? this.el(name)));
+            this.slots.set(name, this.box(this.el(name).querySelector('.like--slot') ?? this.el(name)));
         }
 
         const sketch = this.el('sketch');
-        this.slots.set('sketch', box(sketch.querySelector('[data-sketch-slot]') ?? sketch));
+        this.slots.set('sketch', this.box(sketch.querySelector('[data-sketch-slot]') ?? sketch));
 
         // The Symfony mark is a filled shape: it fades in with the texts.
         this.sketch = [...sketch.querySelectorAll<SVGPathElement>('path:not(.sketch__logo)')].map((path) => new Stroke(path));
@@ -96,9 +99,18 @@ export class StageLines {
         this.canvas.closest('[data-stage]')?.classList.add('is-drawn');
     }
 
+    // Removes what build() added to the page, so another layout can build the stage again.
     destroy(): void {
         this.outlines.forEach((drawn) => drawn.group.remove());
         this.canvas.closest('[data-stage]')?.classList.remove('is-drawn');
+
+        for (const element of this.canvas.querySelectorAll<HTMLElement | SVGElement>('[data-s]')) {
+            element.style.removeProperty('left');
+            element.style.removeProperty('top');
+            element.style.removeProperty('stroke-dasharray');
+            element.style.removeProperty('stroke-dashoffset');
+            element.style.removeProperty('stroke-linecap');
+        }
     }
 
     stroke(name: string): Stroke {
@@ -133,23 +145,74 @@ export class StageLines {
         return drawn;
     }
 
+    mark(scope: string, name: string): Box {
+        return this.box(this.el(scope).querySelector(`[data-mark="${name}"]`) ?? this.el(scope));
+    }
+
+    lineEnd(scope: string, name: string): number {
+        const line = this.box(this.lineOf(scope, name));
+
+        return line.left + line.width + 8;
+    }
+
+    // The indent is in the text of the first token, so this reads the first character that is not
+    // a space.
+    lineStart(scope: string, name: string): number {
+        const line = this.lineOf(scope, name);
+        const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            const offset = (node.textContent ?? '').search(/\S/);
+
+            if (-1 === offset) {
+                continue;
+            }
+
+            const range = document.createRange();
+            range.setStart(node, offset);
+            range.setEnd(node, offset + 1);
+
+            return this.box(range).left;
+        }
+
+        return this.box(line).left;
+    }
+
+    line(name: string, d: string): void {
+        this.el(name).setAttribute('d', d);
+    }
+
+    dot(name: string, x: number, y: number): void {
+        this.el(name).setAttribute('cx', String(x));
+        this.el(name).setAttribute('cy', String(y));
+    }
+
+    place(name: string, left: number, top: number): void {
+        this.el(name).style.left = `${left}px`;
+        this.el(name).style.top = `${top}px`;
+    }
+
+    private lineOf(scope: string, name: string): Element {
+        return this.el(scope).querySelector(`[data-mark="${name}"]`)?.closest('.line') ?? this.el(scope);
+    }
+
     // Scene 1: the source of the page. Each line of code sits on the left of the part of the page
     // that it renders, and its connector ends in the padding of the page. #[Page] sits above the
     // URL, and #[Component] under the page: its connector climbs beside the page to the button.
-    private source(box: (element: Element | Range) => Box): void {
+    private source(): void {
         const el = this.el;
+        const box = this.box;
         const page = el('page');
         const part = (selector: string): Box => box(page.querySelector(selector) ?? page);
         const frame = box(page);
-        const column = frame.left - 30;
+        const column = frame.left - this.layout.noteGap;
         const title = part('.browser__title');
         const text = [...page.querySelectorAll('.browser__body > .browser__line')].map(box);
         const like = part('.like--slot');
         const url = part('.browser__url');
         const note = (name: string, y: number, end: number): void => {
-            el(name).style.left = `${column - el(name).offsetWidth}px`;
-            el(name).style.top = `${y - el(name).offsetHeight / 2}px`;
-            el(`${name}-ln`).setAttribute('d', `M ${column + 6} ${y} H ${end}`);
+            this.place(name, column - el(name).offsetWidth, y - el(name).offsetHeight / 2);
+            this.line(`${name}-ln`, `M ${column + 6} ${y} H ${end}`);
         };
 
         note('note-title', middle(title), title.left - 10);
@@ -157,155 +220,44 @@ export class StageLines {
 
         const pageNote = el('note-page');
         const pageNoteY = frame.top - 40;
-        pageNote.style.left = `${url.left}px`;
-        pageNote.style.top = `${pageNoteY - pageNote.offsetHeight / 2}px`;
-        el('note-page-ln').setAttribute('d', `M ${url.left + 14} ${pageNoteY + pageNote.offsetHeight / 2 + 6} V ${url.top - 3}`);
+        this.place('note-page', url.left, pageNoteY - pageNote.offsetHeight / 2);
+        this.line('note-page-ln', `M ${url.left + 14} ${pageNoteY + pageNote.offsetHeight / 2 + 6} V ${url.top - 3}`);
 
-        const likeNote = el('note-like');
         const climb = column + 10;
         const likeY = middle(like);
         const likeNoteTop = frame.top + frame.height + 30;
         const radius = 6;
-        likeNote.style.left = `${climb - 8}px`;
-        likeNote.style.top = `${likeNoteTop}px`;
-        el('note-like-ln').setAttribute('d', `M ${climb} ${likeNoteTop - 4} V ${likeY + radius} Q ${climb} ${likeY}, ${climb + radius} ${likeY} H ${like.left - 10}`);
+        this.place('note-like', climb - 8, likeNoteTop);
+        this.line('note-like-ln', `M ${climb} ${likeNoteTop - 4} V ${likeY + radius} Q ${climb} ${likeY}, ${climb + radius} ${likeY} H ${like.left - 10}`);
     }
 
     // Scene 8: the outline of the button of the story where it lands in the page that the elephant
     // holds: the box of the button at the scale of the drawing, turned with the page.
-    private sketchLike(box: (element: Element | Range) => Box): void {
+    private sketchLike(): void {
         const el = this.el;
         const btn = el('btn');
-        const slot = box(el('sketch').querySelector('[data-sketch-slot]') ?? el('sketch'));
-        const width = btn.offsetWidth * sketchScale;
-        const height = btn.offsetHeight * sketchScale;
+        const scale = this.layout.scale.sketch;
+        const slot = this.box(el('sketch').querySelector('[data-sketch-slot]') ?? el('sketch'));
+        const width = btn.offsetWidth * scale;
+        const height = btn.offsetHeight * scale;
         const button = { left: slot.left, top: middle(slot) - height / 2, width, height };
-        const radius = (parseFloat(getComputedStyle(btn).borderTopLeftRadius) || 0) * sketchScale;
+        const radius = (parseFloat(getComputedStyle(btn).borderTopLeftRadius) || 0) * scale;
         const path = el('sketch-like');
 
         path.setAttribute('d', rectangle(button, radius));
         path.setAttribute('transform', `rotate(${sketchTilt} ${button.left + width / 2} ${button.top + height / 2})`);
     }
 
-    // The connectors that start or end at a mark of the code.
-    private connectors(box: (element: Element | Range) => Box): void {
-        const el = this.el;
-        const mark = (scope: string, name: string): Box => box(el(scope).querySelector(`[data-mark="${name}"]`) ?? el(scope));
-
-        // Scene 2: a bracket on the right of the code links the line of the handler and the line
-        // of onClick. Each arm starts at the end of its line. It draws from onClick up to the
-        // handler.
-        const handler = middle(mark('code', 'handler'));
-        const render = middle(mark('code', 'render'));
-        const onclick = middle(mark('code', 'onclick'));
-        const lineOf = (name: string): Element => el('code').querySelector(`[data-mark="${name}"]`)?.closest('.line') ?? el('code');
-        const lineEnd = (name: string): number => {
-            const line = box(lineOf(name));
-
-            return line.left + line.width + 8;
-        };
-
-        // The left edge of the first character of a line that is not a space: the indent is in
-        // the text of the first token.
-        const lineStart = (name: string): number => {
-            const line = lineOf(name);
-            const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
-
-            for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-                const offset = (node.textContent ?? '').search(/\S/);
-
-                if (-1 === offset) {
-                    continue;
-                }
-
-                const range = document.createRange();
-                range.setStart(node, offset);
-                range.setEnd(node, offset + 1);
-
-                return box(range).left;
-            }
-
-            return box(line).left;
-        };
-        const handlerEnd = lineEnd('handler');
-        const onclickEnd = lineEnd('onclick');
+    // Scene 2: a bracket on the right of the code links the line of the handler and the line of
+    // onClick. Each arm starts at the end of its line. It draws from onClick up to the handler.
+    private bracket(): void {
+        const handler = middle(this.mark('code', 'handler'));
+        const onclick = middle(this.mark('code', 'onclick'));
+        const handlerEnd = this.lineEnd('code', 'handler');
+        const onclickEnd = this.lineEnd('code', 'onclick');
         const side = Math.max(handlerEnd, onclickEnd) + 12;
-        el('bracket').setAttribute('d', `M ${onclickEnd} ${onclick} H ${side} V ${handler} H ${handlerEnd}`);
 
-        // Scene 3: the event goes from the button to the handler, and the HTML of render() comes
-        // back. The lines end just before `public`, the first word of each line.
-        const button = { x: 170 + el('btn').offsetWidth / 2 + 8, y: center.y };
-        const handlerStart = lineStart('handler') - 10;
-        const renderStart = lineStart('render') - 10;
-        el('trip-out').setAttribute('d', `M ${button.x} ${button.y - 12} C ${button.x + 70} ${button.y - 12}, ${handlerStart - 70} ${handler}, ${handlerStart} ${handler}`);
-        el('trip-back').setAttribute('d', `M ${renderStart} ${render} C ${renderStart - 60} ${render}, ${button.x + 60} ${button.y + 12}, ${button.x} ${button.y + 12}`);
-
-        // Each tag sits at the middle of its line, on the outer side: "onClick Event" before the
-        // line that goes up to the handler, "HTML" under the flat line that comes back from render().
-        const samplesOf = (path: string, count: number): DOMPoint[] => {
-            const line = el(path) as unknown as SVGPathElement;
-            const length = line.getTotalLength();
-
-            return Array.from({ length: count + 1 }, (_, index) => line.getPointAtLength((length * index) / count));
-        };
-        const samples = samplesOf('trip-out', 40);
-        const out = samples[20];
-        const back = samplesOf('trip-back', 2)[1];
-
-        // The line bends at its middle, so the tag moves to the left until it keeps a gap of 10 to
-        // every point of the line.
-        const event = el('event');
-        const eventTop = out.y - event.offsetHeight / 2;
-        const gapTo = (left: number): number => Math.min(...samples.map((point) => {
-            const dx = Math.max(left - point.x, 0, point.x - (left + event.offsetWidth));
-            const dy = Math.max(eventTop - point.y, 0, point.y - (eventTop + event.offsetHeight));
-
-            return Math.hypot(dx, dy);
-        }));
-        let eventLeft = out.x - 12 - event.offsetWidth;
-
-        while (gapTo(eventLeft) < 10) {
-            eventLeft -= 2;
-        }
-
-        event.style.left = `${eventLeft}px`;
-        event.style.top = `${eventTop}px`;
-        el('html').style.left = `${back.x - el('html').offsetWidth / 2}px`;
-        el('html').style.top = `${back.y + 8}px`;
-
-        // Scene 6: the click goes down from the Like button of browser A to like(), and the HTML
-        // comes back up beside it. The broadcast leaves from the line of #[Broadcast] and climbs
-        // beside the code window to Mercure.
-        const like = box(el('browser-a').querySelector('.like--slot') ?? el('browser-a'));
-        const desktop = box(el('browser-a'));
-        const likeButton = box(el('broadcast'));
-        const x = like.left + like.width / 2;
-        const from = desktop.top + desktop.height + 2;
-        const to = likeButton.top - 2;
-        el('click-out').setAttribute('d', `M ${x - 6} ${from} V ${to}`);
-        el('click-back').setAttribute('d', `M ${x + 6} ${to} V ${from}`);
-        el('click-event').style.left = `${x - 18 - el('click-event').offsetWidth}px`;
-        el('click-event').style.top = `${(from + to) / 2 - el('click-event').offsetHeight / 2}px`;
-        el('click-html').style.left = `${x + 18}px`;
-        el('click-html').style.top = `${(from + to) / 2 - el('click-html').offsetHeight / 2}px`;
-
-        const flag = middle(mark('broadcast', 'broadcast'));
-        const gap = likeButton.left + likeButton.width + 10;
-        el('hub').setAttribute('d', `M ${likeButton.left + likeButton.width} ${flag} H ${gap - 8} Q ${gap} ${flag}, ${gap} ${flag - 8} V 351`);
-
-        // Scene 4: each boundary leads to its tag in the composition. The lines nest like the
-        // boxes: the line of the outer box turns last, so no two lines cross.
-        const leads: [string, string, number, number, number][] = [
-            ['lead-document', 'document', 330, 130, 382],
-            ['lead-article', 'article', 305, 172, 364],
-            ['lead-like', 'like-button', 271, 560, 346],
-        ];
-
-        for (const [path, name, x, y, bend] of leads) {
-            const target = mark('compose', name);
-            const end = { x: target.left - 6, y: middle(target) };
-            el(path).setAttribute('d', `M ${x} ${y} C ${bend} ${y}, ${bend} ${end.y}, ${end.x} ${end.y}`);
-        }
+        this.line('bracket', `M ${onclickEnd} ${onclick} H ${side} V ${handler} H ${handlerEnd}`);
     }
 }
 
@@ -325,6 +277,8 @@ class Director {
     // The button of the story moves to (x, y) at a scale. `--btn-scale` keeps its border as wide as
     // the lines at any scale (home.css).
     move(x: number, y: number, scale: number, time: number, duration = 0.4, vars: gsap.TweenVars = {}): number {
+        const { center } = this.lines.layout;
+
         this.tl.to(this.el('btn'), { x: x - center.x, y: y - center.y, scale, '--btn-scale': scale, duration, ease: 'power2.inOut', ...vars }, time);
 
         return time + duration;
@@ -482,11 +436,6 @@ export class StoryTime {
     readonly into = (scene: number, offset = 0): number => this.rest(scene) - 0.7 + offset;
 }
 
-// The scale of the button of the story in the page of scene 1 and in the browsers of scene 6. The
-// Like slots of these browsers have the same size (home.css).
-const pageScale = 1.1;
-const browserScale = 0.7;
-const sketchScale = 0.78;
 // The page that the elephant holds leans to the left (Friends.astro).
 const sketchTilt = -8;
 
@@ -498,14 +447,15 @@ const noteLines = notes.map((note) => `${note}-ln`);
 // so the scroll back to scene 1 shows the page again, with or without the intro.
 function restScene1(lines: StageLines): void {
     const drawn = lines.outline('page');
-    const slot = lines.slot('page', pageScale);
+    const { center, scale } = lines.layout;
+    const slot = lines.slot('page', scale.page);
 
     [...drawn.frame, ...drawn.lines, ...noteLines.map((name) => lines.stroke(name))].forEach((stroke) => {
         stroke.state.to = 1;
         stroke.render();
     });
     gsap.set([drawn.group, lines.el('page'), ...notes.map((name) => lines.el(name)), ...noteLines.map((name) => lines.el(name))], { autoAlpha: 1 });
-    gsap.set(lines.el('btn'), { x: slot.x - center.x, y: slot.y - center.y, scale: pageScale, '--btn-scale': pageScale, autoAlpha: 1, '--active': 0 });
+    gsap.set(lines.el('btn'), { x: slot.x - center.x, y: slot.y - center.y, scale: scale.page, '--btn-scale': scale.page, autoAlpha: 1, '--active': 0 });
 }
 
 // Scene 1 on load: the page draws in, then a dot extends into the outline of its Like button, and
@@ -514,7 +464,7 @@ export function introTimeline(lines: StageLines): gsap.core.Timeline {
     const d = new Director(lines, gsap.timeline({ paused: true, delay: 0.15 }));
     const btn = d.el('btn');
     const dot = d.el('intro-dot');
-    const slot = lines.slot('page', pageScale);
+    const slot = lines.slot('page', lines.layout.scale.page);
     const x = btn.offsetWidth / 2 - 4;
     const y = btn.offsetHeight / 2 - 4;
 
@@ -546,6 +496,7 @@ export function scenesTimeline(lines: StageLines, time: StoryTime): gsap.core.Ti
     }
 
     const { rest, into } = time;
+    const { center, scale, spots } = lines.layout;
     const d = new Director(lines);
     const btn = d.el('btn');
     const values = [...btn.querySelectorAll('.like__value')];
@@ -557,7 +508,7 @@ export function scenesTimeline(lines: StageLines, time: StoryTime): gsap.core.Ti
     d.retract(noteLines, into(2), 0.12);
     d.fadeOut(notes, into(2), 0.08);
     d.conceal(['page'], into(2), 0.2);
-    d.move(170, center.y, 1, into(2, 0.05));
+    d.move(spots.code.x, spots.code.y, spots.code.scale, into(2, 0.05));
     t = d.reveal('code', into(2, 0.15), 0.3);
     t = d.mark(d.marks('code', 'handler', 'onclick'), t);
     d.draw('bracket', t, 0.15);
@@ -576,7 +527,7 @@ export function scenesTimeline(lines: StageLines, time: StoryTime): gsap.core.Ti
     d.retract(['trip-out', 'trip-back', 'bracket'], into(4), 0.14);
     d.fadeOut(['event', 'html'], into(4));
     d.conceal(['code'], into(4), 0.2);
-    d.move(175, 560, 0.9, into(4, 0.05));
+    d.move(spots.compose.x, spots.compose.y, spots.compose.scale, into(4, 0.05));
     d.reveal('article', into(4, 0.15), 0.3);
     d.reveal('document', into(4, 0.2), 0.3);
     d.reveal('compose', into(4, 0.2), 0.3);
@@ -589,7 +540,7 @@ export function scenesTimeline(lines: StageLines, time: StoryTime): gsap.core.Ti
     // 4 → 5: the component stays, and lines reach the framework, one at a time.
     d.retract(['lead-document', 'lead-article', 'lead-like'], into(5), 0.12);
     d.conceal(['compose', 'like-bound', 'document', 'article'], into(5), 0.2);
-    d.move(170, 310, 1, into(5, 0.05), 0.3);
+    d.move(spots.framework.x, spots.framework.y, spots.framework.scale, into(5, 0.05), 0.3);
     const framework = ['services', 'security', 'rate-limit'];
     framework.forEach((name, index) => {
         const arrival = d.travel(`link-${name}`, `travel-${index + 1}`, into(5, 0.35 + index * 0.1), 0.07);
@@ -601,12 +552,12 @@ export function scenesTimeline(lines: StageLines, time: StoryTime): gsap.core.Ti
 
     // 5 → 6: the button lands in a desktop browser, beside a tablet and a phone that show the
     // same post, and the code of the LikeButton draws in.
-    const slot = lines.slot('browser-a', browserScale);
+    const slot = lines.slot('browser-a', scale.browser);
     d.retract(framework.map((name) => `link-${name}`), into(6, -0.1), 0.12);
     d.shrink(framework.map((name) => `dot-${name}`), into(6, -0.1));
     d.fadeOut(framework.map((name) => `label-${name}`), into(6, -0.1));
     d.conceal(framework.map((name) => `excerpt-${name}`), into(6, -0.1), 0.15);
-    d.move(slot.x, slot.y, browserScale, into(6, -0.05), 0.3);
+    d.move(slot.x, slot.y, scale.browser, into(6, -0.05), 0.3);
     d.reveal('browser-a', into(6, 0.05), 0.2);
     d.reveal('browser-b', into(6, 0.09), 0.2);
     d.reveal('browser-c', into(6, 0.13), 0.2);
@@ -650,7 +601,7 @@ export function scenesTimeline(lines: StageLines, time: StoryTime): gsap.core.Ti
     d.fadeOut(['mercure', 'click-event', 'click-html', 'legend'], into(7));
     d.conceal(['broadcast', 'browser-c', 'browser-b'], into(7), 0.2);
     d.conceal(['browser-a'], into(7, 0.05), 0.2);
-    d.move(center.x, 88, 0.45, into(7, 0.05), 0.3, { autoAlpha: 0 });
+    d.move(spots.source.x, spots.source.y, spots.source.scale, into(7, 0.05), 0.3, { autoAlpha: 0 });
     t = d.reveal('source', into(7, 0.2), 0.14);
     t = d.travel('build-in', 'travel-1', t, 0.1);
     d.reveal('phemc', t, 0.08);
@@ -669,8 +620,8 @@ export function scenesTimeline(lines: StageLines, time: StoryTime): gsap.core.Ti
     d.fadeIn(['sketch'], into(8, 0.1), 0.02);
     t = d.sketch(into(8, 0.1), 0.45);
     d.tl.fromTo(d.el('sketch').querySelectorAll('text, .sketch__logo'), { opacity: 0 }, { opacity: 1, duration: 0.06, stagger: 0.02, immediateRender: false }, t - 0.15);
-    const page = lines.slot('sketch', sketchScale);
-    d.tl.set(btn, { x: page.x - center.x, y: page.y - center.y, scale: sketchScale, '--btn-scale': sketchScale, rotation: sketchTilt, borderColor: 'transparent' }, into(8));
+    const page = lines.slot('sketch', scale.sketch);
+    d.tl.set(btn, { x: page.x - center.x, y: page.y - center.y, scale: scale.sketch, '--btn-scale': scale.sketch, rotation: sketchTilt, borderColor: 'transparent' }, into(8));
     t = d.draw('sketch-like', t - 0.1, 0.15);
     d.fadeIn(['btn'], t - 0.05, 0.08);
 
