@@ -7,11 +7,15 @@ use Phem\Node;
 
 use function App\Ui\Layout\Document;
 
-// A city field: the server gives the cities that start with the text.
+// A city field: the server gives the cities that start with the text. A fruit field: the server
+// renders the fruits one time, and the browser filters them. A color field: as the fruit field,
+// with no id on the list and the items.
 #[Page('/combobox')]
 final class ComboboxPage
 {
     private const array CITIES = ['Lyon', 'Paris', 'Parma', 'Porto'];
+    private const array FRUITS = ['Apple', 'Banana', 'Cherry', 'Éclair', 'Lemon'];
+    private const array COLORS = ['Blue', 'Green', 'Red'];
 
     #[State] public string $query = '';
     #[State] public string $city = '';
@@ -29,6 +33,8 @@ final class ComboboxPage
             self::CITIES,
             static fn (string $name): bool => str_starts_with(strtolower($name), $text),
         ));
+        $fruits = self::FRUITS;
+        $colors = self::COLORS;
 
         return (
             <Document title="Combobox">
@@ -44,6 +50,29 @@ final class ComboboxPage
                     </div>
                 </div>
                 <output id="city">{{ city }}</output>
+
+                <div id="fruits" data-controller="phem-combobox" data-phem-combobox-filter-value="contains" data-phem-combobox-mode-value="both">
+                    <input id="fruit-input" data-phem-combobox-target="input" aria-label="Fruit" />
+                    <div id="fruit-popup" data-phem-combobox-target="popup" hidden>
+                        <ul id="fruit-list" data-phem-combobox-target="list">
+                            {% for name in fruits %}
+                                <li key={{ name }} id={{ 'fruit-' ~ loop.index }} data-phem-combobox-target="item">{{ name }}</li>
+                            {% endfor %}
+                        </ul>
+                        <p id="fruit-empty" data-phem-combobox-target="empty">No fruit.</p>
+                    </div>
+                </div>
+
+                <div id="colors" data-controller="phem-combobox" data-phem-combobox-filter-value="contains">
+                    <input id="color-input" data-phem-combobox-target="input" aria-label="Color" />
+                    <div id="color-popup" data-phem-combobox-target="popup" hidden>
+                        <ul class="color-list" data-phem-combobox-target="list">
+                            {% for name in colors %}
+                                <li key={{ name }} data-phem-combobox-target="item">{{ name }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
             </Document>
         );
     }

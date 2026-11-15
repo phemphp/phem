@@ -180,6 +180,54 @@ describe("phem-popover", () => {
     expect(isOpen()).toBe(false)
   })
 
+  describe("a preview card", () => {
+    const card = (attributes = "") => share(`data-phem-popover-open-on-hover-value="true" data-phem-popover-delay-value="600" data-phem-popover-close-delay-value="300" ${attributes}`)
+      .replace('<button id="trigger" data-phem-popover-target="trigger">Share</button>', '<a id="trigger" href="#profile" data-phem-popover-target="trigger">Ada</a>')
+    const shown = () => popup().hasAttribute("data-open")
+
+    it("keeps the link as the only part for the keyboard and a screen reader", async () => {
+      await mount(card())
+      const trigger = document.getElementById("trigger")
+
+      expect(trigger.hasAttribute("aria-haspopup")).toBe(false)
+      expect(trigger.hasAttribute("aria-expanded")).toBe(false)
+      expect(popup().hasAttribute("role")).toBe(false)
+      expect(popup().getAttribute("aria-hidden")).toBe("true")
+      expect(document.getElementById("copy").tabIndex).toBe(-1)
+    })
+
+    it("does not open on a click on the link", async () => {
+      await mount(card())
+      document.getElementById("trigger").addEventListener("click", (event) => event.preventDefault())
+      click("#trigger")
+
+      expect(shown()).toBe(false)
+    })
+
+    it("opens after the delay on the keyboard focus, and closes after the close delay on the focus out", async () => {
+      await mount(card())
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+      const trigger = document.getElementById("trigger")
+      const matches = trigger.matches.bind(trigger)
+      trigger.matches = (selector) => selector === ":focus-visible" || matches(selector)
+      trigger.focus()
+
+      vi.advanceTimersByTime(599)
+      expect(shown()).toBe(false)
+      vi.advanceTimersByTime(1)
+      expect(shown()).toBe(true)
+      expect(document.activeElement).toBe(trigger)
+      expect(trigger.hasAttribute("data-popup-open")).toBe(true)
+
+      document.getElementById("outside").focus()
+      vi.advanceTimersByTime(299)
+      expect(shown()).toBe(true)
+      vi.advanceTimersByTime(1)
+      expect(shown()).toBe(false)
+      vi.useRealTimers()
+    })
+  })
+
   it("opens on hover after the delay with openOnHover", async () => {
     await mount(share('data-phem-popover-open-on-hover-value="true" data-phem-popover-delay-value="200"'))
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })

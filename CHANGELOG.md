@@ -8,6 +8,200 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Fixes after a review of the new controllers. `phem-combobox` with an inline `mode` sends the
+  text of the user for a bound input, not the label of the highlighted item (a field can give
+  phem its value in `phemValue`). A state that a controller changes in the click of an event is
+  a change before the request, and each answer renders with the time of its own request, also
+  when two answers render at the same time. A drawer with snap points lets a touch scroll its
+  content at its full height, and places its snap point again after a resize. A bound hidden
+  input gets `data-phem-value` (the server value), so a reset gives it back. `trap-focus` skips
+  the hidden fields. A drawer with snap points takes the `style` of the server after the morph.
+  The controllers share the ARIA links in `phem_aria.js`.
+- `phemc` gives E068 for a class or a function with a reserved name of PHP, such as
+  `class Switch` or `function List()`. PHP cannot declare it, so the error came only when PHP
+  loaded the file. See docs/compiler.md.
+- A field with an optional `Bound` prop (`?Bound $value = null`) can have its own `value`, or
+  `checked` for a checkbox or a radio button, next to `phem:bind`. The field renders it only when
+  the prop is null, as the `defaultValue` of a UI kit input. A bound field ignores it. Before,
+  `phemc` gave E033. See docs/forms.md.
+- `phem-navigation-menu` gives `data-instant` to the positioner (or to the popup, with no
+  positioner) on the first open, and removes it when the open item changes. So a CSS transition
+  of the position moves the popup only from one trigger to another, and the first open does not
+  slide in from the corner of the page. See docs/controllers.md.
+- `phem-checkbox-group` and `phem-toggle-group` give their `value` to a `phem-toggle` item that
+  connects after them. Before, the item took its first state from its input or its
+  `aria-checked` when it connected, and the group lost a checked value of the server render.
+- `phem-menu`, `phem-context-menu`, `phem-tooltip`, `phem-combobox` and `phem-collapsible` give
+  no `id` to a part. Before, they gave an `id` to a popup, a group label, a list, an option or a
+  panel with no `id`. The morph of an event removed this id, because the server render did not
+  have it, so `aria-controls`, `aria-labelledby`, `aria-describedby` and `aria-activedescendant`
+  pointed to an id that was not on the page. Now the controller uses the element references of
+  ARIA (`ariaControlsElements`, `ariaLabelledByElements`, `ariaDescribedByElements` and
+  `ariaActiveDescendantElement`) for a part with no `id`. A part with an `id` from the markup
+  still gets its id in the attribute. The highlight of a combobox stays on the same item through
+  the morph, or on an item with the same `id`. See docs/controllers.md.
+- The state value of a built-in controller (for example the `open` value of `phem-dialog`, or
+  the `value` of `phem-radio-group`) keeps the value of the client through the morph of an
+  answer when the client changed it after the request of the event left, as a bound field does.
+  Before, the answer of an event that left before the last change of the user gave the old
+  value back. A bound `<input type="hidden">` that a script changes (with an `input` or `change`
+  event) is now dirty, so `phem:bind` and `phem:live` send its value. See docs/controllers.md.
+- New `phem-field` and `phem-form` controllers, as Base UI Field, Fieldset, Form and Input. A
+  field links its `label`, `control`, `description` and `error` parts, and validates the control
+  with the constraint validation of the browser in the `onSubmit`, `onBlur` or `onChange` mode
+  (`validationDebounceTime`). An `error` part with `data-match` shows for one `ValidityState`
+  key, and an error with no text gets the `validationMessage`. All the parts get `data-valid`,
+  `data-invalid`, `data-dirty`, `data-touched`, `data-filled`, `data-focused` and
+  `data-disabled`. A server error (a control that the server renders with `aria-invalid="true"`,
+  as `phem:bind` does) stays until the user changes the value. `phem-form` adds `novalidate`,
+  stops an invalid submit before its `onSubmit` handler sends the event, and focuses the first
+  invalid control.
+- New `phem-otp-field` controller, as Base UI OTPField: one input for each character of a code,
+  with a hidden input that has the full value. Typing moves to the next slot, Backspace removes a
+  character and goes back, the arrow keys, Home and End move, and a paste fills the slots. The
+  `validationType` (`numeric`, `alpha`, `alphanumeric`, `none`), `mask`, `autoSubmit`,
+  `disabled`, `readOnly` and `required` values, `autocomplete="one-time-code"` on the first slot,
+  and `data-complete` when all the slots have a value.
+- Add the `phem-toggle` controller: a toggle button (`aria-pressed`, `data-pressed`), a switch or
+  a checkbox (`role="switch"` or `role="checkbox"`, `aria-checked`, `data-checked`,
+  `data-unchecked`), with the `checked`, `indeterminate`, `disabled`, `readOnly` and `required`
+  values. A click, a label and Space toggle it. The `input` target keeps a checkbox or a hidden
+  input for forms (`name`, `value`, `uncheckedValue`, `form`), and the `indicator` target gets the
+  state and the open and close animations. See docs/controllers.md.
+- `phem-checkbox-group` works with `phem-toggle` checkboxes, for the items and the parent. It has
+  a `value` value (the values of the checked items) and an `allValues` value (the items of the
+  parent). The third click on the parent gives back the items that were checked, as Base UI
+  CheckboxGroup does. A disabled or read-only item keeps its state. Each change dispatches
+  `phem-checkbox-group:change`. See docs/controllers.md.
+- Add the `phem-toggle-group` controller: a group of toggle buttons with one `value` state (the
+  values of the pressed items), `multiple`, `orientation`, `loopFocus` and `disabled`, and a roving
+  focus with the arrow keys, Home and End. An item can be a `phem-toggle` button. Each change
+  dispatches `phem-toggle-group:change`. See docs/controllers.md.
+- The new `phem-toolbar` controller gives a row of `item` parts (buttons, links, inputs) one tab
+  stop. The arrow keys of the `orientation` value, Home and End move the focus, with the
+  `loopFocus` value. In a text input, the arrow keys move the caret until it is at the edge of
+  the text. An item with `aria-disabled="true"`, an item of a disabled `group`, or an item of a
+  toolbar with the `disabled` value stays in the focus order, but a click on it does nothing.
+  The parts get `role="toolbar"`, `role="group"`, `role="separator"`, `aria-orientation` and
+  `data-orientation`. See docs/controllers.md.
+- The new `phem-radio-group` controller makes a radio group from elements that are not native
+  inputs: `role="radiogroup"`, `role="radio"` items with `aria-checked`, `data-checked` and
+  `data-unchecked`, and an `indicator` part with the animations. The `value` value is the
+  state, and it stays through the morph. A click, a click on a `<label>`, Space and the arrow
+  keys check a radio, and the arrow keys skip a disabled radio. The `disabled`, `readOnly` and
+  `required` values set the ARIA and the data attributes. An `input` part (a hidden input or
+  native radio inputs) gets the value and sends `input` and `change`, and the controller
+  dispatches `phem-radio-group:change`. See docs/controllers.md.
+- The new `phem-avatar` controller hides the `image` part until it loads, and shows the
+  `fallback` part while the image is not loaded, after the `delay` value. An image in the cache
+  shows at once, and a new `src` loads the image again. The image gets `data-loading` and
+  `data-error`, and each change of the status (`idle`, `loading`, `loaded`, `error`) dispatches
+  `phem-avatar:status`. See docs/controllers.md.
+- The new `phem-number-field` controller edits a number in a text input, as the NumberField of
+  Base UI. It has increment and decrement buttons that repeat the step while the user holds
+  them, the arrow keys (Alt for `smallStep`, Shift for `largeStep`), PageUp, PageDown, Home and
+  End, the mouse wheel (`allowWheelScrub`), and a scrub area with the pointer lock and a virtual
+  cursor. It reads and shows the value in the format of the `locale` and `format` values
+  (`Intl.NumberFormat`). A hidden input gets the raw value. The value stays after the morph. See
+  docs/controllers.md.
+- The new `phem-slider` controller selects one value or a range on a track, as the Slider of
+  Base UI. A press on the control moves the nearest thumb, and a drag moves it. The keys of the
+  native range input in each thumb step the value. The thumbs do not cross
+  (`minStepsBetweenValues`, `thumbCollisionBehavior`). The positions are inline styles, as in Base
+  UI, and the `value` part shows the values with `Intl.NumberFormat`. The values stay after the
+  morph. See docs/controllers.md.
+- New `phem-scroll-area` controller: custom scrollbars over a native scroll container, as the
+  ScrollArea of Base UI. A drag of a thumb and a press on a scrollbar scroll the viewport. A
+  scrollbar with no overflow on its axis gets `hidden`, unless it has `data-keep-mounted`. The
+  parts get `data-has-overflow-x`/`-y`, `data-overflow-x-start`/`-end`,
+  `data-overflow-y-start`/`-end`, `data-scrolling` and `data-hovering`, and the
+  `--scroll-area-thumb-*`, `--scroll-area-corner-*` and `--scroll-area-overflow-*` CSS variables.
+  The `overflowEdgeThreshold` value sets the distance before an edge attribute shows. The scroll
+  position and the state stay after the morph. See docs/controllers.md.
+- New `phem-select` controller: a button that opens a list of options, as the Select of Base
+  UI. The `value` value is the state (a JSON array with `multiple`), and the `value` part shows
+  the label of the selected item or its `placeholder` (`data-placeholder`). With
+  `alignItemWithTrigger` (the default), the selected item goes over the trigger
+  (`data-side="none"`). The controller has the keyboard of a listbox (the arrow keys, Home, End,
+  a typeahead, Enter, Space, Escape and Tab), a select on a release after a drag from the
+  trigger, scroll arrows, groups, an item indicator, the `modal`, `disabled`, `readOnly`,
+  `required` and `loopFocus` values, and `data-popup-open`/`data-pressed` on the trigger. An
+  `input` part (an `<input>` or a `<select>`) gets the value and sends `input` and `change`
+  events, and the controller dispatches `phem-select:change`. The value and the open popup stay
+  after the morph. See docs/controllers.md.
+- `phem-menu` sends `phem-menu:open` and `phem-menu:close`, and its trigger gets `data-pressed`
+  while the menu is open, as in Base UI (not the trigger of a submenu). `open("first")` and
+  `open("last")` open the menu with the focus on the first or on the last item. In a vertical
+  `phem-menubar`, ArrowRight opens the menu and its popup goes on the `inline-end` side. See
+  docs/controllers.md.
+- New `phem-menubar` controller (Base UI Menubar): a bar of `phem-menu` menus with one tab stop.
+  The arrow keys of the `orientation` value move between the triggers, Home and End go to the
+  first and to the last trigger, and `loopFocus` goes from the last trigger to the first one.
+  While a menu is open, ArrowLeft and ArrowRight open the menu before or after it on its first
+  item, and the pointer on another trigger opens its menu at once. The `modal` value (the default)
+  locks the page and keeps the pointer events of the menubar. The `disabled` value opens no menu.
+  The menubar gets `role="menubar"`, `aria-orientation`, `data-orientation`, `data-modal` and
+  `data-has-submenu-open`. See docs/controllers.md.
+- New `phem-navigation-menu` controller (Base UI NavigationMenu): the triggers of a list open
+  their content in one shared popup, with the pointer (`delay` and `closeDelay`, 50 ms) and with
+  a click. With a `viewport` part, the open content moves into the viewport, and goes back to its
+  item when it closes and before a morph. The popup gets `--popup-width` and `--popup-height`
+  (the positioner `--positioner-width` and `--positioner-height`) for a transition of the size,
+  and the contents get `data-activation-direction`. The arrow keys move between the triggers
+  and the links of the list, ArrowDown opens a content, and Escape closes it. The `value` value
+  is the state. A link with `aria-current="page"` gets `data-active`. See docs/controllers.md.
+- A `phem-popover` with `openOnHover` and a link trigger (`<a href>`) is a preview card, as the
+  PreviewCard of Base UI. A click on the link opens the link, not the popup. The keyboard focus
+  on the link opens the popup after the `delay`, and the focus out closes it after the
+  `closeDelay`. The link stays the only part for the keyboard and a screen reader: it gets no
+  `aria-haspopup` and `aria-expanded`, the popup gets `aria-hidden="true"` and no role, and its
+  links and fields get `tabindex="-1"`. See docs/controllers.md.
+- `phem-dialog` has the parts and the values of Base UI Dialog, AlertDialog and Drawer. The
+  `disablePointerDismissal` value keeps an alert dialog open on a tap on the backdrop: only Escape
+  closes it. The `modal` value: `false` opens the dialog with `show()` (the page stays active, and
+  Escape and a press outside close it), and `trap-focus` also keeps Tab in the dialog. The
+  `backdrop` part opens and closes with the dialog, and a `<dialog>` as the `viewport` part holds
+  the `popup` part (a press on the viewport outside the popup closes it). A title or a
+  description with no id links with the element references of ARIA. A drawer stops at the
+  heights of the `snapPoints` value: the `snapPoint` value is the state, and the popup gets
+  `--drawer-snap-point-offset`, `--drawer-height` and `data-expanded`. See docs/controllers.md.
+- **Breaking** The swipe variables of a drawer are now the variables of Base UI:
+  `--drawer-swipe-movement-x`, `--drawer-swipe-movement-y` and `--drawer-swipe-progress` (before
+  `--dialog-swipe-*`), and the new `--drawer-swipe-strength`. The popup of a drawer always has
+  `data-swipe-direction`, and a swipe that closes it gives `data-swipe-dismiss`. A drawer in a
+  drawer gives `data-nested-drawer-open` and `--nested-drawers`.
+- In the markup of a class component, a call of a name that is a method of the class calls the
+  method: `aria-valuetext={{ text(10) }}` compiles to `this.text(10)`. Before, it compiled to a
+  Twig function `text()`, and the render failed with `Unknown "text" function`. A method hides a
+  Twig function with the same name, except `render()`. A handler call (`onClick={{ remove(item) }}`)
+  does not change. `phemc` gives E067 for a call of a private method. See docs/syntax.md.
+- A `Bound` prop can be optional: `?Bound $value = null`. When the tag of the child has no
+  `phem:bind`, `phem:bind={{ value }}` binds nothing, and the field is a plain field. Before, the
+  render failed with a `TypeError` in `PhemRuntime::bind()`. `phem:error={{ value }}` renders
+  nothing for a null prop. See docs/forms.md.
+- **Breaking** The default toast styles of `phem.css` apply only to a part with no `class`
+  attribute: the `phem-toast` container, `[data-phem-toast]`, `[data-phem-toast-description]`
+  and `[data-phem-toast-close]`. A part with classes gets all its look from them. Before, a
+  Tailwind utility could not replace a default style, because the utilities are in a cascade
+  layer and `phem.css` is not. A toast with a class now hides with `data-limited` and moves with
+  the swipe variables only with the styles of the app. See docs/styling.md.
+- **Breaking** The state of `phem-tabs` is now the `active` value: the value of the selected tab,
+  not its index. Replace `data-phem-tabs-index-value="1"` with the value of the tab. The value
+  of a tab and of a panel is its `data-value`, its key, or its position, and a tab shows the
+  panel with the same value, so the panels can be in another order. With no `active` value, the
+  first tab that is not disabled is selected. A tab and its panel need no `id` now: with no id,
+  the controller links them with `ariaControlsElements` and `ariaLabelledByElements`, so a
+  function component can render the tabs with no id. See docs/controllers.md.
+- `phem-combobox` can filter in the browser a list that the server renders one time: set the
+  `filter` value to `contains` or `starts-with`. The match ignores the case and the accents
+  (`Intl.Collator`, with the `locale` value). An item that does not match gets `hidden`, a
+  `group` part with no visible item too, and the `limit` value shows only the first matches. The
+  new `mode` value (`list`, `both`, `inline`, `none`) is the `aria-autocomplete` of the input:
+  with `both` and `inline`, the arrow keys write the label of the highlighted item in the input,
+  and Escape gives back the text of the user. With a client list, a choice writes the label of
+  the item in the input and sends its `input` and `change` events, and the text stays through
+  the morph. The popup gets `aria-busy` while an event of the input runs. The server filter does
+  not change. See docs/controllers.md.
 - **Breaking** A named slot tag is now `<Card.footer>`, not `<Card:footer>`. `phemc` gives E013
   for the old form, with the new name in the hint. The compiled Twig does not change.
 - A named slot can be a prop with markup: `<Card footer={{ <em>Saved</em> }} />` is the same as

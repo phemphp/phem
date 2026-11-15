@@ -1,0 +1,78 @@
+<?phem
+
+namespace App\Ui\Toggle;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// A toggle button, switches and checkboxes in labels, a checkbox group of `phem-toggle`
+// checkboxes with a parent, and a button that sends an event.
+#[Page('/toggle')]
+final class TogglePage
+{
+    #[State] public bool $alerts = false;
+    #[State] public int $saves = 0;
+
+    public function save(): void
+    {
+        ++$this->saves;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Toggle">
+                <style>{{ '.box { display: inline-block; width: 1rem; height: 1rem; border: 1px solid; }' }}</style>
+                <button id="bold" type="button" data-controller="phem-toggle" aria-label="Bold">B</button>
+
+                <form id="settings">
+                    <label id="alerts-label">
+                        <span id="alerts" role="switch" class="box" data-controller="phem-toggle">
+                            <span id="alerts-thumb" data-phem-toggle-target="indicator"></span>
+                            <input id="alerts-input" type="checkbox" name="alerts" hidden phem:bind={{ alerts }} data-phem-toggle-target="input" />
+                        </span>
+                        <span id="alerts-text">Alerts</span>
+                    </label>
+
+                    <span id="newsletter" role="switch" class="box" aria-labelledby="newsletter-label" data-controller="phem-toggle"
+                          data-phem-toggle-value-value="yes" data-phem-toggle-unchecked-value-value="no">
+                        <input id="newsletter-input" type="hidden" name="newsletter" data-phem-toggle-target="input" />
+                    </span>
+                    <label id="newsletter-label" for="newsletter-input">Newsletter</label>
+
+                    <label id="terms-label">
+                        <span id="terms" role="checkbox" class="box" data-controller="phem-toggle" data-phem-toggle-name-value="terms">
+                            <span id="terms-indicator" data-phem-toggle-target="indicator">✓</span>
+                            <input type="checkbox" hidden data-phem-toggle-target="input" />
+                        </span>
+                        <span id="terms-text">I accept the terms</span>
+                    </label>
+                </form>
+
+                <div id="fruits" data-controller="phem-checkbox-group" data-phem-checkbox-group-value-value={{ ['pear']|json_encode }} aria-label="Fruits">
+                    <label>
+                        <span id="all" role="checkbox" class="box" data-controller="phem-toggle" data-phem-checkbox-group-target="parent">
+                            <span id="all-indicator" data-phem-toggle-target="indicator">-</span>
+                        </span>
+                        All
+                    </label>
+                    {% for fruit in ['apple', 'pear', 'plum'] %}
+                        <label key={{ fruit }}>
+                            <span id={{ fruit }} role="checkbox" class="box" data-controller="phem-toggle" data-value={{ fruit }} data-phem-checkbox-group-target="item" aria-checked={{ fruit == 'pear' ? 'true' : 'false' }}>
+                                <span data-phem-toggle-target="indicator">✓</span>
+                                <input type="checkbox" name="fruits[]" value={{ fruit }} hidden data-phem-toggle-target="input" />
+                            </span>
+                            {{ fruit }}
+                        </label>
+                    {% endfor %}
+                </div>
+
+                <button id="save" onClick={{ save }}>Save</button>
+                <output id="saves">{{ saves }}</output>
+                <output id="alerts-value">{{ alerts ? 'on' : 'off' }}</output>
+            </Document>
+        );
+    }
+}

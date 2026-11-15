@@ -8,7 +8,7 @@ use Phem\Node;
 use function App\Ui\Layout\Document;
 
 // A menu of actions: each item runs a handler. "Move to" is a submenu, and the area has a
-// context menu.
+// context menu. The "Sort" menu has a popup and a group label with no id.
 #[Page('/menu')]
 final class MenuPage
 {
@@ -34,6 +34,11 @@ final class MenuPage
         $this->log[] = 'copy';
     }
 
+    public function sort(): void
+    {
+        $this->log[] = 'sort';
+    }
+
     public function render(): Node
     {
         return (
@@ -57,6 +62,15 @@ final class MenuPage
                     <div id="area" data-phem-context-menu-target="trigger" style="width: 200px; height: 100px;">Right click here</div>
                     <div id="context-popup" data-phem-context-menu-target="popup" hidden>
                         <button id="context-copy" data-phem-context-menu-target="item" onClick={{ copy }}>Copy</button>
+                    </div>
+                </div>
+                <div id="sort" data-controller="phem-menu">
+                    <button id="sort-trigger" data-phem-menu-target="trigger">Sort</button>
+                    <div class="sort-popup" data-phem-menu-target="popup" hidden>
+                        <div id="sort-group" data-phem-menu-target="group">
+                            <span class="sort-label" data-phem-menu-target="groupLabel">Order</span>
+                            <button id="sort-name" data-phem-menu-target="item" data-phem-menu-close-on-click="false" onClick={{ sort }}>Name</button>
+                        </div>
                     </div>
                 </div>
                 <output id="log">{{ log|join(', ') }}</output>

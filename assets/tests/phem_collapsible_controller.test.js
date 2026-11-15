@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemCollapsibleController from "../dist/phem_collapsible_controller.js"
-import { click, mount, nextDone, respond } from "./support.js"
+import { click, mount, nextDone, respond, stubElementReflection } from "./support.js"
 
 let application
 
@@ -85,22 +85,29 @@ describe("phem-collapsible", () => {
     expect(panel.getAttribute("data-closed")).toBe("")
   })
 
-  it("gives an id to a panel with no id, the same after the morph", async () => {
-    const markup = section().replace('id="panel" ', "")
-    await mount(markup)
-    respond(markup)
+  it("gives no id to a panel with no id, and links it with an element reference, also after the morph", async () => {
+    const restore = stubElementReflection()
+    try {
+      const markup = section().replace('id="panel" ', "")
+      await mount(markup)
+      respond(markup)
 
-    const trigger = document.getElementById("open")
-    const id = trigger.getAttribute("aria-controls")
-    expect(id).toMatch(/^phem-collapsible-\d+-0$/)
+      const trigger = document.getElementById("open")
+      const panel = document.querySelector("[data-phem-collapsible-target=panel]")
+      expect(panel.id).toBe("")
+      expect(trigger.ariaControlsElements).toEqual([panel])
 
-    click("#open")
-    const done = nextDone()
-    click("#star")
-    await done
+      click("#open")
+      const done = nextDone()
+      click("#star")
+      await done
 
-    expect(trigger.getAttribute("aria-controls")).toBe(id)
-    expect(document.getElementById(id)).not.toBeNull()
+      const morphed = document.querySelector("[data-phem-collapsible-target=panel]")
+      expect(morphed.id).toBe("")
+      expect(trigger.ariaControlsElements).toEqual([morphed])
+    } finally {
+      restore()
+    }
   })
 
   it("stays open after the morph of an event", async () => {

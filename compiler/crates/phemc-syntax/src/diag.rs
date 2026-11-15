@@ -119,6 +119,8 @@ pub mod codes {
     pub const CLASS_IN_MARKUP: &str = "E064";
     pub const INVALID_FEED: &str = "E065";
     pub const FEED_CONTENT: &str = "E066";
+    pub const PRIVATE_METHOD_CALL: &str = "E067";
+    pub const RESERVED_NAME: &str = "E068";
     pub const MISSING_KEY: &str = "W002";
     pub const UNKNOWN_EVENT: &str = "W003";
     pub const FOREIGN_ATTRIBUTE: &str = "W004";

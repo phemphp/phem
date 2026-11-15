@@ -149,6 +149,7 @@ final class BindTest extends TestCase
 
         self::assertSame('value="&lt;Ada&gt;"', (string) $runtime->bind('name', '<Ada>', 'input'));
         self::assertSame('value=""', (string) $runtime->bind('age', null, 'input', 'number'));
+        self::assertSame('value="l" data-phem-value="l"', (string) $runtime->bind('size', 'l', 'input', 'hidden'), 'the server value of a hidden input');
         self::assertSame('value="l"', (string) $runtime->bind('size', Size::Large, 'input'));
         self::assertSame('checked', (string) $runtime->bind('agree', true, 'input', 'checkbox'));
         self::assertSame('', (string) $runtime->bind('agree', false, 'input', 'CHECKBOX'));
@@ -168,6 +169,18 @@ final class BindTest extends TestCase
         self::assertSame('checked', (string) $runtime->bind(new Bound('agree', true), null, 'input', 'checkbox'));
         self::assertSame('selected', (string) Attributes::selected(new Bound('plan', 'pro'), 'pro'));
         self::assertSame('Ada', Attributes::bindValue(new Bound('bio', 'Ada')), 'the text of a <textarea>');
+
+        // A null Bound prop: the tag of the child has no `phem:bind`, and the field is a plain field.
+        self::assertSame('', (string) $runtime->bind(null, null, 'input'));
+        self::assertSame('', (string) $runtime->bind(null, null, 'input', 'checkbox'));
+        self::assertSame('aria-describedby="help"', (string) $runtime->bind(null, null, 'input', null, null, null, 'help'));
+        self::assertSame('value="&lt;Ada&gt;" aria-describedby="help"', (string) $runtime->bind(null, null, 'input', null, null, null, 'help', '<Ada>'), 'its own value');
+        self::assertSame('', (string) $runtime->bind(null, null, 'input', null, null, null, null, null));
+        self::assertSame('checked', (string) $runtime->bind(null, null, 'input', 'checkbox', 'on', null, null, true), 'its own checked');
+        self::assertSame('', (string) $runtime->bind(null, null, 'input', 'checkbox', 'on', null, null, false));
+        self::assertSame('value="Ada"', (string) $runtime->bind(new Bound('name', 'Ada'), null, 'input', null, null, null, null, 'Grace'), 'a bound field ignores its own value');
+        self::assertNull($runtime->error(null));
+        self::assertSame('', (string) Attributes::selected(null, 'pro'));
     }
 
     public function testABoundFieldWithAnErrorGetsTheAriaAttributes(): void
@@ -372,6 +385,10 @@ final class BindTest extends TestCase
         self::assertSame($fiber.'.address["city"]', self::bindKey($html, 'city'), 'a path');
         self::assertStringContainsString('value="Paris"', $html);
         self::assertStringContainsString('<option value="free" selected>Free</option>', $html);
+        self::assertMatchesRegularExpression('/<input name="free" data-phem-live\s+value="all" aria-describedby="search-help">/', $html, 'a null Bound prop: a plain field with its own value');
+        self::assertMatchesRegularExpression('/<input type="checkbox" name="agree"\s+checked>/', $html, 'a null Bound prop: its own checked');
+        self::assertDoesNotMatchRegularExpression('/name="search"[^>]*value="all"/', $html, 'a bound field ignores its own value');
+        self::assertSame($fiber.'.note', self::bindKey($html, 'search'), 'an optional Bound prop with `phem:bind`');
 
         $response = $this->event('/bind-child', ['state' => $state, 'signature' => $signature, 'handler' => $save, 'event' => ['type' => 'submit'], 'bound' => [
             $email => 'ada@example.com',

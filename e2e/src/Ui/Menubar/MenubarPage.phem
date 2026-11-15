@@ -1,0 +1,69 @@
+<?phem
+
+namespace App\Ui\Menubar;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// A menubar with three menus: "File" has the "Export" submenu, and "Edit" has an item that sends
+// an event and keeps the menu open.
+#[Page('/menubar')]
+final class MenubarPage
+{
+    #[State] public array $log = [];
+
+    public function save(): void
+    {
+        $this->log[] = 'save';
+    }
+
+    public function undo(): void
+    {
+        $this->log[] = 'undo';
+    }
+
+    public function export(): void
+    {
+        $this->log[] = 'export';
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Menubar">
+                <div id="bar" data-controller="phem-menubar" style="display: flex; gap: 4px">
+                    <div id="file" data-controller="phem-menu">
+                        <button id="file-trigger" data-phem-menu-target="trigger">File</button>
+                        <div id="file-popup" data-phem-menu-target="popup" hidden>
+                            <button id="new" data-phem-menu-target="item">New</button>
+                            <button id="save" data-phem-menu-target="item" onClick={{ save }}>Save</button>
+                            <div data-controller="phem-menu">
+                                <button id="export" data-phem-menu-target="trigger">Export</button>
+                                <div id="export-popup" data-phem-menu-target="popup" hidden>
+                                    <button id="pdf" data-phem-menu-target="item" onClick={{ export }}>PDF</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="edit" data-controller="phem-menu">
+                        <button id="edit-trigger" data-phem-menu-target="trigger">Edit</button>
+                        <div id="edit-popup" data-phem-menu-target="popup" hidden>
+                            <button id="undo" data-phem-menu-target="item" data-phem-menu-close-on-click="false" onClick={{ undo }}>Undo</button>
+                            <button id="redo" data-phem-menu-target="item">Redo</button>
+                        </div>
+                    </div>
+                    <div id="help" data-controller="phem-menu">
+                        <button id="help-trigger" data-phem-menu-target="trigger">Help</button>
+                        <div id="help-popup" data-phem-menu-target="popup" hidden>
+                            <button id="about" data-phem-menu-target="item">About</button>
+                        </div>
+                    </div>
+                </div>
+                <button id="outside" style="margin-top: 200px">Outside</button>
+                <output id="log">{{ log|join(', ') }}</output>
+            </Document>
+        );
+    }
+}

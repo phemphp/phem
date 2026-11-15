@@ -1,0 +1,45 @@
+<?phem
+
+namespace App\Ui\NumberField;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// A number field in the German format, with a scrub area, buttons and a hidden input, and a
+// button that sends an event.
+#[Page('/number-field')]
+final class NumberFieldPage
+{
+    #[State] public int $saves = 0;
+
+    public function save(): void
+    {
+        ++$this->saves;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Number field">
+                <div id="field" data-controller="phem-number-field" data-phem-number-field-value-value="10"
+                     data-phem-number-field-min-value="0" data-phem-number-field-max-value="5000"
+                     data-phem-number-field-locale-value="de-DE" data-phem-number-field-allow-wheel-scrub-value>
+                    <span id="area" data-phem-number-field-target="scrubArea" style="display: inline-block; padding: 10px; cursor: ew-resize">
+                        <label for="amount">Amount</label>
+                        <span id="cursor" data-phem-number-field-target="scrubAreaCursor" hidden>↔</span>
+                    </span>
+                    <div id="group" data-phem-number-field-target="group">
+                        <button id="dec" data-phem-number-field-target="decrement">−</button>
+                        <input id="amount" data-phem-number-field-target="input" />
+                        <button id="inc" data-phem-number-field-target="increment">+</button>
+                    </div>
+                    <input id="raw" type="hidden" name="amount" data-phem-number-field-target="hiddenInput" />
+                </div>
+                <button id="save" onClick={{ save }}>Save</button>
+                <output id="saves">{{ saves }}</output>
+            </Document>
+        );
+    }
+}

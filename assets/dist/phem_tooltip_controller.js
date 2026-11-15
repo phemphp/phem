@@ -10,9 +10,6 @@ const GROUP_TIMEOUT = 400
 // The time of the last close of a tooltip of the page.
 let lastClose = -Infinity
 
-// Each tooltip with no id gets one, for `aria-describedby`.
-let count = 0
-
 // The `phem-tooltip` controller: a short text next to an element, on hover and on the focus of
 // the keyboard.
 //
@@ -29,8 +26,9 @@ let count = 0
 //
 // A tooltip that opens soon after another tooltip closed opens at once, with `data-instant="delay"`.
 //
-// The popup gets `role="tooltip"` and an `id`, and the trigger gets `aria-describedby` and
-// `data-popup-open`. A tooltip only helps the users of a pointer and of a keyboard: the trigger
+// The popup gets `role="tooltip"`, and the trigger gets `aria-describedby` and `data-popup-open`.
+// A popup with no `id` gets no id: the trigger points to it with an element reference
+// (`ariaDescribedByElements`). A tooltip only helps the users of a pointer and of a keyboard: the trigger
 // still needs its own label, for a touch screen and for a screen reader.
 export default class PhemTooltipController extends Controller {
   static targets = ["trigger", "popup", "arrow"]
@@ -166,17 +164,32 @@ export default class PhemTooltipController extends Controller {
     if (!popup || !trigger) return
 
     if (!popup.hasAttribute("role")) popup.setAttribute("role", "tooltip")
-    // The same id after the morph, which removes an id that the server render does not have.
-    if (!popup.id) popup.id = this.generatedId ??= `phem-tooltip-${++count}`
-
-    const described = (trigger.getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean)
-    if (!described.includes(popup.id)) trigger.setAttribute("aria-describedby", [...described, popup.id].join(" "))
+    describe(trigger, popup)
     trigger.toggleAttribute("data-popup-open", this.popup.open)
   }
 
   get #trigger() {
     return this.triggerTargets[0] ?? this.element
   }
+}
+
+// Adds the popup to the `aria-describedby` of the trigger: with its id, or with an element reference
+// when the popup has no id. The ids that the server render gives stay. A generated id goes away in
+// the morph, which removes an id that the server render does not have.
+function describe(trigger, popup) {
+  const described = (trigger.getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean)
+
+  if (popup.id) {
+    if (!described.includes(popup.id)) trigger.setAttribute("aria-describedby", [...described, popup.id].join(" "))
+
+    return
+  }
+
+  if (!("ariaDescribedByElements" in trigger)) return
+
+  // An element reference sets the attribute to "". The morph gives back the ids of the server.
+  const elements = described.length > 0 ? described.map((id) => document.getElementById(id)).filter(Boolean) : [...(trigger.ariaDescribedByElements ?? [])]
+  if (!elements.includes(popup)) trigger.ariaDescribedByElements = [...elements, popup]
 }
 
 // jsdom does not know `:focus-visible`.

@@ -133,73 +133,123 @@ function ended(movement, directions, samples, now) {
 
 // --- The drawer: a `phem-dialog` with its `swipeDirection` value. ---
 //
-// A press on the dialog in that direction starts a swipe. The dialog gets `data-swiping`, the
-// distance in `--dialog-swipe-movement-x` and `--dialog-swipe-movement-y`, and the part of its
-// size in `--dialog-swipe-progress` (from 0 to 1). The release closes the dialog after a swipe of
-// half its size, or after a fast swipe: the dialog gets `data-swipe-direction`, so its
-// `[data-ending-style]` transition goes on from its place. After a shorter swipe, the dialog goes
-// back to its place.
+// A press on the popup in that direction starts a swipe. The popup gets `data-swiping`, the
+// distance in `--drawer-swipe-movement-x` and `--drawer-swipe-movement-y`, and the part of the
+// way to the close in `--drawer-swipe-progress` (from 0 to 1). The release closes the drawer after
+// a swipe of half its size, or after a fast swipe: the popup gets `data-swipe-dismiss`, so its
+// `[data-ending-style]` transition goes on from its place. After a shorter swipe, the popup goes
+// back to its place. `--drawer-swipe-strength` (from 0.1 to 1) is smaller after a faster swipe:
+// multiply the duration of the transition of the release with it.
+//
+// With snap points, the popup stops at the snap point nearest to the release (`snap.set()`). A
+// fast swipe goes to the next snap point in its direction, unless `snap.sequential()`. The snap
+// points are offsets (px) in the direction of the swipe: 0 is the full size of the popup.
 //
 // A press on a field, a button, a link or a label does not start a swipe. A press in content that
 // scrolls does not start a swipe until the content is at its start: the list of a bottom sheet
 // scrolls up first. A press on the backdrop is not a swipe.
 //
-//     swipeable(dialog, { direction: () => "down", close: () => this.close() }, signal)
+//     swipeable(popup, { direction: () => "down", open: () => dialog.open, close: () => this.close() }, signal)
 
-// The attributes of a swipe: the morph keeps them, and the `style` of the dialog with them.
-export const SWIPE_ATTRIBUTES = new Set(["data-swiping", "data-swipe-direction"])
+// The attributes of a swipe: the morph keeps them, and the `style` of the popup with them.
+export const SWIPE_ATTRIBUTES = new Set(["data-swiping", "data-swipe-dismiss"])
 
 // The speed (px/ms) of a fast swipe.
 const SPEED = 0.5
 
-const VARIABLES = ["--dialog-swipe-movement-x", "--dialog-swipe-movement-y", "--dialog-swipe-progress"]
+const VARIABLES = ["--drawer-swipe-movement-x", "--drawer-swipe-movement-y", "--drawer-swipe-progress", "--drawer-swipe-strength"]
+
+const OPPOSITE = { up: "down", down: "up", left: "right", right: "left" }
 
 // The listeners stop when `signal` aborts.
-export function swipeable(dialog, { direction, close }, signal) {
-  dialog.addEventListener("pointerdown", (event) => {
+export function swipeable(popup, { direction, open = () => popup.open, close, snap = null }, signal) {
+  popup.addEventListener("pointerdown", (event) => {
     const name = direction()
-    if (!AXES[name] || !event.isPrimary || event.button !== 0 || !dialog.open) return
-    if (!inBox(dialog, event) || onControl(dialog, event.target) || scrolledBack(dialog, event.target, name)) return
+    if (!AXES[name] || !event.isPrimary || event.button !== 0 || !open()) return
+    if (!inBox(popup, event) || onControl(popup, event.target) || scrolledBack(popup, event.target, name)) return
 
     const [axis, sign] = AXES[name]
-    const box = dialog.getBoundingClientRect()
+    const box = popup.getBoundingClientRect()
     const size = axis === "x" ? box.width : box.height
+    const offsets = snap?.offsets() ?? []
+    const from = offsets.length > 0 ? snap.offset() : 0
 
-    swipe(event, [name], {
+    // A snap drawer below its full size also opens in the other direction, unless the content
+    // under the press scrolls in that direction: at its full size, a list in it scrolls.
+    const opens = offsets.length > 0 && from > 0 && !scrolledBack(popup, event.target, OPPOSITE[name])
+
+    swipe(event, opens ? [name, OPPOSITE[name]] : [name], {
       move: (movement) => {
-        const distance = movement[axis] * sign
-        dialog.setAttribute("data-swiping", "")
-        dialog.style.setProperty(`--dialog-swipe-movement-${axis}`, `${movement[axis]}px`)
-        dialog.style.setProperty("--dialog-swipe-progress", String(size > 0 ? Math.max(0, Math.min(1, distance / size)) : 0))
+        let at = from + movement[axis] * sign
+        // A snap drawer opens to its full size, then resists.
+        if (at < 0 && opens) at = -Math.sqrt(-at)
+
+        popup.setAttribute("data-swiping", "")
+        popup.style.setProperty(`--drawer-swipe-movement-${axis}`, `${Math.round((at - from) * sign)}px`)
+        popup.style.setProperty("--drawer-swipe-progress", String(size > from ? Math.max(0, Math.min(1, (at - from) / (size - from))) : 0))
       },
-      release: ({ distance, speed }) => {
-        dialog.removeAttribute("data-swiping")
-        if (distance < size / 2 && speed < SPEED) {
-          unswipe(dialog)
+      release: ({ movement, speed }) => {
+        const distance = movement[axis] * sign
+        const at = from + distance
+        popup.removeAttribute("data-swiping")
+        popup.style.setProperty("--drawer-swipe-strength", String(Math.max(0.1, Math.min(1, 1 - Math.abs(speed) / 4))))
+
+        const to = offsets.length > 0 ? snapTarget(offsets, size, from, at, distance, speed, snap.sequential?.() ?? false) : (distance >= size / 2 || speed >= SPEED ? size : 0)
+        if (to >= size) {
+          popup.setAttribute("data-swipe-dismiss", "")
+          close()
 
           return
         }
 
-        dialog.setAttribute("data-swipe-direction", name)
-        close()
+        unswipe(popup, { strength: true })
+        if (offsets.length > 0) snap.set(to)
       },
-      cancel: () => unswipe(dialog),
+      cancel: () => unswipe(popup),
     })
   }, { signal })
 }
 
-// The dialog without the state of a swipe: when it opens, and at the end of its close.
-export function unswipe(dialog) {
-  for (const name of VARIABLES) dialog.style.removeProperty(name)
-  for (const name of SWIPE_ATTRIBUTES) dialog.removeAttribute(name)
-  if (dialog.getAttribute("style") === "") dialog.removeAttribute("style")
+// The snap point (an offset, or `size` for the close) of a release at `at`: the nearest one, or
+// after a fast swipe the next one in its direction.
+function snapTarget(offsets, size, from, at, distance, speed, sequential) {
+  const points = [...new Set([...offsets, size])].sort((a, b) => a - b)
+
+  if (!sequential && Math.abs(speed) >= SPEED) {
+    const next = distance > 0 ? points.find((p) => p > from) : points.findLast((p) => p < from)
+
+    return next ?? from
+  }
+
+  return points.reduce((best, p) => (Math.abs(p - at) < Math.abs(best - at) ? p : best), points[0])
 }
 
-// A press on the dialog, not on its backdrop (see phem_backdrop.js).
-function inBox(dialog, event) {
-  if (event.target !== dialog) return true
+// The popup without the state of a swipe: when it opens, and at the end of its close. With
+// `strength`, `--drawer-swipe-strength` stays for the transition back to the place.
+export function unswipe(popup, { strength = false } = {}) {
+  for (const name of VARIABLES) if (!strength || name !== "--drawer-swipe-strength") popup.style.removeProperty(name)
+  for (const name of SWIPE_ATTRIBUTES) popup.removeAttribute(name)
+  if (popup.getAttribute("style") === "") popup.removeAttribute("style")
+}
 
-  const box = dialog.getBoundingClientRect()
+// The size (px) of a snap point: a fraction of the height of the viewport (0 to 1), a number of
+// px (more than 1), or a string with `px` or `rem`.
+export function snapPointSize(point) {
+  const text = String(point).trim()
+  const number = Number.parseFloat(text)
+  if (!Number.isFinite(number)) return null
+
+  if (text.endsWith("rem")) return number * Number.parseFloat(getComputedStyle(document.documentElement).fontSize || "16")
+  if (text.endsWith("px") || number > 1) return number
+
+  return number * window.innerHeight
+}
+
+// A press on the popup, not on the backdrop of its dialog (see phem_backdrop.js).
+function inBox(popup, event) {
+  if (event.target !== popup) return true
+
+  const box = popup.getBoundingClientRect()
 
   return event.clientX >= box.left && event.clientX <= box.right && event.clientY >= box.top && event.clientY <= box.bottom
 }

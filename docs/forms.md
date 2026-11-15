@@ -183,6 +183,42 @@ function TextField(Bound $value, string $label): Node
 <TextField phem:bind={{ query }} label="Search" />
 ```
 
+A field of a UI kit must also work with no `phem:bind`. Make the prop optional: `?Bound $value = null`. When the tag of the child has no `phem:bind`, the prop is `null`, and `phem:bind={{ value }}` binds nothing. The field is then a plain field: it has no value of the state, `phem:live` and `phem:debounce` have no effect, and `phem:error={{ value }}` renders nothing. The field keeps the attributes of the markup, such as `name` and `aria-describedby`, so a form submit sends it:
+
+```php
+#[Component]
+function SearchInput(?Bound $value = null, string $name = 'q'): Node
+{
+    return <input name={{ name }} phem:bind={{ value }} phem:live />;
+}
+
+// In the parent:
+<SearchInput phem:bind={{ query }} />   // <input name="q" data-phem-live data-phem-bind="<fiber>.query" value="">
+<SearchInput name="q" />                // <input name="q" data-phem-live>
+```
+
+A bound `<input type="hidden">` (the value of a custom control, such as a radio group) also gets `data-phem-value`: the value of the server render. A script that changes the value sends the new value with the next event, and the field gets the server value back when the server does not take it.
+
+A plain field can have its own value, as the `defaultValue` of a UI kit input. Give the field a `value` (or `checked` for a checkbox or a radio button) next to `phem:bind`. The field renders it only when the prop is `null`. A bound field ignores it: the property gives the value. This is only for an optional `Bound` prop: on another bound field, `value` and `checked` are the error E033.
+
+```php
+#[Component]
+function TextInput(?Bound $value = null, string $defaultValue = ''): Node
+{
+    return <input phem:bind={{ value }} value={{ defaultValue }} />;
+}
+
+#[Component]
+function Checkbox(?Bound $checked = null, bool $defaultChecked = false): Node
+{
+    return <input type="checkbox" phem:bind={{ checked }} checked={{ defaultChecked }} />;
+}
+
+<TextInput defaultValue="Ada" />        // <input value="Ada">
+<TextInput phem:bind={{ name }} />      // <input data-phem-bind="<fiber>.name" value="Grace">
+<Checkbox defaultChecked={{ true }} />  // <input type="checkbox" checked>
+```
+
 ## Handle a Symfony form
 
 The `Request` of a handler holds the form fields as its POST data, so a Symfony form reads them with `handleRequest()`. Keep the form in a property, so `render()` shows the errors after a failed submit:
@@ -610,6 +646,8 @@ The rules:
 - Don't write `aria-invalid` on a bound field. Phem sets it.
 - The component needs a `Validation` property. phemc reports E061 when it has none.
 
+To validate the field in the browser too, and to style the label and the error with the state of the field, put the field in a `phem-field` controller (see [Validate a field in the browser](controllers.md#validate-a-field-in-the-browser)). Give the element of `phem:error` the `error` target: it shows until the user changes the value.
+
 `phem:error` also works on the tag of a component. The component gets the id in its `id` prop and the message in its `children`:
 
 ```php
@@ -669,7 +707,7 @@ public function render(): Node
 }
 ```
 
-A submit touches every field, so all the errors show. Add `novalidate`, or the browser checks the `required` fields itself and doesn’t send the submit. After a save, set `$this->form = null` to start with a new form. A handler for another event, such as a click on a “Save” button, can touch every field with `Phem\Form\TouchedFields::touchAll($request)`.
+A submit touches every field, so all the errors show. Add `novalidate`, or the browser checks the `required` fields itself and doesn’t send the submit. A `phem-form` controller on the form adds `novalidate`, and shows the errors of the browser in its `phem-field` controllers. After a save, set `$this->form = null` to start with a new form. A handler for another event, such as a click on a “Save” button, can touch every field with `Phem\Form\TouchedFields::touchAll($request)`.
 
 `isValid()` always checks every field, so a tampered request can’t save data with errors. Install `symfony/form`.
 

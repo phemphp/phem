@@ -1,0 +1,61 @@
+<?phem
+
+namespace App\Ui\RadioGroup;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// A radio group of spans in labels, with a hidden input that a property binds, and a button that
+// sends an event.
+#[Page('/radio-group')]
+final class RadioGroupPage
+{
+    #[State] public string $apple = 'fuji';
+    #[State] public int $saves = 0;
+
+    public function save(): void
+    {
+        ++$this->saves;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Radio group">
+                <style>{{ ".radio { display: inline-block; width: 12px; height: 12px; border: 1px solid }" }}</style>
+                <div id="group" data-controller="phem-radio-group" data-phem-radio-group-value-value={{ apple }} aria-label="Apple">
+                    <label id="label-fuji">
+                        <span id="fuji" data-phem-radio-group-target="radio" data-value="fuji" class="radio">
+                            <span class="indicator" data-phem-radio-group-target="indicator" aria-hidden="true">*</span>
+                        </span>
+                        Fuji
+                    </label>
+                    <label id="label-gala">
+                        <span id="gala" data-phem-radio-group-target="radio" data-value="gala" class="radio">
+                            <span class="indicator" data-phem-radio-group-target="indicator" aria-hidden="true">*</span>
+                        </span>
+                        Gala
+                    </label>
+                    <label id="label-honeycrisp">
+                        <span id="honeycrisp" data-phem-radio-group-target="radio" data-value="honeycrisp" class="radio" aria-disabled="true">
+                            <span class="indicator" data-phem-radio-group-target="indicator" aria-hidden="true">*</span>
+                        </span>
+                        Honeycrisp
+                    </label>
+                    <label id="label-pink">
+                        <span id="pink" data-phem-radio-group-target="radio" data-value="pink" class="radio">
+                            <span class="indicator" data-phem-radio-group-target="indicator" aria-hidden="true">*</span>
+                        </span>
+                        Pink Lady
+                    </label>
+                    <input id="input" type="hidden" name="apple" data-phem-radio-group-target="input" phem:bind={{ apple }} phem:live />
+                </div>
+                <button id="save" onClick={{ save }}>Save</button>
+                <output id="apple">{{ apple }}</output>
+                <output id="saves">{{ saves }}</output>
+            </Document>
+        );
+    }
+}

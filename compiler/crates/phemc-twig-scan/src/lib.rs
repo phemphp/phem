@@ -380,6 +380,40 @@ fn is_word(toks: &[(Tok, usize)], i: usize, word: &str) -> bool {
     matches!(toks.get(i), Some((Tok::Name(n), _)) if n == word)
 }
 
+/// The calls of a function name in Twig code: `text()` and `format(x)`, not a method
+/// (`a.text()`), a filter (`|format()`), a test (`is same as(x)`) or a spread (`...f()`). Each
+/// name has the byte offset of its first letter. The code can have Twig tags (`{% if f() %}`),
+/// and the calls in the interpolations of a string count.
+pub fn function_calls(code: &str) -> Vec<Name> {
+    let mut out = Vec::new();
+    calls_in(code, 0, &mut out);
+
+    out
+}
+
+fn calls_in(code: &str, base: usize, out: &mut Vec<Name>) {
+    let toks = tokenize(code);
+    for (i, (tok, off)) in toks.iter().enumerate() {
+        if let Tok::Str(interps) = tok {
+            for (inner, inner_off) in interps {
+                calls_in(inner, base + inner_off, out);
+            }
+
+            continue;
+        }
+
+        let Tok::Name(name) = tok else { continue };
+        let prev = i.checked_sub(1).map(|j| &toks[j].0);
+        let test = matches!(prev, Some(Tok::Name(w)) if (name == "by" && w == "divisible") || (name == "as" && w == "same"));
+        let member = matches!(prev, Some(Tok::Punct("." | "|" | "?." | "...")));
+        if !matches!(toks.get(i + 1), Some((Tok::Punct("("), _))) || member || test || is_operator(&toks, i) {
+            continue;
+        }
+
+        out.push(Name { name: name.clone(), offset: base + off, shorthand: false });
+    }
+}
+
 /// Whether a Twig expression reads the `loop` variable of a `{% for %}`: `loop.index`, not
 /// `item.loop` or `'loop'`.
 pub fn reads_loop(expr: &str) -> bool {
@@ -577,6 +611,16 @@ fn class_name(toks: &[(Tok, usize)], i: usize, name: &str, offset: usize) -> Cla
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn function_calls_are_the_calls_of_a_name() {
+        let names = |code: &str| super::function_calls(code).into_iter().map(|n| (n.name, n.offset)).collect::<Vec<_>>();
+
+        assert_eq!(names("text() ~ a.text() ~ b|format(1)"), vec![("text".to_string(), 0)]);
+        assert_eq!(names("{% if ready(x) and n is divisible by(3) %}"), vec![("ready".to_string(), 6)]);
+        assert_eq!(names("x is same as(y) or [...list()]"), vec![]);
+        assert_eq!(names("\"#{label(1)}\" ~ 'text()'"), vec![("label".to_string(), 3)]);
+    }
+
     use super::*;
 
     fn names(expr: &str) -> Vec<String> {

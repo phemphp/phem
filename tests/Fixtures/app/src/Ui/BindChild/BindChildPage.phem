@@ -18,6 +18,20 @@ function TextField(Bound $value, string $name): Node
     return <label>{{ name }} <input name={{ name }} phem:bind={{ value }} /></label>;
 }
 
+/** A field that binds a property only when its tag has `phem:bind`. */
+#[Component]
+function SearchField(?Bound $value = null, string $name = 'search'): Node
+{
+    return <label>{{ name }} <input name={{ name }} phem:bind={{ value }} value="all" phem:live aria-describedby="search-help" /><span phem:error={{ value }} /></label>;
+}
+
+/** A checkbox that binds a property only when its tag has `phem:bind`, and is checked by default. */
+#[Component]
+function AgreeField(?Bound $checked = null): Node
+{
+    return <input type="checkbox" name="agree" phem:bind={{ checked }} checked />;
+}
+
 /** A function component: it passes its Bound prop on. */
 #[Component]
 function NoteField(Bound $value): Node
@@ -67,6 +81,9 @@ final class Account
                 <NoteField phem:bind={{ note }} />
                 <PlanField phem:bind={{ plan }} />
                 <TextField phem:bind={{ address.city }} name="city" />
+                <SearchField name="free" />
+                <AgreeField />
+                <SearchField phem:bind={{ note }} name="search" />
                 <p id="account">{{ email }}, {{ note }}, {{ plan }}, {{ address.city }}, saves {{ saves }}</p>
             </form>
         );

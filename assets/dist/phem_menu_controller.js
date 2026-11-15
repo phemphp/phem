@@ -5,13 +5,14 @@ import { modal } from "./phem_modal.js"
 import { Popup } from "./phem_popup.js"
 import { positionOptions, positionValues } from "./phem_position.js"
 import { isDisabled, movesFocus, nextItem, Typeahead } from "./phem_roving.js"
-
-// Each part with no id gets one, for `aria-controls` and `aria-labelledby`.
-let count = 0
+import { link } from "./phem_aria.js"
 
 // The controllers of a menu: a submenu is a menu in the popup of one of them.
 const IDENTIFIERS = ["phem-menu", "phem-context-menu"]
 const MENU = IDENTIFIERS.map((name) => `[data-controller~="${name}"]`).join(", ")
+
+// A menubar around a menu: it moves the focus between the menus (phem_menubar_controller.js).
+const MENUBAR = '[data-controller~="phem-menubar"]'
 
 // The time (ms) of the pointer on another item before it gets the highlight, while a submenu is
 // open: the pointer can cross an item on its way to the submenu.
@@ -57,12 +58,22 @@ const SUBMENU_GRACE = 150
 // 150 ms, so the pointer can cross an item on its way to the submenu. A click on an item of a
 // submenu closes all the menus. A disabled trigger (`aria-disabled="true"`) does not open it.
 //
-// The trigger gets `aria-haspopup="menu"`, `aria-expanded`, `aria-controls` and `data-popup-open`.
+// A `phem-menu` in a `phem-menubar` is a menu of the menubar (phem_menubar_controller.js). In a
+// vertical menubar, ArrowRight (ArrowLeft in a right-to-left page) opens it in place of ArrowDown
+// and ArrowUp, and its popup goes on the `inline-end` side of the trigger.
+//
+// The menu sends `phem-menu:open` when it opens and `phem-menu:close` when it closes. The `open`
+// action and the open() method open it with the focus on the popup. A script can give open() the
+// item that gets the focus: `open("first")` or `open("last")`.
+//
+// The trigger gets `aria-haspopup="menu"`, `aria-expanded`, `aria-controls`, `data-popup-open` and
+// `data-pressed` (not the trigger of a submenu).
 // The popup gets `role="menu"`, the items `role="menuitem"` (an item can have the role
 // `menuitemcheckbox` or `menuitemradio` with `aria-checked`: it gets `data-checked`), the groups
 // `role="group"` with `aria-labelledby` (its `groupLabel` target), and the separators
-// `role="separator"`. The item with the focus gets `data-highlighted`, and a disabled item gets
-// `data-disabled`. The popup is positioned as a `phem-popover` (phem_position.js).
+// `role="separator"`. A popup or a group label with no `id` gets no id: the trigger and the group
+// point to it with an element reference (`ariaControlsElements`, `ariaLabelledByElements`). The
+// item with the focus gets `data-highlighted`, and a disabled item gets `data-disabled`. The popup is positioned as a `phem-popover` (phem_position.js).
 //
 // `phem-context-menu` (phem_context_menu_controller.js) extends this class: it changes the
 // methods of the trigger (`anchor`, `triggerClicked()`, `triggerKeydown()`, `renderTrigger()`
@@ -145,8 +156,10 @@ export default class PhemMenuController extends Controller {
     this.openValue ? this.close() : this.open()
   }
 
-  open() {
-    this.#open(null)
+  // `to` is the item that gets the focus: "first" or "last". An action gives an event: the focus
+  // goes to the popup.
+  open(to = null) {
+    this.#open(typeof to === "string" ? to : null)
   }
 
   close() {
@@ -201,8 +214,13 @@ export default class PhemMenuController extends Controller {
 
   // A key on a trigger: ArrowDown and ArrowUp open the menu. Enter, Space and the arrow to the
   // popup (ArrowRight, or ArrowLeft in a right-to-left page) open a submenu.
+  // In a vertical menubar, the arrow to the popup opens the menu: ArrowDown and ArrowUp go to the
+  // other menus of the menubar.
   triggerKeydown(event) {
-    const keys = this.isSubmenu ? { Enter: "first", " ": "first", [this.#openKey]: "first" } : { ArrowDown: "first", ArrowUp: "last" }
+    let keys = { ArrowDown: "first", ArrowUp: "last" }
+    if (this.isSubmenu) keys = { Enter: "first", " ": "first", [this.#openKey]: "first" }
+    else if (this.#menubarOrientation === "vertical") keys = { [this.#openKey]: "first" }
+
     const to = keys[event.key]
     if (!to) return
 
@@ -213,8 +231,9 @@ export default class PhemMenuController extends Controller {
   // The attributes of a trigger that are not the state stay when the server render gives them.
   renderTrigger(trigger, popup) {
     if (!trigger.hasAttribute("aria-haspopup")) trigger.setAttribute("aria-haspopup", "menu")
-    if (popup && !trigger.hasAttribute("aria-controls")) trigger.setAttribute("aria-controls", popup.id)
+    if (popup) link(trigger, "aria-controls", "ariaControlsElements", popup)
     trigger.setAttribute("aria-expanded", String(this.openValue))
+    trigger.toggleAttribute("data-pressed", this.openValue && !this.isSubmenu)
 
     if (!this.isSubmenu) return
 
@@ -385,6 +404,7 @@ export default class PhemMenuController extends Controller {
     else this.popup.hide()
 
     this.#renderModal()
+    this.dispatch(this.openValue ? "open" : "close")
   }
 
   // A modal menu locks the page while it is open. A submenu is in the popup of its menu.
@@ -405,7 +425,6 @@ export default class PhemMenuController extends Controller {
 
     if (popup) {
       if (!popup.hasAttribute("role")) popup.setAttribute("role", "menu")
-      if (!popup.id) popup.id = this.popupId ??= `phem-menu-${++count}`
       if (!popup.hasAttribute("tabindex")) popup.tabIndex = -1
       if (this.orientationValue === "horizontal") popup.setAttribute("aria-orientation", "horizontal")
     }
@@ -426,10 +445,7 @@ export default class PhemMenuController extends Controller {
       if (!group.hasAttribute("role")) group.setAttribute("role", "group")
 
       const label = this.groupLabelTargets.find((el) => group.contains(el))
-      if (!label || group.hasAttribute("aria-labelledby")) continue
-
-      if (!label.id) label.id = `phem-menu-label-${++count}`
-      group.setAttribute("aria-labelledby", label.id)
+      if (label) link(group, "aria-labelledby", "ariaLabelledByElements", label)
     }
 
     for (const separator of this.separatorTargets) {
@@ -437,12 +453,12 @@ export default class PhemMenuController extends Controller {
     }
   }
 
-  // The attributes of the state: the open state of the popup and its position, `aria-expanded`
-  // and `data-popup-open` on a trigger, and `data-highlighted` on an item (also on the trigger
-  // of a submenu).
+  // The attributes of the state: the open state of the popup and its position, `aria-expanded`,
+  // `data-popup-open` and `data-pressed` on a trigger, and `data-highlighted` on an item (also on
+  // the trigger of a submenu).
   #owns(el, name) {
     if (this.popup.owns(el, name)) return true
-    if (this.triggerTargets.includes(el) && (name === "aria-expanded" || name === "data-popup-open")) return true
+    if (this.triggerTargets.includes(el) && (name === "aria-expanded" || name === "data-popup-open" || name === "data-pressed")) return true
     if (this.#items.includes(el)) return name === "data-highlighted"
 
     return false
@@ -450,9 +466,21 @@ export default class PhemMenuController extends Controller {
 
   #positionOptions() {
     const options = positionOptions(this)
-    if (!this.isSubmenu || this.element.hasAttribute(`data-${this.identifier}-side-value`)) return options
+    if (this.element.hasAttribute(`data-${this.identifier}-side-value`)) return options
+    if (this.#menubarOrientation === "vertical") return { ...options, side: "inline-end" }
+    if (!this.isSubmenu) return options
 
     return { ...options, side: this.#parent.orientationValue === "horizontal" ? "bottom" : "inline-end" }
+  }
+
+  // The orientation of the menubar around this menu, or null: a submenu is not in a menubar.
+  get #menubarOrientation() {
+    if (this.isSubmenu) return null
+
+    const menubar = this.element.parentElement?.closest(MENUBAR)
+    if (!menubar) return null
+
+    return menubar.getAttribute("data-phem-menubar-orientation-value") || "horizontal"
   }
 
   // A submenu opens on hover, unless its `openOnHover` value is false.
@@ -462,7 +490,8 @@ export default class PhemMenuController extends Controller {
     return this.openOnHoverValue
   }
 
-  // The arrow keys of a submenu: to its popup, and back to the menu around it.
+  // The arrow keys of a submenu (and of a menu in a vertical menubar): to its popup, and back to
+  // the menu around it.
   get #openKey() {
     if (this.#parent?.orientationValue === "horizontal") return "ArrowDown"
 

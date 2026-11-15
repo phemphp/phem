@@ -155,6 +155,90 @@
                 "main": "dist/phem_image_input_controller.js",
                 "fetch": "lazy",
                 "enabled": false
+            },
+            "toggle": {
+                "name": "phem-toggle",
+                "main": "dist/phem_toggle_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "toggle-group": {
+                "name": "phem-toggle-group",
+                "main": "dist/phem_toggle_group_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "toolbar": {
+                "name": "phem-toolbar",
+                "main": "dist/phem_toolbar_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "radio-group": {
+                "name": "phem-radio-group",
+                "main": "dist/phem_radio_group_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "avatar": {
+                "name": "phem-avatar",
+                "main": "dist/phem_avatar_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "field": {
+                "name": "phem-field",
+                "main": "dist/phem_field_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "form": {
+                "name": "phem-form",
+                "main": "dist/phem_form_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "number-field": {
+                "name": "phem-number-field",
+                "main": "dist/phem_number_field_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "otp-field": {
+                "name": "phem-otp-field",
+                "main": "dist/phem_otp_field_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "slider": {
+                "name": "phem-slider",
+                "main": "dist/phem_slider_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "scroll-area": {
+                "name": "phem-scroll-area",
+                "main": "dist/phem_scroll_area_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "select": {
+                "name": "phem-select",
+                "main": "dist/phem_select_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "menubar": {
+                "name": "phem-menubar",
+                "main": "dist/phem_menubar_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
+            "navigation-menu": {
+                "name": "phem-navigation-menu",
+                "main": "dist/phem_navigation_menu_controller.js",
+                "fetch": "lazy",
+                "enabled": false
             }
         },
         "importmap": {

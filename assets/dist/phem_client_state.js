@@ -3,7 +3,10 @@
 // The morph sets the attributes of the server render. A controller keeps its state through it:
 //
 // - its state value (for example `data-phem-popover-open-value`) keeps the value of the client,
-//   unless the server render gives a new value: then the new value sets the state;
+//   unless the server render gives a new value: then the new value sets the state. A value that
+//   the client changed after the request of the answer left stays, as a bound field does: the
+//   server did not know it (a radio group with `phem:live`, and a second arrow key before the
+//   answer of the first one);
 // - the attributes that it `owns` (for example `hidden` on a popup, `data-open`, `aria-expanded`)
 //   keep the value of the client;
 // - after the morph of the controller element or of elements in it, `morphed()` lets the
@@ -16,6 +19,16 @@
 //     this.state = new ClientState(this, { value: "open", owns: (el, name) => …, morphed: () => … })
 //     this.state.connect()   // in connect()
 //     this.state.disconnect() // in disconnect()
+// The connected states with a state value: phem_controller.js flushes their changes before a
+// request leaves (see flushClientChanges()).
+const states = new Set()
+
+// Takes the changes of the state values that the observers did not report yet. A controller can
+// change its state in the same click that sends an event: the change is before the request.
+export function flushClientChanges() {
+  for (const state of states) state.flush()
+}
+
 export class ClientState {
   #controller
   #value
@@ -27,6 +40,9 @@ export class ClientState {
   // The last server value of the state, and whether the server render of the morph changed it.
   #server = null
   #serverChanged = false
+  // The time (performance.now()) of the last change of the state value by the client.
+  #changedAt = -Infinity
+  #observer = null
 
   constructor(controller, { value = null, owns = () => false, morphed = () => {} } = {}) {
     this.#controller = controller
@@ -37,19 +53,36 @@ export class ClientState {
 
   connect() {
     this.#listening?.abort()
+    this.#observer?.disconnect()
     this.#listening = new AbortController()
 
     const element = this.#controller.element
     const options = { signal: this.#listening.signal }
     this.#server = this.#attribute ? element.getAttribute(this.#attribute) : null
 
-    // The morph of the controller element: a new server value sets the state.
+    // The changes of the state value by the client.
+    if (this.#attribute && typeof MutationObserver === "function") {
+      this.#observer = new MutationObserver(() => (this.#changedAt = performance.now()))
+      this.#observer.observe(element, { attributes: true, attributeFilter: [this.#attribute] })
+      states.add(this)
+    }
+
+    // The morph of the controller element: a new server value sets the state, unless the client
+    // changed the value after the request of the answer left (`phemSentAt` of the phem root while
+    // the streams of the answer render, see phem_controller.js). A push has no request.
     element.addEventListener("turbo:before-morph-element", (event) => {
       if (event.target !== element || !this.#attribute) return
 
+      if (this.#observer?.takeRecords().length) this.#changedAt = performance.now()
+      const sentAt = element.closest("[data-controller~='phem']")?.phemSentAt ?? null
       const next = event.detail.newElement?.getAttribute(this.#attribute) ?? null
-      this.#serverChanged = next !== this.#server
+      this.#serverChanged = next !== this.#server && !(sentAt !== null && this.#changedAt > sentAt)
       this.#server = next
+    }, options)
+
+    // The morph sets the attribute itself: not a change of the client.
+    element.addEventListener("turbo:morph-element", (event) => {
+      if (event.target === element) this.#observer?.takeRecords()
     }, options)
 
     element.addEventListener("turbo:before-morph-attribute", (event) => {
@@ -63,6 +96,13 @@ export class ClientState {
   disconnect() {
     this.#listening?.abort()
     this.#listening = null
+    this.#observer?.disconnect()
+    this.#observer = null
+    states.delete(this)
+  }
+
+  flush() {
+    if (this.#observer?.takeRecords().length) this.#changedAt = performance.now()
   }
 
   #later() {

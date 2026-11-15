@@ -1,0 +1,78 @@
+<?phem
+
+namespace App\Ui\Field;
+
+use Phem\Attribute\{Page, State};
+use Phem\Event;
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// Fields in a form with client validation: a required name with a server error ("Shoes" is taken),
+// an email that validates on blur, a code that validates on change, and a disabled field in a
+// fieldset. The Save button submits the form, and the Count button sends another event.
+#[Page('/field')]
+final class FieldPage
+{
+    #[State] public string $name = '';
+    #[State] public bool $taken = false;
+    #[State] public int $saves = 0;
+    #[State] public int $count = 0;
+
+    public function save(Event $e): void
+    {
+        $this->name = (string) ($e->form['name'] ?? '');
+        $this->taken = 'Shoes' === $this->name;
+        if (!$this->taken) {
+            ++$this->saves;
+        }
+    }
+
+    public function bump(): void
+    {
+        ++$this->count;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Field">
+                <form id="form" onSubmit={{ save }} data-controller="phem-form">
+                    <div id="name-field" data-controller="phem-field">
+                        <label id="name-label" data-phem-field-target="label">Name</label>
+                        <input id="name" name="name" required value={{ name }} data-phem-field-target="control"
+                               aria-invalid={{ taken ? 'true' : null }} aria-describedby={{ taken ? 'name-error' : null }} />
+                        <p class="description" data-phem-field-target="description">Visible on your profile</p>
+                        <p id="name-missing" data-phem-field-target="error" data-match="valueMissing" hidden>Enter your name.</p>
+                        {% if taken %}<p id="name-error" data-phem-field-target="error">This name is taken.</p>{% endif %}
+                    </div>
+
+                    <div id="email-field" data-controller="phem-field" data-phem-field-validation-mode-value="onBlur">
+                        <label data-phem-field-target="label">Email</label>
+                        <input id="email" name="email" type="email" data-phem-field-target="control" />
+                        <p id="email-error" data-phem-field-target="error" hidden></p>
+                    </div>
+
+                    <div id="code-field" data-controller="phem-field" data-phem-field-validation-mode-value="onChange" data-phem-field-validation-debounce-time-value="50">
+                        <span data-phem-field-target="label">Code</span>
+                        <input id="code" name="code" pattern="[0-9]{4}" data-phem-field-target="control" />
+                        <p id="code-error" data-phem-field-target="error" data-match="patternMismatch" hidden>Four digits.</p>
+                    </div>
+
+                    <fieldset id="address" disabled>
+                        <legend>Address</legend>
+                        <div id="city-field" data-controller="phem-field">
+                            <label data-phem-field-target="label">City</label>
+                            <input id="city" name="city" data-phem-field-target="control" />
+                        </div>
+                    </fieldset>
+
+                    <button id="save" type="submit">Save</button>
+                </form>
+                <button id="count" onClick={{ bump }}>Count</button>
+                <output id="saves">{{ saves }}</output>
+                <output id="counts">{{ count }}</output>
+            </Document>
+        );
+    }
+}

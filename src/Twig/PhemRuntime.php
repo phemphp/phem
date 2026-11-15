@@ -209,7 +209,8 @@ final class PhemRuntime implements RuntimeExtensionInterface, ResetInterface
      * and the component of the markup (`this`). For a path (`phem:bind={{ filters.status }}`),
      * phemc gives the property and the keys: `['filters', 'status']`.
      *
-     *  - a text input: `value="…"`;
+     *  - a text input: `value="…"`, and for a hidden input also `data-phem-value="…"`: the
+     *    value of the server render, which the browser compares with;
      *  - a checkbox: `checked` when the value is true, or when a list has the `value` of the
      *    checkbox (a group of checkboxes, with `data-phem-bind-list`);
      *  - a radio button: `checked` when the value is its `value`;
@@ -217,15 +218,26 @@ final class PhemRuntime implements RuntimeExtensionInterface, ResetInterface
      *    `<textarea>`, and the `selected` of each `<option>` (see selected()).
      *
      * In a child component, `phem:bind={{ value }}` binds a Bound prop: the property of the parent.
+     * A null prop (`?Bound $value = null`, the tag of the child has no `phem:bind`) binds nothing:
+     * the field is a plain field, with only the `aria-describedby` of the markup and its own
+     * `value` (`checked` for a checkbox or a radio button): phemc gives it in `$fallback`. A bound
+     * field ignores it: the property gives the value.
      *
      * When the field has a validation error (see FieldErrors), it also gets `aria-invalid="true"`
      * and the id of the error in `aria-describedby`, after the ids of the markup
      * (`$describedBy`: phemc gives the `aria-describedby` of the field).
      *
-     * @param string|list<mixed>|Bound $property
+     * @param string|list<mixed>|Bound|null $property
      */
-    public function bind(string|array|Bound $property, mixed $value, string $tag, mixed $type = null, mixed $option = null, ?object $owner = null, mixed $describedBy = null): Markup
+    public function bind(string|array|Bound|null $property, mixed $value, string $tag, mixed $type = null, mixed $option = null, ?object $owner = null, mixed $describedBy = null, mixed $fallback = null): Markup
     {
+        $describedBy = \is_scalar($describedBy) && '' !== trim((string) $describedBy) ? trim((string) $describedBy) : null;
+        $type = \is_string($type) ? strtolower($type) : 'text';
+
+        if (null === $property) {
+            return new Markup(implode(' ', $this->plainField($tag, $type, $fallback, $describedBy)), 'UTF-8');
+        }
+
         if ($property instanceof Bound) {
             [$property, $value, $owner] = [$property->target, $property->value, $property->owner];
         }
@@ -233,7 +245,6 @@ final class PhemRuntime implements RuntimeExtensionInterface, ResetInterface
         $key = $this->renderer->addBind($property, $owner);
         $error = $this->renderer->fieldError($property, $owner);
         $out = null !== $key ? [\sprintf('data-phem-bind="%s"', Attributes::e($key))] : [];
-        $type = \is_string($type) ? strtolower($type) : 'text';
 
         if ('input' === strtolower($tag)) {
             if ('checkbox' === $type && \is_array($value)) {
@@ -251,10 +262,15 @@ final class PhemRuntime implements RuntimeExtensionInterface, ResetInterface
                 }
             } else {
                 $out[] = \sprintf('value="%s"', Attributes::e(Attributes::bindValue($value, $type)));
+
+                // A hidden input has no default value of its own: the browser compares with the
+                // value of the server render (see phem_controller.js).
+                if ('hidden' === $type) {
+                    $out[] = \sprintf('data-phem-value="%s"', Attributes::e(Attributes::bindValue($value, $type)));
+                }
             }
         }
 
-        $describedBy = \is_scalar($describedBy) && '' !== trim((string) $describedBy) ? trim((string) $describedBy) : null;
         if (null !== $error) {
             $out[] = 'aria-invalid="true"';
             $describedBy = null !== $describedBy ? $describedBy.' '.$error->id : $error->id;
@@ -268,14 +284,39 @@ final class PhemRuntime implements RuntimeExtensionInterface, ResetInterface
     }
 
     /**
+     * The attributes of a field with a null Bound prop: its own `value` or `checked`, and the
+     * `aria-describedby` of the markup.
+     *
+     * @return list<string>
+     */
+    private function plainField(string $tag, string $type, mixed $fallback, ?string $describedBy): array
+    {
+        $out = [];
+        if ('input' === strtolower($tag) && null !== $fallback && false !== $fallback) {
+            $out[] = \in_array($type, ['checkbox', 'radio'], true) ? 'checked' : \sprintf('value="%s"', Attributes::e(Attributes::bindValue($fallback, $type)));
+        }
+
+        if (null !== $describedBy) {
+            $out[] = \sprintf('aria-describedby="%s"', Attributes::e($describedBy));
+        }
+
+        return $out;
+    }
+
+    /**
      * `phem:error={{ email }}`: the validation error of a bound #[State] property of the
      * component of the markup (`this`), or of a Bound prop. phemc renders the element only when
-     * it is not null, with its id and its message. Null when the field has no error.
+     * it is not null, with its id and its message. Null when the field has no error, or for a
+     * null Bound prop.
      *
-     * @param string|list<mixed>|Bound $property
+     * @param string|list<mixed>|Bound|null $property
      */
-    public function error(string|array|Bound $property, ?object $owner = null): ?FieldError
+    public function error(string|array|Bound|null $property, ?object $owner = null): ?FieldError
     {
+        if (null === $property) {
+            return null;
+        }
+
         if ($property instanceof Bound) {
             [$property, $owner] = [$property->target, $property->owner];
         }

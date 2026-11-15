@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemTooltipController from "../dist/phem_tooltip_controller.js"
-import { mount, nextDone, respond } from "./support.js"
+import { mount, nextDone, respond, stubElementReflection } from "./support.js"
 
 let application
 
@@ -58,12 +58,38 @@ describe("phem-tooltip", () => {
     expect($("archive").getAttribute("aria-describedby")).toBe("tip")
   })
 
-  it("gives an id to a popup with no id", async () => {
-    await mount(toolbar().replace('id="tip" ', ""))
-    const popup = $("archive").querySelector("[data-phem-tooltip-target=popup]")
+  it("gives no id to a popup with no id, and links it with an element reference", async () => {
+    const restore = stubElementReflection()
+    try {
+      await mount(toolbar().replace('id="tip" ', ""))
+      const popup = $("archive").querySelector("[data-phem-tooltip-target=popup]")
 
-    expect(popup.id).toMatch(/^phem-tooltip-\d+$/)
-    expect($("archive").getAttribute("aria-describedby")).toBe(popup.id)
+      expect(popup.id).toBe("")
+      expect($("archive").ariaDescribedByElements).toEqual([popup])
+    } finally {
+      restore()
+    }
+  })
+
+  it("keeps the aria-describedby of the server render with a popup with no id, also after the morph", async () => {
+    const restore = stubElementReflection()
+    try {
+      const markup = `${toolbar().replace('id="tip" ', "").replace('aria-label="Archive"', 'aria-label="Archive" aria-describedby="hint"')}<p id="hint">Hint</p>`
+      await mount(markup)
+      respond(markup)
+      const popup = $("archive").querySelector("[data-phem-tooltip-target=popup]")
+
+      expect($("archive").ariaDescribedByElements).toEqual([$("hint"), popup])
+
+      const done = nextDone()
+      $("archive").click()
+      await done
+
+      expect($("archive").ariaDescribedByElements).toEqual([$("hint"), $("archive").querySelector("[data-phem-tooltip-target=popup]")])
+      expect(popup.id).toBe("")
+    } finally {
+      restore()
+    }
   })
 
   it("opens on hover after the delay, and closes when the pointer goes out", async () => {

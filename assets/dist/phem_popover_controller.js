@@ -4,6 +4,9 @@ import { Hover } from "./phem_hover.js"
 import { Popup } from "./phem_popup.js"
 import { positionOptions, positionValues } from "./phem_position.js"
 
+// The links and the fields of the popup of a preview card: they get `tabindex="-1"`.
+const FOCUSABLE = "a[href], button, input, select, textarea, [tabindex]"
+
 // The `phem-popover` controller: a popup next to its trigger, for a share box, a filter form or
 // a date picker. The popup stays open after the morph of an event.
 //
@@ -32,6 +35,13 @@ import { positionOptions, positionValues } from "./phem_position.js"
 // The `open` value is the state: the server render gives its first value, and a server render
 // with a new `open` value sets it. When the `dismiss` value is true (the default), Escape, a press
 // outside and the focus out of the popover close it.
+//
+// A preview card (Base UI PreviewCard) is a popover with `openOnHover` and a link trigger
+// (`<a href>`), with a `delay` of 600 ms and a `closeDelay` of 300 ms in Base UI. A click on the
+// link opens the link, not the popup. The keyboard focus on the link opens the popup after the
+// delay, and the focus out closes it. The link stays the only part for the keyboard and a screen
+// reader: the trigger gets no `aria-haspopup`, `aria-expanded` and `aria-controls`, the popup gets
+// `aria-hidden="true"` and no role, and its links and fields get `tabindex="-1"`.
 export default class PhemPopoverController extends Controller {
   static targets = ["trigger", "popup", "arrow", "close", "title", "description"]
   static values = {
@@ -81,6 +91,7 @@ export default class PhemPopoverController extends Controller {
 
     this.element.addEventListener("click", this.onClick)
     this.element.addEventListener("focusout", this.onFocusOut)
+    this.element.addEventListener("focusin", this.onFocusIn)
     this.element.addEventListener("pointerover", this.onPointerOver)
     this.element.addEventListener("pointerout", this.onPointerOut)
 
@@ -91,9 +102,11 @@ export default class PhemPopoverController extends Controller {
     this.state.disconnect()
     this.element.removeEventListener("click", this.onClick)
     this.element.removeEventListener("focusout", this.onFocusOut)
+    this.element.removeEventListener("focusin", this.onFocusIn)
     this.element.removeEventListener("pointerover", this.onPointerOver)
     this.element.removeEventListener("pointerout", this.onPointerOut)
     this.hover.cancel()
+    clearTimeout(this.focusTimer)
     this.popup.destroy()
     this.rendered = undefined
   }
@@ -137,11 +150,29 @@ export default class PhemPopoverController extends Controller {
     if (event.defaultPrevented) return
 
     if (this.closeTargets.some((el) => el.contains(event.target))) this.#close({ focus: true })
-    else if (this.#triggerOf(event.target)) this.toggle()
+    else if (this.#triggerOf(event.target) && !this.#preview) this.toggle()
+  }
+
+  // A preview card: the keyboard focus on the link opens the popup after the delay.
+  onFocusIn = (event) => {
+    if (!this.#preview || !this.#triggerOf(event.target) || !event.target.matches?.(":focus-visible")) return
+
+    this.hover.cancel()
+    clearTimeout(this.focusTimer)
+    this.focusTimer = setTimeout(() => this.#open({ focus: false }), this.delayValue)
   }
 
   // The focus goes out of the trigger and of the popup, to another element of the page.
   onFocusOut = (event) => {
+    if (this.#preview && this.#triggerOf(event.target)) {
+      clearTimeout(this.focusTimer)
+      if (this.openValue && !this.popupTargets.some((el) => el.contains(event.relatedTarget))) {
+        this.focusTimer = setTimeout(() => this.#close({ focus: false }), this.closeDelayValue)
+      }
+
+      return
+    }
+
     const to = event.relatedTarget
     if (!this.openValue || !this.dismissValue || !(to instanceof Node)) return
     if (this.element.contains(to) || this.popupTargets.some((el) => el.contains(to))) return
@@ -213,6 +244,12 @@ export default class PhemPopoverController extends Controller {
   #renderAria() {
     const popup = this.popupTargets[0]
 
+    if (this.#preview) {
+      this.#renderPreview(popup)
+
+      return
+    }
+
     if (popup) {
       if (!popup.hasAttribute("role")) popup.setAttribute("role", "dialog")
       const title = this.titleTargets[0]
@@ -229,11 +266,26 @@ export default class PhemPopoverController extends Controller {
     }
   }
 
+  // A preview card: the link is the only part for the keyboard and a screen reader.
+  #renderPreview(popup) {
+    for (const trigger of this.triggerTargets) trigger.toggleAttribute("data-popup-open", this.openValue)
+    if (!popup) return
+
+    popup.setAttribute("aria-hidden", "true")
+    for (const el of popup.querySelectorAll(FOCUSABLE)) el.tabIndex = -1
+  }
+
+  // A popover that opens on hover, with a link trigger.
+  get #preview() {
+    return this.openOnHoverValue && this.triggerTargets.length > 0 && this.triggerTargets.every((el) => el.matches("a[href]"))
+  }
+
   // The attributes of the state: the open state of the popup and its position, `aria-expanded`
-  // and `data-popup-open` on a trigger.
+  // and `data-popup-open` on a trigger, and the parts of a preview card.
   #owns(el, name) {
     if (this.popup.owns(el, name)) return true
     if (this.triggerTargets.includes(el)) return name === "aria-expanded" || name === "data-popup-open"
+    if (this.#preview && this.popupTargets.some((popup) => popup.contains(el))) return name === "tabindex" || (name === "aria-hidden" && this.popupTargets.includes(el))
 
     return false
   }

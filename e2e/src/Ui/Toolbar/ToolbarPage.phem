@@ -1,0 +1,48 @@
+<?phem
+
+namespace App\Ui\Toolbar;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// A toolbar with a group, a separator, a link, an input and a disabled item, and a button that
+// sends an event.
+#[Page('/toolbar')]
+final class ToolbarPage
+{
+    #[State] public int $bolds = 0;
+    #[State] public int $saves = 0;
+
+    public function bold(): void
+    {
+        ++$this->bolds;
+    }
+
+    public function save(): void
+    {
+        ++$this->saves;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Toolbar">
+                <div id="toolbar" data-controller="phem-toolbar" aria-label="Format">
+                    <div id="align" data-phem-toolbar-target="group" aria-label="Alignment">
+                        <button id="left" type="button" data-phem-toolbar-target="item">Left</button>
+                        <button id="center" type="button" data-phem-toolbar-target="item">Center</button>
+                    </div>
+                    <div id="separator" data-phem-toolbar-target="separator"></div>
+                    <button id="bold" type="button" data-phem-toolbar-target="item" aria-disabled="true" onClick={{ bold }}>Bold</button>
+                    <a id="help" href="#help" data-phem-toolbar-target="item">Help</a>
+                    <input id="zoom" data-phem-toolbar-target="item" aria-label="Zoom" value="100" />
+                </div>
+                <button id="save" onClick={{ save }}>Save</button>
+                <output id="bolds">{{ bolds }}</output>
+                <output id="saves">{{ saves }}</output>
+            </Document>
+        );
+    }
+}

@@ -1,6 +1,6 @@
 # Build UI with the built-in controllers
 
-This guide shows you how to use the Stimulus controllers that Phem ships for common UI patterns: a section that opens, an accordion, a section that shows from the value of a field, a popover, a tooltip, a menu, a context menu, a combobox, a sortable list, a modal dialog, tabs, a table of contents that marks the section in view, a theme switch, toasts, a copy button, a count of characters, an image input with a preview, a password that shows, a "select all" box, a local time, the focus after an event and a confirmation. Their state belongs to the client, so it stays after the morph of an event.
+This guide shows you how to use the Stimulus controllers that Phem ships for common UI patterns: a section that opens, an accordion, a section that shows from the value of a field, a popover, a tooltip, a menu, a menu bar, a navigation menu, a context menu, a combobox, a select, a sortable list, a modal dialog, a drawer, tabs, a toggle button, a switch or a checkbox, a toggle group, a toolbar, a radio group, an avatar, a field with validation, a number field, a one-time code field, a slider, a scroll area, a table of contents that marks the section in view, a theme switch, toasts, a copy button, a count of characters, an image input with a preview, a password that shows, a "select all" box, a local time, the focus after an event and a confirmation. Their state belongs to the client, so it stays after the morph of an event.
 
 The controllers follow the design of [Base UI](https://base-ui.com): they ship no CSS, and your markup gives all the elements. A UI library can put its own styled markup on them.
 
@@ -31,7 +31,21 @@ The controllers are off by default. Enable each one that you use in `assets/cont
     "checkbox-group": { "enabled": true, "fetch": "lazy" },
     "time": { "enabled": true, "fetch": "lazy" },
     "scrollspy": { "enabled": true, "fetch": "lazy" },
-    "image-input": { "enabled": true, "fetch": "lazy" }
+    "image-input": { "enabled": true, "fetch": "lazy" },
+    "toggle": { "enabled": true, "fetch": "lazy" },
+    "toggle-group": { "enabled": true, "fetch": "lazy" },
+    "toolbar": { "enabled": true, "fetch": "lazy" },
+    "radio-group": { "enabled": true, "fetch": "lazy" },
+    "avatar": { "enabled": true, "fetch": "lazy" },
+    "field": { "enabled": true, "fetch": "lazy" },
+    "form": { "enabled": true, "fetch": "lazy" },
+    "number-field": { "enabled": true, "fetch": "lazy" },
+    "otp-field": { "enabled": true, "fetch": "lazy" },
+    "slider": { "enabled": true, "fetch": "lazy" },
+    "scroll-area": { "enabled": true, "fetch": "lazy" },
+    "select": { "enabled": true, "fetch": "lazy" },
+    "menubar": { "enabled": true, "fetch": "lazy" },
+    "navigation-menu": { "enabled": true, "fetch": "lazy" }
 }
 ```
 
@@ -52,7 +66,7 @@ Each element of a pattern is a part: a Stimulus target with a name, such as `tri
 </div>
 ```
 
-The controller adds the roles and the ARIA attributes of the pattern, such as `role="dialog"`, `aria-expanded` and `aria-controls`. An attribute that your markup gives stays. A part with no `id` gets one when an ARIA attribute must point to it.
+The controller adds the roles and the ARIA attributes of the pattern, such as `role="dialog"`, `aria-expanded` and `aria-controls`. An attribute that your markup gives stays. A controller gives no `id` to a part. The morph of an event matches the elements by their id, and removes an id that the server render does not have. When an ARIA attribute must point to a part with no `id`, the controller uses an element reference of ARIA, such as `ariaControlsElements`. The browser then shows the attribute with an empty value, for example `aria-controls=""`. When the part has an `id`, the attribute gets the id.
 
 ### State in data attributes
 
@@ -68,11 +82,16 @@ The controller shows its state in data attributes. Use them in your CSS, or as T
 | `data-selected` | An item of a combobox with `multiple` | The server chose the item (`aria-selected="true"`) |
 | `data-expanded` | The `phem-toast` element, a toast | The pointer or the focus is on the stack |
 | `data-swiping`, `data-swipe-direction` | A toast, a drawer | The user swipes the part, and the direction of the swipe that closed it |
+| `data-pressed` | A toggle button, an item of a toggle group, the trigger of a menu or a select | The button is pressed, or its popup is open |
+| `data-checked`, `data-unchecked`, `data-indeterminate` | A switch, a checkbox, a radio, their indicator | The control is checked, not checked, or mixed |
+| `data-valid`, `data-invalid`, `data-dirty`, `data-touched`, `data-filled`, `data-focused` | The parts of a field | The state of the validation and of the input of the user |
+| `data-dragging`, `data-scrolling` | A slider, a scroll area | The user drags a thumb, or scrolls |
 | `data-disabled` | An item, a tab | The element is disabled |
+| `data-readonly`, `data-required` | A form control | The control is read-only, or required |
 | `data-orientation` | The parts of `phem-tabs` | `horizontal` or `vertical` |
 | `data-active` | A tab, a link of `phem-scrollspy` | The tab is selected, or the section of the link is in view |
 | `data-starting-style`, `data-ending-style` | A part that opens or closes | The first frame of the open, and the time of the close |
-| `data-instant` | A popup | The change has no animation |
+| `data-instant` | A popup, the positioner of a navigation menu | The change has no animation (for a navigation menu: the first open) |
 
 ### Animations
 
@@ -94,7 +113,7 @@ A transition can go back in the middle: a popup that opens again before the end 
 
 ### Position
 
-`phem-popover`, `phem-tooltip`, `phem-menu`, `phem-context-menu` and `phem-combobox` place their popup next to their anchor (the trigger, or the input). The popup gets `position: fixed` and its `top` and `left`, so a `transform` of the popup stays free for an animation. These values set the position:
+`phem-popover`, `phem-tooltip`, `phem-menu`, `phem-context-menu`, `phem-combobox`, `phem-select` and `phem-navigation-menu` place their popup next to their anchor (the trigger, or the input). The popup gets `position: fixed` and its `top` and `left`, so a `transform` of the popup stays free for an animation. These values set the position:
 
 | Value | Default | Effect |
 |---|---|---|
@@ -122,7 +141,7 @@ An element around the popup with `overflow: hidden`, a `transform` or a `filter`
 
 ### The morph
 
-The state of a controller belongs to the client. The morph after an event does not change the state attributes and the position. The `open` value (or the `index` value of `phem-tabs`) is the state: the server render gives its first value, and a server render with a new value sets the state. For example, a handler opens a dialog with `data-phem-dialog-open-value={{ editing }}`.
+The state of a controller belongs to the client. The morph after an event does not change the state attributes and the position. The `open` value (or the `active` value of `phem-tabs`) is the state: the server render gives its first value, and a server render with a new value sets the state. For example, a handler opens a dialog with `data-phem-dialog-open-value={{ editing }}`. A state that the user changed after the request of the event left keeps the value of the user, as a bound field does: the server render did not know it. For example, the user presses an arrow key of a radio group with `phem:live` two times, and the answer of the first key does not check the first radio again.
 
 ## Show and hide a section
 
@@ -141,11 +160,13 @@ A click on a trigger opens and closes the panel. The `toggle`, `open` and `close
 
 ```html
 <div data-controller="phem-collapsible" data-phem-collapsible-open-value="true" data-open>
-    <button data-phem-collapsible-target="trigger" aria-controls="phem-collapsible-1-0" aria-expanded="true" data-panel-open>Details</button>
-    <div data-phem-collapsible-target="panel" id="phem-collapsible-1-0" data-open
+    <button data-phem-collapsible-target="trigger" aria-controls="" aria-expanded="true" data-panel-open>Details</button>
+    <div data-phem-collapsible-target="panel" data-open
          style="--collapsible-panel-height: 48px; --collapsible-panel-width: 320px;">...</div>
 </div>
 ```
+
+The panel has no `id`, so the trigger points to it with an element reference (`ariaControlsElements`). When each panel has an `id`, the trigger gets the ids in `aria-controls`. An `aria-controls` that your markup gives stays.
 
 The panel gets the size of its content in `--collapsible-panel-height` and `--collapsible-panel-width`, for a transition of its height:
 
@@ -277,6 +298,29 @@ Open moves the focus into the popup: to its `[autofocus]` element, or to the pop
 
 With `data-phem-popover-open-on-hover-value="true"`, the pointer on the trigger opens the popup after the `delay` value (300 ms), and the pointer out of the trigger and of the popup closes it after the `close-delay` value (at least 100 ms, so the pointer can go to the popup). A popover with `open-on-hover` is good for a preview card, because a touch screen and the keyboard can still open it.
 
+### Show a preview card of a link
+
+A popover with `open-on-hover` and a link trigger (`<a href>`) is a preview card, as the PreviewCard of Base UI. Base UI waits 600 ms to open it and 300 ms to close it:
+
+```html
+<div data-controller="phem-popover" data-phem-popover-open-on-hover-value="true"
+     data-phem-popover-delay-value="600" data-phem-popover-close-delay-value="300">
+    <a href="/users/ada" data-phem-popover-target="trigger">Ada</a>
+    <div data-phem-popover-target="popup" hidden>
+        <img src="/ada.png" alt="" /> <a href="/users/ada/posts">Posts</a>
+    </div>
+</div>
+```
+
+A click on the link opens the link, not the popup. The keyboard focus on the link opens the popup after the delay, and the focus out closes it after the close delay. The focus stays on the link. The card only adds to the link, for a mouse and for the eyes: the link stays the only part for the keyboard and for a screen reader. So the link gets no `aria-haspopup`, `aria-expanded` or `aria-controls`, and the popup gets `aria-hidden="true"` and no role. Its links and fields get `tabindex="-1"`: Tab goes from the link to the next element of the page. Put the information of the card on the page of the link too. When the pointer is on **Ada**, the browser shows:
+
+```html
+<a href="/users/ada" data-phem-popover-target="trigger" data-popup-open>Ada</a>
+<div data-phem-popover-target="popup" aria-hidden="true" data-open data-side="bottom" data-align="center" style="...">
+    <img src="/ada.png" alt=""> <a href="/users/ada/posts" tabindex="-1">Posts</a>
+</div>
+```
+
 ## Show a tooltip
 
 `phem-tooltip` shows a short text next to an element, on hover and on the focus of the keyboard:
@@ -290,13 +334,15 @@ With `data-phem-popover-open-on-hover-value="true"`, the pointer on the trigger 
 
 The trigger is the controller element, or a `trigger` part in it. The pointer on the trigger opens the tooltip after the `delay` value (600 ms), and the pointer out closes it after the `close-delay` value (0 ms). The pointer can go on the tooltip, unless `data-phem-tooltip-hoverable-value="false"`. The focus of the keyboard (`:focus-visible`) opens it at once. Escape, the blur and a click on the trigger close it. Set `data-phem-tooltip-close-on-click-value="false"` to keep it open on a click.
 
-A tooltip that opens less than 400 ms after another tooltip closed opens at once, with `data-instant="delay"`, as in a toolbar. The popup gets `role="tooltip"` and an `id`, and the trigger gets `aria-describedby`:
+A tooltip that opens less than 400 ms after another tooltip closed opens at once, with `data-instant="delay"`, as in a toolbar. The popup gets `role="tooltip"`, and the trigger gets `aria-describedby`:
 
 ```html
-<button data-controller="phem-tooltip" aria-label="Archive" aria-describedby="phem-tooltip-1" data-popup-open>
-    <span data-phem-tooltip-target="popup" role="tooltip" id="phem-tooltip-1" data-open data-side="top" data-align="center" style="...">Archive</span>
+<button data-controller="phem-tooltip" aria-label="Archive" aria-describedby="" data-popup-open>
+    <span data-phem-tooltip-target="popup" role="tooltip" data-open data-side="top" data-align="center" style="...">Archive</span>
 </button>
 ```
+
+The popup has no `id`, so the trigger points to it with an element reference (`ariaDescribedByElements`). A popup with an `id` adds its id to `aria-describedby`. The descriptions that your markup gives in `aria-describedby` stay, before the tooltip.
 
 A tooltip helps only the users of a pointer and of a keyboard. A touch shows no tooltip. Give the trigger its own label (here `aria-label`) for a touch screen and for a screen reader. Do not put important information only in a tooltip: use a popover with `open-on-hover`.
 
@@ -338,6 +384,12 @@ The keys skip a disabled item (`disabled` or `aria-disabled="true"`). From the l
 
 A click on an item runs its own handler, and closes the menu. The item with `data-phem-menu-close-on-click="false"` keeps the menu open, as **Pin** above: after its event, the morph shows the new `aria-checked` in the open menu. A click outside and the focus out of the menu close it. With `data-phem-menu-open-on-hover-value="true"`, the pointer on the trigger opens the menu after the `delay` value (100 ms).
 
+The menu sends `phem-menu:open` when it opens and `phem-menu:close` when it closes. A script can open the menu with the focus on an item: `menu.open("first")` or `menu.open("last")`. The `open` action (`data-action="phem-menu#open"`) puts the focus on the popup.
+
+The trigger gets `aria-haspopup="menu"`, `aria-expanded`, `aria-controls`, `data-popup-open` and `data-pressed` while the menu is open. The trigger of a submenu does not get `data-pressed`. The popup and a `groupLabel` need no `id`: with no id, the trigger and the group point to them with element references (`ariaControlsElements` and `ariaLabelledByElements`). With an id, they get `aria-controls` and `aria-labelledby`.
+
+To put menus in a bar, as the menu bar of an application, see [Build a menu bar](#build-a-menu-bar). In a vertical menubar, ArrowRight (ArrowLeft in a right-to-left page) opens the menu in place of ArrowDown and ArrowUp, and its popup goes on the `inline-end` side of the trigger.
+
 ### Add a submenu
 
 Put a `phem-menu` in the popup of a menu. Its trigger is an item of the menu around it:
@@ -364,8 +416,8 @@ The arrow keys of the menu go to **Move to** as to the other items. The pointer 
 
 ```html
 <button data-phem-menu-target="trigger" role="menuitem" tabindex="-1" aria-haspopup="menu"
-        aria-controls="phem-menu-2" aria-expanded="true" data-popup-open>Move to</button>
-<div data-phem-menu-target="popup" role="menu" id="phem-menu-2" tabindex="-1"
+        aria-controls="" aria-expanded="true" data-popup-open>Move to</button>
+<div data-phem-menu-target="popup" role="menu" tabindex="-1"
      data-open data-side="inline-end" data-align="start" style="...">
 ```
 
@@ -379,6 +431,199 @@ In a right-to-left page, ArrowLeft opens the submenu and ArrowRight closes it. T
 ### Lock the page while the menu is open
 
 Set `data-phem-menu-modal-value="true"` for a modal menu. While it is open, the page does not scroll, and the elements out of the menu get no hover and no click: the body gets `pointer-events: none`, and the popup `pointer-events: auto`. A click outside closes the menu, and the element under the pointer does not get the click. The width of the scroll bar stays, so the page does not move. A Turbo visit gives the page its styles back before Turbo keeps the page in its cache.
+
+## Build a menu bar
+
+`phem-menubar` is a bar of menus, as the menu bar of an application. Each menu of the bar is a `phem-menu` in the menubar element:
+
+```html
+<div data-controller="phem-menubar">
+    <div data-controller="phem-menu">
+        <button data-phem-menu-target="trigger">File</button>
+        <div data-phem-menu-target="popup" hidden>
+            <button data-phem-menu-target="item" onClick={{ create }}>New</button>
+            <button data-phem-menu-target="item" onClick={{ save }}>Save</button>
+            <div data-controller="phem-menu">
+                <button data-phem-menu-target="trigger">Export</button>
+                <div data-phem-menu-target="popup" hidden>
+                    <button data-phem-menu-target="item" onClick={{ export('pdf') }}>PDF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div data-controller="phem-menu">
+        <button data-phem-menu-target="trigger">Edit</button>
+        <div data-phem-menu-target="popup" hidden>
+            <button data-phem-menu-target="item" onClick={{ undo }}>Undo</button>
+        </div>
+    </div>
+</div>
+```
+
+Each menu keeps its own open state (its `open` value), also after the morph of an event. Only one menu of the bar is open at a time: when a menu opens, the other menus close. The items, the submenus and the keys in a menu are the ones of [`phem-menu`](#build-a-menu-of-actions).
+
+| Value | Default | Description |
+|---|---|---|
+| `orientation` | `horizontal` | `horizontal` or `vertical`: the arrow keys between the triggers |
+| `loopFocus` | `true` | From the last trigger, the arrow key goes to the first trigger |
+| `modal` | `true` | While a menu is open, the page does not scroll, and the elements out of the menubar get no pointer events |
+| `disabled` | `false` | No menu of the bar opens |
+
+Set a value with `data-phem-menubar-<name>-value`, for example `data-phem-menubar-orientation-value="vertical"`.
+
+| Key | On | Action |
+|---|---|---|
+| ArrowRight, ArrowLeft | A trigger | Moves the focus to the next or to the previous trigger (ArrowDown and ArrowUp in a vertical menubar) |
+| Home, End | A trigger | Moves the focus to the first or to the last trigger |
+| ArrowDown, Enter, Space | A trigger | Opens the menu on its first item (ArrowRight in a vertical menubar) |
+| ArrowRight, ArrowLeft | An open menu | Closes the menu, and opens the next or the previous menu on its first item |
+| ArrowRight | The trigger of a submenu | Opens the submenu |
+| ArrowLeft | A submenu | Closes the submenu |
+| ArrowLeft | An open menu of a vertical menubar | Closes the menu, and gives the focus back to its trigger |
+| Escape | An open menu | Closes the menu, and gives the focus back to its trigger |
+
+The triggers have one tab stop: the trigger of the last menu that had the focus. The arrow keys skip a disabled trigger. In a right-to-left page, ArrowLeft and ArrowRight go the other way.
+
+While a menu is open, the pointer on another trigger opens its menu at once, and closes the first menu. The first click on that trigger keeps its menu open. A modal menubar locks the page as a [modal menu](#lock-the-page-while-the-menu-is-open) does, but the menubar and its popups keep the pointer events (`pointer-events: auto` on the menubar), so the pointer can go to the other triggers. A click outside closes the menu.
+
+The menubar element gets `role="menubar"`, `aria-orientation`, `data-orientation`, `data-modal` (with the `modal` value), `data-disabled` and `aria-disabled="true"` (with the `disabled` value), and `data-has-submenu-open` while a menu is open. The triggers get `role="menuitem"`, `tabindex` and `data-disabled`. In a vertical menubar, the popup of a menu goes on the `inline-end` side of its trigger. After a click on **Edit**, a click on **Undo** (an item with `data-phem-menu-close-on-click="false"`) and ArrowRight, the browser shows:
+
+```html
+<div data-controller="phem-menubar" style="pointer-events: auto;" role="menubar" aria-orientation="horizontal"
+     data-orientation="horizontal" data-modal="" data-has-submenu-open="">
+    <div data-controller="phem-menu">
+        <button data-phem-menu-target="trigger" aria-expanded="false" tabindex="-1" aria-haspopup="menu"
+                aria-controls="file-popup" role="menuitem">File</button>
+        <div id="file-popup" data-phem-menu-target="popup" hidden="" data-closed="" role="menu" tabindex="-1">...</div>
+    </div>
+    <div data-controller="phem-menu" data-phem-menu-open-value="false">
+        <button data-phem-menu-target="trigger" aria-expanded="false" tabindex="-1" role="menuitem" ...>Edit</button>
+        <div id="edit-popup" data-phem-menu-target="popup" role="menu" tabindex="-1" data-closed="" hidden="">...</div>
+    </div>
+    <div data-controller="phem-menu" data-phem-menu-open-value="true">
+        <button data-phem-menu-target="trigger" aria-expanded="true" tabindex="0" role="menuitem" aria-haspopup="menu"
+                aria-controls="help-popup" data-pressed="" data-popup-open="">Help</button>
+        <div id="help-popup" data-phem-menu-target="popup" role="menu" tabindex="-1" data-open=""
+             data-side="bottom" data-align="start" style="position: fixed; inset: 29px auto auto 92px; ...">
+            <button data-phem-menu-target="item" role="menuitem" tabindex="-1" data-highlighted="">About</button>
+        </div>
+    </div>
+</div>
+```
+
+## Build a navigation menu
+
+`phem-navigation-menu` shows the links of a site, with a panel of links (a content) under some items. The content of the open item shows in one shared popup:
+
+```html
+<nav data-controller="phem-navigation-menu" data-phem-navigation-menu-side-offset-value="8">
+    <ul data-phem-navigation-menu-target="list">
+        <li data-phem-navigation-menu-target="item" data-value="overview">
+            <button data-phem-navigation-menu-target="trigger">
+                Overview <span data-phem-navigation-menu-target="icon">▾</span>
+            </button>
+            <div data-phem-navigation-menu-target="content" hidden>
+                <a data-phem-navigation-menu-target="link" href="/start">Quick start</a>
+                <a data-phem-navigation-menu-target="link" href="/releases">Releases</a>
+            </div>
+        </li>
+        <li data-phem-navigation-menu-target="item" data-value="guides">
+            <button data-phem-navigation-menu-target="trigger">Guides</button>
+            <div data-phem-navigation-menu-target="content" hidden>
+                <a data-phem-navigation-menu-target="link" href="/styling">Styling</a>
+            </div>
+        </li>
+        <li data-phem-navigation-menu-target="item">
+            <a data-phem-navigation-menu-target="link" href="/blog" aria-current="page">Blog</a>
+        </li>
+    </ul>
+    <div data-phem-navigation-menu-target="backdrop" hidden></div>
+    <div data-phem-navigation-menu-target="positioner" hidden>
+        <div data-phem-navigation-menu-target="popup">
+            <div data-phem-navigation-menu-target="arrow"></div>
+            <div data-phem-navigation-menu-target="viewport"></div>
+        </div>
+    </div>
+</nav>
+```
+
+Each item has a trigger and a content, or a link. The value of an item is its `data-value` attribute, its key (`key={{ ... }}`), or its position. The `value` value is the state: the value of the open item, or empty when the menu is closed. Set it to open an item on load, and a handler can set it in a new render.
+
+The contents stay in their items in the server render. With a `viewport` part, the content of the open item moves into the viewport while it is open, as in Base UI, and goes back to its item when it closes. Before a morph, the open content also goes back to its item, so the morph sees the markup of the server render, and after the morph it goes into the viewport again. The browser keeps the focus in the content when it can move an element with its state (`moveBefore()`); else the controller gives the focus back. With no viewport, the content shows in its item, and the CSS of the app places it.
+
+| Value | Default | Description |
+|---|---|---|
+| `value` | empty | The value of the open item |
+| `delay` | `50` | The time (ms) of the pointer on a trigger before its content opens |
+| `closeDelay` | `50` | The time (ms) of the pointer out of the menu before it closes |
+| `orientation` | `horizontal` | `horizontal` or `vertical`: the arrow keys of the list |
+| `loopFocus` | `true` | From the last trigger or link, the arrow key goes to the first one |
+| `side`, `align`, `sideOffset`, `alignOffset`, `collisionPadding`, `arrowPadding` | `bottom`, `center`, `0`, `0`, `5`, `5` | The position of the popup next to the trigger of the open item, as in [Position](#position) |
+
+The pointer on a trigger opens its content after the `delay` value, also when another item is open. The pointer out of the triggers and of the popup closes the menu after the `closeDelay` value. A click on a trigger opens and closes its content. The first click on a trigger that the pointer opened keeps it open, and a menu that a click or a key opened does not close when the pointer goes out. A click outside, Escape and the focus out of the menu close it. A link with `data-phem-navigation-menu-close-on-click="true"` closes the menu.
+
+| Key | On | Action |
+|---|---|---|
+| ArrowRight, ArrowLeft | A trigger or a link of the list | Moves the focus to the next or to the previous one (ArrowDown and ArrowUp in a vertical menu) |
+| Home, End | A trigger or a link of the list | Moves the focus to the first or to the last one |
+| ArrowDown, Enter, Space | A trigger | Opens the content, and puts the focus on its first link (ArrowRight in a vertical menu) |
+| Tab | The trigger of the open item | Moves the focus into the content in the viewport |
+| Shift+Tab | The first element of the content | Moves the focus back to the trigger |
+| Tab | The last element of the content | Moves the focus to the next trigger, and closes the menu |
+| Escape | The menu | Closes the menu, and gives the focus back to the trigger |
+
+The arrow keys skip a disabled trigger, and do not go to the links in a content. In a right-to-left page, ArrowLeft and ArrowRight go the other way.
+
+The `positioner` part (or the `popup` part, with no positioner) goes next to the trigger of the open item, with the attributes and the variables of [Position](#position). The `popup` part gets the size of the open content in `--popup-width` and `--popup-height`, and the positioner in `--positioner-width` and `--positioner-height`. When the open item changes, they change from the old size to the new size, so a CSS transition animates the size. On the first open, the positioner (or the popup, with no positioner) gets `data-instant`: it goes to its place at once, and only the move from one trigger to another animates. Turn off the transition of the position with `[data-instant] { transition: none }`, or the Tailwind variant `data-instant:transition-none`:
+
+```css
+[data-phem-navigation-menu-target="popup"] {
+    width: var(--popup-width);
+    height: var(--popup-height);
+    transition: width 200ms, height 200ms;
+}
+[data-phem-navigation-menu-target="viewport"] {
+    position: relative;
+    overflow: hidden;
+}
+[data-phem-navigation-menu-target="content"] { transition: opacity 200ms, translate 200ms; }
+[data-phem-navigation-menu-target="content"][data-starting-style][data-activation-direction="right"] { translate: 50% 0; opacity: 0; }
+[data-phem-navigation-menu-target="content"][data-ending-style][data-activation-direction="right"] { translate: -50% 0; opacity: 0; }
+```
+
+When the open item changes, the old and the new contents get `data-activation-direction`: `right` or `left` (`down` or `up` in a vertical menu), the direction of the new item from the old one. A content that leaves the viewport gets `position: absolute` at the start of the viewport until its animation ends, so it takes no space. The contents, the positioner, the popup and the backdrop get `data-open`, `data-closed` and the animations of the [conventions](#animations).
+
+A trigger gets `aria-expanded`, `aria-controls`, `data-popup-open` and `data-pressed` when its item is open, and `data-disabled`. A content needs no `id`: with no id, the controller links the trigger to it with an element reference (`ariaControlsElements`). An icon gets `data-popup-open`. A link with `aria-current="page"` or `data-active` from the server gets both. The controller sends `phem-navigation-menu:change` with `{ value }` when the user opens, changes or closes an item. After the pointer on **Overview** and then on **Guides** (the contents of this page have an `id`), the browser shows:
+
+```html
+<nav data-controller="phem-navigation-menu" data-phem-navigation-menu-side-offset-value="8" data-phem-navigation-menu-value-value="guides">
+    <ul data-phem-navigation-menu-target="list">
+        <li data-phem-navigation-menu-target="item" data-value="overview">
+            <button data-phem-navigation-menu-target="trigger" aria-expanded="false" aria-controls="overview-content">Overview ...</button>
+            <div id="overview-content" data-phem-navigation-menu-target="content" data-activation-direction="right" data-closed="" hidden="">...</div>
+        </li>
+        <li data-phem-navigation-menu-target="item" data-value="guides">
+            <button data-phem-navigation-menu-target="trigger" aria-expanded="true" aria-controls="guides-content"
+                    data-popup-open="" data-pressed="">Guides</button>
+        </li>
+        <li data-phem-navigation-menu-target="item">
+            <a data-phem-navigation-menu-target="link" href="/blog" aria-current="page" data-active="">Blog</a>
+        </li>
+    </ul>
+    <div data-phem-navigation-menu-target="positioner" data-open="" data-side="bottom" data-align="center"
+         style="position: fixed; inset: 37px auto auto 26px; --anchor-width: 58.234375px; ...; --positioner-width: 202px; --positioner-height: 82px;">
+        <div data-phem-navigation-menu-target="popup" data-open="" style="--popup-width: 202px; --popup-height: 82px;">
+            <div data-phem-navigation-menu-target="viewport">
+                <div id="guides-content" data-phem-navigation-menu-target="content" data-activation-direction="right" data-open="">
+                    <a data-phem-navigation-menu-target="link" href="/styling">Styling</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+```
+
+A navigation menu in a content (a nested menu of Base UI) is not supported yet.
 
 ## Open a menu on a right click
 
@@ -400,7 +645,7 @@ A right click on the trigger opens the menu with its top left corner at the poin
 
 ```html
 <div data-phem-context-menu-target="trigger" class="file" data-popup-open>report.pdf</div>
-<div data-phem-context-menu-target="popup" role="menu" id="phem-menu-1" tabindex="-1"
+<div data-phem-context-menu-target="popup" role="menu" tabindex="-1"
      data-open data-side="bottom" data-align="start" style="position: fixed; top: 212px; left: 348px; ...">
 ```
 
@@ -454,9 +699,9 @@ The popup opens when the user types, and on ArrowDown or ArrowUp. It shows when 
 
 ```html
 <input data-phem-combobox-target="input" role="combobox" aria-autocomplete="list" autocomplete="off"
-       aria-controls="phem-combobox-1" aria-expanded="true" aria-activedescendant="city-Parma" data-popup-open value="pa">
+       aria-controls="" aria-expanded="true" aria-activedescendant="city-Parma" data-popup-open value="pa">
 <div data-phem-combobox-target="popup" data-open data-side="bottom" data-align="start" style="...">
-    <ul data-phem-combobox-target="list" role="listbox" id="phem-combobox-1">
+    <ul data-phem-combobox-target="list" role="listbox">
         <li id="city-Paris" role="option" aria-selected="false">Paris</li>
         <li id="city-Parma" role="option" aria-selected="true" data-highlighted>Parma</li>
     </ul>
@@ -472,7 +717,7 @@ The popup opens when the user types, and on ArrowDown or ArrowUp. It shows when 
 
 To choose an item is a click on it: its handler runs (here `choose`), or its link opens. The handler sets the state, and the morph shows the new text in the input. Then the popup closes, and the controller dispatches `phem-combobox:select` with the `item` in the detail. A click on a `clear` part clears the input and sends its `input` event, as when the user deletes the text. A click on a `trigger` part opens or closes the popup. A click outside and the focus out of the combobox close the popup.
 
-The highlight stays on the item with the same `id` through the morph of another event, so give each item a stable `id`. When the user types, the highlight goes. With `data-phem-combobox-auto-highlight-value="true"`, the first item gets the highlight. The popup and the list get `data-empty` when there is no item, and the `empty` parts show only then. A `status` part gets `role="status"`, so a screen reader reads its text, for example "3 cities". Use `var(--anchor-width)` to give the popup the width of the input.
+The list has no `id`, so the input points to it with an element reference (`ariaControlsElements`). An item with no `id` gets no id: the input points to the highlighted item with `ariaActiveDescendantElement`, and the browser shows `aria-activedescendant=""`. The highlight stays on the same item through the morph of another event. When the morph replaces the item, the highlight stays only on an item with the same `id`, so give each item a stable `id` in a list that changes. When the user types, the highlight goes. With `data-phem-combobox-auto-highlight-value="true"`, the first item gets the highlight. The popup and the list get `data-empty` when there is no visible item, and the `empty` parts show only then. A `status` part gets `role="status"`, so a screen reader reads its text, for example "3 cities". Use `var(--anchor-width)` to give the popup the width of the input.
 
 ### Choose more than one value
 
@@ -528,7 +773,7 @@ The server gives the chosen items `aria-selected="true"`, and the controller doe
 ```html
 <span data-phem-combobox-target="chip" tabindex="-1">bug <button data-phem-combobox-target="chipRemove" tabindex="-1" aria-label="Remove bug">×</button></span>
 <input data-phem-combobox-target="input" role="combobox" aria-activedescendant="tag-docs" aria-expanded="true" ...>
-<ul data-phem-combobox-target="list" role="listbox" aria-multiselectable="true" id="phem-combobox-1">
+<ul data-phem-combobox-target="list" role="listbox" aria-multiselectable="true">
     <li id="tag-bug" role="option" aria-selected="true" data-selected>bug</li>
     <li id="tag-docs" role="option" aria-selected="false" data-highlighted>docs</li>
 </ul>
@@ -542,6 +787,65 @@ The server gives the chosen items `aria-selected="true"`, and the controller doe
 | Backspace, Delete | A chip | Clicks its `chipRemove`. The focus goes to the chip before it (Backspace) or after it (Delete), or to the input |
 
 The chips and their `chipRemove` parts get `tabindex="-1"`, so Tab goes from the input out of the combobox. A press on a `chipRemove` keeps the focus in the input.
+
+### Filter a list in the browser
+
+A short list that does not change, such as the fruits of a form, does not need a round trip for each letter. The server renders all the items one time, and the browser filters them. Set `data-phem-combobox-filter-value` to `contains` or `starts-with`:
+
+```php
+#[Component]
+final class FruitField
+{
+    private const array FRUITS = ['Apple', 'Banana', 'Cherry', 'Éclair', 'Lemon'];
+
+    public function render(): Node
+    {
+        $fruits = self::FRUITS;
+
+        return (
+            <div data-controller="phem-combobox" data-phem-combobox-filter-value="contains">
+                <input data-phem-combobox-target="input" name="fruit" aria-label="Fruit" />
+                <div data-phem-combobox-target="popup" hidden>
+                    <ul data-phem-combobox-target="list">
+                        {% for name in fruits %}
+                            <li key={{ name }} id={{ 'fruit-' ~ loop.index }} data-phem-combobox-target="item">{{ name }}</li>
+                        {% endfor %}
+                    </ul>
+                    <p data-phem-combobox-target="empty">No fruit.</p>
+                </div>
+            </div>
+        );
+    }
+}
+```
+
+An item that does not match the text of the input gets `hidden`. The match ignores the case and the accents: "ecl" finds "Éclair". It uses `Intl.Collator` with the language of the page, or with `data-phem-combobox-locale-value`. The label of an item is its text, or its `data-label` attribute. Put the items in `group` parts (for example with a heading): a group with no visible item gets `hidden` too. `data-phem-combobox-limit-value="10"` shows only the first 10 matches. When the user types "ecl", the browser shows:
+
+```html
+<input data-phem-combobox-target="input" role="combobox" aria-autocomplete="list" aria-expanded="true" ... value="ecl">
+<ul data-phem-combobox-target="list" role="listbox">
+    <li id="fruit-1" role="option" aria-selected="false" hidden>Apple</li>
+    <li id="fruit-2" role="option" aria-selected="false" hidden>Banana</li>
+    <li id="fruit-3" role="option" aria-selected="false" hidden>Cherry</li>
+    <li id="fruit-4" role="option" aria-selected="false">Éclair</li>
+    <li id="fruit-5" role="option" aria-selected="false" hidden>Lemon</li>
+</ul>
+```
+
+The list belongs to the client. A choice writes the label of the item in the input, and sends its `input` and `change` events, so a `phem:bind` or an `onChange` handler gets the value. The text of an input with no `phem:bind` stays through the morph of another event. An item can still have an `onClick` handler.
+
+The `mode` value is the `aria-autocomplete` attribute of the input, as in the Autocomplete of Base UI:
+
+| `mode` | The items | The input on ArrowDown and ArrowUp |
+|---|---|---|
+| `list` (default) | Filtered | Does not change |
+| `both` | Filtered | Shows the label of the highlighted item |
+| `inline` | Not filtered | Shows the label of the highlighted item |
+| `none` | Not filtered | Does not change |
+
+With `both` and `inline`, Escape closes the popup and gives back the text that the user typed. While the input shows the label of the highlighted item, an event sends the text that the user typed for a `phem:bind` input, not the label. With `inline` and `none`, the list is static: the `filter` value has no effect, and a choice still writes the label in the input.
+
+While an event of the input runs (for example the search of the server), the input gets `aria-busy="true"` (see [Show a loading state](events.md#show-a-loading-state)). The popup gets it too, so a screen reader waits for the new results.
 
 ## Sort a list with drag and drop
 
@@ -640,7 +944,7 @@ The name of the item is its `aria-label`, the `aria-label` of its handle, or its
 
 A click on a trigger opens the dialog, and a click on a `close` part closes it. Add `phem:shortcut="mod+k"` to a trigger to open the dialog with a key (see [Add keyboard shortcuts](events.md#add-keyboard-shortcuts)). The `open` and `close` actions do the same from another element. The dialog gets `aria-labelledby` (the `title` part) and `aria-describedby` (a `description` part), and `data-open` or `data-closed`. A close waits for the animations of `[data-ending-style]`, then calls `close()`. The trigger gets `aria-haspopup="dialog"`, `aria-expanded` and `data-popup-open`.
 
-Escape and a tap on the backdrop close the dialog. Set `data-phem-dialog-dismiss-value="false"` to keep it open on Escape and on a tap on the backdrop. The server can open it with `data-phem-dialog-open-value={{ editing }}`. A dialog that closes in another way, such as a `<form method="dialog">`, also sets the state.
+Escape and a tap on the backdrop close the dialog. Set `data-phem-dialog-dismiss-value="false"` to keep it open on Escape and on a tap on the backdrop. For an alert dialog, set `data-phem-dialog-disable-pointer-dismissal-value="true"`: only Escape and the `close` parts close it. The server can open it with `data-phem-dialog-open-value={{ editing }}`. A dialog that closes in another way, such as a `<form method="dialog">`, also sets the state.
 
 A tap on the backdrop is a press and a click on the dialog itself, at a point outside the box of the dialog. A click on the padding of the dialog is inside the box, so the dialog stays open. A text selection that starts in the dialog and ends on the backdrop also keeps the dialog open. Phem does not use `closedby="any"`, because Safari does not support it.
 
@@ -649,6 +953,47 @@ A dialog in an open dialog gets `data-nested`. The dialog around it gets `data-n
 ```css
 dialog[data-nested-dialog-open] { scale: calc(1 - 0.05 * var(--nested-dialogs)); }
 ```
+
+| Value | Default | Effect |
+|---|---|---|
+| `open` | `false` | The state: the dialog is open |
+| `dismiss` | `true` | Escape and a tap on the backdrop close the dialog |
+| `disable-pointer-dismissal` | `false` | A tap on the backdrop, or a press outside a dialog that is not a modal, does not close the dialog |
+| `modal` | `true` | `true`: `showModal()`, the page is inert. `false`: `show()`, the page stays active, and Escape and a press outside close the dialog. `trap-focus`: as `false`, and Tab stays in the dialog |
+| `swipe-direction` | none | The dialog is a drawer: `up`, `down`, `left` or `right` |
+| `snap-points` | none | The heights where a drawer stops (see [Stop a drawer at snap points](#stop-a-drawer-at-snap-points)) |
+| `snap-point` | the first one | The state: the snap point of the drawer |
+| `snap-to-sequential-points` | `false` | A fast swipe does not skip a snap point |
+
+### Add a backdrop and a viewport
+
+The `::backdrop` of a modal `<dialog>` covers the page. For a backdrop with its own animation, add a `backdrop` part: an element outside the dialog. It gets `hidden`, `data-open` or `data-closed`, and the animations of the [conventions](#animations), at the same time as the dialog.
+
+For a popup that a box places on the screen (Base UI `Dialog.Viewport`), make the `<dialog>` the `viewport` part, and put the `popup` part in it. The controller opens the viewport, and the viewport and the popup get the open state. A press on the viewport outside the popup is a tap on the backdrop. The close waits for the animations of the popup:
+
+```html
+<div data-controller="phem-dialog">
+    <button data-phem-dialog-target="trigger">Edit</button>
+    <div class="backdrop" data-phem-dialog-target="backdrop" hidden></div>
+    <dialog class="viewport" data-phem-dialog-target="viewport">
+        <div class="popup" data-phem-dialog-target="popup">
+            <h2 data-phem-dialog-target="title">Edit</h2>
+            ...
+        </div>
+    </dialog>
+</div>
+```
+
+After a click on **Edit**, the browser shows:
+
+```html
+<div class="backdrop" data-phem-dialog-target="backdrop" data-open></div>
+<dialog class="viewport" data-phem-dialog-target="viewport" open data-open>
+    <div class="popup" data-phem-dialog-target="popup" data-open>...</div>
+</dialog>
+```
+
+A title or a description with no `id` gets its link with the element references of ARIA (`ariaLabelledByElements` and `ariaDescribedByElements`), so a screen reader names the dialog.
 
 ### Close a drawer with a swipe
 
@@ -661,41 +1006,81 @@ Set the `swipe-direction` value (`up`, `down`, `left` or `right`) to make the di
 </div>
 ```
 
-A press on the dialog and a move of 5 px in the direction start a swipe. The dialog gets `data-swiping`, the distance in `--dialog-swipe-movement-x` or `--dialog-swipe-movement-y`, and the part of its size in `--dialog-swipe-progress` (from 0 to 1). A move in the other direction has a resistance. A release after half the size of the dialog, or after a fast swipe, closes it. A shorter swipe gives the dialog its place again. Use the variables in your CSS:
+A press on the popup and a move of 5 px in the direction start a swipe. The popup gets `data-swipe-direction` (the direction of the value), `data-swiping` during the swipe, the distance in `--drawer-swipe-movement-x` or `--drawer-swipe-movement-y`, and the part of the way to the close in `--drawer-swipe-progress` (from 0 to 1). A move in the other direction has a resistance. A release after half the size of the popup, or after a fast swipe, closes it. A shorter swipe gives the popup its place again. After the release, `--drawer-swipe-strength` (from 0.1 to 1) is smaller for a faster swipe: multiply the duration of the transition with it. Use the variables in your CSS:
 
 ```css
 .sheet {
     margin: auto 0 0;
     width: 100%;
-    transform: translateY(var(--dialog-swipe-movement-y, 0px));
-    transition: transform 300ms;
+    transform: translateY(var(--drawer-swipe-movement-y, 0px));
+    transition: transform calc(var(--drawer-swipe-strength, 1) * 300ms);
 }
 .sheet[data-swiping] { transition: none; }
 .sheet[data-starting-style], .sheet[data-ending-style] { transform: translateY(100%); }
-.sheet::backdrop { opacity: calc(1 - var(--dialog-swipe-progress, 0)); }
+.sheet::backdrop { opacity: calc(1 - var(--drawer-swipe-progress, 0)); }
 ```
 
-The dialog that a swipe closed gets `data-swipe-direction` until the end of its `[data-ending-style]` transition, so the transition goes on from its place. A press on a field, a button, a link or a label does not start a swipe. In content that scrolls (`overflow: auto` or `scroll`), the swipe starts only when the content is at its start: the list of a bottom sheet scrolls up first. A touch needs no `touch-action`: a touch that moves in the direction of the swipe swipes the dialog, and a touch that moves the other way scrolls the content of the dialog.
+The popup that a swipe closed gets `data-swipe-dismiss` until the end of its `[data-ending-style]` transition, so the transition goes on from its place. A drawer in an open drawer makes the drawer around it get `data-nested-drawer-open` and `--nested-drawers`, as `data-nested-dialog-open` and `--nested-dialogs`. A press on a field, a button, a link or a label does not start a swipe. In content that scrolls (`overflow: auto` or `scroll`), the swipe starts only when the content is at its start: the list of a bottom sheet scrolls up first. A touch needs no `touch-action`: a touch that moves in the direction of the swipe swipes the dialog, and a touch that moves the other way scrolls the content of the dialog.
+
+### Stop a drawer at snap points
+
+A bottom sheet can stop at more than one height. Set the `snap-points` value to a list of heights: a number from 0 to 1 is a part of the height of the viewport, a larger number is px, and a string can have `px` or `rem`. The drawer opens at the first snap point:
+
+```php
+<div data-controller="phem-dialog" data-phem-dialog-swipe-direction-value="down" data-phem-dialog-snap-points-value={{ ['148px', 1] }}>
+    <button data-phem-dialog-target="trigger">Details</button>
+    <dialog class="sheet" data-phem-dialog-target="popup">...</dialog>
+</div>
+```
+
+The popup gets `--drawer-snap-point-offset`: the distance from its full height to the snap point. It gets `--drawer-height` (its height), and `data-expanded` at its full height. Add the offset to the transform:
+
+```css
+.sheet { transform: translateY(calc(var(--drawer-snap-point-offset, 0px) + var(--drawer-swipe-movement-y, 0px))); }
+```
+
+A swipe moves the drawer up and down from its snap point. The release stops it at the nearest snap point, or closes it when the close is nearer. A fast swipe goes to the next snap point in its direction, unless `data-phem-dialog-snap-to-sequential-points-value="true"`. The `snap-point` value is the state: it keeps the snap point through the morph, and a new snap point dispatches `phem-dialog:snap` with the `snapPoint` in the detail. Snap points apply to a drawer with the `up` or `down` direction. A resize of the viewport (a rotation, the keyboard of a phone) places the snap point again. Below its full height, a swipe in the other direction opens the drawer. At its full height, or on content that can scroll in that direction, a touch scrolls the content. After a swipe up to the full height of a sheet of 400 px, the browser shows:
+
+```html
+<div data-controller="phem-dialog" data-phem-dialog-snap-point-value="1" ...>
+    <dialog class="sheet" data-phem-dialog-target="popup" open data-open data-swipe-direction="down" data-expanded
+            style="--drawer-height: 400px; --drawer-snap-point-offset: 0px;">...</dialog>
+</div>
+```
 
 ## Switch between tabs
 
 `phem-tabs` shows the panel of the selected tab:
 
 ```html
-<div data-controller="phem-tabs">
+<div data-controller="phem-tabs" data-phem-tabs-active-value="profile">
     <div data-phem-tabs-target="list" aria-label="Settings">
-        <button id="tab-profile" data-phem-tabs-target="tab">Profile</button>
-        <button id="tab-security" data-phem-tabs-target="tab">Security</button>
+        <button data-phem-tabs-target="tab" data-value="profile">Profile</button>
+        <button data-phem-tabs-target="tab" data-value="security">Security</button>
         <span data-phem-tabs-target="indicator"></span>
     </div>
-    <div id="profile" data-phem-tabs-target="panel">...</div>
-    <div id="security" data-phem-tabs-target="panel" hidden>...</div>
+    <div data-phem-tabs-target="panel" data-value="profile">...</div>
+    <div data-phem-tabs-target="panel" data-value="security" hidden>...</div>
 </div>
 ```
 
-Each tab shows the panel at the same position. A click selects a tab. The arrow keys move the focus between the tabs, and Enter or Space selects the tab with the focus, also on a tab that is not a `<button>`. With `data-phem-tabs-activate-on-focus-value="true"`, the focus selects the tab at once. Home and End go to the first and to the last tab, and the arrow keys skip a disabled tab. From the last tab, the arrow key goes to the first tab, unless `data-phem-tabs-loop-focus-value="false"`. With `data-phem-tabs-orientation-value="vertical"`, the Up and Down keys move between the tabs in place of Left and Right.
+The value of a tab and of a panel is its `data-value` attribute, its key (`key={{ ... }}`), or its position. Each tab shows the panel with the same value. The `active` value is the state: the value of the selected tab. Set it to select a tab on load, and a handler can set it in a new render. With no `active` value, or a value that no tab has, the first tab that is not disabled is selected. A click selects a tab, and the `active` value gets its value. The arrow keys move the focus between the tabs, and Enter or Space selects the tab with the focus, also on a tab that is not a `<button>`. With `data-phem-tabs-activate-on-focus-value="true"`, the focus selects the tab at once. Home and End go to the first and to the last tab, and the arrow keys skip a disabled tab. From the last tab, the arrow key goes to the first tab, unless `data-phem-tabs-loop-focus-value="false"`. With `data-phem-tabs-orientation-value="vertical"`, the Up and Down keys move between the tabs in place of Left and Right.
 
-The controller sets the ARIA roles and attributes, so give an `id` to each tab and panel to let it link them. Set `data-phem-tabs-index-value="1"` to select a tab on load. All the parts get `data-orientation` and `data-activation-direction` (the direction of the last change: `left`, `right`, `up`, `down` or `none`). The selected tab gets `data-active`, and a hidden panel gets `data-hidden`. A panel also gets `data-index`, and the animations of the [conventions](#animations).
+The controller sets the ARIA roles and attributes. A tab and its panel need no `id`: the controller links them with the element references of ARIA (`ariaControlsElements` and `ariaLabelledByElements`), so a screen reader names the panel with its tab. It gives them no `id`, because the morph must match each element to the server render. When the tab and the panel have an `id`, they get `aria-controls` and `aria-labelledby`. After a click on **Security**, the browser shows:
+
+```html
+<div data-controller="phem-tabs" data-phem-tabs-active-value="security" data-orientation="horizontal" data-activation-direction="right">
+    <div data-phem-tabs-target="list" role="tablist" ...>
+        <button data-value="profile" role="tab" aria-selected="false" tabindex="-1" ...>Profile</button>
+        <button data-value="security" role="tab" aria-selected="true" tabindex="0" data-active ...>Security</button>
+        <span data-phem-tabs-target="indicator" style="--active-tab-left: ...; --active-tab-width: ...; ..."></span>
+    </div>
+    <div data-value="profile" role="tabpanel" data-index="0" data-hidden hidden tabindex="0" ...>...</div>
+    <div data-value="security" role="tabpanel" data-index="1" tabindex="0" ...>...</div>
+</div>
+```
+
+All the parts get `data-orientation` and `data-activation-direction` (the direction of the last change: `left`, `right`, `up`, `down` or `none`). The selected tab gets `data-active`, and a hidden panel gets `data-hidden`. A panel also gets `data-index`, and the animations of the [conventions](#animations).
 
 The `indicator` part gets the box of the selected tab in the list, for a line under the selected tab that moves:
 
@@ -711,6 +1096,844 @@ The `indicator` part gets the box of the selected tab in the list, for a line un
 ```
 
 The variables are `--active-tab-left`, `--active-tab-top`, `--active-tab-right`, `--active-tab-bottom`, `--active-tab-width` and `--active-tab-height`.
+
+## Toggle a button, a switch or a checkbox
+
+`phem-toggle` gives a pressed or checked state to a toggle button, a switch or a checkbox:
+
+```html
+<button type="button" data-controller="phem-toggle" aria-label="Bold">B</button>
+
+<label>
+    <span role="switch" data-controller="phem-toggle">
+        <span data-phem-toggle-target="indicator"></span>
+        <input type="checkbox" hidden phem:bind={{ alerts }} data-phem-toggle-target="input" />
+    </span>
+    Alerts
+</label>
+
+<label>
+    <span role="checkbox" data-controller="phem-toggle" data-phem-toggle-name-value="terms">
+        <span data-phem-toggle-target="indicator">✓</span>
+        <input type="checkbox" hidden data-phem-toggle-target="input" />
+    </span>
+    I accept the terms
+</label>
+```
+
+The role of the element gives its kind. An element with `role="switch"` or `role="checkbox"` is a switch or a checkbox: it gets `aria-checked`, and `data-checked` or `data-unchecked`. Another element is a toggle button: it gets `aria-pressed`, and `data-pressed` when it is pressed. An element that is not a `<button>` gets `role="button"` when it has no role, and `tabindex="0"` when it has no `tabindex`.
+
+The `checked` value is the state (a pressed toggle button is checked). The server render gives the first value, and a server render with a new value sets it. With no `checked` value, the first state comes from the `checked` attribute of the input, or from `aria-checked` or `aria-pressed`. The state belongs to the client, so it stays after the morph of an event.
+
+| Value | Default | Effect |
+|---|---|---|
+| `checked` | `false` | The state. Base UI `checked`/`defaultChecked`, `pressed`/`defaultPressed` |
+| `indeterminate` | `false` | A checkbox in a mixed state: `aria-checked="mixed"`, `data-indeterminate`. A click checks it |
+| `disabled` | `false` | Stops the changes by the user. Gives `data-disabled` and `aria-disabled="true"`. The `disabled` attribute of a `<button>` also gives `data-disabled` |
+| `read-only` | `false` | Stops the changes by the user. Gives `data-readonly` and `aria-readonly="true"` |
+| `required` | `false` | Gives `data-required`, `aria-required="true"`, and `required` on the input |
+| `name`, `form` | | The `name` and the `form` of the input |
+| `value` | `on` | The value that the input sends when it is checked |
+| `unchecked-value` | | The value that an `<input type="hidden">` sends when it is not checked |
+| `keep-mounted` | `false` | The indicator of a checkbox does not get `hidden` when the checkbox is not checked |
+
+| Key | Effect |
+|---|---|
+| Space | Toggles the state |
+| Enter | Toggles a toggle button (a `<button>` clicks on Enter). It does not toggle a switch or a checkbox |
+
+A click toggles the state. A click on a `<label>` around the element, or on a `<label for>` the input, also toggles it, one time. The element gets the focus.
+
+The `input` target (or the first checkbox in the element) is the field of a form:
+
+- A checkbox input gets the state in `checked`. Hide it with `hidden` or a visually hidden class.
+- An `<input type="hidden">` gets the `value` value when it is checked, and the `unchecked-value` value when it is not checked. With no `unchecked-value`, it is disabled when it is not checked, so a form does not send it, as a native checkbox.
+- The input gets `tabindex="-1"` and `aria-hidden="true"` when it has none.
+- When the user changes the state, the input dispatches `input` and `change`, so `phem:bind`, `phem:live` and the other controllers see the change.
+- An input with `phem:bind` belongs to phem: after the morph of an event, its value (the `checked` of a checkbox, the `value` of a hidden input) gives the state.
+
+The `indicator` targets (the check mark of a checkbox, the thumb of a switch) get the same data attributes as the element. The indicator of a checkbox shows only when the checkbox is checked or indeterminate, with the animations of the [conventions](#animations) (`data-open`, `data-closed`, `data-starting-style`, `data-ending-style`). The indicator of a switch and of a toggle button always shows.
+
+Each change by the user dispatches `phem-toggle:change` with `{ checked, indeterminate, value }`. After a click on the checkbox and on the toggle button, the browser shows:
+
+```html
+<label>
+    <span role="checkbox" data-controller="phem-toggle" data-phem-toggle-name-value="terms" data-phem-toggle-checked-value="true" tabindex="0" aria-checked="true" data-phem-toggle-indeterminate-value="false" data-checked="">
+        <span data-phem-toggle-target="indicator" data-checked="" data-open="" data-starting-style="">✓</span>
+        <input type="checkbox" hidden="" data-phem-toggle-target="input" name="terms" tabindex="-1" aria-hidden="true">
+    </span>
+    I accept the terms
+</label>
+<button type="button" data-controller="phem-toggle" aria-label="Bold" data-phem-toggle-checked-value="true" aria-pressed="true" data-phem-toggle-indeterminate-value="false" data-pressed="">B</button>
+```
+
+A `phem-checkbox-group` and a `phem-toggle-group` set the state of their `phem-toggle` items. See [Select all the rows](#select-all-the-rows) and [Press one button of a group](#press-one-button-of-a-group).
+
+## Press one button of a group
+
+`phem-toggle-group` gives one state to a group of toggle buttons, for example the alignment buttons of a text editor:
+
+```html
+<div data-controller="phem-toggle-group" data-phem-toggle-group-value-value='["left"]' aria-label="Alignment">
+    <button type="button" data-phem-toggle-group-target="item" data-value="left">Left</button>
+    <button type="button" data-phem-toggle-group-target="item" data-value="center">Center</button>
+    <button type="button" data-phem-toggle-group-target="item" data-value="right">Right</button>
+</div>
+```
+
+The value of an item is its `data-value` attribute, the `value` value of a `phem-toggle` item, its key (`key={{ ... }}`), or its position. The `value` value is the state: the values of the pressed items. The server render gives the first value, and a server render with a new value sets it. The state belongs to the client, so it stays after the morph of an event.
+
+| Value | Default | Effect |
+|---|---|---|
+| `value` | `[]` | The values of the pressed items |
+| `multiple` | `false` | More than one item can be pressed. With no `multiple`, a pressed item releases the other items |
+| `orientation` | `horizontal` | `horizontal` (Left and Right move the focus) or `vertical` (Up and Down) |
+| `loop-focus` | `true` | The arrow key on the last item goes to the first item |
+| `disabled` | `false` | No item changes. Gives `data-disabled` and `aria-disabled="true"` |
+
+| Key | Effect |
+|---|---|
+| ArrowLeft, ArrowRight (or ArrowUp, ArrowDown when vertical) | Moves the focus to the previous or the next item, and skips a disabled item |
+| Home, End | Moves the focus to the first or the last item |
+| Space, Enter | Presses or releases the item with the focus (a `<button>` clicks on them) |
+
+A click on an item presses it, and a click on a pressed item releases it. The items have a roving focus: one item is in the tab order (the item with the last focus, the first pressed item, or the first item that is not disabled).
+
+An item can be a [`phem-toggle`](#toggle-a-button-a-switch-or-a-checkbox) button, as a Base UI Toggle in a ToggleGroup:
+
+```html
+<div data-controller="phem-toggle-group" data-phem-toggle-group-multiple-value="true" aria-label="Style">
+    <button type="button" data-controller="phem-toggle" data-phem-toggle-group-target="item" data-value="bold">Bold</button>
+    <button type="button" data-controller="phem-toggle" data-phem-toggle-group-target="item" data-value="italic">Italic</button>
+</div>
+```
+
+The group owns the state of a `phem-toggle` item: it sets the `checked` value of the toggle, and the toggle gives it `aria-pressed` and `data-pressed`. Do not give a `checked` value to an item. A click on the item changes its state and dispatches `phem-toggle:change`, then the group changes the state of the other items. A disabled group stops the click before the toggle gets it. A `phem-toggle` item with the `disabled` value is a disabled item. The group has no form field: use the `input` of a `phem-toggle` item, or `phem:bind` on a hidden input.
+
+The group gets `role="group"` when it has no role, `data-orientation` and `data-multiple`. The items get `aria-pressed`, `data-pressed`, `data-orientation`, `tabindex`, and `data-disabled` when the group or the item is disabled. Each change by the user dispatches `phem-toggle-group:change` with `{ value }`. After a click on **Center**, the browser shows:
+
+```html
+<div data-controller="phem-toggle-group" data-phem-toggle-group-value-value="[&quot;center&quot;]" aria-label="Alignment" role="group" data-orientation="horizontal">
+    <button type="button" data-phem-toggle-group-target="item" data-value="left" aria-pressed="false" data-orientation="horizontal" tabindex="-1">Left</button>
+    <button type="button" data-phem-toggle-group-target="item" data-value="center" aria-pressed="true" data-orientation="horizontal" tabindex="0" data-pressed="">Center</button>
+    <button type="button" data-phem-toggle-group-target="item" data-value="right" aria-pressed="false" data-orientation="horizontal" tabindex="-1">Right</button>
+</div>
+```
+
+## Group controls in a toolbar
+
+`phem-toolbar` gives a row of controls one tab stop. The arrow keys move the focus between the items:
+
+```html
+<div data-controller="phem-toolbar" aria-label="Format">
+    <div data-phem-toolbar-target="group" aria-label="Alignment">
+        <button type="button" data-phem-toolbar-target="item">Left</button>
+        <button type="button" data-phem-toolbar-target="item">Center</button>
+    </div>
+    <div data-phem-toolbar-target="separator"></div>
+    <button type="button" data-phem-toolbar-target="item" aria-disabled="true" onClick={{ bold }}>Bold</button>
+    <a href="/help" data-phem-toolbar-target="item">Help</a>
+    <input data-phem-toolbar-target="item" aria-label="Zoom" value="100" />
+</div>
+```
+
+An `item` is a button, a link, an input, or another element that can get the focus. A `group` part holds some of the items, and a `separator` part divides them. Only one item is in the tab order: the item that had the focus last, else the first item. The tab stop stays after the morph of an event.
+
+| Value | Default | Description |
+|---|---|---|
+| `orientation` | `horizontal` | `horizontal` or `vertical`: the arrow keys that move the focus. |
+| `loopFocus` | `true` | From the last item, the arrow key goes to the first item. |
+| `disabled` | `false` | Disables all the items. |
+
+| Key | Action |
+|---|---|
+| ArrowRight, ArrowLeft | Move the focus to the next or to the previous item (`horizontal`). In a right-to-left page, the keys change places. |
+| ArrowDown, ArrowUp | Move the focus to the next or to the previous item (`vertical`). |
+| Home, End | Move the focus to the first or to the last item. |
+
+In a text input, ArrowLeft and ArrowRight move the caret. They move the focus only when the caret is at the start or at the end of the text. Home and End move the caret.
+
+A disabled item stays in the focus order, so a keyboard user can find it. A click on it does nothing, and an input takes no text. Give the item `aria-disabled="true"`, or give its group `aria-disabled="true"`, or set the `disabled` value. An item with the native `disabled` attribute does not get the focus.
+
+The controller sets the ARIA roles. The toolbar gets `role="toolbar"` and `aria-orientation`, a group gets `role="group"`, and a separator gets `role="separator"` and the other orientation in `aria-orientation`. All the parts get `data-orientation` (a separator gets the other orientation). A disabled item gets `data-disabled`, and `data-focusable` when it stays in the focus order. The toolbar and a disabled group get `data-disabled`.
+
+After the arrow keys move the focus to the input, the browser shows:
+
+```html
+<div data-controller="phem-toolbar" aria-label="Format" role="toolbar" aria-orientation="horizontal" data-orientation="horizontal">
+    <div data-phem-toolbar-target="group" aria-label="Alignment" role="group" data-orientation="horizontal">
+        <button type="button" data-phem-toolbar-target="item" data-orientation="horizontal" tabindex="-1">Left</button>
+        <button type="button" data-phem-toolbar-target="item" data-orientation="horizontal" tabindex="-1">Center</button>
+    </div>
+    <div data-phem-toolbar-target="separator" role="separator" aria-orientation="vertical" data-orientation="vertical"></div>
+    <button type="button" data-phem-toolbar-target="item" aria-disabled="true" data-orientation="horizontal" data-disabled data-focusable tabindex="-1" ...>Bold</button>
+    <a href="/help" data-phem-toolbar-target="item" data-orientation="horizontal" tabindex="-1">Help</a>
+    <input data-phem-toolbar-target="item" aria-label="Zoom" value="100" data-orientation="horizontal" tabindex="0">
+</div>
+```
+
+## Choose one option in a radio group
+
+`phem-radio-group` makes a group of radio buttons from elements that are not native inputs, for a radio with its own style:
+
+```html
+<div data-controller="phem-radio-group" data-phem-radio-group-value-value={{ apple }} aria-label="Apple">
+    <label>
+        <span data-phem-radio-group-target="radio" data-value="fuji">
+            <span data-phem-radio-group-target="indicator"></span>
+        </span>
+        Fuji
+    </label>
+    <label>
+        <span data-phem-radio-group-target="radio" data-value="gala">
+            <span data-phem-radio-group-target="indicator"></span>
+        </span>
+        Gala
+    </label>
+    <input type="hidden" name="apple" data-phem-radio-group-target="input" phem:bind={{ apple }} phem:live />
+</div>
+```
+
+The value of a radio is its `data-value` attribute, its key (`key={{ ... }}`), or its position. The `value` value is the state: the value of the checked radio. With no `value` value, no radio is checked. The server render gives its first value, and a handler can set a new value in a new render. The checked radio stays after the morph of an event.
+
+| Value | Default | Description |
+|---|---|---|
+| `value` | none | The value of the checked radio. |
+| `disabled` | `false` | Disables all the radios. |
+| `readOnly` | `false` | The arrow keys move the focus, but the user cannot check a radio. |
+| `required` | `false` | Gives the group `aria-required`. |
+
+| Key | Action |
+|---|---|
+| ArrowDown, ArrowRight | Move the focus to the next radio and check it. From the last radio, go to the first radio. |
+| ArrowUp, ArrowLeft | Move the focus to the previous radio and check it. |
+| Space | Check the radio with the focus. |
+
+A click on a radio, or on a `<label>` around it, checks it. The label also names the radio: the controller links them with `ariaLabelledByElements`, and gives them no `id`. The arrow keys skip a disabled radio: a radio with `disabled` or `aria-disabled="true"`. Only one radio is in the tab order: the checked radio, else the first radio that is not disabled.
+
+The `input` part keeps the value for a form. A hidden input gets the value of the checked radio. A native radio input (`type="radio"`) is checked when its `value` is the value of the checked radio. When the user checks a radio, the input that changes sends `input` and `change`, so `phem:bind` and `phem:live` see the change. The controller also dispatches `phem-radio-group:change`, with the `value` in its detail.
+
+The group gets `role="radiogroup"`, and `aria-disabled`, `aria-readonly` and `aria-required` for the values. A radio gets `role="radio"`, `aria-checked` and `tabindex`. The group, the radios and the indicators get `data-disabled`, `data-readonly` and `data-required`. A radio and its indicator get `data-checked` or `data-unchecked`. The indicator shows only when its radio is checked, with the animations of the [conventions](#animations).
+
+After a click on **Gala**, the browser shows:
+
+```html
+<div data-controller="phem-radio-group" data-phem-radio-group-value-value="gala" aria-label="Apple" role="radiogroup">
+    <label>
+        <span data-phem-radio-group-target="radio" data-value="fuji" role="radio" aria-checked="false" tabindex="-1" data-unchecked aria-labelledby="">
+            <span data-phem-radio-group-target="indicator" data-unchecked data-closed hidden></span>
+        </span>
+        Fuji
+    </label>
+    <label>
+        <span data-phem-radio-group-target="radio" data-value="gala" role="radio" aria-checked="true" tabindex="0" data-checked aria-labelledby="">
+            <span data-phem-radio-group-target="indicator" data-checked data-open></span>
+        </span>
+        Gala
+    </label>
+    <input type="hidden" name="apple" data-phem-radio-group-target="input" value="gala" ...>
+</div>
+```
+
+## Show an avatar with a fallback
+
+`phem-avatar` shows the image of a user when it loads, else a fallback (for example the initials):
+
+```html
+<span data-controller="phem-avatar" data-phem-avatar-delay-value="600">
+    <img data-phem-avatar-target="image" src={{ user.avatarUrl }} alt={{ user.name }} />
+    <span data-phem-avatar-target="fallback">{{ user.initials }}</span>
+</span>
+```
+
+The image is hidden until it loads. An image that the browser has already (in its cache) shows at once. The fallback shows while the image is not loaded, after the `delay` value: a fast image does not show the fallback for a short time. A new `src` or `srcset`, for example in the server render of an event, loads the image again.
+
+| Value | Default | Description |
+|---|---|---|
+| `delay` | `0` | The time in milliseconds from the load of the page to the fallback. |
+
+The load status of the image is `idle` (no image part), `loading`, `loaded`, or `error` (an image that does not load, or an image with no `src`). Each change of the status dispatches `phem-avatar:status`, with the `status` in its detail:
+
+```html
+<span data-controller="phem-avatar" data-action="phem-avatar:status->stats#avatar">...</span>
+```
+
+The image gets `data-loading` while it loads, and `data-error` when it does not load. When it loads, it gets `data-open`, with the animations of the [conventions](#animations). A hidden image or fallback gets `hidden`. The status stays after the morph of an event.
+
+The image loads while it is hidden. Do not give it `loading="lazy"`: the browser does not load a lazy image that it does not show.
+
+After an event gives the image a `src` that does not load, the browser shows:
+
+```html
+<span data-controller="phem-avatar">
+    <img data-phem-avatar-target="image" src="..." alt="Ada Lovelace" data-error data-closed hidden>
+    <span data-phem-avatar-target="fallback" data-open>AL</span>
+</span>
+```
+
+## Validate a field in the browser
+
+`phem-field` gives a form control a label, a description and errors, with the constraint validation of the browser (`required`, `type="email"`, `pattern`, `minlength`…). `phem-form` validates all the fields of a form before its submit:
+
+```html
+<form onSubmit={{ save }} data-controller="phem-form">
+    <div data-controller="phem-field">
+        <label data-phem-field-target="label">Name</label>
+        <input id="name" name="name" required data-phem-field-target="control" />
+        <p data-phem-field-target="description">Visible on your profile</p>
+        <p data-phem-field-target="error" data-match="valueMissing" hidden>Enter your name.</p>
+    </div>
+    <button type="submit">Save</button>
+</form>
+```
+
+The parts of a field are Stimulus targets:
+
+| Part | Element |
+|---|---|
+| `label` | A `<label>`, or another element that names the control |
+| `control` | An `<input>`, a `<select>`, a `<textarea>` or a custom control. A field can have more than one control, for example the slots of a [one-time code](#enter-a-one-time-code) |
+| `description` | A text that describes the control. Zero or more |
+| `error` | An error message. Zero or more |
+
+The values of `phem-field`:
+
+| Value | Default | Description |
+|---|---|---|
+| `data-phem-field-validation-mode-value` | the mode of the form, else `onSubmit` | `onSubmit`: the field validates on the submit of the form, then on each change. `onBlur`: the field validates when the control loses the focus. `onChange`: the field validates on each change |
+| `data-phem-field-validation-debounce-time-value` | `0` | The time in milliseconds after the last change before the validation, in the `onChange` mode |
+| `data-phem-field-disabled-value` | `false` | Disables the controls |
+
+In all the modes, an invalid field validates again on each change, so its error goes when the user corrects the value.
+
+The values of `phem-form`:
+
+| Value | Default | Description |
+|---|---|---|
+| `data-phem-form-validation-mode-value` | `onSubmit` | The validation mode of the fields that have no mode of their own |
+
+### Show the errors
+
+An `error` part with `data-match` shows for one key of the `ValidityState` of the control: `valueMissing`, `typeMismatch`, `patternMismatch`, `tooShort`, `tooLong`, `rangeUnderflow`, `rangeOverflow`, `stepMismatch`, `badInput` or `customError`. With `data-match="valid"`, it shows when the field is valid. With `data-match="true"`, it always shows. An `error` part with no `data-match` shows for all the errors. When it has no text in the markup, it gets the message of the browser (`validationMessage`):
+
+```html
+<div data-controller="phem-field" data-phem-field-validation-mode-value="onBlur">
+    <label data-phem-field-target="label">Email</label>
+    <input name="email" type="email" data-phem-field-target="control" />
+    <p data-phem-field-target="error" hidden></p>
+</div>
+```
+
+Give the errors `hidden` in the markup, so they do not show before the controller starts. An error shows and hides with the animations of the [conventions](#animations) (`data-open`, `data-closed`, `data-starting-style`, `data-ending-style`).
+
+### Submit the form
+
+The form gets `novalidate`: the fields show their errors in place of the messages of the browser. On a submit, each field validates. When a field is invalid, `phem-form` stops the submit before the `onSubmit` handler sends its event, and before the browser sends the form. It focuses the first invalid control and sends `phem-form:invalid`, with the invalid fields in `detail.fields`. A control of the form that is not in a field shows the message of the browser (`reportValidity()`). A submit button with `formnovalidate` submits with no validation.
+
+After a submit with an empty name, the browser shows:
+
+```html
+<div id="name-field" data-controller="phem-field" data-invalid="" data-focused="">
+    <label id="name-label" data-phem-field-target="label" for="name" data-invalid="" data-focused="">Name</label>
+    <input id="name" name="name" required="" value="" data-phem-field-target="control" aria-describedby="" data-invalid="" aria-invalid="true" data-focused="">
+    <p class="description" data-phem-field-target="description" data-invalid="" data-focused="">Visible on your profile</p>
+    <p id="name-missing" data-phem-field-target="error" data-match="valueMissing" data-invalid="" data-open="" data-focused="">Enter your name.</p>
+</div>
+```
+
+The `aria-describedby=""` is empty because the description has no id: the control gets the element references of ARIA (`ariaDescribedByElements`) for the description and the error. When all the parts have an id, the control gets the ids in `aria-describedby`.
+
+### Keep the server errors
+
+A server error is a control that the server renders with `aria-invalid="true"`: a field with `phem:bind` and an error (see [Show the error of a bound field](forms.md#show-the-error-of-a-bound-field)), or a Symfony form with `form_row()`. The field is invalid until the user changes the value of the control. While the error stays, the form does not submit the same value again, and the control gets the message of the server as its custom validity.
+
+An `error` part whose id is in the `aria-describedby` of the server render is the message of the server, for example the element of `phem:error`. It shows while the server error stays, and hides when the user changes the value:
+
+```html
+<div data-controller="phem-field">
+    <label data-phem-field-target="label">Name</label>
+    <input name="name" phem:bind={{ name }} data-phem-field-target="control" />
+    <p phem:error={{ name }} data-phem-field-target="error" />
+</div>
+```
+
+After a submit of a name that the server refuses, the browser shows:
+
+```html
+<div id="name-field" data-controller="phem-field" data-filled="" data-touched="" data-invalid="">
+    <label id="name-label" data-phem-field-target="label" data-filled="" data-touched="" data-invalid="" for="name">Name</label>
+    <input id="name" name="name" required="" value="Shoes" data-phem-field-target="control" aria-describedby="" data-filled="" data-touched="" aria-invalid="true" data-invalid="">
+    <p class="description" data-phem-field-target="description" data-filled="" data-touched="" data-invalid="">Visible on your profile</p>
+    <p id="name-missing" data-phem-field-target="error" data-match="valueMissing" hidden="" data-closed="" data-filled="" data-touched="" data-invalid="">Enter your name.</p>
+    <p id="name-error" data-phem-field-target="error" data-invalid="" data-touched="" data-filled="" data-open="">This name is taken.</p>
+</div>
+```
+
+With a server error, an `error` part with no `data-match` shows only when the field has no message of the server. Do not write `aria-invalid` on a control yourself: the controller sets it.
+
+### Data attributes and ARIA
+
+All the parts (the field, the labels, the controls, the descriptions and the errors) get these attributes:
+
+| Attribute | When |
+|---|---|
+| `data-valid` | The last validation found no error |
+| `data-invalid` | The last validation found an error, or the control has a server error |
+| `data-dirty` | The value is not the value of the server render |
+| `data-touched` | The control lost the focus one time |
+| `data-filled` | The control has a value |
+| `data-focused` | The control has the focus |
+| `data-disabled` | The field is disabled: the `disabled` value, or disabled controls (also in a disabled `<fieldset>`) |
+
+Before the first validation, a field has no `data-valid` and no `data-invalid`. The label links to the control: a `<label>` gets `for` when the control has an `id`, else the control gets `aria-labelledby` (an element reference when the label has no id). A click on a label that is not a native label of the control focuses the control. The control gets `aria-invalid="true"` when the field is invalid.
+
+The state stays after the morph of an event: the visible errors, `aria-invalid`, `novalidate` and the data attributes.
+
+### Group the fields
+
+A Base UI Fieldset needs no controller. Use a `<fieldset>` with a `<legend>`. A `disabled` fieldset disables its controls, and the fields in it get `data-disabled`:
+
+```html
+<fieldset disabled>
+    <legend>Address</legend>
+    <div data-controller="phem-field">...</div>
+</fieldset>
+```
+
+Style the legend of a disabled fieldset with `fieldset:disabled > legend`.
+
+## Edit a number with steps
+
+`phem-number-field` is a text input for a number. It has increment and decrement buttons, keys, the mouse wheel, a scrub area and the number format of the locale:
+
+```html
+<div data-controller="phem-number-field" data-phem-number-field-value-value="10"
+     data-phem-number-field-min-value="0" data-phem-number-field-max-value="5000"
+     data-phem-number-field-locale-value="de-DE">
+    <span data-phem-number-field-target="scrubArea">
+        <label for="amount">Amount</label>
+        <span data-phem-number-field-target="scrubAreaCursor" hidden>↔</span>
+    </span>
+    <div data-phem-number-field-target="group">
+        <button data-phem-number-field-target="decrement">−</button>
+        <input id="amount" data-phem-number-field-target="input">
+        <button data-phem-number-field-target="increment">+</button>
+    </div>
+    <input type="hidden" name="amount" data-phem-number-field-target="hiddenInput">
+</div>
+```
+
+The `value` value is the state: the raw number (for example `1234.5`), or an empty string for no value. Set it to give a value on load. A handler can set it in a new render. The value stays after the morph of an event. The `input` part shows the value in the format of the locale. The `hiddenInput` part gets the raw value for the form. With no `hiddenInput`, give the `name` to the `input`: the form then gets the formatted text.
+
+The user types a number in the format of the locale. The controller reads the group and decimal separators of the locale, so `1.234,5` is `1234.5` in `de-DE`. The value changes while the user types. On blur and on Enter, the input shows the formatted value, and a value out of the limits goes to the nearest limit. A text that is not a number gives the last value again. A character that no number has does not go in the input.
+
+| Value | Default | Description |
+| --- | --- | --- |
+| `value` | empty | The state: the raw number, or empty for no value. |
+| `min`, `max` | none | The limits. A step always stays in the limits. |
+| `step` | `1` | The step of the arrow keys, the buttons, the wheel and the scrub area. |
+| `smallStep` | `0.1` | The step with Alt. |
+| `largeStep` | `10` | The step with Shift, and of PageUp and PageDown. |
+| `allowOutOfRange` | `false` | A typed value out of the limits stays on blur. |
+| `snapOnStep` | `false` | A step goes to a multiple of the step, from `min` (or 0). |
+| `allowWheelScrub` | `false` | The mouse wheel changes the value while the input has the focus. |
+| `format` | none | The options of `Intl.NumberFormat`, as JSON: `{"style":"currency","currency":"EUR"}`. |
+| `locale` | the browser | The locale of the format and of the typed text. |
+| `disabled`, `readOnly`, `required` | `false` | The state of the inputs. |
+| `pixelSensitivity` | `2` | The pixels of a movement in the scrub area for one step. |
+| `direction` | `horizontal` | The movement of the scrub area: `horizontal` or `vertical`. |
+
+| Key (on the input) | Action |
+| --- | --- |
+| ArrowUp, ArrowDown | Add or remove one step. With Alt, the small step. With Shift, the large step. |
+| PageUp, PageDown | Add or remove the large step. |
+| Home, End | Go to `min` or to `max`. |
+| Enter | Show the formatted value. |
+
+A press on a button changes the value one time. When the user holds the button, the value changes again after 400 ms, and then each 60 ms. The focus stays in the input. Alt and Shift give the small and the large steps. A button gets `disabled` at its limit.
+
+A press in the `scrubArea` part locks the pointer (the Pointer Lock API). Each `pixelSensitivity` pixels of movement change the value by one step. While the pointer is locked, the `scrubAreaCursor` part shows at the position of the pointer, as a virtual cursor, and goes round to the other side at an edge of the viewport. With no pointer lock, the native pointer stays.
+
+All the parts get `data-disabled`, `data-readonly`, `data-required`, and `data-scrubbing` while the user scrubs. The `group` part gets `role="group"`. The input gets `inputmode="decimal"`, `aria-roledescription="Number field"`, `autocomplete="off"` and `spellcheck="false"`, as Base UI does, unless the markup gives them. The buttons get `type="button"`, `tabindex="-1"`, `aria-label` ("Increase" or "Decrease") and `aria-controls`. The controller links a button to an input with no `id` with an element reference.
+
+A change of the value dispatches `phem-number-field:change` (`detail`: `value`, `reason`) and sends `input` on the inputs. The end of a change (a blur, a key, the release of a button or of the scrub area, a wheel step) dispatches `phem-number-field:commit` and sends `change` on the inputs. The controller sets the value of the hidden input before it sends the events, so a bound hidden input sends its value. The `reason` is `input-change`, `input-clear`, `input-blur`, `keyboard`, `increment-press`, `decrement-press`, `wheel` or `scrub`.
+
+After PageUp and an event, the browser shows:
+
+```html
+<div id="field" data-controller="phem-number-field" data-phem-number-field-value-value="20" data-phem-number-field-min-value="0" data-phem-number-field-max-value="5000" data-phem-number-field-locale-value="de-DE" data-phem-number-field-allow-wheel-scrub-value="">
+    <span id="area" data-phem-number-field-target="scrubArea" style="...">
+        <label for="amount">Amount</label>
+        <span id="cursor" data-phem-number-field-target="scrubAreaCursor" hidden="">↔</span>
+    </span>
+    <div id="group" data-phem-number-field-target="group" role="group">
+        <button id="dec" data-phem-number-field-target="decrement" type="button" tabindex="-1" aria-label="Decrease" aria-controls="amount">−</button>
+        <input id="amount" data-phem-number-field-target="input" value="20" inputmode="decimal" aria-roledescription="Number field" autocomplete="off" autocorrect="off" spellcheck="false">
+        <button id="inc" data-phem-number-field-target="increment" type="button" tabindex="-1" aria-label="Increase" aria-controls="amount">+</button>
+    </div>
+    <input id="raw" type="hidden" name="amount" data-phem-number-field-target="hiddenInput" value="20">
+</div>
+```
+
+## Enter a one-time code
+
+`phem-otp-field` shows a code with one input for each character (a slot):
+
+```html
+<label for="otp-1">Verification code</label>
+<div data-controller="phem-otp-field" data-phem-otp-field-auto-submit-value="true">
+    <input id="otp-1" data-phem-otp-field-target="input" />
+    <input data-phem-otp-field-target="input" />
+    <input data-phem-otp-field-target="input" />
+    <span data-phem-otp-field-target="separator">-</span>
+    <input data-phem-otp-field-target="input" />
+    <input data-phem-otp-field-target="input" />
+    <input data-phem-otp-field-target="input" />
+    <input type="hidden" name="code" data-phem-otp-field-target="hiddenInput" />
+</div>
+```
+
+The `input` parts are the slots. The `hiddenInput` part gets the full value, so a form submit and a phem event send it with its `name`. When the user changes the value, the hidden input gets an `input` and a `change` event. The `separator` part gets `role="separator"` and `data-orientation="horizontal"`.
+
+| Value | Default | Description |
+|---|---|---|
+| `data-phem-otp-field-value-value` | `""` | The state: the characters of the slots. A server render with a new value sets it |
+| `data-phem-otp-field-length-value` | the number of `input` parts | The number of slots |
+| `data-phem-otp-field-validation-type-value` | `numeric` | The characters: `numeric` (digits), `alpha` (the letters A to Z), `alphanumeric`, or `none` (all the characters except spaces) |
+| `data-phem-otp-field-input-mode-value` | `numeric` for `numeric`, else `text` | The `inputmode` of the slots: the keyboard of a phone |
+| `data-phem-otp-field-mask-value` | `false` | The slots are `type="password"` |
+| `data-phem-otp-field-auto-submit-value` | `false` | Submits the form (`requestSubmit()`) when all the slots have a value |
+| `data-phem-otp-field-autocomplete-value` | `one-time-code` | The `autocomplete` of the first slot. The others get `off` |
+| `data-phem-otp-field-disabled-value` | `false` | Disables the slots and the hidden input |
+| `data-phem-otp-field-read-only-value` | `false` | The user cannot change the value |
+| `data-phem-otp-field-required-value` | `false` | The slots are `required` |
+
+A character that the user types goes in its slot, and the focus goes to the next slot. A paste fills the slots from the slot with the focus, without the spaces. The browser can fill the code from a message (`autocomplete="one-time-code"`): all the characters go in the slots. A character that the validation type refuses does not go in the slot. The value has no gaps: a click on a slot after the first empty slot focuses the first empty slot.
+
+| Key | Action |
+|---|---|
+| Backspace | Removes the character of the slot. On an empty slot, removes the character of the slot before and focuses it |
+| Delete | Removes the character of the slot |
+| ArrowLeft / ArrowRight | Focuses the slot before / after (up to the first empty slot) |
+| Home / End | Focuses the first slot / the first empty slot (or the last slot) |
+
+The slots have one tab stop: the first empty slot, or the last slot when the code is complete. Each slot gets `inputmode`, a `pattern` of one character (`[0-9]` for `numeric`), and `spellcheck="false"`. The first slot uses the label of the field. A slot after the first one with no `aria-label` gets `aria-label="Character 2 of 6"`. An attribute that the markup gives stays.
+
+The events:
+
+| Event | Detail |
+|---|---|
+| `phem-otp-field:change` | `value`, and `reason`: `input-change`, `input-clear`, `input-paste` or `keyboard` |
+| `phem-otp-field:complete` | `value`, when all the slots have a value |
+| `phem-otp-field:invalid` | `value`: the text with a character that the validation type refuses |
+
+After the user types `123`, the browser shows:
+
+```html
+<div id="otp" data-controller="phem-otp-field" data-phem-otp-field-auto-submit-value="true" data-focused="" data-phem-otp-field-value-value="123" data-filled="">
+    <input data-phem-key="1" id="otp-1" data-phem-otp-field-target="input" tabindex="-1" inputmode="numeric" autocomplete="one-time-code" spellcheck="false" pattern="[0-9]" data-focused="" data-filled="">
+    <input data-phem-key="2" id="otp-2" data-phem-otp-field-target="input" tabindex="-1" inputmode="numeric" autocomplete="off" spellcheck="false" pattern="[0-9]" aria-label="Character 2 of 6" data-focused="" data-filled="">
+    <input data-phem-key="3" id="otp-3" data-phem-otp-field-target="input" tabindex="-1" inputmode="numeric" autocomplete="off" spellcheck="false" pattern="[0-9]" aria-label="Character 3 of 6" data-focused="" data-filled="">
+    <span id="dash" data-phem-otp-field-target="separator" role="separator" data-orientation="horizontal">-</span>
+    <input data-phem-key="4" id="otp-4" data-phem-otp-field-target="input" tabindex="0" inputmode="numeric" autocomplete="off" spellcheck="false" pattern="[0-9]" aria-label="Character 4 of 6" data-focused="">
+    <input data-phem-key="5" id="otp-5" data-phem-otp-field-target="input" tabindex="-1" inputmode="numeric" autocomplete="off" spellcheck="false" pattern="[0-9]" aria-label="Character 5 of 6" data-focused="">
+    <input data-phem-key="6" id="otp-6" data-phem-otp-field-target="input" tabindex="-1" inputmode="numeric" autocomplete="off" spellcheck="false" pattern="[0-9]" aria-label="Character 6 of 6" data-focused="">
+    <input id="code" type="hidden" name="code" data-phem-otp-field-target="hiddenInput" value="123" data-phem-touched="">
+</div>
+```
+
+The controller element and the slots get `data-disabled`, `data-readonly`, `data-required`, `data-complete` (all the slots have a value) and `data-focused` (a slot has the focus). The controller element gets `data-filled` when the value is not empty, and a slot gets it when it has a character. The value stays after the morph of an event.
+
+To validate the code and show its errors, give the slots the `control` target of a [`phem-field`](#validate-a-field-in-the-browser) around it, with `data-phem-otp-field-required-value="true"`.
+
+## Select a value on a slider
+
+`phem-slider` moves one thumb, or more thumbs for a range, on a track, with the pointer and the keys. Each thumb has a native `<input type="range">`. It gives the ARIA and the value of the form:
+
+```html
+<div data-controller="phem-slider" data-phem-slider-value-value="[20, 60]"
+     data-phem-slider-min-steps-between-values-value="10">
+    <div id="price-label" data-phem-slider-target="label">Price</div>
+    <output data-phem-slider-target="value"></output>
+    <div data-phem-slider-target="control">
+        <div data-phem-slider-target="track">
+            <div data-phem-slider-target="indicator"></div>
+            <div data-phem-slider-target="thumb">
+                <input type="range" name="min" aria-label="Minimum price" class="sr-only">
+            </div>
+            <div data-phem-slider-target="thumb">
+                <input type="range" name="max" aria-label="Maximum price" class="sr-only">
+            </div>
+        </div>
+    </div>
+</div>
+```
+
+The `value` value is the state: one number (`25`) for one thumb, or a JSON list with one number for each thumb (`[20, 60]`). Set it to give the values on load. A handler can set it in a new render. The values stay after the morph of an event. Hide the range inputs visually (for example with `sr-only`): the controller moves the thumbs.
+
+A press on the `control` part moves the nearest thumb to the point and starts a drag. The pointer capture keeps the drag when the pointer goes out of the control. A press on a thumb does not move it: the drag moves it from there. Two thumbs stay at least `minStepsBetweenValues` steps apart, and they do not cross.
+
+| Value | Default | Description |
+| --- | --- | --- |
+| `value` | `min` | The state: a number, or a JSON list of numbers. |
+| `min`, `max` | `0`, `100` | The limits. |
+| `step` | `1` | The step of the values, from `min`. |
+| `largeStep` | `10` | The step with Shift, and of PageUp and PageDown. |
+| `minStepsBetweenValues` | `0` | The minimum steps between two thumbs of a range. |
+| `thumbCollisionBehavior` | `push` | In a drag, a thumb that meets another thumb: `push` pushes it, `swap` changes places with it, `none` stops. |
+| `orientation` | `horizontal` | `horizontal` or `vertical`. |
+| `thumbAlignment` | `center` | `center`: the center of the thumb is at the edge of the control at `min` and `max`. `edge`: the thumb stays in the control. |
+| `disabled` | `false` | The slider ignores the user. |
+| `format` | none | The options of `Intl.NumberFormat`, as JSON, for the `value` part and `aria-valuetext`. |
+| `locale` | the browser | The locale of the format. |
+
+| Key (on a thumb input) | Action |
+| --- | --- |
+| ArrowRight, ArrowUp | Add one step. With Shift, the large step. |
+| ArrowLeft, ArrowDown | Remove one step. With Shift, the large step. |
+| PageUp, PageDown | Add or remove the large step. |
+| Home, End | Go to the lowest or to the highest value that the thumb can have. |
+
+In a right-to-left page, ArrowLeft adds and ArrowRight removes. The keys stop a thumb at the other thumb.
+
+The controller gives the positions as inline styles, as Base UI does. The `track` gets `position: relative`, and the `control` gets `touch-action: none`. In the horizontal orientation, a thumb gets `position: absolute`, `inset-inline-start` (the percent of its value), `top: 50%` and `translate: -50% -50%`. The `indicator` gets `inset-inline-start` and `width`, from the first to the last value (from the start to the value with one thumb). In the vertical orientation, they get `bottom` and `height`. The thumb of the last change gets `z-index: 1`.
+
+The thumb inputs get `min`, `max`, `step`, `value`, `aria-valuenow`, `aria-orientation` and `disabled`. With two thumbs, they get `aria-valuetext` ("20 start range" and "60 end range"). With one thumb and a `format`, they get the formatted value. An `aria-valuetext` that the markup gives stays. The root gets `role="group"`. The root and the inputs with no `aria-label` get a link to the `label` part (`aria-labelledby`). The `value` part shows the formatted values, separated by " – ", and gets `aria-live="off"`. All the parts get `data-orientation`, `data-disabled`, and `data-dragging` while the user drags. The thumbs get `data-index`.
+
+A change of a value dispatches `phem-slider:change` (`detail`: `value`, `values`, `index`, `reason`) and sends `input` on the inputs that change. The end of a change (the release of the pointer, a key) dispatches `phem-slider:commit` (Base UI `onValueCommitted`) and sends `change`. The `value` of the detail is a number for one thumb, or the list. The `reason` is `track-press`, `drag`, `keyboard` or `input-change`.
+
+After ArrowRight on the second thumb and an event, the browser shows:
+
+```html
+<div id="price" data-controller="phem-slider" data-phem-slider-value-value="[20,61]" data-phem-slider-min-steps-between-values-value="10" data-orientation="horizontal" role="group" aria-labelledby="price-label">
+    <div id="price-label" data-phem-slider-target="label">Price</div>
+    <output id="price-value" data-phem-slider-target="value" data-orientation="horizontal" aria-live="off">20 – 61</output>
+    <div id="price-control" class="control" data-phem-slider-target="control" data-orientation="horizontal" style="touch-action: none;">
+        <div class="track" data-phem-slider-target="track" data-orientation="horizontal" style="position: relative;">
+            <div id="price-indicator" class="indicator" data-phem-slider-target="indicator" data-orientation="horizontal" style="position: relative; width: 41%; inset-inline-start: 20%; height: inherit;"></div>
+            <div id="price-min" class="thumb" data-phem-slider-target="thumb" data-orientation="horizontal" data-index="0" style="position: absolute; inset-inline-start: 20%; top: 50%; translate: -50% -50%;">
+                <input id="price-min-input" type="range" name="min" aria-label="Minimum price" class="sr-only" value="20" aria-valuenow="20" aria-valuetext="20 start range" min="0" max="100" step="1" aria-orientation="horizontal">
+            </div>
+            <div id="price-max" class="thumb" data-phem-slider-target="thumb" data-orientation="horizontal" data-index="1" style="position: absolute; z-index: 1; inset-inline-start: 61%; top: 50%; translate: -50% -50%;">
+                <input id="price-max-input" type="range" name="max" aria-label="Maximum price" class="sr-only" value="61" aria-valuenow="61" aria-valuetext="61 end range" min="0" max="100" step="1" aria-orientation="horizontal">
+            </div>
+        </div>
+    </div>
+</div>
+```
+
+## Show custom scrollbars
+
+`phem-scroll-area` puts custom scrollbars over a native scroll container:
+
+```html
+<div data-controller="phem-scroll-area" class="h-32 w-96">
+    <div data-phem-scroll-area-target="viewport" class="h-full">
+        <div data-phem-scroll-area-target="content">...</div>
+    </div>
+    <div data-phem-scroll-area-target="scrollbar" data-orientation="vertical" class="flex w-2">
+        <div data-phem-scroll-area-target="thumb" class="w-full bg-neutral-900"></div>
+    </div>
+    <div data-phem-scroll-area-target="scrollbar" data-orientation="horizontal" class="flex h-2">
+        <div data-phem-scroll-area-target="thumb" class="h-full bg-neutral-900"></div>
+    </div>
+    <div data-phem-scroll-area-target="corner"></div>
+</div>
+```
+
+The `viewport` part is the element that scrolls. The controller gives it `overflow: scroll` and removes its native scrollbar (`scrollbar-width: none`), so the wheel, a touch and the keyboard scroll it as usual. The `content` part gets `min-width: fit-content`, so a wide content overflows on the horizontal axis. A `scrollbar` part has the `data-orientation` of the markup: `vertical` (the default) or `horizontal`. Its `thumb` part shows the visible part of the content, with a minimum size of 16px.
+
+A drag of a thumb scrolls the viewport. The pointer capture keeps the drag when the pointer goes out of the scroll area. A press on a scrollbar out of its thumb scrolls the viewport, so that the center of the thumb goes to the pointer, and the drag continues from there. A scrollbar gets `hidden` when its axis has no overflow, unless it has the `data-keep-mounted` attribute. The `corner` part is the square between the two scrollbars. It gets `hidden` when one axis has no overflow.
+
+| Value | Default | Description |
+| :-- | :-- | :-- |
+| `overflowEdgeThreshold` | `0` | The distance (px) from an edge before its `data-overflow-*` attribute shows. A number for all the edges, or a JSON object with `xStart`, `xEnd`, `yStart` and `yEnd`, for example `data-phem-scroll-area-overflow-edge-threshold-value='{"yEnd": 20}'`. |
+
+The scroll area has no keys of its own: the viewport is a native scroll container, and the browser scrolls it with the arrow keys, Page Up, Page Down, Home and End.
+
+The root, the viewport, the content and the scrollbars get these attributes:
+
+| Attribute | Description |
+| :-- | :-- |
+| `data-has-overflow-x`, `data-has-overflow-y` | The content is wider or taller than the viewport. |
+| `data-overflow-x-start`, `data-overflow-x-end` | The content continues past the start or the end edge on the horizontal axis. |
+| `data-overflow-y-start`, `data-overflow-y-end` | The content continues past the top or the bottom edge. |
+| `data-scrolling` | The user scrolls. It goes 500 ms after the last scroll. A scrollbar and its thumb get it only for a scroll on their axis. |
+| `data-hovering` | On the scrollbars only: the pointer is over the scroll area. |
+
+The thumbs get `data-orientation` and `data-scrolling`. The CSS variables are:
+
+| Variable | Part | Description |
+| :-- | :-- | :-- |
+| `--scroll-area-corner-width`, `--scroll-area-corner-height` | root | The size of the corner: the width of the vertical scrollbar and the height of the horizontal scrollbar, or `0px` when one axis has no overflow. |
+| `--scroll-area-overflow-x-start`, `--scroll-area-overflow-x-end`, `--scroll-area-overflow-y-start`, `--scroll-area-overflow-y-end` | viewport | The distance to each edge, in px. Use it for a fade at the edges. |
+| `--scroll-area-thumb-height`, `--scroll-area-thumb-width` | scrollbar | The size of the thumb of a vertical or a horizontal scrollbar. |
+
+As in Base UI, the controller gives the parts their layout styles: the root gets `position: relative`, a scrollbar `position: absolute` on its edge (it stops at the corner), a thumb its size and a `transform` to its place, and the corner its size. The `style` attribute of the parts belongs to the client, so the morph does not change it. The scroll position, the attributes and the styles stay after the morph of an event. The controller renders them again after a scroll, a resize of the viewport, of the content or of a scrollbar, and the morph.
+
+To show the scrollbars only while the pointer is over the area or while the user scrolls:
+
+```css
+[data-phem-scroll-area-target="scrollbar"] {
+    opacity: 0;
+    transition: opacity 150ms;
+}
+
+[data-phem-scroll-area-target="scrollbar"]:is([data-hovering], [data-scrolling]) {
+    opacity: 1;
+}
+```
+
+After a scroll of 200px in a viewport of 100px with a content of 500px, the browser shows:
+
+```html
+<div data-controller="phem-scroll-area" style="...; position: relative; --scroll-area-corner-width: 0px; --scroll-area-corner-height: 0px;" data-has-overflow-y="" data-overflow-y-end="" data-overflow-y-start="" data-scrolling="">
+    <div data-phem-scroll-area-target="viewport" style="...; overflow: scroll; scrollbar-width: none; --scroll-area-overflow-x-start: 0px; --scroll-area-overflow-x-end: 0px; --scroll-area-overflow-y-start: 200px; --scroll-area-overflow-y-end: 200px;" data-has-overflow-y="" data-overflow-y-end="" data-overflow-y-start="" data-scrolling="">
+        <div data-phem-scroll-area-target="content" style="...; min-width: fit-content;" data-has-overflow-y="" data-overflow-y-end="" data-overflow-y-start="" data-scrolling="">...</div>
+    </div>
+    <div data-phem-scroll-area-target="scrollbar" data-orientation="vertical" style="...; position: absolute; touch-action: none; user-select: none; top: 0px; bottom: var(--scroll-area-corner-height); inset-inline-end: 0px; --scroll-area-thumb-height: 20px;" data-has-overflow-y="" data-overflow-y-end="" data-overflow-y-start="" data-scrolling="">
+        <div data-phem-scroll-area-target="thumb" style="...; height: var(--scroll-area-thumb-height); transform: translate3d(0px, 40px, 0px);" data-orientation="vertical" data-scrolling=""></div>
+    </div>
+    <div data-phem-scroll-area-target="scrollbar" data-orientation="horizontal" style="..." hidden="" ...>
+        <div data-phem-scroll-area-target="thumb" data-orientation="horizontal" style="width: var(--scroll-area-thumb-width); transform: translate3d(0px, 0px, 0px);"></div>
+    </div>
+    <div data-phem-scroll-area-target="corner" hidden="" style="position: absolute; bottom: 0px; inset-inline-end: 0px; width: var(--scroll-area-corner-width); height: var(--scroll-area-corner-height);"></div>
+</div>
+```
+
+## Select a value from a list
+
+`phem-select` is a button that opens a list of options, as a native `<select>` that you can style:
+
+```html
+<div data-controller="phem-select" data-phem-select-value-value="fuji">
+    <button data-phem-select-target="trigger" aria-label="Apple">
+        <span data-phem-select-target="value" placeholder="Select apple"></span>
+        <span data-phem-select-target="icon">▾</span>
+    </button>
+    <input data-phem-select-target="input" name="apple" hidden />
+    <div data-phem-select-target="popup" popover="manual" hidden>
+        <div data-phem-select-target="scrollUpArrow">▴</div>
+        <div data-phem-select-target="list">
+            <div data-phem-select-target="group">
+                <div data-phem-select-target="groupLabel">Red</div>
+                <div data-phem-select-target="item" data-value="gala">
+                    <span data-phem-select-target="itemIndicator">✓</span>
+                    <span data-phem-select-target="itemText">Gala</span>
+                </div>
+                <div data-phem-select-target="item" data-value="fuji">...</div>
+            </div>
+            <div data-phem-select-target="separator"></div>
+            <div data-phem-select-target="item" data-value="granny" aria-disabled="true">...</div>
+        </div>
+        <div data-phem-select-target="scrollDownArrow">▾</div>
+    </div>
+</div>
+```
+
+The value of an item is its `data-value` attribute, its key (`key={{ ... }}`), or its position. The `value` value is the state: the value of the selected item. With the `multiple` value, it is a JSON array of the selected values, for example `data-phem-select-value-value='["gala","fuji"]'`. Set it to select an item on load, and a handler can set it in a new render. The value and the open popup belong to the client, so they stay after the morph of an event.
+
+The `value` part shows the label of the selected item: its `data-label` attribute, the text of its `itemText` part, or its text. With `multiple`, it shows the labels separated by a comma (`Gala, Fuji`). With no value, it shows its `placeholder` attribute, and it gets `data-placeholder`. The controller writes the text of the `value` part: put no other content in it.
+
+| Value | Default | Description |
+| :-- | :-- | :-- |
+| `value` | | The selected value, or a JSON array with `multiple`. |
+| `multiple` | `false` | The user selects more than one item. A click on an item adds or removes its value, and the popup stays open. |
+| `alignItemWithTrigger` | `true` | The popup goes over the trigger: the text of the selected item (or of the first item) is on the text of the `value` part, and the popup gets `data-side="none"`. When the popup does not fit in the viewport there, or after a touch, the popup goes next to the trigger. |
+| `modal` | `true` | While the popup is open, the page does not scroll and the elements out of the popup get no pointer events. |
+| `disabled` | `false` | The select does not open. The trigger gets `disabled` (or `aria-disabled` when it is not a button), and the input gets `disabled`. |
+| `readOnly` | `false` | The select does not open and the value does not change. |
+| `required` | `false` | The input gets `required`. |
+| `loopFocus` | `true` | The arrow keys go from the last item to the first item. |
+| `highlightItemOnHover` | `true` | The pointer on an item gives it the focus. |
+| `open` | `false` | The popup is open on load. A script can change it. |
+| `side`, `align`, `sideOffset`, `alignOffset`, `collisionPadding`, `arrowPadding` | `bottom`, `center`, `0`, `0`, `5`, `5` | The place of the popup next to the trigger, as a [popover](#show-a-popover). |
+
+A press on the trigger opens the popup. When the user drags the pointer from the trigger and releases it on an item, the item is selected. A click on an item selects it and closes the popup, and the focus goes back to the trigger. A press outside and the focus out of the select close the popup.
+
+| Key | Where | Action |
+| :-- | :-- | :-- |
+| ArrowDown, Enter, Space | trigger | Opens the popup. The focus goes to the selected item, or to the first item. |
+| ArrowUp | trigger | Opens the popup. The focus goes to the selected item, or to the last item. |
+| A letter | trigger | Selects the next item that starts with it, with no popup (not with `multiple`). |
+| ArrowDown, ArrowUp | popup | Moves the focus to the next or the previous item. |
+| Home, End | popup | Moves the focus to the first or the last item. |
+| A letter | popup | Moves the focus to the next item that starts with the letters. |
+| Enter, Space | popup | Selects the item with the focus. |
+| Escape | popup | Closes the popup. The focus goes back to the trigger. |
+| Tab | popup | Closes the popup. The focus goes to the trigger, and then to the next element. |
+
+The keys skip a disabled item (`disabled` or `aria-disabled="true"`). The focus goes to the items: the controller does not use `aria-activedescendant`.
+
+The `input` part is the field of the form. An `<input>` gets the value, or the values separated by a comma with `multiple`. A `<select>` (for example `<select multiple name="apples[]" hidden>` with an `<option>` for each item) gets its options selected. When the user changes the value, the input sends its `input` and `change` events, and the controller dispatches `phem-select:change` with the `value` in its `detail` (an array with `multiple`). A focus on the input goes to the trigger. For `required`, use an input that is visually hidden (`class="sr-only"`), not `hidden`: the browser does not validate a field that it does not show.
+
+The scroll arrows scroll the list while the pointer is on them. Each one shows only when the list can scroll in its direction, unless it has `data-keep-mounted`. The `list` part, or the popup with no list, is the element that scrolls: give it a `max-height`, for example `max-height: var(--available-height)`.
+
+The parts get these attributes:
+
+| Part | Attributes |
+| :-- | :-- |
+| trigger | `role="combobox"`, `aria-haspopup="listbox"`, `aria-expanded`, `aria-controls`, `data-popup-open` and `data-pressed` while the popup is open, `data-popup-side`, `data-placeholder`, `data-disabled`, `data-readonly`, `data-required` |
+| value | `data-placeholder` |
+| icon | `data-popup-open` |
+| popup | `data-open`, `data-closed`, `data-starting-style`, `data-ending-style`, `data-side` (`none` over the trigger), `data-align`, and the CSS variables of a popover (`--anchor-width`, `--available-height`, `--transform-origin`...) |
+| list (or popup) | `role="listbox"`, `aria-multiselectable` with `multiple` |
+| item | `role="option"`, `aria-selected`, `data-selected`, `data-highlighted`, `data-disabled` |
+| itemIndicator | `hidden` when its item is not selected (unless `data-keep-mounted`), and the animation attributes |
+| group, groupLabel | `role="group"` with the name of its label |
+| separator | `role="separator"`, `data-orientation` |
+| scrollUpArrow, scrollDownArrow | `data-direction` (`up` or `down`), `data-side`, `data-visible`, `position: absolute` |
+| arrow | `data-side`, `data-align`, `data-uncentered` |
+| backdrop | `data-open`, `data-closed`, and the animation attributes |
+
+A popup over the trigger does not animate from the trigger in Base UI. Use `[data-side="none"]` to remove the scale animation there:
+
+```css
+[data-phem-select-target="popup"][data-starting-style]:not([data-side="none"]) {
+    opacity: 0;
+    transform: scale(0.98);
+}
+```
+
+After a click on the trigger of a select with the value `honeycrisp`, the browser shows:
+
+```html
+<div data-controller="phem-select" data-phem-select-value-value="honeycrisp" data-phem-select-open-value="true">
+    <button data-phem-select-target="trigger" aria-label="Apple" role="combobox" aria-haspopup="listbox" aria-expanded="true" aria-controls="list" data-popup-open="" data-pressed="" data-popup-side="none">
+        <span data-phem-select-target="value" placeholder="Select apple">Honeycrisp</span>
+        <span data-phem-select-target="icon" data-popup-open="">▾</span>
+    </button>
+    <input data-phem-select-target="input" name="apple" hidden="" tabindex="-1" aria-hidden="true">
+    <div data-phem-select-target="popup" popover="manual" style="pointer-events: auto; position: fixed; inset: 142px auto auto 27px; --anchor-width: 160px; --anchor-height: 22px; --available-width: 1270px; --available-height: 710px; --transform-origin: 62px 70px;" tabindex="-1" data-open="" data-side="none" data-align="center">
+        <div id="list" data-phem-select-target="list" role="listbox">
+            <div data-phem-select-target="item" data-value="gala" role="option" tabindex="-1" aria-selected="false">
+                <span data-phem-select-target="itemIndicator" data-closed="" hidden="">✓</span>
+                <span data-phem-select-target="itemText">Gala</span>
+            </div>
+            <div data-phem-select-target="item" data-value="honeycrisp" role="option" tabindex="-1" aria-selected="true" data-selected="" data-highlighted="">
+                <span data-phem-select-target="itemIndicator" data-open="">✓</span>
+                <span data-phem-select-target="itemText">Honeycrisp</span>
+            </div>
+            ...
+        </div>
+    </div>
+</div>
+```
+
+After ArrowDown and Enter, the value is `granny`, the popup is closed, and the input has the new value:
+
+```html
+<div data-controller="phem-select" data-phem-select-value-value="granny" data-phem-select-open-value="false">
+    <button data-phem-select-target="trigger" ... aria-expanded="false" aria-controls="list">
+        <span data-phem-select-target="value" placeholder="Select apple">Granny Smith</span>
+        ...
+    </button>
+    <input data-phem-select-target="input" name="apple" hidden="" tabindex="-1" aria-hidden="true">
+    <div data-phem-select-target="popup" popover="manual" tabindex="-1" data-closed="" hidden="">...</div>
+</div>
+```
+
+The `value` property of the input is `granny`.
 
 ## Mark the section in view
 
@@ -891,7 +2114,7 @@ Change the default duration and the texts with the controller values: `data-phem
 
 The `show` action shows the detail of another browser event as a toast. A [browser event](events.md#send-events-to-your-javascript) bubbles up to `window`, so listen there: `data-action="phem:saved@window->phem-toast#show"`.
 
-Each toast has these parts: the root (`data-phem-toast`), the description (`[data-phem-toast-description]`, the message) and the close button (`[data-phem-toast-close]`). The root gets `data-type` (the type of the toast) and `--toast-index` (0 for the last toast). A toast gets `data-limited` when more than the `limit` value (3) of newer toasts are on the screen: `phem.css` hides it. A new toast has the animations of the [conventions](#animations), and a toast that goes stays until the end of its `[data-ending-style]` transition. A toast with the same message as a toast that goes shows as a new toast:
+Each toast has these parts: the root (`data-phem-toast`), the description (`[data-phem-toast-description]`, the message) and the close button (`[data-phem-toast-close]`). The root gets `data-type` (the type of the toast) and `--toast-index` (0 for the last toast). A toast gets `data-limited` when more than the `limit` value (3) of newer toasts are on the screen: `phem.css` hides it (a toast with no `class`). A new toast has the animations of the [conventions](#animations), and a toast that goes stays until the end of its `[data-ending-style]` transition. A toast with the same message as a toast that goes shows as a new toast:
 
 ```html
 <div data-controller="phem-toast" aria-live="polite">
@@ -915,7 +2138,7 @@ To use your own markup, put a `<template>` part in the element, with the same pa
 </div>
 ```
 
-The default styles in `phem.css` use `:where()`, so a rule of your app replaces them.
+The default styles in `phem.css` use `:where()`, so a rule of your app replaces them. A part with a `class` attribute gets no default style: its classes give all the look. So Tailwind utilities work on the parts of a template, also in their cascade layer. Then hide the toasts with `data-limited` yourself, for example with `data-limited:hidden`, and move a toast with the swipe variables (see [Close a toast with a swipe](#close-a-toast-with-a-swipe)).
 
 ### Show the stack on hover
 
@@ -1042,7 +2265,7 @@ A trigger gets `aria-controls` when the field has an `id`. Use `data-revealed` t
 
 ## Select all the rows
 
-`phem-checkbox-group` adds a parent checkbox that checks and unchecks all the items, for a "select all" box of a list or of a table:
+`phem-checkbox-group` gives one state to a group of checkboxes, and adds a parent checkbox that checks and unchecks the items, for a "select all" box of a list or of a table:
 
 ```html
 <table data-controller="phem-checkbox-group phem-count">
@@ -1060,12 +2283,65 @@ A trigger gets `aria-controls` when the field has an `id`. Use `data-revealed` t
 </table>
 ```
 
-A click on the parent checks all the items, or unchecks all of them when all are checked. A disabled item keeps its state. Each item that changes dispatches `input` and `change`, so `phem:bind`, `phem:live` and `phem-count` see the change. With `phem:live`, the changes of the fields of one `phem:bind` property go in one event.
+An item and the parent are native checkboxes, or [`phem-toggle`](#toggle-a-button-a-switch-or-a-checkbox) checkboxes:
 
-The parent shows the state of the items: it is checked when all the items are checked, and indeterminate when some of them are checked. It gets `data-checked`, `data-unchecked` or `data-indeterminate`, and `aria-controls` with the items that have an `id`. After a click on one row of three, the browser shows:
+```html
+<div data-controller="phem-checkbox-group" data-phem-checkbox-group-value-value='["pear"]'>
+    <label>
+        <span role="checkbox" data-controller="phem-toggle" data-phem-checkbox-group-target="parent"></span>
+        All
+    </label>
+    <label>
+        <span role="checkbox" data-controller="phem-toggle" data-value="apple" data-phem-checkbox-group-target="item">
+            <input type="checkbox" name="fruits[]" value="apple" hidden data-phem-toggle-target="input">
+        </span>
+        Apple
+    </label>
+    ...
+</div>
+```
+
+The value of an item is its `data-value` attribute, its `value` (the `value` attribute of a native checkbox, the `value` value of a `phem-toggle` element), its key (`key={{ ... }}`), or its position.
+
+| Value | Default | Effect |
+|---|---|---|
+| `value` | | The values of the checked items. The controller writes it after each change. When the server render gives it, the group owns the state of the items: the value sets them on load and after the morph of an event, and a server render with a new value sets it |
+| `all-values` | all the items | The values of the items that the parent checks and unchecks |
+
+With no `value` in the server render, the state of the items belongs to the server render and to the user, for example with `phem:bind`.
+
+A click on the parent checks all its items, or unchecks all of them when all are checked. When some items are checked, the parent remembers them: the next clicks go to all the items, to no item, and back to the items that were checked. A change of an item by the user is the new mixed state. A disabled item, and a read-only `phem-toggle` item, keeps its state. Each item that changes dispatches `input` and `change` (on a `phem-toggle` item, on its input), so `phem:bind`, `phem:live` and `phem-count` see the change. With `phem:live`, the changes of the fields of one `phem:bind` property go in one event.
+
+The parent shows the state of its items: it is checked when all the items are checked, and indeterminate when some of them are checked. It gets `data-checked`, `data-unchecked` or `data-indeterminate`, and `aria-controls` with the items that have an `id`. A `phem-toggle` parent also gets `aria-checked="mixed"`. The parent shows the state again after the morph of an event.
+
+Each change by the user dispatches `phem-checkbox-group:change` with `{ value }`. After a click on the native row 1 of three, the parent is:
 
 ```html
 <input type="checkbox" aria-label="All" data-phem-checkbox-group-target="parent" data-indeterminate />
+```
+
+After a click on **Apple** in the group of `phem-toggle` checkboxes, the browser shows:
+
+```html
+<div data-controller="phem-checkbox-group" data-phem-checkbox-group-value-value="[&quot;apple&quot;,&quot;pear&quot;]">
+    <label>
+        <span role="checkbox" data-controller="phem-toggle" data-phem-checkbox-group-target="parent" data-phem-toggle-checked-value="false" data-phem-toggle-indeterminate-value="true" tabindex="0" aria-checked="mixed" data-indeterminate=""></span>
+        All
+    </label>
+    <label>
+        <span role="checkbox" data-controller="phem-toggle" data-value="apple" data-phem-checkbox-group-target="item" data-phem-toggle-checked-value="true" tabindex="0" aria-checked="true" data-phem-toggle-indeterminate-value="false" data-checked="">
+            <input type="checkbox" name="fruits[]" value="apple" hidden="" data-phem-toggle-target="input" tabindex="-1" aria-hidden="true">
+        </span>
+        Apple
+    </label>
+    ...
+    <label>
+        <span role="checkbox" data-controller="phem-toggle" data-value="plum" data-phem-checkbox-group-target="item" data-phem-toggle-checked-value="false" tabindex="0" aria-checked="false" data-unchecked="">
+            <input type="checkbox" name="fruits[]" value="plum" hidden="" data-phem-toggle-target="input" tabindex="-1" aria-hidden="true">
+        </span>
+        Plum
+    </label>
+</div>
 ```
 
 ## Show a time in the time zone of the user

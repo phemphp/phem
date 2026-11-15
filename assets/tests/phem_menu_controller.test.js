@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemMenuController from "../dist/phem_menu_controller.js"
-import { click, mount, nextDone, respond } from "./support.js"
+import { click, mount, nextDone, respond, stubElementReflection } from "./support.js"
 
 let application
 
@@ -76,6 +76,39 @@ describe("phem-menu", () => {
     expect($("group").getAttribute("role")).toBe("group")
     expect($("group").getAttribute("aria-labelledby")).toBe("label")
     expect($("separator").getAttribute("role")).toBe("separator")
+  })
+
+  it("gives no id to a popup and a group label with no id, and links them with element references, also after the morph", async () => {
+    const restore = stubElementReflection()
+    try {
+      const markup = actions().replace('id="popup" ', "").replace('id="label" ', "")
+      await mount(markup)
+      respond(markup)
+      const popup = () => document.querySelector("[data-phem-menu-target=popup]")
+      const label = () => document.querySelector("[data-phem-menu-target=groupLabel]")
+
+      expect(popup().id).toBe("")
+      expect(label().id).toBe("")
+      expect($("trigger").ariaControlsElements).toEqual([popup()])
+      expect($("group").ariaLabelledByElements).toEqual([label()])
+
+      const done = nextDone()
+      click("#trigger")
+      click("#rename")
+      await done
+
+      expect(popup().id).toBe("")
+      expect($("trigger").ariaControlsElements).toEqual([popup()])
+      expect($("group").ariaLabelledByElements).toEqual([label()])
+    } finally {
+      restore()
+    }
+  })
+
+  it("keeps the aria-labelledby of the server render on a group", async () => {
+    await mount(actions().replace('data-phem-menu-target="group"', 'data-phem-menu-target="group" aria-labelledby="trigger"'))
+
+    expect($("group").getAttribute("aria-labelledby")).toBe("trigger")
   })
 
   it("opens with a click, and gives the focus to the popup", async () => {

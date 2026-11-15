@@ -1,0 +1,67 @@
+<?phem
+
+namespace App\Ui\Select;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// A select of one apple, with its item over the trigger, and a select of more than one fruit, in
+// a short list with scroll arrows and a button that sends an event.
+#[Page('/select')]
+final class SelectPage
+{
+    #[State] public int $saves = 0;
+
+    public array $apples = ['gala' => 'Gala', 'fuji' => 'Fuji', 'honeycrisp' => 'Honeycrisp', 'granny' => 'Granny Smith', 'pink' => 'Pink Lady'];
+
+    public array $fruits = ['Apple', 'Banana', 'Cherry', 'Date', 'Fig', 'Grape', 'Kiwi', 'Lemon', 'Mango', 'Orange'];
+
+    public function save(): void
+    {
+        ++$this->saves;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Select">
+                <div id="apple" data-controller="phem-select" data-phem-select-value-value="honeycrisp" style="margin: 200px 40px 0">
+                    <button id="trigger" data-phem-select-target="trigger" aria-label="Apple" style="width: 160px; display: flex; justify-content: space-between">
+                        <span id="value" data-phem-select-target="value" placeholder="Select apple"></span>
+                        <span data-phem-select-target="icon">▾</span>
+                    </button>
+                    <input id="input" data-phem-select-target="input" name="apple" hidden />
+                    <div id="popup" data-phem-select-target="popup" popover="manual" hidden style="margin: 0; padding: 4px 0; border: 1px solid; background: white">
+                        <div id="list" data-phem-select-target="list">
+                            {% for value, label in apples %}
+                                <div id={{ 'item-' ~ value }} data-phem-select-target="item" data-value={{ value }} style="padding: 4px 8px">
+                                    <span data-phem-select-target="itemIndicator">✓</span>
+                                    <span data-phem-select-target="itemText">{{ label }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div id="fruits" data-controller="phem-select" data-phem-select-multiple-value="true" data-phem-select-modal-value="false" data-phem-select-align-item-with-trigger-value="false" style="margin: 40px">
+                    <button id="fruits-trigger" data-phem-select-target="trigger" aria-label="Fruits">
+                        <span id="fruits-value" data-phem-select-target="value" placeholder="Select fruits"></span>
+                    </button>
+                    <div id="fruits-popup" data-phem-select-target="popup" popover="manual" hidden style="margin: 0; border: 1px solid; background: white; width: 160px">
+                        <div id="fruits-up" data-phem-select-target="scrollUpArrow" style="top: 0; left: 0; right: 0; height: 16px; background: #eee">▴</div>
+                        <div id="fruits-list" data-phem-select-target="list" style="max-height: 120px; overflow-y: auto">
+                            {% for fruit in fruits %}
+                                <div id={{ 'fruit-' ~ fruit|lower }} data-phem-select-target="item" style="padding: 4px 8px">{{ fruit }}</div>
+                            {% endfor %}
+                        </div>
+                        <div id="fruits-down" data-phem-select-target="scrollDownArrow" style="bottom: 0; left: 0; right: 0; height: 16px; background: #eee">▾</div>
+                        <button id="popup-save" onClick={{ save }} style="margin: 4px 0 20px">Save</button>
+                    </div>
+                </div>
+                <button id="save" onClick={{ save }}>Save</button>
+                <output id="saves">{{ saves }}</output>
+            </Document>
+        );
+    }
+}

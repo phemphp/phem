@@ -2,23 +2,27 @@ import { Controller } from "@hotwired/stimulus"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
 import { isDisabled, movesFocus, nextItem } from "./phem_roving.js"
 import { hide, render, show } from "./phem_transition.js"
+import { link } from "./phem_aria.js"
 
 // The `phem-tabs` controller: shows the `panel` target of the selected `tab` target on the client,
 // with the ARIA roles and the keyboard of a tab list. The selected tab stays after the morph of an
 // event.
 //
-//     <div data-controller="phem-tabs">
+//     <div data-controller="phem-tabs" data-phem-tabs-active-value="profile">
 //         <div data-phem-tabs-target="list" aria-label="Settings">
-//             <button id="tab-profile" data-phem-tabs-target="tab">Profile</button>
-//             <button id="tab-security" data-phem-tabs-target="tab">Security</button>
+//             <button data-phem-tabs-target="tab" data-value="profile">Profile</button>
+//             <button data-phem-tabs-target="tab" data-value="security">Security</button>
 //             <span data-phem-tabs-target="indicator"></span>
 //         </div>
-//         <div id="profile" data-phem-tabs-target="panel">…</div>
-//         <div id="security" data-phem-tabs-target="panel" hidden>…</div>
+//         <div data-phem-tabs-target="panel" data-value="profile">…</div>
+//         <div data-phem-tabs-target="panel" data-value="security" hidden>…</div>
 //     </div>
 //
-// The `index` value is the state: the server render gives its first value, and a server render
-// with a new `index` value sets it. A click on a tab selects it. The arrow keys of the
+// The value of a tab and of a panel is its `data-value` attribute, its key (`data-phem-key`), or
+// its index. A tab shows the panel with the same value. The `active` value is the state: the value
+// of the selected tab. With no `active` value, or a value that no tab has, the first tab that is
+// not disabled is selected. The server render gives its first value, and a server render with a
+// new `active` value sets it. A click on a tab selects it. The arrow keys of the
 // `orientation` value (`horizontal` by default) move the focus between the tabs, and skip a
 // disabled tab; Home and End go to the first and to the last tab. With the `loopFocus` value (the
 // default), the last tab goes to the first one. Enter or Space selects the tab with the focus, or
@@ -26,7 +30,9 @@ import { hide, render, show } from "./phem_transition.js"
 //
 // The `list` target gets `role="tablist"`, the tabs get `role="tab"`, `aria-selected`, `tabindex`
 // and `aria-controls`, and the panels get `role="tabpanel"`, `hidden`, `tabindex` and
-// `aria-labelledby`. For the styles, all the parts get `data-orientation` and
+// `aria-labelledby`. With no id, the controller links the tab and its panel with the element
+// references of ARIA (`ariaControlsElements`, `ariaLabelledByElements`): it gives them no id, so
+// the morph matches them to the server render. For the styles, all the parts get `data-orientation` and
 // `data-activation-direction` (the direction of the last change: `left`, `right`, `up`, `down` or
 // `none`). The selected tab gets `data-active`, a disabled tab `data-disabled`, and a panel
 // `data-index` and `data-hidden` when it is hidden; see phem_transition.js for the animations of
@@ -36,7 +42,7 @@ import { hide, render, show } from "./phem_transition.js"
 export default class PhemTabsController extends Controller {
   static targets = ["list", "tab", "panel", "indicator"]
   static values = {
-    index: Number,
+    active: String,
     orientation: { type: String, default: "horizontal" },
     activateOnFocus: Boolean,
     loopFocus: { type: Boolean, default: true },
@@ -45,7 +51,7 @@ export default class PhemTabsController extends Controller {
   connect() {
     this.direction = "none"
     this.state = new ClientState(this, {
-      value: "index",
+      value: "active",
       owns: (el, name) => this.#owns(el, name),
       morphed: () => this.#render({ animate: false }),
     })
@@ -73,11 +79,11 @@ export default class PhemTabsController extends Controller {
     this.rendered = undefined
   }
 
-  // A server render with a new `index` value, or a change of the value by a script.
-  indexValueChanged(index, previous) {
+  // A server render with a new `active` value, or a change of the value by a script.
+  activeValueChanged() {
     if (this.rendered === undefined || this.rendered === this.#selected) return
 
-    this.#direction(previous ?? this.rendered, index)
+    this.#direction(this.rendered, this.#selected)
     this.#render({ animate: true })
   }
 
@@ -132,7 +138,7 @@ export default class PhemTabsController extends Controller {
     if (index === this.#selected && this.rendered === index) return
 
     this.#direction(this.#selected, index)
-    this.indexValue = index
+    this.activeValue = valueOf(tab, index)
     this.#render({ animate: true })
   }
 
@@ -146,9 +152,20 @@ export default class PhemTabsController extends Controller {
     else this.direction = (b.left >= a.left) ? "right" : "left"
   }
 
-  // The `index` value of a server render that has less tabs selects the last tab.
+  // The index of the tab of the `active` value, or of the first tab that is not disabled.
   get #selected() {
-    return Math.max(0, Math.min(this.indexValue, this.tabTargets.length - 1))
+    const tabs = this.tabTargets
+    const at = tabs.findIndex((tab, i) => valueOf(tab, i) === this.activeValue)
+    if (at >= 0) return at
+
+    return Math.max(0, tabs.findIndex((tab) => !isDisabled(tab)))
+  }
+
+  // The panel with the value of the tab.
+  #panelOf(tab, index) {
+    const value = valueOf(tab, index)
+
+    return this.panelTargets.find((panel, i) => valueOf(panel, i) === value) ?? null
   }
 
   // The attributes that are not the state (`aria-controls`, `aria-labelledby` and the `tabindex` of
@@ -168,6 +185,8 @@ export default class PhemTabsController extends Controller {
       else el.removeAttribute("aria-orientation")
     }
 
+    const shown = tabs[selected] ? this.#panelOf(tabs[selected], selected) : null
+
     tabs.forEach((tab, i) => {
       this.#common(tab)
       tab.setAttribute("role", "tab")
@@ -175,17 +194,19 @@ export default class PhemTabsController extends Controller {
       tab.toggleAttribute("data-active", i === selected)
       tab.toggleAttribute("data-disabled", isDisabled(tab))
       tab.tabIndex = i === selected ? 0 : -1
-      if (panels[i]?.id && !tab.hasAttribute("aria-controls")) tab.setAttribute("aria-controls", panels[i].id)
+
+      const panel = this.#panelOf(tab, i)
+      if (panel) link(tab, "aria-controls", "ariaControlsElements", panel)
+      if (panel) link(panel, "aria-labelledby", "ariaLabelledByElements", tab)
     })
 
     panels.forEach((panel, i) => {
-      const open = i === selected
+      const open = panel === shown
       this.#common(panel)
       panel.setAttribute("role", "tabpanel")
       panel.setAttribute("data-index", String(i))
       panel.toggleAttribute("data-hidden", !open)
       if (!panel.hasAttribute("tabindex")) panel.tabIndex = 0
-      if (tabs[i]?.id && !panel.hasAttribute("aria-labelledby")) panel.setAttribute("aria-labelledby", tabs[i].id)
 
       if (!animate) render(panel, open)
       else if (open) show(panel)
@@ -244,4 +265,9 @@ export default class PhemTabsController extends Controller {
   get #rtl() {
     return getComputedStyle(this.element).direction === "rtl"
   }
+}
+
+// The value of a tab or of a panel: its `data-value`, its key, or its index.
+function valueOf(el, index) {
+  return el.getAttribute("data-value") ?? el.getAttribute("data-phem-key") ?? String(index)
 }

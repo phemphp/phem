@@ -12,7 +12,8 @@ import { scrollTargets, scrollToNew } from "./phem_scroll.js"
 // Announces the new text of a `phem:announce` element after the morph of an event.
 import { watchAnnounce } from "./phem_announce_changes.js"
 import { DialogQuestion } from "./phem_dialog_question.js"
-import { fieldsValue } from "./phem_fields.js"
+import { flushClientChanges } from "./phem_client_state.js"
+import { fieldsValue, textValue } from "./phem_fields.js"
 import { matchesKey } from "./phem_keys.js"
 import { OfflineQueue } from "./phem_offline_queue.js"
 import { TabSync } from "./phem_tab_sync.js"
@@ -361,9 +362,27 @@ function defaultOption(select) {
 // the submit only, so a file input is dirty while it has files.
 const DIRTY_FIELDS = '[data-phem-bind], input[type="file"][name]'
 
+// A hidden input has no default value of its own: its `value` sets its `value` attribute. So
+// phem_bind() also renders the server value of a bound hidden input in `data-phem-value`: the
+// field is dirty when its value is another one, and a reset gives it back.
+const SERVER_VALUE = "data-phem-value"
+
+// The hidden inputs with no `data-phem-value` that a script changed since the server render: the
+// script (a controller of a custom control, such as a radio group or a slider) sends their `input`
+// or `change` event, and the field is dirty until the morph gives it the value of the server again
+// (a morph that keeps the value of the client keeps it dirty).
+const editedHidden = new WeakSet()
+const isHidden = (el) => el instanceof HTMLInputElement && el.type === "hidden"
+for (const type of ["input", "change"]) document.addEventListener(type, (event) => isHidden(event.target) && editedHidden.add(event.target), true)
+document.addEventListener("turbo:morph-element", (event) => {
+  const { target, detail } = event
+  if (isHidden(target) && target.value === (detail?.newElement?.getAttribute?.("value") ?? "")) editedHidden.delete(target)
+}, true)
+
 // Whether the user changed a bound field: its value is not the value of the server render. A file
 // input is dirty while it has files that a submit sends.
 function isDirty(field) {
+  if (isHidden(field)) return field.hasAttribute(SERVER_VALUE) ? field.value !== field.getAttribute(SERVER_VALUE) : editedHidden.has(field)
   if (field instanceof HTMLInputElement && field.type === "file") return isFormFileInput(field) && field.files.length > 0
   if (field instanceof HTMLInputElement && (field.type === "checkbox" || field.type === "radio")) return field.checked !== field.defaultChecked
   if (field instanceof HTMLSelectElement) {
@@ -371,7 +390,7 @@ function isDirty(field) {
     return field.selectedOptions[0] !== defaultOption(field)
   }
 
-  return field.value !== field.defaultValue
+  return textValue(field) !== field.defaultValue
 }
 
 // Gives a bound field the value of the server render again.
@@ -381,7 +400,9 @@ function resetField(field) {
   else if (field instanceof HTMLSelectElement) {
     const option = defaultOption(field)
     if (option) option.selected = true
-  } else field.value = field.defaultValue
+  } else field.value = isHidden(field) ? (field.getAttribute(SERVER_VALUE) ?? field.value) : field.defaultValue
+
+  if (isHidden(field)) editedHidden.delete(field)
 }
 
 // The start of the id that an element with a `key` or a fiber id gets while a morph runs (see
@@ -2105,8 +2126,11 @@ export default class PhemController extends Controller {
     }
 
     // The bound fields when the event starts: the newest values. The request sends the fields
-    // that changed.
+    // that changed. A state value of a built-in controller that changes after this time keeps
+    // its client value through the morph of the answer (see phem_client_state.js).
     const fields = this.boundValues()
+    flushClientChanges()
+    const sentAt = performance.now()
     // The fields of the form of a change or a click when the event starts, as the bound fields:
     // a field that the user changed while the event waited goes with it. A submit locks its form.
     // An event that waited for the connection keeps the fields of its time.
@@ -2259,9 +2283,24 @@ export default class PhemController extends Controller {
     // Only the streams of this answer: Turbo takes them while renderStreams() runs.
     const announces = byUser ? watchAnnounce() : null
     let rendered
+    // Each stream of this answer renders with the time of its request: another answer can render
+    // at the same time.
+    const stamp = (event) => {
+      const render = event.detail.render
+      event.detail.render = async (element) => {
+        this.element.phemSentAt = sentAt
+        try {
+          await render(element)
+        } finally {
+          if (this.element.phemSentAt === sentAt) this.element.phemSentAt = null
+        }
+      }
+    }
+    document.addEventListener("turbo:before-stream-render", stamp)
     try {
       rendered = data.streams ? this.renderStreams(data.streams, handler) : afterStreams()
     } finally {
+      document.removeEventListener("turbo:before-stream-render", stamp)
       this.stateBefore = null
       announces?.stop()
     }

@@ -18,6 +18,10 @@ beforeAll(() => {
     this.modal = true
     this.setAttribute("open", "")
   }
+  proto.show = function () {
+    this.modal = false
+    this.setAttribute("open", "")
+  }
   proto.close = function () {
     if (!this.open) return
 
@@ -305,15 +309,16 @@ describe("phem-dialog", () => {
       pointer("pointermove", 100, 600)
 
       expect($("dialog").hasAttribute("data-swiping")).toBe(true)
-      expect($("dialog").style.getPropertyValue("--dialog-swipe-movement-y")).toBe("100px")
-      expect($("dialog").style.getPropertyValue("--dialog-swipe-progress")).toBe("0.25")
+      expect($("dialog").style.getPropertyValue("--drawer-swipe-movement-y")).toBe("100px")
+      expect($("dialog").style.getPropertyValue("--drawer-swipe-progress")).toBe("0.25")
 
       pointer("pointermove", 100, 700)
       pointer("pointerup", 100, 700)
       expect($("dialog").hasAttribute("data-swiping")).toBe(false)
       expect($("edit").getAttribute("data-phem-dialog-open-value")).toBe("false")
       expect($("dialog").open).toBe(false)
-      expect($("dialog").hasAttribute("data-swipe-direction")).toBe(false)
+      expect($("dialog").getAttribute("data-swipe-direction")).toBe("down")
+      expect($("dialog").hasAttribute("data-swipe-dismiss")).toBe(false)
     })
 
     it("keeps its place and the direction of the swipe during its close animation", async () => {
@@ -324,14 +329,15 @@ describe("phem-dialog", () => {
       pointer("pointermove", 100, 700)
       pointer("pointerup", 100, 700)
 
+      expect($("dialog").hasAttribute("data-swipe-dismiss")).toBe(true)
       expect($("dialog").getAttribute("data-swipe-direction")).toBe("down")
       expect($("dialog").hasAttribute("data-ending-style")).toBe(true)
-      expect($("dialog").style.getPropertyValue("--dialog-swipe-movement-y")).toBe("200px")
+      expect($("dialog").style.getPropertyValue("--drawer-swipe-movement-y")).toBe("200px")
 
       finish()
       await new Promise((resolve) => setTimeout(resolve, 0))
       expect($("dialog").open).toBe(false)
-      expect($("dialog").hasAttribute("data-swipe-direction")).toBe(false)
+      expect($("dialog").hasAttribute("data-swipe-dismiss")).toBe(false)
     })
 
     it("goes back to its place after a short and slow swipe", async () => {
@@ -342,7 +348,7 @@ describe("phem-dialog", () => {
 
       expect($("dialog").open).toBe(true)
       expect($("dialog").hasAttribute("data-swiping")).toBe(false)
-      expect($("dialog").style.getPropertyValue("--dialog-swipe-movement-y")).toBe("")
+      expect($("dialog").style.getPropertyValue("--drawer-swipe-movement-y")).toBe("")
     })
 
     it("closes after a short and fast swipe", async () => {
@@ -363,8 +369,8 @@ describe("phem-dialog", () => {
       pointer("pointerdown", 100, 500, $("title"))
       pointer("pointermove", 100, 400)
       expect($("dialog").hasAttribute("data-swiping")).toBe(true)
-      expect($("dialog").style.getPropertyValue("--dialog-swipe-movement-y")).toBe("-10px")
-      expect($("dialog").style.getPropertyValue("--dialog-swipe-progress")).toBe("0")
+      expect($("dialog").style.getPropertyValue("--drawer-swipe-movement-y")).toBe("-10px")
+      expect($("dialog").style.getPropertyValue("--drawer-swipe-progress")).toBe("0")
       pointer("pointerup", 100, 400)
       expect($("dialog").open).toBe(true)
     })
@@ -443,8 +449,218 @@ describe("phem-dialog", () => {
       click("#open")
 
       expect($("dialog").open).toBe(true)
-      expect($("dialog").hasAttribute("data-swipe-direction")).toBe(false)
-      expect($("dialog").style.getPropertyValue("--dialog-swipe-movement-y")).toBe("")
+      expect($("dialog").hasAttribute("data-swipe-dismiss")).toBe(false)
+      expect($("dialog").style.getPropertyValue("--drawer-swipe-movement-y")).toBe("")
+    })
+
+    it("stops at the snap point nearest to the release, and closes below the last one", async () => {
+      vi.stubGlobal("innerHeight", 800)
+      await drawer('data-phem-dialog-swipe-direction-value="down" data-phem-dialog-snap-points-value=\'["100px", 1]\'')
+      const snaps = []
+      $("edit").addEventListener("phem-dialog:snap", (event) => snaps.push(event.detail.snapPoint))
+
+      // The first snap point: 100 px of the 400 px of the dialog.
+      expect($("dialog").style.getPropertyValue("--drawer-snap-point-offset")).toBe("300px")
+      expect($("dialog").style.getPropertyValue("--drawer-height")).toBe("400px")
+      expect($("dialog").hasAttribute("data-expanded")).toBe(false)
+
+      // A slow swipe up of 250 px: the full height.
+      pointer("pointerdown", 100, 750, $("title"))
+      pointer("pointermove", 100, 600)
+      expect($("dialog").style.getPropertyValue("--drawer-swipe-movement-y")).toBe("-150px")
+      pointer("pointermove", 100, 500)
+      pointer("pointerup", 100, 500)
+      expect(snaps).toEqual(["1"])
+      expect($("edit").getAttribute("data-phem-dialog-snap-point-value")).toBe("1")
+      expect($("dialog").style.getPropertyValue("--drawer-snap-point-offset")).toBe("0px")
+      expect($("dialog").hasAttribute("data-expanded")).toBe(true)
+      expect($("dialog").style.getPropertyValue("--drawer-swipe-movement-y")).toBe("")
+
+      // A slow swipe down of 360 px: past the first snap point, nearer to the close.
+      pointer("pointerdown", 100, 450, $("title"))
+      pointer("pointermove", 100, 600)
+      pointer("pointermove", 100, 810)
+      pointer("pointerup", 100, 810)
+      expect($("dialog").open).toBe(false)
+      expect(snaps).toEqual(["1"])
+    })
+
+    it("lets a touch scroll the content up at the full size, and opens a lower snap point", async () => {
+      vi.stubGlobal("innerHeight", 800)
+      const touchmove = (y) => {
+        const event = new Event("touchmove", { bubbles: true, cancelable: true })
+        Object.defineProperty(event, "touches", { value: [{ clientX: 100, clientY: y }] })
+        document.dispatchEvent(event)
+
+        return event
+      }
+      const touch = (y) => $("title").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, isPrimary: true, button: 0, pointerId: 1, pointerType: "touch", clientX: 100, clientY: y }))
+      const lift = () => document.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true, pointerId: 1 }))
+
+      await drawer('data-phem-dialog-swipe-direction-value="down" data-phem-dialog-snap-points-value=\'["100px", 1]\' data-phem-dialog-snap-point-value="1"')
+      touch(500)
+      expect(touchmove(480).defaultPrevented).toBe(false)
+      lift()
+
+      document.body.innerHTML = ""
+      await drawer('data-phem-dialog-swipe-direction-value="down" data-phem-dialog-snap-points-value=\'["100px", 1]\'')
+      touch(750)
+      expect(touchmove(730).defaultPrevented).toBe(true)
+      lift()
+    })
+
+    it("takes the style of the server after the morph, and keeps the snap point", async () => {
+      vi.stubGlobal("innerHeight", 800)
+      const attributes = 'data-phem-dialog-swipe-direction-value="down" data-phem-dialog-snap-points-value=\'["100px", 1]\''
+      await drawer(attributes)
+      expect($("dialog").style.getPropertyValue("--drawer-snap-point-offset")).toBe("300px")
+
+      respond(edit(attributes).replace('id="dialog"', 'id="dialog" style="max-height: 90vh"'))
+      const done = nextDone()
+      click("#save")
+      await done
+      await nextTask()
+
+      expect($("dialog").style.getPropertyValue("max-height")).toBe("90vh")
+      expect($("dialog").style.getPropertyValue("--drawer-snap-point-offset")).toBe("300px")
+    })
+
+    it("places the snap point again after a resize of the viewport", async () => {
+      vi.stubGlobal("innerHeight", 800)
+      await drawer('data-phem-dialog-swipe-direction-value="down" data-phem-dialog-snap-points-value=\'[0.25, 1]\'')
+      expect($("dialog").style.getPropertyValue("--drawer-snap-point-offset")).toBe("200px")
+
+      vi.stubGlobal("innerHeight", 400)
+      window.dispatchEvent(new Event("resize"))
+      expect($("dialog").style.getPropertyValue("--drawer-snap-point-offset")).toBe("300px")
+    })
+
+    it("goes to the next snap point after a fast swipe", async () => {
+      vi.stubGlobal("innerHeight", 800)
+      await drawer('data-phem-dialog-swipe-direction-value="down" data-phem-dialog-snap-points-value=\'["100px", 0.25, 1]\' data-phem-dialog-snap-point-value="1"')
+      pointer("pointerdown", 100, 500, $("title"))
+      const move = new PointerEvent("pointermove", { bubbles: true, isPrimary: true, pointerId: 1, clientX: 100, clientY: 540 })
+      Object.defineProperty(move, "timeStamp", { value: time + 50 })
+      document.dispatchEvent(move)
+      const up = new PointerEvent("pointerup", { bubbles: true, isPrimary: true, pointerId: 1, clientX: 100, clientY: 540 })
+      Object.defineProperty(up, "timeStamp", { value: time + 60 })
+      document.dispatchEvent(up)
+
+      // 0.25 of the viewport is 200 px: the next snap point after the full height.
+      expect($("edit").getAttribute("data-phem-dialog-snap-point-value")).toBe("0.25")
+      expect($("dialog").style.getPropertyValue("--drawer-snap-point-offset")).toBe("200px")
+      expect($("dialog").style.getPropertyValue("--drawer-swipe-strength")).not.toBe("")
+    })
+  })
+
+  it("closes on Escape and not on a tap on the backdrop with disablePointerDismissal", async () => {
+    await mount(edit('data-phem-dialog-disable-pointer-dismissal-value="true"'))
+    click("#open")
+    clickAt(dialog(), [500, 500])
+    expect(isModal()).toBe(true)
+
+    escape()
+    await nextTask()
+    expect(dialog().open).toBe(false)
+  })
+
+  it("opens a dialog that is not a modal with modal false, and closes it on a press outside", async () => {
+    await mount(edit('data-phem-dialog-modal-value="false"') + '<button id="outside">Outside</button>')
+    click("#open")
+
+    expect(dialog().open).toBe(true)
+    expect(dialog().modal).toBe(false)
+
+    document.getElementById("body").click()
+    expect(dialog().open).toBe(true)
+
+    document.getElementById("outside").click()
+    await nextTask()
+    expect(dialog().open).toBe(false)
+    expect(document.getElementById("edit").getAttribute("data-phem-dialog-open-value")).toBe("false")
+  })
+
+  it("closes a dialog that is not a modal on Escape", async () => {
+    await mount(edit('data-phem-dialog-modal-value="false"'))
+    click("#open")
+    const event = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })
+    document.getElementById("save").dispatchEvent(event)
+    await nextTask()
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(dialog().open).toBe(false)
+  })
+
+  it("skips a hidden field at the end of the dialog with trap-focus", async () => {
+    await mount(edit('data-phem-dialog-modal-value="trap-focus"', '<button id="hidden" hidden>Hidden</button>'))
+    click("#open")
+    document.getElementById("close").focus()
+    const event = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true })
+    document.getElementById("close").dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(document.activeElement.id).toBe("save")
+  })
+
+  it("keeps the focus in the dialog with trap-focus", async () => {
+    await mount(edit('data-phem-dialog-modal-value="trap-focus"'))
+    click("#open")
+    document.getElementById("close").focus()
+    const event = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true })
+    document.getElementById("close").dispatchEvent(event)
+
+    expect(dialog().modal).toBe(false)
+    expect(event.defaultPrevented).toBe(true)
+    expect(document.activeElement.id).toBe("save")
+  })
+
+  describe("with a viewport and a backdrop", () => {
+    const viewport = (attributes = "") => `<div id="edit" data-controller="phem-dialog" ${attributes}>
+        <button id="open" data-phem-dialog-target="trigger">Edit</button>
+        <div id="backdrop" data-phem-dialog-target="backdrop" hidden></div>
+        <dialog id="dialog" data-phem-dialog-target="viewport">
+          <div id="popup" data-phem-dialog-target="popup">
+            <h2 data-phem-dialog-target="title">Edit</h2>
+            <button id="save" data-phem-on-click="c1.save">Save</button>
+          </div>
+        </dialog>
+      </div>`
+
+    it("opens the viewport as a modal, and gives the open state to the popup and the backdrop", async () => {
+      await mount(viewport())
+      click("#open")
+
+      expect(isModal()).toBe(true)
+      for (const id of ["dialog", "popup", "backdrop"]) expect(document.getElementById(id).hasAttribute("data-open")).toBe(true)
+      expect(document.getElementById("backdrop").hidden).toBe(false)
+    })
+
+    it("closes on a press on the viewport outside the popup", async () => {
+      await mount(viewport())
+      click("#open")
+      respond(viewport())
+      clickAt(document.getElementById("save"), [10, 10])
+      expect(dialog().open).toBe(true)
+
+      clickAt(dialog(), [1, 1])
+      await nextTask()
+      expect(dialog().open).toBe(false)
+      for (const id of ["popup", "backdrop"]) expect(document.getElementById(id).hasAttribute("data-closed")).toBe(true)
+      expect(document.getElementById("backdrop").hidden).toBe(true)
+    })
+
+    it("keeps the state through the morph of an event", async () => {
+      await mount(viewport())
+      click("#open")
+      respond(viewport())
+      const done = nextDone()
+      click("#save")
+      await done
+      await nextTask()
+
+      expect(isModal()).toBe(true)
+      expect(document.getElementById("popup").hasAttribute("data-open")).toBe(true)
+      expect(document.getElementById("backdrop").hidden).toBe(false)
     })
   })
 })

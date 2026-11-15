@@ -1,0 +1,34 @@
+<?phem
+
+namespace App\Ui\Collapsible;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// A collapsible with a panel that has no id, and a button that sends an event.
+#[Page('/collapsible')]
+final class CollapsiblePage
+{
+    #[State] public int $saves = 0;
+
+    public function save(): void
+    {
+        ++$this->saves;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Collapsible">
+                <div id="details" data-controller="phem-collapsible">
+                    <button id="trigger" data-phem-collapsible-target="trigger">Details</button>
+                    <div class="panel" data-phem-collapsible-target="panel" hidden>Details panel</div>
+                </div>
+                <button id="save" onClick={{ save }}>Save</button>
+                <output id="saves">{{ saves }}</output>
+            </Document>
+        );
+    }
+}

@@ -79,6 +79,34 @@ final class PopoverTest extends E2eTestCase
         expect($popup)->toBeHidden();
     }
 
+    public function testAPreviewCardOpensOnHoverAndOnTheKeyboardFocusOfItsLink(): void
+    {
+        $page = $this->visit('/popover');
+        self::assertResponseIsSuccessful();
+
+        $page->locator('#card-link')->hover();
+        expect($page->locator('#card-popup'))->toBeVisible();
+        expect($page->locator('#card-popup'))->toHaveAttribute('aria-hidden', 'true');
+        expect($page->locator('#card-link'))->not()->toHaveAttribute('aria-expanded', 'true');
+        $page->mouse()->move(0, 0);
+        expect($page->locator('#card-popup'))->toBeHidden();
+
+        // The keyboard: the focus opens the card, and Tab skips its content.
+        $page->locator('#card-link')->focus();
+        $page->keyboard()->press('Shift+Tab');
+        $page->keyboard()->press('Tab');
+        expect($page->locator('#card-link'))->toBeFocused();
+        expect($page->locator('#card-popup'))->toBeVisible();
+        $page->keyboard()->press('Tab');
+        expect($page->locator('#after-card'))->toBeFocused();
+        expect($page->locator('#card-popup'))->toBeHidden();
+
+        // A click on the link opens the link.
+        $page->locator('#card-link')->click();
+        $page->waitForFunction("location.hash === '#ada'");
+        expect($page->locator('#card-popup'))->toBeVisible();
+    }
+
     public function testTooltipShowsOnHoverAboveItsTrigger(): void
     {
         $page = $this->visit('/popover');
@@ -97,5 +125,21 @@ final class PopoverTest extends E2eTestCase
 
         $page->mouse()->move(5, 5);
         expect($tip)->toBeHidden();
+    }
+
+    public function testATooltipWithNoIdDescribesItsTriggerAlsoAfterAnEvent(): void
+    {
+        $page = $this->visit('/popover');
+        self::assertResponseIsSuccessful();
+
+        $pin = $page->getByRole('button', ['name' => 'Pin']);
+        $described = "document.getElementById('pin').ariaDescribedByElements?.[0]?.textContent ?? null";
+        self::assertSame('Pin to the top', $page->evaluate($described));
+
+        // The morph of the event keeps the popup with no id, and the link.
+        $pin->click();
+        expect($page->locator('#likes'))->toHaveText('1');
+        self::assertSame('Pin to the top', $page->evaluate($described));
+        self::assertSame(0, $page->evaluate("document.querySelectorAll('.pin-tip[id]').length"));
     }
 }

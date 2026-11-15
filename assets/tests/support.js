@@ -84,3 +84,33 @@ export function stubConfirm(answer) {
 export function settle() {
   return new Promise((resolve) => setTimeout(resolve, 0))
 }
+
+// jsdom has no ARIA element reflection. The stub keeps the elements, and sets the attribute to ""
+// as a browser does. With no attribute, a property gives null: the morph or the controller removed
+// it. Returns a function that removes the stub.
+export function stubElementReflection() {
+  const properties = {
+    ariaControlsElements: "aria-controls",
+    ariaLabelledByElements: "aria-labelledby",
+    ariaDescribedByElements: "aria-describedby",
+    ariaActiveDescendantElement: "aria-activedescendant",
+  }
+  const values = new WeakMap()
+
+  for (const [name, attribute] of Object.entries(properties)) {
+    Object.defineProperty(Element.prototype, name, {
+      configurable: true,
+      get() {
+        return this.hasAttribute(attribute) ? (values.get(this)?.[name] ?? null) : null
+      },
+      set(value) {
+        values.set(this, { ...values.get(this), [name]: value })
+        this.setAttribute(attribute, "")
+      },
+    })
+  }
+
+  return () => {
+    for (const name of Object.keys(properties)) delete Element.prototype[name]
+  }
+}

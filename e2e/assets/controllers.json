@@ -16,6 +16,10 @@
                 "enabled": true,
                 "fetch": "eager"
             },
+            "collapsible": {
+                "enabled": true,
+                "fetch": "eager"
+            },
             "menu": {
                 "enabled": true,
                 "fetch": "eager"
@@ -67,6 +71,70 @@
             "image-input": {
                 "enabled": true,
                 "fetch": "eager"
+            },
+            "tabs": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "toggle": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "toggle-group": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "toolbar": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "radio-group": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "avatar": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "field": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "form": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "number-field": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "otp-field": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "slider": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "scroll-area": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "select": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "menubar": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "navigation-menu": {
+                "enabled": true,
+                "fetch": "lazy"
+            },
+            "dialog": {
+                "enabled": true,
+                "fetch": "lazy"
             }
         }
     },

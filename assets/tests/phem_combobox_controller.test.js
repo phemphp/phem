@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemComboboxController from "../dist/phem_combobox_controller.js"
-import { mount, nextDone, respond } from "./support.js"
+import { click, mount, nextDone, respond, stubElementReflection } from "./support.js"
 
 let application
 
@@ -131,6 +131,44 @@ describe("phem-combobox", () => {
     expect($("input").getAttribute("aria-activedescendant")).toBe("city-Parma")
     expect($("city-Parma").hasAttribute("data-highlighted")).toBe(true)
     expect($("city-Lyon").getAttribute("aria-selected")).toBe("false")
+  })
+
+  it("gives no id to a list and items with no id, and links them with element references, also after the morph", async () => {
+    const restore = stubElementReflection()
+    try {
+      const plain = (cities) => field(cities).replace('id="list" ', "").replaceAll(/id="city-\w+" /g, "")
+      const item = (name) => [...document.querySelectorAll("[data-phem-combobox-target=item]")].find((el) => el.textContent === name)
+      await mountField(plain([]))
+      respond(plain(["Paris", "Parma"]).replace('id="input"', 'id="input" value="pa"'))
+      let done = nextDone()
+      $("input").focus()
+      $("input").value = "pa"
+      $("input").dispatchEvent(new Event("input", { bubbles: true }))
+      await done
+
+      const list = document.querySelector("[data-phem-combobox-target=list]")
+      expect(list.id).toBe("")
+      expect($("input").ariaControlsElements).toEqual([list])
+
+      press("ArrowDown")
+      press("ArrowDown")
+      expect(item("Parma").id).toBe("")
+      expect($("input").ariaActiveDescendantElement).toBe(item("Parma"))
+
+      respond(plain(["Paris", "Parma"]).replace('id="input"', 'id="input" value="pa"'))
+      done = nextDone()
+      $("refresh").click()
+      await done
+
+      expect(item("Parma").hasAttribute("data-highlighted")).toBe(true)
+      expect($("input").ariaActiveDescendantElement).toBe(item("Parma"))
+      expect(document.querySelectorAll("[data-phem-combobox-target=item][id]").length).toBe(0)
+
+      press("Escape")
+      expect($("input").ariaActiveDescendantElement).toBe(null)
+    } finally {
+      restore()
+    }
   })
 
   it("resets the highlight when the user types", async () => {
@@ -349,5 +387,171 @@ describe("phem-combobox", () => {
 
       expect(event.defaultPrevented).toBe(true)
     })
+  })
+
+  describe("with a client filter", () => {
+    // A list that the server renders one time: the browser filters it.
+    function fruits(attributes = 'data-phem-combobox-filter-value="contains"') {
+      const item = (f) => `<li id="fruit-${f.toLowerCase()}" data-phem-combobox-target="item">${f}</li>`
+
+      return `<div id="combobox" data-controller="phem-combobox" ${attributes}>
+          <input id="input" data-phem-combobox-target="input" aria-label="Fruit" />
+          <div id="popup" data-phem-combobox-target="popup" hidden>
+            <ul id="list" data-phem-combobox-target="list">
+              <li id="red" data-phem-combobox-target="group"><ul>${["Apple", "Cherry"].map(item).join("")}</ul></li>
+              <li id="yellow" data-phem-combobox-target="group"><ul>${["Banana", "Lemon", "Éclair"].map(item).join("")}</ul></li>
+            </ul>
+            <p id="empty" data-phem-combobox-target="empty">No fruit.</p>
+          </div>
+          <button id="refresh" data-phem-on-click="c1.refresh">Refresh</button>
+        </div>`
+    }
+
+    function typeText(text) {
+      $("input").focus()
+      $("input").value = text
+      $("input").dispatchEvent(new Event("input", { bubbles: true }))
+    }
+
+    const visible = () => [...document.querySelectorAll("[data-phem-combobox-target=item]")].filter((el) => !el.hidden).map((el) => el.id)
+
+    it("hides the items that do not contain the text, with no case and no accents", async () => {
+      await mount(fruits())
+      typeText("E")
+
+      expect(visible()).toEqual(["fruit-apple", "fruit-cherry", "fruit-lemon", "fruit-éclair"])
+      expect($("popup").hidden).toBe(false)
+
+      typeText("ecl")
+      expect(visible()).toEqual(["fruit-éclair"])
+      expect($("red").hidden).toBe(true)
+      expect($("yellow").hidden).toBe(false)
+
+      typeText("zz")
+      expect(visible()).toEqual([])
+      expect($("popup").hasAttribute("data-empty")).toBe(true)
+      expect($("empty").hidden).toBe(false)
+
+      typeText("")
+      expect(visible()).toHaveLength(5)
+      expect($("red").hidden).toBe(false)
+    })
+
+    it("matches the start of the label with starts-with, and shows the first matches with limit", async () => {
+      await mount(fruits('data-phem-combobox-filter-value="starts-with" data-phem-combobox-limit-value="1"'))
+      typeText("e")
+
+      expect(visible()).toEqual(["fruit-éclair"])
+
+      typeText("")
+      expect(visible()).toEqual(["fruit-apple"])
+    })
+
+    it("moves the highlight over the visible items only", async () => {
+      await mount(fruits())
+      typeText("an")
+      press("ArrowDown")
+
+      expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-banana")
+
+      press("ArrowDown")
+      expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-banana")
+    })
+
+    it("writes the label of the chosen item in the input, and sends its events", async () => {
+      await mount(fruits())
+      const events = []
+      $("input").addEventListener("input", () => events.push("input"))
+      $("input").addEventListener("change", () => events.push("change"))
+      typeText("che")
+      events.length = 0
+      press("ArrowDown")
+      press("Enter")
+
+      expect($("input").value).toBe("Cherry")
+      expect(events).toEqual(["input", "change"])
+      expect($("popup").hidden).toBe(true)
+      expect($("input").getAttribute("aria-expanded")).toBe("false")
+    })
+
+    it("keeps the filter through the morph of another event", async () => {
+      await mount(fruits())
+      typeText("lem")
+      respond(fruits())
+      const done = nextDone()
+      click("#refresh")
+      await done
+      await Promise.resolve()
+
+      expect(visible()).toEqual(["fruit-lemon"])
+      expect($("yellow").hidden).toBe(false)
+      expect($("red").hidden).toBe(true)
+    })
+
+    it("writes the label of the highlighted item in the input with the both mode, and gives back the text on Escape", async () => {
+      await mount(fruits('data-phem-combobox-filter-value="contains" data-phem-combobox-mode-value="both"'))
+      typeText("a")
+
+      expect($("input").getAttribute("aria-autocomplete")).toBe("both")
+
+      press("ArrowDown")
+      expect($("input").value).toBe("Apple")
+      expect(visible()).toEqual(["fruit-apple", "fruit-banana", "fruit-éclair"])
+
+      press("ArrowDown")
+      expect($("input").value).toBe("Banana")
+
+      press("Escape")
+      expect($("input").value).toBe("a")
+      expect($("popup").hidden).toBe(true)
+    })
+
+    it("sends the text of the user, not the inline completion, for a bound input", async () => {
+      await mount(fruits('data-phem-combobox-filter-value="contains" data-phem-combobox-mode-value="both"').replace('<input id="input"', '<input id="input" data-phem-bind="c1.query" value=""'))
+      typeText("a")
+      press("ArrowDown")
+      expect($("input").value).toBe("Apple")
+
+      respond(fruits('data-phem-combobox-filter-value="contains" data-phem-combobox-mode-value="both"').replace('<input id="input"', '<input id="input" data-phem-bind="c1.query" value="a"'))
+      const done = nextDone()
+      click("#refresh")
+      await done
+
+      expect(JSON.parse(fetch.mock.calls[0][1].body).bound).toEqual({ "c1.query": "a" })
+    })
+
+    it("does not filter with the inline and none modes", async () => {
+      await mount(fruits('data-phem-combobox-filter-value="contains" data-phem-combobox-mode-value="inline"'))
+      typeText("zz")
+
+      expect(visible()).toHaveLength(5)
+
+      press("ArrowDown")
+      expect($("input").value).toBe("Apple")
+    })
+
+    it("does not change the input on a highlight with the none mode, and writes the label on a choice", async () => {
+      await mount(fruits('data-phem-combobox-mode-value="none"'))
+      typeText("x")
+      press("ArrowDown")
+
+      expect($("input").getAttribute("aria-autocomplete")).toBe("none")
+      expect($("input").value).toBe("x")
+
+      $("fruit-lemon").click()
+      expect($("input").value).toBe("Lemon")
+    })
+  })
+
+  it("gives aria-busy to the popup while the input is busy", async () => {
+    await mountField(field(["Paris"]))
+    $("input").setAttribute("aria-busy", "true")
+    await Promise.resolve()
+
+    expect($("popup").getAttribute("aria-busy")).toBe("true")
+
+    $("input").removeAttribute("aria-busy")
+    await Promise.resolve()
+    expect($("popup").hasAttribute("aria-busy")).toBe(false)
   })
 })

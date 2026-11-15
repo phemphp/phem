@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0
+
+- A field with an optional `Bound` prop can have its own `value` or `checked` next to
+  `phem:bind`, with no E033.
+- E068 for a class or a function with a reserved name of PHP (`Switch`, `List`).
+- A call of a method in the markup of a class component (`{{ text() }}`) calls the method of
+  the class. A call of a private method gives E067.
+
 ## 0.7.0
 
 - A named slot tag is now `<Card.footer>`, not `<Card:footer>`: highlighting, completion after

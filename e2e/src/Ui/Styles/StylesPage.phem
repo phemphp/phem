@@ -1,0 +1,27 @@
+<?phem
+
+namespace App\Ui\Styles;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// The default styles of phem.css: a toast part with no class gets the default look, and a part
+// with a class (a utility in a cascade layer) gets its own look.
+#[Page('/styles')]
+final class StylesPage
+{
+    public function render(): Node
+    {
+        return (
+            <Document title="Styles">
+                <style>{{ '@layer utilities { .flat { border-radius: 0; background: rgb(255, 255, 255); } .shown { display: flex; } }' }}</style>
+                <div id="plain" data-phem-toast data-type="success"><span data-phem-toast-description>Saved</span></div>
+                <div id="styled" class="flat" data-phem-toast data-type="success"><span data-phem-toast-description>Saved</span></div>
+                <div id="plain-limited" data-phem-toast data-limited>Old</div>
+                <div id="styled-limited" class="shown" data-phem-toast data-limited>Old</div>
+            </Document>
+        );
+    }
+}

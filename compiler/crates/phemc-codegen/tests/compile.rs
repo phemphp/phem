@@ -1573,3 +1573,52 @@ fn the_command_line_does_not_print_a_hint() {
     assert_eq!(shown(&diags), ["src/Button.phem H001 `$lines` copies `$this->lines`: use `lines` in the markup"]);
     assert_eq!(diags.iter().flat_map(|f| f.printed()).count(), 0);
 }
+
+#[test]
+fn a_call_of_a_method_in_the_markup_of_a_class_calls_the_method() {
+    let src = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class Meter {\n    public int $value = 3;\n    public function text(int $of): string { return \"{$this->value} of {$of}\"; }\n    private function secret(): string { return ''; }\n    public function render() { return <div aria-valuetext={{ text(10) }} title=\"{{ upper(text(5)) }}\">{% if text(1) %}{{ value.text() ~ render(value) ~ value|format(text(2)) }}{% endif %}</div>; }\n}\n";
+    let (out, diags) = compile(vec![SourceInput::app("Meter.phem", src)]);
+
+    let msgs: Vec<String> = diags.iter().flat_map(|f| f.diags.iter().map(|d| format!("{} {}", d.code, d.message))).collect();
+    assert!(msgs.is_empty(), "{msgs:?}");
+    let out = out.expect("output");
+    let twig = &out.files[0].templates[0].content;
+    assert!(twig.contains("this.text(10)"), "{twig}");
+    assert!(twig.contains("upper(this.text(5))"), "a function of Twig stays: {twig}");
+    assert!(twig.contains("{% if this.text(1) %}"), "{twig}");
+    assert!(twig.contains("value.text() ~ render(value) ~ value|format(this.text(2))"), "a member, render() and a filter stay: {twig}");
+    assert!(out.files[0].php.contains("'this' => $this"), "{}", out.files[0].php);
+
+    // Twig calls only a public method.
+    assert_eq!(codes(&src.replace("text(10)", "secret()")), ["E067"]);
+}
+
+#[test]
+fn an_optional_bound_prop_can_have_its_own_value() {
+    let field = |ty: &str, attrs: &str| format!("<?phem\n#[\\Phem\\Attribute\\Component]\nfunction Field({ty} $value = null, string $initial = '') {{ return <input phem:bind={{{{ value }}}} {attrs} />; }}\n");
+
+    let (out, diags) = compile(vec![SourceInput::app("Field.phem", field("?\\Phem\\Bound", "value={{ initial }}"))]);
+    assert!(diags.iter().all(|f| f.diags.is_empty()), "unexpected diagnostics");
+    let twig = &out.expect("output").files[0].templates[0].content;
+    assert!(twig.contains("phem_bind(value, value, 'input', null, null, null, null, (initial))"), "{twig}");
+    assert!(!twig.contains("value=\""), "the runtime renders the value: {twig}");
+
+    let (out, _) = compile(vec![SourceInput::app("Field.phem", field("?\\Phem\\Bound", "type=\"checkbox\" checked aria-describedby=\"help\""))]);
+    let twig = &out.expect("output").files[0].templates[0].content;
+    assert!(twig.contains("phem_bind(value, value, 'input', 'checkbox', null, null, 'help', true)"), "{twig}");
+
+    // A Bound prop that is not optional always binds: the property gives the value.
+    assert_eq!(codes(&field("\\Phem\\Bound", "value={{ initial }}").replace(" = null", "")), ["E033"]);
+}
+
+#[test]
+fn a_class_or_a_function_with_a_reserved_name_is_an_error() {
+    let class = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfinal class Switch {\n    public function render() { return <button>On</button>; }\n}\n";
+    assert_eq!(codes(class), ["E068"]);
+    assert_eq!(codes(&class.replace("class Switch", "class String")), ["E068"], "a type name");
+    assert_eq!(codes(&class.replace("class Switch", "class SwitchRoot")), Vec::<&str>::new());
+
+    let function = "<?phem\nnamespace App;\nuse Phem\\Attribute\\Component;\n#[Component]\nfunction List() { return <ul></ul>; }\n";
+    assert_eq!(codes(function), ["E068"]);
+    assert_eq!(codes(&function.replace("function List", "function String")), Vec::<&str>::new(), "a function can have the name of a type");
+}

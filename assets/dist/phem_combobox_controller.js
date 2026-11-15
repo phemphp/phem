@@ -3,11 +3,10 @@ import { ClientState } from "./phem_client_state.js"
 import { Popup } from "./phem_popup.js"
 import { positionOptions, positionValues } from "./phem_position.js"
 import { isDisabled, nextItem } from "./phem_roving.js"
+import { link } from "./phem_aria.js"
 
-// Each part with no id gets one, for `aria-controls` and `aria-activedescendant`. The morph
-// removes an id that the server render does not have: the part gets the same id again.
-let count = 0
-const ids = new WeakMap()
+// The collators of the client filter, by locale.
+const collators = new Map()
 
 // The `phem-combobox` controller: a text field with a list of suggestions that the server gives,
 // for a search, a city or a user. The list stays open after the morph of an event.
@@ -40,8 +39,9 @@ const ids = new WeakMap()
 //
 // The input gets `role="combobox"`, `aria-autocomplete="list"`, `aria-expanded`, `aria-controls`
 // and `aria-activedescendant`. The list (or the popup, with no list) gets `role="listbox"`, the
-// items `role="option"` and an id, and the highlighted item `aria-selected="true"` and
-// `data-highlighted`. The popup and the list get `data-empty` when there is no item, and the
+// items `role="option"`, and the highlighted item `aria-selected="true"` and `data-highlighted`.
+// A list or an item with no `id` gets no id: the input points to it with an element reference
+// (`ariaControlsElements`, `ariaActiveDescendantElement`). The popup and the list get `data-empty` when there is no item, and the
 // `empty` targets show only then. A `status` target gets `role="status"`: a screen reader reads
 // it (for example "3 results"). The popup is positioned as a `phem-popover` (phem_position.js),
 // below the input by default: use `var(--anchor-width)` for its width.
@@ -54,20 +54,45 @@ const ids = new WeakMap()
 // Backspace or Delete on a chip clicks its `chipRemove`. Backspace in an empty input clicks the
 // `chipRemove` of the last chip. The chips and their `chipRemove` targets get `tabindex="-1"`,
 // and a chosen item gets `data-selected`.
+//
+// With the `filter` value (`contains` or `starts-with`), the browser filters the items that the
+// server rendered one time: an item that does not match the text of the input gets `hidden`, and
+// a `group` target with no visible item too. The match ignores the case and the accents
+// (`Intl.Collator` with the `locale` value, or the language of the page). The label of an item is
+// its `data-label` attribute, or its text. The `limit` value shows only the first matches.
+//
+// The `mode` value is the `aria-autocomplete` of the input: `list` (the default), `both`,
+// `inline` or `none`. With `both` and `inline`, the arrow keys write the label of the highlighted
+// item in the input, and Escape gives back the text of the user. With `inline` and `none`, the
+// client filter is off. With the `filter` value or a `mode` other than `list`, the list belongs to
+// the client: a choice also writes the label of the item in the input, and sends its `input` and
+// `change` events. The text of an input with no `phem:bind` then stays through the morph.
+//
+// While an event of phem runs, the input gets `aria-busy` (see the loading state of phem): the
+// popup gets it too.
 export default class PhemComboboxController extends Controller {
-  static targets = ["input", "trigger", "clear", "popup", "list", "item", "empty", "status", "chip", "chipRemove"]
+  static targets = ["input", "trigger", "clear", "popup", "list", "item", "group", "empty", "status", "chip", "chipRemove"]
   static values = {
     autoHighlight: Boolean,
     multiple: Boolean,
     loopFocus: { type: Boolean, default: true },
+    filter: String,
+    mode: { type: String, default: "list" },
+    limit: { type: Number, default: -1 },
+    locale: String,
     ...positionValues("bottom", "start"),
   }
 
   initialize() {
     // The user wants the popup: they typed, or pressed an arrow key.
     this.wanted = false
-    // The id of the highlighted item: it stays through the morph.
-    this.activeId = null
+    // The highlighted item. It stays through the morph: the same element, or an item with its id.
+    this.highlighted = null
+    // The text of the user while the input shows the label of the highlighted item (an inline
+    // `mode`), or null.
+    this.typed = null
+    // The items and the groups that the client filter hid.
+    this.filtered = new WeakSet()
     this.popup = new Popup({
       anchor: () => (this.hasInputTarget ? this.inputTarget : null),
       popup: () => (this.hasPopupTarget ? this.popupTarget : null),
@@ -96,6 +121,12 @@ export default class PhemComboboxController extends Controller {
     this.element.addEventListener("pointerover", this.onPointerOver, options)
     this.element.addEventListener("focusout", this.onFocusOut, options)
 
+    // The loading state of phem on the input goes to the popup.
+    this.busy = new MutationObserver((records) => {
+      if (records.some((record) => record.target === this.#input)) this.#render()
+    })
+    this.busy.observe(this.element, { attributes: true, attributeFilter: ["aria-busy"], subtree: true })
+
     this.popup.render(false)
     this.#render()
   }
@@ -103,6 +134,7 @@ export default class PhemComboboxController extends Controller {
   disconnect() {
     this.state.disconnect()
     this.listening.abort()
+    this.busy.disconnect()
     this.popup.destroy()
   }
 
@@ -136,10 +168,12 @@ export default class PhemComboboxController extends Controller {
   }
 
   onInput = (event) => {
-    if (event.target !== this.#input) return
+    if (event.target !== this.#input || this.filling) return
 
+    this.typed = null
+    delete event.target.phemValue
     this.wanted = true
-    this.activeId = null
+    this.highlighted = null
     this.#render()
   }
 
@@ -163,7 +197,9 @@ export default class PhemComboboxController extends Controller {
       this.wanted = true
       const items = this.#items
       const current = opening ? null : this.#active
-      this.#highlight(nextItem(items, current, event.key, { loop: this.loopFocusValue }) ?? current)
+      const next = nextItem(items, current, event.key, { loop: this.loopFocusValue }) ?? current
+      this.#highlight(next)
+      this.#complete(next)
 
       return
     }
@@ -198,7 +234,10 @@ export default class PhemComboboxController extends Controller {
       // A choice of more than one item keeps the popup open, with its highlight.
       if (!this.multipleValue) {
         this.wanted = false
-        this.activeId = null
+        this.highlighted = null
+        this.typed = null
+        if (this.#input) delete this.#input.phemValue
+        if (this.#clientList) this.#fill(this.#labelOf(item))
       }
 
       this.#render()
@@ -296,8 +335,42 @@ export default class PhemComboboxController extends Controller {
     if (!this.wanted && !this.popup.open) return
 
     this.wanted = false
-    this.activeId = null
+    this.highlighted = null
+    this.#complete(null)
     this.#render()
+  }
+
+  // An inline `mode`: the input shows the label of the highlighted item, or the text of the user
+  // again when no item has the highlight.
+  #complete(item) {
+    const input = this.#input
+    if (!input || (this.modeValue !== "both" && this.modeValue !== "inline")) return
+
+    // phem sends the text of the user for a bound input, not the label (see phem_fields.js).
+    if (item) {
+      this.typed ??= input.value
+      input.phemValue = this.typed
+      input.value = this.#labelOf(item)
+    } else if (this.typed !== null) {
+      input.value = this.typed
+      this.typed = null
+      delete input.phemValue
+    }
+  }
+
+  // Writes a value in the input and sends its events, as when the user types it.
+  #fill(value) {
+    const input = this.#input
+    if (!input) return
+
+    this.filling = true
+    try {
+      input.value = value
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+      input.dispatchEvent(new Event("change", { bubbles: true }))
+    } finally {
+      this.filling = false
+    }
   }
 
   // An empty input sends its event, as when the user deletes the text.
@@ -310,7 +383,7 @@ export default class PhemComboboxController extends Controller {
   }
 
   #highlight(item) {
-    this.activeId = item ? this.#idOf(item) : null
+    this.highlighted = item ?? null
     this.#render()
     item?.scrollIntoView?.({ block: "nearest" })
   }
@@ -325,8 +398,65 @@ export default class PhemComboboxController extends Controller {
     })
   }
 
+  // The client filter: the items that do not match the text of the user get `hidden`, and the
+  // groups with no visible item too.
+  #filter() {
+    const filtering = this.#filtering
+    const query = (this.typed ?? this.#input?.value ?? "").trim()
+
+    // The same text and the same items (a highlight, an arrow key): the filter stays.
+    const items = this.itemTargets
+    const last = this.lastFilter
+    const same = last && last.filtering === filtering && last.query === query && last.limit === this.limitValue && last.items.length === items.length && last.items.every((el, i) => el === items[i] && el.hidden === last.hidden[i])
+    if (same) return
+
+    const matches = filtering ? this.#matcher() : null
+    let shown = 0
+
+    for (const item of this.itemTargets) {
+      const match = !filtering || ((query === "" || matches(this.#labelOf(item), query)) && (this.limitValue < 0 || shown < this.limitValue))
+      if (match && filtering) shown++
+      this.#hide(item, !match)
+    }
+
+    for (const group of this.groupTargets) {
+      const inGroup = items.filter((el) => group.contains(el))
+      this.#hide(group, filtering && inGroup.length > 0 && inGroup.every((el) => el.hidden))
+    }
+
+    this.lastFilter = { filtering, query, limit: this.limitValue, items, hidden: items.map((el) => el.hidden) }
+  }
+
+  // Hides or shows a part. The client shows again only the parts that it hid.
+  #hide(el, hide) {
+    if (hide) {
+      if (!el.hidden) this.filtered.add(el)
+      el.hidden = true
+    } else if (this.filtered.has(el)) {
+      this.filtered.delete(el)
+      el.hidden = false
+    }
+  }
+
+  #matcher() {
+    const locale = this.localeValue || document.documentElement.lang || ""
+    if (!collators.has(locale)) collators.set(locale, new Intl.Collator(locale || undefined, { usage: "search", sensitivity: "base" }))
+    const collator = collators.get(locale)
+    const same = (a, b) => collator.compare(a, b) === 0
+
+    if (this.filterValue === "starts-with") return (text, query) => same(text.slice(0, query.length), query)
+
+    return (text, query) => {
+      for (let at = 0; at + query.length <= text.length; at++) if (same(text.slice(at, at + query.length), query)) return true
+
+      return false
+    }
+  }
+
   // The state: the open popup, the highlight and the ARIA attributes.
   #render() {
+    this.#filter()
+
     const input = this.#input
     const list = this.listTargets[0] ?? this.popupTargets[0] ?? null
     const items = this.#items
@@ -334,7 +464,6 @@ export default class PhemComboboxController extends Controller {
 
     if (list) {
       if (!list.hasAttribute("role")) list.setAttribute("role", "listbox")
-      if (!list.id) list.id = this.listId ??= `phem-combobox-${++count}`
       if (this.multipleValue) list.setAttribute("aria-multiselectable", "true")
     }
 
@@ -345,14 +474,20 @@ export default class PhemComboboxController extends Controller {
     for (const el of this.emptyTargets) el.hidden = !empty
     for (const el of this.statusTargets) if (!el.hasAttribute("role")) el.setAttribute("role", "status")
 
-    // The highlight stays on the item with the same id, or goes to the first item.
-    let active = items.find((el) => el.id === this.activeId && !isDisabled(el)) ?? null
+    const busy = input?.getAttribute("aria-busy") === "true"
+    for (const el of this.popupTargets) {
+      if (busy && el.getAttribute("aria-busy") !== "true") el.setAttribute("aria-busy", "true")
+      else if (!busy) el.removeAttribute("aria-busy")
+    }
+
+    // The highlight stays on the same item, or goes to the first item.
+    let active = this.#active
+    if (active && isDisabled(active)) active = null
     if (!active && this.autoHighlightValue && this.wanted) active = nextItem(items, null, "Home") ?? null
-    this.activeId = active?.id ?? null
+    this.highlighted = active
 
     for (const item of items) {
       if (!item.hasAttribute("role")) item.setAttribute("role", "option")
-      this.#idOf(item)
       item.toggleAttribute("data-highlighted", item === active)
       item.toggleAttribute("data-disabled", isDisabled(item))
 
@@ -372,12 +507,11 @@ export default class PhemComboboxController extends Controller {
 
     if (input) {
       if (!input.hasAttribute("role")) input.setAttribute("role", "combobox")
-      if (!input.hasAttribute("aria-autocomplete")) input.setAttribute("aria-autocomplete", "list")
+      if (!input.hasAttribute("aria-autocomplete")) input.setAttribute("aria-autocomplete", this.modeValue)
       if (!input.hasAttribute("autocomplete")) input.setAttribute("autocomplete", "off")
-      if (list && !input.hasAttribute("aria-controls")) input.setAttribute("aria-controls", list.id)
+      if (list) link(input, "aria-controls", "ariaControlsElements", list)
       input.setAttribute("aria-expanded", String(open))
-      if (active && open) input.setAttribute("aria-activedescendant", active.id)
-      else input.removeAttribute("aria-activedescendant")
+      activeDescendant(input, open ? active : null)
       input.toggleAttribute("data-popup-open", open)
     }
 
@@ -386,21 +520,33 @@ export default class PhemComboboxController extends Controller {
 
   // The attributes of the state.
   #owns(el, name) {
+    if (this.popupTargets.includes(el) && name === "aria-busy") return true
     if (this.popup.owns(el, name)) return true
-    if (el === this.#input) return ["aria-expanded", "aria-activedescendant", "data-popup-open"].includes(name)
+    if (name === "hidden" && this.filtered.has(el)) return true
+    if (el === this.#input) {
+      // A client list: the text of an input with no `phem:bind` belongs to the client.
+      if (name === "value" && this.#clientList && !el.hasAttribute("data-phem-bind")) return true
+
+      return ["aria-expanded", "aria-activedescendant", "data-popup-open"].includes(name)
+    }
     if (this.itemTargets.includes(el)) return (name === "aria-selected" && !this.multipleValue) || name === "data-highlighted"
     if (this.emptyTargets.includes(el)) return name === "hidden"
 
     return false
   }
 
-  #idOf(item) {
-    if (item.id) return item.id
+  // The browser filters the items: the `filter` value, with no inline `mode`.
+  get #filtering() {
+    return this.filterValue !== "" && this.modeValue !== "inline" && this.modeValue !== "none"
+  }
 
-    if (!ids.has(item)) ids.set(item, `phem-combobox-option-${++count}`)
-    item.id = ids.get(item)
+  // The list belongs to the client: a choice writes the label of the item in the input.
+  get #clientList() {
+    return this.filterValue !== "" || this.modeValue !== "list"
+  }
 
-    return item.id
+  #labelOf(item) {
+    return (item.getAttribute("data-label") ?? item.textContent).trim()
   }
 
   get #input() {
@@ -412,7 +558,10 @@ export default class PhemComboboxController extends Controller {
   }
 
   get #active() {
-    return this.#items.find((el) => el.id === this.activeId) ?? null
+    const highlighted = this.highlighted
+    if (!highlighted) return null
+
+    return this.#items.find((el) => el === highlighted || (highlighted.id !== "" && el.id === highlighted.id)) ?? null
   }
 
   #itemOf(el) {
@@ -430,4 +579,12 @@ export default class PhemComboboxController extends Controller {
   get #rtl() {
     return getComputedStyle(this.element).direction === "rtl"
   }
+}
+
+// The `aria-activedescendant` of the input: the id of the item, or an element reference when the
+// item has no id. No item removes it.
+function activeDescendant(input, item) {
+  if (!item) input.removeAttribute("aria-activedescendant")
+  else if (item.id) input.setAttribute("aria-activedescendant", item.id)
+  else if ("ariaActiveDescendantElement" in input && input.ariaActiveDescendantElement !== item) input.ariaActiveDescendantElement = item
 }

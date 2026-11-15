@@ -51,7 +51,7 @@ A tag renders a component: `<MyButton />` or `<Counter label="Clicks" />`. The c
 
 A function without `#[Component]` is a plain PHP function. PHP code can call it, but a tag can’t use it (E010).
 
-In the markup of a class, a name resolves to a local variable, then a property, then a method. Properties and methods of a parent class and of its traits resolve too. For when to use a class, see [Components and state](components.md).
+In the markup of a class, a name resolves to a local variable, then a property, then a method. Properties and methods of a parent class and of its traits resolve too. A call of a name calls the method of the class: `aria-valuetext={{ text(value) }}` calls `$this->text($value)` during the render, and so does `{% if canEdit() %}`. The method must be public (E067). A method hides a Twig function with the same name, but `render()` stays the function of Symfony. In a handler, a call is the handler with its arguments: `onClick={{ remove(item) }}` calls `remove()` on the click, not during the render. For when to use a class, see [Components and state](components.md).
 
 ## Markup literals
 

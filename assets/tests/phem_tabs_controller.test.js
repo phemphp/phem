@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemTabsController from "../dist/phem_tabs_controller.js"
-import { click, mount, nextDone, respond } from "./support.js"
+import { answer, click, mount, nextDone, respond } from "./support.js"
 
 let application
 
@@ -76,7 +76,7 @@ describe("phem-tabs", () => {
     click("#tab-b")
 
     expect(selected()).toBe("b")
-    expect(document.getElementById("tabs").getAttribute("data-phem-tabs-index-value")).toBe("1")
+    expect(document.getElementById("tabs").getAttribute("data-phem-tabs-active-value")).toBe("1")
   })
 
   it("sets the data attributes of the parts", async () => {
@@ -225,7 +225,7 @@ describe("phem-tabs", () => {
     await morphOnSave()
 
     expect(selected()).toBe("c")
-    expect(document.getElementById("tabs").getAttribute("data-phem-tabs-index-value")).toBe("2")
+    expect(document.getElementById("tabs").getAttribute("data-phem-tabs-active-value")).toBe("2")
     expect(document.getElementById("list").getAttribute("role")).toBe("tablist")
     expect(document.getElementById("tab-c").getAttribute("aria-controls")).toBe("panel-c")
     expect(document.getElementById("panel-c").getAttribute("aria-labelledby")).toBe("tab-c")
@@ -249,28 +249,129 @@ describe("phem-tabs", () => {
     expect(document.getElementById("panel-a").tabIndex).toBe(-1)
   })
 
-  it("selects the tab of the index value of the server render", async () => {
-    await mount(tabs('data-phem-tabs-index-value="1"'))
+  it("selects the tab of the active value of the server render", async () => {
+    await mount(tabs('data-phem-tabs-active-value="1"'))
 
     expect(selected()).toBe("b")
   })
 
-  it("selects the tab of the index value of a new server render", async () => {
-    await mount(tabs('data-phem-tabs-index-value="0"'))
-    respond(tabs('data-phem-tabs-index-value="1"'))
+  it("selects the tab of the active value of a new server render", async () => {
+    await mount(tabs('data-phem-tabs-active-value="0"'))
+    respond(tabs('data-phem-tabs-active-value="1"'))
     click("#tab-c")
     await morphOnSave()
 
     expect(selected()).toBe("b")
   })
 
-  it("selects the last tab when the server render has less tabs", async () => {
+  it("keeps a tab that the user selected after the request of the answer left", async () => {
+    await mount(tabs())
+    click("#tab-b")
+
+    // The answer of the server comes after a second click.
+    let resolve
+    fetch.mockImplementationOnce(() => new Promise((r) => (resolve = r)))
+    const done = nextDone()
+    click("#save")
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalled())
+    click("#tab-c")
+    resolve(new Response(JSON.stringify(answer(tabs('data-phem-tabs-active-value="1"'))), { status: 200, headers: { "Content-Type": "application/json" } }))
+    await done
+
+    expect(selected()).toBe("c")
+
+    // A new value of the server still sets the state.
+    respond(tabs('data-phem-tabs-active-value="0"'))
+    await morphOnSave()
+    expect(selected()).toBe("a")
+  })
+
+  it("takes the value of the answer to an event of the same click", async () => {
+    // A tab with a handler: the server keeps the first tab.
+    const markup = (attributes) => tabs(attributes).replace('<button id="tab-b" data-phem-tabs-target="tab">', '<button id="tab-b" data-phem-tabs-target="tab" data-phem-on-click="c1.pick">')
+    await mount(markup(""))
+    respond(markup('data-phem-tabs-active-value="0"'))
+    const done = nextDone()
+    click("#tab-b")
+    await done
+
+    expect(selected()).toBe("a")
+  })
+
+  it("selects the first tab when the server render has no tab with the active value", async () => {
     await mount(tabs())
     respond(tabs("", "", ["a", "b"]))
     click("#tab-c")
     await morphOnSave()
 
+    expect(selected()).toBe("a")
+  })
+
+  it("selects the first tab that is not disabled with no active value", async () => {
+    await mount(tabs().replace('id="tab-a"', 'id="tab-a" disabled'))
+
     expect(selected()).toBe("b")
+  })
+
+  describe("with values", () => {
+    // The tabs and the panels have a value and no id. The panels are in another order.
+    function valued(attributes = "") {
+      return `<div id="tabs" data-controller="phem-tabs" ${attributes}>
+          <div data-phem-tabs-target="list">
+            <button class="tab" data-phem-tabs-target="tab" data-value="profile">Profile</button>
+            <button class="tab" data-phem-tabs-target="tab" data-value="security">Security</button>
+          </div>
+          <div class="panel" data-phem-tabs-target="panel" data-value="security">Security panel</div>
+          <div class="panel" data-phem-tabs-target="panel" data-value="profile">Profile panel</div>
+          <button id="save" data-phem-on-click="c1.save">Save</button>
+        </div>`
+    }
+
+    const tabEls = () => [...document.querySelectorAll(".tab")]
+    const panelEls = () => [...document.querySelectorAll(".panel")]
+
+    it("shows the panel with the value of the selected tab, and keeps the value in the active value", async () => {
+      await mount(valued())
+
+      expect(panelEls().map((el) => el.hidden)).toEqual([true, false])
+
+      tabEls()[1].click()
+      expect(document.getElementById("tabs").getAttribute("data-phem-tabs-active-value")).toBe("security")
+      expect(panelEls().map((el) => el.hidden)).toEqual([false, true])
+    })
+
+    it("selects the tab of the active value, also after a new server render", async () => {
+      await mount(valued('data-phem-tabs-active-value="security"'))
+
+      expect(tabEls()[1].getAttribute("aria-selected")).toBe("true")
+
+      respond(valued('data-phem-tabs-active-value="profile"'))
+      await morphOnSave()
+      expect(tabEls()[0].getAttribute("aria-selected")).toBe("true")
+    })
+
+    it("gives no id to a tab or a panel", async () => {
+      await mount(valued())
+
+      expect(tabEls().every((el) => !el.id)).toBe(true)
+      expect(panelEls().every((el) => !el.id)).toBe(true)
+    })
+
+    it("links a tab and its panel with element references when they have no id", async () => {
+      const proto = Element.prototype
+      const set = (name) => Object.defineProperty(proto, name, { configurable: true, get() { return this[`_${name}`] ?? null }, set(v) { this[`_${name}`] = v } })
+      set("ariaControlsElements")
+      set("ariaLabelledByElements")
+      try {
+        await mount(valued())
+
+        expect(tabEls()[0].ariaControlsElements).toEqual([panelEls()[1]])
+        expect(panelEls()[0].ariaLabelledByElements).toEqual([tabEls()[1]])
+      } finally {
+        delete proto.ariaControlsElements
+        delete proto.ariaLabelledByElements
+      }
+    })
   })
 
   it("gives a tab that the morph adds the state", async () => {

@@ -331,7 +331,7 @@ fn emit_file(input: &SourceInput, lexed: &Lexed, info: &FileInfo, reg: &Registry
 
         // A bound field or component (`phem:bind`), an error (`phem:error`) and a feed (`phem:feed`)
         // give their component to the runtime.
-        if class.is_some() && (content.contains("phem_bind(") || content.contains("phem_bound(") || content.contains("phem_error(") || content.contains("phem_feed(")) && !vars.iter().any(|v| v.starts_with("'this' =>")) {
+        if class.is_some() && (lowerer.calls_methods || content.contains("phem_bind(") || content.contains("phem_bound(") || content.contains("phem_error(") || content.contains("phem_feed(")) && !vars.iter().any(|v| v.starts_with("'this' =>")) {
             vars.push("'this' => $this".to_string());
         }
         let newlines = m.span.text(src).matches('\n').count();

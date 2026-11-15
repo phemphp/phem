@@ -3,11 +3,6 @@ import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
 import { PhemStorage } from "./phem_storage.js"
 import { hide, measure, render, show } from "./phem_transition.js"
 
-// Each controller has a prefix for the id of a panel with no id (for `aria-controls`). The morph
-// removes an id that the server render does not have, or replaces the panel: the panel at the same
-// position gets the same id again.
-let count = 0
-
 // The triggers whose `aria-controls` the controller set.
 const controlled = new WeakSet()
 
@@ -25,7 +20,8 @@ const controlled = new WeakSet()
 // The `open` value is the state: the server render gives its first value, and a server render
 // with a new `open` value sets it. The controller element and the panels get `data-open` or
 // `data-closed`; see phem_transition.js for the animations. A trigger gets `aria-expanded`,
-// `aria-controls` and `data-panel-open`. A panel gets the `--collapsible-panel-height` and
+// `aria-controls` and `data-panel-open`. A panel with no `id` gets no id: the trigger points to the
+// panels with element references (`ariaControlsElements`). A panel gets the `--collapsible-panel-height` and
 // `--collapsible-panel-width` CSS variables (the size of its content), for a transition of its
 // height:
 //
@@ -160,21 +156,12 @@ export default class PhemCollapsibleController extends Controller {
     this.element.toggleAttribute("data-open", open)
     this.element.toggleAttribute("data-closed", !open)
 
-    this.prefix ??= `phem-collapsible-${++count}`
-    const ids = this.panelTargets.map((panel, i) => {
-      if (!panel.id) panel.id = `${this.prefix}-${i}`
-
-      return panel.id
-    })
-
-    for (const panel of this.panelTargets) if (open) measure(panel, "collapsible")
+    const panels = this.panelTargets
+    for (const panel of panels) if (open) measure(panel, "collapsible")
 
     for (const trigger of this.triggerTargets) {
       // The server render can give its own `aria-controls`.
-      if (ids.length > 0 && (!trigger.hasAttribute("aria-controls") || controlled.has(trigger))) {
-        trigger.setAttribute("aria-controls", ids.join(" "))
-        controlled.add(trigger)
-      }
+      if (panels.length > 0 && (!trigger.hasAttribute("aria-controls") || controlled.has(trigger)) && controls(trigger, panels)) controlled.add(trigger)
 
       trigger.setAttribute("aria-expanded", String(open))
       trigger.toggleAttribute("data-panel-open", open)
@@ -216,4 +203,21 @@ export default class PhemCollapsibleController extends Controller {
 
     return false
   }
+}
+
+// Points the `aria-controls` of the trigger to the panels: with their ids, or with element
+// references when a panel has no id. The morph removes an id that the server render does not
+// have, so the controller gives no id. Returns false when the browser has no element references.
+function controls(trigger, panels) {
+  if (panels.every((panel) => panel.id)) {
+    trigger.setAttribute("aria-controls", panels.map((panel) => panel.id).join(" "))
+
+    return true
+  }
+
+  if (!("ariaControlsElements" in trigger)) return false
+
+  trigger.ariaControlsElements = panels
+
+  return true
 }

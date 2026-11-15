@@ -1,0 +1,46 @@
+<?phem
+
+namespace App\Ui\ScrollArea;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// A scroll area with a tall content, a vertical scrollbar and a horizontal scrollbar that has no
+// overflow, and a button that sends an event.
+#[Page('/scroll-area')]
+final class ScrollAreaPage
+{
+    #[State] public int $saves = 0;
+
+    public function save(): void
+    {
+        ++$this->saves;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Scroll area">
+                <div id="area" data-controller="phem-scroll-area" style="width: 200px; height: 100px">
+                    <div id="viewport" data-phem-scroll-area-target="viewport" style="height: 100%">
+                        <div id="content" data-phem-scroll-area-target="content" style="height: 500px">
+                            <p style="margin: 0">First line</p>
+                            <p style="margin: 420px 0 0">Last line</p>
+                        </div>
+                    </div>
+                    <div id="vbar" data-phem-scroll-area-target="scrollbar" data-orientation="vertical" style="width: 10px">
+                        <div id="vthumb" data-phem-scroll-area-target="thumb" style="background: black"></div>
+                    </div>
+                    <div id="hbar" data-phem-scroll-area-target="scrollbar" data-orientation="horizontal" style="height: 10px">
+                        <div id="hthumb" data-phem-scroll-area-target="thumb"></div>
+                    </div>
+                    <div id="corner" data-phem-scroll-area-target="corner"></div>
+                </div>
+                <button id="save" onClick={{ save }}>Save</button>
+                <output id="saves">{{ saves }}</output>
+            </Document>
+        );
+    }
+}

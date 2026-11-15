@@ -1,0 +1,45 @@
+<?phem
+
+namespace App\Ui\ToggleGroup;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// A toggle group of buttons, a toggle group with `multiple` and `phem-toggle` items, and a
+// button that sends an event.
+#[Page('/toggle-group')]
+final class ToggleGroupPage
+{
+    #[State] public int $saves = 0;
+
+    public function save(): void
+    {
+        ++$this->saves;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Toggle group">
+                <div id="align" data-controller="phem-toggle-group" data-phem-toggle-group-value-value={{ ['left']|json_encode }} aria-label="Alignment">
+                    <button id="left" type="button" data-phem-toggle-group-target="item" data-value="left">Left</button>
+                    <button id="center" type="button" data-phem-toggle-group-target="item" data-value="center">Center</button>
+                    <button id="justify" type="button" data-phem-toggle-group-target="item" data-value="justify" disabled>Justify</button>
+                    <button id="right" type="button" data-phem-toggle-group-target="item" data-value="right">Right</button>
+                </div>
+
+                <div id="style" data-controller="phem-toggle-group" data-phem-toggle-group-multiple-value="true"
+                     data-phem-toggle-group-orientation-value="vertical" aria-label="Style">
+                    <button id="bold" type="button" data-controller="phem-toggle" data-phem-toggle-group-target="item" data-value="bold">Bold</button>
+                    <button id="italic" type="button" data-controller="phem-toggle" data-phem-toggle-group-target="item" data-value="italic">Italic</button>
+                    <button id="underline" type="button" data-controller="phem-toggle" data-phem-toggle-group-target="item" data-value="underline">Underline</button>
+                </div>
+
+                <button id="save" onClick={{ save }}>Save</button>
+                <output id="saves">{{ saves }}</output>
+            </Document>
+        );
+    }
+}

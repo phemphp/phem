@@ -46,6 +46,9 @@ pub struct Lowerer<'a> {
     errors: usize,
     /// While the attributes of a bound field lower: phem_bind() writes its `aria-describedby`.
     skip_described_by: bool,
+    /// While the attributes of a bound field with an optional Bound prop lower: phem_bind() writes
+    /// its `value` or `checked`.
+    skip_owned: Option<&'static str>,
     /// The variables that the Twig tags around the current node bind (`{% for x in %}`, `{% set x %}`).
     twig_bound: Vec<String>,
     /// The number of open `{% for %}` bodies.
@@ -54,11 +57,15 @@ pub struct Lowerer<'a> {
     in_feed_item: bool,
     /// The feeds of the markup that have an element: a second element has the same id.
     feeds: HashSet<String>,
+    /// The markup calls a method of the class (`text()` → `this.text()`), so it reads `this`.
+    pub calls_methods: bool,
+    /// While the value of a handler lowers (see `handler_expr_code()`).
+    in_handler: bool,
 }
 
 impl<'a> Lowerer<'a> {
     pub fn new(info: &'a FileInfo, reg: &'a Registry, enums: &'a Enums, replacements: &'a Replacements) -> Self {
-        Self { info, reg, enums, replacements, classes: ClassNames::new(info, reg, enums), owner: None, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, dynamics: 0, errors: 0, skip_described_by: false, twig_bound: vec![], loops: 0, in_feed_item: false, feeds: HashSet::new() }
+        Self { info, reg, enums, replacements, classes: ClassNames::new(info, reg, enums), owner: None, diags: vec![], slots: vec![], slots_defined: HashSet::new(), title_scopes: 0, components: 0, class: None, scope_text: "", params: &[], bound_select: None, dynamics: 0, errors: 0, skip_described_by: false, skip_owned: None, twig_bound: vec![], loops: 0, in_feed_item: false, feeds: HashSet::new(), calls_methods: false, in_handler: false }
     }
 
     pub fn lower_root(&mut self, node: &Node, slots: Vec<String>) -> String {
@@ -66,6 +73,7 @@ impl<'a> Lowerer<'a> {
         self.slots_defined.clear();
         self.twig_bound.clear();
         self.feeds.clear();
+        self.calls_methods = false;
         let mut out = String::new();
         self.node(node, &mut out);
         out
@@ -82,7 +90,8 @@ impl<'a> Lowerer<'a> {
     fn twig(&mut self, code: &str, base: usize, bound: &[String]) -> String {
         let bound = [self.twig_bound.as_slice(), bound].concat();
         let mut diags = Vec::new();
-        let code = self.classes.rewrite(code, base, &bound, &mut diags);
+        let rewritten = self.classes.rewrite(code, base, &bound, &mut diags);
+        let code = self.method_calls(code, rewritten, base, &bound, &mut diags);
 
         for d in diags {
             if !self.diags.iter().any(|e| e.code == d.code && e.span == d.span) {
@@ -91,6 +100,81 @@ impl<'a> Lowerer<'a> {
         }
 
         code
+    }
+
+    /// In the markup of a class, a call of a name that is a method of the class (`text()`) calls
+    /// the method: `this.text()`. Twig has no function with this name. A method of the class
+    /// hides a Twig function with the same name, as a property hides a Twig global, but not
+    /// `render()`: the class renders itself, so `render()` stays the function of Symfony. E067:
+    /// Twig calls only a public method. `original` is the code before the class names changed.
+    fn method_calls(&mut self, original: &str, code: String, base: usize, bound: &[String], diags: &mut Vec<Diagnostic>) -> String {
+        let Some(class) = self.class else { return code };
+
+        let is_method = |name: &str| !name.eq_ignore_ascii_case("render") && !bound.iter().any(|b| b == name) && class.has_method(name);
+        let callee = (self.in_handler && phemc_twig_scan::split_call(original.trim()).is_some()).then(|| original.len() - original.trim_start().len());
+        for call in phemc_twig_scan::function_calls(original) {
+            if Some(call.offset) == callee {
+                continue;
+            }
+
+            let private = class.methods.iter().any(|m| m.name.eq_ignore_ascii_case(&call.name) && m.is_private);
+            if is_method(&call.name) && private {
+                let span = Span::new(base + call.offset, base + call.offset + call.name.len());
+                diags.push(
+                    Diagnostic::error(codes::PRIVATE_METHOD_CALL, format!("`{}()` is a private method", call.name), span)
+                        .with_label("Twig cannot call it")
+                        .with_help("make the method public, or call it in PHP before the `return` and give the value to the markup"),
+                );
+            }
+        }
+
+        // The callee of a handler call stays: `remove(item)` is the handler with its arguments.
+        let callee = (self.in_handler && phemc_twig_scan::split_call(code.trim()).is_some()).then(|| code.len() - code.trim_start().len());
+
+        let mut out = String::new();
+        let mut at = 0;
+        for call in phemc_twig_scan::function_calls(&code) {
+            if !is_method(&call.name) || Some(call.offset) == callee {
+                continue;
+            }
+
+            out.push_str(&code[at..call.offset]);
+            out.push_str("this.");
+            at = call.offset;
+            self.calls_methods = true;
+        }
+
+        out.push_str(&code[at..]);
+
+        out
+    }
+
+    /// The raw text of a quoted attribute, with the method calls of its expressions (see
+    /// `method_calls()`): `title="{{ text() }}"` → `title="{{ this.text() }}"`.
+    fn quoted_method_calls(&mut self, raw: &str, parts: &[StrPart]) -> String {
+        if self.class.is_none() {
+            return raw.to_string();
+        }
+
+        let mut out = String::new();
+        let mut at = 0;
+        for p in parts {
+            let StrPart::Expr(x) = p else { continue };
+            let code = x.code();
+            let Some(found) = raw[at..].find(code.as_str()) else { continue };
+
+            let mut diags = Vec::new();
+            let bound = self.twig_bound.clone();
+            let lowered = self.method_calls(&code, code.clone(), x.span.start, &bound, &mut diags);
+            self.diags.extend(diags);
+            out.push_str(&raw[at..at + found]);
+            out.push_str(&lowered);
+            at += found + code.len();
+        }
+
+        out.push_str(&raw[at..]);
+
+        out
     }
 
     fn nodes(&mut self, nodes: &[Node], out: &mut String) {
@@ -255,11 +339,13 @@ impl<'a> Lowerer<'a> {
             }
         } else {
             self.skip_described_by = bind.is_some();
+            self.skip_owned = bind.as_ref().and_then(|b| b.owned);
             for a in &e.attrs {
                 self.dom_attr(a, out);
             }
 
             self.skip_described_by = false;
+            self.skip_owned = None;
             if let Some(err) = &error {
                 out.push_str(&format!(" id=\"{{{{ {}.id }}}}\"", err.var));
             }
@@ -270,7 +356,11 @@ impl<'a> Lowerer<'a> {
         }
 
         if let Some(b) = &bind {
-            let extra = described_by.map_or(String::new(), |d| format!(", {d}"));
+            let extra = match (&described_by, &b.fallback) {
+                (_, Some(f)) => format!(", {}, {f}", described_by.as_deref().unwrap_or("null")),
+                (Some(d), None) => format!(", {d}"),
+                (None, None) => String::new(),
+            };
             out.push_str(&format!(" {{{{ {}{extra}) }}}}", b.call));
         }
 
@@ -694,6 +784,16 @@ impl<'a> Lowerer<'a> {
         out.push_str(&format!("{{% endapply{} %}}{{% endfor %}}{{{{ phem_feed_end({name}) }}}}", "\n".repeat(after)));
     }
 
+    /// The code of a handler value: a call of a method (`remove(item)`) is the handler with its
+    /// arguments, so it stays a call of the name (see `handler_code()`).
+    fn handler_expr_code(&mut self, x: &TwigExpr) -> String {
+        let in_handler = std::mem::replace(&mut self.in_handler, true);
+        let code = self.expr_code(x);
+        self.in_handler = in_handler;
+
+        code
+    }
+
     fn expr_code(&mut self, x: &TwigExpr) -> String {
         if x.has_markup() {
             self.error(codes::MARKUP_IN_EXPRESSION, "markup is not allowed in an attribute value", x.span)
@@ -891,7 +991,7 @@ impl<'a> Lowerer<'a> {
 
                     let v = match value {
                         AttrValue::Expr(x) => {
-                            let c = self.expr_code(x);
+                            let c = if takes_fn { self.handler_expr_code(x) } else { self.expr_code(x) };
                             if takes_fn {
                                 self.check_handler(name, &c, x.span);
                                 format!("({})", handler_code(&c))
@@ -1275,9 +1375,22 @@ impl<'a> Lowerer<'a> {
             _ => None,
         };
 
-        if let Some((s, _)) = owned.and_then(attr) {
-            self.error(codes::INVALID_BIND, format!("`{}` and `phem:bind` cannot be on the same element", owned.unwrap()), s).help =
-                Some("`phem:bind` sets it from the property: remove it".into());
+        // An optional Bound prop (`?Bound $value = null`): with no `phem:bind` on the tag of the
+        // component, the field is a plain field, so it can have its own `value` or `checked`. The
+        // runtime renders it only for a null prop.
+        let optional = matches!(&target, BindTarget::Bound(name) if self.is_optional_bound_prop(name));
+        let mut fallback = None;
+        if let (Some(owned), Some((s, v))) = (owned, owned.and_then(attr)) {
+            if optional {
+                fallback = Some(match v {
+                    AttrValue::None => "true".to_string(),
+                    AttrValue::Expr(x) => format!("({})", self.expr_code(x)),
+                    AttrValue::Quoted { parts, .. } => self.quoted_expr(parts, s),
+                });
+            } else {
+                self.error(codes::INVALID_BIND, format!("`{owned}` and `phem:bind` cannot be on the same element"), s).help =
+                    Some(format!("`phem:bind` sets it from the property: remove it, or make the Bound prop optional (`?Bound $value = null`) to give a `{owned}` to a field with no `phem:bind`"));
+            }
         }
 
         if let Some((s, _)) = attr(INVALID) {
@@ -1310,8 +1423,8 @@ impl<'a> Lowerer<'a> {
 
         // The value of a checkbox or a radio button: the value that it gives when checked.
         let option = match attr("value") {
-            Some((_, AttrValue::Expr(v))) if tag == "input" => format!("({})", self.expr_code(v)),
-            Some((_, AttrValue::Quoted { parts, .. })) if tag == "input" => self.quoted_expr(parts, span),
+            Some((_, AttrValue::Expr(v))) if tag == "input" && toggles => format!("({})", self.expr_code(v)),
+            Some((_, AttrValue::Quoted { parts, .. })) if tag == "input" && toggles => self.quoted_expr(parts, span),
             _ => "null".to_string(),
         };
 
@@ -1332,6 +1445,8 @@ impl<'a> Lowerer<'a> {
 
         Some(BoundField {
             call: format!("phem_bind({target}, {code}, {}, {ty}, {option}, {owner}", php_str(&tag)),
+            owned: fallback.as_ref().and(owned),
+            fallback,
             described_by,
             text: (tag == "textarea").then(|| format!("{{{{ phem_bind_value({code}) }}}}")),
             select: (tag == "select").then(|| code.clone()),
@@ -1414,6 +1529,16 @@ impl<'a> Lowerer<'a> {
     }
 
     /// Whether a name is a prop of type `Bound` of the component of the markup.
+    /// A Bound prop that can be null: `?Bound $value = null`.
+    fn is_optional_bound_prop(&self, name: &str) -> bool {
+        let info = self.info;
+        let optional = |ty: &str| ty.trim().starts_with('?') && is_bound_type(info, ty);
+        match self.class {
+            Some(c) => c.all_props().any(|p| p.name == name && p.is_prop() && optional(&p.ty)),
+            None => self.params.iter().any(|p| p.name == name && !p.variadic && optional(&p.ty)),
+        }
+    }
+
     fn is_bound_prop(&self, name: &str) -> bool {
         let info = self.info;
         match self.class {
@@ -1473,7 +1598,8 @@ impl<'a> Lowerer<'a> {
                     return;
                 }
 
-                if name == BIND || name == ERROR || name == FEED || (self.skip_described_by && name.eq_ignore_ascii_case(DESCRIBED_BY)) {
+                let owned = self.skip_owned.is_some_and(|o| name.eq_ignore_ascii_case(o));
+                if name == BIND || name == ERROR || name == FEED || owned || (self.skip_described_by && name.eq_ignore_ascii_case(DESCRIBED_BY)) {
                     // See bind(), error_of() and feed().
                     return;
                 }
@@ -1496,7 +1622,7 @@ impl<'a> Lowerer<'a> {
                 if name == LOADING || name == PROGRESS {
                     match value {
                         AttrValue::Expr(x) => {
-                            let c = self.expr_code(x);
+                            let c = self.handler_expr_code(x);
                             self.check_handler(name, &c, x.span);
                             let c = handler_code(&c);
                             out.push_str(&format!("{ws}{{{{ phem_{}({c}) }}}}", &name[5..]));
@@ -1570,7 +1696,7 @@ impl<'a> Lowerer<'a> {
                     self.check_event(name, &event, *name_span);
                     match value {
                         AttrValue::Expr(x) => {
-                            let c = self.expr_code(x);
+                            let c = self.handler_expr_code(x);
                             self.check_handler(name, &c, x.span);
                             let c = handler_code(&c);
                             out.push_str(&format!("{ws}{{{{ phem_on('{event}', {c}) }}}}"));
@@ -1593,7 +1719,10 @@ impl<'a> Lowerer<'a> {
                         let c = self.quoted_expr(parts, a.span);
                         out.push_str(&format!("{ws}{{{{ phem_attr('{html_name}', {c}) }}}}"));
                     }
-                    AttrValue::Quoted { raw, quote, .. } => out.push_str(&format!("{ws}{html_name}={quote}{raw}{quote}")),
+                    AttrValue::Quoted { raw, quote, parts } => {
+                        let raw = self.quoted_method_calls(raw, parts);
+                        out.push_str(&format!("{ws}{html_name}={quote}{raw}{quote}"));
+                    }
                     AttrValue::Expr(x) => {
                         let c = self.expr_code(x);
                         if html_name == "style" {
@@ -1685,7 +1814,7 @@ impl<'a> Lowerer<'a> {
                     let v = match value {
                         AttrValue::None => "true".to_string(),
                         AttrValue::Expr(x) => {
-                            let c = self.expr_code(x);
+                            let c = if event_name(name).is_some() { self.handler_expr_code(x) } else { self.expr_code(x) };
                             // A handler prop with a call (`onPick={{ pickDay(d.key) }}`) gets the
                             // handler with its arguments, as an `on*` attribute of an element.
                             if event_name(name).is_some() && phemc_twig_scan::split_call(&c).is_some() {
@@ -2198,6 +2327,11 @@ fn feed_property_problem(p: &Prop) -> Option<String> {
 struct BoundField {
     /// The call with no `aria-describedby` and no `)`: `phem_bind('query', query, 'input', null, null, this`.
     call: String,
+    /// The `value` or `checked` of the markup for a field with an optional Bound prop: the
+    /// runtime renders it when the prop is null (see `phem_bind()`). The element does not render
+    /// the attribute itself.
+    owned: Option<&'static str>,
+    fallback: Option<String>,
     /// The `aria-describedby` of the markup, for `phem_bind()`.
     described_by: Option<String>,
     /// The text of a `<textarea>`.

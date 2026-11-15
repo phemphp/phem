@@ -1,0 +1,48 @@
+<?phem
+
+namespace App\Ui\Avatar;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// An avatar with an image that loads (a data URL) and an avatar with an image that does not load,
+// and a button whose event gives the first avatar a new src that does not load.
+#[Page('/avatar')]
+final class AvatarPage
+{
+    public const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+    #[State] public string $src = self::PIXEL;
+    #[State] public int $saves = 0;
+
+    public function save(): void
+    {
+        ++$this->saves;
+    }
+
+    public function breakImage(): void
+    {
+        $this->src = 'data:image/png;base64,AAAA';
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Avatar">
+                <span id="ada" data-controller="phem-avatar">
+                    <img id="ada-image" data-phem-avatar-target="image" src={{ src }} alt="Ada Lovelace" width="40" height="40" />
+                    <span id="ada-fallback" data-phem-avatar-target="fallback">AL</span>
+                </span>
+                <span id="grace" data-controller="phem-avatar" data-phem-avatar-delay-value="300">
+                    <img id="grace-image" data-phem-avatar-target="image" src="data:image/png;base64,AAAA" alt="Grace Hopper" />
+                    <span id="grace-fallback" data-phem-avatar-target="fallback">GH</span>
+                </span>
+                <button id="save" onClick={{ save }}>Save</button>
+                <button id="break" onClick={{ breakImage }}>Break</button>
+                <output id="saves">{{ saves }}</output>
+            </Document>
+        );
+    }
+}

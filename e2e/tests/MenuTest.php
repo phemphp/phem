@@ -116,4 +116,22 @@ final class MenuTest extends E2eTestCase
         expect($page->locator('#log'))->toHaveExactText('copy');
         expect($page->locator('#context-popup'))->toBeHidden();
     }
+
+    public function testAPopupAndAGroupLabelWithNoIdLinkWithElementReferences(): void
+    {
+        $page = $this->visit('/menu');
+        self::assertResponseIsSuccessful();
+
+        $controls = "document.getElementById('sort-trigger').ariaControlsElements?.[0]?.classList.contains('sort-popup') ?? false";
+        $page->locator('#sort-trigger')->click();
+        expect($page->getByRole('group', ['name' => 'Order']))->toBeVisible();
+        self::assertTrue($page->evaluate($controls));
+
+        // The morph of the event keeps the parts with no id, and the links.
+        $page->locator('#sort-name')->click();
+        expect($page->locator('#log'))->toHaveExactText('sort');
+        expect($page->getByRole('group', ['name' => 'Order']))->toBeVisible();
+        self::assertTrue($page->evaluate($controls));
+        self::assertSame(0, $page->evaluate("document.querySelectorAll('.sort-popup[id], .sort-label[id]').length"));
+    }
 }

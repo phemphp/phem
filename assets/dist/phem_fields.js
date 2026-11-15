@@ -14,7 +14,13 @@ export function fieldsValue(fields, { list = fields[0]?.hasAttribute("data-phem-
   if (first instanceof HTMLInputElement && first.type === "radio") return fields.find((f) => f.checked)?.value ?? null
   if (first instanceof HTMLSelectElement && first.multiple) return [...first.selectedOptions].map((o) => o.value)
 
-  return first.value
+  return textValue(first)
+}
+
+// The value of a text field. A controller can show a text that is not the value of the user, and
+// give the value of the user in `phemValue` (the inline completion of `phem-combobox`).
+export function textValue(field) {
+  return typeof field.phemValue === "string" ? field.phemValue : field.value
 }
 
 // The input types that do not take text.

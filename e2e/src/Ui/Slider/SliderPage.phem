@@ -1,0 +1,62 @@
+<?phem
+
+namespace App\Ui\Slider;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// A slider with one thumb and a range slider with two thumbs, each with a native range input in
+// its thumbs, and a button that sends an event.
+#[Page('/slider')]
+final class SliderPage
+{
+    #[State] public int $saves = 0;
+
+    public function save(): void
+    {
+        ++$this->saves;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Slider">
+                <style>{{ '.control { width: 200px; padding: 10px 0; } .track { height: 4px; background: #ddd; } .indicator { background: #000; } .thumb { width: 16px; height: 16px; background: #fff; border: 1px solid #000; box-sizing: border-box; } .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }' }}</style>
+                <form id="form">
+                    <div id="volume" data-controller="phem-slider" data-phem-slider-value-value="25">
+                        <div id="volume-label" data-phem-slider-target="label">Volume</div>
+                        <output id="volume-value" data-phem-slider-target="value"></output>
+                        <div id="volume-control" class="control" data-phem-slider-target="control">
+                            <div class="track" data-phem-slider-target="track">
+                                <div id="volume-indicator" class="indicator" data-phem-slider-target="indicator"></div>
+                                <div id="volume-thumb" class="thumb" data-phem-slider-target="thumb">
+                                    <input id="volume-input" type="range" name="volume" class="sr-only" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="price" data-controller="phem-slider" data-phem-slider-value-value="[20, 60]"
+                         data-phem-slider-min-steps-between-values-value="10">
+                        <div id="price-label" data-phem-slider-target="label">Price</div>
+                        <output id="price-value" data-phem-slider-target="value"></output>
+                        <div id="price-control" class="control" data-phem-slider-target="control">
+                            <div class="track" data-phem-slider-target="track">
+                                <div id="price-indicator" class="indicator" data-phem-slider-target="indicator"></div>
+                                <div id="price-min" class="thumb" data-phem-slider-target="thumb">
+                                    <input id="price-min-input" type="range" name="min" aria-label="Minimum price" class="sr-only" />
+                                </div>
+                                <div id="price-max" class="thumb" data-phem-slider-target="thumb">
+                                    <input id="price-max-input" type="range" name="max" aria-label="Maximum price" class="sr-only" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                <button id="save" onClick={{ save }}>Save</button>
+                <output id="saves">{{ saves }}</output>
+            </Document>
+        );
+    }
+}

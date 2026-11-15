@@ -6,17 +6,17 @@ phem-suspense{display:block}
 .phem-error{position:fixed;inset:auto 1rem 1rem;z-index:2147483647;max-width:32rem;margin:auto;padding:.75rem 1rem;border-radius:.375rem;background:#b91c1c;color:#fff;font:inherit;cursor:pointer}
 /* A phem:loading or phem:progress element shows only while its handler runs, also with a `display` of its own. */
 [data-phem-loading][hidden],[data-phem-progress][hidden]{display:none!important}
-/* The phem-toast controller: a stack of toasts at the bottom right. :where() lets the app change it. */
-:where([data-controller~="phem-toast"]){position:fixed;inset:auto 1rem 1rem auto;z-index:2147483646;display:flex;flex-direction:column;gap:.5rem;max-width:min(24rem,calc(100vw - 2rem))}
-:where([data-phem-toast]){display:flex;align-items:start;gap:.75rem;padding:.75rem 1rem;border-radius:.375rem;background:#1f2937;color:#fff;font:inherit;box-shadow:0 4px 12px rgb(0 0 0/.15)}
-:where([data-phem-toast][data-type="error"]){background:#b91c1c}
-:where([data-phem-toast][data-type="warning"]){background:#b45309}
-:where([data-phem-toast][data-type="success"]){background:#15803d}
-:where([data-phem-toast][data-limited]){display:none}
+/* The phem-toast controller: a stack of toasts at the bottom right. :where() lets the app change it. A part with a class attribute gets no default look: the class styles it, also when it is a utility class in a cascade layer (Tailwind). */
+:where([data-controller~="phem-toast"]:not([class])){position:fixed;inset:auto 1rem 1rem auto;z-index:2147483646;display:flex;flex-direction:column;gap:.5rem;max-width:min(24rem,calc(100vw - 2rem))}
+:where([data-phem-toast]:not([class])){display:flex;align-items:start;gap:.75rem;padding:.75rem 1rem;border-radius:.375rem;background:#1f2937;color:#fff;font:inherit;box-shadow:0 4px 12px rgb(0 0 0/.15)}
+:where([data-phem-toast]:not([class])[data-type="error"]){background:#b91c1c}
+:where([data-phem-toast]:not([class])[data-type="warning"]){background:#b45309}
+:where([data-phem-toast]:not([class])[data-type="success"]){background:#15803d}
+:where([data-phem-toast]:not([class])[data-limited]){display:none}
 /* A swipe of a toast: the toast follows the pointer. */
-:where([data-phem-toast][data-swiping],[data-phem-toast][data-swipe-direction]){transform:translate(var(--toast-swipe-movement-x,0px),var(--toast-swipe-movement-y,0px))}
-:where([data-phem-toast-description]){flex:1}
-:where([data-phem-toast-close]){padding:0 .25rem;border:0;background:none;color:inherit;font:inherit;line-height:1;cursor:pointer}
+:where([data-phem-toast]:not([class])[data-swiping],[data-phem-toast]:not([class])[data-swipe-direction]){transform:translate(var(--toast-swipe-movement-x,0px),var(--toast-swipe-movement-y,0px))}
+:where([data-phem-toast-description]:not([class])){flex:1}
+:where([data-phem-toast-close]:not([class])){padding:0 .25rem;border:0;background:none;color:inherit;font:inherit;line-height:1;cursor:pointer}
 /* The phem-sortable controller: a touch on a handle (or on an item with no handle) drags, and does not scroll. No text selection during a drag. */
 [data-controller~="phem-sortable"] [data-phem-sortable-target~="handle"],[data-controller~="phem-sortable"] [data-phem-sortable-target~="item"]:not(:has([data-phem-sortable-target~="handle"])){touch-action:none}
 [data-phem-sorting],[data-phem-sorting] *{-webkit-user-select:none;user-select:none}

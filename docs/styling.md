@@ -64,4 +64,15 @@ The `phem.css` file of the client gives a default look to the error message of a
 
 The other built-in controllers ship no CSS. Style them with their data attributes and CSS variables, such as `[data-open]`, `[data-side]` and `var(--anchor-width)` (see [Learn the conventions](controllers.md#learn-the-conventions)).
 
+A toast part with a `class` attribute gets no default style from `phem.css`: its classes give all the look. Use this for Tailwind. Tailwind puts its utilities in a cascade layer, and a style that is not in a layer always wins over a layer, also with `:where()`:
+
+```html
+<template data-phem-toast-target="template">
+    <div class="flex gap-3 rounded-none bg-white p-3 shadow data-limited:hidden">
+        <p class="flex-1" data-phem-toast-description></p>
+        <button class="px-1" data-phem-toast-close aria-label="Close">×</button>
+    </div>
+</template>
+```
+
 To change the `.phem-error` message, load your CSS after `phem.css`, or use a selector with a higher specificity.

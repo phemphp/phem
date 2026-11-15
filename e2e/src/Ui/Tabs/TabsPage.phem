@@ -1,0 +1,42 @@
+<?phem
+
+namespace App\Ui\Tabs;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// Tabs with values and no ids, as a function component renders them, and a button that sends an
+// event.
+#[Page('/tabs')]
+final class TabsPage
+{
+    #[State] public int $saves = 0;
+
+    public function save(): void
+    {
+        ++$this->saves;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Tabs">
+                <div id="tabs" data-controller="phem-tabs" data-phem-tabs-active-value="profile">
+                    <div id="list" data-phem-tabs-target="list" aria-label="Settings" style="position: relative">
+                        <button id="profile" data-phem-tabs-target="tab" data-value="profile">Profile</button>
+                        <button id="security" data-phem-tabs-target="tab" data-value="security">Security</button>
+                        <button id="billing" data-phem-tabs-target="tab" data-value="billing">Billing</button>
+                        <span id="indicator" data-phem-tabs-target="indicator"></span>
+                    </div>
+                    <div class="panel" data-phem-tabs-target="panel" data-value="profile">Profile panel</div>
+                    <div class="panel" data-phem-tabs-target="panel" data-value="security">Security panel</div>
+                    <div class="panel" data-phem-tabs-target="panel" data-value="billing">Billing panel</div>
+                </div>
+                <button id="save" onClick={{ save }}>Save</button>
+                <output id="saves">{{ saves }}</output>
+            </Document>
+        );
+    }
+}

@@ -426,6 +426,49 @@ describe("the morph of a list", () => {
   })
 })
 
+describe("a bound hidden input", () => {
+  it("compares with the server value of data-phem-value, and gets it back on a reset", async () => {
+    const markup = (value) => `<input type="hidden" data-phem-bind="c1.size" value="${value}" data-phem-value="${value}"><button data-phem-on-click="c1.save">Save</button>`
+    await mount(markup("s"))
+    const input = document.querySelector("input")
+    input.value = "l"
+
+    // A change with no event: the field is dirty. The server does not take the value: its render
+    // keeps "s", and the field gets it back.
+    respond(markup("s"))
+    const done = nextDone()
+    click("button")
+    await done
+    expect(JSON.parse(fetch.mock.calls[0][1].body).bound).toEqual({ "c1.size": "l" })
+    expect(input.value).toBe("s")
+
+    respond(markup("s"))
+    const again = nextDone()
+    click("button")
+    await again
+    expect(JSON.parse(fetch.mock.calls[1][1].body).bound ?? {}).toEqual({})
+  })
+
+  it("sends the value that a script gave it, until the morph gives it the value of the server", async () => {
+    await mount(`<input type="hidden" data-phem-bind="c1.size" value="s"><button data-phem-on-click="c1.save">Save</button>`)
+    const input = document.querySelector("input")
+    input.value = "l"
+    input.dispatchEvent(new Event("change", { bubbles: true }))
+
+    respond(`<input type="hidden" data-phem-bind="c1.size" value="l"><button data-phem-on-click="c1.save">Save</button>`)
+    let done = nextDone()
+    click("button")
+    await done
+    expect(JSON.parse(fetch.mock.calls[0][1].body).bound).toEqual({ "c1.size": "l" })
+
+    respond(`<input type="hidden" data-phem-bind="c1.size" value="l"><button data-phem-on-click="c1.save">Save</button>`)
+    done = nextDone()
+    click("button")
+    await done
+    expect(JSON.parse(fetch.mock.calls[1][1].body).bound ?? {}).toEqual({})
+  })
+})
+
 describe("the morph of the bound fields", () => {
   // Two labels with a FieldError component each. The fiber id of a component comes from its index:
   // when the error of the name goes away, the error of the phone gets the fiber id of the error of

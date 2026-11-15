@@ -632,6 +632,19 @@ pub fn check(file: &FileInfo, src: &str, lexed: &Lexed) -> Vec<Diagnostic> {
         );
     }
 
+    // E068: PHP cannot declare a class or a function with a reserved word as its name.
+    for c in &file.classes {
+        if let Some(kind) = reserved_name(&c.name, true) {
+            diags.push(reserved(&c.name, kind, c.name_span));
+        }
+    }
+
+    for f in &file.functions {
+        if let Some(kind) = reserved_name(&f.name, false) {
+            diags.push(reserved(&f.name, kind, f.name_span));
+        }
+    }
+
     for c in &file.classes {
         if c.abstract_component {
             let (what, attr) = if c.is_page { ("page", "Page") } else { ("component", "Component") };
@@ -890,4 +903,32 @@ mod tests {
             assert!(!allows_null(ty), "{ty}");
         }
     }
+}
+
+/// The reserved words of PHP: a class or a function cannot have one of them as its name.
+const RESERVED_WORDS: &[&str] = &[
+    "__halt_compiler", "abstract", "and", "array", "as", "break", "callable", "case", "catch", "class", "clone", "const", "continue", "declare",
+    "default", "die", "do", "echo", "else", "elseif", "empty", "enddeclare", "endfor", "endforeach", "endif", "endswitch", "endwhile", "eval",
+    "exit", "extends", "final", "finally", "fn", "for", "foreach", "function", "global", "goto", "if", "implements", "include", "include_once",
+    "instanceof", "insteadof", "interface", "isset", "list", "match", "namespace", "new", "or", "print", "private", "protected", "public",
+    "readonly", "require", "require_once", "return", "static", "switch", "throw", "trait", "try", "unset", "use", "var", "while", "xor", "yield",
+];
+
+/// The names that PHP keeps for its types: a class cannot have one of them as its name.
+const RESERVED_TYPES: &[&str] = &["bool", "false", "float", "int", "iterable", "mixed", "never", "null", "object", "parent", "self", "string", "true", "void"];
+
+/// The kind of a reserved name, or none. PHP ignores the case.
+fn reserved_name(name: &str, class: bool) -> Option<&'static str> {
+    let lower = name.to_ascii_lowercase();
+    if RESERVED_WORDS.contains(&lower.as_str()) {
+        return Some("a reserved word");
+    }
+
+    (class && RESERVED_TYPES.contains(&lower.as_str())).then_some("the name of a type")
+}
+
+fn reserved(name: &str, kind: &str, span: Span) -> Diagnostic {
+    Diagnostic::error(codes::RESERVED_NAME, format!("`{name}` is {kind} of PHP"), span)
+        .with_label("PHP cannot declare it")
+        .with_help(format!("rename it, for example `{name}Root` or `{name}Field`"))
 }
