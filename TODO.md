@@ -4,12 +4,12 @@ The work that is still open in `phem/ui-base`. The bundle has no workarounds. A 
 
 ## Waiting for a phem fix
 
-See [notes/phem-gaps.md](notes/phem-gaps.md) for the full list.
+See [notes/phem-gaps.md](notes/phem-gaps.md) for the details.
 
 - **Menu checkbox and radio items in the browser (gap 5).** Base UI toggles `Menu.CheckboxItem` and `Menu.RadioItem` in the browser (`defaultChecked`, `defaultValue`). `phem-menu` has no client state for them. Now the server gives `checked`, with an `onClick` handler. After the fix, add `defaultChecked` to `MenuCheckboxItem`, `defaultValue` to `MenuRadioGroup`, and the `data-checked`/`data-unchecked` attributes from the controller.
 - **Toast title and `data-behind` (gap 6).** `phem-toast` has one message part only. Base UI has `Toast.Title` and `Toast.Description`, and `data-behind` on the content of a stacked toast. After the fix, add `ToastTitle` to the template of `ToastViewport`, and the `data-behind` classes.
 
-phem v0.4.1 does not fix these gaps. It fixes gaps 14 to 17. After each phem release, update `phem/phem` (`composer update phem/phem` in the bundle and in `demo/`) and check this list again.
+phem v0.4.1 does not fix these gaps. After each phem release, update `phem/phem` (`composer update phem/phem` in the bundle and in `demo/`) and check this list again.
 
 ## Browser tests of the demo
 

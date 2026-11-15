@@ -51,7 +51,7 @@ All 37 Base UI components are here. The parts follow the Base UI anatomy, with t
 - **Menu checkbox and radio items**: the server gives their state (`checked`), with an `onClick` handler.
 - **Toast**: one message, with no title.
 
-The phem gaps found so far, and which of them phem fixed, are in [notes/phem-gaps.md](notes/phem-gaps.md).
+The open phem gaps are in [notes/phem-gaps.md](notes/phem-gaps.md).
 
 ## Develop
 
