@@ -63,6 +63,7 @@ export class StageLines {
         const box = measure(this.canvas);
 
         this.connectors(box);
+        this.source(box);
 
         for (const path of this.canvas.querySelectorAll<SVGPathElement>('path[data-s]')) {
             this.strokes.set(path.dataset.s ?? '', new Stroke(path));
@@ -127,6 +128,44 @@ export class StageLines {
         }
 
         return drawn;
+    }
+
+    // Scene 1: the source of the page. Each line of code sits on the left of the part of the page
+    // that it renders, and its connector ends in the padding of the page. #[Page] sits above the
+    // URL, and <LikeButton> under the page: its connector climbs beside the page to the button.
+    private source(box: (element: Element | Range) => Box): void {
+        const el = this.el;
+        const page = el('page');
+        const part = (selector: string): Box => box(page.querySelector(selector) ?? page);
+        const frame = box(page);
+        const column = frame.left - 30;
+        const title = part('.browser__title');
+        const text = [...page.querySelectorAll('.browser__body > .browser__line')].map(box);
+        const like = part('.like--slot');
+        const url = part('.browser__url');
+        const note = (name: string, y: number, end: number): void => {
+            el(name).style.left = `${column - el(name).offsetWidth}px`;
+            el(name).style.top = `${y - el(name).offsetHeight / 2}px`;
+            el(`${name}-ln`).setAttribute('d', `M ${column + 6} ${y} H ${end}`);
+        };
+
+        note('note-title', middle(title), title.left - 10);
+        note('note-content', (text[0].top + text[text.length - 1].top + text[text.length - 1].height) / 2, text[0].left - 10);
+
+        const pageNote = el('note-page');
+        const pageNoteY = frame.top - 40;
+        pageNote.style.left = `${url.left}px`;
+        pageNote.style.top = `${pageNoteY - pageNote.offsetHeight / 2}px`;
+        el('note-page-ln').setAttribute('d', `M ${url.left + 14} ${pageNoteY + pageNote.offsetHeight / 2 + 6} V ${url.top - 3}`);
+
+        const likeNote = el('note-like');
+        const climb = column + 10;
+        const likeY = middle(like);
+        const likeNoteTop = frame.top + frame.height + 30;
+        const radius = 6;
+        likeNote.style.left = `${climb - 8}px`;
+        likeNote.style.top = `${likeNoteTop}px`;
+        el('note-like-ln').setAttribute('d', `M ${climb} ${likeNoteTop - 4} V ${likeY + radius} Q ${climb} ${likeY}, ${climb + radius} ${likeY} H ${like.left - 10}`);
     }
 
     // The connectors that start or end at a mark of the code.
@@ -259,7 +298,7 @@ class Director {
     }
 
     fadeOut(names: string[], time: number, duration = 0.1): number {
-        this.tl.to(names.map((name) => this.el(name)), { autoAlpha: 0, duration, ease: 'power1.in' }, time);
+        this.tl.fromTo(names.map((name) => this.el(name)), { autoAlpha: 1 }, { autoAlpha: 0, duration, ease: 'power1.in', immediateRender: false }, time);
 
         return time + duration;
     }
@@ -294,13 +333,16 @@ class Director {
         return time + duration;
     }
 
-    // Connectors retract from their start and fade out.
+    // Connectors retract from their start and fade out. Each tween starts from the drawn state:
+    // the intro of scene 1 draws the source of the page, and the scroll back must show it.
     retract(names: string[], time: number, duration = 0.15): number {
+        const shown = { immediateRender: false };
+
         for (const name of names) {
             const stroke = this.lines.stroke(name);
 
-            this.tl.to(stroke.state, { from: 1, duration, ease: 'power2.in', onUpdate: stroke.render }, time);
-            this.tl.to(stroke.path, { autoAlpha: 0, duration: duration * 0.5, ease: 'none' }, time + duration * 0.5);
+            this.tl.fromTo(stroke.state, { from: 0, to: 1 }, { from: 1, to: 1, duration, ease: 'power2.in', onUpdate: stroke.render, ...shown }, time);
+            this.tl.fromTo(stroke.path, { autoAlpha: 1 }, { autoAlpha: 0, duration: duration * 0.5, ease: 'none', ...shown }, time + duration * 0.5);
         }
 
         return time + duration;
@@ -409,22 +451,26 @@ const sketchScale = 0.78;
 // The page that the elephant holds leans to the left (Friends.astro).
 const sketchTilt = -8;
 
-// Scene 1 at rest: the page and its Like button. The timeline starts from this state, so the
-// scroll back to scene 1 shows the page again, with or without the intro.
+// Scene 1: the lines of the source of the page, and their connectors.
+const notes = ['note-page', 'note-title', 'note-content', 'note-like'];
+const noteLines = notes.map((note) => `${note}-ln`);
+
+// Scene 1 at rest: the page, its Like button and its source. The timeline starts from this state,
+// so the scroll back to scene 1 shows the page again, with or without the intro.
 function restScene1(lines: StageLines): void {
     const drawn = lines.outline('page');
     const slot = lines.slot('page', pageScale);
 
-    [...drawn.frame, ...drawn.lines].forEach((stroke) => {
+    [...drawn.frame, ...drawn.lines, ...noteLines.map((name) => lines.stroke(name))].forEach((stroke) => {
         stroke.state.to = 1;
         stroke.render();
     });
-    gsap.set([drawn.group, lines.el('page')], { autoAlpha: 1 });
+    gsap.set([drawn.group, lines.el('page'), ...notes.map((name) => lines.el(name)), ...noteLines.map((name) => lines.el(name))], { autoAlpha: 1 });
     gsap.set(lines.el('btn'), { x: slot.x - center.x, y: slot.y - center.y, scale: pageScale, autoAlpha: 1, '--active': 0 });
 }
 
-// Scene 1 on load: the page draws in, then a dot extends into the outline of its Like button. The
-// links of the scene show at once.
+// Scene 1 on load: the page draws in, then a dot extends into the outline of its Like button, and
+// the source of the page draws in around it. The links of the scene show at once.
 export function introTimeline(lines: StageLines): gsap.core.Timeline {
     const d = new Director(lines, gsap.timeline({ paused: true, delay: 0.15 }));
     const btn = d.el('btn');
@@ -442,6 +488,13 @@ export function introTimeline(lines: StageLines): gsap.core.Timeline {
         .to(dot, { autoAlpha: 0, duration: 0.2 }, 1)
         .fromTo(btn.querySelectorAll('.like__label, .like__sep, .like__count'), { autoAlpha: 0, y: 4 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power3.out', stagger: 0.06, immediateRender: false }, 1.4)
         .set(btn, { clearProps: 'clipPath' });
+
+    notes.forEach((note, index) => {
+        const time = 1.5 + index * 0.12;
+
+        d.fadeIn([note], time, 0.4);
+        d.draw(`${note}-ln`, time + 0.1, 0.5);
+    });
 
     // Render the end, then the start: each element takes its first state before the intro plays.
     return d.tl.progress(1).progress(0);
@@ -461,7 +514,9 @@ export function scenesTimeline(lines: StageLines, time: StoryTime): gsap.core.Ti
 
     restScene1(lines);
 
-    // 1 → 2: the page goes, the button shifts aside, and its source draws in beside it.
+    // 1 → 2: the page and its source go, the button shifts aside, and its code draws in beside it.
+    d.retract(noteLines, into(2), 0.12);
+    d.fadeOut(notes, into(2), 0.08);
     d.conceal(['page'], into(2), 0.2);
     d.move(170, center.y, 1, into(2, 0.05));
     t = d.reveal('code', into(2, 0.15), 0.3);

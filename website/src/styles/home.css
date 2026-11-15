@@ -291,6 +291,9 @@ h1.scene__title { font-size: clamp(42px, 5.6vw, 76px); }
 .stage.is-drawn .browser__comments { border-left-color: transparent; }
 .stage.is-drawn .browser { background: transparent; }
 .travel { fill: var(--story-accent); }
+/* Scene 1: a line of the source of the page, beside the part of the page that it renders. */
+.note { color: var(--story-muted); font: 500 13px/20px var(--font-mono); font-variant-ligatures: none; white-space: nowrap; }
+.note b { color: var(--story-ink); font-weight: 500; }
 .node-label { color: var(--story-ink); font: 500 13px/20px var(--font-mono); white-space: nowrap; }
 
 /* The stage scales down to about 0.77 at its smallest size: its small labels are larger than in the
