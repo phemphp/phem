@@ -15,9 +15,11 @@ export class Stroke {
         const { from, to } = this.state;
         const visible = Math.max(0, to - from) * this.length;
 
-        // A zero dash with butt caps paints nothing. The gap is longer than the path.
+        // A zero dash with butt caps paints nothing, but with round caps it paints a dot: an
+        // empty line takes butt caps. The gap is longer than the path.
         this.path.style.strokeDasharray = `${visible} ${this.length + 1}`;
         this.path.style.strokeDashoffset = `${-from * this.length}`;
+        this.path.style.strokeLinecap = visible > 0 ? '' : 'butt';
     };
 
     // The point at the head of the line.
@@ -70,8 +72,9 @@ function halves(b: Box, radius: number): [string, string] {
     ];
 }
 
-// The closed rounded rectangle, for a dashed frame.
-function rectangle(b: Box, radius: number): string {
+// The closed rounded rectangle, for a dashed frame or the outline of a button. Like the halves, it
+// sits half a line inside the box, on the border of the element.
+export function rectangle(b: Box, radius: number): string {
     const x = b.left + 0.6;
     const y = b.top + 0.6;
     const w = b.width - 1.2;

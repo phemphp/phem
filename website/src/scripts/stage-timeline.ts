@@ -6,7 +6,7 @@
 // article and of the browsers, and their inner lines. A dot that travels on a line is the head of
 // that line, because one state sets both (src/scripts/stroke.ts).
 import { gsap } from 'gsap';
-import { outline, Stroke, type Box, type Outline } from './stroke';
+import { outline, rectangle, Stroke, type Box, type Outline } from './stroke';
 
 // The design size of the canvas, in the units of Stage.astro, and the center of scene 1.
 export const canvasWidth = 920;
@@ -88,6 +88,7 @@ export class StageLines {
 
         const sketch = this.el('sketch');
         this.slots.set('sketch', box(sketch.querySelector('[data-sketch-slot]') ?? sketch));
+
         // The Symfony mark is a filled shape: it fades in with the texts.
         this.sketch = [...sketch.querySelectorAll<SVGPathElement>('path:not(.sketch__logo)')].map((path) => new Stroke(path));
 
@@ -178,13 +179,12 @@ export class StageLines {
         const slot = box(el('sketch').querySelector('[data-sketch-slot]') ?? el('sketch'));
         const width = btn.offsetWidth * sketchScale;
         const height = btn.offsetHeight * sketchScale;
-        const x = slot.left;
-        const y = middle(slot) - height / 2;
-        const r = Math.min((parseFloat(getComputedStyle(btn).borderTopLeftRadius) || 0) * sketchScale, height / 2);
+        const button = { left: slot.left, top: middle(slot) - height / 2, width, height };
+        const radius = (parseFloat(getComputedStyle(btn).borderTopLeftRadius) || 0) * sketchScale;
         const path = el('sketch-like');
 
-        path.setAttribute('d', `M ${x} ${y + r} A ${r} ${r} 0 0 1 ${x + r} ${y} H ${x + width - r} A ${r} ${r} 0 0 1 ${x + width} ${y + r} V ${y + height - r} A ${r} ${r} 0 0 1 ${x + width - r} ${y + height} H ${x + r} A ${r} ${r} 0 0 1 ${x} ${y + height - r} Z`);
-        path.setAttribute('transform', `rotate(${sketchTilt} ${x + width / 2} ${y + height / 2})`);
+        path.setAttribute('d', rectangle(button, radius));
+        path.setAttribute('transform', `rotate(${sketchTilt} ${button.left + width / 2} ${button.top + height / 2})`);
     }
 
     // The connectors that start or end at a mark of the code.
@@ -242,19 +242,19 @@ export class StageLines {
 
         // Each tag sits at the middle of its line, on the outer side: "onClick Event" before the
         // line that goes up to the handler, "HTML" under the flat line that comes back from render().
-        const middleOf = (path: string): DOMPoint => {
+        const samplesOf = (path: string, count: number): DOMPoint[] => {
             const line = el(path) as unknown as SVGPathElement;
+            const length = line.getTotalLength();
 
-            return line.getPointAtLength(line.getTotalLength() / 2);
+            return Array.from({ length: count + 1 }, (_, index) => line.getPointAtLength((length * index) / count));
         };
-        const out = middleOf('trip-out');
-        const back = middleOf('trip-back');
+        const samples = samplesOf('trip-out', 40);
+        const out = samples[20];
+        const back = samplesOf('trip-back', 2)[1];
+
         // The line bends at its middle, so the tag moves to the left until it keeps a gap of 10 to
         // every point of the line.
         const event = el('event');
-        const tripOut = el('trip-out') as unknown as SVGPathElement;
-        const tripLength = tripOut.getTotalLength();
-        const samples = Array.from({ length: 41 }, (_, index) => tripOut.getPointAtLength((tripLength * index) / 40));
         const eventTop = out.y - event.offsetHeight / 2;
         const gapTo = (left: number): number => Math.min(...samples.map((point) => {
             const dx = Math.max(left - point.x, 0, point.x - (left + event.offsetWidth));

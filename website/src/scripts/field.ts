@@ -10,12 +10,14 @@
 // It is one canvas that stays on the screen while the story scrolls (Story.astro). The text and
 // the stage cover it. It answers the mouse only, like the tilt of the stage. `trail` tells when the
 // page of scene 1 takes events. `zone` tells whether a point of the screen is free for the trail:
-// an event never shows behind an element. `answers` tells where the grid answers the pointer.
+// an event never shows behind an element. `obstacles` gives the boxes of the elements on the way of
+// an event to the page. `answers` tells where the grid answers the pointer.
 import { gsap } from 'gsap';
 
 interface Options {
     trail: () => boolean;
     zone: (x: number, y: number) => boolean;
+    obstacles: () => DOMRect[];
     answers: (x: number, y: number) => boolean;
 }
 
@@ -60,13 +62,15 @@ export function field(canvas: HTMLCanvasElement, page: HTMLElement, options: Opt
         return () => {};
     }
 
+    // The grid at rest, drawn once: a frame copies it and draws only the warm cells on top.
+    const base = document.createElement('canvas');
+    const baseContext = base.getContext('2d');
+
+    if (!baseContext) {
+        return () => {};
+    }
+
     const colors = { ink: '', accent: '' };
-    const readColors = (): void => {
-        const style = getComputedStyle(canvas);
-        colors.ink = style.getPropertyValue('--story-ink').trim();
-        colors.accent = style.getPropertyValue('--story-accent').trim();
-        dirty = true;
-    };
 
     let width = 0;
     let height = 0;
@@ -75,17 +79,45 @@ export function field(canvas: HTMLCanvasElement, page: HTMLElement, options: Opt
     let heat = new Float32Array(0);
     let dirty = true;
 
+    const drawBase = (): void => {
+        baseContext.clearRect(0, 0, width, height);
+        baseContext.fillStyle = colors.ink;
+        baseContext.globalAlpha = rest;
+        baseContext.beginPath();
+
+        for (let row = 0; row < rows; row++) {
+            for (let column = 0; column < columns; column++) {
+                baseContext.moveTo(column * gap + dot, row * gap);
+                baseContext.arc(column * gap, row * gap, dot, 0, Math.PI * 2);
+            }
+        }
+
+        baseContext.fill();
+        dirty = true;
+    };
+
+    const readColors = (): void => {
+        const style = getComputedStyle(canvas);
+        colors.ink = style.getPropertyValue('--story-ink').trim();
+        colors.accent = style.getPropertyValue('--story-accent').trim();
+        drawBase();
+    };
+
     const fit = (): void => {
         const ratio = devicePixelRatio || 1;
         width = canvas.clientWidth;
         height = canvas.clientHeight;
-        canvas.width = Math.round(width * ratio);
-        canvas.height = Math.round(height * ratio);
-        context.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+        for (const [target, targetContext] of [[canvas, context], [base, baseContext]] as const) {
+            target.width = Math.round(width * ratio);
+            target.height = Math.round(height * ratio);
+            targetContext.setTransform(ratio, 0, 0, ratio, 0, 0);
+        }
+
         columns = Math.ceil(width / gap) + 1;
         rows = Math.ceil(height / gap) + 1;
         heat = new Float32Array(columns * rows);
-        dirty = true;
+        drawBase();
     };
 
     // A point of the screen in the coordinates of the canvas.
@@ -229,15 +261,19 @@ export function field(canvas: HTMLCanvasElement, page: HTMLElement, options: Opt
     };
 
     // The event goes to the frame of the page, when no element covers its way. Else it fades where
-    // it is.
+    // it is. The way is tested against the boxes of the elements, read once.
     const send = (from: Point, now: number): void => {
         const to = wall(from, frameCorners());
         const distance = Math.hypot(to.x - from.x, to.y - from.y);
+        const frame = canvas.getBoundingClientRect();
+        const boxes = options.obstacles().map((box) => ({ left: box.left - frame.left, top: box.top - frame.top, right: box.right - frame.left, bottom: box.bottom - frame.top }));
 
-        for (let along = 0; along < distance - 6; along += 8) {
+        for (let along = 0; along < distance - 6; along += 4) {
             const t = along / distance;
+            const x = from.x + (to.x - from.x) * t;
+            const y = from.y + (to.y - from.y) * t;
 
-            if (!free({ x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t })) {
+            if (boxes.some((box) => x >= box.left && x <= box.right && y >= box.top && y <= box.bottom)) {
                 gone.push({ ...from, born: now });
 
                 return;
@@ -302,17 +338,27 @@ export function field(canvas: HTMLCanvasElement, page: HTMLElement, options: Opt
 
         const amount = appear.value;
 
-        // The grid.
+        // The grid: the copy of the grid at rest, and the warm cells in place of their dots.
+        context.globalAlpha = amount;
+        context.drawImage(base, 0, 0, width, height);
         context.fillStyle = colors.ink;
 
-        for (let row = 0; row < rows; row++) {
-            for (let column = 0; column < columns; column++) {
-                const value = heat[row * columns + column];
-                context.globalAlpha = (rest + value * 0.5) * amount;
-                context.beginPath();
-                context.arc(column * gap, row * gap, dot + value, 0, Math.PI * 2);
-                context.fill();
+        for (let index = 0; index < heat.length; index++) {
+            const value = heat[index];
+
+            if (0 === value) {
+                continue;
             }
+
+            const x = (index % columns) * gap;
+            const y = Math.floor(index / columns) * gap;
+            const size = dot + value + 1;
+
+            context.clearRect(x - size, y - size, size * 2, size * 2);
+            context.globalAlpha = (rest + value * 0.5) * amount;
+            context.beginPath();
+            context.arc(x, y, dot + value, 0, Math.PI * 2);
+            context.fill();
         }
 
         // The events that a newer one replaced.

@@ -84,7 +84,11 @@ function stage(root: HTMLElement, context: gsap.Context, intro: boolean): () => 
     const tiltBox = root.querySelector<HTMLElement>('[data-stage-tilt]');
     const list = root.querySelector<HTMLElement>('.story__scenes');
 
+    // No stage: the static figures show. The inline script of Story.astro may have set the layout
+    // of the stage already.
     if (!stageBox || !canvas || !tiltBox || !list) {
+        root.classList.remove('story--enhanced');
+
         return () => {};
     }
 
@@ -122,6 +126,28 @@ function stage(root: HTMLElement, context: gsap.Context, intro: boolean): () => 
             revealCopy(scene, 0 === index);
         }
     });
+
+    // The scroll hint of scene 1 fades out with the first pixels of the scroll down, and comes back
+    // when the scroll goes up to the top.
+    // A click on it scrolls slowly to scene 2, so the stage plays the move between the two scenes.
+    const hint = root.querySelector<HTMLAnchorElement>('.scene__hint');
+    const slowScroll = (event: MouseEvent): void => {
+        const target = document.querySelector<HTMLElement>(hint?.hash ?? '');
+
+        if (!target) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        const top = target.getBoundingClientRect().top + scrollY - (parseFloat(getComputedStyle(target).scrollMarginTop) || 0);
+        lenis.scrollTo(top, { duration: 2.4, easing: (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2) });
+    };
+
+    if (hint) {
+        gsap.to(hint, { autoAlpha: 0, y: 8, ease: 'none', scrollTrigger: { start: 0, end: 160, scrub: 0.3 } });
+        hint.addEventListener('click', slowScroll, true);
+    }
 
     gsap.set(named(canvas)('btn'), { xPercent: -50, yPercent: -50 });
 
@@ -194,6 +220,9 @@ function stage(root: HTMLElement, context: gsap.Context, intro: boolean): () => 
 
                     return null !== top && stageBox.contains(top) && null === top.closest('.stage__item, .stage__btn');
                 },
+                obstacles: () => [...stageBox.querySelectorAll<HTMLElement>('.stage__item, .stage__btn')]
+                    .filter((element) => 'hidden' !== getComputedStyle(element).visibility)
+                    .map((element) => element.getBoundingClientRect()),
             });
         }
     };
@@ -228,6 +257,7 @@ function stage(root: HTMLElement, context: gsap.Context, intro: boolean): () => 
         resize.disconnect();
         gsap.ticker.remove(raf);
         gsap.ticker.lagSmoothing(500, 33);
+        hint?.removeEventListener('click', slowScroll, true);
         lenis.destroy();
         focusable.forEach((element) => (element.matches('pre') ? element.setAttribute('tabindex', '0') : element.removeAttribute('tabindex')));
         root.classList.remove('story--enhanced');

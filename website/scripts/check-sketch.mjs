@@ -1,8 +1,9 @@
 // Checks the joins of the line drawing of the last home page scene (Friends.astro).
 //
 // A line end must touch another line, or stay clearly free. An end that stops a little short of
-// a line (0.6 to 10 units) shows a gap at the round cap of the stroke. The script also finds the
-// hooks that a trace leaves in a curve. Run it after a change to the drawing:
+// a line (0.6 to 10 units) shows a gap at the round cap of the stroke. A path marks an end that
+// stays near a line on purpose (an eyebrow, a lash): `data-free="start"`, `"end"` or `"both"`. The
+// script also finds the hooks that a trace leaves in a curve. Run it after a change to the drawing:
 //
 //     node scripts/check-sketch.mjs
 import { readFileSync } from 'node:fs';
@@ -15,23 +16,15 @@ const file = process.argv[2] ?? fileURLToPath(new URL('../src/components/home/Fr
 const touch = 0.6;
 const free = 10;
 
-// The free ends that stay near a line on purpose: [x, y, what].
-const intended = [
-    [396.8, 202.1, 'the right eyebrow of the elephant'],
-    [411.6, 242.4, 'the right eye of the elephant'],
-    [337.8, 376.4, 'a fold of the collar of the elephant'],
-    [646.0, 333.6, 'a lash of the pony'],
-];
-
-// The paths of the drawing, with their group and their index in the group.
+// The paths of the drawing, with their group, their index in the group, and their free ends.
 function paths(source) {
     const found = [];
 
     for (const group of source.matchAll(/<g class="sketch__(\w+)">([\s\S]*?)<\/g>/g)) {
         let index = 0;
 
-        for (const path of group[2].matchAll(/<path d="([^"]+)"/g)) {
-            found.push({ name: `${group[1]} ${index++}`, d: path[1] });
+        for (const path of group[2].matchAll(/<path d="([^"]+)"(?: data-free="(start|end|both)")?/g)) {
+            found.push({ name: `${group[1]} ${index++}`, d: path[1], free: path[2] ?? '' });
         }
     }
 
@@ -68,10 +61,15 @@ function segments(d) {
             list.push([current, c1, c2, to]);
             current = to;
         } else if ('A' === command) {
-            const radius = number();
-            i += 4;
+            const [rx, ry, rotation, large, sweep] = [number(), number(), number(), number(), number()];
             const to = [number(), number()];
-            list.push(...arc(current, to, radius));
+
+            // Only a half circle: a circle of the drawing is two of them.
+            if (rx !== ry || 0 !== rotation || Math.abs(distance(current, to) - 2 * rx) > 0.05 * rx) {
+                throw new Error(`The arc "A ${rx} ${ry} ${rotation} ${large} ${sweep} ${to.join(' ')}" is not a half circle.`);
+            }
+
+            list.push(...arc(current, to, rx, 1 === sweep ? 1 : -1));
             current = to;
         } else if ('Z' === command) {
             if (distance(current, start) > 0) {
@@ -88,18 +86,19 @@ function segments(d) {
     return { list, closed: closed || (list.length > 0 && distance(list[0][0], current) < 0.01) };
 }
 
-// A half circle from one point to the opposite point, as two cubics.
-function arc(from, to, radius) {
+// A half circle from one point to the opposite point, as two cubics. `sign` is 1 for the sweep
+// flag 1 (clockwise on the screen) and -1 for the sweep flag 0.
+function arc(from, to, radius, sign) {
     const center = lerp(from, to, 0.5);
     const a = Math.atan2(from[1] - center[1], from[0] - center[0]);
-    const k = (4 / 3) * Math.tan(Math.PI / 8) * radius;
+    const k = (4 / 3) * Math.tan(Math.PI / 8) * radius * sign;
     const point = (angle) => [center[0] + radius * Math.cos(angle), center[1] + radius * Math.sin(angle)];
     const tangent = (angle) => [-Math.sin(angle) * k, Math.cos(angle) * k];
     const quarters = [];
 
     for (let q = 0; q < 2; q++) {
-        const a0 = a + (q * Math.PI) / 2;
-        const a1 = a0 + Math.PI / 2;
+        const a0 = a + (sign * q * Math.PI) / 2;
+        const a1 = a0 + (sign * Math.PI) / 2;
         const [p0, p1] = [point(a0), point(a1)];
         const [t0, t1] = [tangent(a0), tangent(a1)];
         quarters.push([p0, [p0[0] + t0[0], p0[1] + t0[1]], [p1[0] - t1[0], p1[1] - t1[1]], p1]);
@@ -208,7 +207,7 @@ for (const path of drawing) {
             counts.joined++;
         } else if (gap > free) {
             counts.free++;
-        } else if (intended.some(([x, y]) => distance([x, y], point) < 1.5)) {
+        } else if ([which, 'both'].includes(path.free)) {
             counts.intended++;
         } else {
             problems.push(`gap   ${path.name} ${which} ${at}: ${gap.toFixed(2)} from ${nearest}`);
