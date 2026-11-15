@@ -93,7 +93,27 @@ final class OverlaysTest extends KernelTestCase
             ->assertSelectorExists('[data-phem-menu-target="popup"] [data-controller="phem-menu"][data-phem-menu-open-on-hover-value="true"][data-phem-menu-side-value="inline-end"]')
             ->assertSelectorExists('button[data-phem-menu-target="item"][data-phem-menu-close-on-click="false"]')
             ->assertSelectorExists('button[role="menuitemcheckbox"][aria-checked="true"][data-checked]')
+            ->assertSelectorCount(2, 'button[role="menuitemcheckbox"][aria-checked="true"]')
+            ->assertSelectorExists('[data-phem-menu-target="group"] button[role="menuitemradio"][data-value="date"][aria-checked="false"][data-unchecked]')
+            ->assertSelectorExists('[data-phem-menu-target="group"] button[role="menuitemradio"][data-value="name"][aria-checked="true"][data-checked]')
             ->assertSelectorExists('[data-phem-menu-target="separator"]');
+    }
+
+    public function testTheCheckItemsOfAMenuFollowTheStateRules(): void
+    {
+        $this->mount(self::APP.'MenuStateDemo')
+            // A `checked` prop wins over `defaultChecked`.
+            ->assertSelectorExists('#controlled[role="menuitemcheckbox"][aria-checked="false"][data-unchecked]:not([data-checked])')
+            // `closeOnClick` removes the attribute that keeps the menu open.
+            ->assertSelectorExists('#closes:not([data-phem-menu-close-on-click])')
+            ->assertSelectorExists('#controlled[data-phem-menu-close-on-click="false"]')
+            // The `value` of the group wins over its `defaultValue` and over the `checked` of an item.
+            ->assertSelectorExists('#date[aria-checked="false"]')
+            ->assertSelectorExists('#name[aria-checked="true"][data-checked]')
+            // The group is not the group of an item of a submenu.
+            ->assertSelectorExists('#inner[aria-checked="false"]')
+            // With no group, `checked` gives the state.
+            ->assertSelectorExists('#alone[role="menuitemradio"][aria-checked="true"]:not([data-value])');
     }
 
     public function testTheContextMenuPartsHaveTheContextMenuTargets(): void

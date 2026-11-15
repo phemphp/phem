@@ -42,6 +42,25 @@ class Menu
         return ['data-'.$this->controller().'-target' => $name];
     }
 
+    /**
+     * The attributes of a checkbox item or a radio item: its role, its state and its target.
+     *
+     * @return array<string, string|null>
+     */
+    public function checkItem(string $role, bool $checked, bool $disabled, bool $closeOnClick, ?string $value = null): array
+    {
+        return [
+            'role' => $role,
+            'data-value' => $value,
+            'aria-checked' => $checked ? 'true' : 'false',
+            'data-checked' => $checked ? '' : null,
+            'data-unchecked' => $checked ? null : '',
+            'data-disabled' => $disabled ? '' : null,
+            'data-'.$this->controller().'-close-on-click' => $closeOnClick ? null : 'false',
+            ...$this->target('item'),
+        ];
+    }
+
     /** @return array<string, string|null> the values of the controller */
     public function values(): array
     {
@@ -209,34 +228,20 @@ function MenuGroupLabel(#[Context] Menu $menu, ?Html $children = null, mixed ...
 }
 
 /**
- * An item that the user checks and unchecks: Base UI Menu.CheckboxItem. The server gives the
- * state in `checked`: the handler of `onClick` changes it. The menu stays open.
+ * An item that the user checks and unchecks: Base UI Menu.CheckboxItem. The menu stays open.
+ *
+ * With `defaultChecked`, the browser keeps the state: the item needs no handler. The item sends
+ * the `phem-menu:change` browser event after a change, with `checked` in its detail. With
+ * `checked` and an `onClick` handler, the server keeps the state: the handler changes it. A
+ * `checked` prop wins over `defaultChecked`.
  */
 #[Component]
-function MenuCheckboxItem(#[Context] Menu $menu, bool $checked = false, bool $disabled = false, bool $closeOnClick = false, ?Html $children = null, mixed ...$rest): Node
+function MenuCheckboxItem(#[Context] Menu $menu, ?bool $checked = null, bool $defaultChecked = false, bool $disabled = false, bool $closeOnClick = false, ?Html $children = null, mixed ...$rest): Node
 {
-    $target = $menu->target('item');
-    $close = $closeOnClick ? null : 'false';
-    $closeAttr = 'data-'.$menu->controller().'-close-on-click';
+    $item = $menu->checkItem('menuitemcheckbox', $checked ?? $defaultChecked, $disabled, $closeOnClick);
     $base = Style::MENU_CHECK_ITEM;
 
-    return (
-        <button
-            type="button"
-            role="menuitemcheckbox"
-            aria-checked={{ checked ? 'true' : 'false' }}
-            disabled={{ disabled }}
-            data-checked={{ checked ? '' : null }}
-            data-unchecked={{ checked ? null : '' }}
-            data-disabled={{ disabled ? '' : null }}
-            className={{ classes('group', base) }}
-            {{ ...target }}
-            {{ ...{(closeAttr): close} }}
-            {{ ...rest }}
-        >
-            {{ children }}
-        </button>
-    );
+    return <button type="button" disabled={{ disabled }} className={{ classes('group', base) }} {{ ...item }} {{ ...rest }}>{{ children }}</button>;
 }
 
 /** The check of a checkbox item or a radio item. It shows only when the item is checked. */
@@ -253,39 +258,50 @@ function MenuItemLabel(?Html $children = null, mixed ...$rest): Node
     return <span className={{ classes('col-start-2') }} {{ ...rest }}>{{ children }}</span>;
 }
 
-/** A group of radio items: Base UI Menu.RadioGroup. */
-#[Component]
-function MenuRadioGroup(#[Context] Menu $menu, ?Html $children = null, mixed ...$rest): Node
+/**
+ * A group of radio items: Base UI Menu.RadioGroup. The item with the value of the group is checked.
+ *
+ * With `defaultValue`, the browser keeps the state: the items need no handler. An item sends the
+ * `phem-menu:change` browser event after a change, with its `value` in the detail. With `value`
+ * and an `onClick` handler on each item, the server keeps the state. A `value` prop wins over
+ * `defaultValue`.
+ */
+#[Component, Provide]
+class MenuRadioGroup
 {
-    $target = $menu->target('group');
+    #[Prop] public ?string $value = null;
+    #[Prop] public ?string $defaultValue = null;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+    #[Context] public Menu $menu;
 
-    return <div {{ ...target }} {{ ...rest }}>{{ children }}</div>;
+    /** The value of the checked item, or null. */
+    public function current(): ?string
+    {
+        return $this->value ?? $this->defaultValue;
+    }
+
+    public function render(): Node
+    {
+        $target = $this->menu->target('group');
+
+        return <div {{ ...target }} {{ ...attrs }}>{{ children }}</div>;
+    }
 }
 
-/** An item of a radio group. The server gives the checked item in `checked`. The menu stays open. */
+/**
+ * An item of a radio group: Base UI Menu.RadioItem. The menu stays open.
+ *
+ * In a MenuRadioGroup with a value, the item is checked when its `value` is the value of the
+ * group. With no group, or in a group with no value, the `checked` prop gives the state. A group
+ * of a menu around a submenu is not the group of an item of the submenu.
+ */
 #[Component]
-function MenuRadioItem(#[Context] Menu $menu, bool $checked = false, bool $disabled = false, bool $closeOnClick = false, ?Html $children = null, mixed ...$rest): Node
+function MenuRadioItem(#[Context] Menu $menu, #[Context] ?MenuRadioGroup $group = null, ?string $value = null, bool $checked = false, bool $disabled = false, bool $closeOnClick = false, ?Html $children = null, mixed ...$rest): Node
 {
-    $target = $menu->target('item');
-    $close = $closeOnClick ? null : 'false';
-    $closeAttr = 'data-'.$menu->controller().'-close-on-click';
+    $current = $group?->menu === $menu ? $group->current() : null;
+    $item = $menu->checkItem('menuitemradio', null === $current ? $checked : $value === $current, $disabled, $closeOnClick, $value);
     $base = Style::MENU_CHECK_ITEM;
 
-    return (
-        <button
-            type="button"
-            role="menuitemradio"
-            aria-checked={{ checked ? 'true' : 'false' }}
-            disabled={{ disabled }}
-            data-checked={{ checked ? '' : null }}
-            data-unchecked={{ checked ? null : '' }}
-            data-disabled={{ disabled ? '' : null }}
-            className={{ classes('group', base) }}
-            {{ ...target }}
-            {{ ...{(closeAttr): close} }}
-            {{ ...rest }}
-        >
-            {{ children }}
-        </button>
-    );
+    return <button type="button" disabled={{ disabled }} className={{ classes('group', base) }} {{ ...item }} {{ ...rest }}>{{ children }}</button>;
 }

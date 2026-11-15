@@ -36,6 +36,7 @@ use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger};
 The Base UI `X.Root` is the `X` tag, and each other part is `X<Part>`: `Dialog`, `DialogTrigger`,
 `DialogPopup`, `DialogTitle`… A root that shares its props with its parts is a class with
 `#[Provide]` (import it with `use`). The parts are function components (import them with `use function`).
+A part that shares its props with the parts in it is also a class: `AccordionItem` and `MenuRadioGroup`.
 
 - **Portal and Positioner**: they have no tag. A popup goes in the top layer (`popover="manual"`, or a
   native `<dialog>`), and the Positioner props (`side`, `align`, `sideOffset`…) are props of the root.
@@ -45,17 +46,13 @@ The Base UI `X.Root` is the `X` tag, and each other part is `X<Part>`: `Dialog`,
 
 ## Status
 
-All 37 Base UI components are here. The parts follow the Base UI anatomy, with these exceptions:
+All 37 Base UI components are here. The parts follow the Base UI anatomy, with this exception:
 
 - **Switch**: the root is `SwitchRoot`, because `switch` is a reserved word in PHP.
-- **Menu checkbox and radio items**: the server gives their state (`checked`), with an `onClick` handler.
-- **Toast**: one message, with no title.
-
-The open phem gaps are in [notes/phem-gaps.md](notes/phem-gaps.md).
 
 ## Develop
 
-The bundle requires the `phem/phem` release from Packagist (`^0.4.1`). The commands run in the dev image of phem, from the phem checkout in `../../phem`. They use `vendor/bin/phemc`, the phemc binary of the installed phem release.
+The bundle requires the `phem/phem` release from Packagist (`^0.4.2`). The commands run in the dev image of phem, from the phem checkout in `../../phem`. They use `vendor/bin/phemc`, the phemc binary of the installed phem release.
 
 ```sh
 make install   # composer install

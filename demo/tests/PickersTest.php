@@ -108,10 +108,21 @@ final class PickersTest extends DemoTestCase
     {
         $page = $this->visitComponent('toast');
 
+        // A long duration: the test does not depend on the time of a toast.
+        $page->locator('[data-controller~="phem-toast"]')->evaluate('(el) => el.setAttribute("data-phem-toast-duration-value", "60000")');
+
         $button = $page->getByRole('button', ['name' => 'Create toast']);
         $button->click();
-        expect($page->getByText('Toast 1 created.'))->toBeVisible();
+        expect($page->getByText('Toast 1 created'))->toBeVisible();
+        expect($page->getByText('This is a toast notification.'))->toBeVisible();
+
+        // The text of the toast behind the new one hides, until the pointer is on the stack.
         $button->click();
-        expect($page->getByText('Toast 2 created.'))->toBeVisible();
+        expect($page->getByText('Toast 2 created'))->toBeVisible();
+        expect($page->locator('[data-phem-toast-content][data-behind]'))->toHaveCount(1);
+        expect($page->locator('[data-phem-toast-content][data-behind]'))->toHaveCSS('opacity', '0');
+
+        $page->getByText('Toast 2 created')->hover();
+        expect($page->locator('[data-phem-toast-content][data-behind]'))->toHaveCSS('opacity', '1');
     }
 }

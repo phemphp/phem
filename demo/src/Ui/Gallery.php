@@ -27,6 +27,7 @@ final class Gallery
             'form' => 'Form',
             'input' => 'Input',
             'menu' => 'Menu',
+            'menu-check-items' => 'Menu: checkbox and radio items',
             'menubar' => 'Menubar',
             'meter' => 'Meter',
             'navigation-menu' => 'Navigation Menu',

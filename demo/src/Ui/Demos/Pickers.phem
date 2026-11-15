@@ -92,7 +92,7 @@ final class ToastPage
     public function create(Event $e): void
     {
         ++$this->count;
-        $e->toast('Toast '.$this->count.' created. This is a toast notification.');
+        $e->toast('This is a toast notification.', title: 'Toast '.$this->count.' created');
     }
 
     public function render(): Node

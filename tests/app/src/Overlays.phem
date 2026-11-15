@@ -5,8 +5,8 @@ namespace Phem\Ui\Base\Tests\App;
 use Phem\Attribute\Component;
 use Phem\Node;
 
-use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger, AlertDialog, AlertDialogClose, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, CollapsiblePanel, CollapsibleTrigger, ContextMenuTrigger, Dialog, DialogClose, DialogDescription, DialogPopup, DialogTitle, DialogTrigger, MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuSeparator, MenuSubmenuTrigger, MenuTrigger, Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverTitle, PopoverTrigger, TabsIndicator, TabsList, TabsPanel, TabsTab, Tooltip, TooltipPopup, TooltipTrigger};
-use Phem\Ui\Base\{Accordion, AccordionItem, Collapsible, ContextMenu, Menu, MenuSubmenu, Tabs};
+use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger, AlertDialog, AlertDialogClose, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, CollapsiblePanel, CollapsibleTrigger, ContextMenuTrigger, Dialog, DialogClose, DialogDescription, DialogPopup, DialogTitle, DialogTrigger, MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger, Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverTitle, PopoverTrigger, TabsIndicator, TabsList, TabsPanel, TabsTab, Tooltip, TooltipPopup, TooltipTrigger};
+use Phem\Ui\Base\{Accordion, AccordionItem, Collapsible, ContextMenu, Menu, MenuRadioGroup, MenuSubmenu, Tabs};
 
 #[Component]
 function CollapsibleDemo(bool $open = false): Node
@@ -125,6 +125,36 @@ function MenuDemo(): Node
                     <MenuItemIndicator />
                     <MenuItemLabel>Minimap</MenuItemLabel>
                 </MenuCheckboxItem>
+                <MenuCheckboxItem defaultChecked><MenuItemLabel>Word wrap</MenuItemLabel></MenuCheckboxItem>
+                <MenuRadioGroup defaultValue="name">
+                    <MenuRadioItem value="date"><MenuItemLabel>Date</MenuItemLabel></MenuRadioItem>
+                    <MenuRadioItem value="name"><MenuItemLabel>Name</MenuItemLabel></MenuRadioItem>
+                </MenuRadioGroup>
+            </MenuPopup>
+        </Menu>
+    );
+}
+
+// The state rules of the check items: a `checked` prop wins over `defaultChecked`, the value of a
+// group wins over the `checked` prop of an item, and a group does not reach into a submenu.
+#[Component]
+function MenuStateDemo(): Node
+{
+    return (
+        <Menu>
+            <MenuTrigger>View</MenuTrigger>
+            <MenuPopup>
+                <MenuCheckboxItem id="controlled" checked={{ false }} defaultChecked>Wrap</MenuCheckboxItem>
+                <MenuCheckboxItem id="closes" closeOnClick>Pin</MenuCheckboxItem>
+                <MenuRadioGroup value="name" defaultValue="date">
+                    <MenuRadioItem id="date" value="date" checked>Date</MenuRadioItem>
+                    <MenuRadioItem id="name" value="name">Name</MenuRadioItem>
+                    <MenuSubmenu>
+                        <MenuSubmenuTrigger>More</MenuSubmenuTrigger>
+                        <MenuPopup><MenuRadioItem id="inner" value="name">Inner</MenuRadioItem></MenuPopup>
+                    </MenuSubmenu>
+                </MenuRadioGroup>
+                <MenuRadioItem id="alone" checked>Alone</MenuRadioItem>
             </MenuPopup>
         </Menu>
     );

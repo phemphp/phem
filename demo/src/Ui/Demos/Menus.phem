@@ -6,8 +6,8 @@ use Phem\Attribute\{Component, Page, State};
 use Phem\Node;
 
 use function App\Ui\DemoPage;
-use function Phem\Ui\Base\{ContextMenuTrigger, MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuSeparator, MenuSubmenuTrigger, MenuTrigger};
-use Phem\Ui\Base\{ContextMenu, Menu, MenuSubmenu};
+use function Phem\Ui\Base\{ContextMenuTrigger, MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger};
+use Phem\Ui\Base\{ContextMenu, Menu, MenuRadioGroup, MenuSubmenu};
 
 #[Page('/components/menu')]
 final class MenuPage
@@ -49,6 +49,48 @@ final class MenuPage
             </DemoPage>
         );
     }
+}
+
+// The checkbox items and the radio items of the Base UI Menu docs: the browser keeps their state.
+#[Page('/components/menu-check-items')]
+function MenuCheckItemsPage(): Node
+{
+    return (
+        <DemoPage title="Menu: checkbox and radio items">
+            <Menu sideOffset={{ 8 }}>
+                <MenuTrigger>Workspace</MenuTrigger>
+                <MenuPopup>
+                    <MenuCheckboxItem defaultChecked>
+                        <MenuItemIndicator />
+                        <MenuItemLabel>Minimap</MenuItemLabel>
+                    </MenuCheckboxItem>
+                    <MenuCheckboxItem defaultChecked>
+                        <MenuItemIndicator />
+                        <MenuItemLabel>Search</MenuItemLabel>
+                    </MenuCheckboxItem>
+                    <MenuCheckboxItem>
+                        <MenuItemIndicator />
+                        <MenuItemLabel>Sidebar</MenuItemLabel>
+                    </MenuCheckboxItem>
+                    <MenuSeparator />
+                    <MenuRadioGroup defaultValue="date">
+                        <MenuRadioItem value="date">
+                            <MenuItemIndicator />
+                            <MenuItemLabel>Date</MenuItemLabel>
+                        </MenuRadioItem>
+                        <MenuRadioItem value="name">
+                            <MenuItemIndicator />
+                            <MenuItemLabel>Name</MenuItemLabel>
+                        </MenuRadioItem>
+                        <MenuRadioItem value="type">
+                            <MenuItemIndicator />
+                            <MenuItemLabel>Type</MenuItemLabel>
+                        </MenuRadioItem>
+                    </MenuRadioGroup>
+                </MenuPopup>
+            </Menu>
+        </DemoPage>
+    );
 }
 
 #[Page('/components/context-menu')]

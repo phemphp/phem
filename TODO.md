@@ -4,12 +4,7 @@ The work that is still open in `phem/ui-base`. The bundle has no workarounds. A 
 
 ## Waiting for a phem fix
 
-See [notes/phem-gaps.md](notes/phem-gaps.md) for the details.
-
-- **Menu checkbox and radio items in the browser (gap 5).** Base UI toggles `Menu.CheckboxItem` and `Menu.RadioItem` in the browser (`defaultChecked`, `defaultValue`). `phem-menu` has no client state for them. Now the server gives `checked`, with an `onClick` handler. After the fix, add `defaultChecked` to `MenuCheckboxItem`, `defaultValue` to `MenuRadioGroup`, and the `data-checked`/`data-unchecked` attributes from the controller.
-- **Toast title and `data-behind` (gap 6).** `phem-toast` has one message part only. Base UI has `Toast.Title` and `Toast.Description`, and `data-behind` on the content of a stacked toast. After the fix, add `ToastTitle` to the template of `ToastViewport`, and the `data-behind` classes.
-
-phem v0.4.1 does not fix these gaps. After each phem release, update `phem/phem` (`composer update phem/phem` in the bundle and in `demo/`) and check this list again.
+No gap is open: phem v0.4.2 fixes the last two (the menu checkbox and radio items in the browser, and the toast title). When a component needs a feature that phem does not have, add the gap here. After each phem release, update `phem/phem` (`composer update phem/phem` in the bundle and in `demo/`) and check this list again.
 
 ## Browser tests of the demo
 
@@ -33,7 +28,7 @@ phem v0.4.1 does not fix these gaps. After each phem release, update `phem/phem`
 | Fieldset | `BasicsTest` | The legend names the group | `disabled` on all the fields |
 | Form | `FormsTest` | A submit focuses the first invalid field | The `typeMismatch`/`patternMismatch` messages, a valid submit |
 | Input | `BasicsTest` | Fill a value | `phem:bind` with a server event |
-| Menu | `MenusTest` | Open, ArrowDown highlights, hover opens the submenu, the checkbox item, Escape | Typeahead, ArrowLeft closes the submenu |
+| Menu | `MenusTest` | Open, ArrowDown highlights, hover opens the submenu, the checkbox item with a handler, Escape. The checkbox items and the radio items with the state in the browser (the `menu-check-items` page) | Typeahead, ArrowLeft closes the submenu |
 | Menubar | `MenusTest` | Hover moves between open menus, ArrowRight, Escape, a disabled trigger | ArrowLeft, the submenus |
 | Meter | `BasicsTest` | `aria-valuenow`, the value text | — |
 | Navigation Menu | `MenusTest` | A click opens the content, hover changes it, Escape closes it | The arrow keys between the triggers, `data-activation-direction`, `--popup-width` |
@@ -49,7 +44,7 @@ phem v0.4.1 does not fix these gaps. After each phem release, update `phem/phem`
 | Slider | `FormsTest` | ArrowRight, End, Home | Pointer drag on the track, `data-dragging` |
 | Switch | `ControlsTest` | Initial state, the accessible name, a click on the label, Space | — |
 | Tabs | `DisclosureTest` | A click selects, the arrow keys move the focus, Enter selects | The indicator variables |
-| Toast | `PickersTest` | A server event shows a toast, one toast for each click | Close button, swipe, the limit of visible toasts |
+| Toast | `PickersTest` | A server event shows a toast with a title, one toast for each click, the text behind the last toast hides until hover | Close button, swipe, the limit of visible toasts |
 | Toggle | `ControlsTest` | A click and Space toggle `aria-pressed` | — |
 | Toggle Group | `ControlsTest` | One pressed item, ArrowRight | `multiple`, Home and End |
 | Toolbar | `ControlsTest` | ArrowRight, End, Home, the arrow keys leave a toggle group | The select in the toolbar |
@@ -63,4 +58,3 @@ Other open work for the browser tests:
 ## To build here
 
 - **Dark mode check.** Compare each demo page with base-ui.com in dark mode. The light mode check matched.
-- **README status.** After gaps 5 and 6 are fixed, remove the menu and toast exceptions from the README status.

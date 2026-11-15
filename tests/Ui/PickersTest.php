@@ -53,6 +53,8 @@ final class PickersTest extends KernelTestCase
             ->assertSelectorExists('[data-controller="phem-toast"][data-phem-toast-close-label-value="Dismiss"] template[data-phem-toast-target="template"]')
             ->html();
 
+        self::assertStringContainsString('data-phem-toast-content', $html);
+        self::assertStringContainsString('data-phem-toast-title', $html);
         self::assertStringContainsString('data-phem-toast-description', $html);
         self::assertStringContainsString('data-phem-toast-close', $html);
     }

@@ -38,6 +38,41 @@ final class MenusTest extends DemoTestCase
         expect($trigger)->toBeFocused();
     }
 
+    public function testCheckboxItemsAndRadioItemsKeepTheirStateInTheBrowser(): void
+    {
+        $page = $this->visitComponent('menu-check-items');
+
+        $trigger = $page->getByRole('button', ['name' => 'Workspace']);
+        $trigger->click();
+
+        // A checkbox item with `defaultChecked` is checked. A click unchecks it, with no event.
+        $minimap = $page->getByRole('menuitemcheckbox', ['name' => 'Minimap']);
+        $sidebar = $page->getByRole('menuitemcheckbox', ['name' => 'Sidebar']);
+        expect($minimap)->toHaveAttribute('aria-checked', 'true');
+        expect($sidebar)->toHaveAttribute('aria-checked', 'false');
+        $minimap->click();
+        $sidebar->click();
+        expect($minimap)->toHaveAttribute('aria-checked', 'false');
+        expect($minimap)->toHaveAttribute('data-unchecked', '');
+        expect($sidebar)->toHaveAttribute('data-checked', '');
+
+        // A radio item unchecks the other items of its group.
+        $date = $page->getByRole('menuitemradio', ['name' => 'Date']);
+        $type = $page->getByRole('menuitemradio', ['name' => 'Type']);
+        expect($date)->toHaveAttribute('aria-checked', 'true');
+        $type->click();
+        expect($type)->toHaveAttribute('aria-checked', 'true');
+        expect($date)->toHaveAttribute('aria-checked', 'false');
+        expect($page->getByRole('menuitemradio', ['name' => 'Name']))->toHaveAttribute('aria-checked', 'false');
+
+        // The menu stays open, and the state stays when the menu opens again.
+        expect($trigger)->toHaveAttribute('aria-expanded', 'true');
+        $page->keyboard()->press('Escape');
+        $trigger->click();
+        expect($sidebar)->toHaveAttribute('aria-checked', 'true');
+        expect($type)->toHaveAttribute('aria-checked', 'true');
+    }
+
     public function testContextMenuOpensOnRightClick(): void
     {
         $page = $this->visitComponent('context-menu');
