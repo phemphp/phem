@@ -1,10 +1,13 @@
 // The motion of the home page story (src/components/home/Story.astro). It is a progressive
 // enhancement: the page is complete with no JS and with reduced motion.
 //
-// - A large screen with motion gets the sticky stage, smooth scroll (Lenis) and one timeline that
-//   the scroll scrubs. Each scene has a readable resting state (src/scripts/stage-timeline.ts),
-//   and the scroll back plays the same states in reverse.
-// - A small screen with motion gets the heading reveals and a fade-up of the static figures.
+// - A screen with enough space and with motion gets the sticky stage, smooth scroll (Lenis) and
+//   one timeline that the scroll scrubs. Each scene has a readable resting state
+//   (src/scripts/stage-timeline.ts), and the scroll back plays the same states in reverse. The
+//   mode of the screen (Story.astro) sets where the stage sits and which layout it has: beside
+//   the copy on a desktop and a laptop, above the copy on a tablet and a phone.
+// - A screen that is too short for a stage gets the heading reveals and a fade-up of the static
+//   figures.
 // - With reduced motion, nothing moves.
 //
 // gsap.matchMedia() builds the mode that matches and reverts it when the screen or the motion
@@ -14,15 +17,42 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
 import 'lenis/dist/lenis.css';
 import { field } from './field';
-import { canvasHeight, canvasWidth, introTimeline, named, scenesTimeline, StageLines, StoryTime } from './stage-timeline';
+import { compact, wide, type Layout } from './stage-layout';
+import { introTimeline, named, scenesTimeline, StageLines, StoryTime } from './stage-timeline';
 
 gsap.registerPlugin(ScrollTrigger);
+
+// The browser of a phone hides its toolbars during a scroll. The story uses the small viewport
+// height (home.css), so that change moves nothing: the triggers do not refresh for it.
+ScrollTrigger.config({ ignoreMobileResize: true });
 
 // 2D transforms only. A 3D transform puts each moving word on its own GPU layer, and Chrome on
 // macOS can paint that layer in a slightly different color than the page: a faint box shows
 // behind the text while it moves, mostly on the dark background. The tilt of scene 1 is the one
 // 3D transform: it turns the stage, not the words of the copy.
 gsap.config({ force3D: false });
+
+// A mode of the stage (Story.astro) and the classes of its styles.
+interface Mode {
+    name: string;
+    query: string;
+    classes: string[];
+}
+
+// What the script does in a mode: the layout of the stage, the part of the stage box that the
+// canvas fills, and whether the stage sits above the copy.
+interface Staging {
+    layout: Layout;
+    fit: number;
+    stacked: boolean;
+}
+
+const stagings: Record<string, Staging> = {
+    desktop: { layout: wide, fit: 0.94, stacked: false },
+    laptop: { layout: wide, fit: 0.98, stacked: false },
+    tablet: { layout: wide, fit: 1, stacked: true },
+    phone: { layout: compact, fit: 1, stacked: true },
+};
 
 export function story(root: HTMLElement): void {
     // The inline script of Story.astro shows the static page when this script is late. The first
@@ -33,26 +63,37 @@ export function story(root: HTMLElement): void {
     // first state in the same task: no frame shows the scene between the two.
     root.classList.remove('story--pending');
 
-    // Story.astro gives the size of the stage. Below it, the scale of the stage makes its text
-    // too small to read: the small screens get the static figures.
-    const conditions = { motion: '(prefers-reduced-motion: no-preference)', stage: root.dataset.stageQuery ?? 'not all' };
+    // Story.astro gives the modes of the stage. A screen that matches no mode gets the static
+    // figures, and so does a mode that has no staging here.
+    const declared = JSON.parse(root.dataset.storyModes ?? '[]') as Mode[];
+    const modes = declared.filter((mode) => mode.name in stagings);
+    const conditions: Record<string, string> = { motion: '(prefers-reduced-motion: no-preference)' };
+    modes.forEach((mode) => (conditions[mode.name] = mode.query));
 
     gsap.matchMedia().add(conditions, (context) => {
-        const { motion, stage: large } = (context.conditions ?? {}) as { motion?: boolean; stage?: boolean };
+        const matches = (context.conditions ?? {}) as Record<string, boolean>;
 
-        if (!motion) {
+        if (!matches.motion) {
             return;
         }
 
         // The first scene plays its reveal on load only, not after a change of the screen.
         const first = intro;
         intro = false;
+        const mode = modes.find((mode) => matches[mode.name]);
 
-        return large ? stage(root, context, first) : reveal(root, first);
+        if (mode) {
+            return stage(root, context, first, mode);
+        }
+
+        // The inline script of Story.astro may have set the layout of a stage already.
+        root.classList.remove('story--enhanced', ...declared.flatMap((mode) => mode.classes));
+
+        return reveal(root, first);
     });
 }
 
-// ---------- Small screens ----------
+// ---------- No stage: the static figures ----------
 
 function reveal(root: HTMLElement, intro: boolean): void {
     scenes(root).forEach((scene, index) => {
@@ -76,9 +117,9 @@ function reveal(root: HTMLElement, intro: boolean): void {
     });
 }
 
-// ---------- Large screens: the stage ----------
+// ---------- The stage ----------
 
-function stage(root: HTMLElement, context: gsap.Context, intro: boolean): () => void {
+function stage(root: HTMLElement, context: gsap.Context, intro: boolean, mode: Mode): () => void {
     const stageBox = root.querySelector<HTMLElement>('[data-stage]');
     const canvas = root.querySelector<HTMLElement>('[data-stage-canvas]');
     const tiltBox = root.querySelector<HTMLElement>('[data-stage-tilt]');
@@ -87,20 +128,21 @@ function stage(root: HTMLElement, context: gsap.Context, intro: boolean): () => 
     // No stage: the static figures show. The inline script of Story.astro may have set the layout
     // of the stage already.
     if (!stageBox || !canvas || !tiltBox || !list) {
-        root.classList.remove('story--enhanced');
+        root.classList.remove('story--enhanced', ...mode.classes);
 
         return () => {};
     }
 
-    root.classList.add('story--enhanced');
+    const { layout, fit: part, stacked } = stagings[mode.name];
+    root.classList.add('story--enhanced', ...mode.classes);
 
     // The figures stay for screen readers, but their copy buttons and code leave the Tab order.
     const focusable = [...root.querySelectorAll<HTMLElement>('[data-scene-figure] :is(a, button, [tabindex="0"])')];
     focusable.forEach((element) => element.setAttribute('tabindex', '-1'));
 
-    // The canvas fits the sticky column.
+    // The canvas fits the sticky stage.
     const fit = (): void => {
-        const scale = Math.min(stageBox.clientWidth / canvasWidth, stageBox.clientHeight / canvasHeight) * 0.94;
+        const scale = Math.min(stageBox.clientWidth / layout.width, stageBox.clientHeight / layout.height) * part;
         canvas.style.setProperty('--stage-scale', scale.toFixed(4));
     };
     const resize = new ResizeObserver(fit);
@@ -116,6 +158,13 @@ function stage(root: HTMLElement, context: gsap.Context, intro: boolean): () => 
         prevent: (node: HTMLElement) => null !== node.closest('dialog'),
     });
     const raf = (time: number): void => lenis.raf(time * 1000);
+
+    // A scroll ends the intro before ScrollTrigger renders the timeline: a tween of the timeline
+    // must not start from the state of an intro in progress, or the scroll back shows that state.
+    let endIntro = (): void => {};
+    const onScroll = (): void => endIntro();
+    lenis.on('scroll', onScroll);
+    window.addEventListener('scroll', onScroll, { capture: true, passive: true });
     lenis.on('scroll', ScrollTrigger.update);
     gsap.ticker.add(raf);
     gsap.ticker.lagSmoothing(0);
@@ -123,7 +172,7 @@ function stage(root: HTMLElement, context: gsap.Context, intro: boolean): () => 
     const all = scenes(root);
     all.forEach((scene, index) => {
         if (0 !== index || intro) {
-            revealCopy(scene, 0 === index);
+            revealCopy(scene, 0 === index, stacked);
         }
     });
 
@@ -160,7 +209,7 @@ function stage(root: HTMLElement, context: gsap.Context, intro: boolean): () => 
 
     const draw = (): void => {
         copyFigures(root);
-        lines = new StageLines(canvas);
+        lines = new StageLines(canvas, layout);
         lines.build();
 
         const timeline = scenesTimeline(lines, time);
@@ -169,34 +218,35 @@ function stage(root: HTMLElement, context: gsap.Context, intro: boolean): () => 
 
         // A scroll ends the intro and removes it, so it cannot draw the page again after the
         // timeline hides it. Lenis already smooths the wheel: a short scrub only smooths the keys
-        // and the scroll bar, so the stage stays with the copy.
+        // and the scroll bar, so the stage stays with the copy. The story ends when its last scene
+        // is under the header: the scroll bars of a phone change the height of the screen, so the
+        // end comes from the height of the scenes.
         const trigger = ScrollTrigger.create({
             trigger: list,
             start: () => `top ${top()}px`,
-            end: 'bottom bottom',
+            end: () => `+=${list.offsetHeight - all[all.length - 1].offsetHeight}`,
             scrub: 0.3,
             animation: timeline,
-            onUpdate: () => {
-                if (!opening) {
-                    return;
-                }
-
-                opening.progress(1).kill();
-                opening = undefined;
-
-                // The scrub calls onUpdate after it renders the timeline. After a jump, the
-                // timeline can be past scene 1 already, and the end of the intro shows the page
-                // again. Render the timeline again from its start: each element takes the state
-                // of the scroll.
-                const now = timeline.time();
-                timeline.time(0, true).time(now, true);
-            },
+            onUpdate: () => endIntro(),
         });
+        endIntro = (): void => {
+            if (!opening) {
+                return;
+            }
+
+            // The timeline can be past scene 1 already when ScrollTrigger renders it first: go
+            // back to the start, so the end of the intro does not show the page again.
+            const now = timeline.time();
+            timeline.time(0, true);
+            opening.progress(1).kill();
+            opening = undefined;
+            timeline.time(now, true);
+        };
         ScrollTrigger.refresh();
 
         // The intro plays only when the page opens at scene 1.
         if (0 === trigger.progress) {
-            opening = introTimeline(lines).play();
+            opening = introTimeline(lines).eventCallback('onComplete', () => (opening = undefined)).play();
         }
 
         untilt = tilt(tiltBox, () => timeline.time() / time.into(2));
@@ -259,8 +309,9 @@ function stage(root: HTMLElement, context: gsap.Context, intro: boolean): () => 
         gsap.ticker.lagSmoothing(500, 33);
         hint?.removeEventListener('click', slowScroll, true);
         lenis.destroy();
+        window.removeEventListener('scroll', onScroll, { capture: true });
         focusable.forEach((element) => (element.matches('pre') ? element.setAttribute('tabindex', '0') : element.removeAttribute('tabindex')));
-        root.classList.remove('story--enhanced');
+        root.classList.remove('story--enhanced', ...mode.classes);
         canvas.style.removeProperty('--stage-scale');
     };
 }
@@ -347,7 +398,9 @@ function scenes(root: HTMLElement): HTMLElement[] {
 // The heading rises out of the masks of its words (Scene.astro), then the rest of the copy fades
 // up. The first scene shows its links at once. The fades use opacity, not visibility, so the
 // links stay in the Tab order.
-function revealCopy(scene: HTMLElement, first: boolean): void {
+// With the stage above the copy, the copy starts at the bottom of the screen: the reveal waits
+// for the copy, not for the top of the scene.
+function revealCopy(scene: HTMLElement, first: boolean, stacked = false): void {
     const words = scene.querySelectorAll('.word__inner');
     const rest = scene.querySelectorAll('.scene__index, [data-story-reveal]');
     const tl = gsap.timeline({ paused: !first, delay: first ? 0.1 : 0 });
@@ -356,6 +409,6 @@ function revealCopy(scene: HTMLElement, first: boolean): void {
 
     if (!first) {
         tl.from(rest, { y: 16, opacity: 0, duration: 0.8, ease: 'power3.out', stagger: 0.08 }, 0.2);
-        ScrollTrigger.create({ trigger: scene, start: 'top 70%', end: 'max', once: true, onEnter: () => tl.play() });
+        ScrollTrigger.create({ trigger: stacked ? scene.querySelector('.scene__copy') : scene, start: stacked ? 'top 96%' : 'top 70%', end: 'max', once: true, onEnter: () => tl.play() });
     }
 }

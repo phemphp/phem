@@ -1,8 +1,8 @@
 ---
 // The story of the home page: one small article and its Like button, in eight scenes. The scenes
-// are plain sections with a static figure. On a large screen with motion, src/scripts/story.ts
-// adds the sticky stage, which keeps the same elements from scene to scene. The interactions are
-// illustrations: nothing on this page runs a PHP handler.
+// are plain sections with a static figure. On a screen with enough space and with motion,
+// src/scripts/story.ts adds the sticky stage, which keeps the same elements from scene to scene.
+// The interactions are illustrations: nothing on this page runs a PHP handler.
 import { highlight } from '../../home/highlight';
 import { post } from '../../home/post';
 import * as snippets from '../../home/snippets';
@@ -19,11 +19,23 @@ const code = Object.fromEntries(Object.entries(snippets).map(([name, snippet]) =
 
 const install = 'composer require phem/phem';
 
-// The size of the stage. Below it, the scale of the stage makes its text too small to read: the
-// page shows the static figures. The inline script and story.ts read it from the page.
-const stageQuery = '(min-width: 1280px) and (min-height: 700px)';
+// The modes of the stage: the first one that matches the screen sets the layout of the story. The
+// inline script and story.ts read them from the page, and home.css has the styles of each class.
+// - desktop and laptop: the copy on the left, the stage on the right.
+// - tablet: the stage on top, the copy below. The stage has its wide layout.
+// - phone: the stage on top with its compact layout, the copy below.
+// A screen that matches no mode is too short for a stage (a phone in landscape, a small window):
+// the page shows the static figures. The browser of a phone hides its toolbars during a scroll,
+// which changes the height of the screen. The height of the device does not change, so it keeps
+// a small phone on the static figures: the story does not change its mode during a scroll.
+const modes = [
+    { name: 'desktop', query: '(min-width: 1280px) and (min-height: 700px)', classes: ['story--side'] },
+    { name: 'laptop', query: '(min-width: 1024px) and (max-width: 1279.98px) and (min-height: 700px) and (orientation: landscape)', classes: ['story--side', 'story--narrow'] },
+    { name: 'tablet', query: '(min-width: 700px) and (max-width: 1279.98px) and (min-height: 880px) and (orientation: portrait)', classes: ['story--stacked'] },
+    { name: 'phone', query: '(max-width: 699.98px) and (min-height: 600px) and (min-device-height: 740px) and (orientation: portrait)', classes: ['story--stacked', 'story--compact'] },
+];
 ---
-<div class="story" data-story data-stage-query={stageQuery}>
+<div class="story" data-story data-story-modes={JSON.stringify(modes)}>
     <script is:inline>
         // Before the first paint: set the layout of the stage, so the page does not jump when
         // story.ts starts, and hide what the first scene reveals, so it does not show and then
@@ -32,17 +44,15 @@ const stageQuery = '(min-width: 1280px) and (min-height: 700px)';
             const story = document.currentScript.parentElement;
 
             if (matchMedia('(prefers-reduced-motion: no-preference)').matches) {
-                story.classList.add('story--pending');
-
-                if (matchMedia(story.dataset.stageQuery).matches) {
-                    story.classList.add('story--enhanced');
-                }
+                const mode = JSON.parse(story.dataset.storyModes).find((mode) => matchMedia(mode.query).matches);
+                const classes = mode ? ['story--enhanced', ...mode.classes] : [];
+                story.classList.add('story--pending', ...classes);
 
                 // story.ts removes story--pending when it starts. When it does not start in time
                 // (a slow or a failed script), show the static page.
                 setTimeout(() => {
                     if (story.classList.contains('story--pending')) {
-                        story.classList.remove('story--pending', 'story--enhanced');
+                        story.classList.remove('story--pending', ...classes);
                     }
                 }, 3000);
             }

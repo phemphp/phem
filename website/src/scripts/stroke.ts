@@ -116,19 +116,22 @@ export function outline(element: HTMLElement, layer: SVGSVGElement, box: (elemen
         result.frame = halves(frameBox, radius).map((d) => line(d, soft ? 'ln ln--soft' : 'ln'));
     }
 
+    // A layout can hide a part of an element (home.css): a hidden part has no line.
+    const shown = (selector: string): Element[] => [...element.querySelectorAll(selector)].filter((part) => part.getClientRects().length > 0);
+
     // The bar of a code window or of a browser.
-    for (const bar of element.querySelectorAll('.ph-code__bar, .browser__bar')) {
+    for (const bar of shown('.ph-code__bar, .browser__bar')) {
         const b = box(bar);
         result.lines.push(line(`M ${frameBox.left + 0.6} ${b.top + b.height - 0.5} H ${frameBox.left + frameBox.width - 0.6}`, 'ln ln--soft'));
     }
 
     // The text of the article, and the home indicator of a tablet or a phone, as lines.
-    for (const text of element.querySelectorAll('.article__line, .browser__line, .browser__home')) {
+    for (const text of shown('.article__line, .browser__line, .browser__home')) {
         const b = box(text);
         result.lines.push(line(`M ${b.left} ${b.top + b.height / 2} H ${b.left + b.width}`, 'ln'));
     }
 
-    for (const comments of element.querySelectorAll('.browser__comments:not([hidden])')) {
+    for (const comments of shown('.browser__comments')) {
         const b = box(comments);
         result.lines.push(line(`M ${b.left + 0.5} ${b.top} V ${b.top + b.height}`, 'ln ln--soft'));
     }
