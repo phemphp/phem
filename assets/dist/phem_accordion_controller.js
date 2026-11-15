@@ -16,9 +16,12 @@ import { hide, measure, render, show } from "./phem_transition.js"
 //     </div>
 //
 // Each `item` has one `trigger` and one `panel`. A click on a trigger opens its item, and closes
-// the other items. With the `multiple` value, more than one item can be open. ArrowDown, ArrowUp,
-// Home and End move the focus between the triggers (ArrowRight and ArrowLeft with the `horizontal`
-// orientation). A disabled trigger does not open, and does not get the focus.
+// the other items. With the `multiple` value, more than one item can be open. Tab moves the focus
+// between the triggers, as the accordion pattern of the APG says now. With the `rovingFocus`
+// value, ArrowDown, ArrowUp, Home and End also move the focus between the triggers (ArrowRight and
+// ArrowLeft with the `horizontal` orientation, and from the last trigger to the first one with the
+// `loopFocus` value). A disabled trigger does not open. A `header` target (the heading around a
+// trigger) gets `data-open`, and each part of an item gets `data-index`.
 //
 // The `open` value is the state: the list of the open items. An item is its `data-value`
 // attribute, its key (`data-phem-key`), or its index. The server render gives its first value, and
@@ -33,12 +36,13 @@ import { hide, measure, render, show } from "./phem_transition.js"
 // `hiddenUntilFound` value, a closed panel has `hidden="until-found"`: the search of the browser
 // (Ctrl+F) finds its text, and opens its item.
 export default class PhemAccordionController extends Controller {
-  static targets = ["item", "trigger", "panel"]
+  static targets = ["item", "header", "trigger", "panel"]
   static values = {
     open: Array,
     multiple: Boolean,
     orientation: { type: String, default: "vertical" },
     loopFocus: { type: Boolean, default: true },
+    rovingFocus: Boolean,
     hiddenUntilFound: Boolean,
   }
 
@@ -91,7 +95,11 @@ export default class PhemAccordionController extends Controller {
     if (part && !isDisabled(part.trigger)) this.#toggle(part.value)
   }
 
+  // The arrow keys move the focus between the triggers only with the `rovingFocus` value: the
+  // accordion pattern of the APG has no arrow keys now, and Tab moves between the triggers.
   onKeyDown = (event) => {
+    if (!this.rovingFocusValue) return
+
     const triggers = this.triggerTargets
     if (!triggers.includes(event.target)) return
 
@@ -161,10 +169,15 @@ export default class PhemAccordionController extends Controller {
   }
 
   #renderParts(open, parts) {
-    for (const { item, value, trigger, panel } of parts) {
+    parts.forEach(({ item, value, trigger, panel }, index) => {
       const isOpen = open.includes(value)
       item.toggleAttribute("data-open", isOpen)
       item.toggleAttribute("data-closed", !isOpen)
+
+      // The header of the item has its state, and each part has the index of its item.
+      const header = this.headerTargets.find((el) => item.contains(el))
+      header?.toggleAttribute("data-open", isOpen)
+      for (const part of [item, header, trigger, panel]) part?.setAttribute("data-index", String(index))
 
       if (trigger) {
         trigger.setAttribute("aria-expanded", String(isOpen))
@@ -183,7 +196,7 @@ export default class PhemAccordionController extends Controller {
         trigger.setAttribute("aria-controls", panelId)
         panel.setAttribute("aria-labelledby", triggerId)
       }
-    }
+    })
   }
 
   // Each item with its value, its trigger and its panel: the first one of each kind in the item,
@@ -224,9 +237,10 @@ export default class PhemAccordionController extends Controller {
   // The attributes of the state: the open state of an item and of a panel, and the ARIA
   // attributes of a trigger and of a panel.
   #owns(el, name) {
-    if (this.itemTargets.includes(el)) return name === "data-open" || name === "data-closed"
-    if (this.panelTargets.includes(el)) return OPEN_ATTRIBUTES.has(name) || name === "role" || name === "aria-labelledby"
-    if (this.triggerTargets.includes(el)) return name === "aria-expanded" || name === "aria-controls" || name === "data-panel-open"
+    if (this.itemTargets.includes(el)) return name === "data-open" || name === "data-closed" || name === "data-index"
+    if (this.headerTargets.includes(el)) return name === "data-open" || name === "data-index"
+    if (this.panelTargets.includes(el)) return OPEN_ATTRIBUTES.has(name) || name === "role" || name === "aria-labelledby" || name === "data-index"
+    if (this.triggerTargets.includes(el)) return name === "aria-expanded" || name === "aria-controls" || name === "data-panel-open" || name === "data-index"
 
     return false
   }

@@ -107,6 +107,24 @@ describe("phem-select", () => {
     expect(el("up").getAttribute("data-direction")).toBe("up")
   })
 
+  it("names the trigger with the label target, and focuses the trigger on a click on the label", async () => {
+    await mount(select().replace(`<button id="trigger"`, `<div id="name" data-phem-select-target="label">Apple</div><button id="trigger"`))
+
+    expect(document.getElementById("trigger").getAttribute("aria-labelledby")).toBe("name")
+
+    document.getElementById("name").click()
+    expect(document.activeElement.id).toBe("trigger")
+    expect(isOpen()).toBe(false)
+  })
+
+  it("does not open on a click on a native label of the trigger, and keeps the aria-labelledby of the markup", async () => {
+    await mount(select().replace(`<button id="trigger"`, `<label id="name" for="trigger" data-phem-select-target="label">Apple</label><button id="trigger" aria-labelledby="name value"`))
+    document.getElementById("name").click()
+
+    expect(isOpen()).toBe(false)
+    expect(document.getElementById("trigger").getAttribute("aria-labelledby")).toBe("name value")
+  })
+
   it("shows the label of the value of the server render", async () => {
     await mount(select('data-phem-select-value-value="fuji"'))
 

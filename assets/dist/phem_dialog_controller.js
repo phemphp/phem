@@ -5,6 +5,7 @@ import { dismissable } from "./phem_dismiss.js"
 import { SWIPE_ATTRIBUTES, snapPointSize, swipeable, unswipe } from "./phem_swipe.js"
 import { hide, render, show } from "./phem_transition.js"
 import { link } from "./phem_aria.js"
+import { scrollLock } from "./phem_modal.js"
 
 // The attributes of a dialog in a dialog.
 const NESTED_ATTRIBUTES = new Set(["data-nested", "data-nested-dialog-open", "data-nested-drawer-open", "style"])
@@ -35,8 +36,8 @@ const AXES = { up: "y", down: "y", left: "x", right: "x" }
 // only Escape closes it (an alert dialog). A dialog that closes in another way (a
 // `<form method="dialog">`) also sets the state.
 //
-// The `modal` value: `true` (the default) opens the dialog with `showModal()`: the page is inert,
-// and the dialog is in the top layer. `false` opens it with `show()`: the page stays active, and
+// The `modal` value: `true` (the default) opens the dialog with `showModal()`: the page is inert
+// and does not scroll (phem_modal.js), and the dialog is in the top layer. `false` opens it with `show()`: the page stays active, and
 // Escape and a press outside close it (see phem_dismiss.js). `trap-focus` is `false`, and Tab
 // stays in the dialog.
 //
@@ -56,6 +57,8 @@ const AXES = { up: "y", down: "y", left: "x", right: "x" }
 //
 // With the `swipeDirection` value (`up`, `down`, `left` or `right`), the dialog is a drawer: a
 // swipe in that direction closes it (see phem_swipe.js). The popup gets `data-swipe-direction`.
+// A mouse press in a `content` target (the text of the drawer) selects its text, and does not
+// start a swipe.
 // The `snapPoints` value (a list: a fraction of the height of the viewport, px, or a string with
 // `px` or `rem`) gives the heights where a vertical drawer stops. The `snapPoint` value is the
 // state: the snap point of the drawer (the first one by default). The popup gets
@@ -63,7 +66,7 @@ const AXES = { up: "y", down: "y", left: "x", right: "x" }
 // `data-expanded` at its full height. With `snapToSequentialPoints`, a fast swipe does not skip a
 // snap point. A new snap point dispatches `phem-dialog:snap` with the `snapPoint` in the detail.
 export default class PhemDialogController extends Controller {
-  static targets = ["trigger", "popup", "viewport", "backdrop", "close", "title", "description"]
+  static targets = ["trigger", "popup", "viewport", "backdrop", "close", "title", "description", "content"]
   static values = {
     open: Boolean,
     dismiss: { type: Boolean, default: true },
@@ -108,6 +111,8 @@ export default class PhemDialogController extends Controller {
     window.removeEventListener("resize", this.onResize)
     for (const off of this.#layers.values()) off()
     this.#layers.clear()
+    this.unlockScroll?.()
+    this.unlockScroll = null
     this.rendered = undefined
   }
 
@@ -230,6 +235,7 @@ export default class PhemDialogController extends Controller {
       open: () => el.open,
       close: () => this.close(),
       snap: this.#snap(popup),
+      content: () => this.contentTargets,
     }, listening.signal)
 
     this.#render(el)
@@ -275,6 +281,11 @@ export default class PhemDialogController extends Controller {
     this.rendered = this.openValue
     this.#renderAria()
 
+    // The lock of the scroll starts with the open, and ends at the end of the close animation:
+    // the scroll bar does not come back while the dialog still shows.
+    if (this.openValue) this.#renderScrollLock()
+    let closing = 0
+
     for (const el of this.backdropTargets) {
       if (this.openValue) show(el)
       else hide(el)
@@ -297,6 +308,7 @@ export default class PhemDialogController extends Controller {
 
       for (const part of this.#parts(el)) if (part !== popup) hide(part, { hidden: false })
 
+      closing++
       hide(popup, {
         hidden: false,
         onEnd: () => {
@@ -304,15 +316,19 @@ export default class PhemDialogController extends Controller {
 
           unswipe(popup)
           if (el.open) el.close()
+          this.#renderScrollLock()
         },
       })
     }
+
+    if (!this.openValue && closing === 0) this.#renderScrollLock()
   }
 
   // The state with no animation. An open dialog in another mode (the server render gave `open`,
   // or the morph moved it) closes first.
   #render(el) {
     for (const part of this.#parts(el)) render(part, this.openValue, { hidden: false })
+    this.#renderScrollLock()
 
     if (!this.openValue) {
       if (el.open) el.close()
@@ -357,6 +373,17 @@ export default class PhemDialogController extends Controller {
 
   get #modal() {
     return this.modalValue !== "false" && this.modalValue !== "trap-focus"
+  }
+
+  // An open modal dialog locks the scroll of the page.
+  #renderScrollLock() {
+    const locked = this.openValue && this.#modal && this.#dialogs.length > 0
+
+    if (locked && !this.unlockScroll) this.unlockScroll = scrollLock()
+    else if (!locked && this.unlockScroll) {
+      this.unlockScroll()
+      this.unlockScroll = null
+    }
   }
 
   // A dialog in a dialog: the dialog around it shows how many dialogs are open in it.

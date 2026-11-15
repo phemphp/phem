@@ -63,6 +63,19 @@ final class ComboboxPage
                     </div>
                 </div>
 
+                <div id="picker" data-controller="phem-combobox" data-phem-combobox-filter-value="contains" data-phem-combobox-selection-mode-value="single" data-phem-combobox-open-on-input-click-value="true">
+                    <input id="picker-input" data-phem-combobox-target="input" aria-label="Picker" />
+                    <button type="button" id="picker-clear" data-phem-combobox-target="clear">Clear</button>
+                    <input type="hidden" id="picker-value" name="picker" data-phem-combobox-target="value" />
+                    <div id="picker-popup" data-phem-combobox-target="popup" hidden>
+                        <ul data-phem-combobox-target="list">
+                            {% for name in fruits %}
+                                <li key={{ name }} id={{ 'pick-' ~ loop.index }} data-value={{ name|lower }} data-phem-combobox-target="item">{{ name }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+
                 <div id="colors" data-controller="phem-combobox" data-phem-combobox-filter-value="contains">
                     <input id="color-input" data-phem-combobox-target="input" aria-label="Color" />
                     <div id="color-popup" data-phem-combobox-target="popup" hidden>

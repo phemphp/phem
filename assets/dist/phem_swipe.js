@@ -162,10 +162,12 @@ const VARIABLES = ["--drawer-swipe-movement-x", "--drawer-swipe-movement-y", "--
 const OPPOSITE = { up: "down", down: "up", left: "right", right: "left" }
 
 // The listeners stop when `signal` aborts.
-export function swipeable(popup, { direction, open = () => popup.open, close, snap = null }, signal) {
+// A mouse press in an element of `content()` selects its text: it does not start a swipe.
+export function swipeable(popup, { direction, open = () => popup.open, close, snap = null, content = () => [] }, signal) {
   popup.addEventListener("pointerdown", (event) => {
     const name = direction()
     if (!AXES[name] || !event.isPrimary || event.button !== 0 || !open()) return
+    if (event.pointerType === "mouse" && content().some((el) => el.contains(event.target))) return
     if (!inBox(popup, event) || onControl(popup, event.target) || scrolledBack(popup, event.target, name)) return
 
     const [axis, sign] = AXES[name]

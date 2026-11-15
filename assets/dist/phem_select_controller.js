@@ -85,11 +85,12 @@ const SCROLL_STEP = 4
 // items get `role="option"`, `aria-selected`, `data-selected`, `data-disabled`, and
 // `data-highlighted` while they have the focus. An `itemIndicator` target shows only in a
 // selected item (unless it has `data-keep-mounted`), with the transition attributes. The `icon`
-// target gets `data-popup-open`. The groups get `role="group"` with the name of their
+// target gets `data-popup-open`. A `label` target names the trigger (`aria-labelledby`, or an
+// element reference when the label has no id), and a click on it gives the focus to the trigger. The groups get `role="group"` with the name of their
 // `groupLabel`, and the separators `role="separator"`. The popup and the `backdrop` target get
 // the open state and the animations of the conventions (phem_transition.js).
 export default class PhemSelectController extends Controller {
-  static targets = ["trigger", "value", "icon", "popup", "list", "item", "itemText", "itemIndicator", "group", "groupLabel", "separator", "scrollUpArrow", "scrollDownArrow", "arrow", "backdrop", "input"]
+  static targets = ["trigger", "label", "value", "icon", "popup", "list", "item", "itemText", "itemIndicator", "group", "groupLabel", "separator", "scrollUpArrow", "scrollDownArrow", "arrow", "backdrop", "input"]
   static values = {
     value: String,
     open: Boolean,
@@ -231,6 +232,15 @@ export default class PhemSelectController extends Controller {
     const item = this.#itemOf(event.target)
     if (item) {
       this.#choose(item)
+
+      return
+    }
+
+    // A click on the label gives the focus to the trigger, and does not open the popup.
+    // A native `<label for>` would also click the trigger: the default is off.
+    if (this.labelTargets.some((el) => el.contains(event.target))) {
+      event.preventDefault()
+      if (!this.#disabled) this.triggerTargets[0]?.focus()
 
       return
     }
@@ -599,6 +609,15 @@ export default class PhemSelectController extends Controller {
     for (const trigger of this.triggerTargets) {
       if (!trigger.hasAttribute("role")) trigger.setAttribute("role", "combobox")
       if (!trigger.hasAttribute("aria-haspopup")) trigger.setAttribute("aria-haspopup", "listbox")
+
+      // The `label` target names the trigger, unless the markup names it (`aria-label`, or an
+      // `aria-labelledby` that the controller did not write).
+      const label = this.labelTargets[0]
+      this.labelled ??= new WeakSet()
+      if (label && !trigger.hasAttribute("aria-label") && (!trigger.hasAttribute("aria-labelledby") || this.labelled.has(trigger))) {
+        link(trigger, "aria-labelledby", "ariaLabelledByElements", label)
+        this.labelled.add(trigger)
+      }
       trigger.setAttribute("aria-expanded", String(open))
       if (list) link(trigger, "aria-controls", "ariaControlsElements", list)
       trigger.toggleAttribute("data-popup-open", open)

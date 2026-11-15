@@ -28,7 +28,7 @@ const FOCUSABLE = "a[href], button, input, select, textarea, [tabindex]"
 //
 // The popup gets `role="dialog"`, `aria-labelledby` (the `title` target, unless the popup has an
 // `aria-label`) and `aria-describedby` (the `description` target). A trigger gets
-// `aria-haspopup="dialog"`, `aria-expanded`, `aria-controls` and `data-popup-open`. A part with
+// `aria-haspopup="dialog"`, `aria-expanded`, `aria-controls`, `data-popup-open` and `data-pressed`. A part with
 // no id gets no id: the link is an element reference (`ariaLabelledByElements`,
 // `ariaDescribedByElements`, `ariaControlsElements`). The open popup gets `data-open`, `data-side`,
 // `data-align` and the CSS variables of phem_position.js; see phem_transition.js for the
@@ -267,6 +267,7 @@ export default class PhemPopoverController extends Controller {
       if (popup) link(trigger, "aria-controls", "ariaControlsElements", popup)
       trigger.setAttribute("aria-expanded", String(this.openValue))
       trigger.toggleAttribute("data-popup-open", this.openValue)
+      trigger.toggleAttribute("data-pressed", this.openValue)
     }
   }
 
@@ -288,7 +289,7 @@ export default class PhemPopoverController extends Controller {
   // and `data-popup-open` on a trigger, and the parts of a preview card.
   #owns(el, name) {
     if (this.popup.owns(el, name)) return true
-    if (this.triggerTargets.includes(el)) return name === "aria-expanded" || name === "data-popup-open"
+    if (this.triggerTargets.includes(el)) return name === "aria-expanded" || name === "data-popup-open" || name === "data-pressed"
     if (this.#preview && this.popupTargets.some((popup) => popup.contains(el))) return name === "tabindex" || (name === "aria-hidden" && this.popupTargets.includes(el))
 
     return false

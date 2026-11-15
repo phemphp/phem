@@ -533,8 +533,10 @@ export default class PhemMenuController extends Controller {
     this.rendered = this.openValue
     this.#renderParts()
 
-    if (this.openValue) this.popup.show()
-    else this.popup.hide()
+    // A menubar that goes from one menu to another sets `instant`: the popups have no animation.
+    const instant = this.instant ?? false
+    if (this.openValue) this.popup.show({ instant })
+    else this.popup.hide({ instant })
 
     this.#renderModal()
     this.dispatch(this.openValue ? "open" : "close")

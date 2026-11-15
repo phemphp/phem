@@ -190,6 +190,9 @@ describe("phem-menubar", () => {
     expect($("file-popup").hidden).toBe(true)
     expect($("edit-popup").hidden).toBe(false)
 
+    // The bar goes from one menu to another: the popup opens with no animation.
+    expect($("edit-popup").getAttribute("data-instant")).toBe("group")
+
     $("edit-trigger").click()
     expect($("edit-popup").hidden).toBe(false)
 

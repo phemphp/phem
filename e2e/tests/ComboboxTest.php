@@ -133,4 +133,40 @@ final class ComboboxTest extends E2eTestCase
         self::assertTrue($page->evaluate($controls));
         self::assertSame(0, $page->evaluate("document.querySelectorAll('.color-list[id], .color-list li[id]').length"));
     }
+
+    public function testTheSingleSelectionModeSelectsOneItemWithNoFreeText(): void
+    {
+        $page = $this->visit('/combobox');
+        self::assertResponseIsSuccessful();
+
+        $input = $page->locator('#picker-input');
+        expect($page->locator('#picker-clear'))->toBeHidden();
+
+        // A click on the input opens the popup with all the items.
+        $input->click();
+        expect($page->locator('#picker-popup'))->toBeVisible();
+        $all = $page->locator('#picker-popup [role="option"]:visible')->count();
+
+        $first = $page->locator('#pick-1');
+        $label = (string) $first->textContent();
+        $first->click();
+        expect($input)->toHaveValue(trim($label));
+        expect($first)->toHaveAttribute('data-selected', '');
+        expect($page->locator('#picker-value'))->toHaveValue(strtolower(trim($label)));
+        expect($page->locator('#picker-clear'))->toBeVisible();
+
+        // The popup opens again with all the items, not only the selected one.
+        $input->click();
+        expect($page->locator('#picker-popup [role="option"]:visible'))->toHaveCount($all);
+
+        // A text that is not an item goes away when the popup closes.
+        $input->fill('zzz');
+        $input->blur();
+        expect($input)->toHaveValue(trim($label));
+
+        $page->locator('#picker-clear')->click();
+        expect($input)->toHaveValue('');
+        expect($page->locator('#picker-value'))->toHaveValue('');
+        expect($first)->not()->toHaveAttribute('data-selected', '');
+    }
 }

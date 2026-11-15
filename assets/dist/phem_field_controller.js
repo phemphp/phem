@@ -25,7 +25,8 @@ import { isDirty, isDisabledControl, isFilled, isNative, validityOf } from "./ph
 // `phem-form` around it submits, and on each change after this submit; `onBlur` when the control
 // loses the focus; `onChange` on each change, after `validationDebounceTime` milliseconds (0 by
 // default). With no `validationMode` value, the field uses the `validationMode` value of the
-// `phem-form` around it. In all the modes, an invalid field validates again on each change.
+// `phem-form` around it. In all the modes, an invalid field validates again on each change, and
+// Enter in an `<input>` control validates the field (in a `phem-form`, the submit does it).
 //
 // An `error` target with `data-match="<key>"` (a key of `ValidityState`, such as `valueMissing`,
 // `typeMismatch` or `customError`) shows when the validation finds this error. With
@@ -86,6 +87,7 @@ export default class PhemFieldController extends Controller {
     this.element.addEventListener("input", this.onChange, options)
     this.element.addEventListener("change", this.onChange, options)
     this.element.addEventListener("click", this.onClick, options)
+    this.element.addEventListener("keydown", this.onKeydown, options)
     this.element.addEventListener("invalid", this.onInvalid, { ...options, capture: true })
     this.element.addEventListener("turbo:before-morph-element", this.onBeforeMorph, options)
 
@@ -186,6 +188,18 @@ export default class PhemFieldController extends Controller {
     if (this.#mode === "onChange") this.#later()
     else if (this.submitted || this.valid === false) this.validate()
     else this.#render({ animate: true })
+  }
+
+  // Enter in an `<input>` control validates the field, in all the modes: the user ends the value.
+  // In a `phem-form`, Enter submits the form, and the submit validates the field.
+  onKeydown = (event) => {
+    if (event.key !== "Enter" || event.defaultPrevented || event.isComposing) return
+    if (event.target.tagName !== "INPUT" || !this.controlTargets.includes(event.target)) return
+
+    this.touched = true
+    if (event.target.form?.matches("[data-controller~='phem-form']")) return
+
+    this.validate()
   }
 
   // The interactive validation of a form with no `phem-form` (no `novalidate`).

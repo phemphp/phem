@@ -76,6 +76,7 @@ describe("phem-context-menu", () => {
     expect($("popup").style.left).toBe("120px")
     expect($("popup").getAttribute("data-side")).toBe("bottom")
     expect($("area").hasAttribute("data-popup-open")).toBe(true)
+    expect($("area").hasAttribute("data-pressed")).toBe(true)
     expect($("area").hasAttribute("aria-expanded")).toBe(false)
     expect(document.activeElement.id).toBe("popup")
   })

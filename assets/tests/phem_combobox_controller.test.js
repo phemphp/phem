@@ -111,11 +111,48 @@ describe("phem-combobox", () => {
     expect($("city-Paris").hasAttribute("data-highlighted")).toBe(true)
     press("ArrowDown")
     expect($("input").getAttribute("aria-activedescendant")).toBe("city-Parma")
+    // After the last item, the highlight goes back to the input, then to the first item.
+    press("ArrowDown")
+    expect($("input").hasAttribute("aria-activedescendant")).toBe(false)
     press("ArrowDown")
     expect($("input").getAttribute("aria-activedescendant")).toBe("city-Paris")
     press("ArrowUp")
+    expect($("input").hasAttribute("aria-activedescendant")).toBe(false)
+    press("ArrowUp")
     expect($("input").getAttribute("aria-activedescendant")).toBe("city-Parma")
     expect(document.activeElement.id).toBe("input")
+  })
+
+  it("stays on the last item with loopFocus false", async () => {
+    await mountField(field(["Paris", "Parma"], `data-phem-combobox-loop-focus-value="false"`))
+    press("ArrowDown")
+    press("ArrowDown")
+    press("ArrowDown")
+
+    expect($("input").getAttribute("aria-activedescendant")).toBe("city-Parma")
+  })
+
+  it("shows the clear target only when the input has a text", async () => {
+    await mountField(field())
+    expect($("clear").hidden).toBe(true)
+
+    await type("pa", ["Paris", "Parma"])
+    expect($("clear").hidden).toBe(false)
+    expect($("clear").hasAttribute("data-visible")).toBe(true)
+  })
+
+  it("opens on a click on the input with the openOnInputClick value", async () => {
+    await mountField(field(["Paris"], `data-phem-combobox-open-on-input-click-value="true"`))
+    $("input").click()
+
+    expect($("popup").hidden).toBe(false)
+  })
+
+  it("does not open on a click on the input by default", async () => {
+    await mountField(field(["Paris"]))
+    $("input").click()
+
+    expect($("popup").hidden).toBe(true)
   })
 
   it("keeps the highlight on the same item through the morph of another event", async () => {
@@ -186,6 +223,25 @@ describe("phem-combobox", () => {
     await type("pa", ["Paris", "Parma"], auto)
 
     expect($("input").getAttribute("aria-activedescendant")).toBe("city-Paris")
+  })
+
+  it("goes from the first item to the last one with autoHighlight", async () => {
+    const auto = 'data-phem-combobox-auto-highlight-value="true"'
+    await mountField(field([], auto))
+    await type("pa", ["Paris", "Parma"], auto)
+    press("ArrowUp")
+    expect($("input").getAttribute("aria-activedescendant")).toBe("city-Parma")
+
+    press("ArrowDown")
+    expect($("input").getAttribute("aria-activedescendant")).toBe("city-Paris")
+  })
+
+  it("places the popup against the inputGroup target", async () => {
+    await mountField(field(["Paris"]).replace(`<input id="input"`, `<div id="group" data-phem-combobox-target="inputGroup"><input id="input"`).replace(`<button id="clear"`, `</div><button id="clear"`))
+    $("group").getBoundingClientRect = () => ({ left: 10, top: 20, right: 310, bottom: 60, width: 300, height: 40, x: 10, y: 20 })
+    press("ArrowDown")
+
+    expect($("popup").style.getPropertyValue("--anchor-width")).toBe("300px")
   })
 
   it("chooses the highlighted item with Enter: its handler runs, and the popup closes", async () => {
@@ -477,8 +533,134 @@ describe("phem-combobox", () => {
 
       expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-banana")
 
+      // One visible item: the next key goes back to the input, then to the item again.
+      press("ArrowDown")
+      expect($("input").hasAttribute("aria-activedescendant")).toBe(false)
       press("ArrowDown")
       expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-banana")
+    })
+
+    describe("with the single selection mode", () => {
+      const single = 'data-phem-combobox-filter-value="contains" data-phem-combobox-selection-mode-value="single"'
+      const page = () => fruits(single).replace(`<input id="input"`, `<input type="hidden" id="value" name="fruit" data-phem-combobox-target="value" /><button id="clear" data-phem-combobox-target="clear">Clear</button><input id="input"`).replaceAll(`data-phem-combobox-target="item">`, `data-phem-combobox-target="item" data-value="x">`)
+
+      it("selects the item of a click, and gives its value to the value target", async () => {
+        await mount(page())
+        const changes = []
+        $("combobox").addEventListener("phem-combobox:change", (event) => changes.push(event.detail.item?.id ?? null))
+        expect($("clear").hidden).toBe(true)
+
+        typeText("che")
+        $("fruit-cherry").click()
+
+        expect($("input").value).toBe("Cherry")
+        expect($("fruit-cherry").hasAttribute("data-selected")).toBe(true)
+        expect($("fruit-cherry").getAttribute("aria-selected")).toBe("true")
+        expect($("fruit-apple").getAttribute("aria-selected")).toBe("false")
+        expect($("value").value).toBe("x")
+        expect($("clear").hidden).toBe(false)
+        expect(changes).toEqual(["fruit-cherry"])
+      })
+
+      it("shows all the items when the popup opens with the label of the selection", async () => {
+        await mount(page())
+        typeText("che")
+        $("fruit-cherry").click()
+        press("ArrowDown")
+
+        expect(visible()).toHaveLength(5)
+
+        // A new text filters again.
+        typeText("an")
+        expect(visible()).toEqual(["fruit-banana"])
+      })
+
+      it("gives the input the label of the selection again when the popup closes", async () => {
+        await mount(page())
+        typeText("che")
+        $("fruit-cherry").click()
+        typeText("zzz")
+        $("outside")?.focus()
+        $("input").dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: document.body }))
+
+        expect($("input").value).toBe("Cherry")
+      })
+
+      it("removes the text with no selection when the popup closes", async () => {
+        await mount(page())
+        typeText("zzz")
+        $("input").dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: document.body }))
+
+        expect($("input").value).toBe("")
+      })
+
+      it("removes the selection with the clear target", async () => {
+        await mount(page())
+        typeText("che")
+        $("fruit-cherry").click()
+        $("clear").click()
+
+        expect($("input").value).toBe("")
+        expect($("fruit-cherry").hasAttribute("data-selected")).toBe(false)
+        expect($("value").value).toBe("")
+        expect($("clear").hidden).toBe(true)
+      })
+
+      it("takes a new selection of the server render, and no selection after a reset", async () => {
+        await mount(page())
+        typeText("che")
+        $("fruit-cherry").click()
+
+        respond(page().replace(`id="fruit-lemon"`, `id="fruit-lemon" data-selected`))
+        let done = nextDone()
+        click("#refresh")
+        await done
+        await new Promise((resolve) => setTimeout(resolve, 0))
+
+        expect($("fruit-lemon").hasAttribute("data-selected")).toBe(true)
+        expect($("fruit-cherry").hasAttribute("data-selected")).toBe(false)
+        expect($("input").value).toBe("Lemon")
+        expect($("value").value).toBe("x")
+
+        // The server render has no selected item now: a reset.
+        respond(page())
+        done = nextDone()
+        click("#refresh")
+        await done
+        await new Promise((resolve) => setTimeout(resolve, 0))
+
+        expect($("fruit-lemon").hasAttribute("data-selected")).toBe(false)
+        expect($("input").value).toBe("")
+        expect($("value").value).toBe("")
+        expect($("clear").hidden).toBe(true)
+      })
+
+      it("has no selection when the selected item leaves the page", async () => {
+        await mount(page())
+        typeText("che")
+        $("fruit-cherry").click()
+        $("fruit-cherry").remove()
+        await new Promise((resolve) => setTimeout(resolve, 0))
+
+        expect($("value").value).toBe("")
+        expect($("clear").hidden).toBe(true)
+      })
+
+      it("takes the first selection from the server render, and keeps the selection after a morph", async () => {
+        const selected = page().replace(`id="fruit-lemon"`, `id="fruit-lemon" data-selected`)
+        await mount(selected)
+        expect($("fruit-lemon").getAttribute("aria-selected")).toBe("true")
+
+        typeText("che")
+        $("fruit-cherry").click()
+        respond(selected)
+        const done = nextDone()
+        click("#refresh")
+        await done
+
+        expect($("fruit-cherry").hasAttribute("data-selected")).toBe(true)
+        expect($("fruit-lemon").hasAttribute("data-selected")).toBe(false)
+      })
     })
 
     it("writes the label of the chosen item in the input, and sends its events", async () => {

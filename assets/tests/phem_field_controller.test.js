@@ -105,6 +105,14 @@ describe("phem-field", () => {
     expect(el("name").getAttribute("aria-describedby")).toBe("help")
   })
 
+  it("validates on Enter in the input, in the onSubmit mode", async () => {
+    await mount(field())
+    document.getElementById("name").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }))
+
+    expect(document.getElementById("missing").hidden).toBe(false)
+    expect(document.getElementById("name").hasAttribute("data-touched")).toBe(true)
+  })
+
   it("validates on change after the debounce time", async () => {
     await mount(field('data-phem-field-validation-mode-value="onChange" data-phem-field-validation-debounce-time-value="100"', 'name="code" pattern="[0-9]{4}"'))
     vi.useFakeTimers()

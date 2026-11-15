@@ -72,6 +72,15 @@ describe("phem-popover", () => {
     expect(isOpen()).toBe(false)
   })
 
+  it("marks the trigger as pressed while the popup is open", async () => {
+    await mount(share())
+    click("#trigger")
+    expect(document.getElementById("trigger").hasAttribute("data-pressed")).toBe(true)
+
+    click("#trigger")
+    expect(document.getElementById("trigger").hasAttribute("data-pressed")).toBe(false)
+  })
+
   it("sets the roles and the ARIA attributes", async () => {
     await mount(share())
     const trigger = document.getElementById("trigger")

@@ -1,4 +1,5 @@
-// The modal state of a popup, for `phem-menu` and `phem-context-menu` with their `modal` value.
+// The modal state of a popup, for `phem-menu` and `phem-context-menu` with their `modal` value,
+// and the scroll lock of the page, for a modal `phem-dialog`.
 //
 // While a modal popup is open, the page does not scroll, and the elements out of the popup get no
 // pointer events: the page has `pointer-events: none` and the popup `pointer-events: auto`. A
@@ -9,28 +10,36 @@
 //     const unlock = modal(popup)
 //     unlock() // when the popup closes
 //
+// scrollLock() locks only the scroll of the page: a modal `<dialog>` already makes the page inert.
+//
+//     const unlock = scrollLock()
+//     unlock() // when the dialog closes
+//
 // The page and the body are out of the root of Phem: the morph does not change them. The
 // snapshot of a Turbo visit gets the styles of the page back: a page from the cache is not
 // locked, and a modal popup that it opens locks it again.
 
-// The open modal popups: the page gets its styles back when the last one closes. A new
+// The open locks: the page gets its styles back when the last one of a kind ends. A new
 // generation starts with each snapshot: the unlocks of the old one do not count.
-let count = 0
+let scrolls = 0
+let pointers = 0
 let saved = null
 let generation = 0
 
 document.addEventListener("turbo:before-cache", () => {
-  if (count === 0) return
+  if (scrolls === 0) return
 
-  unlock()
-  count = 0
+  scrolls = 0
+  pointers = 0
+  restore()
   generation++
 })
 
 export function modal(popup) {
-  if (count++ === 0) lock()
-
+  const unlockScroll = scrollLock()
   const locked = generation
+  if (pointers++ === 0) document.body.style.pointerEvents = "none"
+
   const before = popup.style.getPropertyValue("pointer-events")
   popup.style.setProperty("pointer-events", "auto")
   let done = false
@@ -43,7 +52,23 @@ export function modal(popup) {
     else popup.style.removeProperty("pointer-events")
     if (popup.getAttribute("style") === "") popup.removeAttribute("style")
 
-    if (locked === generation && --count === 0) unlock()
+    if (locked === generation && --pointers === 0) document.body.style.pointerEvents = saved?.pointerEvents ?? ""
+    unlockScroll()
+  }
+}
+
+// Locks the scroll of the page. The width of the scroll bar stays, so the page does not move.
+export function scrollLock() {
+  if (scrolls++ === 0) lock()
+
+  const locked = generation
+  let done = false
+
+  return () => {
+    if (done) return
+
+    done = true
+    if (locked === generation && --scrolls === 0) restore()
   }
 }
 
@@ -60,10 +85,9 @@ function lock() {
 
   html.style.overflow = "hidden"
   if (scrollbar > 0) html.style.paddingRight = `${scrollbar}px`
-  body.style.pointerEvents = "none"
 }
 
-function unlock() {
+function restore() {
   const html = document.documentElement
   const body = document.body
 

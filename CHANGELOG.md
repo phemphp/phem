@@ -8,6 +8,25 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking** `phem-accordion` does not move the focus between the triggers with the arrow keys
+  by default, as the accordion pattern of the ARIA Authoring Practices says now (and Base UI
+  v1.9.0). Set `data-phem-accordion-roving-focus-value="true"` for the arrow keys, Home and End.
+- **Breaking** In `phem-combobox`, an arrow key after the last item goes back to the input (no
+  highlight), and the next key goes to the first item. A `clear` part has `hidden` when there is
+  nothing to clear. A press on a `clear` part keeps the focus in the input.
+- Behavior of the Base UI v1.9.0 components that the controllers did not have, from an audit of
+  the `phem/ui-base` kit. `phem-combobox` has a `selectionMode` value (`single`: one selected
+  item with `data-selected`, a `value` part for a form, no free text, and all the items when the
+  popup opens with the label of the selection), an `openOnInputClick` value, and an `inputGroup`
+  part that is the anchor of the popup. A modal `phem-dialog` locks the scroll of the page. A
+  mouse press in a `content` part of a drawer selects its text, and `data-phem-swipe-ignore`
+  stops a swipe. `phem-accordion` has a `header` part with `data-open`, and its parts get
+  `data-index`. The triggers of `phem-popover` and `phem-context-menu` get `data-pressed`.
+  `phem-menubar` gives `data-instant="group"` to the popups when it goes from one menu to
+  another. `phem-select` has a `label` part that names the trigger and gives it the focus on a
+  click. The position has the `collision-padding-inline` and `flip` values. `phem-field`
+  validates on Enter in an `<input>` control. A limited toast gets `inert`, and the title, the
+  description and the close button of a toast get `data-type`. See docs/controllers.md.
 - **Breaking** The default markup of a toast has a content part (`[data-phem-toast-content]`)
   around its text: the description is not a child of the toast root now. A CSS rule such as
   `[data-phem-toast] > [data-phem-toast-description]` does not match. A template of the app does

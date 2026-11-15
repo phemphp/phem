@@ -6,7 +6,9 @@
 // `inline-start` or `inline-end`), with the `align` (`start`, `center` or `end`) on the other
 // axis. When there is no space on the side, the popup goes to the other side (a flip). On the
 // other axis, it moves to stay in the viewport (a shift). `collisionPadding` is the space to keep
-// between the popup and the edges of the viewport.
+// between the popup and the edges of the viewport. `collisionPaddingInline` is this space for the
+// left and the right edges only, when it is not the same. With `flip: false`, the popup stays on
+// its side (Base UI `collisionAvoidance={{ side: 'none' }}`).
 //
 // The popup and its arrow get the real side and align (after a flip) in `data-side` and
 // `data-align`, and the popup gets these CSS variables:
@@ -39,7 +41,7 @@ const ARROW_STYLES = ["top", "left"]
 export const POSITION_ATTRIBUTES = new Set(["style", "data-side", "data-align", "data-uncentered", "data-anchor-hidden"])
 
 // Reads the position options of a controller: its `side`, `align`, `sideOffset`, `alignOffset`,
-// `collisionPadding` and `arrowPadding` values.
+// `collisionPadding`, `collisionPaddingInline`, `flip` and `arrowPadding` values.
 export function positionOptions(controller, arrow = null) {
   return {
     side: controller.sideValue,
@@ -47,6 +49,8 @@ export function positionOptions(controller, arrow = null) {
     sideOffset: controller.sideOffsetValue,
     alignOffset: controller.alignOffsetValue,
     collisionPadding: controller.collisionPaddingValue,
+    collisionPaddingInline: controller.collisionPaddingInlineValue,
+    flip: controller.flipValue,
     arrowPadding: controller.arrowPaddingValue,
     arrow,
   }
@@ -60,6 +64,8 @@ export function positionValues(side = "bottom", align = "center") {
     sideOffset: { type: Number, default: 0 },
     alignOffset: { type: Number, default: 0 },
     collisionPadding: { type: Number, default: 5 },
+    collisionPaddingInline: { type: Number, default: -1 },
+    flip: { type: Boolean, default: true },
     arrowPadding: { type: Number, default: 5 },
   }
 }
@@ -108,7 +114,7 @@ export function unposition(popup, arrow = null) {
   if (arrow.getAttribute("style") === "") arrow.removeAttribute("style")
 }
 
-export function place(anchor, popup, { side = "bottom", align = "center", sideOffset = 0, alignOffset = 0, collisionPadding = 5, arrowPadding = 5, arrow = null } = {}) {
+export function place(anchor, popup, { side = "bottom", align = "center", sideOffset = 0, alignOffset = 0, collisionPadding = 5, collisionPaddingInline = -1, flip = true, arrowPadding = 5, arrow = null } = {}) {
   side = SIDES.has(side) ? side : "bottom"
   align = ALIGNS.has(align) ? align : "center"
 
@@ -126,28 +132,29 @@ export function place(anchor, popup, { side = "bottom", align = "center", sideOf
   // The size with no transform: a scale animation does not change the place.
   const size = { width: popup.offsetWidth, height: popup.offsetHeight }
   const view = { width: document.documentElement.clientWidth, height: document.documentElement.clientHeight }
-  const pad = collisionPadding
+  // The space to the top and the bottom edges, and to the left and the right edges.
+  const pad = { block: collisionPadding, inline: collisionPaddingInline >= 0 ? collisionPaddingInline : collisionPadding }
 
   // The flip: the other side when the popup does not fit on its side, and fits better there.
   const physical = physicalSide(side, rtl)
   const space = spaceOn(a, view, sideOffset, pad)
   const needed = isVertical(physical) ? size.height : size.width
-  const flipped = space[physical] < needed && space[physicalSide(OPPOSITE[side], rtl)] > space[physical]
+  const flipped = flip && space[physical] < needed && space[physicalSide(OPPOSITE[side], rtl)] > space[physical]
   const finalSide = flipped ? OPPOSITE[side] : side
   const finalPhysical = physicalSide(finalSide, rtl)
 
   let { x, y } = coordinates(a, size, finalPhysical, align, sideOffset, alignOffset, rtl)
 
   // The shift: on the other axis, the popup stays in the viewport.
-  if (isVertical(finalPhysical)) x = clamp(x, pad, view.width - pad - size.width)
-  else y = clamp(y, pad, view.height - pad - size.height)
+  if (isVertical(finalPhysical)) x = clamp(x, pad.inline, view.width - pad.inline - size.width)
+  else y = clamp(y, pad.block, view.height - pad.block - size.height)
 
   x = Math.round(x)
   y = Math.round(y)
 
   const available = isVertical(finalPhysical)
-    ? { width: view.width - 2 * pad, height: space[finalPhysical] }
-    : { width: space[finalPhysical], height: view.height - 2 * pad }
+    ? { width: view.width - 2 * pad.inline, height: space[finalPhysical] }
+    : { width: space[finalPhysical], height: view.height - 2 * pad.block }
 
   const style = popup.style
   style.setProperty("position", "fixed")
@@ -223,10 +230,10 @@ function origin(a, size, x, y, physical, sideOffset) {
 // The space from the anchor to each edge of the viewport.
 function spaceOn(a, view, sideOffset, pad) {
   return {
-    top: a.top - sideOffset - pad,
-    bottom: view.height - a.bottom - sideOffset - pad,
-    left: a.left - sideOffset - pad,
-    right: view.width - a.right - sideOffset - pad,
+    top: a.top - sideOffset - pad.block,
+    bottom: view.height - a.bottom - sideOffset - pad.block,
+    left: a.left - sideOffset - pad.inline,
+    right: view.width - a.right - sideOffset - pad.inline,
   }
 }
 

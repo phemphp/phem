@@ -157,11 +157,25 @@ export default class PhemMenubarController extends Controller {
     }
 
     // A menu is open: the next menu opens on its first item.
-    for (const menu of this.#openMenus) menu.close()
-
     const menu = this.#menuOf(next)
-    if (menu) menu.open("first")
-    else next.focus()
+    this.#instantly([...this.#openMenus, menu], () => {
+      for (const other of this.#openMenus) other.close()
+      menu?.open("first")
+    })
+    if (!menu) next.focus()
+  }
+
+  // The bar goes from one menu to another: the popups of these menus get `data-instant="group"`,
+  // so they close and open with no animation.
+  #instantly(menus, change) {
+    const changed = menus.filter((menu) => menu)
+    for (const menu of changed) menu.instant = "group"
+
+    try {
+      change()
+    } finally {
+      for (const menu of changed) menu.instant = null
+    }
   }
 
   onFocusIn = (event) => {
@@ -183,9 +197,11 @@ export default class PhemMenubarController extends Controller {
     const open = this.#openMenus
     if (!menu || open.length === 0 || open.includes(menu)) return
 
-    for (const other of open) other.close()
     this.hovered = menu
-    menu.open()
+    this.#instantly([...open, menu], () => {
+      for (const other of open) other.close()
+      menu.open()
+    })
   }
 
   // A menu of the bar opened: the other menus close, and its trigger is the tab stop. A submenu

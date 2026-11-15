@@ -83,6 +83,20 @@ describe("place()", () => {
     expect(popup.getAttribute("data-side")).toBe("top")
   })
 
+  it("does not flip with flip false", () => {
+    box(anchor, { left: 400, top: 750, width: 100, height: 40 })
+    place(anchor, popup, { side: "bottom", flip: false })
+
+    expect(popup.getAttribute("data-side")).toBe("bottom")
+  })
+
+  it("uses the inline collision padding for the left and the right edges", () => {
+    box(anchor, { left: 0, top: 300, width: 100, height: 40 })
+    place(anchor, popup, { side: "bottom", align: "start", collisionPadding: 5, collisionPaddingInline: 20 })
+
+    expect(at().left).toBe("20px")
+  })
+
   it("stays on its side when the other side has less space", () => {
     box(anchor, { left: 400, top: 20, width: 100, height: 720 })
     place(anchor, popup, { side: "bottom" })

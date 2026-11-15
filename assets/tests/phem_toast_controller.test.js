@@ -353,7 +353,11 @@ describe("phem-toast", () => {
     expect(second.style.getPropertyValue("--toast-index")).toBe("1")
     expect(first.style.getPropertyValue("--toast-index")).toBe("2")
     expect(first.hasAttribute("data-limited")).toBe(true)
+    expect(first.hasAttribute("inert")).toBe(true)
     expect(second.hasAttribute("data-limited")).toBe(false)
+    expect(second.hasAttribute("inert")).toBe(false)
+    expect(third.querySelector("[data-phem-toast-description]").getAttribute("data-type")).toBe("info")
+    expect(third.querySelector("[data-phem-toast-close]").getAttribute("data-type")).toBe("info")
 
     third.querySelector("[data-phem-toast-close]").click()
     expect(first.hasAttribute("data-limited")).toBe(false)

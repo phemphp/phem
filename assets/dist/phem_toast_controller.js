@@ -60,8 +60,9 @@ const SWIPE = 40
 // part (`[data-phem-toast-content]`, around the text and the button): it gets `data-behind` when a
 // newer toast is in front of its toast, and `data-expanded` with the stack, so a stack can hide
 // the text of the toasts behind the last one. The root gets `data-type` (the type),
-// `--toast-index` (0 for the last toast), and `data-limited` when more than the `limit` value of
-// newer toasts are on the screen. See phem_transition.js for the animations: a toast that goes
+// `--toast-index` (0 for the last toast), and `data-limited` and `inert` when more than the `limit`
+// value of newer toasts are on the screen. The title, the description and the close button also
+// get `data-type`. See phem_transition.js for the animations: a toast that goes
 // stays until the end of its `[data-ending-style]` transition.
 //
 // The toasts and their durations are in the DOM, so a toast that the controller gets again (after a
@@ -263,6 +264,9 @@ export default class PhemToastController extends Controller {
     const description = el.querySelector("[data-phem-toast-description]") ?? el
     description.textContent = message
 
+    // Each part has the type of its toast, as the root.
+    for (const part of el.querySelectorAll("[data-phem-toast-title], [data-phem-toast-description], [data-phem-toast-close]")) part.setAttribute("data-type", type)
+
     // The title is also on the root: a template with no title part does not show it.
     el.dataset.phemToastTitle = title
 
@@ -331,6 +335,8 @@ export default class PhemToastController extends Controller {
       el.style.setProperty("--toast-height", `${height}px`)
       el.style.setProperty("--toast-offset-y", `${offset}px`)
       el.toggleAttribute("data-limited", i >= this.limitValue)
+      // A limited toast stays in the page, but it is not interactive.
+      el.toggleAttribute("inert", i >= this.limitValue)
       el.querySelector("[data-phem-toast-content]")?.toggleAttribute("data-behind", i > 0)
       offset += height
     })

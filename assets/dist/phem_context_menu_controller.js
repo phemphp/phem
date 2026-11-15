@@ -79,7 +79,10 @@ export default class PhemContextMenuController extends PhemMenuController {
 
   triggerKeydown() {}
 
-  renderTrigger() {}
+  // The area has `data-pressed` while its menu is open, as the trigger of a menu.
+  renderTrigger(trigger) {
+    trigger.toggleAttribute("data-pressed", this.openValue)
+  }
 
   restoreFocus() {
     const to = this.returnFocus

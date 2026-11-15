@@ -132,8 +132,33 @@ describe("phem-accordion", () => {
     expect(open()).toEqual(["returns"])
   })
 
-  it("moves the focus between the triggers with the arrow keys", async () => {
+  it("does not move the focus with the arrow keys by default", async () => {
     await mount(accordion())
+
+    document.getElementById("shipping-trigger").focus()
+    key("#shipping-trigger", "ArrowDown")
+    expect(document.activeElement.id).toBe("shipping-trigger")
+  })
+
+  it("gives the header of an item its open state", async () => {
+    await mount(accordion().replace(`<button id="shipping-trigger"`, `<h3 id="shipping-header" data-phem-accordion-target="header"></h3><button id="shipping-trigger"`))
+    expect(document.getElementById("shipping-header").hasAttribute("data-open")).toBe(false)
+
+    document.getElementById("shipping-trigger").click()
+    expect(document.getElementById("shipping-header").hasAttribute("data-open")).toBe(true)
+    expect(document.getElementById("shipping-header").getAttribute("data-index")).toBe("0")
+  })
+
+  it("gives each part the index of its item", async () => {
+    await mount(accordion())
+
+    expect(document.getElementById("shipping").getAttribute("data-index")).toBe("0")
+    expect(document.getElementById("returns-trigger").getAttribute("data-index")).toBe("1")
+    expect(document.getElementById("returns-panel").getAttribute("data-index")).toBe("1")
+  })
+
+  it("moves the focus between the triggers with the arrow keys with the rovingFocus value", async () => {
+    await mount(accordion(`data-phem-accordion-roving-focus-value="true"`))
 
     document.getElementById("shipping-trigger").focus()
     key("#shipping-trigger", "ArrowDown")

@@ -118,6 +118,31 @@ describe("phem-dialog", () => {
     expect(trigger.getAttribute("aria-expanded")).toBe("true")
   })
 
+  it("locks the scroll of the page while a modal dialog is open", async () => {
+    await mount(edit())
+    click("#open")
+    expect(document.documentElement.style.overflow).toBe("hidden")
+
+    click("#close")
+    expect(document.documentElement.style.overflow).toBe("")
+  })
+
+  it("keeps the scroll lock until the end of the close animation", async () => {
+    await mount(edit())
+    click("#open")
+    dialog().getAnimations = () => [{ finished: new Promise(() => {}) }]
+    click("#close")
+
+    expect(document.documentElement.style.overflow).toBe("hidden")
+  })
+
+  it("does not lock the scroll for a dialog that is not a modal", async () => {
+    await mount(edit(`data-phem-dialog-modal-value="false"`))
+    click("#open")
+
+    expect(document.documentElement.style.overflow).toBe("")
+  })
+
   it("opens and closes with the open and close actions", async () => {
     await mount(`<div data-controller="phem-dialog">
         <button id="open" data-action="phem-dialog#open">Edit</button>
@@ -319,6 +344,25 @@ describe("phem-dialog", () => {
       expect($("dialog").open).toBe(false)
       expect($("dialog").getAttribute("data-swipe-direction")).toBe("down")
       expect($("dialog").hasAttribute("data-swipe-dismiss")).toBe(false)
+    })
+
+    it("does not start a swipe from a mouse press in a content target, or on an element with data-phem-swipe-ignore", async () => {
+      await drawer(undefined, `<div id="content" data-phem-dialog-target="content">Text</div><div id="ignore" data-phem-swipe-ignore>Map</div>`)
+      const mouse = new PointerEvent("pointerdown", { bubbles: true, cancelable: true, isPrimary: true, button: 0, pointerId: 1, pointerType: "mouse", clientX: 100, clientY: 500 })
+      $("content").dispatchEvent(mouse)
+      pointer("pointermove", 100, 600)
+      expect($("dialog").hasAttribute("data-swiping")).toBe(false)
+      pointer("pointerup", 100, 600)
+
+      pointer("pointerdown", 100, 500, $("ignore"))
+      pointer("pointermove", 100, 600)
+      expect($("dialog").hasAttribute("data-swiping")).toBe(false)
+      pointer("pointerup", 100, 600)
+
+      // A touch in the content swipes.
+      pointer("pointerdown", 100, 500, $("content"))
+      pointer("pointermove", 100, 600)
+      expect($("dialog").hasAttribute("data-swiping")).toBe(true)
     })
 
     it("keeps its place and the direction of the swipe during its close animation", async () => {

@@ -36,6 +36,28 @@ final class DialogTest extends E2eTestCase
         expect($page->locator('#alert'))->toHaveAttribute('data-phem-dialog-open-value', 'false');
     }
 
+    public function testAModalDialogLocksTheScrollOfThePage(): void
+    {
+        $page = $this->visit('/dialog');
+        self::assertResponseIsSuccessful();
+
+        $overflow = 'getComputedStyle(document.documentElement).overflowY';
+        self::assertNotSame('hidden', $page->evaluate($overflow));
+
+        $page->locator('#alert-open')->click();
+        expect($page->locator('#alert-dialog'))->toBeVisible();
+        self::assertSame('hidden', $page->evaluate($overflow));
+
+        $page->keyboard()->press('Escape');
+        expect($page->locator('#alert-dialog'))->toBeHidden();
+        self::assertNotSame('hidden', $page->evaluate($overflow));
+
+        // A dialog that is not a modal does not lock the page.
+        $page->locator('#plain-open')->click();
+        expect($page->locator('#plain-dialog'))->toBeVisible();
+        self::assertNotSame('hidden', $page->evaluate($overflow));
+    }
+
     public function testADialogThatIsNotAModalLetsThePageWork(): void
     {
         $page = $this->visit('/dialog');
