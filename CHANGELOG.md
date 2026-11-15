@@ -8,6 +8,23 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Accessibility fixes of the controllers, from the browser tests of a Base UI kit. `phem-toggle`
+  links a `<span role="checkbox">` or `role="switch"` to the `<label>` around it
+  (`aria-labelledby`, or `ariaLabelledByElements` when the label has no id), so a screen reader
+  names it. `phem-popover` links a `title`, a `description` and a popup with no id with element
+  references, as `phem-dialog` does. A `phem-toggle-group` in a `phem-toolbar` leaves the arrow
+  keys and the tab order to the toolbar, when its items are toolbar items. `phem-select`,
+  `phem-menu`, `phem-context-menu` and `phem-combobox` highlight an item on a move of the pointer
+  (`pointermove`), not when it comes under a pointer that does not move: a popup that opens over
+  the pointer keeps the highlight of the keyboard, and a pointer highlight in a combobox does not
+  scroll the list. The indicators of a switch and of a checkbox get `aria-hidden="true"`, so the
+  check mark is not in the name. A popover keeps the `aria-label` of its popup. In a toolbar, a
+  toggle group takes the `data-orientation` of the toolbar. See docs/controllers.md.
+- The ARIA links of the controllers do not use the temporary id that the morph gives an element
+  with a `key` or a bound field with no id (`phem_ids.js`). Before, after the morph of an event,
+  the label of a bound field pointed to an id that was gone (`for="phem-key:bind:…"`), and so did
+  the `aria-controls` of the number field buttons and the `aria-activedescendant` of a combobox
+  with keyed items. `phem_number.js` uses the `link()` of `phem_aria.js`. See docs/controllers.md.
 - Fixes after a review of the new controllers. `phem-combobox` with an inline `mode` sends the
   text of the user for a bound input, not the label of the highlighted item (a field can give
   phem its value in `phemValue`). A state that a controller changes in the click of an event is

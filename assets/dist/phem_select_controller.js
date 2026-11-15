@@ -53,10 +53,11 @@ const SCROLL_STEP = 4
 // ArrowUp). In the popup, the arrow keys, Home and End move the focus (from the last item to the
 // first item with the `loopFocus` value, the default), a letter goes to the next item that starts
 // with it, and Enter and Space select the item. The keys skip a disabled item (`disabled` or
-// `aria-disabled="true"`). With the `highlightItemOnHover` value (the default), the pointer on an
-// item gives it the focus. Escape, Tab, a press outside and the focus out of the select close the
-// popup, and Escape and Tab give the focus back to the trigger. The `disabled` and `readOnly`
-// values stop the changes.
+// `aria-disabled="true"`). With the `highlightItemOnHover` value (the default), a move of the
+// pointer on an item gives it the focus: an item that comes under a pointer that does not move
+// (the popup opens over the trigger) does not get it. Escape, Tab, a press outside and the focus
+// out of the select close the popup, and Escape and Tab give the focus back to the trigger. The
+// `disabled` and `readOnly` values stop the changes.
 //
 // With the `alignItemWithTrigger` value (the default), the popup goes over the trigger: the text
 // of the selected item is on the text of the `value` target, and the popup gets
@@ -133,6 +134,7 @@ export default class PhemSelectController extends Controller {
     this.element.addEventListener("keydown", this.onKeydown, options)
     this.element.addEventListener("pointerdown", this.onPointerDown, options)
     this.element.addEventListener("pointerover", this.onPointerOver, options)
+    this.element.addEventListener("pointermove", this.onPointerMove, options)
     this.element.addEventListener("pointerout", this.onPointerOut, options)
     this.element.addEventListener("focusin", this.onFocusIn, options)
     this.element.addEventListener("focusout", this.onFocusOut, options)
@@ -312,15 +314,22 @@ export default class PhemSelectController extends Controller {
 
   onPointerOver = (event) => {
     const arrow = this.#scrollArrowOf(event.target)
-    if (arrow && event.pointerType !== "touch") {
-      this.#startScroll(this.scrollUpArrowTargets.includes(arrow) ? -1 : 1)
+    if (arrow && event.pointerType !== "touch") this.#startScroll(this.scrollUpArrowTargets.includes(arrow) ? -1 : 1)
+  }
 
-      return
-    }
+  // A move of the pointer highlights the item under it. The browser also sends `pointerover` when
+  // an item comes under a pointer that does not move (the popup opens over the trigger, or a key
+  // scrolls the list): that item does not take the highlight of the keyboard.
+  onPointerMove = (event) => {
+    if (!this.openValue || !this.highlightItemOnHoverValue || event.pointerType === "touch") return
+
+    // The moves on the item with the focus: no lookup of the items.
+    const last = this.pointerItem
+    if (last?.contains(event.target) && document.activeElement === last) return
 
     const item = this.#itemOf(event.target)
-    if (!item || !this.highlightItemOnHoverValue || event.pointerType === "touch" || isDisabled(item)) return
-    if (!this.openValue || document.activeElement === item) return
+    this.pointerItem = item
+    if (!item || isDisabled(item) || document.activeElement === item) return
 
     item.focus({ preventScroll: true })
   }

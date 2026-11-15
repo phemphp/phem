@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemPopoverController from "../dist/phem_popover_controller.js"
-import { click, mount, nextDone, respond } from "./support.js"
+import { click, mount, nextDone, respond, stubElementReflection } from "./support.js"
 
 let application
 
@@ -81,6 +81,41 @@ describe("phem-popover", () => {
     expect(popup().getAttribute("aria-describedby")).toBe("description")
     expect(trigger.getAttribute("aria-haspopup")).toBe("dialog")
     expect(trigger.getAttribute("aria-controls")).toBe("popup")
+  })
+
+  it("links a popup, a title and a description with no id with element references, also after the morph", async () => {
+    const restore = stubElementReflection()
+    try {
+      const markup = share().replace('id="popup" ', "").replace('id="title" ', "").replace('id="description" ', "")
+      await mount(markup)
+      respond(markup)
+      const part = (name) => document.querySelector(`[data-phem-popover-target=${name}]`)
+      const trigger = document.getElementById("trigger")
+
+      expect(part("popup").ariaLabelledByElements).toEqual([part("title")])
+      expect(part("popup").ariaDescribedByElements).toEqual([part("description")])
+      expect(trigger.ariaControlsElements).toEqual([part("popup")])
+
+      click("#trigger")
+      const done = nextDone()
+      click("#copy")
+      await done
+
+      expect(part("title").id).toBe("")
+      expect(part("popup").ariaLabelledByElements).toEqual([part("title")])
+      expect(part("popup").ariaDescribedByElements).toEqual([part("description")])
+      expect(trigger.ariaControlsElements).toEqual([part("popup")])
+    } finally {
+      restore()
+    }
+  })
+
+  it("keeps the aria-label of the popup that the markup gives", async () => {
+    await mount(share().replace('id="popup"', 'id="popup" aria-label="Share options"'))
+
+    expect(popup().getAttribute("aria-label")).toBe("Share options")
+    expect(popup().hasAttribute("aria-labelledby")).toBe(false)
+    expect(popup().getAttribute("aria-describedby")).toBe("description")
   })
 
   it("places the popup next to the trigger while it is open", async () => {

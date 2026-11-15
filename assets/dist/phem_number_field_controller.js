@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { ClientState } from "./phem_client_state.js"
-import { clamp, clean, flag, link, nextStep, numberFormat, sendEvents } from "./phem_number.js"
+import { link } from "./phem_aria.js"
+import { clamp, clean, flag, nextStep, numberFormat, sendEvents } from "./phem_number.js"
 
 // The `phem-number-field` controller: a text input for a number, with increment and decrement
 // buttons, the keyboard, the mouse wheel, a scrub area and the format of the locale. The value

@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { link } from "./phem_aria.js"
 import { ClientState } from "./phem_client_state.js"
 import { Hover } from "./phem_hover.js"
 import { Popup } from "./phem_popup.js"
@@ -25,9 +26,11 @@ const FOCUSABLE = "a[href], button, input, select, textarea, [tabindex]"
 // ms), and the pointer out of the trigger and of the popup closes it after the `closeDelay` value
 // (at least 100 ms, so the pointer can go to the popup).
 //
-// The popup gets `role="dialog"`, `aria-labelledby` (the `title` target) and `aria-describedby`
-// (the `description` target). A trigger gets `aria-haspopup="dialog"`, `aria-expanded`,
-// `aria-controls` and `data-popup-open`. The open popup gets `data-open`, `data-side`,
+// The popup gets `role="dialog"`, `aria-labelledby` (the `title` target, unless the popup has an
+// `aria-label`) and `aria-describedby` (the `description` target). A trigger gets
+// `aria-haspopup="dialog"`, `aria-expanded`, `aria-controls` and `data-popup-open`. A part with
+// no id gets no id: the link is an element reference (`ariaLabelledByElements`,
+// `ariaDescribedByElements`, `ariaControlsElements`). The open popup gets `data-open`, `data-side`,
 // `data-align` and the CSS variables of phem_position.js; see phem_transition.js for the
 // animations. Open moves the focus into the popup: to its `[autofocus]` element, or to the popup.
 // Escape gives the focus back to the trigger.
@@ -254,13 +257,14 @@ export default class PhemPopoverController extends Controller {
       if (!popup.hasAttribute("role")) popup.setAttribute("role", "dialog")
       const title = this.titleTargets[0]
       const description = this.descriptionTargets[0]
-      if (title?.id && !popup.hasAttribute("aria-labelledby")) popup.setAttribute("aria-labelledby", title.id)
-      if (description?.id && !popup.hasAttribute("aria-describedby")) popup.setAttribute("aria-describedby", description.id)
+      // An `aria-label` of the markup names the popup: `aria-labelledby` would replace it.
+      if (title && !popup.hasAttribute("aria-label")) link(popup, "aria-labelledby", "ariaLabelledByElements", title)
+      if (description) link(popup, "aria-describedby", "ariaDescribedByElements", description)
     }
 
     for (const trigger of this.triggerTargets) {
       if (!trigger.hasAttribute("aria-haspopup")) trigger.setAttribute("aria-haspopup", "dialog")
-      if (popup?.id && !trigger.hasAttribute("aria-controls")) trigger.setAttribute("aria-controls", popup.id)
+      if (popup) link(trigger, "aria-controls", "ariaControlsElements", popup)
       trigger.setAttribute("aria-expanded", String(this.openValue))
       trigger.toggleAttribute("data-popup-open", this.openValue)
     }

@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemSelectController from "../dist/phem_select_controller.js"
-import { click, mount, nextDone, respond } from "./support.js"
+import { click, hover, mount, nextDone, respond } from "./support.js"
 
 let application
 
@@ -173,6 +173,20 @@ describe("phem-select", () => {
 
     expect(isOpen()).toBe(false)
     expect(el("value").textContent).toBe("Granny Smith")
+  })
+
+  it("highlights an item on a move of the pointer, not when it comes under a pointer that does not move", async () => {
+    await mount(select())
+    el("trigger").focus()
+    press("ArrowDown")
+    expect(document.activeElement).toBe(el("item-gala"))
+
+    // The popup opens under the pointer: the browser sends only `pointerover`.
+    el("item-granny").dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }))
+    expect(document.activeElement).toBe(el("item-gala"))
+
+    hover(el("item-granny"))
+    expect(document.activeElement).toBe(el("item-granny"))
   })
 
   it("opens on ArrowUp on the last item", async () => {

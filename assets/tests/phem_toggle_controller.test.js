@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemToggleController from "../dist/phem_toggle_controller.js"
-import { click, mount, nextDone, respond, settle } from "./support.js"
+import { click, mount, nextDone, respond, settle, stubElementReflection } from "./support.js"
 
 let application
 
@@ -230,6 +230,65 @@ describe("phem-toggle", () => {
 
     expect(el("native").hasAttribute("data-disabled")).toBe(true)
     expect(el("native").hasAttribute("aria-disabled")).toBe(false)
+  })
+
+  it("is named by the label around it, with its id or with an element reference, also after the morph", async () => {
+    const restore = stubElementReflection()
+    try {
+      await mount(aSwitch() + aCheckbox().replace(SAVE, ""))
+      const label = el("checkbox").closest("label")
+
+      expect(el("switch").getAttribute("aria-labelledby")).toBe("label")
+      expect(label.id).toBe("")
+      expect(el("checkbox").ariaLabelledByElements).toEqual([label])
+
+      respond(aSwitch() + aCheckbox().replace(SAVE, ""))
+      await morphOnSave()
+
+      expect(el("switch").getAttribute("aria-labelledby")).toBe("label")
+      expect(el("checkbox").ariaLabelledByElements).toEqual([el("checkbox").closest("label")])
+    } finally {
+      restore()
+    }
+  })
+
+  it("does not link to the temporary id that the morph gives a label with a key", async () => {
+    const restore = stubElementReflection()
+    try {
+      const markup = aCheckbox().replace("<label>", '<label data-phem-key="terms">')
+      await mount(markup)
+      respond(markup)
+      await morphOnSave()
+      const label = el("checkbox").closest("label")
+
+      expect(label.id).toBe("")
+      expect(el("checkbox").getAttribute("aria-labelledby")).toBe("")
+      expect(el("checkbox").ariaLabelledByElements).toEqual([label])
+    } finally {
+      restore()
+    }
+  })
+
+  it("hides the indicator of a checkbox and a switch from the name, not of a toggle button", async () => {
+    await mount(aSwitch() + aCheckbox().replace(SAVE, "") + '<button id="bold" type="button" data-controller="phem-toggle"><span id="b" data-phem-toggle-target="indicator">B</span></button>')
+
+    expect(el("thumb").getAttribute("aria-hidden")).toBe("true")
+    expect(el("indicator").getAttribute("aria-hidden")).toBe("true")
+    expect(el("b").hasAttribute("aria-hidden")).toBe(false)
+
+    click("#switch")
+    respond(aSwitch() + aCheckbox().replace(SAVE, "") + '<button id="bold" type="button" data-controller="phem-toggle"><span id="b" data-phem-toggle-target="indicator">B</span></button>')
+    await morphOnSave()
+
+    expect(el("thumb").getAttribute("aria-hidden")).toBe("true")
+    expect(el("indicator").getAttribute("aria-hidden")).toBe("true")
+  })
+
+  it("keeps the name that the markup gives, and gives no name to a button", async () => {
+    await mount(aCheckbox('aria-label="Terms"') + '<label id="wrap"><button id="bold" type="button" data-controller="phem-toggle">B</button> Bold</label>')
+
+    expect(el("checkbox").hasAttribute("aria-labelledby")).toBe(false)
+    expect(el("bold").hasAttribute("aria-labelledby")).toBe(false)
   })
 
   it("keeps the state after the morph of an event", async () => {

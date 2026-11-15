@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { ClientState } from "./phem_client_state.js"
+import { realId } from "./phem_ids.js"
 import { Popup } from "./phem_popup.js"
 import { positionOptions, positionValues } from "./phem_position.js"
 
@@ -179,8 +180,10 @@ export default class PhemTooltipController extends Controller {
 function describe(trigger, popup) {
   const described = (trigger.getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean)
 
-  if (popup.id) {
-    if (!described.includes(popup.id)) trigger.setAttribute("aria-describedby", [...described, popup.id].join(" "))
+  // A temporary id of the morph (phem_ids.js) is no id.
+  const id = realId(popup)
+  if (id) {
+    if (!described.includes(id)) trigger.setAttribute("aria-describedby", [...described, id].join(" "))
 
     return
   }

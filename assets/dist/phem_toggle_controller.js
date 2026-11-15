@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
+import { link } from "./phem_aria.js"
 import { hide, render, show } from "./phem_transition.js"
 
 // The attributes of the pressed or checked state.
@@ -39,6 +40,11 @@ const STATE_ATTRIBUTES = new Set(["aria-pressed", "aria-checked", "data-pressed"
 // the element or a `<label for>` the input. Space toggles it, and Enter toggles a toggle button.
 // A checkbox with the `indeterminate` value is in a mixed state (`aria-checked="mixed"`,
 // `data-indeterminate`): a click checks it.
+//
+// A `<label>` around an element that is not a `<button>` also names it: the element gets
+// `aria-labelledby` (an element reference when the label has no id). An `aria-label` or an
+// `aria-labelledby` of the markup stays. The indicators of a switch and of a checkbox get
+// `aria-hidden="true"` (when they have no `aria-hidden`), so the name has no check mark.
 //
 // The `disabled` value (or the `disabled` attribute of a `<button>`) stops the changes by the
 // user, and gives `data-disabled` (and `aria-disabled="true"` for the value). The `readOnly` value
@@ -278,6 +284,7 @@ export default class PhemToggleController extends Controller {
     if (!el.matches("button")) {
       if (!el.hasAttribute("role")) el.setAttribute("role", "button")
       if (!el.hasAttribute("tabindex")) el.tabIndex = 0
+      this.#name()
     }
 
     if (kind === "button") {
@@ -300,6 +307,14 @@ export default class PhemToggleController extends Controller {
       else if (this.dataDisabled) part.removeAttribute("data-disabled")
     }
     this.dataDisabled = disabled
+
+    // The check mark or the thumb is not in the name from the label: `aria-checked` gives the
+    // state. The indicator of a toggle button can be its only text, so it stays.
+    if (kind !== "button") {
+      for (const indicator of this.indicatorTargets) {
+        if (!indicator.hasAttribute("aria-hidden")) indicator.setAttribute("aria-hidden", "true")
+      }
+    }
 
     this.#renderInput(checked, indeterminate, disabled)
 
@@ -349,6 +364,17 @@ export default class PhemToggleController extends Controller {
     if (this.hasValueValue) input.value = this.valueValue
     if (this.hasRequiredValue) input.required = this.requiredValue
     if (this.hasDisabledValue) input.disabled = disabled
+  }
+
+  // A `<label>` around the element names it: a label names only a native control. The controller
+  // links them with an element reference, and gives the label no id. A name that the markup gives
+  // stays.
+  #name() {
+    const el = this.element
+    const label = el.closest("label")
+    if (!label || el.hasAttribute("aria-label")) return
+
+    link(el, "aria-labelledby", "ariaLabelledByElements", label)
   }
 
   // The attributes of the state. An input with `phem:bind` belongs to phem.

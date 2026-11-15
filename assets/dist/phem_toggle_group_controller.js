@@ -27,6 +27,19 @@ import { isToggle, itemValue, syncChecked } from "./phem_toggle_items.js"
 // item goes to the first one. Space and Enter press the item with the focus (a native `<button>`
 // clicks on them).
 //
+// In a `phem-toolbar`, the group is a `group` target and its items are also `item` targets of the
+// toolbar. Then the toolbar moves the focus with the arrow keys, and gives the tab order and
+// `data-orientation` (the `orientation` value of the toolbar). The focus goes from the group to
+// the other items of the toolbar:
+//
+//     <div data-controller="phem-toolbar" aria-label="Format">
+//         <div data-controller="phem-toggle-group" data-phem-toolbar-target="group" aria-label="Alignment">
+//             <button type="button" data-phem-toggle-group-target="item" data-phem-toolbar-target="item" data-value="left">Left</button>
+//             <button type="button" data-phem-toggle-group-target="item" data-phem-toolbar-target="item" data-value="right">Right</button>
+//         </div>
+//         <button type="button" data-phem-toolbar-target="item">Help</button>
+//     </div>
+//
 // An item can be a `phem-toggle` element (`data-controller="phem-toggle"`). The group sets its
 // state, and the toggle gives it `aria-pressed` and `data-pressed`. A click on it changes its
 // state, and the group changes the state of the other items.
@@ -50,7 +63,7 @@ export default class PhemToggleGroupController extends Controller {
   connect() {
     this.state = new ClientState(this, {
       value: "value",
-      owns: (el, name) => this.itemTargets.includes(el) && ["aria-pressed", "data-pressed", "tabindex"].includes(name),
+      owns: (el, name) => this.itemTargets.includes(el) && (["aria-pressed", "data-pressed"].includes(name) || (name === "tabindex" && !inToolbar(el))),
       morphed: () => this.#render(),
     })
     this.state.connect()
@@ -117,7 +130,7 @@ export default class PhemToggleGroupController extends Controller {
   onKeydown = (event) => {
     const item = this.#itemOf(event.target)
     if (!item || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return
-    if (!movesFocus(event.key, this.orientationValue)) return
+    if (!movesFocus(event.key, this.orientationValue) || inToolbar(item)) return
 
     const next = nextItem(this.itemTargets, item, event.key, { orientation: this.orientationValue, loop: this.loopFocusValue, rtl: this.#rtl })
     event.preventDefault()
@@ -156,7 +169,7 @@ export default class PhemToggleGroupController extends Controller {
     const tabbable = this.#tabbable(pressed)
 
     if (!this.element.hasAttribute("role")) this.element.setAttribute("role", "group")
-    this.element.setAttribute("data-orientation", orientation)
+    if (!inToolbar(this.element, "group")) this.element.setAttribute("data-orientation", orientation)
     this.element.toggleAttribute("data-multiple", this.multipleValue)
     this.element.toggleAttribute("data-disabled", disabled)
     if (disabled) this.element.setAttribute("aria-disabled", "true")
@@ -179,16 +192,20 @@ export default class PhemToggleGroupController extends Controller {
         item.toggleAttribute("data-pressed", on)
       }
 
-      item.setAttribute("data-orientation", orientation)
       item.toggleAttribute("data-disabled", disabled || isDisabled(item))
-      item.tabIndex = item === tabbable ? 0 : -1
+
+      // In a toolbar, the toolbar gives the orientation and the tab order.
+      if (!inToolbar(item)) {
+        item.setAttribute("data-orientation", orientation)
+        item.tabIndex = item === tabbable ? 0 : -1
+      }
     })
   }
 
   // The item in the tab order: the item with the last focus, the first pressed item, or the first
-  // item that is not disabled.
+  // item that is not disabled. The toolbar gives the tab order of its items.
   #tabbable(pressed) {
-    const items = this.itemTargets.filter((item) => !isDisabled(item))
+    const items = this.itemTargets.filter((item) => !isDisabled(item) && !inToolbar(item))
     if (items.includes(this.focused)) return this.focused
 
     return items.find((item) => pressed.includes(this.#valueOf(item))) ?? items[0]
@@ -210,4 +227,10 @@ export default class PhemToggleGroupController extends Controller {
   get #rtl() {
     return getComputedStyle(this.element).direction === "rtl"
   }
+}
+
+// Whether an element is also a `target` (an `item`, or the `group`) of a `phem-toolbar`: the
+// toolbar moves the focus, and gives the tab order and the orientation.
+function inToolbar(el, target = "item") {
+  return el.matches(`[data-phem-toolbar-target~=${target}]`) && el.closest("[data-controller~=phem-toolbar]") !== null
 }

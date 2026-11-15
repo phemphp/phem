@@ -1,3 +1,5 @@
+import { realId } from "./phem_ids.js"
+
 // The scroll position through the morph: `phem:scroll-into-view` and `phem:keep-scroll`.
 //
 //     <div className="comments" phem:keep-scroll>
@@ -21,10 +23,6 @@
 
 const SCROLL_INTO_VIEW = "[data-phem-scroll-into-view]"
 const KEEP_SCROLL = "[data-phem-keep-scroll]"
-
-// The temporary ids that the phem controller gives during the render (KEY_ID in
-// phem_controller.js): they do not identify an item after the render.
-const TEMPORARY_ID = "phem-key:"
 
 // A container at most this many pixels from its end is at its end: a scroll position can be a
 // fraction of a pixel.
@@ -138,10 +136,6 @@ function keyOf(el) {
   const id = realId(el)
 
   return id ? { name: "id", value: id } : null
-}
-
-function realId(el) {
-  return el.id && !el.id.startsWith(TEMPORARY_ID) ? el.id : null
 }
 
 // The keys of the item and of the keyed elements around it in the container, the outermost

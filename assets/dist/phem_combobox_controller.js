@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { ClientState } from "./phem_client_state.js"
+import { realId } from "./phem_ids.js"
 import { Popup } from "./phem_popup.js"
 import { positionOptions, positionValues } from "./phem_position.js"
 import { isDisabled, nextItem } from "./phem_roving.js"
@@ -29,7 +30,8 @@ const collators = new Map()
 // it has an item, an `empty` target or a `status` target. The focus stays in the input: ArrowDown
 // and ArrowUp move the highlight (from the last item to the first one with the `loopFocus` value),
 // and Enter chooses the highlighted item. With the `autoHighlight` value, the first item gets the
-// highlight when the items change. The pointer on an item highlights it.
+// highlight when the items change. A move of the pointer on an item highlights it: an item that
+// comes under a pointer that does not move (the list changes) does not get the highlight.
 //
 // To choose an item is a click on it: its handler (`onClick`) runs, or its link opens. The handler
 // sets the state (the text of the input, the selected value), and the morph shows it. Then the popup
@@ -118,7 +120,7 @@ export default class PhemComboboxController extends Controller {
     this.element.addEventListener("keydown", this.onKeydown, options)
     this.element.addEventListener("click", this.onClick, options)
     this.element.addEventListener("pointerdown", this.onPointerDown, options)
-    this.element.addEventListener("pointerover", this.onPointerOver, options)
+    this.element.addEventListener("pointermove", this.onPointerMove, options)
     this.element.addEventListener("focusout", this.onFocusOut, options)
 
     // The loading state of phem on the input goes to the popup.
@@ -268,9 +270,16 @@ export default class PhemComboboxController extends Controller {
     if (this.#itemOf(event.target) || parts.some((el) => el.contains(event.target))) event.preventDefault()
   }
 
-  onPointerOver = (event) => {
+  // A move of the pointer highlights the item under it. The browser also sends `pointerover` when
+  // an item comes under a pointer that does not move (the list changes or scrolls): that item does
+  // not take the highlight of the keyboard.
+  onPointerMove = (event) => {
+    // The moves on the highlighted item: no lookup of the items.
+    if (this.highlighted?.contains(event.target)) return
+
+    // The item is under the pointer: a scroll would move the list under it.
     const item = this.#itemOf(event.target)
-    if (item && !isDisabled(item)) this.#highlight(item)
+    if (item && !isDisabled(item)) this.#highlight(item, { scroll: false })
   }
 
   onFocusOut = (event) => {
@@ -382,10 +391,10 @@ export default class PhemComboboxController extends Controller {
     input.dispatchEvent(new Event("input", { bubbles: true }))
   }
 
-  #highlight(item) {
+  #highlight(item, { scroll = true } = {}) {
     this.highlighted = item ?? null
     this.#render()
-    item?.scrollIntoView?.({ block: "nearest" })
+    if (scroll) item?.scrollIntoView?.({ block: "nearest" })
   }
 
   #later() {
@@ -582,9 +591,10 @@ export default class PhemComboboxController extends Controller {
 }
 
 // The `aria-activedescendant` of the input: the id of the item, or an element reference when the
-// item has no id. No item removes it.
+// item has no id or a temporary id of the morph (phem_ids.js). No item removes it.
 function activeDescendant(input, item) {
+  const id = item ? realId(item) : ""
   if (!item) input.removeAttribute("aria-activedescendant")
-  else if (item.id) input.setAttribute("aria-activedescendant", item.id)
+  else if (id) input.setAttribute("aria-activedescendant", id)
   else if ("ariaActiveDescendantElement" in input && input.ariaActiveDescendantElement !== item) input.ariaActiveDescendantElement = item
 }

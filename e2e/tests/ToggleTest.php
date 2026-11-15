@@ -59,6 +59,25 @@ final class ToggleTest extends E2eTestCase
         expect($page->locator('#terms'))->toHaveAttribute('aria-checked', 'true');
     }
 
+    public function testALabelAroundASwitchOrACheckboxNamesIt(): void
+    {
+        $page = $this->visit('/toggle');
+        self::assertResponseIsSuccessful();
+
+        expect($page->getByRole('switch', ['name' => 'Alerts', 'exact' => true]))->toBeVisible();
+        expect($page->getByRole('checkbox', ['name' => 'I accept the terms', 'exact' => true]))->toBeVisible();
+        expect($page->getByRole('checkbox', ['name' => 'apple', 'exact' => true]))->toBeVisible();
+
+        // The check mark of a checked item is not in its name.
+        expect($page->getByRole('checkbox', ['name' => 'pear', 'exact' => true, 'checked' => true]))->toBeVisible();
+
+        // The morph of an event keeps the names.
+        $page->locator('#save')->click();
+        expect($page->locator('#saves'))->toHaveText('1');
+        expect($page->getByRole('switch', ['name' => 'Alerts', 'exact' => true]))->toBeVisible();
+        expect($page->getByRole('checkbox', ['name' => 'apple', 'exact' => true]))->toBeVisible();
+    }
+
     public function testTheParentOfAGroupOfToggleCheckboxes(): void
     {
         $page = $this->visit('/toggle');

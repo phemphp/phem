@@ -3,6 +3,7 @@ import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemToggleController from "../dist/phem_toggle_controller.js"
 import PhemToggleGroupController from "../dist/phem_toggle_group_controller.js"
+import PhemToolbarController from "../dist/phem_toolbar_controller.js"
 import { click, mount, nextDone, respond, settle } from "./support.js"
 
 let application
@@ -12,6 +13,7 @@ beforeAll(() => {
   application.register("phem", PhemController)
   application.register("phem-toggle", PhemToggleController)
   application.register("phem-toggle-group", PhemToggleGroupController)
+  application.register("phem-toolbar", PhemToolbarController)
 })
 
 beforeEach(() => {
@@ -189,5 +191,59 @@ describe("phem-toggle-group", () => {
     await morphOnSave()
 
     expect(pressed()).toEqual(["right"])
+  })
+
+  describe("in a phem-toolbar", () => {
+    // The group in a toolbar, with a "Help" button after it. The items are also toolbar items.
+    function inToolbar(attributes = "") {
+      const items = { left: 'data-phem-toolbar-target="item"', center: 'data-phem-toolbar-target="item"', right: 'data-phem-toolbar-target="item"' }
+      const markup = group(`data-phem-toolbar-target="group" data-phem-toggle-group-value-value='["center"]' ${attributes}`, items)
+
+      return `<div id="toolbar" data-controller="phem-toolbar" aria-label="Format">
+          ${markup.replace('<button id="save"', '<button id="help" type="button" data-phem-toolbar-target="item">Help</button></div><button id="save"')}`
+    }
+
+    it("leaves the arrow keys and the tab order to the toolbar", async () => {
+      await mount(inToolbar())
+
+      // The toolbar gives one tab stop: its first item, not the pressed item of the group.
+      expect(tabbable()).toEqual(["left"])
+      expect(el("help").tabIndex).toBe(-1)
+
+      el("right").focus()
+      press("ArrowRight")
+
+      expect(document.activeElement).toBe(el("help"))
+      expect(el("help").tabIndex).toBe(0)
+      expect(tabbable()).toEqual([])
+
+      press("ArrowRight")
+
+      expect(document.activeElement).toBe(el("left"))
+    })
+
+    it("takes the orientation of the toolbar", async () => {
+      await mount(inToolbar().replace('data-controller="phem-toolbar"', 'data-controller="phem-toolbar" data-phem-toolbar-orientation-value="vertical"'))
+
+      expect(el("group").getAttribute("data-orientation")).toBe("vertical")
+      expect(["left", "center", "right"].map((id) => el(id).getAttribute("data-orientation"))).toEqual(["vertical", "vertical", "vertical"])
+
+      el("left").focus()
+      press("ArrowDown")
+
+      expect(document.activeElement).toBe(el("center"))
+    })
+
+    it("keeps the pressed state, and the tab order of the toolbar after the morph", async () => {
+      await mount(inToolbar())
+      el("right").focus()
+      click("#right")
+
+      respond(inToolbar())
+      await morphOnSave()
+
+      expect(pressed()).toEqual(["right"])
+      expect(tabbable()).toEqual(["right"])
+    })
   })
 })

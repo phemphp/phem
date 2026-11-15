@@ -13,6 +13,7 @@ import { scrollTargets, scrollToNew } from "./phem_scroll.js"
 import { watchAnnounce } from "./phem_announce_changes.js"
 import { DialogQuestion } from "./phem_dialog_question.js"
 import { flushClientChanges } from "./phem_client_state.js"
+import { TEMPORARY_ID } from "./phem_ids.js"
 import { fieldsValue, textValue } from "./phem_fields.js"
 import { matchesKey } from "./phem_keys.js"
 import { OfflineQueue } from "./phem_offline_queue.js"
@@ -406,8 +407,8 @@ function resetField(field) {
 }
 
 // The start of the id that an element with a `key` or a fiber id gets while a morph runs (see
-// keyIds() and componentIds()).
-const KEY_ID = "phem-key:"
+// keyIds() and componentIds()). The ARIA links of the controllers do not use it (phem_ids.js).
+const KEY_ID = TEMPORARY_ID
 
 // The events that the browser sends with no action of the user (see scrollToNew() and
 // watchAnnounce()). The tester has the same list (BROWSER_EVENTS in Phem\Test\ComponentTester).

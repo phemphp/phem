@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { ClientState } from "./phem_client_state.js"
-import { clamp, clean, flag, link, nextStep, numberFormat, roundToStep, sendEvents } from "./phem_number.js"
+import { link } from "./phem_aria.js"
+import { clamp, clean, flag, nextStep, numberFormat, roundToStep, sendEvents } from "./phem_number.js"
 
 // The `phem-slider` controller: one thumb, or more thumbs for a range, on a track, with the
 // pointer and the keyboard. Each thumb has a native `<input type="range">` for the ARIA and the

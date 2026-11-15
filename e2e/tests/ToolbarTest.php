@@ -76,6 +76,33 @@ final class ToolbarTest extends E2eTestCase
         expect($page->locator('#bolds'))->toHaveText('0');
     }
 
+    public function testAToggleGroupLeavesTheArrowKeysToTheToolbar(): void
+    {
+        $page = $this->visit('/toolbar');
+        self::assertResponseIsSuccessful();
+
+        $page->locator('#align-end')->click();
+        expect($page->getByRole('button', ['name' => 'End', 'pressed' => true]))->toBeFocused();
+
+        // The last item of the group goes to the next item of the toolbar, not to the first item of the group.
+        $page->keyboard()->press('ArrowRight');
+        expect($page->locator('#editor-bold'))->toBeFocused();
+        $page->keyboard()->press('ArrowRight');
+        expect($page->locator('#align-start'))->toBeFocused();
+        $page->keyboard()->press('ArrowLeft');
+        expect($page->locator('#editor-bold'))->toBeFocused();
+
+        // One tab stop for the toolbar: the item of the last focus.
+        expect($page->locator('#editor [tabindex="0"]'))->toHaveCount(1);
+        expect($page->locator('#editor-bold'))->toHaveAttribute('tabindex', '0');
+
+        $page->locator('#save')->click();
+        expect($page->locator('#saves'))->toHaveText('1');
+        expect($page->locator('#editor [tabindex="0"]'))->toHaveCount(1);
+        expect($page->locator('#editor-bold'))->toHaveAttribute('tabindex', '0');
+        expect($page->locator('#align-end'))->toHaveAttribute('aria-pressed', 'true');
+    }
+
     public function testTheTabStopStaysAfterAnEvent(): void
     {
         $page = $this->visit('/toolbar');

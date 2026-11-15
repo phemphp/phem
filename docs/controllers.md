@@ -279,6 +279,7 @@ A hidden panel disables its form controls, so a form submit does not send them. 
     <div data-phem-popover-target="popup" popover="manual" hidden>
         <div data-phem-popover-target="arrow"></div>
         <h2 data-phem-popover-target="title" id="share-title">Share</h2>
+        <p data-phem-popover-target="description">Send the link to a friend.</p>
         <button onClick={{ copyLink }}>Copy the link</button>
         <button data-phem-popover-target="close">Close</button>
     </div>
@@ -289,10 +290,12 @@ A click on the trigger opens and closes the popup, and a click on a `close` part
 
 ```html
 <button data-phem-popover-target="trigger" aria-haspopup="dialog" aria-expanded="true" data-popup-open>Share</button>
-<div data-phem-popover-target="popup" popover="manual" role="dialog" aria-labelledby="share-title" tabindex="-1"
+<div data-phem-popover-target="popup" popover="manual" role="dialog" aria-labelledby="share-title" aria-describedby="" tabindex="-1"
      data-open data-side="bottom" data-align="end"
      style="position: fixed; top: 61px; left: 240px; --anchor-width: 52px; --available-height: 654px; ...">
 ```
+
+The popup gets `role="dialog"`, `aria-labelledby` (the `title` part) and `aria-describedby` (the `description` part), so a screen reader names the popup. A popup with an `aria-label` keeps it, and gets no `aria-labelledby`. A part with an `id` gets a link with its id, as the title above. A part with no `id`, as the description above, gets a link with the element references of ARIA (`ariaLabelledByElements`, `ariaDescribedByElements`), and the browser shows `aria-describedby=""`. The trigger points to a popup with no `id` with `ariaControlsElements`. The controller gives the parts no `id`, because the morph must match each element to the server render.
 
 Open moves the focus into the popup: to its `[autofocus]` element, or to the popup itself. Escape closes the popup and gives the focus back to the trigger. A click outside and the focus out of the popover close it too. Set `data-phem-popover-dismiss-value="false"` to keep it open on Escape, on a click outside and on the focus out. Then Escape goes to the popup or the dialog around the popover, which closes.
 
@@ -380,7 +383,7 @@ The parts get these roles: the popup `menu`, an item `menuitem`, a group `group`
 | Escape | The menu | Closes the menu, and gives the focus back to the trigger |
 | Tab | The menu | Closes the menu |
 
-The keys skip a disabled item (`disabled` or `aria-disabled="true"`). From the last item, ArrowDown goes to the first item, unless `data-phem-menu-loop-focus-value="false"`. The pointer on an item gives it the focus, unless `data-phem-menu-highlight-item-on-hover-value="false"`. The item with the focus gets `data-highlighted`.
+The keys skip a disabled item (`disabled` or `aria-disabled="true"`). From the last item, ArrowDown goes to the first item, unless `data-phem-menu-loop-focus-value="false"`. A move of the pointer on an item gives it the focus, unless `data-phem-menu-highlight-item-on-hover-value="false"`. An item that comes under a pointer that does not move, for example when the menu opens under it, does not get the focus: the focus of the keyboard stays. The item with the focus gets `data-highlighted`.
 
 A click on an item runs its own handler, and closes the menu. The item with `data-phem-menu-close-on-click="false"` keeps the menu open, as **Pin** above: after its event, the morph shows the new `aria-checked` in the open menu. A click outside and the focus out of the menu close it. With `data-phem-menu-open-on-hover-value="true"`, the pointer on the trigger opens the menu after the `delay` value (100 ms).
 
@@ -649,7 +652,7 @@ A right click on the trigger opens the menu with its top left corner at the poin
      data-open data-side="bottom" data-align="start" style="position: fixed; top: 212px; left: 348px; ...">
 ```
 
-The focus goes to the popup, so ArrowDown goes to the first item. When the popup opens under the pointer, the item under the pointer gets the focus. The parts, the keys, the submenus and the values are the ones of `phem-menu`, with `data-phem-context-menu-` in their names. A click on the trigger does not open the menu, and the trigger gets no ARIA attributes, because it is not a button. Escape gives the focus back to the element that had it before the menu opened. A menu that opens with no point, with the `open` action or with `data-phem-context-menu-open-value` from the server, goes below the trigger.
+The focus goes to the popup, so ArrowDown goes to the first item. When the popup opens under the pointer, no item gets the focus until the pointer moves. The parts, the keys, the submenus and the values are the ones of `phem-menu`, with `data-phem-context-menu-` in their names. A click on the trigger does not open the menu, and the trigger gets no ARIA attributes, because it is not a button. Escape gives the focus back to the element that had it before the menu opened. A menu that opens with no point, with the `open` action or with `data-phem-context-menu-open-value` from the server, goes below the trigger.
 
 ## Suggest values while the user types
 
@@ -717,7 +720,7 @@ The popup opens when the user types, and on ArrowDown or ArrowUp. It shows when 
 
 To choose an item is a click on it: its handler runs (here `choose`), or its link opens. The handler sets the state, and the morph shows the new text in the input. Then the popup closes, and the controller dispatches `phem-combobox:select` with the `item` in the detail. A click on a `clear` part clears the input and sends its `input` event, as when the user deletes the text. A click on a `trigger` part opens or closes the popup. A click outside and the focus out of the combobox close the popup.
 
-The list has no `id`, so the input points to it with an element reference (`ariaControlsElements`). An item with no `id` gets no id: the input points to the highlighted item with `ariaActiveDescendantElement`, and the browser shows `aria-activedescendant=""`. The highlight stays on the same item through the morph of another event. When the morph replaces the item, the highlight stays only on an item with the same `id`, so give each item a stable `id` in a list that changes. When the user types, the highlight goes. With `data-phem-combobox-auto-highlight-value="true"`, the first item gets the highlight. The popup and the list get `data-empty` when there is no visible item, and the `empty` parts show only then. A `status` part gets `role="status"`, so a screen reader reads its text, for example "3 cities". Use `var(--anchor-width)` to give the popup the width of the input.
+The list has no `id`, so the input points to it with an element reference (`ariaControlsElements`). An item with no `id` gets no id: the input points to the highlighted item with `ariaActiveDescendantElement`, and the browser shows `aria-activedescendant=""`. The highlight stays on the same item through the morph of another event. When the morph replaces the item, the highlight stays only on an item with the same `id`, so give each item a stable `id` in a list that changes. A move of the pointer on an item highlights it. An item that comes under a pointer that does not move, for example when the list changes, does not get the highlight. When the user types, the highlight goes. With `data-phem-combobox-auto-highlight-value="true"`, the first item gets the highlight. The popup and the list get `data-empty` when there is no visible item, and the `empty` parts show only then. A `status` part gets `role="status"`, so a screen reader reads its text, for example "3 cities". Use `var(--anchor-width)` to give the popup the width of the input.
 
 ### Choose more than one value
 
@@ -1144,6 +1147,8 @@ The `checked` value is the state (a pressed toggle button is checked). The serve
 
 A click toggles the state. A click on a `<label>` around the element, or on a `<label for>` the input, also toggles it, one time. The element gets the focus.
 
+A `<label>` names only a native control, so a `<span role="checkbox">` in a label has no name of its own. The controller links the element to the `<label>` around it with `aria-labelledby`: with the id of the label, or with an element reference (`ariaLabelledByElements`) when the label has no id. Then a screen reader reads "I accept the terms, checkbox". An `aria-label` or an `aria-labelledby` of the markup stays. A `<button>` gets no link: a label names a button. The `indicator` parts of a switch and of a checkbox get `aria-hidden="true"` (when they have no `aria-hidden`), so the check mark is not in the name: `aria-checked` gives the state.
+
 The `input` target (or the first checkbox in the element) is the field of a form:
 
 - A checkbox input gets the state in `checked`. Hide it with `hidden` or a visually hidden class.
@@ -1158,8 +1163,8 @@ Each change by the user dispatches `phem-toggle:change` with `{ checked, indeter
 
 ```html
 <label>
-    <span role="checkbox" data-controller="phem-toggle" data-phem-toggle-name-value="terms" data-phem-toggle-checked-value="true" tabindex="0" aria-checked="true" data-phem-toggle-indeterminate-value="false" data-checked="">
-        <span data-phem-toggle-target="indicator" data-checked="" data-open="" data-starting-style="">✓</span>
+    <span role="checkbox" data-controller="phem-toggle" data-phem-toggle-name-value="terms" data-phem-toggle-checked-value="true" tabindex="0" aria-labelledby="" aria-checked="true" data-phem-toggle-indeterminate-value="false" data-checked="">
+        <span data-phem-toggle-target="indicator" data-checked="" aria-hidden="true" data-open="" data-starting-style="">✓</span>
         <input type="checkbox" hidden="" data-phem-toggle-target="input" name="terms" tabindex="-1" aria-hidden="true">
     </span>
     I accept the terms
@@ -1199,6 +1204,20 @@ The value of an item is its `data-value` attribute, the `value` value of a `phem
 
 A click on an item presses it, and a click on a pressed item releases it. The items have a roving focus: one item is in the tab order (the item with the last focus, the first pressed item, or the first item that is not disabled).
 
+In a [`phem-toolbar`](#group-controls-in-a-toolbar), make the group a `group` part of the toolbar, and its items also `item` parts of the toolbar. Then the toolbar moves the focus with the arrow keys, and gives the tab order and `data-orientation` (the `orientation` value of the toolbar, not of the group). The focus goes from the last item of the group to the next item of the toolbar. The group keeps the pressed state:
+
+```html
+<div data-controller="phem-toolbar" aria-label="Editor">
+    <div data-controller="phem-toggle-group" data-phem-toolbar-target="group" data-phem-toggle-group-value-value='["start"]' aria-label="Justify">
+        <button type="button" data-phem-toggle-group-target="item" data-phem-toolbar-target="item" data-value="start">Start</button>
+        <button type="button" data-phem-toggle-group-target="item" data-phem-toolbar-target="item" data-value="end">End</button>
+    </div>
+    <button type="button" data-phem-toolbar-target="item">Bold</button>
+</div>
+```
+
+ArrowRight on **End** moves the focus to **Bold**, and ArrowRight on **Bold** goes back to **Start**. One item of the toolbar is in the tab order: the item with the last focus, or the first item.
+
 An item can be a [`phem-toggle`](#toggle-a-button-a-switch-or-a-checkbox) button, as a Base UI Toggle in a ToggleGroup:
 
 ```html
@@ -1237,7 +1256,7 @@ The group gets `role="group"` when it has no role, `data-orientation` and `data-
 </div>
 ```
 
-An `item` is a button, a link, an input, or another element that can get the focus. A `group` part holds some of the items, and a `separator` part divides them. Only one item is in the tab order: the item that had the focus last, else the first item. The tab stop stays after the morph of an event.
+An `item` is a button, a link, an input, or another element that can get the focus. A `group` part holds some of the items, and a `separator` part divides them. A group can be a `phem-toggle-group`: see [Press one button of a group](#press-one-button-of-a-group). Only one item is in the tab order: the item that had the focus last, else the first item. The tab stop stays after the morph of an event.
 
 | Value | Default | Description |
 |---|---|---|
@@ -1485,7 +1504,7 @@ All the parts (the field, the labels, the controls, the descriptions and the err
 | `data-focused` | The control has the focus |
 | `data-disabled` | The field is disabled: the `disabled` value, or disabled controls (also in a disabled `<fieldset>`) |
 
-Before the first validation, a field has no `data-valid` and no `data-invalid`. The label links to the control: a `<label>` gets `for` when the control has an `id`, else the control gets `aria-labelledby` (an element reference when the label has no id). A click on a label that is not a native label of the control focuses the control. The control gets `aria-invalid="true"` when the field is invalid.
+Before the first validation, a field has no `data-valid` and no `data-invalid`. The label links to the control: a `<label>` gets `for` when the control has an `id`, else the control gets `aria-labelledby` (an element reference when the label has no id). A bound control with no `id` gets `aria-labelledby`, also after the morph of an event: the temporary id that the morph gives it is not an id to link to. A click on a label that is not a native label of the control focuses the control. The control gets `aria-invalid="true"` when the field is invalid.
 
 The state stays after the morph of an event: the visible errors, `aria-invalid`, `novalidate` and the data attributes.
 
@@ -1845,7 +1864,7 @@ The `value` part shows the label of the selected item: its `data-label` attribut
 | `readOnly` | `false` | The select does not open and the value does not change. |
 | `required` | `false` | The input gets `required`. |
 | `loopFocus` | `true` | The arrow keys go from the last item to the first item. |
-| `highlightItemOnHover` | `true` | The pointer on an item gives it the focus. |
+| `highlightItemOnHover` | `true` | A move of the pointer on an item gives it the focus. An item that comes under a pointer that does not move (the popup opens over the trigger) does not get it. |
 | `open` | `false` | The popup is open on load. A script can change it. |
 | `side`, `align`, `sideOffset`, `alignOffset`, `collisionPadding`, `arrowPadding` | `bottom`, `center`, `0`, `0`, `5`, `5` | The place of the popup next to the trigger, as a [popover](#show-a-popover). |
 

@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
+import { realId } from "./phem_ids.js"
 import { PhemStorage } from "./phem_storage.js"
 import { hide, measure, render, show } from "./phem_transition.js"
 
@@ -209,8 +210,10 @@ export default class PhemCollapsibleController extends Controller {
 // references when a panel has no id. The morph removes an id that the server render does not
 // have, so the controller gives no id. Returns false when the browser has no element references.
 function controls(trigger, panels) {
-  if (panels.every((panel) => panel.id)) {
-    trigger.setAttribute("aria-controls", panels.map((panel) => panel.id).join(" "))
+  // A temporary id of the morph (phem_ids.js) is no id.
+  const ids = panels.map(realId)
+  if (ids.every(Boolean)) {
+    trigger.setAttribute("aria-controls", ids.join(" "))
 
     return true
   }

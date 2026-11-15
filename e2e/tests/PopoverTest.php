@@ -48,6 +48,25 @@ final class PopoverTest extends E2eTestCase
         self::assertTrue($page->evaluate("document.getElementById('popup').matches(':popover-open')"));
     }
 
+    public function testATitleAndADescriptionWithNoIdNameThePopupAlsoAfterAnEvent(): void
+    {
+        $page = $this->visit('/popover');
+        self::assertResponseIsSuccessful();
+
+        $described = "document.getElementById('popup').ariaDescribedByElements?.[0]?.textContent ?? null";
+        $page->locator('#trigger')->click();
+        $dialog = $page->getByRole('dialog', ['name' => 'Share', 'exact' => true]);
+        expect($dialog)->toBeVisible();
+        self::assertSame('Send the link to a friend.', $page->evaluate($described));
+
+        // The morph of the event keeps the parts with no id, and the links.
+        $page->locator('#like')->click();
+        expect($page->locator('#likes'))->toHaveExactText('1');
+        expect($dialog)->toBeVisible();
+        self::assertSame('Send the link to a friend.', $page->evaluate($described));
+        self::assertSame(0, $page->evaluate("document.querySelectorAll('.share-title[id], .share-description[id]').length"));
+    }
+
     public function testPopoverClosesOnEscapeAndGivesTheFocusBack(): void
     {
         $page = $this->visit('/popover');

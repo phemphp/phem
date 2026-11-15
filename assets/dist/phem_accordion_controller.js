@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
+import { realId } from "./phem_ids.js"
 import { isDisabled, nextItem } from "./phem_roving.js"
 import { hide, measure, render, show } from "./phem_transition.js"
 
@@ -175,9 +176,12 @@ export default class PhemAccordionController extends Controller {
         if (isOpen) measure(panel, "accordion")
       }
 
-      if (trigger?.id && panel?.id) {
-        trigger.setAttribute("aria-controls", panel.id)
-        panel.setAttribute("aria-labelledby", trigger.id)
+      // A temporary id of the morph (phem_ids.js) is no id.
+      const triggerId = trigger ? realId(trigger) : ""
+      const panelId = panel ? realId(panel) : ""
+      if (triggerId && panelId) {
+        trigger.setAttribute("aria-controls", panelId)
+        panel.setAttribute("aria-labelledby", triggerId)
       }
     }
   }

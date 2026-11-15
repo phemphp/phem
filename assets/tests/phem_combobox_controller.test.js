@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemComboboxController from "../dist/phem_combobox_controller.js"
-import { click, mount, nextDone, respond, stubElementReflection } from "./support.js"
+import { click, hover, mount, nextDone, respond, stubElementReflection } from "./support.js"
 
 let application
 
@@ -253,10 +253,33 @@ describe("phem-combobox", () => {
     await type("pa", ["Paris", "Parma"])
     const down = new PointerEvent("pointerdown", { bubbles: true, cancelable: true })
     $("city-Parma").dispatchEvent(down)
-    $("city-Parma").dispatchEvent(new PointerEvent("pointerover", { bubbles: true }))
+    hover($("city-Parma"))
 
     expect(down.defaultPrevented).toBe(true)
     expect($("input").getAttribute("aria-activedescendant")).toBe("city-Parma")
+  })
+
+  it("does not scroll the list for an item that the pointer highlights", async () => {
+    await mountField(field())
+    await type("pa", ["Paris", "Parma"])
+    const scroll = vi.fn()
+    Element.prototype.scrollIntoView = scroll
+    try {
+      hover($("city-Parma"))
+
+      expect($("input").getAttribute("aria-activedescendant")).toBe("city-Parma")
+      expect(scroll).not.toHaveBeenCalled()
+    } finally {
+      delete Element.prototype.scrollIntoView
+    }
+  })
+
+  it("does not highlight an item that comes under a pointer that does not move", async () => {
+    await mountField(field())
+    await type("pa", ["Paris", "Parma"])
+    $("city-Parma").dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }))
+
+    expect($("input").getAttribute("aria-activedescendant")).not.toBe("city-Parma")
   })
 
   describe("a choice of more than one value", () => {

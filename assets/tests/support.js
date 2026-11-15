@@ -47,6 +47,12 @@ export function clickAt(from, [x1, y1], to = from, [x2, y2] = [x1, y1]) {
 
 // jsdom has no showModal(): it opens the dialog. close() sets the return value, and the `close`
 // event comes in a later task, as in a browser.
+// The pointer moves onto `el`, as in a browser: `pointerover`, then `pointermove`.
+export function hover(el, init = {}) {
+  el.dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse", ...init }))
+  el.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, pointerType: "mouse", ...init }))
+}
+
 export function stubDialogs() {
   const proto = HTMLDialogElement.prototype
   proto.showModal = function () {

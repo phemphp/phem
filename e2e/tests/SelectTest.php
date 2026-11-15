@@ -72,6 +72,30 @@ final class SelectTest extends E2eTestCase
         expect($page->locator('#trigger'))->toBeFocused();
     }
 
+    public function testAnItemUnderAPointerThatDoesNotMoveKeepsTheHighlightOfTheKeyboard(): void
+    {
+        $page = $this->visit('/select');
+        self::assertResponseIsSuccessful();
+
+        // The pointer waits below the trigger, where the next item comes when the popup opens.
+        $trigger = $page->locator('#trigger')->boundingBox();
+        $page->mouse()->move($trigger['x'] + 20, $trigger['y'] + $trigger['height'] * 1.5);
+        $page->locator('#trigger')->focus();
+        $page->keyboard()->press('ArrowDown');
+        expect($page->locator('#item-honeycrisp'))->toBeFocused();
+
+        $next = $page->locator('#item-honeycrisp + [data-phem-select-target=item]');
+        $box = $next->boundingBox();
+        self::assertTrue($box['y'] <= $trigger['y'] + $trigger['height'] * 1.5 && $trigger['y'] + $trigger['height'] * 1.5 <= $box['y'] + $box['height'], 'The next item is under the pointer.');
+        $page->evaluate('new Promise((resolve) => setTimeout(resolve, 300))');
+        expect($page->locator('#item-honeycrisp'))->toBeFocused();
+
+        // A move of the pointer highlights the item under it.
+        $page->mouse()->move($trigger['x'] + 30, $trigger['y'] + $trigger['height'] * 1.5);
+        expect($next)->toBeFocused();
+        expect($next)->toHaveAttribute('data-highlighted', '');
+    }
+
     public function testAReleaseAfterADragFromTheTriggerSelectsTheItem(): void
     {
         $page = $this->visit('/select');

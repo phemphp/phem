@@ -1,5 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
+import { link } from "./phem_aria.js"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
+import { realId } from "./phem_ids.js"
 import { hide, render, show } from "./phem_transition.js"
 import { isDirty, isDisabledControl, isFilled, isNative, validityOf } from "./phem_validation.js"
 
@@ -411,13 +413,15 @@ function idsOf(value) {
 }
 
 // The label of the control: `for` on a `<label>` when the control has an id, else
-// `aria-labelledby` on the control. A label that the markup gives stays.
+// `aria-labelledby` on the control. A label that the markup gives stays. A temporary id of the
+// morph (phem_ids.js) is no id: the label must not point to it.
 function linkLabel(control, label) {
   if (label instanceof HTMLLabelElement) {
     if (label.htmlFor || label.contains(control)) return
 
-    if (control.id) {
-      label.htmlFor = control.id
+    const id = realId(control)
+    if (id) {
+      label.htmlFor = id
 
       return
     }
@@ -425,8 +429,5 @@ function linkLabel(control, label) {
 
   if (control.hasAttribute("aria-label")) return
 
-  const given = control.getAttribute("aria-labelledby")
-  if (label.id) {
-    if (!given) control.setAttribute("aria-labelledby", label.id)
-  } else if (given === null && "ariaLabelledByElements" in control) control.ariaLabelledByElements = [label]
+  link(control, "aria-labelledby", "ariaLabelledByElements", label)
 }

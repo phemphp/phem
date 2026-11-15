@@ -42,7 +42,8 @@ const SUBMENU_GRACE = 150
 // from the last item to the first item with the `loopFocus` value (the default). Home and End go
 // to the first and to the last item, and a letter goes to the next item that starts with it. The
 // keys skip a disabled item (`disabled` or `aria-disabled="true"`). With the
-// `highlightItemOnHover` value (the default), the pointer on an item gives it the focus.
+// `highlightItemOnHover` value (the default), a move of the pointer on an item gives it the focus:
+// an item that comes under a pointer that does not move (the menu opens under it) does not get it.
 //
 // A click on an item runs its own handler (`onClick`), and closes the menu, unless the item has
 // `data-phem-menu-close-on-click="false"`. Escape closes the menu and gives the focus back to the
@@ -132,6 +133,7 @@ export default class PhemMenuController extends Controller {
     this.element.addEventListener("focusin", this.onFocusIn, options)
     this.element.addEventListener("focusout", this.onFocusOut, options)
     this.element.addEventListener("pointerover", this.onPointerOver, options)
+    this.element.addEventListener("pointermove", this.onPointerMove, options)
     this.element.addEventListener("pointerout", this.onPointerOut, options)
 
     this.rendered = this.openValue
@@ -144,7 +146,7 @@ export default class PhemMenuController extends Controller {
     this.state.disconnect()
     this.listening.abort()
     this.hover.cancel()
-    clearTimeout(this.highlighting)
+    this.#cancelHighlight()
     this.typeahead.reset()
     this.popup.destroy()
     this.unlock?.()
@@ -332,23 +334,44 @@ export default class PhemMenuController extends Controller {
     this.hover.over(event)
 
     // The pointer reached the submenu: the item that it crossed does not get the highlight.
-    if (this.#inSubmenu(event.target)) {
-      clearTimeout(this.highlighting)
+    if (this.#inSubmenu(event.target)) this.#cancelHighlight()
+  }
 
-      return
-    }
+  // A move of the pointer highlights the item under it. The browser also sends `pointerover` when
+  // an item comes under a pointer that does not move (the popup opens under it): that item does
+  // not take the highlight of the keyboard.
+  onPointerMove = (event) => {
+    if (event.pointerType === "touch" || !this.highlightItemOnHoverValue || this.#inSubmenu(event.target)) return
+
+    // The moves on the item with the focus, or on the item that waits for its grace time: no
+    // lookup of the items, and the time does not start again.
+    const last = this.pointerItem
+    if (last?.contains(event.target) && (document.activeElement === last || this.highlightingItem === last)) return
 
     const item = this.#itemOf(event.target)
-    if (!item || !this.highlightItemOnHoverValue || isDisabled(item) || document.activeElement === item) return
+    this.pointerItem = item
+    if (!item || isDisabled(item) || item === this.highlightingItem) return
 
-    clearTimeout(this.highlighting)
-    const highlight = () => item.isConnected && this.openValue && item.focus({ preventScroll: true })
+    // The pointer came back to the item with the focus: the item that it crossed does not get it.
+    this.#cancelHighlight()
+    if (document.activeElement === item) return
+
+    this.highlightingItem = item
+    const highlight = () => {
+      this.highlightingItem = null
+      if (item.isConnected && this.openValue) item.focus({ preventScroll: true })
+    }
     const open = this.#submenus.some((menu) => menu.openValue && menu.#trigger !== item)
     if (open) this.highlighting = setTimeout(highlight, SUBMENU_GRACE)
     else highlight()
   }
 
   onPointerOut = (event) => this.hover.out(event)
+
+  #cancelHighlight() {
+    clearTimeout(this.highlighting)
+    this.highlightingItem = null
+  }
 
   // Opens the menu. `to` is the item that gets the focus: "first", "last", or none (the popup).
   // A submenu that the pointer opens keeps the focus on its trigger (`focus: false`).
@@ -376,7 +399,7 @@ export default class PhemMenuController extends Controller {
 
   #close({ focus }) {
     this.hover.cancel()
-    clearTimeout(this.highlighting)
+    this.#cancelHighlight()
     if (!this.openValue) return
 
     for (const submenu of this.#submenus) submenu.#close({ focus: false })

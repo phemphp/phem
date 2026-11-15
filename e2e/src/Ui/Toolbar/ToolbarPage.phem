@@ -7,8 +7,8 @@ use Phem\Node;
 
 use function App\Ui\Layout\Document;
 
-// A toolbar with a group, a separator, a link, an input and a disabled item, and a button that
-// sends an event.
+// A toolbar with a group, a separator, a link, an input and a disabled item, a toolbar with a
+// toggle group, and a button that sends an event.
 #[Page('/toolbar')]
 final class ToolbarPage
 {
@@ -42,6 +42,13 @@ final class ToolbarPage
                 <button id="save" onClick={{ save }}>Save</button>
                 <output id="bolds">{{ bolds }}</output>
                 <output id="saves">{{ saves }}</output>
+                <div id="editor" data-controller="phem-toolbar" aria-label="Editor">
+                    <div id="editor-align" data-controller="phem-toggle-group" data-phem-toolbar-target="group" data-phem-toggle-group-value-value={{ ['start']|json_encode }} aria-label="Justify">
+                        <button id="align-start" type="button" data-phem-toggle-group-target="item" data-phem-toolbar-target="item" data-value="start">Start</button>
+                        <button id="align-end" type="button" data-phem-toggle-group-target="item" data-phem-toolbar-target="item" data-value="end">End</button>
+                    </div>
+                    <button id="editor-bold" type="button" data-phem-toolbar-target="item">Bold</button>
+                </div>
             </Document>
         );
     }

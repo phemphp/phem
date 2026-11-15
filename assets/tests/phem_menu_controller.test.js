@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemMenuController from "../dist/phem_menu_controller.js"
-import { click, mount, nextDone, respond, stubElementReflection } from "./support.js"
+import { click, hover, mount, nextDone, respond, stubElementReflection } from "./support.js"
 
 let application
 
@@ -232,10 +232,20 @@ describe("phem-menu", () => {
   it("highlights an item under the pointer", async () => {
     await mount(actions())
     click("#trigger")
-    $("delete").dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }))
+    hover($("delete"))
 
     expect(document.activeElement.id).toBe("delete")
     expect($("delete").hasAttribute("data-highlighted")).toBe(true)
+  })
+
+  it("does not highlight an item that comes under a pointer that does not move", async () => {
+    await mount(actions())
+    click("#trigger")
+    const focused = document.activeElement
+    $("delete").dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }))
+
+    expect(document.activeElement).toBe(focused)
+    expect($("delete").hasAttribute("data-highlighted")).toBe(false)
   })
 
   describe("a submenu", () => {
@@ -317,7 +327,7 @@ describe("phem-menu", () => {
       await mount(nested())
       vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
       click("#trigger")
-      $("move-trigger").dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }))
+      hover($("move-trigger"))
       expect(document.activeElement.id).toBe("move-trigger")
       expect(subOpen()).toBe(false)
 
@@ -326,7 +336,7 @@ describe("phem-menu", () => {
       expect(document.activeElement.id).toBe("move-trigger")
 
       // The pointer on another item of the menu closes it after a grace time.
-      $("delete").dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }))
+      hover($("delete"))
       expect(subOpen()).toBe(true)
       vi.advanceTimersByTime(150)
       expect(document.activeElement.id).toBe("delete")
@@ -337,22 +347,37 @@ describe("phem-menu", () => {
       await mount(nested())
       vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
       click("#trigger")
-      $("move-trigger").dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }))
+      hover($("move-trigger"))
       vi.advanceTimersByTime(100)
 
-      $("delete").dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }))
-      $("inbox").dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }))
+      hover($("delete"))
+      hover($("inbox"))
       vi.advanceTimersByTime(1000)
 
       expect(subOpen()).toBe(true)
       expect(document.activeElement.id).toBe("inbox")
     })
 
+    it("keeps the focus on its trigger when the pointer crosses an item and comes back", async () => {
+      await mount(nested())
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+      click("#trigger")
+      hover($("move-trigger"))
+      vi.advanceTimersByTime(100)
+
+      hover($("delete"))
+      hover($("move-trigger"))
+      vi.advanceTimersByTime(1000)
+
+      expect(subOpen()).toBe(true)
+      expect(document.activeElement.id).toBe("move-trigger")
+    })
+
     it("does not open with an aria-disabled trigger", async () => {
       await mount(nested().replace('id="move-trigger"', 'id="move-trigger" aria-disabled="true"'))
       vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
       click("#trigger")
-      $("move-trigger").dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }))
+      hover($("move-trigger"))
       vi.advanceTimersByTime(1000)
       $("move-trigger").dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }))
 
@@ -364,7 +389,7 @@ describe("phem-menu", () => {
       await mount(nested('data-phem-menu-open-on-hover-value="false"'))
       vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
       click("#trigger")
-      $("move-trigger").dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }))
+      hover($("move-trigger"))
       vi.advanceTimersByTime(1000)
 
       expect(subOpen()).toBe(false)

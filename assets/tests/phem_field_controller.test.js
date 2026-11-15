@@ -203,6 +203,31 @@ describe("phem-field", () => {
   })
 })
 
+describe("phem-field with a bound control with no id", () => {
+  it("does not point the label to the temporary id of the morph", async () => {
+    const markup = `<div id="field" data-controller="phem-field">
+        <label id="label" data-phem-field-target="label">Name</label>
+        <input name="name" data-phem-bind="name" data-phem-field-target="control" />
+      </div>
+      <button id="save" data-phem-on-click="c1.save">Save</button>`
+    await mount(markup)
+    const control = () => document.querySelector("[data-phem-bind]")
+
+    expect(el("label").htmlFor).toBe("")
+    expect(control().getAttribute("aria-labelledby")).toBe("label")
+
+    respond(markup)
+    const done = nextDone()
+    el("save").click()
+    await done
+    await settle()
+
+    expect(control().id).toBe("")
+    expect(el("label").htmlFor).toBe("")
+    expect(control().getAttribute("aria-labelledby")).toBe("label")
+  })
+})
+
 describe("phem-form", () => {
   it("sets novalidate on the form", async () => {
     await mount(form(field()))

@@ -105,7 +105,12 @@ final class MenuTest extends E2eTestCase
         $box = $page->locator('#area')->boundingBox();
         $page->mouse()->click($box['x'] + 50, $box['y'] + 30, ['button' => 'right']);
         expect($page->locator('#context-popup'))->toBeVisible();
-        // The popup is under the pointer: its first item has the highlight of the hover.
+        // The popup opens under the pointer, but the pointer did not move: no item has the highlight.
+        expect($page->locator('#context-popup'))->toBeFocused();
+        expect($page->locator('#context-copy'))->not()->toHaveAttribute('data-highlighted', '');
+
+        // A move of the pointer highlights the item under it.
+        $page->mouse()->move($box['x'] + 55, $box['y'] + 35);
         expect($page->locator('#context-copy'))->toBeFocused();
 
         $popup = $page->locator('#context-popup')->boundingBox();

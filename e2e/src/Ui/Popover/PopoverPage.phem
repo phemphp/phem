@@ -26,7 +26,8 @@ final class PopoverPage
                 <div id="share" data-controller="phem-popover" style="margin: 40px 200px">
                     <button id="trigger" data-phem-popover-target="trigger">Share</button>
                     <div id="popup" data-phem-popover-target="popup" popover="manual" hidden style="margin: 0; width: 160px; padding: 8px; border: 1px solid">
-                        <h2 id="title" data-phem-popover-target="title">Share</h2>
+                        <h2 class="share-title" data-phem-popover-target="title">Share</h2>
+                        <p class="share-description" data-phem-popover-target="description">Send the link to a friend.</p>
                         <button id="like" onClick={{ like }}>Like</button>
                         <button id="close" data-phem-popover-target="close">Close</button>
                     </div>
