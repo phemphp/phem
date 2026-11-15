@@ -1,0 +1,97 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\DemoPage;
+use function Phem\Ui\Base\{FieldsetLegend, MeterIndicator, MeterLabel, MeterTrack, MeterValue, ProgressIndicator, ProgressLabel, ProgressTrack, ProgressValue};
+use Phem\Ui\Base\{Button, Fieldset, Input, Meter, Progress, Separator};
+
+#[Page('/components/button')]
+function ButtonPage(): Node
+{
+    return <DemoPage title="Button"><Button>Submit</Button></DemoPage>;
+}
+
+#[Page('/components/input')]
+function InputPage(): Node
+{
+    return (
+        <DemoPage title="Input">
+            <label className="flex flex-col items-start gap-1 text-sm font-bold text-neutral-950 dark:text-white">
+                Name
+                <Input placeholder="e.g. Colm Tuite" />
+            </label>
+        </DemoPage>
+    );
+}
+
+#[Page('/components/separator')]
+function SeparatorPage(): Node
+{
+    $link = 'text-sm text-neutral-950 decoration-neutral-300 decoration-1 underline-offset-2 hover:underline focus-visible:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:text-white dark:decoration-neutral-700';
+
+    return (
+        <DemoPage title="Separator">
+            <div className="flex gap-4 text-nowrap">
+                <a href="#" className={{ link }}>Home</a>
+                <a href="#" className={{ link }}>Pricing</a>
+                <a href="#" className={{ link }}>Blog</a>
+                <a href="#" className={{ link }}>Support</a>
+                <Separator orientation="vertical" />
+                <a href="#" className={{ link }}>Log in</a>
+                <a href="#" className={{ link }}>Sign up</a>
+            </div>
+        </DemoPage>
+    );
+}
+
+#[Page('/components/fieldset')]
+function FieldsetPage(): Node
+{
+    return (
+        <DemoPage title="Fieldset">
+            <Fieldset>
+                <FieldsetLegend>Billing details</FieldsetLegend>
+                <label className="flex flex-col items-start gap-1 text-sm font-bold">
+                    Company
+                    <Input placeholder="Enter company name" className="w-full" />
+                </label>
+                <label className="flex flex-col items-start gap-1 text-sm font-bold">
+                    Tax ID
+                    <Input placeholder="Enter fiscal number" className="w-full" />
+                </label>
+            </Fieldset>
+        </DemoPage>
+    );
+}
+
+#[Page('/components/meter')]
+function MeterPage(): Node
+{
+    return (
+        <DemoPage title="Meter">
+            <Meter id="storage" value={{ 24 }}>
+                <MeterLabel>Storage Used</MeterLabel>
+                <MeterValue />
+                <MeterTrack><MeterIndicator /></MeterTrack>
+            </Meter>
+        </DemoPage>
+    );
+}
+
+#[Page('/components/progress')]
+function ProgressPage(): Node
+{
+    return (
+        <DemoPage title="Progress">
+            <Progress id="export" value={{ 20 }}>
+                <ProgressLabel>Export data</ProgressLabel>
+                <ProgressValue />
+                <ProgressTrack><ProgressIndicator /></ProgressTrack>
+            </Progress>
+        </DemoPage>
+    );
+}

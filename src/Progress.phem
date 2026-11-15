@@ -1,0 +1,115 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\{Component, Context, Prop, Provide};
+use Phem\{Html, Node};
+
+/**
+ * A progress bar: Base UI Progress.Root. A `null` value is an indeterminate progress.
+ *
+ * All the parts get `data-indeterminate`, `data-progressing` or `data-complete`. Give an `id`
+ * to label the bar with its ProgressLabel.
+ */
+#[Component, Provide]
+class Progress
+{
+    #[Prop] public ?float $value = null;
+    #[Prop] public float $min = 0;
+    #[Prop] public float $max = 100;
+    #[Prop] public ?string $id = null;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function percent(): ?float
+    {
+        if (null === $this->value || $this->max <= $this->min) {
+            return null;
+        }
+
+        return max(0, min(100, ($this->value - $this->min) / ($this->max - $this->min) * 100));
+    }
+
+    public function status(): string
+    {
+        return match (true) {
+            null === $this->value => 'indeterminate',
+            $this->value >= $this->max => 'complete',
+            default => 'progressing',
+        };
+    }
+
+    /** The text of the value, as Base UI formats it: a percent. */
+    public function text(): ?string
+    {
+        $percent = $this->percent();
+
+        return null === $percent ? null : round($percent).'%';
+    }
+
+    /** @return array<string, string> the state attributes of each part */
+    public function state(): array
+    {
+        return ['data-'.$this->status() => ''];
+    }
+
+    public function render(): Node
+    {
+        $text = $this->text();
+        $state = $this->state();
+
+        return (
+            <div
+                id={{ id }}
+                role="progressbar"
+                aria-valuemin={{ min }}
+                aria-valuemax={{ max }}
+                aria-valuenow={{ value }}
+                aria-valuetext={{ text }}
+                aria-labelledby={{ id ? id ~ '-label' : null }}
+                className={{ classes('grid max-w-full w-60 grid-cols-2 gap-y-2') }}
+                {{ ...state }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+            </div>
+        );
+    }
+}
+
+#[Component]
+function ProgressLabel(#[Context] Progress $progress, ?Html $children = null, mixed ...$rest): Node
+{
+    $state = $progress->state();
+    $id = $progress->id ? $progress->id.'-label' : null;
+
+    return <span id={{ id }} className={{ classes('text-sm font-normal text-neutral-950 dark:text-white') }} {{ ...state }} {{ ...rest }}>{{ children }}</span>;
+}
+
+/** The text of the value. Its children replace the default text (a percent). */
+#[Component]
+function ProgressValue(#[Context] Progress $progress, ?Html $children = null, mixed ...$rest): Node
+{
+    $state = $progress->state();
+    $text = $progress->text();
+
+    return <span aria-hidden="true" className={{ classes('text-right text-sm text-neutral-950 dark:text-white') }} {{ ...state }} {{ ...rest }}>{{ children ?? text }}</span>;
+}
+
+#[Component]
+function ProgressTrack(#[Context] Progress $progress, ?Html $children = null, mixed ...$rest): Node
+{
+    $state = $progress->state();
+
+    return <div className={{ classes('col-span-2 h-1 overflow-hidden bg-neutral-200 dark:bg-neutral-800') }} {{ ...state }} {{ ...rest }}>{{ children }}</div>;
+}
+
+#[Component]
+function ProgressIndicator(#[Context] Progress $progress, mixed ...$rest): Node
+{
+    $state = $progress->state();
+    $percent = $progress->percent();
+    $style = null === $percent ? null : 'inset-inline-start: 0; height: inherit; width: '.$percent.'%';
+
+    return <div style={{ style }} className={{ classes('bg-neutral-950 transition-[width] duration-500 dark:bg-white') }} {{ ...state }} {{ ...rest }} />;
+}

@@ -1,0 +1,70 @@
+<?phem
+
+namespace Phem\Ui\Base\Tests\App;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+
+use function Phem\Ui\Base\{ComboboxActions, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxTrigger, DrawerClose, DrawerContent, DrawerDescription, DrawerPopup, DrawerTitle, DrawerTrigger, PreviewCard, PreviewCardPopup, PreviewCardTrigger, ToastViewport};
+use Phem\Ui\Base\{Combobox, Drawer};
+
+#[Component]
+function ComboboxDemo(): Node
+{
+    return (
+        <Combobox id="fruit">
+            <ComboboxLabel>Choose a fruit</ComboboxLabel>
+            <ComboboxInputGroup>
+                <ComboboxInput placeholder="e.g. Apple" />
+                <ComboboxActions>
+                    <ComboboxClear aria-label="Clear selection" />
+                    <ComboboxTrigger aria-label="Open popup" />
+                </ComboboxActions>
+            </ComboboxInputGroup>
+            <ComboboxPopup>
+                <ComboboxEmpty>No fruits found.</ComboboxEmpty>
+                <ComboboxList>
+                    <ComboboxItem value="apple" selected>
+                        <ComboboxItemIndicator />
+                        <ComboboxItemLabel>Apple</ComboboxItemLabel>
+                    </ComboboxItem>
+                    <ComboboxItem value="banana"><ComboboxItemIndicator /><ComboboxItemLabel>Banana</ComboboxItemLabel></ComboboxItem>
+                </ComboboxList>
+            </ComboboxPopup>
+        </Combobox>
+    );
+}
+
+#[Component]
+function DrawerDemo(): Node
+{
+    return (
+        <Drawer swipeDirection="right">
+            <DrawerTrigger>Open drawer</DrawerTrigger>
+            <DrawerPopup>
+                <DrawerContent>
+                    <DrawerTitle>Drawer</DrawerTitle>
+                    <DrawerDescription>Swipe to dismiss it.</DrawerDescription>
+                    <DrawerClose>Close</DrawerClose>
+                </DrawerContent>
+            </DrawerPopup>
+        </Drawer>
+    );
+}
+
+#[Component]
+function PreviewCardDemo(): Node
+{
+    return (
+        <PreviewCard>
+            <p>The principles of good <PreviewCardTrigger href="https://en.wikipedia.org/wiki/Typography">typography</PreviewCardTrigger>.</p>
+            <PreviewCardPopup><p>Typography is an art.</p></PreviewCardPopup>
+        </PreviewCard>
+    );
+}
+
+#[Component]
+function ToastDemo(): Node
+{
+    return <ToastViewport />;
+}

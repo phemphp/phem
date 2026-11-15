@@ -1,0 +1,142 @@
+<?phem
+
+namespace Phem\Ui\Base\Tests\App;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+
+use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger, AlertDialog, AlertDialogClose, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, CollapsiblePanel, CollapsibleTrigger, ContextMenuTrigger, Dialog, DialogClose, DialogDescription, DialogPopup, DialogTitle, DialogTrigger, MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuSeparator, MenuSubmenuTrigger, MenuTrigger, Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverTitle, PopoverTrigger, TabsIndicator, TabsList, TabsPanel, TabsTab, Tooltip, TooltipPopup, TooltipTrigger};
+use Phem\Ui\Base\{Accordion, AccordionItem, Collapsible, ContextMenu, Menu, MenuSubmenu, Tabs};
+
+#[Component]
+function CollapsibleDemo(bool $open = false): Node
+{
+    return (
+        <Collapsible defaultOpen={{ open }}>
+            <CollapsibleTrigger>Recovery keys</CollapsibleTrigger>
+            <CollapsiblePanel><div>alien-bean-pasta</div></CollapsiblePanel>
+        </Collapsible>
+    );
+}
+
+#[Component]
+function AccordionDemo(): Node
+{
+    return (
+        <Accordion id="faq" defaultValue={{ ['start'] }}>
+            <AccordionItem value="what">
+                <AccordionHeader><AccordionTrigger>What is Base UI?</AccordionTrigger></AccordionHeader>
+                <AccordionPanel>A library.</AccordionPanel>
+            </AccordionItem>
+            <AccordionItem value="start">
+                <AccordionHeader><AccordionTrigger>How do I get started?</AccordionTrigger></AccordionHeader>
+                <AccordionPanel>Read the guide.</AccordionPanel>
+            </AccordionItem>
+        </Accordion>
+    );
+}
+
+#[Component]
+function DialogDemo(): Node
+{
+    return (
+        <Dialog>
+            <DialogTrigger>View notifications</DialogTrigger>
+            <DialogPopup>
+                <DialogTitle>Notifications</DialogTitle>
+                <DialogDescription>You are all caught up.</DialogDescription>
+                <DialogClose>Close</DialogClose>
+            </DialogPopup>
+        </Dialog>
+    );
+}
+
+#[Component]
+function AlertDialogDemo(): Node
+{
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger className="text-red-700">Discard draft</AlertDialogTrigger>
+            <AlertDialogPopup>
+                <AlertDialogTitle>Discard draft?</AlertDialogTitle>
+                <AlertDialogClose>Cancel</AlertDialogClose>
+            </AlertDialogPopup>
+        </AlertDialog>
+    );
+}
+
+#[Component]
+function PopoverDemo(): Node
+{
+    return (
+        <Popover sideOffset={{ 8 }}>
+            <PopoverTrigger>Notifications</PopoverTrigger>
+            <PopoverPopup>
+                <PopoverArrow />
+                <PopoverTitle>Notifications</PopoverTitle>
+                <PopoverDescription>You are all caught up.</PopoverDescription>
+            </PopoverPopup>
+        </Popover>
+    );
+}
+
+#[Component]
+function TooltipDemo(): Node
+{
+    return (
+        <Tooltip sideOffset={{ 11 }}>
+            <TooltipTrigger aria-label="Bold">B</TooltipTrigger>
+            <TooltipPopup>Bold</TooltipPopup>
+        </Tooltip>
+    );
+}
+
+#[Component]
+function TabsDemo(): Node
+{
+    return (
+        <Tabs defaultValue="overview">
+            <TabsList>
+                <TabsTab value="overview">Overview</TabsTab>
+                <TabsTab value="projects">Projects</TabsTab>
+                <TabsIndicator />
+            </TabsList>
+            <TabsPanel value="overview">Stats</TabsPanel>
+            <TabsPanel value="projects">Milestones</TabsPanel>
+        </Tabs>
+    );
+}
+
+#[Component]
+function MenuDemo(): Node
+{
+    return (
+        <Menu sideOffset={{ 8 }}>
+            <MenuTrigger>Song</MenuTrigger>
+            <MenuPopup>
+                <MenuItem>Add to Library</MenuItem>
+                <MenuSubmenu>
+                    <MenuSubmenuTrigger>Add to Playlist</MenuSubmenuTrigger>
+                    <MenuPopup><MenuItem>Get Up!</MenuItem></MenuPopup>
+                </MenuSubmenu>
+                <MenuSeparator />
+                <MenuItem closeOnClick={{ false }}>Play Next</MenuItem>
+                <MenuCheckboxItem checked>
+                    <MenuItemIndicator />
+                    <MenuItemLabel>Minimap</MenuItemLabel>
+                </MenuCheckboxItem>
+            </MenuPopup>
+        </Menu>
+    );
+}
+
+#[Component]
+function ContextMenuDemo(): Node
+{
+    return (
+        <ContextMenu>
+            <ContextMenuTrigger>Right click here</ContextMenuTrigger>
+            <MenuPopup><MenuItem>Add to Library</MenuItem></MenuPopup>
+        </ContextMenu>
+    );
+}

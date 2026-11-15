@@ -1,0 +1,106 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Phem\Ui\Base\Tests\Ui;
+
+use Phem\Test\InteractsWithPhem;
+use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+
+final class OverlaysTest extends KernelTestCase
+{
+    use InteractsWithPhem;
+
+    private const string APP = 'Phem\Ui\Base\Tests\App\\';
+
+    public function testAClosedCollapsibleHidesItsPanel(): void
+    {
+        $this->mount(self::APP.'CollapsibleDemo')
+            ->assertSelectorExists('[data-controller="phem-collapsible"][data-closed]')
+            ->assertSelectorExists('button[data-phem-collapsible-target="trigger"][aria-expanded="false"]')
+            ->assertSelectorExists('[data-phem-collapsible-target="panel"][hidden]');
+    }
+
+    public function testAnOpenCollapsibleShowsItsPanel(): void
+    {
+        $this->mount(self::APP.'CollapsibleDemo', ['open' => true])
+            ->assertSelectorExists('[data-phem-collapsible-open-value="true"][data-open]')
+            ->assertSelectorExists('button[data-panel-open][aria-expanded="true"]')
+            ->assertSelectorExists('[data-phem-collapsible-target="panel"][data-open]:not([hidden])');
+    }
+
+    public function testTheAccordionLinksItsTriggersAndPanels(): void
+    {
+        $this->mount(self::APP.'AccordionDemo')
+            ->assertSelectorExists('#faq[data-controller="phem-accordion"][data-phem-accordion-open-value=\'["start"]\']')
+            ->assertSelectorExists('[data-value="what"][data-phem-accordion-target="item"]:not([data-open])')
+            ->assertSelectorExists('#faq-what-trigger[aria-controls="faq-what-panel"][aria-expanded="false"]')
+            ->assertSelectorExists('#faq-what-panel[role="region"][aria-labelledby="faq-what-trigger"][hidden]')
+            ->assertSelectorExists('#faq-start-trigger[data-panel-open]')
+            ->assertSelectorExists('#faq-start-panel[data-open]:not([hidden])');
+    }
+
+    public function testTheDialogIsANativeDialog(): void
+    {
+        $this->mount(self::APP.'DialogDemo')
+            ->assertSelectorExists('[data-controller="phem-dialog"] button[data-phem-dialog-target="trigger"]')
+            ->assertSelectorExists('dialog[data-phem-dialog-target="popup"] h2[data-phem-dialog-target="title"]')
+            ->assertSelectorExists('dialog p[data-phem-dialog-target="description"]')
+            ->assertSelectorExists('dialog button[data-phem-dialog-target="close"]');
+    }
+
+    public function testTheAlertDialogHasTheAlertDialogRole(): void
+    {
+        $html = $this->mount(self::APP.'AlertDialogDemo')
+            ->assertSelectorExists('[data-phem-dialog-disable-pointer-dismissal-value="true"] dialog[role="alertdialog"][data-phem-dialog-target="popup"]')
+            ->html();
+
+        self::assertMatchesRegularExpression('/data-phem-dialog-target="trigger"[^>]*class="[^"]*text-red-700"|class="[^"]*text-red-700"[^>]*data-phem-dialog-target="trigger"/', $html);
+    }
+
+    public function testThePopoverHasItsPositionValues(): void
+    {
+        $this->mount(self::APP.'PopoverDemo')
+            ->assertSelectorExists('[data-controller="phem-popover"][data-phem-popover-side-value="bottom"][data-phem-popover-align-value="center"][data-phem-popover-side-offset-value="8"]')
+            ->assertSelectorExists('[data-phem-popover-target="popup"][popover="manual"][hidden] [data-phem-popover-target="arrow"]')
+            ->assertSelectorExists('[data-phem-popover-target="popup"] h2[data-phem-popover-target="title"]');
+    }
+
+    public function testTheTooltipIsOnTop(): void
+    {
+        $this->mount(self::APP.'TooltipDemo')
+            ->assertSelectorExists('[data-controller="phem-tooltip"][data-phem-tooltip-side-value="top"][data-phem-tooltip-side-offset-value="11"]')
+            ->assertSelectorExists('button[data-phem-tooltip-target="trigger"][aria-label="Bold"]')
+            ->assertSelectorExists('[data-phem-tooltip-target="popup"][hidden]');
+    }
+
+    public function testTheTabsSelectTheirDefaultValue(): void
+    {
+        $this->mount(self::APP.'TabsDemo')
+            ->assertSelectorExists('[data-controller="phem-tabs"][data-phem-tabs-active-value="overview"][data-orientation="horizontal"]')
+            ->assertSelectorExists('[data-value="overview"][data-phem-tabs-target="tab"][aria-selected="true"][data-active]')
+            ->assertSelectorExists('[data-value="projects"][data-phem-tabs-target="tab"][aria-selected="false"]')
+            ->assertSelectorExists('[data-value="overview"][data-phem-tabs-target="panel"]:not([hidden])')
+            ->assertSelectorExists('[data-value="projects"][data-phem-tabs-target="panel"][hidden][data-hidden]')
+            ->assertSelectorExists('[data-phem-tabs-target="list"] [data-phem-tabs-target="indicator"]');
+    }
+
+    public function testTheMenuPartsHaveTheTargetsOfTheirMenu(): void
+    {
+        $this->mount(self::APP.'MenuDemo')
+            ->assertSelectorExists('[data-controller="phem-menu"][data-phem-menu-align-value="start"] > button[data-phem-menu-target="trigger"]')
+            ->assertSelectorExists('[data-phem-menu-target="popup"][popover="manual"] button[data-phem-menu-target="item"]')
+            ->assertSelectorExists('[data-phem-menu-target="popup"] [data-controller="phem-menu"][data-phem-menu-open-on-hover-value="true"][data-phem-menu-side-value="inline-end"]')
+            ->assertSelectorExists('button[data-phem-menu-target="item"][data-phem-menu-close-on-click="false"]')
+            ->assertSelectorExists('button[role="menuitemcheckbox"][aria-checked="true"][data-checked]')
+            ->assertSelectorExists('[data-phem-menu-target="separator"]');
+    }
+
+    public function testTheContextMenuPartsHaveTheContextMenuTargets(): void
+    {
+        $this->mount(self::APP.'ContextMenuDemo')
+            ->assertSelectorExists('[data-controller="phem-context-menu"] [data-phem-context-menu-target="trigger"]')
+            ->assertSelectorExists('[data-phem-context-menu-target="popup"] [data-phem-context-menu-target="item"]')
+            ->assertSelectorNotExists('[data-phem-menu-target]');
+    }
+}

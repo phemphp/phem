@@ -1,0 +1,129 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\DemoPage;
+use function Phem\Ui\Base\{AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, Dialog, DialogClose, DialogDescription, DialogPopup, DialogTitle, DialogTrigger, DrawerClose, DrawerContent, DrawerDescription, DrawerPopup, DrawerTitle, DrawerTrigger, Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverTitle, PopoverTrigger, PreviewCard, PreviewCardArrow, PreviewCardPopup, PreviewCardTrigger, Tooltip, TooltipArrow, TooltipPopup, TooltipTrigger};
+use Phem\Ui\Base\Drawer;
+
+#[Page('/components/dialog')]
+function DialogPage(): Node
+{
+    return (
+        <DemoPage title="Dialog">
+            <Dialog>
+                <DialogTrigger>View notifications</DialogTrigger>
+                <DialogPopup>
+                    <div className="flex flex-col gap-1">
+                        <DialogTitle>Notifications</DialogTitle>
+                        <DialogDescription>You are all caught up. Good job!</DialogDescription>
+                    </div>
+                    <div className="flex justify-end gap-3">
+                        <DialogClose>Close</DialogClose>
+                    </div>
+                </DialogPopup>
+            </Dialog>
+        </DemoPage>
+    );
+}
+
+#[Page('/components/alert-dialog')]
+function AlertDialogPage(): Node
+{
+    return (
+        <DemoPage title="Alert Dialog">
+            <AlertDialog>
+                <AlertDialogTrigger className="text-red-700 dark:text-red-400">Discard draft</AlertDialogTrigger>
+                <AlertDialogPopup>
+                    <div className="flex flex-col gap-1">
+                        <AlertDialogTitle>Discard draft?</AlertDialogTitle>
+                        <AlertDialogDescription>You can’t undo this action.</AlertDialogDescription>
+                    </div>
+                    <div className="flex justify-end gap-3">
+                        <AlertDialogClose>Cancel</AlertDialogClose>
+                        <AlertDialogClose className="text-red-700 dark:text-red-400">Discard</AlertDialogClose>
+                    </div>
+                </AlertDialogPopup>
+            </AlertDialog>
+        </DemoPage>
+    );
+}
+
+#[Page('/components/drawer')]
+function DrawerPage(): Node
+{
+    return (
+        <DemoPage title="Drawer">
+            <Drawer swipeDirection="right">
+                <DrawerTrigger>Open drawer</DrawerTrigger>
+                <DrawerPopup>
+                    <DrawerContent>
+                        <DrawerTitle>Drawer</DrawerTitle>
+                        <DrawerDescription>This is a drawer that slides in from the side. You can swipe to dismiss it.</DrawerDescription>
+                        <div className="flex justify-end gap-3"><DrawerClose>Close</DrawerClose></div>
+                    </DrawerContent>
+                </DrawerPopup>
+            </Drawer>
+        </DemoPage>
+    );
+}
+
+#[Page('/components/popover')]
+function PopoverPage(): Node
+{
+    return (
+        <DemoPage title="Popover">
+            <Popover sideOffset={{ 8 }}>
+                <PopoverTrigger>Notifications</PopoverTrigger>
+                <PopoverPopup>
+                    <PopoverArrow />
+                    <PopoverTitle>Notifications</PopoverTitle>
+                    <PopoverDescription>You are all caught up. Good job!</PopoverDescription>
+                </PopoverPopup>
+            </Popover>
+        </DemoPage>
+    );
+}
+
+#[Page('/components/preview-card')]
+function PreviewCardPage(): Node
+{
+    return (
+        <DemoPage title="Preview Card">
+            <PreviewCard>
+                <p className="text-base text-neutral-950 text-balance dark:text-white">
+                    The principles of good <PreviewCardTrigger href="https://en.wikipedia.org/wiki/Typography">typography</PreviewCardTrigger> remain in the digital age.
+                </p>
+                <PreviewCardPopup>
+                    <PreviewCardArrow />
+                    <div className="flex w-min flex-col gap-2 p-2">
+                        <img width="224" height="150" className="block max-w-none" src="https://images.unsplash.com/photo-1619615391095-dfa29e1672ef?q=80&w=448&h=300" alt="Station Hofplein signage in Rotterdam, Netherlands" />
+                        <p className="text-sm"><strong>Typography</strong> is the art and science of arranging type to make written language clear, visually appealing, and effective in communication.</p>
+                    </div>
+                </PreviewCardPopup>
+            </PreviewCard>
+        </DemoPage>
+    );
+}
+
+#[Page('/components/tooltip')]
+function TooltipPage(): Node
+{
+    $tools = ['Bold' => 'B', 'Italic' => 'I', 'Underline' => 'U'];
+
+    return (
+        <DemoPage title="Tooltip">
+            <div className="flex border border-neutral-950 bg-white dark:border-white dark:bg-neutral-950">
+                {% for label, letter in tools %}
+                    <Tooltip key={{ label }} sideOffset={{ 11 }}>
+                        <TooltipTrigger aria-label={{ label }}><span aria-hidden="true" className="text-sm font-bold">{{ letter }}</span></TooltipTrigger>
+                        <TooltipPopup><TooltipArrow />{{ label }}</TooltipPopup>
+                    </Tooltip>
+                {% endfor %}
+            </div>
+        </DemoPage>
+    );
+}

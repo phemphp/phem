@@ -1,0 +1,5 @@
+@import "tailwindcss";
+
+/* The components of phem/ui-base. In an app: @source "../../vendor/phem/ui-base/src"; */
+@source "../../../src";
+@source "../../src";

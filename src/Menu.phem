@@ -1,0 +1,291 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\{Component, Context, Prop, Provide};
+use Phem\{Html, Node};
+
+/**
+ * A list of actions in a popup: Base UI Menu.Root, on the `phem-menu` controller.
+ *
+ * The props of the Base UI Positioner are props of the root. The popup goes in the top layer
+ * (`popover="manual"`), so it needs no Portal. The parts read the root, so the same parts work in
+ * a ContextMenu and in a MenuSubmenu.
+ */
+#[Component, Provide]
+class Menu
+{
+    #[Prop] public bool $defaultOpen = false;
+    #[Prop] public bool $modal = false;
+    #[Prop] public bool $openOnHover = false;
+    #[Prop] public int $delay = 100;
+    #[Prop] public bool $loopFocus = true;
+    #[Prop] public bool $highlightItemOnHover = true;
+    #[Prop] public Orientation $orientation = Orientation::Vertical;
+    #[Prop] public Side $side = Side::Bottom;
+    #[Prop] public Align $align = Align::Start;
+    #[Prop] public int $sideOffset = 0;
+    #[Prop] public int $alignOffset = 0;
+    #[Prop] public int $collisionPadding = 5;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    /** The Stimulus identifier of the controller of the parts. */
+    public function controller(): string
+    {
+        return 'phem-menu';
+    }
+
+    /** The `data-<controller>-target` attribute of a part. */
+    public function target(string $name): array
+    {
+        return ['data-'.$this->controller().'-target' => $name];
+    }
+
+    /** @return array<string, string|null> the values of the controller */
+    public function values(): array
+    {
+        $prefix = 'data-'.$this->controller().'-';
+
+        return [
+            'data-controller' => $this->controller(),
+            $prefix.'open-value' => $this->defaultOpen ? 'true' : null,
+            $prefix.'modal-value' => $this->modal ? 'true' : null,
+            $prefix.'open-on-hover-value' => $this->openOnHover ? 'true' : null,
+            $prefix.'delay-value' => 100 === $this->delay ? null : (string) $this->delay,
+            $prefix.'loop-focus-value' => $this->loopFocus ? null : 'false',
+            $prefix.'highlight-item-on-hover-value' => $this->highlightItemOnHover ? null : 'false',
+            $prefix.'orientation-value' => $this->orientation->value,
+            $prefix.'side-value' => $this->side->value,
+            $prefix.'align-value' => $this->align->value,
+            $prefix.'side-offset-value' => (string) $this->sideOffset,
+            $prefix.'align-offset-value' => (string) $this->alignOffset,
+            $prefix.'collision-padding-value' => (string) $this->collisionPadding,
+        ];
+    }
+
+    public function render(): Node
+    {
+        $values = $this->values();
+
+        return <div className={{ classes('contents') }} {{ ...values }} {{ ...attrs }}>{{ children }}</div>;
+    }
+}
+
+/**
+ * A menu in the popup of another menu: Base UI Menu.SubmenuRoot. Its trigger is a
+ * MenuSubmenuTrigger, an item of the menu around it. It opens on hover after `delay`.
+ */
+#[Component]
+class MenuSubmenu extends Menu
+{
+    #[Prop] public bool $openOnHover = true;
+    #[Prop] public Side $side = Side::InlineEnd;
+}
+
+/** The button that opens the menu. It has a caret. In a Menubar, it has the look of the bar and no caret. */
+#[Component]
+function MenuTrigger(#[Context] Menu $menu, #[Context] ?Menubar $menubar = null, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+{
+    $target = $menu->target('trigger');
+    $base = null !== $menubar
+        ? 'h-8 border-0 bg-transparent px-3 font-[inherit] text-sm font-normal text-neutral-950 select-none data-pressed:bg-neutral-100 data-disabled:text-neutral-500 dark:text-white dark:focus-visible:bg-neutral-800 dark:data-pressed:bg-neutral-800 dark:data-disabled:text-neutral-400 focus-visible:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 focus-visible:relative dark:focus-visible:outline-white'
+        : 'flex h-8 items-center justify-center gap-1.5 rounded-none border border-neutral-950 bg-white pl-3 pr-2 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none hover:not-data-disabled:bg-neutral-100 active:not-data-disabled:bg-neutral-200 data-pressed:bg-neutral-100 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:not-data-disabled:bg-neutral-800 dark:active:not-data-disabled:bg-neutral-700 data-disabled:border-neutral-500 data-disabled:text-neutral-500 disabled:border-neutral-500 disabled:text-neutral-500 dark:data-disabled:border-neutral-400 dark:data-disabled:text-neutral-400 dark:data-pressed:bg-neutral-800 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white';
+
+    return (
+        <button
+            type="button"
+            disabled={{ disabled }}
+            data-disabled={{ disabled ? '' : null }}
+            className={{ classes(base) }}
+            {{ ...target }}
+            {{ ...rest }}
+        >
+            {{ children }}
+            {{ menubar ? '' : <CaretDownIcon /> }}
+        </button>
+    );
+}
+
+/** The item of a menu that opens a MenuSubmenu. It has a caret on the side of the submenu. */
+#[Component]
+function MenuSubmenuTrigger(#[Context] Menu $menu, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+{
+    $target = $menu->target('trigger');
+    $base = Style::MENU_SUBMENU_TRIGGER;
+
+    return (
+        <button
+            type="button"
+            aria-disabled={{ disabled ? 'true' : null }}
+            data-disabled={{ disabled ? '' : null }}
+            className={{ classes(base) }}
+            {{ ...target }}
+            {{ ...rest }}
+        >
+            {{ children }}
+            <CaretRightIcon />
+        </button>
+    );
+}
+
+#[Component]
+function MenuPopup(#[Context] Menu $menu, ?Html $children = null, mixed ...$rest): Node
+{
+    $target = $menu->target('popup');
+    $base = Style::MENU_POPUP;
+
+    return <div popover="manual" hidden className={{ classes(base) }} {{ ...target }} {{ ...rest }}>{{ children }}</div>;
+}
+
+#[Component]
+function MenuArrow(#[Context] Menu $menu, mixed ...$rest): Node
+{
+    $target = $menu->target('arrow');
+    $base = Style::ARROW;
+
+    return <div className={{ classes(base) }} {{ ...target }} {{ ...rest }} />;
+}
+
+/**
+ * An action of the menu. A click runs its handler (`onClick`) and closes the menu. With
+ * `closeOnClick={{ false }}`, the menu stays open.
+ */
+#[Component]
+function MenuItem(#[Context] Menu $menu, bool $disabled = false, bool $closeOnClick = true, ?Html $children = null, mixed ...$rest): Node
+{
+    $target = $menu->target('item');
+    $close = $closeOnClick ? null : 'false';
+    $closeAttr = 'data-'.$menu->controller().'-close-on-click';
+    $base = Style::MENU_ITEM;
+
+    return (
+        <button
+            type="button"
+            disabled={{ disabled }}
+            data-disabled={{ disabled ? '' : null }}
+            className={{ classes(base) }}
+            {{ ...target }}
+            {{ ...{(closeAttr): close} }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </button>
+    );
+}
+
+/** A link of the menu: Base UI Menu.LinkItem. */
+#[Component]
+function MenuLinkItem(#[Context] Menu $menu, string $href, ?Html $children = null, mixed ...$rest): Node
+{
+    $target = $menu->target('item');
+    $base = Style::MENU_ITEM;
+
+    return <a href={{ href }} className={{ classes(base) }} {{ ...target }} {{ ...rest }}>{{ children }}</a>;
+}
+
+#[Component]
+function MenuSeparator(#[Context] Menu $menu, mixed ...$rest): Node
+{
+    $target = $menu->target('separator');
+
+    return <div className={{ classes('mx-1 my-1 h-px bg-neutral-950 dark:bg-white') }} {{ ...target }} {{ ...rest }} />;
+}
+
+#[Component]
+function MenuGroup(#[Context] Menu $menu, ?Html $children = null, mixed ...$rest): Node
+{
+    $target = $menu->target('group');
+
+    return <div {{ ...target }} {{ ...rest }}>{{ children }}</div>;
+}
+
+#[Component]
+function MenuGroupLabel(#[Context] Menu $menu, ?Html $children = null, mixed ...$rest): Node
+{
+    $target = $menu->target('groupLabel');
+
+    return <div className={{ classes('px-4 py-2 text-sm leading-4 text-neutral-500 select-none dark:text-neutral-400') }} {{ ...target }} {{ ...rest }}>{{ children }}</div>;
+}
+
+/**
+ * An item that the user checks and unchecks: Base UI Menu.CheckboxItem. The server gives the
+ * state in `checked`: the handler of `onClick` changes it. The menu stays open.
+ */
+#[Component]
+function MenuCheckboxItem(#[Context] Menu $menu, bool $checked = false, bool $disabled = false, bool $closeOnClick = false, ?Html $children = null, mixed ...$rest): Node
+{
+    $target = $menu->target('item');
+    $close = $closeOnClick ? null : 'false';
+    $closeAttr = 'data-'.$menu->controller().'-close-on-click';
+    $base = Style::MENU_CHECK_ITEM;
+
+    return (
+        <button
+            type="button"
+            role="menuitemcheckbox"
+            aria-checked={{ checked ? 'true' : 'false' }}
+            disabled={{ disabled }}
+            data-checked={{ checked ? '' : null }}
+            data-unchecked={{ checked ? null : '' }}
+            data-disabled={{ disabled ? '' : null }}
+            className={{ classes('group', base) }}
+            {{ ...target }}
+            {{ ...{(closeAttr): close} }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </button>
+    );
+}
+
+/** The check of a checkbox item or a radio item. It shows only when the item is checked. */
+#[Component]
+function MenuItemIndicator(?Html $children = null, mixed ...$rest): Node
+{
+    return <span className={{ classes('col-start-1 hidden group-data-checked:block') }} {{ ...rest }}>{{ children ? children : <CheckIcon /> }}</span>;
+}
+
+/** The label of a checkbox item or a radio item, in the column after the indicator. */
+#[Component]
+function MenuItemLabel(?Html $children = null, mixed ...$rest): Node
+{
+    return <span className={{ classes('col-start-2') }} {{ ...rest }}>{{ children }}</span>;
+}
+
+/** A group of radio items: Base UI Menu.RadioGroup. */
+#[Component]
+function MenuRadioGroup(#[Context] Menu $menu, ?Html $children = null, mixed ...$rest): Node
+{
+    $target = $menu->target('group');
+
+    return <div {{ ...target }} {{ ...rest }}>{{ children }}</div>;
+}
+
+/** An item of a radio group. The server gives the checked item in `checked`. The menu stays open. */
+#[Component]
+function MenuRadioItem(#[Context] Menu $menu, bool $checked = false, bool $disabled = false, bool $closeOnClick = false, ?Html $children = null, mixed ...$rest): Node
+{
+    $target = $menu->target('item');
+    $close = $closeOnClick ? null : 'false';
+    $closeAttr = 'data-'.$menu->controller().'-close-on-click';
+    $base = Style::MENU_CHECK_ITEM;
+
+    return (
+        <button
+            type="button"
+            role="menuitemradio"
+            aria-checked={{ checked ? 'true' : 'false' }}
+            disabled={{ disabled }}
+            data-checked={{ checked ? '' : null }}
+            data-unchecked={{ checked ? null : '' }}
+            data-disabled={{ disabled ? '' : null }}
+            className={{ classes('group', base) }}
+            {{ ...target }}
+            {{ ...{(closeAttr): close} }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </button>
+    );
+}

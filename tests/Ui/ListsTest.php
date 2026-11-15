@@ -1,0 +1,57 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Phem\Ui\Base\Tests\Ui;
+
+use Phem\Test\InteractsWithPhem;
+use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+
+final class ListsTest extends KernelTestCase
+{
+    use InteractsWithPhem;
+
+    private const string APP = 'Phem\Ui\Base\Tests\App\\';
+
+    public function testTheScrollAreaHasItsParts(): void
+    {
+        $this->mount(self::APP.'ScrollAreaDemo')
+            ->assertSelectorExists('[data-controller="phem-scroll-area"] [data-phem-scroll-area-target="viewport"] [data-phem-scroll-area-target="content"]')
+            ->assertSelectorExists('[data-phem-scroll-area-target="scrollbar"][data-orientation="vertical"] [data-phem-scroll-area-target="thumb"]');
+    }
+
+    public function testASelectWithNoValueShowsItsPlaceholder(): void
+    {
+        $this->mount(self::APP.'SelectDemo')
+            ->assertSelectorExists('[data-controller="phem-select"]:not([data-phem-select-value-value])')
+            ->assertSelectorExists('#apple-label')
+            ->assertSelectorExists('button[data-phem-select-target="trigger"][aria-labelledby="apple-label"]')
+            ->assertSelectorExists('[data-phem-select-target="value"][data-placeholder][placeholder="Select apple"]')
+            ->assertSelectorTextContains('[data-phem-select-target="value"]', 'Select apple')
+            ->assertSelectorExists('input[name="apple"][data-phem-select-target="input"]')
+            ->assertSelectorExists('[data-phem-select-target="popup"][popover="manual"] [data-phem-select-target="item"][data-value="gala"]');
+    }
+
+    public function testASelectWithAValueMarksItsItem(): void
+    {
+        $this->mount(self::APP.'SelectDemo', ['value' => 'fuji'])
+            ->assertSelectorExists('[data-phem-select-value-value="fuji"]')
+            ->assertSelectorExists('[data-phem-select-target="value"]:not([data-placeholder])')
+            ->assertSelectorExists('[data-value="fuji"][data-selected]');
+    }
+
+    public function testTheMenubarTriggersHaveNoCaret(): void
+    {
+        $this->mount(self::APP.'MenubarDemo')
+            ->assertSelectorExists('[data-controller="phem-menubar"][role="menubar"] [data-controller="phem-menu"] button[data-phem-menu-target="trigger"]')
+            ->assertSelectorNotExists('button[data-phem-menu-target="trigger"] svg');
+    }
+
+    public function testTheNavigationMenuHasItsParts(): void
+    {
+        $this->mount(self::APP.'NavigationMenuDemo')
+            ->assertSelectorExists('nav[data-controller="phem-navigation-menu"] ul[data-phem-navigation-menu-target="list"] li[data-value="overview"] button[data-phem-navigation-menu-target="trigger"] [data-phem-navigation-menu-target="icon"]')
+            ->assertSelectorExists('[data-phem-navigation-menu-target="content"][hidden] a[data-phem-navigation-menu-target="link"]')
+            ->assertSelectorExists('[data-phem-navigation-menu-target="positioner"][hidden] [data-phem-navigation-menu-target="popup"] [data-phem-navigation-menu-target="viewport"]');
+    }
+}

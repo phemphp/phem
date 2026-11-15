@@ -1,0 +1,79 @@
+<?phem
+
+namespace Phem\Ui\Base\Tests\App;
+
+use Phem\Attribute\{Component, State};
+use Phem\Node;
+
+use function Phem\Ui\Base\{FieldControl, FieldDescription, FieldError, FieldLabel, Form, NumberField, NumberFieldDecrement, NumberFieldGroup, NumberFieldIncrement, NumberFieldInput, NumberFieldScrubArea, OTPField, OTPFieldInput, SliderControl, SliderIndicator, SliderThumb, SliderTrack, SliderValue};
+use Phem\Ui\Base\{Field, Input, Slider};
+
+#[Component]
+function FieldDemo(): Node
+{
+    return (
+        <Form>
+            <Field validationMode="onBlur">
+                <FieldLabel>Name</FieldLabel>
+                <FieldControl name="name" required />
+                <FieldError match="valueMissing">Please enter your name</FieldError>
+                <FieldDescription>Visible on your profile</FieldDescription>
+            </Field>
+        </Form>
+    );
+}
+
+#[Component]
+final class BoundInputDemo
+{
+    #[State] public string $name = 'Grace';
+
+    public function render(): Node
+    {
+        return <Input phem:bind={{ name }} />;
+    }
+}
+
+#[Component]
+function NumberFieldDemo(): Node
+{
+    return (
+        <NumberField defaultValue={{ 100 }} min={{ 0 }} name="amount">
+            <NumberFieldScrubArea><label>Amount</label></NumberFieldScrubArea>
+            <NumberFieldGroup>
+                <NumberFieldDecrement />
+                <NumberFieldInput />
+                <NumberFieldIncrement />
+            </NumberFieldGroup>
+        </NumberField>
+    );
+}
+
+#[Component]
+function OTPFieldDemo(): Node
+{
+    return (
+        <OTPField name="code">
+            <OTPFieldInput />
+            <OTPFieldInput />
+            <OTPFieldInput />
+        </OTPField>
+    );
+}
+
+#[Component]
+function SliderDemo(): Node
+{
+    return (
+        <Slider defaultValue={{ [20, 60] }}>
+            <SliderValue />
+            <SliderControl>
+                <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb index={{ 0 }} aria-label="Minimum price" />
+                    <SliderThumb index={{ 1 }} aria-label="Maximum price" />
+                </SliderTrack>
+            </SliderControl>
+        </Slider>
+    );
+}

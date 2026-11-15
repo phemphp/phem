@@ -1,0 +1,21 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+
+/** A separator: Base UI Separator. */
+#[Component]
+function Separator(Orientation $orientation = Orientation::Horizontal, mixed ...$rest): Node
+{
+    return (
+        <div
+            role="separator"
+            aria-orientation={{ orientation.value }}
+            data-orientation={{ orientation.value }}
+            className={{ classes('shrink-0 bg-neutral-300 dark:bg-neutral-700 data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:w-px') }}
+            {{ ...rest }}
+        />
+    );
+}

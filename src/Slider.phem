@@ -1,0 +1,146 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\{Component, Context, Prop, Provide};
+use Phem\{Html, Node};
+
+/**
+ * A value, or a range, on a track: Base UI Slider.Root, on the `phem-slider` controller.
+ *
+ * `defaultValue` is a number for one thumb, or a list for a range: put one SliderThumb for each
+ * value, with its `index`. The server render places the thumbs, so they do not move when the
+ * controller starts.
+ */
+#[Component, Provide]
+class Slider
+{
+    #[Prop] public float|array $defaultValue = 0;
+    #[Prop] public float $min = 0;
+    #[Prop] public float $max = 100;
+    #[Prop] public float $step = 1;
+    #[Prop] public float $largeStep = 10;
+    #[Prop] public float $minStepsBetweenValues = 0;
+    #[Prop] public Orientation $orientation = Orientation::Horizontal;
+    #[Prop] public bool $disabled = false;
+    #[Prop] public ?array $format = null;
+    #[Prop] public ?string $locale = null;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    /** @return list<float> */
+    public function values(): array
+    {
+        return array_map(floatval(...), (array) $this->defaultValue);
+    }
+
+    public function percent(float $value): float
+    {
+        return $this->max > $this->min ? max(0, min(100, ($value - $this->min) / ($this->max - $this->min) * 100)) : 0;
+    }
+
+    public function vertical(): bool
+    {
+        return Orientation::Vertical === $this->orientation;
+    }
+
+    public function render(): Node
+    {
+        $value = json_encode(is_array($this->defaultValue) ? $this->values() : (float) $this->defaultValue);
+        $formatJson = null === $this->format ? null : json_encode($this->format);
+
+        return (
+            <div
+                role="group"
+                data-orientation={{ orientation.value }}
+                data-disabled={{ disabled ? '' : null }}
+                data-controller="phem-slider"
+                data-phem-slider-value-value={{ value }}
+                data-phem-slider-min-value={{ min }}
+                data-phem-slider-max-value={{ max }}
+                data-phem-slider-step-value={{ step }}
+                data-phem-slider-large-step-value={{ largeStep }}
+                data-phem-slider-min-steps-between-values-value={{ minStepsBetweenValues ?: null }}
+                data-phem-slider-orientation-value={{ orientation.value }}
+                data-phem-slider-disabled-value={{ disabled ? 'true' : null }}
+                data-phem-slider-format-value={{ formatJson }}
+                data-phem-slider-locale-value={{ locale }}
+                className={{ classes('grid grid-cols-2 gap-y-1') }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+            </div>
+        );
+    }
+}
+
+#[Component]
+function SliderLabel(?Html $children = null, mixed ...$rest): Node
+{
+    return <div data-phem-slider-target="label" className={{ classes('text-sm font-bold text-neutral-950 dark:text-white') }} {{ ...rest }}>{{ children }}</div>;
+}
+
+/** The formatted values. */
+#[Component]
+function SliderValue(#[Context] Slider $slider, mixed ...$rest): Node
+{
+    $text = implode(' – ', array_map(static fn (float $v): string => (string) (0.0 == fmod($v, 1) ? (int) $v : $v), $slider->values()));
+
+    return <output data-phem-slider-target="value" className={{ classes('text-right text-sm text-neutral-950 dark:text-white') }} {{ ...rest }}>{{ text }}</output>;
+}
+
+/** The area that takes the presses and the drags. */
+#[Component]
+function SliderControl(#[Context] Slider $slider, ?Html $children = null, mixed ...$rest): Node
+{
+    $vertical = $slider->vertical();
+
+    return <div data-phem-slider-target="control" className={{ classes('col-span-2 flex touch-none items-center select-none', vertical ? 'h-56 flex-col px-3' : 'w-56 py-3') }} {{ ...rest }}>{{ children }}</div>;
+}
+
+#[Component]
+function SliderTrack(#[Context] Slider $slider, ?Html $children = null, mixed ...$rest): Node
+{
+    $vertical = $slider->vertical();
+
+    return <div data-phem-slider-target="track" style="position: relative" className={{ classes('bg-neutral-200 select-none dark:bg-neutral-800', vertical ? 'h-full w-1' : 'h-1 w-full') }} {{ ...rest }}>{{ children }}</div>;
+}
+
+/** The filled part of the track: from the start to the value, or between the values of a range. */
+#[Component]
+function SliderIndicator(#[Context] Slider $slider, mixed ...$rest): Node
+{
+    $percents = array_map($slider->percent(...), $slider->values());
+    $start = count($percents) > 1 ? min($percents) : 0;
+    $size = (count($percents) > 1 ? max($percents) : $percents[0] ?? 0) - $start;
+    $style = $slider->vertical()
+        ? 'position: absolute; bottom: '.$start.'%; height: '.$size.'%; width: inherit'
+        : 'position: relative; inset-inline-start: '.$start.'%; width: '.$size.'%; height: inherit';
+
+    return <div data-phem-slider-target="indicator" style={{ style }} className={{ classes('bg-neutral-950 select-none dark:bg-white') }} {{ ...rest }} />;
+}
+
+/** A thumb, with a native range input for the keyboard, the ARIA and the form. Give it an `aria-label`. */
+#[Component]
+function SliderThumb(#[Context] Slider $slider, int $index = 0, ?string $name = null, mixed ...$rest): Node
+{
+    $value = $slider->values()[$index] ?? $slider->min;
+    $percent = $slider->percent($value);
+    $style = $slider->vertical()
+        ? 'position: absolute; bottom: '.$percent.'%; left: 50%; translate: -50% 50%'
+        : 'position: absolute; inset-inline-start: '.$percent.'%; top: 50%; translate: -50% -50%';
+    $label = $rest['aria-label'] ?? null;
+    unset($rest['aria-label']);
+
+    return (
+        <div
+            data-phem-slider-target="thumb"
+            data-index={{ index }}
+            style={{ style }}
+            className={{ classes('size-4 border border-neutral-950 bg-white select-none has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-neutral-950 dark:has-[:focus-visible]:outline-white dark:border-white dark:bg-neutral-950') }}
+            {{ ...rest }}
+        >
+            <input type="range" name={{ name }} aria-label={{ label }} min={{ slider.min }} max={{ slider.max }} step={{ slider.step }} value={{ value }} disabled={{ slider.disabled }} className="sr-only" />
+        </div>
+    );
+}

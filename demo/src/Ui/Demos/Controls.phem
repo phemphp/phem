@@ -1,0 +1,147 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\Page;
+use Phem\Node;
+
+use function App\Ui\DemoPage;
+use function Phem\Ui\Base\{Avatar, AvatarFallback, AvatarImage, CheckboxIndicator, RadioIndicator, SwitchThumb, Toggle, ToolbarButton, ToolbarGroup, ToolbarLink, ToolbarSeparator, SelectIcon, SelectItem, SelectItemIndicator, SelectItemText, SelectList, SelectPopup, SelectTrigger, SelectValue};
+use Phem\Ui\Base\{Checkbox, CheckboxGroup, Radio, RadioGroup, Select, SwitchRoot, ToggleGroup, Toolbar};
+
+#[Page('/components/toggle')]
+function TogglePage(): Node
+{
+    return (
+        <DemoPage title="Toggle">
+            <Toggle aria-label="Favorite">
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className="hidden group-data-pressed:block"><path d="M8 14.5 1.8 8.4A3.8 3.8 0 0 1 8 3.3a3.8 3.8 0 0 1 6.2 5.1z" /></svg>
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" className="block group-data-pressed:hidden"><path d="M8 14.5 1.8 8.4A3.8 3.8 0 0 1 8 3.3a3.8 3.8 0 0 1 6.2 5.1z" /></svg>
+            </Toggle>
+        </DemoPage>
+    );
+}
+
+#[Page('/components/switch')]
+function SwitchPage(): Node
+{
+    return (
+        <DemoPage title="Switch">
+            <label className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
+                <SwitchRoot defaultChecked><SwitchThumb /></SwitchRoot>
+                Notifications
+            </label>
+        </DemoPage>
+    );
+}
+
+#[Page('/components/checkbox')]
+function CheckboxPage(): Node
+{
+    return (
+        <DemoPage title="Checkbox">
+            <label className="flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white">
+                <Checkbox defaultChecked><CheckboxIndicator /></Checkbox>
+                Enable notifications
+            </label>
+        </DemoPage>
+    );
+}
+
+#[Page('/components/checkbox-group')]
+function CheckboxGroupPage(): Node
+{
+    $apples = ['fuji-apple' => 'Fuji', 'gala-apple' => 'Gala', 'granny-smith-apple' => 'Granny Smith'];
+    $label = 'flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white';
+
+    return (
+        <DemoPage title="Checkbox Group">
+            <CheckboxGroup aria-labelledby="apples-caption" defaultValue={{ ['fuji-apple'] }}>
+                <div className="text-sm font-bold" id="apples-caption">Apples</div>
+                {% for value, name in apples %}
+                    <label key={{ value }} className={{ label }}><Checkbox name="apple" value={{ value }}><CheckboxIndicator /></Checkbox>{{ name }}</label>
+                {% endfor %}
+            </CheckboxGroup>
+        </DemoPage>
+    );
+}
+
+#[Page('/components/radio-group')]
+function RadioGroupPage(): Node
+{
+    $apples = ['fuji-apple' => 'Fuji', 'gala-apple' => 'Gala', 'granny-smith-apple' => 'Granny Smith'];
+    $label = 'flex items-center gap-2 text-sm font-normal text-neutral-950 dark:text-white';
+
+    return (
+        <DemoPage title="Radio Group">
+            <RadioGroup aria-labelledby="best-apple" defaultValue="fuji-apple" name="apple">
+                <div className="text-sm font-bold" id="best-apple">Best apple</div>
+                {% for value, name in apples %}
+                    <label key={{ value }} className={{ label }}><Radio value={{ value }}><RadioIndicator /></Radio>{{ name }}</label>
+                {% endfor %}
+            </RadioGroup>
+        </DemoPage>
+    );
+}
+
+#[Page('/components/toggle-group')]
+function ToggleGroupPage(): Node
+{
+    return (
+        <DemoPage title="Toggle Group">
+            <ToggleGroup aria-label="Text alignment" defaultValue={{ ['left'] }}>
+                <Toggle aria-label="Align left" value="left"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M2.5 4h11M2.5 8h7M2.5 12h9" /></svg></Toggle>
+                <Toggle aria-label="Align center" value="center"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M2.5 4h11M4.5 8h7M3.5 12h9" /></svg></Toggle>
+                <Toggle aria-label="Align right" value="right"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M2.5 4h11M6.5 8h7M4.5 12h9" /></svg></Toggle>
+            </ToggleGroup>
+        </DemoPage>
+    );
+}
+
+#[Page('/components/toolbar')]
+function ToolbarPage(): Node
+{
+    return (
+        <DemoPage title="Toolbar">
+            <Toolbar className="w-150">
+                <ToggleGroup aria-label="Alignment">
+                    <Toggle aria-label="Align left" value="align-left">Align Left</Toggle>
+                    <Toggle aria-label="Align right" value="align-right">Align Right</Toggle>
+                </ToggleGroup>
+                <ToolbarSeparator />
+                <ToolbarGroup aria-label="Numerical format">
+                    <ToolbarButton aria-label="Format as currency" className="px-0">$</ToolbarButton>
+                    <ToolbarButton aria-label="Format as percent" className="px-0">%</ToolbarButton>
+                </ToolbarGroup>
+                <ToolbarSeparator />
+                <Select defaultValue="Helvetica" sideOffset={{ 4 }}>
+                    <SelectTrigger><SelectValue /><SelectIcon /></SelectTrigger>
+                    <SelectPopup>
+                        <SelectList>
+                            <SelectItem value="Helvetica"><SelectItemIndicator /><SelectItemText>Helvetica</SelectItemText></SelectItem>
+                            <SelectItem value="Arial"><SelectItemIndicator /><SelectItemText>Arial</SelectItemText></SelectItem>
+                        </SelectList>
+                    </SelectPopup>
+                </Select>
+                <ToolbarSeparator />
+                <ToolbarLink href="#">Edited 51m ago</ToolbarLink>
+            </Toolbar>
+        </DemoPage>
+    );
+}
+
+#[Page('/components/avatar')]
+function AvatarPage(): Node
+{
+    return (
+        <DemoPage title="Avatar">
+            <div className="flex gap-4">
+                <Avatar delay={{ 600 }}>
+                    <AvatarImage src="https://images.unsplash.com/photo-1543610892-0b1f7e6d8ac1?w=128&h=128&dpr=2&q=80" />
+                    <AvatarFallback>LT</AvatarFallback>
+                </Avatar>
+                <Avatar>LT</Avatar>
+            </div>
+        </DemoPage>
+    );
+}

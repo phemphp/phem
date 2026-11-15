@@ -1,0 +1,109 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\{Component, Context, Prop, Provide};
+use Phem\{Html, Node};
+
+/** The edge of the viewport where a drawer goes. A swipe toward this edge closes it. */
+enum SwipeDirection: string
+{
+    case Up = 'up';
+    case Down = 'down';
+    case Left = 'left';
+    case Right = 'right';
+
+    /** The classes of the popup on this edge: its place, its border and its slide. */
+    public function classes(): string
+    {
+        return match ($this) {
+            self::Right => 'ms-auto h-dvh w-[20rem] max-w-[calc(100vw-3rem)] border-l [transform:translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:[transform:translateX(100%)] data-ending-style:[transform:translateX(calc(100%+2px))]',
+            self::Left => 'me-auto h-dvh w-[20rem] max-w-[calc(100vw-3rem)] border-r [transform:translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:[transform:translateX(-100%)] data-ending-style:[transform:translateX(calc(-100%-2px))]',
+            self::Down => 'mt-auto w-full max-w-none max-h-[calc(100dvh-3rem)] border-t [transform:translateY(calc(var(--drawer-snap-point-offset,0px)+var(--drawer-swipe-movement-y,0px)))] data-starting-style:[transform:translateY(100%)] data-ending-style:[transform:translateY(calc(100%+2px))]',
+            self::Up => 'mb-auto w-full max-w-none max-h-[calc(100dvh-3rem)] border-b [transform:translateY(var(--drawer-swipe-movement-y,0px))] data-starting-style:[transform:translateY(-100%)] data-ending-style:[transform:translateY(calc(-100%-2px))]',
+        };
+    }
+}
+
+/**
+ * A panel that slides in from an edge of the viewport, and closes with a swipe: Base UI
+ * Drawer.Root, on the `phem-dialog` controller with a `swipe-direction`.
+ */
+#[Component, Provide]
+class Drawer
+{
+    #[Prop] public SwipeDirection $swipeDirection = SwipeDirection::Down;
+    #[Prop] public bool $defaultOpen = false;
+    #[Prop] public bool $dismissible = true;
+    /** @var list<float|int|string> the heights where a bottom sheet stops: a part of the viewport (0 to 1), px, or a string with `px` or `rem` */
+    #[Prop] public array $snapPoints = [];
+    #[Prop] public bool $snapToSequentialPoints = false;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function render(): Node
+    {
+        return (
+            <div
+                data-controller="phem-dialog"
+                data-phem-dialog-swipe-direction-value={{ swipeDirection.value }}
+                data-phem-dialog-open-value={{ defaultOpen ? 'true' : null }}
+                data-phem-dialog-dismiss-value={{ dismissible ? null : 'false' }}
+                data-phem-dialog-snap-points-value={{ snapPoints ? snapPoints|json_encode : null }}
+                data-phem-dialog-snap-to-sequential-points-value={{ snapToSequentialPoints ? 'true' : null }}
+                className={{ classes('contents') }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+            </div>
+        );
+    }
+}
+
+#[Component]
+function DrawerTrigger(?Html $children = null, mixed ...$rest): Node
+{
+    return <DialogTrigger {{ ...rest }}>{{ children }}</DialogTrigger>;
+}
+
+/** The panel. Its `::backdrop` is the Backdrop of Base UI: it fades with the swipe. */
+#[Component]
+function DrawerPopup(#[Context] Drawer $drawer, ?Html $children = null, mixed ...$rest): Node
+{
+    $edge = $drawer->swipeDirection->classes();
+
+    return (
+        <dialog
+            data-phem-dialog-target="popup"
+            className={{ classes('m-0 inset-0 max-h-none max-w-none h-auto p-6 border-neutral-950 bg-white text-neutral-950 outline-none shadow-[0.25rem_0.25rem_0] shadow-black/12 overflow-y-auto overscroll-contain touch-auto transition-transform duration-[calc(var(--drawer-swipe-strength,1)*450ms)] ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:transition-none data-swiping:select-none dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none backdrop:bg-black backdrop:opacity-[calc(0.2*(1-var(--drawer-swipe-progress,0)))] dark:backdrop:opacity-[calc(0.7*(1-var(--drawer-swipe-progress,0)))] backdrop:transition-opacity backdrop:duration-[450ms] backdrop:ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:backdrop:duration-0 data-starting-style:backdrop:opacity-0 data-ending-style:backdrop:opacity-0', edge) }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </dialog>
+    );
+}
+
+/** The content of the panel: a centered column. */
+#[Component]
+function DrawerContent(?Html $children = null, mixed ...$rest): Node
+{
+    return <div className={{ classes('mx-auto w-full max-w-[32rem]') }} {{ ...rest }}>{{ children }}</div>;
+}
+
+#[Component]
+function DrawerTitle(?Html $children = null, mixed ...$rest): Node
+{
+    return <DialogTitle className="mb-1" {{ ...rest }}>{{ children }}</DialogTitle>;
+}
+
+#[Component]
+function DrawerDescription(?Html $children = null, mixed ...$rest): Node
+{
+    return <DialogDescription className="mb-6" {{ ...rest }}>{{ children }}</DialogDescription>;
+}
+
+#[Component]
+function DrawerClose(?Html $children = null, mixed ...$rest): Node
+{
+    return <DialogClose {{ ...rest }}>{{ children }}</DialogClose>;
+}

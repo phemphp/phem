@@ -1,0 +1,50 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+
+// The icons of the Base UI demos (16 px). They are decorative: `aria-hidden`.
+
+#[Component]
+function PlusIcon(mixed ...$rest): Node
+{
+    return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="round" className={{ classes('block') }} {{ ...rest }}><path d="M1.5 8h13M8 14.5v-13" /></svg>;
+}
+
+#[Component]
+function MinusIcon(mixed ...$rest): Node
+{
+    return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="square" className={{ classes('block') }} {{ ...rest }}><path d="M1.5 8h13" /></svg>;
+}
+
+#[Component]
+function CaretRightIcon(mixed ...$rest): Node
+{
+    return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className={{ classes('block') }} {{ ...rest }}><path d="M6 12V4l4.5 4z" /></svg>;
+}
+
+#[Component]
+function CaretDownIcon(mixed ...$rest): Node
+{
+    return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className={{ classes('block') }} {{ ...rest }}><path d="M4 6h8l-4 4.5z" /></svg>;
+}
+
+#[Component]
+function CaretUpDownIcon(mixed ...$rest): Node
+{
+    return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className={{ classes('block') }} {{ ...rest }}><path d="M4.5 6.5 8 3l3.5 3.5zM4.5 9.5 8 13l3.5-3.5z" /></svg>;
+}
+
+#[Component]
+function CheckIcon(mixed ...$rest): Node
+{
+    return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" className={{ classes('block') }} {{ ...rest }}><path d="M3 8.5 6.5 12 13 4.5" /></svg>;
+}
+
+#[Component]
+function XIcon(mixed ...$rest): Node
+{
+    return <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="square" className={{ classes('block') }} {{ ...rest }}><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" /></svg>;
+}

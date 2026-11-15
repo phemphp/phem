@@ -1,0 +1,101 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\{Component, Context, Prop, Provide};
+use Phem\{Html, Node};
+
+/**
+ * A button that the user presses and releases: Base UI Toggle, on the `phem-toggle` controller.
+ *
+ * In a ToggleGroup, the group owns the state: give the toggle a `value`. In a Toolbar, the toggle is
+ * an item of the toolbar. Show the state with the `data-pressed` variant, for example
+ * `group-data-pressed:block` on an icon in it.
+ */
+#[Component]
+function Toggle(
+    #[Context] ?ToggleGroup $group = null,
+    #[Context] ?Toolbar $toolbar = null,
+    bool $defaultPressed = false,
+    bool $disabled = false,
+    ?string $value = null,
+    ?Html $children = null,
+    mixed ...$rest,
+): Node {
+    $pressed = null !== $group ? $group->isPressed($value) : $defaultPressed;
+    $groupTarget = null !== $group ? 'item' : null;
+    $toolbarTarget = null !== $toolbar ? 'item' : null;
+    $base = match (true) {
+        null !== $toolbar => Style::TOOLBAR_BUTTON,
+        null !== $group => Style::GROUP_TOGGLE,
+        default => 'flex size-8 items-center justify-center border-none rounded-none bg-transparent text-neutral-950 dark:text-white select-none hover:not-data-disabled:bg-neutral-100 dark:hover:not-data-disabled:bg-neutral-800 active:not-data-disabled:bg-neutral-200 dark:active:not-data-disabled:bg-neutral-700 data-pressed:text-neutral-950 dark:data-pressed:text-white focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white data-disabled:text-neutral-500',
+    };
+
+    return (
+        <button
+            type="button"
+            aria-pressed={{ pressed ? 'true' : 'false' }}
+            data-pressed={{ pressed ? '' : null }}
+            data-disabled={{ disabled ? '' : null }}
+            data-value={{ value }}
+            data-controller="phem-toggle"
+            data-phem-toggle-checked-value={{ null === group and defaultPressed ? 'true' : null }}
+            data-phem-toggle-disabled-value={{ disabled ? 'true' : null }}
+            data-phem-toggle-value-value={{ value }}
+            data-phem-toggle-group-target={{ groupTarget }}
+            data-phem-toolbar-target={{ toolbarTarget }}
+            className={{ classes('group', base) }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </button>
+    );
+}
+
+/**
+ * A group of toggle buttons with one state: Base UI ToggleGroup, on the `phem-toggle-group`
+ * controller. `defaultValue` lists the values of the pressed toggles. Give it an `aria-label`.
+ */
+#[Component, Provide]
+class ToggleGroup
+{
+    /** @var list<string> */
+    #[Prop] public array $defaultValue = [];
+    #[Prop] public bool $multiple = false;
+    #[Prop] public Orientation $orientation = Orientation::Horizontal;
+    #[Prop] public bool $loopFocus = true;
+    #[Prop] public bool $disabled = false;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+    #[Context] public ?Toolbar $toolbar = null;
+
+    public function isPressed(?string $value): bool
+    {
+        return null !== $value && in_array($value, $this->defaultValue, true);
+    }
+
+    public function render(): Node
+    {
+        $value = json_encode($this->defaultValue);
+        $inToolbar = null !== $this->toolbar;
+
+        return (
+            <div
+                role="group"
+                data-orientation={{ orientation.value }}
+                data-disabled={{ disabled ? '' : null }}
+                data-controller="phem-toggle-group"
+                data-phem-toggle-group-value-value={{ value }}
+                data-phem-toggle-group-multiple-value={{ multiple ? 'true' : null }}
+                data-phem-toggle-group-orientation-value={{ orientation.value }}
+                data-phem-toggle-group-loop-focus-value={{ loopFocus ? null : 'false' }}
+                data-phem-toggle-group-disabled-value={{ disabled ? 'true' : null }}
+                data-phem-toolbar-target={{ inToolbar ? 'group' : null }}
+                className={{ classes(inToolbar ? 'flex gap-px' : 'flex gap-px p-px border border-neutral-950 dark:border-white', 'data-[orientation=vertical]:flex-col') }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+            </div>
+        );
+    }
+}

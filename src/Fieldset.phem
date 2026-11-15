@@ -1,0 +1,36 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\Component;
+use Phem\{Html, Node};
+
+/** A group of fields with a legend: Base UI Fieldset.Root. */
+#[Component]
+function Fieldset(bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <fieldset
+            disabled={{ disabled }}
+            data-disabled={{ disabled ? '' : null }}
+            className={{ classes('flex w-full max-w-64 flex-col gap-4') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </fieldset>
+    );
+}
+
+/** The legend of a fieldset: Base UI Fieldset.Legend. It is a `<legend>`, so the browser names the group with it. */
+#[Component]
+function FieldsetLegend(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <legend
+            className={{ classes('border-b border-neutral-950 text-base font-bold text-neutral-950 dark:border-white dark:text-white w-full') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </legend>
+    );
+}

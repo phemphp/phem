@@ -1,0 +1,42 @@
+<?phem
+
+namespace App\Ui;
+
+use Phem\Attribute\Component;
+use Phem\{Html, Node, Root};
+
+#[Component]
+function Document(string $title, Html $children): Node
+{
+    return (
+        <html lang="en">
+            <head>
+                <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1" />
+                <title>{{ title }} · phem/ui-base</title>
+                <link rel="icon" href="data:," />
+                {{ importmap('app') }}
+            </head>
+            <body className="min-h-dvh bg-white text-neutral-950 antialiased dark:bg-neutral-950 dark:text-white">
+                <Root>{{ children }}</Root>
+            </body>
+        </html>
+    );
+}
+
+/** The page of one component: a title, a link back, and the demo in the middle of a box. */
+#[Component]
+function DemoPage(string $title, Html $children): Node
+{
+    return (
+        <Document title={{ title }}>
+            <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10">
+                <a href="/" className="text-sm underline underline-offset-2">← All components</a>
+                <h1 className="text-2xl font-bold">{{ title }}</h1>
+                <section className="flex min-h-80 items-center justify-center border border-neutral-200 p-10 dark:border-neutral-800">
+                    {{ children }}
+                </section>
+            </main>
+        </Document>
+    );
+}

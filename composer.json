@@ -1,0 +1,40 @@
+{
+    "name": "phem/ui-base",
+    "description": "Phem components that copy the behavior and the look of Base UI, styled with Tailwind CSS",
+    "type": "symfony-bundle",
+    "license": "MIT",
+    "keywords": ["symfony-ux", "phem", "base-ui", "tailwindcss"],
+    "repositories": [
+        { "type": "path", "url": "../../phem", "options": { "symlink": true, "versions": { "phem/phem": "dev-main" } } }
+    ],
+    "require": {
+        "php": ">=8.4",
+        "phem/phem": "dev-main",
+        "symfony/config": "^7.4|^8.0",
+        "symfony/dependency-injection": "^7.4|^8.0",
+        "symfony/http-kernel": "^7.4|^8.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^13.4",
+        "symfony/asset-mapper": "^7.4|^8.0",
+        "symfony/browser-kit": "^7.4|^8.0",
+        "symfony/css-selector": "^7.4|^8.0",
+        "tales-from-a-dev/tailwind-merge-php": "^0.5"
+    },
+    "suggest": {
+        "symfony/asset-mapper": "To load the theme CSS of the package with the @phem/ui-base logical path",
+        "tales-from-a-dev/tailwind-merge-php": "To merge the Tailwind classes of a caller className with the default classes (phem.class_merger.tailwind)"
+    },
+    "autoload": {
+        "psr-4": { "Phem\\Ui\\Base\\": "src/" }
+    },
+    "autoload-dev": {
+        "psr-4": { "Phem\\Ui\\Base\\Tests\\": "tests/" }
+    },
+    "extra": {
+        "phem": { "source": "src" }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": { "sort-packages": true }
+}

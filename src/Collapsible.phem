@@ -1,0 +1,80 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\{Component, Context, Prop, Provide};
+use Phem\{Html, Node};
+
+/** A section that opens and closes: Base UI Collapsible.Root, on the `phem-collapsible` controller. */
+#[Component, Provide]
+class Collapsible
+{
+    #[Prop] public bool $defaultOpen = false;
+    #[Prop] public bool $hiddenUntilFound = false;
+    #[Prop] public bool $disabled = false;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function render(): Node
+    {
+        return (
+            <div
+                data-controller="phem-collapsible"
+                data-phem-collapsible-open-value={{ defaultOpen ? 'true' : null }}
+                data-phem-collapsible-hidden-until-found-value={{ hiddenUntilFound ? 'true' : null }}
+                data-open={{ defaultOpen ? '' : null }}
+                data-closed={{ defaultOpen ? null : '' }}
+                data-disabled={{ disabled ? '' : null }}
+                className={{ classes('flex min-h-36 w-48 flex-col justify-center text-neutral-950 dark:text-white') }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+            </div>
+        );
+    }
+}
+
+/** The button that opens and closes the panel. It has a caret that turns when the panel is open. */
+#[Component]
+function CollapsibleTrigger(#[Context] Collapsible $collapsible, ?Html $children = null, mixed ...$rest): Node
+{
+    $open = $collapsible->defaultOpen;
+    $disabled = $collapsible->disabled;
+
+    return (
+        <button
+            type="button"
+            disabled={{ disabled }}
+            aria-expanded={{ open ? 'true' : 'false' }}
+            data-panel-open={{ open ? '' : null }}
+            data-disabled={{ disabled ? '' : null }}
+            data-phem-collapsible-target="trigger"
+            className={{ classes('group flex h-8 items-center justify-between gap-2 rounded-none border border-neutral-950 dark:border-white bg-white dark:bg-neutral-950 pl-3 pr-2 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 dark:text-white select-none hover:not-data-disabled:bg-neutral-100 dark:hover:not-data-disabled:bg-neutral-800 active:not-data-disabled:bg-neutral-200 dark:active:not-data-disabled:bg-neutral-700 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white data-disabled:border-neutral-500 data-disabled:text-neutral-500 disabled:border-neutral-500 disabled:text-neutral-500 dark:data-disabled:border-neutral-400 dark:data-disabled:text-neutral-400') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+            <CaretRightIcon className="transition-transform duration-100 ease-[ease-out] group-data-panel-open:rotate-90" />
+        </button>
+    );
+}
+
+/** The panel. Its height animates with `--collapsible-panel-height`. */
+#[Component]
+function CollapsiblePanel(#[Context] Collapsible $collapsible, ?Html $children = null, mixed ...$rest): Node
+{
+    $open = $collapsible->defaultOpen;
+    $hidden = $open ? false : ($collapsible->hiddenUntilFound ? 'until-found' : true);
+
+    return (
+        <div
+            data-phem-collapsible-target="panel"
+            hidden={{ hidden }}
+            data-open={{ open ? '' : null }}
+            data-closed={{ open ? null : '' }}
+            className={{ classes('flex h-[var(--collapsible-panel-height)] flex-col justify-end overflow-hidden text-sm transition-[height] duration-150 ease-[ease-out] [&[hidden]:not([hidden=until-found])]:hidden data-ending-style:h-0 data-starting-style:h-0') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </div>
+    );
+}

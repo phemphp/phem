@@ -1,0 +1,86 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\Component;
+use Phem\{Html, Node};
+
+/**
+ * A short text next to an element, on hover and on the focus of the keyboard: Base UI
+ * Tooltip.Root, on the `phem-tooltip` controller.
+ *
+ * The props of the Base UI Positioner are props of the root. Tooltips that open one after the other
+ * open at once (`data-instant="delay"`), as the Base UI Tooltip.Provider does: the controller does
+ * it for all the tooltips of the page.
+ */
+#[Component]
+function Tooltip(
+    int $delay = 600,
+    int $closeDelay = 0,
+    bool $hoverable = true,
+    bool $closeOnClick = true,
+    Side $side = Side::Top,
+    Align $align = Align::Center,
+    int $sideOffset = 0,
+    int $alignOffset = 0,
+    ?Html $children = null,
+    mixed ...$rest,
+): Node {
+    return (
+        <span
+            data-controller="phem-tooltip"
+            data-phem-tooltip-delay-value={{ 600 == delay ? null : delay }}
+            data-phem-tooltip-close-delay-value={{ 0 == closeDelay ? null : closeDelay }}
+            data-phem-tooltip-hoverable-value={{ hoverable ? null : 'false' }}
+            data-phem-tooltip-close-on-click-value={{ closeOnClick ? null : 'false' }}
+            data-phem-tooltip-side-value={{ side.value }}
+            data-phem-tooltip-align-value={{ align.value }}
+            data-phem-tooltip-side-offset-value={{ sideOffset }}
+            data-phem-tooltip-align-offset-value={{ alignOffset }}
+            className={{ classes('contents') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </span>
+    );
+}
+
+/** The element that shows the tooltip. Give it its own label (`aria-label`): a touch shows no tooltip. */
+#[Component]
+function TooltipTrigger(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <button
+            type="button"
+            data-phem-tooltip-target="trigger"
+            className={{ classes('flex size-8 items-center justify-center border-0 bg-transparent text-neutral-950 select-none data-popup-open:bg-neutral-100 focus-visible:relative focus-visible:z-1 focus-visible:bg-transparent focus-visible:outline-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white hover:bg-neutral-100 active:bg-neutral-200 dark:text-white dark:data-popup-open:bg-neutral-800 dark:hover:bg-neutral-800 dark:active:bg-neutral-700') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </button>
+    );
+}
+
+#[Component]
+function TooltipPopup(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <span
+            data-phem-tooltip-target="popup"
+            popover="manual"
+            hidden
+            className={{ classes('m-0 inset-auto overflow-visible relative flex flex-col border border-neutral-950 bg-white px-2 py-1 text-sm text-neutral-950 origin-[var(--transform-origin)] shadow-[0.25rem_0.25rem_0] shadow-black/12 transition-[transform,opacity] duration-100 ease-out data-ending-style:opacity-0 data-ending-style:[transform:scale(0.98)] data-instant:transition-none data-starting-style:opacity-0 data-starting-style:[transform:scale(0.98)] dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none [&[hidden]]:hidden') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </span>
+    );
+}
+
+#[Component]
+function TooltipArrow(mixed ...$rest): Node
+{
+    $base = Style::ARROW;
+
+    return <span data-phem-tooltip-target="arrow" className={{ classes(base) }} {{ ...rest }} />;
+}

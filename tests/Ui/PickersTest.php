@@ -1,0 +1,59 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Phem\Ui\Base\Tests\Ui;
+
+use Phem\Test\InteractsWithPhem;
+use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+
+final class PickersTest extends KernelTestCase
+{
+    use InteractsWithPhem;
+
+    private const string APP = 'Phem\Ui\Base\Tests\App\\';
+
+    public function testTheComboboxLinksItsLabelAndHasStableItemIds(): void
+    {
+        $this->mount(self::APP.'ComboboxDemo')
+            ->assertSelectorExists('[data-controller="phem-combobox"][data-phem-combobox-side-offset-value="4"]')
+            ->assertSelectorExists('label[for="fruit-input"]')
+            ->assertSelectorExists('input#fruit-input[data-phem-combobox-target="input"]')
+            ->assertSelectorExists('button[data-phem-combobox-target="clear"][aria-label="Clear selection"]')
+            ->assertSelectorExists('button[data-phem-combobox-target="trigger"][aria-label="Open popup"] svg')
+            ->assertSelectorExists('[data-phem-combobox-target="popup"][popover="manual"] [data-phem-combobox-target="list"]')
+            ->assertSelectorExists('#fruit-item-apple[data-phem-combobox-target="item"][data-selected]')
+            ->assertSelectorExists('#fruit-item-banana:not([data-selected])')
+            ->assertSelectorExists('[data-phem-combobox-target="empty"]');
+    }
+
+    public function testTheDrawerIsADialogWithASwipe(): void
+    {
+        $html = $this->mount(self::APP.'DrawerDemo')
+            ->assertSelectorExists('[data-controller="phem-dialog"][data-phem-dialog-swipe-direction-value="right"]')
+            ->assertSelectorExists('dialog[data-phem-dialog-target="popup"] h2[data-phem-dialog-target="title"]')
+            ->html();
+
+        self::assertStringContainsString('border-l', $html);
+        self::assertStringContainsString('--drawer-swipe-movement-x', $html);
+        self::assertMatchesRegularExpression('/<h2[^>]*class="[^"]*mb-1/', $html);
+    }
+
+    public function testThePreviewCardOpensOnHover(): void
+    {
+        $this->mount(self::APP.'PreviewCardDemo')
+            ->assertSelectorExists('[data-controller="phem-popover"][data-phem-popover-open-on-hover-value="true"][data-phem-popover-delay-value="600"][data-phem-popover-close-delay-value="300"]')
+            ->assertSelectorExists('a[href="https://en.wikipedia.org/wiki/Typography"][data-phem-popover-target="trigger"]')
+            ->assertSelectorExists('[data-phem-popover-target="popup"][hidden]');
+    }
+
+    public function testTheToastViewportHasATemplate(): void
+    {
+        $html = $this->mount(self::APP.'ToastDemo')
+            ->assertSelectorExists('[data-controller="phem-toast"][data-phem-toast-close-label-value="Dismiss"] template[data-phem-toast-target="template"]')
+            ->html();
+
+        self::assertStringContainsString('data-phem-toast-description', $html);
+        self::assertStringContainsString('data-phem-toast-close', $html);
+    }
+}

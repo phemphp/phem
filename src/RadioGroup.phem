@@ -1,0 +1,114 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\{Component, Context, Prop, Provide};
+use Phem\{Bound, Html, Node};
+
+/**
+ * A group of radio buttons: Base UI RadioGroup, on the `phem-radio-group` controller.
+ *
+ * `defaultValue` is the value of the checked radio. A hidden input keeps the value for a form
+ * (`name`). Bind it to a state of the app with `phem:bind`. Label the group with `aria-labelledby`.
+ */
+#[Component, Provide]
+class RadioGroup
+{
+    #[Prop] public ?string $defaultValue = null;
+    #[Prop] public ?string $name = null;
+    #[Prop] public bool $disabled = false;
+    #[Prop] public bool $readOnly = false;
+    #[Prop] public bool $required = false;
+    #[Prop] public ?Bound $value = null;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function current(): ?string
+    {
+        if (null !== $this->value) {
+            return null === $this->value->value ? null : (string) $this->value->value;
+        }
+
+        return $this->defaultValue;
+    }
+
+    public function render(): Node
+    {
+        $current = $this->current();
+
+        return (
+            <div
+                role="radiogroup"
+                data-disabled={{ disabled ? '' : null }}
+                data-readonly={{ readOnly ? '' : null }}
+                data-required={{ required ? '' : null }}
+                data-controller="phem-radio-group"
+                data-phem-radio-group-value-value={{ current }}
+                data-phem-radio-group-disabled-value={{ disabled ? 'true' : null }}
+                data-phem-radio-group-read-only-value={{ readOnly ? 'true' : null }}
+                data-phem-radio-group-required-value={{ required ? 'true' : null }}
+                className={{ classes('flex flex-col items-start gap-1 text-neutral-950 dark:text-white') }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+                <input type="hidden" name={{ name }} phem:bind={{ value }} data-phem-radio-group-target="input" />
+            </div>
+        );
+    }
+}
+
+/** A radio of the group: Base UI Radio.Root. Put it in a `<label>` with its text. */
+#[Component, Provide]
+class Radio
+{
+    #[Prop] public string $value;
+    #[Prop] public bool $disabled = false;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+    #[Context] public RadioGroup $group;
+
+    public function isChecked(): bool
+    {
+        return $this->value === $this->group->current();
+    }
+
+    public function render(): Node
+    {
+        $on = $this->isChecked();
+
+        return (
+            <span
+                role="radio"
+                aria-checked={{ on ? 'true' : 'false' }}
+                aria-disabled={{ disabled ? 'true' : null }}
+                data-value={{ value }}
+                data-checked={{ on ? '' : null }}
+                data-unchecked={{ on ? null : '' }}
+                data-disabled={{ disabled ? '' : null }}
+                data-phem-radio-group-target="radio"
+                className={{ classes('flex size-4 shrink-0 items-center justify-center border rounded-full p-0 border-neutral-950 bg-white text-white dark:border-white dark:bg-neutral-950 dark:text-neutral-950 data-checked:bg-neutral-950 data-checked:text-white dark:data-checked:bg-white dark:data-checked:text-neutral-950 data-disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white') }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+            </span>
+        );
+    }
+}
+
+/** The dot of a checked radio. */
+#[Component]
+function RadioIndicator(#[Context] Radio $radio, mixed ...$rest): Node
+{
+    $on = $radio->isChecked();
+
+    return (
+        <span
+            data-phem-radio-group-target="indicator"
+            hidden={{ not on }}
+            data-checked={{ on ? '' : null }}
+            data-unchecked={{ on ? null : '' }}
+            className={{ classes('flex items-center justify-center data-unchecked:hidden [&[hidden]]:hidden before:size-2 before:rounded-full before:bg-current') }}
+            {{ ...rest }}
+        />
+    );
+}

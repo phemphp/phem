@@ -1,0 +1,107 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\{Page, State};
+use Phem\{Event, Node};
+
+use function App\Ui\DemoPage;
+use function Phem\Ui\Base\{ComboboxActions, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxTrigger, ToastViewport};
+use Phem\Ui\Base\{Autocomplete, Button, Combobox};
+
+const FRUITS = ['apple' => 'Apple', 'banana' => 'Banana', 'orange' => 'Orange', 'pineapple' => 'Pineapple', 'grape' => 'Grape', 'mango' => 'Mango', 'strawberry' => 'Strawberry', 'blueberry' => 'Blueberry', 'raspberry' => 'Raspberry', 'watermelon' => 'Watermelon'];
+
+/** @return array<string, string> the fruits whose label contains the text */
+function filterFruits(string $query): array
+{
+    $text = mb_strtolower(trim($query));
+
+    return array_filter(FRUITS, static fn (string $label): bool => '' === $text || str_contains(mb_strtolower($label), $text));
+}
+
+#[Page('/components/combobox')]
+function ComboboxPage(): Node
+{
+    $fruits = FRUITS;
+
+    return (
+        <DemoPage title="Combobox">
+            <Combobox id="fruit" filter="contains">
+                <ComboboxLabel>Choose a fruit</ComboboxLabel>
+                <ComboboxInputGroup>
+                    <ComboboxInput placeholder="e.g. Apple" />
+                    <ComboboxActions>
+                        <ComboboxClear aria-label="Clear selection" />
+                        <ComboboxTrigger aria-label="Open popup" />
+                    </ComboboxActions>
+                </ComboboxInputGroup>
+                <ComboboxPopup>
+                    <ComboboxEmpty>No fruits found.</ComboboxEmpty>
+                    <ComboboxList>
+                        {% for value, label in fruits %}
+                            <ComboboxItem key={{ value }} value={{ value }}>
+                                <ComboboxItemIndicator />
+                                <ComboboxItemLabel>{{ label }}</ComboboxItemLabel>
+                            </ComboboxItem>
+                        {% endfor %}
+                    </ComboboxList>
+                </ComboboxPopup>
+            </Combobox>
+        </DemoPage>
+    );
+}
+
+#[Page('/components/autocomplete')]
+final class AutocompletePage
+{
+    #[State] public string $query = '';
+
+    public function fill(string $value): void
+    {
+        $this->query = FRUITS[$value];
+    }
+
+    public function render(): Node
+    {
+        $items = '' === trim($this->query) ? [] : filterFruits($this->query);
+
+        return (
+            <DemoPage title="Autocomplete">
+                <Autocomplete id="tags">
+                    <ComboboxLabel>Search fruits</ComboboxLabel>
+                    <ComboboxInput placeholder="e.g. Mango" phem:bind={{ query }} phem:live className="h-8 w-[16rem] border border-neutral-950 dark:border-white px-2 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950" />
+                    <ComboboxPopup>
+                        {% if items is empty %}<ComboboxEmpty>No fruits found.</ComboboxEmpty>{% endif %}
+                        <ComboboxList>
+                            {% for value, label in items %}
+                                <ComboboxItem key={{ value }} value={{ value }} onClick={{ fill(value) }} className="flex">{{ label }}</ComboboxItem>
+                            {% endfor %}
+                        </ComboboxList>
+                    </ComboboxPopup>
+                </Autocomplete>
+            </DemoPage>
+        );
+    }
+}
+
+#[Page('/components/toast')]
+final class ToastPage
+{
+    #[State] public int $count = 0;
+
+    public function create(Event $e): void
+    {
+        ++$this->count;
+        $e->toast('Toast '.$this->count.' created. This is a toast notification.');
+    }
+
+    public function render(): Node
+    {
+        return (
+            <DemoPage title="Toast">
+                <Button onClick={{ create }}>Create toast</Button>
+                <ToastViewport />
+            </DemoPage>
+        );
+    }
+}

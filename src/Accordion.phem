@@ -1,0 +1,161 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\{Component, Context, Prop, Provide};
+use Phem\{Html, Node};
+
+/**
+ * A list of sections that open and close: Base UI Accordion.Root, on the `phem-accordion` controller.
+ *
+ * `defaultValue` lists the values of the open items. Give an `id` when the page has more than one
+ * accordion with the same item values: the ids of the triggers and the panels start with it.
+ */
+#[Component, Provide]
+class Accordion
+{
+    /** @var list<string> */
+    #[Prop] public array $defaultValue = [];
+    #[Prop] public bool $multiple = false;
+    #[Prop] public bool $disabled = false;
+    #[Prop] public bool $hiddenUntilFound = false;
+    #[Prop] public Orientation $orientation = Orientation::Vertical;
+    #[Prop] public bool $loopFocus = true;
+    #[Prop] public ?string $id = null;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function isOpen(string $value): bool
+    {
+        return in_array($value, $this->defaultValue, true);
+    }
+
+    public function partId(string $value, string $part): string
+    {
+        return ($this->id ? $this->id.'-' : '').$value.'-'.$part;
+    }
+
+    public function render(): Node
+    {
+        $open = [] === $this->defaultValue ? null : json_encode($this->defaultValue);
+
+        return (
+            <div
+                id={{ id }}
+                data-controller="phem-accordion"
+                data-phem-accordion-open-value={{ open }}
+                data-phem-accordion-multiple-value={{ multiple ? 'true' : null }}
+                data-phem-accordion-orientation-value={{ orientation.value }}
+                data-phem-accordion-loop-focus-value={{ loopFocus ? null : 'false' }}
+                data-phem-accordion-hidden-until-found-value={{ hiddenUntilFound ? 'true' : null }}
+                data-orientation={{ orientation.value }}
+                data-disabled={{ disabled ? '' : null }}
+                className={{ classes('flex w-full max-w-80 flex-col border border-neutral-950 text-neutral-950 dark:border-white dark:text-white') }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+            </div>
+        );
+    }
+}
+
+/** An item: a header with a trigger, and a panel. `value` names the item, and gives the ids of its parts. */
+#[Component, Provide]
+class AccordionItem
+{
+    #[Prop] public string $value;
+    #[Prop] public bool $disabled = false;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+    #[Context] public Accordion $accordion;
+
+    public function open(): bool
+    {
+        return $this->accordion->isOpen($this->value);
+    }
+
+    public function disabled(): bool
+    {
+        return $this->disabled || $this->accordion->disabled;
+    }
+
+    public function render(): Node
+    {
+        $open = $this->open();
+        $disabled = $this->disabled();
+
+        return (
+            <div
+                data-value={{ value }}
+                data-phem-accordion-target="item"
+                data-open={{ open ? '' : null }}
+                data-disabled={{ disabled ? '' : null }}
+                className={{ classes('not-first:border-t not-first:border-neutral-950 dark:not-first:border-white') }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+            </div>
+        );
+    }
+}
+
+#[Component]
+function AccordionHeader(#[Context] AccordionItem $item, ?Html $children = null, mixed ...$rest): Node
+{
+    $open = $item->open();
+
+    return <h3 data-open={{ open ? '' : null }} className={{ classes('m-0') }} {{ ...rest }}>{{ children }}</h3>;
+}
+
+/** The button that opens and closes the item. It has a plus icon that turns when the item is open. */
+#[Component]
+function AccordionTrigger(#[Context] AccordionItem $item, ?Html $children = null, mixed ...$rest): Node
+{
+    $open = $item->open();
+    $disabled = $item->disabled();
+    $id = $item->accordion->partId($item->value, 'trigger');
+    $panel = $item->accordion->partId($item->value, 'panel');
+
+    return (
+        <button
+            type="button"
+            id={{ id }}
+            aria-controls={{ panel }}
+            aria-expanded={{ open ? 'true' : 'false' }}
+            disabled={{ disabled }}
+            data-panel-open={{ open ? '' : null }}
+            data-disabled={{ disabled ? '' : null }}
+            data-phem-accordion-target="trigger"
+            className={{ classes('group flex w-full items-center justify-between gap-4 bg-transparent px-3 py-2 text-left text-sm font-normal text-neutral-950 select-none hover:not-data-disabled:bg-neutral-100 focus-visible:relative focus-visible:z-1 focus-visible:outline-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:text-white dark:hover:not-data-disabled:bg-neutral-800 data-disabled:text-neutral-500') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+            <PlusIcon className="shrink-0 transition-transform duration-100 ease-[ease-out] group-data-panel-open:rotate-45" />
+        </button>
+    );
+}
+
+/** The panel of the item. Its height animates with `--accordion-panel-height`. */
+#[Component]
+function AccordionPanel(#[Context] AccordionItem $item, ?Html $children = null, mixed ...$rest): Node
+{
+    $open = $item->open();
+    $id = $item->accordion->partId($item->value, 'panel');
+    $trigger = $item->accordion->partId($item->value, 'trigger');
+    $hidden = $open ? false : ($item->accordion->hiddenUntilFound ? 'until-found' : true);
+
+    return (
+        <div
+            id={{ id }}
+            role="region"
+            aria-labelledby={{ trigger }}
+            hidden={{ hidden }}
+            data-open={{ open ? '' : null }}
+            data-phem-accordion-target="panel"
+            className={{ classes('h-[var(--accordion-panel-height)] overflow-hidden text-sm transition-[height] duration-150 ease-[ease-out] data-ending-style:h-0 data-starting-style:h-0') }}
+            {{ ...rest }}
+        >
+            <div className="px-3 py-2">{{ children }}</div>
+        </div>
+    );
+}

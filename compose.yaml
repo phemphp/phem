@@ -1,0 +1,24 @@
+# Run it from the root of the package: `make test`, `make shell`.
+# The image is the dev image of phem: it builds phemc from the phem sources at start.
+# phem is mounted at /app (the entrypoint of the image builds /app/compiler), and the parent
+# directory of the two repositories at /work, so the symlink vendor/phem/phem resolves.
+name: phem-ui-base
+
+services:
+  dev:
+    build: { context: ../../phem, dockerfile: docker/Dockerfile }
+    working_dir: /work/ui/base
+    command: vendor/bin/phpunit
+    environment:
+      PHEMC_BIN: /cargo-target/release/phemc
+    ports:
+      - "8100:8000"
+    volumes:
+      - ../../phem:/app
+      - ../..:/work
+      - cargo-target:/cargo-target
+      - cargo-registry:/usr/local/cargo/registry
+
+volumes:
+  cargo-target:
+  cargo-registry:

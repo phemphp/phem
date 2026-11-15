@@ -1,0 +1,74 @@
+<?phem
+
+namespace App\Ui\Demos;
+
+use Phem\Attribute\{Component, Page, State};
+use Phem\Node;
+
+use function App\Ui\DemoPage;
+use function Phem\Ui\Base\{ContextMenuTrigger, MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuSeparator, MenuSubmenuTrigger, MenuTrigger};
+use Phem\Ui\Base\{ContextMenu, Menu, MenuSubmenu};
+
+#[Page('/components/menu')]
+final class MenuPage
+{
+    #[State] public bool $minimap = true;
+
+    public function toggleMinimap(): void
+    {
+        $this->minimap = !$this->minimap;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <DemoPage title="Menu">
+                <Menu sideOffset={{ 8 }}>
+                    <MenuTrigger>Song</MenuTrigger>
+                    <MenuPopup>
+                        <MenuItem>Add to Library</MenuItem>
+                        <MenuSubmenu sideOffset={{ -4 }}>
+                            <MenuSubmenuTrigger>Add to Playlist</MenuSubmenuTrigger>
+                            <MenuPopup>
+                                <MenuItem>Get Up!</MenuItem>
+                                <MenuItem>Inside Out</MenuItem>
+                                <MenuItem>Night Beats</MenuItem>
+                            </MenuPopup>
+                        </MenuSubmenu>
+                        <MenuSeparator />
+                        <MenuItem>Play Next</MenuItem>
+                        <MenuItem>Play Last</MenuItem>
+                        <MenuSeparator />
+                        <MenuCheckboxItem checked={{ minimap }} onClick={{ toggleMinimap }}>
+                            <MenuItemIndicator />
+                            <MenuItemLabel>Minimap</MenuItemLabel>
+                        </MenuCheckboxItem>
+                        <MenuItem>Share</MenuItem>
+                    </MenuPopup>
+                </Menu>
+            </DemoPage>
+        );
+    }
+}
+
+#[Page('/components/context-menu')]
+function ContextMenuPage(): Node
+{
+    return (
+        <DemoPage title="Context Menu">
+            <ContextMenu>
+                <ContextMenuTrigger>Right click here</ContextMenuTrigger>
+                <MenuPopup>
+                    <MenuItem>Add to Library</MenuItem>
+                    <MenuItem>Add to Playlist</MenuItem>
+                    <MenuSeparator />
+                    <MenuItem>Play Next</MenuItem>
+                    <MenuItem>Play Last</MenuItem>
+                    <MenuSeparator />
+                    <MenuItem>Favorite</MenuItem>
+                    <MenuItem>Share</MenuItem>
+                </MenuPopup>
+            </ContextMenu>
+        </DemoPage>
+    );
+}
