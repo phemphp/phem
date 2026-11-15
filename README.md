@@ -55,7 +55,7 @@ The phem gaps found so far, and which of them phem fixed, are in [notes/phem-gap
 
 ## Develop
 
-The bundle requires the `phem/phem` release from Packagist (`^0.4`). The commands run in the dev image of phem, from the phem checkout in `../../phem`. They use `vendor/bin/phemc`, the phemc binary of the installed phem release.
+The bundle requires the `phem/phem` release from Packagist (`^0.4.1`). The commands run in the dev image of phem, from the phem checkout in `../../phem`. They use `vendor/bin/phemc`, the phemc binary of the installed phem release.
 
 ```sh
 make install   # composer install

@@ -84,8 +84,6 @@ final class OverlaysTest extends DemoTestCase
     /** Base UI links the popup to its title and its description. */
     public function testThePopoverIsNamedByItsTitle(): void
     {
-        self::markTestIncomplete('phem-popover links the title only by id, and the function components have no ids (notes/phem-gaps.md, gap 15).');
-
         $page = $this->visitComponent('popover');
         $page->getByRole('button', ['name' => 'Notifications'])->click();
         expect($page->getByRole('dialog', ['name' => 'Notifications']))->toBeVisible();

@@ -8,12 +8,8 @@ See [notes/phem-gaps.md](notes/phem-gaps.md) for the full list.
 
 - **Menu checkbox and radio items in the browser (gap 5).** Base UI toggles `Menu.CheckboxItem` and `Menu.RadioItem` in the browser (`defaultChecked`, `defaultValue`). `phem-menu` has no client state for them. Now the server gives `checked`, with an `onClick` handler. After the fix, add `defaultChecked` to `MenuCheckboxItem`, `defaultValue` to `MenuRadioGroup`, and the `data-checked`/`data-unchecked` attributes from the controller.
 - **Toast title and `data-behind` (gap 6).** `phem-toast` has one message part only. Base UI has `Toast.Title` and `Toast.Description`, and `data-behind` on the content of a stacked toast. After the fix, add `ToastTitle` to the template of `ToastViewport`, and the `data-behind` classes.
-- **A wrapping label names the checkbox and the switch (gap 14).** After the fix, remove `markTestIncomplete()` from `ControlsTest::testTheWrappingLabelNamesTheCheckboxAndTheSwitch`, and find the checkboxes and the switch by their names in the other tests.
-- **The title names the popover (gap 15).** After the fix, remove `markTestIncomplete()` from `OverlaysTest::testThePopoverIsNamedByItsTitle`.
-- **A toggle group in a toolbar (gap 16).** After the fix, remove `markTestIncomplete()` from `ControlsTest::testTheArrowKeysLeaveAToggleGroupInAToolbar`.
-- **A popup under a pointer that does not move (gap 17).** After the fix, remove `markTestIncomplete()` from `PickersTest::testAPopupUnderAStillPointerKeepsTheKeyboardHighlight`, and remove the mouse move from `PickersTest::testSelect`.
 
-phem v0.4.0 does not fix these gaps. After each phem release, update `phem/phem` (`composer update phem/phem` in the bundle and in `demo/`) and check this list again.
+phem v0.4.1 does not fix these gaps. It fixes gaps 14 to 17. After each phem release, update `phem/phem` (`composer update phem/phem` in the bundle and in `demo/`) and check this list again.
 
 ## Browser tests of the demo
 
@@ -26,7 +22,7 @@ phem v0.4.0 does not fix these gaps. After each phem release, update `phem/phem`
 | Autocomplete | `PickersTest` | The server gives the items for the typed text, a click fills the input | Keyboard selection, the empty state |
 | Avatar | `ControlsTest` | The fallback text shows | Image load and error (`data-loading`/`data-error`), the fallback `delay` (route the image request) |
 | Button | `BasicsTest` | `type="button"`, focus | `disabled` and `focusableWhenDisabled` |
-| Checkbox | `ControlsTest` | Initial state, a click unchecks it | Accessible name (gap 14), the hidden input in a form, Space |
+| Checkbox | `ControlsTest` | Initial state, the accessible name, a click unchecks it | The hidden input in a form, Space |
 | Checkbox Group | `ControlsTest` | The group value stays when an item changes | The parent checkbox and the indeterminate state (needs a demo) |
 | Collapsible | `DisclosureTest` | Open and close with a click | Keyboard (Enter and Space), the `--collapsible-panel-height` variable |
 | Combobox | `PickersTest` | Client filter, arrow keys and Enter select, the empty state | The clear button, the trigger button, Escape |
@@ -43,20 +39,20 @@ phem v0.4.0 does not fix these gaps. After each phem release, update `phem/phem`
 | Navigation Menu | `MenusTest` | A click opens the content, hover changes it, Escape closes it | The arrow keys between the triggers, `data-activation-direction`, `--popup-width` |
 | Number Field | `FormsTest` | The buttons, ArrowUp, Shift+ArrowUp | Press and hold, the scrub area, the wheel, `min`/`max` |
 | OTP Field | `FormsTest` | Typing moves to the next slot, a letter is refused, Backspace, the hidden input, `data-complete` | Paste fills all the slots |
-| Popover | `OverlaysTest` | Open with a click, `aria-expanded`, `data-side`, a click outside closes it | Accessible name (gap 15), Escape |
+| Popover | `OverlaysTest` | Open with a click, `aria-expanded`, `data-side`, the title names it, a click outside closes it | Escape |
 | Preview Card | `OverlaysTest` | Hover opens it, leaving closes it | The `delay` and `closeDelay` values |
 | Progress | `BasicsTest` | `aria-valuenow`, `data-progressing` | — |
 | Radio Group | `ControlsTest` | A click checks, the arrow keys check and focus | The hidden input in a form |
 | Scroll Area | `PickersTest` | `data-has-overflow-y`, the overflow edges after a scroll | Thumb drag, a click on the track, `data-scrolling` |
-| Select | `PickersTest` | Select with a click, the hidden input, the keyboard opens on the selected item | A popup under a pointer that does not move (gap 17), typeahead, the scroll arrows |
+| Select | `PickersTest` | Select with a click, the hidden input, the keyboard opens on the selected item, a popup under a pointer that does not move | Typeahead, the scroll arrows |
 | Separator | `BasicsTest` | `aria-orientation` | — |
 | Slider | `FormsTest` | ArrowRight, End, Home | Pointer drag on the track, `data-dragging` |
-| Switch | `ControlsTest` | Initial state, a click on the label, Space | Accessible name (gap 14) |
+| Switch | `ControlsTest` | Initial state, the accessible name, a click on the label, Space | — |
 | Tabs | `DisclosureTest` | A click selects, the arrow keys move the focus, Enter selects | The indicator variables |
 | Toast | `PickersTest` | A server event shows a toast, one toast for each click | Close button, swipe, the limit of visible toasts |
 | Toggle | `ControlsTest` | A click and Space toggle `aria-pressed` | — |
 | Toggle Group | `ControlsTest` | One pressed item, ArrowRight | `multiple`, Home and End |
-| Toolbar | `ControlsTest` | ArrowRight, End, Home | Leave a toggle group with the arrow keys (gap 16), the select in the toolbar |
+| Toolbar | `ControlsTest` | ArrowRight, End, Home, the arrow keys leave a toggle group | The select in the toolbar |
 | Tooltip | `OverlaysTest` | Hover and focus open it, leaving closes it | The delay between two tooltips |
 
 Other open work for the browser tests:

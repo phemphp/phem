@@ -27,7 +27,7 @@ final class ControlsTest extends DemoTestCase
     {
         $page = $this->visitComponent('switch');
 
-        $switch = $page->getByRole('switch');
+        $switch = $page->getByRole('switch', ['name' => 'Notifications']);
         expect($switch)->toHaveAttribute('aria-checked', 'true');
         expect($switch)->toHaveAttribute('data-checked', '');
 
@@ -44,7 +44,7 @@ final class ControlsTest extends DemoTestCase
     {
         $page = $this->visitComponent('checkbox');
 
-        $checkbox = $page->getByRole('checkbox');
+        $checkbox = $page->getByRole('checkbox', ['name' => 'Enable notifications']);
         expect($checkbox)->toHaveAttribute('aria-checked', 'true');
 
         $checkbox->click();
@@ -56,8 +56,8 @@ final class ControlsTest extends DemoTestCase
     {
         $page = $this->visitComponent('checkbox-group');
 
-        $fuji = $page->locator('[role="checkbox"][data-value="fuji-apple"]');
-        $gala = $page->locator('[role="checkbox"][data-value="gala-apple"]');
+        $fuji = $page->getByRole('checkbox', ['name' => 'Fuji']);
+        $gala = $page->getByRole('checkbox', ['name' => 'Gala']);
 
         expect($fuji)->toHaveAttribute('aria-checked', 'true');
         expect($gala)->toHaveAttribute('aria-checked', 'false');
@@ -74,8 +74,6 @@ final class ControlsTest extends DemoTestCase
      */
     public function testTheWrappingLabelNamesTheCheckboxAndTheSwitch(): void
     {
-        self::markTestIncomplete('phem-toggle does not link a wrapping <label> to the element yet (notes/phem-gaps.md, gap 14).');
-
         $page = $this->visitComponent('checkbox');
         expect($page->getByRole('checkbox', ['name' => 'Enable notifications']))->toHaveCount(1);
 
@@ -138,8 +136,6 @@ final class ControlsTest extends DemoTestCase
     /** In Base UI, the toolbar moves the focus out of a toggle group in it. */
     public function testTheArrowKeysLeaveAToggleGroupInAToolbar(): void
     {
-        self::markTestIncomplete('phem-toggle-group keeps its own roving focus in a phem-toolbar (notes/phem-gaps.md, gap 16).');
-
         $page = $this->visitComponent('toolbar');
         $page->getByRole('button', ['name' => 'Align right'])->focus();
         $page->keyboard()->press('ArrowRight');

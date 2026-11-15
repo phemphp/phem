@@ -54,10 +54,7 @@ final class PickersTest extends DemoTestCase
         expect($trigger)->toContainText('Honeycrisp');
         expect($page->locator('input[name="apple"]'))->toHaveValue('honeycrisp');
 
-        // The keyboard opens it on the selected item, and moves to the next item. The mouse moves
-        // away first, so this test checks the keyboard only. The next test checks a popup that
-        // opens under the pointer (gap 17).
-        $page->mouse()->move(5, 5);
+        // The keyboard opens it on the selected item, and moves to the next item.
         $trigger->focus();
         $page->keyboard()->press('ArrowDown');
         expect($page->getByRole('listbox'))->toBeVisible();
@@ -73,8 +70,6 @@ final class PickersTest extends DemoTestCase
      */
     public function testAPopupUnderAStillPointerKeepsTheKeyboardHighlight(): void
     {
-        self::markTestIncomplete('phem-select highlights the item under the pointer on pointerover, also when the pointer does not move (notes/phem-gaps.md, gap 17).');
-
         $page = $this->visitComponent('select');
         $trigger = $page->getByRole('combobox', ['name' => 'Apple', 'exact' => true]);
         $trigger->click();
