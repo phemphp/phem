@@ -64,6 +64,7 @@ export class StageLines {
 
         this.connectors(box);
         this.source(box);
+        this.sketchLike(box);
 
         for (const path of this.canvas.querySelectorAll<SVGPathElement>('path[data-s]')) {
             this.strokes.set(path.dataset.s ?? '', new Stroke(path));
@@ -87,7 +88,8 @@ export class StageLines {
 
         const sketch = this.el('sketch');
         this.slots.set('sketch', box(sketch.querySelector('[data-sketch-slot]') ?? sketch));
-        this.sketch = [...sketch.querySelectorAll<SVGPathElement>('path')].map((path) => new Stroke(path));
+        // The Symfony mark is a filled shape: it fades in with the texts.
+        this.sketch = [...sketch.querySelectorAll<SVGPathElement>('path:not(.sketch__logo)')].map((path) => new Stroke(path));
 
         // The paths draw the outlines now: the CSS hides the borders of the HTML (home.css).
         this.canvas.closest('[data-stage]')?.classList.add('is-drawn');
@@ -132,7 +134,7 @@ export class StageLines {
 
     // Scene 1: the source of the page. Each line of code sits on the left of the part of the page
     // that it renders, and its connector ends in the padding of the page. #[Page] sits above the
-    // URL, and <LikeButton> under the page: its connector climbs beside the page to the button.
+    // URL, and #[Component] under the page: its connector climbs beside the page to the button.
     private source(box: (element: Element | Range) => Box): void {
         const el = this.el;
         const page = el('page');
@@ -166,6 +168,23 @@ export class StageLines {
         likeNote.style.left = `${climb - 8}px`;
         likeNote.style.top = `${likeNoteTop}px`;
         el('note-like-ln').setAttribute('d', `M ${climb} ${likeNoteTop - 4} V ${likeY + radius} Q ${climb} ${likeY}, ${climb + radius} ${likeY} H ${like.left - 10}`);
+    }
+
+    // Scene 8: the outline of the button of the story where it lands in the page that the elephant
+    // holds: the box of the button at the scale of the drawing, turned with the page.
+    private sketchLike(box: (element: Element | Range) => Box): void {
+        const el = this.el;
+        const btn = el('btn');
+        const slot = box(el('sketch').querySelector('[data-sketch-slot]') ?? el('sketch'));
+        const width = btn.offsetWidth * sketchScale;
+        const height = btn.offsetHeight * sketchScale;
+        const x = slot.left;
+        const y = middle(slot) - height / 2;
+        const r = Math.min((parseFloat(getComputedStyle(btn).borderTopLeftRadius) || 0) * sketchScale, height / 2);
+        const path = el('sketch-like');
+
+        path.setAttribute('d', `M ${x} ${y + r} A ${r} ${r} 0 0 1 ${x + r} ${y} H ${x + width - r} A ${r} ${r} 0 0 1 ${x + width} ${y + r} V ${y + height - r} A ${r} ${r} 0 0 1 ${x + width - r} ${y + height} H ${x + r} A ${r} ${r} 0 0 1 ${x} ${y + height - r} Z`);
+        path.setAttribute('transform', `rotate(${sketchTilt} ${x + width / 2} ${y + height / 2})`);
     }
 
     // The connectors that start or end at a mark of the code.
@@ -230,8 +249,27 @@ export class StageLines {
         };
         const out = middleOf('trip-out');
         const back = middleOf('trip-back');
-        el('event').style.left = `${out.x - 12 - el('event').offsetWidth}px`;
-        el('event').style.top = `${out.y - el('event').offsetHeight / 2}px`;
+        // The line bends at its middle, so the tag moves to the left until it keeps a gap of 10 to
+        // every point of the line.
+        const event = el('event');
+        const tripOut = el('trip-out') as unknown as SVGPathElement;
+        const tripLength = tripOut.getTotalLength();
+        const samples = Array.from({ length: 41 }, (_, index) => tripOut.getPointAtLength((tripLength * index) / 40));
+        const eventTop = out.y - event.offsetHeight / 2;
+        const gapTo = (left: number): number => Math.min(...samples.map((point) => {
+            const dx = Math.max(left - point.x, 0, point.x - (left + event.offsetWidth));
+            const dy = Math.max(eventTop - point.y, 0, point.y - (eventTop + event.offsetHeight));
+
+            return Math.hypot(dx, dy);
+        }));
+        let eventLeft = out.x - 12 - event.offsetWidth;
+
+        while (gapTo(eventLeft) < 10) {
+            eventLeft -= 2;
+        }
+
+        event.style.left = `${eventLeft}px`;
+        event.style.top = `${eventTop}px`;
         el('html').style.left = `${back.x - el('html').offsetWidth / 2}px`;
         el('html').style.top = `${back.y + 8}px`;
 
@@ -284,9 +322,10 @@ class Director {
         return this.lines.el(name);
     }
 
-    // The button of the story moves to (x, y) at a scale.
+    // The button of the story moves to (x, y) at a scale. `--btn-scale` keeps its border as wide as
+    // the lines at any scale (home.css).
     move(x: number, y: number, scale: number, time: number, duration = 0.4, vars: gsap.TweenVars = {}): number {
-        this.tl.to(this.el('btn'), { x: x - center.x, y: y - center.y, scale, duration, ease: 'power2.inOut', ...vars }, time);
+        this.tl.to(this.el('btn'), { x: x - center.x, y: y - center.y, scale, '--btn-scale': scale, duration, ease: 'power2.inOut', ...vars }, time);
 
         return time + duration;
     }
@@ -466,7 +505,7 @@ function restScene1(lines: StageLines): void {
         stroke.render();
     });
     gsap.set([drawn.group, lines.el('page'), ...notes.map((name) => lines.el(name)), ...noteLines.map((name) => lines.el(name))], { autoAlpha: 1 });
-    gsap.set(lines.el('btn'), { x: slot.x - center.x, y: slot.y - center.y, scale: pageScale, autoAlpha: 1, '--active': 0 });
+    gsap.set(lines.el('btn'), { x: slot.x - center.x, y: slot.y - center.y, scale: pageScale, '--btn-scale': pageScale, autoAlpha: 1, '--active': 0 });
 }
 
 // Scene 1 on load: the page draws in, then a dot extends into the outline of its Like button, and
@@ -621,16 +660,19 @@ export function scenesTimeline(lines: StageLines, time: StoryTime): gsap.core.Ti
     d.reveal('php', t, 0.12);
     d.reveal('twig', t, 0.12);
 
-    // 7 → 8: the drawing draws in, and the button, with the likes of the story, lands in the page
-    // that the elephant holds, in place of the likes of the drawing.
+    // 7 → 8: the drawing draws in. The button, with the likes of the story, takes its place in the
+    // page that the elephant holds while it is hidden, in place of the likes of the drawing. Then
+    // its outline draws in, and it shows: the drawn outline is its border.
     d.retract(['build-in', 'build-php', 'build-twig'], into(8), 0.12);
     d.fadeOut(['tag-php', 'tag-twig'], into(8));
     d.conceal(['php', 'twig', 'phemc', 'source'], into(8), 0.18);
     d.fadeIn(['sketch'], into(8, 0.1), 0.02);
     t = d.sketch(into(8, 0.1), 0.45);
-    d.tl.fromTo(d.el('sketch').querySelectorAll('text'), { opacity: 0 }, { opacity: 1, duration: 0.06, stagger: 0.02, immediateRender: false }, t - 0.15);
+    d.tl.fromTo(d.el('sketch').querySelectorAll('text, .sketch__logo'), { opacity: 0 }, { opacity: 1, duration: 0.06, stagger: 0.02, immediateRender: false }, t - 0.15);
     const page = lines.slot('sketch', sketchScale);
-    d.move(page.x, page.y, sketchScale, t - 0.1, 0.25, { autoAlpha: 1, rotation: sketchTilt });
+    d.tl.set(btn, { x: page.x - center.x, y: page.y - center.y, scale: sketchScale, '--btn-scale': sketchScale, rotation: sketchTilt, borderColor: 'transparent' }, into(8));
+    t = d.draw('sketch-like', t - 0.1, 0.15);
+    d.fadeIn(['btn'], t - 0.05, 0.08);
 
     // Scene 8 rests at the end of the scroll.
     d.tl.set({}, {}, rest(8));

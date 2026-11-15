@@ -25,6 +25,9 @@
     --story-accent: #7fcfb8;
 }
 body:has([data-story]) { background: var(--story-bg); }
+/* In the light theme, the sunken parts (the search field, the version badge, the hovers) are a
+   darker tone of the warm paper, not the neutral gray of the other pages. */
+:root:has([data-story]):not([data-theme="dark"]) { --surface-sunken: color-mix(in srgb, var(--story-ink) 6%, var(--story-bg)); }
 /* The story fills the screen, so the whole home page does: the header, the story, the cards and
    the footer have the same edges. The small gutter is the one of the header on a phone. */
 :root:has([data-story]) { --story-gutter: clamp(24px, 3vw, 56px); }
@@ -180,15 +183,19 @@ h1.scene__title { font-size: clamp(42px, 5.6vw, 76px); }
 
 /* The drawing of the last scene (Friends.astro). */
 .sketch { display: block; width: 100%; height: auto; overflow: visible; }
-.sketch path { fill: none; stroke: color-mix(in srgb, var(--story-ink) 80%, transparent); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
-.sketch text { fill: var(--story-ink); font-family: var(--font-sans); font-weight: 700; }
-.sketch .sketch__text--logo { font-family: Georgia, "Times New Roman", serif; font-style: italic; text-anchor: middle; }
+/* The lines and the text of the drawing have the color of the lines of the other scenes. */
+.sketch path { fill: none; stroke: var(--story-line-strong); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; shape-rendering: geometricPrecision; }
+.sketch text { fill: var(--story-line-strong); font-family: var(--font-sans); font-weight: 700; text-rendering: geometricPrecision; }
+.sketch .sketch__logo { fill: var(--story-line-strong); stroke: none; }
 .sketch__slot { fill: none; stroke: none; }
 
 /* ---------- Static figures ---------- */
 .fig { display: flex; align-items: center; gap: var(--space-8); min-width: 0; }
 .fig--center { justify-content: center; min-height: 240px; }
 .fig--sketch { display: block; }
+/* The figure shows the drawing smaller than the stage: its lines keep one pixel, so they do not
+   fade into a thin, jagged gray. */
+.fig--sketch .sketch path { vector-effect: non-scaling-stroke; stroke-width: 1px; }
 .fig--split { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--space-12); }
 
 .fig--trip { flex-wrap: wrap; justify-content: center; gap: var(--space-5); }
@@ -247,7 +254,18 @@ h1.scene__title { font-size: clamp(42px, 5.6vw, 76px); }
 /* ---------- The stage (large screens with motion; story.ts sets story--enhanced) ---------- */
 .stage { display: none; }
 
-.story--enhanced { display: grid; grid-template-columns: minmax(360px, 37fr) minmax(0, 63fr); padding: 0 var(--story-gutter); }
+.story--enhanced { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(360px, 37fr) minmax(0, 63fr); padding: 0 var(--story-gutter); }
+/* The background of the story (field.ts): it covers the screen under the header while the story
+   scrolls, behind the text and the stage. */
+.story__field { display: none; }
+.story--enhanced .story__field { position: absolute; inset: 0; z-index: -1; display: block; pointer-events: none; }
+/* It sticks under the header from the first pixel of the scroll, so the grid never moves. */
+.story__field canvas { position: sticky; top: var(--top-height); display: block; width: 100%; height: calc(100vh - var(--top-height)); }
+/* The grid does not show through the text and the elements: each one has the background of the
+   page, and the text takes only the width that it needs. */
+.story--enhanced .scene__index { width: fit-content; }
+.story--enhanced :is(.scene__index, .scene__hint, .story-btn, .story-skip, .story-install),
+.stage :is(.stage__item, .stage__btn, .bound__label) { background-color: var(--story-bg); }
 .story--enhanced .story__scenes { padding: 0; }
 .story--enhanced .scene { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; box-sizing: border-box; height: calc(100vh - var(--top-height)); padding: 0 var(--space-8) 0 0; border: 0; }
 /* A long scene has two screens of scroll: its copy stays in the middle of the screen. */
@@ -261,16 +279,20 @@ h1.scene__title { font-size: clamp(42px, 5.6vw, 76px); }
 .story--enhanced .stage { perspective: 1400px; position: sticky; top: var(--top-height); display: block; align-self: start; height: calc(100vh - var(--top-height)); overflow: hidden; }
 .stage__tilt { position: absolute; inset: 0; transform-origin: 50% 50%; }
 .stage__canvas { position: absolute; top: 50%; left: 50%; width: 920px; height: 760px; transform: translate(-50%, -50%) scale(var(--stage-scale, 1)); transform-origin: 50% 50%; }
-.stage__svg { position: absolute; inset: 0; overflow: visible; }
+/* The lines, their dots and the outlines go above the elements: the background of an element must
+   not hide a line that ends on it or crosses it. */
+.stage__svg { position: absolute; inset: 0; z-index: 1; overflow: visible; }
 .stage [data-s] { visibility: hidden; opacity: 0; }
 .stage [data-mark] { --on: 0; }
 .stage__item { position: absolute; }
 .stage .is-centered { translate: -50% -50%; }
 /* The `left` of the element is its right edge. */
 .stage .is-end { translate: -100% 0; }
-.stage__btn { position: absolute; top: 380px; left: 460px; }
+/* The button of the story scales from scene to scene (stage-timeline.ts): its border stays as wide
+   as the lines of the stage, 1.2 units. */
+.stage__btn { position: absolute; top: 380px; left: 460px; border-width: calc(1.2px / var(--btn-scale, 1)); }
 .stage__sketch { position: absolute; inset: 0; width: 920px; height: 760px; }
-.stage .sketch text { opacity: 0; }
+.stage .sketch :is(text, .sketch__logo) { opacity: 0; }
 
 /* The lines of the stage. Their dash comes from src/scripts/stroke.ts, so a line draws with the
    dot on it. */
@@ -289,7 +311,6 @@ h1.scene__title { font-size: clamp(42px, 5.6vw, 76px); }
 .stage.is-drawn :is(.ph-code__bar, .browser__bar) { border-bottom-color: transparent; }
 .stage.is-drawn :is(.article__line, .browser__line, .browser__home) { background: transparent; }
 .stage.is-drawn .browser__comments { border-left-color: transparent; }
-.stage.is-drawn .browser { background: transparent; }
 .travel { fill: var(--story-accent); }
 /* Scene 1: a line of the source of the page, beside the part of the page that it renders. */
 .note { color: var(--story-muted); font: 500 13px/20px var(--font-mono); font-variant-ligatures: none; white-space: nowrap; }

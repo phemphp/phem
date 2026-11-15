@@ -48,6 +48,9 @@ const stageQuery = '(min-width: 1280px) and (min-height: 700px)';
             }
         }
     </script>
+    <!-- The background of the story: a canvas that stays on the screen while the story scrolls
+         (src/scripts/field.ts). -->
+    <div class="story__field" aria-hidden="true"><canvas data-story-field></canvas></div>
     <div class="story__scenes">
         <Scene id="story-ui" index={1} level={1} brand="Phem" title="Your UI. Written in PHP." lead="Server components for Symfony.">
             <a slot="actions" class="ph-btn ph-btn--primary" href="/quickstart/">Get started<Icon name="arrow-right" /></a>

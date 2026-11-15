@@ -13,6 +13,7 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
 import 'lenis/dist/lenis.css';
+import { field } from './field';
 import { canvasHeight, canvasWidth, introTimeline, named, scenesTimeline, StageLines, StoryTime } from './stage-timeline';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -129,6 +130,7 @@ function stage(root: HTMLElement, context: gsap.Context, intro: boolean): () => 
     let alive = true;
     let lines: StageLines | undefined;
     let untilt = (): void => {};
+    let unfield = (): void => {};
 
     const draw = (): void => {
         copyFigures(root);
@@ -172,6 +174,28 @@ function stage(root: HTMLElement, context: gsap.Context, intro: boolean): () => 
         }
 
         untilt = tilt(tiltBox, () => timeline.time() / time.into(2));
+
+        // The background of the story. The page of scene 1 takes events after the intro. The trail
+        // stays on the stage, where no element covers it. In scene 1, the grid answers the pointer
+        // on the stage only: the copy of the first scene stays still.
+        const background = root.querySelector<HTMLCanvasElement>('[data-story-field]');
+        const scene1 = (): boolean => timeline.time() < time.into(2);
+
+        if (background) {
+            unfield = field(background, lines.el('page'), {
+                trail: () => !opening?.isActive() && scene1(),
+                answers: (x, y) => {
+                    const box = stageBox.getBoundingClientRect();
+
+                    return !scene1() || (x >= box.left && x <= box.right && y >= box.top && y <= box.bottom);
+                },
+                zone: (x, y) => {
+                    const top = document.elementFromPoint(x, y);
+
+                    return null !== top && stageBox.contains(top) && null === top.closest('.stage__item, .stage__btn');
+                },
+            });
+        }
     };
 
     document.fonts.ready.then(() => {
@@ -199,6 +223,7 @@ function stage(root: HTMLElement, context: gsap.Context, intro: boolean): () => 
     return () => {
         alive = false;
         untilt();
+        unfield();
         lines?.destroy();
         resize.disconnect();
         gsap.ticker.remove(raf);

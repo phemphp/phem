@@ -48,6 +48,9 @@ import LikeOutline from './LikeOutline.astro';
                 <path data-s="build-in" class="ln" d="M 460 110 V 198" />
                 <path data-s="build-php" class="ln" d="M 460 242 C 460 290, 240 286, 240 336" />
                 <path data-s="build-twig" class="ln" d="M 460 242 C 460 290, 680 286, 680 336" />
+                <!-- Scene 8: the outline of the button of the story in the page that the elephant
+                     holds. story.ts measures it. -->
+                <path data-s="sketch-like" class="ln" />
                 <!-- The dots that travel on the lines. -->
                 <circle data-s="travel-1" class="travel" r="4" />
                 <circle data-s="travel-2" class="travel" r="4" />
@@ -58,7 +61,7 @@ import LikeOutline from './LikeOutline.astro';
             <span data-s="note-page" class="stage__item note">#[Page(<b>'/posts/{'{'}id:post{'}'}'</b>)]</span>
             <span data-s="note-title" class="stage__item note">{'{{ '}<b>post.title</b>{' }}'}</span>
             <span data-s="note-content" class="stage__item note">{'{{ '}<b>post.content</b>{' }}'}</span>
-            <span data-s="note-like" class="stage__item note">&lt;<b>LikeButton</b> post={'{{ '}<b>post</b>{' }}'}/&gt;</span>
+            <span data-s="note-like" class="stage__item note">#[<b>Component</b>]</span>
             <div data-s="code" data-outline data-copy-of="likeButton" class="stage__item stage__code" style="left: 370px; top: 60px; width: 500px"></div>
             <span data-s="event" class="stage__item tag tag--stack"><span>onClick</span><span>Event</span></span>
             <span data-s="html" class="stage__item tag">HTML</span>
