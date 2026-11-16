@@ -8,6 +8,21 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Escape on a `phem-popover` gives the focus back to the trigger only when the focus is in the
+  popup. Before, Escape on a preview card that the pointer opened focused the link, and the
+  keyboard focus then opened the card again after its delay.
+- The tab stop of a `phem-otp-field` is the slot with the focus. Before, Tab from a filled slot
+  went to the first empty slot, not out of the field.
+- Tab on the last trigger or link of a `phem-navigation-menu` list goes to the next element of the
+  page, and the menu closes. Before, the focus went into the content of the viewport again.
+- `phem-field` shows a server error again when an event sends the same value again and the answer
+  has no new HTML for the field: a submit of the form, an event of the control, or each event for
+  a control with `phem:bind`. Before, the field showed as valid.
+- The `error` part of the server in a `phem-field` shows the errors of the browser after the user
+  changes the value. Before, a cleared control showed no `valueMissing` message after a server
+  error. In a field with a part of the server, an `error` part with no `data-match` no longer
+  shows, so a message does not show two times.
+
 - A field of the application in the popup of a `phem-combobox` (an input, a textarea, a select,
   editable content) gets the focus of a mouse press again. v0.4.6 kept the focus in the input of
   the combobox for each press in the popup.

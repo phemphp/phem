@@ -302,7 +302,7 @@ A click on the trigger opens and closes the popup, and a click on a `close` part
 
 The popup gets `role="dialog"`, `aria-labelledby` (the `title` part) and `aria-describedby` (the `description` part), so a screen reader names the popup. A popup with an `aria-label` keeps it, and gets no `aria-labelledby`. A part with an `id` gets a link with its id, as the title above. A part with no `id`, as the description above, gets a link with the element references of ARIA (`ariaLabelledByElements`, `ariaDescribedByElements`), and the browser shows `aria-describedby=""`. The trigger points to a popup with no `id` with `ariaControlsElements`. The controller gives the parts no `id`, because the morph must match each element to the server render.
 
-Open moves the focus into the popup: to its `[autofocus]` element, or else to the first element that Tab goes to (a field, a button, a link), or else to the popup itself. After an open with a touch, the focus goes to the popup, so the keyboard of the device does not show. Escape closes the popup and gives the focus back to the trigger. A click outside and the focus out of the popover close it too. Set `data-phem-popover-dismiss-value="false"` to keep it open on Escape, on a click outside and on the focus out. Then Escape goes to the popup or the dialog around the popover, which closes.
+Open moves the focus into the popup: to its `[autofocus]` element, or else to the first element that Tab goes to (a field, a button, a link), or else to the popup itself. After an open with a touch, the focus goes to the popup, so the keyboard of the device does not show. Escape closes the popup. When the focus is in the popup, it goes back to the trigger: Escape on a popup that the pointer opened keeps the focus where it is. A click outside and the focus out of the popover close it too. Set `data-phem-popover-dismiss-value="false"` to keep it open on Escape, on a click outside and on the focus out. Then Escape goes to the popup or the dialog around the popover, which closes.
 
 With `data-phem-popover-open-on-hover-value="true"`, the pointer on the trigger opens the popup after the `delay` value (300 ms), and the pointer out of the trigger and of the popup closes it after the `close-delay` value (0 ms: at once). The pointer can go from the trigger to the popup, also on a diagonal path: while it is in the space between them, the popup stays open. For example, with `data-phem-popover-side-offset-value="8"`, the pointer crosses the 8 px below the trigger, and the popup closes only when the pointer goes out of that space. A popover with `open-on-hover` is good for a preview card, because a touch screen and the keyboard can still open it.
 
@@ -626,6 +626,7 @@ The pointer on a trigger opens its content after the `delay` value, also when an
 | Tab | The trigger of the open item | Moves the focus into the content in the viewport |
 | Shift+Tab | The first element of the content | Moves the focus back to the trigger |
 | Tab | The last element of the content | Moves the focus to the next trigger. The menu stays open until the focus goes out of it |
+| Tab | The last trigger or link of the list | Moves the focus to the next element of the page, not into the content. The menu closes |
 | ArrowDown, ArrowUp, ArrowRight, ArrowLeft | A link of a content | Moves the focus to the next or to the previous link of the content, and from the last one to the first one. A field in the content keeps its arrow keys |
 | Escape | The menu | Closes the menu, and gives the focus back to the trigger |
 
@@ -1578,7 +1579,9 @@ The `aria-describedby=""` is empty because the description has no id: the contro
 
 A server error is a control that the server renders with `aria-invalid="true"`: a field with `phem:bind` and an error (see [Show the error of a bound field](forms.md#show-the-error-of-a-bound-field)), or a Symfony form with `form_row()`. The field is invalid until the user changes the value of the control. While the error stays, the form does not submit the same value again, and the control gets the message of the server as its custom validity.
 
-An `error` part whose id is in the `aria-describedby` of the server render is the message of the server, for example the element of `phem:error`. It shows while the server error stays, and hides when the user changes the value:
+An `error` part whose id is in the `aria-describedby` of the server render is the message of the server, for example the element of `phem:error`. It shows while the server error stays. After the user changes the value, it shows the errors of the browser instead, as the `Field.Error` of Base UI: for example the message of `valueMissing` when the user clears the control.
+
+The server sends the HTML of a component only when it changes. When the user submits the same value again, the answer has no new HTML for the field, so the field shows the server error of the last render again. This applies to each event that sends the control: the events of its form and of the control, and each event for a control with `phem:bind`. A change of the value while the request runs, a redirect, and an event that sends no request keep the field with no server error:
 
 ```html
 <div data-controller="phem-field">
@@ -1600,7 +1603,7 @@ After a submit of a name that the server refuses, the browser shows:
 </div>
 ```
 
-With a server error, an `error` part with no `data-match` shows only when the field has no message of the server. Do not write `aria-invalid` on a control yourself: the controller sets it.
+In a field with a part of the server, an `error` part with no `data-match` does not show: the part of the server shows these errors, so a message does not show two times. An `error` part keeps the elements of its text, for example a link. Do not write `aria-invalid` on a control yourself: the controller sets it.
 
 ### Data attributes and ARIA
 
@@ -1751,7 +1754,7 @@ A character that the user types goes in its slot, and the focus goes to the next
 
 A press of the mouse on a slot selects its character, so the next character replaces it.
 
-The slots have one tab stop: the first empty slot, or the last slot when the code is complete. Each slot gets `inputmode`, a `pattern` of one character (`[0-9]` for `numeric`), and `spellcheck="false"`. The first slot uses the label of the field. A slot after the first one with no `aria-label` gets `aria-label="Character 2 of 6"`. An attribute that the markup gives stays.
+The slots have one tab stop: the slot with the focus, or else the first empty slot (the last slot when the code is complete). So Tab and Shift+Tab go out of the field from each slot. Each slot gets `inputmode`, a `pattern` of one character (`[0-9]` for `numeric`), and `spellcheck="false"`. The first slot uses the label of the field. A slot after the first one with no `aria-label` gets `aria-label="Character 2 of 6"`. An attribute that the markup gives stays.
 
 The events:
 

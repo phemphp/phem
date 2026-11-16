@@ -315,6 +315,36 @@ describe("phem-navigation-menu", () => {
     expect($("positioner").hidden).toBe(false)
   })
 
+  it("moves Tab on the last entry of the list out of the menu, not into the content", async () => {
+    await mount(nav())
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+
+    clickOn($("overview-trigger"))
+    $("blog").focus()
+    // The browser does the Tab: the content in the viewport is inert for this key.
+    expect(press("Tab").defaultPrevented).toBe(false)
+    expect($("positioner").inert).toBe(true)
+
+    $("outside").focus()
+    expect($("nav").getAttribute("data-phem-navigation-menu-value-value")).toBe("")
+    vi.advanceTimersByTime(0)
+    expect($("positioner").inert).toBe(false)
+
+    // The focus goes to the browser UI: no element gets it, and the menu closes after the Tab.
+    clickOn($("overview-trigger"))
+    $("blog").focus()
+    press("Tab")
+    $("blog").blur()
+    vi.advanceTimersByTime(0)
+    expect($("nav").getAttribute("data-phem-navigation-menu-value-value")).toBe("")
+
+    // Tab on an entry that is not the last one does not change the content.
+    clickOn($("overview-trigger"))
+    $("guides-trigger").focus()
+    press("Tab")
+    expect($("positioner").inert).toBe(false)
+  })
+
   it("closes on a click outside, and on a link with close-on-click", async () => {
     await mount(nav())
 

@@ -78,6 +78,31 @@ describe("phem-otp-field", () => {
     expect(el("dash").getAttribute("data-orientation")).toBe("horizontal")
   })
 
+  it("gives the tab stop to the slot with the focus, so Tab goes out of the field", async () => {
+    await mount(otp("", "12"))
+    expect(slots().map((s) => s.tabIndex)).toEqual([-1, -1, 0, -1])
+
+    slots()[0].focus()
+    expect(slots().map((s) => s.tabIndex)).toEqual([0, -1, -1, -1])
+
+    press("ArrowRight")
+    expect(document.activeElement).toBe(slots()[1])
+    expect(slots().map((s) => s.tabIndex)).toEqual([-1, 0, -1, -1])
+
+    el("save").focus()
+    expect(slots().map((s) => s.tabIndex)).toEqual([-1, -1, 0, -1])
+  })
+
+  it("gives the tab stop to a slot that has the focus when the controller connects", async () => {
+    await mount(otp("", "12").replace('data-controller="phem-otp-field"', ""))
+    slots()[0].focus()
+
+    el("otp").setAttribute("data-controller", "phem-otp-field")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(slots().map((s) => s.tabIndex)).toEqual([0, -1, -1, -1])
+  })
+
   it("moves to the next slot when the user types, and fills the hidden input", async () => {
     await mount(otp())
     const changes = vi.fn()

@@ -59,7 +59,8 @@ const EXIT_STYLES = ["position", "inset-block-start", "inset-inline-start", "wid
 // ArrowLeft in a right-to-left page), Enter and Space open the content, and the focus stays on
 // the trigger. Tab on the trigger of the open item goes into the content, Shift+Tab on the first
 // element of the content goes back to the trigger, and Tab on the last element goes to the next
-// trigger: the menu stays open until the focus goes out of it. In a content, the four arrow keys
+// trigger: the menu stays open until the focus goes out of it. Tab on the last entry of the list
+// goes to the next element of the page, and the menu closes. In a content, the four arrow keys
 // move the focus between its links, from the last one to the first one. A field in the content
 // keeps its arrow keys.
 //
@@ -257,6 +258,17 @@ export default class PhemNavigationMenuController extends Controller {
       return
     }
 
+    // Tab on the last entry of the list goes out of the menu, and the menu closes, as in Base UI:
+    // the content in the viewport is after the list in the page, so it is inert for this key. The
+    // focus can go to the browser UI, with no `focusout` to another element.
+    if (event.key === "Tab" && !event.shiftKey && this.openItem && this.homes.has(this.#contentOf(this.openItem)) && this.#isLast(entry, entries)) {
+      this.#skip(this.#surface, () => {
+        if (!this.element.contains(document.activeElement)) this.#close({ focus: false })
+      })
+
+      return
+    }
+
     if (event.key === "Home" || event.key === "End" || !movesFocus(event.key, this.orientationValue)) return
 
     const next = nextItem(entries, entry, event.key, { orientation: this.orientationValue, loop: this.loopFocusValue, rtl: this.#rtl })
@@ -264,6 +276,23 @@ export default class PhemNavigationMenuController extends Controller {
 
     event.preventDefault()
     next.focus()
+  }
+
+  // Whether Tab goes from `entry` out of the list: the entries after it are disabled.
+  #isLast(entry, entries) {
+    return entries.slice(entries.indexOf(entry) + 1).every((el) => el.disabled === true)
+  }
+
+  // The Tab key of the browser does not go into `el`: it is inert until the next task, which then
+  // calls `after`.
+  #skip(el, after) {
+    if (!el || el.inert) return
+
+    el.inert = true
+    setTimeout(() => {
+      el.inert = false
+      after()
+    }, 0)
   }
 
   onFocusOut = (event) => {

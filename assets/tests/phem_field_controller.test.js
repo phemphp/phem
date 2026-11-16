@@ -5,6 +5,9 @@ import PhemFieldController from "../dist/phem_field_controller.js"
 import PhemFormController from "../dist/phem_form_controller.js"
 import { mount, nextDone, respond, settle } from "./support.js"
 
+// A redirect is a Turbo visit: jsdom cannot load a page.
+vi.mock("@hotwired/turbo", async (original) => ({ ...(await original()), visit: vi.fn() }))
+
 let application
 
 beforeAll(() => {
@@ -298,5 +301,146 @@ describe("phem-form", () => {
 
     expect(submit().defaultPrevented).toBe(true)
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  // The form of the Base UI demo: one error part, with the message of the server, and of the client.
+  const homepage = (url, error = "") => form(`<div id="field" data-controller="phem-field">
+      <input id="url" type="url" name="url" required value="${url}" ${error ? 'aria-invalid="true" aria-describedby="url-error"' : ""} data-phem-field-target="control" />
+      <p id="url-error" data-phem-field-target="error">${error}</p>
+    </div>`)
+
+  // `markup` is null for an answer with no stream: the server renders the same HTML.
+  async function send(markup) {
+    if (markup === null) respond("", {}, { streams: "" })
+    else respond(markup)
+    const done = nextDone()
+    expect(submit().defaultPrevented).toBe(true)
+    await done
+    await settle()
+  }
+
+  it("shows the same server error again after a second submit", async () => {
+    await mount(homepage("https://example.com"))
+
+    await send(homepage("https://example.com", "The example domain is not allowed"))
+    expect(el("field").hasAttribute("data-invalid")).toBe(true)
+
+    // The user types the same value again: the answer has the same HTML.
+    type("url", "https://example.co")
+    type("url", "https://example.com")
+    expect(el("field").hasAttribute("data-invalid")).toBe(false)
+
+    await send(null)
+    expect(el("field").hasAttribute("data-invalid")).toBe(true)
+    expect(el("url").getAttribute("aria-invalid")).toBe("true")
+    expect(el("url-error").hidden).toBe(false)
+    expect(el("url-error").textContent).toBe("The example domain is not allowed")
+  })
+
+  it("keeps the change of the user during the request of a submit", async () => {
+    await mount(homepage("https://example.com"))
+
+    await send(homepage("https://example.com", "The example domain is not allowed"))
+    type("url", "https://www.example.com")
+    respond("", {}, { streams: "" })
+    const done = nextDone()
+    submit()
+    type("url", "https://phem.dev")
+    await done
+    await settle()
+
+    expect(el("field").hasAttribute("data-invalid")).toBe(false)
+    expect(el("url-error").hidden).toBe(true)
+  })
+
+  it("keeps the state after a redirect", async () => {
+    await mount(homepage("https://example.com"))
+    await send(homepage("https://example.com", "The example domain is not allowed"))
+
+    type("url", "https://example.co")
+    type("url", "https://example.com")
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ redirect: "/done" }), { status: 200 }))
+    const done = nextDone()
+    submit()
+    await done
+    await settle()
+
+    expect(el("field").hasAttribute("data-invalid")).toBe(false)
+  })
+
+  it("shows the server error of a bound control again after an event with no new HTML", async () => {
+    const markup = (error = "") => `<div id="field" data-controller="phem-field">
+        <input id="name" name="name" data-phem-bind="name" ${error ? 'aria-invalid="true" aria-describedby="name-error"' : ""} data-phem-field-target="control" />
+        <p id="name-error" data-phem-field-target="error">${error}</p>
+      </div>
+      <button id="save" data-phem-on-click="c1.save">Save</button>`
+    await mount(markup("This name is taken."))
+
+    type("name", "Shoes")
+    expect(el("field").hasAttribute("data-invalid")).toBe(false)
+
+    respond("", {}, { streams: "" })
+    const done = nextDone()
+    el("save").click()
+    await done
+    await settle()
+
+    expect(el("field").hasAttribute("data-invalid")).toBe(true)
+    expect(el("name-error").textContent).toBe("This name is taken.")
+  })
+
+  it("does not show a client message two times in a field with a part of the server", async () => {
+    await mount(form(`<div id="field" data-controller="phem-field">
+        <input id="url" name="url" required aria-invalid="true" aria-describedby="url-error" data-phem-field-target="control" />
+        <p id="url-error" data-phem-field-target="error">Not allowed</p>
+        <p id="message" data-phem-field-target="error" hidden></p>
+      </div>`))
+
+    type("url", "")
+    submit()
+
+    expect(el("url-error").hidden).toBe(false)
+    expect(el("url-error").textContent).toBe(el("url").validationMessage)
+    expect(el("message").hidden).toBe(true)
+  })
+
+  it("keeps the elements in the text of an error", async () => {
+    await mount(form(`<div id="field" data-controller="phem-field">
+        <input id="name" name="name" required data-phem-field-target="control" />
+        <p id="missing" data-phem-field-target="error" data-match="valueMissing" hidden>
+          Enter <a id="help" href="#help">a name</a>.
+        </p>
+      </div>`))
+
+    submit()
+
+    expect(el("missing").hidden).toBe(false)
+    expect(el("help")).not.toBeNull()
+  })
+
+  it("shows a client error in the error part of the server after a server error", async () => {
+    await mount(homepage("https://example.com"))
+
+    await send(homepage("https://example.com", "The example domain is not allowed"))
+    type("url", "")
+    const event = submit()
+    await settle()
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(el("field").hasAttribute("data-invalid")).toBe(true)
+    expect(el("url-error").hidden).toBe(false)
+    expect(el("url-error").textContent).toBe(el("url").validationMessage)
+    expect(el("url").getAttribute("aria-describedby")).toBe("url-error")
+
+    // A valid value hides it.
+    type("url", "https://phem.dev")
+    expect(el("field").hasAttribute("data-valid")).toBe(true)
+    expect(el("url-error").hidden).toBe(true)
+
+    // The same server error again, with no morph: the part shows the message of the server.
+    type("url", "https://example.com")
+    await send(null)
+    expect(el("url-error").hidden).toBe(false)
+    expect(el("url-error").textContent).toBe("The example domain is not allowed")
   })
 })

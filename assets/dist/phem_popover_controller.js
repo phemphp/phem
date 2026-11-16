@@ -38,7 +38,7 @@ const FOCUSABLE = "a[href], button, input, select, textarea, [tabindex]"
 // animations. Open moves the focus into the popup: to its `[autofocus]` element, or else to the
 // first element that Tab goes to, or else to the popup. After an open with a touch, the focus goes
 // to the popup, so the keyboard of the device does not show. Escape gives the focus back to the
-// trigger.
+// trigger when the focus is in the popup.
 //
 // The `open` value is the state: the server render gives its first value, and a server render
 // with a new `open` value sets it. When the `dismiss` value is true (the default), Escape, a press
@@ -73,7 +73,9 @@ export default class PhemPopoverController extends Controller {
       dismiss: (reason) => {
         if (!this.dismissValue) return false
 
-        this.#close({ focus: reason === "escape", instant: this.#preview && reason === "escape" ? "dismiss" : false })
+        // The focus goes back to the trigger only when it is in the popup (`#close`), as in Base UI:
+        // Escape on a preview card that a hover opened keeps the focus where it is.
+        this.#close({ focus: false, instant: this.#preview && reason === "escape" ? "dismiss" : false })
       },
     })
     this.hover = new Hover({

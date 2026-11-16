@@ -50,7 +50,8 @@ import { ClientState } from "./phem_client_state.js"
 //
 // A press of the mouse on a slot selects its character.
 //
-// The slots have one tab stop: the first empty slot, or the last slot when the code is complete.
+// The slots have one tab stop: the slot with the focus, or else the first empty slot (the last slot
+// when the code is complete). Tab and Shift+Tab go out of the field.
 // A slot after the first one with no `aria-label` or `aria-labelledby` gets
 // `aria-label="Character 2 of 6"`; the first slot uses the label of the field. The controller
 // element and the slots get `data-disabled`, `data-readonly`, `data-required`, `data-complete` (all
@@ -73,7 +74,10 @@ export default class PhemOtpFieldController extends Controller {
   }
 
   connect() {
-    this.focused = this.#slots.some((el) => el === document.activeElement)
+    // A slot with the focus at connect (autofocus, or a slot that a morph keeps) is the tab stop.
+    const focusedIndex = this.#slots.indexOf(document.activeElement)
+    this.focused = focusedIndex >= 0
+    this.focusedIndex = this.focused ? focusedIndex : undefined
     this.state = new ClientState(this, {
       value: "value",
       owns: (el, name) => this.#owns(el, name),
@@ -259,9 +263,11 @@ export default class PhemOtpFieldController extends Controller {
     }
 
     event.target.select?.()
-    if (this.focused) return
+    if (this.focused && this.focusedIndex === index) return
 
+    // The slot with the focus is the tab stop, so Tab goes out of the field.
     this.focused = true
+    this.focusedIndex = index
     this.#render()
   }
 
@@ -269,6 +275,7 @@ export default class PhemOtpFieldController extends Controller {
     if (!this.#slots.includes(event.target) || this.#slots.includes(event.relatedTarget)) return
 
     this.focused = false
+    this.focusedIndex = undefined
     this.#render()
   }
 
@@ -335,6 +342,7 @@ export default class PhemOtpFieldController extends Controller {
     const value = this.#value
     const chars = [...value]
     const active = this.#active
+    const stop = this.focused && this.focusedIndex !== undefined ? Math.min(this.focusedIndex, active) : active
     this.rendered = value
 
     const state = {
@@ -359,7 +367,7 @@ export default class PhemOtpFieldController extends Controller {
       if (slot.value !== char) slot.value = char
 
       slot.toggleAttribute("data-filled", char !== "")
-      slot.tabIndex = i === active ? 0 : -1
+      slot.tabIndex = i === stop ? 0 : -1
       slot.inputMode = inputMode
       slot.autocomplete = i === 0 ? this.autocompleteValue : "off"
       slot.disabled = this.disabledValue

@@ -296,6 +296,25 @@ describe("phem-popover", () => {
       expect(popup().getAttribute("data-instant")).toBe("focus")
       vi.useRealTimers()
     })
+
+    it("keeps the focus where it is on Escape after a hover open, and does not open again", async () => {
+      await mount(card())
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+      const outside = document.getElementById("outside")
+      outside.focus()
+      document.getElementById("trigger").dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }))
+      vi.advanceTimersByTime(600)
+      expect(shown()).toBe(true)
+
+      press("Escape", outside)
+      expect(shown()).toBe(false)
+      expect(popup().getAttribute("data-instant")).toBe("dismiss")
+      expect(document.activeElement).toBe(outside)
+
+      vi.advanceTimersByTime(1000)
+      expect(shown()).toBe(false)
+      vi.useRealTimers()
+    })
   })
 
   it("opens on hover after the delay with openOnHover", async () => {

@@ -40,7 +40,9 @@ import { isDirty, isDisabledControl, isFilled, isNative, validityOf } from "./ph
 // the user changes the value of this control: a `phem-form` does not submit it, and the control
 // gets the message as its custom validity. An `error` target whose id is in the `aria-describedby`
 // of the server render (the element of `phem:error`) is the message of the server: it shows while
-// the server error stays.
+// the server error stays, and then it shows the errors of the client (an error with no
+// `data-match` then shows only in this part). An event that sends the control, with an answer that
+// does not change it (the server renders the same HTML), shows the server error again.
 //
 // The label links to the control: a `<label>` gets `for` when the control has an id, else the
 // control gets `aria-labelledby` (an element reference when the label has no id). A click on a
@@ -71,6 +73,8 @@ export default class PhemFieldController extends Controller {
     this.submitted = false
     this.touched = false
     this.focused = this.controlTargets.some((el) => el.contains(document.activeElement))
+    this.edits = 0
+    this.sent = []
     this.custom = new Set()
     this.disabledByField = new Set()
 
@@ -96,9 +100,12 @@ export default class PhemFieldController extends Controller {
 
     this.rendered = true
     this.#render({ animate: false })
+    connected.add(this)
+    listenToEvents()
   }
 
   disconnect() {
+    connected.delete(this)
     this.state.disconnect()
     this.listening.abort()
     clearTimeout(this.timer)
@@ -121,7 +128,7 @@ export default class PhemFieldController extends Controller {
     this.keys = result.keys
     this.valid = server ? result.keys.size === 0 : result.valid
     this.message = result.message
-    this.invalidControl = result.control ?? (server ? this.controlTargets.find((el) => serverOf.get(el)?.invalid) : null) ?? null
+    this.invalidControl = result.control ?? (server ? this.controlTargets.find(hasServerError) : null) ?? null
     this.#render({ animate: true })
 
     return !server && this.valid
@@ -156,7 +163,46 @@ export default class PhemFieldController extends Controller {
     if (!next) return
 
     if (this.controlTargets.includes(event.target)) serverOf.set(event.target, serverControl(next))
-    else if (this.errorTargets.includes(event.target)) serverTextOf.set(event.target, next.textContent.trim())
+    else if (this.errorTargets.includes(event.target)) readError(event.target, next)
+  }
+
+  // An event that sends the values of the controls joins the queue (`phem:queue`). Each event gets
+  // its own `phem:done`, also when two submits wait in the queue.
+  onQueue = (event) => {
+    if (!this.#sends(event.target)) return
+
+    this.sent.push({ target: event.target, edits: this.edits })
+    if (this.sent.length > MAX_SENT) this.sent.shift()
+  }
+
+  // The server renders a part again only when its HTML changes: an answer with no morph of a
+  // control keeps its server render, so a server error shows again (Base UI shows the `errors` of
+  // each submit). A change of the user during the request keeps its value. An event that sent no
+  // request (no `status`) and a redirect keep the state.
+  onDone = (event) => {
+    const at = this.sent.findIndex((sent) => sent.target === event.target)
+    if (at < 0) return
+
+    const [{ edits }] = this.sent.splice(at, 1)
+    const { ok, status, redirect } = event.detail ?? {}
+    if (ok !== true || status == null || redirect || edits !== this.edits) return
+
+    const restored = this.controlTargets.filter((el) => serverOf.get(el)?.changed)
+    if (restored.length === 0) return
+
+    for (const el of restored) serverOf.get(el).changed = false
+    this.#render({ animate: true })
+  }
+
+  // Whether an event of `target` sends the values of the controls: phem sends a bound control
+  // with each event, and another control with the events of its form and with its own events.
+  #sends(target) {
+    if (!(target instanceof Node)) return false
+    if (this.controlTargets.some((el) => el.contains(target) || el.hasAttribute("data-phem-bind"))) return true
+
+    const form = this.#form
+
+    return form !== null && form.contains(target)
   }
 
   onFocusin = (event) => {
@@ -183,7 +229,8 @@ export default class PhemFieldController extends Controller {
     if (!control) return
 
     const server = serverOf.get(control)
-    if (server) server.invalid = false
+    if (server) server.changed = true
+    this.edits++
 
     if (this.#mode === "onChange") this.#later()
     else if (this.submitted || this.valid === false) this.validate()
@@ -244,7 +291,7 @@ export default class PhemFieldController extends Controller {
 
   // Whether a control has the error of the server render, and the user did not change it.
   get #serverError() {
-    return this.controlTargets.some((el) => serverOf.get(el)?.invalid)
+    return this.controlTargets.some(hasServerError)
   }
 
   // The `error` targets whose id is in the `aria-describedby` of the server render of a control.
@@ -258,7 +305,8 @@ export default class PhemFieldController extends Controller {
   // the `aria-describedby` of the server render that are not descriptions.
   #serverMessage(parts) {
     const text = (els) => els.map((el) => el.textContent.trim()).filter(Boolean).join(" ")
-    const given = text(parts)
+    // A part of the server can show a message of the client: its server text is the message.
+    const given = parts.map((el) => serverTextOf.get(el) ?? "").filter(Boolean).join(" ")
     if (given) return given
 
     const ids = this.controlTargets.flatMap((el) => idsOf(serverOf.get(el)?.describedBy))
@@ -275,7 +323,7 @@ export default class PhemFieldController extends Controller {
     for (const el of this.controlTargets) {
       if (typeof el.setCustomValidity !== "function") continue
 
-      if (serverOf.get(el)?.invalid) {
+      if (hasServerError(el)) {
         el.setCustomValidity(message)
         this.custom.add(el)
       } else if (this.custom.delete(el)) el.setCustomValidity("")
@@ -309,7 +357,7 @@ export default class PhemFieldController extends Controller {
 
     for (const el of this.errorTargets) {
       const open = shown.has(el)
-      if (open && !serverParts.includes(el) && !serverTextOf.get(el)) el.textContent = message
+      if (open) this.#write(el, server, serverParts, message)
 
       if (!animate) render(el, open)
       else if (open) show(el)
@@ -328,15 +376,35 @@ export default class PhemFieldController extends Controller {
     }
   }
 
+  // The text of an error that shows: the message of the server in its part, the text of the
+  // markup, or else the message of the validation. The part of the server shows the message of the
+  // client after the server error ends.
+  #write(el, server, serverParts, message) {
+    const given = serverTextOf.get(el)
+    const own = serverParts.includes(el) ? server : Boolean(given)
+    if (!own) {
+      if (el.textContent !== message) el.textContent = message
+
+      return
+    }
+
+    // The text of the server render, with its elements (a link, an icon). A part of the server
+    // that showed a message of the client gets it again.
+    if (el.textContent.trim() !== (given ?? "")) el.innerHTML = serverHtmlOf.get(el) ?? ""
+  }
+
   // Whether an error shows.
   #shows(el, server, serverParts) {
-    if (serverParts.includes(el)) return server
+    // The error part of the server shows the server error, and else the errors of the client.
+    if (serverParts.includes(el) && server) return true
 
     const match = el.getAttribute("data-match")
     if (match === "true") return true
     if (match === "valid") return !server && this.valid === true
     if (match) return this.valid === false && this.keys.has(match)
-    if (server) return serverParts.length === 0
+    // The part of the server shows the errors with no `data-match`: an error with no `data-match`
+    // shows only in a field with no part of the server, so a message does not show two times.
+    if (serverParts.length > 0 && !serverParts.includes(el)) return false
 
     return this.valid === false
   }
@@ -394,6 +462,10 @@ export default class PhemFieldController extends Controller {
     return [this.element, ...this.labelTargets, ...this.controlTargets, ...this.descriptionTargets, ...this.errorTargets]
   }
 
+  get #form() {
+    return this.controlTargets[0]?.form ?? this.element.closest("form")
+  }
+
   #controlOf(el) {
     if (!(el instanceof Node)) return null
 
@@ -404,13 +476,40 @@ export default class PhemFieldController extends Controller {
 // The attributes of the state of the parts.
 const STATE_ATTRIBUTES = new Set(["data-disabled", "data-valid", "data-invalid", "data-dirty", "data-touched", "data-filled", "data-focused"])
 
-// control => its server render: `invalid` (`aria-invalid="true"`, until the user changes the
-// value) and `describedBy`. error => the text of its server render.
+// control => its server render: `invalid` (`aria-invalid="true"`), `describedBy`, and `changed`
+// (the user changed the value after this render). error => the text of its server render.
 const serverOf = new WeakMap()
 const serverTextOf = new WeakMap()
+const serverHtmlOf = new WeakMap()
+
+// The events that wait for their answer, for each field (see onQueue()).
+const MAX_SENT = 20
+
+// The connected fields get the `phem:queue` and `phem:done` events of the page from one listener.
+const connected = new Set()
+let listening = false
+
+function listenToEvents() {
+  if (listening) return
+
+  listening = true
+  window.addEventListener("phem:queue", (event) => {
+    for (const field of connected) field.onQueue(event)
+  })
+  window.addEventListener("phem:done", (event) => {
+    for (const field of connected) field.onDone(event)
+  })
+}
 
 function serverControl(el) {
-  return { invalid: el.getAttribute("aria-invalid") === "true", describedBy: el.getAttribute("aria-describedby") }
+  return { invalid: el.getAttribute("aria-invalid") === "true", describedBy: el.getAttribute("aria-describedby"), changed: false }
+}
+
+// A control with the error of the server render, and the user did not change its value.
+function hasServerError(el) {
+  const server = serverOf.get(el)
+
+  return server?.invalid === true && !server.changed
 }
 
 // The first server render of a control or of an error. A morph updates it (see onBeforeMorph).
@@ -418,8 +517,18 @@ function readControl(el) {
   if (!serverOf.has(el)) serverOf.set(el, serverControl(el))
 }
 
-function readError(el) {
-  if (!serverTextOf.has(el)) serverTextOf.set(el, el.textContent.trim())
+function readError(el, next = null) {
+  if (next) {
+    serverTextOf.set(el, next.textContent.trim())
+    serverHtmlOf.set(el, next.innerHTML)
+
+    return
+  }
+
+  if (serverTextOf.has(el)) return
+
+  serverTextOf.set(el, el.textContent.trim())
+  serverHtmlOf.set(el, el.innerHTML)
 }
 
 function idsOf(value) {
