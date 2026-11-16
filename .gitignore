@@ -24,3 +24,5 @@ composer.lock
 # The phemc binary that bin/phemc downloads (and its temporary file).
 /bin/phemc-*
 /bin/.phemc-*
+# The plans that the ship-change workflow writes (.claude/workflows/ship-change.js).
+/.claude/plans/
