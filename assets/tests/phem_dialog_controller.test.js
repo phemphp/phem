@@ -101,6 +101,25 @@ describe("phem-dialog", () => {
     expect(dialog().open).toBe(false)
   })
 
+  it("gives the dialog data-starting-style before it opens", async () => {
+    // The browser computes the styles of the dialog in showModal(): the dialog must have its
+    // starting styles then, or the open animation of the popup and of the backdrop does not run.
+    await mount(edit())
+    const states = []
+    const showModal = HTMLDialogElement.prototype.showModal
+    vi.spyOn(HTMLDialogElement.prototype, "showModal").mockImplementation(function () {
+      states.push([this.hasAttribute("data-open"), this.hasAttribute("data-starting-style")])
+      showModal.call(this)
+    })
+    click("#open")
+
+    expect(states).toEqual([[true, true]])
+    expect(isModal()).toBe(true)
+
+    await new Promise((resolve) => requestAnimationFrame(resolve))
+    expect(dialog().hasAttribute("data-starting-style")).toBe(false)
+  })
+
   it("sets the data attributes and the ARIA attributes of the parts", async () => {
     await mount(edit())
     const trigger = document.getElementById("open")

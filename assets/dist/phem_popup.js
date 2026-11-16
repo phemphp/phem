@@ -39,8 +39,8 @@ export class Popup {
     if (!popup) return
 
     this.#open = true
-    topLayer(popup, true)
-    const shown = show(popup, { instant })
+    // The popup goes to the top layer with its `data-starting-style`, so its open animation runs.
+    const shown = show(popup, { instant, reveal: () => topLayer(popup, true) })
     this.#start(popup)
 
     return shown

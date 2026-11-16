@@ -389,6 +389,33 @@ describe("phem-popover", () => {
     expect(document.getElementById("popup-2").hidden).toBe(false)
   })
 
+  it("gives the popup data-starting-style before it goes to the top layer", async () => {
+    // The browser computes the styles of the popup in showPopover(): the popup must have its
+    // starting styles then, or the open animation does not run.
+    const states = []
+    HTMLElement.prototype.showPopover = function () {
+      states.push([this.hasAttribute("data-open"), this.hasAttribute("data-starting-style"), this.hasAttribute("data-closed")])
+      this.setAttribute("data-test-popover-open", "")
+    }
+    HTMLElement.prototype.hidePopover = function () {
+      this.removeAttribute("data-test-popover-open")
+    }
+    const matches = Element.prototype.matches
+    vi.spyOn(Element.prototype, "matches").mockImplementation(function (selector) {
+      return selector === ":popover-open" ? this.hasAttribute("data-test-popover-open") : matches.call(this, selector)
+    })
+
+    await mount(share().replace('id="popup"', 'id="popup" popover="manual"'))
+    click("#trigger")
+    expect(states).toEqual([[true, true, false]])
+
+    await new Promise((resolve) => requestAnimationFrame(resolve))
+    expect(popup().hasAttribute("data-starting-style")).toBe(false)
+
+    delete HTMLElement.prototype.showPopover
+    delete HTMLElement.prototype.hidePopover
+  })
+
   it("uses the top layer for a popup with the popover attribute", async () => {
     const shown = []
     HTMLElement.prototype.showPopover = function () {

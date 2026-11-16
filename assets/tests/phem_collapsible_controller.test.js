@@ -200,6 +200,23 @@ describe("phem-collapsible", () => {
     expect(panel.style.getPropertyValue("--collapsible-panel-width")).toBe("300px")
   })
 
+  it("measures the content with no alignment, and keeps the styles of the panel", async () => {
+    // The content of a panel with `justify-content: flex-end` overflows to the top while the
+    // height is 0, and the scroll size does not count it.
+    await mount(section())
+    const panel = document.getElementById("panel")
+    panel.style.setProperty("align-items", "center")
+    Object.defineProperty(panel, "scrollHeight", { get: () => (panel.style.getPropertyValue("justify-content") === "initial" ? 92 : 0) })
+    Object.defineProperty(panel, "scrollWidth", { get: () => (panel.style.getPropertyValue("align-items") === "initial" ? 192 : 0) })
+    click("#open")
+
+    expect(panel.style.getPropertyValue("--collapsible-panel-height")).toBe("92px")
+    expect(panel.style.getPropertyValue("--collapsible-panel-width")).toBe("192px")
+    expect(panel.style.getPropertyValue("justify-content")).toBe("")
+    expect(panel.style.getPropertyValue("align-items")).toBe("center")
+    expect(panel.style.getPropertyPriority("align-items")).toBe("")
+  })
+
   it("keeps data-ending-style until the end of the animation", async () => {
     await mount(section('data-phem-collapsible-open-value="true"'))
     const panel = document.getElementById("panel")

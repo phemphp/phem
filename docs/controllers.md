@@ -96,7 +96,7 @@ The controller shows its state in data attributes. Use them in your CSS, or as T
 
 ### Animations
 
-A part that opens gets `data-starting-style` for its first frame. A part that closes gets `data-ending-style`, and gets `hidden` only when its animations end. Use a CSS transition between the two states:
+A part that opens gets `data-starting-style` for its first frame. A part that closes gets `data-ending-style`, and gets `hidden` only when its animations end. A popup in the top layer (a `popover` popup, a `<dialog>`) gets `data-starting-style` before it shows, so its open animation and the open animation of its `::backdrop` run. Use a CSS transition between the two states:
 
 ```css
 .popup {
@@ -173,7 +173,7 @@ The panel has no `id`, so the trigger points to it with an element reference (`a
 
 The controller element and the panel get `data-open` or `data-closed`. During an open and a close, they also get `data-starting-style` and `data-ending-style` (see [Animations](#animations)), as the root of a Base UI Collapsible. So a style of the element can change with the panel, for example the icon of the trigger: `.section[data-ending-style] .icon { rotate: 0deg; }`. The `data-ending-style` of the element stays until the end of the animations of the panel.
 
-The panel gets the size of its content in `--collapsible-panel-height` and `--collapsible-panel-width`, for a transition of its height:
+The panel gets the size of its content in `--collapsible-panel-height` and `--collapsible-panel-width`, for a transition of its height. The controller measures the content with no alignment (`justify-content`, `align-items`, `align-content` and `justify-items`), so a panel that puts its content at its end (`justify-content: flex-end`) gets the correct size:
 
 ```css
 .panel { height: var(--collapsible-panel-height); overflow: hidden; transition: height 200ms; }
@@ -2317,7 +2317,7 @@ The detail of the browser event has the title: `{"message": "The file is in your
 
 ### Show the stack on hover
 
-The pointer or the focus of the keyboard on the `phem-toast` element expands the stack (the focus of a click on a toast does not): the element and each toast get `data-expanded`, and the time of all the toasts stops. The stack closes when the pointer and the focus go, and when its last toast goes. The state stays after the morph of an event. Each toast gets `--toast-height` (its height) and `--toast-offset-y` (the heights of the newer toasts), and the element gets `--toast-frontmost-height` (the height of the last toast). Use them for a stack that shows only the last toast until the pointer comes:
+The pointer or the focus of the keyboard on the `phem-toast` element expands the stack (the focus of a click on a toast does not): the element and each toast get `data-expanded`, and the time of all the toasts stops. The stack closes when the pointer and the focus go, and when its last toast goes. The state stays after the morph of an event. Each toast gets `--toast-height` (its height) and `--toast-offset-y` (the heights of the newer toasts), and the element gets `--toast-frontmost-height` (the height of the last toast). The height of a toast is the height of its content (its height with `height: auto`), so the CSS can give each toast the height of the last toast: `height: var(--toast-frontmost-height, var(--toast-height))`. With no toast, the element has no `--toast-frontmost-height`. Use them for a stack that shows only the last toast until the pointer comes:
 
 ```css
 [data-controller~="phem-toast"] { display: block; height: var(--toast-frontmost-height); }

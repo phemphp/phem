@@ -16,6 +16,9 @@ const shown = new WeakSet()
 // Each toast has an id: the morph does not match it with a new element of the server render.
 let count = 0
 
+// toast => the height of its content.
+const heights = new WeakMap()
+
 // The distance (px) of a swipe that closes the toast.
 const SWIPE = 40
 
@@ -53,8 +56,8 @@ const OWNED = "data-phem-toast-owned"
 // element, and Tab after the last toast, also give the focus back to that element.
 //
 // The pointer or the focus of the keyboard on the element expands the stack: the element and the toasts get
-// `data-expanded`, and the time of all the toasts stops. Each toast gets `--toast-height` (its
-// height) and `--toast-offset-y` (the heights of the newer toasts), and the element gets
+// `data-expanded`, and the time of all the toasts stops. Each toast gets `--toast-height` (the
+// height of its content) and `--toast-offset-y` (the heights of the newer toasts), and the element gets
 // `--toast-frontmost-height` (the height of the last toast), for a stack that shows only the last
 // toast until the pointer comes. The stack closes when the pointer and the focus go, and when its
 // last toast goes. The morph of the element does not remove its state.
@@ -421,7 +424,7 @@ export default class PhemToastController extends Controller {
     let offset = 0
 
     toasts.forEach((el, i) => {
-      const height = el.offsetHeight
+      const height = this.#heightOf(el)
       el.style.setProperty("--toast-index", String(i))
       el.style.setProperty("--toast-height", `${height}px`)
       el.style.setProperty("--toast-offset-y", `${offset}px`)
@@ -432,7 +435,29 @@ export default class PhemToastController extends Controller {
       offset += height
     })
 
-    this.element.style.setProperty("--toast-frontmost-height", `${toasts[0]?.offsetHeight ?? 0}px`)
+    // With no toast, the element has no height of a last toast: a CSS fallback applies, as in
+    // Base UI (`height: var(--toast-frontmost-height, var(--toast-height))`).
+    if (toasts.length > 0) this.element.style.setProperty("--toast-frontmost-height", `${this.#heightOf(toasts[0])}px`)
+    else this.element.style.removeProperty("--toast-frontmost-height")
+  }
+
+  // The height of the content of a toast, as in Base UI: the CSS of the app can give a toast the
+  // height of the last toast (`height: var(--toast-frontmost-height)`), which is not its own
+  // height. The controller measures a toast one time, so the measure does not stop a transition
+  // of the height.
+  #heightOf(el) {
+    if (heights.has(el)) return heights.get(el)
+
+    const before = el.style.getPropertyValue("height")
+    el.style.setProperty("height", "auto")
+    const height = el.offsetHeight
+    if (before === "") el.style.removeProperty("height")
+    else el.style.setProperty("height", before)
+
+    // A toast that is not on the screen has no height yet.
+    if (height > 0) heights.set(el, height)
+
+    return height
   }
 
   // The stack shows all its toasts, and their time stops. The time starts again when it closes.

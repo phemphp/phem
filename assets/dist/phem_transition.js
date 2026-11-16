@@ -15,18 +15,27 @@
 // part => the AbortController of its open or close.
 const running = new WeakMap()
 
-// Opens `part`. Resolves after its first frame.
-export function show(part, { instant = false, hidden = true } = {}) {
+// The properties that move the content of a panel in it.
+const ALIGNMENTS = ["justify-content", "align-items", "align-content", "justify-items"]
+
+// Opens `part`. Resolves after its first frame. `reveal` is the function that puts the part on the
+// screen when `hidden` does not do it (`showPopover()`, `showModal()`). It runs after the part has
+// its state, so the first styles that the browser computes for the part are the styles of
+// `[data-starting-style]`. If the browser computes the open styles first, the transition goes to
+// the starting styles and back, and the part shows with no animation.
+export function show(part, { instant = false, hidden = true, reveal = null } = {}) {
   const signal = restart(part)
 
   part.removeAttribute("data-closed")
   part.removeAttribute("data-ending-style")
   part.setAttribute("data-open", "")
-  if (hidden !== false) part.hidden = false
   instantly(part, instant)
+  if (instant) part.removeAttribute("data-starting-style")
+  else part.setAttribute("data-starting-style", "")
+  if (hidden !== false) part.hidden = false
+  reveal?.()
   if (instant) return Promise.resolve()
 
-  part.setAttribute("data-starting-style", "")
   // The browser reads the styles of the first frame, then the transition starts.
   void part.offsetWidth
 
@@ -93,9 +102,25 @@ export function render(part, open, { hidden = true } = {}) {
 
 // Gives a panel the size of its content in the `--<name>-panel-height` and `--<name>-panel-width`
 // CSS variables, for a transition of its height (`phem-collapsible`, `phem-accordion`).
+//
+// The size is the scroll size of the panel with no alignment of its content, as in Base UI: the
+// content of a panel with `justify-content: flex-end` overflows to the top while the height is 0,
+// and the scroll size does not count an overflow to the top or to the start.
 export function measure(panel, name) {
-  panel.style.setProperty(`--${name}-panel-height`, `${panel.scrollHeight}px`)
-  panel.style.setProperty(`--${name}-panel-width`, `${panel.scrollWidth}px`)
+  const style = panel.style
+  const before = ALIGNMENTS.map((property) => [property, style.getPropertyValue(property), style.getPropertyPriority(property)])
+  for (const property of ALIGNMENTS) style.setProperty(property, "initial", "important")
+
+  const height = panel.scrollHeight
+  const width = panel.scrollWidth
+
+  for (const [property, value, priority] of before) {
+    if (value === "") style.removeProperty(property)
+    else style.setProperty(property, value, priority)
+  }
+
+  style.setProperty(`--${name}-panel-height`, `${height}px`)
+  style.setProperty(`--${name}-panel-width`, `${width}px`)
 }
 
 function restart(part) {

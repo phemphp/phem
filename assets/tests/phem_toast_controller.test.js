@@ -384,6 +384,30 @@ describe("phem-toast", () => {
     expect(toasts()[1].hasAttribute("data-ending-style")).toBe(false)
   })
 
+  it("measures the height of the content of a toast, and removes the height of the last toast with no toast", async () => {
+    // The CSS of the app can give a toast the height of the last toast
+    // (`height: var(--toast-frontmost-height)`): its own height is its height with `height: auto`.
+    const height = vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function () {
+      return this.hasAttribute("data-phem-toast") ? (this.style.getPropertyValue("height") === "auto" ? 70 : 2) : 0
+    })
+    await mount(page(`data-phem-toast-duration-value="0"`))
+    const root = document.getElementById("toasts")
+    toast("First")
+
+    expect(toasts()[0].style.getPropertyValue("--toast-height")).toBe("70px")
+    expect(toasts()[0].style.getPropertyValue("height")).toBe("")
+    expect(root.style.getPropertyValue("--toast-frontmost-height")).toBe("70px")
+
+    click("#toasts [data-phem-toast-close]")
+    expect(toasts()).toEqual([])
+    expect(root.style.getPropertyValue("--toast-frontmost-height")).toBe("")
+
+    toast("Second")
+    expect(toasts()[0].style.getPropertyValue("--toast-height")).toBe("70px")
+    expect(root.style.getPropertyValue("--toast-frontmost-height")).toBe("70px")
+    height.mockRestore()
+  })
+
   it("removes a toast after the animation of data-ending-style", async () => {
     await mount(page())
     toast("Hello")

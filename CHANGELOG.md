@@ -8,6 +8,18 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- The open animation of a popup in the top layer runs. `phem-popover`, `phem-tooltip`, `phem-menu`,
+  `phem-select`, `phem-combobox` and `phem-dialog` give the popup `data-open` and
+  `data-starting-style` before `showPopover()` and `showModal()`. Before, the browser computed the
+  open styles first, so the popup (and the `::backdrop` of a dialog) showed with no animation.
+- `phem-collapsible` and `phem-accordion` measure the content of a panel with no alignment
+  (`justify-content`, `align-items`, `align-content`, `justify-items`), as Base UI. Before, a
+  panel with `justify-content: flex-end` got `--collapsible-panel-height: 0px`, and showed nothing.
+- `phem-toast` measures the height of the content of a toast (its height with `height: auto`) for
+  `--toast-height` and `--toast-frontmost-height`, and removes `--toast-frontmost-height` from the
+  element when no toast remains, as Base UI. Before, with the CSS
+  `height: var(--toast-frontmost-height, var(--toast-height))`, the first toast after the last
+  dismiss had a height of 0.
 - **Breaking** `phem-tooltip` is only visual, as the Tooltip of Base UI v1.9.0: the popup gets no
   `role="tooltip"`, and the trigger gets no `aria-describedby`. For a description that a screen
   reader reads, give the popup an `id` and `role="tooltip"`, and give the trigger

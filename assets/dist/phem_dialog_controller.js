@@ -310,8 +310,11 @@ export default class PhemDialogController extends Controller {
 
       if (this.openValue) {
         unswipe(popup)
-        this.#showDialog(el)
-        for (const part of this.#parts(el)) show(part, { hidden: false })
+        // The dialog opens after its parts have `data-starting-style`, so the open animation of
+        // the popup and of the `::backdrop` runs. The dialog is the first part, and the last to show.
+        const [dialog, ...parts] = this.#parts(el)
+        for (const part of parts) show(part, { hidden: false })
+        show(dialog, { hidden: false, reveal: () => this.#showDialog(el) })
         this.#renderNesting(el, true)
         this.#renderDrawer()
 
