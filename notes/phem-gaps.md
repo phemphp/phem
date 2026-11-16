@@ -4,6 +4,16 @@ Each item is a behavior of Base UI v1.9.0 (the release that base-ui.com shows) t
 
 Status (2026-11-16): phem v0.4.7 is the installed release. phem v0.4.5 to v0.4.7 fix five gaps from a comparison of each demo page with base-ui.com in Chromium (Playwright, real mouse and keyboard input, light and dark mode): the open animation of the popups, the size of a Collapsible panel with `justify-end`, the height of the first toast after the last dismiss, the focus after a press in the Combobox popup, and the place of the arrow of a popup with a border. Items 1 and 2 below are from the comparison with the Base UI source. Items 3 to 15 are the other results of the browser comparison. Each item was measured two times or more. The paths are in `assets/dist/` of phem.
 
+## Fixed in phem, not released
+
+The phem commit 9a61b3a on `main` fixes these five gaps after v0.4.7. It is not in a release yet. Remove this section after the next phem release and the `composer update phem/phem`.
+
+- Preview Card: Escape on a card that a hover opened focused the link, and the card opened again after 600 ms. Now the focus goes to the trigger only when it is in the popup.
+- Navigation Menu: Tab from the last entry of the list went into the content again. Now it goes to the next element of the page, and the menu closes.
+- OTP field: Tab from a filled slot went to the first empty slot. Now the slot with the focus is the tab stop.
+- Form: the same server error two times showed the field as valid. Now an answer with no new HTML for a field shows its server error again, for each event that sends the control.
+- Form: after a server error, the client errors did not show. Now the error part of the server shows the client errors after the user changes the value.
+
 ## Open
 
 1. **Number field: the scrub area.** phem has the scrub math of Base UI, the center of the virtual cursor, the `teleportDistance` value, and the stop of the button repeat at the limit. It does not have:
@@ -36,7 +46,6 @@ Status (2026-11-16): phem v0.4.7 is the installed release. phem v0.4.5 to v0.4.7
    - After a keyboard open and a press on the backdrop, the trigger gets the focus with no focus ring.
 
 6. **Popover and Preview Card.**
-   - Preview Card (broken): Escape on a card that a hover opened focuses the link, and the card opens again after 600 ms. `phem_popover_controller.js:76` gives the focus to the trigger for each Escape. Base UI moves the focus only when it is in the popup.
    - Preview Card: `data-instant` stops the animation of a focus open, a blur close and an Escape close (`phem_transition.js:27` and `:53`). Base UI only sets the attribute, and the CSS decides. The same applies to a menu: the Menu and Context Menu classes of Base UI have no `data-instant:transition-none`, so a keyboard open and an Escape close must animate.
    - Popover: no focus return to the trigger after a press outside.
    - Preview Card: the popup has `aria-hidden="true"`.
@@ -74,7 +83,6 @@ Status (2026-11-16): phem v0.4.7 is the installed release. phem v0.4.5 to v0.4.7
     - Attributes: no `aria-haspopup` on the input, no `aria-expanded`, `aria-haspopup`, `aria-controls` and `data-popup-open` on the trigger, no `role="group"` and `data-popup-open` on the input group, and no `data-list-empty` on the input.
 
 11. **Navigation Menu.**
-    - Tab does not go out of an open menu (broken): the focus goes from the last entry of the list into the content again. Base UI goes to the next element of the page and closes the menu.
     - The first move between two triggers after an open has no slide: `data-instant` stays on the positioner (`phem_navigation_menu_controller.js:376-387`).
     - The arrow slides in from the left at each open: its first `left` comes before the size of the popup.
     - A click on a trigger that a hover opened always keeps the menu open. Base UI closes it when the click is 500 ms or more after the open.
@@ -89,12 +97,9 @@ Status (2026-11-16): phem v0.4.7 is the installed release. phem v0.4.5 to v0.4.7
 
 13. **Number field and OTP field: more input cases** (in addition to items 1 and 2).
     - Number field: PageUp and PageDown change the value (`phem_number_field_controller.js:177`). Enter formats the text (`:170-173`). The input accepts `%`, a space, a second sign and a second decimal point, and refuses the digits of other scripts (`:159-164`, `:468-475`). `inputmode` is `decimal` (Base UI: `numeric`, but not on iOS).
-    - OTP field (broken): Tab from a filled slot goes to the next slot. `tabindex="0"` stays on the first empty slot (`phem_otp_field_controller.js:362`). Base UI gives it to the slot with the focus.
     - OTP field: no `role="group"` and `aria-labelledby` on the root, and no `enterkeyhint`, `autocorrect`, `maxlength` and `type="text"` on the slots.
 
 14. **Field and Form.**
-    - The same server error two times shows the field as valid (broken). The second response has no HTML change, so no morph event sets the server state again (`phem_field_controller.js:154-160`, `:185-186`).
-    - After a server error, the client errors do not show (broken): an error part with a server id uses only the server state (`:312`, `:333`).
     - A submit with the button: phem sets `disabled` on the button (`phem_controller.js:668-675`), so the focus goes to `<body>`. Base UI uses `aria-disabled`, and focuses the invalid control after the error.
     - The label and the description use element references, so `aria-labelledby=""` and `aria-describedby=""` are empty attributes. Base UI uses ids and `for`.
 

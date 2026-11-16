@@ -4,7 +4,7 @@ The work that is still open in `phem/ui-base`. The bundle has no workarounds. A 
 
 ## Waiting for a phem fix
 
-A comparison of each demo page with base-ui.com (Base UI v1.9.0) in a browser (2026-11-16) found the open gaps. phem v0.4.5 to v0.4.7 fix five of them: the open animation of the popups, the Collapsible panel that showed nothing, the second toast after a dismiss, a press in the Combobox popup that took the focus from the input, and the arrow of a popup with a border. 15 groups of gaps are still open. The most important ones: the server errors of the Form, Tab in the OTP field, the Navigation Menu and the modal dialogs, and Escape on a Preview Card. See [notes/phem-gaps.md](notes/phem-gaps.md) for the list. After each phem release, update `phem/phem` (`composer update phem/phem` in the bundle and in `demo/`) and check this list again.
+A comparison of each demo page with base-ui.com (Base UI v1.9.0) in a browser (2026-11-16) found the open gaps. phem v0.4.5 to v0.4.7 fix five of them: the open animation of the popups, the Collapsible panel that showed nothing, the second toast after a dismiss, a press in the Combobox popup that took the focus from the input, and the arrow of a popup with a border. 15 groups of gaps are still open. The phem commit 9a61b3a on `main` (not released) fixes the five broken items after v0.4.7: the server errors of the Form, Tab in the OTP field and in the Navigation Menu, and Escape on a Preview Card. The most important open item is Tab in the modal dialogs. See [notes/phem-gaps.md](notes/phem-gaps.md) for the list. After each phem release, update `phem/phem` (`composer update phem/phem` in the bundle and in `demo/`) and check this list again.
 
 ## Open differences in the bundle
 
