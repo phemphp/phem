@@ -292,6 +292,17 @@ The third argument works as in Twig: `path(ScientistPage, {...}, true)` gives a 
 
 `phemc` checks that the class is a page with a route (E063). A page of a package has a route only when your app imports the pages of the package (see [Import the pages of a package](packages.md#import-the-pages-of-a-package)). The same values work in PHP, in `RedirectTo` and in `PageUrlGenerator::generate()`: `new RedirectTo(ScientistPage::class, ['scientist' => $scientist])`. Markup also reads the cases of an enum with its class name (see [Classes in markup](syntax.md#classes-in-markup)).
 
+### Link to a part of the page
+
+A link that changes only the hash of the page starts no Turbo visit. The browser does its native jump, and the focus does not go to `<body>`. This applies to `href="#"`, `href="#comments"`, and a URL with the same path and query string as the page:
+
+```html
+<a href="#">Top</a>
+<a href="#comments">Comments</a>
+```
+
+A click on **Top** scrolls to the top of the page and sets the URL to `…#`. The page does not load again. With `data-turbo-action="replace"` on the link, the jump replaces the history entry and adds no new entry.
+
 ## Redirect before a page renders
 
 A page can redirect when the browser opens it, for example after it checks a link token. Return a `RedirectTo` from a function page, or from the `mount()` of a class page. The page doesn’t render, and the response is a `302`:

@@ -57,6 +57,24 @@ final class SmokeTest extends E2eTestCase
         expect($bob->locator('#entries li'))->toHaveExactText('Hello from Alice');
     }
 
+    public function testALinkToTheHashOfThePageStartsNoVisit(): void
+    {
+        $page = $this->visit('/counter');
+        self::assertResponseIsSuccessful();
+
+        $page->locator('#increment')->click();
+        expect($page->locator('#count'))->toHaveText('1');
+
+        $page->evaluate("() => { window.visits = 0; document.addEventListener('turbo:visit', () => window.visits++) }");
+        $page->locator('#top')->click();
+        $page->evaluate('() => new Promise((resolve) => setTimeout(resolve, 300))');
+
+        // The browser does its native jump. With no guard, Turbo 8 would load the page again.
+        self::assertSame(0, $page->evaluate('window.visits'));
+        expect($page->locator('#count'))->toHaveText('1');
+        expect($page->locator('#top'))->toBeFocused();
+    }
+
     public function testMorphKeepsTheNodesOutsideTheChangedComponent(): void
     {
         $page = $this->visit('/counter');

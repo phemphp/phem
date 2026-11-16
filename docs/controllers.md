@@ -1560,7 +1560,7 @@ Give the errors `hidden` in the markup, so they do not show before the controlle
 
 ### Submit the form
 
-The form gets `novalidate`: the fields show their errors in place of the messages of the browser. On a submit, each field validates. When a field is invalid, `phem-form` stops the submit before the `onSubmit` handler sends its event, and before the browser sends the form. It focuses the first invalid control and sends `phem-form:invalid`, with the invalid fields in `detail.fields`. A control of the form that is not in a field shows the message of the browser (`reportValidity()`). A submit button with `formnovalidate` submits with no validation.
+The form gets `novalidate`: the fields show their errors in place of the messages of the browser. On a submit, each field validates. When a field is invalid, `phem-form` stops the submit before the `onSubmit` handler sends its event, and before the browser sends the form. It focuses the first invalid control, selects its text, and sends `phem-form:invalid`, with the invalid fields in `detail.fields`. A control of the form that is not in a field shows the message of the browser (`reportValidity()`). A submit button with `formnovalidate` submits with no validation.
 
 After a submit with an empty name, the browser shows:
 
@@ -1577,7 +1577,7 @@ The `aria-describedby=""` is empty because the description has no id: the contro
 
 ### Keep the server errors
 
-A server error is a control that the server renders with `aria-invalid="true"`: a field with `phem:bind` and an error (see [Show the error of a bound field](forms.md#show-the-error-of-a-bound-field)), or a Symfony form with `form_row()`. The field is invalid until the user changes the value of the control. While the error stays, the form does not submit the same value again, and the control gets the message of the server as its custom validity.
+A server error is a control that the server renders with `aria-invalid="true"`: a field with `phem:bind` and an error (see [Show the error of a bound field](forms.md#show-the-error-of-a-bound-field)), or a Symfony form with `form_row()`. The field is invalid until the user changes the value of the control. While the error stays, the form does not submit the same value again, and the control gets the message of the server as its custom validity. After the submit event of the form (its `onSubmit` handler) ends with a new render, the first control with a server error gets the focus and its text is selected, as in Base UI. An error of the browser, a hidden or disabled control, another event of the form (an `onChange` of the form), and a submit that ends with a redirect do not move the focus. When the user moved the focus out of the form while the request ran, the focus stays there.
 
 An `error` part whose id is in the `aria-describedby` of the server render is the message of the server, for example the element of `phem:error`. It shows while the server error stays. After the user changes the value, it shows the errors of the browser instead, as the `Field.Error` of Base UI: for example the message of `valueMissing` when the user clears the control.
 
@@ -1591,15 +1591,15 @@ The server sends the HTML of a component only when it changes. When the user sub
 </div>
 ```
 
-After a submit of a name that the server refuses, the browser shows:
+After a submit of a name that the server refuses, `#name` has the focus and its text ("Shoes") is selected. The browser shows:
 
 ```html
-<div id="name-field" data-controller="phem-field" data-filled="" data-touched="" data-invalid="">
-    <label id="name-label" data-phem-field-target="label" data-filled="" data-touched="" data-invalid="" for="name">Name</label>
-    <input id="name" name="name" required="" value="Shoes" data-phem-field-target="control" aria-describedby="" data-filled="" data-touched="" aria-invalid="true" data-invalid="">
-    <p class="description" data-phem-field-target="description" data-filled="" data-touched="" data-invalid="">Visible on your profile</p>
-    <p id="name-missing" data-phem-field-target="error" data-match="valueMissing" hidden="" data-closed="" data-filled="" data-touched="" data-invalid="">Enter your name.</p>
-    <p id="name-error" data-phem-field-target="error" data-invalid="" data-touched="" data-filled="" data-open="">This name is taken.</p>
+<div id="name-field" data-controller="phem-field" data-filled="" data-touched="" data-invalid="" data-focused="">
+    <label id="name-label" data-phem-field-target="label" data-filled="" data-touched="" data-invalid="" data-focused="" for="name">Name</label>
+    <input id="name" name="name" required="" value="Shoes" data-phem-field-target="control" aria-describedby="" data-filled="" data-touched="" aria-invalid="true" data-invalid="" data-focused="">
+    <p class="description" data-phem-field-target="description" data-filled="" data-touched="" data-invalid="" data-focused="">Visible on your profile</p>
+    <p id="name-missing" data-phem-field-target="error" data-match="valueMissing" hidden="" data-closed="" data-filled="" data-touched="" data-invalid="" data-focused="">Enter your name.</p>
+    <p id="name-error" data-phem-field-target="error" data-invalid="" data-touched="" data-filled="" data-open="" data-focused="">This name is taken.</p>
 </div>
 ```
 
