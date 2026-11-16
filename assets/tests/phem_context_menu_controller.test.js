@@ -177,3 +177,93 @@ describe("phem-context-menu", () => {
     expect(controller.anchor.contextElement).toBe(area2)
   })
 })
+
+describe("phem-context-menu: the behavior of Base UI", () => {
+  const pointerUp = (el, init = {}) => el.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, cancelable: true, pointerType: "mouse", isPrimary: true, button: 2, ...init }))
+
+  it("keeps the side and shifts the popup with the context collision near the bottom edge", async () => {
+    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(150)
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(200)
+    await mount(area())
+    contextMenu($("area"), 120, 750)
+
+    expect(isOpen()).toBe(true)
+    expect($("popup").getAttribute("data-side")).toBe("bottom")
+    expect($("popup").style.top).toBe("595px")
+  })
+
+  it("does nothing on Tab: the menu stays open", async () => {
+    await mount(area())
+    contextMenu($("area"))
+    const event = press("Tab")
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(isOpen()).toBe(true)
+  })
+
+  it("clicks an item at a release of the right button after the delay, more than 1 px from the open point", async () => {
+    await mount(area())
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    contextMenu($("area"), 120, 80)
+    vi.advanceTimersByTime(600)
+    pointerUp($("delete"), { clientX: 200, clientY: 150 })
+
+    expect(isOpen()).toBe(false)
+  })
+
+  it("does not click an item at a release of the right button before the delay, or at the open point", async () => {
+    await mount(area())
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    contextMenu($("area"), 120, 80)
+    pointerUp($("delete"), { clientX: 200, clientY: 150 })
+    expect(isOpen()).toBe(true)
+
+    press("Escape")
+    contextMenu($("area"), 120, 80)
+    vi.advanceTimersByTime(600)
+    pointerUp($("delete"), { clientX: 121, clientY: 80 })
+    expect(isOpen()).toBe(true)
+  })
+
+  it("does not arm the release for a keyboard contextmenu", async () => {
+    await mount(area())
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    contextMenu($("area"), 0, 0)
+    vi.advanceTimersByTime(600)
+    pointerUp($("delete"), { clientX: 200, clientY: 150 })
+
+    expect(isOpen()).toBe(true)
+  })
+
+  it("a submenu of a context menu does not get the context collision", async () => {
+    await mount(area())
+    const menu = application.getControllerForElementAndIdentifier($("menu"), "phem-context-menu")
+    const submenu = application.getControllerForElementAndIdentifier($("share").parentElement, "phem-menu")
+
+    expect(menu.placementOptions().collision).toBe("context")
+    expect(submenu.isSubmenu).toBe(true)
+    expect(submenu.placementOptions().collision).toBeUndefined()
+  })
+
+  it("gives the focus back to no element after an open with no point", async () => {
+    await mount(`${area()}<input id="first"><input id="second">`)
+    $("first").focus()
+    contextMenu($("area"))
+    press("Escape")
+    expect(document.activeElement.id).toBe("first")
+
+    // The `open` action: the menu has no element to give the focus back to.
+    $("second").focus()
+    application.getControllerForElementAndIdentifier($("menu"), "phem-context-menu").open()
+    press("Escape")
+    expect(isOpen()).toBe(false)
+    expect(document.activeElement.id).not.toBe("first")
+  })
+
+  it("gives data-instant click to the popup on open", async () => {
+    await mount(area())
+    contextMenu($("area"))
+
+    expect($("popup").getAttribute("data-instant")).toBe("click")
+  })
+})

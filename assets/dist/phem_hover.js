@@ -7,6 +7,12 @@
 // popup stays open, and the time of the close starts when the pointer goes out of that space. A touch does nothing: a tap
 // opens the popup with its click.
 //
+// With `stayAfterLanding` (`() => false`), a popup that the pointer entered (`landed`) stays open
+// when the pointer goes out of it to a node that is not a trigger or a popup, or out of the page,
+// as the `safePolygon` of Base UI. The pointer back on a trigger and reset() (at the close of the
+// popup) reset `landed`. `phem-menu` uses it for a submenu: it closes the submenu when the pointer
+// gets to another item of its menu.
+//
 //     this.hover = new Hover({
 //       enabled: () => this.openOnHoverValue,
 //       triggers: () => this.triggerTargets,
@@ -16,6 +22,7 @@
 //       close: () => this.close(),
 //       delay: () => this.delayValue,
 //       closeDelay: () => this.closeDelayValue,
+//       stayAfterLanding: () => false,
 //     })
 //     element.addEventListener("pointerover", (event) => this.hover.over(event))
 //     element.addEventListener("pointerout", (event) => this.hover.out(event))
@@ -23,9 +30,15 @@ export class Hover {
   #options
   #timer = null
   #tracking = null
+  #landed = false
 
   constructor(options) {
-    this.#options = options
+    this.#options = { stayAfterLanding: () => false, ...options }
+  }
+
+  // Whether the pointer entered the open popup after it was on a trigger.
+  get landed() {
+    return this.#landed && this.#options.isOpen()
   }
 
   over(event) {
@@ -35,12 +48,13 @@ export class Hover {
     const onTrigger = within(triggers(), event.target)
     if (!onTrigger && !within(popups(), event.target)) return
 
+    this.#landed = isOpen() && !onTrigger
     this.cancel()
     if (!isOpen() && onTrigger) this.#timer = setTimeout(open, delay())
   }
 
   out(event) {
-    const { enabled, triggers, popups, isOpen } = this.#options
+    const { enabled, triggers, popups, isOpen, stayAfterLanding } = this.#options
     if (!enabled() || event.pointerType === "touch") return
 
     const to = event.relatedTarget
@@ -48,6 +62,9 @@ export class Hover {
 
     this.cancel()
     if (!isOpen()) return
+
+    // The pointer entered the popup, and goes out of it to empty space: the popup stays open.
+    if (this.landed && stayAfterLanding() && within(popups(), event.target)) return
 
     // The pointer went out of the page, or out of the space between the trigger and the popup.
     if (!(to instanceof Node) || !this.#between(event)) {
@@ -57,6 +74,12 @@ export class Hover {
     }
 
     this.#track()
+  }
+
+  // The popup closed: a pending open or close stops, and the next open starts with no landing.
+  reset() {
+    this.cancel()
+    this.#landed = false
   }
 
   // Stops a pending open or close: a click, a key or a disconnect.

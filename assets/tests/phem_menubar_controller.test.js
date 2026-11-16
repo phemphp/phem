@@ -139,13 +139,13 @@ describe("phem-menubar", () => {
     press("ArrowRight")
     expect($("file-popup").hidden).toBe(true)
     expect($("edit-popup").hidden).toBe(false)
-    expect(document.activeElement).toBe($("undo"))
+    expect(document.activeElement).toBe($("edit-popup"))
     expect(tabStops()).toEqual(["edit-trigger"])
 
     press("ArrowLeft")
     expect($("edit-popup").hidden).toBe(true)
     expect($("file-popup").hidden).toBe(false)
-    expect(document.activeElement).toBe($("new"))
+    expect(document.activeElement).toBe($("file-popup"))
 
     press("Escape")
     expect($("file-popup").hidden).toBe(true)
@@ -303,5 +303,54 @@ describe("phem-menubar: data-instant", () => {
     application.getControllerForElementAndIdentifier($("edit"), "phem-menu").open()
     expect($("file-popup").hidden).toBe(true)
     expect($("file-popup").getAttribute("data-instant")).toBe("group")
+  })
+})
+
+describe("phem-menubar: the behavior of Base UI", () => {
+  it("opens the next menu with the popup focused and no item highlighted on ArrowRight and ArrowLeft", async () => {
+    await mount(bar())
+    $("file-trigger").focus()
+    press("ArrowDown")
+    expect(document.activeElement).toBe($("new"))
+
+    press("ArrowRight")
+    expect($("edit-popup").hidden).toBe(false)
+    expect(document.activeElement).toBe($("edit-popup"))
+    expect($("edit-popup").querySelector("[data-highlighted]")).toBe(null)
+
+    press("ArrowLeft")
+    expect($("file-popup").hidden).toBe(false)
+    expect(document.activeElement).toBe($("file-popup"))
+    expect($("file-popup").querySelector("[data-highlighted]")).toBe(null)
+  })
+
+  it("a click on the trigger of an open menu of the menubar does not close it at pointerdown", async () => {
+    await mount(bar())
+    const pointer = (type) => $("file-trigger").dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerType: "mouse", isPrimary: true, button: 0 }))
+    const mouseClick = () => $("file-trigger").dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 }))
+
+    // A menu of a menubar opens at the click, as in Base UI.
+    pointer("pointerdown")
+    expect($("file-popup").hidden).toBe(true)
+    pointer("pointerup")
+    mouseClick()
+    expect($("file-popup").hidden).toBe(false)
+
+    pointer("pointerdown")
+    expect($("file-popup").hidden).toBe(false)
+    pointer("pointerup")
+    mouseClick()
+    expect($("file-popup").hidden).toBe(true)
+  })
+
+  it("gives the focus to the trigger on Shift+Tab, and keeps the menu open", async () => {
+    await mount(bar())
+    $("file-trigger").focus()
+    press("ArrowDown")
+    const event = press("Tab", { shiftKey: true })
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe($("file-trigger"))
+    expect($("file-popup").hidden).toBe(false)
   })
 })

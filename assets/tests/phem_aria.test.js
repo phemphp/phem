@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest"
-import { link } from "../dist/phem_aria.js"
+import { controlWhileOpen, link } from "../dist/phem_aria.js"
 import { stubElementReflection } from "./support.js"
 
 afterEach(() => {
@@ -68,5 +68,38 @@ describe("link()", () => {
     link(from, "aria-controls", "ariaControlsElements", to)
 
     expect(from.getAttribute("aria-controls")).toBe("filters")
+  })
+})
+
+describe("controlWhileOpen()", () => {
+  it("links the trigger only while the popup is open", () => {
+    const [from, to] = parts('<button id="from"></button><div id="to" data-to></div>')
+    controlWhileOpen(from, to, false)
+    expect(from.hasAttribute("aria-controls")).toBe(false)
+
+    controlWhileOpen(from, to, true)
+    expect(from.getAttribute("aria-controls")).toBe("to")
+
+    controlWhileOpen(from, to, false)
+    expect(from.hasAttribute("aria-controls")).toBe(false)
+  })
+
+  it("keeps an aria-controls of the server render, also one with the id of the popup", () => {
+    for (const given of ["help", "to"]) {
+      const [from, to] = parts(`<button id="from" aria-controls="${given}"></button><div id="to" data-to></div>`)
+      controlWhileOpen(from, to, true)
+      controlWhileOpen(from, to, false)
+
+      expect(from.getAttribute("aria-controls")).toBe(given)
+    }
+  })
+
+  it("takes a new aria-controls that the morph gives while the popup is open", () => {
+    const [from, to] = parts('<button id="from"></button><div id="to" data-to></div>')
+    controlWhileOpen(from, to, true)
+    from.setAttribute("aria-controls", "help")
+    controlWhileOpen(from, to, false)
+
+    expect(from.getAttribute("aria-controls")).toBe("help")
   })
 })

@@ -8,6 +8,23 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking**: `phem-menu` opens at the press of the mouse on its trigger, as in Base UI, and a
+  release on an item 200 ms after the press clicks the item. A touch, Enter and Space still use
+  the click. A `click` listener that calls `preventDefault()` on the trigger no longer stops the
+  open: cancel the `pointerdown`. ArrowUp on a closed trigger no longer opens the menu on its last
+  item. A closed trigger has no `aria-controls`: the trigger has it only while the menu is open.
+- `phem-menu`: a press outside closes the menu at once, also with the right button, and the focus
+  goes back to the trigger. A drag from the trigger to outside the menu keeps it open. Shift+Tab
+  gives the focus to the trigger. The highlighted item gets `tabindex="0"`, and the popup of a
+  submenu gets `data-nested`. A submenu that the pointer
+  entered stays open when the pointer goes to empty space, and closes when the pointer gets to
+  another item. Its trigger loses the highlight while the pointer is in the submenu.
+- `phem-context-menu` keeps its side near an edge of the viewport and flips its align, as in Base
+  UI. Tab does nothing in an open context menu. A release of the right button on an item, 500 ms
+  after the open, clicks the item. The popup gets `data-instant="click"` at the open.
+- `phem-menubar`: ArrowLeft and ArrowRight in an open menu open the next menu with the focus on
+  its popup, and no item highlighted. Shift+Tab gives the focus to the trigger, and the menu stays
+  open.
 - **Breaking**: the submit of a form locks its buttons with `aria-disabled="true"` in place of
   `disabled`, and a click on a locked button does nothing. The focused submit button keeps the
   focus, as in Base UI. Before, the focus went to `<body>`. Replace a `:disabled` style or a test

@@ -3,9 +3,10 @@ import { ClientState } from "./phem_client_state.js"
 import { Hover } from "./phem_hover.js"
 import { modal } from "./phem_modal.js"
 import { Popup } from "./phem_popup.js"
+import { ReleaseClick } from "./phem_release.js"
 import { positionOptions, positionValues } from "./phem_position.js"
 import { isDisabled, movesFocus, nextItem, Typeahead } from "./phem_roving.js"
-import { link } from "./phem_aria.js"
+import { controlWhileOpen, link } from "./phem_aria.js"
 
 // The controllers of a menu: a submenu is a menu in the popup of one of them.
 const IDENTIFIERS = ["phem-menu", "phem-context-menu"]
@@ -15,8 +16,13 @@ const MENU = IDENTIFIERS.map((name) => `[data-controller~="${name}"]`).join(", "
 const MENUBAR = '[data-controller~="phem-menubar"]'
 
 // The time (ms) of the pointer on another item before it gets the highlight, while a submenu is
-// open: the pointer can cross an item on its way to the submenu.
+// open and the pointer did not enter it yet: the pointer can cross an item on its way to the
+// submenu.
 const SUBMENU_GRACE = 150
+
+// The time (ms) after the press on the trigger before a release on an item clicks it, as in Base
+// UI: a quick click on the trigger does not run the item that opens under the pointer.
+const RELEASE_DELAY = 200
 
 // An item that the keys and the pointer skip: only an item with `disabled`, which cannot get the
 // focus. An item with `aria-disabled="true"` gets the focus, as in Base UI.
@@ -43,22 +49,25 @@ const CHECKABLE = ["menuitemcheckbox", "menuitemradio"]
 //         </div>
 //     </div>
 //
-// A click on the trigger opens and closes the menu. ArrowDown on the trigger opens it on the first
-// item, and ArrowUp on the last item. A click with the keyboard (Enter or Space) also opens it on
-// the first item. In the menu, the arrow keys (of the `orientation` value) move the focus, and go
-// from the last item to the first item with the `loopFocus` value (the default). Home and End go
-// to the first and to the last item, and a letter goes to the next item that starts with it. The
-// keys and the pointer skip an item with `disabled`: it cannot get the focus. An item with
-// `aria-disabled="true"` gets the focus and the highlight, but a click on it does nothing. The
-// first focus of a menu that opens skips the two kinds. With the
-// `highlightItemOnHover` value (the default), a move of the pointer on an item gives it the focus:
-// an item that comes under a pointer that does not move (the menu opens under it) does not get it.
-// When the pointer goes out of the item, and not to another item, the item loses the highlight:
-// the focus goes to the popup.
+// A press of the primary mouse button on the trigger opens and closes the menu, as in Base UI. A
+// move to an item and a release 200 ms after the press click the item. A touch, Enter and Space use
+// the click. ArrowDown on the trigger opens the menu on the first item. A click with the keyboard
+// (Enter or Space) also opens it on the first item. In the menu, the arrow keys (of the
+// `orientation` value) move the focus, and go from the last item to the first item with the
+// `loopFocus` value (the default). Home and End go to the first and to the last item, and a letter
+// goes to the next item that starts with it. The keys and the pointer skip an item with `disabled`:
+// it cannot get the focus. An item with `aria-disabled="true"` gets the focus and the highlight,
+// but a click on it does nothing. The first focus of a menu that opens skips the two kinds. With
+// the `highlightItemOnHover` value (the default), a move of the pointer on an item gives it the
+// focus: an item that comes under a pointer that does not move (the menu opens under it) does not
+// get it. When the pointer goes out of the item, and not to another item, the item loses the
+// highlight: the focus goes to the popup.
 //
 // A click on an item runs its own handler (`onClick`), and closes the menu, unless the item has
 // `data-phem-menu-close-on-click="false"`. Escape closes the menu and gives the focus back to the
-// trigger. Tab, a click outside and the focus out of the menu close it. With the `modal` value,
+// trigger. Tab, a press outside (each button) and the focus out of the menu close it. A press
+// outside gives the focus to the trigger, unless the press gives the focus to another element.
+// Shift+Tab closes the menu and gives the focus to the trigger. With the `modal` value,
 // the page does not scroll and the elements out of the menu get no pointer events while it is
 // open (phem_modal.js). A menu that the pointer opened (`openOnHover`) does not lock the page.
 //
@@ -80,34 +89,42 @@ const CHECKABLE = ["menuitemcheckbox", "menuitemradio"]
 // ArrowRight (ArrowLeft in a right-to-left page) open it on its first item. ArrowLeft and Escape
 // close it and give the focus back to its trigger. Its popup goes on the `inline-end` side of the
 // trigger. While a submenu is open, the pointer on another item gives it the highlight after
-// 150 ms, so the pointer can cross an item on its way to the submenu. A click on an item of a
-// submenu closes all the menus. A disabled trigger (`aria-disabled="true"`) does not open it.
+// 150 ms, so the pointer can cross an item on its way to the submenu. When the pointer is in the
+// submenu, its trigger loses the highlight (the focus stays on it), the pointer in empty space
+// keeps the submenu open, and the pointer on another item closes it at once. Shift+Tab closes the
+// submenu and gives the focus back to its trigger. A click on an item of a submenu closes all the
+// menus. A disabled trigger (`aria-disabled="true"`) does not open it.
 //
 // A `phem-menu` in a `phem-menubar` is a menu of the menubar (phem_menubar_controller.js). In a
 // vertical menubar, ArrowRight (ArrowLeft in a right-to-left page) opens it in place of ArrowDown
-// and ArrowUp, and its popup goes on the `inline-end` side of the trigger.
+// and ArrowUp, and its popup goes on the `inline-end` side of the trigger. Shift+Tab in its popup
+// gives the focus to its trigger, and the menu stays open.
 //
 // After a change with the keyboard, the popup gets the cause in `data-instant`, and a
-// `[data-instant] { transition: none }` rule stops its animation, as in Base UI. The value is `click` after Enter or Space on the trigger or on an item, `dismiss` after Escape, and
-// `group` for a menu of a menubar that an arrow key opens or that the focus closes. A change with
-// the pointer removes the attribute.
+// `[data-instant] { transition: none }` rule stops its animation, as in Base UI. The value is
+// `click` after Enter or Space on the trigger or on an item, `dismiss` after Escape, and `group`
+// for a menu of a menubar that an arrow key opens or that the focus closes. A change with the
+// pointer removes the attribute.
 //
 // The menu sends `phem-menu:open` when it opens and `phem-menu:close` when it closes. The `open`
 // action and the open() method open it with the focus on the popup. A script can give open() the
 // item that gets the focus: `open("first")` or `open("last")`.
 //
-// The trigger gets `aria-haspopup="menu"`, `aria-expanded`, `aria-controls`, `data-popup-open` and
-// `data-pressed` (not the trigger of a submenu).
+// The trigger gets `aria-haspopup="menu"`, `aria-expanded`, `data-popup-open` and `data-pressed`
+// (not the trigger of a submenu), and `aria-controls` while the menu is open.
 // The popup gets `role="menu"`, the items `role="menuitem"` (an item with `aria-checked` gets
 // `data-checked` or `data-unchecked`), the groups
 // `role="group"` with `aria-labelledby` (its `groupLabel` target), and the separators
 // `role="separator"`. A popup or a group label with no `id` gets no id: the trigger and the group
 // point to it with an element reference (`ariaControlsElements`, `ariaLabelledByElements`). The
-// item with the focus gets `data-highlighted`, and a disabled item gets `data-disabled`. The popup is positioned as a `phem-popover` (phem_position.js).
+// item with the focus gets `data-highlighted` and `tabindex="0"` (the other items `tabindex="-1"`),
+// and a disabled item gets `data-disabled`. The popup of a submenu gets `data-nested`. The popup is
+// positioned as a `phem-popover` (phem_position.js).
 //
 // `phem-context-menu` (phem_context_menu_controller.js) extends this class: it changes the
-// methods of the trigger (`anchor`, `triggerClicked()`, `triggerKeydown()`, `renderTrigger()`
-// and `restoreFocus()`).
+// methods of the trigger (`anchor`, `triggerPressed()`, `triggerClicked()`, `triggerKeydown()`,
+// `renderTrigger()` and `restoreFocus()`), the position (`placementOptions()`) and the Tab key
+// (`tabCloses`).
 export default class PhemMenuController extends Controller {
   static targets = ["trigger", "popup", "arrow", "item", "group", "groupLabel", "separator"]
   static values = {
@@ -131,9 +148,10 @@ export default class PhemMenuController extends Controller {
       anchor: () => this.anchor,
       popup: () => (this.hasPopupTarget ? this.popupTarget : null),
       arrow: () => this.arrowTargets[0] ?? null,
-      options: () => this.#positionOptions(),
+      options: () => this.placementOptions(),
       inside: () => [this.element, ...this.popupTargets],
-      dismiss: (reason) => this.#close({ focus: reason === "escape", instant: reason === "escape" ? "dismiss" : null }),
+      dismiss: (reason) => this.#dismiss(reason),
+      event: () => "pointerdown",
     })
     this.hover = new Hover({
       enabled: () => this.#openOnHover && !(this.#trigger && isDisabled(this.#trigger)),
@@ -144,6 +162,16 @@ export default class PhemMenuController extends Controller {
       close: () => this.#close({ focus: false }),
       delay: () => this.delayValue,
       closeDelay: () => this.closeDelayValue,
+      // A submenu that the pointer entered stays open in empty space (see onPointerMove).
+      stayAfterLanding: () => this.isSubmenu,
+    })
+    this.release = new ReleaseClick({
+      itemOf: (target) => {
+        const item = this.#itemOf(target)
+
+        return item && !this.#isSubmenuTrigger(item) && !isDisabled(item) ? item : null
+      },
+      isOpen: () => this.openValue,
     })
   }
 
@@ -161,6 +189,7 @@ export default class PhemMenuController extends Controller {
 
     this.listening = new AbortController()
     const options = { signal: this.listening.signal }
+    this.element.addEventListener("pointerdown", this.onTriggerPointerDown, options)
     this.element.addEventListener("click", this.onClick, options)
     this.element.addEventListener("keydown", this.onKeydown, options)
     this.element.addEventListener("focusin", this.onFocusIn, options)
@@ -180,6 +209,7 @@ export default class PhemMenuController extends Controller {
   disconnect() {
     this.state.disconnect()
     this.listening.abort()
+    this.release.disarm()
     this.hover.cancel()
     this.#cancelHighlight()
     this.typeahead.reset()
@@ -240,10 +270,50 @@ export default class PhemMenuController extends Controller {
     return this.#trigger
   }
 
-  // A click on a trigger: it opens and closes the menu. A click of the keyboard (Enter or Space)
-  // has no pointer: the focus goes to the first item. A click opens a submenu, and does not
-  // close it: the pointer on its trigger opened it.
+  // Whether Tab closes the menu. A submenu reads the value of its root menu.
+  get tabCloses() {
+    return true
+  }
+
+  // A press of the primary mouse button on a trigger opens and closes the menu, as in Base UI. The
+  // click after the press does nothing. A touch uses the click. A submenu opens on hover and on
+  // click, and a menu of a menubar on click (phem_menubar_controller.js keeps the menu that the
+  // pointer opened).
+  triggerPressed(event) {
+    this.pressed = false
+    if (event.pointerType === "touch" || event.button !== 0 || event.isPrimary === false) return
+    if (this.isSubmenu || this.#menubarOrientation !== null) return
+
+    this.pressed = true
+
+    if (this.openValue) {
+      this.#close({ focus: false })
+
+      return
+    }
+
+    this.#open(null, { focus: false })
+
+    // The mousedown after the pointerdown focuses the trigger: the popup gets the focus after it.
+    requestAnimationFrame(() => {
+      const popup = this.popupTargets[0]
+      if (this.openValue && popup && !popup.contains(document.activeElement)) popup.focus({ preventScroll: true })
+    })
+
+    this.release.arm({ delay: RELEASE_DELAY, accepts: (e) => e.button === 0 })
+  }
+
+  // A click on a trigger: it opens and closes the menu. The click after a press of the mouse does
+  // nothing: the press opened or closed the menu (see triggerPressed()). A click of the keyboard
+  // (Enter or Space) has no pointer: the focus goes to the first item. A click opens a submenu,
+  // and does not close it: the pointer on its trigger opened it.
   triggerClicked(event) {
+    if (event.detail > 0 && this.pressed) {
+      this.pressed = false
+
+      return
+    }
+
     const instant = event.detail === 0 ? "click" : null
 
     if (this.isSubmenu) this.#open(event.detail === 0 ? "first" : null, { focus: event.detail === 0, instant })
@@ -251,12 +321,12 @@ export default class PhemMenuController extends Controller {
     else this.#open(event.detail === 0 ? "first" : null, { instant })
   }
 
-  // A key on a trigger: ArrowDown and ArrowUp open the menu. Enter, Space and the arrow to the
-  // popup (ArrowRight, or ArrowLeft in a right-to-left page) open a submenu.
-  // In a vertical menubar, the arrow to the popup opens the menu: ArrowDown and ArrowUp go to the
-  // other menus of the menubar.
+  // A key on a trigger: ArrowDown opens the menu (ArrowUp does nothing, as in Base UI). Enter,
+  // Space and the arrow to the popup (ArrowRight, or ArrowLeft in a right-to-left page) open a
+  // submenu. In a vertical menubar, the arrow to the popup opens the menu: ArrowDown and ArrowUp
+  // go to the other menus of the menubar.
   triggerKeydown(event) {
-    let keys = { ArrowDown: "first", ArrowUp: "last" }
+    let keys = { ArrowDown: "first" }
     if (this.isSubmenu) keys = { Enter: "first", " ": "first", [this.#openKey]: "first" }
     else if (this.#menubarOrientation === "vertical") keys = { [this.#openKey]: "first" }
 
@@ -273,20 +343,38 @@ export default class PhemMenuController extends Controller {
   // The attributes of a trigger that are not the state stay when the server render gives them.
   renderTrigger(trigger, popup) {
     if (!trigger.hasAttribute("aria-haspopup")) trigger.setAttribute("aria-haspopup", "menu")
-    if (popup) link(trigger, "aria-controls", "ariaControlsElements", popup)
+    controlWhileOpen(trigger, popup, this.openValue)
     trigger.setAttribute("aria-expanded", String(this.openValue))
     trigger.toggleAttribute("data-pressed", this.openValue && !this.isSubmenu)
 
     if (!this.isSubmenu) return
 
     if (!trigger.hasAttribute("role")) trigger.setAttribute("role", "menuitem")
-    trigger.tabIndex = -1
+    trigger.tabIndex = this.#parent.openValue && trigger.hasAttribute("data-highlighted") ? 0 : -1
     trigger.toggleAttribute("data-disabled", isDisabled(trigger))
   }
 
   // The focus after a close of the menu with the focus in it.
   restoreFocus() {
     this.#trigger?.focus()
+  }
+
+  // The placement of the popup (phem_position.js).
+  placementOptions() {
+    const options = positionOptions(this)
+    if (this.element.hasAttribute(`data-${this.identifier}-side-value`)) return options
+    if (this.#menubarOrientation === "vertical") return { ...options, side: "inline-end" }
+    if (!this.isSubmenu) return options
+
+    return { ...options, side: this.#parent.orientationValue === "horizontal" ? "bottom" : "inline-end" }
+  }
+
+  // A press of the pointer on a trigger.
+  onTriggerPointerDown = (event) => {
+    const trigger = this.#triggerOf(event.target)
+    if (!trigger || isDisabled(trigger) || event.defaultPrevented) return
+
+    this.triggerPressed(event)
   }
 
   onClick = (event) => {
@@ -329,7 +417,7 @@ export default class PhemMenuController extends Controller {
     if (!this.popupTargets.some((el) => el.contains(event.target)) || this.#inSubmenu(event.target)) return
 
     if (event.key === "Tab") {
-      this.#close({ focus: false })
+      this.#tab(event)
 
       return
     }
@@ -365,13 +453,12 @@ export default class PhemMenuController extends Controller {
   onFocusIn = (event) => {
     if (this.#inSubmenu(event.target)) return
 
-    const item = this.#itemOf(event.target)
-    for (const el of this.#items) el.toggleAttribute("data-highlighted", el === item)
+    this.#highlight(this.#itemOf(event.target) ?? null)
   }
 
   onFocusOut = (event) => {
     const to = event.relatedTarget
-    if (!(to instanceof Node) || !this.#itemOf(to)) for (const el of this.#items) el.removeAttribute("data-highlighted")
+    if (!(to instanceof Node) || !this.#itemOf(to)) this.#highlight(null)
 
     if (!this.openValue || !(to instanceof Node)) return
     if (this.element.contains(to) || this.popupTargets.some((el) => el.contains(to))) return
@@ -384,8 +471,12 @@ export default class PhemMenuController extends Controller {
 
     this.hover.over(event)
 
-    // The pointer reached the submenu: the item that it crossed does not get the highlight.
-    if (this.#inSubmenu(event.target)) this.#cancelHighlight()
+    // The pointer reached the submenu: the item that it crossed does not get the highlight, and
+    // the trigger of the submenu loses it, as in Base UI. The focus stays on the trigger.
+    if (this.#inSubmenu(event.target)) {
+      this.#cancelHighlight()
+      this.#highlight(null)
+    }
   }
 
   // A move of the pointer highlights the item under it. The browser also sends `pointerover` when
@@ -395,12 +486,19 @@ export default class PhemMenuController extends Controller {
     if (event.pointerType === "touch") return
 
     this.pointing = true
-    if (!this.highlightItemOnHoverValue || this.#inSubmenu(event.target)) return
+    if (this.#inSubmenu(event.target)) return
+
+    this.#closeLandedSubmenus(event.target)
+    if (!this.highlightItemOnHoverValue) return
 
     // The moves on the item with the focus, or on the item that waits for its grace time: no
     // lookup of the items, and the time does not start again.
     const last = this.pointerItem
-    if (last?.contains(event.target) && (document.activeElement === last || this.highlightingItem === last)) return
+    if (last?.contains(event.target) && (document.activeElement === last || this.highlightingItem === last)) {
+      if (document.activeElement === last) this.#highlight(last)
+
+      return
+    }
 
     const item = this.#itemOf(event.target)
     this.pointerItem = item
@@ -408,7 +506,11 @@ export default class PhemMenuController extends Controller {
 
     // The pointer came back to the item with the focus: the item that it crossed does not get it.
     this.#cancelHighlight()
-    if (document.activeElement === item) return
+    if (document.activeElement === item) {
+      this.#highlight(item)
+
+      return
+    }
 
     this.highlightingItem = item
     const highlight = () => {
@@ -427,7 +529,7 @@ export default class PhemMenuController extends Controller {
 
   // The pointer goes out of an item, and not to another item: the item loses the highlight, and
   // the focus goes to the popup. The keyboard keeps its highlight: the last input must be the
-  // pointer. The trigger of an open submenu keeps the highlight while the pointer is in the submenu.
+  // pointer. The trigger of an open submenu keeps the focus while the pointer is in the submenu.
   #unhighlight(event) {
     if (event.pointerType === "touch" || !this.pointing || !this.highlightItemOnHoverValue || !this.openValue) return
     if (this.#inSubmenu(event.target)) return
@@ -437,7 +539,8 @@ export default class PhemMenuController extends Controller {
     if (!item || (to instanceof Node && (this.#itemOf(to) || this.#inSubmenu(to)))) return
 
     // The trigger of an open submenu keeps the focus: the focus out of it closes the submenu, and
-    // the pointer is on its way to the popup of the submenu.
+    // the pointer is on its way to the popup of the submenu (it loses the highlight there, see
+    // onPointerOver()).
     if (this.#submenus.some((menu) => menu.openValue && menu.#trigger === item)) return
 
     this.pointerItem = null
@@ -538,6 +641,70 @@ export default class PhemMenuController extends Controller {
     this.highlightingItem = null
   }
 
+  // The pointer entered a submenu, and came to another item of this menu: the submenu closes at
+  // once, as in Base UI. Also with no highlight on hover (`highlightItemOnHover` false).
+  #closeLandedSubmenus(target) {
+    const landed = this.#submenus.filter((submenu) => submenu.openValue && submenu.hover.landed)
+    if (landed.length === 0) return
+
+    const item = this.#itemOf(target)
+    if (!item) return
+
+    for (const submenu of landed) if (submenu.#trigger !== item) submenu.#close({ focus: false })
+  }
+
+  // The item with the highlight gets `data-highlighted` and the tab stop (`tabindex="0"`), as in
+  // Base UI. null removes the highlight from all the items.
+  #highlight(item) {
+    for (const el of this.#items) {
+      el.toggleAttribute("data-highlighted", el === item)
+      el.tabIndex = el === item ? 0 : -1
+    }
+  }
+
+  // Escape closes the menu with the focus on the trigger. A press outside closes it at the press,
+  // with each button: the focus in the popup goes to the trigger at once. The mousedown on an
+  // element that cannot get the focus then moves the focus to the body: the frame after it gives
+  // the focus back to the trigger. A press on an element that gets the focus keeps it.
+  #dismiss(reason) {
+    if (reason === "escape") {
+      this.#close({ focus: true, instant: "dismiss" })
+
+      return
+    }
+
+    this.#close({ focus: false })
+
+    requestAnimationFrame(() => {
+      if (this.openValue) return
+
+      const active = document.activeElement
+      if (active === null || active === document.body || this.popupTargets.some((el) => el.contains(active))) this.restoreFocus()
+    })
+  }
+
+  // Tab closes the menu, unless the root menu keeps it (`phem-context-menu`: Tab does nothing).
+  // Shift+Tab gives the focus to the trigger: a menu of a menubar stays open, another menu (also a
+  // submenu) closes.
+  #tab(event) {
+    if (!this.#root.tabCloses) {
+      event.preventDefault()
+
+      return
+    }
+
+    if (!event.shiftKey) {
+      this.#close({ focus: false })
+
+      return
+    }
+
+    event.preventDefault()
+
+    if (this.#menubarOrientation !== null) this.#trigger?.focus()
+    else this.#close({ focus: true })
+  }
+
   // Opens the menu. `to` is the item that gets the focus: "first", "last", or none (the popup).
   // A submenu that the pointer opens keeps the focus on its trigger (`focus: false`).
   #open(to, { focus = true, hover = false, instant = null } = {}) {
@@ -566,7 +733,7 @@ export default class PhemMenuController extends Controller {
   }
 
   #close({ focus, instant = null }) {
-    this.hover.cancel()
+    this.hover.reset()
     this.#cancelHighlight()
     if (!this.openValue) return
 
@@ -582,10 +749,15 @@ export default class PhemMenuController extends Controller {
 
   // A click on an item closes the menu and the menus around it.
   #closeAll(instant = null) {
+    this.#root.#close({ focus: true, instant })
+  }
+
+  // The root menu: the menu that is not a submenu.
+  get #root() {
     let root = this
     while (root.#parent) root = root.#parent
 
-    root.#close({ focus: true, instant })
+    return root
   }
 
   #apply() {
@@ -629,6 +801,7 @@ export default class PhemMenuController extends Controller {
       if (!popup.hasAttribute("role")) popup.setAttribute("role", "menu")
       if (!popup.hasAttribute("tabindex")) popup.tabIndex = -1
       if (this.orientationValue === "horizontal") popup.setAttribute("aria-orientation", "horizontal")
+      popup.toggleAttribute("data-nested", this.isSubmenu)
     }
 
     for (const trigger of this.triggerTargets) {
@@ -638,7 +811,7 @@ export default class PhemMenuController extends Controller {
 
     for (const item of this.itemTargets) {
       if (!item.hasAttribute("role")) item.setAttribute("role", "menuitem")
-      item.tabIndex = -1
+      item.tabIndex = this.openValue && item.hasAttribute("data-highlighted") ? 0 : -1
       item.toggleAttribute("data-disabled", isDisabled(item))
       if (item.hasAttribute("aria-checked")) this.#renderChecked(item)
 
@@ -661,29 +834,21 @@ export default class PhemMenuController extends Controller {
   }
 
   // The attributes of the state: the open state of the popup and its position, `aria-expanded`,
-  // `data-popup-open` and `data-pressed` on a trigger, and `data-highlighted` on an item (also on
-  // the trigger of a submenu). A checkbox item and a radio item with no handler keep `aria-checked`,
-  // `data-checked` and `data-unchecked`, unless the server render gives a new `aria-checked`.
+  // `data-popup-open` and `data-pressed` on a trigger, and `data-highlighted` and `tabindex` on an
+  // item (also on the trigger of a submenu). A checkbox item and a radio item with no handler keep
+  // `aria-checked`, `data-checked` and `data-unchecked`, unless the server render gives a new
+  // `aria-checked`.
   #owns(el, name) {
     if (this.popup.owns(el, name)) return true
     if (this.triggerTargets.includes(el) && (name === "aria-expanded" || name === "data-popup-open" || name === "data-pressed")) return true
     if (!this.#items.includes(el)) return false
-    if (name === "data-highlighted") return true
+    if (name === "data-highlighted" || name === "tabindex") return true
 
     const check = this.checks.get(el)
 
     if (check === undefined || check.serverChanged || el.hasAttribute("data-phem-on-click")) return false
 
     return name === "aria-checked" || name === "data-checked" || name === "data-unchecked"
-  }
-
-  #positionOptions() {
-    const options = positionOptions(this)
-    if (this.element.hasAttribute(`data-${this.identifier}-side-value`)) return options
-    if (this.#menubarOrientation === "vertical") return { ...options, side: "inline-end" }
-    if (!this.isSubmenu) return options
-
-    return { ...options, side: this.#parent.orientationValue === "horizontal" ? "bottom" : "inline-end" }
   }
 
   // `group` for a menu of a menubar: a key on its trigger and the focus out of it change it with

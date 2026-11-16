@@ -394,28 +394,31 @@ The parts get these roles: the popup `menu`, an item `menuitem`, a group `group`
 
 | Key | On | Action |
 |---|---|---|
-| Click, Enter, Space | The trigger | Opens or closes the menu. The keyboard puts the focus on the first item |
-| ArrowDown, ArrowUp | The trigger | Opens the menu on the first item, or on the last item |
+| Click, Enter, Space | The trigger | A press of the mouse opens or closes the menu. A touch, Enter and Space use the click. The keyboard puts the focus on the first item |
+| ArrowDown | The trigger | Opens the menu on the first item |
 | ArrowDown, ArrowUp | An item | Moves the focus (ArrowRight and ArrowLeft with `data-phem-menu-orientation-value="horizontal"`) |
 | Home, End | An item | Moves the focus to the first item, or to the last item |
 | A letter | An item | Moves the focus to the next item that starts with the letter. A letter that matches no item starts a new text |
 | Enter, Space | An item | Clicks the item |
 | Escape | The menu | Closes the menu, and gives the focus back to the trigger |
 | Tab | The menu | Closes the menu |
+| Shift+Tab | The menu | Closes the menu, and gives the focus to the trigger |
+
+The menu opens at the press of the mouse on the trigger, as in Base UI, and not at the click. So a press on the trigger, a move to an item and a release 200 ms or more after the press click the item: its handler runs, and the menu closes. A release before 200 ms does nothing, so a quick click on the trigger does not run the item that opens under the pointer. A release outside the menu keeps it open. To stop the open, cancel the `pointerdown` of the trigger: a `click` listener comes after the open. ArrowUp on a closed trigger does nothing.
 
 The keys and the pointer skip an item with the `disabled` attribute, which cannot get the focus. An item with `aria-disabled="true"` gets the focus and `data-highlighted`, as a disabled item of a Base UI menu, so a keyboard user can find it. A click or Enter on it does nothing: its handler does not run, and the menu stays open. The first focus of a menu that opens skips the two kinds. For example, `<div data-phem-menu-target="item" aria-disabled="true" onClick={{ archive }}>Archive</div>` gets `data-disabled`, and ArrowDown stops on it. From the last item, ArrowDown goes to the first item, unless `data-phem-menu-loop-focus-value="false"`. A move of the pointer on an item gives it the focus, unless `data-phem-menu-highlight-item-on-hover-value="false"`. An item that comes under a pointer that does not move, for example when the menu opens under it, does not get the focus: the focus of the keyboard stays. The item with the focus gets `data-highlighted`. When the pointer goes out of the item, and not to another item (to a separator, a label or out of the popup), the item loses the highlight: the focus goes to the popup. The highlight of the keyboard stays when the pointer goes out.
 
-After a change with the keyboard, the popup gets `data-instant` with the cause. Add a `[data-instant] { transition: none }` rule to make the change with no animation, as in Base UI. The value is `click` after Enter or Space on the trigger or on an item, and `dismiss` after Escape. A change with the pointer removes the attribute:
+After a change with the keyboard, the popup gets `data-instant` with the cause. Add a `[data-instant] { transition: none }` rule to make the change with no animation, as in Base UI. The value is `click` after Enter or Space on the trigger or on an item, and `dismiss` after Escape. With no such rule, a keyboard change and an Escape close animate. A change with the pointer removes the attribute:
 
 ```html
 <div data-phem-menu-target="popup" role="menu" data-closed data-instant="dismiss" hidden>...</div>
 ```
 
-A click on an item runs its own handler, and closes the menu. The item with `data-phem-menu-close-on-click="false"` keeps the menu open, as **Pin** above: after its event, the morph shows the new `aria-checked` in the open menu. A click outside and the focus out of the menu close it. With `data-phem-menu-open-on-hover-value="true"`, the pointer on the trigger opens the menu after the `delay` value (100 ms).
+A click on an item runs its own handler, and closes the menu. The item with `data-phem-menu-close-on-click="false"` keeps the menu open, as **Pin** above: after its event, the morph shows the new `aria-checked` in the open menu. A press outside (each button, the right button too) and the focus out of the menu close it. After a press outside, the focus goes to the trigger, unless the press gives the focus to another element, for example a text field. With `data-phem-menu-open-on-hover-value="true"`, the pointer on the trigger opens the menu after the `delay` value (100 ms).
 
 The menu sends `phem-menu:open` when it opens and `phem-menu:close` when it closes. A script can open the menu with the focus on an item: `menu.open("first")` or `menu.open("last")`. The `open` action (`data-action="phem-menu#open"`) puts the focus on the popup.
 
-The trigger gets `aria-haspopup="menu"`, `aria-expanded`, `aria-controls`, `data-popup-open` and `data-pressed` while the menu is open. The trigger of a submenu does not get `data-pressed`. The popup and a `groupLabel` need no `id`: with no id, the trigger and the group point to them with element references (`ariaControlsElements` and `ariaLabelledByElements`). With an id, they get `aria-controls` and `aria-labelledby`.
+The trigger gets `aria-haspopup="menu"` and `aria-expanded`, and `aria-controls`, `data-popup-open` and `data-pressed` while the menu is open, as in Base UI. An `aria-controls` of the server render stays, also on a closed menu. The trigger of a submenu does not get `data-pressed`. The popup and a `groupLabel` need no `id`: with no id, the trigger and the group point to them with element references (`ariaControlsElements` and `ariaLabelledByElements`). With an id, they get `aria-controls` and `aria-labelledby`. The item with the highlight gets `tabindex="0"`, and the other items get `tabindex="-1"`.
 
 To put menus in a bar, as the menu bar of an application, see [Build a menu bar](#build-a-menu-bar). In a vertical menubar, ArrowRight (ArrowLeft in a right-to-left page) opens the menu in place of ArrowDown and ArrowUp, and its popup goes on the `inline-end` side of the trigger.
 
@@ -476,25 +479,29 @@ Put a `phem-menu` in the popup of a menu. Its trigger is an item of the menu aro
 </div>
 ```
 
-The arrow keys of the menu go to **Move to** as to the other items. The pointer on it opens the submenu after the `delay` value (100 ms), and the focus stays on it. While the submenu is open, the pointer on another item of the menu gives it the focus after 150 ms, so the pointer can cross an item on its way to the submenu. A trigger with `aria-disabled="true"` does not open the submenu. Set `data-phem-menu-open-on-hover-value="false"` on the submenu to open it only with a click or a key. After ArrowRight on **Move to**, the browser shows:
+The arrow keys of the menu go to **Move to** as to the other items. The pointer on it opens the submenu after the `delay` value (100 ms), and the focus stays on it. While the submenu is open, the pointer on another item of the menu gives it the focus after 150 ms, so the pointer can cross an item on its way to the submenu. The 150 ms apply only before the pointer enters the submenu. In the submenu, the pointer removes the highlight from **Move to** (the focus stays on it). When the pointer goes from the submenu to empty space, the submenu stays open, as in Base UI. The pointer on another item of the menu closes it at once. A trigger with `aria-disabled="true"` does not open the submenu. Set `data-phem-menu-open-on-hover-value="false"` on the submenu to open it only with a click or a key. After ArrowRight on **Move to**, the browser shows:
 
 ```html
 <button data-phem-menu-target="trigger" role="menuitem" tabindex="-1" aria-haspopup="menu"
         aria-controls="" aria-expanded="true" data-popup-open>Move to</button>
-<div data-phem-menu-target="popup" role="menu" tabindex="-1"
+<div data-phem-menu-target="popup" role="menu" tabindex="-1" data-nested
      data-open data-side="inline-end" data-align="start" style="...">
+    <button data-phem-menu-target="item" role="menuitem" tabindex="0" data-highlighted>Inbox</button>
 ```
+
+The popup of a submenu gets `data-nested`. `aria-controls=""` is the attribute of an element reference: the popup has no id. The trigger has no `aria-controls` while the submenu is closed.
 
 | Key | On | Action |
 |---|---|---|
 | Click, Enter, Space, ArrowRight | The trigger of the submenu | Opens the submenu. The keyboard puts the focus on its first item |
 | ArrowLeft, Escape | The submenu | Closes the submenu, and gives the focus back to its trigger |
+| Shift+Tab | The submenu | Closes the submenu, and gives the focus back to its trigger |
 
 In a right-to-left page, ArrowLeft opens the submenu and ArrowRight closes it. The popup of a submenu goes on the `inline-end` side of its trigger. A click on an item of a submenu runs its handler and closes all the menus. When the menu closes, its submenus close too.
 
 ### Lock the page while the menu is open
 
-Set `data-phem-menu-modal-value="true"` for a modal menu. While it is open, the page does not scroll, and the elements out of the menu get no hover and no click: the body gets `pointer-events: none`, and the popup `pointer-events: auto`. A click outside closes the menu, and the element under the pointer does not get the click. The width of the scroll bar stays, so the page does not move. A Turbo visit gives the page its styles back before Turbo keeps the page in its cache.
+Set `data-phem-menu-modal-value="true"` for a modal menu. While it is open, the page does not scroll, and the elements out of the menu get no hover and no click: the body gets `pointer-events: none`, and the popup `pointer-events: auto`. A press outside closes the menu, and the element under the pointer does not get the click. The width of the scroll bar stays, so the page does not move. A Turbo visit gives the page its styles back before Turbo keeps the page in its cache.
 
 A menu that the pointer opened (`data-phem-menu-open-on-hover-value="true"`) does not lock the page, as in Base UI: the lock would take the pointer from the trigger, and the menu would close. The same menu locks the page when a click or a key opens it.
 
@@ -542,7 +549,8 @@ Set a value with `data-phem-menubar-<name>-value`, for example `data-phem-menuba
 | ArrowRight, ArrowLeft | A trigger | Moves the focus to the next or to the previous trigger (ArrowDown and ArrowUp in a vertical menubar) |
 | Home, End | A trigger | Moves the focus to the first or to the last trigger |
 | ArrowDown, Enter, Space | A trigger | Opens the menu on its first item (ArrowRight in a vertical menubar) |
-| ArrowRight, ArrowLeft | An open menu | Closes the menu, and opens the next or the previous menu on its first item |
+| ArrowRight, ArrowLeft | An open menu | Closes the menu, and opens the next or the previous menu. Its popup gets the focus, and no item is highlighted |
+| Shift+Tab | An open menu | Gives the focus to its trigger. The menu stays open |
 | ArrowRight | The trigger of a submenu | Opens the submenu |
 | ArrowLeft | A submenu | Closes the submenu |
 | ArrowLeft | An open menu of a vertical menubar | Closes the menu, and gives the focus back to its trigger |
@@ -550,7 +558,7 @@ Set a value with `data-phem-menubar-<name>-value`, for example `data-phem-menuba
 
 The triggers have one tab stop: the trigger of the last menu that had the focus. The arrow keys skip a disabled trigger. In a right-to-left page, ArrowLeft and ArrowRight go the other way.
 
-While a menu is open, the pointer on another trigger opens its menu at once, and closes the first menu. The two popups get `data-instant="group"` for this change, so a `[data-instant]` rule can stop their animation. A menu of the bar also gets `data-instant="group"` when an arrow key on its trigger opens it, when the focus out of it closes it, and when another menu of the bar opens. As a menu with no menubar, it gets `data-instant="click"` for Enter and Space, and `data-instant="dismiss"` for Escape. The first click on that trigger keeps its menu open. A modal menubar locks the page as a [modal menu](#lock-the-page-while-the-menu-is-open) does, but the menubar and its popups keep the pointer events (`pointer-events: auto` on the menubar), so the pointer can go to the other triggers. A click outside closes the menu.
+While a menu is open, the pointer on another trigger opens its menu at once, and closes the first menu. The two popups get `data-instant="group"` for this change, so a `[data-instant]` rule can stop their animation. With no such rule, the change animates. A menu of the bar also gets `data-instant="group"` when an arrow key on its trigger opens it, when the focus out of it closes it, and when another menu of the bar opens. As a menu with no menubar, it gets `data-instant="click"` for Enter and Space, and `data-instant="dismiss"` for Escape. The first click on that trigger keeps its menu open. A modal menubar locks the page as a [modal menu](#lock-the-page-while-the-menu-is-open) does, but the menubar and its popups keep the pointer events (`pointer-events: auto` on the menubar), so the pointer can go to the other triggers. A press outside closes the menu. A menu of the bar opens at the click on its trigger, not at the press.
 
 The menubar element gets `role="menubar"`, `aria-orientation`, `data-orientation`, `data-modal` (with the `modal` value), `data-disabled` and `aria-disabled="true"` (with the `disabled` value), and `data-has-submenu-open` while a menu is open. The triggers get `role="menuitem"`, `tabindex` and `data-disabled`. In a vertical menubar, the popup of a menu goes on the `inline-end` side of its trigger. After a click on **Edit**, a click on **Undo** (an item with `data-phem-menu-close-on-click="false"`) and ArrowRight, the browser shows:
 
@@ -559,7 +567,7 @@ The menubar element gets `role="menubar"`, `aria-orientation`, `data-orientation
      data-orientation="horizontal" data-modal="" data-has-submenu-open="">
     <div data-controller="phem-menu">
         <button data-phem-menu-target="trigger" aria-expanded="false" tabindex="-1" aria-haspopup="menu"
-                aria-controls="file-popup" role="menuitem">File</button>
+                role="menuitem">File</button>
         <div id="file-popup" data-phem-menu-target="popup" hidden="" data-closed="" role="menu" tabindex="-1">...</div>
     </div>
     <div data-controller="phem-menu" data-phem-menu-open-value="false">
@@ -571,7 +579,7 @@ The menubar element gets `role="menubar"`, `aria-orientation`, `data-orientation
                 aria-controls="help-popup" data-pressed="" data-popup-open="">Help</button>
         <div id="help-popup" data-phem-menu-target="popup" role="menu" tabindex="-1" data-open=""
              data-side="bottom" data-align="start" style="position: fixed; inset: 29px auto auto 92px; ...">
-            <button data-phem-menu-target="item" role="menuitem" tabindex="-1" data-highlighted="">About</button>
+            <button data-phem-menu-target="item" role="menuitem" tabindex="-1">About</button>
         </div>
     </div>
 </div>
@@ -712,11 +720,13 @@ A right click on the trigger opens the menu with its top left corner at the poin
 
 ```html
 <div data-phem-context-menu-target="trigger" class="file" data-popup-open data-pressed>report.pdf</div>
-<div data-phem-context-menu-target="popup" role="menu" tabindex="-1"
+<div data-phem-context-menu-target="popup" role="menu" tabindex="-1" data-instant="click"
      data-open data-side="bottom" data-align="start" style="position: fixed; top: 212px; left: 348px; ...">
 ```
 
-The focus goes to the popup, so ArrowDown goes to the first item. When the popup opens under the pointer, no item gets the focus until the pointer moves. The parts, the keys, the submenus and the values are the ones of `phem-menu`, with `data-phem-context-menu-` in their names. A click on the trigger does not open the menu, and the trigger gets no ARIA attributes, because it is not a button. Escape gives the focus back to the element that had it before the menu opened. A menu that opens with no point, with the `open` action or with `data-phem-context-menu-open-value` from the server, goes below the trigger.
+The popup gets `data-instant="click"` at the open, as in Base UI: a `[data-instant]` rule opens it with no animation. Near an edge of the viewport, the popup keeps its side, moves on the two axes to stay in the viewport, and flips its align. A submenu of the context menu goes next to its trigger, as in `phem-menu`.
+
+The focus goes to the popup, so ArrowDown goes to the first item. When the popup opens under the pointer, no item gets the focus until the pointer moves. The parts, the keys, the submenus and the values are the ones of `phem-menu`, with `data-phem-context-menu-` in their names. A click on the trigger does not open the menu, and the trigger gets no ARIA attributes, because it is not a button. Escape gives the focus back to the element that had it before the menu opened. Tab does nothing: the menu stays open. A press of the right button, a move to an item and a release of the button click the item, when the release is more than 1 px from the point of the open and 500 ms or more after the open. A menu that opens with no point, with the `open` action or with `data-phem-context-menu-open-value` from the server, goes below the trigger.
 
 ## Suggest values while the user types
 

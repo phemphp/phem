@@ -187,4 +187,129 @@ final class MenuTest extends E2eTestCase
         expect($page->locator('#sort-grid'))->toHaveAttribute('data-checked', '');
         expect($page->locator('#sort-list'))->toHaveAttribute('aria-checked', 'false');
     }
+
+    // The menu opens at the press, and a release on an item after 200 ms runs it.
+    public function testPressDragAndReleaseAfter200MsRunsAnItem(): void
+    {
+        $page = $this->visit('/menu');
+        self::assertResponseIsSuccessful();
+
+        $trigger = $page->locator('#trigger')->boundingBox();
+        $mouse = $page->mouse();
+
+        $mouse->move($trigger['x'] + $trigger['width'] / 2, $trigger['y'] + $trigger['height'] / 2);
+        $mouse->down();
+        expect($page->locator('#popup'))->toBeVisible();
+
+        // A release counts 200 ms after the press.
+        usleep(300_000);
+
+        $delete = $page->locator('#delete')->boundingBox();
+
+        $mouse->move($delete['x'] + $delete['width'] / 2, $delete['y'] + $delete['height'] / 2, ['steps' => 10]);
+        $mouse->up();
+
+        expect($page->locator('#log'))->toHaveExactText('delete');
+        expect($page->locator('#popup'))->toBeHidden();
+    }
+
+    // A press of the right button outside closes the menu at the press, and the
+    // focus goes to the trigger.
+    public function testARightButtonPressOutsideClosesTheMenuAndFocusesTheTrigger(): void
+    {
+        $page = $this->visit('/menu');
+        self::assertResponseIsSuccessful();
+
+        $page->locator('#trigger')->focus();
+        $page->keyboard()->press('ArrowDown');
+        expect($page->locator('#rename'))->toBeFocused();
+
+        $viewport = $page->viewportSize();
+        $mouse = $page->mouse();
+        $mouse->move($viewport['width'] - 10, $viewport['height'] - 10);
+        $mouse->down(['button' => 'right']);
+        expect($page->locator('#popup'))->toBeHidden();
+        $mouse->up(['button' => 'right']);
+
+        expect($page->locator('#trigger'))->toBeFocused();
+    }
+
+    // UShift+Tab in an open menu gives the focus to the trigger.
+    public function testShiftTabGivesTheFocusToTheTrigger(): void
+    {
+        $page = $this->visit('/menu');
+        self::assertResponseIsSuccessful();
+
+        $page->locator('#trigger')->focus();
+        $page->keyboard()->press('ArrowDown');
+        expect($page->locator('#rename'))->toBeFocused();
+
+        $page->keyboard()->press('Shift+Tab');
+        expect($page->locator('#trigger'))->toBeFocused();
+    }
+
+    // UTab in an open context menu does nothing.
+    public function testTabKeepsTheContextMenuOpen(): void
+    {
+        $page = $this->visit('/menu');
+        self::assertResponseIsSuccessful();
+
+        $box = $page->locator('#area')->boundingBox();
+        $page->mouse()->click($box['x'] + 50, $box['y'] + 30, ['button' => 'right']);
+        expect($page->locator('#context-popup'))->toBeFocused();
+
+        $page->keyboard()->press('Tab');
+        expect($page->locator('#context-popup'))->toBeVisible();
+    }
+
+    // A release of the right button on an item of a context menu, away from the
+    // open point and after the delay, runs the item.
+    public function testARightButtonReleaseOnAContextMenuItemRunsIt(): void
+    {
+        $page = $this->visit('/menu');
+        self::assertResponseIsSuccessful();
+
+        $box = $page->locator('#area')->boundingBox();
+        $mouse = $page->mouse();
+
+        $mouse->move($box['x'] + 50, $box['y'] + 30);
+        $mouse->down(['button' => 'right']);
+        expect($page->locator('#context-popup'))->toBeVisible();
+
+        // A release counts 500 ms after the open.
+        usleep(600_000);
+
+        $copy = $page->locator('#context-copy')->boundingBox();
+
+        $mouse->move($copy['x'] + $copy['width'] / 2, $copy['y'] + $copy['height'] / 2, ['steps' => 5]);
+        $mouse->up(['button' => 'right']);
+
+        expect($page->locator('#log'))->toHaveExactText('copy');
+        expect($page->locator('#context-popup'))->toBeHidden();
+    }
+
+    // A submenu that the pointer entered stays open in empty space, and its trigger
+    // loses the highlight. The pointer on a sibling item closes it.
+    public function testASubmenuStaysOpenWhenThePointerGoesToEmptySpace(): void
+    {
+        $page = $this->visit('/menu');
+        self::assertResponseIsSuccessful();
+
+        $page->locator('#trigger')->click();
+        $page->locator('#move')->hover();
+        expect($page->locator('#move-popup'))->toBeVisible();
+
+        $page->locator('#inbox')->hover();
+        expect($page->locator('#inbox'))->toBeFocused();
+        expect($page->locator('#move'))->not()->toHaveAttribute('data-highlighted', '');
+
+        // From the submenu to the empty space at its right.
+        $popup = $page->locator('#move-popup')->boundingBox();
+        $page->mouse()->move($popup['x'] + $popup['width'] + 150, $popup['y'] + $popup['height'] / 2, ['steps' => 10]);
+        usleep(400_000);
+        expect($page->locator('#move-popup'))->toBeVisible();
+
+        $page->locator('#delete')->hover();
+        expect($page->locator('#move-popup'))->toBeHidden();
+    }
 }

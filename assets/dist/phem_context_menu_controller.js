@@ -26,9 +26,15 @@ const MOVE = 10
 // The parts, the keys of the items, the submenus and the values are the ones of `phem-menu`. A
 // click on the trigger does not open the menu, and the trigger gets no ARIA attribute: it is not a
 // button. It gets `data-popup-open` while the menu is open. Escape gives the focus back to the
-// element that had it before the menu opened. The popup goes at the bottom right of the point
-// (`side` `bottom`, `align` `start`). A menu that opens with no point (the `open` action, or the
-// `open` value of the server) goes below the trigger, as a `phem-menu`.
+// element that had it before the menu opened. Tab does nothing: the menu stays open. The popup goes
+// at the bottom right of the point (`side` `bottom`, `align` `start`). Near an edge of the
+// viewport, it keeps its side, moves on the two axes and flips its align (the `context`
+// collision of phem_position.js), as in Base UI. A menu that opens with no point (the `open`
+// action, or the `open` value of the server) goes below the trigger, as a `phem-menu`.
+//
+// A release of the right button on an item, 500 ms after the open and more than 1 px from the
+// point of the open, clicks the item: a right press, a move to the item and a release run it. The
+// popup gets `data-instant="click"` at the open.
 export default class PhemContextMenuController extends PhemMenuController {
   // The point of the menu, in the viewport, and whether the menu opened at it.
   point = { x: 0, y: 0 }
@@ -69,11 +75,34 @@ export default class PhemContextMenuController extends PhemMenuController {
     return this.virtual
   }
 
+  // An open with no point (the `open` action, open() of a script, the `open` value of the server)
+  // gives the focus back to no element: only #openAt() sets `returnFocus`.
+  open(to = null) {
+    if (!this.openingAt) this.returnFocus = null
+    super.open(to)
+  }
+
   // The next open with no point goes below the trigger.
   openValueChanged() {
+    if (this.openValue && !this.pointed) this.returnFocus = null
     super.openValueChanged()
     if (!this.openValue) this.pointed = false
   }
+
+  // The root menu keeps its side near an edge. A submenu goes next to its trigger, as in a
+  // `phem-menu`.
+  placementOptions() {
+    const options = super.placementOptions()
+
+    return this.isSubmenu ? options : { ...options, collision: "context" }
+  }
+
+  // Tab does nothing in an open context menu, as in Base UI.
+  get tabCloses() {
+    return false
+  }
+
+  triggerPressed() {}
 
   triggerClicked() {}
 
@@ -84,9 +113,10 @@ export default class PhemContextMenuController extends PhemMenuController {
     trigger.toggleAttribute("data-pressed", this.openValue)
   }
 
+  // `returnFocus` stays until the next open: a press outside restores the focus two times (at the
+  // press and in the frame after it).
   restoreFocus() {
     const to = this.returnFocus
-    this.returnFocus = null
     if (to?.isConnected) to.focus({ preventScroll: true })
   }
 
@@ -126,9 +156,11 @@ export default class PhemContextMenuController extends PhemMenuController {
     document.addEventListener("pointercancel", stop, options)
   }
 
-  // A `contextmenu` of the keyboard has the point of the element: the menu opens at it.
+  // A `contextmenu` of the keyboard has the point of the element: the menu opens at it. It has no
+  // release, so no item waits for one.
   #openAt(trigger, x, y) {
-    if (x === 0 && y === 0) {
+    const keyboard = x === 0 && y === 0
+    if (keyboard) {
       const box = (trigger.contains(document.activeElement) ? document.activeElement : trigger).getBoundingClientRect()
       x = box.left
       y = box.bottom
@@ -140,12 +172,22 @@ export default class PhemContextMenuController extends PhemMenuController {
     if (this.openValue) {
       this.popup.reposition()
       this.popupTargets[0]?.focus({ preventScroll: true })
+    } else {
+      const active = document.activeElement
+      this.returnFocus = active instanceof HTMLElement && active !== document.body ? active : null
 
-      return
+      this.instant = "click"
+      this.openingAt = true
+      try {
+        this.open()
+      } finally {
+        this.instant = null
+        this.openingAt = false
+      }
     }
 
-    const active = document.activeElement
-    this.returnFocus = active instanceof HTMLElement && active !== document.body ? active : null
-    this.open()
+    if (keyboard) return
+
+    this.release.arm({ delay: LONG_PRESS, accepts: (e) => e.button === 2 && (Math.abs(e.clientX - x) > 1 || Math.abs(e.clientY - y) > 1) })
   }
 }

@@ -4,8 +4,7 @@ import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
 import { dismissable } from "./phem_dismiss.js"
 import { SWIPE_ATTRIBUTES, snapPointSize, swipeable, unswipe } from "./phem_swipe.js"
 import { hide, render, show } from "./phem_transition.js"
-import { link } from "./phem_aria.js"
-import { realId } from "./phem_ids.js"
+import { controlWhileOpen, link } from "./phem_aria.js"
 import { edgeTabbable, nextTabbable } from "./phem_focus.js"
 import { scrollLock } from "./phem_modal.js"
 import { isTouchClick } from "./phem_press.js"
@@ -15,9 +14,6 @@ const NESTED_ATTRIBUTES = new Set(["data-nested", "data-nested-dialog-open", "da
 
 // The popups that got `tabindex="-1"` for the focus of a touch open.
 const focused = new WeakSet()
-
-// The triggers that got `aria-controls` from the controller, not from the server render.
-const controlled = new WeakSet()
 
 // The attributes of a drawer.
 const DRAWER_ATTRIBUTES = new Set(["data-expanded", "data-swipe-direction"])
@@ -567,33 +563,8 @@ export default class PhemDialogController extends Controller {
       if (!trigger.hasAttribute("aria-haspopup")) trigger.setAttribute("aria-haspopup", "dialog")
       trigger.setAttribute("aria-expanded", String(this.openValue))
       trigger.toggleAttribute("data-popup-open", this.openValue)
-      this.#renderControls(trigger, dialog)
+      controlWhileOpen(trigger, dialog, this.openValue)
     }
-  }
-
-  // The trigger points to the open dialog, as in Base UI: a closed dialog is not in the page. An
-  // `aria-controls` of the server render stays, also on a closed dialog.
-  #renderControls(trigger, dialog) {
-    const given = trigger.getAttribute("aria-controls")
-    const ours = controlled.has(trigger) && (given === null || given === "" || (dialog && given === realId(dialog)))
-    if (given !== null && !ours) {
-      controlled.delete(trigger)
-
-      return
-    }
-
-    if (dialog && this.openValue) {
-      link(trigger, "aria-controls", "ariaControlsElements", dialog)
-      controlled.add(trigger)
-
-      return
-    }
-
-    if (!ours) return
-
-    controlled.delete(trigger)
-    if ("ariaControlsElements" in trigger) trigger.ariaControlsElements = null
-    trigger.removeAttribute("aria-controls")
   }
 
   // The attributes of the state: `open` and the open state of a dialog, its nesting, its swipe,

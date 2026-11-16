@@ -32,16 +32,19 @@ document.addEventListener("keydown", (event) => {
   }
 })
 
-// The last pointerdown: the layers that it served, and the layer that has it in it. The click that
-// follows does not close the served layers again. A drag from a layer ends with a click outside it
-// (on the common ancestor): the click stops at that layer too, so it does not close.
-const pressed = { served: new Set(), inside: null }
+// The last pointerdown: the layers that it served, the layer that has it in it, and its path. The
+// click that follows does not close the served layers again. A drag from a layer ends with a click
+// outside it (on the common ancestor): the click stops at that layer too, so it does not close.
+// The path also stops the click at a layer that the press opened (a menu opens at the pointerdown
+// on its trigger, after this listener): a drag from the trigger to outside keeps the menu open.
+const pressed = { served: new Set(), inside: null, path: [] }
 
 document.addEventListener("pointerdown", (event) => {
   pressed.served.clear()
   pressed.inside = null
 
   const path = event.composedPath()
+  pressed.path = path
 
   // A press in a layer closes the layers that opened after it, not the layer itself.
   for (const layer of [...layers].reverse()) {
@@ -66,11 +69,13 @@ document.addEventListener("click", (event) => {
   const pointer = event.detail > 0
   const served = pointer ? new Set(pressed.served) : new Set()
   const stop = pointer ? pressed.inside : null
+  const start = pointer ? pressed.path : []
   pressed.served.clear()
   pressed.inside = null
+  pressed.path = []
 
   for (const layer of [...layers].reverse()) {
-    if (layer === stop || layer.inside().some((el) => path.includes(el))) return
+    if (layer === stop || layer.inside().some((el) => path.includes(el) || start.includes(el))) return
 
     if (layer.outside && !served.has(layer)) layer.dismiss("outside", event)
   }

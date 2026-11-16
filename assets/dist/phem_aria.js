@@ -7,6 +7,7 @@ import { realId, TEMPORARY_ID } from "./phem_ids.js"
 // reference of ARIA (`ariaControlsElements`, `ariaLabelledByElements`, …).
 //
 //     link(trigger, "aria-controls", "ariaControlsElements", popup)
+//     controlWhileOpen(trigger, popup, open) // `aria-controls` only while the popup is open
 
 // Points an ARIA attribute of `el` to `to`: with its id, or with an element reference when `to` has
 // no id or a temporary id of the morph (phem_ids.js). A value that the server render gives stays.
@@ -26,4 +27,33 @@ export function link(el, attribute, property, to) {
     // to nothing.
     el.removeAttribute(attribute)
   }
+}
+
+// The triggers that got `aria-controls` from controlWhileOpen(), not from the server render.
+const controlled = new WeakSet()
+
+// Points `trigger` to `popup` with `aria-controls` while the popup is open, as in Base UI: a closed
+// popup is not in the page. The attribute goes away when the popup closes. An `aria-controls` of
+// the server render stays, also on a closed popup, and a new one that the morph gives too.
+export function controlWhileOpen(trigger, popup, open) {
+  const given = trigger.getAttribute("aria-controls")
+  const ours = controlled.has(trigger) && (given === null || given === "" || (popup && given === realId(popup)))
+  if (given !== null && !ours) {
+    controlled.delete(trigger)
+
+    return
+  }
+
+  if (popup && open) {
+    link(trigger, "aria-controls", "ariaControlsElements", popup)
+    controlled.add(trigger)
+
+    return
+  }
+
+  if (!ours) return
+
+  controlled.delete(trigger)
+  if ("ariaControlsElements" in trigger) trigger.ariaControlsElements = null
+  trigger.removeAttribute("aria-controls")
 }

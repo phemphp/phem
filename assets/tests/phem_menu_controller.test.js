@@ -66,7 +66,7 @@ describe("phem-menu", () => {
     await mount(actions())
 
     expect($("trigger").getAttribute("aria-haspopup")).toBe("menu")
-    expect($("trigger").getAttribute("aria-controls")).toBe("popup")
+    expect($("trigger").hasAttribute("aria-controls")).toBe(false)
     expect($("popup").getAttribute("role")).toBe("menu")
     expect($("rename").getAttribute("role")).toBe("menuitem")
     expect($("rename").tabIndex).toBe(-1)
@@ -89,17 +89,21 @@ describe("phem-menu", () => {
 
       expect(popup().id).toBe("")
       expect(label().id).toBe("")
-      expect($("trigger").ariaControlsElements).toEqual([popup()])
       expect($("group").ariaLabelledByElements).toEqual([label()])
 
+      // The trigger points to the popup while the menu is open.
       const done = nextDone()
       click("#trigger")
+      expect($("trigger").ariaControlsElements).toEqual([popup()])
       click("#rename")
       await done
 
       expect(popup().id).toBe("")
-      expect($("trigger").ariaControlsElements).toEqual([popup()])
+      expect($("trigger").ariaControlsElements).toBe(null)
       expect($("group").ariaLabelledByElements).toEqual([label()])
+
+      click("#trigger")
+      expect($("trigger").ariaControlsElements).toEqual([popup()])
     } finally {
       restore()
     }
@@ -121,7 +125,7 @@ describe("phem-menu", () => {
     expect($("popup").getAttribute("data-align")).toBe("start")
   })
 
-  it("opens with a click of the keyboard on the first item, and with ArrowUp on the last one", async () => {
+  it("opens with a click of the keyboard on the first item", async () => {
     await mount(actions())
     click("#trigger")
     expect(document.activeElement.id).toBe("rename")
@@ -130,10 +134,6 @@ describe("phem-menu", () => {
     press("Escape")
     expect(isOpen()).toBe(false)
     expect(document.activeElement.id).toBe("trigger")
-
-    press("ArrowUp")
-    expect(isOpen()).toBe(true)
-    expect(document.activeElement.id).toBe("delete")
   })
 
   it("moves the focus with the arrow keys, Home, End and a letter, and skips a disabled item", async () => {
@@ -158,7 +158,8 @@ describe("phem-menu", () => {
   it("does not go from the last item to the first one with loopFocus false", async () => {
     await mount(actions('data-phem-menu-loop-focus-value="false"'))
     $("trigger").focus()
-    press("ArrowUp")
+    press("ArrowDown")
+    press("End")
     press("ArrowDown")
 
     expect(document.activeElement.id).toBe("delete")
@@ -226,6 +227,8 @@ describe("phem-menu", () => {
     expect(isOpen()).toBe(true)
     expect($("pin").hasAttribute("data-checked")).toBe(true)
     expect($("pin").hasAttribute("data-highlighted")).toBe(true)
+    expect($("pin").tabIndex).toBe(0)
+    expect($("rename").tabIndex).toBe(-1)
     expect($("menu").getAttribute("data-phem-menu-open-value")).toBe("true")
   })
 
@@ -798,5 +801,358 @@ describe("phem-menu: a submenu and the pointer", () => {
 
     expect($("popup").hidden).toBe(false)
     expect(document.body.style.pointerEvents).toBe("none")
+  })
+})
+
+describe("phem-menu: the behavior of Base UI", () => {
+  const pointer = (type, el, init = {}) => {
+    const event = new PointerEvent(type, { bubbles: true, cancelable: true, pointerType: "mouse", isPrimary: true, button: 0, ...init })
+    el.dispatchEvent(event)
+
+    return event
+  }
+  const mouseClick = (el) => el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 }))
+  const out = (el, to) => el.dispatchEvent(new PointerEvent("pointerout", { bubbles: true, pointerType: "mouse", relatedTarget: to }))
+
+  it("opens at a primary mouse pointerdown on the trigger, and the click after the press does not close it", async () => {
+    await mount(actions())
+    pointer("pointerdown", $("trigger"))
+    expect(isOpen()).toBe(true)
+
+    pointer("pointerup", $("trigger"))
+    mouseClick($("trigger"))
+    expect(isOpen()).toBe(true)
+  })
+
+  it("clicks an item at a pointerup 200 ms after the press on the trigger, and not before", async () => {
+    await mount(actions())
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+
+    pointer("pointerdown", $("trigger"))
+    vi.advanceTimersByTime(100)
+    pointer("pointerup", $("delete"))
+    expect(isOpen()).toBe(true)
+
+    press("Escape")
+    pointer("pointerdown", $("trigger"))
+    vi.advanceTimersByTime(250)
+    pointer("pointerup", $("delete"))
+    expect(isOpen()).toBe(false)
+  })
+
+  it("stays open after a drag from the trigger that ends outside the menu", async () => {
+    await mount(actions())
+    pointer("pointerdown", $("trigger"))
+    expect(isOpen()).toBe(true)
+
+    // The browser gives the click to the common ancestor of the press and the release.
+    pointer("pointerup", document.body)
+    mouseClick(document.body)
+    expect(isOpen()).toBe(true)
+
+    // The next press outside closes it.
+    pointer("pointerdown", $("outside"))
+    expect(isOpen()).toBe(false)
+  })
+
+  it("keeps the open at click for a touch", async () => {
+    await mount(actions())
+    pointer("pointerdown", $("trigger"), { pointerType: "touch" })
+    expect(isOpen()).toBe(false)
+
+    mouseClick($("trigger"))
+    expect(isOpen()).toBe(true)
+  })
+
+  it("closes an open menu at a pointerdown on its trigger, and the click does not open it again", async () => {
+    await mount(actions())
+    pointer("pointerdown", $("trigger"))
+    pointer("pointerup", $("trigger"))
+    mouseClick($("trigger"))
+    expect(isOpen()).toBe(true)
+
+    pointer("pointerdown", $("trigger"))
+    expect(isOpen()).toBe(false)
+
+    pointer("pointerup", $("trigger"))
+    mouseClick($("trigger"))
+    expect(isOpen()).toBe(false)
+  })
+
+  it("keeps the focus on a field that a press outside focuses", async () => {
+    await mount(`${actions()}<input id="field">`)
+    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
+
+    // The mousedown on the field focuses it: the frame after the press does not take it back.
+    click("#trigger")
+    pointer("pointerdown", $("field"))
+    $("field").focus()
+    await frame()
+    expect(isOpen()).toBe(false)
+    expect(document.activeElement.id).toBe("field")
+
+    // The mousedown on an element that cannot get the focus moves it to the body: the frame gives
+    // it back to the trigger.
+    click("#trigger")
+    pointer("pointerdown", document.body)
+    document.activeElement.blur()
+    await frame()
+    expect(isOpen()).toBe(false)
+    expect(document.activeElement.id).toBe("trigger")
+  })
+
+  it("closes at a pointerdown outside, also with the right button, and gives the focus to the trigger", async () => {
+    await mount(actions())
+    click("#trigger")
+    expect(document.activeElement.id).toBe("rename")
+
+    pointer("pointerdown", $("outside"), { button: 2 })
+    expect(isOpen()).toBe(false)
+    expect(document.activeElement.id).toBe("trigger")
+  })
+
+  it("does not open a closed root menu with ArrowUp", async () => {
+    await mount(actions())
+    $("trigger").focus()
+    const event = press("ArrowUp")
+
+    expect(isOpen()).toBe(false)
+    expect(event.defaultPrevented).toBe(false)
+
+    press("ArrowDown")
+    expect(isOpen()).toBe(true)
+    expect(document.activeElement.id).toBe("rename")
+  })
+
+  it("gives the focus to the trigger on Shift+Tab", async () => {
+    await mount(actions())
+    click("#trigger")
+    const event = press("Tab", { shiftKey: true })
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(document.activeElement.id).toBe("trigger")
+  })
+
+  it("gives tabindex 0 to the highlighted item, and -1 to the other items", async () => {
+    await mount(actions())
+    click("#trigger")
+    expect($("rename").tabIndex).toBe(0)
+    expect($("delete").tabIndex).toBe(-1)
+
+    press("End")
+    expect($("delete").tabIndex).toBe(0)
+    expect($("rename").tabIndex).toBe(-1)
+  })
+
+  it("sets aria-controls on the trigger only while the menu is open", async () => {
+    await mount(actions())
+    expect($("trigger").hasAttribute("aria-controls")).toBe(false)
+
+    click("#trigger")
+    expect($("trigger").getAttribute("aria-controls")).toBe("popup")
+
+    press("Escape")
+    expect($("trigger").hasAttribute("aria-controls")).toBe(false)
+  })
+
+  it("removes the element reference of aria-controls on close", async () => {
+    const restore = stubElementReflection()
+    try {
+      await mount(actions().replace('id="popup" ', ""))
+      expect($("trigger").hasAttribute("aria-controls")).toBe(false)
+
+      click("#trigger")
+      expect($("trigger").ariaControlsElements).toEqual([document.querySelector("[data-phem-menu-target=popup]")])
+
+      press("Escape")
+      expect($("trigger").hasAttribute("aria-controls")).toBe(false)
+      expect($("trigger").ariaControlsElements).toBe(null)
+    } finally {
+      restore()
+    }
+  })
+
+  it("keeps the aria-controls of the server render on a closed trigger", async () => {
+    await mount(actions().replace('id="trigger"', 'id="trigger" aria-controls="popup"'))
+    click("#trigger")
+    press("Escape")
+
+    expect($("trigger").getAttribute("aria-controls")).toBe("popup")
+  })
+
+  describe("a submenu", () => {
+    const nested = () => `<div id="menu" data-controller="phem-menu">
+        <button id="trigger" data-phem-menu-target="trigger">Actions</button>
+        <div id="popup" data-phem-menu-target="popup" hidden>
+          <button id="rename" data-phem-menu-target="item">Rename</button>
+          <div id="move" data-controller="phem-menu">
+            <button id="move-trigger" data-phem-menu-target="trigger">Move to</button>
+            <div id="move-popup" data-phem-menu-target="popup" hidden>
+              <button id="inbox" data-phem-menu-target="item">Inbox</button>
+              <button id="archive" data-phem-menu-target="item">Archive</button>
+            </div>
+          </div>
+          <button id="delete" data-phem-menu-target="item">Delete</button>
+        </div>
+      </div>
+      <button id="outside">Outside</button>`
+
+    const subOpen = () => !$("move-popup").hidden
+
+    // The pointer opens the submenu, and goes into its popup.
+    async function enter() {
+      await mount(nested())
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+      mouseClick($("trigger"))
+      hover($("move-trigger"))
+      vi.advanceTimersByTime(100)
+      expect(subOpen()).toBe(true)
+
+      out($("move-trigger"), $("move-popup"))
+      hover($("move-popup"))
+      out($("move-popup"), $("inbox"))
+      hover($("inbox"))
+    }
+
+    it("does not click a disabled item or a submenu trigger at a release after 200 ms", async () => {
+      await mount(nested().replace('id="rename"', 'id="rename" aria-disabled="true"'))
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+
+      pointer("pointerdown", $("trigger"))
+      vi.advanceTimersByTime(250)
+      pointer("pointerup", $("rename"))
+      expect(isOpen()).toBe(true)
+
+      // A new press closes the menu, and the press after it opens the menu again.
+      pointer("pointerdown", $("trigger"))
+      pointer("pointerdown", $("trigger"))
+      vi.advanceTimersByTime(250)
+      pointer("pointerup", $("move-trigger"))
+      expect(isOpen()).toBe(true)
+      expect(subOpen()).toBe(false)
+    })
+
+    it("keeps a submenu open with openOnHover when the pointer goes to empty space, but a root menu with openOnHover closes", async () => {
+      await enter()
+      out($("inbox"), document.body)
+      vi.advanceTimersByTime(1000)
+      expect(subOpen()).toBe(true)
+
+      vi.useRealTimers()
+      await mount(nested().replace('data-controller="phem-menu">', 'data-controller="phem-menu" data-phem-menu-open-on-hover-value="true">'))
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+      hover($("trigger"))
+      vi.advanceTimersByTime(100)
+      expect(isOpen()).toBe(true)
+
+      out($("trigger"), $("popup"))
+      hover($("popup"))
+      out($("popup"), document.body)
+      vi.advanceTimersByTime(10)
+      expect(isOpen()).toBe(false)
+    })
+
+    it("Shift+Tab in a submenu closes the submenu and focuses its trigger", async () => {
+      await mount(nested())
+      click("#trigger")
+      press("ArrowDown")
+      press("Enter")
+      expect(document.activeElement.id).toBe("inbox")
+
+      const event = press("Tab", { shiftKey: true })
+      expect(event.defaultPrevented).toBe(true)
+      expect(subOpen()).toBe(false)
+      expect(isOpen()).toBe(true)
+      expect(document.activeElement.id).toBe("move-trigger")
+    })
+
+    it("gives data-nested to the popup of a submenu", async () => {
+      await mount(nested())
+      click("#trigger")
+      $("move-trigger").focus()
+      press("Enter")
+
+      expect($("move-popup").hasAttribute("data-nested")).toBe(true)
+      expect($("popup").hasAttribute("data-nested")).toBe(false)
+    })
+
+    it("gives tabindex 0 to a highlighted submenu trigger", async () => {
+      await mount(nested())
+      click("#trigger")
+      press("ArrowDown")
+
+      expect(document.activeElement.id).toBe("move-trigger")
+      expect($("move-trigger").tabIndex).toBe(0)
+      expect($("rename").tabIndex).toBe(-1)
+    })
+
+    it("removes the highlight of its trigger while the pointer is in the submenu", async () => {
+      await mount(nested())
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+      mouseClick($("trigger"))
+      hover($("move-trigger"))
+      vi.advanceTimersByTime(100)
+      expect($("move-trigger").hasAttribute("data-highlighted")).toBe(true)
+
+      out($("move-trigger"), $("move-popup"))
+      hover($("move-popup"))
+
+      expect(subOpen()).toBe(true)
+      expect($("move-trigger").hasAttribute("data-highlighted")).toBe(false)
+    })
+
+    it("stays open when the pointer goes from the submenu to empty space", async () => {
+      await enter()
+
+      out($("inbox"), document.body)
+      document.body.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, pointerType: "mouse", clientX: 900, clientY: 700 }))
+      vi.advanceTimersByTime(1000)
+
+      expect(subOpen()).toBe(true)
+      expect(isOpen()).toBe(true)
+    })
+
+    // Base UI v1.9.0 in Chromium closes the submenu about 5 ms (one frame) after the pointer
+    // reaches a sibling item, and about 55 ms after the pointer leaves the submenu (the path).
+    it("closes when the pointer goes from the submenu to a sibling item", async () => {
+      await enter()
+
+      out($("inbox"), $("delete"))
+      hover($("delete"))
+      vi.advanceTimersByTime(20)
+
+      expect(subOpen()).toBe(false)
+      expect(isOpen()).toBe(true)
+    })
+
+    it("closes when the pointer goes from the submenu to a sibling item, with no highlight on hover", async () => {
+      await mount(nested().replace('<div id="menu" data-controller="phem-menu">', '<div id="menu" data-controller="phem-menu" data-phem-menu-highlight-item-on-hover-value="false">'))
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+      mouseClick($("trigger"))
+      $("move-trigger").focus()
+      press("Enter")
+      expect(subOpen()).toBe(true)
+
+      hover($("move-popup"))
+      out($("move-popup"), $("delete"))
+      hover($("delete"))
+
+      expect(subOpen()).toBe(false)
+      expect(isOpen()).toBe(true)
+    })
+
+    it("waits for its grace time again after a close and an open with the keyboard", async () => {
+      await enter()
+
+      // ArrowLeft closes the submenu, and ArrowRight opens it again: the pointer did not enter it.
+      press("ArrowLeft")
+      expect(subOpen()).toBe(false)
+      $("move-trigger").focus()
+      press("ArrowRight")
+      expect(subOpen()).toBe(true)
+
+      hover($("delete"))
+      expect(subOpen()).toBe(true)
+    })
   })
 })

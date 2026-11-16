@@ -42,7 +42,7 @@ final class MenubarTest extends E2eTestCase
         $page->keyboard()->press('ArrowLeft');
         expect($page->locator('#edit-popup'))->toBeHidden();
         expect($page->locator('#file-popup'))->toBeVisible();
-        expect($page->locator('#new'))->toBeFocused();
+        expect($page->locator('#file-popup'))->toBeFocused();
 
         // ArrowRight on the trigger of a submenu opens the submenu.
         $page->keyboard()->press('End');
@@ -101,6 +101,28 @@ final class MenubarTest extends E2eTestCase
 
         $page->keyboard()->press('ArrowRight');
         expect($page->locator('#help-popup'))->toBeVisible();
-        expect($page->locator('#about'))->toBeFocused();
+        expect($page->locator('#help-popup'))->toBeFocused();
+    }
+
+    // UArrowRight and ArrowLeft from an open menu open the next menu with its popup
+    // focused, and no item highlighted.
+    public function testArrowKeysOpenTheNextMenuWithNoHighlightedItem(): void
+    {
+        $page = $this->visit('/menubar');
+        self::assertResponseIsSuccessful();
+
+        $page->locator('#file-trigger')->focus();
+        $page->keyboard()->press('ArrowDown');
+        expect($page->locator('#new'))->toBeFocused();
+
+        $page->keyboard()->press('ArrowRight');
+        expect($page->locator('#edit-popup'))->toBeVisible();
+        expect($page->locator('#edit-popup'))->toBeFocused();
+        expect($page->locator('#edit-popup [data-highlighted]'))->toHaveCount(0);
+
+        $page->keyboard()->press('ArrowLeft');
+        expect($page->locator('#file-popup'))->toBeVisible();
+        expect($page->locator('#file-popup'))->toBeFocused();
+        expect($page->locator('#file-popup [data-highlighted]'))->toHaveCount(0);
     }
 }

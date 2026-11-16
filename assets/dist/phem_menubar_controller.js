@@ -35,11 +35,12 @@ const TRIGGER = '[data-phem-menu-target~="trigger"]'
 // Enter and Space do.
 //
 // While a menu is open, ArrowLeft and ArrowRight in its popup close it and open the menu before or
-// after it, on its first item. ArrowRight on the trigger of a submenu opens the submenu, and
-// ArrowLeft in a submenu closes the submenu (phem-menu does it). In a vertical menubar, ArrowLeft
-// in the popup closes the menu and gives the focus back to its trigger. While a menu is open, the
-// pointer on another trigger opens its menu at once, and closes the first menu. A click on that
-// trigger keeps its menu open. Only one menu of the bar is open at a time.
+// after it, with the focus on its popup and no item highlighted, as in Base UI. ArrowRight on the
+// trigger of a submenu opens the submenu, and ArrowLeft in a submenu closes the submenu (phem-menu
+// does it). In a vertical menubar, ArrowLeft in the popup closes the menu and gives the focus back
+// to its trigger. While a menu is open, the pointer on another trigger opens its menu at once, and
+// closes the first menu. A click on that trigger keeps its menu open. Only one menu of the bar is
+// open at a time.
 //
 // With the `modal` value (the default), the page does not scroll and the elements out of the
 // menubar get no pointer events while a menu is open (phem_modal.js): the pointer can go to the
@@ -156,11 +157,11 @@ export default class PhemMenubarController extends Controller {
       return
     }
 
-    // A menu is open: the next menu opens on its first item.
+    // A menu is open: the next menu opens with the focus on its popup.
     const menu = this.#menuOf(next)
     this.#instantly([...this.#openMenus, menu], () => {
       for (const other of this.#openMenus) other.close()
-      menu?.open("first")
+      menu?.open()
     })
     if (!menu) next.focus()
   }
