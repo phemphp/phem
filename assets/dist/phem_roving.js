@@ -50,33 +50,63 @@ export function movesFocus(key, orientation = "vertical") {
 }
 
 // The typeahead: the letters that the user types in a short time find the next item whose label
-// starts with them.
+// starts with them. The text clears `resetMs` (500) after the last letter, and also after a letter
+// that matches no item, as in Base UI: the next letter starts a new text. Space stays in the text.
+//
+// A new text starts the search from the `from` item of find() (the selected item of a select), and
+// a text that continues starts it from `current` (the item with the focus).
 export class Typeahead {
   #query = ""
   #timer = null
+  #resetMs
+
+  constructor({ resetMs = 500 } = {}) {
+    this.#resetMs = resetMs
+  }
 
   // The item for the key of `event`, or undefined when the key is not a letter.
-  find(items, current, event, label = (el) => el.textContent, skip = isDisabled) {
+  find(items, current, event, label = (el) => el.textContent, skip = isDisabled, from = current) {
     if (event.key.length !== 1 || event.ctrlKey || event.metaKey || event.altKey) return undefined
     if (event.key === " " && this.#query === "") return undefined
 
+    // A new text starts from `from`.
+    const origin = this.#query === "" ? from : current
+
     clearTimeout(this.#timer)
-    this.#timer = setTimeout(() => (this.#query = ""), 500)
+    this.#timer = setTimeout(() => (this.#query = ""), this.#resetMs)
     this.#query += event.key.toLowerCase()
 
     const enabled = items.filter((el) => !skip(el))
-    const at = enabled.indexOf(current)
+    const at = enabled.indexOf(origin)
+
     // The same letter again moves to the next item with it.
     const repeated = [...this.#query].every((c) => c === this.#query[0])
     const query = repeated ? this.#query[0] : this.#query
     const start = repeated ? at + 1 : Math.max(at, 0)
     const ordered = [...enabled.slice(start), ...enabled.slice(0, start)]
 
-    return ordered.find((el) => label(el).trim().toLowerCase().startsWith(query))
+    const match = ordered.find((el) => label(el).trim().toLowerCase().startsWith(query))
+
+    // No item matches: the next letter starts a new text. Space stays in the text.
+    if (!match && event.key !== " ") this.reset()
+
+    return match
   }
 
   reset() {
     clearTimeout(this.#timer)
     this.#query = ""
   }
+}
+
+// The pointer goes out of an item, and not to another item (to a separator, a label, or out of
+// the list): `onLeave(event)` runs, for a `pointerout` event of the list (Base UI). A touch does
+// not leave.
+export function leaveList(event, items, onLeave) {
+  if (event.pointerType === "touch") return
+
+  const itemOf = (node) => (node instanceof Node ? items.find((item) => item.contains(node)) : undefined)
+  if (!itemOf(event.target) || itemOf(event.relatedTarget)) return
+
+  onLeave(event)
 }

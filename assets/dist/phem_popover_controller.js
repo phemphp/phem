@@ -47,8 +47,9 @@ const FOCUSABLE = "a[href], button, input, select, textarea, [tabindex]"
 // A preview card (Base UI PreviewCard) is a popover with `openOnHover` and a link trigger
 // (`<a href>`), with a `delay` of 600 ms and a `closeDelay` of 300 ms in Base UI. A click on the
 // link opens the link, not the popup. The keyboard focus on the link opens the popup after the
-// delay, and the focus out closes it at once. A popup that the focus opened has no animation:
-// it gets `data-instant="focus"`, also when the focus out closes it. Escape closes a preview card
+// delay, and the focus out closes it at once. A popup that the focus opened gets
+// `data-instant="focus"`, also when the focus out closes it, so a `[data-instant]` rule can stop
+// its animation. Escape closes a preview card
 // with `data-instant="dismiss"`. The pointer removes the attribute. The link stays the only part for the keyboard and a screen
 // reader: the trigger gets no `aria-haspopup`, `aria-expanded` and `aria-controls`, the popup gets
 // `aria-hidden="true"` and no role, and its links and fields get `tabindex="-1"`.

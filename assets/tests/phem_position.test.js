@@ -145,6 +145,131 @@ describe("place()", () => {
     expect(arrow.hasAttribute("data-uncentered")).toBe(true)
   })
 
+  it("grows an aligned popup with no arrow from its aligned edge", () => {
+    const origin = () => popup.style.getPropertyValue("--transform-origin")
+
+    place(anchor, popup, { side: "bottom", align: "start" })
+    expect(origin()).toBe("0% 0px")
+
+    place(anchor, popup, { side: "bottom", align: "end" })
+    expect(origin()).toBe("100% 0px")
+
+    place(anchor, popup, { side: "top", align: "start" })
+    expect(origin()).toBe("0% 100px")
+
+    place(anchor, popup, { side: "right", align: "start" })
+    expect(origin()).toBe("0px 0%")
+  })
+
+  it("uses the direction of the page for the aligned edge of the origin", () => {
+    document.documentElement.setAttribute("dir", "rtl")
+    const origin = () => popup.style.getPropertyValue("--transform-origin")
+
+    place(anchor, popup, { side: "bottom", align: "start" })
+    expect(origin()).toBe("100% 0px")
+
+    place(anchor, popup, { side: "right", align: "start" })
+    expect(origin()).toBe("0px 0%")
+  })
+
+  it("keeps the point of the anchor in the origin with an arrow, a shift, or the center align", () => {
+    const origin = () => popup.style.getPropertyValue("--transform-origin")
+
+    place(anchor, popup, { side: "bottom", align: "start", arrow })
+    expect(origin()).toBe("50px 0px")
+
+    place(anchor, popup, { side: "bottom", align: "center" })
+    expect(origin()).toBe("100px 0px")
+
+    box(anchor, { left: 950, top: 300, width: 40, height: 40 })
+    place(anchor, popup, { side: "bottom", align: "start" })
+    expect(origin()).toBe("175px 0px")
+  })
+
+  it("keeps the side and shifts on both axes with the context collision", () => {
+    box(anchor, { left: 400, top: 790, width: 0, height: 0 })
+    place(anchor, popup, { side: "bottom", align: "start", collision: "context" })
+
+    expect(at()).toEqual({ left: "400px", top: "695px" })
+    expect(popup.getAttribute("data-side")).toBe("bottom")
+
+    place(anchor, popup, { side: "bottom", align: "start" })
+    expect(at().top).toBe("690px")
+    expect(popup.getAttribute("data-side")).toBe("top")
+  })
+
+  it("flips the align with the context collision", () => {
+    box(anchor, { left: 950, top: 300, width: 0, height: 0 })
+    place(anchor, popup, { side: "bottom", align: "start", collision: "context" })
+
+    expect(at().left).toBe("750px")
+    expect(popup.getAttribute("data-align")).toBe("end")
+    expect(popup.style.getPropertyValue("--transform-origin")).toBe("100% 0px")
+
+    place(anchor, popup, { side: "bottom", align: "center", collision: "context" })
+    expect(popup.getAttribute("data-align")).toBe("center")
+  })
+
+  it("uses the end edge on a left or a right side, and flips a bottom end in a right-to-left page", () => {
+    const origin = () => popup.style.getPropertyValue("--transform-origin")
+
+    place(anchor, popup, { side: "right", align: "end" })
+    expect(origin()).toBe("0px 100%")
+
+    place(anchor, popup, { side: "left", align: "end" })
+    expect(origin()).toBe("200px 100%")
+
+    document.documentElement.setAttribute("dir", "rtl")
+    place(anchor, popup, { side: "bottom", align: "end" })
+    expect(origin()).toBe("0% 0px")
+  })
+
+  it("keeps the aligned edge after a shift of 1 px, and not after a shift of 2 px", () => {
+    const origin = () => popup.style.getPropertyValue("--transform-origin")
+
+    box(anchor, { left: 4, top: 300, width: 100, height: 40 })
+    place(anchor, popup, { side: "bottom", align: "start" })
+    expect(origin()).toBe("0% 0px")
+
+    box(anchor, { left: 3, top: 300, width: 100, height: 40 })
+    place(anchor, popup, { side: "bottom", align: "start" })
+    expect(origin()).toBe("48px 0px")
+  })
+
+  it("puts the origin on the anchor after a shift on the side axis of a context popup", () => {
+    box(anchor, { left: 400, top: 790, width: 0, height: 0 })
+    place(anchor, popup, { side: "bottom", align: "start", collision: "context" })
+
+    expect(at().top).toBe("695px")
+    expect(popup.style.getPropertyValue("--transform-origin")).toBe("0% 95px")
+  })
+
+  it("flips the align on the y axis for a context popup on the right side", () => {
+    box(anchor, { left: 400, top: 750, width: 0, height: 0 })
+    place(anchor, popup, { side: "right", align: "start", collision: "context" })
+
+    expect(at().top).toBe("650px")
+    expect(popup.getAttribute("data-side")).toBe("right")
+    expect(popup.getAttribute("data-align")).toBe("end")
+  })
+
+  it("flips an end align to start for a context popup", () => {
+    box(anchor, { left: 50, top: 300, width: 0, height: 0 })
+    place(anchor, popup, { side: "bottom", align: "end", collision: "context" })
+
+    expect(at().left).toBe("50px")
+    expect(popup.getAttribute("data-align")).toBe("start")
+  })
+
+  it("keeps the align of a context popup when the other align overflows more", () => {
+    // The popup is wider than the viewport: the two aligns overflow, start less.
+    box(popup, { left: 0, top: 0, width: 990, height: 100 })
+    box(anchor, { left: 10, top: 300, width: 0, height: 0 })
+    place(anchor, popup, { side: "bottom", align: "start", collision: "context" })
+
+    expect(popup.getAttribute("data-align")).toBe("start")
+  })
+
   it("marks an anchor out of the viewport", () => {
     box(anchor, { left: 400, top: -100, width: 100, height: 40 })
     place(anchor, popup, { side: "bottom" })

@@ -166,7 +166,7 @@ export default class PhemMenubarController extends Controller {
   }
 
   // The bar goes from one menu to another: the popups of these menus get `data-instant="group"`,
-  // so they close and open with no animation.
+  // so a `[data-instant]` rule can make them close and open with no animation.
   #instantly(menus, change) {
     const changed = menus.filter((menu) => menu)
     for (const menu of changed) menu.instant = "group"

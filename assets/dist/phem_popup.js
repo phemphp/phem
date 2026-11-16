@@ -17,7 +17,11 @@ import { hide, render, show } from "./phem_transition.js"
 //       options: () => positionOptions(this),
 //       inside: () => [this.element],
 //       dismiss: (reason) => this.close(reason),
+//       event: () => "pointerdown",
 //     })
+//
+// `outside` (`() => true`) keeps the popup open on a press outside when it gives false. `event`
+// (`() => "click"`) is the event of a press outside: `"click"` or `"pointerdown"` (phem_dismiss.js).
 export class Popup {
   #parts
   #placing = null
@@ -25,15 +29,16 @@ export class Popup {
   #update = null
   #open = false
 
-  constructor({ anchor, popup, arrow = () => null, options, inside, dismiss = null, outside = () => true }) {
-    this.#parts = { anchor, popup, arrow, options, inside, dismiss, outside }
+  constructor({ anchor, popup, arrow = () => null, options, inside, dismiss = null, outside = () => true, event = () => "click" }) {
+    this.#parts = { anchor, popup, arrow, options, inside, dismiss, outside, event }
   }
 
   get open() {
     return this.#open
   }
 
-  // Opens the popup with its animation, or at once with `instant`.
+  // Opens the popup with its animation, or at once with `instant: true`. A string `instant` is the
+  // cause of the change in `data-instant`: the CSS decides the animation.
   show({ instant = false } = {}) {
     const popup = this.#parts.popup()
     if (!popup) return
@@ -107,6 +112,7 @@ export class Popup {
         inside: this.#parts.inside,
         dismiss: (reason, event) => this.#parts.dismiss(reason, event),
         outside: this.#parts.outside(),
+        event: this.#parts.event(),
       })
     }
 

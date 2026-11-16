@@ -8,6 +8,26 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking** `data-instant` gives only the cause of a change of a popup (`click`, `dismiss`,
+  `focus`, `delay`, `group`). The CSS stops the animation: add `[data-instant] { transition:
+  none }`. Before, a popup with `data-instant` changed at once with no animation. Now a keyboard
+  open, a focus open and an Escape close of a menu, a menubar, a popover and a tooltip animate
+  when the CSS has no such rule.
+- A popup with `align` `start` or `end` and no arrow gets `--transform-origin` at its aligned
+  edge (`0%` or `100%`, the other way in a right-to-left page), as in Base UI. Before, the origin
+  was the center of the anchor.
+- The typeahead of `phem-menu`, `phem-context-menu` and `phem-select` starts a new text after a
+  letter that matches no item, as in Base UI. Before, the letters stayed until the timeout, and
+  the next letter found no item.
+- A press that starts in a popup, a dialog that is not a modal or a navigation menu and ends
+  outside it (for example a text selection) does not close it, as in Base UI. Before, the click
+  of the press closed it.
+- The shared client modules get new options for the next popup changes: the `event` option of
+  `dismissable()` and `Popup` (`"pointerdown"` closes a popup at the pointerdown outside, with
+  each button), `collision: "context"` in `place()`, the `resetMs` and `from` options of
+  `Typeahead`, the `leaveList()` helper and the `settle()` export of `phem_transition.js`. No
+  controller uses them yet.
+
 - Tab in a modal `phem-dialog` goes from the last element of the dialog to the first one, and
   Shift+Tab goes back, as in Base UI. Before, only `modal="trap-focus"` kept the focus in the
   dialog: Tab in a `showModal()` dialog went from its last element to the browser.

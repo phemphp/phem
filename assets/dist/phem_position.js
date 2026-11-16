@@ -10,13 +10,19 @@
 // left and the right edges only, when it is not the same. With `flip: false`, the popup stays on
 // its side (Base UI `collisionAvoidance={{ side: 'none' }}`).
 //
+// With `collision: "context"` (a popup at the point of the pointer, as the Base UI context menu),
+// the popup stays on its side, and shifts on both axes to stay in the viewport. Its align flips
+// (`start` and `end`) when it does not fit with its align, and the other align has more space.
+//
 // The popup and its arrow get the real side and align (after a flip) in `data-side` and
 // `data-align`, and the popup gets these CSS variables:
 //
 // - `--anchor-width`, `--anchor-height`: the size of the anchor;
 // - `--available-width`, `--available-height`: the space from the anchor to the edge of the
 //   viewport, for a `max-height` of a long list;
-// - `--transform-origin`: the point of the anchor, for a scale animation from the anchor.
+// - `--transform-origin`: the point of the anchor, for a scale animation from the anchor. A popup
+//   with `align` `start` or `end` and no arrow grows from its aligned edge (`0%` or `100%` on the
+//   other axis, as in Base UI), until a shift of more than 1 px moves it from its align.
 //
 // The arrow gets its `left` (on a top or bottom side) or its `top` (on a left or right side), so
 // that it points at the center of the anchor. The value is from the padding box of the popup (the
@@ -115,7 +121,7 @@ export function unposition(popup, arrow = null) {
   if (arrow.getAttribute("style") === "") arrow.removeAttribute("style")
 }
 
-export function place(anchor, popup, { side = "bottom", align = "center", sideOffset = 0, alignOffset = 0, collisionPadding = 5, collisionPaddingInline = -1, flip = true, arrowPadding = 5, arrow = null } = {}) {
+export function place(anchor, popup, { side = "bottom", align = "center", sideOffset = 0, alignOffset = 0, collisionPadding = 5, collisionPaddingInline = -1, flip = true, arrowPadding = 5, arrow = null, collision = "flip" } = {}) {
   side = SIDES.has(side) ? side : "bottom"
   align = ALIGNS.has(align) ? align : "center"
 
@@ -136,19 +142,32 @@ export function place(anchor, popup, { side = "bottom", align = "center", sideOf
   // The space to the top and the bottom edges, and to the left and the right edges.
   const pad = { block: collisionPadding, inline: collisionPaddingInline >= 0 ? collisionPaddingInline : collisionPadding }
 
-  // The flip: the other side when the popup does not fit on its side, and fits better there.
+  const context = collision === "context"
+
+  // The flip: the other side when the popup does not fit on its side, and fits better there. A
+  // context popup stays on its side, and flips its align.
   const physical = physicalSide(side, rtl)
   const space = spaceOn(a, view, sideOffset, pad)
   const needed = isVertical(physical) ? size.height : size.width
-  const flipped = flip && space[physical] < needed && space[physicalSide(OPPOSITE[side], rtl)] > space[physical]
+  const flipped = !context && flip && space[physical] < needed && space[physicalSide(OPPOSITE[side], rtl)] > space[physical]
   const finalSide = flipped ? OPPOSITE[side] : side
   const finalPhysical = physicalSide(finalSide, rtl)
 
-  let { x, y } = coordinates(a, size, finalPhysical, align, sideOffset, alignOffset, rtl)
+  // The align flip of a context popup.
+  if (context) align = flipAlign(a, size, view, pad, finalPhysical, align, sideOffset, alignOffset, rtl)
 
-  // The shift: on the other axis, the popup stays in the viewport.
-  if (isVertical(finalPhysical)) x = clamp(x, pad.inline, view.width - pad.inline - size.width)
-  else y = clamp(y, pad.block, view.height - pad.block - size.height)
+  const placed = coordinates(a, size, finalPhysical, align, sideOffset, alignOffset, rtl)
+  let { x, y } = placed
+
+  // The shift: on the other axis, the popup stays in the viewport. A context popup also shifts on
+  // its side axis.
+  if (isVertical(finalPhysical) || context) x = clamp(x, pad.inline, view.width - pad.inline - size.width)
+  if (!isVertical(finalPhysical) || context) y = clamp(y, pad.block, view.height - pad.block - size.height)
+
+  // The shift on each axis, before the round: a shift on the other axis breaks the align of the
+  // origin, and a shift on the side axis moves the popup from the anchor.
+  const shift = isVertical(finalPhysical) ? x - placed.x : y - placed.y
+  const sideShift = isVertical(finalPhysical) ? y - placed.y : x - placed.x
 
   x = Math.round(x)
   y = Math.round(y)
@@ -167,7 +186,7 @@ export function place(anchor, popup, { side = "bottom", align = "center", sideOf
   style.setProperty("--anchor-height", `${a.height}px`)
   style.setProperty("--available-width", `${Math.max(0, Math.round(available.width))}px`)
   style.setProperty("--available-height", `${Math.max(0, Math.round(available.height))}px`)
-  style.setProperty("--transform-origin", origin(a, size, x, y, finalPhysical, sideOffset))
+  style.setProperty("--transform-origin", origin(a, size, x, y, finalPhysical, sideOffset, { align, rtl, arrow, shift, sideShift }))
 
   setAttribute(popup, "data-side", finalSide)
   setAttribute(popup, "data-align", align)
@@ -217,16 +236,54 @@ function coordinates(a, size, physical, align, sideOffset, alignOffset, rtl) {
   return vertical ? { x: along, y: main } : { x: main, y: along }
 }
 
-// The point of the anchor in the box of the popup.
-function origin(a, size, x, y, physical, sideOffset) {
-  const cx = Math.round(a.left + a.width / 2 - x)
-  const cy = Math.round(a.top + a.height / 2 - y)
+// The align of a context popup: the other align when the popup does not fit on the other axis with
+// its align, and the other align has more space. `center` stays.
+function flipAlign(a, size, view, pad, physical, align, sideOffset, alignOffset, rtl) {
+  if (align === "center") return align
+
+  const vertical = isVertical(physical)
+  const length = vertical ? size.width : size.height
+  const min = vertical ? pad.inline : pad.block
+  const max = (vertical ? view.width - pad.inline : view.height - pad.block) - length
+  const overflow = (value) => {
+    const { x, y } = coordinates(a, size, physical, value, sideOffset, alignOffset, rtl)
+    const along = vertical ? x : y
+
+    return Math.max(0, min - along) + Math.max(0, along - max)
+  }
+
+  const other = align === "start" ? "end" : "start"
+  const here = overflow(align)
+
+  return here > 0 && overflow(other) < here ? other : align
+}
+
+// The point of the anchor in the box of the popup. An aligned popup with no arrow grows from its
+// aligned edge, until a shift breaks the align (Base UI). After a shift on the side axis (a context
+// popup), the origin is on the edge of the anchor, not at `sideOffset` from the popup.
+function origin(a, size, x, y, physical, sideOffset, { align, rtl, arrow, shift, sideShift }) {
+  const vertical = isVertical(physical)
+  const aligned = !arrow && align !== "center" && Math.abs(shift) <= 1
+
+  // On a top or a bottom side, `start` is the right edge in a right-to-left page.
+  const edge = (align === "start") === (vertical && rtl) ? "100%" : "0%"
+  const cx = aligned && vertical ? edge : `${Math.round(a.left + a.width / 2 - x)}px`
+  const cy = aligned && !vertical ? edge : `${Math.round(a.top + a.height / 2 - y)}px`
+
+  if (sideShift !== 0) {
+    return {
+      top: `${cx} ${Math.round(a.top - y)}px`,
+      bottom: `${cx} ${Math.round(a.top + a.height - y)}px`,
+      left: `${Math.round(a.left - x)}px ${cy}`,
+      right: `${Math.round(a.left + a.width - x)}px ${cy}`,
+    }[physical]
+  }
 
   return {
-    top: `${cx}px ${size.height + sideOffset}px`,
-    bottom: `${cx}px ${-sideOffset}px`,
-    left: `${size.width + sideOffset}px ${cy}px`,
-    right: `${-sideOffset}px ${cy}px`,
+    top: `${cx} ${size.height + sideOffset}px`,
+    bottom: `${cx} ${-sideOffset}px`,
+    left: `${size.width + sideOffset}px ${cy}`,
+    right: `${-sideOffset}px ${cy}`,
   }[physical]
 }
 

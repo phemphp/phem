@@ -24,7 +24,8 @@ let lastClose = -Infinity
 // value, the default). A focus of the keyboard (`:focus-visible`) opens it at once, and the blur
 // closes it. Escape and a click on the trigger close it (`closeOnClick`). A touch shows no tooltip.
 //
-// A tooltip that opens soon after another tooltip closed opens at once, with `data-instant="delay"`.
+// A tooltip that opens soon after another tooltip closed opens with no delay, and gets
+// `data-instant="delay"`, so a `[data-instant]` rule can stop its animation.
 //
 // The trigger gets `data-popup-open`. The tooltip is only visual, as the Tooltip of Base UI: the
 // popup gets no `role="tooltip"`, and the trigger gets no `aria-describedby`. A tooltip only helps

@@ -92,7 +92,7 @@ The controller shows its state in data attributes. Use them in your CSS, or as T
 | `data-orientation` | The parts of `phem-tabs` | `horizontal` or `vertical` |
 | `data-active` | A tab, a link of `phem-scrollspy` | The tab is selected, or the section of the link is in view |
 | `data-starting-style`, `data-ending-style` | A part that opens or closes | The first frame of the open, and the time of the close |
-| `data-instant` | A popup, the positioner of a navigation menu | The change has no animation (for a navigation menu: the first open) |
+| `data-instant` | A popup, the positioner of a navigation menu | The cause of a change that Base UI makes with no animation (`click`, `dismiss`, `focus`, `delay`, `group`), or the first open of a navigation menu. The CSS stops the animation with `[data-instant] { transition: none }` |
 
 ### Animations
 
@@ -108,9 +108,18 @@ A part that opens gets `data-starting-style` for its first frame. A part that cl
     opacity: 0;
     transform: scale(0.95);
 }
+.popup[data-instant] {
+    transition: none;
+}
 ```
 
+A popup gets `data-instant` with the cause of a change that Base UI makes with no animation: `click` (Enter or Space), `dismiss` (Escape), `focus` (the keyboard focus), `delay` (a tooltip of a group) and `group` (a move from one menu of a menubar to another). The attribute does not stop the animation. Add `[data-instant] { transition: none }` (Tailwind `data-instant:transition-none`) to make this change at once, as in Base UI. With no such rule, the change animates. A change with the pointer removes the attribute.
+
 A transition can go back in the middle: a popup that opens again before the end of its close animation does not jump. A keyframe animation on `[data-closed]` also works. A part with no animation closes at once.
+
+### Press outside
+
+A popup, a dialog that is not a modal and a navigation menu close at a press outside them. A press that starts in the popup and ends outside it (for example a text selection with the mouse) does not close it, as in Base UI. A press in a popup closes only the popups that opened after it.
 
 ### Position
 
@@ -131,7 +140,7 @@ When the popup does not fit on its side, it goes to the other side (a flip). On 
 
 - `--anchor-width` and `--anchor-height`: the size of the anchor, for example for a list as wide as its input
 - `--available-width` and `--available-height`: the space from the anchor to the edge of the viewport, for a `max-height`
-- `--transform-origin`: the point of the anchor, for a scale animation from the anchor
+- `--transform-origin`: the point of the anchor, for a scale animation. A popup with `align` `start` or `end` and no arrow grows from its aligned edge (`0%` or `100%` on the other axis, as in Base UI). On a top or a bottom side in a right-to-left page, `start` is the right edge (`100%`). When the popup shifts more than 1 px to stay in the viewport, the origin goes back to the point of the anchor
 
 The `arrow` part gets its `left` (on a top or bottom side) or its `top` (on a left or right side), so it points at the center of the anchor. The value starts at the padding box of the popup, so give the arrow `position: absolute`. Put it on the edge of the popup with `[data-side]`:
 
@@ -320,7 +329,7 @@ A popover with `open-on-hover` and a link trigger (`<a href>`) is a preview card
 </div>
 ```
 
-A click on the link opens the link, not the popup. The keyboard focus on the link opens the popup after the delay, and the focus out closes it at once: the close delay is for the pointer. A popup that the focus opened has no animation, as in Base UI: it gets `data-instant="focus"`, also when the focus out closes it. Escape closes the card with `data-instant="dismiss"`, and the pointer removes the attribute. The focus stays on the link. The card only adds to the link, for a mouse and for the eyes: the link stays the only part for the keyboard and for a screen reader. So the link gets no `aria-haspopup`, `aria-expanded` or `aria-controls`, and the popup gets `aria-hidden="true"` and no role. Its links and fields get `tabindex="-1"`: Tab goes from the link to the next element of the page. Put the information of the card on the page of the link too. When the pointer is on **Ada**, the browser shows:
+A click on the link opens the link, not the popup. The keyboard focus on the link opens the popup after the delay, and the focus out closes it at once: the close delay is for the pointer. A popup that the focus opened gets `data-instant="focus"`, also when the focus out closes it, so a `[data-instant]` rule can stop its animation, as in Base UI. Escape closes the card with `data-instant="dismiss"`, and the pointer removes the attribute. The focus stays on the link. The card only adds to the link, for a mouse and for the eyes: the link stays the only part for the keyboard and for a screen reader. So the link gets no `aria-haspopup`, `aria-expanded` or `aria-controls`, and the popup gets `aria-hidden="true"` and no role. Its links and fields get `tabindex="-1"`: Tab goes from the link to the next element of the page. Put the information of the card on the page of the link too. When the pointer is on **Ada**, the browser shows:
 
 ```html
 <a href="/users/ada" data-phem-popover-target="trigger" data-popup-open>Ada</a>
@@ -342,7 +351,7 @@ A click on the link opens the link, not the popup. The keyboard focus on the lin
 
 The trigger is the controller element, or a `trigger` part in it. The pointer on the trigger opens the tooltip after the `delay` value (600 ms), and the pointer out closes it after the `close-delay` value (0 ms). The pointer can go on the tooltip, unless `data-phem-tooltip-hoverable-value="false"`. The focus of the keyboard (`:focus-visible`) opens it at once. Escape, the blur and a click on the trigger close it. Set `data-phem-tooltip-close-on-click-value="false"` to keep it open on a click.
 
-A tooltip that opens less than 400 ms after another tooltip closed opens at once, with `data-instant="delay"`, as in a toolbar. While the tooltip is open, the browser shows:
+A tooltip that opens less than 400 ms after another tooltip closed opens with no delay, and gets `data-instant="delay"`, so a `[data-instant]` rule can stop its animation, as in a toolbar. While the tooltip is open, the browser shows:
 
 ```html
 <button data-controller="phem-tooltip" aria-label="Archive" data-popup-open>
@@ -389,14 +398,14 @@ The parts get these roles: the popup `menu`, an item `menuitem`, a group `group`
 | ArrowDown, ArrowUp | The trigger | Opens the menu on the first item, or on the last item |
 | ArrowDown, ArrowUp | An item | Moves the focus (ArrowRight and ArrowLeft with `data-phem-menu-orientation-value="horizontal"`) |
 | Home, End | An item | Moves the focus to the first item, or to the last item |
-| A letter | An item | Moves the focus to the next item that starts with the letter |
+| A letter | An item | Moves the focus to the next item that starts with the letter. A letter that matches no item starts a new text |
 | Enter, Space | An item | Clicks the item |
 | Escape | The menu | Closes the menu, and gives the focus back to the trigger |
 | Tab | The menu | Closes the menu |
 
 The keys and the pointer skip an item with the `disabled` attribute, which cannot get the focus. An item with `aria-disabled="true"` gets the focus and `data-highlighted`, as a disabled item of a Base UI menu, so a keyboard user can find it. A click or Enter on it does nothing: its handler does not run, and the menu stays open. The first focus of a menu that opens skips the two kinds. For example, `<div data-phem-menu-target="item" aria-disabled="true" onClick={{ archive }}>Archive</div>` gets `data-disabled`, and ArrowDown stops on it. From the last item, ArrowDown goes to the first item, unless `data-phem-menu-loop-focus-value="false"`. A move of the pointer on an item gives it the focus, unless `data-phem-menu-highlight-item-on-hover-value="false"`. An item that comes under a pointer that does not move, for example when the menu opens under it, does not get the focus: the focus of the keyboard stays. The item with the focus gets `data-highlighted`. When the pointer goes out of the item, and not to another item (to a separator, a label or out of the popup), the item loses the highlight: the focus goes to the popup. The highlight of the keyboard stays when the pointer goes out.
 
-A change with the keyboard has no animation, as in Base UI: the popup gets `data-instant`, so a `[data-instant]` rule can stop its transition. The value is `click` after Enter or Space on the trigger or on an item, and `dismiss` after Escape. A change with the pointer removes the attribute:
+After a change with the keyboard, the popup gets `data-instant` with the cause. Add a `[data-instant] { transition: none }` rule to make the change with no animation, as in Base UI. The value is `click` after Enter or Space on the trigger or on an item, and `dismiss` after Escape. A change with the pointer removes the attribute:
 
 ```html
 <div data-phem-menu-target="popup" role="menu" data-closed data-instant="dismiss" hidden>...</div>
@@ -1997,7 +2006,7 @@ A press on the trigger opens the popup. When the user drags the pointer from the
 | A letter | trigger | Selects the next item that starts with it, with no popup (not with `multiple`). |
 | ArrowDown, ArrowUp | popup | Moves the focus to the next or the previous item. |
 | Home, End | popup | Moves the focus to the first or the last item. |
-| A letter | popup | Moves the focus to the next item that starts with the letters. |
+| A letter | popup | Moves the focus to the next item that starts with the letters. A letter that matches no item starts a new text. |
 | Enter, Space | popup | Selects the item with the focus. |
 | Escape | popup | Closes the popup. The focus goes back to the trigger. |
 | Tab | popup | Closes the popup. The focus goes to the trigger, and then to the next element. |

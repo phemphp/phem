@@ -87,8 +87,8 @@ const CHECKABLE = ["menuitemcheckbox", "menuitemradio"]
 // vertical menubar, ArrowRight (ArrowLeft in a right-to-left page) opens it in place of ArrowDown
 // and ArrowUp, and its popup goes on the `inline-end` side of the trigger.
 //
-// A change with the keyboard has no animation: the popup gets `data-instant`, as in Base UI. The
-// value is `click` after Enter or Space on the trigger or on an item, `dismiss` after Escape, and
+// After a change with the keyboard, the popup gets the cause in `data-instant`, and a
+// `[data-instant] { transition: none }` rule stops its animation, as in Base UI. The value is `click` after Enter or Space on the trigger or on an item, `dismiss` after Escape, and
 // `group` for a menu of a menubar that an arrow key opens or that the focus closes. A change with
 // the pointer removes the attribute.
 //
@@ -592,7 +592,7 @@ export default class PhemMenuController extends Controller {
     this.rendered = this.openValue
     this.#renderParts()
 
-    // The popup has no animation, with the cause in `data-instant`, as in Base UI: `click` (Enter
+    // The popup gets the cause in `data-instant`, and the CSS decides the animation: `click` (Enter
     // or Space on the trigger or on an item), `dismiss` (Escape) and `group` (a menubar that goes
     // from one menu to another sets `instant`, and a key or the focus opens or closes its menu).
     const instant = this.instant ?? this.cause ?? false

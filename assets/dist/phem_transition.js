@@ -9,8 +9,11 @@
 //     .popup { transition: opacity .15s, transform .15s }
 //     .popup[data-starting-style], .popup[data-ending-style] { opacity: 0; transform: scale(.95) }
 //
-// A part that opens again before the end of its close animation stops the close. With `instant`,
-// the part changes at once, with `data-instant` (for example a tooltip of a group).
+// A part that opens again before the end of its close animation stops the close.
+//
+// With `instant: true`, the part changes at once. A string `instant` is the cause of the change
+// (for example `click`, `dismiss`, `focus`, `group`, `delay`): the part gets it in `data-instant`,
+// and the CSS decides the animation (`[data-instant] { transition: none }`).
 
 // part => the AbortController of its open or close.
 const running = new WeakMap()
@@ -30,11 +33,11 @@ export function show(part, { instant = false, hidden = true, reveal = null } = {
   part.removeAttribute("data-ending-style")
   part.setAttribute("data-open", "")
   instantly(part, instant)
-  if (instant) part.removeAttribute("data-starting-style")
+  if (instant === true) part.removeAttribute("data-starting-style")
   else part.setAttribute("data-starting-style", "")
   if (hidden !== false) part.hidden = false
   reveal?.()
-  if (instant) return Promise.resolve()
+  if (instant === true) return Promise.resolve()
 
   // The browser reads the styles of the first frame, then the transition starts.
   void part.offsetWidth
@@ -59,7 +62,7 @@ export function hide(part, { instant = false, hidden = true, onEnd = () => {} } 
   part.setAttribute("data-closed", "")
   instantly(part, instant)
 
-  if (instant || (hidden !== false && part.hidden)) {
+  if (instant === true || (hidden !== false && part.hidden)) {
     end(part, hidden)
     onEnd()
 
@@ -123,6 +126,26 @@ export function measure(panel, name) {
   style.setProperty(`--${name}-panel-width`, `${width}px`)
 }
 
+// After the animations of `panel`: `--<name>-panel-height` and `--<name>-panel-width` get `auto`
+// when the panel is still open, so the content can change its size (Base UI
+// `useCollapsiblePanel`). A new show() or hide() stops it.
+//
+// It waits for the next frame, so a call just after show() sees the transition from the
+// `[data-starting-style]` size. It waits only for the finite animations of the panel itself: an
+// animation in the content (a spinner) does not keep the size.
+export function settle(panel, name) {
+  const signal = running.get(panel)?.signal
+
+  return new Promise((resolve) => requestAnimationFrame(resolve))
+    .then(() => Promise.allSettled(sizeAnimationsOf(panel).map((animation) => animation.finished)))
+    .then(() => {
+      if (signal?.aborted || !panel.hasAttribute("data-open")) return
+
+      panel.style.setProperty(`--${name}-panel-height`, "auto")
+      panel.style.setProperty(`--${name}-panel-width`, "auto")
+    })
+}
+
 function restart(part) {
   running.get(part)?.abort()
   const controller = new AbortController()
@@ -151,6 +174,15 @@ function isHidden(part) {
 
 // The animations of the part and of its content. The browser starts a transition when it reads
 // the new styles.
+// The animations of `panel` itself that end.
+function sizeAnimationsOf(panel) {
+  if (typeof panel.getAnimations !== "function") return []
+
+  getComputedStyle(panel).getPropertyValue("height")
+
+  return panel.getAnimations().filter((animation) => animation.effect?.getTiming?.().iterations !== Infinity)
+}
+
 function animationsOf(part) {
   if (typeof part.getAnimations !== "function") return []
 
