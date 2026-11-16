@@ -664,7 +664,7 @@ final class ExportStatus
 <p data-phem-on-poll="…" data-phem-poll="2000">Export: running</p>
 ```
 
-The interval starts at the end of the last poll, so the polls of a slow server do not wait in the queue. The polls stop while the tab is hidden (`visibilitychange`) and while the browser is offline. When the tab is visible again, a poll whose interval passed goes at once. With `null` or `false`, the element renders no interval and does not poll: above, the polls stop when the export is done. A morph that changes the interval starts the poll again with the new interval.
+The interval is the period from the start of one poll to the start of the next one. A poll never starts while the last poll runs: when a poll takes longer than the interval, the next poll goes at its end. The polls stop while the tab is hidden (`visibilitychange`) and while the browser is offline. When the tab is visible again, a poll whose interval passed goes at once. With `null` or `false`, the element renders no interval and does not poll: above, the polls stop when the export is done. A morph that changes the interval starts the poll again with the new interval.
 
 The interval is a whole number of milliseconds, 1 or more. `phemc` checks a literal value (E032), and the runtime throws an `InvalidArgumentException` for another value. `phemc` warns about `phem:poll` with no `onPoll`, and `onPoll` with no `phem:poll` (W006).
 

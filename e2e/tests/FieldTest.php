@@ -77,6 +77,49 @@ final class FieldTest extends E2eTestCase
         expect($page->locator('#name-error'))->toHaveCount(0);
     }
 
+    public function testTheFormFocusesAndSelectsTheControlOfAServerError(): void
+    {
+        $page = $this->visit('/field');
+        self::assertResponseIsSuccessful();
+
+        $page->locator('#name')->fill('Shoes');
+        $page->locator('#save')->click();
+        expect($page->locator('#name-error'))->toHaveText('This name is taken.');
+
+        // As in Base UI: the focus goes to the first control with a server error, not to <body>,
+        // and its text is selected.
+        expect($page->locator('#name'))->toBeFocused();
+        self::assertSame([0, 5], $page->evaluate("[document.getElementById('name').selectionStart, document.getElementById('name').selectionEnd]"));
+    }
+
+    public function testTheSubmitButtonKeepsTheFocusWhileTheSubmitRuns(): void
+    {
+        $page = $this->visit('/field');
+        self::assertResponseIsSuccessful();
+
+        // The submit locks the button with aria-disabled: a disabled button loses the focus, and the
+        // focus goes to <body>.
+        $page->evaluate(<<<'JS'
+            () => {
+                window.locked = null
+                new MutationObserver(() => {
+                    const save = document.getElementById('save')
+                    if (window.locked === null && document.getElementById('name').readOnly) {
+                        window.locked = { disabled: save.disabled, ariaDisabled: save.getAttribute('aria-disabled') }
+                    }
+                }).observe(document.getElementById('form'), { attributes: true, subtree: true })
+            }
+            JS);
+        $page->locator('#name')->fill('Ada');
+        $page->locator('#save')->focus();
+        $page->keyboard()->press('Enter');
+        expect($page->locator('#saves'))->toHaveText('1');
+
+        self::assertSame(['disabled' => false, 'ariaDisabled' => 'true'], $page->evaluate('window.locked'));
+        expect($page->locator('#save'))->not()->toHaveAttribute('aria-disabled', 'true');
+        expect($page->locator('#save'))->toBeFocused();
+    }
+
     public function testTheModesOfValidation(): void
     {
         $page = $this->visit('/field');

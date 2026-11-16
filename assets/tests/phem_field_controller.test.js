@@ -319,6 +319,127 @@ describe("phem-form", () => {
     await settle()
   }
 
+  it("selects the text of the first invalid control on a submit", async () => {
+    await mount(form(field("", 'name="code" pattern="[0-9]{4}"')))
+    type("name", "abc")
+
+    expect(submit().defaultPrevented).toBe(true)
+    expect(fetch).not.toHaveBeenCalled()
+    expect(document.activeElement).toBe(el("name"))
+    expect([el("name").selectionStart, el("name").selectionEnd]).toEqual([0, 3])
+  })
+
+  it("focuses and selects the first control with a server error after the submit", async () => {
+    await mount(homepage("https://example.com"))
+    el("submit").focus()
+    // A URL input has no selectionStart: check the call of select().
+    const select = vi.spyOn(HTMLInputElement.prototype, "select")
+
+    await send(homepage("https://example.com", "The example domain is not allowed"))
+
+    expect(el("url").getAttribute("aria-invalid")).toBe("true")
+    expect(document.activeElement).toBe(el("url"))
+    expect(select.mock.contexts).toContain(el("url"))
+  })
+
+  it("does not move the focus after a submit with no server error", async () => {
+    await mount(homepage("https://example.com"))
+    el("submit").focus()
+
+    await send(homepage("https://example.com"))
+
+    expect(document.activeElement).toBe(el("submit"))
+  })
+
+  it("does not move the focus for the phem:done of a phem:click button of the form", async () => {
+    const markup = (error = "") => form(`<div id="field" data-controller="phem-field">
+        <input id="url" type="url" name="url" value="https://example.com" ${error ? 'aria-invalid="true"' : ""} data-phem-field-target="control" />
+      </div>
+      <button id="check" type="button" data-phem-on-click="c1.check">Check</button>`)
+    await mount(markup())
+    el("check").focus()
+
+    respond(markup("The example domain is not allowed"))
+    const done = nextDone()
+    el("check").click()
+    await done
+    await settle()
+
+    expect(el("url").getAttribute("aria-invalid")).toBe("true")
+    expect(document.activeElement).toBe(el("check"))
+  })
+
+  // The form of the Base UI demo with an `onChange` of the form, and a checkbox that sends it.
+  const checked = (error = "") => homepage("https://example.com", error)
+    .replace('data-phem-on-submit="c1.save"', 'data-phem-on-submit="c1.save" data-phem-on-change="c1.check"')
+    .replace('<button id="submit"', '<input id="agree" type="checkbox" name="agree" /><button id="submit"')
+
+  it("does not move the focus for the phem:done of an onChange of the form", async () => {
+    await mount(checked())
+    el("submit").focus()
+
+    respond(checked("The example domain is not allowed"))
+    const done = nextDone()
+    el("agree").click()
+    await done
+    await settle()
+
+    expect(el("url").getAttribute("aria-invalid")).toBe("true")
+    expect(document.activeElement).toBe(el("submit"))
+  })
+
+  it("does not move the focus later after a submit that a listener cancels", async () => {
+    await mount(checked())
+    el("submit").focus()
+    // A confirm dialog that the user cancels: the submit sends nothing.
+    window.addEventListener("phem:before-queue", (event) => event.preventDefault(), { once: true })
+    submit()
+    expect(fetch).not.toHaveBeenCalled()
+
+    respond(checked("The example domain is not allowed"))
+    const done = nextDone()
+    el("agree").click()
+    await done
+    await settle()
+
+    expect(document.activeElement).toBe(el("submit"))
+  })
+
+  it("does not move the focus to a control with an error of the browser after the submit", async () => {
+    const markup = form(field('data-phem-field-validation-mode-value="onChange"', 'name="name" pattern="[0-9]+" value="abc"') + '<button id="skip" type="submit" formnovalidate>Skip</button>')
+    await mount(markup)
+    type("name", "abc")
+    expect(el("name").getAttribute("aria-invalid")).toBe("true")
+    el("skip").focus()
+
+    respond(markup)
+    const done = nextDone()
+    el("form").dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true, submitter: el("skip") }))
+    await done
+    await settle()
+
+    expect(document.activeElement).toBe(el("skip"))
+  })
+
+  it("focuses the first visible control with a server error", async () => {
+    const markup = (error) => form(`<div id="hidden-field" data-controller="phem-field" hidden>
+        <input id="code" name="code" value="1" ${error ? 'aria-invalid="true"' : ""} data-phem-field-target="control" />
+      </div>
+      <div id="field" data-controller="phem-field">
+        <input id="url" type="url" name="url" value="https://example.com" ${error ? 'aria-invalid="true"' : ""} data-phem-field-target="control" />
+      </div>`)
+    await mount(markup(false))
+    el("submit").focus()
+
+    respond(markup(true))
+    const done = nextDone()
+    submit()
+    await done
+    await settle()
+
+    expect(document.activeElement).toBe(el("url"))
+  })
+
   it("shows the same server error again after a second submit", async () => {
     await mount(homepage("https://example.com"))
 

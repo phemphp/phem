@@ -134,6 +134,12 @@ export default class PhemFieldController extends Controller {
     return !server && this.valid
   }
 
+  // The first control with the error of the server render, or null. An error of the browser does
+  // not count (see `phem-form`, which focuses it after a submit).
+  get serverErrorControl() {
+    return this.controlTargets.find(hasServerError) ?? null
+  }
+
   disabledValueChanged() {
     if (this.rendered) this.#render({ animate: false })
   }

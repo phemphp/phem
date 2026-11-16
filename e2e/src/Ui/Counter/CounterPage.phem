@@ -46,6 +46,7 @@ final class CounterPage
                 <button id="increment" type="button" onClick={{ increment }}>Increment</button>
                 <output id="count">{{ count }}</output>
                 <Tally />
+                <a id="top" href="#">Top</a>
             </Document>
         );
     }

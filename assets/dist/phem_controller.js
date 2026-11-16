@@ -251,11 +251,11 @@ class VisibleTriggers {
 }
 
 // The elements with an `onPoll` handler and a `phem:poll` interval (`data-phem-poll`, in
-// milliseconds): each one sends its event at its interval. The interval starts at the end of the
-// last poll, so the polls of a slow server do not wait in the queue. The polls stop while the tab
-// is hidden and while the browser is offline. When the tab is visible again, an element whose
-// interval passed sends its event at once. `send(el, end)` sends the event, and returns false
-// when it did not go. `end()` runs at the end of the event.
+// milliseconds): each one sends its event at its interval. The period starts at the start of the
+// last poll. A poll never starts while the last poll runs: after a slow poll, the next poll goes
+// at its end. The polls stop while the tab is hidden and while the browser is offline. When the
+// tab is visible again, an element whose interval passed sends its event at once. `send(el, end)`
+// sends the event, and returns false when it did not go. `end()` runs at the end of the event.
 class Polls {
   #root
   #send
@@ -318,11 +318,10 @@ class Polls {
     }
 
     poll.last = performance.now()
-    // The next interval starts at the end of this poll.
+    // The next poll goes one interval after the start of this poll, and never before its end.
     poll.running = navigator.onLine !== false && this.#send(el, () => {
       poll.running = false
-      poll.last = performance.now()
-      if (!this.#stopped && this.#polls.get(el) === poll && !document.hidden) this.#wait(el, poll, poll.interval)
+      if (!this.#stopped && this.#polls.get(el) === poll && !document.hidden) this.#wait(el, poll, Math.max(0, poll.last + poll.interval - performance.now()))
     })
     if (!poll.running) this.#wait(el, poll, poll.interval)
   }
@@ -658,20 +657,62 @@ function logProfile(handler, event, response) {
   console.debug(`[phem] ${event.live ? "phem:live" : event.refresh ? "phem:refresh" : handler} → ${response.status}`, url.href)
 }
 
+// Whether a link URL changes only the hash of the page.
+function isHashOfPage(href) {
+  const link = String(href ?? "")
+  if (!link.includes("#")) return false
+
+  const url = new URL(link, window.location.href)
+  const page = window.location
+
+  return url.origin === page.origin && url.pathname === page.pathname && url.search === page.search
+}
+
 function showLoading(el, on) {
   if (on) el.setAttribute("aria-busy", "true")
   else el.removeAttribute("aria-busy")
   el.classList.toggle("phem-loading", on)
 }
 
-// Locks a form control: a text field becomes read-only, any other control becomes disabled.
-// Returns the property that it set, or null when the control was already locked by the page.
-function lockControl(control) {
+const BUTTON_INPUTS = new Set(["submit", "button", "reset", "image"])
+
+// The kinds of lock of a form control while its submit runs. A button gets `aria-disabled="true"`,
+// so it keeps the focus (a disabled button loses it, as in Base UI), and a click on it does nothing
+// (`blocksClick`). A text field becomes read-only, and any other control becomes disabled.
+const LOCKS = {
+  button: {
+    isOn: (control) => control.getAttribute("aria-disabled") === "true",
+    set: (control, on) => (on ? control.setAttribute("aria-disabled", "true") : control.removeAttribute("aria-disabled")),
+    blocksClick: true,
+  },
+  text: {
+    isOn: (control) => control.readOnly,
+    set: (control, on) => (control.readOnly = on),
+    blocksClick: false,
+  },
+  other: {
+    isOn: () => false,
+    set: (control, on) => (control.disabled = on),
+    blocksClick: false,
+  },
+}
+
+// The lock of a form control (see LOCKS).
+function lockOf(control) {
+  if (control instanceof HTMLButtonElement || (control instanceof HTMLInputElement && BUTTON_INPUTS.has(control.type))) return LOCKS.button
+
   // A range or color input ignores `readonly`.
-  const prop = isTextLike(control) && control.type !== "range" && control.type !== "color" ? "readOnly" : "disabled"
-  if (control[prop] || control.disabled) return null
-  control[prop] = true
-  return prop
+  return isTextLike(control) && control.type !== "range" && control.type !== "color" ? LOCKS.text : LOCKS.other
+}
+
+// Locks a form control. Returns its lock, or null when the page already locked the control.
+function lockControl(control) {
+  const lock = lockOf(control)
+  if (control.disabled || lock.isOn(control)) return null
+
+  lock.set(control, true)
+
+  return lock
 }
 
 // Copies of the scripts of a fragment: a script of a `<template>` does not run when it goes in the
@@ -815,7 +856,7 @@ export default class PhemController extends Controller {
     // The events that show the loading state now: {handler, el, upload}, where upload is
     // {progress} for an event with files, or null
     this.running = new Set()
-    // form => (control => the property that the lock set), for each locked form
+    // form => (control => its lock, see LOCKS), for each locked form
     this.locked = new Map()
     // The id of the last DOM event that makes an event (see schedule())
     this.lastId = 0
@@ -830,12 +871,23 @@ export default class PhemController extends Controller {
       if (t.hasAttribute("data-phem-progress")) this.showProgress(t)
       if (t === this.element) this.showOffline()
 
-      for (const controls of this.locked.values()) {
-        const prop = controls.get(t)
-        if (prop) t[prop] = true
-      }
+      for (const controls of this.locked.values()) controls.get(t)?.set(t, true)
     }
     this.element.addEventListener("turbo:morph-element", this.keepLoading)
+
+    // A click on a locked button does nothing. The button keeps `aria-disabled` in place of
+    // `disabled`, so it keeps the focus (as in Base UI), and the browser still sends its click:
+    // a `phem:click` button of the form, a submit or reset button, and the Enter of a text field
+    // (the implicit submit clicks the default button). The listener is on the document: a button
+    // with `form="…"` can be out of the root element.
+    this.blockLocked = (event) => {
+      const control = event.target.closest?.("button, input")
+      if (!control || ![...this.locked.values()].some((controls) => controls.get(control)?.blocksClick)) return
+
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
+    document.addEventListener("click", this.blockLocked, true)
 
     // The values of all the bound fields when the request of the event that the morph renders
     // now left.
@@ -1033,7 +1085,7 @@ export default class PhemController extends Controller {
     // A click on a Turbo link asks in the dialog of the guard: the options of its visit are known,
     // so the visit can start again after a confirm.
     this.guardClick = (event) => {
-      if (this.leaving) return
+      if (event.defaultPrevented || this.leaving) return
 
       const guard = this.dirtyGuard()
       if (guard && this.askGuardDialog(guard, event.target, event.detail.url)) {
@@ -1041,6 +1093,19 @@ export default class PhemController extends Controller {
         event.preventDefault()
         event.detail.originalEvent?.preventDefault()
       }
+    }
+    // A link that changes only the hash (`href="#"`, `href="#notes"`) starts no visit: Turbo 8
+    // loads the page again for it, and the focus goes to <body>. The browser does its native jump.
+    // With `data-turbo-action="replace"`, the jump replaces the history entry.
+    this.hashClick = (event) => {
+      const url = event.detail?.url
+      if (!isHashOfPage(url)) return
+
+      event.preventDefault()
+      if (event.target.closest?.("[data-turbo-action]")?.getAttribute("data-turbo-action") !== "replace") return
+
+      event.detail.originalEvent?.preventDefault()
+      window.location.replace(url)
     }
     // The URL of the link visit that the user confirmed in the dialog: it asks nothing.
     this.passed = null
@@ -1068,6 +1133,7 @@ export default class PhemController extends Controller {
       if (null !== this.confirmed && event.detail?.url === this.confirmed) this.leaving = true
     }
     window.addEventListener("beforeunload", this.guardUnload)
+    document.addEventListener("turbo:click", this.hashClick)
     document.addEventListener("turbo:click", this.guardClick)
     document.addEventListener("turbo:before-visit", this.guardVisit)
     document.addEventListener("turbo:visit", this.guardStart)
@@ -1133,6 +1199,7 @@ export default class PhemController extends Controller {
     // The refresh that waited does not run: Turbo must not cache the mark with the page.
     this.element.removeAttribute("data-phem-push-pending")
     this.element.removeEventListener("turbo:morph-element", this.keepLoading)
+    document.removeEventListener("click", this.blockLocked, true)
     this.element.removeEventListener("turbo:before-morph-attribute", this.keepEdited)
     this.element.removeEventListener("turbo:before-morph-element", this.keepValue)
     this.element.removeEventListener("turbo:before-morph-element", this.keepKept)
@@ -1152,6 +1219,7 @@ export default class PhemController extends Controller {
     this.element.removeEventListener("input", this.showDirty)
     this.element.removeEventListener("change", this.showDirty)
     window.removeEventListener("beforeunload", this.guardUnload)
+    document.removeEventListener("turbo:click", this.hashClick)
     document.removeEventListener("turbo:click", this.guardClick)
     document.removeEventListener("turbo:before-visit", this.guardVisit)
     document.removeEventListener("turbo:visit", this.guardStart)
@@ -1944,8 +2012,8 @@ export default class PhemController extends Controller {
 
     const controls = new Map()
     for (const control of form.elements) {
-      const prop = lockControl(control)
-      if (prop) controls.set(control, prop)
+      const lock = lockControl(control)
+      if (lock) controls.set(control, lock)
     }
 
     this.locked.set(form, controls)
@@ -1953,7 +2021,7 @@ export default class PhemController extends Controller {
     return () => {
       if (this.locked.get(form) !== controls) return
       this.locked.delete(form)
-      controls.forEach((prop, control) => (control[prop] = false))
+      controls.forEach((lock, control) => lock.set(control, false))
     }
   }
 

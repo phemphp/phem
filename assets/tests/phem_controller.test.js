@@ -745,7 +745,7 @@ describe("the file inputs", () => {
       window.addEventListener(
         "phem:done",
         () => {
-          locked.push(input.disabled, document.querySelector("[name=title]").readOnly, document.querySelector("[type=submit]").disabled)
+          locked.push(input.disabled, document.querySelector("[name=title]").readOnly, document.querySelector("[type=submit]").hasAttribute("aria-disabled"))
           pick(input, ["b.txt"])
           window.addEventListener("phem:done", resolve, { once: true })
           document.querySelector("form").requestSubmit()
@@ -791,6 +791,197 @@ describe("the file inputs", () => {
     pick(document.querySelector("input[type=file]"), ["a.txt"])
     expect(visit()).toBe(true)
     expect(confirm).toHaveBeenCalledWith("Drop the photos?")
+  })
+})
+
+describe("the lock of a form submit", () => {
+  const form = `<form data-phem-on-submit="c1.save">
+      <input name="title" value="Notes"><button id="save" type="submit">Save</button>
+      <button id="preview" type="button" data-phem-on-click="c1.preview">Preview</button>
+    </form>`
+  const json = (markup) => new Response(JSON.stringify(answer(markup)), { status: 200, headers: { "Content-Type": "application/json" } })
+
+  // The request of the submit waits until the test calls the function that it returns.
+  function hold() {
+    let reply
+    fetch.mockImplementationOnce(() => new Promise((resolve) => (reply = resolve)))
+
+    return (markup) => reply(json(markup))
+  }
+
+  it("locks a button with aria-disabled, so the focus stays on the submit button", async () => {
+    await mount(form)
+    const save = document.getElementById("save")
+    const reply = hold()
+    save.focus()
+    const done = nextDone()
+    document.querySelector("form").requestSubmit(save)
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+
+    // As in Base UI: a disabled button loses the focus, and the focus goes to <body>.
+    expect(save.disabled).toBe(false)
+    expect(save.getAttribute("aria-disabled")).toBe("true")
+    expect(document.getElementById("preview").getAttribute("aria-disabled")).toBe("true")
+    expect(document.querySelector("[name=title]").readOnly).toBe(true)
+    expect(document.activeElement).toBe(save)
+
+    reply(form)
+    await done
+
+    expect(save.hasAttribute("aria-disabled")).toBe(false)
+    expect(document.getElementById("preview").hasAttribute("aria-disabled")).toBe(false)
+    expect(document.querySelector("[name=title]").readOnly).toBe(false)
+  })
+
+  it("does not unlock a button that the page made aria-disabled", async () => {
+    const markup = form.replace('id="preview"', 'id="preview" aria-disabled="true"')
+    await mount(markup)
+    const reply = hold()
+    const done = nextDone()
+    document.querySelector("form").requestSubmit(document.getElementById("save"))
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    reply(markup)
+    await done
+
+    expect(document.getElementById("save").hasAttribute("aria-disabled")).toBe(false)
+    expect(document.getElementById("preview").getAttribute("aria-disabled")).toBe("true")
+  })
+
+  it("blocks a click on a button of the form while the submit locks it", async () => {
+    await mount(form)
+    const reply = hold()
+    const done = nextDone()
+    document.querySelector("form").requestSubmit(document.getElementById("save"))
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true })
+    document.getElementById("preview").dispatchEvent(click)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    expect(click.defaultPrevented).toBe(true)
+    expect(fetch).toHaveBeenCalledTimes(1)
+
+    reply(form)
+    await done
+  })
+
+  it("locks the button again after a morph while the submit runs", async () => {
+    await mount(form)
+    const save = document.getElementById("save")
+    const reply = hold()
+    const done = nextDone()
+    document.querySelector("form").requestSubmit(save)
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+
+    // A push or an earlier event morphs the form: the server render has no aria-disabled.
+    save.removeAttribute("aria-disabled")
+    save.dispatchEvent(new CustomEvent("turbo:morph-element", { bubbles: true }))
+
+    expect(save.getAttribute("aria-disabled")).toBe("true")
+
+    reply(form)
+    await done
+
+    expect(save.hasAttribute("aria-disabled")).toBe(false)
+  })
+
+  it("locks an input button with aria-disabled, and blocks a reset and a click in a button", async () => {
+    const markup = `<form data-phem-on-submit="c1.save">
+        <input name="title" value="Notes"><input id="send" type="submit" value="Send">
+        <button id="reset" type="reset">Reset</button>
+        <button id="preview" type="button" data-phem-on-click="c1.preview"><span id="label">Preview</span></button>
+      </form>`
+    await mount(markup)
+    const reply = hold()
+    const done = nextDone()
+    document.querySelector("form").requestSubmit(document.getElementById("send"))
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+
+    expect(document.getElementById("send").getAttribute("aria-disabled")).toBe("true")
+    expect(document.getElementById("send").disabled).toBe(false)
+    for (const id of ["reset", "label"]) {
+      const click = new MouseEvent("click", { bubbles: true, cancelable: true })
+      document.getElementById(id).dispatchEvent(click)
+      expect(click.defaultPrevented).toBe(true)
+    }
+
+    reply(markup)
+    await done
+  })
+
+  it("blocks a click on a button of the form out of the root element", async () => {
+    await mount(form.replace("<form", '<form id="notes"'))
+    document.body.insertAdjacentHTML("beforeend", '<button id="outside" form="notes" type="button">Outside</button>')
+    const reply = hold()
+    const done = nextDone()
+    document.querySelector("form").requestSubmit(document.getElementById("save"))
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true })
+    document.getElementById("outside").dispatchEvent(click)
+    expect(document.getElementById("outside").getAttribute("aria-disabled")).toBe("true")
+    expect(click.defaultPrevented).toBe(true)
+
+    reply(form)
+    await done
+  })
+
+  it("does not block a click after the unlock", async () => {
+    await mount(form)
+    const reply = hold()
+    const done = nextDone()
+    document.querySelector("form").requestSubmit(document.getElementById("save"))
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    reply(form)
+    await done
+
+    fetch.mockResolvedValueOnce(json(form))
+    const next = nextDone()
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true })
+    document.getElementById("preview").dispatchEvent(click)
+    await next
+
+    expect(click.defaultPrevented).toBe(false)
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe("a link to a hash of the page", () => {
+  // The user clicks the link: Turbo dispatches `turbo:click` on it. Returns whether Turbo
+  // starts a visit, and whether the browser follows the link.
+  function follow(id) {
+    const el = document.getElementById(id)
+    const click = new MouseEvent("click", { cancelable: true })
+    const event = new CustomEvent("turbo:click", { bubbles: true, cancelable: true, detail: { url: el.href, originalEvent: click } })
+    el.dispatchEvent(event)
+
+    return { visit: !event.defaultPrevented, browser: !click.defaultPrevented }
+  }
+
+  it("does not start a Turbo visit for href=\"#\", so the browser does its jump", async () => {
+    await mount(`<a id="top" href="#">Top</a><a id="notes" href="#notes">Notes</a><a id="other" href="/other#notes">Other</a><a id="search" href="?page=2#notes">Page 2</a>`)
+
+    expect(follow("top")).toEqual({ visit: false, browser: true })
+    expect(follow("notes")).toEqual({ visit: false, browser: true })
+    expect(follow("other")).toEqual({ visit: true, browser: true })
+    expect(follow("search")).toEqual({ visit: true, browser: true })
+  })
+
+  it("starts a visit for a link to the same page with no hash, or to another origin", async () => {
+    const page = window.location.pathname + window.location.search
+    await mount(`<a id="reload" href="${page}">Reload</a><a id="away" href="https://other.test${window.location.pathname}#notes">Away</a>`)
+
+    expect(follow("reload")).toEqual({ visit: true, browser: true })
+    expect(follow("away")).toEqual({ visit: true, browser: true })
+  })
+
+  it("replaces the history entry for a link with data-turbo-action=replace", async () => {
+    await mount('<a id="top" href="#top" data-turbo-action="replace">Top</a>')
+    const length = history.length
+
+    expect(follow("top")).toEqual({ visit: false, browser: false })
+    expect(window.location.hash).toBe("#top")
+    expect(history.length).toBe(length)
   })
 })
 
@@ -1263,7 +1454,46 @@ describe("the onPoll event", () => {
     expect(document.getElementById("status").textContent).toBe("Done")
   })
 
-  it("starts the next interval at the end of the last poll", async () => {
+  it("keeps the period of phem:poll when the server is slow", async () => {
+    // The first poll takes 60 ms. The next poll starts 100 ms after the start of the first poll,
+    // not 100 ms after its end.
+    const starts = []
+    const json = (markup) => new Response(JSON.stringify(answer(markup)), { status: 200, headers: { "Content-Type": "application/json" } })
+    fetch.mockImplementationOnce(() => {
+      starts.push(performance.now())
+      return new Promise((resolve) => setTimeout(() => resolve(json(status("Running", 100))), 60))
+    })
+    fetch.mockImplementationOnce(() => {
+      starts.push(performance.now())
+      return Promise.resolve(json(status("Done", 0)))
+    })
+    await mount(status("Waiting", 100))
+    await vi.waitFor(() => expect(document.getElementById("status").textContent).toBe("Done"))
+
+    expect(starts[1] - starts[0]).toBeGreaterThanOrEqual(95)
+    expect(starts[1] - starts[0]).toBeLessThan(140)
+  })
+
+  it("sends the next poll at the end of a poll that takes longer than its interval", async () => {
+    const starts = []
+    const json = (markup) => new Response(JSON.stringify(answer(markup)), { status: 200, headers: { "Content-Type": "application/json" } })
+    fetch.mockImplementationOnce(() => {
+      starts.push(performance.now())
+      return new Promise((resolve) => setTimeout(() => resolve(json(status("Running", 50))), 120))
+    })
+    fetch.mockImplementationOnce(() => {
+      starts.push(performance.now())
+      return Promise.resolve(json(status("Done", 0)))
+    })
+    await mount(status("Waiting", 50))
+    await vi.waitFor(() => expect(document.getElementById("status").textContent).toBe("Done"))
+
+    // At the end of the first poll (120 ms), not one more interval after it (170 ms).
+    expect(starts[1] - starts[0]).toBeGreaterThanOrEqual(115)
+    expect(starts[1] - starts[0]).toBeLessThan(165)
+  })
+
+  it("does not send a poll while the last poll runs", async () => {
     let reply
     fetch.mockImplementationOnce(() => new Promise((resolve) => (reply = resolve)))
     await mount(status("Waiting", 10))

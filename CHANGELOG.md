@@ -8,6 +8,18 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking**: the submit of a form locks its buttons with `aria-disabled="true"` in place of
+  `disabled`, and a click on a locked button does nothing. The focused submit button keeps the
+  focus, as in Base UI. Before, the focus went to `<body>`. Replace a `:disabled` style or a test
+  of `button.disabled` for the lock with `[aria-disabled="true"]`.
+- `phem-form` selects the text of the first invalid control on a submit. After the submit event of
+  the form, the first control with a server error gets the focus and its text is selected. An error
+  of the browser, another event of the form and a redirect do not move the focus.
+- A link that changes only the hash of the page (`href="#"`) starts no Turbo visit: the browser
+  does its native jump. With `data-turbo-action="replace"`, the jump replaces the history entry.
+  Before, Turbo loaded the page again and the focus went to `<body>`.
+- `phem:poll` keeps its period: the interval starts at the start of the last poll, not at its end.
+  A 1000 ms poll with a 200 ms answer sent a poll every 1.2 s. The polls still never overlap.
 - **Breaking** `data-instant` gives only the cause of a change of a popup (`click`, `dismiss`,
   `focus`, `delay`, `group`). The CSS stops the animation: add `[data-instant] { transition:
   none }`. Before, a popup with `data-instant` changed at once with no animation. Now a keyboard
@@ -27,7 +39,6 @@ that break the code of an application start with **Breaking**.
   each button), `collision: "context"` in `place()`, the `resetMs` and `from` options of
   `Typeahead`, the `leaveList()` helper and the `settle()` export of `phem_transition.js`. No
   controller uses them yet.
-
 - Tab in a modal `phem-dialog` goes from the last element of the dialog to the first one, and
   Shift+Tab goes back, as in Base UI. Before, only `modal="trap-focus"` kept the focus in the
   dialog: Tab in a `showModal()` dialog went from its last element to the browser.
