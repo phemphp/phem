@@ -43,6 +43,8 @@ final class DisplayTest extends KernelTestCase
     {
         $this->mount('Phem\Ui\Base\Tests\App\FieldsetDemo')
             ->assertSelectorTextContains('fieldset legend', 'Billing details')
+            // A legend is not a flex item: the fieldset gives it the margin of its gap.
+            ->assertSelectorExists('fieldset[class~="[--fieldset-gap:1rem]"][class~="gap-[var(--fieldset-gap)]"][class~="[&>legend]:mb-[var(--fieldset-gap)]"]')
             ->assertSelectorExists('fieldset input[name="company"]')
             ->assertSelectorExists('[role="separator"][aria-orientation="vertical"][data-orientation="vertical"]');
     }

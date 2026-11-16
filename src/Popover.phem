@@ -86,7 +86,7 @@ function PopoverArrow(mixed ...$rest): Node
 {
     $base = Style::ARROW;
 
-    return <div data-phem-popover-target="arrow" className={{ classes(base) }} {{ ...rest }} />;
+    return <div data-phem-popover-target="arrow" aria-hidden="true" className={{ classes(base) }} {{ ...rest }} />;
 }
 
 #[Component]

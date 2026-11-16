@@ -78,6 +78,12 @@ class Combobox
         return $this->openOnInputClick ?? $this->hasClientList();
     }
 
+    /** The popup opens and closes with an animation. The popup of an Autocomplete has none, as in Base UI. */
+    public function animatesPopup(): bool
+    {
+        return true;
+    }
+
     public function render(): Node
     {
         $selectionMode = $this->resolvedSelectionMode();
@@ -195,15 +201,18 @@ function ComboboxClear(?Html $children = null, mixed ...$rest): Node
     );
 }
 
+/** The popup of the list. In an Autocomplete it has no animation, as in Base UI. */
 #[Component]
-function ComboboxPopup(?Html $children = null, mixed ...$rest): Node
+function ComboboxPopup(#[Context] Combobox $combobox, ?Html $children = null, mixed ...$rest): Node
 {
+    $animation = !$combobox->animatesPopup() ? '' : 'transition-[scale,opacity] duration-100 data-starting-style:scale-95 data-starting-style:opacity-0 data-ending-style:scale-95 data-ending-style:opacity-0';
+
     return (
         <div
             data-phem-combobox-target="popup"
             popover="manual"
             hidden
-            className={{ classes('m-0 inset-auto overflow-visible w-[var(--anchor-width)] max-w-[var(--available-width)] origin-[var(--transform-origin)] border border-neutral-950 bg-white text-neutral-950 shadow-[0.25rem_0.25rem_0_rgb(0_0_0_/_12%)] transition-[scale,opacity] duration-100 data-starting-style:scale-95 data-starting-style:opacity-0 data-ending-style:scale-95 data-ending-style:opacity-0 dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none [&[hidden]]:hidden') }}
+            className={{ classes('m-0 inset-auto overflow-visible w-[var(--anchor-width)] max-w-[var(--available-width)] origin-[var(--transform-origin)] border border-neutral-950 bg-white text-neutral-950 shadow-[0.25rem_0.25rem_0_rgb(0_0_0_/_12%)] dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none [&[hidden]]:hidden', animation) }}
             {{ ...rest }}
         >
             {{ children }}
@@ -217,6 +226,7 @@ function ComboboxList(?Html $children = null, mixed ...$rest): Node
     return (
         <div
             data-phem-combobox-target="list"
+            tabindex="-1"
             className={{ classes('max-h-[min(22.5rem,var(--available-height))] overflow-y-auto overscroll-contain py-1 scroll-py-1 outline-0 data-empty:p-0') }}
             {{ ...rest }}
         >
@@ -299,7 +309,7 @@ function ComboboxGroupLabel(?Html $children = null, mixed ...$rest): Node
 #[Component]
 function ComboboxSeparator(mixed ...$rest): Node
 {
-    return <div role="separator" className={{ classes('mx-1 my-1 h-px bg-neutral-950 dark:bg-white') }} {{ ...rest }} />;
+    return <div role="separator" aria-orientation="horizontal" data-orientation="horizontal" className={{ classes('mx-1 my-1 h-px bg-neutral-950 dark:bg-white') }} {{ ...rest }} />;
 }
 
 /** The box of the chips and the input, for a combobox with `multiple`. */

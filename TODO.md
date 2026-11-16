@@ -4,12 +4,17 @@ The work that is still open in `phem/ui-base`. The bundle has no workarounds. A 
 
 ## Waiting for a phem fix
 
-phem v0.4.4 fixes the 24 gaps from the comparison with the Base UI v1.9.0 docs, hero demos and source (the release that base-ui.com shows). The bundle uses the fixes. Two parts are still open: some behavior of the scrub area of the number field, and some input cases of the OTP field. See [notes/phem-gaps.md](notes/phem-gaps.md) for the list. After each phem release, update `phem/phem` (`composer update phem/phem` in the bundle and in `demo/`) and check this list again.
+A comparison of each demo page with base-ui.com (Base UI v1.9.0) in a browser (2026-11-16) found the open gaps. phem v0.4.5 and v0.4.6 fix five of them: the open animation of the popups, the Collapsible panel that showed nothing, the second toast after a dismiss, a press in the Combobox popup that took the focus from the input, and the arrow of a popup with a border. 15 groups of gaps are still open. The most important ones: the server errors of the Form, Tab in the OTP field, the Navigation Menu and the modal dialogs, and Escape on a Preview Card. See [notes/phem-gaps.md](notes/phem-gaps.md) for the list. After each phem release, update `phem/phem` (`composer update phem/phem` in the bundle and in `demo/`) and check this list again.
 
 ## Open differences in the bundle
 
-These differences need no phem change. The hero demos do not use them.
+These differences need no phem change. The hero demos show the first two, and do not use the others.
 
+- **The two variants of Base UI.** base-ui.com shows the CSS Modules variant of each demo. The bundle copies the Tailwind variant. They are different in three places, and the bundle is equal to the Tailwind variant:
+  - the curve of a transition: CSS `ease`, `ease-out` and `ease-in-out` on the page, the default curve of Tailwind in the bundle (the indicator of Tabs, Meter and Progress, and the popups);
+  - the Menubar trigger: the page has a hover color and an active color, and no background with a keyboard focus;
+  - the Tooltip trigger with a keyboard focus and an open tooltip: transparent on the page, `neutral-100` in the bundle.
+- **Avatar: the fallback at page load.** The fallback text shows for about 230 ms, until `phem-avatar` connects. Base UI renders no fallback when a delay is set. The fix needs the `delay` of `Avatar` in `AvatarFallback` (a `hidden` attribute in the server render).
 - **Drawer: the viewport and the bleed.** The Base UI drawer has a Viewport part and a "bleed" behind the popup (`--bleed`, `--viewport-padding`, and the iOS variants). The bundle has neither, so a drag to the left shows a gap at the edge. `phem-dialog` already has the `viewport` part: this is a change of the bundle classes.
 - **Props that Base UI has and the bundle does not have:** `name`, `thumbAlignment` and `thumbCollisionBehavior` on `Slider`; `uncheckedValue` and `form` on `SwitchRoot`; `modal` and `disablePointerDismissal` on `Drawer`; `format` and `locale` on `Progress` and `Meter`; `hiddenUntilFound` on `CollapsiblePanel`; `delay` on `AvatarFallback` (the bundle has it on `Avatar`).
 - **Defaults:** the Positioner `align` of Base UI is `center` for a root menu, a select and a combobox. The bundle uses `start`. The hero demos set `start` or have the width of the anchor, so the look is equal.

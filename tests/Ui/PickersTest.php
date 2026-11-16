@@ -21,7 +21,8 @@ final class PickersTest extends KernelTestCase
             ->assertSelectorExists('input#fruit-input[data-phem-combobox-target="input"]')
             ->assertSelectorExists('button[data-phem-combobox-target="clear"][aria-label="Clear selection"]')
             ->assertSelectorExists('button[data-phem-combobox-target="trigger"][aria-label="Open popup"] svg')
-            ->assertSelectorExists('[data-phem-combobox-target="popup"][popover="manual"] [data-phem-combobox-target="list"]')
+            // Tab goes from the input out of the combobox, not to a list that scrolls.
+            ->assertSelectorExists('[data-phem-combobox-target="popup"][popover="manual"] [data-phem-combobox-target="list"][tabindex="-1"]')
             ->assertSelectorExists('#fruit-item-apple[data-phem-combobox-target="item"][data-selected]')
             ->assertSelectorExists('#fruit-item-banana:not([data-selected])')
             ->assertSelectorExists('[data-phem-combobox-target="empty"]');
@@ -49,6 +50,14 @@ final class PickersTest extends KernelTestCase
             ->assertSelectorNotExists('[data-phem-combobox-open-on-input-click-value]');
     }
 
+    public function testThePopupOfAnAutocompleteHasNoAnimation(): void
+    {
+        $this->mount(self::APP.'ComboboxSelectionDemo')
+            ->assertSelectorCount(3, '[data-phem-combobox-target="popup"]')
+            ->assertSelectorCount(2, '[data-phem-combobox-target="popup"][class*="transition-"][class*="data-starting-style:"]')
+            ->assertSelectorCount(1, '[data-phem-combobox-target="popup"]:not([class*="transition-"]):not([class*="data-starting-style:"]):not([class*="data-ending-style:"])');
+    }
+
     public function testTheDrawerIsADialogWithASwipe(): void
     {
         $html = $this->mount(self::APP.'DrawerDemo')
@@ -67,6 +76,8 @@ final class PickersTest extends KernelTestCase
         $this->mount(self::APP.'PreviewCardDemo')
             ->assertSelectorExists('[data-controller="phem-popover"][data-phem-popover-open-on-hover-value="true"][data-phem-popover-delay-value="600"][data-phem-popover-close-delay-value="300"]')
             ->assertSelectorExists('a[href="https://en.wikipedia.org/wiki/Typography"][data-phem-popover-target="trigger"]')
+            // No whitespace around the text of the link: the underline would include it.
+            ->assertSeeHtml('>typography</a>')
             ->assertSelectorExists('[data-phem-popover-target="popup"][hidden]');
     }
 

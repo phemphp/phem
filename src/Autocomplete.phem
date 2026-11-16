@@ -24,4 +24,9 @@ class Autocomplete extends Combobox
     {
         return $this->openOnInputClick ?? false;
     }
+
+    public function animatesPopup(): bool
+    {
+        return false;
+    }
 }

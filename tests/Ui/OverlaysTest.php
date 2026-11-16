@@ -37,7 +37,9 @@ final class OverlaysTest extends KernelTestCase
             ->assertSelectorExists('#faq-what-trigger[aria-controls="faq-what-panel"][aria-expanded="false"]')
             ->assertSelectorExists('#faq-what-panel[role="region"][aria-labelledby="faq-what-trigger"][hidden]')
             ->assertSelectorExists('#faq-start-trigger[data-panel-open]')
-            ->assertSelectorExists('#faq-start-panel[data-open]:not([hidden])');
+            ->assertSelectorExists('#faq-start-panel[data-open]:not([hidden])')
+            ->assertSelectorExists('#faq[data-orientation="vertical"] [data-phem-accordion-target="item"][data-orientation="vertical"] h3[data-orientation="vertical"] #faq-what-trigger[data-orientation="vertical"]')
+            ->assertSelectorExists('#faq-what-panel[data-orientation="vertical"]');
     }
 
     public function testTheDialogIsANativeDialog(): void
@@ -62,7 +64,7 @@ final class OverlaysTest extends KernelTestCase
     {
         $this->mount(self::APP.'PopoverDemo')
             ->assertSelectorExists('[data-controller="phem-popover"][data-phem-popover-side-value="bottom"][data-phem-popover-align-value="center"][data-phem-popover-side-offset-value="8"]')
-            ->assertSelectorExists('[data-phem-popover-target="popup"][popover="manual"][hidden] [data-phem-popover-target="arrow"]')
+            ->assertSelectorExists('[data-phem-popover-target="popup"][popover="manual"][hidden] [data-phem-popover-target="arrow"][aria-hidden="true"][class~="absolute"]')
             ->assertSelectorExists('[data-phem-popover-target="popup"] h2[data-phem-popover-target="title"]');
     }
 
@@ -99,7 +101,9 @@ final class OverlaysTest extends KernelTestCase
             // A disabled item keeps the focus of the keyboard, as in Base UI: no `disabled` attribute.
             ->assertSelectorExists('#item-off[aria-disabled="true"][data-disabled]:not([disabled])')
             ->assertSelectorExists('#check-off[aria-disabled="true"][data-disabled]:not([disabled])')
-            ->assertSelectorExists('[data-phem-menu-target="separator"]');
+            ->assertSelectorExists('[data-phem-menu-target="separator"][role="separator"][aria-orientation="horizontal"][data-orientation="horizontal"]')
+            // Only a menu of a Menubar stops the animation of an instant open.
+            ->assertSelectorNotExists('[data-phem-menu-target="popup"][class*="data-instant"]');
     }
 
     public function testAMenuIsModalUnlessThePointerOpensIt(): void

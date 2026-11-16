@@ -163,7 +163,7 @@ function MenuSubmenuTrigger(#[Context] Menu $menu, bool $disabled = false, ?Html
 function MenuPopup(#[Context] Menu $menu, ?Html $children = null, mixed ...$rest): Node
 {
     $target = $menu->target('popup');
-    $base = Style::MENU_POPUP;
+    $base = null !== $menu->menubar ? Style::MENUBAR_POPUP : Style::MENU_POPUP;
 
     return <div popover="manual" hidden className={{ classes(base) }} {{ ...target }} {{ ...rest }}>{{ children }}</div>;
 }
@@ -174,7 +174,7 @@ function MenuArrow(#[Context] Menu $menu, mixed ...$rest): Node
     $target = $menu->target('arrow');
     $base = Style::ARROW;
 
-    return <div className={{ classes(base) }} {{ ...target }} {{ ...rest }} />;
+    return <div aria-hidden="true" className={{ classes(base) }} {{ ...target }} {{ ...rest }} />;
 }
 
 /**
@@ -219,7 +219,7 @@ function MenuSeparator(#[Context] Menu $menu, mixed ...$rest): Node
 {
     $target = $menu->target('separator');
 
-    return <div className={{ classes('mx-1 my-1 h-px bg-neutral-950 dark:bg-white') }} {{ ...target }} {{ ...rest }} />;
+    return <div role="separator" aria-orientation="horizontal" data-orientation="horizontal" className={{ classes('mx-1 my-1 h-px bg-neutral-950 dark:bg-white') }} {{ ...target }} {{ ...rest }} />;
 }
 
 #[Component]
@@ -259,7 +259,7 @@ function MenuCheckboxItem(#[Context] Menu $menu, ?bool $checked = null, bool $de
 #[Component]
 function MenuItemIndicator(?Html $children = null, mixed ...$rest): Node
 {
-    return <span className={{ classes('col-start-1 hidden group-data-checked:block') }} {{ ...rest }}>{{ children ? children : <CheckIcon /> }}</span>;
+    return <span aria-hidden="true" className={{ classes('col-start-1 hidden group-data-checked:block') }} {{ ...rest }}>{{ children ? children : <CheckIcon /> }}</span>;
 }
 
 /** The label of a checkbox item or a radio item, in the column after the indicator. */

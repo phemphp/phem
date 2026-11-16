@@ -26,6 +26,10 @@ final class ListsTest extends KernelTestCase
     {
         $this->mount(self::APP.'SelectDemo')
             ->assertSelectorExists('[data-controller="phem-select"]:not([data-phem-select-value-value])')
+            // No loop by default, as in Base UI.
+            ->assertSelectorExists('[data-controller="phem-select"][data-phem-select-loop-focus-value="false"]')
+            ->assertSelectorExists('[data-phem-select-target="icon"][aria-hidden="true"]')
+            ->assertSelectorExists('[data-phem-select-target="itemIndicator"][aria-hidden="true"]')
             ->assertSelectorExists('#apple-label[data-phem-select-target="label"]')
             ->assertSelectorExists('button[data-phem-select-target="trigger"][aria-labelledby="apple-label"]')
             ->assertSelectorExists('[data-phem-select-target="value"][data-placeholder][placeholder="Select apple"]')
@@ -47,6 +51,13 @@ final class ListsTest extends KernelTestCase
         $this->mount(self::APP.'MenubarDemo')
             ->assertSelectorExists('[data-controller="phem-menubar"][role="menubar"] [data-controller="phem-menu"] button[data-phem-menu-target="trigger"]')
             ->assertSelectorNotExists('button[data-phem-menu-target="trigger"] svg');
+    }
+
+    public function testOnlyAMenuOfAMenubarStopsTheAnimationOfAnInstantOpen(): void
+    {
+        $this->mount(self::APP.'MenubarDemo')
+            ->assertSelectorCount(2, '[data-phem-menu-target="popup"]')
+            ->assertSelectorCount(2, '[data-phem-menu-target="popup"][class~="data-instant:transition-none"]');
     }
 
     public function testTheNavigationMenuHasItsParts(): void

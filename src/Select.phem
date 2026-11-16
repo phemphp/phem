@@ -24,7 +24,7 @@ class Select
     #[Prop] public bool $disabled = false;
     #[Prop] public bool $readOnly = false;
     #[Prop] public bool $required = false;
-    #[Prop] public bool $loopFocus = true;
+    #[Prop] public bool $loopFocus = false;
     #[Prop] public Side $side = Side::Bottom;
     #[Prop] public Align $align = Align::Start;
     #[Prop] public int $sideOffset = 0;
@@ -132,7 +132,7 @@ function SelectValue(#[Context] Select $select, ?string $placeholder = null, mix
 #[Component]
 function SelectIcon(?Html $children = null, mixed ...$rest): Node
 {
-    return <span data-phem-select-target="icon" className={{ classes('flex') }} {{ ...rest }}>{{ children ? children : <CaretUpDownIcon /> }}</span>;
+    return <span data-phem-select-target="icon" aria-hidden="true" className={{ classes('flex') }} {{ ...rest }}>{{ children ? children : <CaretUpDownIcon /> }}</span>;
 }
 
 #[Component]
@@ -161,7 +161,7 @@ function SelectList(?Html $children = null, mixed ...$rest): Node
 function SelectScrollUpArrow(?Html $children = null, mixed ...$rest): Node
 {
     return (
-        <div data-phem-select-target="scrollUpArrow" className={{ classes("top-0 z-[1] flex h-4 w-full cursor-default items-center justify-center bg-white text-center text-xs before:absolute data-[side=none]:before:top-[-100%] before:left-0 before:h-full before:w-full before:content-[''] dark:bg-neutral-950") }} {{ ...rest }}>
+        <div data-phem-select-target="scrollUpArrow" aria-hidden="true" className={{ classes("top-0 z-[1] flex h-4 w-full cursor-default items-center justify-center bg-white text-center text-xs before:absolute data-[side=none]:before:top-[-100%] before:left-0 before:h-full before:w-full before:content-[''] dark:bg-neutral-950") }} {{ ...rest }}>
             {{ children ? children : <CaretUpIcon /> }}
         </div>
     );
@@ -171,7 +171,7 @@ function SelectScrollUpArrow(?Html $children = null, mixed ...$rest): Node
 function SelectScrollDownArrow(?Html $children = null, mixed ...$rest): Node
 {
     return (
-        <div data-phem-select-target="scrollDownArrow" className={{ classes("bottom-0 z-[1] flex h-4 w-full cursor-default items-center justify-center bg-white text-center text-xs before:absolute before:left-0 before:h-full before:w-full before:content-[''] data-[side=none]:before:bottom-[-100%] dark:bg-neutral-950") }} {{ ...rest }}>
+        <div data-phem-select-target="scrollDownArrow" aria-hidden="true" className={{ classes("bottom-0 z-[1] flex h-4 w-full cursor-default items-center justify-center bg-white text-center text-xs before:absolute before:left-0 before:h-full before:w-full before:content-[''] data-[side=none]:before:bottom-[-100%] dark:bg-neutral-950") }} {{ ...rest }}>
             {{ children ? children : <CaretDownIcon /> }}
         </div>
     );
@@ -202,7 +202,7 @@ function SelectItem(#[Context] Select $select, string $value, bool $disabled = f
 #[Component]
 function SelectItemIndicator(?Html $children = null, mixed ...$rest): Node
 {
-    return <span data-phem-select-target="itemIndicator" className={{ classes('col-start-1 [&[hidden]]:hidden') }} {{ ...rest }}>{{ children ? children : <CheckIcon /> }}</span>;
+    return <span data-phem-select-target="itemIndicator" aria-hidden="true" className={{ classes('col-start-1 [&[hidden]]:hidden') }} {{ ...rest }}>{{ children ? children : <CheckIcon /> }}</span>;
 }
 
 /** The text of an item: the label that the value part shows. */
@@ -227,5 +227,5 @@ function SelectGroupLabel(?Html $children = null, mixed ...$rest): Node
 #[Component]
 function SelectSeparator(mixed ...$rest): Node
 {
-    return <div data-phem-select-target="separator" className={{ classes('mx-1 my-1 h-px bg-neutral-950 dark:bg-white') }} {{ ...rest }} />;
+    return <div data-phem-select-target="separator" role="separator" aria-orientation="horizontal" data-orientation="horizontal" className={{ classes('mx-1 my-1 h-px bg-neutral-950 dark:bg-white') }} {{ ...rest }} />;
 }

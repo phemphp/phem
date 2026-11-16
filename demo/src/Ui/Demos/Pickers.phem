@@ -126,7 +126,7 @@ function AutocompletePage(): Node
             <Autocomplete id="tags" filter="contains">
                 <ComboboxLabel>Search tags</ComboboxLabel>
                 <ComboboxInput placeholder="e.g. feature" className="h-8 w-[16rem] border border-neutral-950 px-2 placeholder:opacity-100 placeholder:[-webkit-text-fill-color:var(--color-neutral-500)] dark:placeholder:[-webkit-text-fill-color:var(--color-neutral-400)] focus:outline-solid focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:border-white dark:focus:outline-white" />
-                <ComboboxPopup className="transition-none">
+                <ComboboxPopup>
                     <ComboboxEmpty>No tags found.</ComboboxEmpty>
                     <ComboboxList className="scroll-py-[0.25rem]">
                         {% for id, tag in tags %}

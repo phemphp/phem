@@ -82,5 +82,5 @@ function TooltipArrow(mixed ...$rest): Node
 {
     $base = Style::ARROW;
 
-    return <span data-phem-tooltip-target="arrow" className={{ classes(base) }} {{ ...rest }} />;
+    return <span data-phem-tooltip-target="arrow" aria-hidden="true" className={{ classes(base) }} {{ ...rest }} />;
 }

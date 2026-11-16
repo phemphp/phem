@@ -50,7 +50,7 @@ final class FormPage
     {
         return (
             <DemoPage title="Form">
-                <Form onSubmit={{ submit }} className="[&.phem-loading_button]:pointer-events-none [&.phem-loading_button]:border-neutral-500 [&.phem-loading_button]:text-neutral-500">
+                <Form onSubmit={{ submit }} className="[&.phem-loading_button]:pointer-events-none [&.phem-loading_button]:border-neutral-500 [&.phem-loading_button]:text-neutral-500 dark:[&.phem-loading_button]:border-neutral-400 dark:[&.phem-loading_button]:text-neutral-400">
                     <Field>
                         <FieldLabel>Homepage</FieldLabel>
                         <FieldControl
