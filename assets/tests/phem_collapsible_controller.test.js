@@ -369,3 +369,37 @@ describe("phem-collapsible", () => {
     expect(localStorage.getItem("phem-collapsible:promo-2027")).toBeNull()
   })
 })
+
+describe("phem-collapsible: the animation state of the element", () => {
+  const root = () => document.getElementById("section")
+
+  it("gives the element data-starting-style for the first frame of an open", async () => {
+    await mount(section())
+    click("#open")
+
+    expect(root().hasAttribute("data-open")).toBe(true)
+    expect(root().hasAttribute("data-starting-style")).toBe(true)
+
+    await new Promise((resolve) => requestAnimationFrame(() => resolve()))
+    expect(root().hasAttribute("data-starting-style")).toBe(false)
+    expect(root().hidden).toBe(false)
+  })
+
+  it("keeps data-ending-style on the element until the end of the animations of the panel", async () => {
+    await mount(section('data-phem-collapsible-open-value="true"'))
+    let finish
+    const finished = new Promise((resolve) => (finish = resolve))
+    document.getElementById("panel").getAnimations = () => [{ finished }]
+    // Another animation in the element (an icon of the trigger) does not count.
+    root().getAnimations = () => [{ finished: new Promise(() => {}) }]
+    click("#open")
+
+    expect(root().hasAttribute("data-closed")).toBe(true)
+    expect(root().hasAttribute("data-ending-style")).toBe(true)
+
+    finish()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(root().hasAttribute("data-ending-style")).toBe(false)
+    expect(root().hidden).toBe(false)
+  })
+})

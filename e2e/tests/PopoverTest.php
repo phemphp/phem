@@ -72,8 +72,9 @@ final class PopoverTest extends E2eTestCase
         $page = $this->visit('/popover');
         self::assertResponseIsSuccessful();
 
+        // The focus goes to the first element of the popup that Tab goes to.
         $page->locator('#trigger')->click();
-        expect($page->locator('#popup'))->toBeFocused();
+        expect($page->locator('#like'))->toBeFocused();
         $page->keyboard()->press('Escape');
 
         expect($page->locator('#popup'))->toBeHidden();
@@ -132,10 +133,11 @@ final class PopoverTest extends E2eTestCase
         self::assertResponseIsSuccessful();
 
         $tip = $page->locator('#tip');
-        expect($page->locator('#archive'))->toHaveAttribute('aria-describedby', 'tip');
         $page->locator('#archive')->hover();
         expect($tip)->toBeVisible();
-        expect($tip)->toHaveAttribute('role', 'tooltip');
+        // A tooltip is only visual: no role, and no description of the trigger.
+        expect($tip)->not()->toHaveAttribute('role', 'tooltip');
+        self::assertNull($page->evaluate("document.getElementById('archive').getAttribute('aria-describedby')"));
         expect($tip)->toHaveAttribute('data-side', 'top');
 
         $trigger = $page->locator('#archive')->boundingBox();
@@ -146,19 +148,19 @@ final class PopoverTest extends E2eTestCase
         expect($tip)->toBeHidden();
     }
 
-    public function testATooltipWithNoIdDescribesItsTriggerAlsoAfterAnEvent(): void
+    public function testATooltipStaysAfterAnEventAndGetsNoIdAndNoDescription(): void
     {
         $page = $this->visit('/popover');
         self::assertResponseIsSuccessful();
 
         $pin = $page->getByRole('button', ['name' => 'Pin']);
-        $described = "document.getElementById('pin').ariaDescribedByElements?.[0]?.textContent ?? null";
-        self::assertSame('Pin to the top', $page->evaluate($described));
+        $pin->hover();
+        expect($page->locator('.pin-tip'))->toBeVisible();
 
-        // The morph of the event keeps the popup with no id, and the link.
-        $pin->click();
+        // The morph of the event keeps the open popup, with no id and no description.
+        $page->locator('#pin')->dispatchEvent('click');
         expect($page->locator('#likes'))->toHaveText('1');
-        self::assertSame('Pin to the top', $page->evaluate($described));
         self::assertSame(0, $page->evaluate("document.querySelectorAll('.pin-tip[id]').length"));
+        self::assertNull($page->evaluate("document.getElementById('pin').getAttribute('aria-describedby')"));
     }
 }

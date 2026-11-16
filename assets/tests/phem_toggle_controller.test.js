@@ -127,9 +127,10 @@ describe("phem-toggle", () => {
     press(" ")
     expect(el("input").checked).toBe(true)
 
-    // Enter does not toggle a switch.
+    // Enter also toggles a switch, as a button.
     press("Enter")
-    expect(el("input").checked).toBe(true)
+    expect(el("input").checked).toBe(false)
+    expect(el("switch").getAttribute("aria-checked")).toBe("false")
   })
 
   it("takes the first state from the checked input", async () => {

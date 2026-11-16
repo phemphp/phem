@@ -223,3 +223,14 @@ describe("phem-scroll-area", () => {
     expect(el("viewport").style.overflow).toBe("scroll")
   })
 })
+
+describe("phem-scroll-area: the Tab order of the viewport", () => {
+  it("puts a viewport that scrolls in the Tab order, and takes it out with no overflow", async () => {
+    await mountArea()
+    expect(el("viewport").getAttribute("tabindex")).toBe("0")
+
+    layout({ scrollHeight: 100 })
+    controller().update()
+    expect(el("viewport").getAttribute("tabindex")).toBe("-1")
+  })
+})

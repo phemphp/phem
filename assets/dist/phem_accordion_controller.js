@@ -20,8 +20,10 @@ import { hide, measure, render, show } from "./phem_transition.js"
 // between the triggers, as the accordion pattern of the APG says now. With the `rovingFocus`
 // value, ArrowDown, ArrowUp, Home and End also move the focus between the triggers (ArrowRight and
 // ArrowLeft with the `horizontal` orientation, and from the last trigger to the first one with the
-// `loopFocus` value). A disabled trigger does not open. A `header` target (the heading around a
-// trigger) gets `data-open`, and each part of an item gets `data-index`.
+// `loopFocus` value). A disabled trigger (`disabled` or `aria-disabled="true"`) does not open: its
+// item, its header, the trigger and its panel get `data-disabled`. A `header` target (the heading
+// around a trigger) gets `data-open`, and each part of an item gets `data-index`. The controller
+// element and each panel get `data-orientation` (the `orientation` value).
 //
 // The `open` value is the state: the list of the open items. An item is its `data-value`
 // attribute, its key (`data-phem-key`), or its index. The server render gives its first value, and
@@ -66,6 +68,10 @@ export default class PhemAccordionController extends Controller {
     this.element.removeEventListener("keydown", this.onKeyDown)
     this.element.removeEventListener("beforematch", this.onBeforeMatch)
     this.rendered = undefined
+  }
+
+  orientationValueChanged() {
+    if (this.rendered !== undefined) this.#render()
   }
 
   // A server render with a new value, or a change of the value by a script.
@@ -169,6 +175,8 @@ export default class PhemAccordionController extends Controller {
   }
 
   #renderParts(open, parts) {
+    this.element.setAttribute("data-orientation", this.orientationValue)
+
     parts.forEach(({ item, value, trigger, panel }, index) => {
       const isOpen = open.includes(value)
       item.toggleAttribute("data-open", isOpen)
@@ -177,7 +185,13 @@ export default class PhemAccordionController extends Controller {
       // The header of the item has its state, and each part has the index of its item.
       const header = this.headerTargets.find((el) => item.contains(el))
       header?.toggleAttribute("data-open", isOpen)
-      for (const part of [item, header, trigger, panel]) part?.setAttribute("data-index", String(index))
+      const disabled = trigger ? isDisabled(trigger) : false
+      for (const part of [item, header, trigger, panel]) {
+        part?.setAttribute("data-index", String(index))
+        part?.toggleAttribute("data-disabled", disabled)
+      }
+
+      panel?.setAttribute("data-orientation", this.orientationValue)
 
       if (trigger) {
         trigger.setAttribute("aria-expanded", String(isOpen))
@@ -237,10 +251,11 @@ export default class PhemAccordionController extends Controller {
   // The attributes of the state: the open state of an item and of a panel, and the ARIA
   // attributes of a trigger and of a panel.
   #owns(el, name) {
-    if (this.itemTargets.includes(el)) return name === "data-open" || name === "data-closed" || name === "data-index"
-    if (this.headerTargets.includes(el)) return name === "data-open" || name === "data-index"
-    if (this.panelTargets.includes(el)) return OPEN_ATTRIBUTES.has(name) || name === "role" || name === "aria-labelledby" || name === "data-index"
-    if (this.triggerTargets.includes(el)) return name === "aria-expanded" || name === "aria-controls" || name === "data-panel-open" || name === "data-index"
+    if (el === this.element) return name === "data-orientation"
+    if (this.itemTargets.includes(el)) return name === "data-open" || name === "data-closed" || name === "data-index" || name === "data-disabled"
+    if (this.headerTargets.includes(el)) return name === "data-open" || name === "data-index" || name === "data-disabled"
+    if (this.panelTargets.includes(el)) return OPEN_ATTRIBUTES.has(name) || name === "role" || name === "aria-labelledby" || name === "data-index" || name === "data-disabled" || name === "data-orientation"
+    if (this.triggerTargets.includes(el)) return name === "aria-expanded" || name === "aria-controls" || name === "data-panel-open" || name === "data-index" || name === "data-disabled"
 
     return false
   }

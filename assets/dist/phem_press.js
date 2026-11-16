@@ -14,3 +14,17 @@ export function noClick() {
   window.addEventListener("click", stop, { capture: true, once: true })
   setTimeout(() => window.removeEventListener("click", stop, { capture: true }), 0)
 }
+
+// The type of the pointer of the last press in the page: `mouse`, `touch` or `pen`. A `click`
+// event does not have it in all the browsers.
+let pressType = null
+
+document.addEventListener("pointerdown", (event) => (pressType = event.pointerType), { capture: true })
+
+// Whether a touch made the click `event`. A click of the keyboard or of a script (`detail` is 0)
+// has no pointer.
+export function isTouchClick(event) {
+  if (!event || event.detail === 0) return false
+
+  return (event.pointerType || pressType) === "touch"
+}

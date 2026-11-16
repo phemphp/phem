@@ -141,14 +141,39 @@ describe("phem-popover", () => {
     expect(popup().hasAttribute("data-side")).toBe(false)
   })
 
-  it("moves the focus into the popup, and back to the trigger on close", async () => {
+  it("moves the focus to the first element that Tab goes to, and back to the trigger on close", async () => {
     await mount(share())
+    click("#trigger")
+
+    expect(document.activeElement.id).toBe("copy")
+    click("#close")
+    expect(document.activeElement.id).toBe("trigger")
+  })
+
+  it("moves the focus to the popup when it has no element that Tab goes to", async () => {
+    await mount(`<div data-controller="phem-popover">
+        <button id="trigger" data-phem-popover-target="trigger">Info</button>
+        <div id="popup" data-phem-popover-target="popup" hidden><p>Text</p><button disabled>Off</button></div>
+      </div>`)
     click("#trigger")
 
     expect(document.activeElement).toBe(popup())
     expect(popup().tabIndex).toBe(-1)
+  })
+
+  it("moves the focus to the popup after an open with a touch", async () => {
+    await mount(share())
+    const trigger = document.getElementById("trigger")
+    trigger.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "touch" }))
+    trigger.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 }))
+
+    expect(document.activeElement).toBe(popup())
+
+    // A press of the mouse: the first element gets the focus again.
     click("#close")
-    expect(document.activeElement.id).toBe("trigger")
+    trigger.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse" }))
+    trigger.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 }))
+    expect(document.activeElement.id).toBe("copy")
   })
 
   it("gives the focus to the autofocus element of the popup", async () => {
@@ -248,7 +273,7 @@ describe("phem-popover", () => {
       expect(shown()).toBe(false)
     })
 
-    it("opens after the delay on the keyboard focus, and closes after the close delay on the focus out", async () => {
+    it("opens after the delay on the keyboard focus, and closes at once on the focus out, with data-instant", async () => {
       await mount(card())
       vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
       const trigger = document.getElementById("trigger")
@@ -262,12 +287,13 @@ describe("phem-popover", () => {
       expect(shown()).toBe(true)
       expect(document.activeElement).toBe(trigger)
       expect(trigger.hasAttribute("data-popup-open")).toBe(true)
+      expect(popup().getAttribute("data-instant")).toBe("focus")
 
+      // The `closeDelay` value (300 ms) is for the pointer.
       document.getElementById("outside").focus()
-      vi.advanceTimersByTime(299)
-      expect(shown()).toBe(true)
-      vi.advanceTimersByTime(1)
+      vi.advanceTimersByTime(0)
       expect(shown()).toBe(false)
+      expect(popup().getAttribute("data-instant")).toBe("focus")
       vi.useRealTimers()
     })
   })
@@ -291,6 +317,45 @@ describe("phem-popover", () => {
 
     popup().dispatchEvent(new PointerEvent("pointerout", { bubbles: true, pointerType: "mouse", relatedTarget: document.body }))
     vi.advanceTimersByTime(100)
+    expect(isOpen()).toBe(false)
+  })
+
+  it("closes at once with a closeDelay of 0, and stays open in the space between the trigger and the popup", async () => {
+    await mount(share('data-phem-popover-open-on-hover-value="true" data-phem-popover-delay-value="0"'))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    const trigger = document.getElementById("trigger")
+    // The popup is 8 px below the trigger.
+    trigger.getBoundingClientRect = () => ({ left: 0, top: 0, right: 100, bottom: 20, width: 100, height: 20 })
+    popup().getBoundingClientRect = () => ({ left: 0, top: 28, right: 200, bottom: 128, width: 200, height: 100 })
+    const move = (type, target, x, y, to = document.body) => target.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: "mouse", clientX: x, clientY: y, relatedTarget: to }))
+
+    move("pointerover", trigger, 50, 10)
+    vi.advanceTimersByTime(0)
+    expect(isOpen()).toBe(true)
+
+    // The pointer is between the trigger and the popup.
+    move("pointerout", trigger, 50, 24)
+    vi.advanceTimersByTime(1000)
+    expect(isOpen()).toBe(true)
+    move("pointermove", document.body, 150, 26)
+    vi.advanceTimersByTime(1000)
+    expect(isOpen()).toBe(true)
+
+    // A diagonal path from the side of the trigger to the popup is also in that space.
+    move("pointermove", document.body, 140, 15)
+    vi.advanceTimersByTime(1000)
+    expect(isOpen()).toBe(true)
+
+    // It goes out of that space: the popup closes with no delay.
+    move("pointermove", document.body, 300, 26)
+    vi.advanceTimersByTime(0)
+    expect(isOpen()).toBe(false)
+
+    // Out of the trigger on its other side: the popup closes at once.
+    move("pointerover", trigger, 50, 10)
+    vi.advanceTimersByTime(0)
+    move("pointerout", trigger, 50, -5)
+    vi.advanceTimersByTime(0)
     expect(isOpen()).toBe(false)
   })
 

@@ -23,3 +23,5 @@ phem-suspense{display:block}
 [data-phem-sorting],[data-phem-sorting] *{-webkit-user-select:none;user-select:none}
 /* The swipe of a drawer (phem-dialog with a swipe direction): no text selection. */
 [data-phem-dialog-target~="popup"][data-swiping]{-webkit-user-select:none;user-select:none}
+/* The scrub area of a phem-number-field: a touch scrubs and does not scroll, and no text selection. */
+[data-phem-number-field-target~="scrubArea"]{touch-action:none;-webkit-user-select:none;user-select:none}

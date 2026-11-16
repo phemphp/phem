@@ -41,6 +41,9 @@ const OVERFLOW_ATTRIBUTES = ["data-has-overflow-x", "data-has-overflow-y", "data
 // `data-overflow-*` attribute shows: a number for all the edges, or a JSON object with `xStart`,
 // `xEnd`, `yStart` and `yEnd`. The default is 0.
 //
+// The viewport gets `tabindex="0"` when its content is wider or taller than it, so Tab goes to it
+// and the arrow keys scroll it, and `tabindex="-1"` when it has no overflow.
+//
 // The root, the viewport, the content and the scrollbars get `data-has-overflow-x` and
 // `data-has-overflow-y` when the content is wider or taller than the viewport, and
 // `data-overflow-x-start`, `data-overflow-x-end`, `data-overflow-y-start` and
@@ -252,6 +255,11 @@ export default class PhemScrollAreaController extends Controller {
 
     for (const el of [this.element, viewport, ...this.contentTargets]) toggleAll(el, state)
 
+    // Tab goes to a viewport that scrolls, so the arrow keys scroll it. A viewport with no
+    // overflow is out of the Tab order, as in Base UI.
+    const tabindex = hasX || hasY ? "0" : "-1"
+    if (viewport.getAttribute("tabindex") !== tabindex) viewport.setAttribute("tabindex", tabindex)
+
     setStyle(this.element, "position", "relative")
     setStyle(viewport, "overflow", "scroll")
     setStyle(viewport, "scrollbar-width", "none")
@@ -350,6 +358,7 @@ export default class PhemScrollAreaController extends Controller {
 
   // The attributes of the state, and the `style` of the parts.
   #owns(el, name) {
+    if (name === "tabindex" && this.viewportTargets.includes(el)) return true
     if (el === this.element || this.viewportTargets.includes(el) || this.contentTargets.includes(el)) return name === "style" || OVERFLOW_ATTRIBUTES.includes(name)
     if (this.scrollbarTargets.includes(el)) return ["style", "hidden", "data-hovering"].includes(name) || OVERFLOW_ATTRIBUTES.includes(name)
     if (this.thumbTargets.includes(el)) return ["style", "data-scrolling", "data-orientation"].includes(name)

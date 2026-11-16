@@ -1,6 +1,6 @@
 # Build UI with the built-in controllers
 
-This guide shows you how to use the Stimulus controllers that Phem ships for common UI patterns: a section that opens, an accordion, a section that shows from the value of a field, a popover, a tooltip, a menu, a menu bar, a navigation menu, a context menu, a combobox, a select, a sortable list, a modal dialog, a drawer, tabs, a toggle button, a switch or a checkbox, a toggle group, a toolbar, a radio group, an avatar, a field with validation, a number field, a one-time code field, a slider, a scroll area, a table of contents that marks the section in view, a theme switch, toasts, a copy button, a count of characters, an image input with a preview, a password that shows, a "select all" box, a local time, the focus after an event and a confirmation. Their state belongs to the client, so it stays after the morph of an event.
+This guide shows you how to use the Stimulus controllers that Phem ships for common UI patterns: a section that opens, an accordion, a section that shows from the value of a field, a popover, a tooltip, a menu, a menu bar, a navigation menu, a context menu, a combobox, a select, a sortable list, a modal dialog, a drawer, tabs, a toggle button, a switch or a checkbox, a toggle group, a toolbar, a radio group, a button that is not a `<button>`, an avatar, a field with validation, a number field, a one-time code field, a slider, a scroll area, a table of contents that marks the section in view, a theme switch, toasts, a copy button, a count of characters, an image input with a preview, a password that shows, a "select all" box, a local time, the focus after an event and a confirmation. Their state belongs to the client, so it stays after the morph of an event.
 
 The controllers follow the design of [Base UI](https://base-ui.com): they ship no CSS, and your markup gives all the elements. A UI library can put its own styled markup on them.
 
@@ -37,6 +37,7 @@ The controllers are off by default. Enable each one that you use in `assets/cont
     "toolbar": { "enabled": true, "fetch": "lazy" },
     "radio-group": { "enabled": true, "fetch": "lazy" },
     "avatar": { "enabled": true, "fetch": "lazy" },
+    "button": { "enabled": true, "fetch": "lazy" },
     "field": { "enabled": true, "fetch": "lazy" },
     "form": { "enabled": true, "fetch": "lazy" },
     "number-field": { "enabled": true, "fetch": "lazy" },
@@ -170,6 +171,8 @@ A click on a trigger opens and closes the panel. The `toggle`, `open` and `close
 
 The panel has no `id`, so the trigger points to it with an element reference (`ariaControlsElements`). When each panel has an `id`, the trigger gets the ids in `aria-controls`. An `aria-controls` that your markup gives stays.
 
+The controller element and the panel get `data-open` or `data-closed`. During an open and a close, they also get `data-starting-style` and `data-ending-style` (see [Animations](#animations)), as the root of a Base UI Collapsible. So a style of the element can change with the panel, for example the icon of the trigger: `.section[data-ending-style] .icon { rotate: 0deg; }`. The `data-ending-style` of the element stays until the end of the animations of the panel.
+
 The panel gets the size of its content in `--collapsible-panel-height` and `--collapsible-panel-width`, for a transition of its height:
 
 ```css
@@ -217,7 +220,7 @@ The server renders the banner open, so a dismissed banner shows until the contro
 </div>
 ```
 
-Each `item` has one `trigger` and one `panel`. A click on a trigger opens and closes its item. Tab moves the focus between the triggers, as the accordion pattern of the ARIA Authoring Practices says now. With `data-phem-accordion-roving-focus-value="true"`, ArrowDown, ArrowUp, Home and End also move the focus between the triggers. Then, with `data-phem-accordion-orientation-value="horizontal"`, ArrowRight and ArrowLeft move it, and from the last trigger ArrowDown goes to the first one, unless `data-phem-accordion-loop-focus-value="false"`. A `header` part (the heading around a trigger) gets `data-open`, and each part of an item gets `data-index` (the position of the item, from 0). A disabled trigger (`disabled` or `aria-disabled="true"`) does not open, and does not get the focus. After a click on **Returns**, the browser shows:
+Each `item` has one `trigger` and one `panel`. A click on a trigger opens and closes its item. Tab moves the focus between the triggers, as the accordion pattern of the ARIA Authoring Practices says now. With `data-phem-accordion-roving-focus-value="true"`, ArrowDown, ArrowUp, Home and End also move the focus between the triggers. Then, with `data-phem-accordion-orientation-value="horizontal"`, ArrowRight and ArrowLeft move it, and from the last trigger ArrowDown goes to the first one, unless `data-phem-accordion-loop-focus-value="false"`. A `header` part (the heading around a trigger) gets `data-open`, and each part of an item gets `data-index` (the position of the item, from 0). A disabled trigger (`disabled` or `aria-disabled="true"`) does not open, and does not get the focus: its item, its header, the trigger and its panel get `data-disabled`, also when the morph of an event changes the trigger. The controller element and each panel get `data-orientation` (`vertical`, or the `orientation` value). After a click on **Returns**, the browser shows:
 
 ```html
 <div data-value="returns" data-phem-accordion-target="item" data-open>
@@ -299,9 +302,9 @@ A click on the trigger opens and closes the popup, and a click on a `close` part
 
 The popup gets `role="dialog"`, `aria-labelledby` (the `title` part) and `aria-describedby` (the `description` part), so a screen reader names the popup. A popup with an `aria-label` keeps it, and gets no `aria-labelledby`. A part with an `id` gets a link with its id, as the title above. A part with no `id`, as the description above, gets a link with the element references of ARIA (`ariaLabelledByElements`, `ariaDescribedByElements`), and the browser shows `aria-describedby=""`. The trigger points to a popup with no `id` with `ariaControlsElements`. The controller gives the parts no `id`, because the morph must match each element to the server render.
 
-Open moves the focus into the popup: to its `[autofocus]` element, or to the popup itself. Escape closes the popup and gives the focus back to the trigger. A click outside and the focus out of the popover close it too. Set `data-phem-popover-dismiss-value="false"` to keep it open on Escape, on a click outside and on the focus out. Then Escape goes to the popup or the dialog around the popover, which closes.
+Open moves the focus into the popup: to its `[autofocus]` element, or else to the first element that Tab goes to (a field, a button, a link), or else to the popup itself. After an open with a touch, the focus goes to the popup, so the keyboard of the device does not show. Escape closes the popup and gives the focus back to the trigger. A click outside and the focus out of the popover close it too. Set `data-phem-popover-dismiss-value="false"` to keep it open on Escape, on a click outside and on the focus out. Then Escape goes to the popup or the dialog around the popover, which closes.
 
-With `data-phem-popover-open-on-hover-value="true"`, the pointer on the trigger opens the popup after the `delay` value (300 ms), and the pointer out of the trigger and of the popup closes it after the `close-delay` value (at least 100 ms, so the pointer can go to the popup). A popover with `open-on-hover` is good for a preview card, because a touch screen and the keyboard can still open it.
+With `data-phem-popover-open-on-hover-value="true"`, the pointer on the trigger opens the popup after the `delay` value (300 ms), and the pointer out of the trigger and of the popup closes it after the `close-delay` value (0 ms: at once). The pointer can go from the trigger to the popup, also on a diagonal path: while it is in the space between them, the popup stays open. For example, with `data-phem-popover-side-offset-value="8"`, the pointer crosses the 8 px below the trigger, and the popup closes only when the pointer goes out of that space. A popover with `open-on-hover` is good for a preview card, because a touch screen and the keyboard can still open it.
 
 ### Show a preview card of a link
 
@@ -317,7 +320,7 @@ A popover with `open-on-hover` and a link trigger (`<a href>`) is a preview card
 </div>
 ```
 
-A click on the link opens the link, not the popup. The keyboard focus on the link opens the popup after the delay, and the focus out closes it after the close delay. The focus stays on the link. The card only adds to the link, for a mouse and for the eyes: the link stays the only part for the keyboard and for a screen reader. So the link gets no `aria-haspopup`, `aria-expanded` or `aria-controls`, and the popup gets `aria-hidden="true"` and no role. Its links and fields get `tabindex="-1"`: Tab goes from the link to the next element of the page. Put the information of the card on the page of the link too. When the pointer is on **Ada**, the browser shows:
+A click on the link opens the link, not the popup. The keyboard focus on the link opens the popup after the delay, and the focus out closes it at once: the close delay is for the pointer. A popup that the focus opened has no animation, as in Base UI: it gets `data-instant="focus"`, also when the focus out closes it. Escape closes the card with `data-instant="dismiss"`, and the pointer removes the attribute. The focus stays on the link. The card only adds to the link, for a mouse and for the eyes: the link stays the only part for the keyboard and for a screen reader. So the link gets no `aria-haspopup`, `aria-expanded` or `aria-controls`, and the popup gets `aria-hidden="true"` and no role. Its links and fields get `tabindex="-1"`: Tab goes from the link to the next element of the page. Put the information of the card on the page of the link too. When the pointer is on **Ada**, the browser shows:
 
 ```html
 <a href="/users/ada" data-phem-popover-target="trigger" data-popup-open>Ada</a>
@@ -339,15 +342,21 @@ A click on the link opens the link, not the popup. The keyboard focus on the lin
 
 The trigger is the controller element, or a `trigger` part in it. The pointer on the trigger opens the tooltip after the `delay` value (600 ms), and the pointer out closes it after the `close-delay` value (0 ms). The pointer can go on the tooltip, unless `data-phem-tooltip-hoverable-value="false"`. The focus of the keyboard (`:focus-visible`) opens it at once. Escape, the blur and a click on the trigger close it. Set `data-phem-tooltip-close-on-click-value="false"` to keep it open on a click.
 
-A tooltip that opens less than 400 ms after another tooltip closed opens at once, with `data-instant="delay"`, as in a toolbar. The popup gets `role="tooltip"`, and the trigger gets `aria-describedby`:
+A tooltip that opens less than 400 ms after another tooltip closed opens at once, with `data-instant="delay"`, as in a toolbar. While the tooltip is open, the browser shows:
 
 ```html
-<button data-controller="phem-tooltip" aria-label="Archive" aria-describedby="" data-popup-open>
-    <span data-phem-tooltip-target="popup" role="tooltip" data-open data-side="top" data-align="center" style="...">Archive</span>
+<button data-controller="phem-tooltip" aria-label="Archive" data-popup-open>
+    <span data-phem-tooltip-target="popup" data-open data-side="top" data-align="center" style="...">Archive</span>
 </button>
 ```
 
-The popup has no `id`, so the trigger points to it with an element reference (`ariaDescribedByElements`). A popup with an `id` adds its id to `aria-describedby`. The descriptions that your markup gives in `aria-describedby` stay, before the tooltip.
+A tooltip is only visual, as the Tooltip of Base UI: the popup gets no `role="tooltip"`, and the trigger gets no `aria-describedby`. The label of the trigger is its name for a screen reader. For a text that a screen reader must also read as a description, write the link in your markup. The controller keeps the attributes of the server render:
+
+```html
+<button data-controller="phem-tooltip" aria-label="Archive" aria-describedby="archive-tip">
+    <span id="archive-tip" role="tooltip" data-phem-tooltip-target="popup" hidden>Moves the message out of the inbox</span>
+</button>
+```
 
 A tooltip helps only the users of a pointer and of a keyboard. A touch shows no tooltip. Give the trigger its own label (here `aria-label`) for a touch screen and for a screen reader. Do not put important information only in a tooltip: use a popover with `open-on-hover`.
 
@@ -385,7 +394,13 @@ The parts get these roles: the popup `menu`, an item `menuitem`, a group `group`
 | Escape | The menu | Closes the menu, and gives the focus back to the trigger |
 | Tab | The menu | Closes the menu |
 
-The keys skip a disabled item (`disabled` or `aria-disabled="true"`). From the last item, ArrowDown goes to the first item, unless `data-phem-menu-loop-focus-value="false"`. A move of the pointer on an item gives it the focus, unless `data-phem-menu-highlight-item-on-hover-value="false"`. An item that comes under a pointer that does not move, for example when the menu opens under it, does not get the focus: the focus of the keyboard stays. The item with the focus gets `data-highlighted`.
+The keys and the pointer skip an item with the `disabled` attribute, which cannot get the focus. An item with `aria-disabled="true"` gets the focus and `data-highlighted`, as a disabled item of a Base UI menu, so a keyboard user can find it. A click or Enter on it does nothing: its handler does not run, and the menu stays open. The first focus of a menu that opens skips the two kinds. For example, `<div data-phem-menu-target="item" aria-disabled="true" onClick={{ archive }}>Archive</div>` gets `data-disabled`, and ArrowDown stops on it. From the last item, ArrowDown goes to the first item, unless `data-phem-menu-loop-focus-value="false"`. A move of the pointer on an item gives it the focus, unless `data-phem-menu-highlight-item-on-hover-value="false"`. An item that comes under a pointer that does not move, for example when the menu opens under it, does not get the focus: the focus of the keyboard stays. The item with the focus gets `data-highlighted`. When the pointer goes out of the item, and not to another item (to a separator, a label or out of the popup), the item loses the highlight: the focus goes to the popup. The highlight of the keyboard stays when the pointer goes out.
+
+A change with the keyboard has no animation, as in Base UI: the popup gets `data-instant`, so a `[data-instant]` rule can stop its transition. The value is `click` after Enter or Space on the trigger or on an item, and `dismiss` after Escape. A change with the pointer removes the attribute:
+
+```html
+<div data-phem-menu-target="popup" role="menu" data-closed data-instant="dismiss" hidden>...</div>
+```
 
 A click on an item runs its own handler, and closes the menu. The item with `data-phem-menu-close-on-click="false"` keeps the menu open, as **Pin** above: after its event, the morph shows the new `aria-checked` in the open menu. A click outside and the focus out of the menu close it. With `data-phem-menu-open-on-hover-value="true"`, the pointer on the trigger opens the menu after the `delay` value (100 ms).
 
@@ -472,6 +487,8 @@ In a right-to-left page, ArrowLeft opens the submenu and ArrowRight closes it. T
 
 Set `data-phem-menu-modal-value="true"` for a modal menu. While it is open, the page does not scroll, and the elements out of the menu get no hover and no click: the body gets `pointer-events: none`, and the popup `pointer-events: auto`. A click outside closes the menu, and the element under the pointer does not get the click. The width of the scroll bar stays, so the page does not move. A Turbo visit gives the page its styles back before Turbo keeps the page in its cache.
 
+A menu that the pointer opened (`data-phem-menu-open-on-hover-value="true"`) does not lock the page, as in Base UI: the lock would take the pointer from the trigger, and the menu would close. The same menu locks the page when a click or a key opens it.
+
 ## Build a menu bar
 
 `phem-menubar` is a bar of menus, as the menu bar of an application. Each menu of the bar is a `phem-menu` in the menubar element:
@@ -524,7 +541,7 @@ Set a value with `data-phem-menubar-<name>-value`, for example `data-phem-menuba
 
 The triggers have one tab stop: the trigger of the last menu that had the focus. The arrow keys skip a disabled trigger. In a right-to-left page, ArrowLeft and ArrowRight go the other way.
 
-While a menu is open, the pointer on another trigger opens its menu at once, and closes the first menu. The two popups get `data-instant="group"` for this change, so a `[data-instant]` rule can stop their animation. The first click on that trigger keeps its menu open. A modal menubar locks the page as a [modal menu](#lock-the-page-while-the-menu-is-open) does, but the menubar and its popups keep the pointer events (`pointer-events: auto` on the menubar), so the pointer can go to the other triggers. A click outside closes the menu.
+While a menu is open, the pointer on another trigger opens its menu at once, and closes the first menu. The two popups get `data-instant="group"` for this change, so a `[data-instant]` rule can stop their animation. A menu of the bar also gets `data-instant="group"` when an arrow key on its trigger opens it, when the focus out of it closes it, and when another menu of the bar opens. As a menu with no menubar, it gets `data-instant="click"` for Enter and Space, and `data-instant="dismiss"` for Escape. The first click on that trigger keeps its menu open. A modal menubar locks the page as a [modal menu](#lock-the-page-while-the-menu-is-open) does, but the menubar and its popups keep the pointer events (`pointer-events: auto` on the menubar), so the pointer can go to the other triggers. A click outside closes the menu.
 
 The menubar element gets `role="menubar"`, `aria-orientation`, `data-orientation`, `data-modal` (with the `modal` value), `data-disabled` and `aria-disabled="true"` (with the `disabled` value), and `data-has-submenu-open` while a menu is open. The triggers get `role="menuitem"`, `tabindex` and `data-disabled`. In a vertical menubar, the popup of a menu goes on the `inline-end` side of its trigger. After a click on **Edit**, a click on **Undo** (an item with `data-phem-menu-close-on-click="false"`) and ArrowRight, the browser shows:
 
@@ -605,14 +622,14 @@ The pointer on a trigger opens its content after the `delay` value, also when an
 | Key | On | Action |
 |---|---|---|
 | ArrowRight, ArrowLeft | A trigger or a link of the list | Moves the focus to the next or to the previous one (ArrowDown and ArrowUp in a vertical menu) |
-| Home, End | A trigger or a link of the list | Moves the focus to the first or to the last one |
-| ArrowDown, Enter, Space | A trigger | Opens the content, and puts the focus on its first link (ArrowRight in a vertical menu) |
+| ArrowDown, Enter, Space | A trigger | Opens the content. The focus stays on the trigger (ArrowRight in a vertical menu) |
 | Tab | The trigger of the open item | Moves the focus into the content in the viewport |
 | Shift+Tab | The first element of the content | Moves the focus back to the trigger |
-| Tab | The last element of the content | Moves the focus to the next trigger, and closes the menu |
+| Tab | The last element of the content | Moves the focus to the next trigger. The menu stays open until the focus goes out of it |
+| ArrowDown, ArrowUp, ArrowRight, ArrowLeft | A link of a content | Moves the focus to the next or to the previous link of the content, and from the last one to the first one. A field in the content keeps its arrow keys |
 | Escape | The menu | Closes the menu, and gives the focus back to the trigger |
 
-The arrow keys skip a disabled trigger, and do not go to the links in a content. In a right-to-left page, ArrowLeft and ArrowRight go the other way.
+The arrow keys of the list skip a disabled trigger, and do not go to the links in a content. They stop at the first and at the last one, as in Base UI: set `data-phem-navigation-menu-loop-focus-value="true"` to go from the last one to the first one. Home and End do not move the focus. In a right-to-left page, ArrowLeft and ArrowRight go the other way.
 
 The `positioner` part (or the `popup` part, with no positioner) goes next to the trigger of the open item, with the attributes and the variables of [Position](#position). The `popup` part gets the size of the open content in `--popup-width` and `--popup-height`, and the positioner in `--positioner-width` and `--positioner-height`. When the open item changes, they change from the old size to the new size, so a CSS transition animates the size. On the first open, the positioner (or the popup, with no positioner) gets `data-instant`: it goes to its place at once, and only the move from one trigger to another animates. Turn off the transition of the position with `[data-instant] { transition: none }`, or the Tailwind variant `data-instant:transition-none`:
 
@@ -735,7 +752,7 @@ final class CityField
 }
 ```
 
-The popup opens when the user types, and on ArrowDown or ArrowUp. It shows when it has an item, an `empty` part or a `status` part. The focus stays in the input. When the user types "pa" and presses ArrowDown two times, the browser shows:
+The popup opens when the user types, and on ArrowDown or ArrowUp. It shows when it has an item, an `empty` part or a `status` part. The `empty` part is a live region that stays in the page, as the Empty part of Base UI: it gets `role="status"`, `aria-live="polite"` and `aria-atomic="true"`, and it has its content only when the list has no item. So a screen reader reads "No city." when the list becomes empty, and `:empty` matches the part when the list has items (`.empty:empty { padding: 0; }`). Do not give it `hidden`. The focus stays in the input. When the user types "pa" and presses ArrowDown two times, the browser shows:
 
 ```html
 <input data-phem-combobox-target="input" role="combobox" aria-autocomplete="list" autocomplete="off"
@@ -858,7 +875,7 @@ A click on an item selects it. The item gets `data-selected` and `aria-selected=
 <li data-value="cherry" data-phem-combobox-target="item" role="option" aria-selected="true" data-selected>Cherry</li>
 ```
 
-The first selection is the item that the server renders with `data-selected`. The selection of the browser stays after the morph of an event. A server render that changes the `data-selected` of an item sets the selection again, with the text of the input and the `value` part: use it to reset a form. The input has no free text: when the popup closes, the input gets the label of the selected item again, or no text. When the popup opens with the label of the selection in the input, the list shows all the items, until the user types. A click on the `clear` part removes the text and the selection.
+The first selection is the item that the server renders with `data-selected`: an input with no text gets its label, and a `value` part with no value gets its `data-value`, with no event. So `<li data-value="cherry" data-selected data-phem-combobox-target="item">Cherry</li>` gives `<input value="Cherry">` and `<input type="hidden" name="fruit" value="cherry">` in the browser. The selection of the browser stays after the morph of an event. A server render that changes the `data-selected` of an item sets the selection again, with the text of the input and the `value` part: use it to reset a form. The input has no free text: when the popup closes, the input gets the label of the selected item again, or no text. When the popup opens with the label of the selection in the input, the list shows all the items, until the user types, and the selected item has the highlight (`data-highlighted`) and is in view. A click on the `clear` part removes the text and the selection.
 
 A `clear` part shows only when there is something to clear, and has `hidden` at other times: a selected item in this mode, a chip with `multiple`, and else a text in the input. With `data-phem-combobox-open-on-input-click-value="true"`, a click on the input opens the popup. With an `inputGroup` part (the box around the input and its buttons), the popup is positioned against this box, so `var(--anchor-width)` is its width.
 
@@ -1016,7 +1033,7 @@ The name of the item is its `aria-label`, the `aria-label` of its handle, or its
 </div>
 ```
 
-A click on a trigger opens the dialog, and a click on a `close` part closes it. While a modal dialog is open, the page does not scroll. The width of the scroll bar stays, so the page does not move. Add `phem:shortcut="mod+k"` to a trigger to open the dialog with a key (see [Add keyboard shortcuts](events.md#add-keyboard-shortcuts)). The `open` and `close` actions do the same from another element. The dialog gets `aria-labelledby` (the `title` part) and `aria-describedby` (a `description` part), and `data-open` or `data-closed`. A close waits for the animations of `[data-ending-style]`, then calls `close()`. The trigger gets `aria-haspopup="dialog"`, `aria-expanded` and `data-popup-open`.
+A click on a trigger opens the dialog, and a click on a `close` part closes it. The browser gives the focus to the first element of the dialog that can have it. After an open with a touch, the focus goes to the popup, which gets `tabindex="-1"`, so the keyboard of the device does not show for a first field. While a modal dialog is open, the page does not scroll. The width of the scroll bar stays, so the page does not move. Add `phem:shortcut="mod+k"` to a trigger to open the dialog with a key (see [Add keyboard shortcuts](events.md#add-keyboard-shortcuts)). The `open` and `close` actions do the same from another element. The dialog gets `aria-labelledby` (the `title` part) and `aria-describedby` (a `description` part), and `data-open` or `data-closed`. A close waits for the animations of `[data-ending-style]`, then calls `close()`. The trigger gets `aria-haspopup="dialog"`, `aria-expanded` and `data-popup-open`.
 
 Escape and a tap on the backdrop close the dialog. Set `data-phem-dialog-dismiss-value="false"` to keep it open on Escape and on a tap on the backdrop. For an alert dialog, set `data-phem-dialog-disable-pointer-dismissal-value="true"`: only Escape and the `close` parts close it. The server can open it with `data-phem-dialog-open-value={{ editing }}`. A dialog that closes in another way, such as a `<form method="dialog">`, also sets the state.
 
@@ -1096,7 +1113,7 @@ A press on the popup and a move of 5 px in the direction start a swipe. The popu
 
 A mouse press in a `content` part (`data-phem-dialog-target="content"`, around the text of the drawer) selects its text and does not start a swipe. A press on an element with `data-phem-swipe-ignore` never starts a swipe, also in a toast. It also does not start the drag of a `phem-sortable` item.
 
-The popup that a swipe closed gets `data-swipe-dismiss` until the end of its `[data-ending-style]` transition, so the transition goes on from its place. A drawer in an open drawer makes the drawer around it get `data-nested-drawer-open` and `--nested-drawers`, as `data-nested-dialog-open` and `--nested-dialogs`. A press on a field, a button, a link or a label does not start a swipe. In content that scrolls (`overflow: auto` or `scroll`), the swipe starts only when the content is at its start: the list of a bottom sheet scrolls up first. A touch needs no `touch-action`: a touch that moves in the direction of the swipe swipes the dialog, and a touch that moves the other way scrolls the content of the dialog.
+The popup that a swipe closed gets `data-swipe-dismiss` until the end of its `[data-ending-style]` transition, so the transition goes on from its place. A drawer in an open drawer makes the drawer around it get `data-nested-drawer-open` and `--nested-drawers`, as `data-nested-dialog-open` and `--nested-dialogs`. During the swipe of that drawer, the drawer around it also gets `data-nested-drawer-swiping`, and only the drawer in it follows the pointer. The popup of each drawer gets `--drawer-frontmost-height`: the height of the last open drawer in it, or else its own height. Use it to give the drawer behind the size of the drawer in front, as the nested drawers of Base UI: `.drawer[data-nested-drawer-open] { height: var(--drawer-frontmost-height); }`. A press on a field, a button, a link or a label does not start a swipe. In content that scrolls (`overflow: auto` or `scroll`), the swipe starts only when the content is at its start: the list of a bottom sheet scrolls up first. A touch needs no `touch-action`: a touch that moves in the direction of the swipe swipes the dialog, and a touch that moves the other way scrolls the content of the dialog.
 
 ### Stop a drawer at snap points
 
@@ -1197,7 +1214,7 @@ The variables are `--active-tab-left`, `--active-tab-top`, `--active-tab-right`,
 </label>
 ```
 
-The role of the element gives its kind. An element with `role="switch"` or `role="checkbox"` is a switch or a checkbox: it gets `aria-checked`, and `data-checked` or `data-unchecked`. Another element is a toggle button: it gets `aria-pressed`, and `data-pressed` when it is pressed. An element that is not a `<button>` gets `role="button"` when it has no role, and `tabindex="0"` when it has no `tabindex`.
+The role of the element gives its kind. An element with `role="switch"` or `role="checkbox"` is a switch or a checkbox: it gets `aria-checked`, and `data-checked` or `data-unchecked`. Another element is a toggle button: it gets `aria-pressed`, and `data-pressed` when it is pressed. An element that is not a `<button>` gets `role="button"` when it has no role, and `tabindex="0"` when it has no `tabindex`. Space and Enter toggle a toggle button and a switch, as a button. Only Space toggles a checkbox.
 
 The `checked` value is the state (a pressed toggle button is checked). The server render gives the first value, and a server render with a new value sets it. With no `checked` value, the first state comes from the `checked` attribute of the input, or from `aria-checked` or `aria-pressed`. The state belongs to the client, so it stays after the morph of an event.
 
@@ -1427,6 +1444,28 @@ After a click on **Gala**, the browser shows:
 </div>
 ```
 
+## Give an element the keyboard of a button
+
+A `<button>` is the best element for a button. When a button must be another element (a `<div>` or a `<span>`, as a Base UI button with `nativeButton={false}`), `phem-button` gives it the keyboard of a button:
+
+```html
+<div data-controller="phem-button" onClick={{ save }}>Save</div>
+```
+
+Enter clicks the element when the key goes down, and Space clicks it when the key goes up. The click runs the handler of the element, as a click of the pointer. The element gets `role="button"` and `tabindex="0"`, unless your markup gives them. The browser shows:
+
+```html
+<div data-controller="phem-button" data-phem-on-click="..." role="button" tabindex="0">Save</div>
+```
+
+A button with `aria-disabled="true"` keeps the focus, so a keyboard user can find it, but it does nothing: the keys do not click it, and a click of the pointer or of a script does not run its handler.
+
+```html
+<div data-controller="phem-button" aria-disabled={{ saving ? 'true' : null }} onClick={{ save }}>Save</div>
+```
+
+The controller also works on a native `<button>` that must keep the focus while it is disabled (`aria-disabled="true"` in place of `disabled`): it stops the click and the keys. A native button gets no role and no `tabindex`.
+
 ## Show an avatar with a fallback
 
 `phem-avatar` shows the image of a user when it loads, else a fallback (for example the initials):
@@ -1642,9 +1681,9 @@ The user types a number in the format of the locale. The controller reads the gr
 | Home, End | Go to `min` or to `max`. |
 | Enter | Show the formatted value. |
 
-A press on a button changes the value one time. When the user holds the button, the value changes again after 400 ms, and then each 60 ms. The focus stays in the input. Alt and Shift give the small and the large steps. A button gets `disabled` at its limit.
+A press on a button changes the value one time. When the user holds the button, the value changes again after 400 ms, and then each 60 ms. The changes stop at the limit, and while the pointer is out of the button: they start again when the pointer comes back. The focus stays in the input. Alt and Shift give the small and the large steps. A button gets `disabled` at its limit.
 
-A press in the `scrubArea` part locks the pointer (the Pointer Lock API). Each `pixelSensitivity` pixels of movement change the value by one step. While the pointer is locked, the `scrubAreaCursor` part shows at the position of the pointer, as a virtual cursor, and goes round to the other side at an edge of the viewport. With no pointer lock, the native pointer stays.
+A press in the `scrubArea` part locks the pointer (the Pointer Lock API). The movement changes the value as in Base UI: after a movement of `pixelSensitivity` pixels (2 by default), the value changes by one step for each pixel of the last movement. While the pointer is locked, the `scrubAreaCursor` part shows with its center at the position of the pointer, as a virtual cursor, and goes to the opposite edge at an edge of the viewport. With `data-phem-number-field-teleport-distance-value="40"`, the edges are those of the scrub area plus 20 px on each side, so the cursor stays near the label. With no pointer lock, the native pointer stays. The scrub area gets `role="presentation"`, and `phem.css` gives it `touch-action: none` and `user-select: none`: a touch scrubs and does not scroll the page.
 
 All the parts get `data-disabled`, `data-readonly`, `data-required`, and `data-scrubbing` while the user scrubs. The `group` part gets `role="group"`. The input gets `inputmode="decimal"`, `aria-roledescription="Number field"`, `autocomplete="off"` and `spellcheck="false"`, as Base UI does, unless the markup gives them. The buttons get `type="button"`, `tabindex="-1"`, `aria-label` ("Increase" or "Decrease") and `aria-controls`. The controller links a button to an input with no `id` with an element reference.
 
@@ -1704,10 +1743,13 @@ A character that the user types goes in its slot, and the focus goes to the next
 
 | Key | Action |
 |---|---|
-| Backspace | Removes the character of the slot. On an empty slot, removes the character of the slot before and focuses it |
+| Backspace | Removes the character of the slot, and focuses the slot before. On an empty slot, removes the character of the slot before |
+| Ctrl+Backspace (Command on a Mac) | Removes all the characters, and focuses the first slot |
 | Delete | Removes the character of the slot |
-| ArrowLeft / ArrowRight | Focuses the slot before / after (up to the first empty slot) |
-| Home / End | Focuses the first slot / the first empty slot (or the last slot) |
+| ArrowLeft / ArrowRight | Focuses the slot before / after (up to the first empty slot). With Ctrl or Command: the first slot / the first empty slot |
+| Home, ArrowUp / End, ArrowDown | Focuses the first slot / the first empty slot (or the last slot) |
+
+A press of the mouse on a slot selects its character, so the next character replaces it.
 
 The slots have one tab stop: the first empty slot, or the last slot when the code is complete. Each slot gets `inputmode`, a `pattern` of one character (`[0-9]` for `numeric`), and `spellcheck="false"`. The first slot uses the label of the field. A slot after the first one with no `aria-label` gets `aria-label="Character 2 of 6"`. An attribute that the markup gives stays.
 
@@ -1841,7 +1883,7 @@ A drag of a thumb scrolls the viewport. The pointer capture keeps the drag when 
 | :-- | :-- | :-- |
 | `overflowEdgeThreshold` | `0` | The distance (px) from an edge before its `data-overflow-*` attribute shows. A number for all the edges, or a JSON object with `xStart`, `xEnd`, `yStart` and `yEnd`, for example `data-phem-scroll-area-overflow-edge-threshold-value='{"yEnd": 20}'`. |
 
-The scroll area has no keys of its own: the viewport is a native scroll container, and the browser scrolls it with the arrow keys, Page Up, Page Down, Home and End.
+The scroll area has no keys of its own: the viewport is a native scroll container, and the browser scrolls it with the arrow keys, Page Up, Page Down, Home and End. The viewport gets `tabindex="0"` when its content is wider or taller than it, so Tab goes to it. A viewport with no overflow gets `tabindex="-1"`, as in Base UI: Tab does not stop on an area that does not scroll.
 
 The root, the viewport, the content and the scrollbars get these attributes:
 
@@ -2208,18 +2250,30 @@ Change the default duration and the texts with the controller values: `data-phem
 
 The `show` action shows the detail of another browser event as a toast. A [browser event](events.md#send-events-to-your-javascript) bubbles up to `window`, so listen there: `data-action="phem:saved@window->phem-toast#show"`.
 
-Each toast has these parts: the root (`data-phem-toast`), the content (`[data-phem-toast-content]`), the title (`[data-phem-toast-title]`), the description (`[data-phem-toast-description]`, the message) and the close button (`[data-phem-toast-close]`). A toast with no title has no title part. The root gets `data-type` (the type of the toast) and `--toast-index` (0 for the last toast). A toast gets `data-limited` and `inert` when more than the `limit` value (3) of newer toasts are on the screen: `phem.css` hides it (a toast with no `class`). The title, the description and the close button also get `data-type`. A new toast has the animations of the [conventions](#animations), and a toast that goes stays until the end of its `[data-ending-style]` transition. A toast with the same message as a toast that goes shows as a new toast:
+Each toast has these parts: the root (`data-phem-toast`), the content (`[data-phem-toast-content]`), the title (`[data-phem-toast-title]`), the description (`[data-phem-toast-description]`, the message) and the close button (`[data-phem-toast-close]`). A toast with no title has no title part. The root gets `data-type` (the type of the toast) and `--toast-index` (0 for the last toast). A toast gets `data-limited` and `inert` when more than the `limit` value (3) of newer toasts are on the screen: `phem.css` hides it (a toast with no `class`). The title, the description and the close button also get `data-type`. A new toast has the animations of the [conventions](#animations), and a toast that goes stays until the end of its `[data-ending-style]` transition. 
+
+A toast with the same type, title and message as a toast on the screen does not show again: the toast on the screen starts its time again. This is different from Base UI, which shows a new toast for each `add` call unless the `id` is the same. So two `$e->toast('Saved')` in a short time show one "Saved" toast, not two. A toast with the same message as a toast that goes shows as a new toast.
+
+The element is a landmark and a live region, as the viewport of Base UI: it gets `role="region"`, `aria-label` ("Notifications", or `data-phem-toast-label-value`), `tabindex="-1"`, `aria-live="polite"`, `aria-atomic="false"` and `aria-relevant="additions text"`. An attribute that your markup gives stays. Each toast is a dialog that can have the focus: it gets `role="dialog"`, `tabindex="0"`, `aria-modal="false"`, and `aria-labelledby` and `aria-describedby` for its title and its description:
 
 ```html
-<div data-controller="phem-toast" aria-live="polite">
-    <div id="phem-toast-1" data-phem-toast data-type="success" style="--toast-index: 0;">
+<div data-controller="phem-toast" role="region" aria-label="Notifications" tabindex="-1" aria-live="polite" aria-atomic="false" aria-relevant="additions text">
+    <div id="phem-toast-1" data-phem-toast data-type="success" role="dialog" tabindex="0" aria-modal="false" aria-describedby="phem-toast-1-description"
+         style="--toast-index: 0; --toast-swipe-movement-x: 0px; --toast-swipe-movement-y: 0px;">
         <div data-phem-toast-content>
-            <span data-phem-toast-description>Saved</span>
+            <span data-phem-toast-description id="phem-toast-1-description">Saved</span>
         </div>
         <button type="button" data-phem-toast-close aria-label="Close">×</button>
     </div>
 </div>
 ```
+
+| Key | Action |
+|---|---|
+| F6 | While there is a toast, moves the focus to the `phem-toast` element, and expands the stack |
+| Tab | Moves the focus to the toasts and to their buttons. After the last one, gives the focus back to the element that had it before F6 |
+| Shift+Tab | On the `phem-toast` element, gives the focus back to the element that had it before F6 |
+| Escape | Closes the toast with the focus. The focus goes to the next toast, or else to the toast before it, or else back to the element that had it before F6 |
 
 To use your own markup, put a `<template>` part in the element, with the same parts:
 
@@ -2263,7 +2317,7 @@ The detail of the browser event has the title: `{"message": "The file is in your
 
 ### Show the stack on hover
 
-The pointer or the focus on the `phem-toast` element expands the stack: the element and each toast get `data-expanded`, and the time of all the toasts stops. The stack closes when the pointer and the focus go, and when its last toast goes. The state stays after the morph of an event. Each toast gets `--toast-height` (its height) and `--toast-offset-y` (the heights of the newer toasts), and the element gets `--toast-frontmost-height` (the height of the last toast). Use them for a stack that shows only the last toast until the pointer comes:
+The pointer or the focus of the keyboard on the `phem-toast` element expands the stack (the focus of a click on a toast does not): the element and each toast get `data-expanded`, and the time of all the toasts stops. The stack closes when the pointer and the focus go, and when its last toast goes. The state stays after the morph of an event. Each toast gets `--toast-height` (its height) and `--toast-offset-y` (the heights of the newer toasts), and the element gets `--toast-frontmost-height` (the height of the last toast). Use them for a stack that shows only the last toast until the pointer comes:
 
 ```css
 [data-controller~="phem-toast"] { display: block; height: var(--toast-frontmost-height); }
@@ -2280,7 +2334,7 @@ The pointer or the focus on the `phem-toast` element expands the stack: the elem
 
 ### Close a toast with a swipe
 
-A swipe of a toast to the right or down closes it. Set `data-phem-toast-swipe-direction-value` to other directions (`up`, `down`, `left` and `right`, with a space between them), or to an empty text to turn off the swipe. During the swipe, the toast gets `data-swiping`, and the distance in `--toast-swipe-movement-x` and `--toast-swipe-movement-y`. A move in another direction has a resistance. A swipe of 40 px closes the toast, with `data-swipe-direction`, so its `[data-ending-style]` transition can go on in that direction:
+A swipe of a toast to the right or down closes it. Set `data-phem-toast-swipe-direction-value` to other directions (`up`, `down`, `left` and `right`, with a space between them), or to an empty text to turn off the swipe. During the swipe, the toast gets `data-swiping`, and the distance in `--toast-swipe-movement-x` and `--toast-swipe-movement-y`. A toast with no swipe has `0px` in the two variables, so a style can use them with no fallback, as the classes of Base UI do. A move in another direction has a resistance. A swipe of 40 px closes the toast, with `data-swipe-direction`, so its `[data-ending-style]` transition can go on in that direction:
 
 ```css
 [data-phem-toast][data-ending-style][data-swipe-direction="right"] {

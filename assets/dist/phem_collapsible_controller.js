@@ -20,7 +20,8 @@ const controlled = new WeakSet()
 //
 // The `open` value is the state: the server render gives its first value, and a server render
 // with a new `open` value sets it. The controller element and the panels get `data-open` or
-// `data-closed`; see phem_transition.js for the animations. A trigger gets `aria-expanded`,
+// `data-closed`, and `data-starting-style` and `data-ending-style` during an open and a close;
+// see phem_transition.js for the animations. A trigger gets `aria-expanded`,
 // `aria-controls` and `data-panel-open`. A panel with no `id` gets no id: the trigger points to the
 // panels with element references (`ariaControlsElements`). A panel gets the `--collapsible-panel-height` and
 // `--collapsible-panel-width` CSS variables (the size of its content), for a transition of its
@@ -132,17 +133,42 @@ export default class PhemCollapsibleController extends Controller {
   #apply() {
     this.rendered = this.openValue
 
+    const closing = []
+
     for (const panel of this.panelTargets) {
       if (this.openValue) {
         show(panel)
         measure(panel, "collapsible")
       } else {
         measure(panel, "collapsible")
-        hide(panel, { hidden: this.#hidden })
+        closing.push(hide(panel, { hidden: this.#hidden }))
       }
     }
 
+    this.#renderRoot(closing)
     this.#renderParts()
+  }
+
+  // The controller element has the state of the animation, as the panels. Its
+  // `[data-ending-style]` stays until the panels are hidden: it does not wait for another
+  // animation in the element (an icon of the trigger).
+  #renderRoot(closing) {
+    const change = (this.change = {})
+
+    if (this.openValue) {
+      show(this.element, { hidden: false })
+
+      return
+    }
+
+    this.element.removeAttribute("data-open")
+    this.element.removeAttribute("data-starting-style")
+    this.element.setAttribute("data-closed", "")
+    this.element.setAttribute("data-ending-style", "")
+
+    Promise.all(closing).then(() => {
+      if (this.change === change) this.element.removeAttribute("data-ending-style")
+    })
   }
 
   // The state with no animation.
@@ -154,8 +180,7 @@ export default class PhemCollapsibleController extends Controller {
 
   #renderParts() {
     const open = this.openValue
-    this.element.toggleAttribute("data-open", open)
-    this.element.toggleAttribute("data-closed", !open)
+    render(this.element, open, { hidden: false })
 
     const panels = this.panelTargets
     for (const panel of panels) if (open) measure(panel, "collapsible")
@@ -198,7 +223,7 @@ export default class PhemCollapsibleController extends Controller {
   // The attributes of the state: the open state of the controller element and of the panels,
   // `aria-expanded` and `data-panel-open` on a trigger.
   #owns(el, name) {
-    if (el === this.element) return name === "data-open" || name === "data-closed"
+    if (el === this.element) return name !== "hidden" && OPEN_ATTRIBUTES.has(name)
     if (this.panelTargets.includes(el)) return OPEN_ATTRIBUTES.has(name)
     if (this.triggerTargets.includes(el)) return name === "aria-expanded" || name === "data-panel-open"
 

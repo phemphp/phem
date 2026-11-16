@@ -8,6 +8,63 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking** `phem-tooltip` is only visual, as the Tooltip of Base UI v1.9.0: the popup gets no
+  `role="tooltip"`, and the trigger gets no `aria-describedby`. For a description that a screen
+  reader reads, give the popup an `id` and `role="tooltip"`, and give the trigger
+  `aria-describedby`, in the markup.
+- **Breaking** The `empty` part of `phem-combobox` is a live region that stays in the page, as the
+  Empty part of Base UI: it gets `role="status"`, `aria-live="polite"` and `aria-atomic="true"`,
+  and it has its content only when the list has no item. The controller does not set `hidden` on
+  it: remove `hidden` from the markup of the part, and use `:empty` to remove its padding.
+- **Breaking** In `phem-menu`, the keys and the pointer go to an item with `aria-disabled="true"`,
+  which gets the highlight, as in Base UI. A click or Enter on it does nothing: its handler does
+  not run. The keys still skip an item with `disabled`, and the first focus of a menu skips the
+  two kinds. An item loses the highlight when the pointer goes out of it, and not to another
+  item: the focus goes to the popup.
+- **Breaking** In `phem-navigation-menu`, ArrowDown, Enter and Space on a trigger open the content
+  with the focus on the trigger, as in Base UI. Tab on the last element of the content goes to
+  the next trigger with the menu open. The arrow keys of the list stop at the last trigger (the
+  `loopFocus` value is `false` by default), and Home and End do not move the focus. The four
+  arrow keys move the focus between the links of a content.
+- **Breaking** In `phem-number-field`, a scrub changes the value by one step for each pixel of the
+  last movement, after a movement of `pixelSensitivity` pixels, as in Base UI. Before, it was one
+  step for each `pixelSensitivity` pixels. The virtual cursor has its center at the pointer, and
+  a new `teleportDistance` value keeps it near the scrub area. The scrub area gets
+  `role="presentation"`, and `phem.css` stops the scroll of a touch in it. The repeat of a button
+  stops at the limit, and while the pointer is out of the button.
+- **Breaking** In `phem-otp-field`, Backspace on a slot with a character moves the focus to the
+  slot before, as in Base UI. Ctrl+Backspace removes all the characters, ArrowUp and ArrowDown go
+  to the first and to the last slot, Ctrl with an arrow key does the same, and a press of the
+  mouse selects the character of a slot.
+- **Breaking** `phem-popover` gives the focus to the first element of the popup that Tab goes to
+  (after `[autofocus]`), and to the popup after an open with a touch. The pointer out of a
+  popover or a menu with `openOnHover` closes it after the `closeDelay` value with no minimum of
+  100 ms (0 ms by default): the popup stays open while the pointer is in the space between the
+  trigger and the popup. A preview card closes at once on the focus out, and gets
+  `data-instant="focus"` (an open by the focus) and `data-instant="dismiss"` (Escape).
+- **Breaking** `phem-toast` makes its element a landmark and each toast a dialog, as in Base UI.
+  The element gets `role="region"`, `aria-label` (the new `label` value, "Notifications"),
+  `tabindex="-1"`, `aria-atomic` and `aria-relevant`. A toast gets `role="dialog"`,
+  `tabindex="0"`, `aria-modal="false"`, `aria-labelledby` and `aria-describedby`. F6 moves the
+  focus to the element, Escape closes the toast with the focus, and only the focus of the
+  keyboard expands the stack. Each toast always has `--toast-swipe-movement-x` and
+  `--toast-swipe-movement-y` (`0px` with no swipe). The mark `data-phem-toast-live` is now
+  `data-phem-toast-owned`.
+- New `phem-button` controller: Enter and Space click an element that is not a `<button>`, as a
+  Base UI button with `nativeButton={false}`. A button with `aria-disabled="true"` does nothing.
+- More behavior of the Base UI v1.9.0 components. A modal `phem-menu` that the pointer opened does
+  not lock the page. A menu popup gets `data-instant="click"` (Enter or Space) and
+  `data-instant="dismiss"` (Escape), and a menu of a `phem-menubar` gets `data-instant="group"`
+  for an arrow key, the focus out and the open of another menu. `phem-combobox` with the `single`
+  selection mode gives the input and the `value` part the selection of the server render, and
+  opens with the highlight on the selected item, in view. `phem-dialog` gives the focus to the
+  popup after an open with a touch. A drawer gets `--drawer-frontmost-height`, and
+  `data-nested-drawer-swiping` during the swipe of a drawer in it, which does not move the drawer
+  around it. `phem-accordion` gives `data-disabled` to the parts of an item with a disabled
+  trigger, and `data-orientation` to its element and its panels. The element of
+  `phem-collapsible` gets `data-starting-style` and `data-ending-style`. Enter toggles a switch
+  of `phem-toggle`. The viewport of `phem-scroll-area` gets `tabindex="0"` only when it scrolls.
+  See docs/controllers.md.
 - **Breaking** `phem-accordion` does not move the focus between the triggers with the arrow keys
   by default, as the accordion pattern of the ARIA Authoring Practices says now (and Base UI
   v1.9.0). Set `data-phem-accordion-roving-focus-value="true"` for the arrow keys, Home and End.

@@ -41,11 +41,14 @@ import { ClientState } from "./phem_client_state.js"
 //
 // | Key        | Action                                                                    |
 // |------------|---------------------------------------------------------------------------|
-// | Backspace  | Removes the character of the slot, or of the slot before an empty slot     |
+// | Backspace  | Removes the character of the slot, and focuses the slot before        |
+// | Ctrl+Backspace | Removes all the characters (Command on a Mac)                         |
 // | Delete     | Removes the character of the slot                                         |
-// | ArrowLeft  | Focuses the slot before                                                   |
-// | ArrowRight | Focuses the slot after (up to the first empty slot)                       |
-// | Home / End | Focuses the first slot / the first empty slot (or the last slot)          |
+// | ArrowLeft  | Focuses the slot before (with Ctrl: the first slot)                       |
+// | ArrowRight | Focuses the slot after, up to the first empty slot (with Ctrl: that slot) |
+// | Home, ArrowUp / End, ArrowDown | Focuses the first slot / the first empty slot (or the last slot) |
+//
+// A press of the mouse on a slot selects its character.
 //
 // The slots have one tab stop: the first empty slot, or the last slot when the code is complete.
 // A slot after the first one with no `aria-label` or `aria-labelledby` gets
@@ -82,6 +85,7 @@ export default class PhemOtpFieldController extends Controller {
     const options = { signal: this.listening.signal }
     this.element.addEventListener("input", this.onInput, options)
     this.element.addEventListener("keydown", this.onKeydown, options)
+    this.element.addEventListener("mousedown", this.onMousedown, options)
     this.element.addEventListener("paste", this.onPaste, options)
     this.element.addEventListener("focusin", this.onFocusin, options)
     this.element.addEventListener("focusout", this.onFocusout, options)
@@ -140,6 +144,7 @@ export default class PhemOtpFieldController extends Controller {
     const accepted = this.#accept(typed)
     if (!accepted) {
       event.target.value = before
+      event.target.select?.()
 
       return
     }
@@ -160,7 +165,12 @@ export default class PhemOtpFieldController extends Controller {
 
   onKeydown = (event) => {
     const index = this.#slots.indexOf(event.target)
-    if (index < 0 || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return
+    if (index < 0 || event.defaultPrevented) return
+
+    // Ctrl or Command with a key goes to the first or to the last slot. Another key with a
+    // modifier is a shortcut of the browser.
+    const boundary = (event.ctrlKey || event.metaKey) && !event.altKey
+    if ((event.ctrlKey || event.metaKey || event.altKey) && !boundary) return
 
     const chars = [...this.#value]
     const rtl = getComputedStyle(this.element).direction === "rtl"
@@ -168,40 +178,72 @@ export default class PhemOtpFieldController extends Controller {
     const forward = rtl ? "ArrowLeft" : "ArrowRight"
 
     switch (event.key) {
-      case "Backspace":
-      case "Delete": {
+      case "Backspace": {
         event.preventDefault()
         if (this.#locked) return
 
-        // Backspace on an empty slot removes the character before it.
-        const at = chars[index] || event.key === "Delete" ? index : index - 1
-        if (at < 0 || !chars[at]) return
+        // Ctrl+Backspace removes all the characters.
+        if (boundary) {
+          this.#change("", "keyboard")
+          this.#focus(0)
 
-        chars.splice(at, 1)
-        this.#change(chars.join(""), "keyboard")
-        this.#focus(at)
+          return
+        }
+
+        // Backspace removes the character of the slot, or of the slot before an empty slot. The
+        // focus goes to the slot before.
+        const at = chars[index] ? index : index - 1
+        if (at >= 0 && chars[at]) {
+          chars.splice(at, 1)
+          this.#change(chars.join(""), "keyboard")
+        }
+
+        this.#focus(Math.max(0, index - 1))
 
         return
       }
+      case "Delete":
+        if (boundary) return
+
+        event.preventDefault()
+        if (this.#locked || !chars[index]) return
+
+        chars.splice(index, 1)
+        this.#change(chars.join(""), "keyboard")
+        this.#focus(index)
+
+        return
       case back:
         event.preventDefault()
-        this.#focus(index - 1)
+        this.#focus(boundary ? 0 : index - 1)
 
         return
       case forward:
         event.preventDefault()
-        this.#focus(index + 1)
+        this.#focus(boundary ? this.#active : index + 1)
 
         return
       case "Home":
+      case "ArrowUp":
         event.preventDefault()
         this.#focus(0)
 
         return
       case "End":
+      case "ArrowDown":
         event.preventDefault()
         this.#focus(this.#active)
     }
+  }
+
+  // A press on a slot gives it the focus and selects its character: the click does not put a
+  // caret in it.
+  onMousedown = (event) => {
+    const index = this.#slots.indexOf(event.target)
+    if (index < 0 || event.defaultPrevented || this.disabledValue) return
+
+    event.preventDefault()
+    this.#focus(index)
   }
 
   // A slot after the first empty slot gives the focus to the first empty slot. The focus selects

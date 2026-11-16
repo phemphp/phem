@@ -284,3 +284,24 @@ describe("phem-menubar", () => {
     expect($("bar").style.pointerEvents).toBe("auto")
   })
 })
+
+describe("phem-menubar: data-instant", () => {
+  it("opens a menu with an arrow key with no animation", async () => {
+    await mount(bar())
+    $("file-trigger").focus()
+    press("ArrowDown")
+
+    expect($("file-popup").hidden).toBe(false)
+    expect($("file-popup").getAttribute("data-instant")).toBe("group")
+  })
+
+  it("closes a menu with no animation when another menu of the bar opens", async () => {
+    await mount(bar())
+    $("file-trigger").dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 }))
+    expect($("file-popup").hasAttribute("data-instant")).toBe(false)
+
+    application.getControllerForElementAndIdentifier($("edit"), "phem-menu").open()
+    expect($("file-popup").hidden).toBe(true)
+    expect($("file-popup").getAttribute("data-instant")).toBe("group")
+  })
+})

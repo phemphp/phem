@@ -64,16 +64,23 @@ final class NavigationMenuTest extends E2eTestCase
         expect($page->locator('#guides-trigger'))->toBeFocused();
         $page->keyboard()->press('ArrowLeft');
 
+        // ArrowDown opens the content, and the focus stays on the trigger. Tab goes into it.
         $page->keyboard()->press('ArrowDown');
+        expect($page->locator('#positioner'))->toBeVisible();
+        expect($page->locator('#overview-trigger'))->toBeFocused();
+        $page->keyboard()->press('Tab');
         expect($page->locator('#start'))->toBeFocused();
         $page->keyboard()->press('Tab');
         expect($page->locator('#save'))->toBeFocused();
+
+        // Tab after the last element goes to the next trigger, and the menu stays open.
         $page->keyboard()->press('Tab');
         expect($page->locator('#guides-trigger'))->toBeFocused();
-        expect($page->locator('#positioner'))->toBeHidden();
+        expect($page->locator('#positioner'))->toBeVisible();
 
         $page->keyboard()->press('Enter');
-        expect($page->locator('#styling'))->toBeFocused();
+        expect($page->locator('#guides-trigger'))->toHaveAttribute('aria-expanded', 'true');
+        expect($page->locator('#guides-trigger'))->toBeFocused();
         $page->keyboard()->press('Escape');
         expect($page->locator('#positioner'))->toBeHidden();
         expect($page->locator('#guides-trigger'))->toBeFocused();

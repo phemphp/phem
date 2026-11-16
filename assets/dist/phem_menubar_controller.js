@@ -135,7 +135,7 @@ export default class PhemMenubarController extends Controller {
     // focus back.
     if (!trigger && this.orientationValue === "vertical" && event.key === this.#closeKey) {
       event.preventDefault()
-      open.close()
+      this.#instantly([open], () => open.close())
 
       return
     }
@@ -211,7 +211,10 @@ export default class PhemMenubarController extends Controller {
 
     const trigger = this.#triggerOfMenu(event.target)
     const opened = this.#controller(event.target)
-    for (const menu of this.#openMenus) if (menu !== opened) menu.close()
+    const others = this.#openMenus.filter((menu) => menu !== opened)
+    this.#instantly(others, () => {
+      for (const menu of others) menu.close()
+    })
 
     if (opened !== this.hovered) this.hovered = null
     if (trigger) this.active = trigger

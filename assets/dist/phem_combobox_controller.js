@@ -45,8 +45,11 @@ const collators = new Map()
 // and `aria-activedescendant`. The list (or the popup, with no list) gets `role="listbox"`, the
 // items `role="option"`, and the highlighted item `aria-selected="true"` and `data-highlighted`.
 // A list or an item with no `id` gets no id: the input points to it with an element reference
-// (`ariaControlsElements`, `ariaActiveDescendantElement`). The popup and the list get `data-empty` when there is no item, and the
-// `empty` targets show only then. A `status` target gets `role="status"`: a screen reader reads
+// (`ariaControlsElements`, `ariaActiveDescendantElement`). The popup and the list get `data-empty` when there is no item. An
+// `empty` target is a live region (`role="status"`, `aria-live="polite"`, `aria-atomic="true"`)
+// that stays in the page, as the Empty part of Base UI: it has its content only when there is no
+// item, so a screen reader reads it then, and `:empty` matches it when the list has items. Do not
+// give it `hidden`. A `status` target gets `role="status"`: a screen reader reads
 // it (for example "3 results"). The popup is positioned as a `phem-popover` (phem_position.js),
 // below the input by default: use `var(--anchor-width)` for its width.
 //
@@ -75,10 +78,11 @@ const collators = new Map()
 // With the `selectionMode` value `single` and a list of the client, the combobox has one selected
 // item, as the Combobox of Base UI. A click on an item selects it: the item gets `data-selected`
 // and `aria-selected="true"`, and a `value` target (a hidden input) gets its `data-value`. The
-// first selection is the item that the server renders with `data-selected`. The input has no free
+// first selection is the item that the server renders with `data-selected`: an empty input gets
+// its label, and a `value` target with no value gets its `data-value`. The input has no free
 // text: when the popup closes, the input gets the label of the selected item again, or no text.
 // When the popup opens with the label of the selection in the input, the list shows all the
-// items, until the user types. A click on the `clear` target also removes the selection.
+// items, until the user types, and the selected item has the highlight and is in view. A click on the `clear` target also removes the selection.
 //
 // The `clear` targets show only when there is something to clear: a selected item with the
 // `single` selection mode, a chip with the `multiple` value, and else a text in the input. A
@@ -123,6 +127,8 @@ export default class PhemComboboxController extends Controller {
     // render that changed it (`undefined`: no change).
     this.serverSelected = new WeakMap()
     this.serverSelection = undefined
+    // The content of each `empty` target while the list has items.
+    this.emptyContent = new WeakMap()
     this.popup = new Popup({
       anchor: () => this.inputGroupTargets[0] ?? (this.hasInputTarget ? this.inputTarget : null),
       popup: () => (this.hasPopupTarget ? this.popupTarget : null),
@@ -168,6 +174,8 @@ export default class PhemComboboxController extends Controller {
     this.listening.abort()
     this.busy.disconnect()
     this.popup.destroy()
+    // A new controller (a page from the Turbo cache) reads the content of the server render.
+    for (const el of this.emptyTargets) this.#renderEmpty(el, true)
   }
 
   // A target that the morph adds or removes: one render after all the changes.
@@ -229,6 +237,14 @@ export default class PhemComboboxController extends Controller {
       const opening = !this.popup.open
       this.wanted = true
       const items = this.#items
+      // A popup that opens with a selection has the highlight on the selected item.
+      const selection = opening ? this.#selection(items) : null
+      if (selection) {
+        this.#highlight(selection)
+
+        return
+      }
+
       const current = opening ? null : this.#active
       // With `autoHighlight`, an item always has the highlight: the keys go from the last item
       // to the first one. Else, after the last item (or before the first one), the highlight goes
@@ -330,6 +346,10 @@ export default class PhemComboboxController extends Controller {
   // `data-selected` of an item sets the selection, as a new state value does (phem_client_state.js).
   onBeforeMorph = (event) => {
     const item = event.target
+
+    // The morph compares the content of an `empty` target with the server render.
+    if (this.emptyTargets.includes(item)) this.#renderEmpty(item, true)
+
     if (!this.#selecting || !this.serverSelected.has(item)) return
 
     const next = event.detail.newElement?.hasAttribute("data-selected") ?? false
@@ -567,10 +587,44 @@ export default class PhemComboboxController extends Controller {
     }
   }
 
+  // The selected item of a popup that opens, when the user did not type: it gets the highlight.
+  #selection(items) {
+    const selected = this.#selecting && !this.queryChanged ? this.#selectedItem : null
+
+    return selected && items.includes(selected) && !isDisabled(selected) ? selected : null
+  }
+
+  // An `empty` target is a live region that stays in the page. It has its content only when the
+  // list is empty: a screen reader reads the new content.
+  #renderEmpty(el, empty) {
+    const content = this.emptyContent.get(el)
+
+    if (empty && content) {
+      el.append(content)
+      this.emptyContent.delete(el)
+    } else if (!empty && !content && el.childNodes.length > 0) {
+      const held = document.createDocumentFragment()
+      held.append(...el.childNodes)
+      this.emptyContent.set(el, held)
+    }
+  }
+
+  // The first selection is the selection of the server render: an empty input gets its label, and
+  // a `value` target with no value gets its value, with no event.
+  #takeFirstSelection() {
+    this.selected = this.itemTargets.find((el) => el.hasAttribute("data-selected")) ?? null
+    if (!this.selected || !this.#selecting) return
+
+    const input = this.#input
+    if (input && input.value === "") input.value = this.#labelOf(this.selected)
+
+    const value = this.selected.getAttribute("data-value") ?? ""
+    for (const el of this.valueTargets) if (el.value === "") el.value = value
+  }
+
   // The state: the open popup, the highlight and the ARIA attributes.
   #render() {
-    // The first selection is the selection of the server render.
-    if (this.selected === undefined) this.selected = this.itemTargets.find((el) => el.hasAttribute("data-selected")) ?? null
+    if (this.selected === undefined) this.#takeFirstSelection()
     for (const item of this.itemTargets) if (!this.serverSelected.has(item)) this.serverSelected.set(item, item.hasAttribute("data-selected"))
 
     // The selected item left the page (a new list of the server): no item is selected.
@@ -592,7 +646,12 @@ export default class PhemComboboxController extends Controller {
     for (const remove of this.chipRemoveTargets) remove.tabIndex = -1
 
     for (const el of [...this.popupTargets, ...this.listTargets]) el.toggleAttribute("data-empty", empty)
-    for (const el of this.emptyTargets) el.hidden = !empty
+    for (const el of this.emptyTargets) {
+      if (!el.hasAttribute("role")) el.setAttribute("role", "status")
+      if (!el.hasAttribute("aria-live")) el.setAttribute("aria-live", "polite")
+      if (!el.hasAttribute("aria-atomic")) el.setAttribute("aria-atomic", "true")
+      this.#renderEmpty(el, empty)
+    }
     for (const el of this.statusTargets) if (!el.hasAttribute("role")) el.setAttribute("role", "status")
 
     const busy = input?.getAttribute("aria-busy") === "true"
@@ -601,9 +660,15 @@ export default class PhemComboboxController extends Controller {
       else if (!busy) el.removeAttribute("aria-busy")
     }
 
-    // The highlight stays on the same item, or goes to the first item.
+    const content = !empty || this.emptyTargets.length > 0 || this.statusTargets.length > 0
+    const open = this.wanted && content
+    const opening = open && !this.popup.open
+
+    // The highlight stays on the same item, or goes to the first item. A popup that opens with a
+    // selection has the highlight on the selected item.
     let active = this.#active
     if (active && isDisabled(active)) active = null
+    if (!active && opening) active = this.#selection(items)
     if (!active && this.autoHighlightValue && this.wanted) active = nextItem(items, null, "Home") ?? null
     this.highlighted = active
 
@@ -640,9 +705,6 @@ export default class PhemComboboxController extends Controller {
       el.toggleAttribute("data-visible", clearable)
     }
 
-    const content = !empty || this.emptyTargets.length > 0 || this.statusTargets.length > 0
-    const open = this.wanted && content
-
     if (input) {
       if (!input.hasAttribute("role")) input.setAttribute("role", "combobox")
       if (!input.hasAttribute("aria-autocomplete")) input.setAttribute("aria-autocomplete", this.modeValue)
@@ -654,6 +716,8 @@ export default class PhemComboboxController extends Controller {
     }
 
     if (open !== this.popup.open) open ? this.popup.show() : this.popup.hide()
+    // The selected item of a popup that opens is in view.
+    if (opening && active && active === this.#selection(items)) active.scrollIntoView?.({ block: "nearest" })
   }
 
   // The attributes of the state.
@@ -668,7 +732,7 @@ export default class PhemComboboxController extends Controller {
       return ["aria-expanded", "aria-activedescendant", "data-popup-open"].includes(name)
     }
     if (this.itemTargets.includes(el)) return (name === "aria-selected" && !this.multipleValue) || name === "data-highlighted" || (name === "data-selected" && this.#selecting)
-    if (this.emptyTargets.includes(el)) return name === "hidden"
+    if (this.emptyTargets.includes(el)) return name === "role" || name === "aria-live" || name === "aria-atomic"
     if (this.clearTargets.includes(el)) return name === "hidden" || name === "data-visible"
     if (this.valueTargets.includes(el)) return name === "value" && this.#selecting
 

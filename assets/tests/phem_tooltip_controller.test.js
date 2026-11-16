@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemTooltipController from "../dist/phem_tooltip_controller.js"
-import { mount, nextDone, respond, stubElementReflection } from "./support.js"
+import { mount, nextDone, respond } from "./support.js"
 
 let application
 
@@ -51,45 +51,24 @@ function tabTo(el) {
 }
 
 describe("phem-tooltip", () => {
-  it("sets the role, the id and aria-describedby", async () => {
+  it("is only visual: no role on the popup and no aria-describedby on the trigger", async () => {
     await mount(toolbar())
+
+    expect($("tip").hasAttribute("role")).toBe(false)
+    expect($("archive").hasAttribute("aria-describedby")).toBe(false)
+    expect($("archive").getAttribute("aria-label")).toBe("Archive")
+  })
+
+  it("keeps the role and the aria-describedby of the server render, also after the morph", async () => {
+    const markup = toolbar().replace('id="tip" ', 'id="tip" role="tooltip" ').replace('aria-label="Archive"', 'aria-label="Archive" aria-describedby="tip"')
+    await mount(markup)
+    respond(markup)
+    const done = nextDone()
+    $("archive").click()
+    await done
 
     expect($("tip").getAttribute("role")).toBe("tooltip")
     expect($("archive").getAttribute("aria-describedby")).toBe("tip")
-  })
-
-  it("gives no id to a popup with no id, and links it with an element reference", async () => {
-    const restore = stubElementReflection()
-    try {
-      await mount(toolbar().replace('id="tip" ', ""))
-      const popup = $("archive").querySelector("[data-phem-tooltip-target=popup]")
-
-      expect(popup.id).toBe("")
-      expect($("archive").ariaDescribedByElements).toEqual([popup])
-    } finally {
-      restore()
-    }
-  })
-
-  it("keeps the aria-describedby of the server render with a popup with no id, also after the morph", async () => {
-    const restore = stubElementReflection()
-    try {
-      const markup = `${toolbar().replace('id="tip" ', "").replace('aria-label="Archive"', 'aria-label="Archive" aria-describedby="hint"')}<p id="hint">Hint</p>`
-      await mount(markup)
-      respond(markup)
-      const popup = $("archive").querySelector("[data-phem-tooltip-target=popup]")
-
-      expect($("archive").ariaDescribedByElements).toEqual([$("hint"), popup])
-
-      const done = nextDone()
-      $("archive").click()
-      await done
-
-      expect($("archive").ariaDescribedByElements).toEqual([$("hint"), $("archive").querySelector("[data-phem-tooltip-target=popup]")])
-      expect(popup.id).toBe("")
-    } finally {
-      restore()
-    }
   })
 
   it("opens on hover after the delay, and closes when the pointer goes out", async () => {
@@ -163,8 +142,8 @@ describe("phem-tooltip", () => {
     expect($("tip").hidden).toBe(true)
     await done
 
-    expect($("archive").getAttribute("aria-describedby")).toBe("tip")
-    expect($("tip").getAttribute("role")).toBe("tooltip")
+    expect($("archive").hasAttribute("aria-describedby")).toBe(false)
+    expect($("tip").hasAttribute("role")).toBe(false)
   })
 
   it("does not open on the focus of a click", async () => {

@@ -42,6 +42,13 @@ function toast(detail) {
   window.dispatchEvent(new CustomEvent("phem:toast", { detail }))
 }
 
+// A focus of the keyboard (Tab). jsdom does not keep `:focus-visible` after a mouse event.
+function tabTo(el) {
+  const matches = el.matches.bind(el)
+  el.matches = (selector) => selector === ":focus-visible" || matches(selector)
+  el.focus()
+}
+
 // Sends the "Save" event, and waits for its end.
 async function save() {
   const done = nextDone()
@@ -236,8 +243,8 @@ describe("phem-toast", () => {
     vi.advanceTimersByTime(5000)
     expect(toasts()).toHaveLength(1)
 
-    close.focus()
-    close.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }))
+    tabTo(close)
+    el.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }))
     vi.advanceTimersByTime(5000)
     expect(toasts()).toHaveLength(1)
 
@@ -465,7 +472,7 @@ describe("phem-toast", () => {
 
       pointer("pointerup", 100, 130)
       expect(el.hasAttribute("data-swiping")).toBe(false)
-      expect(el.style.getPropertyValue("--toast-swipe-movement-y")).toBe("")
+      expect(el.style.getPropertyValue("--toast-swipe-movement-y")).toBe("0px")
       vi.advanceTimersByTime(1000)
       expect(el.isConnected).toBe(false)
     })
@@ -529,7 +536,7 @@ describe("phem-toast", () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
     toast("First")
     const close = toasts()[0].querySelector("[data-phem-toast-close]")
-    close.focus()
+    tabTo(close)
     expect(document.getElementById("toasts").hasAttribute("data-expanded")).toBe(true)
 
     // The toast goes with no focusout, as in Firefox.
@@ -539,5 +546,128 @@ describe("phem-toast", () => {
     toast("Second")
     vi.advanceTimersByTime(1000)
     expect(toasts()).toEqual([])
+  })
+})
+
+describe("phem-toast: the landmark and the keyboard", () => {
+  const root = () => document.getElementById("toasts")
+
+  function key(target, key, init = {}) {
+    const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...init })
+    target.dispatchEvent(event)
+
+    return event
+  }
+
+  it("makes the element a labelled region, and keeps its attributes after the morph", async () => {
+    await mount(page())
+
+    expect(root().getAttribute("role")).toBe("region")
+    expect(root().getAttribute("aria-label")).toBe("Notifications")
+    expect(root().getAttribute("tabindex")).toBe("-1")
+    expect(root().getAttribute("aria-live")).toBe("polite")
+    expect(root().getAttribute("aria-atomic")).toBe("false")
+    expect(root().getAttribute("aria-relevant")).toBe("additions text")
+
+    respond(page())
+    await save()
+
+    expect(root().getAttribute("role")).toBe("region")
+    expect(root().getAttribute("aria-label")).toBe("Notifications")
+    expect(root().getAttribute("tabindex")).toBe("-1")
+  })
+
+  it("uses the label value, and keeps the attributes of the server render", async () => {
+    await mount(page(`data-phem-toast-label-value="Messages" role="log"`))
+
+    expect(root().getAttribute("aria-label")).toBe("Messages")
+    expect(root().getAttribute("role")).toBe("log")
+  })
+
+  it("makes each toast a dialog that can have the focus", async () => {
+    await mount(page())
+    toast({ message: "Saved", title: "Done" })
+    const el = toasts()[0]
+
+    expect(el.getAttribute("role")).toBe("dialog")
+    expect(el.getAttribute("tabindex")).toBe("0")
+    expect(el.getAttribute("aria-modal")).toBe("false")
+    expect(document.getElementById(el.getAttribute("aria-labelledby")).textContent).toBe("Done")
+    expect(document.getElementById(el.getAttribute("aria-describedby")).textContent).toBe("Saved")
+
+    toast("No title")
+    expect(toasts()[1].hasAttribute("aria-labelledby")).toBe(false)
+  })
+
+  it("gives each toast the swipe variables with 0px", async () => {
+    await mount(page())
+    toast("Hello")
+
+    expect(toasts()[0].style.getPropertyValue("--toast-swipe-movement-x")).toBe("0px")
+    expect(toasts()[0].style.getPropertyValue("--toast-swipe-movement-y")).toBe("0px")
+  })
+
+  it("moves the focus to the element on F6 while it has a toast, and back on Shift+Tab", async () => {
+    await mount(page())
+    document.getElementById("save").focus()
+
+    // No toast: the browser keeps its F6.
+    expect(key(document.getElementById("save"), "F6").defaultPrevented).toBe(false)
+    expect(document.activeElement.id).toBe("save")
+
+    toast("Hello")
+    expect(key(document.getElementById("save"), "F6").defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(root())
+    expect(root().hasAttribute("data-expanded")).toBe(true)
+
+    expect(key(root(), "Tab", { shiftKey: true }).defaultPrevented).toBe(true)
+    expect(document.activeElement.id).toBe("save")
+  })
+
+  it("keeps the element that gets the focus back when F6 comes with the focus on a toast", async () => {
+    await mount(page())
+    document.getElementById("save").focus()
+    toast("Hello")
+    key(document.getElementById("save"), "F6")
+
+    const el = toasts()[0]
+    el.focus()
+    expect(key(el, "F6").defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(root())
+
+    el.focus()
+    key(el, "Escape")
+    expect(document.activeElement.id).toBe("save")
+  })
+
+  it("gives the focus back on Tab after the last element of the toasts", async () => {
+    await mount(page())
+    document.getElementById("save").focus()
+    toast("Hello")
+    key(document.getElementById("save"), "F6")
+
+    const close = toasts()[0].querySelector("[data-phem-toast-close]")
+    close.focus()
+    expect(key(close, "Tab").defaultPrevented).toBe(true)
+    expect(document.activeElement.id).toBe("save")
+  })
+
+  it("closes the toast with the focus on Escape, and moves the focus", async () => {
+    await mount(page())
+    document.getElementById("save").focus()
+    toast("First")
+    toast("Second")
+    key(document.getElementById("save"), "F6")
+    const [first, second] = toasts()
+
+    first.focus()
+    expect(key(first, "Escape").defaultPrevented).toBe(true)
+    expect(messages()).toEqual(["Second"])
+    expect(document.activeElement).toBe(second)
+
+    // The last toast: the focus goes back to the element that had it before F6.
+    key(second, "Escape")
+    expect(toasts()).toEqual([])
+    expect(document.activeElement.id).toBe("save")
   })
 })

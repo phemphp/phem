@@ -225,3 +225,57 @@ describe("phem-otp-field", () => {
     expect(el("code").value).toBe("4321")
   })
 })
+
+describe("phem-otp-field: the keys of Base UI", () => {
+  function key(name, init = {}) {
+    const event = new KeyboardEvent("keydown", { key: name, bubbles: true, cancelable: true, ...init })
+    document.activeElement.dispatchEvent(event)
+
+    return event
+  }
+
+  it("moves the focus to the slot before after Backspace on a slot with a character", async () => {
+    await mount(otp("", "1234"))
+    el("slot-2").focus()
+    key("Backspace")
+
+    expect(values()).toBe("1|2|4|")
+    expect(document.activeElement).toBe(el("slot-1"))
+  })
+
+  it("removes all the characters with Ctrl+Backspace", async () => {
+    await mount(otp("", "1234"))
+    el("slot-2").focus()
+    expect(key("Backspace", { ctrlKey: true }).defaultPrevented).toBe(true)
+
+    expect(values()).toBe("|||")
+    expect(document.activeElement).toBe(el("slot-0"))
+  })
+
+  it("goes to the first and to the last slot with ArrowUp, ArrowDown and Ctrl with an arrow", async () => {
+    await mount(otp("", "12"))
+    el("slot-1").focus()
+
+    key("ArrowUp")
+    expect(document.activeElement).toBe(el("slot-0"))
+    key("ArrowDown")
+    expect(document.activeElement).toBe(el("slot-2"))
+    key("ArrowLeft", { metaKey: true })
+    expect(document.activeElement).toBe(el("slot-0"))
+    key("ArrowRight", { ctrlKey: true })
+    expect(document.activeElement).toBe(el("slot-2"))
+
+    // Another shortcut stays with the browser.
+    expect(key("a", { ctrlKey: true }).defaultPrevented).toBe(false)
+  })
+
+  it("selects the character of a slot on a press of the mouse", async () => {
+    await mount(otp("", "12"))
+    const event = new MouseEvent("mousedown", { bubbles: true, cancelable: true })
+    el("slot-1").dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(el("slot-1"))
+    expect([el("slot-1").selectionStart, el("slot-1").selectionEnd]).toEqual([0, 1])
+  })
+})

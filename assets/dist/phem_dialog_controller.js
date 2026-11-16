@@ -5,10 +5,15 @@ import { dismissable } from "./phem_dismiss.js"
 import { SWIPE_ATTRIBUTES, snapPointSize, swipeable, unswipe } from "./phem_swipe.js"
 import { hide, render, show } from "./phem_transition.js"
 import { link } from "./phem_aria.js"
+import { tabbables } from "./phem_focus.js"
 import { scrollLock } from "./phem_modal.js"
+import { isTouchClick } from "./phem_press.js"
 
 // The attributes of a dialog in a dialog.
-const NESTED_ATTRIBUTES = new Set(["data-nested", "data-nested-dialog-open", "data-nested-drawer-open", "style"])
+const NESTED_ATTRIBUTES = new Set(["data-nested", "data-nested-dialog-open", "data-nested-drawer-open", "data-nested-drawer-swiping", "style"])
+
+// The popups that got `tabindex="-1"` for the focus of a touch open.
+const focused = new WeakSet()
 
 // The attributes of a drawer.
 const DRAWER_ATTRIBUTES = new Set(["data-expanded", "data-swipe-direction"])
@@ -28,7 +33,9 @@ const AXES = { up: "y", down: "y", left: "x", right: "x" }
 //     </div>
 //
 // A click on a trigger opens the dialog, and a click on a `close` target closes it. The `open`
-// and `close` actions do the same from another element.
+// and `close` actions do the same from another element. The browser gives the focus to the first
+// element of the dialog that can have it. After an open with a touch, the focus goes to the popup
+// (it gets `tabindex="-1"`), so the keyboard of the device does not show.
 //
 // The `open` value is the state: the server render gives its first value, and a server render
 // with a new `open` value sets it. When the `dismiss` value is true (the default), Escape and a
@@ -53,7 +60,9 @@ const AXES = { up: "y", down: "y", left: "x", right: "x" }
 // trigger gets `aria-haspopup="dialog"`, `aria-expanded` and `data-popup-open`. A dialog in an
 // open dialog gets `data-nested`, and the dialog around it gets `data-nested-dialog-open` and the
 // `--nested-dialogs` CSS variable (the number of open dialogs in it), for a stack of dialogs. A
-// drawer around it also gets `data-nested-drawer-open` and `--nested-drawers`.
+// drawer around it also gets `data-nested-drawer-open` and `--nested-drawers`, and
+// `data-nested-drawer-swiping` during the swipe of a drawer in it. The popup of a drawer gets
+// `--drawer-frontmost-height`: the height of the last open drawer in it, or else its own height.
 //
 // With the `swipeDirection` value (`up`, `down`, `left` or `right`), the dialog is a drawer: a
 // swipe in that direction closes it (see phem_swipe.js). The popup gets `data-swipe-direction`.
@@ -168,7 +177,11 @@ export default class PhemDialogController extends Controller {
     if (event.defaultPrevented) return
 
     if (this.closeTargets.some((el) => el.contains(event.target))) this.close()
-    else if (this.triggerTargets.some((el) => el.contains(event.target))) this.open()
+    else if (this.triggerTargets.some((el) => el.contains(event.target))) {
+      this.touch = isTouchClick(event)
+      this.open()
+      this.touch = false
+    }
   }
 
   // `trap-focus`: Tab goes from the last field of the dialog to the first one, and back.
@@ -178,8 +191,7 @@ export default class PhemDialogController extends Controller {
     const dialog = this.#dialogs.find((el) => el.contains(event.target))
     if (!dialog) return
 
-    const visible = (el) => !el.closest("[hidden]") && (el.checkVisibility?.() ?? true)
-    const fields = [...dialog.querySelectorAll("a[href], button, input, select, textarea, [tabindex]")].filter((el) => !el.disabled && el.tabIndex >= 0 && visible(el))
+    const fields = tabbables(dialog)
     const [first, last] = [fields[0], fields.at(-1)]
     if (!first) return
 
@@ -236,6 +248,7 @@ export default class PhemDialogController extends Controller {
       close: () => this.close(),
       snap: this.#snap(popup),
       content: () => this.contentTargets,
+      swiping: (active) => this.#renderNestedSwiping(el, active),
     }, listening.signal)
 
     this.#render(el)
@@ -249,6 +262,7 @@ export default class PhemDialogController extends Controller {
     listening.abort()
     this.#listening.delete(el)
     this.#unlayer(el)
+    this.#renderNestedSwiping(el, false)
     this.#renderNesting(el, false)
   }
 
@@ -308,6 +322,10 @@ export default class PhemDialogController extends Controller {
 
       for (const part of this.#parts(el)) if (part !== popup) hide(part, { hidden: false })
 
+      // The drawers around a drawer that closes get their own height back when the close starts,
+      // so they change with its animation.
+      for (let drawer = el.parentElement?.closest("dialog"); drawer; drawer = drawer.parentElement?.closest("dialog")) this.#renderFrontmost(drawer, el)
+
       closing++
       hide(popup, {
         hidden: false,
@@ -349,11 +367,16 @@ export default class PhemDialogController extends Controller {
 
       if (el.open) el.close()
       el.showModal()
+      this.#focusTouch(el)
 
       return
     }
 
-    if (!el.open) el.show()
+    if (!el.open) {
+      el.show()
+      this.#focusTouch(el)
+    }
+
     if (this.#layers.has(el)) return
 
     this.#layers.set(el, dismissable({
@@ -364,6 +387,20 @@ export default class PhemDialogController extends Controller {
         this.close()
       },
     }))
+  }
+
+  // After an open with a touch, the focus goes to the popup: a field with the focus shows the
+  // keyboard of the device.
+  #focusTouch(el) {
+    if (!this.touch) return
+
+    const popup = this.#popupOf(el)
+    if (!popup.hasAttribute("tabindex")) {
+      popup.tabIndex = -1
+      focused.add(popup)
+    }
+
+    popup.focus({ preventScroll: true })
   }
 
   #unlayer(el) {
@@ -393,7 +430,7 @@ export default class PhemDialogController extends Controller {
     if (!parent) return
 
     const nested = [...parent.querySelectorAll("dialog[open]")].filter((d) => d !== el || open).length
-    const parts = [parent, ...[...parent.querySelectorAll("[data-phem-dialog-target~='popup']")].filter((p) => p.closest("dialog") === parent)]
+    const parts = popupsOf(parent)
     const drawer = parts.some((part) => part.hasAttribute("data-swipe-direction"))
 
     for (const part of parts) {
@@ -404,6 +441,33 @@ export default class PhemDialogController extends Controller {
       part.toggleAttribute("data-nested-drawer-open", nested > 0)
       part.style.setProperty("--nested-drawers", String(nested))
     }
+
+    for (let drawer = parent; drawer; drawer = drawer.parentElement?.closest("dialog")) this.#renderFrontmost(drawer, open ? null : el)
+  }
+
+  // The popup of a drawer gets the height of the last open drawer in it, or else its own height.
+  // `closing` is a dialog that does not count: its `open` attribute goes after its animation.
+  #renderFrontmost(dialog, closing = null) {
+    const parts = popupsOf(dialog)
+    if (!parts.some((part) => part.hasAttribute("data-swipe-direction"))) return
+
+    const open = [...dialog.querySelectorAll("dialog[open]")].filter((el) => el !== closing && !closing?.contains(el))
+    const frontmost = popupsOf(open.at(-1) ?? dialog).at(-1)
+    const height = frontmost.offsetHeight
+    for (const part of parts) {
+      if (height > 0) part.style.setProperty("--drawer-frontmost-height", `${height}px`)
+      else part.style.removeProperty("--drawer-frontmost-height")
+    }
+  }
+
+  // The drawers around a drawer show its swipe.
+  #renderNestedSwiping(el, active) {
+    for (let dialog = el.parentElement?.closest("dialog"); dialog; dialog = dialog.parentElement?.closest("dialog")) {
+      const parts = popupsOf(dialog)
+      if (!parts.some((part) => part.hasAttribute("data-swipe-direction"))) continue
+
+      for (const part of parts) part.toggleAttribute("data-nested-drawer-swiping", active)
+    }
   }
 
   // A drawer: its direction, and the snap point of the `snapPoint` value.
@@ -413,6 +477,8 @@ export default class PhemDialogController extends Controller {
       const direction = this.swipeDirectionValue
       if (AXES[direction]) popup.setAttribute("data-swipe-direction", direction)
       else popup.removeAttribute("data-swipe-direction")
+
+      for (let drawer = el; drawer; drawer = drawer.parentElement?.closest("dialog")) this.#renderFrontmost(drawer)
 
       const snap = this.#snap(popup)
       if (snap.offsets().length === 0) {
@@ -505,7 +571,8 @@ export default class PhemDialogController extends Controller {
   // The attributes of the state: `open` and the open state of a dialog, its nesting, its swipe,
   // its snap point, and `aria-expanded` and `data-popup-open` on a trigger.
   #owns(el, name) {
-    if (el instanceof HTMLDialogElement && NESTED_ATTRIBUTES.has(name) && el.querySelector("dialog[open]")) return true
+    if (NESTED_ATTRIBUTES.has(name) && (this.popupTargets.includes(el) || this.viewportTargets.includes(el)) && this.#dialogOf(el).querySelector?.("dialog[open]")) return true
+    if (name === "tabindex" && focused.has(el)) return true
     if (this.backdropTargets.includes(el)) return OPEN_ATTRIBUTES.has(name)
     if (this.triggerTargets.includes(el)) return name === "aria-expanded" || name === "data-popup-open"
     if (!this.popupTargets.includes(el) && !this.viewportTargets.includes(el)) return false
@@ -516,4 +583,9 @@ export default class PhemDialogController extends Controller {
 
     return name === "open" || OPEN_ATTRIBUTES.has(name) || name === "data-nested" || SWIPE_ATTRIBUTES.has(name) || DRAWER_ATTRIBUTES.has(name)
   }
+}
+
+// A dialog and its popup, when the popup is an element in it (a `viewport` target).
+function popupsOf(dialog) {
+  return [dialog, ...[...dialog.querySelectorAll("[data-phem-dialog-target~='popup']")].filter((popup) => popup !== dialog && popup.closest("dialog") === dialog)]
 }

@@ -86,7 +86,12 @@ describe("phem-combobox", () => {
     expect($("popup").hidden).toBe(false)
     expect($("input").getAttribute("aria-expanded")).toBe("true")
     expect($("popup").hasAttribute("data-empty")).toBe(false)
-    expect($("empty").hidden).toBe(true)
+    // The Empty part stays in the page as a live region, with no content.
+    expect($("empty").hidden).toBe(false)
+    expect($("empty").getAttribute("role")).toBe("status")
+    expect($("empty").getAttribute("aria-live")).toBe("polite")
+    expect($("empty").getAttribute("aria-atomic")).toBe("true")
+    expect($("empty").childNodes.length).toBe(0)
     expect($("popup").getAttribute("data-side")).toBe("bottom")
     expect($("input").value).toBe("pa")
   })
@@ -99,6 +104,7 @@ describe("phem-combobox", () => {
     expect($("popup").hasAttribute("data-empty")).toBe(true)
     expect($("list").hasAttribute("data-empty")).toBe(true)
     expect($("empty").hidden).toBe(false)
+    expect($("empty").textContent).toBe("No city.")
   })
 
   it("moves the highlight with the arrow keys, and keeps the focus in the input", async () => {
@@ -494,6 +500,29 @@ describe("phem-combobox", () => {
 
     const visible = () => [...document.querySelectorAll("[data-phem-combobox-target=item]")].filter((el) => !el.hidden).map((el) => el.id)
 
+    it("keeps the empty target in the page, with its content only when no item matches", async () => {
+      await mount(fruits())
+      expect($("empty").getAttribute("role")).toBe("status")
+      expect($("empty").hidden).toBe(false)
+      expect($("empty").childNodes.length).toBe(0)
+
+      typeText("zz")
+      expect($("empty").textContent).toBe("No fruit.")
+
+      typeText("a")
+      expect($("empty").childNodes.length).toBe(0)
+
+      // The morph gets the content of the server render, and the controller takes it out again.
+      respond(fruits().replace("No fruit.", "No fruit found."))
+      const done = nextDone()
+      $("refresh").click()
+      await done
+      expect($("empty").childNodes.length).toBe(0)
+
+      typeText("zz")
+      expect($("empty").textContent).toBe("No fruit found.")
+    })
+
     it("hides the items that do not contain the text, with no case and no accents", async () => {
       await mount(fruits())
       typeText("E")
@@ -543,6 +572,46 @@ describe("phem-combobox", () => {
     describe("with the single selection mode", () => {
       const single = 'data-phem-combobox-filter-value="contains" data-phem-combobox-selection-mode-value="single"'
       const page = () => fruits(single).replace(`<input id="input"`, `<input type="hidden" id="value" name="fruit" data-phem-combobox-target="value" /><button id="clear" data-phem-combobox-target="clear">Clear</button><input id="input"`).replaceAll(`data-phem-combobox-target="item">`, `data-phem-combobox-target="item" data-value="x">`)
+
+      it("gives the input and the value target the selection of the server render", async () => {
+        const events = []
+        document.addEventListener("input", (event) => events.push(event.type), { once: true })
+        await mount(page().replace('id="fruit-cherry"', 'id="fruit-cherry" data-selected'))
+
+        expect($("input").value).toBe("Cherry")
+        expect($("value").value).toBe("x")
+        expect($("fruit-cherry").getAttribute("aria-selected")).toBe("true")
+        expect($("clear").hidden).toBe(false)
+        expect(events).toEqual([])
+      })
+
+      it("keeps a text and a value that the server render gives with the selection", async () => {
+        await mount(page().replace('id="fruit-cherry"', 'id="fruit-cherry" data-selected').replace('<input id="input"', '<input id="input" value="Cerise"').replace('id="value"', 'id="value" value="c"'))
+
+        expect($("input").value).toBe("Cerise")
+        expect($("value").value).toBe("c")
+      })
+
+      it("opens with the highlight on the selected item, and scrolls to it", async () => {
+        await mount(page().replace('id="fruit-cherry"', 'id="fruit-cherry" data-selected'))
+        $("fruit-cherry").scrollIntoView = vi.fn()
+        $("input").focus()
+        press("ArrowDown")
+
+        expect($("popup").hidden).toBe(false)
+        expect($("fruit-cherry").hasAttribute("data-highlighted")).toBe(true)
+        expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-cherry")
+        expect($("fruit-cherry").scrollIntoView).toHaveBeenCalled()
+
+        // The next arrow key moves from the selected item.
+        press("ArrowDown")
+        expect($("fruit-banana").hasAttribute("data-highlighted")).toBe(true)
+
+        // An open after the user typed has no highlight.
+        press("Escape")
+        typeText("an")
+        expect(document.querySelector("[data-highlighted]")).toBe(null)
+      })
 
       it("selects the item of a click, and gives its value to the value target", async () => {
         await mount(page())

@@ -643,3 +643,160 @@ describe("phem-menu", () => {
     })
   })
 })
+
+describe("phem-menu: the behaviors of Base UI", () => {
+  const mouseClick = (el) => el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 }))
+  const out = (el, to) => el.dispatchEvent(new PointerEvent("pointerout", { bubbles: true, pointerType: "mouse", relatedTarget: to }))
+
+  it("does not lock the page when the pointer opens a modal menu", async () => {
+    await mount(actions('data-phem-menu-modal-value="true" data-phem-menu-open-on-hover-value="true"'))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    hover($("trigger"))
+    vi.advanceTimersByTime(100)
+
+    expect(isOpen()).toBe(true)
+    expect(document.body.style.pointerEvents).toBe("")
+    expect(document.documentElement.style.overflow).toBe("")
+
+    // A click opens it again: the page is locked.
+    press("Escape")
+    mouseClick($("trigger"))
+    expect(isOpen()).toBe(true)
+    expect(document.body.style.pointerEvents).toBe("none")
+  })
+
+  it("gives the focus to an item with aria-disabled, and does not run its handler", async () => {
+    await mount(actions().replace("disabled>Copy", 'aria-disabled="true" data-phem-on-click="c1.copy">Copy'))
+    click("#trigger")
+    expect(document.activeElement.id).toBe("rename")
+
+    press("ArrowDown")
+    expect(document.activeElement.id).toBe("copy")
+    expect($("copy").hasAttribute("data-highlighted")).toBe(true)
+    expect($("copy").hasAttribute("data-disabled")).toBe(true)
+
+    $("copy").click()
+    expect(fetch).not.toHaveBeenCalled()
+    expect(isOpen()).toBe(true)
+
+    // The letter of the item finds it.
+    $("rename").focus()
+    press("c")
+    expect(document.activeElement.id).toBe("copy")
+  })
+
+  it("skips an item with aria-disabled for the first focus of the menu", async () => {
+    await mount(actions().replace('data-phem-on-click="c1.rename">Rename', 'aria-disabled="true">Rename'))
+    click("#trigger")
+
+    expect(document.activeElement.id).toBe("archive")
+  })
+
+  it("removes the highlight when the pointer goes out of an item, and not to another item", async () => {
+    await mount(actions())
+    mouseClick($("trigger"))
+    hover($("rename"))
+    expect(document.activeElement.id).toBe("rename")
+
+    // To another item: the highlight stays until that item takes it.
+    out($("rename"), $("delete"))
+    expect(document.activeElement.id).toBe("rename")
+
+    out($("rename"), $("separator"))
+    expect(document.activeElement).toBe($("popup"))
+    expect($("rename").hasAttribute("data-highlighted")).toBe(false)
+    expect(isOpen()).toBe(true)
+  })
+
+  it("keeps the highlight of the keyboard when the pointer goes out", async () => {
+    await mount(actions())
+    click("#trigger")
+    hover($("rename"))
+    press("End")
+    expect(document.activeElement.id).toBe("delete")
+
+    out($("delete"), $("outside"))
+    expect(document.activeElement.id).toBe("delete")
+    expect($("delete").hasAttribute("data-highlighted")).toBe(true)
+  })
+
+  it("sets data-instant for a change with the keyboard, and removes it for the pointer", async () => {
+    await mount(actions())
+
+    // Enter or Space on the trigger is a click with no pointer.
+    click("#trigger")
+    expect($("popup").getAttribute("data-instant")).toBe("click")
+
+    press("Escape")
+    expect($("popup").getAttribute("data-instant")).toBe("dismiss")
+
+    mouseClick($("trigger"))
+    expect($("popup").hasAttribute("data-instant")).toBe(false)
+
+    // Enter on an item closes the menu with `click`.
+    $("delete").focus()
+    $("delete").click()
+    expect(isOpen()).toBe(false)
+    expect($("popup").getAttribute("data-instant")).toBe("click")
+
+    mouseClick($("trigger"))
+    mouseClick($("delete"))
+    expect($("popup").hasAttribute("data-instant")).toBe(false)
+  })
+})
+
+describe("phem-menu: a submenu and the pointer", () => {
+  const page = (attributes = "") => `<div id="menu" data-controller="phem-menu" ${attributes}>
+      <button id="trigger" data-phem-menu-target="trigger">Actions</button>
+      <div id="popup" data-phem-menu-target="popup" hidden>
+        <button id="rename" data-phem-menu-target="item">Rename</button>
+        <div id="move" data-controller="phem-menu">
+          <button id="move-trigger" data-phem-menu-target="trigger">Move to</button>
+          <div id="move-popup" data-phem-menu-target="popup" hidden>
+            <button id="inbox" data-phem-menu-target="item">Inbox</button>
+          </div>
+        </div>
+      </div>
+    </div>`
+
+  it("keeps a submenu open when the pointer goes out of its trigger to the popup of the menu", async () => {
+    await mount(page())
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    $("trigger").dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 }))
+    hover($("move-trigger"))
+    vi.advanceTimersByTime(100)
+    expect($("move-popup").hidden).toBe(false)
+
+    // The pointer is on the padding of the popup, on its way to the submenu.
+    $("move-trigger").dispatchEvent(new PointerEvent("pointerout", { bubbles: true, pointerType: "mouse", relatedTarget: $("popup") }))
+    expect(document.activeElement.id).toBe("move-trigger")
+    expect($("move-popup").hidden).toBe(false)
+  })
+
+  it("opens a submenu with Enter with no animation", async () => {
+    await mount(page())
+    click("#trigger")
+    $("move-trigger").focus()
+    press("Enter")
+
+    expect($("move-popup").hidden).toBe(false)
+    expect($("move-popup").getAttribute("data-instant")).toBe("click")
+  })
+
+  it("locks the page for an open by the server after the pointer opened the menu", async () => {
+    await mount(page('data-phem-menu-modal-value="true" data-phem-menu-open-on-hover-value="true"'))
+    const nextTask = () => new Promise((resolve) => setTimeout(resolve, 0))
+    hover($("trigger"))
+    await new Promise((resolve) => setTimeout(resolve, 150))
+    expect($("popup").hidden).toBe(false)
+    expect(document.body.style.pointerEvents).toBe("")
+
+    $("menu").setAttribute("data-phem-menu-open-value", "false")
+    await nextTask()
+    $("menu").setAttribute("data-phem-menu-open-value", "true")
+    await nextTask()
+
+    expect($("popup").hidden).toBe(false)
+    expect(document.body.style.pointerEvents).toBe("none")
+  })
+})

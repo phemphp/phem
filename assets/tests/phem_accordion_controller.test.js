@@ -197,3 +197,35 @@ describe("phem-accordion", () => {
     expect(open()).toEqual(["shipping"])
   })
 })
+
+describe("phem-accordion: the attributes of Base UI", () => {
+  const $ = (id) => document.getElementById(id)
+
+  it("gives the orientation to the element and to the panels", async () => {
+    await mount(accordion())
+
+    expect($("accordion").getAttribute("data-orientation")).toBe("vertical")
+    expect($("shipping-panel").getAttribute("data-orientation")).toBe("vertical")
+
+    $("accordion").setAttribute("data-phem-accordion-orientation-value", "horizontal")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect($("accordion").getAttribute("data-orientation")).toBe("horizontal")
+    expect($("returns-panel").getAttribute("data-orientation")).toBe("horizontal")
+  })
+
+  it("gives data-disabled to the parts of an item with a disabled trigger, also after the morph", async () => {
+    const markup = accordion().replace('data-phem-accordion-target="trigger" disabled>gifts', 'data-phem-accordion-target="trigger" disabled>gifts').replaceAll("<button id=\"gifts-trigger\"", '<h3 id="gifts-header" data-phem-accordion-target="header"></h3><button id="gifts-trigger"')
+    await mount(markup)
+
+    for (const id of ["gifts", "gifts-header", "gifts-trigger", "gifts-panel"]) expect($(id).hasAttribute("data-disabled")).toBe(true)
+    for (const id of ["shipping", "shipping-trigger", "shipping-panel"]) expect($(id).hasAttribute("data-disabled")).toBe(false)
+
+    // The server render enables the trigger.
+    respond(markup.replace('data-phem-accordion-target="trigger" disabled>gifts', 'data-phem-accordion-target="trigger">gifts'))
+    const done = nextDone()
+    click("#star")
+    await done
+
+    for (const id of ["gifts", "gifts-header", "gifts-trigger", "gifts-panel"]) expect($(id).hasAttribute("data-disabled")).toBe(false)
+  })
+})

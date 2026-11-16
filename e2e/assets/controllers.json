@@ -135,6 +135,14 @@
             "dialog": {
                 "enabled": true,
                 "fetch": "lazy"
+            },
+            "toast": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "button": {
+                "enabled": true,
+                "fetch": "eager"
             }
         }
     },

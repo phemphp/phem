@@ -180,6 +180,12 @@
                 "fetch": "lazy",
                 "enabled": false
             },
+            "button": {
+                "name": "phem-button",
+                "main": "dist/phem_button_controller.js",
+                "fetch": "lazy",
+                "enabled": false
+            },
             "avatar": {
                 "name": "phem-avatar",
                 "main": "dist/phem_avatar_controller.js",

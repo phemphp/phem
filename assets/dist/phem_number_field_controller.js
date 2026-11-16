@@ -38,15 +38,20 @@ import { clamp, clean, flag, nextStep, numberFormat, sendEvents } from "./phem_n
 // Alt the `smallStep` value (0.1) and with Shift the `largeStep` value (10). PageUp and PageDown
 // use the `largeStep` value. Home and End go to the `min` and to the `max` values. A press on the
 // `increment` or `decrement` button changes the value one time; hold it and the value changes
-// again after 400 ms, then each 60 ms. The focus stays in the input. With the `snapOnStep` value,
+// again after 400 ms, then each 60 ms. The changes stop at the limit, and while the pointer is out
+// of the button: they start again when it comes back. The focus stays in the input. With the `snapOnStep` value,
 // a step goes to a multiple of the step. With the `allowWheelScrub` value, the mouse wheel
 // changes the value while the input has the focus.
 //
-// A press in the `scrubArea` target locks the pointer (the Pointer Lock API), and a movement
-// changes the value by one step each `pixelSensitivity` pixels (2 by default), in the `direction`
-// value (`horizontal` by default, or `vertical`). While the pointer is locked, the
-// `scrubAreaCursor` target shows at the place of the pointer, as a virtual cursor. With no
-// pointer lock, the native pointer stays.
+// A press in the `scrubArea` target locks the pointer (the Pointer Lock API), and a movement in
+// the `direction` value (`horizontal` by default, or `vertical`) changes the value, as in Base
+// UI: after a movement of `pixelSensitivity` pixels (2 by default), the value changes by one step
+// for each pixel of the last movement. While the pointer is locked, the `scrubAreaCursor` target
+// shows with its center at the place of the pointer, as a virtual cursor. At an edge of the
+// viewport, the cursor goes to the opposite edge. With the `teleportDistance` value (px), the
+// edges are those of the scrub area, plus half of the distance on each side. With no pointer
+// lock, the native pointer stays. The scrub area gets `role="presentation"`, and the styles of
+// phem.css stop the scroll of a touch and the selection of text in it.
 //
 // The `disabled`, `readOnly` and `required` values set the attributes of the inputs. All the
 // parts get `data-disabled`, `data-readonly`, `data-required` and `data-scrubbing` (while the user
@@ -77,6 +82,7 @@ export default class PhemNumberFieldController extends Controller {
     required: Boolean,
     pixelSensitivity: { type: Number, default: 2 },
     direction: { type: String, default: "horizontal" },
+    teleportDistance: { type: Number, default: -1 },
   }
 
   connect() {
@@ -233,29 +239,40 @@ export default class PhemNumberFieldController extends Controller {
     if (this.#step(event.deltaY < 0 ? 1 : -1, this.#amount(event), "wheel")) this.#commit("wheel")
   }
 
-  // The first step, then the steps while the user holds the button.
+  // The first step, then the steps while the user holds the button. The steps stop at the limit,
+  // and while the pointer is out of the button.
   #hold(button, event) {
     const reason = this.#reason(button)
     const direction = this.#direction(button)
     const amount = this.#amount(event)
     this.#stopRepeat()
-    this.#step(direction, amount, reason)
 
     this.repeat = new AbortController()
     const signal = this.repeat.signal
     const timers = { timeout: 0, interval: 0 }
-    timers.timeout = setTimeout(() => {
-      timers.interval = setInterval(() => this.#step(direction, amount, reason), 60)
-    }, 400)
-    signal.addEventListener("abort", () => {
+    const stop = () => {
       clearTimeout(timers.timeout)
       clearInterval(timers.interval)
-    })
+    }
+    const start = () => {
+      stop()
+      if (!this.#step(direction, amount, reason)) return
+
+      timers.timeout = setTimeout(() => {
+        timers.interval = setInterval(() => {
+          if (!this.#step(direction, amount, reason)) stop()
+        }, 60)
+      }, 400)
+    }
+    signal.addEventListener("abort", stop)
+    start()
 
     const release = () => {
       this.#stopRepeat()
       this.#commit(reason)
     }
+    button.addEventListener("mouseleave", stop, { signal })
+    button.addEventListener("mouseenter", start, { signal })
     window.addEventListener("pointerup", release, { signal })
     window.addEventListener("pointercancel", release, { signal })
     window.addEventListener("blur", release, { signal })
@@ -268,9 +285,14 @@ export default class PhemNumberFieldController extends Controller {
 
   // The scrub: the pointer lock, the movement and the virtual cursor.
   #startScrub(area, event) {
-    event.preventDefault()
-    this.#focusInput(event)
+    // A press of the mouse does not select text, and gives the focus to the input.
+    if (event.pointerType !== "touch" && event.pointerType !== "pen") {
+      event.preventDefault()
+      this.#focusInput(event)
+    }
+
     this.scrubbing = true
+    this.scrubArea = area
     this.cursor = { x: event.clientX, y: event.clientY }
     const last = { x: event.clientX, y: event.clientY }
     const vertical = this.directionValue === "vertical"
@@ -294,12 +316,14 @@ export default class PhemNumberFieldController extends Controller {
       last.y = move.clientY
       this.#moveCursor(dx, dy)
 
-      delta += vertical ? -dy : dx
-      const steps = Math.trunc(delta / this.pixelSensitivityValue)
-      if (steps === 0) return
+      // After a movement of `pixelSensitivity` pixels, the value changes by one step for each
+      // pixel of this movement, as in Base UI.
+      const moved = vertical ? -dy : dx
+      delta += moved
+      if (Math.abs(delta) < this.pixelSensitivityValue) return
 
-      delta -= steps * this.pixelSensitivityValue
-      this.#step(steps, this.#amount(move), "scrub")
+      delta = 0
+      if (moved !== 0) this.#step(moved, this.#amount(move), "scrub")
     }, options)
 
     const end = () => {
@@ -318,12 +342,13 @@ export default class PhemNumberFieldController extends Controller {
     this.#render()
   }
 
-  // The virtual cursor goes round to the other side of the viewport at an edge.
+  // The virtual cursor (its center) goes to the opposite edge when it goes out of the edges: the
+  // visual viewport, or the scrub area plus half of the `teleportDistance` value on each side.
   #moveCursor(dx, dy) {
-    const width = window.innerWidth || 1
-    const height = window.innerHeight || 1
-    this.cursor.x = (((this.cursor.x + dx) % width) + width) % width
-    this.cursor.y = (((this.cursor.y + dy) % height) + height) % height
+    const { left, top, right, bottom } = this.#cursorBounds()
+    const wrap = (at, low, high) => (at < low ? high : at > high ? low : at)
+    this.cursor.x = wrap(Math.round(this.cursor.x + dx), left, right)
+    this.cursor.y = wrap(Math.round(this.cursor.y + dy), top, bottom)
 
     this.#renderCursor()
   }
@@ -496,6 +521,7 @@ export default class PhemNumberFieldController extends Controller {
     }
 
     for (const el of this.groupTargets) if (!el.hasAttribute("role")) el.setAttribute("role", "group")
+    for (const el of this.scrubAreaTargets) if (!el.hasAttribute("role")) el.setAttribute("role", "presentation")
 
     for (const input of this.inputTargets) {
       for (const [name, value] of Object.entries(INPUT_DEFAULTS)) if (!input.hasAttribute(name)) input.setAttribute(name, value)
@@ -535,7 +561,22 @@ export default class PhemNumberFieldController extends Controller {
     button.toggleAttribute("data-disabled", disabled)
   }
 
-  // The virtual cursor shows while the pointer is locked.
+  #cursorBounds() {
+    const distance = this.teleportDistanceValue
+    if (distance >= 0 && this.scrubArea) {
+      const box = this.scrubArea.getBoundingClientRect()
+
+      return { left: box.left - distance / 2, top: box.top - distance / 2, right: box.right + distance / 2, bottom: box.bottom + distance / 2 }
+    }
+
+    const viewport = window.visualViewport
+    if (viewport) return { left: viewport.offsetLeft, top: viewport.offsetTop, right: viewport.offsetLeft + viewport.width, bottom: viewport.offsetTop + viewport.height }
+
+    return { left: 0, top: 0, right: document.documentElement.clientWidth || window.innerWidth, bottom: document.documentElement.clientHeight || window.innerHeight }
+  }
+
+  // The virtual cursor shows while the pointer is locked, with its center at the place of the
+  // pointer. Its size stays the same when the user zooms the page.
   #renderCursor() {
     const locked = this.scrubbing && this.scrubAreaTargets.includes(document.pointerLockElement)
 
@@ -544,7 +585,9 @@ export default class PhemNumberFieldController extends Controller {
       if (!locked) continue
 
       Object.assign(el.style, { position: "fixed", top: "0px", left: "0px", pointerEvents: "none" })
-      el.style.transform = `translate3d(${this.cursor.x}px, ${this.cursor.y}px, 0)`
+      const x = Math.round(this.cursor.x - el.offsetWidth / 2)
+      const y = Math.round(this.cursor.y - el.offsetHeight / 2)
+      el.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${1 / (window.visualViewport?.scale ?? 1)})`
     }
   }
 

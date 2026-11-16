@@ -708,3 +708,111 @@ describe("phem-dialog", () => {
     })
   })
 })
+
+describe("phem-dialog: the focus of a touch open", () => {
+  const press = (el, pointerType) => {
+    el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType }))
+    el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 }))
+  }
+
+  it("gives the focus to the popup after an open with a touch", async () => {
+    await mount(edit())
+    press(document.getElementById("open"), "touch")
+
+    expect(dialog().open).toBe(true)
+    expect(dialog().getAttribute("tabindex")).toBe("-1")
+    expect(document.activeElement).toBe(dialog())
+  })
+
+  it("does not change the focus of the browser after an open with the mouse or the keyboard", async () => {
+    await mount(edit())
+    press(document.getElementById("open"), "mouse")
+    expect(dialog().hasAttribute("tabindex")).toBe(false)
+
+    click("#close")
+    await nextTask()
+    press(document.getElementById("open"), "touch")
+    click("#close")
+    await nextTask()
+
+    // A click of the keyboard after a touch.
+    document.getElementById("open").focus()
+    click("#open")
+    expect(document.activeElement).not.toBe(dialog())
+  })
+})
+
+describe("phem-dialog: a drawer in a drawer", () => {
+  const $ = (id) => document.getElementById(id)
+  let time = 0
+
+  function pointer(type, x, y, target = document) {
+    const event = new PointerEvent(type, { bubbles: true, cancelable: true, isPrimary: true, button: 0, pointerId: 1, clientX: x, clientY: y })
+    Object.defineProperty(event, "timeStamp", { value: (time += 1000) })
+    target.dispatchEvent(event)
+  }
+
+  async function drawers() {
+    const down = 'data-controller="phem-dialog" data-phem-dialog-swipe-direction-value="down"'
+    await mount(`<div ${down}>
+        <button id="outer-open" data-phem-dialog-target="trigger">Open</button>
+        <dialog id="outer" data-phem-dialog-target="popup">
+          <h2 id="outer-title">Outer</h2>
+          <div ${down}>
+            <button id="inner-open" data-phem-dialog-target="trigger">More</button>
+            <dialog id="inner" data-phem-dialog-target="popup">
+              <h2 id="inner-title">Inner</h2>
+              <button id="inner-close" data-phem-dialog-target="close">Close</button>
+            </dialog>
+          </div>
+        </dialog>
+      </div>`)
+    Object.defineProperty($("outer"), "offsetHeight", { configurable: true, value: 400 })
+    Object.defineProperty($("inner"), "offsetHeight", { configurable: true, value: 200 })
+    $("outer").getBoundingClientRect = () => ({ left: 0, top: 400, right: 300, bottom: 800, width: 300, height: 400 })
+    $("inner").getBoundingClientRect = () => ({ left: 0, top: 600, right: 300, bottom: 800, width: 300, height: 200 })
+  }
+
+  it("gives each drawer the height of the last open drawer in it", async () => {
+    await drawers()
+    click("#outer-open")
+    expect($("outer").style.getPropertyValue("--drawer-frontmost-height")).toBe("400px")
+
+    click("#inner-open")
+    expect($("outer").style.getPropertyValue("--drawer-frontmost-height")).toBe("200px")
+    expect($("inner").style.getPropertyValue("--drawer-frontmost-height")).toBe("200px")
+    expect($("outer").hasAttribute("data-nested-drawer-open")).toBe(true)
+
+    click("#inner-close")
+    await nextTask()
+    expect($("outer").style.getPropertyValue("--drawer-frontmost-height")).toBe("400px")
+  })
+
+  it("gives the drawer around a drawer its own height when the close of the drawer starts", async () => {
+    await drawers()
+    click("#outer-open")
+    click("#inner-open")
+    $("inner").getAnimations = () => [{ finished: new Promise(() => {}) }]
+    click("#inner-close")
+
+    // The drawer in it still closes: its animation is not at its end.
+    expect($("inner").open).toBe(true)
+    expect($("outer").style.getPropertyValue("--drawer-frontmost-height")).toBe("400px")
+  })
+
+  it("marks the drawer around a drawer during its swipe, and does not swipe it", async () => {
+    await drawers()
+    click("#outer-open")
+    click("#inner-open")
+
+    pointer("pointerdown", 100, 650, $("inner-title"))
+    pointer("pointermove", 100, 680)
+    expect($("inner").hasAttribute("data-swiping")).toBe(true)
+    expect($("outer").hasAttribute("data-swiping")).toBe(false)
+    expect($("outer").hasAttribute("data-nested-drawer-swiping")).toBe(true)
+
+    pointer("pointerup", 100, 680)
+    expect($("outer").hasAttribute("data-nested-drawer-swiping")).toBe(false)
+    expect($("inner").open).toBe(true)
+  })
+})

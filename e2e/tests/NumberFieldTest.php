@@ -122,9 +122,10 @@ final class NumberFieldTest extends E2eTestCase
         $mouse->move($box['x'] + 45, $box['y'] + 5, ['steps' => 10]);
         $mouse->up();
 
-        // 40 pixels, 2 pixels for each step.
-        expect($page->locator('#amount'))->toHaveValue('30');
-        expect($page->locator('#raw'))->toHaveValue('30');
+        // 10 movements of 4 pixels: each one is more than the sensitivity (2 pixels), and changes
+        // the value by one step for each pixel, as in Base UI.
+        expect($page->locator('#amount'))->toHaveValue('50');
+        expect($page->locator('#raw'))->toHaveValue('50');
         expect($page->locator('#cursor'))->toBeHidden();
     }
 

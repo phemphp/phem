@@ -1,0 +1,135 @@
+<?phem
+
+namespace App\Ui\Parity;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// The behaviors of the Base UI components that the controllers copy: one small part for each
+// behavior that needs a real browser (the focus, the pointer, the layout).
+#[Page('/parity')]
+final class ParityPage
+{
+    private const array FRUITS = ['Apple', 'Banana', 'Cherry', 'Date', 'Fig', 'Grape', 'Kiwi', 'Lemon', 'Mango', 'Olive', 'Peach', 'Plum'];
+
+    #[State] public array $log = [];
+
+    public function note(string $name): void
+    {
+        $this->log[] = $name;
+    }
+
+    public function render(): Node
+    {
+        $fruits = self::FRUITS;
+
+        return (
+            <Document title="Parity">
+                <style>{{ '#section-panel { transition: opacity 1s; } #section-panel[data-ending-style] { opacity: 0; }' }}</style>
+                <button id="first">First</button>
+                <div id="toasts" data-controller="phem-toast" data-phem-toast-duration-value="0"></div>
+
+                <div id="div-button" data-controller="phem-button" onClick={{ note('save') }}>Save</div>
+                <div id="off-button" data-controller="phem-button" aria-disabled="true" onClick={{ note('off') }}>Off</div>
+
+                <div id="hover-menu" data-controller="phem-menu" data-phem-menu-modal-value="true" data-phem-menu-open-on-hover-value="true" data-phem-menu-side-offset-value="8">
+                    <button id="hover-trigger" data-phem-menu-target="trigger">Hover menu</button>
+                    <div id="hover-popup" data-phem-menu-target="popup" hidden style="padding: 8px; background: white; border: 1px solid">
+                        <button id="hover-one" data-phem-menu-target="item" onClick={{ note('one') }}>One</button>
+                        <div id="hover-off" data-phem-menu-target="item" aria-disabled="true" onClick={{ note('menu-off') }}>Off</div>
+                        <div id="hover-separator" data-phem-menu-target="separator" style="height: 12px"></div>
+                        <button id="hover-two" data-phem-menu-target="item">Two</button>
+                    </div>
+                </div>
+
+                <div id="fruit" data-controller="phem-combobox" data-phem-combobox-filter-value="contains" data-phem-combobox-selection-mode-value="single">
+                    <input id="fruit-value" type="hidden" name="fruit" data-phem-combobox-target="value" />
+                    <input id="fruit-input" data-phem-combobox-target="input" aria-label="Fruit" />
+                    <div id="fruit-popup" data-phem-combobox-target="popup" hidden>
+                        <ul id="fruit-list" data-phem-combobox-target="list" style="max-height: 60px; overflow: auto; margin: 0">
+                            {% for name in fruits %}
+                                <li key={{ name }} id={{ 'fruit-' ~ name }} data-phem-combobox-target="item" data-value={{ name|lower }} data-selected={{ name == 'Olive' ? '' : null }}>{{ name }}</li>
+                            {% endfor %}
+                        </ul>
+                        <p id="fruit-empty" data-phem-combobox-target="empty">No fruit.</p>
+                    </div>
+                </div>
+
+                <div id="share" data-controller="phem-popover">
+                    <button id="share-trigger" data-phem-popover-target="trigger">Share</button>
+                    <div id="share-popup" data-phem-popover-target="popup" hidden>
+                        <p>Copy the link.</p>
+                        <input id="share-field" aria-label="Link" />
+                        <button id="share-close" data-phem-popover-target="close">Close</button>
+                    </div>
+                </div>
+
+                <div id="edit" data-controller="phem-dialog">
+                    <button id="edit-trigger" data-phem-dialog-target="trigger">Edit</button>
+                    <dialog id="edit-dialog" data-phem-dialog-target="popup">
+                        <input id="edit-field" aria-label="Name" />
+                        <button id="edit-close" data-phem-dialog-target="close">Close</button>
+                    </dialog>
+                </div>
+
+                <div id="drawer" data-controller="phem-dialog" data-phem-dialog-swipe-direction-value="down">
+                    <button id="drawer-trigger" data-phem-dialog-target="trigger">Drawer</button>
+                    <dialog id="drawer-dialog" data-phem-dialog-target="popup" style="height: 300px">
+                        <div data-controller="phem-dialog" data-phem-dialog-swipe-direction-value="down">
+                            <button id="inner-trigger" data-phem-dialog-target="trigger">More</button>
+                            <dialog id="inner-dialog" data-phem-dialog-target="popup" style="height: 150px">
+                                <button id="inner-close" data-phem-dialog-target="close">Close</button>
+                            </dialog>
+                        </div>
+                    </dialog>
+                </div>
+
+                <div id="accordion" data-controller="phem-accordion">
+                    <div id="shipping" data-value="shipping" data-phem-accordion-target="item">
+                        <h3 id="shipping-header" data-phem-accordion-target="header"><button id="shipping-trigger" data-phem-accordion-target="trigger">Shipping</button></h3>
+                        <div id="shipping-panel" data-phem-accordion-target="panel" hidden>Text</div>
+                    </div>
+                    <div id="gifts" data-value="gifts" data-phem-accordion-target="item">
+                        <h3 id="gifts-header" data-phem-accordion-target="header"><button id="gifts-trigger" data-phem-accordion-target="trigger" disabled>Gifts</button></h3>
+                        <div id="gifts-panel" data-phem-accordion-target="panel" hidden>Text</div>
+                    </div>
+                </div>
+
+                <div id="section" data-controller="phem-collapsible" data-phem-collapsible-open-value="true">
+                    <button id="section-trigger" data-phem-collapsible-target="trigger">Details</button>
+                    <div id="section-panel" data-phem-collapsible-target="panel">Text</div>
+                </div>
+
+                <span id="switch" data-controller="phem-toggle" role="switch" aria-label="Wifi"></span>
+
+                <div id="scrolls" data-controller="phem-scroll-area" style="width: 200px; height: 60px">
+                    <div id="scrolls-viewport" data-phem-scroll-area-target="viewport" style="height: 100%">
+                        <div data-phem-scroll-area-target="content" style="height: 300px">Long</div>
+                    </div>
+                </div>
+                <div id="fits" data-controller="phem-scroll-area" style="width: 200px; height: 60px">
+                    <div id="fits-viewport" data-phem-scroll-area-target="viewport" style="height: 100%">
+                        <div data-phem-scroll-area-target="content" style="height: 20px">Short</div>
+                    </div>
+                </div>
+
+                <button id="tip-trigger" data-controller="phem-tooltip" aria-label="Archive">
+                    A<span id="tip" data-phem-tooltip-target="popup" hidden>Archive</span>
+                </button>
+
+                <div id="bar" data-controller="phem-menubar">
+                    <div id="file" data-controller="phem-menu">
+                        <button id="file-trigger" data-phem-menu-target="trigger">File</button>
+                        <div id="file-popup" data-phem-menu-target="popup" hidden>
+                            <button id="file-new" data-phem-menu-target="item">New</button>
+                        </div>
+                    </div>
+                </div>
+
+                <output id="log">{{ log|join(', ') }}</output>
+            </Document>
+        );
+    }
+}

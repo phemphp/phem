@@ -53,13 +53,15 @@ const EXIT_STYLES = ["position", "inset-block-start", "inset-inline-start", "wid
 // `data-phem-navigation-menu-close-on-click="true"` closes the menu.
 //
 // The arrow keys of the `orientation` value (`horizontal` by default) move the focus between the
-// triggers and the links of the list (not the links in a content), and skip a disabled trigger.
-// Home and End go to the first and to the last one. With the `loopFocus` value (the default), the
-// last one goes to the first one. ArrowDown on a trigger (ArrowRight in a vertical menu, ArrowLeft
-// in a right-to-left page), Enter and Space open the content and give the focus to its first
-// link. Tab on the trigger of the open item goes into the content, Shift+Tab on the first element
-// of the content goes back to the trigger, and Tab on the last element goes to the next trigger
-// and closes the menu.
+// triggers and the links of the list, and skip a disabled trigger. They stop at the first and at
+// the last one, as in Base UI: with the `loopFocus` value, the last one goes to the first one.
+// Home and End do not move the focus. ArrowDown on a trigger (ArrowRight in a vertical menu,
+// ArrowLeft in a right-to-left page), Enter and Space open the content, and the focus stays on
+// the trigger. Tab on the trigger of the open item goes into the content, Shift+Tab on the first
+// element of the content goes back to the trigger, and Tab on the last element goes to the next
+// trigger: the menu stays open until the focus goes out of it. In a content, the four arrow keys
+// move the focus between its links, from the last one to the first one. A field in the content
+// keeps its arrow keys.
 //
 // The contents stay in their items in the server render. With a `viewport` target, the content of
 // the open item moves into the viewport while it is open, as in Base UI, and goes back to its item
@@ -91,7 +93,7 @@ export default class PhemNavigationMenuController extends Controller {
     delay: { type: Number, default: 50 },
     closeDelay: { type: Number, default: 50 },
     orientation: { type: String, default: "horizontal" },
-    loopFocus: { type: Boolean, default: true },
+    loopFocus: Boolean,
     ...positionValues("bottom", "center"),
   }
 
@@ -169,7 +171,6 @@ export default class PhemNavigationMenuController extends Controller {
 
     if (item !== this.openItem) {
       this.#select(item, keyboard ? "keyboard" : "click")
-      if (keyboard) this.#focusContent(item)
     } else if (this.openedBy === "hover" && !keyboard) this.openedBy = "click"
     else this.#close({ focus: false })
   }
@@ -185,8 +186,10 @@ export default class PhemNavigationMenuController extends Controller {
       return
     }
 
-    // The Tab key in the content of the viewport: the content is after the list in the page.
     const content = this.openItem && this.#contentOf(this.openItem)
+    if (content?.contains(event.target) && this.#contentKeydown(event, content)) return
+
+    // The Tab key in the content of the viewport: the content is after the list in the page.
     if (event.key !== "Tab" || !content?.contains(event.target) || !this.homes.has(content)) return
 
     const tabbables = this.#tabbables(content)
@@ -197,10 +200,30 @@ export default class PhemNavigationMenuController extends Controller {
       const next = entries[entries.indexOf(this.#triggerOf(this.openItem)) + 1]
       if (!next) return
 
+      // The menu stays open: it closes when the focus goes out of it.
       event.preventDefault()
       next.focus()
-      this.#close({ focus: false })
     }
+  }
+
+  // The four arrow keys move the focus between the links of a content, from the last one to the
+  // first one. Returns true when the key moved the focus.
+  #contentKeydown(event, content) {
+    const step = { ArrowDown: 1, ArrowUp: -1, ArrowRight: this.#rtl ? -1 : 1, ArrowLeft: this.#rtl ? 1 : -1 }[event.key]
+    if (!step) return false
+
+    // The arrow keys of a field move its caret or change its value.
+    if (event.target.closest?.("input, textarea, select, [contenteditable]")) return false
+
+    const links = this.linkTargets.filter((el) => content.contains(el) && !isDisabled(el))
+    if (links.length === 0) return false
+
+    const at = links.findIndex((el) => el.contains(event.target))
+    const next = at < 0 ? links.at(step === 1 ? 0 : -1) : links[(at + step + links.length) % links.length]
+    event.preventDefault()
+    next.focus()
+
+    return true
   }
 
   // A key on a trigger or on a link of the list.
@@ -211,7 +234,6 @@ export default class PhemNavigationMenuController extends Controller {
     if (trigger && !isDisabled(trigger) && event.key === this.#openKey) {
       event.preventDefault()
       if (item !== this.openItem) this.#select(item, "keyboard")
-      this.#focusContent(item)
 
       return
     }
@@ -235,7 +257,7 @@ export default class PhemNavigationMenuController extends Controller {
       return
     }
 
-    if (!movesFocus(event.key, this.orientationValue)) return
+    if (event.key === "Home" || event.key === "End" || !movesFocus(event.key, this.orientationValue)) return
 
     const next = nextItem(entries, entry, event.key, { orientation: this.orientationValue, loop: this.loopFocusValue, rtl: this.#rtl })
     if (!next) return
@@ -561,11 +583,6 @@ export default class PhemNavigationMenuController extends Controller {
     if (el === this.popupTargets[0]) return name === "style" && this.openItem !== null
 
     return false
-  }
-
-  #focusContent(item) {
-    const content = this.#contentOf(item)
-    this.#tabbables(content)[0]?.focus()
   }
 
   #tabbables(content) {

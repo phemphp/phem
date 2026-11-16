@@ -48,6 +48,7 @@ function nav({ attributes = "", viewport = true, log = "" } = {}) {
           <button id="overview-trigger" data-phem-navigation-menu-target="trigger">Overview <span id="icon" data-phem-navigation-menu-target="icon"></span></button>
           <div id="overview-content" data-phem-navigation-menu-target="content" hidden>
             <a id="start" data-phem-navigation-menu-target="link" href="#start">Quick start</a>
+            <a id="install" data-phem-navigation-menu-target="link" href="#install">Install</a>
             <button id="save" data-phem-on-click="c1.save">Save</button>
           </div>
         </li>
@@ -227,31 +228,75 @@ describe("phem-navigation-menu", () => {
     expect(document.activeElement).toBe($("guides-trigger"))
     press("ArrowRight")
     expect(document.activeElement).toBe($("blog"))
+    // The focus stops at the last one, and Home and End do not move it, as in Base UI.
     press("ArrowRight")
-    expect(document.activeElement).toBe($("overview-trigger"))
-    press("End")
     expect(document.activeElement).toBe($("blog"))
     press("Home")
+    expect(document.activeElement).toBe($("blog"))
+    press("ArrowLeft")
+    press("ArrowLeft")
+    expect(document.activeElement).toBe($("overview-trigger"))
+    press("End")
     expect(document.activeElement).toBe($("overview-trigger"))
   })
 
-  it("opens with ArrowDown and Enter on the first link, and closes with Escape on the trigger", async () => {
+  it("goes from the last one to the first one with loopFocus", async () => {
+    await mount(nav({ attributes: 'data-phem-navigation-menu-loop-focus-value="true"' }))
+
+    $("blog").focus()
+    press("ArrowRight")
+    expect(document.activeElement).toBe($("overview-trigger"))
+  })
+
+  it("opens with ArrowDown and Enter with the focus on the trigger, and closes with Escape", async () => {
     await mount(nav())
 
     $("overview-trigger").focus()
     press("ArrowDown")
     expect($("overview-content").hidden).toBe(false)
-    expect(document.activeElement).toBe($("start"))
+    expect(document.activeElement).toBe($("overview-trigger"))
 
     press("Escape")
     expect($("overview-content").hidden).toBe(true)
     expect(document.activeElement).toBe($("overview-trigger"))
 
+    $("guides-trigger").focus()
     clickOn($("guides-trigger"), 0)
-    expect(document.activeElement).toBe($("styling"))
+    expect($("guides-trigger").getAttribute("aria-expanded")).toBe("true")
+    expect(document.activeElement).toBe($("guides-trigger"))
   })
 
-  it("moves Tab into the content in the viewport, and out of it to the next trigger", async () => {
+  it("leaves the arrow keys to a field in a content", async () => {
+    await mount(nav().replace('<a id="start"', '<input id="search" aria-label="Search" /><a id="start"'))
+
+    clickOn($("overview-trigger"))
+    $("search").focus()
+
+    expect(press("ArrowLeft").defaultPrevented).toBe(false)
+    expect(press("ArrowDown").defaultPrevented).toBe(false)
+    expect(document.activeElement).toBe($("search"))
+  })
+
+  it("moves the focus between the links of a content with the four arrow keys", async () => {
+    await mount(nav())
+
+    clickOn($("overview-trigger"))
+    $("start").focus()
+    const links = [...$("overview-content").querySelectorAll("[data-phem-navigation-menu-target~='link']")]
+    expect(links.length).toBeGreaterThan(1)
+
+    expect(press("ArrowDown").defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(links[1])
+    press("ArrowLeft")
+    expect(document.activeElement).toBe(links[0])
+    // From the first link to the last one, and back.
+    press("ArrowUp")
+    expect(document.activeElement).toBe(links.at(-1))
+    press("ArrowRight")
+    expect(document.activeElement).toBe(links[0])
+  })
+
+  it("moves Tab into the content in the viewport, and out of it to the next trigger with the menu open", async () => {
     await mount(nav())
 
     clickOn($("overview-trigger"))
@@ -266,7 +311,8 @@ describe("phem-navigation-menu", () => {
     $("save").focus()
     expect(press("Tab").defaultPrevented).toBe(true)
     expect(document.activeElement).toBe($("guides-trigger"))
-    expect($("positioner").hidden).toBe(true)
+    // The menu stays open until the focus goes out of it.
+    expect($("positioner").hidden).toBe(false)
   })
 
   it("closes on a click outside, and on a link with close-on-click", async () => {

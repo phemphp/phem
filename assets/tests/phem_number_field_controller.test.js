@@ -266,10 +266,13 @@ describe("phem-number-field", () => {
     expect(area.hasAttribute("data-scrubbing")).toBe(true)
     expect(document.activeElement).toBe(input())
 
+    // A movement of less than the sensitivity changes nothing.
+    pointer(document, "pointermove", { clientX: 103, clientY: 10 })
+    expect(input().value).toBe("5")
+    // The sensitivity is reached: one step for each pixel of this movement, as in Base UI.
     pointer(document, "pointermove", { clientX: 110, clientY: 10 })
-    expect(input().value).toBe("7")
-    // The 2 pixels that are left go with the next movement: 2 - 8 is -6, one step.
-    pointer(document, "pointermove", { clientX: 102, clientY: 10 })
+    expect(input().value).toBe("12")
+    pointer(document, "pointermove", { clientX: 104, clientY: 10 })
     expect(input().value).toBe("6")
     pointer(document, "pointerup")
 
@@ -298,8 +301,9 @@ describe("phem-number-field", () => {
 
     const cursor = document.getElementById("cursor")
     expect(cursor.hidden).toBe(false)
-    expect(cursor.style.transform).toBe("translate3d(106px, 10px, 0)")
-    expect(input().value).toBe("8")
+    // The center of the cursor is at the place of the pointer.
+    expect(cursor.style.transform).toBe("translate3d(106px, 10px, 0) scale(1)")
+    expect(input().value).toBe("11")
 
     pointer(document, "pointerup")
     expect(locked).toBe(null)
@@ -364,5 +368,63 @@ describe("phem-number-field", () => {
     expect(state()).toBe("42")
     expect(input().value).toBe("42")
     expect(raw().value).toBe("42")
+  })
+})
+
+describe("phem-number-field: the hold and the scrub of Base UI", () => {
+  it("stops the repeat while the pointer is out of the button, and at the limit", async () => {
+    await mount(field('data-phem-number-field-value-value="5" data-phem-number-field-max-value="9"'))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"] })
+    const inc = document.getElementById("inc")
+
+    pointer(inc, "pointerdown")
+    expect(input().value).toBe("6")
+    vi.advanceTimersByTime(400 + 60)
+    expect(input().value).toBe("7")
+
+    inc.dispatchEvent(new MouseEvent("mouseleave"))
+    vi.advanceTimersByTime(1000)
+    expect(input().value).toBe("7")
+
+    // The pointer comes back: one step at once, then the repeat, up to the limit.
+    inc.dispatchEvent(new MouseEvent("mouseenter"))
+    expect(input().value).toBe("8")
+    vi.advanceTimersByTime(400 + 60 * 10)
+    expect(input().value).toBe("9")
+    expect(vi.getTimerCount()).toBe(0)
+
+    pointer(window, "pointerup")
+  })
+
+  it("gives the scrub area the presentation role", async () => {
+    await mount(field())
+
+    expect(document.getElementById("area").getAttribute("role")).toBe("presentation")
+  })
+
+  it("keeps the virtual cursor near the scrub area with teleportDistance", async () => {
+    await mount(field('data-phem-number-field-value-value="5" data-phem-number-field-teleport-distance-value="20"'))
+    const area = document.getElementById("area")
+    area.getBoundingClientRect = () => ({ left: 100, top: 0, right: 140, bottom: 20, width: 40, height: 20 })
+    let locked = null
+    Object.defineProperty(document, "pointerLockElement", { configurable: true, get: () => locked })
+    area.requestPointerLock = () => {
+      locked = area
+      return Promise.resolve()
+    }
+    document.exitPointerLock = () => (locked = null)
+
+    pointer(area, "pointerdown", { clientX: 140, clientY: 10 })
+    document.dispatchEvent(new Event("pointerlockchange"))
+    const move = new MouseEvent("pointermove", { bubbles: true })
+    Object.defineProperty(move, "movementX", { value: 15 })
+    Object.defineProperty(move, "movementY", { value: 0 })
+    document.dispatchEvent(move)
+
+    // 155 is after the right edge (140 + 10): the cursor goes to the left edge (100 - 10).
+    expect(document.getElementById("cursor").style.transform).toBe("translate3d(90px, 10px, 0) scale(1)")
+
+    pointer(document, "pointerup")
+    delete document.pointerLockElement
   })
 })

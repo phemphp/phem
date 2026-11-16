@@ -1,9 +1,11 @@
 import { Controller } from "@hotwired/stimulus"
 import { link } from "./phem_aria.js"
 import { ClientState } from "./phem_client_state.js"
+import { firstTabbable } from "./phem_focus.js"
 import { Hover } from "./phem_hover.js"
 import { Popup } from "./phem_popup.js"
 import { positionOptions, positionValues } from "./phem_position.js"
+import { isTouchClick } from "./phem_press.js"
 
 // The links and the fields of the popup of a preview card: they get `tabindex="-1"`.
 const FOCUSABLE = "a[href], button, input, select, textarea, [tabindex]"
@@ -24,7 +26,8 @@ const FOCUSABLE = "a[href], button, input, select, textarea, [tabindex]"
 // A click on a trigger opens and closes the popup, and a click on a `close` target closes it.
 // With the `openOnHover` value, the pointer on the trigger opens it after the `delay` value (300
 // ms), and the pointer out of the trigger and of the popup closes it after the `closeDelay` value
-// (at least 100 ms, so the pointer can go to the popup).
+// (0 ms by default: at once). The popup stays open while the pointer is in the space between the
+// trigger and the popup (phem_hover.js).
 //
 // The popup gets `role="dialog"`, `aria-labelledby` (the `title` target, unless the popup has an
 // `aria-label`) and `aria-describedby` (the `description` target). A trigger gets
@@ -32,8 +35,10 @@ const FOCUSABLE = "a[href], button, input, select, textarea, [tabindex]"
 // no id gets no id: the link is an element reference (`ariaLabelledByElements`,
 // `ariaDescribedByElements`, `ariaControlsElements`). The open popup gets `data-open`, `data-side`,
 // `data-align` and the CSS variables of phem_position.js; see phem_transition.js for the
-// animations. Open moves the focus into the popup: to its `[autofocus]` element, or to the popup.
-// Escape gives the focus back to the trigger.
+// animations. Open moves the focus into the popup: to its `[autofocus]` element, or else to the
+// first element that Tab goes to, or else to the popup. After an open with a touch, the focus goes
+// to the popup, so the keyboard of the device does not show. Escape gives the focus back to the
+// trigger.
 //
 // The `open` value is the state: the server render gives its first value, and a server render
 // with a new `open` value sets it. When the `dismiss` value is true (the default), Escape, a press
@@ -42,7 +47,9 @@ const FOCUSABLE = "a[href], button, input, select, textarea, [tabindex]"
 // A preview card (Base UI PreviewCard) is a popover with `openOnHover` and a link trigger
 // (`<a href>`), with a `delay` of 600 ms and a `closeDelay` of 300 ms in Base UI. A click on the
 // link opens the link, not the popup. The keyboard focus on the link opens the popup after the
-// delay, and the focus out closes it. The link stays the only part for the keyboard and a screen
+// delay, and the focus out closes it at once. A popup that the focus opened has no animation:
+// it gets `data-instant="focus"`, also when the focus out closes it. Escape closes a preview card
+// with `data-instant="dismiss"`. The pointer removes the attribute. The link stays the only part for the keyboard and a screen
 // reader: the trigger gets no `aria-haspopup`, `aria-expanded` and `aria-controls`, the popup gets
 // `aria-hidden="true"` and no role, and its links and fields get `tabindex="-1"`.
 export default class PhemPopoverController extends Controller {
@@ -66,7 +73,7 @@ export default class PhemPopoverController extends Controller {
       dismiss: (reason) => {
         if (!this.dismissValue) return false
 
-        this.#close({ focus: reason === "escape" })
+        this.#close({ focus: reason === "escape", instant: this.#preview && reason === "escape" ? "dismiss" : false })
       },
     })
     this.hover = new Hover({
@@ -153,7 +160,10 @@ export default class PhemPopoverController extends Controller {
     if (event.defaultPrevented) return
 
     if (this.closeTargets.some((el) => el.contains(event.target))) this.#close({ focus: true })
-    else if (this.#triggerOf(event.target) && !this.#preview) this.toggle()
+    else if (this.#triggerOf(event.target) && !this.#preview) {
+      if (this.openValue) this.close()
+      else this.#open({ focus: true, touch: isTouchClick(event) })
+    }
   }
 
   // A preview card: the keyboard focus on the link opens the popup after the delay.
@@ -162,15 +172,16 @@ export default class PhemPopoverController extends Controller {
 
     this.hover.cancel()
     clearTimeout(this.focusTimer)
-    this.focusTimer = setTimeout(() => this.#open({ focus: false }), this.delayValue)
+    this.focusTimer = setTimeout(() => this.#open({ focus: false, instant: "focus" }), this.delayValue)
   }
 
   // The focus goes out of the trigger and of the popup, to another element of the page.
   onFocusOut = (event) => {
     if (this.#preview && this.#triggerOf(event.target)) {
       clearTimeout(this.focusTimer)
+      // The focus out closes the card at once, as in Base UI: the `closeDelay` value is for the pointer.
       if (this.openValue && !this.popupTargets.some((el) => el.contains(event.relatedTarget))) {
-        this.focusTimer = setTimeout(() => this.#close({ focus: false }), this.closeDelayValue)
+        this.focusTimer = setTimeout(() => this.#close({ focus: false, instant: this.focusOpened ? "focus" : false }), 0)
       }
 
       return
@@ -187,38 +198,39 @@ export default class PhemPopoverController extends Controller {
 
   onPointerOut = (event) => this.hover.out(event)
 
-  #open({ focus }) {
+  #open({ focus, touch = false, instant = false }) {
     this.hover.cancel()
     if (this.openValue) return
 
+    this.focusOpened = instant === "focus"
     this.openValue = true
-    this.#apply({ focus })
+    this.#apply({ focus, touch, instant })
   }
 
-  #close({ focus }) {
+  #close({ focus, instant = false }) {
     this.hover.cancel()
     if (!this.openValue) return
 
     // The focus goes back to the trigger, so it does not stay on a hidden element.
     const inside = this.popupTargets.some((el) => el.contains(document.activeElement))
     this.openValue = false
-    this.#apply({ focus: false })
+    this.#apply({ focus: false, instant })
     if (focus || inside) this.#trigger?.focus()
   }
 
   // Shows the state with its animations.
-  #apply({ focus }) {
+  #apply({ focus, touch = false, instant = false }) {
     this.rendered = this.openValue
     this.#renderAria()
 
     if (!this.openValue) {
-      this.popup.hide()
+      this.popup.hide({ instant })
 
       return
     }
 
-    this.popup.show()
-    if (focus) this.#focusPopup()
+    this.popup.show({ instant })
+    if (focus) this.#focusPopup(touch)
   }
 
   // The state with no animation.
@@ -228,11 +240,14 @@ export default class PhemPopoverController extends Controller {
     this.#renderAria()
   }
 
-  #focusPopup() {
+  // The focus of a popup that opens: its `[autofocus]` element, or else its first element that
+  // Tab goes to, or else the popup. A touch gives the focus to the popup: a field with the focus
+  // shows the keyboard of the device.
+  #focusPopup(touch) {
     const popup = this.popupTargets[0]
     if (!popup) return
 
-    const target = popup.querySelector("[autofocus]")
+    const target = touch ? null : (popup.querySelector("[autofocus]") ?? firstTabbable(popup))
     if (target) {
       target.focus()
 

@@ -61,6 +61,27 @@ final class MenuTest extends E2eTestCase
         self::assertSame('GET', $this->getLastRequest()?->getMethod());
     }
 
+    public function testThePointerGoesToASubmenuOnADiagonalPath(): void
+    {
+        $page = $this->visit('/menu');
+        self::assertResponseIsSuccessful();
+
+        $page->locator('#trigger')->click();
+        $page->locator('#move')->hover();
+        expect($page->locator('#move-popup'))->toBeVisible();
+
+        // From the lower edge of the trigger to the last item of the submenu, in small steps: the
+        // pointer leaves the trigger over the popup of the menu, and the submenu stays open.
+        $from = $page->locator('#move')->boundingBox();
+        $to = $page->locator('#archive')->boundingBox();
+        $mouse = $page->mouse();
+        $mouse->move($from['x'] + $from['width'] / 2, $from['y'] + $from['height'] - 1);
+        $mouse->move($to['x'] + $to['width'] / 2, $to['y'] + $to['height'] / 2, ['steps' => 20]);
+
+        expect($page->locator('#move-popup'))->toBeVisible();
+        expect($page->locator('#archive'))->toBeFocused();
+    }
+
     public function testPointerOpensASubmenuAndItsItemClosesAllTheMenus(): void
     {
         $page = $this->visit('/menu');

@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { isFocusVisible, tabbables } from "./phem_focus.js"
 import { onControl, swipe } from "./phem_swipe.js"
 import { hide, show } from "./phem_transition.js"
 
@@ -17,6 +18,9 @@ let count = 0
 
 // The distance (px) of a swipe that closes the toast.
 const SWIPE = 40
+
+// The mark of the attributes of the element that the controller added: the morph keeps them.
+const OWNED = "data-phem-toast-owned"
 
 // The `phem-toast` controller: shows a short message (a toast) in its element for the browser
 // events of Phem. The toasts stay after the morph of an event.
@@ -37,9 +41,18 @@ const SWIPE = 40
 //
 // A toast goes away after the `duration` value (in ms), or with its close button. A duration of
 // `0` keeps it until the close button. The element is a live region (`aria-live="polite"`), so a
-// screen reader reads each toast.
+// screen reader reads each toast. It is also a landmark, as the viewport of Base UI: it gets
+// `role="region"`, `aria-label` (the `label` value, "Notifications"), `tabindex="-1"`,
+// `aria-atomic="false"` and `aria-relevant="additions text"`, unless the server render gives them.
 //
-// The pointer or the focus on the element expands the stack: the element and the toasts get
+// While there is a toast, the F6 key moves the focus to the element. Tab then goes to the toasts:
+// each toast is a dialog that can have the focus (`role="dialog"`, `tabindex="0"`,
+// `aria-modal="false"`, and `aria-labelledby` and `aria-describedby` for its title and its
+// description). Escape closes the toast with the focus: the focus goes to the next toast, or else
+// to the toast before it, or else back to the element that had it before F6. Shift+Tab on the
+// element, and Tab after the last toast, also give the focus back to that element.
+//
+// The pointer or the focus of the keyboard on the element expands the stack: the element and the toasts get
 // `data-expanded`, and the time of all the toasts stops. Each toast gets `--toast-height` (its
 // height) and `--toast-offset-y` (the heights of the newer toasts), and the element gets
 // `--toast-frontmost-height` (the height of the last toast), for a stack that shows only the last
@@ -48,7 +61,7 @@ const SWIPE = 40
 //
 // A swipe of a toast in a direction of the `swipeDirection` value ("down right" by default; also
 // `up` and `left`) closes it. During the swipe, the toast gets `data-swiping`, and the distance in
-// `--toast-swipe-movement-x` and `--toast-swipe-movement-y`. A swipe of 40 px closes the toast,
+// `--toast-swipe-movement-x` and `--toast-swipe-movement-y` (`0px` with no swipe). A swipe of 40 px closes the toast,
 // with `data-swipe-direction`: its `[data-ending-style]` transition can go on in that direction.
 // A shorter swipe gives the toast its place again. An empty value turns off the swipe.
 //
@@ -75,6 +88,7 @@ export default class PhemToastController extends Controller {
     errorMessage: String,
     rateLimitedMessage: { type: String, default: "Too many changes. Please wait and try again." },
     closeLabel: { type: String, default: "Close" },
+    label: { type: String, default: "Notifications" },
     swipeDirection: { type: String, default: "down right" },
   }
 
@@ -82,17 +96,34 @@ export default class PhemToastController extends Controller {
     // The timer of each toast.
     this.timers = new Map()
 
-    // The live region exists before the first toast. When the server render has no `aria-live`,
-    // the controller adds it with a mark, and the morph does not remove them.
-    if (!this.element.hasAttribute("aria-live")) {
-      this.element.setAttribute("aria-live", "polite")
-      this.element.setAttribute("data-phem-toast-live", "")
+    // The live region and the landmark exist before the first toast. The controller adds the
+    // attributes that the server render does not have, with a mark, and the morph does not
+    // remove them.
+    const attributes = {
+      "aria-live": "polite",
+      role: "region",
+      "aria-label": this.labelValue,
+      tabindex: "-1",
+      "aria-atomic": "false",
+      "aria-relevant": "additions text",
     }
+    const owned = new Set((this.element.getAttribute(OWNED) ?? "").split(" ").filter(Boolean))
+
+    for (const [name, value] of Object.entries(attributes)) {
+      if (this.element.hasAttribute(name) && !owned.has(name)) continue
+
+      this.element.setAttribute(name, value)
+      owned.add(name)
+    }
+
+    if (owned.size > 0) this.element.setAttribute(OWNED, [...owned].join(" "))
 
     this.keepLive = (event) => {
       const { attributeName, mutationType } = event.detail
-      const owned = event.target === this.element && this.element.hasAttribute("data-phem-toast-live")
-      if (owned && mutationType === "remove" && ["aria-live", "data-phem-toast-live"].includes(attributeName)) event.preventDefault()
+      if (event.target !== this.element || mutationType !== "remove") return
+
+      const names = (this.element.getAttribute(OWNED) ?? "").split(" ")
+      if (attributeName === OWNED || names.includes(attributeName)) event.preventDefault()
     }
     this.element.addEventListener("turbo:before-morph-attribute", this.keepLive)
 
@@ -119,6 +150,8 @@ export default class PhemToastController extends Controller {
     this.element.addEventListener("mouseout", this.onOut, options)
     this.element.addEventListener("focusout", this.onOut, options)
     this.element.addEventListener("pointerdown", this.onPointerDown, options)
+    this.element.addEventListener("keydown", this.onKeydown, options)
+    window.addEventListener("keydown", this.onWindowKeydown, options)
 
     window.addEventListener("phem:toast", this.show)
     window.addEventListener("phem:error", this.onError)
@@ -178,14 +211,58 @@ export default class PhemToastController extends Controller {
     if (el) this.#remove(el)
   }
 
-  // The pointer or the focus on the element expands the stack, and stops the time.
-  onOver = () => this.#expand(true)
+  // The pointer or the focus of the keyboard on the element expands the stack, and stops the
+  // time. The focus of a click on a toast does not: the stack closes when the pointer goes.
+  onOver = (event) => {
+    if (event.type === "focusin" && !isFocusVisible(event.target)) return
+
+    this.#expand(true)
+  }
 
   onOut = (event) => {
     if (event.relatedTarget instanceof Node && this.element.contains(event.relatedTarget)) return
 
-    const held = event.type === "mouseout" ? this.element.contains(document.activeElement) : this.element.matches(":hover")
+    const held = event.type === "mouseout" ? this.#focused : this.element.matches(":hover")
     if (!held) this.#expand(false)
+  }
+
+  // F6 moves the focus to the element while it has a toast, as the viewport of Base UI.
+  onWindowKeydown = (event) => {
+    if (event.key !== "F6" || event.target === this.element || this.#toasts().length === 0) return
+
+    event.preventDefault()
+
+    // F6 with the focus on a toast keeps the element that had the focus before the first F6.
+    const active = document.activeElement
+    if (!this.element.contains(active)) this.returnFocus = active instanceof HTMLElement ? active : null
+
+    this.element.focus({ preventScroll: true })
+    this.#expand(true)
+  }
+
+  // Escape closes the toast with the focus. Shift+Tab on the element, and Tab after the last
+  // toast, give the focus back to the element that had it before F6.
+  onKeydown = (event) => {
+    if (event.defaultPrevented) return
+
+    if (event.key === "Escape") {
+      const el = this.#toastOf(document.activeElement)
+      if (!el) return
+
+      event.preventDefault()
+      this.#remove(el)
+
+      return
+    }
+
+    if (event.key !== "Tab" || !this.returnFocus?.isConnected) return
+
+    const last = tabbables(this.element).at(-1) ?? this.element
+    if (event.shiftKey ? event.target !== this.element : event.target !== last) return
+
+    event.preventDefault()
+    this.returnFocus.focus()
+    this.returnFocus = null
   }
 
   // A swipe: the toast follows the pointer, in the directions of the `swipeDirection` value.
@@ -260,9 +337,19 @@ export default class PhemToastController extends Controller {
     el.setAttribute("data-type", type)
     el.dataset.phemToastDuration = String(duration)
     el.hidden = true
+    this.#unswipe(el)
+
+    // Each toast is a dialog that can have the focus, as in Base UI.
+    if (!el.hasAttribute("role")) el.setAttribute("role", "dialog")
+    if (!el.hasAttribute("tabindex")) el.tabIndex = 0
+    el.setAttribute("aria-modal", "false")
 
     const description = el.querySelector("[data-phem-toast-description]") ?? el
     description.textContent = message
+    if (description !== el) {
+      description.id ||= `${el.id}-description`
+      el.setAttribute("aria-describedby", description.id)
+    }
 
     // Each part has the type of its toast, as the root.
     for (const part of el.querySelectorAll("[data-phem-toast-title], [data-phem-toast-description], [data-phem-toast-close]")) part.setAttribute("data-type", type)
@@ -272,7 +359,11 @@ export default class PhemToastController extends Controller {
 
     const heading = el.querySelector("[data-phem-toast-title]")
     if (title === "") heading?.remove()
-    else if (heading) heading.textContent = title
+    else if (heading) {
+      heading.textContent = title
+      heading.id ||= `${el.id}-title`
+      el.setAttribute("aria-labelledby", heading.id)
+    }
 
     this.element.append(el)
     show(el)
@@ -360,9 +451,10 @@ export default class PhemToastController extends Controller {
     if (expanded) this.#stack()
   }
 
+  // A toast with no swipe has a movement of `0px`: a style can use the variables with no fallback.
   #unswipe(el) {
-    el.style.removeProperty("--toast-swipe-movement-x")
-    el.style.removeProperty("--toast-swipe-movement-y")
+    el.style.setProperty("--toast-swipe-movement-x", "0px")
+    el.style.setProperty("--toast-swipe-movement-y", "0px")
   }
 
   #start(el) {
@@ -379,6 +471,7 @@ export default class PhemToastController extends Controller {
     this.timers.delete(el)
     if (el.hasAttribute("data-ending-style")) return
 
+    this.#moveFocus(el)
     hide(el, {
       onEnd: () => {
         el.remove()
@@ -388,13 +481,30 @@ export default class PhemToastController extends Controller {
     this.#stack()
   }
 
+  // A toast with the focus that goes: the focus goes to the next toast, or else to the toast
+  // before it, or else to the element that had it before F6.
+  #moveFocus(el) {
+    if (!el.contains(document.activeElement)) return
+
+    const toasts = this.#toasts().filter((toast) => toast === el || (!toast.hasAttribute("data-ending-style") && !toast.inert))
+    const at = toasts.indexOf(el)
+    const to = toasts[at + 1] ?? toasts[at - 1] ?? (this.returnFocus?.isConnected ? this.returnFocus : null)
+    if (to && !toasts.includes(to)) this.returnFocus = null
+    to?.focus({ preventScroll: true })
+  }
+
   // A toast that goes does not get a mouseout or a focusout: the stack closes when the pointer
   // and the focus are not on it, or when it has no toast.
   #release() {
     if (!this.expanded) return
 
-    const held = this.element.matches(":hover") || this.element.contains(document.activeElement)
+    const held = this.element.matches(":hover") || this.#focused
     if (!held || this.#toasts().length === 0) this.#expand(false)
+  }
+
+  // The focus of the keyboard is in the element.
+  get #focused() {
+    return this.element.contains(document.activeElement) && isFocusVisible(document.activeElement)
   }
 
   #toasts() {

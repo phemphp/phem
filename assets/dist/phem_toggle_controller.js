@@ -37,7 +37,8 @@ const STATE_ATTRIBUTES = new Set(["aria-pressed", "aria-checked", "data-pressed"
 // the first state comes from the `checked` attribute of the input, or from `aria-checked` or
 // `aria-pressed`. The server render gives its first value, and a server render with a new
 // `checked` value sets it. A click toggles the state, and so does a click on a `<label>` around
-// the element or a `<label for>` the input. Space toggles it, and Enter toggles a toggle button.
+// the element or a `<label for>` the input. Space and Enter toggle a toggle button and a switch.
+// Only Space toggles a checkbox.
 // A checkbox with the `indeterminate` value is in a mixed state (`aria-checked="mixed"`,
 // `data-indeterminate`): a click checks it.
 //
@@ -193,7 +194,8 @@ export default class PhemToggleController extends Controller {
     // A button toggles on its click.
     if (this.element.matches("button")) return
 
-    if (event.key === " " || (event.key === "Enter" && this.#kind === "button")) {
+    // Enter toggles a toggle button and a switch, as a button. Only Space toggles a checkbox.
+    if (event.key === " " || (event.key === "Enter" && this.#kind !== "checkbox")) {
       event.preventDefault()
       this.element.click()
     }

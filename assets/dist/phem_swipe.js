@@ -163,10 +163,16 @@ const OPPOSITE = { up: "down", down: "up", left: "right", right: "left" }
 
 // The listeners stop when `signal` aborts.
 // A mouse press in an element of `content()` selects its text: it does not start a swipe.
-export function swipeable(popup, { direction, open = () => popup.open, close, snap = null, content = () => [] }, signal) {
+// `swiping(active)` runs when a swipe starts and when it ends.
+export function swipeable(popup, { direction, open = () => popup.open, close, snap = null, content = () => [], swiping = () => {} }, signal) {
   popup.addEventListener("pointerdown", (event) => {
     const name = direction()
     if (!AXES[name] || !event.isPrimary || event.button !== 0 || !open()) return
+
+    // A press in a dialog in the popup is a press on that dialog: its own swipe follows it.
+    const dialog = popup.closest("dialog")
+    if (dialog && event.target.closest?.("dialog") !== dialog) return
+
     if (event.pointerType === "mouse" && content().some((el) => el.contains(event.target))) return
     if (!inBox(popup, event) || onControl(popup, event.target) || scrolledBack(popup, event.target, name)) return
 
@@ -180,8 +186,17 @@ export function swipeable(popup, { direction, open = () => popup.open, close, sn
     // under the press scrolls in that direction: at its full size, a list in it scrolls.
     const opens = offsets.length > 0 && from > 0 && !scrolledBack(popup, event.target, OPPOSITE[name])
 
+    let active = false
+
     swipe(event, opens ? [name, OPPOSITE[name]] : [name], {
+      end: () => {
+        if (active) swiping(false)
+        active = false
+      },
       move: (movement) => {
+        if (!active) swiping(true)
+        active = true
+
         let at = from + movement[axis] * sign
         // A snap drawer opens to its full size, then resists.
         if (at < 0 && opens) at = -Math.sqrt(-at)

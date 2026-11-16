@@ -3,15 +3,16 @@
 //
 // With the `vertical` orientation, ArrowDown and ArrowUp move. With `horizontal`, ArrowRight and
 // ArrowLeft move (the other way in a right-to-left page). With `loop`, the last item goes to the
-// first one. A disabled item (`disabled`, or `aria-disabled="true"`) does not get the focus.
+// first one. A disabled item (`disabled`, or `aria-disabled="true"`) does not get the focus. A
+// list can give its own `skip` test: `phem-menu` skips only an item with `disabled`.
 
 export function isDisabled(el) {
   return el.disabled === true || el.getAttribute("aria-disabled") === "true"
 }
 
 // The item that `key` moves to from `current`, or undefined when the key does not move.
-export function nextItem(items, current, key, { orientation = "vertical", loop = true, rtl = false } = {}) {
-  const enabled = items.filter((el) => !isDisabled(el))
+export function nextItem(items, current, key, { orientation = "vertical", loop = true, rtl = false, skip = isDisabled } = {}) {
+  const enabled = items.filter((el) => !skip(el))
   if (enabled.length === 0) return undefined
 
   const forward = orientation === "vertical" ? "ArrowDown" : rtl ? "ArrowLeft" : "ArrowRight"
@@ -35,7 +36,7 @@ export function nextItem(items, current, key, { orientation = "vertical", loop =
       next = (next + items.length) % items.length
     }
 
-    if (!isDisabled(items[next])) return items[next]
+    if (!skip(items[next])) return items[next]
   }
 
   return undefined
@@ -55,7 +56,7 @@ export class Typeahead {
   #timer = null
 
   // The item for the key of `event`, or undefined when the key is not a letter.
-  find(items, current, event, label = (el) => el.textContent) {
+  find(items, current, event, label = (el) => el.textContent, skip = isDisabled) {
     if (event.key.length !== 1 || event.ctrlKey || event.metaKey || event.altKey) return undefined
     if (event.key === " " && this.#query === "") return undefined
 
@@ -63,7 +64,7 @@ export class Typeahead {
     this.#timer = setTimeout(() => (this.#query = ""), 500)
     this.#query += event.key.toLowerCase()
 
-    const enabled = items.filter((el) => !isDisabled(el))
+    const enabled = items.filter((el) => !skip(el))
     const at = enabled.indexOf(current)
     // The same letter again moves to the next item with it.
     const repeated = [...this.#query].every((c) => c === this.#query[0])

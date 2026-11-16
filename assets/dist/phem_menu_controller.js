@@ -18,6 +18,10 @@ const MENUBAR = '[data-controller~="phem-menubar"]'
 // open: the pointer can cross an item on its way to the submenu.
 const SUBMENU_GRACE = 150
 
+// An item that the keys and the pointer skip: only an item with `disabled`, which cannot get the
+// focus. An item with `aria-disabled="true"` gets the focus, as in Base UI.
+const skipped = (el) => el.matches(":disabled")
+
 // The roles of an item that the user checks: a checkbox item and a radio item.
 const CHECKABLE = ["menuitemcheckbox", "menuitemradio"]
 
@@ -44,15 +48,19 @@ const CHECKABLE = ["menuitemcheckbox", "menuitemradio"]
 // the first item. In the menu, the arrow keys (of the `orientation` value) move the focus, and go
 // from the last item to the first item with the `loopFocus` value (the default). Home and End go
 // to the first and to the last item, and a letter goes to the next item that starts with it. The
-// keys skip a disabled item (`disabled` or `aria-disabled="true"`). With the
+// keys and the pointer skip an item with `disabled`: it cannot get the focus. An item with
+// `aria-disabled="true"` gets the focus and the highlight, but a click on it does nothing. The
+// first focus of a menu that opens skips the two kinds. With the
 // `highlightItemOnHover` value (the default), a move of the pointer on an item gives it the focus:
 // an item that comes under a pointer that does not move (the menu opens under it) does not get it.
+// When the pointer goes out of the item, and not to another item, the item loses the highlight:
+// the focus goes to the popup.
 //
 // A click on an item runs its own handler (`onClick`), and closes the menu, unless the item has
 // `data-phem-menu-close-on-click="false"`. Escape closes the menu and gives the focus back to the
 // trigger. Tab, a click outside and the focus out of the menu close it. With the `modal` value,
 // the page does not scroll and the elements out of the menu get no pointer events while it is
-// open (phem_modal.js).
+// open (phem_modal.js). A menu that the pointer opened (`openOnHover`) does not lock the page.
 //
 // An item with the role `menuitemcheckbox` or `menuitemradio` is an item that the user checks.
 // With no handler (`onClick`), its state belongs to the browser. A click on a checkbox item
@@ -78,6 +86,11 @@ const CHECKABLE = ["menuitemcheckbox", "menuitemradio"]
 // A `phem-menu` in a `phem-menubar` is a menu of the menubar (phem_menubar_controller.js). In a
 // vertical menubar, ArrowRight (ArrowLeft in a right-to-left page) opens it in place of ArrowDown
 // and ArrowUp, and its popup goes on the `inline-end` side of the trigger.
+//
+// A change with the keyboard has no animation: the popup gets `data-instant`, as in Base UI. The
+// value is `click` after Enter or Space on the trigger or on an item, `dismiss` after Escape, and
+// `group` for a menu of a menubar that an arrow key opens or that the focus closes. A change with
+// the pointer removes the attribute.
 //
 // The menu sends `phem-menu:open` when it opens and `phem-menu:close` when it closes. The `open`
 // action and the open() method open it with the focus on the popup. A script can give open() the
@@ -120,14 +133,14 @@ export default class PhemMenuController extends Controller {
       arrow: () => this.arrowTargets[0] ?? null,
       options: () => this.#positionOptions(),
       inside: () => [this.element, ...this.popupTargets],
-      dismiss: (reason) => this.#close({ focus: reason === "escape" }),
+      dismiss: (reason) => this.#close({ focus: reason === "escape", instant: reason === "escape" ? "dismiss" : null }),
     })
     this.hover = new Hover({
       enabled: () => this.#openOnHover && !(this.#trigger && isDisabled(this.#trigger)),
       triggers: () => this.triggerTargets,
       popups: () => this.popupTargets,
       isOpen: () => this.openValue,
-      open: () => this.#open(null, { focus: !this.isSubmenu }),
+      open: () => this.#open(null, { focus: !this.isSubmenu, hover: true }),
       close: () => this.#close({ focus: false }),
       delay: () => this.delayValue,
       closeDelay: () => this.closeDelayValue,
@@ -231,9 +244,11 @@ export default class PhemMenuController extends Controller {
   // has no pointer: the focus goes to the first item. A click opens a submenu, and does not
   // close it: the pointer on its trigger opened it.
   triggerClicked(event) {
-    if (this.isSubmenu) this.#open(event.detail === 0 ? "first" : null, { focus: event.detail === 0 })
-    else if (this.openValue) this.#close({ focus: false })
-    else this.#open(event.detail === 0 ? "first" : null)
+    const instant = event.detail === 0 ? "click" : null
+
+    if (this.isSubmenu) this.#open(event.detail === 0 ? "first" : null, { focus: event.detail === 0, instant })
+    else if (this.openValue) this.#close({ focus: false, instant })
+    else this.#open(event.detail === 0 ? "first" : null, { instant })
   }
 
   // A key on a trigger: ArrowDown and ArrowUp open the menu. Enter, Space and the arrow to the
@@ -248,8 +263,11 @@ export default class PhemMenuController extends Controller {
     const to = keys[event.key]
     if (!to) return
 
+    // Enter and Space on the trigger of a submenu are a click of the keyboard.
+    const click = this.isSubmenu && (event.key === "Enter" || event.key === " ")
+
     event.preventDefault()
-    this.#open(to)
+    this.#open(to, { instant: click ? "click" : this.#group })
   }
 
   // The attributes of a trigger that are not the state stay when the server render gives them.
@@ -276,10 +294,18 @@ export default class PhemMenuController extends Controller {
 
     const item = this.#itemOf(event.target)
     if (item) {
-      if (isDisabled(item) || this.#isSubmenuTrigger(item)) return
+      // A click on a disabled item does nothing: its handler (`onClick`) does not run.
+      if (isDisabled(item)) {
+        event.preventDefault()
+        event.stopPropagation()
+
+        return
+      }
+
+      if (this.#isSubmenuTrigger(item)) return
 
       this.#check(item)
-      if (item.getAttribute(`data-${this.identifier}-close-on-click`) !== "false") this.#closeAll()
+      if (item.getAttribute(`data-${this.identifier}-close-on-click`) !== "false") this.#closeAll(event.detail === 0 ? "click" : null)
 
       return
     }
@@ -291,6 +317,7 @@ export default class PhemMenuController extends Controller {
   }
 
   onKeydown = (event) => {
+    this.pointing = false
     if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return
 
     if (this.#triggerOf(event.target)) {
@@ -327,8 +354,8 @@ export default class PhemMenuController extends Controller {
 
     const items = this.#items
     const next = movesFocus(event.key, this.orientationValue)
-      ? nextItem(items, item, event.key, { orientation: this.orientationValue, loop: this.loopFocusValue, rtl: this.#rtl })
-      : this.typeahead.find(items, item, event)
+      ? nextItem(items, item, event.key, { orientation: this.orientationValue, loop: this.loopFocusValue, rtl: this.#rtl, skip: skipped })
+      : this.typeahead.find(items, item, event, undefined, skipped)
     if (!next) return
 
     event.preventDefault()
@@ -349,7 +376,7 @@ export default class PhemMenuController extends Controller {
     if (!this.openValue || !(to instanceof Node)) return
     if (this.element.contains(to) || this.popupTargets.some((el) => el.contains(to))) return
 
-    this.#close({ focus: false })
+    this.#close({ focus: false, instant: this.#group })
   }
 
   onPointerOver = (event) => {
@@ -365,7 +392,10 @@ export default class PhemMenuController extends Controller {
   // an item comes under a pointer that does not move (the popup opens under it): that item does
   // not take the highlight of the keyboard.
   onPointerMove = (event) => {
-    if (event.pointerType === "touch" || !this.highlightItemOnHoverValue || this.#inSubmenu(event.target)) return
+    if (event.pointerType === "touch") return
+
+    this.pointing = true
+    if (!this.highlightItemOnHoverValue || this.#inSubmenu(event.target)) return
 
     // The moves on the item with the focus, or on the item that waits for its grace time: no
     // lookup of the items, and the time does not start again.
@@ -374,7 +404,7 @@ export default class PhemMenuController extends Controller {
 
     const item = this.#itemOf(event.target)
     this.pointerItem = item
-    if (!item || isDisabled(item) || item === this.highlightingItem) return
+    if (!item || skipped(item) || item === this.highlightingItem) return
 
     // The pointer came back to the item with the focus: the item that it crossed does not get it.
     this.#cancelHighlight()
@@ -390,7 +420,32 @@ export default class PhemMenuController extends Controller {
     else highlight()
   }
 
-  onPointerOut = (event) => this.hover.out(event)
+  onPointerOut = (event) => {
+    this.hover.out(event)
+    this.#unhighlight(event)
+  }
+
+  // The pointer goes out of an item, and not to another item: the item loses the highlight, and
+  // the focus goes to the popup. The keyboard keeps its highlight: the last input must be the
+  // pointer. The trigger of an open submenu keeps the highlight while the pointer is in the submenu.
+  #unhighlight(event) {
+    if (event.pointerType === "touch" || !this.pointing || !this.highlightItemOnHoverValue || !this.openValue) return
+    if (this.#inSubmenu(event.target)) return
+
+    const item = this.#itemOf(event.target)
+    const to = event.relatedTarget
+    if (!item || (to instanceof Node && (this.#itemOf(to) || this.#inSubmenu(to)))) return
+
+    // The trigger of an open submenu keeps the focus: the focus out of it closes the submenu, and
+    // the pointer is on its way to the popup of the submenu.
+    if (this.#submenus.some((menu) => menu.openValue && menu.#trigger === item)) return
+
+    this.pointerItem = null
+    this.#cancelHighlight()
+
+    const popup = this.popupTargets[0]
+    if (popup?.contains(document.activeElement)) popup.focus({ preventScroll: true })
+  }
 
   // The morph of a checkbox item or a radio item: a new `aria-checked` of the server render sets
   // the state, unless the client changed it after the request of the answer left (`phemSentAt` of
@@ -485,10 +540,13 @@ export default class PhemMenuController extends Controller {
 
   // Opens the menu. `to` is the item that gets the focus: "first", "last", or none (the popup).
   // A submenu that the pointer opens keeps the focus on its trigger (`focus: false`).
-  #open(to, { focus = true } = {}) {
+  #open(to, { focus = true, hover = false, instant = null } = {}) {
     this.hover.cancel()
 
     if (!this.openValue) {
+      this.cause = instant
+      // A menu that the pointer opened does not lock the page (see #renderModal()).
+      this.hovered = hover
       this.openValue = true
       this.#apply()
     }
@@ -507,14 +565,15 @@ export default class PhemMenuController extends Controller {
     popup?.focus({ preventScroll: true })
   }
 
-  #close({ focus }) {
+  #close({ focus, instant = null }) {
     this.hover.cancel()
     this.#cancelHighlight()
     if (!this.openValue) return
 
-    for (const submenu of this.#submenus) submenu.#close({ focus: false })
+    for (const submenu of this.#submenus) submenu.#close({ focus: false, instant: instant === "group" ? null : instant })
 
     const inside = this.popupTargets.some((el) => el.contains(document.activeElement))
+    this.cause = instant
     this.openValue = false
     this.#apply()
     this.typeahead.reset()
@@ -522,30 +581,38 @@ export default class PhemMenuController extends Controller {
   }
 
   // A click on an item closes the menu and the menus around it.
-  #closeAll() {
+  #closeAll(instant = null) {
     let root = this
     while (root.#parent) root = root.#parent
 
-    root.#close({ focus: true })
+    root.#close({ focus: true, instant })
   }
 
   #apply() {
     this.rendered = this.openValue
     this.#renderParts()
 
-    // A menubar that goes from one menu to another sets `instant`: the popups have no animation.
-    const instant = this.instant ?? false
+    // The popup has no animation, with the cause in `data-instant`, as in Base UI: `click` (Enter
+    // or Space on the trigger or on an item), `dismiss` (Escape) and `group` (a menubar that goes
+    // from one menu to another sets `instant`, and a key or the focus opens or closes its menu).
+    const instant = this.instant ?? this.cause ?? false
+    this.cause = null
     if (this.openValue) this.popup.show({ instant })
     else this.popup.hide({ instant })
+
+    // Also for a close by a server render: the next open is not an open by the pointer.
+    if (!this.openValue) this.hovered = false
 
     this.#renderModal()
     this.dispatch(this.openValue ? "open" : "close")
   }
 
-  // A modal menu locks the page while it is open. A submenu is in the popup of its menu.
+  // A modal menu locks the page while it is open. A submenu is in the popup of its menu. A menu
+  // that the pointer opened (`openOnHover`) does not lock the page: the lock removes the pointer
+  // from the trigger, and the menu would close.
   #renderModal() {
     const popup = this.popupTargets[0]
-    const locked = this.openValue && this.modalValue && !this.isSubmenu && popup !== undefined
+    const locked = this.openValue && this.modalValue && !this.hovered && !this.isSubmenu && popup !== undefined
 
     if (locked && !this.unlock) this.unlock = modal(popup)
     else if (!locked && this.unlock) {
@@ -617,6 +684,12 @@ export default class PhemMenuController extends Controller {
     if (!this.isSubmenu) return options
 
     return { ...options, side: this.#parent.orientationValue === "horizontal" ? "bottom" : "inline-end" }
+  }
+
+  // `group` for a menu of a menubar: a key on its trigger and the focus out of it change it with
+  // no animation.
+  get #group() {
+    return this.#menubarOrientation === null ? null : "group"
   }
 
   // The orientation of the menubar around this menu, or null: a submenu is not in a menubar.
