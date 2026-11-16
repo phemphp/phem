@@ -323,10 +323,10 @@ export default class PhemComboboxController extends Controller {
     }
   }
 
-  // A press on an item, a trigger, a clear button or the remove button of a chip does not move the
-  // focus out of the input.
+  // A press in the popup (an item, the space around the items, a list with a `tabindex`), on a
+  // trigger, a clear button or the remove button of a chip does not move the focus out of the input.
   onPointerDown = (event) => {
-    const parts = [...this.triggerTargets, ...this.clearTargets, ...this.chipRemoveTargets]
+    const parts = [...this.popupTargets, ...this.triggerTargets, ...this.clearTargets, ...this.chipRemoveTargets]
     if (this.#itemOf(event.target) || parts.some((el) => el.contains(event.target))) event.preventDefault()
   }
 

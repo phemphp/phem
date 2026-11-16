@@ -129,6 +129,14 @@ describe("place()", () => {
     expect(arrow.hasAttribute("data-uncentered")).toBe(false)
   })
 
+  it("places the arrow from the padding box of a popup with a border", () => {
+    Object.defineProperty(popup, "clientLeft", { configurable: true, value: 1 })
+    place(anchor, popup, { side: "bottom", align: "start", arrow })
+
+    expect(arrow.style.left).toBe("44px")
+    expect(arrow.hasAttribute("data-uncentered")).toBe(false)
+  })
+
   it("marks an arrow that cannot point at the center", () => {
     box(anchor, { left: 0, top: 300, width: 4, height: 40 })
     place(anchor, popup, { side: "bottom", align: "start", collisionPadding: 20, arrow })

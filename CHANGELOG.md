@@ -8,6 +8,13 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- `phem-combobox` keeps the focus in the input on each press in the popup: on the space around the
+  items, on a group label, and on a list with `tabindex="-1"`. Before, only a press on an item kept
+  the focus, so the text that the user typed after the press did not go into the input.
+- The arrow of a popup with a border points at the center of the anchor. `phem_position.js` gives
+  the `left` or the `top` of the arrow from the padding box of the popup. Before, the value was
+  from the border box, so a border of 1 px moved the arrow 1 px.
+
 - The open animation of a popup in the top layer runs. `phem-popover`, `phem-tooltip`, `phem-menu`,
   `phem-select`, `phem-combobox` and `phem-dialog` give the popup `data-open` and
   `data-starting-style` before `showPopover()` and `showModal()`. Before, the browser computed the

@@ -465,6 +465,15 @@ describe("phem-combobox", () => {
       expect(removed).toEqual(["remove-b"])
     })
 
+    it("keeps the focus in the input on a press in the popup, out of the items", async () => {
+      await mount(tags())
+      const popup = document.querySelector('[data-phem-combobox-target="popup"]')
+      const event = new PointerEvent("pointerdown", { bubbles: true, cancelable: true })
+      popup.dispatchEvent(event)
+
+      expect(event.defaultPrevented).toBe(true)
+    })
+
     it("keeps the focus in the input on a press on the remove button of a chip", async () => {
       await mount(tags())
       const event = new PointerEvent("pointerdown", { bubbles: true, cancelable: true })

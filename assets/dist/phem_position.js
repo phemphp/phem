@@ -19,8 +19,9 @@
 // - `--transform-origin`: the point of the anchor, for a scale animation from the anchor.
 //
 // The arrow gets its `left` (on a top or bottom side) or its `top` (on a left or right side), so
-// that it points at the center of the anchor. It gets `data-uncentered` when the popup is too far
-// to the side. The CSS of the app puts the arrow on the edge of the popup with `[data-side]`.
+// that it points at the center of the anchor. The value is from the padding box of the popup (the
+// box of an arrow with `position: absolute`), so a border of the popup does not move the arrow. It
+// gets `data-uncentered` when the popup is too far to the side. The CSS of the app puts the arrow on the edge of the popup with `[data-side]`.
 // The popup gets `data-anchor-hidden` when the anchor is out of the viewport.
 //
 // The anchor can be a virtual element: an object with `getBoundingClientRect()` and a
@@ -172,19 +173,21 @@ export function place(anchor, popup, { side = "bottom", align = "center", sideOf
   setAttribute(popup, "data-align", align)
   popup.toggleAttribute("data-anchor-hidden", a.bottom < 0 || a.top > view.height || a.right < 0 || a.left > view.width)
 
-  if (arrow) placeArrow(arrow, a, size, x, y, finalPhysical, finalSide, align, arrowPadding)
+  if (arrow) placeArrow(arrow, popup, a, size, x, y, finalPhysical, finalSide, align, arrowPadding)
 
   return { side: finalSide, align, x, y }
 }
 
-function placeArrow(arrow, a, size, x, y, physical, side, align, padding) {
+function placeArrow(arrow, popup, a, size, x, y, physical, side, align, padding) {
   const vertical = isVertical(physical)
   const length = vertical ? arrow.offsetWidth : arrow.offsetHeight
   const room = (vertical ? size.width : size.height) - padding - length
   const center = vertical ? a.left + a.width / 2 - x - length / 2 : a.top + a.height / 2 - y - length / 2
   const at = clamp(center, padding, room)
+  // `left` and `top` start at the padding box of the popup, after its border.
+  const border = (vertical ? popup.clientLeft : popup.clientTop) || 0
 
-  arrow.style.setProperty(vertical ? "left" : "top", `${Math.round(at)}px`)
+  arrow.style.setProperty(vertical ? "left" : "top", `${Math.round(at - border)}px`)
   arrow.style.removeProperty(vertical ? "top" : "left")
   setAttribute(arrow, "data-side", side)
   setAttribute(arrow, "data-align", align)

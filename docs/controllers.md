@@ -133,7 +133,7 @@ When the popup does not fit on its side, it goes to the other side (a flip). On 
 - `--available-width` and `--available-height`: the space from the anchor to the edge of the viewport, for a `max-height`
 - `--transform-origin`: the point of the anchor, for a scale animation from the anchor
 
-The `arrow` part gets its `left` (on a top or bottom side) or its `top` (on a left or right side), so it points at the center of the anchor. Put it on the edge of the popup with `[data-side]`:
+The `arrow` part gets its `left` (on a top or bottom side) or its `top` (on a left or right side), so it points at the center of the anchor. The value starts at the padding box of the popup, so give the arrow `position: absolute`. Put it on the edge of the popup with `[data-side]`:
 
 ```css
 .arrow[data-side="bottom"] { top: -8px; }
@@ -843,7 +843,7 @@ The server gives the chosen items `aria-selected="true"`, and the controller doe
 | ArrowLeft, ArrowRight | A chip | Moves the focus to the chip before or after it, or back to the input |
 | Backspace, Delete | A chip | Clicks its `chipRemove`. The focus goes to the chip before it (Backspace) or after it (Delete), or to the input |
 
-The chips and their `chipRemove` parts get `tabindex="-1"`, so Tab goes from the input out of the combobox. A press on a `chipRemove` keeps the focus in the input.
+The chips and their `chipRemove` parts get `tabindex="-1"`, so Tab goes from the input out of the combobox. A press on a `chipRemove` keeps the focus in the input. A press in the popup also keeps the focus in the input: on an item, on the space around the items, and on a list with `tabindex="-1"`.
 
 ### Select one item of a list of the browser
 
