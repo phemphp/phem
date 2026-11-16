@@ -52,7 +52,7 @@ All 37 Base UI components are here. The parts follow the Base UI anatomy, with t
 
 ## Develop
 
-The bundle requires the `phem/phem` release from Packagist (`^0.4.6`). The commands run in the dev image of phem, from the phem checkout in `../../phem`. They use `vendor/bin/phemc`, the phemc binary of the installed phem release.
+The bundle requires the `phem/phem` release from Packagist (`^0.4.7`). The commands run in the dev image of phem, from the phem checkout in `../../phem`. They use `vendor/bin/phemc`, the phemc binary of the installed phem release.
 
 ```sh
 make install   # composer install

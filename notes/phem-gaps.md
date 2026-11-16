@@ -2,7 +2,7 @@
 
 Each item is a behavior of Base UI v1.9.0 (the release that base-ui.com shows) that needs a change in a `phem/phem` controller. The bundle does not work around them.
 
-Status (2026-11-16): phem v0.4.6 is the installed release. phem v0.4.5 and v0.4.6 fix five gaps from a comparison of each demo page with base-ui.com in Chromium (Playwright, real mouse and keyboard input, light and dark mode): the open animation of the popups, the size of a Collapsible panel with `justify-end`, the height of the first toast after the last dismiss, the focus after a press in the Combobox popup, and the place of the arrow of a popup with a border. Items 1 and 2 below are from the comparison with the Base UI source. Items 3 to 15 are the other results of the browser comparison. Each item was measured two times or more. The paths are in `assets/dist/` of phem.
+Status (2026-11-16): phem v0.4.7 is the installed release. phem v0.4.5 to v0.4.7 fix five gaps from a comparison of each demo page with base-ui.com in Chromium (Playwright, real mouse and keyboard input, light and dark mode): the open animation of the popups, the size of a Collapsible panel with `justify-end`, the height of the first toast after the last dismiss, the focus after a press in the Combobox popup, and the place of the arrow of a popup with a border. Items 1 and 2 below are from the comparison with the Base UI source. Items 3 to 15 are the other results of the browser comparison. Each item was measured two times or more. The paths are in `assets/dist/` of phem.
 
 ## Open
 
@@ -71,7 +71,6 @@ Status (2026-11-16): phem v0.4.6 is the installed release. phem v0.4.5 and v0.4.
     - Enter with an open popup and no highlighted item does nothing. Base UI closes the popup (and the Combobox goes back to the selected label).
     - The highlight stays when the pointer goes out of the list.
     - Autocomplete: ArrowDown and ArrowUp on a closed popup highlight an item. Base UI only opens the popup.
-    - A field of the application in the popup (an input, a textarea) does not get the focus of a mouse press: `onPointerDown` (`phem_combobox_controller.js:328`) prevents each press in the popup. The fix is in the phem checkout, with no release yet. The bundle and the demos have no such field.
     - Attributes: no `aria-haspopup` on the input, no `aria-expanded`, `aria-haspopup`, `aria-controls` and `data-popup-open` on the trigger, no `role="group"` and `data-popup-open` on the input group, and no `data-list-empty` on the input.
 
 11. **Navigation Menu.**
