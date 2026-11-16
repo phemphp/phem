@@ -62,8 +62,6 @@ export const navigation: NavGroup[] = [
     {
         title: 'Project',
         pages: [
-            { slug: 'contributing', label: 'Contributing' },
-            { slug: 'releasing', label: 'Releasing' },
             { slug: 'changelog', label: 'Changelog' },
         ],
     },
