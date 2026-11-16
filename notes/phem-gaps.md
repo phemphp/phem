@@ -2,17 +2,7 @@
 
 Each item is a behavior of Base UI v1.9.0 (the release that base-ui.com shows) that needs a change in a `phem/phem` controller. The bundle does not work around them.
 
-Status (2026-11-16): phem v0.4.7 is the installed release. phem v0.4.5 to v0.4.7 fix five gaps from a comparison of each demo page with base-ui.com in Chromium (Playwright, real mouse and keyboard input, light and dark mode): the open animation of the popups, the size of a Collapsible panel with `justify-end`, the height of the first toast after the last dismiss, the focus after a press in the Combobox popup, and the place of the arrow of a popup with a border. Items 1 and 2 below are from the comparison with the Base UI source. Items 3 to 15 are the other results of the browser comparison. Each item was measured two times or more. The paths are in `assets/dist/` of phem.
-
-## Fixed in phem, not released
-
-The phem commit 9a61b3a on `main` fixes these five gaps after v0.4.7. It is not in a release yet. Remove this section after the next phem release and the `composer update phem/phem`.
-
-- Preview Card: Escape on a card that a hover opened focused the link, and the card opened again after 600 ms. Now the focus goes to the trigger only when it is in the popup.
-- Navigation Menu: Tab from the last entry of the list went into the content again. Now it goes to the next element of the page, and the menu closes.
-- OTP field: Tab from a filled slot went to the first empty slot. Now the slot with the focus is the tab stop.
-- Form: the same server error two times showed the field as valid. Now an answer with no new HTML for a field shows its server error again, for each event that sends the control.
-- Form: after a server error, the client errors did not show. Now the error part of the server shows the client errors after the user changes the value.
+Status (2026-11-16): phem v0.4.8 is the installed release. Items 1 and 2 below come from a comparison with the Base UI source. Items 3 to 15 come from a comparison of each demo page with base-ui.com in Chromium (Playwright, real mouse and keyboard input, light and dark mode). Each item was measured two times or more. The paths are in `assets/dist/` of phem.
 
 ## Open
 
