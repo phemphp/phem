@@ -119,7 +119,7 @@ A transition can go back in the middle: a popup that opens again before the end 
 
 ### Press outside
 
-A popup, a dialog that is not a modal and a navigation menu close at a press outside them. A press that starts in the popup and ends outside it (for example a text selection with the mouse) does not close it, as in Base UI. A press in a popup closes only the popups that opened after it.
+A popup, a dialog that is not a modal and a navigation menu close at a press outside them. A press that starts in the popup and ends outside it (for example a text selection with the mouse) does not close it, as in Base UI. A press in a popup closes only the popups that opened after it. A menu and a select close at the press of the mouse (the `pointerdown`). For a touch, they close at the end of the touch (in 1 s), or when the touch moves more than 10 px (a scroll), as in Base UI. A long touch does not close them.
 
 ### Position
 
@@ -1997,17 +1997,17 @@ The `value` part shows the label of the selected item: its `data-label` attribut
 | :-- | :-- | :-- |
 | `value` | | The selected value, or a JSON array with `multiple`. |
 | `multiple` | `false` | The user selects more than one item. A click on an item adds or removes its value, and the popup stays open. |
-| `alignItemWithTrigger` | `true` | The popup goes over the trigger: the text of the selected item (or of the first item) is on the text of the `value` part, and the popup gets `data-side="none"`. When the popup does not fit in the viewport there, or after a touch, the popup goes next to the trigger. |
+| `alignItemWithTrigger` | `true` | The popup goes over the trigger: the text of the selected item (or of the first item) is on the text of the `value` part, and the popup gets `data-side="none"`. When the popup is too tall for the viewport, it gets smaller (10 px from the top and the bottom of the viewport) and its list scrolls. The popup goes next to the trigger when the trigger is less than 20 px from the top or less than 40 px from the bottom of the viewport, when the popup would be less than 100 px high (or less than the full height of a list that is shorter than 100 px), when its list does not scroll, or after a touch. The popup over the trigger stays 5 px from the left and the right of the viewport: the `collisionPadding` value applies only to a popup next to the trigger. |
 | `modal` | `true` | While the popup is open, the page does not scroll and the elements out of the popup get no pointer events. |
 | `disabled` | `false` | The select does not open. The trigger gets `disabled` (or `aria-disabled` when it is not a button), and the input gets `disabled`. |
 | `readOnly` | `false` | The select does not open and the value does not change. |
 | `required` | `false` | The input gets `required`. |
 | `loopFocus` | `true` | The arrow keys go from the last item to the first item. |
-| `highlightItemOnHover` | `true` | A move of the pointer on an item gives it the focus. An item that comes under a pointer that does not move (the popup opens over the trigger) does not get it. |
+| `highlightItemOnHover` | `true` | A move of the pointer on an item gives it the focus. An item that comes under a pointer that does not move (the popup opens over the trigger) does not get it. A press of the mouse on the trigger of a select with no value gives the focus to the first item. When the pointer leaves the items, the highlight goes away and the popup gets the focus. |
 | `open` | `false` | The popup is open on load. A script can change it. |
 | `side`, `align`, `sideOffset`, `alignOffset`, `collisionPadding`, `arrowPadding` | `bottom`, `center`, `0`, `0`, `5`, `5` | The place of the popup next to the trigger, as a [popover](#show-a-popover). |
 
-A press on the trigger opens the popup. When the user drags the pointer from the trigger and releases it on an item, the item is selected. A click on an item selects it and closes the popup, and the focus goes back to the trigger. A press outside and the focus out of the select close the popup.
+A press on the trigger opens the popup. The press does not select text, and it gives the trigger a focus of the mouse, with no focus ring, as in Base UI. When the user drags the pointer from the trigger and releases it on an item, the item is selected. A click on an item selects it and closes the popup, and the focus goes back to the trigger with no focus ring. A press of the mouse outside closes the popup at the press, and the focus goes back to the trigger, unless the press gives the focus to another element, for example a text field. A touch outside closes the popup at the end of the touch, or when the touch moves (a scroll). The focus out of the select closes the popup.
 
 | Key | Where | Action |
 | :-- | :-- | :-- |
@@ -2016,7 +2016,7 @@ A press on the trigger opens the popup. When the user drags the pointer from the
 | A letter | trigger | Selects the next item that starts with it, with no popup (not with `multiple`). |
 | ArrowDown, ArrowUp | popup | Moves the focus to the next or the previous item. |
 | Home, End | popup | Moves the focus to the first or the last item. |
-| A letter | popup | Moves the focus to the next item that starts with the letters. A letter that matches no item starts a new text. |
+| A letter | popup | Moves the focus to the next item that starts with the letters. The typed text stays for 750 ms. A new text starts after the selected item. A letter that matches no item starts a new text. |
 | Enter, Space | popup | Selects the item with the focus. |
 | Escape | popup | Closes the popup. The focus goes back to the trigger. |
 | Tab | popup | Closes the popup. The focus goes to the trigger, and then to the next element. |
@@ -2025,18 +2025,32 @@ The keys skip a disabled item (`disabled` or `aria-disabled="true"`). The focus 
 
 The `input` part is the field of the form. An `<input>` gets the value, or the values separated by a comma with `multiple`. A `<select>` (for example `<select multiple name="apples[]" hidden>` with an `<option>` for each item) gets its options selected. When the user changes the value, the input sends its `input` and `change` events, and the controller dispatches `phem-select:change` with the `value` in its `detail` (an array with `multiple`). A focus on the input goes to the trigger. For `required`, use an input that is visually hidden (`class="sr-only"`), not `hidden`: the browser does not validate a field that it does not show.
 
-The scroll arrows scroll the list while the pointer is on them. Each one shows only when the list can scroll in its direction, unless it has `data-keep-mounted`. The `list` part, or the popup with no list, is the element that scrolls: give it a `max-height`, for example `max-height: var(--available-height)`.
+The scroll arrows scroll the list one item each 40 ms while the pointer is on them. Each one shows only when the list can scroll in its direction, unless it has `data-keep-mounted`. The item with the focus does not go under a visible arrow: the list keeps the larger of its `scroll-padding-top` (or `scroll-padding-bottom`) and the height of the arrow free. The `list` part, or the popup with no list, is the element that scrolls: give it a `max-height`, for example `max-height: var(--available-height)`.
+
+A popup over the trigger gets smaller in a short viewport, and its list must then scroll. Make the open popup a flex column, and let the list scroll. Do not put `display` in the `style` attribute of the popup: it shows the popup when it has `hidden`.
+
+```css
+[data-phem-select-target="popup"]:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+}
+
+[data-phem-select-target="list"] {
+    overflow-y: auto;
+    min-height: 0;
+}
+```
 
 The parts get these attributes:
 
 | Part | Attributes |
 | :-- | :-- |
-| trigger | `role="combobox"`, `aria-haspopup="listbox"`, `aria-expanded`, `aria-controls`, `data-popup-open` and `data-pressed` while the popup is open, `data-popup-side`, `data-placeholder`, `data-disabled`, `data-readonly`, `data-required` |
+| trigger | `role="combobox"`, `aria-haspopup="listbox"`, `aria-expanded`, `aria-controls`, `data-popup-open` and `data-pressed` while the popup is open, `data-popup-side` (`bottom` when the popup is over the trigger), `data-placeholder`, `data-disabled`, `data-readonly`, `data-required` |
 | value | `data-placeholder` |
 | icon | `data-popup-open` |
 | popup | `data-open`, `data-closed`, `data-starting-style`, `data-ending-style`, `data-side` (`none` over the trigger), `data-align`, and the CSS variables of a popover (`--anchor-width`, `--available-height`, `--transform-origin`...) |
 | list (or popup) | `role="listbox"`, `aria-multiselectable` with `multiple` |
-| item | `role="option"`, `aria-selected`, `data-selected`, `data-highlighted`, `data-disabled` |
+| item | `role="option"`, `aria-selected`, `data-selected`, `data-highlighted`, `data-disabled`, `tabindex="0"` on the highlighted item and `tabindex="-1"` on the others |
 | itemIndicator | `hidden` when its item is not selected (unless `data-keep-mounted`), and the animation attributes |
 | group, groupLabel | `role="group"` with the name of its label |
 | separator | `role="separator"`, `data-orientation` |
@@ -2057,7 +2071,7 @@ After a click on the trigger of a select with the value `honeycrisp`, the browse
 
 ```html
 <div data-controller="phem-select" data-phem-select-value-value="honeycrisp" data-phem-select-open-value="true">
-    <button data-phem-select-target="trigger" aria-label="Apple" role="combobox" aria-haspopup="listbox" aria-expanded="true" aria-controls="list" data-popup-open="" data-pressed="" data-popup-side="none">
+    <button data-phem-select-target="trigger" aria-label="Apple" role="combobox" aria-haspopup="listbox" aria-expanded="true" aria-controls="list" data-popup-open="" data-pressed="" data-popup-side="bottom">
         <span data-phem-select-target="value" placeholder="Select apple">Honeycrisp</span>
         <span data-phem-select-target="icon" data-popup-open="">▾</span>
     </button>
@@ -2068,7 +2082,7 @@ After a click on the trigger of a select with the value `honeycrisp`, the browse
                 <span data-phem-select-target="itemIndicator" data-closed="" hidden="">✓</span>
                 <span data-phem-select-target="itemText">Gala</span>
             </div>
-            <div data-phem-select-target="item" data-value="honeycrisp" role="option" tabindex="-1" aria-selected="true" data-selected="" data-highlighted="">
+            <div data-phem-select-target="item" data-value="honeycrisp" role="option" tabindex="0" aria-selected="true" data-selected="" data-highlighted="">
                 <span data-phem-select-target="itemIndicator" data-open="">✓</span>
                 <span data-phem-select-target="itemText">Honeycrisp</span>
             </div>

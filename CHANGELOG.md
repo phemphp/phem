@@ -8,6 +8,27 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- `phem-menu`, `phem-context-menu` and `phem-select`: a touch outside closes the popup at the end
+  of the touch (in 1 s), or when the touch moves more than 10 px, as in Base UI. Before, the popup
+  closed at the start of the touch. A long touch does not close it.
+- **Breaking**: `phem-select`: a popup over the trigger stays over it when it is too tall for the
+  viewport: it gets smaller and its list scrolls. Give the list `overflow-y: auto` and
+  `min-height: 0` in a popup with `display: flex; flex-direction: column` (in a
+  `:not([hidden])` rule, not in the `style` attribute). The popup goes next to the trigger only
+  near an edge of the viewport, or when it would be less than 100 px high (or less than the full
+  height of a list that is shorter than 100 px). A popup over the trigger stays 5 px from the left
+  and the right of the viewport, not `collisionPadding`. The trigger of a popup over it gets
+  `data-popup-side="bottom"`, not `none`. A press of the mouse outside closes the popup at the
+  press, and the focus goes back to the trigger.
+- `phem-select`: the text of the selected item is exactly on the text of the value: the controller
+  does not round the top of the popup. A mouse open with no value highlights the first item, and
+  the highlight goes away when the pointer leaves the items. The typed text stays for 750 ms, and
+  a new text starts after the selected item. The scroll arrows scroll one item each 40 ms, and the
+  item with the focus does not go under an arrow. The highlighted item gets `tabindex="0"`, and
+  the other items `tabindex="-1"`. A key move keeps the highlight when the list scrolls under a
+  pointer that does not move.
+- `phem-select`: a mouse selection gives the focus back to the trigger with no focus ring. The
+  press on the trigger gives it a focus of the mouse, as in Base UI, and does not select text.
 - **Breaking**: `phem-menu` opens at the press of the mouse on its trigger, as in Base UI, and a
   release on an item 200 ms after the press clicks the item. A touch, Enter and Space still use
   the click. A `click` listener that calls `preventDefault()` on the trigger no longer stops the

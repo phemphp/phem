@@ -20,6 +20,15 @@ function pointerdown(el, button = 0) {
   el.dispatchEvent(new Event("pointerdown", { button, bubbles: true, composed: true }))
 }
 
+// A pointer event of a touch, on `el`. `timeStamp` replaces the time of the event.
+function touch(type, el, { clientX = 0, clientY = 0, timeStamp } = {}) {
+  const event = new MouseEvent(type, { bubbles: true, composed: true, clientX, clientY })
+  Object.defineProperty(event, "pointerType", { value: "touch" })
+  Object.defineProperty(event, "pointerId", { value: 1 })
+  if (timeStamp !== undefined) Object.defineProperty(event, "timeStamp", { value: timeStamp })
+  el.dispatchEvent(event)
+}
+
 // A click of a pointer (`detail` 1), on `el`.
 function click(el) {
   el.dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true, detail: 1 }))
@@ -53,6 +62,44 @@ describe("dismissable()", () => {
 
     click(outside)
     expect(dismiss).toHaveBeenCalledOnce()
+  })
+
+  it("closes a pointerdown layer at the end of a touch, not at its start", () => {
+    const dismiss = layer(low, { event: "pointerdown" })
+
+    touch("pointerdown", outside)
+    expect(dismiss).not.toHaveBeenCalled()
+
+    touch("pointerup", outside)
+    expect(dismiss).toHaveBeenCalledOnce()
+
+    click(outside)
+    expect(dismiss).toHaveBeenCalledOnce()
+  })
+
+  it("closes a pointerdown layer when a touch moves more than 10 px, or the browser scrolls", () => {
+    const dismiss = layer(low, { event: "pointerdown" })
+
+    touch("pointerdown", outside)
+    touch("pointermove", outside, { clientX: 8 })
+    expect(dismiss).not.toHaveBeenCalled()
+
+    touch("pointermove", outside, { clientX: 11 })
+    expect(dismiss).toHaveBeenCalledOnce()
+
+    const other = layer(high, { event: "pointerdown" })
+    touch("pointerdown", outside)
+    touch("pointercancel", outside)
+    expect(other).toHaveBeenCalledOnce()
+  })
+
+  it("keeps a pointerdown layer open after a long touch", () => {
+    const dismiss = layer(low, { event: "pointerdown" })
+
+    touch("pointerdown", outside, { timeStamp: 0 })
+    touch("pointerup", outside, { timeStamp: 1500 })
+
+    expect(dismiss).not.toHaveBeenCalled()
   })
 
   it("closes a pointerdown layer at a press of the right button", () => {

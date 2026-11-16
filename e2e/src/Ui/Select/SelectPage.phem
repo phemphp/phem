@@ -27,6 +27,7 @@ final class SelectPage
     {
         return (
             <Document title="Select">
+                <style>{{ '#popup:not([hidden]) { display: flex; flex-direction: column }' }}</style>
                 <div id="apple" data-controller="phem-select" data-phem-select-value-value="honeycrisp" style="margin: 200px 40px 0">
                     <button id="trigger" data-phem-select-target="trigger" aria-label="Apple" style="width: 160px; display: flex; justify-content: space-between">
                         <span id="value" data-phem-select-target="value" placeholder="Select apple"></span>
@@ -34,7 +35,7 @@ final class SelectPage
                     </button>
                     <input id="input" data-phem-select-target="input" name="apple" hidden />
                     <div id="popup" data-phem-select-target="popup" popover="manual" hidden style="margin: 0; padding: 4px 0; border: 1px solid; background: white">
-                        <div id="list" data-phem-select-target="list">
+                        <div id="list" data-phem-select-target="list" style="overflow-y: auto; min-height: 0">
                             {% for value, label in apples %}
                                 <div id={{ 'item-' ~ value }} data-phem-select-target="item" data-value={{ value }} style="padding: 4px 8px">
                                     <span data-phem-select-target="itemIndicator">✓</span>

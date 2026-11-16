@@ -8,8 +8,9 @@
 // contains(), because an action can remove the element of the press.
 //
 // The `event` option of a layer is the event of a press outside: `"click"` (the default), or
-// `"pointerdown"` (each button, the right button too). A layer with `"pointerdown"` also closes at
-// a click with no pointer (a click with the keyboard). The layers close from the top down: a press
+// `"pointerdown"` (each button, the right button too; a touch closes it at its end, or when it
+// moves away). A layer with `"pointerdown"` also closes at a click with no pointer (a click with
+// the keyboard). The layers close from the top down: a press
 // in a layer stops the walk, also at the click after a drag out of the layer, and the layers below
 // a `"click"` layer wait for the click, so the top layer always closes first.
 //
@@ -47,20 +48,52 @@ document.addEventListener("pointerdown", (event) => {
   pressed.path = path
 
   // A press in a layer closes the layers that opened after it, not the layer itself.
+  const due = []
   for (const layer of [...layers].reverse()) {
     if (layer.inside().some((el) => path.includes(el))) {
       pressed.inside = layer
 
-      return
+      break
     }
 
     // A layer that closes at the click stays above: the layers below it wait for the click.
-    if (layer.event !== "pointerdown") return
+    if (layer.event !== "pointerdown") break
 
     pressed.served.add(layer)
-    if (layer.outside) layer.dismiss("outside", event)
+    if (layer.outside) due.push(layer)
   }
+
+  if (due.length === 0) return
+
+  const close = () => {
+    for (const layer of due) if (layers.includes(layer)) layer.dismiss("outside", event)
+  }
+
+  if (event.pointerType === "touch") afterTouch(event, close)
+  else close()
 }, { capture: true })
+
+// A touch closes the layers at its end (in TOUCH_TIME), or when it moves more than TOUCH_MOVE px
+// (a scroll), as the `sloppy` press of Base UI. A touch that starts a scroll of the browser ends
+// with `pointercancel`. A long touch (a context menu) closes no layer.
+const TOUCH_TIME = 1000
+const TOUCH_MOVE = 10
+
+function afterTouch(start, close) {
+  const touch = new AbortController()
+  const options = { capture: true, signal: touch.signal }
+  const same = (event) => event.pointerId === start.pointerId
+  const end = (run) => {
+    touch.abort()
+    if (run) close()
+  }
+
+  document.addEventListener("pointerup", (event) => same(event) && end(event.timeStamp - start.timeStamp <= TOUCH_TIME), options)
+  document.addEventListener("pointercancel", (event) => same(event) && end(true), options)
+  document.addEventListener("pointermove", (event) => {
+    if (same(event) && Math.hypot(event.clientX - start.clientX, event.clientY - start.clientY) > TOUCH_MOVE) end(true)
+  }, options)
+}
 
 document.addEventListener("click", (event) => {
   const path = event.composedPath()

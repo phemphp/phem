@@ -363,6 +363,346 @@ describe("phem-select", () => {
     expect(el("trigger").hasAttribute("data-popup-open")).toBe(true)
   })
 
+  it("highlights the first item on a mouse open with no value", async () => {
+    await mount(select())
+    pointer("pointerdown", el("trigger"), { clientX: 10, clientY: 10 })
+
+    expect(isOpen()).toBe(true)
+    expect(document.activeElement).toBe(el("item-gala"))
+    expect(el("item-gala").hasAttribute("data-highlighted")).toBe(true)
+  })
+
+  it("removes the highlight when the pointer leaves the items, and focuses the popup", async () => {
+    await mount(select())
+    el("trigger").focus()
+    press("ArrowDown")
+    hover(el("item-granny"))
+    expect(document.activeElement).toBe(el("item-granny"))
+
+    el("item-granny").dispatchEvent(new PointerEvent("pointerout", { bubbles: true, pointerType: "mouse", relatedTarget: el("separator") }))
+
+    expect(document.activeElement).toBe(el("popup"))
+    expect(el("list").querySelectorAll("[data-highlighted]")).toHaveLength(0)
+  })
+
+  it("keeps the typed text for 750 ms", async () => {
+    await mount(select())
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+
+    try {
+      el("trigger").focus()
+      press("Enter")
+      press("g")
+      expect(document.activeElement).toBe(el("item-gala"))
+
+      vi.advanceTimersByTime(600)
+      press("r")
+
+      expect(document.activeElement).toBe(el("item-granny"))
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("starts a new typed text from the selected item", async () => {
+    await mount(select('data-phem-select-value-value="fuji"'))
+    click("#trigger")
+    expect(document.activeElement).toBe(el("item-fuji"))
+
+    press("ArrowDown")
+    expect(document.activeElement).toBe(el("item-granny"))
+
+    // The next item with "g" after Fuji, the selected item.
+    press("g")
+
+    expect(document.activeElement).toBe(el("item-granny"))
+  })
+
+  it("closes at a press outside, and focuses the trigger", async () => {
+    await mount(select())
+    click("#trigger")
+    expect(isOpen()).toBe(true)
+
+    pointer("pointerdown", document.body)
+
+    expect(isOpen()).toBe(false)
+    expect(document.activeElement).toBe(el("trigger"))
+  })
+
+  it("gives tabindex 0 to the highlighted item only, and keeps it after the morph", async () => {
+    await mount(select('data-phem-select-value-value="fuji"'))
+    click("#trigger")
+
+    expect(el("item-fuji").getAttribute("tabindex")).toBe("0")
+    expect(el("item-gala").getAttribute("tabindex")).toBe("-1")
+
+    press("ArrowDown")
+
+    expect(el("item-granny").getAttribute("tabindex")).toBe("0")
+    expect(el("item-fuji").getAttribute("tabindex")).toBe("-1")
+
+    await morphOnSave(select('data-phem-select-value-value="fuji"'))
+
+    expect(el("item-granny").getAttribute("tabindex")).toBe("0")
+    expect(el("item-fuji").getAttribute("tabindex")).toBe("-1")
+  })
+
+  it("scrolls one item each 40 ms on a scroll arrow", async () => {
+    await mount(select())
+    const list = el("list")
+    let scrollTop = 0
+    Object.defineProperty(list, "scrollTop", { configurable: true, get: () => scrollTop, set: (value) => (scrollTop = value) })
+    Object.defineProperty(list, "scrollHeight", { configurable: true, get: () => 80 })
+    Object.defineProperty(list, "clientHeight", { configurable: true, get: () => 40 })
+    Object.defineProperty(el("down"), "offsetHeight", { configurable: true, get: () => 10 })
+
+    // The items are 20 px high, from the top of the list.
+    const items = ["gala", "fuji", "honeycrisp", "granny"].map((value) => el(`item-${value}`))
+    const rect = (top, height) => ({ top, bottom: top + height, left: 0, right: 100, width: 100, height, x: 0, y: top })
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function () {
+      const index = items.indexOf(this)
+
+      return index === -1 ? rect(0, this === list ? 40 : 0) : rect(index * 20 - scrollTop, 20)
+    })
+
+    click("#trigger")
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+
+    try {
+      pointer("pointerover", el("down"))
+      vi.advanceTimersByTime(39)
+      expect(scrollTop).toBe(0)
+
+      // Each step shows the next item over the arrow.
+      vi.advanceTimersByTime(1)
+      expect(scrollTop).toBe(10)
+      vi.advanceTimersByTime(40)
+      expect(scrollTop).toBe(30)
+      vi.advanceTimersByTime(40)
+      expect(scrollTop).toBe(40)
+      expect(el("down").hasAttribute("data-visible")).toBe(false)
+      vi.advanceTimersByTime(80)
+      expect(scrollTop).toBe(40)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("gives data-popup-side bottom to the trigger of a popup over the trigger", async () => {
+    await mount(select('data-phem-select-value-value="fuji"'))
+    const root = document.documentElement
+    Object.defineProperty(root, "clientHeight", { configurable: true, get: () => 800 })
+    Object.defineProperty(root, "clientWidth", { configurable: true, get: () => 800 })
+
+    const rect = (top, height, left = 0, width = 100) => ({ top, bottom: top + height, left, right: left + width, width, height, x: left, y: top })
+    const text = el("item-fuji").querySelector("[data-phem-select-target=itemText]")
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function () {
+      if (this === el("trigger") || this === el("value")) return rect(300, 20, 50)
+      if (this === el("popup")) return rect(0, 80)
+      if (this === text) return rect(30, 20, 10, 80)
+
+      return rect(0, 0)
+    })
+
+    try {
+      click("#trigger")
+
+      expect(el("popup").getAttribute("data-side")).toBe("none")
+      expect(el("trigger").getAttribute("data-popup-side")).toBe("bottom")
+      expect(el("up").getAttribute("data-side")).toBe("none")
+    } finally {
+      delete root.clientHeight
+      delete root.clientWidth
+    }
+  })
+
+  it("keeps the highlight of a key move when an item goes out from under a pointer that does not move", async () => {
+    await mount(select())
+    el("trigger").focus()
+    press("ArrowDown")
+    pointer("pointermove", el("item-gala"))
+    expect(document.activeElement).toBe(el("item-gala"))
+
+    press("ArrowDown")
+    expect(document.activeElement).toBe(el("item-fuji"))
+
+    // The list scrolls: the separator comes under the pointer.
+    el("item-gala").dispatchEvent(new PointerEvent("pointerout", { bubbles: true, pointerType: "mouse", relatedTarget: el("separator") }))
+
+    expect(document.activeElement).toBe(el("item-fuji"))
+    expect(el("item-fuji").hasAttribute("data-highlighted")).toBe(true)
+  })
+
+  it("keeps the highlight when the pointer goes from one item to the next", async () => {
+    await mount(select())
+    click("#trigger")
+    pointer("pointermove", el("item-gala"))
+
+    el("item-gala").dispatchEvent(new PointerEvent("pointerout", { bubbles: true, pointerType: "mouse", relatedTarget: el("item-fuji") }))
+
+    expect(document.activeElement).toBe(el("item-gala"))
+  })
+
+  it("does not highlight with the pointer with highlightItemOnHover false", async () => {
+    await mount(select('data-phem-select-highlight-item-on-hover-value="false"'))
+    pointer("pointerdown", el("trigger"), { clientX: 10, clientY: 10 })
+
+    expect(isOpen()).toBe(true)
+    expect(document.activeElement).toBe(el("popup"))
+
+    press("ArrowDown")
+    expect(document.activeElement).toBe(el("item-gala"))
+
+    el("item-gala").dispatchEvent(new PointerEvent("pointerout", { bubbles: true, pointerType: "mouse", relatedTarget: el("separator") }))
+
+    expect(document.activeElement).toBe(el("item-gala"))
+  })
+
+  it("stops the text selection only during a press on the trigger", async () => {
+    await mount(select())
+    const selection = () => {
+      const event = new Event("selectstart", { bubbles: true, cancelable: true })
+      document.body.dispatchEvent(event)
+
+      return event.defaultPrevented
+    }
+
+    pointer("pointerdown", el("trigger"))
+    expect(selection()).toBe(true)
+
+    pointer("pointerup", document.body)
+    expect(selection()).toBe(false)
+
+    // A cancel of the browser (a native drag) gives no pointerup.
+    pointer("pointerdown", el("trigger"))
+    expect(selection()).toBe(true)
+
+    pointer("pointercancel", document.body)
+    expect(selection()).toBe(false)
+
+    pointer("pointerdown", el("trigger"))
+    el("select").remove()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(selection()).toBe(false)
+  })
+
+  it("gives tabindex -1 to all the items after the close", async () => {
+    await mount(select('data-phem-select-value-value="fuji"'))
+    click("#trigger")
+    press("ArrowDown")
+    expect(el("item-granny").getAttribute("tabindex")).toBe("0")
+
+    press("Escape")
+
+    expect(isOpen()).toBe(false)
+    for (const item of el("list").querySelectorAll("[data-phem-select-target=item]")) expect(item.getAttribute("tabindex")).toBe("-1")
+  })
+
+  it("keeps the focus of a press outside on an element that takes the focus", async () => {
+    await mount(select())
+    document.body.insertAdjacentHTML("beforeend", '<input id="other" />')
+    click("#trigger")
+
+    pointer("pointerdown", el("other"))
+    el("other").focus()
+    await new Promise((resolve) => requestAnimationFrame(resolve))
+    await new Promise((resolve) => requestAnimationFrame(resolve))
+
+    expect(isOpen()).toBe(false)
+    expect(document.activeElement).toBe(el("other"))
+  })
+
+  it("starts a new typed text after 750 ms", async () => {
+    await mount(select())
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+
+    try {
+      el("trigger").focus()
+      press("Enter")
+      press("g")
+      expect(document.activeElement).toBe(el("item-gala"))
+
+      // "r" alone matches no item: the focus stays. With the old text, "gr" would go to Granny Smith.
+      vi.advanceTimersByTime(800)
+      press("r")
+
+      expect(document.activeElement).toBe(el("item-gala"))
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("keeps the item with the focus out of the scroll-padding of the list", async () => {
+    await mount(select())
+    const list = el("list")
+    let scrollTop = 0
+    Object.defineProperty(list, "scrollTop", { configurable: true, get: () => scrollTop, set: (value) => (scrollTop = value) })
+    Object.defineProperty(list, "scrollHeight", { configurable: true, get: () => 80 })
+    Object.defineProperty(list, "clientHeight", { configurable: true, get: () => 40 })
+    list.style.scrollPaddingBottom = "15px"
+
+    // The items are 20 px high, from the top of the list.
+    const items = ["gala", "fuji", "honeycrisp", "granny"].map((value) => el(`item-${value}`))
+    const rect = (top, height) => ({ top, bottom: top + height, left: 0, right: 100, width: 100, height, x: 0, y: top })
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function () {
+      const index = items.indexOf(this)
+
+      return index === -1 ? rect(0, this === list ? 40 : 0) : rect(index * 20 - scrollTop, 20)
+    })
+
+    el("trigger").focus()
+    press("ArrowUp")
+
+    // Granny Smith ends at 80 px: its bottom goes 15 px over the bottom of the list.
+    expect(document.activeElement).toBe(el("item-granny"))
+    expect(scrollTop).toBe(55)
+  })
+
+  it("scrolls up one item each 40 ms, and again after a move on the arrow at the edge", async () => {
+    await mount(select())
+    const list = el("list")
+    let scrollTop = 0
+    Object.defineProperty(list, "scrollTop", { configurable: true, get: () => scrollTop, set: (value) => (scrollTop = value) })
+    Object.defineProperty(list, "scrollHeight", { configurable: true, get: () => 80 })
+    Object.defineProperty(list, "clientHeight", { configurable: true, get: () => 40 })
+    Object.defineProperty(el("up"), "offsetHeight", { configurable: true, get: () => 10 })
+
+    const items = ["gala", "fuji", "honeycrisp", "granny"].map((value) => el(`item-${value}`))
+    const rect = (top, height) => ({ top, bottom: top + height, left: 0, right: 100, width: 100, height, x: 0, y: top })
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function () {
+      const index = items.indexOf(this)
+
+      return index === -1 ? rect(0, this === list ? 40 : 0) : rect(index * 20 - scrollTop, 20)
+    })
+
+    click("#trigger")
+    scrollTop = 40
+    list.dispatchEvent(new Event("scroll"))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+
+    try {
+      pointer("pointerover", el("up"))
+
+      // Each step shows the item before the first visible item, under the arrow.
+      vi.advanceTimersByTime(40)
+      expect(scrollTop).toBe(30)
+      vi.advanceTimersByTime(40)
+      expect(scrollTop).toBe(10)
+      vi.advanceTimersByTime(40)
+      expect(scrollTop).toBe(0)
+      vi.advanceTimersByTime(80)
+      expect(scrollTop).toBe(0)
+
+      // A scroll of the wheel, then a move on the arrow: the scroll starts again.
+      scrollTop = 40
+      pointer("pointermove", el("up"))
+      vi.advanceTimersByTime(40)
+      expect(scrollTop).toBe(30)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("takes a new value of a server render", async () => {
     await mount(select('data-phem-select-value-value="fuji"'))
 
