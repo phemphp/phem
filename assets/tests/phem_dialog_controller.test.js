@@ -129,12 +129,43 @@ describe("phem-dialog", () => {
     expect(dialog().getAttribute("aria-describedby")).toBe("body")
     expect(trigger.getAttribute("aria-haspopup")).toBe("dialog")
     expect(trigger.getAttribute("aria-expanded")).toBe("false")
+    expect(trigger.hasAttribute("aria-controls")).toBe(false)
 
     click("#open")
     expect(dialog().hasAttribute("data-open")).toBe(true)
     expect(dialog().hasAttribute("data-closed")).toBe(false)
     expect(trigger.hasAttribute("data-popup-open")).toBe(true)
     expect(trigger.getAttribute("aria-expanded")).toBe("true")
+    expect(trigger.getAttribute("aria-controls")).toBe("dialog")
+
+    click("#close")
+    expect(trigger.hasAttribute("aria-controls")).toBe(false)
+  })
+
+  it("keeps an aria-controls of the server render on a closed dialog", async () => {
+    for (const given of ["help", "dialog"]) {
+      await mount(edit().replace('data-phem-dialog-target="trigger"', `data-phem-dialog-target="trigger" aria-controls="${given}"`))
+      const trigger = document.getElementById("open")
+
+      click("#open")
+      click("#close")
+      expect(trigger.getAttribute("aria-controls")).toBe(given)
+      document.body.innerHTML = ""
+    }
+  })
+
+  it("takes an aria-controls that the morph gives to the trigger of an open dialog", async () => {
+    await mount(edit())
+    click("#open")
+    const trigger = document.getElementById("open")
+    expect(trigger.getAttribute("aria-controls")).toBe("dialog")
+
+    // The server render of the morph gives another value: it stays after the close.
+    trigger.setAttribute("aria-controls", "help")
+    click("#close")
+    click("#open")
+    click("#close")
+    expect(trigger.getAttribute("aria-controls")).toBe("help")
   })
 
   it("locks the scroll of the page while a modal dialog is open", async () => {
@@ -292,6 +323,21 @@ describe("phem-dialog", () => {
     expect(isModal()).toBe(true)
     clickAt(dialog(), [500, 500])
     expect(dialog().open).toBe(false)
+  })
+
+  it("keeps the focus on a press on the backdrop, and not on a press in the dialog", async () => {
+    await mount(edit())
+    click("#open")
+    const mousedown = (el, x) => {
+      const event = new MouseEvent("mousedown", { bubbles: true, cancelable: true, clientX: x, clientY: x })
+      el.dispatchEvent(event)
+
+      return event
+    }
+
+    expect(mousedown(dialog(), 500).defaultPrevented).toBe(true)
+    expect(mousedown(dialog(), 0).defaultPrevented).toBe(false)
+    expect(mousedown(document.getElementById("save"), 500).defaultPrevented).toBe(false)
   })
 
   it("stays open when a press in the dialog ends on the backdrop", async () => {
@@ -665,6 +711,101 @@ describe("phem-dialog", () => {
     expect(document.activeElement.id).toBe("save")
   })
 
+  describe("Tab in a modal dialog", () => {
+    const tab = (id, shiftKey = false) => {
+      const target = document.getElementById(id)
+      target.focus()
+      const event = new KeyboardEvent("keydown", { key: "Tab", shiftKey, bubbles: true, cancelable: true })
+      target.dispatchEvent(event)
+
+      return event
+    }
+
+    it("goes from the last field to the first one, and back", async () => {
+      await mount(edit())
+      click("#open")
+
+      expect(tab("close").defaultPrevented).toBe(true)
+      expect(document.activeElement.id).toBe("save")
+      expect(tab("save", true).defaultPrevented).toBe(true)
+      expect(document.activeElement.id).toBe("close")
+    })
+
+    it("lets the browser move the focus between the fields", async () => {
+      await mount(edit())
+      click("#open")
+
+      expect(tab("save").defaultPrevented).toBe(false)
+      expect(tab("close", true).defaultPrevented).toBe(false)
+    })
+
+    it("lets Tab go from the popup to its first field, and Shift+Tab to its last field", async () => {
+      await mount(edit())
+      click("#open")
+      dialog().tabIndex = -1
+
+      expect(tab("dialog").defaultPrevented).toBe(false)
+      expect(tab("dialog", true).defaultPrevented).toBe(true)
+      expect(document.activeElement.id).toBe("close")
+    })
+
+    it("goes to the first field from the checked radio of a last radio group", async () => {
+      await mount(edit("", `<input type="radio" name="size" id="small" checked>
+          <input type="radio" name="size" id="large">`))
+      click("#open")
+
+      expect(tab("close").defaultPrevented).toBe(false)
+      expect(tab("small").defaultPrevented).toBe(true)
+      expect(document.activeElement.id).toBe("save")
+
+      // Shift+Tab from the first field goes to the checked radio, not to the last radio.
+      expect(tab("save", true).defaultPrevented).toBe(true)
+      expect(document.activeElement.id).toBe("small")
+    })
+
+    it("goes to the first field from an element with tabindex -1 after the last field", async () => {
+      await mount(edit("", '<div id="item" role="menuitem" tabindex="-1">Item</div>'))
+      click("#open")
+
+      expect(tab("item").defaultPrevented).toBe(true)
+      expect(document.activeElement.id).toBe("save")
+    })
+
+    it("does nothing in a dialog with no field", async () => {
+      await mount(`<div data-controller="phem-dialog">
+          <button id="open" data-phem-dialog-target="trigger">Open</button>
+          <dialog id="dialog" data-phem-dialog-target="popup" tabindex="-1"><p>Done</p></dialog>
+        </div>`)
+      click("#open")
+
+      expect(tab("dialog").defaultPrevented).toBe(true)
+      expect(document.activeElement.id).toBe("dialog")
+    })
+
+    it("lets Tab go out of a dialog that is not a modal", async () => {
+      await mount(edit('data-phem-dialog-modal-value="false"'))
+      click("#open")
+
+      expect(tab("close").defaultPrevented).toBe(false)
+    })
+
+    it("leaves Tab in a dialog in the dialog to the controller of that dialog", async () => {
+      await mount(edit("", `<div data-controller="phem-dialog">
+          <button id="inner-open" data-phem-dialog-target="trigger">More</button>
+          <dialog id="inner" data-phem-dialog-target="popup">
+            <button id="inner-first">First</button>
+            <button id="inner-last">Last</button>
+          </dialog>
+        </div>`))
+      click("#open")
+      click("#inner-open")
+
+      expect(tab("inner-first").defaultPrevented).toBe(false)
+      expect(tab("inner-last").defaultPrevented).toBe(true)
+      expect(document.activeElement.id).toBe("inner-first")
+    })
+  })
+
   it("keeps the focus in the dialog with trap-focus", async () => {
     await mount(edit('data-phem-dialog-modal-value="trap-focus"'))
     click("#open")
@@ -696,6 +837,21 @@ describe("phem-dialog", () => {
       expect(isModal()).toBe(true)
       for (const id of ["dialog", "popup", "backdrop"]) expect(document.getElementById(id).hasAttribute("data-open")).toBe(true)
       expect(document.getElementById("backdrop").hidden).toBe(false)
+    })
+
+    it("keeps the focus on a press on the viewport, and not on a press on a field in it", async () => {
+      await mount(viewport().replace('<div id="popup"', '<input id="search"><div id="popup"'))
+      click("#open")
+      const mousedown = (el) => {
+        const event = new MouseEvent("mousedown", { bubbles: true, cancelable: true })
+        el.dispatchEvent(event)
+
+        return event
+      }
+
+      expect(mousedown(dialog()).defaultPrevented).toBe(true)
+      expect(mousedown(document.getElementById("search")).defaultPrevented).toBe(false)
+      expect(mousedown(document.getElementById("save")).defaultPrevented).toBe(false)
     })
 
     it("closes on a press on the viewport outside the popup", async () => {
@@ -757,6 +913,26 @@ describe("phem-dialog: the focus of a touch open", () => {
     // A click of the keyboard after a touch.
     document.getElementById("open").focus()
     click("#open")
+    expect(document.activeElement).not.toBe(dialog())
+  })
+})
+
+describe("phem-dialog: the focus of a drawer", () => {
+  const drawer = (content = "") => edit('data-phem-dialog-swipe-direction-value="down"', content)
+
+  it("gives the focus to the popup", async () => {
+    await mount(drawer())
+    click("#open")
+
+    expect(dialog().getAttribute("tabindex")).toBe("-1")
+    expect(document.activeElement).toBe(dialog())
+  })
+
+  it("keeps the focus of an element with autofocus", async () => {
+    await mount(drawer('<input id="name" autofocus>'))
+    click("#open")
+
+    expect(dialog().hasAttribute("tabindex")).toBe(false)
     expect(document.activeElement).not.toBe(dialog())
   })
 })

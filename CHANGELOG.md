@@ -8,6 +8,15 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- Tab in a modal `phem-dialog` goes from the last element of the dialog to the first one, and
+  Shift+Tab goes back, as in Base UI. Before, only `modal="trap-focus"` kept the focus in the
+  dialog: Tab in a `showModal()` dialog went from its last element to the browser.
+- A drawer (`phem-dialog` with `swipeDirection`) gives the focus to its popup on open, unless an
+  element in it has `autofocus`. Before, the first button got the focus and showed a focus ring.
+- The trigger of an open `phem-dialog` gets `aria-controls`.
+- A press on the backdrop of a `phem-dialog` does not move the focus to the page. After an open
+  with the keyboard, the trigger gets the focus back with its focus ring.
+
 - Escape on a `phem-popover` gives the focus back to the trigger only when the focus is in the
   popup. Before, Escape on a preview card that the pointer opened focused the link, and the
   keyboard focus then opened the card again after its delay.

@@ -8,7 +8,7 @@ use Phem\Node;
 use function App\Ui\Layout\Document;
 
 // An alert dialog (no dismiss on a press outside), a dialog that is not a modal, a dialog with a
-// viewport and a backdrop, and a drawer with snap points.
+// viewport and a backdrop, a modal dialog that ends with a radio group and an element with `tabindex="-1"`, and a drawer with snap points.
 #[Page('/dialog')]
 final class DialogPage
 {
@@ -53,10 +53,23 @@ final class DialogPage
                     </dialog>
                 </div>
 
+                <div id="edit" data-controller="phem-dialog">
+                    <button id="edit-open" data-phem-dialog-target="trigger">Edit</button>
+                    <dialog id="edit-dialog" data-phem-dialog-target="popup">
+                        <h2 data-phem-dialog-target="title">Edit</h2>
+                        <button id="edit-first">First</button>
+                        <button id="edit-last" data-phem-dialog-target="close">Last</button>
+                        <label><input type="radio" name="size" id="edit-small" checked /> Small</label>
+                        <label><input type="radio" name="size" id="edit-large" /> Large</label>
+                        <div id="edit-item" tabindex="-1">Item</div>
+                    </dialog>
+                </div>
+
                 <div id="drawer" data-controller="phem-dialog" data-phem-dialog-swipe-direction-value="down" data-phem-dialog-snap-points-value={{ ['100px', 1] }}>
                     <button id="drawer-open" data-phem-dialog-target="trigger">Sheet</button>
                     <dialog id="sheet" data-phem-dialog-target="popup">
                         <h2 id="sheet-title" data-phem-dialog-target="title">Sheet</h2>
+                        <button id="sheet-close" data-phem-dialog-target="close">Close</button>
                     </dialog>
                 </div>
             </Document>

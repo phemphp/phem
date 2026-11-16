@@ -5,7 +5,8 @@ import { dismissable } from "./phem_dismiss.js"
 import { SWIPE_ATTRIBUTES, snapPointSize, swipeable, unswipe } from "./phem_swipe.js"
 import { hide, render, show } from "./phem_transition.js"
 import { link } from "./phem_aria.js"
-import { tabbables } from "./phem_focus.js"
+import { realId } from "./phem_ids.js"
+import { edgeTabbable, nextTabbable } from "./phem_focus.js"
 import { scrollLock } from "./phem_modal.js"
 import { isTouchClick } from "./phem_press.js"
 
@@ -14,6 +15,9 @@ const NESTED_ATTRIBUTES = new Set(["data-nested", "data-nested-dialog-open", "da
 
 // The popups that got `tabindex="-1"` for the focus of a touch open.
 const focused = new WeakSet()
+
+// The triggers that got `aria-controls` from the controller, not from the server render.
+const controlled = new WeakSet()
 
 // The attributes of a drawer.
 const DRAWER_ATTRIBUTES = new Set(["data-expanded", "data-swipe-direction"])
@@ -35,7 +39,8 @@ const AXES = { up: "y", down: "y", left: "x", right: "x" }
 // A click on a trigger opens the dialog, and a click on a `close` target closes it. The `open`
 // and `close` actions do the same from another element. The browser gives the focus to the first
 // element of the dialog that can have it. After an open with a touch, the focus goes to the popup
-// (it gets `tabindex="-1"`), so the keyboard of the device does not show.
+// (it gets `tabindex="-1"`), so the keyboard of the device does not show. A drawer always gives
+// the focus to its popup, unless an element in it has `autofocus`.
 //
 // The `open` value is the state: the server render gives its first value, and a server render
 // with a new `open` value sets it. When the `dismiss` value is true (the default), Escape and a
@@ -45,8 +50,8 @@ const AXES = { up: "y", down: "y", left: "x", right: "x" }
 //
 // The `modal` value: `true` (the default) opens the dialog with `showModal()`: the page is inert
 // and does not scroll (phem_modal.js), and the dialog is in the top layer. `false` opens it with `show()`: the page stays active, and
-// Escape and a press outside close it (see phem_dismiss.js). `trap-focus` is `false`, and Tab
-// stays in the dialog.
+// Escape and a press outside close it (see phem_dismiss.js). `trap-focus` is as `false`, but Tab
+// stays in the dialog, as with `true`: Tab goes from the last field to the first one.
 //
 // The `viewport` target is the `<dialog>` when the `popup` is an element in it (Base UI
 // Dialog.Viewport): the viewport fills the screen and places the popup, and a press on the
@@ -57,7 +62,8 @@ const AXES = { up: "y", down: "y", left: "x", right: "x" }
 // of phem_transition.js. The `<dialog>` gets `aria-labelledby` (the `title` target) and
 // `aria-describedby` (the `description` target), with their ids or with element references. A
 // close waits for the animations of `[data-ending-style]` of the popup before `close()`. A
-// trigger gets `aria-haspopup="dialog"`, `aria-expanded` and `data-popup-open`. A dialog in an
+// trigger gets `aria-haspopup="dialog"`, `aria-expanded`, `data-popup-open`, and `aria-controls`
+// while the dialog is open. A dialog in an
 // open dialog gets `data-nested`, and the dialog around it gets `data-nested-dialog-open` and the
 // `--nested-dialogs` CSS variable (the number of open dialogs in it), for a stack of dialogs. A
 // drawer around it also gets `data-nested-drawer-open` and `--nested-drawers`, and
@@ -184,24 +190,24 @@ export default class PhemDialogController extends Controller {
     }
   }
 
-  // `trap-focus`: Tab goes from the last field of the dialog to the first one, and back.
+  // A modal and `trap-focus`: Tab goes from the last field of the dialog to the first one, and
+  // back, as in Base UI. A modal `<dialog>` makes the page inert, but Tab still goes from its last
+  // field to the browser. The controller lets the browser move the focus, and only stops a Tab
+  // that goes out of the dialog: from the last field, from the checked radio of a last radio
+  // group, from an element with `tabindex="-1"` after the last field (a menu item), or Shift+Tab
+  // from the popup itself. With no field, Tab does nothing.
   onKeydown = (event) => {
-    if (event.key !== "Tab" || this.modalValue !== "trap-focus" || !this.openValue) return
+    if (event.key !== "Tab" || event.defaultPrevented || this.modalValue === "false" || !this.openValue) return
 
-    const dialog = this.#dialogs.find((el) => el.contains(event.target))
-    if (!dialog) return
+    // The dialog of the focus: a dialog in this dialog has its own controller.
+    const dialog = event.target.closest?.("dialog")
+    if (!this.#dialogs.includes(dialog)) return
 
-    const fields = tabbables(dialog)
-    const [first, last] = [fields[0], fields.at(-1)]
-    if (!first) return
+    const backward = event.shiftKey
+    if (nextTabbable(dialog, event.target, { backward })) return
 
-    if (event.shiftKey && event.target === first) {
-      event.preventDefault()
-      last.focus()
-    } else if (!event.shiftKey && event.target === last) {
-      event.preventDefault()
-      first.focus()
-    }
+    event.preventDefault()
+    edgeTabbable(dialog, { backward })?.focus()
   }
 
   // The snap points of a fraction of the viewport, and the height of the popup, change with the
@@ -239,8 +245,11 @@ export default class PhemDialogController extends Controller {
     el.addEventListener("close", this.onClose, options)
 
     const popup = this.#popupOf(el)
-    if (popup === el) onBackdropTap(el, () => this.#pointerDismiss(), listening.signal)
-    else this.#onViewportTap(el, listening.signal)
+    const viewport = popup === el ? {} : {
+      outside: (event) => !this.#popupOf(el).contains(event.target),
+      backdrop: (event) => event.target === el,
+    }
+    onBackdropTap(el, () => this.#pointerDismiss(), listening.signal, viewport)
 
     swipeable(popup, {
       direction: () => this.swipeDirectionValue,
@@ -264,19 +273,6 @@ export default class PhemDialogController extends Controller {
     this.#unlayer(el)
     this.#renderNestedSwiping(el, false)
     this.#renderNesting(el, false)
-  }
-
-  // A press on the viewport outside the popup. The press must start there too, as on a backdrop.
-  #onViewportTap(viewport, signal) {
-    const outside = (event) => !this.#popupOf(viewport).contains(event.target)
-    let pressed = false
-
-    viewport.addEventListener("pointerdown", (event) => (pressed = outside(event)), { signal })
-    viewport.addEventListener("click", (event) => {
-      const tapped = pressed && outside(event)
-      pressed = false
-      if (tapped) this.#pointerDismiss()
-    }, { signal })
   }
 
   #pointerDismiss() {
@@ -370,14 +366,14 @@ export default class PhemDialogController extends Controller {
 
       if (el.open) el.close()
       el.showModal()
-      this.#focusTouch(el)
+      this.#focusPopup(el)
 
       return
     }
 
     if (!el.open) {
       el.show()
-      this.#focusTouch(el)
+      this.#focusPopup(el)
     }
 
     if (this.#layers.has(el)) return
@@ -393,9 +389,12 @@ export default class PhemDialogController extends Controller {
   }
 
   // After an open with a touch, the focus goes to the popup: a field with the focus shows the
-  // keyboard of the device.
-  #focusTouch(el) {
-    if (!this.touch) return
+  // keyboard of the device. A drawer always gives the focus to its popup, as in Base UI, so no
+  // button of the drawer shows a focus ring. An `[autofocus]` element in the drawer keeps the
+  // focus that the browser gives it.
+  #focusPopup(el) {
+    const drawer = Boolean(AXES[this.swipeDirectionValue]) && !el.querySelector("[autofocus]")
+    if (!this.touch && !drawer) return
 
     const popup = this.#popupOf(el)
     if (!popup.hasAttribute("tabindex")) {
@@ -568,7 +567,33 @@ export default class PhemDialogController extends Controller {
       if (!trigger.hasAttribute("aria-haspopup")) trigger.setAttribute("aria-haspopup", "dialog")
       trigger.setAttribute("aria-expanded", String(this.openValue))
       trigger.toggleAttribute("data-popup-open", this.openValue)
+      this.#renderControls(trigger, dialog)
     }
+  }
+
+  // The trigger points to the open dialog, as in Base UI: a closed dialog is not in the page. An
+  // `aria-controls` of the server render stays, also on a closed dialog.
+  #renderControls(trigger, dialog) {
+    const given = trigger.getAttribute("aria-controls")
+    const ours = controlled.has(trigger) && (given === null || given === "" || (dialog && given === realId(dialog)))
+    if (given !== null && !ours) {
+      controlled.delete(trigger)
+
+      return
+    }
+
+    if (dialog && this.openValue) {
+      link(trigger, "aria-controls", "ariaControlsElements", dialog)
+      controlled.add(trigger)
+
+      return
+    }
+
+    if (!ours) return
+
+    controlled.delete(trigger)
+    if ("ariaControlsElements" in trigger) trigger.ariaControlsElements = null
+    trigger.removeAttribute("aria-controls")
   }
 
   // The attributes of the state: `open` and the open state of a dialog, its nesting, its swipe,
