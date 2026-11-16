@@ -105,13 +105,20 @@ final class OverlaysTest extends DemoTestCase
     {
         $page = $this->visitComponent('tooltip');
 
-        $page->getByRole('button', ['name' => 'Bold'])->hover();
-        expect($page->getByRole('tooltip'))->toHaveText('Bold');
+        // A tooltip is only visual, as in Base UI: the popup has no role, and the trigger has its
+        // own label and no `aria-describedby`.
+        $bold = $page->getByRole('button', ['name' => 'Bold']);
+        $popup = $page->locator('[data-phem-tooltip-target="popup"]:not([hidden])');
+
+        $bold->hover();
+        expect($popup)->toHaveText('Bold');
+        expect($page->getByRole('tooltip'))->toHaveCount(0);
+        self::assertNull($bold->getAttribute('aria-describedby'));
 
         $page->mouse()->move(5, 5);
-        expect($page->getByRole('tooltip'))->toBeHidden();
+        expect($popup)->toHaveCount(0);
 
         $page->getByRole('button', ['name' => 'Italic'])->focus();
-        expect($page->getByRole('tooltip'))->toHaveText('Italic');
+        expect($popup)->toHaveText('Italic');
     }
 }

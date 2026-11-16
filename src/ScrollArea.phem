@@ -34,7 +34,6 @@ function ScrollAreaViewport(?Html $children = null, mixed ...$rest): Node
     return (
         <div
             data-phem-scroll-area-target="viewport"
-            tabindex="0"
             className={{ classes('h-full border border-neutral-950 dark:border-white focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white') }}
             {{ ...rest }}
         >

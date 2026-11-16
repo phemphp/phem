@@ -61,6 +61,7 @@ class Menu
             'aria-checked' => $checked ? 'true' : 'false',
             'data-checked' => $checked ? '' : null,
             'data-unchecked' => $checked ? null : '',
+            'aria-disabled' => $disabled ? 'true' : null,
             'data-disabled' => $disabled ? '' : null,
             'data-'.$this->controller().'-close-on-click' => $closeOnClick ? null : 'false',
             ...$this->target('item'),
@@ -191,7 +192,7 @@ function MenuItem(#[Context] Menu $menu, #[Context] ?Menubar $menubar = null, bo
     return (
         <button
             type="button"
-            disabled={{ disabled }}
+            aria-disabled={{ disabled ? 'true' : null }}
             data-disabled={{ disabled ? '' : null }}
             className={{ classes(base) }}
             {{ ...target }}
@@ -251,7 +252,7 @@ function MenuCheckboxItem(#[Context] Menu $menu, ?bool $checked = null, bool $de
     $item = $menu->checkItem('menuitemcheckbox', $checked ?? $defaultChecked, $disabled, $closeOnClick);
     $base = null !== $menu->menubar ? Style::MENUBAR_CHECK_ITEM : Style::MENU_CHECK_ITEM;
 
-    return <button type="button" disabled={{ disabled }} className={{ classes('group', base) }} {{ ...item }} {{ ...rest }}>{{ children }}</button>;
+    return <button type="button" className={{ classes('group', base) }} {{ ...item }} {{ ...rest }}>{{ children }}</button>;
 }
 
 /** The check of a checkbox item or a radio item. It shows only when the item is checked. */
@@ -313,5 +314,5 @@ function MenuRadioItem(#[Context] Menu $menu, #[Context] ?MenuRadioGroup $group 
     $item = $menu->checkItem('menuitemradio', null === $current ? $checked : $value === $current, $disabled, $closeOnClick, $value);
     $base = null !== $menu->menubar ? Style::MENUBAR_CHECK_ITEM : Style::MENU_CHECK_ITEM;
 
-    return <button type="button" disabled={{ disabled }} className={{ classes('group', base) }} {{ ...item }} {{ ...rest }}>{{ children }}</button>;
+    return <button type="button" className={{ classes('group', base) }} {{ ...item }} {{ ...rest }}>{{ children }}</button>;
 }

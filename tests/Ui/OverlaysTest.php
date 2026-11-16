@@ -96,6 +96,9 @@ final class OverlaysTest extends KernelTestCase
             ->assertSelectorCount(2, 'button[role="menuitemcheckbox"][aria-checked="true"]')
             ->assertSelectorExists('[data-phem-menu-target="group"] button[role="menuitemradio"][data-value="date"][aria-checked="false"][data-unchecked]')
             ->assertSelectorExists('[data-phem-menu-target="group"] button[role="menuitemradio"][data-value="name"][aria-checked="true"][data-checked]')
+            // A disabled item keeps the focus of the keyboard, as in Base UI: no `disabled` attribute.
+            ->assertSelectorExists('#item-off[aria-disabled="true"][data-disabled]:not([disabled])')
+            ->assertSelectorExists('#check-off[aria-disabled="true"][data-disabled]:not([disabled])')
             ->assertSelectorExists('[data-phem-menu-target="separator"]');
     }
 

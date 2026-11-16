@@ -17,6 +17,8 @@ final class ListsTest extends KernelTestCase
     {
         $this->mount(self::APP.'ScrollAreaDemo')
             ->assertSelectorExists('[data-controller="phem-scroll-area"] [data-phem-scroll-area-target="viewport"] [data-phem-scroll-area-target="content"]')
+            // The controller gives the viewport its `tabindex`, only when it scrolls.
+            ->assertSelectorExists('[data-phem-scroll-area-target="viewport"]:not([tabindex])')
             ->assertSelectorExists('[data-phem-scroll-area-target="scrollbar"][data-orientation="vertical"] [data-phem-scroll-area-target="thumb"]');
     }
 

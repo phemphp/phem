@@ -131,6 +131,8 @@ final class PickersTest extends DemoTestCase
         $root = $page->locator('[data-controller~="phem-scroll-area"]');
         expect($root)->toHaveAttribute('data-has-overflow-y', '');
         expect($root)->toHaveAttribute('data-overflow-y-end', '');
+        // The viewport is in the tab order only when it scrolls: the controller gives the `tabindex`.
+        expect($page->locator('[data-phem-scroll-area-target="viewport"]'))->toHaveAttribute('tabindex', '0');
 
         $page->locator('[data-phem-scroll-area-target="viewport"]')->evaluate('(el) => el.scrollTo(0, el.scrollHeight)');
         expect($root)->toHaveAttribute('data-overflow-y-start', '');
@@ -156,5 +158,20 @@ final class PickersTest extends DemoTestCase
 
         $page->getByText('Toast 2 created')->hover();
         expect($page->locator('[data-phem-toast-content][data-behind]'))->toHaveCSS('opacity', '1');
+    }
+
+    public function testF6MovesTheFocusToTheToastRegion(): void
+    {
+        $page = $this->visitComponent('toast');
+
+        $region = $page->getByRole('region', ['name' => 'Notifications']);
+        $region->evaluate('(el) => el.setAttribute("data-phem-toast-duration-value", "60000")');
+
+        $page->getByRole('button', ['name' => 'Create toast'])->click();
+        // Each toast is a dialog that is not modal, as in Base UI.
+        expect($region->getByRole('dialog'))->toHaveCount(1);
+
+        $page->keyboard()->press('F6');
+        expect($region)->toBeFocused();
     }
 }

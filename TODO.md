@@ -4,10 +4,7 @@ The work that is still open in `phem/ui-base`. The bundle has no workarounds. A 
 
 ## Waiting for a phem fix
 
-phem v0.4.3 fixes 11 of the 13 gaps from the comparison with the Base UI v1.9.0 docs and hero demos (the release that base-ui.com shows). The two most visible open gaps are below. See [notes/phem-gaps.md](notes/phem-gaps.md) for the full list, with the items to confirm. After each phem release, update `phem/phem` (`composer update phem/phem` in the bundle and in `demo/`) and check this list again.
-
-- **Toast: F6.** In Base UI, F6 moves the focus to the toast region. `phem-toast` has no key for it.
-- **Button with another tag: Enter and Space.** A Base UI button that is not a native `<button>` keeps the keyboard. A `Button tag="div"` gets `role="button"` and `tabindex="0"`, but no key handler. Phem has no button controller: decide between a new controller and a native `<button>` only.
+phem v0.4.4 fixes the 24 gaps from the comparison with the Base UI v1.9.0 docs, hero demos and source (the release that base-ui.com shows). The bundle uses the fixes. Two parts are still open: some behavior of the scrub area of the number field, and some input cases of the OTP field. See [notes/phem-gaps.md](notes/phem-gaps.md) for the list. After each phem release, update `phem/phem` (`composer update phem/phem` in the bundle and in `demo/`) and check this list again.
 
 ## Open differences in the bundle
 
@@ -52,17 +49,17 @@ These differences need no phem change. The hero demos do not use them.
 | Preview Card | `OverlaysTest` | Hover opens it, leaving closes it | The `delay` and `closeDelay` values |
 | Progress | `BasicsTest` | `data-progressing`, the value grows each second | `data-complete` at 100 |
 | Radio Group | `ControlsTest` | A click checks, the arrow keys check and focus | The hidden input in a form |
-| Scroll Area | `PickersTest` | `data-has-overflow-y`, the overflow edges after a scroll | Thumb drag, a click on the track, `data-scrolling` |
+| Scroll Area | `PickersTest` | `data-has-overflow-y`, the `tabindex` of a viewport that scrolls, the overflow edges after a scroll | Thumb drag, a click on the track, `data-scrolling` |
 | Select | `PickersTest` | Select with a click, the hidden input, the keyboard opens on the selected item, a popup under a pointer that does not move | Typeahead, the scroll arrows |
 | Separator | `BasicsTest` | `aria-orientation` | — |
 | Slider | `FormsTest` | ArrowRight, End, Home | Pointer drag on the track, `data-dragging` |
 | Switch | `ControlsTest` | Initial state, the accessible name, a click on the label, Space | — |
 | Tabs | `DisclosureTest` | A click selects, the arrow keys move the focus, Enter selects | The indicator variables |
-| Toast | `PickersTest` | A server event shows a toast with a title, one toast for each click, the text behind the last toast hides until hover | Close button, swipe, the limit of visible toasts |
+| Toast | `PickersTest` | A server event shows a toast with a title, one toast for each click, the text behind the last toast hides until hover, F6 moves the focus to the region, each toast is a dialog | Close button, swipe, the limit of visible toasts |
 | Toggle | `ControlsTest` | A click and Space toggle `aria-pressed` | — |
 | Toggle Group | `ControlsTest` | One pressed item, ArrowRight | `multiple`, Home and End |
 | Toolbar | `ControlsTest` | ArrowRight, End, Home, the arrow keys leave a toggle group | The select in the toolbar |
-| Tooltip | `OverlaysTest` | Hover and focus open it, leaving closes it | The delay between two tooltips |
+| Tooltip | `OverlaysTest` | Hover and focus open it, leaving closes it, no `role` and no `aria-describedby` | The delay between two tooltips |
 
 Other open work for the browser tests:
 

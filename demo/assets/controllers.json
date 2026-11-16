@@ -111,6 +111,10 @@
             "navigation-menu": {
                 "enabled": true,
                 "fetch": "eager"
+            },
+            "button": {
+                "enabled": true,
+                "fetch": "eager"
             }
         }
     },

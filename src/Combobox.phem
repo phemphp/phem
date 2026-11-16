@@ -274,7 +274,7 @@ function ComboboxItemLabel(?Html $children = null, mixed ...$rest): Node
 #[Component]
 function ComboboxEmpty(?Html $children = null, mixed ...$rest): Node
 {
-    return <div data-phem-combobox-target="empty" className={{ classes('py-4 pr-4 pl-2 text-sm leading-4 font-normal text-neutral-500 dark:text-neutral-400 empty:hidden') }} {{ ...rest }}>{{ children }}</div>;
+    return <div data-phem-combobox-target="empty" className={{ classes('py-4 pr-4 pl-2 text-sm leading-4 font-normal text-neutral-500 dark:text-neutral-400 empty:m-0 empty:p-0') }} {{ ...rest }}>{{ children }}</div>;
 }
 
 /** A text for screen readers, such as the number of results (`role="status"`). */

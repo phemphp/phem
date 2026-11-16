@@ -121,6 +121,8 @@ function MenuDemo(): Node
                 </MenuSubmenu>
                 <MenuSeparator />
                 <MenuItem closeOnClick={{ false }}>Play Next</MenuItem>
+                <MenuItem id="item-off" disabled>Share</MenuItem>
+                <MenuCheckboxItem id="check-off" disabled><MenuItemLabel>Sync</MenuItemLabel></MenuCheckboxItem>
                 <MenuCheckboxItem checked>
                     <MenuItemIndicator />
                     <MenuItemLabel>Minimap</MenuItemLabel>

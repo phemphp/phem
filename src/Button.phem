@@ -11,6 +11,9 @@ use Phem\{Html, Node};
  *
  * With `focusableWhenDisabled`, a disabled button keeps the focus (for a loading state): it gets
  * `aria-disabled` in place of `disabled`.
+ *
+ * A button with another tag (`tag="div"`), and a button with `focusableWhenDisabled`, use the
+ * `phem-button` controller: Enter and Space click the button, and a disabled button does nothing.
  */
 #[Component]
 function Button(
@@ -26,6 +29,7 @@ function Button(
         <Dynamic
             tag={{ tag }}
             type={{ native ? 'button' : null }}
+            data-controller={{ not native or focusableWhenDisabled ? 'phem-button' : null }}
             role={{ native ? null : 'button' }}
             tabindex={{ not native and not (disabled and not focusableWhenDisabled) ? 0 : null }}
             disabled={{ native and disabled and not focusableWhenDisabled }}

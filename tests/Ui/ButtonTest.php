@@ -28,7 +28,8 @@ final class ButtonTest extends KernelTestCase
     public function testAFocusableDisabledButtonKeepsTheFocus(): void
     {
         $this->mount('Phem\Ui\Base\Button', ['disabled' => true, 'focusableWhenDisabled' => true, 'children' => new Html('Submit')])
-            ->assertSelectorExists('button[aria-disabled="true"][data-disabled]:not([disabled])');
+            // The `phem-button` controller stops the click of a button with `aria-disabled`.
+            ->assertSelectorExists('button[data-controller="phem-button"][aria-disabled="true"][data-disabled]:not([disabled])');
     }
 
     public function testTheCallerClassesMerge(): void
@@ -41,6 +42,10 @@ final class ButtonTest extends KernelTestCase
     public function testAButtonCanRenderAsALink(): void
     {
         $this->mount('Phem\Ui\Base\Button', ['tag' => 'a', 'href' => '/docs', 'children' => new Html('Docs')])
-            ->assertSelectorExists('a[href="/docs"][role="button"][tabindex="0"]');
+            // The `phem-button` controller gives Enter and Space to a button that is not a `<button>`.
+            ->assertSelectorExists('a[href="/docs"][data-controller="phem-button"][role="button"][tabindex="0"]');
+
+        $this->mount('Phem\Ui\Base\Button', ['children' => new Html('Submit')])
+            ->assertSelectorExists('button:not([data-controller])');
     }
 }
