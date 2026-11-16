@@ -843,7 +843,7 @@ The server gives the chosen items `aria-selected="true"`, and the controller doe
 | ArrowLeft, ArrowRight | A chip | Moves the focus to the chip before or after it, or back to the input |
 | Backspace, Delete | A chip | Clicks its `chipRemove`. The focus goes to the chip before it (Backspace) or after it (Delete), or to the input |
 
-The chips and their `chipRemove` parts get `tabindex="-1"`, so Tab goes from the input out of the combobox. A press on a `chipRemove` keeps the focus in the input. A press in the popup also keeps the focus in the input: on an item, on the space around the items, and on a list with `tabindex="-1"`.
+The chips and their `chipRemove` parts get `tabindex="-1"`, so Tab goes from the input out of the combobox. A press on a `chipRemove` keeps the focus in the input. A press in the popup also keeps the focus in the input: on an item, on the space around the items, and on a list with `tabindex="-1"`. A field of your application in the popup (an input, a textarea, a select, editable content) gets the focus of its press.
 
 ### Select one item of a list of the browser
 

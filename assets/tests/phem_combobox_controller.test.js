@@ -474,6 +474,19 @@ describe("phem-combobox", () => {
       expect(event.defaultPrevented).toBe(true)
     })
 
+    it("gives the focus to a field of the application in the popup", async () => {
+      await mount(tags())
+      const popup = document.querySelector('[data-phem-combobox-target="popup"]')
+      popup.insertAdjacentHTML("beforeend", `<input id="other"><textarea id="note"></textarea>`)
+
+      for (const id of ["other", "note"]) {
+        const event = new PointerEvent("pointerdown", { bubbles: true, cancelable: true })
+        $(id).dispatchEvent(event)
+
+        expect(event.defaultPrevented).toBe(false)
+      }
+    })
+
     it("keeps the focus in the input on a press on the remove button of a chip", async () => {
       await mount(tags())
       const event = new PointerEvent("pointerdown", { bubbles: true, cancelable: true })

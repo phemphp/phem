@@ -8,6 +8,10 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- A field of the application in the popup of a `phem-combobox` (an input, a textarea, a select,
+  editable content) gets the focus of a mouse press again. v0.4.6 kept the focus in the input of
+  the combobox for each press in the popup.
+
 - `phem-combobox` keeps the focus in the input on each press in the popup: on the space around the
   items, on a group label, and on a list with `tabindex="-1"`. Before, only a press on an item kept
   the focus, so the text that the user typed after the press did not go into the input.

@@ -93,6 +93,9 @@ const collators = new Map()
 //
 // While an event of phem runs, the input gets `aria-busy` (see the loading state of phem): the
 // popup gets it too.
+// The elements that take the focus of a press in the popup.
+const FIELDS = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])'
+
 export default class PhemComboboxController extends Controller {
   static targets = ["input", "inputGroup", "value", "trigger", "clear", "popup", "list", "item", "group", "empty", "status", "chip", "chipRemove"]
   static values = {
@@ -325,7 +328,12 @@ export default class PhemComboboxController extends Controller {
 
   // A press in the popup (an item, the space around the items, a list with a `tabindex`), on a
   // trigger, a clear button or the remove button of a chip does not move the focus out of the input.
+  // A field of the application in the popup (an input, a textarea, a select, editable content) gets
+  // the focus of its press.
   onPointerDown = (event) => {
+    const target = event.target instanceof Element ? event.target : null
+    if (!this.#itemOf(event.target) && target?.closest(FIELDS) && target.closest(FIELDS) !== this.#input) return
+
     const parts = [...this.popupTargets, ...this.triggerTargets, ...this.clearTargets, ...this.chipRemoveTargets]
     if (this.#itemOf(event.target) || parts.some((el) => el.contains(event.target))) event.preventDefault()
   }
