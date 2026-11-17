@@ -162,7 +162,7 @@ export default class PhemPopoverController extends Controller {
 
   // Opens the popup, next to the trigger of the `triggerId` param, or else the active trigger.
   open(event) {
-    this.#open({ focus: true, trigger: this.triggers.byId(event?.params?.triggerId) })
+    this.#open({ focus: !this.#preview, trigger: this.triggers.byId(event?.params?.triggerId) })
   }
 
   close() {
@@ -222,12 +222,15 @@ export default class PhemPopoverController extends Controller {
   }
 
   // A preview card: the keyboard focus on the link opens the popup after the delay.
+  // The focus on another link of an open card moves the card at once.
   onFocusIn = (event) => {
-    if (!this.#preview || !this.#triggerOf(event.target) || !event.target.matches?.(":focus-visible")) return
+    const trigger = this.#triggerOf(event.target)
+    if (!this.#preview || !trigger || !event.target.matches?.(":focus-visible")) return
 
     this.hover.cancel()
     clearTimeout(this.focusTimer)
-    this.focusTimer = setTimeout(() => this.#open({ focus: false, instant: "focus" }), this.delayValue)
+    if (this.openValue) this.#switch(trigger)
+    else this.focusTimer = setTimeout(() => this.#open({ focus: false, instant: "focus", trigger }), this.delayValue)
   }
 
   // The focus goes out of the trigger and of the popup, to another element of the page.
@@ -235,7 +238,7 @@ export default class PhemPopoverController extends Controller {
     if (this.#preview && this.#triggerOf(event.target)) {
       clearTimeout(this.focusTimer)
       // The focus out closes the card at once, as in Base UI: the `closeDelay` value is for the pointer.
-      if (this.openValue && !this.popupTargets.some((el) => el.contains(event.relatedTarget))) {
+      if (this.openValue && !this.popupTargets.some((el) => el.contains(event.relatedTarget)) && !this.#triggerOf(event.relatedTarget)) {
         this.focusTimer = setTimeout(() => this.#close({ focus: false, instant: this.focusOpened ? "focus" : false }), 0)
       }
 

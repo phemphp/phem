@@ -56,7 +56,7 @@ These differences need no phem change. The hero demos show the first one, and do
 | Number Field | `FormsTest` | The buttons, ArrowUp, Shift+ArrowUp | Press and hold, the scrub area, the wheel, `min`/`max` |
 | OTP Field | `FormsTest` | Typing moves to the next slot, a letter is refused, Backspace, the hidden input, `data-complete`, the slot labels, a Field, `alphanumeric`, the separator, `normalize`, `mask` | Paste fills all the slots |
 | Popover | `OverlaysTest` | Open with a click, `aria-expanded`, `data-side`, the title names it, a click outside closes it; open on hover, a detached trigger, the payloads of two triggers, the `open` action on the second trigger, the move, the size and the name of the new panel | Escape |
-| Preview Card | `OverlaysTest` | Hover opens it, leaving closes it | The `delay` and `closeDelay` values |
+| Preview Card | `OverlaysTest` | Hover opens it, leaving closes it; a detached link, the payloads of two links, the `open` action on the second link keeps the focus, the move, the size and the content of the next card | The `delay` and `closeDelay` values |
 | Progress | `BasicsTest` | `data-progressing`, the value grows each second | `data-complete` at 100 |
 | Radio Group | `ControlsTest` | A click checks, the arrow keys check and focus, native buttons with sibling labels, the hidden input in a Field | — |
 | Scroll Area | `PickersTest` | `data-has-overflow-y`, the `tabindex` of a viewport that scrolls, the overflow edges after a scroll, both scrollbars and the corner, the overflow variables of the fade, a tab list in a viewport | Thumb drag, a click on the track, `data-scrolling` |

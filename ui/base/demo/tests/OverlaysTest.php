@@ -93,9 +93,11 @@ final class OverlaysTest extends DemoTestCase
     {
         $page = $this->visitComponent('preview-card');
 
-        $page->getByRole('link', ['name' => 'typography'])->hover();
-        $card = $page->getByText('is the art and science of arranging type');
+        $hero = $page->getByRole('region', ['name' => 'Demo']);
+        $hero->getByRole('link', ['name' => 'typography'])->hover();
+        $card = $hero->locator('[data-phem-popover-target="popup"]');
         expect($card)->toBeVisible();
+        expect($card)->toContainText('is the art and science of arranging type');
 
         $page->mouse()->move(5, 5);
         expect($card)->toBeHidden();
@@ -243,5 +245,58 @@ final class OverlaysTest extends DemoTestCase
         $box = $profile->boundingBox();
         self::assertEqualsWithDelta($box['x'] + $box['width'] / 2, $to['x'] + $to['width'] / 2, 1.5);
         self::assertNotEqualsWithDelta($from['height'], $to['height'], 1);
+    }
+
+    public function testPreviewCardExamples(): void
+    {
+        $page = $this->visitComponent('preview-card');
+
+        // Detached triggers: the link is outside the root.
+        $detached = $page->getByRole('region', ['name' => 'Detached triggers']);
+        $card = $page->locator('#detached-card [data-phem-popover-target="popup"]');
+        $detached->getByRole('link', ['name' => 'typography'])->hover();
+        expect($card)->toContainText('is the art and science of arranging type');
+        $page->mouse()->move(5, 5);
+        expect($card)->toBeHidden();
+
+        // Multiple triggers: the payload of the link shows in the viewport.
+        $multiple = $page->getByRole('region', ['name' => 'Multiple triggers', 'exact' => true]);
+        $card = $page->locator('#multiple-card [data-phem-popover-target="popup"]');
+        $multiple->getByRole('link', ['name' => 'Trigger 2'])->hover();
+        expect($card)->toHaveText('Preview card opened by Trigger 2');
+        $multiple->getByRole('link', ['name' => 'Trigger 1'])->hover();
+        expect($card->locator('[data-current]'))->toHaveText('Preview card opened by Trigger 1');
+        $page->mouse()->move(5, 5);
+        expect($card)->toBeHidden();
+
+        // Controlled mode: the button opens the card on the second link, and keeps the focus.
+        $controlled = $page->getByRole('region', ['name' => 'Controlled mode with multiple triggers']);
+        $button = $controlled->getByRole('button', ['name' => 'Open programmatically']);
+        $button->click();
+        $card = $controlled->locator('[data-phem-popover-target="popup"]');
+        expect($card)->toContainText('is the concept or proposal');
+        expect($controlled->getByRole('link', ['name' => 'design']))->toHaveAttribute('data-popup-open', '');
+        expect($button)->toBeFocused();
+        $page->mouse()->click(5, 5);
+        expect($card)->toBeHidden();
+
+        // Animating: the card moves to the next link with its new content.
+        $animated = $page->getByRole('region', ['name' => 'Animating the Preview Card']);
+        $card = $page->locator('#animated-card [data-phem-popover-target="popup"]');
+        $viewport = $card->locator('[data-phem-popover-target="viewport"]');
+        $animated->getByRole('link', ['name' => 'typography'])->hover();
+        expect($card)->toContainText('is the art and science of arranging type');
+        usleep(400_000);
+        $from = $card->boundingBox();
+
+        $art = $animated->getByRole('link', ['name' => 'art']);
+        $art->hover();
+        expect($viewport)->toHaveAttribute('data-activation-direction', 'right');
+        expect($viewport->locator('[data-current]'))->toContainText('is a diverse range of cultural activity');
+        expect($viewport->locator('[data-previous]'))->toHaveCount(0);
+        usleep(400_000);
+        $to = $card->boundingBox();
+        self::assertNotEqualsWithDelta($from['height'], $to['height'], 1);
+        self::assertGreaterThan($from['x'], $to['x']);
     }
 }

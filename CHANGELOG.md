@@ -8,6 +8,10 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- A preview card of `phem-popover` (`open-on-hover` with link triggers) moves at once to the next
+  link that gets the keyboard focus, and the focus out to that link does not close it. Before, the
+  card closed and opened again after the delay. The `open` action does not move the focus into a
+  preview card. See docs/controllers.md.
 - `phem-popover` has several triggers, as `phem-tooltip`: the `trigger` parts and the detached
   triggers with `data-phem-popover-for`. A click on another trigger moves the open popup. The
   `viewport` part shows a copy of the `<template data-payload>` of the `data-phem-popover-payload`

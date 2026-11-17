@@ -9,9 +9,17 @@ use Phem\{Html, Node};
  * A popup with a preview of the page of a link, on hover: Base UI PreviewCard.Root, on the
  * `phem-popover` controller with `openOnHover`. The link is the only accessible part: keep the
  * content of the popup a supplement.
+ *
+ * A `handle` links the root to detached links: a PreviewCardTrigger with the same `handle`,
+ * anywhere in the page, shows this card. One card can have several links, and the
+ * PreviewCardViewport shows the PreviewCardPayload of the link under the pointer or with the
+ * focus. `triggerId` is the `id` of the link of the open card.
  */
 #[Component]
 function PreviewCard(
+    ?string $handle = null,
+    bool $defaultOpen = false,
+    ?string $triggerId = null,
     int $delay = 600,
     int $closeDelay = 300,
     Side $side = Side::Bottom,
@@ -21,20 +29,29 @@ function PreviewCard(
     mixed ...$rest,
 ): Node {
     return (
-        <Popover openOnHover delay={{ delay }} closeDelay={{ closeDelay }} side={{ side }} align={{ align }} sideOffset={{ sideOffset }} className="block" {{ ...rest }}>
+        <Popover handle={{ handle }} defaultOpen={{ defaultOpen }} triggerId={{ triggerId }} openOnHover delay={{ delay }} closeDelay={{ closeDelay }} side={{ side }} align={{ align }} sideOffset={{ sideOffset }} className="block" {{ ...rest }}>
             {{ children }}
         </Popover>
     );
 }
 
-/** The link that shows the card. No whitespace goes around its text: the underline would include it. */
+/**
+ * The link that shows the card. No whitespace goes around its text: the underline would include it.
+ *
+ * With a `handle`, it is a detached link of the PreviewCard with the same `handle`. The `payload`
+ * is the name of the PreviewCardPayload that the card shows for this link.
+ */
 #[Component]
-function PreviewCardTrigger(string $href, ?Html $children = null, mixed ...$rest): Node
+function PreviewCardTrigger(string $href, ?string $handle = null, ?string $payload = null, ?Html $children = null, mixed ...$rest): Node
 {
+    $target = null === $handle ? 'trigger' : null;
+
     return (
         <a
             href={{ href }}
-            data-phem-popover-target="trigger"
+            data-phem-popover-target={{ target }}
+            data-phem-popover-for={{ handle }}
+            data-phem-popover-payload={{ payload }}
             className={{ classes('text-neutral-950 underline decoration-neutral-950/60 decoration-1 underline-offset-2 outline-0 hover:decoration-neutral-950 data-popup-open:decoration-neutral-950 focus-visible:no-underline focus-visible:outline-2 focus-visible:outline-neutral-950 dark:text-white dark:decoration-white/60 dark:hover:decoration-white dark:data-popup-open:decoration-white dark:focus-visible:outline-white') }}
             {{ ...rest }}
         >{{ children }}</a>
@@ -61,4 +78,18 @@ function PreviewCardPopup(?Html $children = null, mixed ...$rest): Node
 function PreviewCardArrow(mixed ...$rest): Node
 {
     return <PopoverArrow {{ ...rest }} />;
+}
+
+/** The content of a card with several links: the PreviewCardPayload of the active link. */
+#[Component]
+function PreviewCardViewport(?Html $children = null, mixed ...$rest): Node
+{
+    return <PopoverViewport {{ ...rest }}>{{ children }}</PopoverViewport>;
+}
+
+/** The content that the card shows for the links with this `payload`. */
+#[Component]
+function PreviewCardPayload(string $name, ?Html $children = null): Node
+{
+    return <PopoverPayload name={{ name }}>{{ children }}</PopoverPayload>;
 }

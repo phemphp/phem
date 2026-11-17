@@ -98,6 +98,14 @@ final class OverlaysTest extends KernelTestCase
             ->assertSelectorExists('[data-phem-popover-target="viewport"] > template[data-payload="activity"]');
     }
 
+    public function testAPreviewCardHasDetachedLinks(): void
+    {
+        $this->mount(self::APP.'PreviewCardDetachedDemo')
+            ->assertSelectorExists('div#cards[data-controller="phem-popover"][data-phem-popover-open-on-hover-value="true"]')
+            ->assertSelectorExists('a#art[href="/art"][data-phem-popover-for="cards"][data-phem-popover-payload="art"]:not([data-phem-popover-target])')
+            ->assertSelectorExists('[data-phem-popover-target="viewport"] > template[data-payload="art"]');
+    }
+
     public function testTheTabsSelectTheirDefaultValue(): void
     {
         $this->mount(self::APP.'TabsDemo')

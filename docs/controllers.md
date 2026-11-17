@@ -388,6 +388,24 @@ A click on the link opens the link, not the popup. The keyboard focus on the lin
 </div>
 ```
 
+A preview card can have several links, as a popover with [several triggers](#open-one-popover-from-several-triggers): give each link `data-phem-popover-for` and a `data-phem-popover-payload`, and put the cards in `<template data-payload>` parts of the `viewport`. The pointer on another link of an open card moves the card at once. The keyboard focus on another link moves it too, and the focus out to that link does not close it. The `open` action does not move the focus into a preview card: the focus stays on the element that called it.
+
+```html
+<p>
+    Discover <a href="/wiki/Typography" data-phem-popover-for="cards" data-phem-popover-payload="typography">typography</a>
+    or <a href="/wiki/Art" data-phem-popover-for="cards" data-phem-popover-payload="art">art</a>.
+</p>
+<div id="cards" data-controller="phem-popover" data-phem-popover-open-on-hover-value="true"
+     data-phem-popover-delay-value="600" data-phem-popover-close-delay-value="300">
+    <div data-phem-popover-target="popup" hidden>
+        <div data-phem-popover-target="viewport">
+            <template data-payload="typography">…</template>
+            <template data-payload="art">…</template>
+        </div>
+    </div>
+</div>
+```
+
 ## Show a tooltip
 
 `phem-tooltip` shows a short text next to an element, on hover and on the focus of the keyboard:

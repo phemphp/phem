@@ -5,7 +5,7 @@ namespace Phem\Ui\Base\Tests\App;
 use Phem\Attribute\Component;
 use Phem\Node;
 
-use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger, AlertDialog, AlertDialogClose, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, CollapsiblePanel, CollapsibleTrigger, ContextMenuTrigger, Dialog, DialogClose, DialogDescription, DialogPopup, DialogTitle, DialogTrigger, MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger, Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverPayload, PopoverTitle, PopoverTrigger, PopoverViewport, TabsIndicator, TabsList, TabsPanel, TabsTab, Tooltip, TooltipPopup, TooltipTrigger, TooltipViewport};
+use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger, AlertDialog, AlertDialogClose, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, CollapsiblePanel, CollapsibleTrigger, ContextMenuTrigger, Dialog, DialogClose, DialogDescription, DialogPopup, DialogTitle, DialogTrigger, MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger, Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverPayload, PopoverTitle, PopoverTrigger, PopoverViewport, TabsIndicator, TabsList, TabsPanel, TabsTab, Tooltip, TooltipPopup, TooltipTrigger, TooltipViewport, PreviewCard, PreviewCardPayload, PreviewCardPopup, PreviewCardTrigger, PreviewCardViewport};
 use Phem\Ui\Base\{Accordion, AccordionItem, Collapsible, ContextMenu, Menu, MenuRadioGroup, MenuSubmenu, Tabs};
 
 #[Component]
@@ -129,6 +129,23 @@ function PopoverDetachedDemo(): Node
                     </PopoverViewport>
                 </PopoverPopup>
             </Popover>
+        </div>
+    );
+}
+
+#[Component]
+function PreviewCardDetachedDemo(): Node
+{
+    return (
+        <div>
+            <PreviewCardTrigger href="/art" handle="cards" id="art" payload="art">art</PreviewCardTrigger>
+            <PreviewCard handle="cards">
+                <PreviewCardPopup>
+                    <PreviewCardViewport>
+                        <PreviewCardPayload name="art">Art</PreviewCardPayload>
+                    </PreviewCardViewport>
+                </PreviewCardPopup>
+            </PreviewCard>
         </div>
     );
 }

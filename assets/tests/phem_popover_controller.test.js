@@ -674,3 +674,50 @@ describe("phem-popover with several triggers", () => {
     expect($("a").getAttribute("aria-expanded")).toBe("false")
   })
 })
+
+describe("a preview card with several links", () => {
+  const $ = (id) => document.getElementById(id)
+  const card = () => `<p>
+      <a id="l1" href="#a" data-phem-popover-for="cards" data-phem-popover-payload="a">A</a>
+      <a id="l2" href="#b" data-phem-popover-for="cards" data-phem-popover-payload="b">B</a>
+      <button id="open" type="button">Open</button>
+    </p>
+    <div id="cards" data-controller="phem-popover" data-phem-popover-open-on-hover-value="true" data-phem-popover-delay-value="600">
+      <button id="go" type="button" data-action="phem-popover#open" data-phem-popover-trigger-id-param="l2">Open</button>
+      <div id="card" data-phem-popover-target="popup" hidden>
+        <div id="vp" data-phem-popover-target="viewport"><template data-payload="a">Card A</template><template data-payload="b">Card B</template></div>
+      </div>
+    </div>`
+  const focusVisible = (el) => {
+    const matches = el.matches.bind(el)
+    el.matches = (selector) => selector === ":focus-visible" || matches(selector)
+  }
+
+  it("moves the open card at once when the keyboard focus goes to the next link", async () => {
+    await mount(card())
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    focusVisible($("l1"))
+    focusVisible($("l2"))
+    $("l1").focus()
+    vi.advanceTimersByTime(600)
+    expect($("vp").querySelector("[data-current]").textContent).toBe("Card A")
+
+    $("l2").focus()
+    vi.advanceTimersByTime(0)
+    expect($("card").hasAttribute("data-open")).toBe(true)
+    expect($("l2").hasAttribute("data-popup-open")).toBe(true)
+    expect($("vp").querySelector("[data-current]").textContent).toBe("Card B")
+    // The link stays the only part for the keyboard.
+    expect($("l2").hasAttribute("aria-expanded")).toBe(false)
+  })
+
+  it("opens with the open action next to the link of the param, and keeps the focus", async () => {
+    await mount(card())
+    $("go").focus()
+    $("go").click()
+
+    expect($("card").hasAttribute("data-open")).toBe(true)
+    expect($("l2").hasAttribute("data-popup-open")).toBe(true)
+    expect(document.activeElement).toBe($("go"))
+  })
+})
