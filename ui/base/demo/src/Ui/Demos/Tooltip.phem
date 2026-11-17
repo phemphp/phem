@@ -8,11 +8,6 @@ use Phem\Node;
 use function App\Ui\{DemoPage, Example, Examples, Hero};
 use function Phem\Ui\Base\{Tooltip, TooltipArrow, TooltipPopup, TooltipTrigger, TooltipViewport};
 
-// A trigger with a border, as in the examples of base-ui.com.
-const TOOLTIP_ICON_TRIGGER = 'border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950';
-
-const TOOLTIP_BUTTON = 'flex h-8 items-center justify-center gap-2 border border-neutral-950 bg-white px-3 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700';
-
 #[Page('/components/tooltip')]
 function TooltipPage(): Node
 {
@@ -117,11 +112,9 @@ function TooltipTrashIcon(): Node
 #[Component]
 function TooltipDetachedDemo(): Node
 {
-    $iconTrigger = TOOLTIP_ICON_TRIGGER;
-
     return (
         <div>
-            <TooltipTrigger handle="delete-tooltip" aria-label="Delete" className={{ iconTrigger }}><TooltipTrashIcon /></TooltipTrigger>
+            <TooltipTrigger handle="delete-tooltip" aria-label="Delete" className="border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950"><TooltipTrashIcon /></TooltipTrigger>
             <Tooltip handle="delete-tooltip" sideOffset={{ 11 }}>
                 <TooltipPopup><TooltipArrow />Delete</TooltipPopup>
             </Tooltip>
@@ -133,12 +126,10 @@ function TooltipDetachedDemo(): Node
 #[Component]
 function TooltipMultipleDemo(): Node
 {
-    $button = TOOLTIP_BUTTON;
-
     return (
         <div className="flex gap-2">
-            <TooltipTrigger handle="multiple-tooltip" payload="Tooltip opened by Trigger 1" className={{ button }}>Trigger 1</TooltipTrigger>
-            <TooltipTrigger handle="multiple-tooltip" payload="Tooltip opened by Trigger 2" className={{ button }}>Trigger 2</TooltipTrigger>
+            <TooltipTrigger handle="multiple-tooltip" payload="Tooltip opened by Trigger 1" className="flex h-8 items-center justify-center gap-2 border border-neutral-950 bg-white px-3 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700">Trigger 1</TooltipTrigger>
+            <TooltipTrigger handle="multiple-tooltip" payload="Tooltip opened by Trigger 2" className="flex h-8 items-center justify-center gap-2 border border-neutral-950 bg-white px-3 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700">Trigger 2</TooltipTrigger>
             <Tooltip handle="multiple-tooltip" sideOffset={{ 8 }}>
                 <TooltipPopup><TooltipArrow /><TooltipViewport /></TooltipPopup>
             </Tooltip>
@@ -150,18 +141,15 @@ function TooltipMultipleDemo(): Node
 #[Component]
 function TooltipControlledDemo(): Node
 {
-    $iconTrigger = TOOLTIP_ICON_TRIGGER;
-    $button = TOOLTIP_BUTTON;
-
     return (
         <Tooltip sideOffset={{ 11 }}>
             <div className="flex flex-wrap justify-center gap-2">
                 <div className="flex">
-                    <TooltipTrigger id="trigger-1" aria-label="Controlled tooltip" className={{ iconTrigger }}><TooltipHeadphonesIcon /></TooltipTrigger>
-                    <TooltipTrigger id="trigger-2" aria-label="Controlled tooltip" className={{ iconTrigger ~ ' border-l-0' }}><TooltipStopwatchIcon /></TooltipTrigger>
-                    <TooltipTrigger id="trigger-3" aria-label="Controlled tooltip" className={{ iconTrigger ~ ' border-l-0' }}><TooltipTrashIcon /></TooltipTrigger>
+                    <TooltipTrigger id="trigger-1" aria-label="Controlled tooltip" className="border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950"><TooltipHeadphonesIcon /></TooltipTrigger>
+                    <TooltipTrigger id="trigger-2" aria-label="Controlled tooltip" className="border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950 border-l-0"><TooltipStopwatchIcon /></TooltipTrigger>
+                    <TooltipTrigger id="trigger-3" aria-label="Controlled tooltip" className="border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950 border-l-0"><TooltipTrashIcon /></TooltipTrigger>
                 </div>
-                <button type="button" data-action="phem-tooltip#show" data-phem-tooltip-trigger-id-param="trigger-2" className={{ button }}>Open programmatically</button>
+                <button type="button" data-action="phem-tooltip#show" data-phem-tooltip-trigger-id-param="trigger-2" className="flex h-8 items-center justify-center gap-2 border border-neutral-950 bg-white px-3 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700">Open programmatically</button>
             </div>
             <TooltipPopup className="max-w-[var(--available-width)]"><TooltipArrow />Controlled tooltip</TooltipPopup>
         </Tooltip>
@@ -172,7 +160,6 @@ function TooltipControlledDemo(): Node
 #[Component]
 function TooltipAnimatedDemo(): Node
 {
-    $iconTrigger = TOOLTIP_ICON_TRIGGER;
     $triggers = [
         ['Listen to audio preview', 'headphones'],
         ['Set a timer', 'stopwatch'],
@@ -182,7 +169,7 @@ function TooltipAnimatedDemo(): Node
     return (
         <div className="flex">
             {% for trigger in triggers %}
-                <TooltipTrigger key={{ trigger[1] }} handle="animated-tooltip" payload={{ trigger[0] }} aria-label={{ trigger[0] }} className={{ iconTrigger ~ (loop.first ? '' : ' border-l-0') }}>
+                <TooltipTrigger key={{ trigger[1] }} handle="animated-tooltip" payload={{ trigger[0] }} aria-label={{ trigger[0] }} className={{ 'border border-neutral-950 bg-white focus-visible:-outline-offset-1 focus-visible:bg-white dark:border-white dark:bg-neutral-950 dark:focus-visible:bg-neutral-950' ~ (loop.first ? '' : ' border-l-0') }}>
                     {% if trigger[1] == 'headphones' %}<TooltipHeadphonesIcon />{% elseif trigger[1] == 'stopwatch' %}<TooltipStopwatchIcon />{% else %}<TooltipTrashIcon />{% endif %}
                 </TooltipTrigger>
             {% endfor %}

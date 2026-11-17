@@ -8,9 +8,6 @@ use Phem\Node;
 use function App\Ui\{DemoPage, Example, Examples, Hero};
 use function Phem\Ui\Base\{Avatar, AvatarImage, Popover, PopoverArrow, PopoverDescription, PopoverPayload, PopoverPopup, PopoverTitle, PopoverTrigger, PopoverViewport};
 
-// The link of the profile panel, as in the example of base-ui.com.
-const POPOVER_LINK = 'text-neutral-950 dark:text-white underline underline-offset-[0.16em] decoration-[1px] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white';
-
 #[Page('/components/popover')]
 function PopoverPage(): Node
 {
@@ -163,8 +160,6 @@ function PopoverControlledDemo(): Node
 #[Component]
 function PopoverAnimatedDemo(): Node
 {
-    $link = POPOVER_LINK;
-
     return (
         <div className="flex gap-2">
             <PopoverTrigger handle="animated-popover" payload="notifications">Notifications</PopoverTrigger>
@@ -194,8 +189,8 @@ function PopoverAnimatedDemo(): Node
                                 </Avatar>
                                 <span className="col-start-2 col-end-3 row-start-2 row-end-3 text-sm text-neutral-600 dark:text-neutral-400">Pro plan</span>
                                 <div className="col-start-1 col-end-3 row-start-3 row-end-4 flex flex-col gap-2 pt-2 text-sm">
-                                    <a href="#" className={{ link }}>Profile settings</a>
-                                    <a href="#" className={{ link }}>Log out</a>
+                                    <a href="#" className="text-neutral-950 dark:text-white underline underline-offset-[0.16em] decoration-[1px] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white">Profile settings</a>
+                                    <a href="#" className="text-neutral-950 dark:text-white underline underline-offset-[0.16em] decoration-[1px] hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white">Log out</a>
                                 </div>
                             </div>
                         </PopoverPayload>

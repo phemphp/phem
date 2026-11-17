@@ -9,8 +9,6 @@ use function App\Ui\{DemoPage, Example, Examples, Hero};
 use function Phem\Ui\Base\{AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogPayload, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, MenuItem, MenuPopup, MenuSeparator, MenuTrigger};
 use Phem\Ui\Base\{Align, Menu};
 
-const ALERT_DIALOG_DANGER = 'text-red-700 dark:text-red-400';
-
 #[Page('/components/alert-dialog')]
 function AlertDialogPage(): Node
 {
@@ -64,11 +62,9 @@ function AlertDialogPage(): Node
 #[Component]
 function AlertDialogHeroDemo(): Node
 {
-    $danger = ALERT_DIALOG_DANGER;
-
     return (
         <AlertDialog>
-            <AlertDialogTrigger className={{ danger }}>Discard draft</AlertDialogTrigger>
+            <AlertDialogTrigger className="text-red-700 dark:text-red-400">Discard draft</AlertDialogTrigger>
             <AlertDialogPopup>
                 <div className="flex flex-col gap-1">
                     <AlertDialogTitle>Discard draft?</AlertDialogTitle>
@@ -76,7 +72,7 @@ function AlertDialogHeroDemo(): Node
                 </div>
                 <div className="flex justify-end gap-3">
                     <AlertDialogClose>Cancel</AlertDialogClose>
-                    <AlertDialogClose className={{ danger }}>Discard</AlertDialogClose>
+                    <AlertDialogClose className="text-red-700 dark:text-red-400">Discard</AlertDialogClose>
                 </div>
             </AlertDialogPopup>
         </AlertDialog>
@@ -87,8 +83,6 @@ function AlertDialogHeroDemo(): Node
 #[Component]
 function AlertDialogFromMenuDemo(): Node
 {
-    $danger = ALERT_DIALOG_DANGER;
-
     return (
         <div>
             <Menu sideOffset={{ 8 }} align={{ Align.Start }}>
@@ -108,7 +102,7 @@ function AlertDialogFromMenuDemo(): Node
                     </div>
                     <div className="flex justify-end gap-3">
                         <AlertDialogClose>Cancel</AlertDialogClose>
-                        <AlertDialogClose className={{ danger }}>Delete</AlertDialogClose>
+                        <AlertDialogClose className="text-red-700 dark:text-red-400">Delete</AlertDialogClose>
                     </div>
                 </AlertDialogPopup>
             </AlertDialog>
@@ -120,11 +114,9 @@ function AlertDialogFromMenuDemo(): Node
 #[Component]
 function AlertDialogDetachedDemo(): Node
 {
-    $danger = ALERT_DIALOG_DANGER;
-
     return (
         <div>
-            <AlertDialogTrigger handle="discard-draft" className={{ danger }}>Discard draft</AlertDialogTrigger>
+            <AlertDialogTrigger handle="discard-draft" className="text-red-700 dark:text-red-400">Discard draft</AlertDialogTrigger>
             <AlertDialog handle="discard-draft">
                 <AlertDialogPopup>
                     <div className="flex flex-col gap-1">
@@ -133,7 +125,7 @@ function AlertDialogDetachedDemo(): Node
                     </div>
                     <div className="flex justify-end gap-3">
                         <AlertDialogClose>Cancel</AlertDialogClose>
-                        <AlertDialogClose className={{ danger }}>Discard</AlertDialogClose>
+                        <AlertDialogClose className="text-red-700 dark:text-red-400">Discard</AlertDialogClose>
                     </div>
                 </AlertDialogPopup>
             </AlertDialog>
@@ -168,13 +160,11 @@ function AlertDialogMultipleDemo(): Node
 #[Component]
 function AlertDialogControlledDemo(): Node
 {
-    $danger = ALERT_DIALOG_DANGER;
-
     return (
         <AlertDialog>
             <div className="flex flex-wrap justify-center gap-2">
-                <AlertDialogTrigger id="alert-trigger-1" payload="Discard draft?" className={{ danger }}>Discard</AlertDialogTrigger>
-                <AlertDialogTrigger id="alert-trigger-2" payload="Delete project?" className={{ danger }}>Delete</AlertDialogTrigger>
+                <AlertDialogTrigger id="alert-trigger-1" payload="Discard draft?" className="text-red-700 dark:text-red-400">Discard</AlertDialogTrigger>
+                <AlertDialogTrigger id="alert-trigger-2" payload="Delete project?" className="text-red-700 dark:text-red-400">Delete</AlertDialogTrigger>
                 <AlertDialogTrigger id="alert-trigger-3" payload="Sign out?">Sign out</AlertDialogTrigger>
                 <button type="button" data-action="phem-dialog#open" data-phem-dialog-trigger-id-param="alert-trigger-2" className="flex h-8 items-center justify-center border border-neutral-950 dark:border-white bg-white dark:bg-neutral-950 px-3 text-sm text-neutral-950 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white">Open programmatically</button>
             </div>
@@ -185,7 +175,7 @@ function AlertDialogControlledDemo(): Node
                 </div>
                 <div className="flex justify-end gap-3">
                     <AlertDialogClose>Cancel</AlertDialogClose>
-                    <AlertDialogClose className={{ danger }}>Confirm</AlertDialogClose>
+                    <AlertDialogClose className="text-red-700 dark:text-red-400">Confirm</AlertDialogClose>
                 </div>
             </AlertDialogPopup>
         </AlertDialog>

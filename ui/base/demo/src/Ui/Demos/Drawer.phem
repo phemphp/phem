@@ -10,21 +10,6 @@ use function App\Ui\{DemoPage, Example, Examples, Hero};
 use function Phem\Ui\Base\{AlertDialogClose, AlertDialogDescription, AlertDialogPopup, AlertDialogTitle, DialogDiscard, DrawerBackdrop, DrawerClose, DrawerContent, DrawerDescription, DrawerIndent, DrawerIndentBackground, DrawerPayload, DrawerPopup, DrawerProvider, DrawerSwipeArea, DrawerTitle, DrawerTrigger, ScrollAreaContent, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport};
 use Phem\Ui\Base\{AlertDialog, Drawer, DrawerViewport, ScrollArea};
 
-// The handle at the top of a bottom sheet.
-const DRAWER_HANDLE = 'mx-auto mb-4 h-1 w-12 bg-neutral-300 dark:bg-neutral-700';
-
-// A stack of bottom sheets: the sheets behind the front one get smaller and go up, and show a peek.
-const DRAWER_NESTED_POPUP = "[--bleed:3rem] [--peek:1rem] [--stack-progress:clamp(0,var(--drawer-swipe-progress,0),1)] [--stack-step:0.05] [--stack-peek-offset:max(0px,calc((var(--nested-drawers,0)-var(--stack-progress))*var(--peek)))] [--scale-base:calc(max(0,1-(var(--nested-drawers,0)*var(--stack-step))))] [--scale:clamp(0,calc(var(--scale-base)+(var(--stack-step)*var(--stack-progress))),1)] [--shrink:calc(1-var(--scale))] [--height:max(0px,calc(var(--drawer-frontmost-height,var(--drawer-height,0px))-var(--bleed)))] group/popup -mx-px w-[calc(100%+2px)] [height:var(--drawer-height,auto)] border border-b-0 px-6 pt-4 [transform-origin:50%_calc(100%-var(--bleed))] [transform:translateY(calc(var(--drawer-swipe-movement-y,0px)-var(--stack-peek-offset)-(var(--shrink)*var(--height))))_scale(var(--scale))] after:pointer-events-none after:absolute after:inset-0 after:bg-transparent after:content-[''] after:transition-[background-color] after:duration-[450ms] after:ease-[cubic-bezier(0.32,0.72,0,1)] data-nested-drawer-swiping:duration-0 data-ending-style:opacity-[0.9999] data-nested-drawer-open:h-[calc(var(--height)+var(--bleed))] data-nested-drawer-open:overflow-hidden data-nested-drawer-open:after:bg-black/5 dark:border-b-0 [transition:transform_450ms_cubic-bezier(0.32,0.72,0,1),height_450ms_cubic-bezier(0.32,0.72,0,1),opacity_450ms_cubic-bezier(0.32,0.72,0,1)]";
-const DRAWER_NESTED_CONTENT = 'transition-opacity duration-[300ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] group-data-nested-drawer-open/popup:opacity-0 group-data-nested-drawer-swiping/popup:opacity-100';
-const DRAWER_NESTED_HANDLE = 'mx-auto mb-4 h-1 w-12 bg-neutral-300 transition-opacity duration-[200ms] group-data-nested-drawer-open/popup:opacity-0 group-data-nested-drawer-swiping/popup:opacity-100 dark:bg-neutral-700';
-
-// The confirmation of the close: it moves down and gets smaller while it closes, as the nested dialogs.
-const DRAWER_CONFIRM = 'top-[calc(50%+1.25rem*var(--nested-dialogs,0))] scale-[calc(1-0.1*var(--nested-dialogs,0))] transition-[top,scale,opacity] after:absolute after:inset-0 after:bg-black/5 after:opacity-0 after:transition-opacity after:duration-100 after:ease-out after:pointer-events-none data-ending-style:top-[calc(50%+0.25rem+1.25rem*var(--nested-dialogs,0))] data-ending-style:scale-[0.96] data-nested-dialog-open:after:opacity-100 data-starting-style:top-[calc(50%+0.25rem+1.25rem*var(--nested-dialogs,0))] data-starting-style:scale-[0.96] data-nested:backdrop:bg-transparent';
-
-const DRAWER_TEXTAREA = 'w-full border border-neutral-950 dark:border-white bg-white dark:bg-neutral-950 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 dark:text-white placeholder:text-neutral-500 dark:placeholder:text-neutral-400 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white';
-
-const DRAWER_FIELD = 'h-8 w-full border border-neutral-950 bg-white px-2 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400';
-
 const DRAWER_DELIVERY = [
     ['Name', 'Ada Lovelace'],
     ['Phone', '+1 (555) 123-4567'],
@@ -37,10 +22,8 @@ const DRAWER_DELIVERY = [
 ];
 
 const DRAWER_NAV_ITEMS = ['Overview' => '/', 'Components' => '/components/accordion', 'Utilities' => '/', 'Releases' => '/'];
-const DRAWER_NAV_LINK = 'flex h-12 w-full items-center border border-neutral-950 bg-white px-4 text-sm text-neutral-950 no-underline hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white';
 
 const DRAWER_ACTIONS = ['Unfollow', 'Mute', 'Add to Favourites', 'Add to Close Friends', 'Restrict'];
-const DRAWER_ACTION = 'h-10 w-full border-0 bg-transparent px-5 text-center text-sm text-neutral-950 select-none hover:bg-neutral-100 active:bg-neutral-200 focus-visible:bg-neutral-100 focus-visible:outline-none dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700 dark:focus-visible:bg-neutral-800';
 
 #[Page('/components/drawer')]
 function DrawerPage(): Node
@@ -180,14 +163,12 @@ function DrawerStateDemo(): Node
 #[Component]
 function DrawerPositionDemo(): Node
 {
-    $handle = DRAWER_HANDLE;
-
     return (
         <Drawer>
             <DrawerTrigger>Open bottom drawer</DrawerTrigger>
             <DrawerViewport>
                 <DrawerPopup className="max-h-[calc(80vh+3rem)] pt-4">
-                    <div className={{ handle }} />
+                    <div className="mx-auto mb-4 h-1 w-12 bg-neutral-300 dark:bg-neutral-700" />
                     <DrawerContent>
                         <DrawerTitle className="text-center">Notifications</DrawerTitle>
                         <DrawerDescription className="text-center">You are all caught up. Good job!</DrawerDescription>
@@ -203,26 +184,21 @@ function DrawerPositionDemo(): Node
 #[Component]
 function DrawerNestedDemo(): Node
 {
-    $popup = DRAWER_NESTED_POPUP;
-    $content = DRAWER_NESTED_CONTENT;
-    $handle = DRAWER_NESTED_HANDLE;
-    $field = DRAWER_FIELD;
-
     return (
         <Drawer>
             <DrawerTrigger>Open drawer stack</DrawerTrigger>
-            <DrawerPopup className={{ popup }}>
-                <div className={{ handle }} />
-                <DrawerContent className={{ content }}>
+            <DrawerPopup className="[--bleed:3rem] [--peek:1rem] [--stack-progress:clamp(0,var(--drawer-swipe-progress,0),1)] [--stack-step:0.05] [--stack-peek-offset:max(0px,calc((var(--nested-drawers,0)-var(--stack-progress))*var(--peek)))] [--scale-base:calc(max(0,1-(var(--nested-drawers,0)*var(--stack-step))))] [--scale:clamp(0,calc(var(--scale-base)+(var(--stack-step)*var(--stack-progress))),1)] [--shrink:calc(1-var(--scale))] [--height:max(0px,calc(var(--drawer-frontmost-height,var(--drawer-height,0px))-var(--bleed)))] group/popup -mx-px w-[calc(100%+2px)] [height:var(--drawer-height,auto)] border border-b-0 px-6 pt-4 [transform-origin:50%_calc(100%-var(--bleed))] [transform:translateY(calc(var(--drawer-swipe-movement-y,0px)-var(--stack-peek-offset)-(var(--shrink)*var(--height))))_scale(var(--scale))] after:pointer-events-none after:absolute after:inset-0 after:bg-transparent after:content-[''] after:transition-[background-color] after:duration-[450ms] after:ease-[cubic-bezier(0.32,0.72,0,1)] data-nested-drawer-swiping:duration-0 data-ending-style:opacity-[0.9999] data-nested-drawer-open:h-[calc(var(--height)+var(--bleed))] data-nested-drawer-open:overflow-hidden data-nested-drawer-open:after:bg-black/5 dark:border-b-0 [transition:transform_450ms_cubic-bezier(0.32,0.72,0,1),height_450ms_cubic-bezier(0.32,0.72,0,1),opacity_450ms_cubic-bezier(0.32,0.72,0,1)]">
+                <div className="mx-auto mb-4 h-1 w-12 bg-neutral-300 transition-opacity duration-[200ms] group-data-nested-drawer-open/popup:opacity-0 group-data-nested-drawer-swiping/popup:opacity-100 dark:bg-neutral-700" />
+                <DrawerContent className="transition-opacity duration-[300ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] group-data-nested-drawer-open/popup:opacity-0 group-data-nested-drawer-swiping/popup:opacity-100">
                     <DrawerTitle className="text-center">Account</DrawerTitle>
                     <DrawerDescription className="text-center">Nested drawers can be styled to stack, while each drawer remains independently focus managed.</DrawerDescription>
                     <div className="flex items-center justify-end gap-4">
                         <div className="mr-auto">
                             <Drawer>
                                 <DrawerTrigger>Security settings</DrawerTrigger>
-                                <DrawerPopup className={{ popup }}>
-                                    <div className={{ handle }} />
-                                    <DrawerContent className={{ content }}>
+                                <DrawerPopup className="[--bleed:3rem] [--peek:1rem] [--stack-progress:clamp(0,var(--drawer-swipe-progress,0),1)] [--stack-step:0.05] [--stack-peek-offset:max(0px,calc((var(--nested-drawers,0)-var(--stack-progress))*var(--peek)))] [--scale-base:calc(max(0,1-(var(--nested-drawers,0)*var(--stack-step))))] [--scale:clamp(0,calc(var(--scale-base)+(var(--stack-step)*var(--stack-progress))),1)] [--shrink:calc(1-var(--scale))] [--height:max(0px,calc(var(--drawer-frontmost-height,var(--drawer-height,0px))-var(--bleed)))] group/popup -mx-px w-[calc(100%+2px)] [height:var(--drawer-height,auto)] border border-b-0 px-6 pt-4 [transform-origin:50%_calc(100%-var(--bleed))] [transform:translateY(calc(var(--drawer-swipe-movement-y,0px)-var(--stack-peek-offset)-(var(--shrink)*var(--height))))_scale(var(--scale))] after:pointer-events-none after:absolute after:inset-0 after:bg-transparent after:content-[''] after:transition-[background-color] after:duration-[450ms] after:ease-[cubic-bezier(0.32,0.72,0,1)] data-nested-drawer-swiping:duration-0 data-ending-style:opacity-[0.9999] data-nested-drawer-open:h-[calc(var(--height)+var(--bleed))] data-nested-drawer-open:overflow-hidden data-nested-drawer-open:after:bg-black/5 dark:border-b-0 [transition:transform_450ms_cubic-bezier(0.32,0.72,0,1),height_450ms_cubic-bezier(0.32,0.72,0,1),opacity_450ms_cubic-bezier(0.32,0.72,0,1)]">
+                                    <div className="mx-auto mb-4 h-1 w-12 bg-neutral-300 transition-opacity duration-[200ms] group-data-nested-drawer-open/popup:opacity-0 group-data-nested-drawer-swiping/popup:opacity-100 dark:bg-neutral-700" />
+                                    <DrawerContent className="transition-opacity duration-[300ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] group-data-nested-drawer-open/popup:opacity-0 group-data-nested-drawer-swiping/popup:opacity-100">
                                         <DrawerTitle className="text-center">Security</DrawerTitle>
                                         <DrawerDescription className="text-center">Review sign-in activity and update your security preferences.</DrawerDescription>
                                         <ul className="mb-6 list-disc pl-5 text-neutral-700 dark:text-neutral-300">
@@ -234,18 +210,18 @@ function DrawerNestedDemo(): Node
                                             <div className="mr-auto">
                                                 <Drawer>
                                                     <DrawerTrigger>Advanced options</DrawerTrigger>
-                                                    <DrawerPopup className={{ popup }}>
-                                                        <div className={{ handle }} />
-                                                        <DrawerContent className={{ content }}>
+                                                    <DrawerPopup className="[--bleed:3rem] [--peek:1rem] [--stack-progress:clamp(0,var(--drawer-swipe-progress,0),1)] [--stack-step:0.05] [--stack-peek-offset:max(0px,calc((var(--nested-drawers,0)-var(--stack-progress))*var(--peek)))] [--scale-base:calc(max(0,1-(var(--nested-drawers,0)*var(--stack-step))))] [--scale:clamp(0,calc(var(--scale-base)+(var(--stack-step)*var(--stack-progress))),1)] [--shrink:calc(1-var(--scale))] [--height:max(0px,calc(var(--drawer-frontmost-height,var(--drawer-height,0px))-var(--bleed)))] group/popup -mx-px w-[calc(100%+2px)] [height:var(--drawer-height,auto)] border border-b-0 px-6 pt-4 [transform-origin:50%_calc(100%-var(--bleed))] [transform:translateY(calc(var(--drawer-swipe-movement-y,0px)-var(--stack-peek-offset)-(var(--shrink)*var(--height))))_scale(var(--scale))] after:pointer-events-none after:absolute after:inset-0 after:bg-transparent after:content-[''] after:transition-[background-color] after:duration-[450ms] after:ease-[cubic-bezier(0.32,0.72,0,1)] data-nested-drawer-swiping:duration-0 data-ending-style:opacity-[0.9999] data-nested-drawer-open:h-[calc(var(--height)+var(--bleed))] data-nested-drawer-open:overflow-hidden data-nested-drawer-open:after:bg-black/5 dark:border-b-0 [transition:transform_450ms_cubic-bezier(0.32,0.72,0,1),height_450ms_cubic-bezier(0.32,0.72,0,1),opacity_450ms_cubic-bezier(0.32,0.72,0,1)]">
+                                                        <div className="mx-auto mb-4 h-1 w-12 bg-neutral-300 transition-opacity duration-[200ms] group-data-nested-drawer-open/popup:opacity-0 group-data-nested-drawer-swiping/popup:opacity-100 dark:bg-neutral-700" />
+                                                        <DrawerContent className="transition-opacity duration-[300ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] group-data-nested-drawer-open/popup:opacity-0 group-data-nested-drawer-swiping/popup:opacity-100">
                                                             <DrawerTitle className="text-center">Advanced</DrawerTitle>
                                                             <DrawerDescription className="text-center">This drawer is taller to demonstrate variable-height stacking.</DrawerDescription>
                                                             <div className="mb-4 grid gap-2">
                                                                 <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300" htmlFor="device-name">Device name</label>
-                                                                <input id="device-name" className={{ field }} value="Personal laptop" />
+                                                                <input id="device-name" className="h-8 w-full border border-neutral-950 bg-white px-2 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400" value="Personal laptop" />
                                                             </div>
                                                             <div className="mb-4 grid gap-2">
                                                                 <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300" htmlFor="device-notes">Notes</label>
-                                                                <textarea id="device-notes" rows="3" className={{ field ~ ' h-auto min-h-32 resize-y p-2' }}>Rotate recovery codes and revoke older sessions.</textarea>
+                                                                <textarea id="device-notes" rows="3" className="h-8 w-full border border-neutral-950 bg-white px-2 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 h-auto min-h-32 resize-y p-2">Rotate recovery codes and revoke older sessions.</textarea>
                                                             </div>
                                                             <div className="flex justify-end"><DrawerClose>Done</DrawerClose></div>
                                                         </DrawerContent>
@@ -303,7 +279,6 @@ function DrawerSnapPointsDemo(): Node
 function DrawerKeyboardDemo(): Node
 {
     $fields = DRAWER_DELIVERY;
-    $field = DRAWER_FIELD;
 
     return (
         <Drawer virtualKeyboard>
@@ -323,12 +298,12 @@ function DrawerKeyboardDemo(): Node
                             {% for item in fields %}
                                 <label key={{ item[0] }} className="flex w-full flex-col items-start gap-1">
                                     <span className="text-sm font-bold text-neutral-950 dark:text-white">{{ item[0] }}</span>
-                                    <input type="text" placeholder={{ item[1] }} className={{ field }} />
+                                    <input type="text" placeholder={{ item[1] }} className="h-8 w-full border border-neutral-950 bg-white px-2 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400" />
                                 </label>
                             {% endfor %}
                             <label className="flex w-full flex-col items-start gap-1">
                                 <span className="text-sm font-bold text-neutral-950 dark:text-white">Instructions</span>
-                                <textarea placeholder="Gate code, drop-off spot, or anything else the driver should know" className={{ field ~ ' h-auto min-h-22 resize-y py-2' }}></textarea>
+                                <textarea placeholder="Gate code, drop-off spot, or anything else the driver should know" className="h-8 w-full border border-neutral-950 bg-white px-2 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 h-auto min-h-22 resize-y py-2"></textarea>
                             </label>
                         </div>
                     </DrawerContent>
@@ -336,7 +311,7 @@ function DrawerKeyboardDemo(): Node
                         <div className="absolute right-0 bottom-0 left-0 z-1 border-t border-neutral-950 bg-white px-6 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom,0px)+var(--bleed))] transition-[bottom,padding-bottom] duration-[260ms] ease-[cubic-bezier(0.32,0.72,0,1)] focus-within:fixed focus-within:z-3 focus-within:bottom-0 focus-within:pb-[calc(0.625rem+env(safe-area-inset-bottom,0px)+var(--bleed)+var(--drawer-keyboard-inset,0px))] focus-within:[transform:translate3d(0,0,0)] motion-reduce:transition-none dark:border-white dark:bg-neutral-950">
                             <label className="mx-auto flex w-full max-w-90 flex-col gap-1">
                                 <span className="text-sm font-bold text-neutral-950 dark:text-white">Delivery note</span>
-                                <input type="text" placeholder="Add a note for the driver" className={{ field ~ ' h-10 px-2.5' }} />
+                                <input type="text" placeholder="Add a note for the driver" className="h-8 w-full border border-neutral-950 bg-white px-2 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 placeholder:text-neutral-500 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white dark:border-white dark:bg-neutral-950 dark:text-white dark:placeholder:text-neutral-400 h-10 px-2.5" />
                             </label>
                         </div>
                     </div>
@@ -350,8 +325,6 @@ function DrawerKeyboardDemo(): Node
 #[Component]
 function DrawerIndentDemo(): Node
 {
-    $handle = DRAWER_HANDLE;
-
     return (
         <DrawerProvider className="relative w-full overflow-hidden [--bleed:3rem]">
             <DrawerIndentBackground className="absolute inset-0 bg-black dark:bg-neutral-300" />
@@ -362,7 +335,7 @@ function DrawerIndentDemo(): Node
                         <DrawerBackdrop className="absolute min-h-0" />
                         <DrawerViewport className="absolute inset-0 h-auto w-auto">
                             <DrawerPopup className="max-h-[calc(80vh+var(--bleed))] pt-4">
-                                <div className={{ handle }} />
+                                <div className="mx-auto mb-4 h-1 w-12 bg-neutral-300 dark:bg-neutral-700" />
                                 <DrawerContent>
                                     <DrawerTitle className="text-center">Notifications</DrawerTitle>
                                     <DrawerDescription className="text-center">You are all caught up. Good job!</DrawerDescription>
@@ -402,7 +375,6 @@ function DrawerNonModalDemo(): Node
 function DrawerMobileNavDemo(): Node
 {
     $items = DRAWER_NAV_ITEMS;
-    $link = DRAWER_NAV_LINK;
     $components = Gallery::components();
 
     return (
@@ -425,12 +397,12 @@ function DrawerMobileNavDemo(): Node
                                         <div className="pb-8">
                                             <ul className="m-0 grid list-none gap-1 p-0">
                                                 {% for label, href in items %}
-                                                    <li key={{ label }} className="flex"><a href={{ href }} className={{ link }}>{{ label }}</a></li>
+                                                    <li key={{ label }} className="flex"><a href={{ href }} className="flex h-12 w-full items-center border border-neutral-950 bg-white px-4 text-sm text-neutral-950 no-underline hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white">{{ label }}</a></li>
                                                 {% endfor %}
                                             </ul>
                                             <ul aria-label="Component links" className="m-0 mt-6 grid list-none gap-1 p-0">
                                                 {% for slug, component in components %}
-                                                    <li key={{ slug }} className="flex"><a href={{ '/components/' ~ slug }} className={{ link }}>{{ component.name }}</a></li>
+                                                    <li key={{ slug }} className="flex"><a href={{ '/components/' ~ slug }} className="flex h-12 w-full items-center border border-neutral-950 bg-white px-4 text-sm text-neutral-950 no-underline hover:bg-neutral-100 active:bg-neutral-200 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white">{{ component.name }}</a></li>
                                                 {% endfor %}
                                             </ul>
                                         </div>
@@ -480,9 +452,6 @@ function DrawerSwipeAreaDemo(): Node
 #[Component]
 function DrawerCloseConfirmationDemo(): Node
 {
-    $nested = DRAWER_CONFIRM;
-    $input = DRAWER_TEXTAREA;
-
     return (
         <Drawer swipeDirection="right" confirmClose="discard-drawer-tweet">
             <DrawerTrigger>Tweet</DrawerTrigger>
@@ -490,7 +459,7 @@ function DrawerCloseConfirmationDemo(): Node
                 <DrawerContent className="flex flex-col gap-4">
                     <DrawerTitle id="drawer-tweet-title" className="mb-0">New tweet</DrawerTitle>
                     <form method="dialog" className="flex flex-col gap-4">
-                        <textarea aria-labelledby="drawer-tweet-title" required placeholder="What’s on your mind?" className={{ input ~ ' min-h-32 p-2' }}></textarea>
+                        <textarea aria-labelledby="drawer-tweet-title" required placeholder="What’s on your mind?" className="w-full border border-neutral-950 dark:border-white bg-white dark:bg-neutral-950 text-sm any-pointer-coarse:text-base font-normal text-neutral-950 dark:text-white placeholder:text-neutral-500 dark:placeholder:text-neutral-400 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white min-h-32 p-2"></textarea>
                         <div className="flex justify-end gap-3">
                             <DrawerClose>Cancel</DrawerClose>
                             <button type="submit" className="flex h-8 items-center justify-center border border-neutral-950 dark:border-white bg-white dark:bg-neutral-950 px-3 text-sm text-neutral-950 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white">Tweet</button>
@@ -498,7 +467,7 @@ function DrawerCloseConfirmationDemo(): Node
                     </form>
                 </DrawerContent>
                 <AlertDialog handle="discard-drawer-tweet">
-                    <AlertDialogPopup className={{ nested }}>
+                    <AlertDialogPopup className="top-[calc(50%+1.25rem*var(--nested-dialogs,0))] scale-[calc(1-0.1*var(--nested-dialogs,0))] transition-[top,scale,opacity] after:absolute after:inset-0 after:bg-black/5 after:opacity-0 after:transition-opacity after:duration-100 after:ease-out after:pointer-events-none data-ending-style:top-[calc(50%+0.25rem+1.25rem*var(--nested-dialogs,0))] data-ending-style:scale-[0.96] data-nested-dialog-open:after:opacity-100 data-starting-style:top-[calc(50%+0.25rem+1.25rem*var(--nested-dialogs,0))] data-starting-style:scale-[0.96] data-nested:backdrop:bg-transparent">
                         <div className="flex flex-col gap-1">
                             <AlertDialogTitle>Discard tweet?</AlertDialogTitle>
                             <AlertDialogDescription>Your tweet will be lost.</AlertDialogDescription>
@@ -519,7 +488,6 @@ function DrawerCloseConfirmationDemo(): Node
 function DrawerActionSheetDemo(): Node
 {
     $actions = DRAWER_ACTIONS;
-    $action = DRAWER_ACTION;
 
     return (
         <Drawer>
@@ -531,12 +499,12 @@ function DrawerActionSheetDemo(): Node
                         <DrawerDescription className="sr-only">Choose an action for this user.</DrawerDescription>
                         <ul aria-label="Profile actions" className="m-0 list-none divide-y divide-neutral-950 p-0 dark:divide-white">
                             {% for item in actions %}
-                                <li key={{ item }}><DrawerClose className={{ action }}>{{ item }}</DrawerClose></li>
+                                <li key={{ item }}><DrawerClose className="h-10 w-full border-0 bg-transparent px-5 text-center text-sm text-neutral-950 select-none hover:bg-neutral-100 active:bg-neutral-200 focus-visible:bg-neutral-100 focus-visible:outline-none dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700 dark:focus-visible:bg-neutral-800">{{ item }}</DrawerClose></li>
                             {% endfor %}
                         </ul>
                     </DrawerContent>
                     <div className="pointer-events-auto overflow-hidden border border-neutral-950 bg-white shadow-[0.25rem_0.25rem_0] shadow-black/12 dark:border-white dark:bg-neutral-950 dark:shadow-none">
-                        <DrawerClose className={{ action ~ ' text-red-700 dark:text-red-400' }}>Block User</DrawerClose>
+                        <DrawerClose className="h-10 w-full border-0 bg-transparent px-5 text-center text-sm text-neutral-950 select-none hover:bg-neutral-100 active:bg-neutral-200 focus-visible:bg-neutral-100 focus-visible:outline-none dark:text-white dark:hover:bg-neutral-800 dark:active:bg-neutral-700 dark:focus-visible:bg-neutral-800 text-red-700 dark:text-red-400">Block User</DrawerClose>
                     </div>
                 </DrawerPopup>
             </DrawerViewport>

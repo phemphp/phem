@@ -9,13 +9,6 @@ use function App\Ui\{DemoPage, Example, Examples, Hero};
 use function Phem\Ui\Base\{DialogClose, DialogDescription, DialogPopup, DialogTitle, MenuArrow, MenuCheckboxItem, MenuClear, MenuEmpty, MenuGroup, MenuGroupLabel, MenuInput, MenuItem, MenuItemIndicator, MenuItemLabel, MenuLinkItem, MenuList, MenuPayload, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger, MenuViewport};
 use Phem\Ui\Base\{Align, Dialog, Menu, MenuRadioGroup, MenuSubmenu};
 
-// The label of a group of items with an indicator: it starts at the text of the items.
-const MENU_INDICATOR_LABEL = 'py-2 pr-8 pl-[2.125rem]';
-
-// The content of a menu that changes with the trigger: it slides in from the side of the new
-// trigger, and the old content slides out to the other side.
-const MENU_ANIMATED_VIEWPORT = "relative h-full w-full overflow-clip p-0 [&_[data-current]]:w-[var(--popup-width)] [&_[data-current]]:translate-x-0 [&_[data-current]]:opacity-100 [&_[data-current]]:transition-[translate,opacity] [&_[data-current]]:duration-[350ms,175ms] [&_[data-current]]:ease-[cubic-bezier(0.22,1,0.36,1)] data-[activation-direction~='left']:[&_[data-current][data-starting-style]]:-translate-x-1/2 data-[activation-direction~='left']:[&_[data-current][data-starting-style]]:opacity-0 data-[activation-direction~='right']:[&_[data-current][data-starting-style]]:translate-x-1/2 data-[activation-direction~='right']:[&_[data-current][data-starting-style]]:opacity-0 [&_[data-previous]]:w-[var(--popup-width)] [&_[data-previous]]:translate-x-0 [&_[data-previous]]:opacity-100 [&_[data-previous]]:transition-[translate,opacity] [&_[data-previous]]:duration-[350ms,175ms] [&_[data-previous]]:ease-[cubic-bezier(0.22,1,0.36,1)] data-[activation-direction~='left']:[&_[data-previous][data-ending-style]]:translate-x-1/2 data-[activation-direction~='left']:[&_[data-previous][data-ending-style]]:opacity-0 data-[activation-direction~='right']:[&_[data-previous][data-ending-style]]:-translate-x-1/2 data-[activation-direction~='right']:[&_[data-previous][data-ending-style]]:opacity-0";
-
 const MENU_ANIMATED = [
     'library' => ['Library', [['Add to library', 'Add to favorites'], ['Create playlist', 'Create station']]],
     'playback' => ['Playback', [['Play now', 'Add to queue'], ['Play next', 'Play last', 'Sleep timer']]],
@@ -28,13 +21,7 @@ const MENU_CONTROLLED = [
     'share' => ['Share', 'Copy link'],
 ];
 
-// The filter example: the input and its clear button, the popup and the items.
-const MENU_FILTER_POPUP = 'min-w-[max(14rem,var(--anchor-width))] overflow-hidden py-0';
-const MENU_FILTER_INPUT_BOX = 'flex items-center border-b border-neutral-300 has-data-highlighted:border-neutral-950 has-data-highlighted:ring-1 has-data-highlighted:ring-neutral-950 has-data-highlighted:ring-inset dark:border-neutral-700 dark:has-data-highlighted:border-white dark:has-data-highlighted:ring-white';
-const MENU_FILTER_LIST = 'max-h-[min(22rem,var(--available-height))] not-has-[>:not([hidden])]:py-0 [&>[data-filter-section]:not([hidden])~[data-filter-section]:not([hidden])>[data-filter-separator]]:block';
-const MENU_FILTER_SUBMENU_LIST = 'max-h-[min(28rem,var(--available-height))] not-has-[>:not([hidden])]:py-0';
-const MENU_FILTER_GROUP_LABEL = 'pt-1.5 pr-8 pb-1 pl-4 text-xs font-medium';
-const MENU_FILTER_SEPARATOR = 'hidden bg-neutral-300 dark:bg-neutral-700';
+// The items of the filter example.
 const MENU_FILTER_SHARE = ['Email', 'Messages', 'AirDrop', 'Copy link', 'Invite collaborators', 'Publish to web', 'Send a copy'];
 const MENU_FILTER_FOLDERS = ['Desktop', 'Documents', 'Downloads', 'Projects', 'Archive', 'Shared', 'Trash'];
 const MENU_FILTER_EXPORTS = ['PDF document', 'Word document', 'Plain text', 'Rich text', 'Markdown', 'HTML page', 'Image'];
@@ -252,21 +239,19 @@ function MenuCloseOnClickDemo(): Node
 #[Component]
 function MenuGroupLabelsDemo(): Node
 {
-    $label = MENU_INDICATOR_LABEL;
-
     return (
         <Menu sideOffset={{ 8 }}>
             <MenuTrigger>View</MenuTrigger>
             <MenuPopup>
                 <MenuRadioGroup defaultValue="date">
-                    <MenuGroupLabel className={{ label }}>Sort</MenuGroupLabel>
+                    <MenuGroupLabel className="py-2 pr-8 pl-[2.125rem]">Sort</MenuGroupLabel>
                     <MenuRadioItem value="date"><MenuItemIndicator /><MenuItemLabel>Date</MenuItemLabel></MenuRadioItem>
                     <MenuRadioItem value="name"><MenuItemIndicator /><MenuItemLabel>Name</MenuItemLabel></MenuRadioItem>
                     <MenuRadioItem value="type"><MenuItemIndicator /><MenuItemLabel>Type</MenuItemLabel></MenuRadioItem>
                 </MenuRadioGroup>
                 <MenuSeparator />
                 <MenuGroup>
-                    <MenuGroupLabel className={{ label }}>Workspace</MenuGroupLabel>
+                    <MenuGroupLabel className="py-2 pr-8 pl-[2.125rem]">Workspace</MenuGroupLabel>
                     <MenuCheckboxItem defaultChecked><MenuItemIndicator /><MenuItemLabel>Minimap</MenuItemLabel></MenuCheckboxItem>
                     <MenuCheckboxItem defaultChecked><MenuItemIndicator /><MenuItemLabel>Search</MenuItemLabel></MenuCheckboxItem>
                     <MenuCheckboxItem><MenuItemIndicator /><MenuItemLabel>Sidebar</MenuItemLabel></MenuCheckboxItem>
@@ -467,7 +452,6 @@ function MenuArrowDemo(): Node
 function MenuAnimatedDemo(): Node
 {
     $menus = MENU_ANIMATED;
-    $viewport = MENU_ANIMATED_VIEWPORT;
 
     return (
         <div className="flex flex-wrap items-center gap-2">
@@ -476,7 +460,7 @@ function MenuAnimatedDemo(): Node
             <MenuTrigger handle="animated-menu" payload="share" caret={{ false }} className="px-3">Share</MenuTrigger>
             <Menu handle="animated-menu" modal={{ false }} sideOffset={{ 8 }}>
                 <MenuPopup className="h-[var(--popup-height,auto)] w-[var(--popup-width,auto)] max-w-[var(--available-width)] transition-[top,left,width,height,opacity,scale] duration-[0.35s] ease-[cubic-bezier(0.22,1,0.36,1)] data-starting-style:scale-90 data-ending-style:scale-90 data-instant:transition-none">
-                    <MenuViewport className={{ viewport }}>
+                    <MenuViewport className="relative h-full w-full overflow-clip p-0 [&_[data-current]]:w-[var(--popup-width)] [&_[data-current]]:translate-x-0 [&_[data-current]]:opacity-100 [&_[data-current]]:transition-[translate,opacity] [&_[data-current]]:duration-[350ms,175ms] [&_[data-current]]:ease-[cubic-bezier(0.22,1,0.36,1)] data-[activation-direction~='left']:[&_[data-current][data-starting-style]]:-translate-x-1/2 data-[activation-direction~='left']:[&_[data-current][data-starting-style]]:opacity-0 data-[activation-direction~='right']:[&_[data-current][data-starting-style]]:translate-x-1/2 data-[activation-direction~='right']:[&_[data-current][data-starting-style]]:opacity-0 [&_[data-previous]]:w-[var(--popup-width)] [&_[data-previous]]:translate-x-0 [&_[data-previous]]:opacity-100 [&_[data-previous]]:transition-[translate,opacity] [&_[data-previous]]:duration-[350ms,175ms] [&_[data-previous]]:ease-[cubic-bezier(0.22,1,0.36,1)] data-[activation-direction~='left']:[&_[data-previous][data-ending-style]]:translate-x-1/2 data-[activation-direction~='left']:[&_[data-previous][data-ending-style]]:opacity-0 data-[activation-direction~='right']:[&_[data-previous][data-ending-style]]:-translate-x-1/2 data-[activation-direction~='right']:[&_[data-previous][data-ending-style]]:opacity-0">
                         {% for name, menu in menus %}
                             <MenuPayload key={{ name }} name={{ name }}>
                                 {% for group in menu[1] %}
@@ -515,20 +499,16 @@ function MenuClearIcon(): Node
 #[Component]
 function MenuFilterSubmenu(string $label, string $inputLabel, string $placeholder, string $emptyText, array $options): Node
 {
-    $popup = MENU_FILTER_POPUP;
-    $box = MENU_FILTER_INPUT_BOX;
-    $list = MENU_FILTER_SUBMENU_LIST;
-
     return (
         <MenuSubmenu sideOffset={{ -4 }} alignOffset={{ -4 }}>
             <MenuSubmenuTrigger>{{ label }}</MenuSubmenuTrigger>
-            <MenuPopup className={{ popup }}>
-                <div className={{ box }}>
+            <MenuPopup className="min-w-[max(14rem,var(--anchor-width))] overflow-hidden py-0">
+                <div className="flex items-center border-b border-neutral-300 has-data-highlighted:border-neutral-950 has-data-highlighted:ring-1 has-data-highlighted:ring-neutral-950 has-data-highlighted:ring-inset dark:border-neutral-700 dark:has-data-highlighted:border-white dark:has-data-highlighted:ring-white">
                     <MenuInput aria-label={{ inputLabel }} placeholder={{ placeholder }} />
                     <MenuClear><MenuClearIcon /></MenuClear>
                 </div>
                 <MenuEmpty>{{ emptyText }}</MenuEmpty>
-                <MenuList className={{ list }}>
+                <MenuList className="max-h-[min(28rem,var(--available-height))] not-has-[>:not([hidden])]:py-0">
                     {% for option in options %}
                         <MenuItem key={{ option }}>{{ option }}</MenuItem>
                     {% endfor %}
@@ -542,12 +522,6 @@ function MenuFilterSubmenu(string $label, string $inputLabel, string $placeholde
 #[Component]
 function MenuFilterDemo(): Node
 {
-    $popup = MENU_FILTER_POPUP;
-    $box = MENU_FILTER_INPUT_BOX;
-    $list = MENU_FILTER_LIST;
-    $submenuList = MENU_FILTER_SUBMENU_LIST;
-    $groupLabel = MENU_FILTER_GROUP_LABEL;
-    $separator = MENU_FILTER_SEPARATOR;
     $share = MENU_FILTER_SHARE;
     $folders = MENU_FILTER_FOLDERS;
     $exports = MENU_FILTER_EXPORTS;
@@ -555,15 +529,15 @@ function MenuFilterDemo(): Node
     return (
         <Menu sideOffset={{ 8 }}>
             <MenuTrigger>Actions</MenuTrigger>
-            <MenuPopup className={{ popup }}>
-                <div className={{ box }}>
+            <MenuPopup className="min-w-[max(14rem,var(--anchor-width))] overflow-hidden py-0">
+                <div className="flex items-center border-b border-neutral-300 has-data-highlighted:border-neutral-950 has-data-highlighted:ring-1 has-data-highlighted:ring-neutral-950 has-data-highlighted:ring-inset dark:border-neutral-700 dark:has-data-highlighted:border-white dark:has-data-highlighted:ring-white">
                     <MenuInput aria-label="Filter actions" placeholder="e.g. Save" />
                     <MenuClear><MenuClearIcon /></MenuClear>
                 </div>
                 <MenuEmpty>No actions found.</MenuEmpty>
-                <MenuList className={{ list }}>
+                <MenuList className="max-h-[min(22rem,var(--available-height))] not-has-[>:not([hidden])]:py-0 [&>[data-filter-section]:not([hidden])~[data-filter-section]:not([hidden])>[data-filter-separator]]:block">
                     <MenuGroup data-filter-section>
-                        <MenuGroupLabel className={{ groupLabel }}>File</MenuGroupLabel>
+                        <MenuGroupLabel className="pt-1.5 pr-8 pb-1 pl-4 text-xs font-medium">File</MenuGroupLabel>
                         <MenuItem>New file</MenuItem>
                         <MenuItem>Open file</MenuItem>
                         <MenuItem>Save</MenuItem>
@@ -572,12 +546,12 @@ function MenuFilterDemo(): Node
                         <MenuItem>Rename</MenuItem>
                     </MenuGroup>
                     <MenuGroup data-filter-section>
-                        <MenuGroupLabel className={{ groupLabel }}>Organize</MenuGroupLabel>
+                        <MenuGroupLabel className="pt-1.5 pr-8 pb-1 pl-4 text-xs font-medium">Organize</MenuGroupLabel>
                         <MenuFilterSubmenu label="Move to folder" inputLabel="Filter folders" placeholder="e.g. Projects" emptyText="No folders found." options={{ folders }} />
                         <MenuSubmenu sideOffset={{ -4 }} alignOffset={{ -4 }}>
                             <MenuSubmenuTrigger>Share</MenuSubmenuTrigger>
-                            <MenuPopup className={{ popup }}>
-                                <MenuList className={{ submenuList }}>
+                            <MenuPopup className="min-w-[max(14rem,var(--anchor-width))] overflow-hidden py-0">
+                                <MenuList className="max-h-[min(28rem,var(--available-height))] not-has-[>:not([hidden])]:py-0">
                                     {% for option in share %}
                                         <MenuItem key={{ option }}>{{ option }}</MenuItem>
                                     {% endfor %}
@@ -589,15 +563,15 @@ function MenuFilterDemo(): Node
                         <MenuItem>Delete</MenuItem>
                     </MenuGroup>
                     <MenuRadioGroup data-filter-section defaultValue="date">
-                        <MenuSeparator data-filter-separator className={{ separator }} />
-                        <MenuGroupLabel className={{ groupLabel }}>Sort by</MenuGroupLabel>
+                        <MenuSeparator data-filter-separator className="hidden bg-neutral-300 dark:bg-neutral-700" />
+                        <MenuGroupLabel className="pt-1.5 pr-8 pb-1 pl-4 text-xs font-medium">Sort by</MenuGroupLabel>
                         <MenuRadioItem value="date"><MenuItemIndicator /><MenuItemLabel>Date modified</MenuItemLabel></MenuRadioItem>
                         <MenuRadioItem value="name"><MenuItemIndicator /><MenuItemLabel>Name</MenuItemLabel></MenuRadioItem>
                         <MenuRadioItem value="size"><MenuItemIndicator /><MenuItemLabel>Size</MenuItemLabel></MenuRadioItem>
                     </MenuRadioGroup>
                     <MenuGroup data-filter-section>
-                        <MenuSeparator data-filter-separator className={{ separator }} />
-                        <MenuGroupLabel className={{ groupLabel }}>View</MenuGroupLabel>
+                        <MenuSeparator data-filter-separator className="hidden bg-neutral-300 dark:bg-neutral-700" />
+                        <MenuGroupLabel className="pt-1.5 pr-8 pb-1 pl-4 text-xs font-medium">View</MenuGroupLabel>
                         <MenuCheckboxItem defaultChecked><MenuItemIndicator /><MenuItemLabel>Show details</MenuItemLabel></MenuCheckboxItem>
                         <MenuCheckboxItem><MenuItemIndicator /><MenuItemLabel>Show sidebar</MenuItemLabel></MenuCheckboxItem>
                         <MenuCheckboxItem><MenuItemIndicator /><MenuItemLabel>Keep available offline</MenuItemLabel></MenuCheckboxItem>

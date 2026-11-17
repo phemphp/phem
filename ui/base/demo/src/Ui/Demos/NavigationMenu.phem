@@ -100,8 +100,6 @@ function NavigationMenuHeroDemo(): Node
     );
 }
 
-const NAV_CARD = 'relative block h-full w-full border-0 bg-transparent p-2 text-left text-inherit no-underline hover:bg-neutral-100 data-pressed:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:hover:bg-neutral-800 dark:data-pressed:bg-neutral-800';
-
 #[Component]
 function NavigationMenuNestedDemo(): Node
 {
@@ -115,7 +113,6 @@ function NavigationMenuNestedDemo(): Node
         ['/animation', 'Animation', 'Base UI components can be animated with CSS transitions, CSS animations, or JavaScript libraries.'],
         ['/composition', 'Composition', 'Base UI components can be replaced and composed with your own existing components.'],
     ];
-    $card = NAV_CARD;
     $vertical = Orientation::Vertical;
     $right = Side::Right;
     $end = Align::End;
@@ -134,7 +131,7 @@ function NavigationMenuNestedDemo(): Node
                                 <NavigationMenu orientation={{ vertical }} side={{ right }} align={{ end }} sideOffset={{ 8 }} alignOffset={{ -8 }}>
                                     <NavigationMenuList className="block">
                                         <NavigationMenuItem value="handbook">
-                                            <NavigationMenuTrigger className={{ card }}>
+                                            <NavigationMenuTrigger className="relative block h-full w-full border-0 bg-transparent p-2 text-left text-inherit no-underline hover:bg-neutral-100 data-pressed:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:hover:bg-neutral-800 dark:data-pressed:bg-neutral-800">
                                                 <span className="m-0 mb-1 block text-sm leading-4 font-normal">Handbook</span>
                                                 <p className="m-0 text-sm text-neutral-500 dark:text-neutral-400">How to use Base UI effectively.</p>
                                                 <NavigationMenuIcon className="absolute top-1/2 right-2.5 flex -translate-y-1/2 items-center justify-center" />
@@ -270,7 +267,6 @@ function NavigationMenuInlineDemo(): Node
 #[Component]
 function NavigationMenuLargeDemo(): Node
 {
-    $card = NAV_CARD;
     $pages = ['Accordion', 'Alert Dialog', 'Autocomplete', 'Avatar', 'Button', 'Checkbox', 'Checkbox Group', 'Collapsible', 'Combobox', 'Context Menu', 'Dialog', 'Drawer', 'Field', 'Fieldset', 'Form', 'Input', 'Menu', 'Menubar', 'Meter', 'Navigation Menu'];
 
     return (
@@ -284,7 +280,7 @@ function NavigationMenuLargeDemo(): Node
                                 <ScrollAreaContent>
                                     <ul className="m-0 grid list-none grid-cols-2 p-2">
                                         {% for name in pages %}
-                                            <li key={{ name }}><NavigationMenuLink href="/components/{{ name|lower|replace({' ': '-'}) }}" className={{ card }}>{{ name }}</NavigationMenuLink></li>
+                                            <li key={{ name }}><NavigationMenuLink href="/components/{{ name|lower|replace({' ': '-'}) }}" className="relative block h-full w-full border-0 bg-transparent p-2 text-left text-inherit no-underline hover:bg-neutral-100 data-pressed:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:hover:bg-neutral-800 dark:data-pressed:bg-neutral-800">{{ name }}</NavigationMenuLink></li>
                                         {% endfor %}
                                     </ul>
                                 </ScrollAreaContent>
