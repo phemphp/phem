@@ -601,8 +601,9 @@ final class InteractsWithPhemTest extends KernelTestCase
         $this->assertFails(static fn () => $tester->assertToast('Saved', ToastType::Error), 'The last action did not show the toast error "Saved" (it showed success "Saved").');
         $this->assertFails(static fn () => $tester->assertToast('Gone'), 'The last action did not show the toast "Gone" (it showed success "Saved").');
 
-        // A toast of the dispatcher is an info toast.
-        $tester->click('#save')->assertToast('Saved 1', ToastType::Info);
+        // A toast of the dispatcher with no type has no type, as the controller shows it.
+        $tester->click('#save')->assertToast('Saved 1');
+        $this->assertFails(static fn () => $tester->assertToast('Saved 1', ToastType::Info), 'The last action did not show the toast info "Saved 1" (it showed "Saved 1").');
 
         $tester->click('#quiet');
         $this->assertFails(static fn () => $tester->assertToast('Saved 1'), 'The last action did not show the toast "Saved 1".');
@@ -625,13 +626,15 @@ final class InteractsWithPhemTest extends KernelTestCase
         $tester = $this->mount(self::NOTIFIER)
             ->click('#raw')
             // A string detail is the message.
-            ->assertToast('Plain', ToastType::Info)
-            // The controller shows a type that it does not know as info.
-            ->assertToast('Odd', ToastType::Info)
+            ->assertToast('Plain')
+            // The controller shows a type that it does not know as no type.
+            ->assertToast('Odd')
             ->assertToast('["a","b"]');
 
+        $this->assertFails(static fn () => $tester->assertToast('Plain', ToastType::Info), 'The last action did not show the toast info "Plain" (it showed "Plain", "Odd", "["a","b"]").');
+
         // A toast with no message does not show.
-        $this->assertFails(static fn () => $tester->assertToast(''), 'The last action did not show the toast "" (it showed info "Plain", info "Odd", info "["a","b"]").');
+        $this->assertFails(static fn () => $tester->assertToast(''), 'The last action did not show the toast "" (it showed "Plain", "Odd", "["a","b"]").');
     }
 
     public function testAssertAnnouncedChecksTheAnnouncementsOfTheLastAction(): void

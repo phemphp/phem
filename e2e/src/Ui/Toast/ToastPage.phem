@@ -1,0 +1,32 @@
+<?phem
+
+namespace App\Ui\Toast;
+
+use Phem\Attribute\Page;
+use Phem\Event;
+use Phem\Node;
+use Phem\ToastType;
+
+use function App\Ui\Layout\Document;
+
+// A stack of toasts with the default look of phem.css: the time after a hover, a swipe and the
+// order of the focus.
+#[Page('/toast')]
+final class ToastPage
+{
+    public function export(Event $e): void
+    {
+        $e->toast('The file is in your downloads.', ToastType::Success, title: 'Export complete');
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Toast">
+                <button id="before">Before</button>
+                <button id="export" onClick={{ export }}>Export</button>
+                <div id="toasts" data-controller="phem-toast" data-phem-toast-duration-value={{ 2000 }}></div>
+            </Document>
+        );
+    }
+}

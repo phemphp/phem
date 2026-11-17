@@ -82,7 +82,7 @@ The controller shows its state in data attributes. Use them in your CSS, or as T
 | `data-highlighted` | An item of a menu or of a combobox | The item has the focus, or the highlight |
 | `data-selected` | An item of a combobox with `multiple` | The server chose the item (`aria-selected="true"`) |
 | `data-expanded` | The `phem-toast` element, a toast | The pointer or the focus is on the stack |
-| `data-swiping`, `data-swipe-direction` | A toast, a drawer | The user swipes the part, and the direction of the swipe that closed it |
+| `data-swiping`, `data-swipe-direction` | A toast, a drawer | The user swipes the part, and the direction of the swipe (a toast gets the direction at the first move of the swipe) |
 | `data-pressed` | A toggle button, an item of a toggle group, the trigger of a menu, a context menu, a popover or a select | The button is pressed, or its popup is open |
 | `data-checked`, `data-unchecked`, `data-indeterminate` | A switch, a checkbox, a radio, their indicator | The control is checked, not checked, or mixed |
 | `data-valid`, `data-invalid`, `data-dirty`, `data-touched`, `data-filled`, `data-focused` | The parts of a field | The state of the validation and of the input of the user |
@@ -2348,30 +2348,40 @@ Change the default duration and the texts with the controller values: `data-phem
 
 The `show` action shows the detail of another browser event as a toast. A [browser event](events.md#send-events-to-your-javascript) bubbles up to `window`, so listen there: `data-action="phem:saved@window->phem-toast#show"`.
 
-Each toast has these parts: the root (`data-phem-toast`), the content (`[data-phem-toast-content]`), the title (`[data-phem-toast-title]`), the description (`[data-phem-toast-description]`, the message) and the close button (`[data-phem-toast-close]`). A toast with no title has no title part. The root gets `data-type` (the type of the toast) and `--toast-index` (0 for the last toast). A toast gets `data-limited` and `inert` when more than the `limit` value (3) of newer toasts are on the screen: `phem.css` hides it (a toast with no `class`). The title, the description and the close button also get `data-type`. A new toast has the animations of the [conventions](#animations), and a toast that goes stays until the end of its `[data-ending-style]` transition. 
+Each toast has these parts: the root (`data-phem-toast`), the content (`[data-phem-toast-content]`), the title (`[data-phem-toast-title]`), the description (`[data-phem-toast-description]`, the message) and the close button (`[data-phem-toast-close]`). A toast with no title has no title part. The newest toast is first in the DOM, as in Base UI, so Tab goes to the newest toast first. `phem.css` shows the newest toast at the bottom (`flex-direction: column-reverse`). The root gets `data-type` (the type of the toast) and `--toast-index` (0 for the newest toast). A toast of a `phem:toast` event with no type, or with a type that is not `info`, `success`, `warning` or `error`, has no `data-type`. A toast gets `data-limited` and `inert` when more than the `limit` value (3) of newer toasts are on the screen: `phem.css` hides it (a toast with no `class`). The title, the description and the close button also get `data-type`. The close button gets `aria-hidden="true"` while the stack is not expanded and the button has no focus, as in Base UI. A new toast has the animations of the [conventions](#animations), and a toast that goes stays until the end of its `[data-ending-style]` transition. 
 
-A toast with the same type, title and message as a toast on the screen does not show again: the toast on the screen starts its time again. This is different from Base UI, which shows a new toast for each `add` call unless the `id` is the same. So two `$e->toast('Saved')` in a short time show one "Saved" toast, not two. A toast with the same message as a toast that goes shows as a new toast.
+A toast with the same type, title and message as a toast on the screen does not show again: the toast on the screen starts its full time again. A toast with no type and a toast with the `info` type are not the same. This is different from Base UI, which shows a new toast for each `add` call unless the `id` is the same. So two `$e->toast('Saved')` in a short time show one "Saved" toast, not two. A toast with the same message as a toast that goes shows as a new toast.
 
 The element is a landmark and a live region, as the viewport of Base UI: it gets `role="region"`, `aria-label` ("Notifications", or `data-phem-toast-label-value`), `tabindex="-1"`, `aria-live="polite"`, `aria-atomic="false"` and `aria-relevant="additions text"`. An attribute that your markup gives stays. Each toast is a dialog that can have the focus: it gets `role="dialog"`, `tabindex="0"`, `aria-modal="false"`, and `aria-labelledby` and `aria-describedby` for its title and its description:
 
 ```html
-<div data-controller="phem-toast" role="region" aria-label="Notifications" tabindex="-1" aria-live="polite" aria-atomic="false" aria-relevant="additions text">
-    <div id="phem-toast-1" data-phem-toast data-type="success" role="dialog" tabindex="0" aria-modal="false" aria-describedby="phem-toast-1-description"
-         style="--toast-index: 0; --toast-swipe-movement-x: 0px; --toast-swipe-movement-y: 0px;">
+<div data-controller="phem-toast" role="region" aria-label="Notifications" tabindex="-1" aria-live="polite" aria-atomic="false" aria-relevant="additions text"
+     style="--toast-frontmost-height: 42px;">
+    <div id="phem-toast-2" data-phem-toast role="dialog" tabindex="0" aria-modal="false" aria-describedby="phem-toast-2-description"
+         style="--toast-swipe-movement-x: 0px; --toast-swipe-movement-y: 0px; --toast-index: 0; --toast-height: 42px; --toast-offset-y: 0px;">
         <div data-phem-toast-content>
-            <span data-phem-toast-description id="phem-toast-1-description">Saved</span>
+            <span data-phem-toast-description id="phem-toast-2-description">Copied</span>
         </div>
-        <button type="button" data-phem-toast-close aria-label="Close">×</button>
+        <button type="button" data-phem-toast-close aria-label="Close" aria-hidden="true">×</button>
+    </div>
+    <div id="phem-toast-1" data-phem-toast data-type="success" role="dialog" tabindex="0" aria-modal="false" aria-describedby="phem-toast-1-description"
+         style="--toast-swipe-movement-x: 0px; --toast-swipe-movement-y: 0px; --toast-index: 1; --toast-height: 62px; --toast-offset-y: 42px;">
+        <div data-phem-toast-content data-behind>
+            <span data-phem-toast-description data-type="success" id="phem-toast-1-description">Saved</span>
+        </div>
+        <button type="button" data-phem-toast-close aria-label="Close" data-type="success" aria-hidden="true">×</button>
     </div>
 </div>
 ```
 
+The first toast above is the newest: a `phem:toast` event of your JavaScript with no type, `window.dispatchEvent(new CustomEvent("phem:toast", { detail: "Copied" }))`.
+
 | Key | Action |
 |---|---|
 | F6 | While there is a toast, moves the focus to the `phem-toast` element, and expands the stack |
-| Tab | Moves the focus to the toasts and to their buttons. After the last one, gives the focus back to the element that had it before F6 |
+| Tab | Moves the focus to the toasts, from the newest to the oldest, and to their buttons. After the last one, gives the focus back to the element that had it before F6 |
 | Shift+Tab | On the `phem-toast` element, gives the focus back to the element that had it before F6 |
-| Escape | Closes the toast with the focus. The focus goes to the next toast, or else to the toast before it, or else back to the element that had it before F6 |
+| Escape | Closes the toast with the focus. The focus goes to the next (older) toast, or else to the newer toast, or else back to the element that had it before F6. This is also true after a mouse click on the toast. After a mouse click on the close button, the focus does not move |
 
 To use your own markup, put a `<template>` part in the element, with the same parts:
 
@@ -2415,7 +2425,7 @@ The detail of the browser event has the title: `{"message": "The file is in your
 
 ### Show the stack on hover
 
-The pointer or the focus of the keyboard on the `phem-toast` element expands the stack (the focus of a click on a toast does not): the element and each toast get `data-expanded`, and the time of all the toasts stops. The stack closes when the pointer and the focus go, and when its last toast goes. The state stays after the morph of an event. Each toast gets `--toast-height` (its height) and `--toast-offset-y` (the heights of the newer toasts), and the element gets `--toast-frontmost-height` (the height of the last toast). The height of a toast is the height of its content (its height with `height: auto`), so the CSS can give each toast the height of the last toast: `height: var(--toast-frontmost-height, var(--toast-height))`. With no toast, the element has no `--toast-frontmost-height`. Use them for a stack that shows only the last toast until the pointer comes:
+The pointer or the focus of the keyboard on the `phem-toast` element expands the stack (the focus of a click on a toast does not): the element and each toast get `data-expanded`, and the time of all the toasts stops. The time that remains goes on when the stack closes: the time does not start again. The time also stops while the browser window does not have the focus. The stack closes when the pointer and the focus go, and when its last toast goes. The state stays after the morph of an event. Each toast gets `--toast-height` (its height) and `--toast-offset-y` (the heights of the newer toasts), and the element gets `--toast-frontmost-height` (the height of the newest toast). The height of a toast is the height of its content (its height with `height: auto`), so the CSS can give each toast the height of the newest toast: `height: var(--toast-frontmost-height, var(--toast-height))`. With no toast, the element has no `--toast-frontmost-height`. Use them for a stack that shows only the newest toast until the pointer comes:
 
 ```css
 [data-controller~="phem-toast"] { display: block; height: var(--toast-frontmost-height); }
@@ -2432,7 +2442,7 @@ The pointer or the focus of the keyboard on the `phem-toast` element expands the
 
 ### Close a toast with a swipe
 
-A swipe of a toast to the right or down closes it. Set `data-phem-toast-swipe-direction-value` to other directions (`up`, `down`, `left` and `right`, with a space between them), or to an empty text to turn off the swipe. During the swipe, the toast gets `data-swiping`, and the distance in `--toast-swipe-movement-x` and `--toast-swipe-movement-y`. A toast with no swipe has `0px` in the two variables, so a style can use them with no fallback, as the classes of Base UI do. A move in another direction has a resistance. A swipe of 40 px closes the toast, with `data-swipe-direction`, so its `[data-ending-style]` transition can go on in that direction:
+A swipe of a toast to the right or down closes it. Set `data-phem-toast-swipe-direction-value` to other directions (`up`, `down`, `left` and `right`, with a space between them), or to an empty text to turn off the swipe. During the swipe, the toast gets `data-swiping`, `transition: none` in its `style` (so it follows the pointer with no delay), and the distance in `--toast-swipe-movement-x` and `--toast-swipe-movement-y`. A toast with no swipe has `0px` in the two variables, so a style can use them with no fallback, as the classes of Base UI do. A move in another direction has a resistance. When the value has a horizontal and a vertical direction, the swipe keeps the axis of its first move: a diagonal swipe moves on one axis only. The toast gets `data-swipe-direction` at its first move in a direction of the value. A swipe of 40 px closes the toast, and its `[data-ending-style]` transition can go on in that direction:
 
 ```css
 [data-phem-toast][data-ending-style][data-swipe-direction="right"] {
@@ -2441,7 +2451,14 @@ A swipe of a toast to the right or down closes it. Set `data-phem-toast-swipe-di
 }
 ```
 
-A shorter swipe gives the toast its place again, and its time starts again. A press on the close button, a link or a field of the toast does not start a swipe. `phem.css` moves a toast with the swipe variables. A touch that moves in a direction of the swipe does not scroll the page, and a touch that moves in another direction scrolls it.
+During a swipe to the right (a diagonal move of `+60, +50`):
+
+```html
+<div id="phem-toast-2" data-phem-toast data-swiping data-swipe-direction="right" …
+     style="--toast-swipe-movement-x: 60px; --toast-swipe-movement-y: 0px; …; transition: none;">
+```
+
+A shorter swipe removes `data-swipe-direction`, gives the toast its place again, and the time that remained goes on. A press on the close button, a link or a field of the toast does not start a swipe. `phem.css` moves a toast with the swipe variables. A touch that moves in a direction of the swipe does not scroll the page, and a touch that moves in another direction scrolls it.
 
 ## Copy text to the clipboard
 

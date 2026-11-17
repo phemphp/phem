@@ -115,18 +115,18 @@ final class ToastsTest extends TestCase
 
     public function testFromDetailReadsTheDetailAsTheController(): void
     {
-        self::assertEquals(new Toast('Saved'), Toast::fromDetail('Saved'));
+        self::assertEquals(new Toast('Saved', null), Toast::fromDetail('Saved'));
         self::assertEquals(new Toast('No stock', ToastType::Error, 0), Toast::fromDetail(['message' => 'No stock', 'type' => 'error', 'duration' => 0]));
-        // The controller shows a type that it does not know as info.
-        self::assertEquals(new Toast('Odd'), Toast::fromDetail(['message' => 'Odd', 'type' => 'danger']));
-        self::assertEquals(new Toast('42'), Toast::fromDetail(['message' => 42]));
-        self::assertEquals(new Toast('["a","b"]'), Toast::fromDetail(['message' => ['a', 'b']]));
-        self::assertEquals(new Toast('Saved', title: 'Profile'), Toast::fromDetail(['message' => 'Saved', 'title' => 'Profile']));
-        self::assertEquals(new Toast('Saved', title: 'Profile'), Toast::fromDetail(['message' => 'Saved', 'title' => ' Profile ']));
+        // A detail with no type, or with a type that the controller does not know, has no type.
+        self::assertEquals(new Toast('Odd', null), Toast::fromDetail(['message' => 'Odd', 'type' => 'danger']));
+        self::assertEquals(new Toast('42', null), Toast::fromDetail(['message' => 42]));
+        self::assertEquals(new Toast('["a","b"]', null), Toast::fromDetail(['message' => ['a', 'b']]));
+        self::assertEquals(new Toast('Saved', null, title: 'Profile'), Toast::fromDetail(['message' => 'Saved', 'title' => 'Profile']));
+        self::assertEquals(new Toast('Saved', null, title: 'Profile'), Toast::fromDetail(['message' => 'Saved', 'title' => ' Profile ']));
         // A title that is empty or not a text is no title.
-        self::assertEquals(new Toast('Saved'), Toast::fromDetail(['message' => 'Saved', 'title' => ' ']));
-        self::assertEquals(new Toast('Saved'), Toast::fromDetail(['message' => 'Saved', 'title' => true]));
-        self::assertEquals(new Toast('Saved'), Toast::fromDetail(['message' => 'Saved', 'title' => ['a']]));
+        self::assertEquals(new Toast('Saved', null), Toast::fromDetail(['message' => 'Saved', 'title' => ' ']));
+        self::assertEquals(new Toast('Saved', null), Toast::fromDetail(['message' => 'Saved', 'title' => true]));
+        self::assertEquals(new Toast('Saved', null), Toast::fromDetail(['message' => 'Saved', 'title' => ['a']]));
     }
 
     public function testFromDetailGivesNullWhenTheControllerShowsNoToast(): void
@@ -151,5 +151,12 @@ final class ToastsTest extends TestCase
         self::assertSame(['message' => 'Saved', 'type' => 'success', 'title' => 'Profile'], $titled->detail());
         self::assertEquals($titled, Toast::fromDetail($titled->detail()));
         self::assertSame('success "Profile: Saved"', (string) $titled);
+
+        // A toast with no type has no type in its detail.
+        $plain = new Toast('Saved', null);
+
+        self::assertSame(['message' => 'Saved'], $plain->detail());
+        self::assertEquals($plain, Toast::fromDetail($plain->detail()));
+        self::assertSame('"Saved"', (string) $plain);
     }
 }

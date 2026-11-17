@@ -13,7 +13,10 @@ import { scrolls } from "./phem_scroll.js"
 // the browser cancels the pointer, and the swipe stops). So the content of a drawer scrolls with
 // a touch.
 //
-//     const stop = swipe(event, ["down", "right"], { move: (movement) => …, release: (end) => …, cancel: () => … })
+// With `lockAxis`, a list with a horizontal and a vertical direction keeps the axis of the first
+// move: a diagonal swipe moves on one axis only.
+//
+//     const stop = swipe(event, ["down", "right"], { move: (movement, direction) => …, release: (end) => …, cancel: () => … })
 
 // The distance (px) before a press becomes a swipe.
 const START = 5
@@ -23,16 +26,19 @@ const WINDOW = 100
 
 const AXES = { up: ["y", -1], down: ["y", 1], left: ["x", -1], right: ["x", 1] }
 
-// Follows the swipe of the press `down`. `move({ x, y })` runs on each move after the start,
+// Follows the swipe of the press `down`. `move({ x, y }, direction)` runs on each move after the
+// start (`direction` is the direction of the move, also when it is not in the list),
 // `release({ direction, distance, speed, movement })` on the release of a swipe, `cancel()` when
 // the browser cancels the pointer during a swipe, and `end()` first at the end of each press.
-// Returns the function that stops the swipe.
-export function swipe(down, directions, { move, release, cancel = () => {}, end = () => {} }) {
+// `lockAxis` keeps the axis of the first move when the list has a direction on each axis: the
+// movement on the other axis is 0. Returns the function that stops the swipe.
+export function swipe(down, directions, { move, release, cancel = () => {}, end = () => {}, lockAxis = false }) {
   const swiping = new AbortController()
   const options = { signal: swiping.signal }
   const samples = [{ time: down.timeStamp, x: 0, y: 0 }]
   let movement = { x: 0, y: 0 }
   let started = false
+  let axis = null
 
   document.addEventListener("pointermove", (event) => {
     if (event.pointerId !== down.pointerId) return
@@ -42,9 +48,18 @@ export function swipe(down, directions, { move, release, cancel = () => {}, end 
     movement = resisted(delta, directions)
     if (!started && Math.hypot(movement.x, movement.y) < START) return
 
+    // The first move decides the axis.
+    if (!started && lockAxis && hasAxis(directions, "x") && hasAxis(directions, "y")) {
+      axis = Math.abs(delta.x) > Math.abs(delta.y) ? "x" : "y"
+    }
+
     started = true
     event.preventDefault()
-    move(movement)
+
+    if (axis === "x") movement = { x: movement.x, y: 0 }
+    else if (axis === "y") movement = { x: 0, y: movement.y }
+
+    move(movement, axis ? along(axis, movement[axis]) : dominant(movement))
   }, options)
 
   // The first move of a touch decides: a swipe, or a scroll of the browser.
@@ -96,6 +111,19 @@ function dominant({ x, y }) {
   if (Math.abs(x) > Math.abs(y)) return x > 0 ? "right" : "left"
 
   return y > 0 ? "down" : "up"
+}
+
+// The direction of a move on one axis.
+function along(axis, d) {
+  if (d === 0) return null
+  if (axis === "x") return d > 0 ? "right" : "left"
+
+  return d > 0 ? "down" : "up"
+}
+
+// The list has a direction on the axis.
+function hasAxis(directions, axis) {
+  return directions.some((name) => AXES[name]?.[0] === axis)
 }
 
 // The full distance in a direction of the list, and a resistance in the other directions.

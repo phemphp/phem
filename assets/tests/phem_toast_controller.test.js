@@ -72,7 +72,7 @@ describe("phem-toast", () => {
     respond(page(), {}, { events: [{ name: "toast", detail: "Second" }] })
     await save()
 
-    expect(messages()).toEqual(["First", "Second"])
+    expect(messages()).toEqual(["Second", "First"])
     expect(document.getElementById("toasts").getAttribute("aria-live")).toBe("polite")
   })
 
@@ -89,10 +89,10 @@ describe("phem-toast", () => {
     toast({ message: "The file is in your downloads.", title: "Export <b>complete</b>" })
     toast("Saved")
 
-    const [first, second] = toasts().map((el) => el.querySelector("[data-phem-toast-title]"))
+    const [second, first] = toasts().map((el) => el.querySelector("[data-phem-toast-title]"))
     expect(first.textContent).toBe("Export <b>complete</b>")
     expect(second).toBeNull()
-    expect(messages()).toEqual(["The file is in your downloads.", "Saved"])
+    expect(messages()).toEqual(["Saved", "The file is in your downloads."])
   })
 
   it("shows no title for a title that is not a text or a number", async () => {
@@ -102,7 +102,7 @@ describe("phem-toast", () => {
     toast({ message: "Three", title: "  " })
     toast({ message: "Four", title: 4 })
 
-    expect(toasts().map((el) => el.querySelector("[data-phem-toast-title]")?.textContent ?? null)).toEqual([null, null, null, "4"])
+    expect(toasts().map((el) => el.querySelector("[data-phem-toast-title]")?.textContent ?? null)).toEqual(["4", null, null, null])
   })
 
   it("does not show a toast with a title again when the template has no title part", async () => {
@@ -133,22 +133,22 @@ describe("phem-toast", () => {
     toast("Two")
     const contents = () => toasts().map((el) => el.querySelector("[data-phem-toast-content]"))
 
-    expect(contents().map((el) => el.hasAttribute("data-behind"))).toEqual([true, false])
+    expect(contents().map((el) => el.hasAttribute("data-behind"))).toEqual([false, true])
     expect(contents().map((el) => el.hasAttribute("data-expanded"))).toEqual([false, false])
 
     document.getElementById("toasts").dispatchEvent(new MouseEvent("mouseover", { bubbles: true }))
     expect(contents().map((el) => el.hasAttribute("data-expanded"))).toEqual([true, true])
 
-    toasts()[1].querySelector("[data-phem-toast-close]").click()
+    toasts()[0].querySelector("[data-phem-toast-close]").click()
     expect(contents()[0].hasAttribute("data-behind")).toBe(false)
   })
 
-  it("shows a string detail as the message, and the info type by default", async () => {
+  it("shows a string detail as the message, and no type by default", async () => {
     await mount(page())
     toast("Hello")
 
     expect(messages()).toEqual(["Hello"])
-    expect(toasts()[0].getAttribute("data-type")).toBe("info")
+    expect(toasts()[0].hasAttribute("data-type")).toBe(false)
   })
 
   it("shows the message as text, not HTML", async () => {
@@ -213,7 +213,7 @@ describe("phem-toast", () => {
     toast({ message: "Third", duration: 0 })
 
     vi.advanceTimersByTime(1000)
-    expect(messages()).toEqual(["Second", "Third"])
+    expect(messages()).toEqual(["Third", "Second"])
 
     vi.advanceTimersByTime(2000)
     expect(messages()).toEqual(["Third"])
@@ -229,7 +229,7 @@ describe("phem-toast", () => {
 
   it("stops the time while the pointer or the focus is on the toast", async () => {
     await mount(page(`data-phem-toast-duration-value="1000"`))
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] })
     toast("Hello")
     const el = toasts()[0]
     const close = el.querySelector("[data-phem-toast-close]")
@@ -277,7 +277,7 @@ describe("phem-toast", () => {
     // A page from the Turbo cache: a copy of the elements, with no listeners.
     document.body.innerHTML = document.body.innerHTML
     await vi.advanceTimersByTimeAsync(0)
-    expect(messages()).toEqual(["First", "Second"])
+    expect(messages()).toEqual(["Second", "First"])
 
     await vi.advanceTimersByTimeAsync(1000)
     expect(messages()).toEqual(["First"])
@@ -309,12 +309,12 @@ describe("phem-toast", () => {
     expect(messages()).toEqual(["Saved", "Saved"])
   })
 
-  it("uses the info type and the default duration for a detail that is not valid", async () => {
+  it("uses no type and the default duration for a detail that is not valid", async () => {
     await mount(page(`data-phem-toast-duration-value="1000"`))
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
     toast({ message: "Hello", type: "info phem-error", duration: "long" })
 
-    expect(toasts()[0].getAttribute("data-type")).toBe("info")
+    expect(toasts()[0].hasAttribute("data-type")).toBe(false)
     vi.advanceTimersByTime(999)
     expect(toasts()).toHaveLength(1)
     vi.advanceTimersByTime(1)
@@ -355,7 +355,7 @@ describe("phem-toast", () => {
     toast("Second")
     toast("Third")
 
-    const [first, second, third] = toasts()
+    const [third, second, first] = toasts()
     expect(third.style.getPropertyValue("--toast-index")).toBe("0")
     expect(second.style.getPropertyValue("--toast-index")).toBe("1")
     expect(first.style.getPropertyValue("--toast-index")).toBe("2")
@@ -363,8 +363,8 @@ describe("phem-toast", () => {
     expect(first.hasAttribute("inert")).toBe(true)
     expect(second.hasAttribute("data-limited")).toBe(false)
     expect(second.hasAttribute("inert")).toBe(false)
-    expect(third.querySelector("[data-phem-toast-description]").getAttribute("data-type")).toBe("info")
-    expect(third.querySelector("[data-phem-toast-close]").getAttribute("data-type")).toBe("info")
+    expect(third.querySelector("[data-phem-toast-description]").hasAttribute("data-type")).toBe(false)
+    expect(third.querySelector("[data-phem-toast-close]").hasAttribute("data-type")).toBe(false)
 
     third.querySelector("[data-phem-toast-close]").click()
     expect(first.hasAttribute("data-limited")).toBe(false)
@@ -380,8 +380,8 @@ describe("phem-toast", () => {
     toast("Saved")
 
     expect(toasts()).toHaveLength(2)
-    expect(toasts()[1]).not.toBe(old)
-    expect(toasts()[1].hasAttribute("data-ending-style")).toBe(false)
+    expect(toasts()[0]).not.toBe(old)
+    expect(toasts()[0].hasAttribute("data-ending-style")).toBe(false)
   })
 
   it("measures the height of the content of a toast, and removes the height of the last toast with no toast", async () => {
@@ -437,7 +437,7 @@ describe("phem-toast", () => {
     toast("First")
     toast("Second")
     const root = document.getElementById("toasts")
-    const [first, second] = toasts()
+    const [second, first] = toasts()
 
     expect(first.style.getPropertyValue("--toast-offset-y")).toBe("0px")
     expect(first.style.getPropertyValue("--toast-height")).toBe("0px")
@@ -449,9 +449,9 @@ describe("phem-toast", () => {
 
     // A new toast of an expanded stack waits too.
     toast("Third")
-    expect(toasts()[2].hasAttribute("data-expanded")).toBe(true)
+    expect(toasts()[0].hasAttribute("data-expanded")).toBe(true)
     vi.advanceTimersByTime(5000)
-    expect(messages()).toEqual(["First", "Second", "Third"])
+    expect(messages()).toEqual(["Third", "Second", "First"])
 
     second.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }))
     expect(root.hasAttribute("data-expanded")).toBe(false)
@@ -620,7 +620,7 @@ describe("phem-toast: the landmark and the keyboard", () => {
     expect(document.getElementById(el.getAttribute("aria-describedby")).textContent).toBe("Saved")
 
     toast("No title")
-    expect(toasts()[1].hasAttribute("aria-labelledby")).toBe(false)
+    expect(toasts()[0].hasAttribute("aria-labelledby")).toBe(false)
   })
 
   it("gives each toast the swipe variables with 0px", async () => {
@@ -682,16 +682,380 @@ describe("phem-toast: the landmark and the keyboard", () => {
     toast("First")
     toast("Second")
     key(document.getElementById("save"), "F6")
-    const [first, second] = toasts()
+    const [second, first] = toasts()
 
-    first.focus()
-    expect(key(first, "Escape").defaultPrevented).toBe(true)
-    expect(messages()).toEqual(["Second"])
-    expect(document.activeElement).toBe(second)
+    // The newest toast: the focus goes to the next, older toast.
+    tabTo(second)
+    expect(key(second, "Escape").defaultPrevented).toBe(true)
+    expect(messages()).toEqual(["First"])
+    expect(document.activeElement).toBe(first)
 
     // The last toast: the focus goes back to the element that had it before F6.
-    key(second, "Escape")
+    key(first, "Escape")
     expect(toasts()).toEqual([])
     expect(document.activeElement.id).toBe("save")
+  })
+})
+
+describe("phem-toast: the time, the swipe, the order and the attributes, as in Base UI", () => {
+  const root = () => document.getElementById("toasts")
+
+  function pointer(type, x, y, target = document) {
+    target.dispatchEvent(new PointerEvent(type, { bubbles: true, isPrimary: true, button: 0, pointerId: 1, clientX: x, clientY: y }))
+  }
+
+  function hover() {
+    root().dispatchEvent(new MouseEvent("mouseover", { bubbles: true }))
+  }
+
+  function leave() {
+    root().dispatchEvent(new MouseEvent("mouseout", { bubbles: true }))
+  }
+
+  it("keeps the time that remains after a hover, and does not start the full time again", async () => {
+    await mount(page(`data-phem-toast-duration-value="1000"`))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date", "performance"] })
+    toast("Hello")
+
+    vi.advanceTimersByTime(600)
+    hover()
+    vi.advanceTimersByTime(5000)
+    expect(toasts()).toHaveLength(1)
+
+    leave()
+    vi.advanceTimersByTime(399)
+    expect(toasts()[0].hasAttribute("data-ending-style") || !toasts()[0].isConnected).toBe(false)
+
+    vi.advanceTimersByTime(1)
+    expect(toasts().every((el) => el.hasAttribute("data-ending-style"))).toBe(true)
+  })
+
+  it("stops the time when the window loses the focus, and starts it again when it gets the focus", async () => {
+    await mount(page(`data-phem-toast-duration-value="1000"`))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date", "performance"] })
+    toast("Hello")
+
+    vi.advanceTimersByTime(400)
+    window.dispatchEvent(new Event("blur"))
+    vi.advanceTimersByTime(5000)
+    expect(toasts()).toHaveLength(1)
+    expect(toasts()[0].hasAttribute("data-ending-style")).toBe(false)
+
+    window.dispatchEvent(new Event("focus"))
+    vi.advanceTimersByTime(599)
+    expect(toasts()[0].hasAttribute("data-ending-style")).toBe(false)
+
+    vi.advanceTimersByTime(1)
+    expect(toasts().every((el) => el.hasAttribute("data-ending-style"))).toBe(true)
+  })
+
+  it("follows the pointer with no transition during a swipe", async () => {
+    await mount(page())
+    toast("Hello")
+    const el = toasts()[0]
+
+    pointer("pointerdown", 100, 100, el)
+    pointer("pointermove", 120, 100)
+    expect(el.style.getPropertyValue("transition")).toBe("none")
+
+    pointer("pointerup", 120, 100)
+    expect(el.style.getPropertyValue("transition")).toBe("")
+  })
+
+  it("moves a diagonal swipe on one axis only", async () => {
+    await mount(page())
+    toast("Hello")
+    const el = toasts()[0]
+
+    pointer("pointerdown", 100, 100, el)
+    pointer("pointermove", 120, 108)
+    pointer("pointermove", 125, 130)
+    expect(el.style.getPropertyValue("--toast-swipe-movement-x")).toBe("25px")
+    expect(el.style.getPropertyValue("--toast-swipe-movement-y")).toBe("0px")
+
+    pointer("pointerup", 125, 130)
+  })
+
+  it("gives the swipe direction at the first move in a direction of the swipe", async () => {
+    await mount(page())
+    toast("Hello")
+    const el = toasts()[0]
+
+    pointer("pointerdown", 100, 100, el)
+    pointer("pointermove", 120, 100)
+    expect(el.getAttribute("data-swipe-direction")).toBe("right")
+
+    pointer("pointerup", 120, 100)
+  })
+
+  it("removes the swipe direction after a short swipe", async () => {
+    await mount(page())
+    toast("Hello")
+    const el = toasts()[0]
+
+    pointer("pointerdown", 100, 100, el)
+    pointer("pointermove", 120, 100)
+    pointer("pointerup", 120, 100)
+
+    expect(el.hasAttribute("data-swipe-direction")).toBe(false)
+    expect(el.style.getPropertyValue("transition")).toBe("")
+  })
+
+  it("puts a new toast first in the DOM, so Tab goes to the newest toast first", async () => {
+    await mount(page())
+    toast("First")
+    toast("Second")
+
+    expect(messages()).toEqual(["Second", "First"])
+    expect(toasts().map((el) => el.style.getPropertyValue("--toast-index"))).toEqual(["0", "1"])
+  })
+
+  it("does not move the focus after a mouse click on the close button", async () => {
+    await mount(page())
+    toast("First")
+    toast("Second")
+    const [a, b] = toasts()
+    const close = a.querySelector("[data-phem-toast-close]")
+    const matches = close.matches.bind(close)
+    close.matches = (selector) => selector !== ":focus-visible" && matches(selector)
+    close.focus()
+
+    close.click()
+
+    expect(document.activeElement).not.toBe(b)
+    expect(document.activeElement).not.toBe(a)
+  })
+
+  it("hides the close button from a screen reader while the stack is not expanded", async () => {
+    await mount(page())
+    toast("Hello")
+    const close = toasts()[0].querySelector("[data-phem-toast-close]")
+
+    expect(close.getAttribute("aria-hidden")).toBe("true")
+
+    hover()
+    expect(close.hasAttribute("aria-hidden")).toBe(false)
+  })
+
+  it("gives no data-type to a toast with no type, and does not show it again", async () => {
+    await mount(page())
+    toast("Saved")
+    toast("Saved")
+
+    expect(toasts()).toHaveLength(1)
+    expect(toasts()[0].hasAttribute("data-type")).toBe(false)
+    expect(toasts()[0].querySelector("[data-phem-toast-description]").hasAttribute("data-type")).toBe(false)
+
+    toast({ message: "Saved", type: "success" })
+    expect(toasts()).toHaveLength(2)
+  })
+
+  // The toast goes: it is removed, or its animation of data-ending-style runs.
+  const gone = (el) => !el.isConnected || el.hasAttribute("data-ending-style")
+
+  function fakeTime() {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date", "performance"] })
+  }
+
+  it("keeps the time that remains after a short swipe", async () => {
+    await mount(page(`data-phem-toast-duration-value="1000"`))
+    fakeTime()
+    toast("Hello")
+    const el = toasts()[0]
+
+    vi.advanceTimersByTime(600)
+    pointer("pointerdown", 100, 100, el)
+    pointer("pointermove", 120, 100)
+    vi.advanceTimersByTime(5000)
+    pointer("pointerup", 120, 100)
+
+    vi.advanceTimersByTime(399)
+    expect(gone(el)).toBe(false)
+
+    vi.advanceTimersByTime(1)
+    expect(gone(el)).toBe(true)
+  })
+
+  it("gives the toast its place, its transition and the time that remains when the browser cancels the swipe", async () => {
+    await mount(page(`data-phem-toast-duration-value="1000"`))
+    fakeTime()
+    toast("Hello")
+    const el = toasts()[0]
+
+    vi.advanceTimersByTime(600)
+    pointer("pointerdown", 100, 100, el)
+    pointer("pointermove", 120, 100)
+    pointer("pointercancel", 120, 100)
+
+    expect(el.hasAttribute("data-swiping")).toBe(false)
+    expect(el.hasAttribute("data-swipe-direction")).toBe(false)
+    expect(el.style.getPropertyValue("--toast-swipe-movement-x")).toBe("0px")
+    expect(el.style.getPropertyValue("transition")).toBe("")
+
+    vi.advanceTimersByTime(399)
+    expect(gone(el)).toBe(false)
+
+    vi.advanceTimersByTime(1)
+    expect(gone(el)).toBe(true)
+  })
+
+  it("gives the toast its own inline transition again after a swipe", async () => {
+    await mount(`<div id="toasts" data-controller="phem-toast">
+        <template data-phem-toast-target="template"><div style="transition: transform 200ms"><span data-phem-toast-description></span></div></template>
+      </div>`)
+    toast("Hello")
+    const el = toasts()[0]
+
+    pointer("pointerdown", 100, 100, el)
+    pointer("pointermove", 120, 100)
+    expect(el.style.getPropertyValue("transition")).toBe("none")
+
+    pointer("pointerup", 120, 100)
+    expect(el.style.getPropertyValue("transition")).toBe("transform 200ms")
+  })
+
+  it("gives no swipe direction to a move in a direction that is not in the swipe-direction value", async () => {
+    await mount(page())
+    toast("Hello")
+    const el = toasts()[0]
+
+    pointer("pointerdown", 100, 100, el)
+    pointer("pointermove", 20, 100)
+    expect(el.hasAttribute("data-swiping")).toBe(true)
+    expect(el.hasAttribute("data-swipe-direction")).toBe(false)
+
+    pointer("pointerup", 20, 100)
+    expect(el.isConnected).toBe(true)
+  })
+
+  it("hides the close button again when the stack closes or the button loses the focus", async () => {
+    await mount(page())
+    toast("First")
+    const close = () => toasts().map((el) => el.querySelector("[data-phem-toast-close]"))
+
+    hover()
+    // A new toast in an expanded stack: its close button is not hidden.
+    toast("Second")
+    expect(close().map((el) => el.hasAttribute("aria-hidden"))).toEqual([false, false])
+
+    leave()
+    expect(close().map((el) => el.getAttribute("aria-hidden"))).toEqual(["true", "true"])
+
+    // A mouse click gives the focus with no visible focus: the stack does not expand.
+    const [button] = close()
+    button.focus()
+    expect(root().hasAttribute("data-expanded")).toBe(false)
+    expect(button.hasAttribute("aria-hidden")).toBe(false)
+
+    button.blur()
+    expect(button.getAttribute("aria-hidden")).toBe("true")
+  })
+
+  it("keeps the time stopped when the window gets the focus while the stack is expanded", async () => {
+    await mount(page(`data-phem-toast-duration-value="1000"`))
+    fakeTime()
+    toast("Hello")
+    const el = toasts()[0]
+
+    vi.advanceTimersByTime(600)
+    hover()
+    window.dispatchEvent(new Event("blur"))
+    window.dispatchEvent(new Event("focus"))
+    vi.advanceTimersByTime(5000)
+    expect(gone(el)).toBe(false)
+
+    leave()
+    vi.advanceTimersByTime(399)
+    expect(gone(el)).toBe(false)
+
+    vi.advanceTimersByTime(1)
+    expect(gone(el)).toBe(true)
+  })
+
+  it("does not start the time of a new toast while the window has no focus", async () => {
+    await mount(page(`data-phem-toast-duration-value="1000"`))
+    fakeTime()
+    window.dispatchEvent(new Event("blur"))
+    toast("Hello")
+    const el = toasts()[0]
+
+    vi.advanceTimersByTime(5000)
+    expect(gone(el)).toBe(false)
+
+    window.dispatchEvent(new Event("focus"))
+    vi.advanceTimersByTime(1000)
+    expect(gone(el)).toBe(true)
+  })
+
+  it("does not stop the time for the blur of an element of the page", async () => {
+    await mount(page(`data-phem-toast-duration-value="1000"`))
+    fakeTime()
+    toast("Hello")
+    const el = toasts()[0]
+
+    document.dispatchEvent(new Event("blur", { bubbles: true }))
+    vi.advanceTimersByTime(1000)
+    expect(gone(el)).toBe(true)
+  })
+
+  it("keeps the time that remains after a focus of the keyboard", async () => {
+    await mount(page(`data-phem-toast-duration-value="1000"`))
+    fakeTime()
+    toast("Hello")
+    const el = toasts()[0]
+
+    vi.advanceTimersByTime(600)
+    tabTo(el)
+    vi.advanceTimersByTime(5000)
+    expect(gone(el)).toBe(false)
+
+    el.blur()
+    vi.advanceTimersByTime(399)
+    expect(gone(el)).toBe(false)
+
+    vi.advanceTimersByTime(1)
+    expect(gone(el)).toBe(true)
+  })
+
+  it("starts the full time again for the same toast while the time is stopped", async () => {
+    await mount(page(`data-phem-toast-duration-value="1000"`))
+    fakeTime()
+    toast("Saved")
+    const el = toasts()[0]
+
+    vi.advanceTimersByTime(600)
+    hover()
+    toast("Saved")
+    expect(toasts()).toHaveLength(1)
+
+    leave()
+    vi.advanceTimersByTime(999)
+    expect(gone(el)).toBe(false)
+
+    vi.advanceTimersByTime(1)
+    expect(gone(el)).toBe(true)
+  })
+
+  it("shows a toast with no type and a toast with the info type as two toasts", async () => {
+    await mount(page())
+    toast("Saved")
+    toast({ message: "Saved", type: "info" })
+
+    expect(toasts()).toHaveLength(2)
+    expect(toasts().map((el) => el.getAttribute("data-type"))).toEqual(["info", null])
+  })
+
+  it("moves the focus on Escape also after a mouse click on the toast", async () => {
+    await mount(page())
+    toast("First")
+    toast("Second")
+    const [second, first] = toasts()
+
+    // A mouse click gives the focus with no visible focus.
+    second.focus()
+    second.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }))
+
+    expect(messages()).toEqual(["First"])
+    expect(document.activeElement).toBe(first)
   })
 })

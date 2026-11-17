@@ -1,9 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
 import { isFocusVisible, tabbables } from "./phem_focus.js"
 import { onControl, swipe } from "./phem_swipe.js"
+import { PausableTimers } from "./phem_timers.js"
 import { hide, show } from "./phem_transition.js"
 
-// The types of a toast. Another type is `info`.
+// The types of a toast. A toast with another type, or with no type, has no type.
 const TYPES = ["info", "success", "warning", "error"]
 
 // The default message of a failed event, as in the phem controller.
@@ -40,7 +41,8 @@ const OWNED = "data-phem-toast-owned"
 //
 // The `show` action shows the detail of another event: `data-action="saved->phem-toast#show"`.
 // A toast with the same type, title and message as a toast on the screen does not show again: the
-// toast on the screen starts its time again.
+// toast on the screen starts its full time again. A toast with no type and a toast with the `info`
+// type are not the same.
 //
 // A toast goes away after the `duration` value (in ms), or with its close button. A duration of
 // `0` keeps it until the close button. The element is a live region (`aria-live="polite"`), so a
@@ -51,22 +53,29 @@ const OWNED = "data-phem-toast-owned"
 // While there is a toast, the F6 key moves the focus to the element. Tab then goes to the toasts:
 // each toast is a dialog that can have the focus (`role="dialog"`, `tabindex="0"`,
 // `aria-modal="false"`, and `aria-labelledby` and `aria-describedby` for its title and its
-// description). Escape closes the toast with the focus: the focus goes to the next toast, or else
-// to the toast before it, or else back to the element that had it before F6. Shift+Tab on the
-// element, and Tab after the last toast, also give the focus back to that element.
+// description). The newest toast is first in the DOM, as in Base UI, so Tab goes to the newest
+// toast first. Escape closes the toast with the focus: the focus goes to the next (older) toast,
+// or else to the newer toast, or else back to the element that had it before F6. After a mouse
+// click, the focus does not move. Shift+Tab on the element, and Tab after the last toast, also
+// give the focus back to that element.
 //
-// The pointer or the focus of the keyboard on the element expands the stack: the element and the toasts get
-// `data-expanded`, and the time of all the toasts stops. Each toast gets `--toast-height` (the
-// height of its content) and `--toast-offset-y` (the heights of the newer toasts), and the element gets
-// `--toast-frontmost-height` (the height of the last toast), for a stack that shows only the last
-// toast until the pointer comes. The stack closes when the pointer and the focus go, and when its
-// last toast goes. The morph of the element does not remove its state.
+// The pointer or the focus of the keyboard on the element expands the stack: the element and the
+// toasts get `data-expanded`, and the time of all the toasts stops. The time also stops while the
+// browser window does not have the focus. The time that remains goes on after: the full time does
+// not start again. Each toast gets `--toast-height` (the height of its content) and
+// `--toast-offset-y` (the heights of the newer toasts), and the element gets
+// `--toast-frontmost-height` (the height of the newest toast), for a stack that shows only the
+// newest toast until the pointer comes. The stack closes when the pointer and the focus go, and
+// when its last toast goes. The morph of the element does not remove its state.
 //
 // A swipe of a toast in a direction of the `swipeDirection` value ("down right" by default; also
-// `up` and `left`) closes it. During the swipe, the toast gets `data-swiping`, and the distance in
-// `--toast-swipe-movement-x` and `--toast-swipe-movement-y` (`0px` with no swipe). A swipe of 40 px closes the toast,
-// with `data-swipe-direction`: its `[data-ending-style]` transition can go on in that direction.
-// A shorter swipe gives the toast its place again. An empty value turns off the swipe.
+// `up` and `left`) closes it. During the swipe, the toast gets `data-swiping`, `transition: none`
+// in its `style` (it follows the pointer with no delay), and the distance in
+// `--toast-swipe-movement-x` and `--toast-swipe-movement-y` (`0px` with no swipe). The swipe keeps
+// the axis of its first move. The toast gets `data-swipe-direction` at its first move in a
+// direction of the value. A swipe of 40 px closes the toast: its `[data-ending-style]` transition
+// can go on in that direction. A shorter swipe removes `data-swipe-direction`, gives the toast its
+// place again, and the time that remained goes on. An empty value turns off the swipe.
 //
 // Each toast has these parts, as Base UI: the root (`data-phem-toast`), the title
 // (`[data-phem-toast-title]`), the description (`[data-phem-toast-description]`, the message) and
@@ -75,11 +84,13 @@ const OWNED = "data-phem-toast-owned"
 // the app, with these parts; else the controller makes them. A template can also have a content
 // part (`[data-phem-toast-content]`, around the text and the button): it gets `data-behind` when a
 // newer toast is in front of its toast, and `data-expanded` with the stack, so a stack can hide
-// the text of the toasts behind the last one. The root gets `data-type` (the type),
-// `--toast-index` (0 for the last toast), and `data-limited` and `inert` when more than the `limit`
-// value of newer toasts are on the screen. The title, the description and the close button also
-// get `data-type`. See phem_transition.js for the animations: a toast that goes
-// stays until the end of its `[data-ending-style]` transition.
+// the text of the toasts behind the newest one. The root gets `data-type` (the type; a toast with
+// no type has no `data-type`), `--toast-index` (0 for the newest toast), and `data-limited` and
+// `inert` when more than the `limit` value of newer toasts are on the screen. The title, the
+// description and the close button also get `data-type`. The close button gets
+// `aria-hidden="true"` while the stack is not expanded and the button has no focus. See
+// phem_transition.js for the animations: a toast that goes stays until the end of its
+// `[data-ending-style]` transition.
 //
 // The toasts and their durations are in the DOM, so a toast that the controller gets again (after a
 // move of the element, or in a page from the Turbo cache) has its time and its close button.
@@ -96,8 +107,11 @@ export default class PhemToastController extends Controller {
   }
 
   connect() {
-    // The timer of each toast.
-    this.timers = new Map()
+    // The timer of each toast, as in Base UI.
+    this.timers = new PausableTimers((el) => this.#remove(el))
+
+    // The window has the focus until its first blur, as in Base UI.
+    this.windowFocused = true
 
     // The live region and the landmark exist before the first toast. The controller adds the
     // attributes that the server render does not have, with a mark, and the morph does not
@@ -152,9 +166,13 @@ export default class PhemToastController extends Controller {
     this.element.addEventListener("focusin", this.onOver, options)
     this.element.addEventListener("mouseout", this.onOut, options)
     this.element.addEventListener("focusout", this.onOut, options)
+    this.element.addEventListener("focusin", this.onCloseFocus, options)
+    this.element.addEventListener("focusout", this.onCloseFocus, options)
     this.element.addEventListener("pointerdown", this.onPointerDown, options)
     this.element.addEventListener("keydown", this.onKeydown, options)
     window.addEventListener("keydown", this.onWindowKeydown, options)
+    window.addEventListener("blur", this.onWindowBlur, options)
+    window.addEventListener("focus", this.onWindowFocus, options)
 
     window.addEventListener("phem:toast", this.show)
     window.addEventListener("phem:error", this.onError)
@@ -177,7 +195,6 @@ export default class PhemToastController extends Controller {
     window.removeEventListener("phem:error", this.onError)
     window.removeEventListener("phem:rate-limited", this.onRateLimited)
 
-    for (const timer of this.timers.values()) clearTimeout(timer)
     this.timers.clear()
   }
 
@@ -187,7 +204,7 @@ export default class PhemToastController extends Controller {
     if (detail.message === undefined || detail.message === null || detail.message === "") return
     if (!this.#take(event)) return
 
-    const type = TYPES.includes(detail.type) ? detail.type : "info"
+    const type = TYPES.includes(detail.type) ? detail.type : ""
     const duration = Number(detail.duration ?? NaN)
     // A title is a text or a number, as Phem\Toast reads it. Another value is no title.
     const title = typeof detail.title === "string" || typeof detail.title === "number" ? String(detail.title).trim() : ""
@@ -229,6 +246,30 @@ export default class PhemToastController extends Controller {
     if (!held) this.#expand(false)
   }
 
+  // A focus that comes to a close button, or goes from it, shows the button to a screen reader, or
+  // hides it again.
+  onCloseFocus = (event) => {
+    const close = event.target.closest?.("[data-phem-toast-close]")
+    const el = close ? this.#toastOf(close) : null
+    if (el) this.#renderClose(el, event.type === "focusin")
+  }
+
+  // The window that loses the focus stops the time, as the viewport of Base UI. The blur and the
+  // focus of an element of the page do not count.
+  onWindowBlur = (event) => {
+    if (event.target instanceof Node) return
+
+    this.windowFocused = false
+    this.#pause()
+  }
+
+  onWindowFocus = (event) => {
+    if (event.target instanceof Node) return
+
+    this.windowFocused = true
+    this.#resume()
+  }
+
   // F6 moves the focus to the element while it has a toast, as the viewport of Base UI.
   onWindowKeydown = (event) => {
     if (event.key !== "F6" || event.target === this.element || this.#toasts().length === 0) return
@@ -253,7 +294,7 @@ export default class PhemToastController extends Controller {
       if (!el) return
 
       event.preventDefault()
-      this.#remove(el)
+      this.#remove(el, { keyboard: true })
 
       return
     }
@@ -276,16 +317,34 @@ export default class PhemToastController extends Controller {
     const directions = this.swipeDirectionValue.split(/\s+/).filter(Boolean)
     if (!el || directions.length === 0 || el.hasAttribute("data-ending-style") || onControl(el, event.target)) return
 
+    // The inline transition of the toast before the swipe: the toast follows the pointer with no
+    // transition, and gets it again at the end.
+    let before = null
+
     this.swiping = swipe(event, directions, {
+      lockAxis: true,
       end: () => {
         this.swiping = null
         el.removeAttribute("data-swiping")
+
+        if (before === null) return
+
+        if (before === "") el.style.removeProperty("transition")
+        else el.style.setProperty("transition", before)
+
+        before = null
       },
-      move: (movement) => {
+      move: (movement, direction) => {
+        if (before === null) {
+          before = el.style.getPropertyValue("transition")
+          el.style.setProperty("transition", "none")
+        }
+
         el.setAttribute("data-swiping", "")
         el.style.setProperty("--toast-swipe-movement-x", `${movement.x}px`)
         el.style.setProperty("--toast-swipe-movement-y", `${movement.y}px`)
-        clearTimeout(this.timers.get(el))
+        this.#pause([el])
+        if (!el.hasAttribute("data-swipe-direction") && directions.includes(direction)) el.setAttribute("data-swipe-direction", direction)
       },
       release: ({ direction, distance }) => {
         if (distance >= SWIPE) {
@@ -296,11 +355,11 @@ export default class PhemToastController extends Controller {
         }
 
         this.#unswipe(el)
-        if (!this.expanded) this.#start(el)
+        this.#resume([el])
       },
       cancel: () => {
         this.#unswipe(el)
-        if (!this.expanded) this.#start(el)
+        this.#resume([el])
       },
     })
   }
@@ -326,10 +385,10 @@ export default class PhemToastController extends Controller {
   // The message and the title are text, not HTML.
   #add(message, type, duration, title = "") {
     // A toast that goes away does not count: it is removed at the end of its animation.
-    const same = this.#toasts().find((el) => !el.hasAttribute("data-ending-style") && el.getAttribute("data-type") === type && this.#message(el) === message && this.#title(el) === title)
+    const same = this.#toasts().find((el) => !el.hasAttribute("data-ending-style") && (el.getAttribute("data-type") ?? "") === type && this.#message(el) === message && this.#title(el) === title)
     if (same) {
       same.dataset.phemToastDuration = String(duration)
-      if (!this.expanded) this.#start(same)
+      this.#schedule(same)
 
       return
     }
@@ -337,7 +396,7 @@ export default class PhemToastController extends Controller {
     const el = this.#make()
     el.id = `phem-toast-${++count}`
     el.setAttribute("data-phem-toast", "")
-    el.setAttribute("data-type", type)
+    if (type) el.setAttribute("data-type", type)
     el.dataset.phemToastDuration = String(duration)
     el.hidden = true
     this.#unswipe(el)
@@ -355,7 +414,9 @@ export default class PhemToastController extends Controller {
     }
 
     // Each part has the type of its toast, as the root.
-    for (const part of el.querySelectorAll("[data-phem-toast-title], [data-phem-toast-description], [data-phem-toast-close]")) part.setAttribute("data-type", type)
+    if (type) {
+      for (const part of el.querySelectorAll("[data-phem-toast-title], [data-phem-toast-description], [data-phem-toast-close]")) part.setAttribute("data-type", type)
+    }
 
     // The title is also on the root: a template with no title part does not show it.
     el.dataset.phemToastTitle = title
@@ -368,11 +429,15 @@ export default class PhemToastController extends Controller {
       el.setAttribute("aria-labelledby", heading.id)
     }
 
-    this.element.append(el)
+    // The newest toast is first, as in Base UI. Another child of the element stays in its place.
+    const first = this.#toasts()[0]
+    if (first) first.before(el)
+    else this.element.append(el)
+
     show(el)
     this.#stack()
     this.#renderExpanded(el)
-    if (!this.expanded) this.#start(el)
+    this.#schedule(el)
   }
 
   // A copy of the root of the template, or the default parts.
@@ -415,12 +480,22 @@ export default class PhemToastController extends Controller {
   #renderExpanded(el) {
     el.toggleAttribute("data-expanded", this.expanded)
     el.querySelector("[data-phem-toast-content]")?.toggleAttribute("data-expanded", this.expanded)
+    this.#renderClose(el)
   }
 
-  // The position of each toast in the stack: 0 for the last toast, and the heights of the newer
-  // toasts. The content part of a toast behind the last one gets `data-behind`.
+  // The close button is hidden from a screen reader while the stack is not expanded and the
+  // button has no focus, as in Base UI.
+  #renderClose(el, focused = false) {
+    for (const close of el.querySelectorAll("[data-phem-toast-close]")) {
+      if (!this.expanded && !focused && !close.contains(document.activeElement)) close.setAttribute("aria-hidden", "true")
+      else close.removeAttribute("aria-hidden")
+    }
+  }
+
+  // The position of each toast in the stack: 0 for the newest toast, and the heights of the newer
+  // toasts. The content part of a toast behind the newest one gets `data-behind`.
   #stack() {
-    const toasts = this.#toasts().filter((el) => !el.hasAttribute("data-ending-style")).reverse()
+    const toasts = this.#toasts().filter((el) => !el.hasAttribute("data-ending-style"))
     let offset = 0
 
     toasts.forEach((el, i) => {
@@ -460,43 +535,66 @@ export default class PhemToastController extends Controller {
     return height
   }
 
-  // The stack shows all its toasts, and their time stops. The time starts again when it closes.
+  // The stack shows all its toasts, and their time stops. The time that remains goes on when it
+  // closes.
   #expand(expanded) {
     if (expanded === this.expanded) return
 
     this.expanded = expanded
     this.element.toggleAttribute("data-expanded", expanded)
 
-    for (const el of this.#toasts()) {
-      this.#renderExpanded(el)
-      if (expanded) clearTimeout(this.timers.get(el))
-      else if (!el.hasAttribute("data-swiping")) this.#start(el)
-    }
+    for (const el of this.#toasts()) this.#renderExpanded(el)
 
-    if (expanded) this.#stack()
+    if (expanded) {
+      this.#pause()
+      this.#stack()
+    } else {
+      this.#resume()
+    }
   }
 
   // A toast with no swipe has a movement of `0px`: a style can use the variables with no fallback.
   #unswipe(el) {
     el.style.setProperty("--toast-swipe-movement-x", "0px")
     el.style.setProperty("--toast-swipe-movement-y", "0px")
+    el.removeAttribute("data-swipe-direction")
   }
 
-  #start(el) {
-    clearTimeout(this.timers.get(el))
-
-    const duration = Number(el.dataset.phemToastDuration)
-    if (!(duration > 0)) return
-
-    this.timers.set(el, setTimeout(() => this.#remove(el), duration))
+  // The time runs while the stack is not expanded and the window has the focus.
+  get #running() {
+    return !this.expanded && this.windowFocused
   }
 
-  #remove(el) {
-    clearTimeout(this.timers.get(el))
+  // A new timer with the full time of the toast. It runs only while the time runs.
+  #schedule(el) {
+    this.timers.set(el, Number(el.dataset.phemToastDuration))
+    if (this.#running && !el.hasAttribute("data-swiping")) this.timers.resume(el)
+  }
+
+  // Stops the time, and keeps the time that remains.
+  #pause(toasts = this.#toasts()) {
+    for (const el of toasts) this.timers.pause(el)
+  }
+
+  // Runs the time that remains, while the time runs. A toast with no timer (a toast of a cloned
+  // page) gets the full time of its duration.
+  #resume(toasts = this.#toasts()) {
+    if (!this.#running) return
+
+    for (const el of toasts) {
+      if (el.hasAttribute("data-swiping") || el.hasAttribute("data-ending-style")) continue
+
+      if (this.timers.has(el)) this.timers.resume(el)
+      else this.#schedule(el)
+    }
+  }
+
+  // `keyboard`: the keyboard closes the toast, so the focus moves also with no visible focus.
+  #remove(el, { keyboard = false } = {}) {
     this.timers.delete(el)
     if (el.hasAttribute("data-ending-style")) return
 
-    this.#moveFocus(el)
+    this.#moveFocus(el, keyboard)
     hide(el, {
       onEnd: () => {
         el.remove()
@@ -506,10 +604,12 @@ export default class PhemToastController extends Controller {
     this.#stack()
   }
 
-  // A toast with the focus that goes: the focus goes to the next toast, or else to the toast
-  // before it, or else to the element that had it before F6.
-  #moveFocus(el) {
+  // A toast with the focus of the keyboard that goes, or that the keyboard closes: the focus goes
+  // to the next (older) toast, or else to the newer toast, or else to the element that had it
+  // before F6. After a mouse click, the focus does not move, as in Base UI.
+  #moveFocus(el, keyboard) {
     if (!el.contains(document.activeElement)) return
+    if (!keyboard && !isFocusVisible(document.activeElement)) return
 
     const toasts = this.#toasts().filter((toast) => toast === el || (!toast.hasAttribute("data-ending-style") && !toast.inert))
     const at = toasts.indexOf(el)

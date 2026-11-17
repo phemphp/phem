@@ -8,6 +8,28 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking**: `phem-toast` puts a new toast first in the DOM, as Base UI. Tab goes to the newest
+  toast first, and `--toast-index` is 0 for the first toast. `phem.css` shows the stack with
+  `flex-direction: column-reverse`, so the newest toast stays at the bottom. A stack style of an
+  application that uses the DOM order (`flex-direction: column`, `:last-child`) shows the toasts in
+  the other order: use `--toast-index` and `--toast-offset-y`.
+- **Breaking**: A `phem-toast` toast with no type, or with a type that is not `info`, `success`,
+  `warning` or `error`, has no `data-type`. Before, it had `data-type="info"`. A toast of
+  `$e->toast()` and `Phem\Toasts` still has `data-type="info"` by default.
+- **Breaking**: `Phem\Toast::$type` is nullable. `Toast::fromDetail()` gives a `null` type for a
+  detail with no type, or with a type that the controller does not know, as the `phem-toast`
+  controller does. Before, it gave `ToastType::Info`. So `assertToast($message, ToastType::Info)`
+  fails for such a toast, and `Toast::detail()` has no `type` key for a toast with no type.
+- The time of a `phem-toast` toast goes on after a hover, a keyboard focus or a short swipe.
+  Before, the full time started again. The time also stops while the browser window does not have
+  the focus.
+- A swipe of a `phem-toast` toast keeps the axis of its first move, and the toast follows the
+  pointer with no transition. The toast gets `data-swipe-direction` at the first move in a
+  direction of the swipe. Before, a diagonal swipe moved the toast on two axes.
+- The focus does not move to another toast after a mouse click on the close button of a
+  `phem-toast` toast. Escape still moves the focus, also after a mouse click on the toast. The
+  close button gets `aria-hidden="true"` while the stack is not expanded and the button has no
+  focus.
 - **Breaking**: `phem-combobox` with no selection (the default `selectionMode` `none`, an
   Autocomplete) and no `autoHighlight` opens on ArrowDown or ArrowUp with no highlighted item, as
   in Base UI. The next key highlights the first or the last item. Before, the key that opened the

@@ -7,7 +7,7 @@ phem-suspense{display:block}
 /* A phem:loading or phem:progress element shows only while its handler runs, also with a `display` of its own. */
 [data-phem-loading][hidden],[data-phem-progress][hidden]{display:none!important}
 /* The phem-toast controller: a stack of toasts at the bottom right. :where() lets the app change it. A part with a class attribute gets no default look: the class styles it, also when it is a utility class in a cascade layer (Tailwind). */
-:where([data-controller~="phem-toast"]:not([class])){position:fixed;inset:auto 1rem 1rem auto;z-index:2147483646;display:flex;flex-direction:column;gap:.5rem;max-width:min(24rem,calc(100vw - 2rem))}
+:where([data-controller~="phem-toast"]:not([class])){position:fixed;inset:auto 1rem 1rem auto;z-index:2147483646;display:flex;flex-direction:column-reverse;gap:.5rem;max-width:min(24rem,calc(100vw - 2rem))}
 :where([data-phem-toast]:not([class])){display:flex;align-items:start;gap:.75rem;padding:.75rem 1rem;border-radius:.375rem;background:#1f2937;color:#fff;font:inherit;box-shadow:0 4px 12px rgb(0 0 0/.15)}
 :where([data-phem-toast]:not([class])[data-type="error"]){background:#b91c1c}
 :where([data-phem-toast]:not([class])[data-type="warning"]){background:#b45309}
