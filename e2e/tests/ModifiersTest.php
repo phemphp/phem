@@ -16,8 +16,8 @@ namespace App\Tests;
 use function Playwright\Testing\expect;
 
 /**
- * The key filters, the shortcuts and the event modifiers: `phem:key`, `phem:shortcut`, `phem:stop`
- * and `phem:prevent`.
+ * The key filters, the shortcuts and the event modifiers: `phem:key`, `phem:shortcut`, `phem:stop`,
+ * `phem:prevent` and `phem:lock`.
  */
 final class ModifiersTest extends E2eTestCase
 {
@@ -61,6 +61,31 @@ final class ModifiersTest extends E2eTestCase
         $page->locator('#link')->click();
         expect($page->locator('#log'))->toHaveExactText('open');
         self::assertStringEndsWith('/modifiers', $page->url());
+    }
+
+    public function testLockDisablesTheButtonWhileItsEventRuns(): void
+    {
+        $page = $this->visit('/modifiers');
+        self::assertResponseIsSuccessful();
+
+        // The lock comes in the same task as the click, before the request: the next clicks
+        // send no event.
+        $save = $page->locator('#save');
+        $locked = $save->evaluate(<<<'JS'
+            (el) => {
+                el.click()
+                el.click()
+
+                return el.getAttribute('aria-disabled')
+            }
+            JS);
+        self::assertSame('true', $locked);
+
+        expect($page->locator('#log'))->toHaveExactText('save');
+        expect($save)->not()->toHaveAttribute('aria-disabled', 'true');
+
+        $save->click();
+        expect($page->locator('#log'))->toHaveExactText('save, save');
     }
 
     public function testShortcutClicksItsElementFromThePage(): void

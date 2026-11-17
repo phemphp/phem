@@ -36,22 +36,29 @@ final class BasicsTest extends DemoTestCase
         $example = $page->getByRole('region', ['name' => 'Loading states'])->locator('[data-demo="preview"]');
 
         $button = $example->getByRole('button');
-        $label = $example->locator('#loading-label');
         expect($button)->toHaveAttribute('aria-labelledby', 'loading-label');
-        expect($label)->toHaveExactText('Submit');
-        $button->click();
+        expect($example->getByRole('button', ['name' => 'Submit', 'exact' => true]))->toBeVisible();
+        $button->focus();
 
-        // The button is disabled, keeps the focus, and its label changes.
-        expect($example->getByRole('button', ['name' => 'Submitting']))->toBeVisible();
-        expect($button)->toHaveAttribute('aria-disabled', 'true');
-        expect($button)->toHaveAttribute('data-disabled', '');
+        // `phem:lock` disables the button at the click, before the server answers: read it in the
+        // same task as the click. A second click sends no event.
+        $state = $button->evaluate(<<<'JS'
+            (el) => {
+                let events = 0
+                document.addEventListener('phem:queue', () => events++)
+                el.click()
+                el.click()
+
+                return [el.getAttribute('aria-disabled'), document.getElementById('loading-label').innerText.trim(), events]
+            }
+            JS);
+        self::assertSame(['true', 'Submitting', 1], $state);
         expect($button)->toBeFocused();
 
-        // After 4 seconds, the poll ends the loading state. The browser waits for the test to
-        // handle the request of the poll.
-        usleep(3_500_000);
-        expect($label)->toHaveExactText('Submit');
+        // The answer comes after 4 seconds: the button is enabled again.
+        expect($example->getByRole('button', ['name' => 'Submit', 'exact' => true]))->withTimeout(10_000)->toBeVisible();
         expect($button)->not()->toHaveAttribute('aria-disabled', 'true');
+        expect($button)->toBeFocused();
     }
 
     public function testInput(): void

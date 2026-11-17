@@ -1,0 +1,2 @@
+<?phem // expect: W006
+function App() { return <button phem:lock>Save</button>; }

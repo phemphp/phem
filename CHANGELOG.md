@@ -8,6 +8,11 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- `phem:lock` disables the element of a handler while its event runs:
+  `<button onClick={{ submit }} phem:lock>`. At the event, the browser gives the element
+  `aria-disabled="true"` at once, before the request goes. The element keeps the focus and sends
+  no other event until the answer. The server keeps no loading state. `phemc` warns about
+  `phem:lock` on an element with no handler (W006).
 - A panel of `phem-collapsible` and `phem-accordion` that the search of the browser (Ctrl+F)
   finds opens with no animation, as in Base UI. It gets `data-instant` and the `auto` size at
   once. Before, the height animation moved the text that the browser scrolled to.

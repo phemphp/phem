@@ -946,6 +946,129 @@ describe("the lock of a form submit", () => {
   })
 })
 
+describe("the lock of a phem:lock element", () => {
+  const markup = `<button id="save" type="button" data-phem-on-click="c1.save" data-phem-lock><span id="label">Save</span></button>
+    <div id="card" role="button" tabindex="0" data-phem-on-click="c1.open" data-phem-lock><input id="note"></div>
+    <button id="other" type="button" data-phem-on-click="c1.other">Other</button>`
+  const json = (markup) => new Response(JSON.stringify(answer(markup)), { status: 200, headers: { "Content-Type": "application/json" } })
+
+  // The request of the event waits until the test calls the function that it returns.
+  function hold() {
+    let reply
+    fetch.mockImplementationOnce(() => new Promise((resolve) => (reply = resolve)))
+
+    return (markup) => reply(json(markup))
+  }
+
+  const click = (id) => {
+    const event = new MouseEvent("click", { bubbles: true, cancelable: true })
+    document.getElementById(id).dispatchEvent(event)
+
+    return event
+  }
+
+  it("locks the element at the click, before the request, and unlocks it before the morph", async () => {
+    await mount(markup)
+    const save = document.getElementById("save")
+    const reply = hold()
+    save.focus()
+    const done = nextDone()
+    click("label")
+
+    // In the same task as the click: no wait for the delay of the loading state.
+    expect(save.getAttribute("aria-disabled")).toBe("true")
+    expect(save.disabled).toBe(false)
+    expect(document.activeElement).toBe(save)
+
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    reply(markup)
+    await done
+
+    expect(save.hasAttribute("aria-disabled")).toBe(false)
+  })
+
+  it("blocks the clicks of the element while its event runs", async () => {
+    await mount(markup)
+    const reply = hold()
+    const done = nextDone()
+    click("save")
+
+    expect(click("save").defaultPrevented).toBe(true)
+    expect(click("label").defaultPrevented).toBe(true)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(document.getElementById("other").hasAttribute("aria-disabled")).toBe(false)
+
+    reply(markup)
+    await done
+  })
+
+  it("locks an element that is not a button, and blocks a click on a field in it", async () => {
+    await mount(markup)
+    const reply = hold()
+    const done = nextDone()
+    click("card")
+
+    expect(document.getElementById("card").getAttribute("aria-disabled")).toBe("true")
+    expect(click("note").defaultPrevented).toBe(true)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(fetch).toHaveBeenCalledTimes(1)
+
+    reply(markup)
+    await done
+
+    expect(document.getElementById("card").hasAttribute("aria-disabled")).toBe(false)
+  })
+
+  it("locks the element again after a morph while its event runs", async () => {
+    await mount(markup)
+    const save = document.getElementById("save")
+    const reply = hold()
+    const done = nextDone()
+    click("save")
+
+    // A push or an earlier event morphs the element: the server render has no aria-disabled.
+    save.removeAttribute("aria-disabled")
+    save.dispatchEvent(new CustomEvent("turbo:morph-element", { bubbles: true }))
+
+    expect(save.getAttribute("aria-disabled")).toBe("true")
+
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    reply(markup)
+    await done
+
+    expect(save.hasAttribute("aria-disabled")).toBe(false)
+  })
+
+  it("does not lock or unlock an element that the page made aria-disabled", async () => {
+    const disabled = markup.replace('id="save"', 'id="save" aria-disabled="true"')
+    await mount(disabled)
+    fetch.mockResolvedValueOnce(json(disabled))
+    const done = nextDone()
+    click("save")
+    await done
+
+    expect(document.getElementById("save").getAttribute("aria-disabled")).toBe("true")
+  })
+
+  it("sends the click again after the unlock", async () => {
+    await mount(markup)
+    const reply = hold()
+    const done = nextDone()
+    click("save")
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+    reply(markup)
+    await done
+
+    fetch.mockResolvedValueOnce(json(markup))
+    const next = nextDone()
+    expect(click("save").defaultPrevented).toBe(false)
+    await next
+
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+})
+
 describe("a link to a hash of the page", () => {
   // The user clicks the link: Turbo dispatches `turbo:click` on it. Returns whether Turbo
   // starts a visit, and whether the browser follows the link.

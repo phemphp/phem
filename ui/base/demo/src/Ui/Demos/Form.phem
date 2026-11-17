@@ -44,7 +44,7 @@ function FormPage(): Node
 
 // The submit of the Base UI demo: the server answers after 1 second, and refuses the example
 // domain. The error of the server shows in the Field.Error of the field. While the request runs,
-// phem locks the button with `aria-disabled="true"`, and the button has the disabled look.
+// phem locks the button with `aria-disabled="true"`, and the Button has the disabled look.
 #[Component]
 final class FormHeroDemo
 {
@@ -67,7 +67,7 @@ final class FormHeroDemo
     public function render(): Node
     {
         return (
-            <Form onSubmit={{ submit }} className="[&_button[aria-disabled=true]]:pointer-events-none [&_button[aria-disabled=true]]:border-neutral-500 [&_button[aria-disabled=true]]:text-neutral-500 dark:[&_button[aria-disabled=true]]:border-neutral-400 dark:[&_button[aria-disabled=true]]:text-neutral-400">
+            <Form onSubmit={{ submit }}>
                 <Field id="url">
                     <FieldLabel>Homepage</FieldLabel>
                     <FieldControl
@@ -111,7 +111,7 @@ final class FormServerFunctionDemo
     public function render(): Node
     {
         return (
-            <Form onSubmit={{ submit }} className="[&_button[aria-disabled=true]]:pointer-events-none [&_button[aria-disabled=true]]:border-neutral-500 [&_button[aria-disabled=true]]:text-neutral-500 dark:[&_button[aria-disabled=true]]:border-neutral-400 dark:[&_button[aria-disabled=true]]:text-neutral-400">
+            <Form onSubmit={{ submit }}>
                 <Field id="username">
                     <FieldLabel>Username</FieldLabel>
                     <FieldControl type="text" name="username" autocomplete="username" required defaultValue={{ username }} placeholder="e.g. alice132" aria-invalid={{ error ? 'true' : null }} aria-describedby={{ error ? 'username-error' : null }} />

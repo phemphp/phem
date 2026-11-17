@@ -237,8 +237,8 @@ final class TwigFunctionsTest extends TestCase
 
     public function testFlagsInASpread(): void
     {
-        self::assertSame('data-phem-stop data-phem-prevent', (string) $this->runtime()->attrs(['phem:stop' => true, 'phem:prevent' => true]));
-        self::assertSame('', (string) $this->runtime()->attrs(['phem:stop' => false, 'phem:prevent' => 'yes']));
+        self::assertSame('data-phem-stop data-phem-prevent data-phem-lock', (string) $this->runtime()->attrs(['phem:stop' => true, 'phem:prevent' => true, 'phem:lock' => true]));
+        self::assertSame('', (string) $this->runtime()->attrs(['phem:stop' => false, 'phem:prevent' => 'yes', 'phem:lock' => false]));
         self::assertSame('data-phem-scroll-into-view data-phem-keep-scroll', (string) $this->runtime()->attrs(['phem:scroll-into-view' => true, 'phem:keep-scroll' => true]));
         self::assertSame('data-phem-keep-scroll="end"', (string) $this->runtime()->attrs(['phem:keep-scroll' => 'end']));
         self::assertSame('', (string) $this->runtime()->attrs(['phem:scroll-into-view' => false, 'phem:keep-scroll' => null]));

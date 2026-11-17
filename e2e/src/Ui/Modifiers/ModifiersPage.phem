@@ -8,8 +8,8 @@ use Phem\Node;
 
 use function App\Ui\Layout\Document;
 
-// The key filters, the shortcuts and the event modifiers: phem:key, phem:shortcut, phem:stop and
-// phem:prevent.
+// The key filters, the shortcuts and the event modifiers: phem:key, phem:shortcut, phem:stop,
+// phem:prevent and phem:lock.
 #[Page('/modifiers')]
 final class ModifiersPage
 {
@@ -28,6 +28,11 @@ final class ModifiersPage
     public function star(): void
     {
         $this->log[] = 'star';
+    }
+
+    public function save(): void
+    {
+        $this->log[] = 'save';
     }
 
     public function palette(): void
@@ -50,6 +55,7 @@ final class ModifiersPage
                     <button id="star" type="button" onClick={{ star }} phem:stop>★</button>
                 </div>
                 <a id="link" href="/counter" onClick={{ open }} phem:prevent>Open</a>
+                <button id="save" type="button" onClick={{ save }} phem:lock>Save</button>
                 <button id="palette" type="button" onClick={{ palette }} phem:shortcut="mod+k">Search</button>
                 <button id="next" type="button" onClick={{ next }} phem:shortcut="j">Next</button>
                 <input id="filter" type="search" phem:shortcut="/" />

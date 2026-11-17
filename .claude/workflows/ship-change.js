@@ -81,7 +81,7 @@ ${NO_COMMIT}`,
 
 if (triage.touchesCompiler) {
   await agent(
-    `The change touches compiler/ or editors/. Follow the "Editor plugins" section of CLAUDE.md: run make vscode-install phpstorm-install, and check the version of the VS Code extension and of the PhpStorm plugin against the published versions. Increase a version only when the local version is the published version, and add the change to the changelog of each plugin. Do not publish. ${NO_COMMIT}`,
+    `The change touches compiler/ or editors/. Follow the "Editor plugins" section of CLAUDE.md: only prepare the release. Check the version of the VS Code extension and of the PhpStorm plugin against the published versions. Increase a version only when the local version is the published version, and add the change to the changelog of each plugin. Never install a local build of a plugin (no make vscode-install, no make phpstorm-install, no code --install-extension): the user uses only the Marketplace versions. Do not build or publish a plugin. ${NO_COMMIT}`,
   )
 }
 

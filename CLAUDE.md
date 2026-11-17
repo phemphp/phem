@@ -141,12 +141,14 @@ before you report the work as done:
 ## Editor plugins
 
 The VS Code and PhpStorm plugins do not use the compiler source. They run a bundled build of the
-language server (`editors/server/phem-lsp.wasm`). An old build shows old diagnostics in the editor.
+language server (`editors/server/phem-lsp.wasm`). The user uses only the Marketplace versions of
+the plugins.
 
-- After a change in `compiler/` (the diagnostics, the analysis, the codegen or the language
-  server) or in `editors/`, run `make vscode-install phpstorm-install`. It rebuilds the server and
-  installs the two plugins.
-- Tell the user to reload the VS Code window and to restart PhpStorm.
+- Never install a local build of a plugin in the editors of the user. Do not run
+  `make vscode-install` or `make phpstorm-install`, do not run `code --install-extension` with a
+  local `.vsix`, and do not copy a build into the PhpStorm plugins directory.
+- `cargo test` (in `make test`) checks the language server. A local build of a plugin is not
+  necessary to check a change.
 
 ### Plugin version
 
@@ -163,7 +165,7 @@ extension when you change it, so that the next publish works.
   the published version, do not change it: one release collects all the changes.
 - Add a `## <version>` heading for a new version at the top of `editors/vscode/CHANGELOG.md`, and
   put each change under the heading of the version in `package.json`.
-- Do not publish, except in the `/release-editors` skill when the user runs it.
+- Do not publish (see "Release").
 
 The PhpStorm plugin has the same rule. A change in `editors/phpstorm/`, `editors/server/` or the
 language server in `compiler/` changes the plugin.
@@ -178,7 +180,7 @@ language server in `compiler/` changes the plugin.
 - Put each change under the `## <version>` heading of `pluginVersion` in
   `editors/phpstorm/CHANGELOG.md`. The build uses this section as the change notes, and it fails
   when the section is missing or empty.
-- Do not publish, except in the `/release-editors` skill when the user runs it.
+- Do not publish (see "Release").
 
 ### Release
 
@@ -186,10 +188,11 @@ The users get a change in the editors only with a new release. The Marketplace v
 the old language server, so it shows the old diagnostics and completion until the next release.
 
 - A change that changes the extension or the plugin (see the paths in "Plugin version") needs a
-  release.
-- You do not have to release after each change. One release collects all the changes since the
-  last published version.
-- When you change the editors, tell the user at the end of the work whether a plugin has changes
-  that are not released. Compare the local version with the published version. Recommend the
-  `/release-editors` skill when there are such changes.
-- The release must come from a clean `main` that is pushed. Commit and push the changes first.
+  release. One release collects all the changes since the last published version.
+- When the editors change, only prepare the release: the versions and the changelogs of
+  "Plugin version". Do not build, install or publish a plugin.
+- At the end of the work, tell the user which plugin has a prepared release (compare the local
+  version with the published version), and ask whether to publish it.
+- The plugins are always published after the phem release (`release.sh`, see
+  `docs/releasing.md`), so that the new language server goes with the new phem. The user runs
+  `/release-editors` to publish. It needs a clean `main` that is pushed.

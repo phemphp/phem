@@ -46,6 +46,8 @@ final class Modifiers
                 </a>
                 <button type="button" {{ ...rest }} onClick={{ star }} phem:prevent phem:key="Enter">Star</button>
                 <input {{ ...rest }} onKeyDown={{ save }} phem:key="\ ctrl+n" />
+                <button type="button" onClick={{ save }} phem:lock>Save</button>
+                <button type="button" onClick={{ save }} phem:lock={{ guard }}>Save once</button>
                 <button type="button" onClick={{ open }} phem:shortcut="mod+k">Search</button>
                 <input type="search" phem:shortcut="/" />
                 <button type="button" onClick={{ star }} phem:shortcut={{ next }}>Next</button>

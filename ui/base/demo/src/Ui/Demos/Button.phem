@@ -2,7 +2,7 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\{Component, Page, State};
+use Phem\Attribute\{Component, Page};
 use Phem\Node;
 
 use function App\Ui\{DemoPage, Example, Examples, Hero};
@@ -52,34 +52,27 @@ function ButtonAnotherTagDemo(): Node
     return <Button tag="div">Button that can contain complex children</Button>;
 }
 
-// The click starts a loading state of 4 seconds, as in the Base UI demo: the button is disabled
-// but keeps the focus, and a poll ends the loading state.
+// The click sends a request that ends after 4 seconds, as in the Base UI demo. `phem:lock`
+// disables the button at once in the browser, and the label shows "Submitting": the server keeps
+// no loading state. The button keeps the focus, and the answer enables it again.
 #[Component]
 final class ButtonLoadingDemo
 {
-    #[State] public bool $loading = false;
-
-    public function start(): void
+    public function submit(): void
     {
-        $this->loading = true;
-    }
-
-    public function stop(): void
-    {
-        $this->loading = false;
+        // Simulate a request that ends after 4 seconds.
+        sleep(4);
     }
 
     public function render(): Node
     {
         return (
-            <div className="contents">
-                <Button disabled={{ loading }} focusableWhenDisabled aria-labelledby="loading-label" onClick={{ start }}>
-                    <span id="loading-label">{{ loading ? 'Submitting' : 'Submit' }}</span>
-                </Button>
-                {% if loading %}
-                    <span hidden onPoll={{ stop }} phem:poll={{ 4000 }}></span>
-                {% endif %}
-            </div>
+            <Button focusableWhenDisabled aria-labelledby="loading-label" onClick={{ submit }} phem:lock>
+                <span id="loading-label">
+                    <span className="in-aria-disabled:hidden">Submit</span>
+                    <span className="not-in-aria-disabled:hidden">Submitting</span>
+                </span>
+            </Button>
         );
     }
 }

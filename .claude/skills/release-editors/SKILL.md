@@ -21,6 +21,10 @@ for a token value. The tokens stay in the macOS Keychain, and only the publish c
    must be clean, and `main` must match `origin/main`. Run `git fetch` first.
 2. If one of these is not true, stop and tell the user. A release must come from the pushed
    `main`, so that the published code is on GitHub.
+3. The plugins are always published after the phem release (`release.sh`). Check that a release
+   tag has the last change of the language server:
+   `git tag --contains "$(git log -1 --format=%H -- compiler/ editors/server/)" --list 'v*'`.
+   If the result is empty, stop: tell the user to release phem first.
 
 ## 2. Find what to release
 

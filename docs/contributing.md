@@ -84,7 +84,7 @@ Create an app as in [Getting started](quickstart.md), then require your checkout
 
 ## Build and install the editor support
 
-Run `make vscode-install` or `make phpstorm-install` to build and install the editor plugins. After a change in `compiler/` or `editors/`, run both again, then reload the VS Code window and restart PhpStorm.
+`make vscode` and `make phpstorm` build the editor plugins. `cargo test` checks the language server, so you don’t have to install a build to check a change. To try a local build in your own editors, run `make vscode-install` or `make phpstorm-install`, then reload the VS Code window and restart PhpStorm. The users get a change in the editors only with a new release on the marketplaces, after the phem release (see [Release a version](releasing.md)).
 
 To give Claude Code the compiler diagnostics after each edit, run `make lsp` and start `claude --plugin-dir editors/claude-code`. In an app, the Claude Code plugin runs `vendor/bin/phemc lsp` instead.
 

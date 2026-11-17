@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0
+
+- Completion for `phem:lock`, which disables the element of a handler while its
+  event runs. A `phem:lock` on an element with no handler shows the W006 warning.
+
 ## 0.8.1
 
 - A variable named after a Twig word operator (`matches`, `in`, `and`…) in the place of an

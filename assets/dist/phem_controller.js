@@ -705,9 +705,9 @@ function lockOf(control) {
   return isTextLike(control) && control.type !== "range" && control.type !== "color" ? LOCKS.text : LOCKS.other
 }
 
-// Locks a form control. Returns its lock, or null when the page already locked the control.
-function lockControl(control) {
-  const lock = lockOf(control)
+// Locks a form control, with its lock or the given lock. Returns the lock, or null when the page
+// already locked the control.
+function lockControl(control, lock = lockOf(control)) {
   if (control.disabled || lock.isOn(control)) return null
 
   lock.set(control, true)
@@ -878,11 +878,12 @@ export default class PhemController extends Controller {
     // A click on a locked button does nothing. The button keeps `aria-disabled` in place of
     // `disabled`, so it keeps the focus (as in Base UI), and the browser still sends its click:
     // a `phem:click` button of the form, a submit or reset button, and the Enter of a text field
-    // (the implicit submit clicks the default button). The listener is on the document: a button
-    // with `form="…"` can be out of the root element.
+    // (the implicit submit clicks the default button). A `phem:lock` element is locked in the same
+    // way. The listener is on the document: a button with `form="…"` can be out of the root
+    // element.
     this.blockLocked = (event) => {
-      const control = event.target.closest?.("button, input")
-      if (!control || ![...this.locked.values()].some((controls) => controls.get(control)?.blocksClick)) return
+      const blocks = (control) => control && [...this.locked.values()].some((controls) => controls.get(control)?.blocksClick)
+      if (!blocks(event.target.closest?.("button, input")) && !blocks(event.target.closest?.("[data-phem-lock]"))) return
 
       event.preventDefault()
       event.stopImmediatePropagation()
@@ -1590,6 +1591,9 @@ export default class PhemController extends Controller {
       if (this.locked.has(el)) return
     }
 
+    // `phem:lock`: the first event of the element still runs.
+    if (el.hasAttribute("data-phem-lock") && this.locked.has(el)) return
+
     if ((CANCELLED_EVENTS.has(event.type) && !keepsDefault(event)) || el.hasAttribute("data-phem-prevent")) event.preventDefault()
 
     // The detail of a call as it is at the time of the call, as the request sends it: JSON.
@@ -1685,8 +1689,8 @@ export default class PhemController extends Controller {
     let release = () => {}
     const resume = () => {
       if (resumed || !before.defaultPrevented || hold.signal.aborted || this.inactive || !el.isConnected) return
-      // The first submit of this form still runs.
-      if (event.type === "submit" && this.locked.has(el)) return
+      // The first submit of this form, or the first event of a `phem:lock` element, still runs.
+      if ((event.type === "submit" || el.hasAttribute("data-phem-lock")) && this.locked.has(el)) return
 
       resumed = true
       release()
@@ -1779,7 +1783,7 @@ export default class PhemController extends Controller {
     const upload = payload.files ? { progress: 0 } : null
     const done = this.startLoading(el, handler, upload)
     // After formFields(): a disabled control is not in the form data.
-    const unlock = payload.type === "submit" && el instanceof HTMLFormElement ? this.lockForm(el) : () => {}
+    const unlock = payload.type === "submit" && el instanceof HTMLFormElement ? this.lockForm(el) : el.hasAttribute("data-phem-lock") ? this.lockTrigger(el) : () => {}
     const onProgress = upload && ((loaded, total) => this.uploadProgress(el, handler, payload.files, upload, loaded, total))
 
     this.queue = this.queue
@@ -2003,6 +2007,25 @@ export default class PhemController extends Controller {
   flush(target = null) {
     for (const [el, pending] of [...this.pending]) {
       if (target === null || el.contains(target)) for (const attr of [...pending.keys()]) this.release(el, attr)
+    }
+  }
+
+  // `phem:lock`: locks the element while its event runs, as a button of a form that submits (see
+  // LOCKS). It gets `aria-disabled="true"`, keeps the focus, and a click on it does nothing.
+  // Returns the function that ends it.
+  lockTrigger(el) {
+    if (this.locked.has(el)) return () => {}
+
+    const lock = lockControl(el, LOCKS.button)
+    if (!lock) return () => {}
+
+    const controls = new Map([[el, lock]])
+    this.locked.set(el, controls)
+
+    return () => {
+      if (this.locked.get(el) !== controls) return
+      this.locked.delete(el)
+      lock.set(el, false)
     }
   }
 

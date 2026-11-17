@@ -57,7 +57,7 @@ final class GalleryTest extends DemoTestCase
         $source = Gallery::source('ButtonLoadingDemo');
 
         self::assertStringContainsString("#[Component]\nfinal class ButtonLoadingDemo\n{", $source);
-        self::assertStringContainsString('use Phem\\Attribute\\{Component, State};', $source);
+        self::assertStringContainsString('use Phem\\Attribute\\Component;', $source);
         self::assertStringNotContainsString('ButtonHeroDemo', $source);
     }
 

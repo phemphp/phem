@@ -10,7 +10,8 @@ use Phem\{Html, Node};
  * A button: Base UI Button.
  *
  * With `focusableWhenDisabled`, a disabled button keeps the focus (for a loading state): it gets
- * `aria-disabled` in place of `disabled`.
+ * `aria-disabled` in place of `disabled`. A button with `aria-disabled="true"` has the disabled
+ * look, also when `phem:lock` locks it while its event runs.
  *
  * A button with another tag (`tag="div"`), and a button with `focusableWhenDisabled`, use the
  * `phem-button` controller: Enter and Space click the button, and a disabled button does nothing.
@@ -35,7 +36,7 @@ function Button(
             disabled={{ native and disabled and not focusableWhenDisabled }}
             aria-disabled={{ disabled and (focusableWhenDisabled or not native) ? 'true' : null }}
             data-disabled={{ disabled ? '' : null }}
-            className={{ classes('flex h-8 items-center justify-center gap-2 rounded-none border border-neutral-950 bg-white px-3 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none hover:not-data-disabled:bg-neutral-100 active:not-data-disabled:bg-neutral-200 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white data-disabled:border-neutral-500 data-disabled:text-neutral-500 disabled:border-neutral-500 disabled:text-neutral-500 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:not-data-disabled:bg-neutral-800 dark:active:not-data-disabled:bg-neutral-700 dark:data-disabled:border-neutral-400 dark:data-disabled:text-neutral-400') }}
+            className={{ classes('flex h-8 items-center justify-center gap-2 rounded-none border border-neutral-950 bg-white px-3 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none hover:not-data-disabled:not-aria-disabled:bg-neutral-100 active:not-data-disabled:not-aria-disabled:bg-neutral-200 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white data-disabled:border-neutral-500 data-disabled:text-neutral-500 disabled:border-neutral-500 disabled:text-neutral-500 aria-disabled:border-neutral-500 aria-disabled:text-neutral-500 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:not-data-disabled:not-aria-disabled:bg-neutral-800 dark:active:not-data-disabled:not-aria-disabled:bg-neutral-700 dark:data-disabled:border-neutral-400 dark:data-disabled:text-neutral-400 dark:aria-disabled:border-neutral-400 dark:aria-disabled:text-neutral-400') }}
             {{ ...rest }}
         >
             {{ children }}

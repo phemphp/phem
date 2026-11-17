@@ -159,6 +159,7 @@ final class Attributes
             'phem:poll' => self::poll(...),
             'phem:stop' => self::flag('data-phem-stop'),
             'phem:prevent' => self::flag('data-phem-prevent'),
+            'phem:lock' => self::flag('data-phem-lock'),
             'phem:scroll-into-view' => self::flag('data-phem-scroll-into-view'),
             'phem:announce' => self::flag('data-phem-announce'),
             'phem:keep-scroll' => self::keepScroll(...),

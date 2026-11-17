@@ -32,6 +32,17 @@ final class ButtonTest extends KernelTestCase
             ->assertSelectorExists('button[data-controller="phem-button"][aria-disabled="true"][data-disabled]:not([disabled])');
     }
 
+    public function testALockedButtonHasTheDisabledLook(): void
+    {
+        $html = $this->mount('Phem\Ui\Base\Button', ['phem:lock' => true, 'children' => new Html('Submit')])
+            // `phem:lock` gives the button `aria-disabled="true"` while its event runs.
+            ->assertSelectorExists('button[data-phem-lock]')
+            ->html();
+
+        self::assertStringContainsString('aria-disabled:text-neutral-500', $html);
+        self::assertStringContainsString('hover:not-data-disabled:not-aria-disabled:bg-neutral-100', $html);
+    }
+
     public function testTheCallerClassesMerge(): void
     {
         $html = $this->mount('Phem\Ui\Base\Button', ['className' => 'w-full', 'children' => new Html('Submit')])->html();

@@ -538,6 +538,7 @@ fn the_phem_attributes_of_an_html_element() {
     assert_eq!(snippet(r.get("phem:shortcut")), "phem:shortcut=\"${1:mod+k}\"");
     assert_eq!(snippet(r.get("phem:stop")), "phem:stop");
     assert_eq!(snippet(r.get("phem:prevent")), "phem:prevent");
+    assert_eq!(snippet(r.get("phem:lock")), "phem:lock");
     assert_eq!(snippet(r.get("phem:poll")), "phem:poll={{ ${1:30000} }}");
     assert_eq!(snippet(r.get("phem:scroll-into-view")), "phem:scroll-into-view");
     assert_eq!(snippet(r.get("phem:keep-scroll")), "phem:keep-scroll");

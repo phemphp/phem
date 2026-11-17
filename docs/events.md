@@ -201,6 +201,43 @@ The server renders the element with `hidden`, and the browser shows it while a `
 
 Set the `data-phem-loading-delay-value` attribute on the `<Root>` element to change the delay.
 
+### Disable the element while its event runs
+
+Add `phem:lock` to the element with the handler. At the event, the browser gives the element `aria-disabled="true"` at once, with no delay and before the request goes. The attribute goes away before the morph of the answer. The server keeps no state, and the server render has no lock:
+
+```php
+#[Component]
+final class Checkout
+{
+    public function submit(): void
+    {
+        // A slow request.
+    }
+
+    public function render(): Node
+    {
+        return (
+            <button onClick={{ submit }} phem:lock aria-labelledby="submit-label">
+                <span id="submit-label">
+                    <span className="in-aria-disabled:hidden">Submit</span>
+                    <span className="not-in-aria-disabled:hidden">Submitting</span>
+                </span>
+            </button>
+        );
+    }
+}
+```
+
+The server renders the attribute:
+
+```html
+<button data-phem-on-click="…" data-phem-lock aria-labelledby="submit-label">…</button>
+```
+
+While the event runs, the element sends no other event, and a click on it or on its content does nothing. A double click sends one event. The element keeps the focus: it is not `disabled`, as the buttons of a form while it submits (see the [form lock](architecture.md)). Style the lock with `[aria-disabled="true"]`. In Tailwind CSS, the `aria-disabled:` variant styles the element, and the `in-aria-disabled:` variant styles its content. The example shows one of two labels, so the text changes with no request.
+
+The morph of another event or of a push keeps the lock. An element that the server renders with `aria-disabled="true"` gets no lock, and it keeps its attribute. `phem:lock={{ expr }}` turns it on only when the value is `true`. On a `<form>`, the submit already locks the form: `phem:lock` adds nothing. `phemc` warns about `phem:lock` on an element with no handler (W006).
+
 ## Filter keys and stop events
 
 `onKeyDown` and `onKeyUp` send each key to the server. Add `phem:key` to send only some keys. The other keys send no event, and they keep their default action, so the user can still type in the field:

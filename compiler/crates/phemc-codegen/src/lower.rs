@@ -1138,8 +1138,9 @@ impl<'a> Lowerer<'a> {
     }
 
     /// The event modifiers of an element: `phem:debounce` and `phem:throttle` not both, and
-    /// `phem:debounce`, `phem:throttle`, `phem:prevent` and `phem:key` only on an element with a
-    /// handler (or a spread, which can give one). `phem:key` needs `onKeyDown` or `onKeyUp`.
+    /// `phem:debounce`, `phem:throttle`, `phem:prevent`, `phem:lock` and `phem:key` only on an
+    /// element with a handler (or a spread, which can give one). `phem:key` needs `onKeyDown` or
+    /// `onKeyUp`.
     /// `phem:stop` needs no handler: it keeps the events of its content from the handlers around it.
     fn check_modifiers(&mut self, e: &Element) {
         let mut timing: Option<&str> = None;
@@ -1168,7 +1169,7 @@ impl<'a> Lowerer<'a> {
 
                         timing = Some(name);
                         modifiers.push((name, *name_span));
-                    } else if name == KEY || name == PREVENT || name == POLL {
+                    } else if name == KEY || name == PREVENT || name == LOCK || name == POLL {
                         modifiers.push((name, *name_span));
                     }
                 }
@@ -1204,6 +1205,7 @@ impl<'a> Lowerer<'a> {
                 let example = match name {
                     KEY => "<input onKeyDown={{ save }} phem:key=\"Enter\" />",
                     PREVENT => "<a href=\"/cart\" onClick={{ add }} phem:prevent>",
+                    LOCK => "<button onClick={{ save }} phem:lock>",
                     _ => "<input onChange={{ search }} phem:debounce={{ 300 }} />",
                 };
 
@@ -2514,11 +2516,15 @@ const STOP: &str = "phem:stop";
 /// `phem:prevent`: the event of a handler of the element does not do its default action.
 const PREVENT: &str = "phem:prevent";
 
+/// `phem:lock`: while an event of the element runs, the element has `aria-disabled="true"` and
+/// sends no other event.
+const LOCK: &str = "phem:lock";
+
 /// The directives with no value or a bool: true renders `data-phem-…` with no value.
 /// `phem:scroll-into-view`: after the morph of an event of the user, the browser scrolls to the
 /// element when it is new. `phem:announce`: after the morph of an event of the user, the browser
 /// announces the text of the element to screen readers when the text changed.
-const FLAGS: &[&str] = &[STOP, PREVENT, "phem:scroll-into-view", "phem:announce"];
+const FLAGS: &[&str] = &[STOP, PREVENT, LOCK, "phem:scroll-into-view", "phem:announce"];
 
 /// `phem:keep-scroll`: the item in view of the scroll element stays at its place in each render.
 /// `phem:keep-scroll="end"`: the element also stays at its end when it is at its end.
