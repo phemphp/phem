@@ -123,6 +123,10 @@
             "clipboard": {
                 "enabled": true,
                 "fetch": "eager"
+            },
+            "theme": {
+                "enabled": true,
+                "fetch": "eager"
             }
         }
     },
