@@ -110,6 +110,152 @@ describe("phem-tooltip", () => {
     expect($("tip-2").getAttribute("data-instant")).toBe("delay")
   })
 
+  it("shows one tooltip at a time: the next tooltip of a group stops the close animation of the last one", async () => {
+    await mount(toolbar('data-phem-tooltip-delay-value="0"'))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    // The CSS of the page stops the animation of a popup with `data-instant`.
+    $("tip").getAnimations = () => ($("tip").hasAttribute("data-instant") ? [] : [{ finished: new Promise(() => {}) }])
+    over($("archive"))
+    vi.advanceTimersByTime(0)
+    out($("archive"), $("delete"))
+    expect($("tip").hasAttribute("data-ending-style")).toBe(true)
+
+    over($("delete"))
+
+    expect($("tip-2").hidden).toBe(false)
+    expect($("tip").hidden).toBe(true)
+    expect($("tip").getAttribute("data-instant")).toBe("delay")
+  })
+
+  it("keeps open a tooltip that opened again during its close animation, when the next tooltip of a group opens", async () => {
+    await mount(toolbar('data-phem-tooltip-delay-value="0"'))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    $("tip").getAnimations = () => ($("tip").hasAttribute("data-instant") ? [] : [{ finished: new Promise(() => {}) }])
+    over($("archive"))
+    vi.advanceTimersByTime(0)
+    out($("archive"), $("outside"))
+    expect($("tip").hasAttribute("data-ending-style")).toBe(true)
+
+    // The keyboard focus opens it again before the end of its close animation.
+    tabTo($("archive"))
+    expect($("tip").hidden).toBe(false)
+
+    // The other tooltip of the page closes, and the pointer goes on the next one.
+    $("tip-2").getAnimations = () => []
+    over($("delete"))
+    vi.advanceTimersByTime(0)
+    out($("delete"), $("outside"))
+    over($("delete"))
+
+    expect($("tip").hidden).toBe(false)
+    expect($("archive").hasAttribute("data-popup-open")).toBe(true)
+  })
+
+  it("does not touch a tooltip again when its close animation ended", async () => {
+    await mount(toolbar('data-phem-tooltip-delay-value="0"'))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    let finish
+    $("tip").getAnimations = () => [{ finished: new Promise((resolve) => (finish = resolve)) }]
+    over($("archive"))
+    vi.advanceTimersByTime(0)
+    out($("archive"), $("delete"))
+    finish()
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect($("tip").hidden).toBe(true)
+
+    over($("delete"))
+
+    expect($("tip-2").hidden).toBe(false)
+    expect($("tip").hasAttribute("data-instant")).toBe(false)
+  })
+
+  it("forgets a closing tooltip that the morph removes", async () => {
+    await mount(toolbar('data-phem-tooltip-delay-value="0"'))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    const tip = $("tip")
+    tip.getAnimations = () => [{ finished: new Promise(() => {}) }]
+    over($("archive"))
+    vi.advanceTimersByTime(0)
+    out($("archive"), $("delete"))
+    $("archive").remove()
+    await Promise.resolve()
+
+    over($("delete"))
+
+    expect($("tip-2").hidden).toBe(false)
+    expect(tip.hasAttribute("data-instant")).toBe(false)
+  })
+
+  it("keeps a hoverable tooltip open at a press on its popup", async () => {
+    await mount(toolbar('data-phem-tooltip-delay-value="0"'))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    over($("archive"))
+    vi.advanceTimersByTime(0)
+
+    $("tip").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse" }))
+
+    expect($("tip").hidden).toBe(false)
+  })
+
+  it("closes at the press of the pointer on the trigger, before the click", async () => {
+    await mount(toolbar('data-phem-tooltip-delay-value="0"'))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    over($("archive"))
+    vi.advanceTimersByTime(0)
+    expect($("tip").hidden).toBe(false)
+
+    $("archive").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse" }))
+
+    expect($("tip").hidden).toBe(true)
+    expect($("tip").getAttribute("data-instant")).toBe("dismiss")
+  })
+
+  it("keeps the close animation of a tooltip that closed before the group time", async () => {
+    await mount(toolbar('data-phem-tooltip-delay-value="0"'))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    let now = 10000
+    vi.spyOn(performance, "now").mockImplementation(() => now)
+    $("tip").getAnimations = () => [{ finished: new Promise(() => {}) }]
+    over($("archive"))
+    vi.advanceTimersByTime(0)
+    out($("archive"), $("delete"))
+    expect($("tip").hasAttribute("data-ending-style")).toBe(true)
+
+    now += 401
+    over($("delete"))
+    vi.advanceTimersByTime(600)
+
+    expect($("tip-2").hidden).toBe(false)
+    expect($("tip-2").hasAttribute("data-instant")).toBe(false)
+    expect($("tip").hasAttribute("data-ending-style")).toBe(true)
+    expect($("tip").hasAttribute("data-instant")).toBe(false)
+  })
+
+  it("closes at the click of Enter on the trigger", async () => {
+    await mount(toolbar())
+    tabTo($("delete"))
+    expect($("tip-2").hidden).toBe(false)
+
+    // Enter on a button gives a click and no pointerdown.
+    $("delete").dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }))
+
+    expect($("tip-2").hidden).toBe(true)
+    expect($("tip-2").getAttribute("data-instant")).toBe("dismiss")
+  })
+
+  it("keeps the tooltip open at a press with closeOnClick false", async () => {
+    await mount(toolbar('data-phem-tooltip-delay-value="0" data-phem-tooltip-close-on-click-value="false"'))
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    over($("archive"))
+    vi.advanceTimersByTime(0)
+
+    $("archive").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "mouse" }))
+
+    expect($("tip").hidden).toBe(false)
+  })
+
   it("shows no tooltip for a touch", async () => {
     await mount(toolbar('data-phem-tooltip-delay-value="0"'))
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })

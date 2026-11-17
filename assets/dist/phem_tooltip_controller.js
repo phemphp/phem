@@ -10,6 +10,9 @@ const GROUP_TIMEOUT = 400
 // The time of the last close of a tooltip of the page.
 let lastClose = -Infinity
 
+// The popup of the last tooltip that closes with its animation.
+let closing = null
+
 // The `phem-tooltip` controller: a short text next to an element, on hover and on the focus of
 // the keyboard.
 //
@@ -22,10 +25,12 @@ let lastClose = -Infinity
 // opens the popup after the `delay` value (600 ms), and the pointer out of the trigger closes it
 // after the `closeDelay` value (0 ms). The pointer can go on the popup (with the `hoverable`
 // value, the default). A focus of the keyboard (`:focus-visible`) opens it at once, and the blur
-// closes it. Escape and a click on the trigger close it (`closeOnClick`). A touch shows no tooltip.
+// closes it. Escape and a press on the trigger close it (`closeOnClick`): the `pointerdown` of the
+// pointer, or the `click` of Enter and Space. A touch shows no tooltip.
 //
 // A tooltip that opens soon after another tooltip closed opens with no delay, and gets
-// `data-instant="delay"`, so a `[data-instant]` rule can stop its animation.
+// `data-instant="delay"`. The other tooltip, if its close animation runs, also gets
+// `data-instant="delay"`, so a `[data-instant]` rule shows one tooltip at a time.
 //
 // The trigger gets `data-popup-open`. The tooltip is only visual, as the Tooltip of Base UI: the
 // popup gets no `role="tooltip"`, and the trigger gets no `aria-describedby`. A tooltip only helps
@@ -71,7 +76,8 @@ export default class PhemTooltipController extends Controller {
     this.element.addEventListener("pointerout", this.onPointerOut, options)
     this.element.addEventListener("focusin", this.onFocusIn, options)
     this.element.addEventListener("focusout", this.onFocusOut, options)
-    this.element.addEventListener("click", this.onClick, options)
+    this.element.addEventListener("pointerdown", this.onPress, options)
+    this.element.addEventListener("click", this.onPress, options)
 
     this.popup.render(false)
     this.#renderAria()
@@ -82,6 +88,7 @@ export default class PhemTooltipController extends Controller {
     this.listening.abort()
     clearTimeout(this.timer)
     if (this.popup.open) lastClose = performance.now()
+    if (closing === this.popup) closing = null
     this.popup.destroy()
   }
 
@@ -103,9 +110,15 @@ export default class PhemTooltipController extends Controller {
     clearTimeout(this.timer)
     if (this.popup.open) return
 
-    // Another tooltip closed a short time ago: this one opens at once.
-    if (performance.now() - lastClose < GROUP_TIMEOUT) this.#open({ instant: "delay" })
-    else this.timer = setTimeout(() => this.#open({ instant: false }), this.delayValue)
+    // Another tooltip closed a short time ago: this one opens at once, and the close of the other
+    // one ends at once, so the page shows one tooltip at a time.
+    if (performance.now() - lastClose < GROUP_TIMEOUT) {
+      if (closing && closing !== this.popup) closing.hide({ instant: "delay" })
+      closing = null
+      this.#open({ instant: "delay" })
+    } else {
+      this.timer = setTimeout(() => this.#open({ instant: false }), this.delayValue)
+    }
   }
 
   onPointerOut = (event) => {
@@ -132,13 +145,18 @@ export default class PhemTooltipController extends Controller {
     if (event.target === this.#trigger) this.#close({ instant: false })
   }
 
-  onClick = (event) => {
+  // A press on the trigger closes the tooltip, as in Base UI: at `pointerdown` for the pointer, and
+  // at `click` for Enter and Space.
+  onPress = (event) => {
     if (this.closeOnClickValue && this.#trigger?.contains(event.target) && !this.popupTargets.some((el) => el.contains(event.target))) this.#close({ instant: "dismiss" })
   }
 
   #open({ instant }) {
     clearTimeout(this.timer)
     if (this.popup.open || !this.hasPopupTarget) return
+
+    // A tooltip that opens again during its close animation is not the closing tooltip now.
+    if (closing === this.popup) closing = null
 
     this.#renderAria()
     this.popup.show({ instant })
@@ -150,7 +168,12 @@ export default class PhemTooltipController extends Controller {
     if (!this.popup.open) return
 
     lastClose = performance.now()
-    this.popup.hide({ instant })
+    const popup = this.popup
+    closing = popup
+    popup.hide({ instant }).then(() => {
+      if (closing === popup && !popup.open) closing = null
+    })
+
     this.#trigger?.removeAttribute("data-popup-open")
   }
 

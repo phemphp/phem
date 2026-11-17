@@ -8,6 +8,20 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking**: the popup of a preview card (`phem-popover` with `open-on-hover` and a link
+  trigger) no longer gets `aria-hidden="true"`, as in Base UI. A screen reader can read the card
+  in the reading order of the page. Its links and fields keep `tabindex="-1"`. Put
+  `aria-hidden="true"` in the markup of the popup to keep the old behavior.
+- **Breaking**: `phem-tooltip` closes at the press of the pointer on its trigger
+  (`pointerdown`), before the click, as in Base UI. Enter and Space still close it at the click. A
+  test that clicks the trigger and expects the open tooltip in the click handler must change.
+- `phem-tooltip`: when a tooltip of a group opens, the tooltip that closed before it gets
+  `data-instant="delay"` while its close animation runs, so a `[data-instant]` rule shows one
+  tooltip at a time.
+- `phem-popover`: a click outside on an element that takes no focus gives the focus back to the
+  trigger, as in Base UI. A popover that the hover opened and a preview card keep the focus where
+  it is. Each focus return to the trigger (Escape, a `close` part, a click outside) now uses
+  `preventScroll`, so the page does not scroll to the trigger.
 - **Breaking**: `phem-navigation-menu`: a click on a trigger that the pointer opened 500 ms or
   more before closes the menu, as in Base UI. Before, the first click always kept it open.
 - **Breaking**: `phem-navigation-menu`: Escape, a link with `close-on-click` and the `close` action

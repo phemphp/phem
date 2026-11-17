@@ -38,7 +38,9 @@ const FOCUSABLE = "a[href], button, input, select, textarea, [tabindex]"
 // animations. Open moves the focus into the popup: to its `[autofocus]` element, or else to the
 // first element that Tab goes to, or else to the popup. After an open with a touch, the focus goes
 // to the popup, so the keyboard of the device does not show. Escape gives the focus back to the
-// trigger when the focus is in the popup.
+// trigger when the focus is in the popup. A press outside gives the focus back to the trigger when
+// the focus is on the body or in the popup, except in a popup that the hover opened. The focus goes
+// back with `preventScroll`.
 //
 // The `open` value is the state: the server render gives its first value, and a server render
 // with a new `open` value sets it. When the `dismiss` value is true (the default), Escape, a press
@@ -50,9 +52,10 @@ const FOCUSABLE = "a[href], button, input, select, textarea, [tabindex]"
 // delay, and the focus out closes it at once. A popup that the focus opened gets
 // `data-instant="focus"`, also when the focus out closes it, so a `[data-instant]` rule can stop
 // its animation. Escape closes a preview card
-// with `data-instant="dismiss"`. The pointer removes the attribute. The link stays the only part for the keyboard and a screen
-// reader: the trigger gets no `aria-haspopup`, `aria-expanded` and `aria-controls`, the popup gets
-// `aria-hidden="true"` and no role, and its links and fields get `tabindex="-1"`.
+// with `data-instant="dismiss"`. The pointer removes the attribute. The link stays the only part
+// for the keyboard: the trigger gets no `aria-haspopup`, `aria-expanded` and `aria-controls`, the
+// popup gets no role, and its links and fields get `tabindex="-1"`. The popup stays in the
+// accessibility tree, so a screen reader can read it in the reading order of the page.
 export default class PhemPopoverController extends Controller {
   static targets = ["trigger", "popup", "arrow", "close", "title", "description"]
   static values = {
@@ -74,9 +77,12 @@ export default class PhemPopoverController extends Controller {
       dismiss: (reason) => {
         if (!this.dismissValue) return false
 
-        // The focus goes back to the trigger only when it is in the popup (`#close`), as in Base UI:
-        // Escape on a preview card that a hover opened keeps the focus where it is.
-        this.#close({ focus: false, instant: this.#preview && reason === "escape" ? "dismiss" : false })
+        // The focus goes back to the trigger when it is in the popup (`#close`), or on the body after a
+        // press outside, as in Base UI. Escape on a preview card that a hover opened keeps the focus
+        // where it is. A popup that the hover opened never had the focus, so a press outside keeps
+        // the focus where it is too.
+        const refocus = reason === "outside" && !this.#preview && !this.hoverOpened && isBody(document.activeElement)
+        this.#close({ focus: refocus, instant: this.#preview && reason === "escape" ? "dismiss" : false })
       },
     })
     this.hover = new Hover({
@@ -84,7 +90,7 @@ export default class PhemPopoverController extends Controller {
       triggers: () => this.triggerTargets,
       popups: () => this.popupTargets,
       isOpen: () => this.openValue,
-      open: () => this.#open({ focus: false }),
+      open: () => this.#open({ focus: false, hover: true }),
       close: () => this.#close({ focus: false }),
       delay: () => this.delayValue,
       closeDelay: () => this.closeDelayValue,
@@ -201,11 +207,12 @@ export default class PhemPopoverController extends Controller {
 
   onPointerOut = (event) => this.hover.out(event)
 
-  #open({ focus, touch = false, instant = false }) {
+  #open({ focus, touch = false, instant = false, hover = false }) {
     this.hover.cancel()
     if (this.openValue) return
 
     this.focusOpened = instant === "focus"
+    this.hoverOpened = hover
     this.openValue = true
     this.#apply({ focus, touch, instant })
   }
@@ -218,7 +225,7 @@ export default class PhemPopoverController extends Controller {
     const inside = this.popupTargets.some((el) => el.contains(document.activeElement))
     this.openValue = false
     this.#apply({ focus: false, instant })
-    if (focus || inside) this.#trigger?.focus()
+    if (focus || inside) this.#trigger?.focus({ preventScroll: true })
   }
 
   // Shows the state with its animations.
@@ -289,12 +296,11 @@ export default class PhemPopoverController extends Controller {
     }
   }
 
-  // A preview card: the link is the only part for the keyboard and a screen reader.
+  // A preview card: the link is the only part for the keyboard: Tab skips the content of the card.
   #renderPreview(popup) {
     for (const trigger of this.triggerTargets) trigger.toggleAttribute("data-popup-open", this.openValue)
     if (!popup) return
 
-    popup.setAttribute("aria-hidden", "true")
     for (const el of popup.querySelectorAll(FOCUSABLE)) el.tabIndex = -1
   }
 
@@ -308,7 +314,7 @@ export default class PhemPopoverController extends Controller {
   #owns(el, name) {
     if (this.popup.owns(el, name)) return true
     if (this.triggerTargets.includes(el)) return name === "aria-expanded" || name === "data-popup-open" || name === "data-pressed"
-    if (this.#preview && this.popupTargets.some((popup) => popup.contains(el))) return name === "tabindex" || (name === "aria-hidden" && this.popupTargets.includes(el))
+    if (this.#preview && this.popupTargets.some((popup) => popup.contains(el))) return name === "tabindex"
 
     return false
   }
@@ -320,4 +326,9 @@ export default class PhemPopoverController extends Controller {
   #triggerOf(el) {
     return this.triggerTargets.find((trigger) => trigger.contains(el))
   }
+}
+
+// No element has the focus.
+function isBody(el) {
+  return el === null || el === document.body
 }

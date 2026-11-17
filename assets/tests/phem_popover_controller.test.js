@@ -203,6 +203,58 @@ describe("phem-popover", () => {
     expect(isOpen()).toBe(false)
   })
 
+  it("gives the focus back to the trigger after a press outside that leaves the focus on the body", async () => {
+    await mount(share() + `<p id="away">Away</p>`)
+    click("#trigger")
+    expect(document.activeElement.id).toBe("copy")
+
+    // A press on an element that does not take the focus: the focus goes to the body before the click.
+    document.activeElement.blur()
+    expect(document.activeElement).toBe(document.body)
+    click("#away")
+
+    expect(isOpen()).toBe(false)
+    expect(document.activeElement.id).toBe("trigger")
+  })
+
+  it("keeps the focus on an element outside that took it at the press", async () => {
+    await mount(share() + `<button id="away">Away</button>`)
+    click("#trigger")
+
+    // A press on a button: the button takes the focus before the click.
+    document.getElementById("away").focus()
+    click("#away")
+
+    expect(isOpen()).toBe(false)
+    expect(document.activeElement.id).toBe("away")
+  })
+
+  it("gives the focus back to the trigger with preventScroll", async () => {
+    await mount(share() + `<p id="away">Away</p>`)
+    click("#trigger")
+    const focus = vi.spyOn(document.getElementById("trigger"), "focus")
+
+    document.activeElement.blur()
+    click("#away")
+
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true })
+  })
+
+  it("keeps the focus where it is after a press outside a popup that the hover opened", async () => {
+    await mount(share('data-phem-popover-open-on-hover-value="true" data-phem-popover-delay-value="0"') + `<p id="away">Away</p>`)
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    document.getElementById("trigger").dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }))
+    vi.advanceTimersByTime(0)
+    expect(isOpen()).toBe(true)
+    expect(document.activeElement).toBe(document.body)
+
+    click("#away")
+
+    expect(isOpen()).toBe(false)
+    expect(document.activeElement).toBe(document.body)
+    vi.useRealTimers()
+  })
+
   it("closes when the focus goes out of the popover", async () => {
     await mount(share())
     click("#trigger")
@@ -261,8 +313,49 @@ describe("phem-popover", () => {
       expect(trigger.hasAttribute("aria-haspopup")).toBe(false)
       expect(trigger.hasAttribute("aria-expanded")).toBe(false)
       expect(popup().hasAttribute("role")).toBe(false)
-      expect(popup().getAttribute("aria-hidden")).toBe("true")
       expect(document.getElementById("copy").tabIndex).toBe(-1)
+    })
+
+    it("keeps the popup in the accessibility tree: no aria-hidden, also after the morph", async () => {
+      await mount(card())
+      expect(popup().hasAttribute("aria-hidden")).toBe(false)
+      expect(document.getElementById("copy").tabIndex).toBe(-1)
+
+      respond(card())
+      const done = nextDone()
+      document.getElementById("copy").dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }))
+      await done
+
+      expect(popup().hasAttribute("aria-hidden")).toBe(false)
+      expect(document.getElementById("copy").tabIndex).toBe(-1)
+    })
+
+    it("keeps the aria-hidden of the server render, also after the morph", async () => {
+      const markup = card().replace('<div id="popup" ', '<div id="popup" aria-hidden="true" ')
+      await mount(markup)
+      expect(popup().getAttribute("aria-hidden")).toBe("true")
+
+      respond(markup)
+      const done = nextDone()
+      document.getElementById("copy").dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }))
+      await done
+
+      expect(popup().getAttribute("aria-hidden")).toBe("true")
+    })
+
+    it("animates a popup that the keyboard focus opens: data-instant does not stop the animation", async () => {
+      await mount(card())
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+      const trigger = document.getElementById("trigger")
+      const matches = trigger.matches.bind(trigger)
+      trigger.matches = (selector) => selector === ":focus-visible" || matches(selector)
+      trigger.focus()
+      vi.advanceTimersByTime(600)
+
+      expect(shown()).toBe(true)
+      expect(popup().getAttribute("data-instant")).toBe("focus")
+      expect(popup().hasAttribute("data-starting-style")).toBe(true)
+      vi.useRealTimers()
     })
 
     it("does not open on a click on the link", async () => {
@@ -313,6 +406,21 @@ describe("phem-popover", () => {
 
       vi.advanceTimersByTime(1000)
       expect(shown()).toBe(false)
+      vi.useRealTimers()
+    })
+
+    it("gives a preview card no focus after a press outside", async () => {
+      await mount(card() + `<p id="away">Away</p>`)
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+      document.getElementById("trigger").dispatchEvent(new PointerEvent("pointerover", { bubbles: true, pointerType: "mouse" }))
+      vi.advanceTimersByTime(600)
+      expect(shown()).toBe(true)
+
+      document.activeElement.blur()
+      click("#away")
+
+      expect(shown()).toBe(false)
+      expect(document.activeElement).toBe(document.body)
       vi.useRealTimers()
     })
   })

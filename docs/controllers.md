@@ -311,7 +311,7 @@ A click on the trigger opens and closes the popup, and a click on a `close` part
 
 The popup gets `role="dialog"`, `aria-labelledby` (the `title` part) and `aria-describedby` (the `description` part), so a screen reader names the popup. A popup with an `aria-label` keeps it, and gets no `aria-labelledby`. A part with an `id` gets a link with its id, as the title above. A part with no `id`, as the description above, gets a link with the element references of ARIA (`ariaLabelledByElements`, `ariaDescribedByElements`), and the browser shows `aria-describedby=""`. The trigger points to a popup with no `id` with `ariaControlsElements`. The controller gives the parts no `id`, because the morph must match each element to the server render.
 
-Open moves the focus into the popup: to its `[autofocus]` element, or else to the first element that Tab goes to (a field, a button, a link), or else to the popup itself. After an open with a touch, the focus goes to the popup, so the keyboard of the device does not show. Escape closes the popup. When the focus is in the popup, it goes back to the trigger: Escape on a popup that the pointer opened keeps the focus where it is. A click outside and the focus out of the popover close it too. Set `data-phem-popover-dismiss-value="false"` to keep it open on Escape, on a click outside and on the focus out. Then Escape goes to the popup or the dialog around the popover, which closes.
+Open moves the focus into the popup: to its `[autofocus]` element, or else to the first element that Tab goes to (a field, a button, a link), or else to the popup itself. After an open with a touch, the focus goes to the popup, so the keyboard of the device does not show. Escape closes the popup. When the focus is in the popup, it goes back to the trigger: Escape on a popup that the pointer opened keeps the focus where it is. A click outside and the focus out of the popover close it too. After a click outside on an element that takes no focus (a text, an image), the focus goes back to the trigger, as in Base UI. After a click outside on an element that takes the focus (a field), the focus stays there. Safari does not give the focus to a button or a link at a click, so there a click on a button outside also gives the focus back to the trigger, as in Base UI. A popup that the hover opened keeps the focus where it is. Each time the focus goes back to the trigger (Escape, a `close` part, a click outside), it uses `preventScroll`: the page does not scroll to the trigger. Set `data-phem-popover-dismiss-value="false"` to keep it open on Escape, on a click outside and on the focus out. Then Escape goes to the popup or the dialog around the popover, which closes.
 
 With `data-phem-popover-open-on-hover-value="true"`, the pointer on the trigger opens the popup after the `delay` value (300 ms), and the pointer out of the trigger and of the popup closes it after the `close-delay` value (0 ms: at once). The pointer can go from the trigger to the popup, also on a diagonal path: while it is in the space between them, the popup stays open. For example, with `data-phem-popover-side-offset-value="8"`, the pointer crosses the 8 px below the trigger, and the popup closes only when the pointer goes out of that space. A popover with `open-on-hover` is good for a preview card, because a touch screen and the keyboard can still open it.
 
@@ -329,11 +329,11 @@ A popover with `open-on-hover` and a link trigger (`<a href>`) is a preview card
 </div>
 ```
 
-A click on the link opens the link, not the popup. The keyboard focus on the link opens the popup after the delay, and the focus out closes it at once: the close delay is for the pointer. A popup that the focus opened gets `data-instant="focus"`, also when the focus out closes it, so a `[data-instant]` rule can stop its animation, as in Base UI. Escape closes the card with `data-instant="dismiss"`, and the pointer removes the attribute. The focus stays on the link. The card only adds to the link, for a mouse and for the eyes: the link stays the only part for the keyboard and for a screen reader. So the link gets no `aria-haspopup`, `aria-expanded` or `aria-controls`, and the popup gets `aria-hidden="true"` and no role. Its links and fields get `tabindex="-1"`: Tab goes from the link to the next element of the page. Put the information of the card on the page of the link too. When the pointer is on **Ada**, the browser shows:
+A click on the link opens the link, not the popup. The keyboard focus on the link opens the popup after the delay, and the focus out closes it at once: the close delay is for the pointer. A popup that the focus opened gets `data-instant="focus"`, also when the focus out closes it, so a `[data-instant]` rule can stop its animation, as in Base UI. Escape closes the card with `data-instant="dismiss"`, and the pointer removes the attribute. The focus stays on the link. A click outside closes the card, and the focus does not move. The card only adds to the link, for a mouse and for the eyes: the link stays the only part that Tab goes to. So the link gets no `aria-haspopup`, `aria-expanded` or `aria-controls`, and the popup gets no role. The popup stays in the accessibility tree, as in Base UI: a screen reader can read it in the reading order of the page. Its links and fields get `tabindex="-1"`: Tab goes from the link to the next element of the page. Put the information of the card on the page of the link too. When the pointer is on **Ada**, the browser shows:
 
 ```html
 <a href="/users/ada" data-phem-popover-target="trigger" data-popup-open>Ada</a>
-<div data-phem-popover-target="popup" aria-hidden="true" data-open data-side="bottom" data-align="center" style="...">
+<div data-phem-popover-target="popup" data-open data-side="bottom" data-align="center" style="...">
     <img src="/ada.png" alt=""> <a href="/users/ada/posts" tabindex="-1">Posts</a>
 </div>
 ```
@@ -349,9 +349,15 @@ A click on the link opens the link, not the popup. The keyboard focus on the lin
 </button>
 ```
 
-The trigger is the controller element, or a `trigger` part in it. The pointer on the trigger opens the tooltip after the `delay` value (600 ms), and the pointer out closes it after the `close-delay` value (0 ms). The pointer can go on the tooltip, unless `data-phem-tooltip-hoverable-value="false"`. The focus of the keyboard (`:focus-visible`) opens it at once. Escape, the blur and a click on the trigger close it. Set `data-phem-tooltip-close-on-click-value="false"` to keep it open on a click.
+The trigger is the controller element, or a `trigger` part in it. The pointer on the trigger opens the tooltip after the `delay` value (600 ms), and the pointer out closes it after the `close-delay` value (0 ms). The pointer can go on the tooltip, unless `data-phem-tooltip-hoverable-value="false"`. The focus of the keyboard (`:focus-visible`) opens it at once. Escape, the blur and a press on the trigger close it: the tooltip closes at the press of the pointer (`pointerdown`), before the click, and at the click of Enter or Space, as in Base UI. Set `data-phem-tooltip-close-on-click-value="false"` to keep it open on a press.
 
-A tooltip that opens less than 400 ms after another tooltip closed opens with no delay, and gets `data-instant="delay"`, so a `[data-instant]` rule can stop its animation, as in a toolbar. While the tooltip is open, the browser shows:
+A tooltip that opens less than 400 ms after another tooltip closed opens with no delay, and gets `data-instant="delay"`, so a `[data-instant]` rule can stop its animation, as in a toolbar. The tooltip that closed also gets `data-instant="delay"` while its close animation runs, so with the `[data-instant]` rule the page shows one tooltip at a time:
+
+```css
+[data-phem-tooltip-target="popup"][data-instant] { transition: none }
+```
+
+While the tooltip is open, the browser shows:
 
 ```html
 <button data-controller="phem-tooltip" aria-label="Archive" data-popup-open>

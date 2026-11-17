@@ -81,6 +81,26 @@ final class PopoverTest extends E2eTestCase
         expect($page->locator('#trigger'))->toBeFocused();
     }
 
+    public function testAPressOutsideGivesTheFocusBackToTheTrigger(): void
+    {
+        $page = $this->visit('/popover');
+        self::assertResponseIsSuccessful();
+
+        // A press on an element that takes no focus: the focus goes back to the trigger.
+        $page->locator('#trigger')->click();
+        expect($page->locator('#like'))->toBeFocused();
+        $page->locator('#likes')->click();
+        expect($page->locator('#popup'))->toBeHidden();
+        expect($page->locator('#trigger'))->toBeFocused();
+
+        // A press on a button: the focus stays on the button.
+        $page->locator('#trigger')->click();
+        expect($page->locator('#like'))->toBeFocused();
+        $page->locator('#after-card')->click();
+        expect($page->locator('#popup'))->toBeHidden();
+        expect($page->locator('#after-card'))->toBeFocused();
+    }
+
     public function testPopoverFlipsToTheTopNearTheBottomEdge(): void
     {
         $page = $this->visit('/popover');
@@ -106,7 +126,8 @@ final class PopoverTest extends E2eTestCase
 
         $page->locator('#card-link')->hover();
         expect($page->locator('#card-popup'))->toBeVisible();
-        expect($page->locator('#card-popup'))->toHaveAttribute('aria-hidden', 'true');
+        // The card stays in the accessibility tree.
+        self::assertNull($page->evaluate("document.getElementById('card-popup').getAttribute('aria-hidden')"));
         expect($page->locator('#card-link'))->not()->toHaveAttribute('aria-expanded', 'true');
         $page->mouse()->move(0, 0);
         expect($page->locator('#card-popup'))->toBeHidden();
@@ -125,6 +146,27 @@ final class PopoverTest extends E2eTestCase
         $page->locator('#card-link')->click();
         $page->waitForFunction("location.hash === '#ada'");
         expect($page->locator('#card-popup'))->toBeVisible();
+    }
+
+    public function testAPreviewCardThatTheFocusOpensAnimates(): void
+    {
+        $page = $this->visit('/popover');
+        self::assertResponseIsSuccessful();
+
+        // Keeps whether the popup has `data-starting-style` when it gets `data-open`.
+        $page->evaluate("(() => {
+            const popup = document.getElementById('card-popup')
+            new MutationObserver(() => {
+                if (window.started === undefined && popup.hasAttribute('data-open')) window.started = popup.hasAttribute('data-starting-style')
+            }).observe(popup, { attributes: true })
+        })()");
+
+        $page->locator('#card-link')->focus();
+        $page->keyboard()->press('Shift+Tab');
+        $page->keyboard()->press('Tab');
+        expect($page->locator('#card-popup'))->toBeVisible();
+        expect($page->locator('#card-popup'))->toHaveAttribute('data-instant', 'focus');
+        self::assertTrue($page->evaluate('window.started'));
     }
 
     public function testTooltipShowsOnHoverAboveItsTrigger(): void

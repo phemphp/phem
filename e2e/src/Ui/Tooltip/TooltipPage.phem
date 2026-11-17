@@ -1,0 +1,45 @@
+<?phem
+
+namespace App\Ui\Tooltip;
+
+use Phem\Attribute\{Page, State};
+use Phem\Node;
+
+use function App\Ui\Layout\Document;
+
+// Two tooltips side by side, as in a toolbar, with a close animation that `[data-instant]` stops.
+// "Bold" counts the clicks.
+#[Page('/tooltip')]
+final class TooltipPage
+{
+    #[State] public int $presses = 0;
+
+    public function press(): void
+    {
+        ++$this->presses;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <Document title="Tooltip">
+                <style>{{ '
+                    .bar { display: flex; margin: 80px 40px }
+                    .bar button { width: 60px; height: 32px; margin: 0 }
+                    .tip { transition: opacity 400ms }
+                    .tip[data-starting-style], .tip[data-ending-style] { opacity: 0 }
+                    .tip[data-instant] { transition: none }
+                ' }}</style>
+                <div class="bar">
+                    <button id="bold" data-controller="phem-tooltip" aria-label="Bold" data-phem-tooltip-delay-value={{ 100 }} onClick={{ press }}>
+                        B<span id="bold-tip" class="tip" data-phem-tooltip-target="popup" hidden>Bold</span>
+                    </button>
+                    <button id="italic" data-controller="phem-tooltip" aria-label="Italic" data-phem-tooltip-delay-value={{ 100 }}>
+                        I<span id="italic-tip" class="tip" data-phem-tooltip-target="popup" hidden>Italic</span>
+                    </button>
+                </div>
+                <output id="presses">{{ presses }}</output>
+            </Document>
+        );
+    }
+}
