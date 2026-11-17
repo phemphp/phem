@@ -56,6 +56,26 @@ symfony serve
 
 Build a new app from scratch using Phem. See [Create your first Phem app](docs/quickstart.md).
 
+## Editor support
+
+The Phem language server (`phemc lsp`) gives diagnostics as you type, completion, go to
+definition, find references, hover and the outline of `.phem` files. These plugins use it:
+
+- [VS Code](editors/vscode/README.md): install the `yceruto.phem` extension from the
+  Marketplace. It includes the server, so you do not need `phemc`, PHP or Rust.
+- [PhpStorm](editors/phpstorm/README.md): build the plugin with `make phpstorm`. It runs the
+  bundled server with Node.js, or a native `phemc` binary.
+- [Claude Code](editors/claude-code/README.md): the plugin runs `vendor/bin/phemc lsp` of your
+  app, so Claude gets the compiler errors after each edit of a `.phem` file.
+
+  ```sh
+  claude plugin marketplace add phemphp/phem
+  claude plugin install phem@phem
+  ```
+
+Other editors with LSP support can run `phemc lsp` on stdin and stdout. See
+[`phemc lsp`](docs/compiler.md#phemc-lsp).
+
 ## Documentation
 
 Read the docs on the website: https://phem.dev/.
