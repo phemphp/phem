@@ -10,7 +10,6 @@ use Phem\{Html, Node};
 class Collapsible
 {
     #[Prop] public bool $defaultOpen = false;
-    #[Prop] public bool $hiddenUntilFound = false;
     #[Prop] public bool $disabled = false;
     #[Prop] public ?Html $children = null;
     #[Prop(rest: true)] public array $attrs = [];
@@ -21,7 +20,6 @@ class Collapsible
             <div
                 data-controller="phem-collapsible"
                 data-phem-collapsible-open-value={{ defaultOpen ? 'true' : null }}
-                data-phem-collapsible-hidden-until-found-value={{ hiddenUntilFound ? 'true' : null }}
                 data-open={{ defaultOpen ? '' : null }}
                 data-closed={{ defaultOpen ? null : '' }}
                 data-disabled={{ disabled ? '' : null }}
@@ -58,16 +56,21 @@ function CollapsibleTrigger(#[Context] Collapsible $collapsible, ?Html $children
     );
 }
 
-/** The panel. Its height animates with `--collapsible-panel-height`. */
+/**
+ * The panel. Its height animates with `--collapsible-panel-height`. With `hiddenUntilFound`, the
+ * closed panel has `hidden="until-found"`: the search of the browser (Ctrl+F) finds its text and
+ * opens it.
+ */
 #[Component]
-function CollapsiblePanel(#[Context] Collapsible $collapsible, ?Html $children = null, mixed ...$rest): Node
+function CollapsiblePanel(#[Context] Collapsible $collapsible, bool $hiddenUntilFound = false, ?Html $children = null, mixed ...$rest): Node
 {
     $open = $collapsible->defaultOpen;
-    $hidden = $open ? false : ($collapsible->hiddenUntilFound ? 'until-found' : true);
+    $hidden = $open ? false : ($hiddenUntilFound ? 'until-found' : true);
 
     return (
         <div
             data-phem-collapsible-target="panel"
+            data-phem-collapsible-hidden-until-found={{ hiddenUntilFound ? '' : null }}
             hidden={{ hidden }}
             data-open={{ open ? '' : null }}
             data-closed={{ open ? null : '' }}

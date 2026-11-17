@@ -3,13 +3,14 @@
 namespace Phem\Ui\Base;
 
 use Phem\Attribute\{Component, Context, Prop, Provide};
-use Phem\{Bound, Html, Node};
+use Phem\{Bound, Dynamic, Html, Node};
 
 /**
  * A box that the user checks and unchecks: Base UI Checkbox.Root, on the `phem-toggle` controller.
  *
  * Put it in a `<label>` with its text. A hidden checkbox keeps the state for a form (`name`, `value`).
- * Bind it with `phem:bind`. In a CheckboxGroup, the group owns the state: give the checkbox a `value`,
+ * Bind it with `phem:bind`. With `nativeButton`, it is a `<button>` for a sibling `<label for>` (give
+ * it an `id`), and a hidden input keeps the state. In a CheckboxGroup, the group owns the state: give the checkbox a `value`,
  * and `parent` to the checkbox that checks all the items.
  */
 #[Component, Provide]
@@ -21,6 +22,7 @@ class Checkbox
     #[Prop] public bool $readOnly = false;
     #[Prop] public bool $required = false;
     #[Prop] public bool $parent = false;
+    #[Prop] public bool $nativeButton = false;
     #[Prop] public ?string $name = null;
     #[Prop] public ?string $value = null;
     #[Prop] public ?Bound $checked = null;
@@ -52,10 +54,12 @@ class Checkbox
         $base = Style::CHECKBOX;
 
         return (
-            <span
+            <Dynamic
+                tag={{ nativeButton ? 'button' : 'span' }}
+                type={{ nativeButton ? 'button' : null }}
                 role="checkbox"
                 aria-checked={{ mixed ? 'mixed' : (on ? 'true' : 'false') }}
-                tabindex="0"
+                tabindex={{ nativeButton ? null : 0 }}
                 data-checked={{ on ? '' : null }}
                 data-unchecked={{ on or mixed ? null : '' }}
                 data-indeterminate={{ mixed ? '' : null }}
@@ -75,8 +79,12 @@ class Checkbox
                 {{ ...attrs }}
             >
                 {{ children }}
-                <input type="checkbox" hidden phem:bind={{ checked }} checked={{ on }} data-phem-toggle-target="input" />
-            </span>
+                {% if nativeButton %}
+                    <input type="hidden" phem:bind={{ checked }} data-phem-toggle-target="input" />
+                {% else %}
+                    <input type="checkbox" hidden phem:bind={{ checked }} checked={{ on }} data-phem-toggle-target="input" />
+                {% endif %}
+            </Dynamic>
         );
     }
 }
@@ -106,7 +114,8 @@ function CheckboxIndicator(#[Context] Checkbox $checkbox, ?Html $children = null
 /**
  * A group of checkboxes with one state: Base UI CheckboxGroup, on the `phem-checkbox-group`
  * controller. `defaultValue` lists the values of the checked checkboxes, and `allValues` the values
- * that a `parent` checkbox checks. Label it with `aria-labelledby`.
+ * that a `parent` checkbox checks. Label it with `aria-labelledby`. With a `value`, a group in a
+ * group is an item of the outer group: the outer parent checks all its checkboxes.
  */
 #[Component, Provide]
 class CheckboxGroup
@@ -115,6 +124,7 @@ class CheckboxGroup
     #[Prop] public array $defaultValue = [];
     /** @var list<string> */
     #[Prop] public array $allValues = [];
+    #[Prop] public ?string $value = null;
     #[Prop] public bool $disabled = false;
     #[Prop] public ?Html $children = null;
     #[Prop(rest: true)] public array $attrs = [];
@@ -136,15 +146,16 @@ class CheckboxGroup
 
     public function render(): Node
     {
-        $value = json_encode($this->defaultValue);
+        $checked = json_encode($this->defaultValue);
         $all = [] === $this->allValues ? null : json_encode($this->allValues);
 
         return (
             <div
                 role="group"
+                data-value={{ value }}
                 data-disabled={{ disabled ? '' : null }}
                 data-controller="phem-checkbox-group"
-                data-phem-checkbox-group-value-value={{ value }}
+                data-phem-checkbox-group-value-value={{ checked }}
                 data-phem-checkbox-group-all-values-value={{ all }}
                 className={{ classes('flex flex-col items-start gap-1 text-neutral-950 dark:text-white') }}
                 {{ ...attrs }}

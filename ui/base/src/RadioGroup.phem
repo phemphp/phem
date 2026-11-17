@@ -3,7 +3,7 @@
 namespace Phem\Ui\Base;
 
 use Phem\Attribute\{Component, Context, Prop, Provide};
-use Phem\{Bound, Html, Node};
+use Phem\{Bound, Dynamic, Html, Node};
 
 /**
  * A group of radio buttons: Base UI RadioGroup, on the `phem-radio-group` controller.
@@ -63,6 +63,8 @@ class Radio
 {
     #[Prop] public string $value;
     #[Prop] public bool $disabled = false;
+    /** A `<button>` in place of a `<span>`, for a sibling `<label for>` (give it an `id`). */
+    #[Prop] public bool $nativeButton = false;
     #[Prop] public ?Html $children = null;
     #[Prop(rest: true)] public array $attrs = [];
     #[Context] public RadioGroup $group;
@@ -77,7 +79,9 @@ class Radio
         $on = $this->isChecked();
 
         return (
-            <span
+            <Dynamic
+                tag={{ nativeButton ? 'button' : 'span' }}
+                type={{ nativeButton ? 'button' : null }}
                 role="radio"
                 aria-checked={{ on ? 'true' : 'false' }}
                 aria-disabled={{ disabled ? 'true' : null }}
@@ -90,7 +94,7 @@ class Radio
                 {{ ...attrs }}
             >
                 {{ children }}
-            </span>
+            </Dynamic>
         );
     }
 }

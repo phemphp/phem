@@ -73,6 +73,27 @@ describe("phem-accordion", () => {
     expect(open()).toEqual([])
   })
 
+  it("hides the closed panels until found with the hiddenUntilFound value", async () => {
+    await mount(accordion('data-phem-accordion-hidden-until-found-value="true"'))
+
+    expect(document.getElementById("shipping-panel").getAttribute("hidden")).toBe("until-found")
+    click("#shipping-trigger")
+    click("#shipping-trigger")
+    await settle()
+    expect(document.getElementById("shipping-panel").getAttribute("hidden")).toBe("until-found")
+
+    // The search of the browser opens the item of the panel with the text.
+    document.getElementById("returns-panel").dispatchEvent(new Event("beforematch", { bubbles: true }))
+    expect(open()).toEqual(["returns"])
+  })
+
+  it("hides one panel until found with the attribute of the panel", async () => {
+    await mount(accordion().replace('id="shipping-panel"', 'id="shipping-panel" data-phem-accordion-hidden-until-found'))
+
+    expect(document.getElementById("shipping-panel").getAttribute("hidden")).toBe("until-found")
+    expect(document.getElementById("returns-panel").getAttribute("hidden")).toBe("")
+  })
+
   it("opens more than one item with the multiple value", async () => {
     await mount(accordion('data-phem-accordion-multiple-value="true"'))
 

@@ -2,7 +2,7 @@
 
 namespace Phem\Ui\Base;
 
-use Phem\Attribute\Component;
+use Phem\Attribute\{Component, Context};
 use Phem\{Bound, Html, Node};
 
 /**
@@ -85,9 +85,11 @@ function NumberFieldGroup(?Html $children = null, mixed ...$rest): Node
 }
 
 #[Component]
-function NumberFieldInput(mixed ...$rest): Node
+function NumberFieldInput(#[Context] ?Toolbar $toolbar = null, mixed ...$rest): Node
 {
-    return <input data-phem-number-field-target="input" className={{ classes('h-full w-[7ch] border border-neutral-950 bg-white px-2 text-left text-sm font-normal text-neutral-950 tabular-nums any-pointer-coarse:text-base dark:border-white dark:bg-neutral-950 dark:text-white focus:z-1 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white') }} {{ ...rest }} />;
+    $item = null !== $toolbar ? 'item' : null;
+
+    return <input data-phem-number-field-target="input" data-phem-toolbar-target={{ item }} className={{ classes('h-full w-[7ch] border border-neutral-950 bg-white px-2 text-left text-sm font-normal text-neutral-950 tabular-nums any-pointer-coarse:text-base dark:border-white dark:bg-neutral-950 dark:text-white focus:z-1 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white') }} {{ ...rest }} />;
 }
 
 #[Component]

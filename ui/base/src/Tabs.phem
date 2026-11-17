@@ -3,7 +3,7 @@
 namespace Phem\Ui\Base;
 
 use Phem\Attribute\{Component, Context, Prop, Provide};
-use Phem\{Html, Node};
+use Phem\{Dynamic, Html, Node};
 
 /**
  * Tabs and their panels: Base UI Tabs.Root, on the `phem-tabs` controller.
@@ -52,14 +52,17 @@ function TabsList(?Html $children = null, mixed ...$rest): Node
     return <div data-phem-tabs-target="list" className={{ classes('relative z-1 -mb-px flex gap-1') }} {{ ...rest }}>{{ children }}</div>;
 }
 
+/** A tab. With an `href`, it is a link that also selects its panel. */
 #[Component]
-function TabsTab(string $value, #[Context] Tabs $tabs, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+function TabsTab(string $value, #[Context] Tabs $tabs, bool $disabled = false, ?string $href = null, ?Html $children = null, mixed ...$rest): Node
 {
     $active = $tabs->isActive($value);
 
     return (
-        <button
-            type="button"
+        <Dynamic
+            tag={{ href ? 'a' : 'button' }}
+            href={{ href }}
+            type={{ href ? null : 'button' }}
             role="tab"
             aria-selected={{ null === active ? null : (active ? 'true' : 'false') }}
             data-active={{ active ? '' : null }}
@@ -71,7 +74,7 @@ function TabsTab(string $value, #[Context] Tabs $tabs, bool $disabled = false, ?
             {{ ...rest }}
         >
             {{ children }}
-        </button>
+        </Dynamic>
     );
 }
 

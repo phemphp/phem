@@ -2,11 +2,12 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\Page;
-use Phem\Node;
+use Phem\Attribute\{Component, Page};
+use Phem\{Html, Node};
 
-use function App\Ui\{DemoPage, Hero};
-use function Phem\Ui\Base\{OTPField, OTPFieldInput};
+use function App\Ui\{DemoPage, Example, Examples, Hero};
+use function Phem\Ui\Base\{FieldDescription, FieldLabel, Form, OTPField, OTPFieldInput, OTPFieldSeparator};
+use Phem\Ui\Base\Field;
 
 #[Page('/components/otp-field')]
 function OTPFieldPage(): Node
@@ -24,6 +25,114 @@ function OTPFieldPage(): Node
                     <p id="otp-description" className="m-0 text-sm text-neutral-600 dark:text-neutral-400">Enter the 6-character code we sent to your device.</p>
                 </div>
             </Hero>
+            <Examples>
+                <Example title="Labeling an OTP field">
+                    <Example.description>
+                        <p>Give an <code>id</code> to the first <code>OTPFieldInput</code> and use a native <code>&lt;label&gt;</code> with a matching <code>for</code>. Let the first input use the field label: the other inputs get <code>aria-label="Character 2 of 6"</code> and so on, so assistive technology can announce which slot is focused.</p>
+                        <p>Optionally, add <code>aria-describedby</code> when supporting text should be announced with the field.</p>
+                    </Example.description>
+                    <OTPFieldDemo id="labeled" label="Verification code" description={{ <>Enter the 6-character code we sent to your device.</> }} />
+                </Example>
+                <Example title="Form integration">
+                    <Example.description>
+                        <p>Use <a href="/components/field" className="underline">Field</a> to handle label associations and form integration.</p>
+                        <p>Pass <code>autoSubmit</code> to submit the owning form automatically when all slots are filled, or listen to <code>phem-otp-field:complete</code> to react to completion without submitting.</p>
+                    </Example.description>
+                    <OTPFieldFormDemo />
+                </Example>
+                <Example title="Alphanumeric verification codes">
+                    <Example.description>
+                        <p>Use <code>validationType="alphanumeric"</code> for recovery, backup, or invite codes that mix letters and numbers.</p>
+                    </Example.description>
+                    <OTPFieldDemo id="recovery" label="Recovery code" validationType="alphanumeric" description={{ <>Accept letters and numbers for backup codes such as <code className="font-mono">A7C9XZ</code>.</> }} />
+                </Example>
+                <Example title="Grouped layouts">
+                    <Example.description>
+                        <p>Wrap subsets of inputs in your own layout elements and use <code>OTPFieldSeparator</code> when you want the code presented in smaller visual chunks such as <code>123-456</code>.</p>
+                    </Example.description>
+                    <OTPFieldGroupedDemo />
+                </Example>
+                <Example title="Placeholder hints">
+                    <Example.description>
+                        <p><code>OTPFieldInput</code> is a real input, so native <code>placeholder</code> props and CSS work as usual. This example keeps placeholder hints visible until the active slot receives focus.</p>
+                    </Example.description>
+                    <OTPFieldDemo id="hints" label="Verification code" placeholder="•" description={{ <>Placeholder hints can stay visible until the active slot is focused.</> }} />
+                </Example>
+                <Example title="Custom normalization">
+                    <Example.description>
+                        <p>Use <code>normalize</code> (<code>uppercase</code> or <code>lowercase</code>) to normalize accepted values before state updates, such as converting alphanumeric codes to uppercase. It runs after <code>validationType</code> filtering, and the result is filtered against <code>validationType</code> again.</p>
+                        <p>A refused character sends <code>phem-otp-field:invalid</code>.</p>
+                    </Example.description>
+                    <OTPFieldDemo id="normalized" label="Recovery code" validationType="alphanumeric" normalize="uppercase" description={{ <>Letters and digits only. Letters are converted to uppercase.</> }} />
+                </Example>
+                <Example title="Masked entry">
+                    <Example.description>
+                        <p>Use <code>mask</code> when the code should be obscured while it is being typed.</p>
+                    </Example.description>
+                    <OTPFieldDemo id="access" label="Access code" mask description={{ <>Use <code className="font-mono">mask</code> to obscure the code on shared screens.</> }} />
+                </Example>
+            </Examples>
         </DemoPage>
+    );
+}
+
+// A labeled code of six characters, with a description.
+#[Component]
+function OTPFieldDemo(string $id, string $label, Html $description, string $validationType = 'numeric', ?string $normalize = null, bool $mask = false, ?string $placeholder = null): Node
+{
+    $slots = range(1, 6);
+    $first = $id.'-1';
+    $described = $id.'-description';
+    $hint = null === $placeholder ? null : 'placeholder:text-neutral-500 focus:placeholder:text-transparent';
+
+    return (
+        <div className="flex w-full max-w-80 flex-col items-start gap-1">
+            <label htmlFor={{ first }} className="text-sm font-bold text-neutral-950 dark:text-white">{{ label }}</label>
+            <OTPField validationType={{ validationType }} normalize={{ normalize }} mask={{ mask }} aria-describedby={{ described }}>
+                {% for i in slots %}<OTPFieldInput key={{ i }} id={{ i == 1 ? first : null }} placeholder={{ placeholder }} className={{ hint }} />{% endfor %}
+            </OTPField>
+            <p id={{ described }} className="m-0 text-sm text-neutral-600 dark:text-neutral-400">{{ description }}</p>
+        </div>
+    );
+}
+
+#[Component]
+function OTPFieldFormDemo(): Node
+{
+    $slots = range(1, 6);
+
+    return (
+        <Form>
+            <Field>
+                <FieldLabel>Verification code</FieldLabel>
+                <FieldDescription>Enter the 6-character code we sent to your device.</FieldDescription>
+                <OTPField name="verificationCode">
+                    {% for i in slots %}<OTPFieldInput key={{ i }} />{% endfor %}
+                </OTPField>
+            </Field>
+        </Form>
+    );
+}
+
+#[Component]
+function OTPFieldGroupedDemo(): Node
+{
+    return (
+        <div className="flex w-full max-w-80 flex-col items-start gap-1">
+            <label htmlFor="grouped-1" className="text-sm font-bold text-neutral-950 dark:text-white">Verification code</label>
+            <OTPField className="items-center">
+                <div className="flex gap-2">
+                    <OTPFieldInput id="grouped-1" />
+                    <OTPFieldInput />
+                    <OTPFieldInput />
+                </div>
+                <OTPFieldSeparator className="h-px w-4 bg-current text-neutral-950 dark:text-white">{{ '' }}</OTPFieldSeparator>
+                <div className="flex gap-2">
+                    <OTPFieldInput />
+                    <OTPFieldInput />
+                    <OTPFieldInput />
+                </div>
+            </OTPField>
+        </div>
     );
 }

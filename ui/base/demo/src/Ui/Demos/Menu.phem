@@ -30,7 +30,10 @@ function MenuPage(): Node
                 </Menu>
             </Hero>
             <Examples>
-                <Example title="Submenu, checkbox items and radio items" description="A submenu, checkbox items and radio items. The browser keeps the state of the items with no handler. Autosave has a handler: the server keeps its state.">
+                <Example title="Submenu, checkbox items and radio items">
+                    <Example.description>
+                        <p>A submenu, checkbox items and radio items. The browser keeps the state of the items with no handler. Autosave has a handler: the server keeps its state.</p>
+                    </Example.description>
                     <MenuCheckItemsDemo />
                 </Example>
             </Examples>

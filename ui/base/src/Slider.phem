@@ -23,6 +23,12 @@ class Slider
     #[Prop] public float $minStepsBetweenValues = 0;
     #[Prop] public Orientation $orientation = Orientation::Horizontal;
     #[Prop] public bool $disabled = false;
+    /** The name of the inputs of the thumbs in a form. A thumb can have its own `name`. */
+    #[Prop] public ?string $name = null;
+    /** `center` (the center of a thumb at `min` and `max` is on the edge) or `edge` (the thumb stays in the control). */
+    #[Prop] public string $thumbAlignment = 'center';
+    /** What a thumb does when it meets another thumb during a drag: `push`, `swap` or `none`. */
+    #[Prop] public string $thumbCollisionBehavior = 'push';
     #[Prop] public ?array $format = null;
     #[Prop] public ?string $locale = null;
     #[Prop] public ?Html $children = null;
@@ -63,6 +69,8 @@ class Slider
                 data-phem-slider-min-steps-between-values-value={{ minStepsBetweenValues ?: null }}
                 data-phem-slider-orientation-value={{ orientation.value }}
                 data-phem-slider-disabled-value={{ disabled ? 'true' : null }}
+                data-phem-slider-thumb-alignment-value={{ 'center' == thumbAlignment ? null : thumbAlignment }}
+                data-phem-slider-thumb-collision-behavior-value={{ 'push' == thumbCollisionBehavior ? null : thumbCollisionBehavior }}
                 data-phem-slider-format-value={{ formatJson }}
                 data-phem-slider-locale-value={{ locale }}
                 className={{ classes('grid grid-cols-2 gap-y-1') }}
@@ -126,6 +134,7 @@ function SliderThumb(#[Context] Slider $slider, int $index = 0, ?string $name = 
 {
     $value = $slider->values()[$index] ?? $slider->min;
     $percent = $slider->percent($value);
+    $name ??= $slider->name;
     $style = $slider->vertical()
         ? 'position: absolute; bottom: '.$percent.'%; left: 50%; translate: -50% 50%'
         : 'position: absolute; inset-inline-start: '.$percent.'%; top: 50%; translate: -50% -50%';

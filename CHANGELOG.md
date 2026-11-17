@@ -8,6 +8,21 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- `phem-otp-field` has a `normalize` value (`uppercase` or `lowercase`) that changes the
+  accepted characters before the state, as the `normalizeValue` prop of a Base UI OTP field.
+- A fallback of `phem-avatar` with `data-phem-avatar-delay` uses its own delay, as the `delay`
+  prop of a Base UI `Avatar.Fallback`. Render it with `hidden`: it does not show before the
+  controller connects. See docs/controllers.md.
+- A link tab (`<a href>`) of `phem-tabs` opens its link on Enter and on Space, as the link tabs of
+  Base UI. Before, Enter and Space selected the tab and did not open the link.
+- A `phem-checkbox-group` with a `data-value` inside another group is an item of that group, as
+  the Nested parent checkbox of Base UI: it is checked when all its items are checked, the outer
+  parent is indeterminate when some of them are checked, and the outer parent checks and
+  unchecks all of them. See docs/controllers.md.
+- A panel of `phem-accordion` with `data-phem-accordion-hidden-until-found`, or of
+  `phem-collapsible` with `data-phem-collapsible-hidden-until-found`, has `hidden="until-found"`
+  when it is closed, as the `hiddenUntilFound` prop of a Base UI panel. Before, only the
+  `hiddenUntilFound` value of the root did this.
 - **Breaking**: `$e->toast()`, `Toasts::show()` and `new Toast()` give a toast with no type by
   default, as in Base UI: the toast gets no `data-type`. Before, the default was
   `ToastType::Info`. Give `ToastType::Info`, or call `Toasts::info()`, for an info toast.

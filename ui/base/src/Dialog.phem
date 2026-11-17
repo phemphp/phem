@@ -2,7 +2,7 @@
 
 namespace Phem\Ui\Base;
 
-use Phem\Attribute\Component;
+use Phem\Attribute\{Component, Context};
 use Phem\{Html, Node};
 
 /**
@@ -31,9 +31,10 @@ function Dialog(bool $defaultOpen = false, bool $dismissible = true, bool $disab
 
 /** The button that opens the dialog. */
 #[Component]
-function DialogTrigger(bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+function DialogTrigger(#[Context] ?Toolbar $toolbar = null, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
 {
-    $base = Style::BUTTON;
+    $item = null !== $toolbar ? 'item' : null;
+    $base = null !== $toolbar ? Style::TOOLBAR_BUTTON : Style::BUTTON;
 
     return (
         <button
@@ -41,6 +42,7 @@ function DialogTrigger(bool $disabled = false, ?Html $children = null, mixed ...
             disabled={{ disabled }}
             data-disabled={{ disabled ? '' : null }}
             data-phem-dialog-target="trigger"
+            data-phem-toolbar-target={{ item }}
             className={{ classes(base) }}
             {{ ...rest }}
         >

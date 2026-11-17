@@ -31,7 +31,8 @@ const controlled = new WeakSet()
 //     .panel[data-starting-style], .panel[data-ending-style] { height: 0 }
 //
 // With the `hiddenUntilFound` value, a closed panel has `hidden="until-found"`: the search of the
-// browser (Ctrl+F) finds its text, and opens it.
+// browser (Ctrl+F) finds its text, and opens it. A panel with
+// `data-phem-collapsible-hidden-until-found` does the same.
 //
 // With the `persist` value (a key, for example `promo-2026`), the state goes in `localStorage`:
 // a banner that the user closed stays closed after a reload. The stored state wins over the
@@ -100,7 +101,7 @@ export default class PhemCollapsibleController extends Controller {
   panelTargetConnected(el) {
     if (this.rendered === undefined) return
 
-    render(el, this.openValue, { hidden: this.#hidden })
+    render(el, this.openValue, { hidden: this.#hiddenOf(el) })
     this.#fit([el])
     this.#renderParts()
   }
@@ -145,7 +146,7 @@ export default class PhemCollapsibleController extends Controller {
         // A transition does not start from `auto`: the close starts from the size in px.
         measure(panel, "collapsible")
         void panel.offsetHeight
-        closing.push(hide(panel, { hidden: this.#hidden }))
+        closing.push(hide(panel, { hidden: this.#hiddenOf(panel) }))
       }
     }
 
@@ -178,7 +179,7 @@ export default class PhemCollapsibleController extends Controller {
   // The state with no animation.
   #render() {
     this.rendered = this.openValue
-    for (const panel of this.panelTargets) render(panel, this.openValue, { hidden: this.#hidden })
+    for (const panel of this.panelTargets) render(panel, this.openValue, { hidden: this.#hiddenOf(panel) })
     this.#fit()
     this.#renderParts()
   }
@@ -232,8 +233,10 @@ export default class PhemCollapsibleController extends Controller {
     return this.persistValue ? new PhemStorage(`collapsible:${this.persistValue}`) : null
   }
 
-  get #hidden() {
-    return this.hiddenUntilFoundValue ? "until-found" : true
+  // The `hidden` value of a closed panel: `until-found` with the value, or with the attribute of
+  // the panel.
+  #hiddenOf(panel) {
+    return this.hiddenUntilFoundValue || panel.hasAttribute("data-phem-collapsible-hidden-until-found") ? "until-found" : true
   }
 
   // The attributes of the state: the open state of the controller element and of the panels,

@@ -27,7 +27,7 @@ import { link } from "./phem_aria.js"
 // disabled tab; Home and End go to the first and to the last tab. An arrow key with Shift does
 // nothing. With the `loopFocus` value (the default), the last tab goes to the first one. Enter or
 // Space selects the tab with the focus, or the focus selects it at once with the `activateOnFocus`
-// value. One tab is in the tab order: the tab with the last focus, else the selected tab. It stays
+// value. A tab can be a link (`<a href>`): Enter and Space click it, so it opens its page. One tab is in the tab order: the tab with the last focus, else the selected tab. It stays
 // after the morph of an event.
 //
 // The `list` target gets `role="tablist"`, the tabs get `role="tab"`, `aria-selected`, `tabindex`
@@ -130,6 +130,16 @@ export default class PhemTabsController extends Controller {
   onKeydown = (event) => {
     const tab = this.#tabOf(event.target)
     if (!tab || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return
+
+    // A link selects and opens on its click: Enter clicks it, and Space clicks it too, as a button.
+    if (tab.matches("a[href]")) {
+      if (event.key === " ") {
+        event.preventDefault()
+        tab.click()
+      }
+
+      if (event.key === "Enter" || event.key === " ") return
+    }
 
     // A button selects on its click. Another element selects on Enter and Space.
     if ((event.key === "Enter" || event.key === " ") && !tab.matches("button")) {

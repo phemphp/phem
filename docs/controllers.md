@@ -191,7 +191,7 @@ The panel gets the size of its content in `--collapsible-panel-height` and `--co
 
 An open panel has `auto` in the variables, and `auto` is not a length. So do not use the variables in `calc()`, in `max-height`, or in a keyframe of an open panel. Use them only in `height` (or `width`), and put the closed size on `[data-starting-style]` and `[data-ending-style]`, as in the example. For example, change `max-height: calc(var(--collapsible-panel-height) + 1rem)` to `height: var(--collapsible-panel-height)` with a `padding-block` of `0.5rem` on the panel.
 
-Set `data-phem-collapsible-open-value="true"` to open it on load. With `data-phem-collapsible-hidden-until-found-value="true"`, a closed panel has `hidden="until-found"`: the search of the browser (Ctrl+F) finds its text and opens it. A collapsible does not close on Escape or on a click outside. For a dropdown, use `phem-popover` or `phem-menu`.
+Set `data-phem-collapsible-open-value="true"` to open it on load. With `data-phem-collapsible-hidden-until-found-value="true"`, a closed panel has `hidden="until-found"`: the search of the browser (Ctrl+F) finds its text and opens it. A panel with `data-phem-collapsible-hidden-until-found` does the same. A collapsible does not close on Escape or on a click outside. For a dropdown, use `phem-popover` or `phem-menu`.
 
 ### Remember a dismissed banner
 
@@ -247,7 +247,7 @@ Each `item` has one `trigger` and one `panel`. A click on a trigger opens and cl
 
 Give each trigger and each panel an `id`, for example `id={{ 'faq-' ~ key ~ '-panel' }}` in a loop. The controller links a trigger and its panel with `aria-controls` and `aria-labelledby` only when both have an id. It gives them no id itself: the morph of an event does not match an element whose id the server render does not have, and replaces it, with the state of its content.
 
-Set `data-phem-accordion-multiple-value="true"` to let more than one item open. The `open` value is the list of the open items. An item is its `data-value` attribute, its `key`, or its index. The server opens an item with `data-phem-accordion-open-value={{ ['returns'] }}`. A panel gets `--accordion-panel-height` and `--accordion-panel-width`, for a transition of its height, with the same px and `auto` values as a panel of `phem-collapsible`. With `data-phem-accordion-hidden-until-found-value="true"`, the search of the browser (Ctrl+F) opens the item that has the text.
+Set `data-phem-accordion-multiple-value="true"` to let more than one item open. The `open` value is the list of the open items. An item is its `data-value` attribute, its `key`, or its index. The server opens an item with `data-phem-accordion-open-value={{ ['returns'] }}`. A panel gets `--accordion-panel-height` and `--accordion-panel-width`, for a transition of its height, with the same px and `auto` values as a panel of `phem-collapsible`. With `data-phem-accordion-hidden-until-found-value="true"`, the search of the browser (Ctrl+F) opens the item that has the text. To do this for one panel only, add `data-phem-accordion-hidden-until-found` to the panel.
 
 ## Show a section from the value of a field
 
@@ -1243,7 +1243,7 @@ A swipe moves the drawer up and down from its snap point. The release stops it a
 </div>
 ```
 
-The value of a tab and of a panel is its `data-value` attribute, its key (`key={{ ... }}`), or its position. Each tab shows the panel with the same value. The `active` value is the state: the value of the selected tab. Set it to select a tab on load, and a handler can set it in a new render. With no `active` value, or a value that no tab has, the first tab that is not disabled is selected. A click selects a tab, and the `active` value gets its value. The arrow keys move the focus between the tabs, and Enter or Space selects the tab with the focus, also on a tab that is not a `<button>`. With `data-phem-tabs-activate-on-focus-value="true"`, the focus selects the tab at once. Home and End go to the first and to the last tab, and the arrow keys skip a disabled tab. From the last tab, the arrow key goes to the first tab, unless `data-phem-tabs-loop-focus-value="false"`. With `data-phem-tabs-orientation-value="vertical"`, the Up and Down keys move between the tabs in place of Left and Right. An arrow key with Shift does not move the focus. One tab is in the Tab order: the tab with the last focus, or the selected tab. It stays after the morph of an event.
+The value of a tab and of a panel is its `data-value` attribute, its key (`key={{ ... }}`), or its position. Each tab shows the panel with the same value. The `active` value is the state: the value of the selected tab. Set it to select a tab on load, and a handler can set it in a new render. With no `active` value, or a value that no tab has, the first tab that is not disabled is selected. A click selects a tab, and the `active` value gets its value. The arrow keys move the focus between the tabs, and Enter or Space selects the tab with the focus, also on a tab that is not a `<button>`. A tab can be a link (`<a href>`): a click, Enter and Space select it and open its link. With `data-phem-tabs-activate-on-focus-value="true"`, the focus selects the tab at once. Home and End go to the first and to the last tab, and the arrow keys skip a disabled tab. From the last tab, the arrow key goes to the first tab, unless `data-phem-tabs-loop-focus-value="false"`. With `data-phem-tabs-orientation-value="vertical"`, the Up and Down keys move between the tabs in place of Left and Right. An arrow key with Shift does not move the focus. One tab is in the Tab order: the tab with the last focus, or the selected tab. It stays after the morph of an event.
 
 The controller sets the ARIA roles and attributes. A tab and its panel need no `id`: the controller links them with the element references of ARIA (`ariaControlsElements` and `ariaLabelledByElements`), so a screen reader names the panel with its tab. It gives them no `id`, because the morph must match each element to the server render. When the tab and the panel have an `id`, they get `aria-controls` and `aria-labelledby`. After a click on **Security**, the browser shows:
 
@@ -1582,6 +1582,15 @@ The image is hidden until it loads. An image that the browser has already (in it
 |---|---|---|
 | `delay` | `0` | The time in milliseconds from the load of the page to the fallback. |
 
+A fallback can have its own delay: give it `data-phem-avatar-delay="600"`, and render it with `hidden`, so it does not show before the controller connects:
+
+```html
+<span data-controller="phem-avatar">
+    <img data-phem-avatar-target="image" src={{ user.avatarUrl }} alt={{ user.name }} />
+    <span data-phem-avatar-target="fallback" data-phem-avatar-delay="600" hidden>{{ user.initials }}</span>
+</span>
+```
+
 The load status of the image is `idle` (no image part), `loading`, `loaded`, or `error` (an image that does not load, or an image with no `src`). Each change of the status dispatches `phem-avatar:status`, with the `status` in its detail:
 
 ```html
@@ -1834,6 +1843,7 @@ The `input` parts are the slots. The `hiddenInput` part gets the full value, so 
 | `data-phem-otp-field-value-value` | `""` | The state: the characters of the slots. A server render with a new value sets it |
 | `data-phem-otp-field-length-value` | the number of `input` parts | The number of slots |
 | `data-phem-otp-field-validation-type-value` | `numeric` | The characters: `numeric` (digits), `alpha` (the letters A to Z), `alphanumeric`, or `none` (all the characters except spaces) |
+| `data-phem-otp-field-normalize-value` | | `uppercase` or `lowercase`: changes the accepted characters, for example a recovery code in capital letters. The validation type filters the result again |
 | `data-phem-otp-field-input-mode-value` | `numeric` for `numeric`, else `text` | The `inputmode` of the slots: the keyboard of a phone |
 | `data-phem-otp-field-mask-value` | `false` | The slots are `type="password"`. Else they are `type="text"`: the controller replaces a `type` of the markup. A change of the value changes the type |
 | `data-phem-otp-field-auto-submit-value` | `false` | Submits the form (`requestSubmit()`) when all the slots have a value |
@@ -2628,6 +2638,22 @@ With no `value` in the server render, the state of the items belongs to the serv
 A click on the parent checks all its items, or unchecks all of them when all are checked. When some items are checked, the parent remembers them: the next clicks go to all the items, to no item, and back to the items that were checked. A change of an item by the user is the new mixed state. A disabled item, and a read-only `phem-toggle` item, keeps its state. Each item that changes dispatches `input` and `change` (on a `phem-toggle` item, on its input), so `phem:bind`, `phem:live` and `phem-count` see the change. With `phem:live`, the changes of the fields of one `phem:bind` property go in one event.
 
 The parent shows the state of its items: it is checked when all the items are checked, and indeterminate when some of them are checked. It gets `data-checked`, `data-unchecked` or `data-indeterminate`, and `aria-controls` with the items that have an `id`. A `phem-toggle` parent also gets `aria-checked="mixed"`. The parent shows the state again after the morph of an event.
+
+A group can be an item of the group around it, for a tree of permissions. Give the element of the inner group a `data-value`:
+
+```html
+<div data-controller="phem-checkbox-group">
+    <label><input type="checkbox" data-phem-checkbox-group-target="parent"> User permissions</label>
+    <label><input type="checkbox" value="view-dashboard" data-phem-checkbox-group-target="item"> View dashboard</label>
+    <div data-controller="phem-checkbox-group" data-value="manage-users">
+        <label><input type="checkbox" data-phem-checkbox-group-target="parent"> Manage users</label>
+        <label><input type="checkbox" value="create-user" data-phem-checkbox-group-target="item"> Create user</label>
+        <label><input type="checkbox" value="edit-user" data-phem-checkbox-group-target="item"> Edit user</label>
+    </div>
+</div>
+```
+
+The inner group is checked when all its items are checked: its `data-value` is then in the `value` of the outer group. When some of its items are checked, the outer parent is indeterminate. The outer parent checks and unchecks all the items of the inner group.
 
 Each change by the user dispatches `phem-checkbox-group:change` with `{ value }`. After a click on the native row 1 of three, the parent is:
 

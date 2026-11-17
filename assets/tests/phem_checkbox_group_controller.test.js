@@ -71,6 +71,67 @@ describe("phem-checkbox-group", () => {
     expect(parent().hasAttribute("data-checked")).toBe(true)
   })
 
+  describe("a group inside a group", () => {
+    // The permissions of the Nested parent checkbox demo of Base UI: the "users" group is an item
+    // of the outer group.
+    const nested = `<div id="main" data-controller="phem-checkbox-group">
+        <input type="checkbox" id="main-parent" data-phem-checkbox-group-target="parent">
+        <input type="checkbox" id="view" value="view" data-phem-checkbox-group-target="item">
+        <input type="checkbox" id="reports" value="reports" data-phem-checkbox-group-target="item">
+        <div id="users" data-value="users" data-controller="phem-checkbox-group">
+          <input type="checkbox" id="users-parent" data-phem-checkbox-group-target="parent">
+          <input type="checkbox" id="create" value="create" data-phem-checkbox-group-target="item">
+          <input type="checkbox" id="edit" value="edit" data-phem-checkbox-group-target="item">
+        </div>
+      </div>`
+    const box = (id) => document.getElementById(id)
+    const change = (id) => {
+      box(id).checked = !box(id).checked
+      box(id).dispatchEvent(new Event("change", { bubbles: true }))
+    }
+
+    it("checks all the items of the inner group with the outer parent", async () => {
+      await mount(nested)
+
+      change("main-parent")
+      expect(["view", "reports", "create", "edit"].map((id) => box(id).checked)).toEqual([true, true, true, true])
+      expect(box("users-parent").checked).toBe(true)
+      expect(box("main-parent").checked).toBe(true)
+      expect(JSON.parse(box("main").getAttribute("data-phem-checkbox-group-value-value"))).toEqual(["view", "reports", "users"])
+
+      change("main-parent")
+      expect(["view", "reports", "create", "edit"].map((id) => box(id).checked)).toEqual([false, false, false, false])
+    })
+
+    it("shows a change in the inner group on the outer parent", async () => {
+      await mount(nested)
+      const events = []
+      box("main").addEventListener("phem-checkbox-group:change", (event) => event.target.id === "main" && events.push(event.detail.value))
+
+      change("create")
+      expect(box("users-parent").indeterminate).toBe(true)
+      expect(box("main-parent").indeterminate).toBe(true)
+      expect(box("main-parent").checked).toBe(false)
+
+      change("edit")
+      expect(box("users-parent").checked).toBe(true)
+      expect(box("main-parent").indeterminate).toBe(true)
+
+      change("view")
+      change("reports")
+      expect(box("main-parent").checked).toBe(true)
+      expect(events.at(-1)).toEqual(["view", "reports", "users"])
+    })
+
+    it("checks all the items of the inner group with its own parent", async () => {
+      await mount(nested)
+
+      change("users-parent")
+      expect([box("create").checked, box("edit").checked]).toEqual([true, true])
+      expect(box("main-parent").indeterminate).toBe(true)
+    })
+  })
+
   it("checks all the items, then unchecks all of them", async () => {
     await mount(rows([2]))
     const changes = []

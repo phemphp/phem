@@ -32,7 +32,9 @@ import { isAndroid } from "./phem_platform.js"
 // the text in `detail.value`.
 //
 // The `validationType` value is `numeric` (the default, the digits), `alpha` (the letters A to
-// Z), `alphanumeric` or `none` (all the characters, except the spaces). The slots get the
+// Z), `alphanumeric` or `none` (all the characters, except the spaces). The `normalize` value
+// (`uppercase` or `lowercase`) changes the accepted characters, and the validation type filters
+// the result again. The slots get the
 // `inputmode` of the type (`numeric` or `text`), or the `inputMode` value, and the `pattern` of one
 // character. The slots are `type="text"`, and with the `mask` value `type="password"`. Each slot
 // gets `autocorrect="off"` and `enterkeyhint` (`done` on the last slot, else `next`). The first
@@ -82,6 +84,7 @@ export default class PhemOtpFieldController extends Controller {
     disabled: Boolean,
     readOnly: Boolean,
     required: Boolean,
+    normalize: String,
   }
 
   connect() {
@@ -338,14 +341,22 @@ export default class PhemOtpFieldController extends Controller {
     this.#focus(Math.min(at + added.length, this.#length - 1))
   }
 
-  // The characters of `text` that the validation type accepts. A character that it refuses sends
-  // `phem-otp-field:invalid`. The spaces go.
+  // The characters of `text` that the validation type accepts, with the `normalize` value
+  // (`uppercase` or `lowercase`), and then filtered by the validation type again. A character that
+  // it refuses sends `phem-otp-field:invalid`. The spaces go.
   #accept(text) {
     const chars = [...text.replace(/\s+/g, "")]
-    const accepted = chars.filter((c) => this.#accepts(c))
+    const accepted = [...this.#normalized(chars.filter((c) => this.#accepts(c)).join(""))].filter((c) => this.#accepts(c))
     if (accepted.length < chars.length) this.dispatch("invalid", { detail: { value: text } })
 
     return accepted.join("")
+  }
+
+  #normalized(text) {
+    if (this.normalizeValue === "uppercase") return text.toUpperCase()
+    if (this.normalizeValue === "lowercase") return text.toLowerCase()
+
+    return text
   }
 
   #accepts(char) {

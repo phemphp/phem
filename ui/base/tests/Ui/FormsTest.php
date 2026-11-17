@@ -52,7 +52,8 @@ final class FormsTest extends KernelTestCase
     public function testTheOtpFieldHasOneInputForEachCharacter(): void
     {
         $this->mount(self::APP.'OTPFieldDemo')
-            ->assertSelectorCount(3, '[data-controller="phem-otp-field"] [data-phem-otp-field-target="input"]')
+            ->assertSelectorCount(3, '[data-controller="phem-otp-field"] [data-phem-otp-field-target="input"][data-phem-field-target="control"]')
+            ->assertSelectorExists('[data-phem-otp-field-normalize-value="uppercase"][data-phem-otp-field-validation-type-value="alphanumeric"]')
             ->assertSelectorExists('input[type="hidden"][name="code"][data-phem-otp-field-target="hiddenInput"]');
     }
 
@@ -62,6 +63,8 @@ final class FormsTest extends KernelTestCase
             ->assertSelectorExists('[data-controller="phem-slider"][data-phem-slider-value-value="[20,60]"]')
             ->assertSelectorTextContains('output[data-phem-slider-target="value"]', '20 – 60')
             ->assertSelectorExists('[data-phem-slider-target="indicator"][style*="inset-inline-start: 20%; width: 40%"]')
-            ->assertSelectorExists('[data-phem-slider-target="thumb"][data-index="1"][style*="inset-inline-start: 60%"] input[type="range"][aria-label="Maximum price"][value="60"]');
+            ->assertSelectorExists('[data-phem-slider-target="thumb"][data-index="1"][style*="inset-inline-start: 60%"] input[type="range"][aria-label="Maximum price"][value="60"]')
+            ->assertSelectorExists('[data-phem-slider-thumb-alignment-value="edge"][data-phem-slider-thumb-collision-behavior-value="swap"]')
+            ->assertSelectorCount(2, 'input[type="range"][name="price[]"]');
     }
 }

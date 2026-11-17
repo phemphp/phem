@@ -108,6 +108,23 @@ describe("phem-tabs", () => {
     expect(selected()).toBe("b")
   })
 
+  it("clicks a link tab on Enter and on Space, so it selects it and opens its link", async () => {
+    await mount(tabs().replace('<button id="tab-b" data-phem-tabs-target="tab">b</button>', '<a id="tab-b" href="#b" data-phem-tabs-target="tab">b</a>'))
+    const link = document.getElementById("tab-b")
+    const clicks = vi.fn((event) => event.preventDefault())
+    link.addEventListener("click", clicks)
+
+    const enter = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })
+    link.dispatchEvent(enter)
+    expect(enter.defaultPrevented).toBe(false)
+
+    const space = new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true })
+    link.dispatchEvent(space)
+    expect(space.defaultPrevented).toBe(true)
+    expect(clicks).toHaveBeenCalledTimes(1)
+    expect(document.getElementById("panel-b").hidden).toBe(false)
+  })
+
   it("sets the direction of the change", async () => {
     await mount(tabs())
     const box = (left) => () => ({ left, top: 0, width: 10, height: 10, right: left + 10, bottom: 10 })

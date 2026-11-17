@@ -3,7 +3,7 @@
 namespace Phem\Ui\Base;
 
 use Phem\Attribute\{Component, Context, Prop, Provide};
-use Phem\{Bound, Html, Node};
+use Phem\{Bound, Dynamic, Html, Node};
 
 /**
  * A control that turns a setting on and off: Base UI Switch.Root (`switch` is a reserved word in PHP), on the `phem-toggle` controller.
@@ -20,6 +20,12 @@ class SwitchRoot
     #[Prop] public bool $required = false;
     #[Prop] public ?string $name = null;
     #[Prop] public ?string $value = null;
+    /** The value of the form when the switch is off. With no `uncheckedValue`, the form does not send the switch. */
+    #[Prop] public ?string $uncheckedValue = null;
+    /** The id of the form of the switch, for a switch outside its form. */
+    #[Prop] public ?string $form = null;
+    /** A `<button>` in place of a `<span>`, for a sibling `<label for>` (give it an `id`). */
+    #[Prop] public bool $nativeButton = false;
     #[Prop] public ?Bound $checked = null;
     #[Prop] public ?Html $children = null;
     #[Prop(rest: true)] public array $attrs = [];
@@ -33,11 +39,15 @@ class SwitchRoot
     {
         $on = $this->isChecked();
 
+        $hiddenInput = $this->nativeButton || null !== $this->uncheckedValue;
+
         return (
-            <span
+            <Dynamic
+                tag={{ nativeButton ? 'button' : 'span' }}
+                type={{ nativeButton ? 'button' : null }}
                 role="switch"
                 aria-checked={{ on ? 'true' : 'false' }}
-                tabindex="0"
+                tabindex={{ nativeButton ? null : 0 }}
                 data-checked={{ on ? '' : null }}
                 data-unchecked={{ on ? null : '' }}
                 data-disabled={{ disabled ? '' : null }}
@@ -49,12 +59,18 @@ class SwitchRoot
                 data-phem-toggle-required-value={{ required ? 'true' : null }}
                 data-phem-toggle-name-value={{ name }}
                 data-phem-toggle-value-value={{ value }}
+                data-phem-toggle-unchecked-value-value={{ uncheckedValue }}
+                data-phem-toggle-form-value={{ form }}
                 className={{ classes('flex h-5 w-9 shrink-0 border border-neutral-950 bg-white p-0.5 transition-colors duration-150 ease-[ease] dark:border-white dark:bg-neutral-950 data-checked:bg-neutral-950 dark:data-checked:bg-white data-disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white') }}
                 {{ ...attrs }}
             >
                 {{ children }}
-                <input type="checkbox" hidden phem:bind={{ checked }} checked={{ on }} data-phem-toggle-target="input" />
-            </span>
+                {% if hiddenInput %}
+                    <input type="hidden" phem:bind={{ checked }} data-phem-toggle-target="input" />
+                {% else %}
+                    <input type="checkbox" hidden phem:bind={{ checked }} checked={{ on }} data-phem-toggle-target="input" />
+                {% endif %}
+            </Dynamic>
         );
     }
 }

@@ -132,6 +132,20 @@ describe("phem-avatar", () => {
     expect(fallback().hidden).toBe(false)
   })
 
+  it("shows a fallback after its own delay", async () => {
+    vi.useFakeTimers()
+    document.body.innerHTML = avatar().replace('data-phem-avatar-target="fallback"', 'data-phem-avatar-target="fallback" data-phem-avatar-delay="600" hidden')
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(fallback().hidden).toBe(true)
+
+    await vi.advanceTimersByTimeAsync(599)
+    expect(fallback().hidden).toBe(true)
+
+    await vi.advanceTimersByTimeAsync(1)
+    expect(fallback().hidden).toBe(false)
+  })
+
   it("does not show the fallback when the image loads before the delay", async () => {
     vi.useFakeTimers()
     document.body.innerHTML = avatar('data-phem-avatar-delay-value="600"')

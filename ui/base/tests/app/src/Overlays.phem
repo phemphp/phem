@@ -20,13 +20,24 @@ function CollapsibleDemo(bool $open = false): Node
 }
 
 #[Component]
+function CollapsibleHiddenUntilFoundDemo(): Node
+{
+    return (
+        <Collapsible>
+            <CollapsibleTrigger>Shipping details</CollapsibleTrigger>
+            <CollapsiblePanel hiddenUntilFound>Standard shipping takes 3–5 business days.</CollapsiblePanel>
+        </Collapsible>
+    );
+}
+
+#[Component]
 function AccordionDemo(): Node
 {
     return (
         <Accordion id="faq" defaultValue={{ ['start'] }}>
             <AccordionItem value="what">
                 <AccordionHeader><AccordionTrigger>What is Base UI?</AccordionTrigger></AccordionHeader>
-                <AccordionPanel>A library.</AccordionPanel>
+                <AccordionPanel hiddenUntilFound>A library.</AccordionPanel>
             </AccordionItem>
             <AccordionItem value="start">
                 <AccordionHeader><AccordionTrigger>How do I get started?</AccordionTrigger></AccordionHeader>
@@ -98,7 +109,7 @@ function TabsDemo(): Node
         <Tabs defaultValue="overview">
             <TabsList>
                 <TabsTab value="overview">Overview</TabsTab>
-                <TabsTab value="projects">Projects</TabsTab>
+                <TabsTab value="projects" href="/projects">Projects</TabsTab>
                 <TabsIndicator />
             </TabsList>
             <TabsPanel value="overview">Stats</TabsPanel>

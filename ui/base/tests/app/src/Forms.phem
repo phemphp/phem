@@ -66,11 +66,13 @@ function NumberFieldDemo(): Node
 function OTPFieldDemo(): Node
 {
     return (
-        <OTPField name="code">
-            <OTPFieldInput />
-            <OTPFieldInput />
-            <OTPFieldInput />
-        </OTPField>
+        <Field>
+            <OTPField name="code" validationType="alphanumeric" normalize="uppercase">
+                <OTPFieldInput />
+                <OTPFieldInput />
+                <OTPFieldInput />
+            </OTPField>
+        </Field>
     );
 }
 
@@ -78,7 +80,7 @@ function OTPFieldDemo(): Node
 function SliderDemo(): Node
 {
     return (
-        <Slider defaultValue={{ [20, 60] }}>
+        <Slider defaultValue={{ [20, 60] }} name="price[]" thumbAlignment="edge" thumbCollisionBehavior="swap">
             <SliderValue />
             <SliderControl>
                 <SliderTrack>

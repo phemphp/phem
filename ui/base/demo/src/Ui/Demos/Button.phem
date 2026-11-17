@@ -2,14 +2,72 @@
 
 namespace App\Ui\Demos;
 
-use Phem\Attribute\Page;
+use Phem\Attribute\{Component, Page, State};
 use Phem\Node;
 
-use function App\Ui\{DemoPage, Hero};
+use function App\Ui\{DemoPage, Example, Examples, Hero};
 use Phem\Ui\Base\Button;
 
 #[Page('/components/button')]
 function ButtonPage(): Node
 {
-    return <DemoPage slug="button"><Hero><Button>Submit</Button></Hero></DemoPage>;
+    return (
+        <DemoPage slug="button">
+            <Hero>
+                <Button>Submit</Button>
+            </Hero>
+            <Examples>
+                <Example title="Rendering as another tag">
+                    <Example.description>
+                        <p>The button can remain keyboard accessible while being rendered as another tag, such as a <code>&lt;div&gt;</code>, by specifying <code>tag="div"</code>.</p>
+                    </Example.description>
+                    <Button tag="div">Button that can contain complex children</Button>
+                </Example>
+                <Example title="Rendering links as buttons">
+                    <Example.description>
+                        <p>The Button component enforces button semantics. <code>tag</code> renders a tag that is not a <code>&lt;button&gt;</code>, but it must still be a tag that can receive button semantics (<code>role="button"</code>, keyboard interaction handlers). Links (<code>&lt;a&gt;</code>) have their own semantics and should not be rendered as buttons with <code>tag="a"</code>.</p>
+                        <p>If a link needs to look like a button visually, style the <code>&lt;a&gt;</code> element directly with CSS rather than using the Button component.</p>
+                    </Example.description>
+                </Example>
+                <Example title="Loading states">
+                    <Example.description>
+                        <p>For buttons that enter a loading state after activation, specify <code>focusableWhenDisabled</code> so focus remains on the button while it is disabled. Because some browser and screen reader combinations do not reliably announce changes to a focused button’s descendant text, use <a href="https://www.w3.org/TR/accname-1.2/#computation-steps" className="underline"><code>aria-labelledby</code></a> to make the changing text the button’s explicit accessible name.</p>
+                    </Example.description>
+                    <ButtonLoadingDemo />
+                </Example>
+            </Examples>
+        </DemoPage>
+    );
+}
+
+// The click starts a loading state of 4 seconds, as in the Base UI demo: the button is disabled
+// but keeps the focus, and a poll ends the loading state.
+#[Component]
+final class ButtonLoadingDemo
+{
+    #[State] public bool $loading = false;
+
+    public function start(): void
+    {
+        $this->loading = true;
+    }
+
+    public function stop(): void
+    {
+        $this->loading = false;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div className="contents">
+                <Button disabled={{ loading }} focusableWhenDisabled aria-labelledby="loading-label" onClick={{ start }}>
+                    <span id="loading-label">{{ loading ? 'Submitting' : 'Submit' }}</span>
+                </Button>
+                {% if loading %}
+                    <span hidden onPoll={{ stop }} phem:poll={{ 4000 }}></span>
+                {% endif %}
+            </div>
+        );
+    }
 }

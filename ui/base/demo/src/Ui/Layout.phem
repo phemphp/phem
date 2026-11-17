@@ -116,19 +116,22 @@ function Examples(Html $children): Node
 }
 
 /**
- * One example of base-ui.com: its heading, its description, and its demo. An example with no demo
- * (a section of base-ui.com with code only) shows only its heading and its description.
+ * One example of base-ui.com: its heading, its description (paragraphs, with `<code>` and `<kbd>`),
+ * and its demo. An example with no demo (a section of base-ui.com with code only) shows only its
+ * heading and its description.
  */
 #[Component]
-function Example(string $title, string $description, ?Html $children = null): Node
+function Example(string $title, Html $description, ?Html $children = null): Node
 {
     $id = Gallery::anchor($title);
 
     return (
         <section aria-labelledby={{ id }} className="flex flex-col gap-3">
             <h3 id={{ id }} className="text-lg font-bold">{{ title }}</h3>
-            <p className="text-neutral-600 dark:text-neutral-400">{{ description }}</p>
-            {% if children %}
+            <div className="flex flex-col gap-3 text-[#767676] dark:text-[#b3b3b3] [&_code]:rounded-sm [&_code]:bg-neutral-100 [&_code]:px-1 [&_code]:font-mono [&_code]:text-[0.875em] [&_code]:text-neutral-950 dark:[&_code]:bg-neutral-800 dark:[&_code]:text-white [&_kbd]:rounded-sm [&_kbd]:border [&_kbd]:border-neutral-300 [&_kbd]:px-1 [&_kbd]:font-mono [&_kbd]:text-[0.875em] dark:[&_kbd]:border-neutral-700">
+                {{ description }}
+            </div>
+            {% if children is not empty %}
                 <DemoBox>{{ children }}</DemoBox>
             {% endif %}
         </section>

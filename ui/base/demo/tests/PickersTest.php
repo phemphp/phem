@@ -127,15 +127,39 @@ final class PickersTest extends DemoTestCase
     public function testScrollAreaShowsItsScrollbar(): void
     {
         $page = $this->visitComponent('scroll-area');
+        $hero = $page->getByRole('region', ['name' => 'Demo']);
 
-        $root = $page->locator('[data-controller~="phem-scroll-area"]');
+        $root = $hero->locator('[data-controller~="phem-scroll-area"]');
         expect($root)->toHaveAttribute('data-has-overflow-y', '');
         expect($root)->toHaveAttribute('data-overflow-y-end', '');
         // The viewport is in the tab order only when it scrolls: the controller gives the `tabindex`.
-        expect($page->locator('[data-phem-scroll-area-target="viewport"]'))->toHaveAttribute('tabindex', '0');
+        expect($hero->locator('[data-phem-scroll-area-target="viewport"]'))->toHaveAttribute('tabindex', '0');
 
-        $page->locator('[data-phem-scroll-area-target="viewport"]')->evaluate('(el) => el.scrollTo(0, el.scrollHeight)');
+        $hero->locator('[data-phem-scroll-area-target="viewport"]')->evaluate('(el) => el.scrollTo(0, el.scrollHeight)');
         expect($root)->toHaveAttribute('data-overflow-y-start', '');
+    }
+
+    public function testScrollAreaExamples(): void
+    {
+        $page = $this->visitComponent('scroll-area');
+
+        // Both scrollbars and a corner.
+        $both = $page->getByRole('region', ['name' => 'Both scrollbars'])->locator('[data-controller~="phem-scroll-area"]');
+        expect($both)->toHaveAttribute('data-has-overflow-x', '');
+        expect($both)->toHaveAttribute('data-has-overflow-y', '');
+        expect($both->locator('[data-phem-scroll-area-target="corner"]'))->not()->toHaveAttribute('hidden', '');
+
+        // The fade reads the overflow variables of the viewport.
+        $fade = $page->getByRole('region', ['name' => 'Gradient scroll fade'])->locator('[data-phem-scroll-area-target="viewport"]');
+        self::assertSame('0px', $fade->evaluate('el => getComputedStyle(el).getPropertyValue("--scroll-area-overflow-y-start").trim()'));
+        $fade->evaluate('(el) => el.scrollTo(0, 100)');
+        expect($fade)->toHaveCSS('--scroll-area-overflow-y-start', '100px');
+
+        // A tab list in a viewport: it scrolls, and the tabs still work.
+        $tabs = $page->getByRole('region', ['name' => 'Combining with Tabs']);
+        expect($tabs->locator('[data-controller~="phem-scroll-area"]'))->toHaveAttribute('data-has-overflow-x', '');
+        $tabs->getByRole('tab', ['name' => 'Notifications'])->click();
+        expect($tabs->getByRole('tabpanel'))->toHaveText('Notifications');
     }
 
     public function testToastShowsOneToastForEachClick(): void

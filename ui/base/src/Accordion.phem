@@ -144,14 +144,18 @@ function AccordionTrigger(#[Context] AccordionItem $item, ?Html $children = null
     );
 }
 
-/** The panel of the item. Its height animates with `--accordion-panel-height`. */
+/**
+ * The panel of the item. Its height animates with `--accordion-panel-height`. With
+ * `hiddenUntilFound`, this closed panel has `hidden="until-found"`, as with the prop of the root.
+ */
 #[Component]
-function AccordionPanel(#[Context] AccordionItem $item, ?Html $children = null, mixed ...$rest): Node
+function AccordionPanel(#[Context] AccordionItem $item, bool $hiddenUntilFound = false, ?Html $children = null, mixed ...$rest): Node
 {
     $open = $item->open();
     $id = $item->accordion->partId($item->value, 'panel');
     $trigger = $item->accordion->partId($item->value, 'trigger');
-    $hidden = $open ? false : ($item->accordion->hiddenUntilFound ? 'until-found' : true);
+    $untilFound = $hiddenUntilFound || $item->accordion->hiddenUntilFound;
+    $hidden = $open ? false : ($untilFound ? 'until-found' : true);
     $orientation = $item->accordion->orientation->value;
 
     return (
@@ -163,6 +167,7 @@ function AccordionPanel(#[Context] AccordionItem $item, ?Html $children = null, 
             data-orientation={{ orientation }}
             data-open={{ open ? '' : null }}
             data-phem-accordion-target="panel"
+            data-phem-accordion-hidden-until-found={{ hiddenUntilFound ? '' : null }}
             className={{ classes('h-[var(--accordion-panel-height)] overflow-hidden text-sm transition-[height] duration-150 ease-[ease-out] data-ending-style:h-0 data-starting-style:h-0') }}
             {{ ...rest }}
         >

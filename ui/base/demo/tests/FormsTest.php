@@ -88,12 +88,13 @@ final class FormsTest extends DemoTestCase
     public function testOtpFieldMovesToTheNextSlot(): void
     {
         $page = $this->visitComponent('otp-field');
+        $hero = $page->getByRole('region', ['name' => 'Demo']);
 
-        $first = $page->getByRole('textbox', ['name' => 'Verification code']);
+        $first = $hero->getByRole('textbox', ['name' => 'Verification code']);
         $first->focus();
         // The default validation type is numeric: a letter does not fill a slot.
         $page->keyboard()->type('1a234');
-        $slots = $page->locator('input[data-phem-otp-field-target="input"]');
+        $slots = $hero->locator('input[data-phem-otp-field-target="input"]');
         expect($slots->nth(4))->toBeFocused();
         expect($slots->nth(3))->toHaveValue('4');
 
@@ -101,18 +102,53 @@ final class FormsTest extends DemoTestCase
         $page->keyboard()->press('Backspace');
         expect($slots->nth(3))->toBeFocused();
         expect($slots->nth(3))->toHaveValue('');
-        expect($page->locator('input[type="hidden"][name="code"]'))->toHaveValue('123');
+        expect($hero->locator('input[type="hidden"][name="code"]'))->toHaveValue('123');
 
         $page->keyboard()->type('456');
-        expect($page->locator('input[type="hidden"][name="code"]'))->toHaveValue('123456');
-        expect($page->locator('[data-controller~="phem-otp-field"]'))->toHaveAttribute('data-complete', '');
+        expect($hero->locator('input[type="hidden"][name="code"]'))->toHaveValue('123456');
+        expect($hero->locator('[data-controller~="phem-otp-field"]'))->toHaveAttribute('data-complete', '');
+    }
+
+    public function testOtpFieldExamples(): void
+    {
+        $page = $this->visitComponent('otp-field');
+
+        // The label names the first slot, and the other slots get their own label.
+        $labeled = $page->getByRole('region', ['name' => 'Labeling an OTP field']);
+        expect($labeled->getByRole('textbox', ['name' => 'Verification code']))->toHaveAttribute('id', 'labeled-1');
+        expect($labeled->getByRole('textbox', ['name' => 'Character 2 of 6']))->toBeVisible();
+
+        // In a Field, the label names the first slot, and the form gets the code.
+        $form = $page->getByRole('region', ['name' => 'Form integration']);
+        $form->getByRole('textbox', ['name' => 'Verification code'])->focus();
+        $page->keyboard()->type('123456');
+        expect($form->locator('input[name="verificationCode"]'))->toHaveValue('123456');
+
+        // Alphanumeric: letters and digits.
+        $recovery = $page->getByRole('region', ['name' => 'Alphanumeric verification codes']);
+        $recovery->getByRole('textbox', ['name' => 'Recovery code'])->focus();
+        $page->keyboard()->type('a7c');
+        expect($recovery->getByRole('textbox', ['name' => 'Character 3 of 6']))->toHaveValue('c');
+
+        // The separator of a grouped layout.
+        expect($page->getByRole('region', ['name' => 'Grouped layouts'])->getByRole('separator'))->toHaveAttribute('data-orientation', 'horizontal');
+
+        // Custom normalization: the letters become capital letters, and a dash is refused.
+        $normalized = $page->getByRole('region', ['name' => 'Custom normalization']);
+        $normalized->getByRole('textbox', ['name' => 'Recovery code'])->focus();
+        $page->keyboard()->type('a-b');
+        expect($normalized->getByRole('textbox', ['name' => 'Recovery code']))->toHaveValue('A');
+        expect($normalized->getByRole('textbox', ['name' => 'Character 2 of 6']))->toHaveValue('B');
+
+        // Masked entry: the slots are password inputs.
+        expect($page->getByRole('region', ['name' => 'Masked entry'])->locator('input[data-phem-otp-field-target="input"]')->first())->toHaveAttribute('type', 'password');
     }
 
     public function testSliderMovesWithTheKeyboard(): void
     {
         $page = $this->visitComponent('slider');
 
-        $thumb = $page->getByRole('slider', ['name' => 'Volume']);
+        $thumb = $page->getByRole('region', ['name' => 'Demo'])->getByRole('slider', ['name' => 'Volume']);
         expect($thumb)->toHaveValue('25');
 
         $thumb->focus();
@@ -122,5 +158,43 @@ final class FormsTest extends DemoTestCase
         expect($thumb)->toHaveValue('100');
         $page->keyboard()->press('Home');
         expect($thumb)->toHaveValue('0');
+    }
+
+    public function testSliderExamples(): void
+    {
+        $page = $this->visitComponent('slider');
+
+        // A range: each thumb has its own name and value.
+        $range = $page->getByRole('region', ['name' => 'Range slider']);
+        expect($range->getByRole('slider', ['name' => 'Minimum value']))->toHaveValue('25');
+        expect($range->getByRole('slider', ['name' => 'Maximum value']))->toHaveValue('45');
+
+        // The steps: an arrow key adds the step, Shift with an arrow key the large step.
+        $speed = $page->getByRole('region', ['name' => 'Steps'])->getByRole('slider', ['name' => 'Playback speed']);
+        $speed->focus();
+        $page->keyboard()->press('ArrowRight');
+        expect($speed)->toHaveValue('500');
+        $page->keyboard()->press('Shift+ArrowRight');
+        expect($speed)->toHaveValue('700');
+
+        // The edge alignment keeps the thumb in the control at the max.
+        $edge = $page->getByRole('region', ['name' => 'Thumb alignment']);
+        $edge->getByRole('slider', ['name' => 'Volume'])->focus();
+        $page->keyboard()->press('End');
+        $right = $edge->locator('[data-phem-slider-target="thumb"]')->evaluate('el => el.getBoundingClientRect().right');
+        $control = $edge->locator('[data-phem-slider-target="control"]')->evaluate('el => el.getBoundingClientRect().right');
+        self::assertLessThanOrEqual($control + 0.5, $right);
+
+        // Vertical: ArrowUp raises the value.
+        $vertical = $page->getByRole('region', ['name' => 'Vertical'])->getByRole('slider', ['name' => 'Volume']);
+        expect($vertical)->toHaveAttribute('aria-orientation', 'vertical');
+        $vertical->focus();
+        $page->keyboard()->press('ArrowUp');
+        expect($vertical)->toHaveValue('36');
+
+        // In a form, the inputs have the name of the slider.
+        $form = $page->getByRole('region', ['name' => 'Form integration']);
+        expect($form->locator('input[name="volume"]'))->toHaveValue('50');
+        expect($form->locator('input[name="price[]"]'))->toHaveCount(2);
     }
 }

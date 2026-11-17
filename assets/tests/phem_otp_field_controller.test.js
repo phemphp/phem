@@ -146,6 +146,21 @@ describe("phem-otp-field", () => {
     expect(slots()[0].inputMode).toBe("text")
   })
 
+  it("normalizes the accepted characters with the normalize value", async () => {
+    await mount(otp('data-phem-otp-field-validation-type-value="alphanumeric" data-phem-otp-field-normalize-value="uppercase"'))
+    const invalid = vi.fn()
+    el("otp").addEventListener("phem-otp-field:invalid", invalid)
+
+    slots()[0].focus()
+    type("a1")
+    expect(values()).toBe("A|1||")
+    expect(el("code").value).toBe("A1")
+
+    type("-")
+    expect(invalid).toHaveBeenCalledTimes(1)
+    expect(values()).toBe("A|1||")
+  })
+
   it("clears with Backspace and goes back", async () => {
     await mount(otp("", "123"))
 

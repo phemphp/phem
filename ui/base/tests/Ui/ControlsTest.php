@@ -41,6 +41,38 @@ final class ControlsTest extends KernelTestCase
             ->assertSelectorExists('[data-phem-toggle-target="indicator"][hidden]');
     }
 
+    public function testTheTriggersInAToolbarAreItemsOfTheToolbar(): void
+    {
+        $this->mount(self::APP.'ToolbarTriggersDemo')
+            ->assertSelectorExists('button[data-phem-menu-target="trigger"][data-phem-toolbar-target="item"]')
+            ->assertSelectorExists('button[data-phem-popover-target="trigger"][data-phem-toolbar-target="item"]')
+            ->assertSelectorExists('button[data-phem-dialog-target="trigger"][data-phem-toolbar-target="item"]')
+            ->assertSelectorExists('button[data-phem-tooltip-target="trigger"][data-phem-toolbar-target="item"]')
+            ->assertSelectorExists('input[data-phem-number-field-target="input"][data-phem-toolbar-target="item"]');
+    }
+
+    public function testASwitchCanBeANativeButtonWithAnUncheckedValue(): void
+    {
+        $this->mount(self::APP.'NativeButtonSwitchDemo')
+            ->assertSelectorExists('button#wifi[type="button"][role="switch"][aria-checked="false"]:not([tabindex])')
+            ->assertSelectorExists('button#wifi[data-phem-toggle-unchecked-value-value="off"][data-phem-toggle-form-value="settings"]')
+            ->assertSelectorExists('button#wifi input[type="hidden"][data-phem-toggle-target="input"]');
+    }
+
+    public function testARadioCanBeANativeButton(): void
+    {
+        $this->mount(self::APP.'NativeButtonRadioDemo')
+            ->assertSelectorExists('button#disk-ssd[type="button"][role="radio"][aria-checked="true"]');
+    }
+
+    public function testACheckboxCanBeANativeButton(): void
+    {
+        $this->mount(self::APP.'NativeButtonCheckboxDemo')
+            ->assertSelectorExists('button#news[type="button"][role="checkbox"][aria-checked="true"]:not([tabindex])')
+            ->assertSelectorExists('button#news input[type="hidden"][data-phem-toggle-target="input"]')
+            ->assertSelectorNotExists('button#news input[type="checkbox"]');
+    }
+
     public function testTheCheckboxGroupOwnsTheStateOfItsCheckboxes(): void
     {
         $this->mount(self::APP.'CheckboxGroupDemo')
@@ -80,7 +112,8 @@ final class ControlsTest extends KernelTestCase
     public function testTheAvatarHasAnImageAndAFallback(): void
     {
         $this->mount(self::APP.'AvatarDemo')
-            ->assertSelectorExists('[data-controller="phem-avatar"][data-phem-avatar-delay-value="600"] img[data-phem-avatar-target="image"][alt="Ada"]')
+            ->assertSelectorExists('[data-controller="phem-avatar"]:not([data-phem-avatar-delay-value]) img[data-phem-avatar-target="image"][alt="Ada"]')
+            ->assertSelectorExists('[data-phem-avatar-target="fallback"][data-phem-avatar-delay="600"][hidden]')
             ->assertSelectorTextContains('[data-phem-avatar-target="fallback"]', 'AL');
     }
 }

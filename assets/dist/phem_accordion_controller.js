@@ -38,7 +38,8 @@ import { fit, hide, measure, render, settle, show } from "./phem_transition.js"
 // the panel gets `aria-labelledby`. The controller gives them no id: the morph does not match an
 // element with an id that the server render does not have, and replaces it. With the
 // `hiddenUntilFound` value, a closed panel has `hidden="until-found"`: the search of the browser
-// (Ctrl+F) finds its text, and opens its item.
+// (Ctrl+F) finds its text, and opens its item. A panel with `data-phem-accordion-hidden-until-found`
+// does the same, for this panel only.
 export default class PhemAccordionController extends Controller {
   static targets = ["item", "header", "trigger", "panel"]
   static values = {
@@ -158,7 +159,7 @@ export default class PhemAccordionController extends Controller {
         // A transition does not start from `auto`: the close starts from the size in px.
         measure(panel, "accordion")
         void panel.offsetHeight
-        hide(panel, { hidden: this.#hidden })
+        hide(panel, { hidden: this.#hiddenOf(panel) })
       }
     }
 
@@ -176,7 +177,7 @@ export default class PhemAccordionController extends Controller {
       if (!panel) continue
 
       const isOpen = open.includes(value)
-      render(panel, isOpen, { hidden: this.#hidden })
+      render(panel, isOpen, { hidden: this.#hiddenOf(panel) })
       if (isOpen) fit(panel, "accordion")
     }
 
@@ -251,8 +252,10 @@ export default class PhemAccordionController extends Controller {
     return this.openValue.map(String)
   }
 
-  get #hidden() {
-    return this.hiddenUntilFoundValue ? "until-found" : true
+  // The `hidden` value of a closed panel: `until-found` with the value of the root, or with the
+  // attribute of the panel.
+  #hiddenOf(panel) {
+    return this.hiddenUntilFoundValue || panel.hasAttribute("data-phem-accordion-hidden-until-found") ? "until-found" : true
   }
 
   // The attributes of the state: the open state of an item, of its header and of a panel, and

@@ -13,10 +13,45 @@ final class BasicsTest extends DemoTestCase
     {
         $page = $this->visitComponent('button');
 
-        $button = $page->getByRole('button', ['name' => 'Submit']);
+        $button = $page->getByRole('region', ['name' => 'Demo'])->getByRole('button', ['name' => 'Submit']);
         expect($button)->toHaveAttribute('type', 'button');
         $button->focus();
         expect($button)->toBeFocused();
+    }
+
+    public function testButtonRenderedAsAnotherTag(): void
+    {
+        $page = $this->visitComponent('button');
+
+        $button = $page->getByRole('button', ['name' => 'Button that can contain complex children']);
+        self::assertSame('DIV', $button->evaluate('el => el.tagName'));
+        expect($button)->toHaveAttribute('tabindex', '0');
+        $button->focus();
+        expect($button)->toBeFocused();
+    }
+
+    public function testButtonKeepsTheFocusInItsLoadingState(): void
+    {
+        $page = $this->visitComponent('button');
+        $example = $page->getByRole('region', ['name' => 'Loading states']);
+
+        $button = $example->getByRole('button');
+        $label = $example->locator('#loading-label');
+        expect($button)->toHaveAttribute('aria-labelledby', 'loading-label');
+        expect($label)->toHaveExactText('Submit');
+        $button->click();
+
+        // The button is disabled, keeps the focus, and its label changes.
+        expect($example->getByRole('button', ['name' => 'Submitting']))->toBeVisible();
+        expect($button)->toHaveAttribute('aria-disabled', 'true');
+        expect($button)->toHaveAttribute('data-disabled', '');
+        expect($button)->toBeFocused();
+
+        // After 4 seconds, the poll ends the loading state. The browser waits for the test to
+        // handle the request of the poll.
+        usleep(3_500_000);
+        expect($label)->toHaveExactText('Submit');
+        expect($button)->not()->toHaveAttribute('aria-disabled', 'true');
     }
 
     public function testInput(): void

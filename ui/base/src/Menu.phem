@@ -111,21 +111,26 @@ class MenuSubmenu extends Menu
     #[Prop] public Side $side = Side::InlineEnd;
 }
 
-/** The button that opens the menu. It has a caret. In a Menubar, it has the look of the bar and no caret. */
+/**
+ * The button that opens the menu. It has a caret. In a Menubar, it has the look of the bar and no
+ * caret. In a Toolbar, it is an item of the toolbar, with the look of a ToolbarButton.
+ */
 #[Component]
-function MenuTrigger(#[Context] Menu $menu, #[Context] ?Menubar $menubar = null, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+function MenuTrigger(#[Context] Menu $menu, #[Context] ?Menubar $menubar = null, #[Context] ?Toolbar $toolbar = null, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
 {
     $disabled = $disabled || $menu->disabled;
     $target = $menu->target('trigger');
-    $base = null !== $menubar
+    $item = null !== $toolbar && null === $menubar ? 'item' : null;
+    $base = null !== $item ? Style::TOOLBAR_BUTTON : (null !== $menubar
         ? 'h-8 border-0 bg-transparent px-3 font-[inherit] text-sm font-normal text-neutral-950 select-none data-pressed:bg-neutral-100 data-disabled:text-neutral-500 dark:text-white dark:focus-visible:bg-neutral-800 dark:data-pressed:bg-neutral-800 dark:data-disabled:text-neutral-400 focus-visible:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 focus-visible:relative dark:focus-visible:outline-white'
-        : 'flex h-8 items-center justify-center gap-1.5 rounded-none border border-neutral-950 bg-white pl-3 pr-2 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none hover:not-data-disabled:bg-neutral-100 active:not-data-disabled:bg-neutral-200 data-pressed:bg-neutral-100 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:not-data-disabled:bg-neutral-800 dark:active:not-data-disabled:bg-neutral-700 data-disabled:border-neutral-500 data-disabled:text-neutral-500 disabled:border-neutral-500 disabled:text-neutral-500 dark:data-disabled:border-neutral-400 dark:data-disabled:text-neutral-400 dark:data-pressed:bg-neutral-800 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white';
+        : 'flex h-8 items-center justify-center gap-1.5 rounded-none border border-neutral-950 bg-white pl-3 pr-2 text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none hover:not-data-disabled:bg-neutral-100 active:not-data-disabled:bg-neutral-200 data-pressed:bg-neutral-100 dark:border-white dark:bg-neutral-950 dark:text-white dark:hover:not-data-disabled:bg-neutral-800 dark:active:not-data-disabled:bg-neutral-700 data-disabled:border-neutral-500 data-disabled:text-neutral-500 disabled:border-neutral-500 disabled:text-neutral-500 dark:data-disabled:border-neutral-400 dark:data-disabled:text-neutral-400 dark:data-pressed:bg-neutral-800 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white');
 
     return (
         <button
             type="button"
             disabled={{ disabled }}
             data-disabled={{ disabled ? '' : null }}
+            data-phem-toolbar-target={{ item }}
             className={{ classes(base) }}
             {{ ...target }}
             {{ ...rest }}

@@ -15,7 +15,9 @@ import { render, show } from "./phem_transition.js"
 // already (in its cache) shows at once. A new `src` or `srcset`, for example in the server render
 // of an event, loads the image again. The fallback shows while the status is not `loaded`, after
 // the `delay` value (in milliseconds, 0 by default) from the connection of the controller: a fast
-// image does not show the fallback for a short time.
+// image does not show the fallback for a short time. A fallback with a `data-phem-avatar-delay`
+// attribute uses its own delay, as the `delay` prop of a Base UI `Avatar.Fallback`. Render such a
+// fallback with `hidden`, so it does not show before the controller connects.
 //
 // The image gets `data-loading` while it loads and `data-error` when it does not load. When it
 // loads, it gets `data-open` and `data-starting-style` for its first frame; see phem_transition.js
@@ -30,7 +32,7 @@ export default class PhemAvatarController extends Controller {
 
   connect() {
     this.status = "idle"
-    this.delayed = this.delayValue <= 0
+    this.started = Date.now()
     this.state = new ClientState(this, {
       owns: (el, name) => this.#owns(el, name),
       morphed: () => this.#render({ animate: false }),
@@ -50,12 +52,9 @@ export default class PhemAvatarController extends Controller {
     })
     this.observer.observe(this.element, { subtree: true, attributes: true, attributeFilter: ["src", "srcset"] })
 
-    if (!this.delayed) {
-      this.timer = setTimeout(() => {
-        this.delayed = true
-        this.#render({ animate: false })
-      }, this.delayValue)
-    }
+    // Each delay of a fallback shows it again when it ends.
+    const delays = new Set([this.delayValue, ...this.fallbackTargets.map((fallback) => this.#delayOf(fallback))])
+    this.timers = [...delays].filter((delay) => delay > 0).map((delay) => setTimeout(() => this.#render({ animate: false }), delay))
 
     this.#probe()
   }
@@ -64,7 +63,7 @@ export default class PhemAvatarController extends Controller {
     this.state.disconnect()
     this.listening.abort()
     this.observer.disconnect()
-    clearTimeout(this.timer)
+    this.timers.forEach(clearTimeout)
   }
 
   imageTargetConnected() {
@@ -118,7 +117,15 @@ export default class PhemAvatarController extends Controller {
       else render(image, shown)
     }
 
-    for (const fallback of this.fallbackTargets) render(fallback, !loaded && this.delayed)
+    const elapsed = Date.now() - this.started
+    for (const fallback of this.fallbackTargets) render(fallback, !loaded && elapsed >= this.#delayOf(fallback))
+  }
+
+  // The delay of a fallback: its `data-phem-avatar-delay` attribute, else the `delay` value.
+  #delayOf(fallback) {
+    const own = Number(fallback.getAttribute("data-phem-avatar-delay"))
+
+    return fallback.hasAttribute("data-phem-avatar-delay") && Number.isFinite(own) ? own : this.delayValue
   }
 
   // The image of the avatar: the first `image` target.

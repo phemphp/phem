@@ -39,6 +39,12 @@ const PARENT_ATTRIBUTES = new Set(["data-checked", "data-unchecked", "data-indet
 // event.
 //
 // Each change by the user dispatches `phem-checkbox-group:change` with `{ value }`.
+//
+// A group can be an item of the group around it: give the element of the inner group a
+// `data-value`. The inner group is checked when all its items are checked, and makes the parent of
+// the outer group indeterminate when some of its items are checked. The parent of the outer group
+// checks and unchecks all the items of the inner group, and a change in the inner group shows on
+// the outer parent, as the Nested parent checkbox of Base UI.
 export default class PhemCheckboxGroupController extends Controller {
   static targets = ["parent", "item"]
   static values = {
@@ -58,6 +64,7 @@ export default class PhemCheckboxGroupController extends Controller {
     const options = { signal: this.listening.signal }
     this.element.addEventListener("change", this.onChange, options)
     this.element.addEventListener("phem-toggle:change", this.onToggleChange, options)
+    this.element.addEventListener("phem-checkbox-group:change", this.onGroupChange, options)
 
     // The values that the parent gives back in the mixed state.
     this.saved = null
@@ -65,6 +72,10 @@ export default class PhemCheckboxGroupController extends Controller {
     if (this.ownsItems) this.#apply(this.valueValue.map(String), { notify: false })
     this.connected = true
     this.render()
+
+    // A group inside a group: the outer group shows its state.
+    const outer = this.element.hasAttribute("data-value") && this.element.parentElement?.closest(`[data-controller~="${this.identifier}"]`)
+    if (outer) this.application.getControllerForElementAndIdentifier(outer, this.identifier)?.render()
   }
 
   disconnect() {
@@ -120,6 +131,46 @@ export default class PhemCheckboxGroupController extends Controller {
     else if (this.itemTargets.includes(event.target)) this.#changed()
   }
 
+  // A change in a group inside this group.
+  onGroupChange = (event) => {
+    if (this.applying || event.target === this.element || !this.#groups().includes(event.target)) return
+
+    this.#changed()
+  }
+
+  // Whether all the items of the parent are checked: the state of this group as an item of the
+  // group around it.
+  get allChecked() {
+    const children = this.#children()
+
+    return children.length > 0 && children.every((item) => this.#isOn(item))
+  }
+
+  // Whether some items of the parent are checked, but not all of them.
+  get someChecked() {
+    const children = this.#children()
+
+    return !this.allChecked && children.some((item) => this.#isOn(item) || this.#isSome(item))
+  }
+
+  // Checks or unchecks all the items of the parent, for the parent of the group around it.
+  setAll(on) {
+    const editable = this.#children().filter((item) => !this.#isFixed(item))
+
+    this.applying = true
+    try {
+      for (const item of editable) {
+        if (this.#isOn(item) !== on || this.#isSome(item)) this.#set(item, on)
+      }
+    } finally {
+      this.applying = false
+    }
+
+    this.saved = null
+    this.render()
+    this.dispatch("change", { detail: { value: this.valueValue } })
+  }
+
   // The user changed an item: the parent remembers the checked items.
   #changed() {
     this.saved = this.#checkedValues(this.#children())
@@ -129,7 +180,7 @@ export default class PhemCheckboxGroupController extends Controller {
 
   // Checks all the items, unchecks all of them, or gives back the mixed state.
   #toggle(parent) {
-    const editable = this.#children().filter((item) => !isFixed(this, item))
+    const editable = this.#children().filter((item) => !this.#isFixed(item))
     const checked = this.#checkedValues(editable)
     const values = editable.map((item) => this.#valueOf(item))
     const saved = this.saved?.filter((value) => values.includes(value)) ?? []
@@ -148,7 +199,7 @@ export default class PhemCheckboxGroupController extends Controller {
     try {
       for (const item of editable) {
         const on = next.includes(this.#valueOf(item))
-        if (isChecked(this, item) !== on) setChecked(this, item, on, { notify: true })
+        if (this.#isOn(item) !== on || this.#isSome(item)) this.#set(item, on)
       }
     } finally {
       this.applying = false
@@ -163,9 +214,13 @@ export default class PhemCheckboxGroupController extends Controller {
   #apply(values, { notify }) {
     this.applying = true
     try {
-      for (const item of this.itemTargets) {
+      for (const item of this.#items()) {
         const on = values.includes(this.#valueOf(item))
-        syncChecked(this, item, on, { notify })
+        if (this.#groupOf(item)) {
+          if (this.#isOn(item) !== on) this.#groupOf(item).setAll(on)
+        } else {
+          syncChecked(this, item, on, { notify })
+        }
       }
     } finally {
       this.applying = false
@@ -174,14 +229,14 @@ export default class PhemCheckboxGroupController extends Controller {
 
   // Writes the value, and shows the state of the items on the parents.
   render() {
-    const value = this.#checkedValues(this.itemTargets)
+    const value = this.#checkedValues(this.#items())
     this.written = JSON.stringify(value)
     if (JSON.stringify(this.valueValue) !== this.written) this.valueValue = value
 
     const children = this.#children()
-    const checked = children.filter((item) => isChecked(this, item)).length
+    const checked = children.filter((item) => this.#isOn(item)).length
     const all = children.length > 0 && checked === children.length
-    const some = checked > 0 && !all
+    const some = !all && (checked > 0 || children.some((item) => this.#isSome(item)))
 
     // A form field gets no id from the controller: the morph matches a bound field by its id.
     const ids = children.map((item) => item.id).filter(Boolean)
@@ -204,18 +259,56 @@ export default class PhemCheckboxGroupController extends Controller {
 
   // The items of the parent: the items of the `allValues` value, or all the items.
   #children() {
-    if (!this.hasAllValuesValue) return this.itemTargets
+    const items = this.#items()
+    if (!this.hasAllValuesValue) return items
 
     const values = this.allValuesValue.map(String)
 
-    return this.itemTargets.filter((item) => values.includes(this.#valueOf(item)))
+    return items.filter((item) => values.includes(this.#valueOf(item)))
+  }
+
+  // The items and the groups with a `data-value` that are directly in this group.
+  #items() {
+    return [...this.itemTargets, ...this.#groups()]
+  }
+
+  #groups() {
+    return [...this.element.querySelectorAll(`[data-controller~="${this.identifier}"][data-value]`)]
+      .filter((el) => el.parentElement.closest(`[data-controller~="${this.identifier}"]`) === this.element)
+  }
+
+  // The controller of a group inside this group, or null.
+  #groupOf(item) {
+    if (this.itemTargets.includes(item)) return null
+
+    return this.application.getControllerForElementAndIdentifier(item, this.identifier)
+  }
+
+  #isOn(item) {
+    const group = this.#groupOf(item)
+
+    return group ? group.allChecked : this.itemTargets.includes(item) && isChecked(this, item)
+  }
+
+  #isSome(item) {
+    return this.#groupOf(item)?.someChecked ?? false
+  }
+
+  #isFixed(item) {
+    return this.itemTargets.includes(item) ? isFixed(this, item) : !this.#groupOf(item)
+  }
+
+  #set(item, on) {
+    const group = this.#groupOf(item)
+    if (group) group.setAll(on)
+    else setChecked(this, item, on, { notify: true })
   }
 
   #checkedValues(items) {
-    return items.filter((item) => isChecked(this, item)).map((item) => this.#valueOf(item))
+    return items.filter((item) => this.#isOn(item)).map((item) => this.#valueOf(item))
   }
 
   #valueOf(item) {
-    return itemValue(item, this.itemTargets.indexOf(item))
+    return itemValue(item, this.#items().indexOf(item))
   }
 }

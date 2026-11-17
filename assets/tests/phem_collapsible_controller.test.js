@@ -2,7 +2,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { Application } from "@hotwired/stimulus"
 import PhemController from "../dist/phem_controller.js"
 import PhemCollapsibleController from "../dist/phem_collapsible_controller.js"
-import { click, mount, nextDone, respond, stubElementReflection } from "./support.js"
+import { click, mount, nextDone, respond, settle, stubElementReflection } from "./support.js"
 
 let application
 
@@ -252,6 +252,17 @@ describe("phem-collapsible", () => {
     panel.dispatchEvent(new Event("beforematch", { bubbles: true }))
     expect(panel.hidden).toBe(false)
     expect(isOpen()).toBe(true)
+  })
+
+  it("uses hidden=until-found with the attribute of the panel", async () => {
+    await mount(section().replace('id="panel"', 'id="panel" data-phem-collapsible-hidden-until-found'))
+    const panel = document.getElementById("panel")
+
+    expect(panel.getAttribute("hidden")).toBe("until-found")
+    click("#open")
+    click("#open")
+    await settle()
+    expect(panel.getAttribute("hidden")).toBe("until-found")
   })
 
   it("keeps the state of a nested collapsible apart", async () => {

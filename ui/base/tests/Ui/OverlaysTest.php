@@ -21,6 +21,12 @@ final class OverlaysTest extends KernelTestCase
             ->assertSelectorExists('[data-phem-collapsible-target="panel"][hidden]');
     }
 
+    public function testACollapsiblePanelCanBeHiddenUntilFound(): void
+    {
+        $this->mount(self::APP.'CollapsibleHiddenUntilFoundDemo')
+            ->assertSelectorExists('[data-phem-collapsible-target="panel"][data-phem-collapsible-hidden-until-found][hidden="until-found"]');
+    }
+
     public function testAnOpenCollapsibleShowsItsPanel(): void
     {
         $this->mount(self::APP.'CollapsibleDemo', ['open' => true])
@@ -35,7 +41,7 @@ final class OverlaysTest extends KernelTestCase
             ->assertSelectorExists('#faq[data-controller="phem-accordion"][data-phem-accordion-open-value=\'["start"]\']')
             ->assertSelectorExists('[data-value="what"][data-phem-accordion-target="item"]:not([data-open])')
             ->assertSelectorExists('#faq-what-trigger[aria-controls="faq-what-panel"][aria-expanded="false"]')
-            ->assertSelectorExists('#faq-what-panel[role="region"][aria-labelledby="faq-what-trigger"][hidden]')
+            ->assertSelectorExists('#faq-what-panel[role="region"][aria-labelledby="faq-what-trigger"][hidden="until-found"][data-phem-accordion-hidden-until-found]')
             ->assertSelectorExists('#faq-start-trigger[data-panel-open]')
             ->assertSelectorExists('#faq-start-panel[data-open]:not([hidden])')
             ->assertSelectorExists('#faq[data-orientation="vertical"] [data-phem-accordion-target="item"][data-orientation="vertical"] h3[data-orientation="vertical"] #faq-what-trigger[data-orientation="vertical"]')
@@ -84,7 +90,8 @@ final class OverlaysTest extends KernelTestCase
             ->assertSelectorExists('[data-value="projects"][data-phem-tabs-target="tab"][aria-selected="false"]')
             ->assertSelectorExists('[data-value="overview"][data-phem-tabs-target="panel"]:not([hidden])')
             ->assertSelectorExists('[data-value="projects"][data-phem-tabs-target="panel"][hidden][data-hidden]')
-            ->assertSelectorExists('[data-phem-tabs-target="list"] [data-phem-tabs-target="indicator"]');
+            ->assertSelectorExists('[data-phem-tabs-target="list"] [data-phem-tabs-target="indicator"]')
+            ->assertSelectorExists('a[role="tab"][href="/projects"][data-value="projects"]:not([type])');
     }
 
     public function testTheMenuPartsHaveTheTargetsOfTheirMenu(): void
