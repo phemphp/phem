@@ -62,4 +62,47 @@ final class TabsTest extends E2eTestCase
         expect($page->getByRole('tabpanel', ['name' => 'Billing']))->toBeVisible();
         self::assertGreaterThan(0, (int) $page->evaluate("parseInt(getComputedStyle(document.getElementById('indicator')).getPropertyValue('--active-tab-left'))"));
     }
+
+    public function testTheTabStopIsTheTabWithTheFocus(): void
+    {
+        $page = $this->visit('/tabs');
+        self::assertResponseIsSuccessful();
+
+        $page->locator('#profile')->click();
+        $page->keyboard()->press('ArrowRight');
+        expect($page->locator('#security'))->toBeFocused();
+        expect($page->locator('#profile'))->toHaveAttribute('aria-selected', 'true');
+
+        // An arrow key with Shift does not move the focus.
+        $page->keyboard()->press('Shift+ArrowRight');
+        expect($page->locator('#security'))->toBeFocused();
+
+        // Tab leaves the list, and Shift+Tab comes back to the tab with the focus.
+        $page->keyboard()->press('Tab');
+        expect($page->locator('#security'))->not()->toBeFocused();
+        $page->keyboard()->press('Shift+Tab');
+        expect($page->locator('#security'))->toBeFocused();
+
+        // The tab stop stays after the morph of an event.
+        $page->locator('#save')->click();
+        expect($page->locator('#saves'))->toHaveText('1');
+        expect($page->locator('#security'))->toHaveAttribute('tabindex', '0');
+        expect($page->locator('#profile'))->toHaveAttribute('tabindex', '-1');
+        expect($page->locator('#profile'))->toHaveAttribute('aria-selected', 'true');
+    }
+
+    public function testTheIndicatorKeepsTheFractionsOfAPixel(): void
+    {
+        $page = $this->visit('/tabs');
+        self::assertResponseIsSuccessful();
+
+        $page->locator('#security')->click();
+        expect($page->locator('#security'))->toHaveAttribute('aria-selected', 'true');
+
+        // The left of the tab in the padding box of the list: the list has a border of 2px and a
+        // padding of 0.5px.
+        $expected = (float) $page->evaluate("(() => { const list = document.getElementById('list'); return document.getElementById('security').getBoundingClientRect().left - list.getBoundingClientRect().left - list.clientLeft })()");
+        $actual = (float) $page->evaluate("parseFloat(document.getElementById('indicator').style.getPropertyValue('--active-tab-left'))");
+        self::assertEqualsWithDelta($expected, $actual, 0.01);
+    }
 }

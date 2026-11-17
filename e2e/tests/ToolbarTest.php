@@ -61,6 +61,24 @@ final class ToolbarTest extends E2eTestCase
         expect($page->locator('#left'))->toHaveAttribute('tabindex', '-1');
     }
 
+    public function testHomeAndEndDoNotMoveTheFocus(): void
+    {
+        $page = $this->visit('/toolbar');
+        self::assertResponseIsSuccessful();
+
+        $page->locator('#save')->focus();
+        $page->keyboard()->press('Shift+Tab');
+        expect($page->locator('#left'))->toBeFocused();
+        $page->keyboard()->press('ArrowRight');
+        expect($page->locator('#center'))->toBeFocused();
+
+        $page->keyboard()->press('End');
+        expect($page->locator('#center'))->toBeFocused();
+        $page->keyboard()->press('Home');
+        expect($page->locator('#center'))->toBeFocused();
+        expect($page->locator('#center'))->toHaveAttribute('tabindex', '0');
+    }
+
     public function testADisabledItemDoesNotSendItsEvent(): void
     {
         $page = $this->visit('/toolbar');

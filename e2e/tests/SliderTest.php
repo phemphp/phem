@@ -132,6 +132,49 @@ final class SliderTest extends E2eTestCase
         self::assertSame('24%', $page->evaluate("document.getElementById('volume-thumb').style.insetInlineStart"));
     }
 
+    public function testAMousePressShowsNoFocusRing(): void
+    {
+        $page = $this->visit('/slider');
+        self::assertResponseIsSuccessful();
+
+        $control = $page->locator('#volume-control')->boundingBox();
+        $page->mouse()->click($control['x'] + 100, $control['y'] + $control['height'] / 2);
+        expect($page->locator('#volume-input'))->toBeFocused();
+        self::assertFalse($page->evaluate("document.getElementById('volume-input').matches(':focus-visible')"));
+
+        // A focus with the keyboard shows the focus ring.
+        $page->keyboard()->press('Tab');
+        expect($page->locator('#price-min-input'))->toBeFocused();
+        $page->keyboard()->press('Shift+Tab');
+        expect($page->locator('#volume-input'))->toBeFocused();
+        self::assertTrue($page->evaluate("document.getElementById('volume-input').matches(':focus-visible')"));
+    }
+
+    public function testTheThumbOfThePressIsOnTop(): void
+    {
+        $page = $this->visit('/slider');
+        self::assertResponseIsSuccessful();
+
+        $mouse = $page->mouse();
+
+        // One thumb is on top only during the press.
+        $control = $page->locator('#volume-control')->boundingBox();
+        $mouse->move($control['x'] + 100, $control['y'] + $control['height'] / 2);
+        $mouse->down();
+        expect($page->locator('#volume-thumb'))->toHaveCSS('z-index', '1');
+        $mouse->up();
+        expect($page->locator('#volume-thumb'))->toHaveCSS('z-index', 'auto');
+
+        // In a range, the thumb of the press is over the thumb of the last change.
+        $thumb = $page->locator('#price-min')->boundingBox();
+        $mouse->move($thumb['x'] + $thumb['width'] / 2, $thumb['y'] + $thumb['height'] / 2);
+        $mouse->down();
+        expect($page->locator('#price-min'))->toHaveCSS('z-index', '2');
+        $mouse->up();
+        expect($page->locator('#price-min'))->toHaveCSS('z-index', '1');
+        expect($page->locator('#price-max'))->toHaveCSS('z-index', 'auto');
+    }
+
     private function formData(PageInterface $page): string
     {
         return $page->evaluate("new URLSearchParams(new FormData(document.getElementById('form'))).toString()");

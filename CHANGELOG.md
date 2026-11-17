@@ -8,6 +8,18 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking**: Home and End do not move the focus in a `phem-toolbar`, as in Base UI. Before, they
+  went to the first and to the last item.
+- The tab stop of `phem-tabs` is the tab with the last focus, also after the morph of an event.
+  Before, Tab into the list went to the selected tab. An arrow key with Shift does not move the
+  focus.
+- The `indicator` of `phem-tabs` keeps the fractions of a pixel, and does not count the border of
+  the list. Before, the line was up to 0.5px off, and moved by the width of the border.
+- A press on a `phem-slider` gives the focus to the thumb with no focus ring. A single thumb gets
+  `z-index: 1` only during the press. In a range, the thumb of the press gets `z-index: 2` and the
+  thumb of the last change `z-index: 1`.
+- `phem-scroll-area` removes `data-scrolling` at the end of a drag of a thumb, not 500 ms after it.
+  The size and the offset of a thumb keep the fractions of a pixel.
 - **Breaking**: `phem-number-field` does not handle PageUp and PageDown, as in Base UI. Use Shift
   with an arrow key for the large step.
 - **Breaking**: Enter in a `phem-number-field` does not format the text. Only a blur does. Enter

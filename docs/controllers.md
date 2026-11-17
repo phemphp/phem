@@ -1243,7 +1243,7 @@ A swipe moves the drawer up and down from its snap point. The release stops it a
 </div>
 ```
 
-The value of a tab and of a panel is its `data-value` attribute, its key (`key={{ ... }}`), or its position. Each tab shows the panel with the same value. The `active` value is the state: the value of the selected tab. Set it to select a tab on load, and a handler can set it in a new render. With no `active` value, or a value that no tab has, the first tab that is not disabled is selected. A click selects a tab, and the `active` value gets its value. The arrow keys move the focus between the tabs, and Enter or Space selects the tab with the focus, also on a tab that is not a `<button>`. With `data-phem-tabs-activate-on-focus-value="true"`, the focus selects the tab at once. Home and End go to the first and to the last tab, and the arrow keys skip a disabled tab. From the last tab, the arrow key goes to the first tab, unless `data-phem-tabs-loop-focus-value="false"`. With `data-phem-tabs-orientation-value="vertical"`, the Up and Down keys move between the tabs in place of Left and Right.
+The value of a tab and of a panel is its `data-value` attribute, its key (`key={{ ... }}`), or its position. Each tab shows the panel with the same value. The `active` value is the state: the value of the selected tab. Set it to select a tab on load, and a handler can set it in a new render. With no `active` value, or a value that no tab has, the first tab that is not disabled is selected. A click selects a tab, and the `active` value gets its value. The arrow keys move the focus between the tabs, and Enter or Space selects the tab with the focus, also on a tab that is not a `<button>`. With `data-phem-tabs-activate-on-focus-value="true"`, the focus selects the tab at once. Home and End go to the first and to the last tab, and the arrow keys skip a disabled tab. From the last tab, the arrow key goes to the first tab, unless `data-phem-tabs-loop-focus-value="false"`. With `data-phem-tabs-orientation-value="vertical"`, the Up and Down keys move between the tabs in place of Left and Right. An arrow key with Shift does not move the focus. One tab is in the Tab order: the tab with the last focus, or the selected tab. It stays after the morph of an event.
 
 The controller sets the ARIA roles and attributes. A tab and its panel need no `id`: the controller links them with the element references of ARIA (`ariaControlsElements` and `ariaLabelledByElements`), so a screen reader names the panel with its tab. It gives them no `id`, because the morph must match each element to the server render. When the tab and the panel have an `id`, they get `aria-controls` and `aria-labelledby`. After a click on **Security**, the browser shows:
 
@@ -1274,7 +1274,21 @@ The `indicator` part gets the box of the selected tab in the list, for a line un
 }
 ```
 
-The variables are `--active-tab-left`, `--active-tab-top`, `--active-tab-right`, `--active-tab-bottom`, `--active-tab-width` and `--active-tab-height`.
+The variables are `--active-tab-left`, `--active-tab-top`, `--active-tab-right`, `--active-tab-bottom`, `--active-tab-width` and `--active-tab-height`. The values keep the fractions of a pixel. They start inside the border of the list, so a border on the list does not move the line. The controller reads the border width from `clientLeft` and `clientTop`, which are whole pixels. In a list with a border of 2px, a selected tab that starts 60.5px from the outer edge of the list and is 80.5px wide gives:
+
+```html
+<span data-phem-tabs-target="indicator" style="--active-tab-left: 58.5px; --active-tab-width: 80.5px; ..."></span>
+```
+
+After a click on **Profile** and ArrowRight, the focus is on **Security** and **Profile** stays selected. The tab stop is on **Security**, also after the morph of an event:
+
+```html
+<div data-phem-tabs-target="list" role="tablist" ...>
+    <button data-value="profile" role="tab" aria-selected="true" tabindex="-1" data-active ...>Profile</button>
+    <button data-value="security" role="tab" aria-selected="false" tabindex="0" ...>Security</button>
+    ...
+</div>
+```
 
 ## Toggle a button, a switch or a checkbox
 
@@ -1392,7 +1406,7 @@ In a [`phem-toolbar`](#group-controls-in-a-toolbar), make the group a `group` pa
 </div>
 ```
 
-ArrowRight on **End** moves the focus to **Bold**, and ArrowRight on **Bold** goes back to **Start**. One item of the toolbar is in the tab order: the item with the last focus, or the first item.
+ArrowRight on **End** moves the focus to **Bold**, and ArrowRight on **Bold** goes back to **Start**. One item of the toolbar is in the tab order: the item with the last focus, or the first item. In a toolbar, Home and End do not move the focus.
 
 An item can be a [`phem-toggle`](#toggle-a-button-a-switch-or-a-checkbox) button, as a Base UI Toggle in a ToggleGroup:
 
@@ -1444,9 +1458,8 @@ An `item` is a button, a link, an input, or another element that can get the foc
 |---|---|
 | ArrowRight, ArrowLeft | Move the focus to the next or to the previous item (`horizontal`). In a right-to-left page, the keys change places. |
 | ArrowDown, ArrowUp | Move the focus to the next or to the previous item (`vertical`). |
-| Home, End | Move the focus to the first or to the last item. |
 
-In a text input, ArrowLeft and ArrowRight move the caret. They move the focus only when the caret is at the start or at the end of the text. Home and End move the caret.
+Home and End do not move the focus, as in Base UI. In a text input, Home, End, ArrowLeft and ArrowRight move the caret. ArrowLeft and ArrowRight move the focus only when the caret is at the start or at the end of the text.
 
 A disabled item stays in the focus order, so a keyboard user can find it. A click on it does nothing, and an input takes no text. Give the item `aria-disabled="true"`, or give its group `aria-disabled="true"`, or set the `disabled` value. An item with the native `disabled` attribute does not get the focus.
 
@@ -1897,6 +1910,8 @@ The `value` value is the state: one number (`25`) for one thumb, or a JSON list 
 
 A press on the `control` part moves the nearest thumb to the point and starts a drag. The pointer capture keeps the drag when the pointer goes out of the control. A press on a thumb does not move it: the drag moves it from there. Two thumbs stay at least `minStepsBetweenValues` steps apart, and they do not cross.
 
+The press gives the focus to the thumb input with no focus ring (`focusVisible: false`), as in Base UI. A focus with the keyboard (Tab) shows the ring.
+
 | Value | Default | Description |
 | --- | --- | --- |
 | `value` | `min` | The state: a number, or a JSON list of numbers. |
@@ -1920,7 +1935,7 @@ A press on the `control` part moves the nearest thumb to the point and starts a 
 
 In a right-to-left page, ArrowLeft adds and ArrowRight removes. The keys stop a thumb at the other thumb.
 
-The controller gives the positions as inline styles, as Base UI does. The `track` gets `position: relative`, and the `control` gets `touch-action: none`. In the horizontal orientation, a thumb gets `position: absolute`, `inset-inline-start` (the percent of its value), `top: 50%` and `translate: -50% -50%`. The `indicator` gets `inset-inline-start` and `width`, from the first to the last value (from the start to the value with one thumb). In the vertical orientation, they get `bottom` and `height`. The thumb of the last change gets `z-index: 1`.
+The controller gives the positions as inline styles, as Base UI does. The `track` gets `position: relative`, and the `control` gets `touch-action: none`. In the horizontal orientation, a thumb gets `position: absolute`, `inset-inline-start` (the percent of its value), `top: 50%` and `translate: -50% -50%`. The `indicator` gets `inset-inline-start` and `width`, from the first to the last value (from the start to the value with one thumb). In the vertical orientation, they get `bottom` and `height`. While the user presses a thumb, it gets `z-index: 1`. In a range, the thumb of the press gets `z-index: 2`, and the thumb of the last change gets `z-index: 1`.
 
 The thumb inputs get `min`, `max`, `step`, `value`, `aria-valuenow`, `aria-orientation` and `disabled`. With two thumbs, they get `aria-valuetext` ("20 start range" and "60 end range"). With one thumb and a `format`, they get the formatted value. An `aria-valuetext` that the markup gives stays. The root gets `role="group"`. The root and the inputs with no `aria-label` get a link to the `label` part (`aria-labelledby`). The `value` part shows the formatted values, separated by " – ", and gets `aria-live="off"`. All the parts get `data-orientation`, `data-disabled`, and `data-dragging` while the user drags. The thumbs get `data-index`.
 
@@ -1982,7 +1997,7 @@ The root, the viewport, the content and the scrollbars get these attributes:
 | `data-has-overflow-x`, `data-has-overflow-y` | The content is wider or taller than the viewport. |
 | `data-overflow-x-start`, `data-overflow-x-end` | The content continues past the start or the end edge on the horizontal axis. |
 | `data-overflow-y-start`, `data-overflow-y-end` | The content continues past the top or the bottom edge. |
-| `data-scrolling` | The user scrolls. It goes 500 ms after the last scroll. A scrollbar and its thumb get it only for a scroll on their axis. |
+| `data-scrolling` | The user scrolls. It goes 500 ms after the last scroll. A scrollbar and its thumb get it only for a scroll on their axis. The end of a drag of a thumb removes it at once. |
 | `data-hovering` | On the scrollbars only: the pointer is over the scroll area. |
 
 The thumbs get `data-orientation` and `data-scrolling`. The CSS variables are:
@@ -1992,6 +2007,8 @@ The thumbs get `data-orientation` and `data-scrolling`. The CSS variables are:
 | `--scroll-area-corner-width`, `--scroll-area-corner-height` | root | The size of the corner: the width of the vertical scrollbar and the height of the horizontal scrollbar, or `0px` when one axis has no overflow. |
 | `--scroll-area-overflow-x-start`, `--scroll-area-overflow-x-end`, `--scroll-area-overflow-y-start`, `--scroll-area-overflow-y-end` | viewport | The distance to each edge, in px. Use it for a fade at the edges. |
 | `--scroll-area-thumb-height`, `--scroll-area-thumb-width` | scrollbar | The size of the thumb of a vertical or a horizontal scrollbar. |
+
+The size and the offset of a thumb keep the fractions of a pixel. In a viewport of 100px with a content of 300px, scrolled to 100px, the thumb gets `--scroll-area-thumb-height: 33.333333333333336px` and `transform: translate3d(0px, 33.333333333333336px, 0px)`.
 
 As in Base UI, the controller gives the parts their layout styles: the root gets `position: relative`, a scrollbar `position: absolute` on its edge (it stops at the corner), a thumb its size and a `transform` to its place, and the corner its size. The `style` attribute of the parts belongs to the client, so the morph does not change it. The scroll position, the attributes and the styles stay after the morph of an event. The controller renders them again after a scroll, a resize of the viewport, of the content or of a scrollbar, and the morph.
 

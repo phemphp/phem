@@ -40,7 +40,9 @@ import { clamp, clean, flag, nextStep, numberFormat, roundToStep, sendEvents } f
 // the `indicator` target gets `inset-inline-start` and `width` from the first to the last value
 // (from the start to the value with one thumb). In the `vertical` orientation, they get `bottom`
 // and `height`. With the `thumbAlignment` value `edge`, a thumb stays in the control at the
-// `min` and at the `max` values. The thumb of the last change gets `z-index: 1`.
+// `min` and at the `max` values. While the user presses a thumb, it gets `z-index: 1`. In a range,
+// the thumb of the press gets `z-index: 2`, and the thumb of the last change gets `z-index: 1`.
+// The press gives the focus to the thumb input with no focus ring.
 //
 // The thumb inputs get `min`, `max`, `step`, `value`, `aria-valuenow`, `aria-orientation`,
 // `aria-valuetext` ("25 start range" and "75 end range" for two thumbs, or the formatted value
@@ -72,7 +74,8 @@ export default class PhemSliderController extends Controller {
   connect() {
     this.values = this.#read()
     this.committed = [...this.values]
-    this.active = -1
+    this.lastUsed = -1
+    this.pressed = -1
     this.dragging = false
     this.added = new WeakMap()
     this.valueTexts = new WeakMap()
@@ -138,12 +141,12 @@ export default class PhemSliderController extends Controller {
     let offset = 0
 
     if (thumb) {
-      this.active = this.#indexOf(thumb)
-      offset = this.#percentAt(control, event) - this.#percent(this.values[this.active])
+      this.lastUsed = this.#indexOf(thumb)
+      offset = this.#percentAt(control, event) - this.#percent(this.values[this.lastUsed])
     } else {
       const value = this.#valueAt(control, event, 0)
-      this.active = this.#nearest(value)
-      this.#move(this.active, value, "track-press", this.thumbCollisionBehaviorValue)
+      this.lastUsed = this.#nearest(value)
+      this.#move(this.lastUsed, value, "track-press", this.thumbCollisionBehaviorValue)
     }
 
     try {
@@ -152,20 +155,22 @@ export default class PhemSliderController extends Controller {
       // A synthetic pointer has no capture.
     }
 
-    this.#inputOf(this.thumbTargets[this.active])?.focus({ preventScroll: true })
+    this.#inputOf(this.thumbTargets[this.lastUsed])?.focus({ preventScroll: true, focusVisible: false })
+    this.pressed = this.lastUsed
     this.dragging = true
     this.#render()
 
     this.drag = new AbortController()
     const options = { signal: this.drag.signal }
     document.addEventListener("pointermove", (move) => {
-      this.#move(this.active, this.#valueAt(control, move, offset), "drag", this.thumbCollisionBehaviorValue)
+      this.#move(this.lastUsed, this.#valueAt(control, move, offset), "drag", this.thumbCollisionBehaviorValue)
     }, options)
 
     const end = () => {
       this.drag.abort()
       this.drag = null
       this.dragging = false
+      this.pressed = -1
       this.#render()
       this.#commit(start, thumb ? "drag" : "track-press")
     }
@@ -195,7 +200,7 @@ export default class PhemSliderController extends Controller {
     if (this.disabledValue) return
 
     const start = [...this.values]
-    this.active = index
+    this.lastUsed = index
     this.#move(index, next, "keyboard", "none")
     this.#commit(start, "keyboard")
   }
@@ -206,7 +211,7 @@ export default class PhemSliderController extends Controller {
     if (this.sending || index < 0 || this.disabledValue) return
 
     const start = [...this.values]
-    this.active = index
+    this.lastUsed = index
     this.#move(index, Number(event.target.value), "input-change", "none")
     this.#commit(start, "input-change", { native: true })
   }
@@ -230,7 +235,7 @@ export default class PhemSliderController extends Controller {
     this.#render()
     this.#send(changed, "input")
 
-    this.dispatch("change", { detail: { value: this.#external, values: [...values], index: this.active, reason } })
+    this.dispatch("change", { detail: { value: this.#external, values: [...values], index: this.lastUsed, reason } })
 
     return true
   }
@@ -249,7 +254,8 @@ export default class PhemSliderController extends Controller {
       const up = value > values[index]
       index = others.filter((v) => (up ? v <= value : v < value)).length
       values.splice(0, values.length, ...others.slice(0, index), value, ...others.slice(index))
-      this.active = index
+      this.lastUsed = index
+      if (this.pressed >= 0) this.pressed = index
       behavior = "push"
     }
 
@@ -353,7 +359,7 @@ export default class PhemSliderController extends Controller {
   }
 
   get #thumbSize() {
-    const thumb = this.thumbTargets[Math.max(0, this.active)]
+    const thumb = this.thumbTargets[Math.max(0, this.lastUsed)]
     if (!thumb) return 0
 
     return this.orientationValue === "vertical" ? thumb.offsetHeight : thumb.offsetWidth
@@ -440,7 +446,7 @@ export default class PhemSliderController extends Controller {
     const position = this.#position(this.#percent(value))
     thumb.setAttribute("data-index", String(index))
     thumb.style.position = "absolute"
-    thumb.style.zIndex = index === this.active ? "1" : ""
+    thumb.style.zIndex = zIndexOf(index, this.pressed, this.lastUsed, this.values.length > 1)
 
     if (vertical) {
       Object.assign(thumb.style, { insetInlineStart: "", top: "", bottom: position, left: "50%", translate: "-50% 50%" })
@@ -503,4 +509,13 @@ export default class PhemSliderController extends Controller {
 
 function same(a, b) {
   return a.length === b.length && a.every((v, i) => v === b[i])
+}
+
+// The `z-index` of a thumb. In a range: 2 for the thumb of the press, 1 for the thumb of the last
+// change. One thumb: 1 only during the press.
+function zIndexOf(index, pressed, lastUsed, range) {
+  if (index === pressed) return range ? "2" : "1"
+  if (range && index === lastUsed) return "1"
+
+  return ""
 }

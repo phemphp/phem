@@ -48,16 +48,16 @@ const OVERFLOW_ATTRIBUTES = ["data-has-overflow-x", "data-has-overflow-y", "data
 // `data-has-overflow-y` when the content is wider or taller than the viewport, and
 // `data-overflow-x-start`, `data-overflow-x-end`, `data-overflow-y-start` and
 // `data-overflow-y-end` when the content continues past that edge. They get `data-scrolling`
-// while the user scrolls (a scrollbar and its thumb only for a scroll on their axis), and the
-// scrollbars get `data-hovering` while the pointer is over the root. The thumbs get
-// `data-orientation`. The CSS variables are:
+// while the user scrolls (a scrollbar and its thumb only for a scroll on their axis). The end of a
+// drag of a thumb removes it at once. The scrollbars get `data-hovering` while the pointer is over
+// the root. The thumbs get `data-orientation`. The CSS variables are:
 //
 // - on the root: `--scroll-area-corner-width` and `--scroll-area-corner-height`;
 // - on the viewport: `--scroll-area-overflow-x-start`, `--scroll-area-overflow-x-end`,
 //   `--scroll-area-overflow-y-start` and `--scroll-area-overflow-y-end` (the distance to each
 //   edge);
 // - on a scrollbar: `--scroll-area-thumb-height` (vertical) or `--scroll-area-thumb-width`
-//   (horizontal).
+//   (horizontal). The size and the offset of a thumb keep the fractions of a pixel.
 //
 // As in Base UI, the parts get their layout styles: the root `position: relative`, a scrollbar
 // `position: absolute` on its edge, a thumb its size and its `transform`, the corner its size.
@@ -217,9 +217,17 @@ export default class PhemScrollAreaController extends Controller {
   onPointerUp = (event) => {
     if (!this.drag || event.pointerId !== this.drag.pointer) return
 
-    const bar = this.drag.bar
+    const { bar, vertical } = this.drag
     this.drag = null
+
+    // The end of a drag removes the scroll mark at once.
+    const axis = vertical ? "y" : "x"
+    clearTimeout(this.timers[axis])
+    this.timers[axis] = null
+    this.scrolling[axis] = false
+
     if (bar.hasPointerCapture?.(event.pointerId)) bar.releasePointerCapture(event.pointerId)
+    this.update()
   }
 
   // Renders the state from the sizes and the scroll position of the viewport.
@@ -338,7 +346,7 @@ export default class PhemScrollAreaController extends Controller {
       if (!vertical && rtl) offset = -offset
 
       const variable = vertical ? "--scroll-area-thumb-height" : "--scroll-area-thumb-width"
-      setStyle(bar, variable, `${Math.round(size)}px`)
+      setStyle(bar, variable, `${size}px`)
 
       const thumb = this.#thumbOf(bar)
       if (!thumb) continue
@@ -347,7 +355,7 @@ export default class PhemScrollAreaController extends Controller {
       if (thumb.getAttribute("data-orientation") !== orientation) thumb.setAttribute("data-orientation", orientation)
       if (thumb.hasAttribute("data-scrolling") !== this.scrolling[vertical ? "y" : "x"]) thumb.toggleAttribute("data-scrolling")
       setStyle(thumb, vertical ? "height" : "width", `var(${variable})`)
-      setStyle(thumb, "transform", vertical ? `translate3d(0px, ${Math.round(offset)}px, 0px)` : `translate3d(${Math.round(offset)}px, 0px, 0px)`)
+      setStyle(thumb, "transform", vertical ? `translate3d(0px, ${offset}px, 0px)` : `translate3d(${offset}px, 0px, 0px)`)
     }
   }
 

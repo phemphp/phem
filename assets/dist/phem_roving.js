@@ -1,5 +1,5 @@
 // The keys of a list of items, for `phem-tabs`, `phem-menu` and `phem-combobox`: the arrow keys,
-// Home, End, and a typeahead.
+// Home, End, and a typeahead. The roving tab stop, for `phem-tabs` and `phem-toolbar`.
 //
 // With the `vertical` orientation, ArrowDown and ArrowUp move. With `horizontal`, ArrowRight and
 // ArrowLeft move (the other way in a right-to-left page). With `loop`, the last item goes to the
@@ -40,6 +40,11 @@ export function nextItem(items, current, key, { orientation = "vertical", loop =
   }
 
   return undefined
+}
+
+// The roving tab stop: only `stop` of the items is in the tab order (`tabindex="0"`).
+export function setTabStop(items, stop) {
+  for (const item of items) item.tabIndex = item === stop ? 0 : -1
 }
 
 // The keys that nextItem() reads, for an orientation.

@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { ClientState, OPEN_ATTRIBUTES } from "./phem_client_state.js"
-import { isDisabled, movesFocus, nextItem } from "./phem_roving.js"
+import { isDisabled, movesFocus, nextItem, setTabStop } from "./phem_roving.js"
 import { hide, render, show } from "./phem_transition.js"
 import { link } from "./phem_aria.js"
 
@@ -24,9 +24,11 @@ import { link } from "./phem_aria.js"
 // not disabled is selected. The server render gives its first value, and a server render with a
 // new `active` value sets it. A click on a tab selects it. The arrow keys of the
 // `orientation` value (`horizontal` by default) move the focus between the tabs, and skip a
-// disabled tab; Home and End go to the first and to the last tab. With the `loopFocus` value (the
-// default), the last tab goes to the first one. Enter or Space selects the tab with the focus, or
-// the focus selects it at once with the `activateOnFocus` value.
+// disabled tab; Home and End go to the first and to the last tab. An arrow key with Shift does
+// nothing. With the `loopFocus` value (the default), the last tab goes to the first one. Enter or
+// Space selects the tab with the focus, or the focus selects it at once with the `activateOnFocus`
+// value. One tab is in the tab order: the tab with the last focus, else the selected tab. It stays
+// after the morph of an event.
 //
 // The `list` target gets `role="tablist"`, the tabs get `role="tab"`, `aria-selected`, `tabindex`
 // and `aria-controls`, and the panels get `role="tabpanel"`, `hidden`, `tabindex` and
@@ -36,9 +38,10 @@ import { link } from "./phem_aria.js"
 // `data-activation-direction` (the direction of the last change: `left`, `right`, `up`, `down` or
 // `none`). The selected tab gets `data-active`, a disabled tab `data-disabled`, and a panel
 // `data-index` and `data-hidden` when it is hidden; see phem_transition.js for the animations of
-// the panels. The `indicator` target gets the box of the selected tab in the list:
-// `--active-tab-left`, `--active-tab-top`, `--active-tab-right`, `--active-tab-bottom`,
-// `--active-tab-width` and `--active-tab-height`.
+// the panels. The `indicator` target gets the box of the selected tab in the padding box of the
+// list: `--active-tab-left`, `--active-tab-top`, `--active-tab-right`, `--active-tab-bottom`,
+// `--active-tab-width` and `--active-tab-height`. The values keep the fractions of a pixel. They
+// do not count the border of the list (`clientLeft` and `clientTop`, whole pixels).
 export default class PhemTabsController extends Controller {
   static targets = ["list", "tab", "panel", "indicator"]
   static values = {
@@ -61,6 +64,7 @@ export default class PhemTabsController extends Controller {
     const options = { signal: this.listening.signal }
     this.element.addEventListener("click", this.onClick, options)
     this.element.addEventListener("keydown", this.onKeydown, options)
+    this.element.addEventListener("focusin", this.onFocusin, options)
 
     if (typeof ResizeObserver === "function") {
       this.resizing = new ResizeObserver(() => this.#renderIndicator())
@@ -77,11 +81,15 @@ export default class PhemTabsController extends Controller {
     this.state.disconnect()
     this.listening.abort()
     this.rendered = undefined
+    this.highlighted = undefined
   }
 
   // A server render with a new `active` value, or a change of the value by a script.
   activeValueChanged() {
     if (this.rendered === undefined || this.rendered === this.#selected) return
+
+    // With no focus in the tabs, the tab stop goes to the new selected tab.
+    if (!this.tabTargets.some((tab) => tab.contains(document.activeElement))) this.highlighted = undefined
 
     this.#direction(this.rendered, this.#selected)
     this.#render({ animate: true })
@@ -111,6 +119,14 @@ export default class PhemTabsController extends Controller {
     if (tab && !isDisabled(tab)) this.#select(tab)
   }
 
+  onFocusin = (event) => {
+    const tab = this.#tabOf(event.target)
+    if (!tab || tab === this.highlighted) return
+
+    this.highlighted = tab
+    this.#renderTabIndex()
+  }
+
   onKeydown = (event) => {
     const tab = this.#tabOf(event.target)
     if (!tab || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return
@@ -122,6 +138,9 @@ export default class PhemTabsController extends Controller {
 
       return
     }
+
+    // Shift with an arrow key does not move the focus.
+    if (event.shiftKey && event.key.startsWith("Arrow")) return
 
     if (!movesFocus(event.key, this.orientationValue)) return
 
@@ -135,6 +154,7 @@ export default class PhemTabsController extends Controller {
 
   #select(tab) {
     const index = this.tabTargets.indexOf(tab)
+    this.highlighted = tab
     if (index === this.#selected && this.rendered === index) return
 
     this.#direction(this.#selected, index)
@@ -193,12 +213,13 @@ export default class PhemTabsController extends Controller {
       tab.setAttribute("aria-selected", String(i === selected))
       tab.toggleAttribute("data-active", i === selected)
       tab.toggleAttribute("data-disabled", isDisabled(tab))
-      tab.tabIndex = i === selected ? 0 : -1
 
       const panel = this.#panelOf(tab, i)
       if (panel) link(tab, "aria-controls", "ariaControlsElements", panel)
       if (panel) link(panel, "aria-labelledby", "ariaLabelledByElements", tab)
     })
+
+    this.#renderTabIndex()
 
     panels.forEach((panel, i) => {
       const open = panel === shown
@@ -216,12 +237,25 @@ export default class PhemTabsController extends Controller {
     this.#renderIndicator()
   }
 
+  // The tab in the tab order: the tab with the last focus, else the selected tab. A tab that the
+  // morph removes or disables is not the tab stop.
+  get #tabStop() {
+    const tab = this.highlighted
+    if (this.tabTargets.includes(tab) && !isDisabled(tab)) return tab
+
+    return this.tabTargets[this.#selected]
+  }
+
+  #renderTabIndex() {
+    setTabStop(this.tabTargets, this.#tabStop)
+  }
+
   #common(el) {
     el.setAttribute("data-orientation", this.orientationValue)
     el.setAttribute("data-activation-direction", this.direction)
   }
 
-  // The box of the selected tab, in the box of the list.
+  // The box of the selected tab, in the padding box of the list.
   #renderIndicator() {
     const tab = this.tabTargets[this.#selected]
     const list = this.listTargets[0] ?? this.element
@@ -229,8 +263,8 @@ export default class PhemTabsController extends Controller {
 
     const box = tab.getBoundingClientRect()
     const parent = list.getBoundingClientRect()
-    const left = box.left - parent.left + list.scrollLeft
-    const top = box.top - parent.top + list.scrollTop
+    const left = box.left - parent.left + list.scrollLeft - list.clientLeft
+    const top = box.top - parent.top + list.scrollTop - list.clientTop
     const values = {
       "--active-tab-left": left,
       "--active-tab-top": top,
@@ -241,7 +275,7 @@ export default class PhemTabsController extends Controller {
     }
 
     for (const el of this.indicatorTargets) {
-      for (const [name, value] of Object.entries(values)) el.style.setProperty(name, `${Math.round(value)}px`)
+      for (const [name, value] of Object.entries(values)) el.style.setProperty(name, `${value}px`)
     }
   }
 

@@ -71,7 +71,7 @@ describe("phem-toolbar", () => {
     expect(document.getElementById("more").tabIndex).toBe(-1)
   })
 
-  it("moves the focus with the arrow keys, Home and End", async () => {
+  it("moves the focus with the arrow keys", async () => {
     await mount(toolbar())
     focus("left")
 
@@ -82,16 +82,14 @@ describe("phem-toolbar", () => {
     press("ArrowRight")
     expect(document.activeElement.id).toBe("help")
 
-    press("End")
-    expect(document.activeElement.id).toBe("more")
-
-    press("ArrowRight")
+    press("ArrowLeft")
+    press("ArrowLeft")
     expect(document.activeElement.id).toBe("left")
 
     press("ArrowLeft")
     expect(document.activeElement.id).toBe("more")
 
-    press("Home")
+    press("ArrowRight")
     expect(document.activeElement.id).toBe("left")
 
     // The keys of the other orientation do not move.
@@ -219,7 +217,7 @@ describe("phem-toolbar", () => {
   it("keeps the tab stop and the attributes after the morph of an event", async () => {
     await mount(toolbar())
     focus("left")
-    press("End")
+    press("ArrowLeft")
     expect(tabStops()).toEqual(["more"])
 
     respond(toolbar("", { right: 'aria-disabled="true"' }))
@@ -242,5 +240,19 @@ describe("phem-toolbar", () => {
 
     expect(document.getElementById("right").hasAttribute("aria-disabled")).toBe(false)
     expect(document.getElementById("right").hasAttribute("data-disabled")).toBe(false)
+  })
+})
+
+describe("phem-toolbar: Home and End", () => {
+  it("does not move the focus with Home and End", async () => {
+    await mount(toolbar())
+    focus("right")
+
+    expect(press("End").defaultPrevented).toBe(false)
+    expect(document.activeElement.id).toBe("right")
+
+    expect(press("Home").defaultPrevented).toBe(false)
+    expect(document.activeElement.id).toBe("right")
+    expect(tabStops()).toEqual(["right"])
   })
 })

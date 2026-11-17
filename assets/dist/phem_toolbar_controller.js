@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { ClientState } from "./phem_client_state.js"
 import { takesText } from "./phem_fields.js"
+import { setTabStop } from "./phem_roving.js"
 
 // The `phem-toolbar` controller: a row of controls with one tab stop. The arrow keys move the
 // focus between the `item` targets.
@@ -18,11 +19,11 @@ import { takesText } from "./phem_fields.js"
 // An item is a button, a link, an input or another element that can get the focus. A `group`
 // target holds some of the items. Only one item is in the tab order (`tabindex="0"`): the item
 // that had the focus last, else the first item. The arrow keys of the `orientation` value
-// (`horizontal` by default) move the focus to the next or to the previous item, and Home and End
-// go to the first and to the last item. With the `loopFocus` value (the default), the last item
-// goes to the first one. In a text input, ArrowLeft and ArrowRight move the caret, and move the
-// focus only when the caret is at the start or at the end of the text. Home and End move the
-// caret.
+// (`horizontal` by default) move the focus to the next or to the previous item. With the
+// `loopFocus` value (the default), the last item goes to the first one. In a text input, ArrowLeft
+// and ArrowRight move the caret, and move the focus only when the caret is at the start or at the
+// end of the text. Home and End do not move the focus, as in Base UI: in a text input they move
+// the caret.
 //
 // A disabled item stays in the focus order, so a keyboard user can find it: it gets
 // `aria-disabled="true"`, `data-disabled` and `data-focusable`, and a click on it or a text in it
@@ -111,7 +112,7 @@ export default class PhemToolbarController extends Controller {
     const rtl = getComputedStyle(this.element).direction === "rtl"
     const forward = vertical ? "ArrowDown" : rtl ? "ArrowLeft" : "ArrowRight"
     const backward = vertical ? "ArrowUp" : rtl ? "ArrowRight" : "ArrowLeft"
-    if (![forward, backward, "Home", "End"].includes(event.key)) return
+    if (![forward, backward].includes(event.key)) return
 
     // A text input keeps the keys that move its caret.
     if (takesText(item) && !caretLeaves(item, event.key, vertical, forward)) return
@@ -137,9 +138,6 @@ export default class PhemToolbarController extends Controller {
   // The item that `key` moves the focus to.
   #next(item, key, forward) {
     const items = this.#focusable
-    if (key === "Home") return items[0]
-    if (key === "End") return items.at(-1)
-
     const next = items.indexOf(item) + (key === forward ? 1 : -1)
     if (next >= 0 && next < items.length) return items[next]
 
@@ -189,7 +187,7 @@ export default class PhemToolbarController extends Controller {
     const items = this.#focusable
     if (!items.includes(this.active)) this.active = items[0]
 
-    for (const item of this.itemTargets) item.tabIndex = item === this.active ? 0 : -1
+    setTabStop(this.itemTargets, this.active)
   }
 
   // The items that get the focus.
@@ -220,10 +218,9 @@ function groupDisabled(group) {
 }
 
 // Whether a key moves the focus out of a text input. In a horizontal toolbar, the arrow keys move
-// the focus only when the caret is at the start or at the end of the text, and Home and End always
-// move the caret. An input with no caret (for example a number input) lets the arrow keys go.
+// the focus only when the caret is at the start or at the end of the text. An input with no caret
+// (for example a number input) lets the arrow keys go.
 function caretLeaves(input, key, vertical, forward) {
-  if (key === "Home" || key === "End") return false
   if (vertical) return true
 
   const { selectionStart: start, selectionEnd: end } = input

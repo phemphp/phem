@@ -24,7 +24,7 @@ final class TabsPage
         return (
             <Document title="Tabs">
                 <div id="tabs" data-controller="phem-tabs" data-phem-tabs-active-value="profile">
-                    <div id="list" data-phem-tabs-target="list" aria-label="Settings" style="position: relative">
+                    <div id="list" data-phem-tabs-target="list" aria-label="Settings" style="position: relative; border: 2px solid transparent; padding-left: 0.5px">
                         <button id="profile" data-phem-tabs-target="tab" data-value="profile">Profile</button>
                         <button id="security" data-phem-tabs-target="tab" data-value="security">Security</button>
                         <button id="billing" data-phem-tabs-target="tab" data-value="billing">Billing</button>

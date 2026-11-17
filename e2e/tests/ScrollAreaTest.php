@@ -106,6 +106,38 @@ final class ScrollAreaTest extends E2eTestCase
         expect($page->locator('#vbar'))->toHaveCSS('width', '10px');
     }
 
+    public function testTheScrollMarkGoesAtTheEndOfADrag(): void
+    {
+        $page = $this->visit('/scroll-area');
+        self::assertResponseIsSuccessful();
+
+        $thumb = $page->locator('#vthumb')->boundingBox();
+        $mouse = $page->mouse();
+        $mouse->move($thumb['x'] + 5, $thumb['y'] + 5);
+        $mouse->down();
+        $mouse->move($thumb['x'] + 5, $thumb['y'] + 45, ['steps' => 5]);
+        $page->evaluate('new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+        expect($page->locator('#area'))->toHaveAttribute('data-scrolling', '');
+
+        // Read the marks at once: `expect` waits longer than the timer of a scroll.
+        $mouse->up();
+        $marks = $page->evaluate("['area', 'vthumb'].map((id) => document.getElementById(id).hasAttribute('data-scrolling'))");
+        self::assertSame([false, false], $marks);
+    }
+
+    public function testTheThumbKeepsTheFractionsOfAPixel(): void
+    {
+        $page = $this->visit('/scroll-area');
+        self::assertResponseIsSuccessful();
+
+        // A content of 300px: the thumb is 100 / 3 px of the 100px track.
+        $page->evaluate("(() => { const content = document.getElementById('content'); content.style.height = '300px'; content.style.overflow = 'hidden'; document.getElementById('viewport').scrollTop = 100 })()");
+        $page->waitForFunction("() => document.getElementById('vbar').style.getPropertyValue('--scroll-area-thumb-height') !== '20px'");
+
+        $size = (float) $page->evaluate("parseFloat(document.getElementById('vbar').style.getPropertyValue('--scroll-area-thumb-height'))");
+        self::assertEqualsWithDelta(100 / 3, $size, 0.01);
+    }
+
     private function scrollTop(PageInterface $page): int
     {
         return (int) round((float) $page->evaluate("document.getElementById('viewport').scrollTop"));

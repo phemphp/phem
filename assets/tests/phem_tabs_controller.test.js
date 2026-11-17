@@ -35,11 +35,15 @@ function tabs(attributes = "", listAttributes = "", names = ["a", "b", "c"]) {
     </div>`
 }
 
-// The name of the selected tab. The tabs and the panels must agree.
+// The name of the selected tab. The tabs and the panels must agree. With no focus in the tabs, the
+// selected tab is the tab stop. With the focus in the tabs, the tab stop can be on another tab.
 function selected() {
   const names = [...document.querySelectorAll("#tabs > [data-phem-tabs-target=panel]")].filter((el) => !el.hidden).map((el) => el.id.slice(6))
-  const tabs = [...document.querySelectorAll('[role=tab][aria-selected=true][tabindex="0"]')].map((el) => el.id.slice(4))
+  const tabs = [...document.querySelectorAll("[role=tab][aria-selected=true]")].map((el) => el.id.slice(4))
   if (names.length !== 1 || tabs.join() !== names.join()) throw new Error(`The tabs (${tabs}) and the panels (${names}) do not agree`)
+
+  const focused = document.activeElement?.closest("[role=tab]")
+  if (!focused && document.getElementById(`tab-${names[0]}`).tabIndex !== 0) throw new Error(`The selected tab (${names[0]}) is not the tab stop`)
 
   return names[0]
 }
@@ -414,5 +418,109 @@ describe("phem-tabs", () => {
     document.activeElement.click()
     expect(document.getElementById("inner-panel-x").hidden).toBe(false)
     expect(document.getElementById("panel-a").hidden).toBe(false)
+  })
+})
+
+describe("phem-tabs: the tab with the focus", () => {
+  const tabIndexes = () => ["a", "b", "c"].map((n) => document.getElementById(`tab-${n}`).tabIndex)
+
+  it("gives the Tab stop to the tab with the focus, not to the selected tab", async () => {
+    await mount(tabs())
+    document.getElementById("tab-a").focus()
+
+    press("ArrowRight")
+
+    expect(document.activeElement.id).toBe("tab-b")
+    expect(document.getElementById("tab-a").getAttribute("aria-selected")).toBe("true")
+    expect(tabIndexes()).toEqual([-1, 0, -1])
+  })
+
+  it("keeps the Tab stop on the tab with the focus after the morph of an event", async () => {
+    await mount(tabs())
+    respond(tabs())
+    document.getElementById("tab-a").focus()
+    press("ArrowRight")
+    press("ArrowRight")
+    await morphOnSave()
+
+    expect(document.getElementById("tab-a").getAttribute("aria-selected")).toBe("true")
+    expect(tabIndexes()).toEqual([-1, -1, 0])
+  })
+
+  it("moves the Tab stop to the new selected tab of a server render when no tab has the focus", async () => {
+    await mount(tabs())
+    respond(tabs('data-phem-tabs-active-value="2"'))
+    document.getElementById("tab-a").focus()
+    press("ArrowRight")
+    document.activeElement.blur()
+    await morphOnSave()
+
+    expect(selected()).toBe("c")
+    expect(tabIndexes()).toEqual([-1, -1, 0])
+  })
+
+  it("keeps the Tab stop on the tab with the focus when a server render selects another tab", async () => {
+    await mount(tabs())
+    respond(tabs('data-phem-tabs-active-value="2"'))
+    document.getElementById("tab-a").focus()
+    press("ArrowRight")
+    await morphOnSave()
+
+    expect(document.getElementById("tab-c").getAttribute("aria-selected")).toBe("true")
+    expect(tabIndexes()).toEqual([-1, 0, -1])
+  })
+
+  it("gives the Tab stop to the selected tab when the morph removes the tab of the last focus", async () => {
+    await mount(tabs())
+    respond(tabs("", "", ["a", "b"]))
+    document.getElementById("tab-a").focus()
+    press("ArrowRight")
+    press("ArrowRight")
+    document.activeElement.blur()
+    await morphOnSave()
+
+    expect(document.getElementById("tab-c")).toBeNull()
+    expect(document.getElementById("tab-a").tabIndex).toBe(0)
+    expect(document.getElementById("tab-b").tabIndex).toBe(-1)
+  })
+
+  it("gives the Tab stop to the selected tab when the morph disables the tab of the last focus", async () => {
+    await mount(tabs())
+    respond(tabs().replace('id="tab-b"', 'id="tab-b" disabled'))
+    document.getElementById("tab-a").focus()
+    press("ArrowRight")
+    document.activeElement.blur()
+    await morphOnSave()
+
+    expect(document.getElementById("tab-b").disabled).toBe(true)
+    expect(tabIndexes()).toEqual([0, -1, -1])
+  })
+
+  it("does not move the focus on an arrow key with Shift", async () => {
+    await mount(tabs())
+    document.getElementById("tab-a").focus()
+
+    const event = press("ArrowRight", { shiftKey: true })
+
+    expect(document.activeElement.id).toBe("tab-a")
+    expect(event.defaultPrevented).toBe(false)
+  })
+})
+
+describe("phem-tabs: the box of the indicator", () => {
+  it("keeps the fractions of a pixel and subtracts the border of the list", async () => {
+    await mount(tabs().replace("</div>\n      <div id=\"panel-a\"", '<span id="indicator" data-phem-tabs-target="indicator"></span></div>\n      <div id="panel-a"'))
+    const indicator = document.getElementById("indicator")
+    const list = document.getElementById("list")
+    Object.defineProperty(list, "clientLeft", { configurable: true, get: () => 2 })
+    Object.defineProperty(list, "clientTop", { configurable: true, get: () => 1 })
+    list.getBoundingClientRect = () => ({ left: 100, top: 50, width: 300, height: 40 })
+    document.getElementById("tab-b").getBoundingClientRect = () => ({ left: 160.5, top: 55.25, width: 80.5, height: 30.25 })
+    click("#tab-b")
+
+    expect(indicator.style.getPropertyValue("--active-tab-left")).toBe("58.5px")
+    expect(indicator.style.getPropertyValue("--active-tab-top")).toBe("4.25px")
+    expect(indicator.style.getPropertyValue("--active-tab-width")).toBe("80.5px")
+    expect(indicator.style.getPropertyValue("--active-tab-height")).toBe("30.25px")
   })
 })

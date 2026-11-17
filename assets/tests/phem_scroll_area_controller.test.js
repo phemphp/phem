@@ -234,3 +234,53 @@ describe("phem-scroll-area: the Tab order of the viewport", () => {
     expect(el("viewport").getAttribute("tabindex")).toBe("-1")
   })
 })
+
+describe("phem-scroll-area: the end of a drag", () => {
+  it("removes the scroll mark at once when the drag of the thumb ends", async () => {
+    await mountArea()
+    vi.useFakeTimers()
+    pointer("pointerdown", el("vthumb"), { clientY: 10 })
+    pointer("pointermove", el("vbar"), { clientY: 35 })
+    el("viewport").dispatchEvent(new Event("scroll"))
+
+    expect(el("area").hasAttribute("data-scrolling")).toBe(true)
+    expect(el("vthumb").hasAttribute("data-scrolling")).toBe(true)
+
+    pointer("pointerup", el("vbar"), { clientY: 35 })
+
+    expect(el("area").hasAttribute("data-scrolling")).toBe(false)
+    expect(el("vbar").hasAttribute("data-scrolling")).toBe(false)
+    expect(el("vthumb").hasAttribute("data-scrolling")).toBe(false)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it("removes the scroll mark of the horizontal axis when the pointer capture goes", async () => {
+    await mountArea("", { scrollWidth: 400 })
+    vi.useFakeTimers()
+    pointer("pointerdown", el("hthumb"), { clientX: 10 })
+    pointer("pointermove", el("hbar"), { clientX: 35 })
+    el("viewport").dispatchEvent(new Event("scroll"))
+
+    expect(el("hbar").hasAttribute("data-scrolling")).toBe(true)
+    expect(el("hthumb").hasAttribute("data-scrolling")).toBe(true)
+
+    el("hbar").dispatchEvent(new Event("lostpointercapture", { bubbles: true }))
+
+    expect(el("area").hasAttribute("data-scrolling")).toBe(false)
+    expect(el("hbar").hasAttribute("data-scrolling")).toBe(false)
+    expect(el("hthumb").hasAttribute("data-scrolling")).toBe(false)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+})
+
+describe("phem-scroll-area: the fractions of a pixel", () => {
+  it("keeps the fractions in the size and the offset of the thumb", async () => {
+    await mountArea("", { scrollHeight: 300 })
+    scrollTo(100)
+
+    // The thumb is 100 / 3 px, and it moves half of the 200 / 3 px that it has.
+    expect(parseFloat(el("vbar").style.getPropertyValue("--scroll-area-thumb-height"))).toBeCloseTo(100 / 3, 5)
+    const offset = el("vthumb").style.transform.match(/translate3d\(0px, ([\d.]+)px, 0px\)/)
+    expect(parseFloat(offset?.[1])).toBeCloseTo(100 / 3, 5)
+  })
+})

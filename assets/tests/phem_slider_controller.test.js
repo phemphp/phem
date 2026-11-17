@@ -174,8 +174,9 @@ describe("phem-slider", () => {
     pointer(el("thumb-0"), "pointerdown", { clientX: 90 })
     pointer(document, "pointermove", { clientX: 150 })
     expect(state()).toBe("[75,80]")
-    expect(el("thumb-0").style.zIndex).toBe("1")
+    expect(el("thumb-0").style.zIndex).toBe("2")
     pointer(document, "pointerup")
+    expect(el("thumb-0").style.zIndex).toBe("1")
   })
 
   it("swaps the thumbs with thumbCollisionBehavior swap", async () => {
@@ -185,9 +186,14 @@ describe("phem-slider", () => {
     pointer(el("thumb-0"), "pointerdown", { clientX: 40 })
     pointer(document, "pointermove", { clientX: 160 })
     expect(state()).toBe("[60,80]")
+
+    // The dragged value is now the second thumb: it stays on top.
+    expect(el("thumb-1").style.zIndex).toBe("2")
+    expect(el("thumb-0").style.zIndex).toBe("")
     pointer(document, "pointermove", { clientX: 170 })
     expect(state()).toBe("[60,85]")
     pointer(document, "pointerup")
+    expect(el("thumb-1").style.zIndex).toBe("1")
   })
 
   it("stops a thumb at the other thumb with thumbCollisionBehavior none", async () => {
@@ -277,5 +283,77 @@ describe("phem-slider", () => {
     expect(state()).toBe("[5, 95]")
     expect(el("input-1").value).toBe("95")
     expect(el("value").textContent).toBe("5 – 95")
+  })
+})
+
+describe("phem-slider: the thumb of a press", () => {
+  it("gives the focus to the thumb input with no focus ring", async () => {
+    await mount(slider())
+    layout()
+    const focus = vi.spyOn(el("input-0"), "focus")
+
+    pointer(el("track"), "pointerdown", { clientX: 100 })
+    pointer(document, "pointerup")
+
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true, focusVisible: false })
+  })
+
+  it("puts a single thumb on top only during the press", async () => {
+    await mount(slider())
+    layout()
+    expect(el("thumb-0").style.zIndex).toBe("")
+
+    pointer(el("track"), "pointerdown", { clientX: 100 })
+    expect(el("thumb-0").style.zIndex).toBe("1")
+
+    pointer(document, "pointerup")
+    expect(el("thumb-0").style.zIndex).toBe("")
+  })
+
+  it("puts the active thumb of a range on top, and the last used thumb under it", async () => {
+    await mount(range())
+    layout()
+
+    pointer(el("thumb-0"), "pointerdown", { clientX: 40 })
+    expect(el("thumb-0").style.zIndex).toBe("2")
+    expect(el("thumb-1").style.zIndex).toBe("")
+
+    pointer(document, "pointerup")
+    expect(el("thumb-0").style.zIndex).toBe("1")
+    expect(el("thumb-1").style.zIndex).toBe("")
+
+    pointer(el("thumb-1"), "pointerdown", { clientX: 120 })
+    expect(el("thumb-1").style.zIndex).toBe("2")
+    expect(el("thumb-0").style.zIndex).toBe("")
+
+    pointer(document, "pointerup")
+    expect(el("thumb-1").style.zIndex).toBe("1")
+    expect(el("thumb-0").style.zIndex).toBe("")
+  })
+
+  it("puts the nearest thumb of a range on top during a press on the track", async () => {
+    await mount(range())
+    layout()
+
+    pointer(el("track"), "pointerdown", { clientX: 130 })
+    expect(el("thumb-1").style.zIndex).toBe("2")
+    expect(el("thumb-0").style.zIndex).toBe("")
+    pointer(document, "pointerup")
+  })
+
+  it("gives no z-index to a single thumb after a key", async () => {
+    await mount(slider())
+    press(el("input-0"), "ArrowRight")
+
+    expect(state()).toBe("26")
+    expect(el("thumb-0").style.zIndex).toBe("")
+  })
+
+  it("puts the thumb of a range that a key moved over the other thumb", async () => {
+    await mount(range())
+    press(el("input-1"), "End")
+
+    expect(el("thumb-1").style.zIndex).toBe("1")
+    expect(el("thumb-0").style.zIndex).toBe("")
   })
 })
