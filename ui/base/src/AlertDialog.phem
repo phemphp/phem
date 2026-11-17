@@ -9,6 +9,10 @@ use Phem\{Html, Node};
  * A dialog that asks the user to confirm an action: Base UI AlertDialog.Root, on the
  * `phem-dialog` controller. The popup has `role="alertdialog"`. Escape and a close button close it,
  * and a tap on the backdrop does not.
+ *
+ * The other props are the props of Dialog: `handle` links detached triggers (an
+ * AlertDialogTrigger with the same `handle`), and `triggerId` is the `id` of the trigger that
+ * opened it.
  */
 #[Component]
 function AlertDialog(bool $defaultOpen = false, ?Html $children = null, mixed ...$rest): Node
@@ -44,4 +48,18 @@ function AlertDialogDescription(?Html $children = null, mixed ...$rest): Node
 function AlertDialogClose(?Html $children = null, mixed ...$rest): Node
 {
     return <DialogClose {{ ...rest }}>{{ children }}</DialogClose>;
+}
+
+/** The container that places the popup, as the Viewport of Base UI (see DialogViewport). */
+#[Component]
+function AlertDialogViewport(?Html $children = null, mixed ...$rest): Node
+{
+    return <DialogViewport {{ ...rest }}>{{ children }}</DialogViewport>;
+}
+
+/** The text of the `payload` of the trigger that opened the alert dialog, or its children. */
+#[Component]
+function AlertDialogPayload(?Html $children = null, mixed ...$rest): Node
+{
+    return <DialogPayload {{ ...rest }}>{{ children }}</DialogPayload>;
 }

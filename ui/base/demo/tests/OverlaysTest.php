@@ -33,8 +33,9 @@ final class OverlaysTest extends DemoTestCase
     public function testAlertDialogClosesOnEscapeOnly(): void
     {
         $page = $this->visitComponent('alert-dialog');
+        $hero = $page->getByRole('region', ['name' => 'Demo', 'exact' => true]);
 
-        $page->getByRole('button', ['name' => 'Discard draft'])->click();
+        $hero->getByRole('button', ['name' => 'Discard draft'])->click();
         $dialog = $page->getByRole('alertdialog', ['name' => 'Discard draft?']);
         expect($dialog)->toBeVisible();
 
@@ -45,9 +46,68 @@ final class OverlaysTest extends DemoTestCase
         $page->keyboard()->press('Escape');
         expect($dialog)->toBeHidden();
 
-        $page->getByRole('button', ['name' => 'Discard draft'])->click();
+        $hero->getByRole('button', ['name' => 'Discard draft'])->click();
         $dialog->getByRole('button', ['name' => 'Discard'])->click();
         expect($dialog)->toBeHidden();
+    }
+
+    public function testAlertDialogExamples(): void
+    {
+        $page = $this->visitComponent('alert-dialog');
+        $region = fn (string $name) => $page->getByRole('region', ['name' => $name, 'exact' => true]);
+
+        // Open from a menu: the item closes the menu and opens the alert dialog.
+        $region('Open from a menu')->getByRole('button', ['name' => 'Playlist'])->click();
+        $page->getByRole('menuitem', ['name' => 'Delete…'])->click();
+        $dialog = $page->getByRole('alertdialog', ['name' => 'Delete playlist?', 'exact' => true]);
+        expect($dialog)->toBeVisible();
+        expect($page->getByRole('menu'))->toHaveCount(0);
+        $dialog->getByRole('button', ['name' => 'Delete'])->click();
+        expect($dialog)->toBeHidden();
+
+        // Close confirmation: a close with a text asks first.
+        $region('Close confirmation')->getByRole('button', ['name' => 'Tweet'])->click();
+        $tweet = $page->getByRole('dialog', ['name' => 'New tweet', 'exact' => true]);
+        $tweet->getByRole('textbox')->fill('Hello');
+        $tweet->getByRole('button', ['name' => 'Cancel'])->click();
+        $confirm = $page->getByRole('alertdialog', ['name' => 'Discard tweet?', 'exact' => true]);
+        $confirm->getByRole('button', ['name' => 'Discard'])->click();
+        expect($tweet)->toBeHidden();
+
+        // Detached triggers: the trigger outside the root opens it.
+        $trigger = $region('Detached triggers')->getByRole('button', ['name' => 'Discard draft']);
+        $trigger->click();
+        $dialog = $page->getByRole('alertdialog', ['name' => 'Discard draft?', 'exact' => true]);
+        expect($dialog)->toBeVisible();
+        expect($dialog)->toContainText('This action cannot be undone.');
+        expect($trigger)->toHaveAttribute('aria-expanded', 'true');
+        $page->mouse()->click(5, 5);
+        expect($dialog)->toBeVisible();
+        $dialog->getByRole('button', ['name' => 'Cancel'])->click();
+        expect($dialog)->toBeHidden();
+        expect($trigger)->toBeFocused();
+
+        // Multiple triggers: the payload of the trigger that opened it.
+        $region('Multiple triggers')->getByRole('button', ['name' => 'Trigger 2'])->click();
+        $dialog = $page->getByRole('alertdialog', ['name' => 'Alert dialog', 'exact' => true]);
+        expect($dialog)->toContainText('Confirming Trigger 2');
+        $page->keyboard()->press('Escape');
+        expect($dialog)->toBeHidden();
+        $region('Multiple triggers')->getByRole('button', ['name' => 'Trigger 1'])->click();
+        expect($dialog)->toContainText('Confirming Trigger 1');
+        $page->keyboard()->press('Escape');
+
+        // Controlled mode: the button opens it for the second trigger.
+        $controlled = $region('Controlled mode with multiple triggers');
+        $controlled->getByRole('button', ['name' => 'Open programmatically'])->click();
+        $dialog = $page->getByRole('alertdialog', ['name' => 'Delete project?', 'exact' => true]);
+        expect($dialog)->toBeVisible();
+        expect($controlled->getByRole('button', ['name' => 'Delete', 'exact' => true]))->toHaveAttribute('aria-expanded', 'true');
+        $dialog->getByRole('button', ['name' => 'Confirm'])->click();
+        expect($dialog)->toBeHidden();
+        $controlled->getByRole('button', ['name' => 'Sign out'])->click();
+        expect($page->getByRole('alertdialog', ['name' => 'Sign out?', 'exact' => true]))->toBeVisible();
+        $page->keyboard()->press('Escape');
     }
 
     public function testDrawer(): void

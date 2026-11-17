@@ -34,7 +34,7 @@ These differences need no phem change. The hero demos show the first one, and do
 | Component | Test | Checks now | To add |
 |---|---|---|---|
 | Accordion | `DisclosureTest` | Open an item, ArrowDown to the next trigger, one item open at a time, `multiple`, `hiddenUntilFound` (`beforematch`) | Home and End with `rovingFocus` |
-| Alert Dialog | `OverlaysTest` | A click outside does not close it, Escape and a close button close it | Focus goes back to the trigger |
+| Alert Dialog | `OverlaysTest` | A click outside does not close it, Escape and a close button close it; an item of a menu opens it, the close confirmation, a detached trigger (focus goes back to it), the payloads, the `open` action on the second trigger | Focus trap |
 | Autocomplete | `PickersTest` | The browser filters the 41 tags of the Base UI demo, a click fills the input, the empty state, async search with its status and its error, the inline `mode`, the named groups, fuzzy matching with marks, `limit` with a status, `autoHighlight`, a command palette (inline list, `autoHighlight="always"`, Enter closes the dialog), a grid with the arrow keys, 10,000 items on the server | `keepHighlight` with a pointer |
 | Avatar | `ControlsTest` | The fallback text shows | Image load and error (`data-loading`/`data-error`), the fallback `delay` in a browser (route the image request) |
 | Button | `BasicsTest` | `type="button"`, focus, a `<div>` button, the loading state with `focusableWhenDisabled` | — |

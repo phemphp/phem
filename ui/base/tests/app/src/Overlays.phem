@@ -5,7 +5,7 @@ namespace Phem\Ui\Base\Tests\App;
 use Phem\Attribute\Component;
 use Phem\Node;
 
-use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger, AlertDialog, AlertDialogClose, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, CollapsiblePanel, CollapsibleTrigger, ContextMenuTrigger, DialogClose, DialogDescription, DialogPopup, DialogTitle, DialogTrigger, MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger, Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverPayload, PopoverTitle, PopoverTrigger, PopoverViewport, TabsIndicator, TabsList, TabsPanel, TabsTab, Tooltip, TooltipPopup, TooltipTrigger, TooltipViewport, PreviewCard, PreviewCardPayload, PreviewCardPopup, PreviewCardTrigger, PreviewCardViewport, DialogDiscard, DialogPayload};
+use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger, AlertDialog, AlertDialogClose, AlertDialogPayload, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, AlertDialogViewport, CollapsiblePanel, CollapsibleTrigger, ContextMenuTrigger, DialogClose, DialogDescription, DialogPopup, DialogTitle, DialogTrigger, MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger, Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverPayload, PopoverTitle, PopoverTrigger, PopoverViewport, TabsIndicator, TabsList, TabsPanel, TabsTab, Tooltip, TooltipPopup, TooltipTrigger, TooltipViewport, PreviewCard, PreviewCardPayload, PreviewCardPopup, PreviewCardTrigger, PreviewCardViewport, DialogDiscard, DialogPayload};
 use Phem\Ui\Base\{Accordion, AccordionItem, Collapsible, ContextMenu, Dialog, DialogViewport, Menu, MenuRadioGroup, MenuSubmenu, Tabs};
 
 #[Component]
@@ -73,6 +73,24 @@ function AlertDialogDemo(): Node
                 <AlertDialogClose>Cancel</AlertDialogClose>
             </AlertDialogPopup>
         </AlertDialog>
+    );
+}
+
+#[Component]
+function AlertDialogDetachedDemo(): Node
+{
+    return (
+        <div>
+            <AlertDialogTrigger handle="alert-detached" id="alert-trigger-1" payload="Discard draft?">Discard</AlertDialogTrigger>
+            <AlertDialog handle="alert-detached" triggerId="alert-trigger-1">
+                <AlertDialogViewport>
+                    <AlertDialogPopup>
+                        <AlertDialogTitle><AlertDialogPayload>Are you sure?</AlertDialogPayload></AlertDialogTitle>
+                        <AlertDialogClose>Cancel</AlertDialogClose>
+                    </AlertDialogPopup>
+                </AlertDialogViewport>
+            </AlertDialog>
+        </div>
     );
 }
 

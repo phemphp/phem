@@ -66,6 +66,15 @@ final class OverlaysTest extends KernelTestCase
         self::assertMatchesRegularExpression('/data-phem-dialog-target="trigger"[^>]*class="[^"]*text-red-700"|class="[^"]*text-red-700"[^>]*data-phem-dialog-target="trigger"/', $html);
     }
 
+    public function testTheAlertDialogHasDetachedTriggersAViewportAndAPayload(): void
+    {
+        $this->mount(self::APP.'AlertDialogDetachedDemo')
+            ->assertSelectorExists('button#alert-trigger-1[data-phem-dialog-for="alert-detached"][data-phem-dialog-payload="Discard draft?"]:not([data-phem-dialog-target])')
+            ->assertSelectorExists('#alert-detached[data-controller="phem-dialog"][data-phem-dialog-trigger-id-value="alert-trigger-1"][data-phem-dialog-disable-pointer-dismissal-value="true"]')
+            ->assertSelectorExists('#alert-detached dialog[data-phem-dialog-target="viewport"] > div[role="alertdialog"][data-phem-dialog-target="popup"]')
+            ->assertSelectorExists('div[role="alertdialog"] h2 span[data-phem-dialog-target="payload"]');
+    }
+
     public function testThePopoverHasItsPositionValues(): void
     {
         $this->mount(self::APP.'PopoverDemo')
