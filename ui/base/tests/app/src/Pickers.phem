@@ -5,7 +5,7 @@ namespace Phem\Ui\Base\Tests\App;
 use Phem\Attribute\Component;
 use Phem\Node;
 
-use function Phem\Ui\Base\{ComboboxActions, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxTrigger, DrawerClose, DrawerContent, DrawerDescription, DrawerPopup, DrawerTitle, DrawerTrigger, PreviewCard, PreviewCardPopup, PreviewCardTrigger, ToastViewport};
+use function Phem\Ui\Base\{ComboboxActions, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxRow, ComboboxTrigger, DrawerClose, DrawerContent, DrawerDescription, DrawerPopup, DrawerTitle, DrawerTrigger, PreviewCard, PreviewCardPopup, PreviewCardTrigger, ToastViewport};
 use Phem\Ui\Base\{Autocomplete, Combobox, Drawer};
 
 // A Combobox with a list of the browser has one selected item, and an Autocomplete has none.
@@ -25,6 +25,24 @@ function ComboboxSelectionDemo(): Node
             <Autocomplete id="tags" filter="contains" name="tag">
                 <ComboboxInput />
                 <ComboboxPopup><ComboboxList><ComboboxItem value="fix">fix</ComboboxItem></ComboboxList></ComboboxPopup>
+            </Autocomplete>
+        </div>
+    );
+}
+
+// The highlight props, an inline list and a grid.
+#[Component]
+function ComboboxHighlightDemo(): Node
+{
+    return (
+        <div>
+            <Autocomplete id="palette" filter="contains" autoHighlight="always" keepHighlight highlightItemOnHover={{ false }}>
+                <ComboboxInput />
+                <ComboboxList><ComboboxItem value="linear">Linear</ComboboxItem></ComboboxList>
+            </Autocomplete>
+            <Autocomplete id="typed" autoHighlight grid>
+                <ComboboxInput />
+                <ComboboxPopup><ComboboxList><ComboboxRow><ComboboxItem value="a">a</ComboboxItem></ComboboxRow></ComboboxList></ComboboxPopup>
             </Autocomplete>
         </div>
     );

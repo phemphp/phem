@@ -35,7 +35,7 @@ These differences need no phem change. The hero demos show the first one, and do
 |---|---|---|---|
 | Accordion | `DisclosureTest` | Open an item, ArrowDown to the next trigger, one item open at a time, `multiple`, `hiddenUntilFound` (`beforematch`) | Home and End with `rovingFocus` |
 | Alert Dialog | `OverlaysTest` | A click outside does not close it, Escape and a close button close it | Focus goes back to the trigger |
-| Autocomplete | `PickersTest` | The browser filters the 41 tags of the Base UI demo, a click fills the input, the empty state | Keyboard selection |
+| Autocomplete | `PickersTest` | The browser filters the 41 tags of the Base UI demo, a click fills the input, the empty state, async search with its status and its error, the inline `mode`, the named groups, fuzzy matching with marks, `limit` with a status, `autoHighlight`, a command palette (inline list, `autoHighlight="always"`, Enter closes the dialog), a grid with the arrow keys, 10,000 items on the server | `keepHighlight` with a pointer |
 | Avatar | `ControlsTest` | The fallback text shows | Image load and error (`data-loading`/`data-error`), the fallback `delay` in a browser (route the image request) |
 | Button | `BasicsTest` | `type="button"`, focus, a `<div>` button, the loading state with `focusableWhenDisabled` | — |
 | Checkbox | `ControlsTest` | Initial state, the accessible name, a click unchecks it, an enclosing label, a native button with a sibling label and Space, the hidden input in a Field | — |

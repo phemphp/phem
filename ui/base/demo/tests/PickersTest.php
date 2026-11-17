@@ -151,7 +151,8 @@ final class PickersTest extends DemoTestCase
     {
         $page = $this->visitComponent('autocomplete');
 
-        $input = $page->getByRole('combobox', ['name' => 'Search tags']);
+        $hero = $page->getByRole('region', ['name' => 'Demo']);
+        $input = $hero->getByRole('combobox', ['name' => 'Search tags']);
 
         // The input shows its focus ring, as the input of the Base UI demo.
         $input->focus();
@@ -159,15 +160,116 @@ final class PickersTest extends DemoTestCase
         expect($input)->toHaveCSS('outline-width', '2px');
 
         $input->pressSequentially('too');
-        expect($page->getByRole('option', ['name' => 'component: tooltip', 'exact' => true]))->toBeVisible();
-        expect($page->getByRole('option', ['name' => 'component: toolbar', 'exact' => true]))->toBeVisible();
-        expect($page->getByRole('option', ['name' => 'feature', 'exact' => true]))->toHaveCount(0);
+        expect($hero->getByRole('option', ['name' => 'component: tooltip', 'exact' => true]))->toBeVisible();
+        expect($hero->getByRole('option', ['name' => 'component: toolbar', 'exact' => true]))->toBeVisible();
+        expect($hero->getByRole('option', ['name' => 'feature', 'exact' => true]))->toHaveCount(0);
 
-        $page->getByRole('option', ['name' => 'component: toolbar', 'exact' => true])->click();
+        $hero->getByRole('option', ['name' => 'component: toolbar', 'exact' => true])->click();
         expect($input)->toHaveValue('component: toolbar');
 
         $input->fill('zzz');
-        expect($page->getByText('No tags found.'))->toBeVisible();
+        expect($hero->locator('text=No tags found.'))->toBeVisible();
+    }
+
+    public function testAutocompleteExamples(): void
+    {
+        $page = $this->visitComponent('autocomplete');
+
+        // Async search: the server searches, and the status gives the number of results.
+        $async = $page->getByRole('region', ['name' => 'Async search']);
+        $movies = $async->getByRole('combobox', ['name' => 'Search movies by name or year']);
+        $movies->fill('god');
+        expect($async->locator('text=3 results found'))->toBeVisible();
+        $async->getByRole('option', ['name' => 'City of God 2002'])->click();
+        expect($movies)->toHaveValue('City of God');
+        $movies->fill('will_error');
+        expect($async->locator('text=Failed to fetch movies. Please try again.'))->toBeVisible();
+        $movies->fill('zzz');
+        expect($async->locator('text=Movie or year "zzz" does not exist in the Top 100 IMDb movies'))->toBeVisible();
+        $page->keyboard()->press('Escape');
+
+        // Inline: the arrow keys write the label of the highlighted item in the input.
+        $inline = $page->getByRole('region', ['name' => 'Inline autocomplete'])->getByRole('combobox', ['name' => 'Search tags']);
+        expect($inline)->toHaveAttribute('aria-autocomplete', 'both');
+        $inline->pressSequentially('fe');
+        $page->keyboard()->press('ArrowDown');
+        expect($inline)->toHaveValue('feature');
+        $page->keyboard()->press('Escape');
+        expect($inline)->toHaveValue('fe');
+        $page->keyboard()->press('Escape');
+
+        // Grouped: the filter hides a group with no match.
+        $grouped = $page->getByRole('region', ['name' => 'Grouped']);
+        $grouped->getByRole('combobox', ['name' => 'Select a tag'])->fill('dial');
+        expect($grouped->getByRole('group', ['name' => 'Component']))->toBeVisible();
+        expect($grouped->getByRole('group', ['name' => 'Type']))->toBeHidden();
+        $page->keyboard()->press('Escape');
+
+        // Fuzzy matching: the characters in order match, and the query is marked.
+        $fuzzy = $page->getByRole('region', ['name' => 'Fuzzy matching']);
+        $docs = $fuzzy->getByRole('combobox', ['name' => 'Fuzzy search documentation']);
+        $docs->fill('rct hks');
+        expect($fuzzy->getByRole('option'))->toHaveCount(1);
+        expect($fuzzy->getByRole('option', ['name' => 'React Hooks Guide']))->toBeVisible();
+        $docs->fill('grid');
+        // The title and the description of CSS Grid Layout have the query.
+        expect($fuzzy->getByRole('option', ['name' => 'CSS Grid Layout'])->locator('mark'))->toHaveCount(2);
+        $docs->fill('zzz');
+        expect($fuzzy->locator('text=No results found for "zzz"'))->toBeVisible();
+        $page->keyboard()->press('Escape');
+
+        // Limit results: 8 items show, and the status gives the number of hidden items.
+        $limit = $page->getByRole('region', ['name' => 'Limit results']);
+        $limited = $limit->getByRole('combobox', ['name' => 'Limit results to 8']);
+        $limited->fill('component');
+        expect($limit->locator('[data-phem-combobox-target="item"]:not([hidden])'))->toHaveCount(8);
+        expect($limit->locator('text=Hiding 27 results (type a more specific query to narrow results)'))->toBeVisible();
+        $limited->fill('tool');
+        expect($limit->locator('[data-phem-combobox-target="item"]:not([hidden])'))->toHaveCount(2);
+        expect($limit->locator('text=Hiding'))->toHaveCount(0);
+        $page->keyboard()->press('Escape');
+
+        // Auto highlight: the first match gets the highlight as the user types.
+        $highlight = $page->getByRole('region', ['name' => 'Auto highlight']);
+        $highlight->getByRole('combobox', ['name' => 'Auto highlight on type'])->pressSequentially('d');
+        expect($highlight->getByRole('option', ['name' => 'docs', 'exact' => true]))->toHaveAttribute('data-highlighted', '');
+        $page->keyboard()->press('Escape');
+
+        // Command palette: the inline list always has a highlight, and Enter closes the dialog.
+        $palette = $page->getByRole('region', ['name' => 'Command palette']);
+        $palette->getByRole('button', ['name' => 'Open command palette'])->click();
+        $dialog = $page->getByRole('dialog', ['name' => 'Command palette']);
+        $commands = $dialog->getByRole('combobox', ['name' => 'Search commands']);
+        expect($commands)->toBeFocused();
+        expect($commands)->toHaveAttribute('aria-expanded', 'true');
+        expect($dialog->getByRole('option', ['name' => 'Linear Application']))->toHaveAttribute('data-highlighted', '');
+        $commands->pressSequentially('tab');
+        expect($dialog->getByRole('option', ['name' => 'New Tab Command']))->toHaveAttribute('data-highlighted', '');
+        $page->keyboard()->press('Enter');
+        expect($dialog)->toBeHidden();
+
+        // Grid layout: the arrow keys move in the rows and in the columns, and a choice adds the
+        // emoji to the message.
+        $grid = $page->getByRole('region', ['name' => 'Grid layout']);
+        $grid->getByRole('button', ['name' => 'Choose emoji'])->click();
+        $emojis = $grid->getByRole('grid', ['name' => 'Emoji results']);
+        expect($grid->getByRole('combobox', ['name' => 'Search emojis']))->toBeFocused();
+        $page->keyboard()->press('ArrowDown');
+        $page->keyboard()->press('ArrowRight');
+        $page->keyboard()->press('ArrowDown');
+        expect($emojis->getByRole('gridcell', ['name' => 'rolling on the floor laughing']))->toHaveAttribute('data-highlighted', '');
+        $page->keyboard()->press('Enter');
+        expect($grid->getByRole('textbox', ['name' => 'Message']))->toHaveValue('🤣');
+        $grid->getByRole('button', ['name' => 'Choose emoji'])->click();
+        $grid->getByRole('combobox', ['name' => 'Search emojis'])->fill('cat');
+        expect($emojis->getByRole('gridcell'))->toHaveCount(1);
+        $page->keyboard()->press('Escape');
+
+        // Virtualized: a click on the input opens the first 50 items, with the total in the status.
+        $virtual = $page->getByRole('region', ['name' => 'Virtualized']);
+        $virtual->getByRole('combobox', ['name' => 'Search 10,000 items'])->click();
+        expect($virtual->getByRole('option'))->toHaveCount(50);
+        expect($virtual->locator('text=Showing 50 of 10,000 items. Type to refine.'))->toBeVisible();
     }
 
     public function testSelect(): void

@@ -8,6 +8,12 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- `phem-combobox` has the highlight values of the Base UI Autocomplete: `auto-highlight` takes
+  `always` (an open list always has a highlight), `keep-highlight` keeps the highlight when the
+  pointer leaves the items, and `highlight-item-on-hover="false"` stops the highlight on hover.
+  A combobox with no `popup` part has an inline list that is always open (a command palette).
+  The `grid` value makes the list a grid of `row` parts, with the arrow keys of a grid. See
+  docs/controllers.md.
 - `phemc` passes a variable with the name of a Twig word operator (`matches`, `in`, `and`…) to
   its template when it is in the place of an operand: `{% for id, name in matches %}`. Before, it
   read the word as the operator, and the template had no variable.

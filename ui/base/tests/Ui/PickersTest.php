@@ -50,6 +50,15 @@ final class PickersTest extends KernelTestCase
             ->assertSelectorNotExists('[data-phem-combobox-open-on-input-click-value]');
     }
 
+    public function testTheHighlightPropsAndAGrid(): void
+    {
+        $this->mount(self::APP.'ComboboxHighlightDemo')
+            ->assertSelectorExists('[data-phem-combobox-auto-highlight-value="always"][data-phem-combobox-keep-highlight-value="true"][data-phem-combobox-highlight-item-on-hover-value="false"]:not([data-phem-combobox-grid-value])')
+            ->assertSelectorExists('[data-phem-combobox-auto-highlight-value="true"][data-phem-combobox-grid-value="true"]:not([data-phem-combobox-keep-highlight-value]):not([data-phem-combobox-highlight-item-on-hover-value])')
+            ->assertSelectorExists('#palette-input ~ [data-phem-combobox-target="list"]')
+            ->assertSelectorExists('[role="row"][data-phem-combobox-target="row"] #typed-item-a');
+    }
+
     public function testThePopupOfAnAutocompleteHasNoAnimation(): void
     {
         $this->mount(self::APP.'ComboboxSelectionDemo')

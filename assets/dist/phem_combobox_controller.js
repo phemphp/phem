@@ -101,6 +101,16 @@ const collators = new Map()
 // goes against the trigger, and the input gets the focus. A choice and a dismiss give the focus
 // back to the trigger, and the input has no text at the next open.
 //
+// With no `popup` target, the list is inline (in a command palette, for example): it is always
+// open. With the `autoHighlight` value `always`, an open list always has a highlight on an item
+// (the first item at first). With the `keepHighlight` value, the highlight stays when the pointer
+// goes out of the items. With the `highlightItemOnHover` value `false`, the pointer does not move
+// the highlight.
+//
+// With the `grid` value, the list is a grid (`role="grid"`): the `row` targets get `role="row"`
+// and their items `role="gridcell"`. ArrowLeft and ArrowRight move the highlight to the item before
+// or after it, and ArrowUp and ArrowDown to the item in the same column of the row above or below.
+//
 // With the `openOnInputClick` value, a click on the input opens the popup. With an `inputGroup`
 // target (the box around the input and its buttons), the popup is positioned against it.
 //
@@ -110,9 +120,12 @@ const collators = new Map()
 const FIELDS = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])'
 
 export default class PhemComboboxController extends Controller {
-  static targets = ["input", "inputGroup", "value", "trigger", "clear", "popup", "list", "item", "group", "groupLabel", "empty", "status", "chip", "chipRemove"]
+  static targets = ["input", "inputGroup", "value", "trigger", "clear", "popup", "list", "row", "item", "group", "groupLabel", "empty", "status", "chip", "chipRemove"]
   static values = {
-    autoHighlight: Boolean,
+    autoHighlight: String,
+    keepHighlight: Boolean,
+    highlightItemOnHover: { type: Boolean, default: true },
+    grid: Boolean,
     multiple: Boolean,
     loopFocus: { type: Boolean, default: true },
     filter: String,
@@ -261,14 +274,16 @@ export default class PhemComboboxController extends Controller {
 
     if (this.#chipsKeydown(event)) return
 
+    if (this.gridValue && this.#gridKeydown(event)) return
+
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault()
-      const opening = !this.popup.open
+      const opening = !this.#open
       this.wanted = true
 
       // An Autocomplete (no selection) opens with no highlight: the next key moves it. With
       // `autoHighlight`, the render gives the highlight to the first item.
-      if (opening && this.#autocomplete && !this.autoHighlightValue) {
+      if (opening && this.#autocomplete && !this.#autoHighlight) {
         this.highlighted = null
         this.#render()
 
@@ -288,7 +303,7 @@ export default class PhemComboboxController extends Controller {
       // With `autoHighlight`, an item always has the highlight: the keys go from the last item
       // to the first one. Else, after the last item (or before the first one), the highlight goes
       // back to the input.
-      let next = nextItem(items, current, event.key, { loop: this.loopFocusValue && this.autoHighlightValue })
+      let next = nextItem(items, current, event.key, { loop: this.loopFocusValue && this.#autoHighlight })
       if (!next && current && !this.loopFocusValue) next = current
       this.#highlight(next)
       this.#complete(next)
@@ -297,7 +312,7 @@ export default class PhemComboboxController extends Controller {
     }
 
     if (event.key === "Enter") {
-      if (!this.popup.open) return
+      if (!this.#open) return
 
       const item = this.#active
       // No highlight: the popup closes, and Enter keeps its default action (the submit of the form).
@@ -315,7 +330,7 @@ export default class PhemComboboxController extends Controller {
 
     // Escape with no open popup clears the input. Escape on an open popup closes it (see
     // phem_dismiss.js).
-    if (event.key === "Escape" && !this.popup.open && this.#input.value !== "") {
+    if (event.key === "Escape" && !this.#open && this.#input.value !== "") {
       event.preventDefault()
       this.#clear()
     }
@@ -358,14 +373,14 @@ export default class PhemComboboxController extends Controller {
     }
 
     if (this.triggerTargets.some((el) => el.contains(event.target))) {
-      this.wanted = !this.popup.open
+      this.wanted = !this.#open
       this.#render()
       this.#input?.focus()
 
       return
     }
 
-    if (this.openOnInputClickValue && event.target === this.#input && !this.popup.open) {
+    if (this.openOnInputClickValue && event.target === this.#input && !this.#open) {
       this.wanted = true
       this.#render()
     }
@@ -387,6 +402,8 @@ export default class PhemComboboxController extends Controller {
   // an item comes under a pointer that does not move (the list changes or scrolls): that item does
   // not take the highlight of the keyboard.
   onPointerMove = (event) => {
+    if (!this.highlightItemOnHoverValue) return
+
     // The moves on the highlighted item: no lookup of the items.
     if (this.highlighted?.contains(event.target)) {
       this.pointerItem = this.highlighted
@@ -406,6 +423,7 @@ export default class PhemComboboxController extends Controller {
   // highlight goes, as in Base UI. In an inline `mode`, the input gets the text of the user again.
   // A highlight of the keyboard stays.
   onPointerOut = (event) => {
+    if (this.keepHighlightValue) return
     if (!this.pointerItem || this.pointerItem !== this.highlighted) return
 
     leaveList(event, this.itemTargets, () => {
@@ -504,8 +522,38 @@ export default class PhemComboboxController extends Controller {
     this.#removeOf(chip)?.click()
   }
 
+  // A grid (the `grid` value, with `row` targets): ArrowLeft and ArrowRight move the highlight to
+  // the item before or after it, and ArrowUp and ArrowDown to the item in the same column of the
+  // row above or below. With no highlight, the keys keep their default.
+  #gridKeydown(event) {
+    const vertical = event.key === "ArrowDown" || event.key === "ArrowUp"
+    if (!vertical && event.key !== "ArrowLeft" && event.key !== "ArrowRight") return false
+
+    const current = this.#open ? this.#active : null
+    if (!current) return false
+
+    event.preventDefault()
+    const items = this.#items
+    let next
+
+    if (vertical) {
+      const rows = this.rowTargets.map((row) => items.filter((el) => row.contains(el) && !isDisabled(el))).filter((row) => row.length > 0)
+      const at = rows.findIndex((row) => row.includes(current))
+      const row = rows[at + (event.key === "ArrowDown" ? 1 : -1)]
+      // After the last row (or before the first one), the highlight goes back to the input.
+      next = at === -1 ? current : row ? row[Math.min(rows[at].indexOf(current), row.length - 1)] : this.loopFocusValue ? null : current
+    } else {
+      next = nextItem(items, current, event.key, { orientation: "horizontal", loop: false, rtl: this.#rtl }) ?? current
+    }
+
+    this.#highlight(next)
+    this.#complete(next)
+
+    return true
+  }
+
   #dismiss() {
-    if (!this.wanted && !this.popup.open) return
+    if (!this.wanted && !this.#open) return
 
     // With the input in the popup, a focus in the popup goes back to the trigger.
     const refocus = this.#inPopup && this.popupTargets.some((el) => el.contains(document.activeElement))
@@ -729,7 +777,7 @@ export default class PhemComboboxController extends Controller {
     const empty = items.length === 0
 
     if (list) {
-      if (!list.hasAttribute("role")) list.setAttribute("role", "listbox")
+      if (!list.hasAttribute("role")) list.setAttribute("role", this.gridValue ? "grid" : "listbox")
       if (this.multipleValue) list.setAttribute("aria-multiselectable", "true")
     }
 
@@ -762,19 +810,24 @@ export default class PhemComboboxController extends Controller {
     }
 
     const content = !empty || this.emptyTargets.length > 0 || this.statusTargets.length > 0
-    const open = this.wanted && content
-    const opening = open && !this.popup.open
+    // An inline list (no popup) is always open.
+    const open = this.#inline || (this.wanted && content)
+    const opening = open && !this.#open
 
     // The highlight stays on the same item, or goes to the first item. A popup that opens with a
     // selection has the highlight on the selected item.
     let active = this.#active
     if (active && isDisabled(active)) active = null
     if (!active && opening) active = this.#selection(items)
-    if (!active && this.autoHighlightValue && this.wanted) active = nextItem(items, null, "Home") ?? null
+    // With `autoHighlight`, the first item gets the highlight when the user wants the popup. With
+    // `always`, an open list always has a highlight.
+    if (!active && (this.autoHighlightValue === "always" ? open : this.#autoHighlight && this.wanted)) active = nextItem(items, null, "Home") ?? null
     this.highlighted = active
 
+    for (const row of this.rowTargets) if (!row.hasAttribute("role")) row.setAttribute("role", "row")
+
     for (const item of items) {
-      if (!item.hasAttribute("role")) item.setAttribute("role", "option")
+      if (!item.hasAttribute("role")) item.setAttribute("role", this.rowTargets.some((row) => row.contains(item)) ? "gridcell" : "option")
       item.toggleAttribute("data-highlighted", item === active)
       item.toggleAttribute("data-disabled", isDisabled(item))
 
@@ -810,7 +863,7 @@ export default class PhemComboboxController extends Controller {
       if (!input.hasAttribute("role")) input.setAttribute("role", "combobox")
       if (!input.hasAttribute("aria-autocomplete")) input.setAttribute("aria-autocomplete", this.modeValue)
       if (!input.hasAttribute("autocomplete")) input.setAttribute("autocomplete", "off")
-      if (!input.hasAttribute("aria-haspopup")) input.setAttribute("aria-haspopup", "listbox")
+      if (!input.hasAttribute("aria-haspopup")) input.setAttribute("aria-haspopup", this.#popupRole)
       if (list) link(input, "aria-controls", "ariaControlsElements", list)
       input.setAttribute("aria-expanded", String(open))
       activeDescendant(input, open ? active : null)
@@ -821,7 +874,7 @@ export default class PhemComboboxController extends Controller {
     // The trigger and the input group show the state of the popup, as in Base UI. The trigger points
     // to the list only while the popup is open.
     for (const trigger of this.triggerTargets) {
-      if (!trigger.hasAttribute("aria-haspopup")) trigger.setAttribute("aria-haspopup", "listbox")
+      if (!trigger.hasAttribute("aria-haspopup")) trigger.setAttribute("aria-haspopup", this.#popupRole)
       trigger.setAttribute("aria-expanded", String(open))
       controlWhileOpen(trigger, list, open)
       trigger.toggleAttribute("data-popup-open", open)
@@ -840,7 +893,8 @@ export default class PhemComboboxController extends Controller {
       if (label) link(group, "aria-labelledby", "ariaLabelledByElements", label)
     }
 
-    if (open !== this.popup.open) open ? this.popup.show() : this.popup.hide()
+    if (!this.#inline && open !== this.popup.open) open ? this.popup.show() : this.popup.hide()
+    this.rendered = true
     // The selected item of a popup that opens is in view.
     if (opening && active && active === this.#selection(items)) active.scrollIntoView?.({ block: "nearest" })
   }
@@ -864,6 +918,25 @@ export default class PhemComboboxController extends Controller {
     if (this.valueTargets.includes(el)) return name === "value" && this.#selecting
 
     return false
+  }
+
+  // The list is open: an inline list (no popup) is open after the first render.
+  get #open() {
+    return this.#inline ? this.rendered === true : this.popup.open
+  }
+
+  // The list is in the page, with no popup: the inline list of a command palette.
+  get #inline() {
+    return !this.hasPopupTarget && this.hasListTarget
+  }
+
+  // The `autoHighlight` value: `true` (when the user wants the popup) or `always`.
+  get #autoHighlight() {
+    return this.autoHighlightValue !== "" && this.autoHighlightValue !== "false"
+  }
+
+  get #popupRole() {
+    return this.gridValue ? "grid" : "listbox"
   }
 
   // The browser filters the items: the `filter` value, with no inline `mode`.

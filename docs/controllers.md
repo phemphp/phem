@@ -1038,6 +1038,41 @@ With `both` and `inline`, Escape closes the popup and gives back the text that t
 
 While an event of the input runs (for example the search of the server), the input gets `aria-busy="true"` (see [Show a loading state](events.md#show-a-loading-state)). The popup gets it too, so a screen reader waits for the new results.
 
+### Highlight, inline lists and grids
+
+These values change the highlight, as the props of the Autocomplete of Base UI:
+
+| Value | Effect |
+|---|---|
+| `data-phem-combobox-auto-highlight-value="true"` | The first item gets the highlight when the user types or opens the popup |
+| `data-phem-combobox-auto-highlight-value="always"` | An open list always has a highlight: the first item at first |
+| `data-phem-combobox-keep-highlight-value="true"` | The highlight stays when the pointer goes out of the items |
+| `data-phem-combobox-highlight-item-on-hover-value="false"` | The pointer does not move the highlight |
+
+With no `popup` part, the list is inline: it is always open, and the input has `aria-expanded="true"`. Use it for a command palette in a dialog. Give an item `data-phem-dialog-target="close"`, and a choice (a click, or Enter) closes the dialog:
+
+```phem
+<div data-controller="phem-combobox" data-phem-combobox-filter-value="contains" data-phem-combobox-auto-highlight-value="always" data-phem-combobox-keep-highlight-value="true">
+    <input data-phem-combobox-target="input" aria-label="Search commands" />
+    <div data-phem-combobox-target="list">
+        <div data-phem-combobox-target="item" data-phem-dialog-target="close">New Window</div>
+        <div data-phem-combobox-target="item" data-phem-dialog-target="close">New Tab</div>
+    </div>
+</div>
+```
+
+After the connect, the first item has the highlight:
+
+```html
+<input data-phem-combobox-target="input" role="combobox" aria-expanded="true" aria-activedescendant="..." ...>
+<div data-phem-combobox-target="list" role="listbox">
+    <div data-phem-combobox-target="item" role="option" aria-selected="true" data-highlighted>New Window</div>
+    <div data-phem-combobox-target="item" role="option" aria-selected="false">New Tab</div>
+</div>
+```
+
+With `data-phem-combobox-grid-value="true"`, the list is a grid, for example an emoji picker. Put the items in `row` parts. The list gets `role="grid"`, the input and the trigger `aria-haspopup="grid"`, the rows `role="row"` and their items `role="gridcell"`. With a highlight, ArrowLeft and ArrowRight move it to the item before or after it, and ArrowUp and ArrowDown to the item in the same column of the row above or below (the last item of a shorter row). ArrowUp on the first row gives the highlight back to the input. With no highlight, ArrowLeft and ArrowRight move the caret of the input.
+
 ## Sort a list with drag and drop
 
 `phem-sortable` moves the items of a list with the pointer (mouse, touch and pen) and with the keyboard. A drop calls the [`onCall` handler](events.md#call-a-handler-from-your-javascript) of the list. Lists with the same `group` value share their items, for a board:

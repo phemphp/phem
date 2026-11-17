@@ -17,6 +17,12 @@ use Phem\{Bound, Html, Node};
  *
  * `mode` is the `aria-autocomplete` of the input (`list`, `both`, `inline`, `none`).
  *
+ * `autoHighlight` gives the highlight to the first item when the user types; `'always'` gives an
+ * open list a highlight at all times. `keepHighlight` keeps the highlight when the pointer leaves
+ * the items, and `highlightItemOnHover: false` stops the highlight on hover. With no ComboboxPopup,
+ * the ComboboxList is inline and always open (a command palette). `grid` makes the list a grid:
+ * put the items in ComboboxRow parts.
+ *
  * The props of the Base UI Positioner are props of the root. The popup goes in the top layer
  * (`popover="manual"`), so it needs no Portal.
  */
@@ -29,7 +35,10 @@ class Combobox
     #[Prop] public ?string $mode = null;
     #[Prop] public ?int $limit = null;
     #[Prop] public ?string $locale = null;
-    #[Prop] public bool $autoHighlight = false;
+    #[Prop] public bool|string $autoHighlight = false;
+    #[Prop] public bool $keepHighlight = false;
+    #[Prop] public bool $highlightItemOnHover = true;
+    #[Prop] public bool $grid = false;
     #[Prop] public bool $loopFocus = true;
     #[Prop] public Side $side = Side::Bottom;
     #[Prop] public Align $align = Align::Start;
@@ -88,6 +97,7 @@ class Combobox
     {
         $selectionMode = $this->resolvedSelectionMode();
         $openOnInputClick = $this->resolvedOpenOnInputClick();
+        $highlight = true === $this->autoHighlight ? 'true' : ($this->autoHighlight ?: null);
 
         return (
             <div
@@ -99,7 +109,10 @@ class Combobox
                 data-phem-combobox-mode-value={{ mode }}
                 data-phem-combobox-limit-value={{ limit }}
                 data-phem-combobox-locale-value={{ locale }}
-                data-phem-combobox-auto-highlight-value={{ autoHighlight ? 'true' : null }}
+                data-phem-combobox-auto-highlight-value={{ highlight }}
+                data-phem-combobox-keep-highlight-value={{ keepHighlight ? 'true' : null }}
+                data-phem-combobox-highlight-item-on-hover-value={{ highlightItemOnHover ? null : 'false' }}
+                data-phem-combobox-grid-value={{ grid ? 'true' : null }}
                 data-phem-combobox-loop-focus-value={{ loopFocus ? null : 'false' }}
                 data-phem-combobox-side-value={{ side.value }}
                 data-phem-combobox-align-value={{ align.value }}
@@ -247,6 +260,13 @@ function ComboboxList(?Html $children = null, mixed ...$rest): Node
             {{ children }}
         </div>
     );
+}
+
+/** A row of items in a list with `grid`. */
+#[Component]
+function ComboboxRow(?Html $children = null, mixed ...$rest): Node
+{
+    return <div role="row" data-phem-combobox-target="row" {{ ...rest }}>{{ children }}</div>;
 }
 
 /**

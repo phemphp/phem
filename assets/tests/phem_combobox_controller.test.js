@@ -1221,4 +1221,128 @@ describe("phem-combobox", () => {
     await Promise.resolve()
     expect($("popup").hasAttribute("aria-busy")).toBe(false)
   })
+
+  describe("an inline list", () => {
+    // A command palette: the list is in the page, with no popup.
+    function palette(attributes = "") {
+      return `<div id="combobox" data-controller="phem-combobox" data-phem-combobox-filter-value="contains" ${attributes}>
+          <input id="input" data-phem-combobox-target="input" aria-label="Search commands" />
+          <div id="list" data-phem-combobox-target="list">
+            <div id="linear" data-phem-combobox-target="item">Linear</div>
+            <div id="figma" data-phem-combobox-target="item">Figma</div>
+            <div id="slack" data-phem-combobox-target="item">Slack</div>
+          </div>
+        </div>`
+    }
+
+    const out = (el) => el.dispatchEvent(new PointerEvent("pointerout", { bubbles: true, pointerType: "mouse", relatedTarget: document.body }))
+
+    it("is always open", async () => {
+      await mount(palette())
+
+      expect($("input").getAttribute("aria-expanded")).toBe("true")
+      expect(document.querySelector("[data-highlighted]")).toBe(null)
+
+      press("ArrowDown")
+      expect($("input").getAttribute("aria-activedescendant")).toBe("linear")
+      press("ArrowDown")
+      expect($("input").getAttribute("aria-activedescendant")).toBe("figma")
+    })
+
+    it("always has a highlight with autoHighlight always, and Enter clicks it", async () => {
+      await mount(palette('data-phem-combobox-auto-highlight-value="always"'))
+      expect($("linear").hasAttribute("data-highlighted")).toBe(true)
+
+      $("input").focus()
+      $("input").value = "sl"
+      $("input").dispatchEvent(new Event("input", { bubbles: true }))
+      expect($("input").getAttribute("aria-activedescendant")).toBe("slack")
+
+      const clicked = vi.fn()
+      $("slack").addEventListener("click", clicked)
+      press("Enter")
+      expect(clicked).toHaveBeenCalledOnce()
+    })
+
+    it("keeps the highlight when the pointer leaves the items with keepHighlight", async () => {
+      await mount(palette('data-phem-combobox-auto-highlight-value="always" data-phem-combobox-keep-highlight-value="true"'))
+      hover($("slack"))
+      expect($("slack").hasAttribute("data-highlighted")).toBe(true)
+
+      out($("slack"))
+      expect($("slack").hasAttribute("data-highlighted")).toBe(true)
+    })
+
+    it("does not move the highlight on hover with highlightItemOnHover false", async () => {
+      await mount(palette('data-phem-combobox-auto-highlight-value="always" data-phem-combobox-highlight-item-on-hover-value="false"'))
+      hover($("slack"))
+
+      expect($("linear").hasAttribute("data-highlighted")).toBe(true)
+      expect($("slack").hasAttribute("data-highlighted")).toBe(false)
+    })
+  })
+
+  describe("a grid", () => {
+    // Two rows of three items, and a row of one item.
+    const markup = `<div id="combobox" data-controller="phem-combobox" data-phem-combobox-grid-value="true">
+        <input id="input" data-phem-combobox-target="input" aria-label="Search emojis" />
+        <div id="popup" data-phem-combobox-target="popup" hidden>
+          <div id="list" data-phem-combobox-target="list">
+            <div id="r1" data-phem-combobox-target="row"><span id="a" data-phem-combobox-target="item">a</span><span id="b" data-phem-combobox-target="item">b</span><span id="c" data-phem-combobox-target="item">c</span></div>
+            <div id="r2" data-phem-combobox-target="row"><span id="d" data-phem-combobox-target="item">d</span><span id="e" data-phem-combobox-target="item">e</span><span id="f" data-phem-combobox-target="item">f</span></div>
+            <div id="r3" data-phem-combobox-target="row"><span id="g" data-phem-combobox-target="item">g</span></div>
+          </div>
+        </div>
+      </div>`
+
+    const active = () => $("input").getAttribute("aria-activedescendant")
+
+    it("sets the roles of a grid", async () => {
+      await mount(markup)
+
+      expect($("list").getAttribute("role")).toBe("grid")
+      expect($("r1").getAttribute("role")).toBe("row")
+      expect($("a").getAttribute("role")).toBe("gridcell")
+      expect($("input").getAttribute("aria-haspopup")).toBe("grid")
+    })
+
+    it("moves the highlight in the rows and in the columns", async () => {
+      await mount(markup)
+      $("input").focus()
+      press("ArrowDown")
+      press("ArrowDown")
+      expect(active()).toBe("a")
+
+      press("ArrowRight")
+      press("ArrowRight")
+      expect(active()).toBe("c")
+      press("ArrowDown")
+      expect(active()).toBe("f")
+      press("ArrowLeft")
+      expect(active()).toBe("e")
+      press("ArrowDown")
+      expect(active()).toBe("g")
+      press("ArrowUp")
+      expect(active()).toBe("d")
+      press("ArrowLeft")
+      expect(active()).toBe("c")
+    })
+
+    it("keeps the default of ArrowLeft and ArrowRight with no highlight", async () => {
+      await mount(markup)
+      $("input").focus()
+
+      expect(press("ArrowRight").defaultPrevented).toBe(false)
+    })
+
+    it("goes back to the input before the first row", async () => {
+      await mount(markup)
+      $("input").focus()
+      press("ArrowDown")
+      press("ArrowDown")
+      press("ArrowUp")
+
+      expect($("input").hasAttribute("aria-activedescendant")).toBe(false)
+    })
+  })
 })
