@@ -5,7 +5,7 @@ namespace App\Ui\Demos;
 use Phem\Attribute\{Page, State};
 use Phem\{Event, Node};
 
-use function App\Ui\DemoPage;
+use function App\Ui\{DemoPage, Hero};
 use function Phem\Ui\Base\{FieldControl, FieldDescription, FieldError, FieldLabel, Form, NumberField, NumberFieldDecrement, NumberFieldGroup, NumberFieldIncrement, NumberFieldInput, NumberFieldScrubArea, NumberFieldScrubAreaCursor, OTPField, OTPFieldInput, SliderControl, SliderIndicator, SliderThumb, SliderTrack};
 use Phem\Ui\Base\{Button, Field, Slider};
 
@@ -13,14 +13,14 @@ use Phem\Ui\Base\{Button, Field, Slider};
 function FieldPage(): Node
 {
     return (
-        <DemoPage title="Field">
+        <DemoPage slug="field"><Hero>
             <Field id="name">
                 <FieldLabel>Name</FieldLabel>
                 <FieldControl required placeholder="Required" />
                 <FieldError match="valueMissing">Please enter your name</FieldError>
                 <FieldDescription>Visible on your profile</FieldDescription>
             </Field>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -49,7 +49,7 @@ final class FormPage
     public function render(): Node
     {
         return (
-            <DemoPage title="Form">
+            <DemoPage slug="form"><Hero>
                 <Form onSubmit={{ submit }} className="[&_button[aria-disabled=true]]:pointer-events-none [&_button[aria-disabled=true]]:border-neutral-500 [&_button[aria-disabled=true]]:text-neutral-500 dark:[&_button[aria-disabled=true]]:border-neutral-400 dark:[&_button[aria-disabled=true]]:text-neutral-400">
                     <Field id="url">
                         <FieldLabel>Homepage</FieldLabel>
@@ -67,7 +67,7 @@ final class FormPage
                     </Field>
                     <Button type="submit">Submit</Button>
                 </Form>
-            </DemoPage>
+            </Hero></DemoPage>
         );
     }
 }
@@ -76,7 +76,7 @@ final class FormPage
 function NumberFieldPage(): Node
 {
     return (
-        <DemoPage title="Number Field">
+        <DemoPage slug="number-field"><Hero>
             <NumberField defaultValue={{ 100 }}>
                 <NumberFieldScrubArea>
                     <label htmlFor="amount" className="cursor-ew-resize text-sm font-bold text-neutral-950 dark:text-white">Amount</label>
@@ -88,7 +88,7 @@ function NumberFieldPage(): Node
                     <NumberFieldIncrement />
                 </NumberFieldGroup>
             </NumberField>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -98,7 +98,7 @@ function OTPFieldPage(): Node
     $slots = range(1, 6);
 
     return (
-        <DemoPage title="OTP Field">
+        <DemoPage slug="otp-field"><Hero>
             <div className="flex w-full max-w-80 flex-col items-start gap-1">
                 <label htmlFor="otp-1" className="text-sm font-bold text-neutral-950 dark:text-white">Verification code</label>
                 <OTPField name="code" aria-describedby="otp-description">
@@ -106,7 +106,7 @@ function OTPFieldPage(): Node
                 </OTPField>
                 <p id="otp-description" className="m-0 text-sm text-neutral-600 dark:text-neutral-400">Enter the 6-character code we sent to your device.</p>
             </div>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -114,7 +114,7 @@ function OTPFieldPage(): Node
 function SliderPage(): Node
 {
     return (
-        <DemoPage title="Slider">
+        <DemoPage slug="slider"><Hero>
             <Slider defaultValue={{ 25 }}>
                 <SliderControl>
                     <SliderTrack>
@@ -123,6 +123,6 @@ function SliderPage(): Node
                     </SliderTrack>
                 </SliderControl>
             </Slider>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }

@@ -44,7 +44,7 @@ final class MenusTest extends DemoTestCase
 
     public function testSubmenuCheckboxItemsAndRadioItems(): void
     {
-        $page = $this->visitComponent('menu-check-items');
+        $page = $this->visitComponent('menu');
 
         $trigger = $page->getByRole('button', ['name' => 'Workspace']);
         $trigger->click();

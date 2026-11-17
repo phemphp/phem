@@ -5,7 +5,7 @@ namespace App\Ui\Demos;
 use Phem\Attribute\Page;
 use Phem\Node;
 
-use function App\Ui\DemoPage;
+use function App\Ui\{DemoPage, Hero};
 use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger, CollapsiblePanel, CollapsibleTrigger, TabsIndicator, TabsList, TabsPanel, TabsTab};
 use Phem\Ui\Base\{Accordion, AccordionItem, Collapsible, Tabs};
 
@@ -13,7 +13,7 @@ use Phem\Ui\Base\{Accordion, AccordionItem, Collapsible, Tabs};
 function AccordionPage(): Node
 {
     return (
-        <DemoPage title="Accordion">
+        <DemoPage slug="accordion"><Hero>
             <Accordion>
                 <AccordionItem value="what">
                     <AccordionHeader><AccordionTrigger>What is Base UI?</AccordionTrigger></AccordionHeader>
@@ -28,7 +28,7 @@ function AccordionPage(): Node
                     <AccordionPanel>Of course! Base UI is free and open source.</AccordionPanel>
                 </AccordionItem>
             </Accordion>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -36,7 +36,7 @@ function AccordionPage(): Node
 function CollapsiblePage(): Node
 {
     return (
-        <DemoPage title="Collapsible">
+        <DemoPage slug="collapsible"><Hero>
             <Collapsible>
                 <CollapsibleTrigger>Recovery keys</CollapsibleTrigger>
                 <CollapsiblePanel>
@@ -47,7 +47,7 @@ function CollapsiblePage(): Node
                     </div>
                 </CollapsiblePanel>
             </Collapsible>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -55,7 +55,7 @@ function CollapsiblePage(): Node
 function TabsPage(): Node
 {
     return (
-        <DemoPage title="Tabs">
+        <DemoPage slug="tabs"><Hero>
             <Tabs defaultValue="overview">
                 <TabsList>
                     <TabsTab value="overview">Overview</TabsTab>
@@ -69,6 +69,6 @@ function TabsPage(): Node
                     <TabsPanel value="account"><p>Profile and preferences.</p></TabsPanel>
                 </div>
             </Tabs>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }

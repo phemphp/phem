@@ -5,26 +5,26 @@ namespace App\Ui\Demos;
 use Phem\Attribute\{Page, State};
 use Phem\Node;
 
-use function App\Ui\DemoPage;
+use function App\Ui\{DemoPage, Hero};
 use function Phem\Ui\Base\{FieldControl, FieldLabel, FieldsetLegend, MeterIndicator, MeterLabel, MeterTrack, MeterValue, ProgressIndicator, ProgressLabel, ProgressTrack, ProgressValue};
 use Phem\Ui\Base\{Button, Field, Fieldset, Input, Meter, Progress, Separator};
 
 #[Page('/components/button')]
 function ButtonPage(): Node
 {
-    return <DemoPage title="Button"><Button>Submit</Button></DemoPage>;
+    return <DemoPage slug="button"><Hero><Button>Submit</Button></Hero></DemoPage>;
 }
 
 #[Page('/components/input')]
 function InputPage(): Node
 {
     return (
-        <DemoPage title="Input">
+        <DemoPage slug="input"><Hero>
             <label className="flex flex-col items-start gap-1 text-sm font-bold text-neutral-950 dark:text-white">
                 Name
                 <Input placeholder="e.g. Colm Tuite" />
             </label>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -34,7 +34,7 @@ function SeparatorPage(): Node
     $link = 'text-sm text-neutral-950 decoration-neutral-300 decoration-1 underline-offset-2 hover:underline focus-visible:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:text-white dark:decoration-neutral-700';
 
     return (
-        <DemoPage title="Separator">
+        <DemoPage slug="separator"><Hero>
             <div className="flex gap-4 text-nowrap">
                 <a href="#" className={{ link }}>Home</a>
                 <a href="#" className={{ link }}>Pricing</a>
@@ -44,7 +44,7 @@ function SeparatorPage(): Node
                 <a href="#" className={{ link }}>Log in</a>
                 <a href="#" className={{ link }}>Sign up</a>
             </div>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -52,7 +52,7 @@ function SeparatorPage(): Node
 function FieldsetPage(): Node
 {
     return (
-        <DemoPage title="Fieldset">
+        <DemoPage slug="fieldset"><Hero>
             <Fieldset>
                 <FieldsetLegend>Billing details</FieldsetLegend>
                 <Field id="company">
@@ -64,7 +64,7 @@ function FieldsetPage(): Node
                     <FieldControl placeholder="Enter fiscal number" />
                 </Field>
             </Fieldset>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -72,13 +72,13 @@ function FieldsetPage(): Node
 function MeterPage(): Node
 {
     return (
-        <DemoPage title="Meter">
+        <DemoPage slug="meter"><Hero>
             <Meter id="storage" value={{ 24 }}>
                 <MeterLabel>Storage Used</MeterLabel>
                 <MeterValue />
                 <MeterTrack><MeterIndicator /></MeterTrack>
             </Meter>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -104,13 +104,13 @@ final class ProgressPage
         );
 
         return (
-            <DemoPage title="Progress">
+            <DemoPage slug="progress"><Hero>
                 {% if value < 100 %}
                     <div className="contents" onPoll={{ advance }} phem:poll={{ 1000 }}>{{ bar }}</div>
                 {% else %}
                     <div className="contents">{{ bar }}</div>
                 {% endif %}
-            </DemoPage>
+            </Hero></DemoPage>
         );
     }
 }

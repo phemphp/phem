@@ -5,7 +5,7 @@ namespace App\Ui\Demos;
 use Phem\Attribute\Page;
 use Phem\Node;
 
-use function App\Ui\DemoPage;
+use function App\Ui\{DemoPage, Hero};
 use function Phem\Ui\Base\{MenuItem, MenuPopup, MenuSeparator, MenuSubmenuTrigger, MenuTrigger, NavigationMenuArrow, NavigationMenuContent, NavigationMenuIcon, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuPopup, NavigationMenuPositioner, NavigationMenuTrigger, NavigationMenuViewport, ScrollArea, ScrollAreaContent, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport, SelectIcon, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectList, SelectPopup, SelectScrollDownArrow, SelectScrollUpArrow, SelectTrigger, SelectValue};
 use Phem\Ui\Base\{Menu, Menubar, MenuSubmenu, NavigationMenu, Select};
 
@@ -13,7 +13,7 @@ use Phem\Ui\Base\{Menu, Menubar, MenuSubmenu, NavigationMenu, Select};
 function ScrollAreaPage(): Node
 {
     return (
-        <DemoPage title="Scroll Area">
+        <DemoPage slug="scroll-area"><Hero>
             <ScrollArea>
                 <ScrollAreaViewport>
                     <ScrollAreaContent>
@@ -23,7 +23,7 @@ function ScrollAreaPage(): Node
                 </ScrollAreaViewport>
                 <ScrollAreaScrollbar><ScrollAreaThumb /></ScrollAreaScrollbar>
             </ScrollArea>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -33,7 +33,7 @@ function SelectPage(): Node
     $apples = ['gala' => 'Gala', 'fuji' => 'Fuji', 'honeycrisp' => 'Honeycrisp', 'granny-smith' => 'Granny Smith', 'pink-lady' => 'Pink Lady'];
 
     return (
-        <DemoPage title="Select">
+        <DemoPage slug="select"><Hero>
             <Select id="apple" name="apple" sideOffset={{ 4 }}>
                 <SelectLabel>Apple</SelectLabel>
                 <SelectTrigger><SelectValue placeholder="Select apple" /><SelectIcon /></SelectTrigger>
@@ -47,7 +47,7 @@ function SelectPage(): Node
                     <SelectScrollDownArrow />
                 </SelectPopup>
             </Select>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -55,7 +55,7 @@ function SelectPage(): Node
 function MenubarPage(): Node
 {
     return (
-        <DemoPage title="Menubar">
+        <DemoPage slug="menubar"><Hero>
             <Menubar>
                 <Menu sideOffset={{ 4 }}>
                     <MenuTrigger>File</MenuTrigger>
@@ -90,7 +90,7 @@ function MenubarPage(): Node
                 </Menu>
                 <Menu disabled><MenuTrigger>Help</MenuTrigger></Menu>
             </Menubar>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -110,7 +110,7 @@ function NavigationMenuPage(): Node
     ];
 
     return (
-        <DemoPage title="Navigation Menu">
+        <DemoPage slug="navigation-menu"><Hero>
             <NavigationMenu collisionPaddingInline={{ 20 }} flip={{ false }}>
                 <NavigationMenuList>
                     <NavigationMenuItem value="overview">
@@ -142,6 +142,6 @@ function NavigationMenuPage(): Node
                     </NavigationMenuPopup>
                 </NavigationMenuPositioner>
             </NavigationMenu>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }

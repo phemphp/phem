@@ -5,7 +5,7 @@ namespace App\Ui\Demos;
 use Phem\Attribute\{Component, Page, State};
 use Phem\Node;
 
-use function App\Ui\DemoPage;
+use function App\Ui\{DemoPage, Example, Examples, Hero};
 use function Phem\Ui\Base\{ContextMenuTrigger, MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger};
 use Phem\Ui\Base\{ContextMenu, Menu, MenuRadioGroup, MenuSubmenu};
 
@@ -13,7 +13,7 @@ use Phem\Ui\Base\{ContextMenu, Menu, MenuRadioGroup, MenuSubmenu};
 function MenuPage(): Node
 {
     return (
-        <DemoPage title="Menu">
+        <DemoPage slug="menu"><Hero>
             <Menu sideOffset={{ 8 }}>
                 <MenuTrigger>Song</MenuTrigger>
                 <MenuPopup>
@@ -27,6 +27,12 @@ function MenuPage(): Node
                     <MenuItem>Share</MenuItem>
                 </MenuPopup>
             </Menu>
+            </Hero>
+            <Examples>
+                <Example title="Submenu, checkbox items and radio items" description="A submenu, checkbox items and radio items. The browser keeps the state of the items with no handler. Autosave has a handler: the server keeps its state.">
+                    <MenuCheckItemsDemo />
+                </Example>
+            </Examples>
         </DemoPage>
     );
 }
@@ -34,8 +40,8 @@ function MenuPage(): Node
 // The other examples of the Base UI Menu docs: a submenu, checkbox items and radio items. The
 // browser keeps the state of the items with no handler. "Autosave" has a handler: the server
 // keeps its state.
-#[Page('/components/menu-check-items')]
-final class MenuCheckItemsPage
+#[Component]
+final class MenuCheckItemsDemo
 {
     #[State] public bool $autosave = true;
 
@@ -47,7 +53,6 @@ final class MenuCheckItemsPage
     public function render(): Node
     {
         return (
-            <DemoPage title="Menu: submenu, checkbox and radio items">
                 <Menu sideOffset={{ 8 }}>
                     <MenuTrigger>Workspace</MenuTrigger>
                     <MenuPopup>
@@ -93,7 +98,6 @@ final class MenuCheckItemsPage
                         </MenuRadioGroup>
                     </MenuPopup>
                 </Menu>
-            </DemoPage>
         );
     }
 }
@@ -102,7 +106,7 @@ final class MenuCheckItemsPage
 function ContextMenuPage(): Node
 {
     return (
-        <DemoPage title="Context Menu">
+        <DemoPage slug="context-menu"><Hero>
             <ContextMenu>
                 <ContextMenuTrigger>Right click here</ContextMenuTrigger>
                 <MenuPopup>
@@ -116,6 +120,6 @@ function ContextMenuPage(): Node
                     <MenuItem>Share</MenuItem>
                 </MenuPopup>
             </ContextMenu>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }

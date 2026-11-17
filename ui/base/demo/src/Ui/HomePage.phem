@@ -8,19 +8,10 @@ use Phem\Node;
 #[Page('/')]
 function HomePage(): Node
 {
-    $components = Gallery::components();
-
     return (
-        <Document title="Components">
-            <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10">
-                <h1 className="text-2xl font-bold">phem/ui-base</h1>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">The Base UI components, as Phem components. Open a page and compare it with base-ui.com.</p>
-                <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    {% for slug, name in components %}
-                        <li key={{ slug }}><a href="/components/{{ slug }}" className="text-sm underline underline-offset-2">{{ name }}</a></li>
-                    {% endfor %}
-                </ul>
-            </main>
-        </Document>
+        <Shell title="Components">
+            <h1 className="text-2xl font-bold">phem/ui-base</h1>
+            <p className="text-neutral-600 dark:text-neutral-400">The Base UI components, as Phem components. Open a page in the sidebar and compare it with base-ui.com.</p>
+        </Shell>
     );
 }

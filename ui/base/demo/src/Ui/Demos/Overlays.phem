@@ -5,7 +5,7 @@ namespace App\Ui\Demos;
 use Phem\Attribute\Page;
 use Phem\Node;
 
-use function App\Ui\DemoPage;
+use function App\Ui\{DemoPage, Hero};
 use function Phem\Ui\Base\{AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, Dialog, DialogClose, DialogDescription, DialogPopup, DialogTitle, DialogTrigger, DrawerClose, DrawerContent, DrawerDescription, DrawerPopup, DrawerTitle, DrawerTrigger, Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverTitle, PopoverTrigger, PreviewCard, PreviewCardArrow, PreviewCardPopup, PreviewCardTrigger, Tooltip, TooltipArrow, TooltipPopup, TooltipTrigger};
 use Phem\Ui\Base\Drawer;
 
@@ -13,7 +13,7 @@ use Phem\Ui\Base\Drawer;
 function DialogPage(): Node
 {
     return (
-        <DemoPage title="Dialog">
+        <DemoPage slug="dialog"><Hero>
             <Dialog>
                 <DialogTrigger>View notifications</DialogTrigger>
                 <DialogPopup>
@@ -26,7 +26,7 @@ function DialogPage(): Node
                     </div>
                 </DialogPopup>
             </Dialog>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -34,7 +34,7 @@ function DialogPage(): Node
 function AlertDialogPage(): Node
 {
     return (
-        <DemoPage title="Alert Dialog">
+        <DemoPage slug="alert-dialog"><Hero>
             <AlertDialog>
                 <AlertDialogTrigger className="text-red-700 dark:text-red-400">Discard draft</AlertDialogTrigger>
                 <AlertDialogPopup>
@@ -48,7 +48,7 @@ function AlertDialogPage(): Node
                     </div>
                 </AlertDialogPopup>
             </AlertDialog>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -56,7 +56,7 @@ function AlertDialogPage(): Node
 function DrawerPage(): Node
 {
     return (
-        <DemoPage title="Drawer">
+        <DemoPage slug="drawer"><Hero>
             <Drawer swipeDirection="right">
                 <DrawerTrigger>Open drawer</DrawerTrigger>
                 <DrawerPopup>
@@ -67,7 +67,7 @@ function DrawerPage(): Node
                     </DrawerContent>
                 </DrawerPopup>
             </Drawer>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -75,7 +75,7 @@ function DrawerPage(): Node
 function PopoverPage(): Node
 {
     return (
-        <DemoPage title="Popover">
+        <DemoPage slug="popover"><Hero>
             <Popover sideOffset={{ 8 }}>
                 <PopoverTrigger>Notifications</PopoverTrigger>
                 <PopoverPopup>
@@ -84,7 +84,7 @@ function PopoverPage(): Node
                     <PopoverDescription>You are all caught up. Good job!</PopoverDescription>
                 </PopoverPopup>
             </Popover>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -92,7 +92,7 @@ function PopoverPage(): Node
 function PreviewCardPage(): Node
 {
     return (
-        <DemoPage title="Preview Card">
+        <DemoPage slug="preview-card"><Hero>
             <PreviewCard>
                 <p className="text-base text-neutral-950 text-balance dark:text-white">
                     The principles of good <PreviewCardTrigger href="https://en.wikipedia.org/wiki/Typography">typography</PreviewCardTrigger> remain in the digital age.
@@ -105,7 +105,7 @@ function PreviewCardPage(): Node
                     </div>
                 </PreviewCardPopup>
             </PreviewCard>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -120,7 +120,7 @@ function TooltipPage(): Node
     ];
 
     return (
-        <DemoPage title="Tooltip">
+        <DemoPage slug="tooltip"><Hero>
             <div className="flex border border-neutral-950 bg-white dark:border-white dark:bg-neutral-950">
                 {% for label, path in tools %}
                     <Tooltip key={{ label }} sideOffset={{ 11 }}>
@@ -129,6 +129,6 @@ function TooltipPage(): Node
                     </Tooltip>
                 {% endfor %}
             </div>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }

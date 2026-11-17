@@ -24,19 +24,113 @@ function Document(string $title, Html $children): Node
     );
 }
 
-/** The page of one component: a title, a link back, and the demo in the middle of a box. */
+/**
+ * The left navigation of base-ui.com: a "Components" section with a link for each component, in
+ * the same order and with the same labels. On a narrow screen, it goes above the content.
+ */
 #[Component]
-function DemoPage(string $title, Html $children): Node
+function Sidebar(?string $current = null): Node
+{
+    $components = Gallery::components();
+
+    return (
+        <nav aria-label="Components" className="border-b border-neutral-200 px-4 py-6 md:sticky md:top-0 md:h-dvh md:w-64 md:shrink-0 md:overflow-y-auto md:border-b-0 md:px-6 dark:border-neutral-800">
+            <a href="/" className="mb-6 block px-2 text-sm font-bold">phem/ui-base</a>
+            <h2 className="px-2 py-[3px] text-sm leading-[22px] font-normal text-[#767676] dark:text-[#b3b3b3]">Components</h2>
+            <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-1">
+                {% for slug, item in components %}
+                    <li key={{ slug }}>
+                        <a
+                            href="/components/{{ slug }}"
+                            aria-current={{ slug == current ? 'page' : null }}
+                            className="block rounded-md px-2 py-0.5 text-sm leading-[22px] text-[#2e2e2e] hover:bg-[#f9f9f9] aria-[current=page]:bg-[#f9f9f9] aria-[current=page]:py-[3px] dark:text-[#e6e6e6] dark:hover:bg-[#1a1a1a] dark:aria-[current=page]:bg-[#1a1a1a]"
+                        >{{ item.name }}</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </nav>
+    );
+}
+
+/** The frame of each page: the sidebar and the content. */
+#[Component]
+function Shell(string $title, Html $children, ?string $current = null): Node
 {
     return (
         <Document title={{ title }}>
-            <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10">
-                <a href="/" className="text-sm underline underline-offset-2">← All components</a>
-                <h1 className="text-2xl font-bold">{{ title }}</h1>
-                <section className="flex min-h-80 items-center justify-center border border-neutral-200 p-10 dark:border-neutral-800">
+            <div className="md:flex">
+                <Sidebar current={{ current }} />
+                <main className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-6 px-4 py-10">
                     {{ children }}
-                </section>
-            </main>
+                </main>
+            </div>
         </Document>
+    );
+}
+
+/** The page of one component: its title and its description from base-ui.com, then the demos. */
+#[Component]
+function DemoPage(string $slug, Html $children): Node
+{
+    $component = Gallery::components()[$slug];
+
+    return (
+        <Shell title={{ component.name }} current={{ slug }}>
+            <header className="flex flex-col gap-2">
+                <h1 className="text-[34px] leading-[1.27] font-bold">{{ component.name }}</h1>
+                <p className="text-lg leading-7 text-[#767676] dark:text-[#b3b3b3]">{{ component.description }}</p>
+            </header>
+            {{ children }}
+        </Shell>
+    );
+}
+
+/** The box of a demo, with the demo in the middle. */
+#[Component]
+function DemoBox(Html $children): Node
+{
+    return (
+        <div className="flex min-h-80 items-center justify-center border border-neutral-200 p-10 dark:border-neutral-800">
+            {{ children }}
+        </div>
+    );
+}
+
+/** The demo at the top of the page. */
+#[Component]
+function Hero(Html $children): Node
+{
+    return <section aria-label="Demo"><DemoBox>{{ children }}</DemoBox></section>;
+}
+
+/** The "Examples" section of a page: a heading, then its Example blocks. */
+#[Component]
+function Examples(Html $children): Node
+{
+    return (
+        <section aria-labelledby="examples" className="flex flex-col gap-10 pt-4">
+            <h2 id="examples" className="text-xl font-bold">Examples</h2>
+            {{ children }}
+        </section>
+    );
+}
+
+/**
+ * One example of base-ui.com: its heading, its description, and its demo. An example with no demo
+ * (a section of base-ui.com with code only) shows only its heading and its description.
+ */
+#[Component]
+function Example(string $title, string $description, ?Html $children = null): Node
+{
+    $id = Gallery::anchor($title);
+
+    return (
+        <section aria-labelledby={{ id }} className="flex flex-col gap-3">
+            <h3 id={{ id }} className="text-lg font-bold">{{ title }}</h3>
+            <p className="text-neutral-600 dark:text-neutral-400">{{ description }}</p>
+            {% if children %}
+                <DemoBox>{{ children }}</DemoBox>
+            {% endif %}
+        </section>
     );
 }

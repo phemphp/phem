@@ -5,7 +5,7 @@ namespace App\Ui\Demos;
 use Phem\Attribute\{Page, State};
 use Phem\{Event, Node};
 
-use function App\Ui\DemoPage;
+use function App\Ui\{DemoPage, Hero};
 use function Phem\Ui\Base\{ComboboxActions, ComboboxClear, ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemLabel, ComboboxLabel, ComboboxList, ComboboxPopup, ComboboxTrigger, ToastViewport};
 use Phem\Ui\Base\{Autocomplete, Button, Combobox};
 
@@ -89,7 +89,7 @@ function ComboboxPage(): Node
     $fruits = FRUITS;
 
     return (
-        <DemoPage title="Combobox">
+        <DemoPage slug="combobox"><Hero>
             <Combobox id="fruit" filter="contains">
                 <ComboboxLabel>Choose a fruit</ComboboxLabel>
                 <ComboboxInputGroup>
@@ -111,7 +111,7 @@ function ComboboxPage(): Node
                     </ComboboxList>
                 </ComboboxPopup>
             </Combobox>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -122,7 +122,7 @@ function AutocompletePage(): Node
     $tags = TAGS;
 
     return (
-        <DemoPage title="Autocomplete">
+        <DemoPage slug="autocomplete"><Hero>
             <Autocomplete id="tags" filter="contains">
                 <ComboboxLabel>Search tags</ComboboxLabel>
                 <ComboboxInput placeholder="e.g. feature" className="h-8 w-[16rem] border border-neutral-950 px-2 placeholder:opacity-100 placeholder:[-webkit-text-fill-color:var(--color-neutral-500)] dark:placeholder:[-webkit-text-fill-color:var(--color-neutral-400)] focus:outline-solid focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:border-white dark:focus:outline-white" />
@@ -135,7 +135,7 @@ function AutocompletePage(): Node
                     </ComboboxList>
                 </ComboboxPopup>
             </Autocomplete>
-        </DemoPage>
+        </Hero></DemoPage>
     );
 }
 
@@ -153,10 +153,10 @@ final class ToastPage
     public function render(): Node
     {
         return (
-            <DemoPage title="Toast">
+            <DemoPage slug="toast"><Hero>
                 <Button onClick={{ create }}>Create toast</Button>
                 <ToastViewport />
-            </DemoPage>
+            </Hero></DemoPage>
         );
     }
 }
