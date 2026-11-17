@@ -3,8 +3,8 @@ import { ClientState } from "./phem_client_state.js"
 import { realId } from "./phem_ids.js"
 import { Popup } from "./phem_popup.js"
 import { positionOptions, positionValues } from "./phem_position.js"
-import { isDisabled, nextItem } from "./phem_roving.js"
-import { link } from "./phem_aria.js"
+import { isDisabled, leaveList, nextItem } from "./phem_roving.js"
+import { controlWhileOpen, link } from "./phem_aria.js"
 
 // The collators of the client filter, by locale.
 const collators = new Map()
@@ -28,29 +28,36 @@ const collators = new Map()
 // the server gives the items. The controller adds the roles and the keyboard. The popup opens when
 // the user types, on ArrowDown or ArrowUp, and on a click on the `trigger` target. It shows when
 // it has an item, an `empty` target or a `status` target. The focus stays in the input: ArrowDown
-// and ArrowUp move the highlight. With the `loopFocus` value, a move after the last item goes back to
-// the input (no highlight), and the next move goes to the first item (with `autoHighlight`, it
-// goes to the first item at once),
-// and Enter chooses the highlighted item. With the `autoHighlight` value, the first item gets the
-// highlight when the items change. A move of the pointer on an item highlights it: an item that
-// comes under a pointer that does not move (the list changes) does not get the highlight.
+// and ArrowUp move the highlight. With no selection (an Autocomplete) and no `autoHighlight`, the
+// key that opens the popup gives no highlight: the next key moves it. With the `loopFocus` value, a
+// move after the last item goes back to the input (no highlight), and the next move goes to the
+// first item (with `autoHighlight`, it goes to the first item at once), and Enter chooses the
+// highlighted item. Enter on an open popup with no highlight closes the popup, and keeps its
+// default action. With the `autoHighlight` value, the first item gets the highlight when the items
+// change. A move of the pointer on an item highlights it: an item that comes under a pointer that
+// does not move (the list changes) does not get the highlight. The pointer that goes out of the
+// items removes the highlight.
 //
 // To choose an item is a click on it: its handler (`onClick`) runs, or its link opens. The handler
 // sets the state (the text of the input, the selected value), and the morph shows it. Then the popup
 // closes, and the controller dispatches `phem-combobox:select` with the `item` in the detail.
 // Escape closes the popup, and a second Escape clears the input. A click on the `clear` target
-// clears the input. A click outside and the focus out of the combobox close the popup.
+// clears the input. A clear (the `clear` target or the second Escape) does not open a closed
+// popup. A click outside and the focus out of the combobox close the popup.
 //
 // The input gets `role="combobox"`, `aria-autocomplete="list"`, `aria-expanded`, `aria-controls`
 // and `aria-activedescendant`. The list (or the popup, with no list) gets `role="listbox"`, the
 // items `role="option"`, and the highlighted item `aria-selected="true"` and `data-highlighted`.
 // A list or an item with no `id` gets no id: the input points to it with an element reference
-// (`ariaControlsElements`, `ariaActiveDescendantElement`). The popup and the list get `data-empty` when there is no item. An
-// `empty` target is a live region (`role="status"`, `aria-live="polite"`, `aria-atomic="true"`)
-// that stays in the page, as the Empty part of Base UI: it has its content only when there is no
-// item, so a screen reader reads it then, and `:empty` matches it when the list has items. Do not
-// give it `hidden`. A `status` target gets `role="status"`: a screen reader reads
-// it (for example "3 results"). The popup is positioned as a `phem-popover` (phem_position.js),
+// (`ariaControlsElements`, `ariaActiveDescendantElement`). The input also gets
+// `aria-haspopup="listbox"`, and `data-list-empty` when there is no item. A `trigger` gets
+// `aria-haspopup="listbox"`, `aria-expanded`, `data-popup-open`, and `aria-controls` while the
+// popup is open. An `inputGroup` gets `role="group"` and `data-popup-open`. The popup and the list
+// get `data-empty` when there is no item. An `empty` target is a live region (`role="status"`,
+// `aria-live="polite"`, `aria-atomic="true"`) that stays in the page, as the Empty part of Base UI:
+// it has its content only when there is no item, so a screen reader reads it then, and `:empty`
+// matches it when the list has items. Do not give it `hidden`. A `status` target gets
+// `role="status"`: a screen reader reads it (for example "3 results"). The popup is positioned as a `phem-popover` (phem_position.js),
 // below the input by default: use `var(--anchor-width)` for its width.
 //
 // With the `multiple` value, the user chooses more than one item. The server gives the chosen
@@ -132,6 +139,10 @@ export default class PhemComboboxController extends Controller {
     this.serverSelection = undefined
     // The content of each `empty` target while the list has items.
     this.emptyContent = new WeakMap()
+    // A clear sends its `input` event: the popup stays as it is.
+    this.clearing = false
+    // The item that the pointer highlighted. A highlight of the keyboard is another item.
+    this.pointerItem = null
     this.popup = new Popup({
       anchor: () => this.inputGroupTargets[0] ?? (this.hasInputTarget ? this.inputTarget : null),
       popup: () => (this.hasPopupTarget ? this.popupTarget : null),
@@ -159,6 +170,7 @@ export default class PhemComboboxController extends Controller {
     this.element.addEventListener("click", this.onClick, options)
     this.element.addEventListener("pointerdown", this.onPointerDown, options)
     this.element.addEventListener("pointermove", this.onPointerMove, options)
+    this.element.addEventListener("pointerout", this.onPointerOut, options)
     this.element.addEventListener("focusout", this.onFocusOut, options)
     this.element.addEventListener("turbo:before-morph-element", this.onBeforeMorph, options)
 
@@ -202,6 +214,14 @@ export default class PhemComboboxController extends Controller {
     this.#later()
   }
 
+  triggerTargetConnected() {
+    this.#later()
+  }
+
+  inputGroupTargetConnected() {
+    this.#later()
+  }
+
   chipTargetConnected() {
     this.#later()
   }
@@ -215,7 +235,7 @@ export default class PhemComboboxController extends Controller {
 
     this.typed = null
     delete event.target.phemValue
-    this.wanted = true
+    if (!this.clearing) this.wanted = true
     this.queryChanged = true
     this.highlighted = null
     this.#render()
@@ -239,6 +259,16 @@ export default class PhemComboboxController extends Controller {
       event.preventDefault()
       const opening = !this.popup.open
       this.wanted = true
+
+      // An Autocomplete (no selection) opens with no highlight: the next key moves it. With
+      // `autoHighlight`, the render gives the highlight to the first item.
+      if (opening && this.#autocomplete && !this.autoHighlightValue) {
+        this.highlighted = null
+        this.#render()
+
+        return
+      }
+
       const items = this.#items
       // A popup that opens with a selection has the highlight on the selected item.
       const selection = opening ? this.#selection(items) : null
@@ -261,8 +291,15 @@ export default class PhemComboboxController extends Controller {
     }
 
     if (event.key === "Enter") {
-      const item = this.popup.open ? this.#active : null
-      if (!item) return
+      if (!this.popup.open) return
+
+      const item = this.#active
+      // No highlight: the popup closes, and Enter keeps its default action (the submit of the form).
+      if (!item) {
+        this.#dismiss()
+
+        return
+      }
 
       event.preventDefault()
       item.click()
@@ -343,11 +380,30 @@ export default class PhemComboboxController extends Controller {
   // not take the highlight of the keyboard.
   onPointerMove = (event) => {
     // The moves on the highlighted item: no lookup of the items.
-    if (this.highlighted?.contains(event.target)) return
+    if (this.highlighted?.contains(event.target)) {
+      this.pointerItem = this.highlighted
+
+      return
+    }
 
     // The item is under the pointer: a scroll would move the list under it.
     const item = this.#itemOf(event.target)
-    if (item && !isDisabled(item)) this.#highlight(item, { scroll: false })
+    if (!item || isDisabled(item)) return
+
+    this.#highlight(item, { scroll: false })
+    this.pointerItem = item
+  }
+
+  // The pointer goes out of the items (to the space around them, or out of the list): the
+  // highlight goes, as in Base UI. In an inline `mode`, the input gets the text of the user again.
+  // A highlight of the keyboard stays.
+  onPointerOut = (event) => {
+    if (!this.pointerItem || this.pointerItem !== this.highlighted) return
+
+    leaveList(event, this.itemTargets, () => {
+      this.#highlight(null, { scroll: false })
+      this.#complete(null)
+    })
   }
 
   // The morph of an item in the `single` selection mode: a server render that changes the
@@ -517,7 +573,13 @@ export default class PhemComboboxController extends Controller {
     if (this.#selecting && this.#selectedItem) this.#select(null)
     this.queryChanged = false
     input.value = ""
-    input.dispatchEvent(new Event("input", { bubbles: true }))
+
+    this.clearing = true
+    try {
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    } finally {
+      this.clearing = false
+    }
   }
 
   #highlight(item, { scroll = true } = {}) {
@@ -717,10 +779,26 @@ export default class PhemComboboxController extends Controller {
       if (!input.hasAttribute("role")) input.setAttribute("role", "combobox")
       if (!input.hasAttribute("aria-autocomplete")) input.setAttribute("aria-autocomplete", this.modeValue)
       if (!input.hasAttribute("autocomplete")) input.setAttribute("autocomplete", "off")
+      if (!input.hasAttribute("aria-haspopup")) input.setAttribute("aria-haspopup", "listbox")
       if (list) link(input, "aria-controls", "ariaControlsElements", list)
       input.setAttribute("aria-expanded", String(open))
       activeDescendant(input, open ? active : null)
       input.toggleAttribute("data-popup-open", open)
+      input.toggleAttribute("data-list-empty", empty)
+    }
+
+    // The trigger and the input group show the state of the popup, as in Base UI. The trigger points
+    // to the list only while the popup is open.
+    for (const trigger of this.triggerTargets) {
+      if (!trigger.hasAttribute("aria-haspopup")) trigger.setAttribute("aria-haspopup", "listbox")
+      trigger.setAttribute("aria-expanded", String(open))
+      controlWhileOpen(trigger, list, open)
+      trigger.toggleAttribute("data-popup-open", open)
+    }
+
+    for (const group of this.inputGroupTargets) {
+      if (!group.hasAttribute("role")) group.setAttribute("role", "group")
+      group.toggleAttribute("data-popup-open", open)
     }
 
     if (open !== this.popup.open) open ? this.popup.show() : this.popup.hide()
@@ -737,8 +815,10 @@ export default class PhemComboboxController extends Controller {
       // A client list: the text of an input with no `phem:bind` belongs to the client.
       if (name === "value" && this.#clientList && !el.hasAttribute("data-phem-bind")) return true
 
-      return ["aria-expanded", "aria-activedescendant", "data-popup-open"].includes(name)
+      return ["aria-expanded", "aria-activedescendant", "aria-haspopup", "data-popup-open", "data-list-empty"].includes(name)
     }
+    if (this.triggerTargets.includes(el)) return ["aria-expanded", "aria-haspopup", "data-popup-open"].includes(name)
+    if (this.inputGroupTargets.includes(el)) return name === "role" || name === "data-popup-open"
     if (this.itemTargets.includes(el)) return (name === "aria-selected" && !this.multipleValue) || name === "data-highlighted" || (name === "data-selected" && this.#selecting)
     if (this.emptyTargets.includes(el)) return name === "role" || name === "aria-live" || name === "aria-atomic"
     if (this.clearTargets.includes(el)) return name === "hidden" || name === "data-visible"
@@ -755,6 +835,11 @@ export default class PhemComboboxController extends Controller {
   // The list belongs to the client: a choice writes the label of the item in the input.
   get #clientList() {
     return this.filterValue !== "" || this.modeValue !== "list"
+  }
+
+  // No selected item: the Autocomplete of Base UI. `multiple` is a selection of more than one item.
+  get #autocomplete() {
+    return this.selectionModeValue === "none" && !this.multipleValue
   }
 
   // One selected item: the `single` selection mode, with a list of the client.

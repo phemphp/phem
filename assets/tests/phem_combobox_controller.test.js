@@ -274,6 +274,24 @@ describe("phem-combobox", () => {
     await type("pa", ["Paris"])
 
     expect(press("Enter").defaultPrevented).toBe(false)
+    expect($("popup").hidden).toBe(true)
+    expect($("input").getAttribute("aria-expanded")).toBe("false")
+  })
+
+  it("does not open a closed popup on a clear, also after the answer of the server", async () => {
+    await mountField(field())
+    await type("pa", ["Paris"])
+    press("Escape")
+    expect($("popup").hidden).toBe(true)
+
+    respond(field(["Paris", "Parma"]))
+    const done = nextDone()
+    $("clear").click()
+    await done
+
+    expect($("input").value).toBe("")
+    expect($("popup").hidden).toBe(true)
+    expect($("input").getAttribute("aria-expanded")).toBe("false")
   })
 
   it("closes on Escape, and clears the input on a second Escape", async () => {
@@ -334,6 +352,83 @@ describe("phem-combobox", () => {
     } finally {
       delete Element.prototype.scrollIntoView
     }
+  })
+
+  it("removes the highlight when the pointer leaves the items", async () => {
+    await mountField(field())
+    await type("pa", ["Paris", "Parma"])
+    hover($("city-Parma"))
+    expect($("input").getAttribute("aria-activedescendant")).toBe("city-Parma")
+
+    $("city-Parma").dispatchEvent(new PointerEvent("pointerout", { bubbles: true, pointerType: "mouse", relatedTarget: $("outside") }))
+
+    expect($("input").hasAttribute("aria-activedescendant")).toBe(false)
+    expect($("city-Parma").hasAttribute("data-highlighted")).toBe(false)
+    expect($("popup").hidden).toBe(false)
+  })
+
+  it("opens the popup with no highlight on the first arrow key", async () => {
+    await mountField(field(["Paris", "Parma"]))
+    $("input").focus()
+    press("ArrowDown")
+
+    expect($("popup").hidden).toBe(false)
+    expect($("input").getAttribute("aria-expanded")).toBe("true")
+    expect($("input").hasAttribute("aria-activedescendant")).toBe(false)
+    expect(document.querySelector("[data-highlighted]")).toBe(null)
+
+    press("ArrowDown")
+    expect($("input").getAttribute("aria-activedescendant")).toBe("city-Paris")
+  })
+
+  it("gives the popup state to the input, the trigger and the input group, also after the morph", async () => {
+    const parts = (cities) =>
+      field(cities)
+        .replace(`<input id="input"`, `<div id="group" data-phem-combobox-target="inputGroup"><input id="input"`)
+        .replace(`<button id="clear"`, `<button id="trigger" type="button" data-phem-combobox-target="trigger">Open</button></div><button id="clear"`)
+    await mountField(parts(["Paris", "Parma"]))
+
+    expect($("input").getAttribute("aria-haspopup")).toBe("listbox")
+    expect($("input").hasAttribute("data-list-empty")).toBe(false)
+    expect($("trigger").getAttribute("aria-expanded")).toBe("false")
+    expect($("trigger").getAttribute("aria-haspopup")).toBe("listbox")
+    expect($("trigger").hasAttribute("aria-controls")).toBe(false)
+    expect($("trigger").hasAttribute("data-popup-open")).toBe(false)
+    expect($("group").getAttribute("role")).toBe("group")
+    expect($("group").hasAttribute("data-popup-open")).toBe(false)
+
+    $("trigger").click()
+    expect($("popup").hidden).toBe(false)
+    expect($("trigger").getAttribute("aria-expanded")).toBe("true")
+    expect($("trigger").getAttribute("aria-controls")).toBe("list")
+    expect($("trigger").hasAttribute("data-popup-open")).toBe(true)
+    expect($("group").hasAttribute("data-popup-open")).toBe(true)
+
+    respond(parts(["Paris", "Parma"]))
+    const done = nextDone()
+    $("refresh").click()
+    await done
+
+    expect($("popup").hidden).toBe(false)
+    expect($("input").getAttribute("aria-haspopup")).toBe("listbox")
+    expect($("trigger").getAttribute("aria-expanded")).toBe("true")
+    expect($("trigger").getAttribute("aria-haspopup")).toBe("listbox")
+    expect($("trigger").getAttribute("aria-controls")).toBe("list")
+    expect($("trigger").hasAttribute("data-popup-open")).toBe(true)
+    expect($("group").getAttribute("role")).toBe("group")
+    expect($("group").hasAttribute("data-popup-open")).toBe(true)
+
+    $("trigger").click()
+    expect($("trigger").getAttribute("aria-expanded")).toBe("false")
+    expect($("trigger").hasAttribute("aria-controls")).toBe(false)
+    expect($("trigger").hasAttribute("data-popup-open")).toBe(false)
+    expect($("group").hasAttribute("data-popup-open")).toBe(false)
+  })
+
+  it("gives data-list-empty to the input when the list has no item", async () => {
+    await mountField(field())
+
+    expect($("input").hasAttribute("data-list-empty")).toBe(true)
   })
 
   it("does not highlight an item that comes under a pointer that does not move", async () => {
@@ -591,7 +686,227 @@ describe("phem-combobox", () => {
       expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-banana")
     })
 
+    it("does not open a closed popup on a click on the clear target", async () => {
+      await mount(fruits().replace(`<input id="input"`, `<button id="clear" data-phem-combobox-target="clear">Clear</button><input id="input"`))
+      typeText("an")
+      press("Escape")
+      expect($("popup").hidden).toBe(true)
+
+      $("clear").click()
+
+      expect($("input").value).toBe("")
+      expect($("popup").hidden).toBe(true)
+      expect($("input").getAttribute("aria-expanded")).toBe("false")
+    })
+
+    it("closes the popup on Enter with no highlighted item, and lets the form submit", async () => {
+      await mount(fruits())
+      typeText("an")
+      expect($("popup").hidden).toBe(false)
+
+      expect(press("Enter").defaultPrevented).toBe(false)
+      expect($("popup").hidden).toBe(true)
+      expect($("input").getAttribute("aria-expanded")).toBe("false")
+    })
+
+    it("opens the popup with no highlight on the first arrow key", async () => {
+      await mount(fruits())
+      $("input").focus()
+      press("ArrowDown")
+
+      expect($("popup").hidden).toBe(false)
+      expect(document.querySelector("[data-highlighted]")).toBe(null)
+
+      press("ArrowDown")
+      expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-apple")
+    })
+
+    it("gives back the text of the user when the pointer leaves the items with an inline mode", async () => {
+      await mount(fruits('data-phem-combobox-filter-value="contains" data-phem-combobox-mode-value="inline"'))
+      typeText("a")
+      press("ArrowDown")
+      expect($("input").value).toBe("Apple")
+
+      hover($("fruit-banana"))
+      $("fruit-banana").dispatchEvent(new PointerEvent("pointerout", { bubbles: true, pointerType: "mouse", relatedTarget: document.body }))
+
+      expect(document.querySelector("[data-highlighted]")).toBe(null)
+      expect($("input").value).toBe("a")
+    })
+
+    const out = (el) => el.dispatchEvent(new PointerEvent("pointerout", { bubbles: true, pointerType: "mouse", relatedTarget: document.body }))
+
+    it("gives back the text of the user when the pointer leaves the items with the both mode", async () => {
+      await mount(fruits('data-phem-combobox-filter-value="contains" data-phem-combobox-mode-value="both"'))
+      typeText("a")
+      press("ArrowDown")
+      expect($("input").value).toBe("Apple")
+
+      hover($("fruit-banana"))
+      out($("fruit-banana"))
+
+      expect(document.querySelector("[data-highlighted]")).toBe(null)
+      expect($("input").value).toBe("a")
+    })
+
+    it("keeps a highlight of the keyboard when the pointer leaves the items", async () => {
+      await mount(fruits())
+      typeText("a")
+      hover($("fruit-apple"))
+      press("ArrowDown")
+      expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-banana")
+
+      out($("fruit-apple"))
+
+      expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-banana")
+    })
+
+    it("keeps the highlight of autoHighlight when the pointer leaves the items after the user types", async () => {
+      await mount(fruits('data-phem-combobox-filter-value="contains" data-phem-combobox-auto-highlight-value="true"'))
+      typeText("a")
+      hover($("fruit-banana"))
+      typeText("an")
+      expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-banana")
+
+      typeText("e")
+      expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-apple")
+      out($("fruit-banana"))
+
+      expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-apple")
+    })
+
+    it("opens the popup with no highlight on ArrowUp, and the next ArrowUp goes to the last item", async () => {
+      await mount(fruits())
+      $("input").focus()
+      press("ArrowUp")
+
+      expect($("popup").hidden).toBe(false)
+      expect(document.querySelector("[data-highlighted]")).toBe(null)
+
+      press("ArrowUp")
+      expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-éclair")
+    })
+
+    it("highlights the first item on the arrow key that opens the popup with autoHighlight", async () => {
+      await mount(fruits('data-phem-combobox-filter-value="contains" data-phem-combobox-auto-highlight-value="true"'))
+      $("input").focus()
+      press("ArrowDown")
+
+      expect($("popup").hidden).toBe(false)
+      expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-apple")
+    })
+
+    it("does not keep an old highlight when an arrow key opens the popup again", async () => {
+      await mount(fruits().replace(`<div id="popup"`, `<button id="trigger" type="button" data-phem-combobox-target="trigger">Open</button><div id="popup"`))
+      typeText("a")
+      press("ArrowDown")
+      expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-apple")
+
+      $("trigger").click()
+      expect($("popup").hidden).toBe(true)
+      press("ArrowDown")
+
+      expect($("popup").hidden).toBe(false)
+      expect($("input").hasAttribute("aria-activedescendant")).toBe(false)
+      expect(document.querySelector("[data-highlighted]")).toBe(null)
+    })
+
+    it("highlights an item on the arrow key that opens a multiple popup with no chip", async () => {
+      await mount(fruits('data-phem-combobox-filter-value="contains" data-phem-combobox-multiple-value="true"'))
+      $("input").focus()
+      press("ArrowDown")
+
+      expect($("popup").hidden).toBe(false)
+      expect($("input").getAttribute("aria-activedescendant")).toBe("fruit-apple")
+    })
+
+    it("keeps an open popup open on a click on the clear target", async () => {
+      await mount(fruits().replace(`<input id="input"`, `<button id="clear" data-phem-combobox-target="clear">Clear</button><input id="input"`))
+      typeText("an")
+      expect($("popup").hidden).toBe(false)
+
+      $("clear").click()
+
+      expect($("input").value).toBe("")
+      expect($("popup").hidden).toBe(false)
+    })
+
+    it("does not open a closed popup on the second Escape", async () => {
+      await mount(fruits())
+      typeText("an")
+      press("Escape")
+      expect($("popup").hidden).toBe(true)
+
+      press("Escape")
+
+      expect($("input").value).toBe("")
+      expect($("popup").hidden).toBe(true)
+    })
+
+    it("gives data-list-empty to the input when the filter hides all the items, also after the morph", async () => {
+      await mount(fruits())
+      typeText("zz")
+      expect($("input").hasAttribute("data-list-empty")).toBe(true)
+
+      respond(fruits())
+      const done = nextDone()
+      $("refresh").click()
+      await done
+
+      expect($("input").hasAttribute("data-list-empty")).toBe(true)
+
+      typeText("a")
+      expect($("input").hasAttribute("data-list-empty")).toBe(false)
+    })
+
+    it("keeps the aria-haspopup and the role that the app gives", async () => {
+      const markup = fruits()
+        .replace(`<input id="input" data-phem-combobox-target="input"`, `<div id="group" role="toolbar" data-phem-combobox-target="inputGroup"><input id="input" data-phem-combobox-target="input" aria-haspopup="dialog"`)
+        .replace(`<div id="popup"`, `<button id="trigger" type="button" aria-haspopup="dialog" data-phem-combobox-target="trigger">Open</button></div><div id="popup"`)
+      await mount(markup)
+
+      expect($("input").getAttribute("aria-haspopup")).toBe("dialog")
+      expect($("trigger").getAttribute("aria-haspopup")).toBe("dialog")
+      expect($("group").getAttribute("role")).toBe("toolbar")
+    })
+
+    it("gives the attributes to a trigger that comes after the connect", async () => {
+      await mount(fruits())
+      const trigger = document.createElement("button")
+      trigger.id = "trigger"
+      trigger.setAttribute("data-phem-combobox-target", "trigger")
+      $("combobox").append(trigger)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(trigger.getAttribute("aria-haspopup")).toBe("listbox")
+      expect(trigger.getAttribute("aria-expanded")).toBe("false")
+    })
+
     describe("with the single selection mode", () => {
+      it("does not open a closed popup on a click on the clear target", async () => {
+        await mount(page().replace('id="fruit-cherry"', 'id="fruit-cherry" data-selected'))
+        $("input").focus()
+        expect($("popup").hidden).toBe(true)
+
+        $("clear").click()
+
+        expect($("input").value).toBe("")
+        expect($("value").value).toBe("")
+        expect($("popup").hidden).toBe(true)
+        expect($("input").getAttribute("aria-expanded")).toBe("false")
+      })
+
+      it("closes the popup on Enter with no highlighted item, and shows the label of the selection again", async () => {
+        await mount(page().replace('id="fruit-cherry"', 'id="fruit-cherry" data-selected'))
+        typeText("an")
+        expect($("popup").hidden).toBe(false)
+        expect(document.querySelector("[data-highlighted]")).toBe(null)
+
+        expect(press("Enter").defaultPrevented).toBe(false)
+        expect($("popup").hidden).toBe(true)
+        expect($("input").value).toBe("Cherry")
+      })
+
       const single = 'data-phem-combobox-filter-value="contains" data-phem-combobox-selection-mode-value="single"'
       const page = () => fruits(single).replace(`<input id="input"`, `<input type="hidden" id="value" name="fruit" data-phem-combobox-target="value" /><button id="clear" data-phem-combobox-target="clear">Clear</button><input id="input"`).replaceAll(`data-phem-combobox-target="item">`, `data-phem-combobox-target="item" data-value="x">`)
 

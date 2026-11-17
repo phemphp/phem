@@ -8,6 +8,23 @@ that break the code of an application start with **Breaking**.
 
 ## Unreleased
 
+- **Breaking**: `phem-combobox` with no selection (the default `selectionMode` `none`, an
+  Autocomplete) and no `autoHighlight` opens on ArrowDown or ArrowUp with no highlighted item, as
+  in Base UI. The next key highlights the first or the last item. Before, the key that opened the
+  popup highlighted an item. The `single` selection mode and the `multiple` value keep the
+  highlight at the open.
+- **Breaking**: in all the modes of `phem-combobox`, Enter on an open popup with no highlighted
+  item closes the popup, and the form still submits. The `single` selection mode shows the label
+  of the selected item again. Before, Enter left the popup open.
+- **Breaking**: in all the modes of `phem-combobox`, the highlight of the pointer goes when the
+  pointer leaves the items, and the `both` and `inline` modes show the text of the user again. A
+  highlight of the keyboard stays. Before, the last item under the pointer kept the highlight.
+- A clear of a closed `phem-combobox` (a click on the `clear` part, or the second Escape) keeps
+  the popup closed. Before, the `input` event of the clear opened it.
+- `phem-combobox` gives `aria-haspopup="listbox"` and `data-list-empty` to the input. A `trigger`
+  part gets `aria-haspopup="listbox"`, `aria-expanded`, `data-popup-open`, and `aria-controls`
+  while the popup is open. An `inputGroup` part gets `role="group"` and `data-popup-open`. The
+  attributes stay through the morph.
 - **Breaking**: the popup of a preview card (`phem-popover` with `open-on-hover` and a link
   trigger) no longer gets `aria-hidden="true"`, as in Base UI. A screen reader can read the card
   in the reading order of the page. Its links and fields keep `tabindex="-1"`. Put

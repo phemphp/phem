@@ -94,6 +94,8 @@ final class ComboboxTest extends E2eTestCase
         expect($input)->toHaveValue('e');
         expect($page->locator('#fruit-popup'))->toBeHidden();
 
+        // The first key opens the popup with no highlight.
+        $page->keyboard()->press('ArrowDown');
         $page->keyboard()->press('ArrowDown');
         $page->keyboard()->press('ArrowDown');
         $page->keyboard()->press('Enter');
@@ -168,5 +170,74 @@ final class ComboboxTest extends E2eTestCase
         expect($input)->toHaveValue('');
         expect($page->locator('#picker-value'))->toHaveValue('');
         expect($first)->not()->toHaveAttribute('data-selected', '');
+    }
+
+    public function testAClearOnAClosedPopupKeepsItClosed(): void
+    {
+        $page = $this->visit('/combobox');
+        self::assertResponseIsSuccessful();
+
+        $input = $page->locator('#picker-input');
+        $input->click();
+        $page->locator('#pick-1')->click();
+        expect($page->locator('#picker-popup'))->toBeHidden();
+
+        $page->locator('#picker-clear')->click();
+        expect($input)->toHaveValue('');
+        expect($page->locator('#picker-popup'))->toBeHidden();
+        expect($input)->toHaveAttribute('aria-expanded', 'false');
+    }
+
+    public function testEnterWithNoHighlightedItemClosesThePopup(): void
+    {
+        $page = $this->visit('/combobox');
+        self::assertResponseIsSuccessful();
+
+        $input = $page->locator('#picker-input');
+        $input->click();
+        $page->locator('#pick-2')->click();
+        expect($input)->toHaveValue('Banana');
+
+        $input->fill('');
+        $input->pressSequentially('le');
+        expect($page->locator('#picker-popup'))->toBeVisible();
+        self::assertNull($input->getAttribute('aria-activedescendant'));
+
+        $page->keyboard()->press('Enter');
+        expect($page->locator('#picker-popup'))->toBeHidden();
+        expect($input)->toHaveValue('Banana');
+    }
+
+    public function testThePointerOutOfTheItemsRemovesTheHighlight(): void
+    {
+        $page = $this->visit('/combobox');
+        self::assertResponseIsSuccessful();
+
+        $input = $page->getByRole('combobox', ['name' => 'Color']);
+        $input->pressSequentially('re');
+        expect($page->locator('#color-popup'))->toBeVisible();
+
+        $page->locator('.color-list li:has-text("Green")')->hover();
+        $active = "document.getElementById('color-input').ariaActiveDescendantElement?.textContent.trim() ?? null";
+        self::assertSame('Green', $page->evaluate($active));
+
+        $page->mouse()->move(1, 1);
+        expect($page->locator('#color-popup'))->toBeVisible();
+        expect($page->locator('.color-list li[data-highlighted]'))->toHaveCount(0);
+        self::assertNull($page->evaluate($active));
+    }
+
+    public function testTheFirstArrowKeyOpensTheAutocompleteWithNoHighlight(): void
+    {
+        $page = $this->visit('/combobox');
+        self::assertResponseIsSuccessful();
+
+        $page->getByRole('combobox', ['name' => 'Color'])->focus();
+        $page->keyboard()->press('ArrowDown');
+        expect($page->locator('#color-popup'))->toBeVisible();
+        expect($page->locator('.color-list li[data-highlighted]'))->toHaveCount(0);
+
+        $page->keyboard()->press('ArrowDown');
+        expect($page->locator('.color-list li[data-highlighted]'))->toHaveText('Blue');
     }
 }
