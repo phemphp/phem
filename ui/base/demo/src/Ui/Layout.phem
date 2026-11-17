@@ -47,7 +47,7 @@ function Sidebar(?string $current = null): Node
                         <a
                             href="/components/{{ slug }}"
                             aria-current={{ slug == current ? 'page' : null }}
-                            className="block rounded-md px-2 py-0.5 text-sm leading-[22px] text-[#2e2e2e] hover:bg-[#f9f9f9] aria-[current=page]:bg-[#f9f9f9] aria-[current=page]:py-[3px] dark:text-[#e6e6e6] dark:hover:bg-[#1a1a1a] dark:aria-[current=page]:bg-[#1a1a1a]"
+                            className="block rounded-md px-2 py-0.5 text-sm leading-[22px] text-[#2e2e2e] hover:bg-[#f9f9f9] aria-[current=page]:bg-[#f9f9f9] dark:text-[#e6e6e6] dark:hover:bg-[#1a1a1a] dark:aria-[current=page]:bg-[#1a1a1a]"
                         >{{ item.name }}</a>
                     </li>
                 {% endfor %}
