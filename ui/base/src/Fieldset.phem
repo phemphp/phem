@@ -1,0 +1,40 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\Component;
+use Phem\{Html, Node};
+
+/**
+ * A group of fields with a legend: Base UI Fieldset.Root. `--fieldset-gap` is the space between
+ * the fields and after the legend: a `<legend>` is not a flex item, so it gets the space as a
+ * margin. Change the space with the variable, for example `className="[--fieldset-gap:0.5rem]"`.
+ */
+#[Component]
+function Fieldset(bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <fieldset
+            disabled={{ disabled }}
+            data-disabled={{ disabled ? '' : null }}
+            className={{ classes('flex w-full max-w-64 flex-col [--fieldset-gap:1rem] gap-[var(--fieldset-gap)] [&>legend]:mb-[var(--fieldset-gap)]') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </fieldset>
+    );
+}
+
+/** The legend of a fieldset: Base UI Fieldset.Legend. It is a `<legend>`, so the browser names the group with it. */
+#[Component]
+function FieldsetLegend(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <legend
+            className={{ classes('border-b border-neutral-950 text-base font-bold text-neutral-950 dark:border-white dark:text-white w-full') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </legend>
+    );
+}

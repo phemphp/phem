@@ -1,0 +1,97 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\Component;
+use Phem\{Html, Node};
+
+/**
+ * A modal dialog: Base UI Dialog.Root, on the `phem-dialog` controller.
+ *
+ * The popup is a native `<dialog>` in the top layer, so it needs no Portal. Its `::backdrop` is the
+ * Backdrop of Base UI: the DialogPopup classes style it with the `backdrop:` variant.
+ */
+#[Component]
+function Dialog(bool $defaultOpen = false, bool $dismissible = true, bool $disablePointerDismissal = false, bool $modal = true, ?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <div
+            data-controller="phem-dialog"
+            data-phem-dialog-open-value={{ defaultOpen ? 'true' : null }}
+            data-phem-dialog-dismiss-value={{ dismissible ? null : 'false' }}
+            data-phem-dialog-disable-pointer-dismissal-value={{ disablePointerDismissal ? 'true' : null }}
+            data-phem-dialog-modal-value={{ modal ? null : 'false' }}
+            className={{ classes('contents') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </div>
+    );
+}
+
+/** The button that opens the dialog. */
+#[Component]
+function DialogTrigger(bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+{
+    $base = Style::BUTTON;
+
+    return (
+        <button
+            type="button"
+            disabled={{ disabled }}
+            data-disabled={{ disabled ? '' : null }}
+            data-phem-dialog-target="trigger"
+            className={{ classes(base) }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </button>
+    );
+}
+
+/** The box of the dialog. */
+#[Component]
+function DialogPopup(?Html $children = null, mixed ...$rest): Node
+{
+    $base = Style::DIALOG;
+
+    return <dialog data-phem-dialog-target="popup" className={{ classes(base) }} {{ ...rest }}>{{ children }}</dialog>;
+}
+
+/** The heading of the dialog. It names the dialog (`aria-labelledby`). */
+#[Component]
+function DialogTitle(?Html $children = null, mixed ...$rest): Node
+{
+    $base = Style::TITLE;
+
+    return <h2 data-phem-dialog-target="title" className={{ classes(base) }} {{ ...rest }}>{{ children }}</h2>;
+}
+
+/** The text that describes the dialog (`aria-describedby`). */
+#[Component]
+function DialogDescription(?Html $children = null, mixed ...$rest): Node
+{
+    $base = Style::DESCRIPTION;
+
+    return <p data-phem-dialog-target="description" className={{ classes(base) }} {{ ...rest }}>{{ children }}</p>;
+}
+
+/** A button that closes the dialog. */
+#[Component]
+function DialogClose(bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+{
+    $base = Style::BUTTON;
+
+    return (
+        <button
+            type="button"
+            disabled={{ disabled }}
+            data-disabled={{ disabled ? '' : null }}
+            data-phem-dialog-target="close"
+            className={{ classes(base) }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </button>
+    );
+}

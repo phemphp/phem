@@ -1,0 +1,111 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\Component;
+use Phem\{Bound, Html, Node};
+
+/**
+ * A text input for a number, with steppers and a scrub area: Base UI NumberField.Root, on the
+ * `phem-number-field` controller. With a `name` (or `phem:bind`), a hidden input keeps the raw value
+ * for the form. `format` takes the options of `Intl.NumberFormat`.
+ */
+#[Component]
+function NumberField(
+    ?float $defaultValue = null,
+    ?float $min = null,
+    ?float $max = null,
+    float $step = 1,
+    float $smallStep = 0.1,
+    float $largeStep = 10,
+    bool $allowOutOfRange = false,
+    bool $snapOnStep = false,
+    bool $allowWheelScrub = false,
+    ?array $format = null,
+    ?string $locale = null,
+    bool $disabled = false,
+    bool $readOnly = false,
+    bool $required = false,
+    ?string $name = null,
+    ?Bound $value = null,
+    ?Html $children = null,
+    mixed ...$rest,
+): Node {
+    $current = null !== $value ? $value->value : $defaultValue;
+    $formatJson = null === $format ? null : json_encode($format);
+
+    return (
+        <div
+            data-controller="phem-number-field"
+            data-phem-number-field-value-value={{ current }}
+            data-phem-number-field-min-value={{ min }}
+            data-phem-number-field-max-value={{ max }}
+            data-phem-number-field-step-value={{ 1.0 == step ? null : step }}
+            data-phem-number-field-small-step-value={{ 0.1 == smallStep ? null : smallStep }}
+            data-phem-number-field-large-step-value={{ 10.0 == largeStep ? null : largeStep }}
+            data-phem-number-field-allow-out-of-range-value={{ allowOutOfRange ? 'true' : null }}
+            data-phem-number-field-snap-on-step-value={{ snapOnStep ? 'true' : null }}
+            data-phem-number-field-allow-wheel-scrub-value={{ allowWheelScrub ? 'true' : null }}
+            data-phem-number-field-format-value={{ formatJson }}
+            data-phem-number-field-locale-value={{ locale }}
+            data-phem-number-field-disabled-value={{ disabled ? 'true' : null }}
+            data-phem-number-field-read-only-value={{ readOnly ? 'true' : null }}
+            data-phem-number-field-required-value={{ required ? 'true' : null }}
+            className={{ classes('flex flex-col items-start gap-1') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+            <input type="hidden" name={{ name }} phem:bind={{ value }} data-phem-number-field-target="hiddenInput" />
+        </div>
+    );
+}
+
+/** An area that changes the value when the user drags in it, such as the label. */
+#[Component]
+function NumberFieldScrubArea(?Html $children = null, mixed ...$rest): Node
+{
+    return <span data-phem-number-field-target="scrubArea" className={{ classes('cursor-ew-resize font-bold select-none') }} {{ ...rest }}>{{ children }}</span>;
+}
+
+/** The virtual cursor that shows while the user drags in the scrub area. */
+#[Component]
+function NumberFieldScrubAreaCursor(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <span data-phem-number-field-target="scrubAreaCursor" hidden className={{ classes('drop-shadow-[0_1px_1px_#0008] filter [&[hidden]]:hidden') }} {{ ...rest }}>
+            {{ children ? children : <svg aria-hidden="true" width="26" height="14" viewBox="0 0 24 14" fill="black" stroke="white" className="block"><path d="M19.5 5.5L6.49737 5.51844V2L1 6.9999L6.5 12L6.49737 8.5L19.5 8.5V12L25 6.9999L19.5 2V5.5Z" /></svg> }}
+        </span>
+    );
+}
+
+#[Component]
+function NumberFieldGroup(?Html $children = null, mixed ...$rest): Node
+{
+    return <div data-phem-number-field-target="group" className={{ classes('flex h-8') }} {{ ...rest }}>{{ children }}</div>;
+}
+
+#[Component]
+function NumberFieldInput(mixed ...$rest): Node
+{
+    return <input data-phem-number-field-target="input" className={{ classes('h-full w-[7ch] border border-neutral-950 bg-white px-2 text-left text-sm font-normal text-neutral-950 tabular-nums any-pointer-coarse:text-base dark:border-white dark:bg-neutral-950 dark:text-white focus:z-1 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white') }} {{ ...rest }} />;
+}
+
+#[Component]
+function NumberFieldDecrement(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <button type="button" data-phem-number-field-target="decrement" className={{ classes('flex h-full w-8 items-center justify-center border border-r-0 border-neutral-950 bg-white bg-clip-padding text-neutral-950 outline-0 select-none dark:border-white dark:bg-neutral-950 dark:text-white hover:not-data-disabled:bg-neutral-100 dark:hover:not-data-disabled:bg-neutral-800 active:not-data-disabled:bg-neutral-200 dark:active:not-data-disabled:bg-neutral-700 data-disabled:border-neutral-500 data-disabled:text-neutral-500 disabled:text-neutral-500 dark:data-disabled:border-neutral-400 dark:data-disabled:text-neutral-400') }} {{ ...rest }}>
+            {{ children ? children : <MinusIcon /> }}
+        </button>
+    );
+}
+
+#[Component]
+function NumberFieldIncrement(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <button type="button" data-phem-number-field-target="increment" className={{ classes('flex h-full w-8 items-center justify-center border border-l-0 border-neutral-950 bg-white bg-clip-padding text-neutral-950 outline-0 select-none dark:border-white dark:bg-neutral-950 dark:text-white hover:not-data-disabled:bg-neutral-100 dark:hover:not-data-disabled:bg-neutral-800 active:not-data-disabled:bg-neutral-200 dark:active:not-data-disabled:bg-neutral-700 data-disabled:border-neutral-500 data-disabled:text-neutral-500 disabled:text-neutral-500 dark:data-disabled:border-neutral-400 dark:data-disabled:text-neutral-400') }} {{ ...rest }}>
+            {{ children ? children : <PlusIcon /> }}
+        </button>
+    );
+}

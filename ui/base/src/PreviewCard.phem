@@ -1,0 +1,64 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\Component;
+use Phem\{Html, Node};
+
+/**
+ * A popup with a preview of the page of a link, on hover: Base UI PreviewCard.Root, on the
+ * `phem-popover` controller with `openOnHover`. The link is the only accessible part: keep the
+ * content of the popup a supplement.
+ */
+#[Component]
+function PreviewCard(
+    int $delay = 600,
+    int $closeDelay = 300,
+    Side $side = Side::Bottom,
+    Align $align = Align::Center,
+    int $sideOffset = 8,
+    ?Html $children = null,
+    mixed ...$rest,
+): Node {
+    return (
+        <Popover openOnHover delay={{ delay }} closeDelay={{ closeDelay }} side={{ side }} align={{ align }} sideOffset={{ sideOffset }} className="block" {{ ...rest }}>
+            {{ children }}
+        </Popover>
+    );
+}
+
+/** The link that shows the card. No whitespace goes around its text: the underline would include it. */
+#[Component]
+function PreviewCardTrigger(string $href, ?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <a
+            href={{ href }}
+            data-phem-popover-target="trigger"
+            className={{ classes('text-neutral-950 underline decoration-neutral-950/60 decoration-1 underline-offset-2 outline-0 hover:decoration-neutral-950 data-popup-open:decoration-neutral-950 focus-visible:no-underline focus-visible:outline-2 focus-visible:outline-neutral-950 dark:text-white dark:decoration-white/60 dark:hover:decoration-white dark:data-popup-open:decoration-white dark:focus-visible:outline-white') }}
+            {{ ...rest }}
+        >{{ children }}</a>
+    );
+}
+
+#[Component]
+function PreviewCardPopup(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <div
+            data-phem-popover-target="popup"
+            popover="manual"
+            hidden
+            className={{ classes('m-0 inset-auto overflow-visible relative h-[var(--popup-height,auto)] w-[var(--popup-width,auto)] origin-[var(--transform-origin)] border border-neutral-950 bg-white text-neutral-950 shadow-[0.25rem_0.25rem_0] shadow-black/12 transition-[transform,opacity] duration-100 ease-out data-ending-style:[transform:scale(0.98)] data-ending-style:opacity-0 data-starting-style:[transform:scale(0.98)] data-starting-style:opacity-0 dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none [&[hidden]]:hidden') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </div>
+    );
+}
+
+#[Component]
+function PreviewCardArrow(mixed ...$rest): Node
+{
+    return <PopoverArrow {{ ...rest }} />;
+}

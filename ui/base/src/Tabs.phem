@@ -1,0 +1,103 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\{Component, Context, Prop, Provide};
+use Phem\{Html, Node};
+
+/**
+ * Tabs and their panels: Base UI Tabs.Root, on the `phem-tabs` controller.
+ *
+ * `defaultValue` selects a tab on load: the `value` of a tab. Each tab shows the panel with the same
+ * `value`. With no `defaultValue`, the first tab that is not disabled is selected.
+ */
+#[Component, Provide]
+class Tabs
+{
+    #[Prop] public ?string $defaultValue = null;
+    #[Prop] public Orientation $orientation = Orientation::Horizontal;
+    #[Prop] public bool $activateOnFocus = false;
+    #[Prop] public bool $loopFocus = true;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    /** Whether the server render shows this value as selected. Without a default value, the controller chooses. */
+    public function isActive(string $value): ?bool
+    {
+        return null === $this->defaultValue ? null : $value === $this->defaultValue;
+    }
+
+    public function render(): Node
+    {
+        return (
+            <div
+                data-controller="phem-tabs"
+                data-phem-tabs-active-value={{ defaultValue }}
+                data-phem-tabs-orientation-value={{ orientation.value }}
+                data-phem-tabs-activate-on-focus-value={{ activateOnFocus ? 'true' : null }}
+                data-phem-tabs-loop-focus-value={{ loopFocus ? null : 'false' }}
+                data-orientation={{ orientation.value }}
+                className={{ classes('w-full max-w-xs') }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+            </div>
+        );
+    }
+}
+
+#[Component]
+function TabsList(?Html $children = null, mixed ...$rest): Node
+{
+    return <div data-phem-tabs-target="list" className={{ classes('relative z-1 -mb-px flex gap-1') }} {{ ...rest }}>{{ children }}</div>;
+}
+
+#[Component]
+function TabsTab(string $value, #[Context] Tabs $tabs, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+{
+    $active = $tabs->isActive($value);
+
+    return (
+        <button
+            type="button"
+            role="tab"
+            aria-selected={{ null === active ? null : (active ? 'true' : 'false') }}
+            data-active={{ active ? '' : null }}
+            disabled={{ disabled }}
+            data-disabled={{ disabled ? '' : null }}
+            data-value={{ value }}
+            data-phem-tabs-target="tab"
+            className={{ classes('flex h-[calc(2rem+1px)] items-center justify-center bg-transparent px-2 py-0 font-inherit text-sm font-normal leading-5 break-keep whitespace-nowrap text-neutral-600 outline-none select-none hover:text-neutral-950 focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white data-active:text-neutral-950 dark:text-neutral-300 dark:hover:text-white dark:data-active:text-white') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </button>
+    );
+}
+
+/** A box under the selected tab that moves with the selection (`--active-tab-left`, `--active-tab-width`). */
+#[Component]
+function TabsIndicator(mixed ...$rest): Node
+{
+    return <span data-phem-tabs-target="indicator" className={{ classes('absolute top-0 left-0 -z-1 h-full w-(--active-tab-width) translate-x-(--active-tab-left) border-x border-t border-neutral-950 bg-white transition-[translate,width] duration-150 ease-in-out dark:border-white dark:bg-neutral-950') }} {{ ...rest }} />;
+}
+
+#[Component]
+function TabsPanel(string $value, #[Context] Tabs $tabs, ?Html $children = null, mixed ...$rest): Node
+{
+    $hidden = false === $tabs->isActive($value);
+
+    return (
+        <div
+            role="tabpanel"
+            hidden={{ hidden }}
+            data-hidden={{ hidden ? '' : null }}
+            data-value={{ value }}
+            data-phem-tabs-target="panel"
+            className={{ classes('col-start-1 row-start-1 flex w-full items-center justify-center bg-white p-4 text-center text-sm text-neutral-950 outline-none focus-visible:z-1 focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:bg-neutral-950 dark:text-white [[hidden]]:hidden') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </div>
+    );
+}

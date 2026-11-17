@@ -1,0 +1,119 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\{Component, Context, Prop, Provide};
+use Phem\{Html, Node};
+
+/**
+ * A row of controls with one tab stop: Base UI Toolbar.Root, on the `phem-toolbar` controller. The
+ * arrow keys move the focus between the items. A Toggle, a ToggleGroup and a Select trigger in it
+ * are items and groups of the toolbar.
+ */
+#[Component, Provide]
+class Toolbar
+{
+    #[Prop] public Orientation $orientation = Orientation::Horizontal;
+    #[Prop] public bool $loopFocus = true;
+    #[Prop] public bool $disabled = false;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function render(): Node
+    {
+        return (
+            <div
+                role="toolbar"
+                aria-orientation={{ orientation.value }}
+                data-orientation={{ orientation.value }}
+                data-controller="phem-toolbar"
+                data-phem-toolbar-orientation-value={{ orientation.value }}
+                data-phem-toolbar-loop-focus-value={{ loopFocus ? null : 'false' }}
+                data-phem-toolbar-disabled-value={{ disabled ? 'true' : null }}
+                data-disabled={{ disabled ? '' : null }}
+                className={{ classes('flex items-center gap-px border border-neutral-950 bg-white p-px dark:border-white dark:bg-neutral-950 data-[orientation=vertical]:flex-col') }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+            </div>
+        );
+    }
+}
+
+/** A button of the toolbar. With `disabled`, it stays in the focus order (`aria-disabled`). */
+#[Component]
+function ToolbarButton(bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+{
+    $base = Style::TOOLBAR_BUTTON;
+
+    return (
+        <button
+            type="button"
+            aria-disabled={{ disabled ? 'true' : null }}
+            data-disabled={{ disabled ? '' : null }}
+            data-phem-toolbar-target="item"
+            className={{ classes(base) }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </button>
+    );
+}
+
+#[Component]
+function ToolbarLink(string $href, ?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <a
+            href={{ href }}
+            data-phem-toolbar-target="item"
+            className={{ classes('mr-[0.875rem] ml-auto flex-none self-center font-[inherit] text-sm text-neutral-500 no-underline hover:text-blue-700 dark:text-neutral-400 dark:hover:text-blue-500 focus-visible:outline-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </a>
+    );
+}
+
+/** A text field of the toolbar. The arrow keys move the caret until it is at an edge of the text. */
+#[Component]
+function ToolbarInput(mixed ...$rest): Node
+{
+    return (
+        <input
+            data-phem-toolbar-target="item"
+            className={{ classes('h-8 w-24 border border-neutral-950 bg-white px-2 text-sm text-neutral-950 dark:border-white dark:bg-neutral-950 dark:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white') }}
+            {{ ...rest }}
+        />
+    );
+}
+
+/** A group of items. Give it an `aria-label`. */
+#[Component]
+function ToolbarGroup(bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <div
+            aria-disabled={{ disabled ? 'true' : null }}
+            data-phem-toolbar-target="group"
+            className={{ classes('flex gap-px') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </div>
+    );
+}
+
+#[Component]
+function ToolbarSeparator(#[Context] Toolbar $toolbar, mixed ...$rest): Node
+{
+    $vertical = Orientation::Vertical === $toolbar->orientation;
+
+    return (
+        <div
+            data-phem-toolbar-target="separator"
+            className={{ classes(vertical ? 'm-1 h-px w-4 bg-neutral-950 dark:bg-white' : 'm-1 h-4 w-px bg-neutral-950 dark:bg-white') }}
+            {{ ...rest }}
+        />
+    );
+}

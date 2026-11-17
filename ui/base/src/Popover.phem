@@ -1,0 +1,112 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\Component;
+use Phem\{Html, Node};
+
+/**
+ * A popup next to a button: Base UI Popover.Root, on the `phem-popover` controller.
+ *
+ * The props of the Base UI Positioner (`side`, `align`, `sideOffset`, `alignOffset`,
+ * `collisionPadding`) are props of the root. The popup goes in the top layer
+ * (`popover="manual"`), so it needs no Portal.
+ */
+#[Component]
+function Popover(
+    bool $defaultOpen = false,
+    bool $openOnHover = false,
+    int $delay = 300,
+    int $closeDelay = 0,
+    Side $side = Side::Bottom,
+    Align $align = Align::Center,
+    int $sideOffset = 0,
+    int $alignOffset = 0,
+    int $collisionPadding = 5,
+    ?Html $children = null,
+    mixed ...$rest,
+): Node {
+    return (
+        <div
+            data-controller="phem-popover"
+            data-phem-popover-open-value={{ defaultOpen ? 'true' : null }}
+            data-phem-popover-open-on-hover-value={{ openOnHover ? 'true' : null }}
+            data-phem-popover-delay-value={{ 300 == delay ? null : delay }}
+            data-phem-popover-close-delay-value={{ 0 == closeDelay ? null : closeDelay }}
+            data-phem-popover-side-value={{ side.value }}
+            data-phem-popover-align-value={{ align.value }}
+            data-phem-popover-side-offset-value={{ sideOffset }}
+            data-phem-popover-align-offset-value={{ alignOffset }}
+            data-phem-popover-collision-padding-value={{ collisionPadding }}
+            className={{ classes('contents') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </div>
+    );
+}
+
+#[Component]
+function PopoverTrigger(bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+{
+    $base = Style::BUTTON;
+
+    return (
+        <button
+            type="button"
+            disabled={{ disabled }}
+            data-disabled={{ disabled ? '' : null }}
+            data-phem-popover-target="trigger"
+            className={{ classes(base, 'data-pressed:bg-neutral-100 dark:data-pressed:bg-neutral-800') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </button>
+    );
+}
+
+#[Component]
+function PopoverPopup(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <div
+            data-phem-popover-target="popup"
+            popover="manual"
+            hidden
+            className={{ classes('m-0 inset-auto overflow-visible relative flex h-[var(--popup-height,auto)] w-[var(--popup-width,auto)] max-w-[500px] flex-col gap-1 origin-[var(--transform-origin)] bg-white dark:bg-neutral-950 p-3 text-neutral-950 dark:text-white outline-none border border-neutral-950 dark:border-white shadow-[0.25rem_0.25rem_0] shadow-black/12 dark:shadow-none transition-[scale,opacity] duration-100 ease-out data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0 [&[hidden]]:hidden') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </div>
+    );
+}
+
+#[Component]
+function PopoverArrow(mixed ...$rest): Node
+{
+    $base = Style::ARROW;
+
+    return <div data-phem-popover-target="arrow" aria-hidden="true" className={{ classes(base) }} {{ ...rest }} />;
+}
+
+#[Component]
+function PopoverTitle(?Html $children = null, mixed ...$rest): Node
+{
+    return <h2 data-phem-popover-target="title" className={{ classes('text-sm font-bold') }} {{ ...rest }}>{{ children }}</h2>;
+}
+
+#[Component]
+function PopoverDescription(?Html $children = null, mixed ...$rest): Node
+{
+    $base = Style::DESCRIPTION;
+
+    return <p data-phem-popover-target="description" className={{ classes(base) }} {{ ...rest }}>{{ children }}</p>;
+}
+
+#[Component]
+function PopoverClose(?Html $children = null, mixed ...$rest): Node
+{
+    $base = Style::BUTTON;
+
+    return <button type="button" data-phem-popover-target="close" className={{ classes(base) }} {{ ...rest }}>{{ children }}</button>;
+}

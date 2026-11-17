@@ -1,0 +1,77 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\{Component, Context, Prop, Provide};
+use Phem\{Bound, Html, Node};
+
+/**
+ * A control that turns a setting on and off: Base UI Switch.Root (`switch` is a reserved word in PHP), on the `phem-toggle` controller.
+ *
+ * Put it in a `<label>` with its text. A hidden checkbox keeps the state for a form (`name`, `value`).
+ * Bind it to a state of the app with `phem:bind`: the checkbox gets the bound value.
+ */
+#[Component, Provide]
+class SwitchRoot
+{
+    #[Prop] public bool $defaultChecked = false;
+    #[Prop] public bool $disabled = false;
+    #[Prop] public bool $readOnly = false;
+    #[Prop] public bool $required = false;
+    #[Prop] public ?string $name = null;
+    #[Prop] public ?string $value = null;
+    #[Prop] public ?Bound $checked = null;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function isChecked(): bool
+    {
+        return null !== $this->checked ? true === $this->checked->value : $this->defaultChecked;
+    }
+
+    public function render(): Node
+    {
+        $on = $this->isChecked();
+
+        return (
+            <span
+                role="switch"
+                aria-checked={{ on ? 'true' : 'false' }}
+                tabindex="0"
+                data-checked={{ on ? '' : null }}
+                data-unchecked={{ on ? null : '' }}
+                data-disabled={{ disabled ? '' : null }}
+                data-readonly={{ readOnly ? '' : null }}
+                data-controller="phem-toggle"
+                data-phem-toggle-checked-value={{ on ? 'true' : null }}
+                data-phem-toggle-disabled-value={{ disabled ? 'true' : null }}
+                data-phem-toggle-read-only-value={{ readOnly ? 'true' : null }}
+                data-phem-toggle-required-value={{ required ? 'true' : null }}
+                data-phem-toggle-name-value={{ name }}
+                data-phem-toggle-value-value={{ value }}
+                className={{ classes('flex h-5 w-9 shrink-0 border border-neutral-950 bg-white p-0.5 transition-colors duration-150 ease-[ease] dark:border-white dark:bg-neutral-950 data-checked:bg-neutral-950 dark:data-checked:bg-white data-disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950 dark:focus-visible:outline-white') }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+                <input type="checkbox" hidden phem:bind={{ checked }} checked={{ on }} data-phem-toggle-target="input" />
+            </span>
+        );
+    }
+}
+
+/** The thumb that moves when the switch turns on. */
+#[Component]
+function SwitchThumb(#[Context] SwitchRoot $switch, mixed ...$rest): Node
+{
+    $on = $switch->isChecked();
+
+    return (
+        <span
+            data-phem-toggle-target="indicator"
+            data-checked={{ on ? '' : null }}
+            data-unchecked={{ on ? null : '' }}
+            className={{ classes('block size-3.5 bg-neutral-950 transition-[translate,background-color] duration-150 ease-[ease] data-checked:translate-x-4 data-checked:bg-white dark:bg-white dark:data-checked:bg-neutral-950') }}
+            {{ ...rest }}
+        />
+    );
+}

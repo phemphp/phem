@@ -1,0 +1,122 @@
+{
+    "controllers": {
+        "@phem/phem": {
+            "phem": {
+                "enabled": true,
+                "fetch": "eager",
+                "autoimport": {
+                    "@phem/phem/dist/phem.css": true
+                }
+            },
+            "optimistic": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "collapsible": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "accordion": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "dialog": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "popover": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "tooltip": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "menu": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "context-menu": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "combobox": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "tabs": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "toast": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "checkbox-group": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "toggle": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "toggle-group": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "toolbar": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "radio-group": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "avatar": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "field": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "form": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "number-field": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "otp-field": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "slider": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "scroll-area": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "select": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "menubar": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "navigation-menu": {
+                "enabled": true,
+                "fetch": "eager"
+            },
+            "button": {
+                "enabled": true,
+                "fetch": "eager"
+            }
+        }
+    },
+    "entrypoints": []
+}

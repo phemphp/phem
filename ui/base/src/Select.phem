@@ -1,0 +1,231 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\{Component, Context, Prop, Provide};
+use Phem\{Bound, Html, Node};
+
+/**
+ * A button that opens a list of options: Base UI Select.Root, on the `phem-select` controller.
+ *
+ * `defaultValue` is the value of the selected item (a list with `multiple`). With a `name` (or
+ * `phem:bind`), a hidden input keeps the value for the form. By default the popup goes over the
+ * trigger (`alignItemWithTrigger`). Give an `id` to label the trigger with its SelectLabel.
+ */
+#[Component, Provide]
+class Select
+{
+    #[Prop] public string|array|null $defaultValue = null;
+    #[Prop] public bool $multiple = false;
+    #[Prop] public ?string $name = null;
+    #[Prop] public ?string $id = null;
+    #[Prop] public bool $alignItemWithTrigger = true;
+    #[Prop] public bool $modal = true;
+    #[Prop] public bool $disabled = false;
+    #[Prop] public bool $readOnly = false;
+    #[Prop] public bool $required = false;
+    #[Prop] public bool $loopFocus = false;
+    #[Prop] public Side $side = Side::Bottom;
+    #[Prop] public Align $align = Align::Start;
+    #[Prop] public int $sideOffset = 0;
+    #[Prop] public ?Bound $value = null;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+    #[Context] public ?Toolbar $toolbar = null;
+
+    /** @return list<string> the selected values */
+    public function selected(): array
+    {
+        $value = null !== $this->value ? $this->value->value : $this->defaultValue;
+
+        return array_values(array_filter(array_map(strval(...), (array) ($value ?? [])), static fn (string $v): bool => '' !== $v));
+    }
+
+    public function isSelected(string $value): bool
+    {
+        return in_array($value, $this->selected(), true);
+    }
+
+    public function partId(string $part): ?string
+    {
+        return null === $this->id ? null : $this->id.'-'.$part;
+    }
+
+    public function render(): Node
+    {
+        $selected = $this->selected();
+        $current = $this->multiple ? json_encode($selected) : ($selected[0] ?? null);
+
+        return (
+            <div
+                data-controller="phem-select"
+                data-phem-select-value-value={{ current }}
+                data-phem-select-multiple-value={{ multiple ? 'true' : null }}
+                data-phem-select-align-item-with-trigger-value={{ alignItemWithTrigger ? null : 'false' }}
+                data-phem-select-modal-value={{ modal ? null : 'false' }}
+                data-phem-select-disabled-value={{ disabled ? 'true' : null }}
+                data-phem-select-read-only-value={{ readOnly ? 'true' : null }}
+                data-phem-select-required-value={{ required ? 'true' : null }}
+                data-phem-select-loop-focus-value={{ loopFocus ? null : 'false' }}
+                data-phem-select-side-value={{ side.value }}
+                data-phem-select-align-value={{ align.value }}
+                data-phem-select-side-offset-value={{ sideOffset }}
+                className={{ classes(toolbar ? 'contents' : 'flex flex-col items-start gap-1') }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+                <input name={{ name }} phem:bind={{ value }} required={{ required }} className="sr-only" data-phem-select-target="input" />
+            </div>
+        );
+    }
+}
+
+#[Component]
+function SelectLabel(#[Context] Select $select, ?Html $children = null, mixed ...$rest): Node
+{
+    $id = $select->partId('label');
+
+    return <div id={{ id }} data-phem-select-target="label" className={{ classes('cursor-default text-sm font-bold text-neutral-950 dark:text-white') }} {{ ...rest }}>{{ children }}</div>;
+}
+
+/** The button that opens the popup. In a Toolbar, it is an item of the toolbar. */
+#[Component]
+function SelectTrigger(#[Context] Select $select, ?Html $children = null, mixed ...$rest): Node
+{
+    $labelledBy = $select->partId('label');
+    $inToolbar = null !== $select->toolbar;
+    $base = $inToolbar
+        ? 'flex h-8 min-w-32 cursor-default items-center justify-between gap-2 border-0 bg-transparent px-2 font-[inherit] text-sm leading-none whitespace-nowrap font-normal text-neutral-950 select-none hover:not-data-disabled:bg-neutral-100 active:not-data-disabled:not-data-pressed:bg-neutral-200 data-pressed:bg-neutral-100 data-pressed:text-neutral-950 dark:text-white dark:hover:not-data-disabled:bg-neutral-800 dark:active:not-data-disabled:not-data-pressed:bg-neutral-700 dark:data-pressed:bg-neutral-800 dark:data-pressed:text-white focus-visible:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white'
+        : 'flex h-8 min-w-40 items-center justify-between gap-3 pl-2 pr-1 text-sm leading-none whitespace-nowrap border border-neutral-950 dark:border-white bg-white dark:bg-neutral-950 text-neutral-950 dark:text-white select-none hover:not-data-disabled:bg-neutral-100 dark:hover:not-data-disabled:bg-neutral-800 active:not-data-disabled:bg-neutral-200 dark:active:not-data-disabled:bg-neutral-700 data-disabled:border-neutral-500 data-disabled:text-neutral-500 disabled:border-neutral-500 disabled:text-neutral-500 dark:data-disabled:border-neutral-400 dark:data-disabled:text-neutral-400 data-pressed:bg-neutral-100 dark:data-pressed:bg-neutral-800 font-normal focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white';
+
+    return (
+        <button
+            type="button"
+            aria-labelledby={{ labelledBy }}
+            data-phem-select-target="trigger"
+            data-phem-toolbar-target={{ inToolbar ? 'item' : null }}
+            className={{ classes(base) }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </button>
+    );
+}
+
+/** The label of the selected item, or the `placeholder`. The controller writes its text. */
+#[Component]
+function SelectValue(#[Context] Select $select, ?string $placeholder = null, mixed ...$rest): Node
+{
+    $empty = [] === $select->selected();
+
+    return (
+        <span
+            placeholder={{ placeholder }}
+            data-placeholder={{ empty ? '' : null }}
+            data-phem-select-target="value"
+            className={{ classes('data-placeholder:text-neutral-500 dark:data-placeholder:text-neutral-400') }}
+            {{ ...rest }}
+        >{{ empty ? placeholder : '' }}</span>
+    );
+}
+
+#[Component]
+function SelectIcon(?Html $children = null, mixed ...$rest): Node
+{
+    return <span data-phem-select-target="icon" aria-hidden="true" className={{ classes('flex') }} {{ ...rest }}>{{ children ? children : <CaretUpDownIcon /> }}</span>;
+}
+
+#[Component]
+function SelectPopup(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <div
+            data-phem-select-target="popup"
+            popover="manual"
+            hidden
+            className={{ classes('m-0 inset-auto overflow-visible group min-w-[var(--anchor-width)] origin-[var(--transform-origin)] bg-clip-padding border border-neutral-950 bg-white text-neutral-950 outline-hidden select-none shadow-[0.25rem_0.25rem_0] shadow-black/12 transition-[scale,opacity] duration-100 ease-out data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-[side=none]:translate-y-px data-[side=none]:min-w-[calc(var(--anchor-width)+1.75rem)] data-[side=none]:data-ending-style:transition-none data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-[side=none]:data-starting-style:scale-100 data-[side=none]:data-starting-style:opacity-100 data-[side=none]:data-starting-style:transition-none dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none [&[hidden]]:hidden') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </div>
+    );
+}
+
+#[Component]
+function SelectList(?Html $children = null, mixed ...$rest): Node
+{
+    return <div data-phem-select-target="list" className={{ classes('relative py-1 scroll-py-6 overflow-y-auto max-h-[var(--available-height)]') }} {{ ...rest }}>{{ children }}</div>;
+}
+
+#[Component]
+function SelectScrollUpArrow(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <div data-phem-select-target="scrollUpArrow" aria-hidden="true" className={{ classes("top-0 z-[1] flex h-4 w-full cursor-default items-center justify-center bg-white text-center text-xs before:absolute data-[side=none]:before:top-[-100%] before:left-0 before:h-full before:w-full before:content-[''] dark:bg-neutral-950") }} {{ ...rest }}>
+            {{ children ? children : <CaretUpIcon /> }}
+        </div>
+    );
+}
+
+#[Component]
+function SelectScrollDownArrow(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <div data-phem-select-target="scrollDownArrow" aria-hidden="true" className={{ classes("bottom-0 z-[1] flex h-4 w-full cursor-default items-center justify-center bg-white text-center text-xs before:absolute before:left-0 before:h-full before:w-full before:content-[''] data-[side=none]:before:bottom-[-100%] dark:bg-neutral-950") }} {{ ...rest }}>
+            {{ children ? children : <CaretDownIcon /> }}
+        </div>
+    );
+}
+
+/** An option. `value` is its value. */
+#[Component]
+function SelectItem(#[Context] Select $select, string $value, bool $disabled = false, ?Html $children = null, mixed ...$rest): Node
+{
+    $selected = $select->isSelected($value);
+
+    return (
+        <div
+            data-value={{ value }}
+            aria-disabled={{ disabled ? 'true' : null }}
+            data-selected={{ selected ? '' : null }}
+            data-disabled={{ disabled ? '' : null }}
+            data-phem-select-target="item"
+            className={{ classes('grid cursor-default grid-cols-[1rem_1fr] items-center gap-2 py-1.5 pr-4 pl-2.5 text-sm outline-hidden select-none data-highlighted:bg-neutral-950 data-highlighted:text-white dark:data-highlighted:bg-white dark:data-highlighted:text-neutral-950 data-disabled:text-neutral-500') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </div>
+    );
+}
+
+/** The check of the selected item. */
+#[Component]
+function SelectItemIndicator(?Html $children = null, mixed ...$rest): Node
+{
+    return <span data-phem-select-target="itemIndicator" aria-hidden="true" className={{ classes('col-start-1 [&[hidden]]:hidden') }} {{ ...rest }}>{{ children ? children : <CheckIcon /> }}</span>;
+}
+
+/** The text of an item: the label that the value part shows. */
+#[Component]
+function SelectItemText(?Html $children = null, mixed ...$rest): Node
+{
+    return <span data-phem-select-target="itemText" className={{ classes('col-start-2') }} {{ ...rest }}>{{ children }}</span>;
+}
+
+#[Component]
+function SelectGroup(?Html $children = null, mixed ...$rest): Node
+{
+    return <div data-phem-select-target="group" {{ ...rest }}>{{ children }}</div>;
+}
+
+#[Component]
+function SelectGroupLabel(?Html $children = null, mixed ...$rest): Node
+{
+    return <div data-phem-select-target="groupLabel" className={{ classes('py-1.5 pr-4 pl-[2.125rem] text-sm text-neutral-500 select-none dark:text-neutral-400') }} {{ ...rest }}>{{ children }}</div>;
+}
+
+#[Component]
+function SelectSeparator(mixed ...$rest): Node
+{
+    return <div data-phem-select-target="separator" role="separator" aria-orientation="horizontal" data-orientation="horizontal" className={{ classes('mx-1 my-1 h-px bg-neutral-950 dark:bg-white') }} {{ ...rest }} />;
+}

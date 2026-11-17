@@ -1,0 +1,2 @@
+pages:
+    resource: routing.controllers

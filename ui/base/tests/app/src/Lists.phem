@@ -1,0 +1,65 @@
+<?phem
+
+namespace Phem\Ui\Base\Tests\App;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+
+use function Phem\Ui\Base\{MenuItem, MenuPopup, MenuTrigger, NavigationMenuContent, NavigationMenuIcon, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuPopup, NavigationMenuPositioner, NavigationMenuTrigger, NavigationMenuViewport, ScrollArea, ScrollAreaContent, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport, SelectIcon, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectList, SelectPopup, SelectTrigger, SelectValue};
+use Phem\Ui\Base\{Menu, Menubar, NavigationMenu, Select};
+
+#[Component]
+function ScrollAreaDemo(): Node
+{
+    return (
+        <ScrollArea>
+            <ScrollAreaViewport><ScrollAreaContent><p>Text</p></ScrollAreaContent></ScrollAreaViewport>
+            <ScrollAreaScrollbar><ScrollAreaThumb /></ScrollAreaScrollbar>
+        </ScrollArea>
+    );
+}
+
+#[Component]
+function SelectDemo(?string $value = null): Node
+{
+    return (
+        <Select id="apple" name="apple" defaultValue={{ value }}>
+            <SelectLabel>Apple</SelectLabel>
+            <SelectTrigger><SelectValue placeholder="Select apple" /><SelectIcon /></SelectTrigger>
+            <SelectPopup>
+                <SelectList>
+                    <SelectItem value="gala"><SelectItemIndicator /><SelectItemText>Gala</SelectItemText></SelectItem>
+                    <SelectItem value="fuji"><SelectItemIndicator /><SelectItemText>Fuji</SelectItemText></SelectItem>
+                </SelectList>
+            </SelectPopup>
+        </Select>
+    );
+}
+
+#[Component]
+function MenubarDemo(): Node
+{
+    return (
+        <Menubar>
+            <Menu><MenuTrigger>File</MenuTrigger><MenuPopup><MenuItem>New</MenuItem></MenuPopup></Menu>
+            <Menu><MenuTrigger>Edit</MenuTrigger><MenuPopup><MenuItem>Undo</MenuItem></MenuPopup></Menu>
+        </Menubar>
+    );
+}
+
+#[Component]
+function NavigationMenuDemo(): Node
+{
+    return (
+        <NavigationMenu collisionPaddingInline={{ 20 }} flip={{ false }}>
+            <NavigationMenuList>
+                <NavigationMenuItem value="overview">
+                    <NavigationMenuTrigger>Overview <NavigationMenuIcon /></NavigationMenuTrigger>
+                    <NavigationMenuContent><NavigationMenuLink href="/start" card>Quick start</NavigationMenuLink></NavigationMenuContent>
+                </NavigationMenuItem>
+                <NavigationMenuItem><NavigationMenuLink href="/blog">Blog</NavigationMenuLink></NavigationMenuItem>
+            </NavigationMenuList>
+            <NavigationMenuPositioner><NavigationMenuPopup><NavigationMenuViewport /></NavigationMenuPopup></NavigationMenuPositioner>
+        </NavigationMenu>
+    );
+}

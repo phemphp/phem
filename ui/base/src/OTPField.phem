@@ -1,0 +1,59 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\Component;
+use Phem\{Bound, Html, Node};
+
+/**
+ * One input for each character of a code: Base UI OTPField.Root, on the `phem-otp-field` controller.
+ * Put one OTPFieldInput in it for each character. With a `name` (or `phem:bind`), a hidden input
+ * keeps the full code for the form.
+ */
+#[Component]
+function OTPField(
+    ?string $defaultValue = null,
+    string $validationType = 'numeric',
+    bool $mask = false,
+    bool $autoSubmit = false,
+    bool $disabled = false,
+    bool $readOnly = false,
+    bool $required = false,
+    ?string $name = null,
+    ?Bound $value = null,
+    ?Html $children = null,
+    mixed ...$rest,
+): Node {
+    $current = null !== $value ? $value->value : $defaultValue;
+
+    return (
+        <div
+            data-controller="phem-otp-field"
+            data-phem-otp-field-value-value={{ current }}
+            data-phem-otp-field-validation-type-value={{ 'numeric' == validationType ? null : validationType }}
+            data-phem-otp-field-mask-value={{ mask ? 'true' : null }}
+            data-phem-otp-field-auto-submit-value={{ autoSubmit ? 'true' : null }}
+            data-phem-otp-field-disabled-value={{ disabled ? 'true' : null }}
+            data-phem-otp-field-read-only-value={{ readOnly ? 'true' : null }}
+            data-phem-otp-field-required-value={{ required ? 'true' : null }}
+            className={{ classes('flex w-full gap-2') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+            <input type="hidden" name={{ name }} phem:bind={{ value }} data-phem-otp-field-target="hiddenInput" />
+        </div>
+    );
+}
+
+/** The input of one character. */
+#[Component]
+function OTPFieldInput(mixed ...$rest): Node
+{
+    return <input data-phem-otp-field-target="input" className={{ classes('m-0 h-10 w-10 rounded-none border border-neutral-950 bg-white dark:bg-neutral-950 text-center font-inherit text-base font-normal text-neutral-950 focus:outline-2 focus:-outline-offset-1 focus:outline-neutral-950 dark:focus:outline-white dark:border-white dark:text-white') }} {{ ...rest }} />;
+}
+
+#[Component]
+function OTPFieldSeparator(?Html $children = null, mixed ...$rest): Node
+{
+    return <span data-phem-otp-field-target="separator" className={{ classes('flex items-center text-neutral-500') }} {{ ...rest }}>{{ children ? children : '–' }}</span>;
+}

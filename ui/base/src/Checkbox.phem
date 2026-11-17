@@ -1,0 +1,156 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\{Component, Context, Prop, Provide};
+use Phem\{Bound, Html, Node};
+
+/**
+ * A box that the user checks and unchecks: Base UI Checkbox.Root, on the `phem-toggle` controller.
+ *
+ * Put it in a `<label>` with its text. A hidden checkbox keeps the state for a form (`name`, `value`).
+ * Bind it with `phem:bind`. In a CheckboxGroup, the group owns the state: give the checkbox a `value`,
+ * and `parent` to the checkbox that checks all the items.
+ */
+#[Component, Provide]
+class Checkbox
+{
+    #[Prop] public bool $defaultChecked = false;
+    #[Prop] public bool $indeterminate = false;
+    #[Prop] public bool $disabled = false;
+    #[Prop] public bool $readOnly = false;
+    #[Prop] public bool $required = false;
+    #[Prop] public bool $parent = false;
+    #[Prop] public ?string $name = null;
+    #[Prop] public ?string $value = null;
+    #[Prop] public ?Bound $checked = null;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+    #[Context] public ?CheckboxGroup $group = null;
+
+    public function isChecked(): bool
+    {
+        return match (true) {
+            null !== $this->group && $this->parent => $this->group->allChecked(),
+            null !== $this->group => $this->group->isChecked($this->value),
+            null !== $this->checked => true === $this->checked->value,
+            default => $this->defaultChecked,
+        };
+    }
+
+    public function isIndeterminate(): bool
+    {
+        return null !== $this->group && $this->parent ? $this->group->someChecked() : $this->indeterminate;
+    }
+
+    public function render(): Node
+    {
+        $on = $this->isChecked();
+        $mixed = !$on && $this->isIndeterminate();
+        $target = null === $this->group ? null : ($this->parent ? 'parent' : 'item');
+        $owned = null !== $this->group;
+        $base = Style::CHECKBOX;
+
+        return (
+            <span
+                role="checkbox"
+                aria-checked={{ mixed ? 'mixed' : (on ? 'true' : 'false') }}
+                tabindex="0"
+                data-checked={{ on ? '' : null }}
+                data-unchecked={{ on or mixed ? null : '' }}
+                data-indeterminate={{ mixed ? '' : null }}
+                data-disabled={{ disabled ? '' : null }}
+                data-readonly={{ readOnly ? '' : null }}
+                data-value={{ value }}
+                data-controller="phem-toggle"
+                data-phem-toggle-checked-value={{ not owned and on ? 'true' : null }}
+                data-phem-toggle-indeterminate-value={{ not owned and mixed ? 'true' : null }}
+                data-phem-toggle-disabled-value={{ disabled ? 'true' : null }}
+                data-phem-toggle-read-only-value={{ readOnly ? 'true' : null }}
+                data-phem-toggle-required-value={{ required ? 'true' : null }}
+                data-phem-toggle-name-value={{ name }}
+                data-phem-toggle-value-value={{ value }}
+                data-phem-checkbox-group-target={{ target }}
+                className={{ classes(base) }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+                <input type="checkbox" hidden phem:bind={{ checked }} checked={{ on }} data-phem-toggle-target="input" />
+            </span>
+        );
+    }
+}
+
+/** The check mark. It shows only when the checkbox is checked, or a dash when it is indeterminate. */
+#[Component]
+function CheckboxIndicator(#[Context] Checkbox $checkbox, ?Html $children = null, mixed ...$rest): Node
+{
+    $on = $checkbox->isChecked();
+    $mixed = !$on && $checkbox->isIndeterminate();
+
+    return (
+        <span
+            data-phem-toggle-target="indicator"
+            hidden={{ not on and not mixed }}
+            data-checked={{ on ? '' : null }}
+            data-unchecked={{ on or mixed ? null : '' }}
+            data-indeterminate={{ mixed ? '' : null }}
+            className={{ classes('group/indicator flex data-unchecked:hidden [&[hidden]]:hidden') }}
+            {{ ...rest }}
+        >
+            {{ children ? children : <><CheckIcon className="group-data-indeterminate/indicator:hidden" /><MinusIcon className="hidden group-data-indeterminate/indicator:block" /></> }}
+        </span>
+    );
+}
+
+/**
+ * A group of checkboxes with one state: Base UI CheckboxGroup, on the `phem-checkbox-group`
+ * controller. `defaultValue` lists the values of the checked checkboxes, and `allValues` the values
+ * that a `parent` checkbox checks. Label it with `aria-labelledby`.
+ */
+#[Component, Provide]
+class CheckboxGroup
+{
+    /** @var list<string> */
+    #[Prop] public array $defaultValue = [];
+    /** @var list<string> */
+    #[Prop] public array $allValues = [];
+    #[Prop] public bool $disabled = false;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function isChecked(?string $value): bool
+    {
+        return null !== $value && in_array($value, $this->defaultValue, true);
+    }
+
+    public function allChecked(): bool
+    {
+        return [] !== $this->allValues && [] === array_diff($this->allValues, $this->defaultValue);
+    }
+
+    public function someChecked(): bool
+    {
+        return [] !== array_intersect($this->allValues, $this->defaultValue) && !$this->allChecked();
+    }
+
+    public function render(): Node
+    {
+        $value = json_encode($this->defaultValue);
+        $all = [] === $this->allValues ? null : json_encode($this->allValues);
+
+        return (
+            <div
+                role="group"
+                data-disabled={{ disabled ? '' : null }}
+                data-controller="phem-checkbox-group"
+                data-phem-checkbox-group-value-value={{ value }}
+                data-phem-checkbox-group-all-values-value={{ all }}
+                className={{ classes('flex flex-col items-start gap-1 text-neutral-950 dark:text-white') }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+            </div>
+        );
+    }
+}

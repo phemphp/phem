@@ -1,0 +1,10 @@
+#!/bin/sh
+# Runs the browser tests of the demo in the e2e image of phem (`make test-e2e`). There is no web
+# server: Playwright PHP sends the requests of the browser to the kernel in the PHPUnit process.
+# The arguments go to PHPUnit, for example `--filter Dialog`. A failed test saves its page in
+# var/failures/, and replaces the files of an earlier run of the same test only.
+set -e
+cd "$(dirname "$0")/.."
+
+APP_ENV=test bin/setup
+exec vendor/bin/phpunit "$@"

@@ -1,0 +1,172 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\{Component, Context, Prop, Provide};
+use Phem\{Html, Node};
+
+/**
+ * The links of a site, with a panel of links under some items: Base UI NavigationMenu.Root, on the
+ * `phem-navigation-menu` controller. The content of the open item moves into one shared popup, which
+ * animates its size between the items.
+ *
+ * Put a NavigationMenuPositioner after the list, with a NavigationMenuPopup and a
+ * NavigationMenuViewport in it. The props of the Base UI Positioner are props of the root.
+ */
+#[Component, Provide]
+class NavigationMenu
+{
+    #[Prop] public ?string $defaultValue = null;
+    #[Prop] public int $delay = 50;
+    #[Prop] public int $closeDelay = 50;
+    #[Prop] public Orientation $orientation = Orientation::Horizontal;
+    #[Prop] public Side $side = Side::Bottom;
+    #[Prop] public Align $align = Align::Center;
+    #[Prop] public int $sideOffset = 10;
+    #[Prop] public int $collisionPadding = 5;
+    /** The space to keep from the left and the right edges, when it is not `collisionPadding`. */
+    #[Prop] public ?int $collisionPaddingInline = null;
+    /** `false` keeps the popup on its side: Base UI `collisionAvoidance={{ side: 'none' }}`. */
+    #[Prop] public bool $flip = true;
+    #[Prop] public ?Html $children = null;
+    #[Prop(rest: true)] public array $attrs = [];
+
+    public function render(): Node
+    {
+        return (
+            <nav
+                data-controller="phem-navigation-menu"
+                data-phem-navigation-menu-value-value={{ defaultValue }}
+                data-phem-navigation-menu-delay-value={{ 50 == delay ? null : delay }}
+                data-phem-navigation-menu-close-delay-value={{ 50 == closeDelay ? null : closeDelay }}
+                data-phem-navigation-menu-orientation-value={{ orientation.value }}
+                data-phem-navigation-menu-side-value={{ side.value }}
+                data-phem-navigation-menu-align-value={{ align.value }}
+                data-phem-navigation-menu-side-offset-value={{ sideOffset }}
+                data-phem-navigation-menu-collision-padding-value={{ 5 == collisionPadding ? null : collisionPadding }}
+                data-phem-navigation-menu-collision-padding-inline-value={{ collisionPaddingInline }}
+                data-phem-navigation-menu-flip-value={{ flip ? null : 'false' }}
+                style="--duration: 0.35s; --easing: cubic-bezier(0.22, 1, 0.36, 1)"
+                className={{ classes('min-w-max text-neutral-950 dark:text-white') }}
+                {{ ...attrs }}
+            >
+                {{ children }}
+            </nav>
+        );
+    }
+}
+
+#[Component]
+function NavigationMenuList(?Html $children = null, mixed ...$rest): Node
+{
+    return <ul data-phem-navigation-menu-target="list" className={{ classes('relative m-0 flex list-none gap-px p-0') }} {{ ...rest }}>{{ children }}</ul>;
+}
+
+/** An item: a trigger with a content, or a link. `value` names the item. */
+#[Component]
+function NavigationMenuItem(?string $value = null, ?Html $children = null, mixed ...$rest): Node
+{
+    return <li data-phem-navigation-menu-target="item" data-value={{ value }} {{ ...rest }}>{{ children }}</li>;
+}
+
+#[Component]
+function NavigationMenuTrigger(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <button
+            type="button"
+            data-phem-navigation-menu-target="trigger"
+            className={{ classes('flex h-8 items-center justify-center gap-1.5 bg-transparent px-2 text-sm font-normal text-neutral-950 no-underline select-none min-[501px]:px-3 hover:bg-neutral-100 data-pressed:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:text-white dark:hover:bg-neutral-800 dark:data-pressed:bg-neutral-800') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </button>
+    );
+}
+
+/** The caret of a trigger. It turns when its content is open. */
+#[Component]
+function NavigationMenuIcon(?Html $children = null, mixed ...$rest): Node
+{
+    return <span data-phem-navigation-menu-target="icon" className={{ classes('transition-transform duration-200 ease-[ease] data-popup-open:rotate-180') }} {{ ...rest }}>{{ children ? children : <CaretDownIcon /> }}</span>;
+}
+
+/** The panel of an item. It moves into the viewport while it is open. */
+#[Component]
+function NavigationMenuContent(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <div
+            data-phem-navigation-menu-target="content"
+            hidden
+            className={{ classes('h-full w-[calc(100vw-40px)] p-2 min-[500px]:w-max min-[500px]:max-w-[400px] transition-[opacity,transform,translate] duration-[var(--duration)] ease-[var(--easing)] data-starting-style:opacity-0 data-ending-style:opacity-0 data-starting-style:data-[activation-direction=left]:translate-x-[-50%] data-starting-style:data-[activation-direction=right]:translate-x-[50%] data-ending-style:data-[activation-direction=left]:translate-x-[50%] data-ending-style:data-[activation-direction=right]:translate-x-[-50%] [&[hidden]]:hidden') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </div>
+    );
+}
+
+/**
+ * A link. In the list, it has the look of a trigger. In a content, it is a card: give it the
+ * `card` prop. Give the link of the current page `aria-current="page"`.
+ */
+#[Component]
+function NavigationMenuLink(string $href, bool $card = false, ?Html $children = null, mixed ...$rest): Node
+{
+    $base = $card
+        ? 'relative block h-full w-full border-0 bg-transparent p-2 text-left text-inherit no-underline hover:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:hover:bg-neutral-800'
+        : 'flex h-8 items-center justify-center gap-1.5 bg-transparent px-2 text-sm font-normal text-neutral-950 no-underline select-none min-[501px]:px-3 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-neutral-950 dark:focus-visible:outline-white dark:text-white dark:hover:bg-neutral-800';
+
+    return <a href={{ href }} data-phem-navigation-menu-target="link" className={{ classes(base) }} {{ ...rest }}>{{ children }}</a>;
+}
+
+#[Component]
+function NavigationMenuBackdrop(mixed ...$rest): Node
+{
+    return <div data-phem-navigation-menu-target="backdrop" hidden className={{ classes('[&[hidden]]:hidden') }} {{ ...rest }} />;
+}
+
+/** The box that goes next to the trigger of the open item. */
+#[Component]
+function NavigationMenuPositioner(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <div
+            data-phem-navigation-menu-target="positioner"
+            hidden
+            className={{ classes("z-10 h-[var(--positioner-height)] w-[var(--positioner-width)] max-w-[var(--available-width)] transition-[top,left,right,bottom] duration-[var(--duration)] ease-[var(--easing)] before:absolute before:content-[''] data-instant:transition-none data-[side=bottom]:before:top-[-10px] data-[side=bottom]:before:right-0 data-[side=bottom]:before:left-0 data-[side=bottom]:before:h-2.5 data-[side=left]:before:top-0 data-[side=left]:before:right-[-10px] data-[side=left]:before:bottom-0 data-[side=left]:before:w-2.5 data-[side=right]:before:top-0 data-[side=right]:before:bottom-0 data-[side=right]:before:left-[-10px] data-[side=right]:before:w-2.5 data-[side=top]:before:right-0 data-[side=top]:before:bottom-[-10px] data-[side=top]:before:left-0 data-[side=top]:before:h-2.5 [&[hidden]]:hidden") }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </div>
+    );
+}
+
+/** The box of the content. Its size animates between the items (`--popup-width`, `--popup-height`). */
+#[Component]
+function NavigationMenuPopup(?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <div
+            data-phem-navigation-menu-target="popup"
+            className={{ classes('relative h-[var(--popup-height)] w-[var(--popup-width)] origin-[var(--transform-origin)] border border-neutral-950 bg-white text-neutral-950 shadow-[0.25rem_0.25rem_0] shadow-black/12 outline-none transition-[opacity,transform,width,height,scale] duration-[var(--duration)] ease-[var(--easing)] data-ending-style:scale-90 data-ending-style:opacity-0 data-ending-style:duration-150 data-ending-style:ease-[ease] data-starting-style:scale-90 data-starting-style:opacity-0 dark:border-white dark:bg-neutral-950 dark:text-white dark:shadow-none') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </div>
+    );
+}
+
+#[Component]
+function NavigationMenuArrow(mixed ...$rest): Node
+{
+    return <div data-phem-navigation-menu-target="arrow" aria-hidden="true" className={{ classes("absolute block h-1.5 w-3 overflow-clip transition-[left,right] duration-[var(--duration)] ease-[var(--easing)] before:absolute before:bottom-0 before:left-1/2 before:block before:h-[calc(6px*sqrt(2))] before:w-[calc(6px*sqrt(2))] before:-translate-x-1/2 before:translate-y-1/2 before:rotate-45 before:border before:border-neutral-950 before:bg-white before:content-[''] data-[side=bottom]:top-[-6px] data-[side=left]:right-[-9px] data-[side=left]:rotate-90 data-[side=right]:left-[-9px] data-[side=right]:-rotate-90 data-[side=top]:bottom-[-6px] data-[side=top]:rotate-180 dark:before:border-white dark:before:bg-neutral-950") }} {{ ...rest }} />;
+}
+
+/** The place of the open content in the popup. */
+#[Component]
+function NavigationMenuViewport(mixed ...$rest): Node
+{
+    return <div data-phem-navigation-menu-target="viewport" className={{ classes('relative h-full w-full overflow-hidden') }} {{ ...rest }} />;
+}

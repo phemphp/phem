@@ -1,0 +1,17 @@
+framework:
+    secret: 'phem-ui-base-demo-secret-not-for-production'
+    http_method_override: false
+    handle_all_throwables: true
+    asset_mapper:
+        paths: ['assets/']
+
+twig:
+    strict_variables: true
+
+symfonycasts_tailwind:
+    binary_version: 'v4.1.11'
+
+phem:
+    class_merger:
+        tailwind:
+            css: '%kernel.project_dir%/assets/styles/app.css'

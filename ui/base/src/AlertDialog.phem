@@ -1,0 +1,47 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\Component;
+use Phem\{Html, Node};
+
+/**
+ * A dialog that asks the user to confirm an action: Base UI AlertDialog.Root, on the
+ * `phem-dialog` controller. The popup has `role="alertdialog"`. Escape and a close button close it,
+ * and a tap on the backdrop does not.
+ */
+#[Component]
+function AlertDialog(bool $defaultOpen = false, ?Html $children = null, mixed ...$rest): Node
+{
+    return <Dialog defaultOpen={{ defaultOpen }} disablePointerDismissal {{ ...rest }}>{{ children }}</Dialog>;
+}
+
+#[Component]
+function AlertDialogTrigger(?Html $children = null, mixed ...$rest): Node
+{
+    return <DialogTrigger {{ ...rest }}>{{ children }}</DialogTrigger>;
+}
+
+#[Component]
+function AlertDialogPopup(?Html $children = null, mixed ...$rest): Node
+{
+    return <DialogPopup role="alertdialog" {{ ...rest }}>{{ children }}</DialogPopup>;
+}
+
+#[Component]
+function AlertDialogTitle(?Html $children = null, mixed ...$rest): Node
+{
+    return <DialogTitle {{ ...rest }}>{{ children }}</DialogTitle>;
+}
+
+#[Component]
+function AlertDialogDescription(?Html $children = null, mixed ...$rest): Node
+{
+    return <DialogDescription {{ ...rest }}>{{ children }}</DialogDescription>;
+}
+
+#[Component]
+function AlertDialogClose(?Html $children = null, mixed ...$rest): Node
+{
+    return <DialogClose {{ ...rest }}>{{ children }}</DialogClose>;
+}

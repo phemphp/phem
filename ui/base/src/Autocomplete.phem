@@ -1,0 +1,32 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\Component;
+
+/**
+ * A text field that suggests values while the user types: Base UI Autocomplete.Root, on the
+ * `phem-combobox` controller. The input keeps the free text that the user types: an item fills the
+ * input, and does not become a chosen value.
+ *
+ * Use the parts of Combobox in it: ComboboxLabel, ComboboxInput, ComboboxPopup, ComboboxList,
+ * ComboboxItem, ComboboxEmpty, ComboboxStatus, ComboboxGroup…
+ */
+#[Component]
+class Autocomplete extends Combobox
+{
+    public function resolvedSelectionMode(): string
+    {
+        return $this->selectionMode ?? 'none';
+    }
+
+    public function resolvedOpenOnInputClick(): bool
+    {
+        return $this->openOnInputClick ?? false;
+    }
+
+    public function animatesPopup(): bool
+    {
+        return false;
+    }
+}

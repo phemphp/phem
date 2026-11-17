@@ -1,0 +1,39 @@
+<?phem
+
+namespace Phem\Ui\Base;
+
+use Phem\Attribute\Component;
+use Phem\{Html, Node};
+
+/**
+ * An image of a user with a fallback, such as the initials: Base UI Avatar.Root, on the
+ * `phem-avatar` controller. The fallback shows while the image is not loaded, after `delay` ms.
+ */
+#[Component]
+function Avatar(int $delay = 0, ?Html $children = null, mixed ...$rest): Node
+{
+    return (
+        <span
+            data-controller="phem-avatar"
+            data-phem-avatar-delay-value={{ delay ?: null }}
+            className={{ classes('inline-flex size-8 items-center justify-center overflow-hidden rounded-full bg-neutral-200 align-middle text-sm leading-none font-normal text-neutral-950 select-none dark:bg-neutral-800 dark:text-white') }}
+            {{ ...rest }}
+        >
+            {{ children }}
+        </span>
+    );
+}
+
+/** The image. It shows only when it loads. */
+#[Component]
+function AvatarImage(string $src, string $alt = '', mixed ...$rest): Node
+{
+    return <img src={{ src }} alt={{ alt }} data-phem-avatar-target="image" className={{ classes('size-full object-cover [&[hidden]]:hidden') }} {{ ...rest }} />;
+}
+
+/** The text that shows while the image is not loaded. */
+#[Component]
+function AvatarFallback(?Html $children = null, mixed ...$rest): Node
+{
+    return <span data-phem-avatar-target="fallback" className={{ classes('flex size-full items-center justify-center text-sm [&[hidden]]:hidden') }} {{ ...rest }}>{{ children }}</span>;
+}

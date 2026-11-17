@@ -1,0 +1,192 @@
+<?phem
+
+namespace Phem\Ui\Base\Tests\App;
+
+use Phem\Attribute\Component;
+use Phem\Node;
+
+use function Phem\Ui\Base\{AccordionHeader, AccordionPanel, AccordionTrigger, AlertDialog, AlertDialogClose, AlertDialogPopup, AlertDialogTitle, AlertDialogTrigger, CollapsiblePanel, CollapsibleTrigger, ContextMenuTrigger, Dialog, DialogClose, DialogDescription, DialogPopup, DialogTitle, DialogTrigger, MenuCheckboxItem, MenuItem, MenuItemIndicator, MenuItemLabel, MenuPopup, MenuRadioItem, MenuSeparator, MenuSubmenuTrigger, MenuTrigger, Popover, PopoverArrow, PopoverDescription, PopoverPopup, PopoverTitle, PopoverTrigger, TabsIndicator, TabsList, TabsPanel, TabsTab, Tooltip, TooltipPopup, TooltipTrigger};
+use Phem\Ui\Base\{Accordion, AccordionItem, Collapsible, ContextMenu, Menu, MenuRadioGroup, MenuSubmenu, Tabs};
+
+#[Component]
+function CollapsibleDemo(bool $open = false): Node
+{
+    return (
+        <Collapsible defaultOpen={{ open }}>
+            <CollapsibleTrigger>Recovery keys</CollapsibleTrigger>
+            <CollapsiblePanel><div>alien-bean-pasta</div></CollapsiblePanel>
+        </Collapsible>
+    );
+}
+
+#[Component]
+function AccordionDemo(): Node
+{
+    return (
+        <Accordion id="faq" defaultValue={{ ['start'] }}>
+            <AccordionItem value="what">
+                <AccordionHeader><AccordionTrigger>What is Base UI?</AccordionTrigger></AccordionHeader>
+                <AccordionPanel>A library.</AccordionPanel>
+            </AccordionItem>
+            <AccordionItem value="start">
+                <AccordionHeader><AccordionTrigger>How do I get started?</AccordionTrigger></AccordionHeader>
+                <AccordionPanel>Read the guide.</AccordionPanel>
+            </AccordionItem>
+        </Accordion>
+    );
+}
+
+#[Component]
+function DialogDemo(): Node
+{
+    return (
+        <Dialog>
+            <DialogTrigger>View notifications</DialogTrigger>
+            <DialogPopup>
+                <DialogTitle>Notifications</DialogTitle>
+                <DialogDescription>You are all caught up.</DialogDescription>
+                <DialogClose>Close</DialogClose>
+            </DialogPopup>
+        </Dialog>
+    );
+}
+
+#[Component]
+function AlertDialogDemo(): Node
+{
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger className="text-red-700">Discard draft</AlertDialogTrigger>
+            <AlertDialogPopup>
+                <AlertDialogTitle>Discard draft?</AlertDialogTitle>
+                <AlertDialogClose>Cancel</AlertDialogClose>
+            </AlertDialogPopup>
+        </AlertDialog>
+    );
+}
+
+#[Component]
+function PopoverDemo(): Node
+{
+    return (
+        <Popover sideOffset={{ 8 }}>
+            <PopoverTrigger>Notifications</PopoverTrigger>
+            <PopoverPopup>
+                <PopoverArrow />
+                <PopoverTitle>Notifications</PopoverTitle>
+                <PopoverDescription>You are all caught up.</PopoverDescription>
+            </PopoverPopup>
+        </Popover>
+    );
+}
+
+#[Component]
+function TooltipDemo(): Node
+{
+    return (
+        <Tooltip sideOffset={{ 11 }}>
+            <TooltipTrigger aria-label="Bold">B</TooltipTrigger>
+            <TooltipPopup>Bold</TooltipPopup>
+        </Tooltip>
+    );
+}
+
+#[Component]
+function TabsDemo(): Node
+{
+    return (
+        <Tabs defaultValue="overview">
+            <TabsList>
+                <TabsTab value="overview">Overview</TabsTab>
+                <TabsTab value="projects">Projects</TabsTab>
+                <TabsIndicator />
+            </TabsList>
+            <TabsPanel value="overview">Stats</TabsPanel>
+            <TabsPanel value="projects">Milestones</TabsPanel>
+        </Tabs>
+    );
+}
+
+#[Component]
+function MenuDemo(): Node
+{
+    return (
+        <Menu sideOffset={{ 8 }}>
+            <MenuTrigger>Song</MenuTrigger>
+            <MenuPopup>
+                <MenuItem>Add to Library</MenuItem>
+                <MenuSubmenu>
+                    <MenuSubmenuTrigger>Add to Playlist</MenuSubmenuTrigger>
+                    <MenuPopup><MenuItem>Get Up!</MenuItem></MenuPopup>
+                </MenuSubmenu>
+                <MenuSeparator />
+                <MenuItem closeOnClick={{ false }}>Play Next</MenuItem>
+                <MenuItem id="item-off" disabled>Share</MenuItem>
+                <MenuCheckboxItem id="check-off" disabled><MenuItemLabel>Sync</MenuItemLabel></MenuCheckboxItem>
+                <MenuCheckboxItem checked>
+                    <MenuItemIndicator />
+                    <MenuItemLabel>Minimap</MenuItemLabel>
+                </MenuCheckboxItem>
+                <MenuCheckboxItem defaultChecked><MenuItemLabel>Word wrap</MenuItemLabel></MenuCheckboxItem>
+                <MenuRadioGroup defaultValue="name">
+                    <MenuRadioItem value="date"><MenuItemLabel>Date</MenuItemLabel></MenuRadioItem>
+                    <MenuRadioItem value="name"><MenuItemLabel>Name</MenuItemLabel></MenuRadioItem>
+                </MenuRadioGroup>
+            </MenuPopup>
+        </Menu>
+    );
+}
+
+// The defaults of a menu: modal, but not with `openOnHover`. `disabled` disables the triggers.
+#[Component]
+function MenuOptionsDemo(): Node
+{
+    return (
+        <div>
+            <Menu id="modal"><MenuTrigger>Modal</MenuTrigger><MenuPopup><MenuItem>One</MenuItem></MenuPopup></Menu>
+            <Menu id="hover" openOnHover><MenuTrigger>Hover</MenuTrigger><MenuPopup><MenuItem>One</MenuItem></MenuPopup></Menu>
+            <Menu id="off" disabled>
+                <MenuTrigger>Off</MenuTrigger>
+                <MenuPopup>
+                    <MenuSubmenu disabled><MenuSubmenuTrigger id="off-sub">More</MenuSubmenuTrigger><MenuPopup><MenuItem>Two</MenuItem></MenuPopup></MenuSubmenu>
+                </MenuPopup>
+            </Menu>
+        </div>
+    );
+}
+
+// The state rules of the check items: a `checked` prop wins over `defaultChecked`, the value of a
+// group wins over the `checked` prop of an item, and a group does not reach into a submenu.
+#[Component]
+function MenuStateDemo(): Node
+{
+    return (
+        <Menu>
+            <MenuTrigger>View</MenuTrigger>
+            <MenuPopup>
+                <MenuCheckboxItem id="controlled" checked={{ false }} defaultChecked>Wrap</MenuCheckboxItem>
+                <MenuCheckboxItem id="closes" closeOnClick>Pin</MenuCheckboxItem>
+                <MenuRadioGroup value="name" defaultValue="date">
+                    <MenuRadioItem id="date" value="date" checked>Date</MenuRadioItem>
+                    <MenuRadioItem id="name" value="name">Name</MenuRadioItem>
+                    <MenuSubmenu>
+                        <MenuSubmenuTrigger>More</MenuSubmenuTrigger>
+                        <MenuPopup><MenuRadioItem id="inner" value="name">Inner</MenuRadioItem></MenuPopup>
+                    </MenuSubmenu>
+                </MenuRadioGroup>
+                <MenuRadioItem id="alone" checked>Alone</MenuRadioItem>
+            </MenuPopup>
+        </Menu>
+    );
+}
+
+#[Component]
+function ContextMenuDemo(): Node
+{
+    return (
+        <ContextMenu>
+            <ContextMenuTrigger>Right click here</ContextMenuTrigger>
+            <MenuPopup><MenuItem>Add to Library</MenuItem></MenuPopup>
+        </ContextMenu>
+    );
+}
